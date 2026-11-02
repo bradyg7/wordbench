@@ -7,7 +7,7 @@
     "build": "tsc -p ui && vite build --config ui/vite.config.ts",
     "tauri": "tauri",
     "fixtures": "node scripts/fixtures.mjs",
-    "test:webkit": "playwright test --project=webkit-phone",
+    "test:webkit": "playwright test",
     "measure": "node measure/measure.mjs"
   },
   "dependencies": {

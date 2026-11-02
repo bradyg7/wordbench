@@ -332,5 +332,5 @@ async function start() {
   api.uiReady(report).catch(() => {});
 }
 
-(window as any).__wb = { open, perf, selector, get drawn() { return drawn; } };
+(window as any).__wb = { open, perf, selector, repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
 start().catch(e => { reader.innerHTML = `<p class="error">${String(e)}</p>`; });

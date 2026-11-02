@@ -88,7 +88,7 @@ export class Selector {
     if (handle && this.sel) {
       // Dragging a handle: keep the offset between the finger and the word edge it marks.
       e.preventDefault();
-      handle.setPointerCapture(e.pointerId);
+      capture(handle, e.pointerId);
       const end = handle.dataset.end as 'a' | 'b';
       const r = this.edgeRect(end);
       this.drag = { id: e.pointerId, end, anchor: end === 'a' ? this.sel.b : this.sel.a, dx: (end === 'a' ? r.left + 2 : r.right - 2) - e.clientX, dy: r.top + r.height / 2 - e.clientY };
@@ -111,7 +111,7 @@ export class Selector {
     navigator.vibrate?.(8);                       // a light tick where the platform allows it
     this.set(p.k, p.k);
     this.drag = { id: p.id, end: 'free', anchor: p.k, dx: 0, dy: 0 };
-    this.root.setPointerCapture?.(p.id);
+    capture(this.root, p.id);
   }
 
   private move(e: PointerEvent) {
@@ -133,7 +133,7 @@ export class Selector {
       clearTimeout(p.timer);
       // A mouse press that moves starts a selection by dragging.
       if (!p.touch && p.k !== null && !this.drag) {
-        this.root.setPointerCapture(p.id);
+        capture(this.root, p.id);
         this.drag = { id: p.id, end: 'free', anchor: p.k, dx: 0, dy: 0 };
         this.set(p.k, p.k);
       }
@@ -241,4 +241,10 @@ export class Selector {
   private stopScroll() {
     this.scrollV = 0;
   }
+}
+
+// Keeps the pointer's moves coming to the reader while it drags. A pointer the browser no longer knows (or a synthetic
+// one in tests) cannot be captured; the drag still works from the events that arrive.
+function capture(el: Element, id: number) {
+  try { el.setPointerCapture(id); } catch { /* not an active pointer */ }
 }
