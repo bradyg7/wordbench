@@ -3,7 +3,7 @@
 2026-11-02. Phase 0 of [PLAN.md](PLAN.md), section 8. All three spikes run. The numbers below come from the release
 build on the touchscreen laptop, in the phone-size window, with the web view's CPU slowed 4× over the DevTools protocol
 (as section 6 asks). The raw numbers are in [phase0/measured.json](phase0/measured.json), and the screenshots are in
-[phase0/](phase0/). The person's own check (spike (a) by mouse, at phone size and by finger) is still to come; see the end.
+[phase0/](phase0/). The person's own check of spike (a) passed; see the end.
 
 | Spike | Runs | Result |
 |---|---|---|
@@ -216,7 +216,10 @@ Phase 1 is wb-core at parity, with no UI work beyond what the spike has. From ph
 
 ## The person's check (PLAN.md phase 0)
 
-Try the reader by mouse, at phone size, and by finger on the touchscreen laptop. Then say whether it feels right.
+**Passed, 2026-11-02:** the person tried the reader and said it feels right. Phase 0 is complete; phase 1 starts on the
+person's go-ahead.
+
+How to try the reader by mouse, at phone size, and by finger on the touchscreen laptop:
 
 ```
 powershell -ExecutionPolicy Bypass -File scripts\try-reader.ps1            # phone size
