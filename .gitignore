@@ -1,0 +1,10 @@
+/target/
+node_modules/
+/ui/dist/
+/ui/fixtures/
+/test-results/
+/playwright-report/
+/measure/out/
+/spikes/*/out/
+*.db
+*.pdf
