@@ -1,7 +1,7 @@
 /target/
 node_modules/
 /ui/dist/
-/ui/fixtures/
+/ui/public/fixtures/
 /test-results/
 /playwright-report/
 /measure/out/

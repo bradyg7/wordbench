@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bible Workbench</title>
+  <link rel="stylesheet" href="./tokens.css">
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <header id="bar" class="bar">
+    <button class="icon" id="prev" aria-label="Previous chapter">‹</button>
+    <button id="place" class="place" aria-label="Book and chapter"></button>
+    <button class="icon" id="next" aria-label="Next chapter">›</button>
+    <div class="command" aria-hidden="true">Search, go to a place, or type a command</div>
+    <span class="grow"></span>
+    <button class="icon" id="more" aria-label="More">⋯</button>
+  </header>
+  <main id="scroller">
+    <article id="reader" class="reader" aria-live="polite"></article>
+  </main>
+  <button id="pen" class="fab" aria-label="Write">✎</button>
+  <nav id="tabs" class="tabs">
+    <button class="on">Read</button><button>Notebook</button><button>Threads</button><button>Study</button><button id="tab-more">More</button>
+  </nav>
+  <div id="overlay"></div>
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

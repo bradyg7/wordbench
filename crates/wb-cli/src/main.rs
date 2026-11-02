@@ -2,7 +2,7 @@
 //! app's full set (`wb help` there).
 
 use serde_json::json;
-use wb_core::{bible::Bible, marks, study::Study};
+use wb_core::{bible::Bible, marks, study::Study, views};
 
 const HELP: &str = "wb: Bible Workbench (Rust, phase 0)
 
@@ -10,6 +10,9 @@ const HELP: &str = "wb: Bible Workbench (Rust, phase 0)
   wb chapter <BOOK> <n>        a chapter's words as JSON (what the reader draws)
   wb marks <BOOK> <n>          highlights, notes and thread places on a chapter, from the study folder (JSON)
   wb reader <BOOK> <n>         chapter and marks together (JSON; the UI's test fixture is made with it)
+  wb word <BOOK> <ch> <v> <i>  what the word sheet shows (word i, 0-based, of a verse) (JSON)
+  wb verse <BOOK> <ch> <v>     what the verse sheet shows (JSON)
+  wb fixture <BOOK> <ch>       reader, every word sheet and verse sheet of a chapter in one JSON (the UI's test data)
   wb strong <H7065|G26>        a lexicon entry (JSON)
   wb count <H7065|G26>         how often a Strong's number is used in the KJV (JSON)
   wb books                     the books (JSON)
@@ -60,6 +63,30 @@ fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         "reader" => {
             let (b, c) = chapter_args()?;
             print(json!({"chapter": bible()?.chapter(&b, c)?, "marks": marks::chapter_marks(&study()?, &b, c)?}));
+        }
+        "word" => {
+            let (b, c) = chapter_args()?;
+            let n = |k: usize| -> Result<u32, Box<dyn std::error::Error>> { Ok(rest.get(k).ok_or("usage: wb word <BOOK> <ch> <v> <i>")?.parse()?) };
+            print(json!(views::word(&bible()?, &study()?, &b, c, n(2)?, n(3)?)?));
+        }
+        "verse" => {
+            let (b, c) = chapter_args()?;
+            let v: u32 = rest.get(2).ok_or("usage: wb verse <BOOK> <ch> <v>")?.parse()?;
+            print(json!(views::verse(&bible()?, &study()?, &b, c, v)?));
+        }
+        "fixture" => {
+            let (b, c) = chapter_args()?;
+            let (bible, study) = (bible()?, study()?);
+            let reader = views::reader(&bible, &study, &b, c)?;
+            let mut words = serde_json::Map::new();
+            let mut verses = serde_json::Map::new();
+            for v in &reader.chapter.verses {
+                verses.insert(v.v.to_string(), json!(views::verse(&bible, &study, &b, c, v.v)?));
+                for w in &v.words {
+                    words.insert(format!("{}.{}", v.v, w.i), json!(views::word(&bible, &study, &b, c, v.v, w.i)?));
+                }
+            }
+            println!("{}", json!({"reader": reader, "words": words, "verses": verses}));
         }
         "strong" => {
             let s = rest.first().ok_or("usage: wb strong <H7065>")?.to_uppercase();

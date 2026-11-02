@@ -1,0 +1,15 @@
+[package]
+name = "bible-workbench"
+description = "Bible Workbench: the Tauri 2 shell over wb-core"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+wb-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri = { version = "2", features = [] }

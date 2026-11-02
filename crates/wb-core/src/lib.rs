@@ -7,6 +7,7 @@ pub mod anchors;
 pub mod bible;
 pub mod marks;
 pub mod study;
+pub mod views;
 
 use std::path::PathBuf;
 
