@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/wb-core", "crates/wb-cli", "app/src-tauri"]
+members = ["crates/wb-core", "crates/wb-cli", "app/src-tauri", "spikes/sync"]
 
 [workspace.package]
 edition = "2021"

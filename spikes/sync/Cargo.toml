@@ -1,0 +1,13 @@
+[package]
+name = "spike-sync"
+description = "Phase 0 spike (b): git sync of a scratch study folder with git2, merged by kind of file"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+wb-core.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+# https for the private remote later (WinHTTP on Windows, no OpenSSL); no ssh.
+git2 = { version = "0.21", default-features = false, features = ["https"] }
