@@ -58,13 +58,7 @@ fn touches_verse(anchor: &str, code: &str, c: u32, v: u32) -> bool {
 }
 
 pub fn word(bible: &Bible, study: &Study, code: &str, c: u32, v: u32, i: u32) -> Result<WordView> {
-    let ch = bible.chapter(code, c)?;
-    let w = ch
-        .verses
-        .iter()
-        .find(|x| x.v == v)
-        .and_then(|x| x.words.iter().find(|w| w.i == i))
-        .ok_or_else(|| Error(format!("No word {i} in {} {c}:{v}", ch.name)))?;
+    let (name, w) = bible.word(code, c, v, i)?;
     let strong = w.strong.clone();
     let anchor = format!("{code}.{c}:{v}.{i}");
     let notes = study
@@ -77,7 +71,7 @@ pub fn word(bible: &Bible, study: &Study, code: &str, c: u32, v: u32, i: u32) ->
         })
         .collect();
     Ok(WordView {
-        reference: format!("{} {c}:{v}", ch.name),
+        reference: format!("{name} {c}:{v}"),
         anchor,
         text: w.text.clone(),
         lexicon: match &strong {

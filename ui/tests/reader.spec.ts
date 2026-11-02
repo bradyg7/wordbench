@@ -139,3 +139,17 @@ test('timings in this engine', async ({ page }, info) => {
   const entries = await page.evaluate(() => (window as any).__wb.perf.entries);
   console.log(info.project.name, JSON.stringify(entries.map((e: any) => [e.at, Math.round(e.ms)])));
 });
+
+test('a mark made while a long chapter is still being drawn reaches its last verses', async ({ page }) => {
+  await ready(page);
+  await page.evaluate(async () => {
+    const wb = (window as any).__wb;
+    await wb.open('PSA', 119);
+    const d = wb.drawn;
+    d.marks.highlights.push({ kind: 'verse', code: 'PSA', c1: 119, v1: 170, i1: null, c2: null, v2: null, i2: null, id: 't', color: 'green' });
+    wb.repaint();
+  });
+  await page.waitForFunction(() => { const d = (window as any).__wb.drawn; return d.el.filter(Boolean).length === d.v.length; });
+  const k = await page.evaluate(() => (window as any).__wb.drawn.v.indexOf(170));
+  await expect(page.locator(`.w[data-k="${k}"]`)).toHaveClass(/hl/);
+});

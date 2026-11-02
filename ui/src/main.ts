@@ -8,7 +8,7 @@ import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/noto-sans-hebrew/400.css';
 import { api, inApp, type WordView, type VerseView, type Book, type Mark } from './api';
-import { draw, paint, textOf, labelOf, type Drawn } from './reader';
+import { draw, drawTimes, paint, textOf, labelOf, type Drawn } from './reader';
 import { Selector, type InputMode } from './select';
 import { openSheet, closeSheet, showCard, hideCard, toast, compact } from './sheets';
 import { perf, afterPaint, record } from './perf';
@@ -20,16 +20,28 @@ const STORE = 'wb.place.v1';
 
 let drawn: Drawn | null = null;
 let books: Book[] = [];
-let place = { code: 'NUM', chapter: 25, scroll: 0 };
+let place = { code: 'NUM', chapter: 25, verse: 1, offset: 0 };
 
-// ---- the place: never lose it ---------------------------------------------------------------------------------------
+// ---- the place: never lose it. Kept as the verse at the top of the screen and how far into it, not as pixels, so it
+// holds when the window is a different size or the text size changes. ---------------------------------------------------
 function loadPlace() {
-  const q = new URLSearchParams(location.search).get('at');   // ?at=PSA.119 (tests, measuring)
-  if (q) { const [code, ch] = q.split('.'); return { code, chapter: +ch, scroll: 0 }; }
+  const q = new URLSearchParams(location.search).get('at');   // ?at=PSA.119 or ?at=PSA.119.40 (tests, measuring)
+  if (q) { const [code, ch, v] = q.split('.'); return { code, chapter: +ch, verse: +(v || 1), offset: 0 }; }
   try { return { ...place, ...JSON.parse(localStorage.getItem(STORE) || '{}') }; } catch { return place; }
 }
+function topVerse(): { verse: number; offset: number } {
+  const top = scroller.scrollTop, base = reader.offsetTop;
+  let best = { verse: 1, offset: top };
+  for (const e of reader.querySelectorAll<HTMLElement>('.vn')) {
+    const y = base + e.offsetTop - 12;
+    if (y > top) break;
+    best = { verse: +e.dataset.v!, offset: top - y };
+  }
+  return best;
+}
 function savePlace() {
-  place.scroll = scroller.scrollTop;
+  if (!drawn) return;
+  place = { code: drawn.chapter.code, chapter: drawn.chapter.chapter, ...topVerse() };
   try { localStorage.setItem(STORE, JSON.stringify(place)); } catch { /* private window: the place is kept for this run only */ }
 }
 let saveTimer = 0;
@@ -40,18 +52,28 @@ scroller.addEventListener('scroll', () => {
 }, { passive: true });
 
 // ---- drawing ----------------------------------------------------------------------------------------------------------
-async function open(code: string, chapter: number, scroll = 0) {
-  const t0 = performance.now();
+let drawSeq = 0;
+async function open(code: string, chapter: number, verse = 1, offset = 0) {
+  const t0 = performance.now(), seq = ++drawSeq;
   const { data, rust_ms } = await api.reader(code, chapter);
+  if (seq !== drawSeq) return;
   const t1 = performance.now();
   closeSheet(); hideCard(); bar?.remove(); bar = null;
-  drawn = draw(reader, data.chapter, data.marks);
+  scroller.scrollTop = 0;
+  drawn = draw(reader, data.chapter, data.marks, verse);
   selector.attach(drawn);
-  place = { code, chapter, scroll };
-  scroller.scrollTop = scroll;
+  if (verse > 1 || offset) {
+    const vn = reader.querySelector<HTMLElement>(`.vn[data-v="${verse}"]`);
+    if (vn) scroller.scrollTop = reader.offsetTop + vn.offsetTop - 12 + offset;
+  }
   $('place').textContent = `${data.chapter.name} ${chapter}`;
+  const t2 = performance.now();
   await afterPaint();
-  record('chapter', performance.now() - t0, { rust_ms, ipc_ms: t1 - t0 - rust_ms, words: drawn.el.length, at: `${code} ${chapter}` });
+  record('chapter', performance.now() - t0, { rust_ms, ipc_ms: t1 - t0 - rust_ms, ...drawTimes, frame_ms: performance.now() - t2, words: drawn.el.length, at: `${code} ${chapter}` });
+  // The rest of a long chapter, a part at a time between frames.
+  const d = drawn;
+  const rest = () => { if (seq === drawSeq && d.more()) setTimeout(rest, 0); else if (seq === drawSeq) record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); };
+  setTimeout(rest, 0);
   savePlace();
 }
 
@@ -211,19 +233,21 @@ function placeBar() {
 // ---- taps -----------------------------------------------------------------------------------------------------------
 async function openWord(k: number, el: HTMLElement, at: number) {
   const d = drawn!;
-  const { data } = await api.word(d.chapter.code, d.chapter.chapter, d.v[k], d.i[k]);
+  const { data, rust_ms } = await api.word(d.chapter.code, d.chapter.chapter, d.v[k], d.i[k]);
+  const t1 = performance.now();
   el.classList.add('tapped');
   openSheet(lexiconBody(data), el, { closed: () => el.classList.remove('tapped') });
   await afterPaint();
-  record('word-sheet', performance.now() - at, { word: data.text });
+  record('word-sheet', performance.now() - at, { word: data.text, rust_ms, call_ms: t1 - at });
 }
 
 async function openVerse(v: number, el: HTMLElement, at: number) {
   const d = drawn!;
-  const { data } = await api.verse(d.chapter.code, d.chapter.chapter, v);
+  const { data, rust_ms } = await api.verse(d.chapter.code, d.chapter.chapter, v);
+  const t1 = performance.now();
   openSheet(verseBody(data), el);
   await afterPaint();
-  record('verse-sheet', performance.now() - at, { verse: v });
+  record('verse-sheet', performance.now() - at, { verse: v, rust_ms, call_ms: t1 - at });
 }
 
 let hoverSeq = 0;
@@ -324,7 +348,7 @@ async function start() {
   document.documentElement.dataset.size = sizeClass();
   const p = loadPlace();
   const bookList = api.books().then(r => { books = r.data; });
-  await open(p.code, p.chapter, p.scroll);
+  await open(p.code, p.chapter, p.verse, p.offset);
   await document.fonts.ready;
   await bookList;
   const report = { nav_to_ready_ms: performance.now(), size: [window.innerWidth, window.innerHeight], dpr: devicePixelRatio, compact: compact(), perf: perf.entries };

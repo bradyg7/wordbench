@@ -167,6 +167,32 @@ impl Bible {
         Ok(Chapter { code: book.code, name: book.name, chapter, chapters: book.chapters, title, verses })
     }
 
+    /// One word of a verse (`i` is its 0-based position), with the book's name.
+    pub fn word(&self, code: &str, c: u32, v: u32, i: u32) -> Result<(String, Word)> {
+        let book = self.book(code)?;
+        let w = self
+            .conn
+            .prepare_cached(
+                "SELECT idx, lead, text, trail, strong, italic, nd, wj, para FROM words                  WHERE book = ?1 AND chapter = ?2 AND verse = ?3 AND idx = ?4",
+            )?
+            .query_row(params![book.id, c, v, i], |r| {
+                Ok(Word {
+                    i: r.get(0)?,
+                    lead: r.get(1)?,
+                    text: r.get(2)?,
+                    trail: r.get(3)?,
+                    strong: r.get(4)?,
+                    italic: r.get::<_, i64>(5)? != 0,
+                    nd: r.get::<_, i64>(6)? != 0,
+                    wj: r.get::<_, i64>(7)? != 0,
+                    para: r.get(8)?,
+                })
+            })
+            .optional()?
+            .ok_or_else(|| Error(format!("No word {i} in {} {c}:{v}", book.name)))?;
+        Ok((book.name.clone(), w))
+    }
+
     pub fn lexicon(&self, strong: &str) -> Result<Option<Lexicon>> {
         Ok(self
             .conn

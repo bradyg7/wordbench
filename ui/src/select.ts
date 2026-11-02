@@ -69,9 +69,16 @@ export class Selector {
     const w = t?.closest<HTMLElement>('.w, .g');
     if (w && this.root.contains(w)) return +w.dataset.k!;
     if (!this.d) return null;
+    // On a plain space between words: the word before it.
+    const node = caretNode(x, y);
+    if (node && node.nodeType === Node.TEXT_NODE && this.root.contains(node)) {
+      const before = node.previousSibling as HTMLElement | null;
+      if (before?.classList?.contains('w')) return +before.dataset.k!;
+    }
     let best: number | null = null, bestD = Infinity;
     // Between words or past a line's end: the closest word whose line box holds y.
     for (let k = 0; k < this.d.el.length; k++) {
+      if (!this.d.el[k]) continue;   // not drawn yet
       for (const r of this.d.el[k].getClientRects()) {
         if (y < r.top - 6 || y > r.bottom + 6) continue;
         const dist = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
@@ -190,15 +197,16 @@ export class Selector {
 
   set(a: number, b: number) {
     const d = this.d!;
-    if (this.sel) for (let k = this.sel.a; k <= this.sel.b; k++) { d.el[k].classList.remove('sel'); d.gap[k]?.classList.remove('sel'); }
+    if (this.sel) for (let k = this.sel.a; k <= this.sel.b; k++) { d.el[k].classList.remove('sel', 'sj'); d.gap[k]?.classList.remove('sel'); }
     this.sel = { a, b };
-    for (let k = a; k <= b; k++) { d.el[k].classList.add('sel'); if (k < b) d.gap[k]?.classList.add('sel'); }
+    // 'sj' carries the selection color across a plain space to the next word.
+    for (let k = a; k <= b; k++) { d.el[k].classList.add('sel'); if (k < b) { d.gap[k]?.classList.add('sel'); if (!d.gap[k]) d.el[k].classList.add('sj'); } }
     this.placeHandles();
   }
 
   clear() {
     const d = this.d;
-    if (d && this.sel) for (let k = this.sel.a; k <= this.sel.b; k++) { d.el[k].classList.remove('sel'); d.gap[k]?.classList.remove('sel'); }
+    if (d && this.sel) for (let k = this.sel.a; k <= this.sel.b; k++) { d.el[k].classList.remove('sel', 'sj'); d.gap[k]?.classList.remove('sel'); }
     this.sel = null;
     this.handles.forEach(h => { h.hidden = true; });
     this.h.cleared();
@@ -247,4 +255,10 @@ export class Selector {
 // one in tests) cannot be captured; the drag still works from the events that arrive.
 function capture(el: Element, id: number) {
   try { el.setPointerCapture(id); } catch { /* not an active pointer */ }
+}
+
+function caretNode(x: number, y: number): Node | null {
+  const doc = document as any;
+  if (doc.caretPositionFromPoint) return doc.caretPositionFromPoint(x, y)?.offsetNode ?? null;
+  return doc.caretRangeFromPoint?.(x, y)?.startContainer ?? null;
 }

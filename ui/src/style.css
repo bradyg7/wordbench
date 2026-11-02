@@ -65,8 +65,9 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 :root[data-size="compact"] .ch-title { font-size: 30px; line-height: 38px; }
 .ch-sub { font: var(--type-read-small); color: var(--muted); font-style: italic; margin: 0 0 8px; }
 .para { margin: 0 0 14px; }
-.q { display: block; }
-.q.q2 { padding-left: 1.5em; }
+.line { margin: 0; }
+.line.q2 { padding-left: 1.5em; }
+.line + .para, .para + .line { margin-top: 14px; }
 
 .w, .g { background-size: 100% 2px; background-repeat: no-repeat; }
 .w { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
@@ -75,6 +76,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .w.wj { color: var(--jesus); }
 .w.noted { text-decoration: underline dotted var(--muted) 1.5px; text-underline-offset: 6px; }
 .w.sel, .g.sel { background-color: var(--accent-soft) !important; }
+.w.sj { box-shadow: 0.3em 0 0 var(--accent-soft); }   /* the selection runs on across a plain space */
 .w.tapped { background-color: var(--accent-soft); }
 .w:hover { cursor: pointer; }
 :root[data-input="touch"] .w:hover { cursor: default; }
