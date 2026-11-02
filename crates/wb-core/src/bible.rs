@@ -106,6 +106,11 @@ impl Bible {
         Ok(Bible { conn, books })
     }
 
+    /// The connection, read-only (for the lookups in `lookup`).
+    pub fn conn(&self) -> &Connection {
+        &self.conn
+    }
+
     pub fn books(&self) -> &[Book] {
         &self.books
     }

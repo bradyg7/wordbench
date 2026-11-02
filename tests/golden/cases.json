@@ -1,0 +1,1067 @@
+[
+ {
+  "name": "books",
+  "steps": [
+   [
+    "books"
+   ]
+  ]
+ },
+ {
+  "name": "text one verse",
+  "steps": [
+   [
+    "text",
+    "Num 25:11"
+   ]
+  ]
+ },
+ {
+  "name": "text walkthrough 1",
+  "steps": [
+   [
+    "text",
+    "Exo 6:16-25; Num 25; Num 26:1-4; Num 31:1-8; Num 31:13-16; Josh 22:10-34; Josh 24:29-33"
+   ]
+  ]
+ },
+ {
+  "name": "text walkthrough 2",
+  "steps": [
+   [
+    "text",
+    "Judg 20:18-28; 1 Sam 1:3; 1 Sam 2:12-17; 1 Sam 2:22-36; 1 Sam 3:11-14; 1 Sam 4:1-22; 1 Sam 14:3; 1 Sam 22:9; 1 Sam 22:20; 1 Kgs 2:26-27; 1 Kgs 2:35"
+   ]
+  ]
+ },
+ {
+  "name": "text walkthrough 3",
+  "steps": [
+   [
+    "text",
+    "1 Chr 6:3-15; 1 Chr 6:50-53; 1 Chr 9:17-20; 1 Chr 24:1-6; Ezra 7:1-6; Ezra 8:1-2; Ezra 8:33; Ezra 9:1-3; Psalm 106:23; Psalm 106:28-31; Mal 2:4-11; Neh 13:28-29; Num 16:44-50; Num 10:8-9; Gen 15:6; Exo 40:15; Deut 4:3-4; Hos 9:10; 1 Cor 10:8; Rev 2:14; Exo 32:26-29; 1 Kgs 19:10; 2 Kgs 10:16; Ps 69:9; John 2:17; Rom 10:2"
+   ]
+  ]
+ },
+ {
+  "name": "text ylt",
+  "steps": [
+   [
+    "text",
+    "Num 25:7-13; Psalm 106:30-31; Josh 22:31; Judg 20:28; 1 Chr 9:20",
+    "--version",
+    "ylt"
+   ]
+  ]
+ },
+ {
+  "name": "text chapter one span",
+  "steps": [
+   [
+    "text",
+    "Psalm 23"
+   ]
+  ]
+ },
+ {
+  "name": "text lines",
+  "steps": [
+   [
+    "text",
+    "John 3:16-18",
+    "--lines"
+   ]
+  ]
+ },
+ {
+  "name": "text json",
+  "steps": [
+   [
+    "text",
+    "Jude 1:24-25",
+    "--json"
+   ]
+  ]
+ },
+ {
+  "name": "text bad book",
+  "steps": [
+   [
+    "text",
+    "zzz 1:1"
+   ]
+  ]
+ },
+ {
+  "name": "text bad chapter",
+  "steps": [
+   [
+    "text",
+    "John 99"
+   ]
+  ]
+ },
+ {
+  "name": "text bad version",
+  "steps": [
+   [
+    "text",
+    "John 3:16",
+    "--version",
+    "niv"
+   ]
+  ]
+ },
+ {
+  "name": "text psalm title",
+  "steps": [
+   [
+    "text",
+    "Psalm 51:1-2"
+   ]
+  ]
+ },
+ {
+  "name": "copy formats",
+  "steps": [
+   [
+    "copy",
+    "John 3:16-18",
+    "--no-clip"
+   ],
+   [
+    "copy",
+    "John 3:16-18; Rom 5:8",
+    "--format",
+    "block",
+    "--no-clip"
+   ],
+   [
+    "copy",
+    "Num 25:10-26:2",
+    "--format",
+    "para",
+    "--no-clip",
+    "--short"
+   ],
+   [
+    "copy",
+    "Psalm 106:30-31",
+    "--format",
+    "quote",
+    "--no-clip"
+   ],
+   [
+    "copy",
+    "Ps 23:1",
+    "--format",
+    "quote",
+    "--version",
+    "ylt",
+    "--no-clip",
+    "--json"
+   ]
+  ]
+ },
+ {
+  "name": "preview",
+  "steps": [
+   [
+    "preview",
+    "John 3:16"
+   ],
+   [
+    "preview",
+    "Num 25"
+   ],
+   [
+    "preview",
+    "G26"
+   ],
+   [
+    "preview",
+    "H7065",
+    "--json"
+   ],
+   [
+    "preview",
+    "Num 25:1-10",
+    "--json"
+   ]
+  ]
+ },
+ {
+  "name": "chapter",
+  "steps": [
+   [
+    "chapter",
+    "Num",
+    "25"
+   ]
+  ]
+ },
+ {
+  "name": "chapter psalm",
+  "steps": [
+   [
+    "chapter",
+    "Psalm 119"
+   ]
+  ]
+ },
+ {
+  "name": "chapter two",
+  "steps": [
+   [
+    "chapter",
+    "John 3-4"
+   ]
+  ]
+ },
+ {
+  "name": "strong H7065",
+  "steps": [
+   [
+    "strong",
+    "H7065"
+   ]
+  ]
+ },
+ {
+  "name": "strong H7068",
+  "steps": [
+   [
+    "strong",
+    "H7068"
+   ]
+  ]
+ },
+ {
+  "name": "strong H4046",
+  "steps": [
+   [
+    "strong",
+    "H4046"
+   ]
+  ]
+ },
+ {
+  "name": "strong H6113",
+  "steps": [
+   [
+    "strong",
+    "H6113"
+   ]
+  ]
+ },
+ {
+  "name": "strong H6898",
+  "steps": [
+   [
+    "strong",
+    "H6898"
+   ]
+  ]
+ },
+ {
+  "name": "strong H6897",
+  "steps": [
+   [
+    "strong",
+    "H6897"
+   ]
+  ]
+ },
+ {
+  "name": "strong H3722",
+  "steps": [
+   [
+    "strong",
+    "H3722"
+   ]
+  ]
+ },
+ {
+  "name": "strong H7420",
+  "steps": [
+   [
+    "strong",
+    "H7420"
+   ]
+  ]
+ },
+ {
+  "name": "strong H6419",
+  "steps": [
+   [
+    "strong",
+    "H6419"
+   ]
+  ]
+ },
+ {
+  "name": "strong H5057",
+  "steps": [
+   [
+    "strong",
+    "H5057"
+   ]
+  ]
+ },
+ {
+  "name": "strong H6556",
+  "steps": [
+   [
+    "strong",
+    "H6556"
+   ]
+  ]
+ },
+ {
+  "name": "strong H6555",
+  "steps": [
+   [
+    "strong",
+    "H6555"
+   ]
+  ]
+ },
+ {
+  "name": "strong H1390",
+  "steps": [
+   [
+    "strong",
+    "H1390"
+   ]
+  ]
+ },
+ {
+  "name": "strong H6895",
+  "steps": [
+   [
+    "strong",
+    "H6895"
+   ]
+  ]
+ },
+ {
+  "name": "strong G2205",
+  "steps": [
+   [
+    "strong",
+    "G2205"
+   ]
+  ]
+ },
+ {
+  "name": "strong H6372",
+  "steps": [
+   [
+    "strong",
+    "H6372"
+   ]
+  ]
+ },
+ {
+  "name": "strong g26",
+  "steps": [
+   [
+    "strong",
+    "g26"
+   ]
+  ]
+ },
+ {
+  "name": "strong H9999",
+  "steps": [
+   [
+    "strong",
+    "H9999"
+   ]
+  ]
+ },
+ {
+  "name": "bdb",
+  "steps": [
+   [
+    "bdb",
+    "H6372"
+   ],
+   [
+    "bdb",
+    "H7065"
+   ],
+   [
+    "bdb",
+    "G26"
+   ],
+   [
+    "bdb",
+    "H99999"
+   ]
+  ]
+ },
+ {
+  "name": "define",
+  "steps": [
+   [
+    "define",
+    "phinehas"
+   ],
+   [
+    "define",
+    "zeal"
+   ],
+   [
+    "define",
+    "agape"
+   ],
+   [
+    "define",
+    "qana"
+   ],
+   [
+    "define",
+    "H7065"
+   ],
+   [
+    "define",
+    "love"
+   ],
+   [
+    "define",
+    "chesed"
+   ]
+  ]
+ },
+ {
+  "name": "count phinehas",
+  "steps": [
+   [
+    "count",
+    "phinehas"
+   ]
+  ]
+ },
+ {
+  "name": "count H7065",
+  "steps": [
+   [
+    "count",
+    "H7065"
+   ]
+  ]
+ },
+ {
+  "name": "count H7068",
+  "steps": [
+   [
+    "count",
+    "H7068"
+   ]
+  ]
+ },
+ {
+  "name": "count H4046",
+  "steps": [
+   [
+    "count",
+    "H4046"
+   ]
+  ]
+ },
+ {
+  "name": "count H6898",
+  "steps": [
+   [
+    "count",
+    "H6898"
+   ]
+  ]
+ },
+ {
+  "name": "count H6897",
+  "steps": [
+   [
+    "count",
+    "H6897"
+   ]
+  ]
+ },
+ {
+  "name": "count H3722",
+  "steps": [
+   [
+    "count",
+    "H3722"
+   ]
+  ]
+ },
+ {
+  "name": "count H7420",
+  "steps": [
+   [
+    "count",
+    "H7420"
+   ]
+  ]
+ },
+ {
+  "name": "count zeal",
+  "steps": [
+   [
+    "count",
+    "zeal"
+   ]
+  ]
+ },
+ {
+  "name": "count the",
+  "steps": [
+   [
+    "count",
+    "the"
+   ]
+  ]
+ },
+ {
+  "name": "forms",
+  "steps": [
+   [
+    "forms",
+    "phinehas"
+   ],
+   [
+    "forms",
+    "zeal"
+   ],
+   [
+    "forms",
+    "love"
+   ],
+   [
+    "forms",
+    "praise"
+   ]
+  ]
+ },
+ {
+  "name": "uses",
+  "steps": [
+   [
+    "uses",
+    "H7065",
+    "--word",
+    "zealous"
+   ],
+   [
+    "uses",
+    "H7065",
+    "--rendering",
+    "zealous"
+   ],
+   [
+    "uses",
+    "H7065",
+    "--scope",
+    "num"
+   ],
+   [
+    "uses",
+    "H7068",
+    "--scope",
+    "num"
+   ]
+  ]
+ },
+ {
+  "name": "uses more",
+  "steps": [
+   [
+    "uses",
+    "H4046",
+    "--scope",
+    "1sa"
+   ],
+   [
+    "uses",
+    "H4604",
+    "--scope",
+    "num"
+   ],
+   [
+    "uses",
+    "H4604",
+    "--scope",
+    "jos"
+   ],
+   [
+    "uses",
+    "H4604",
+    "--scope",
+    "ezr"
+   ],
+   [
+    "uses",
+    "H5975",
+    "--scope",
+    "jdg"
+   ]
+  ]
+ },
+ {
+  "name": "uses english",
+  "steps": [
+   [
+    "uses",
+    "zeal"
+   ],
+   [
+    "uses",
+    "zeal",
+    "--scope",
+    "num"
+   ],
+   [
+    "uses",
+    "zeal",
+    "--scope",
+    "gospels"
+   ],
+   [
+    "uses",
+    "love",
+    "--offset",
+    "100"
+   ],
+   [
+    "uses",
+    "H26",
+    "--cat",
+    "both"
+   ],
+   [
+    "uses",
+    "G26",
+    "--cat",
+    "orig"
+   ]
+  ]
+ },
+ {
+  "name": "near",
+  "steps": [
+   [
+    "near",
+    "H2803",
+    "H6666",
+    "--within",
+    "6"
+   ],
+   [
+    "near",
+    "H2803",
+    "H6666",
+    "--within",
+    "12"
+   ],
+   [
+    "near",
+    "H1285",
+    "H7965",
+    "--within",
+    "6"
+   ],
+   [
+    "near",
+    "H1285",
+    "H7965",
+    "--within",
+    "12"
+   ]
+  ]
+ },
+ {
+  "name": "near more",
+  "steps": [
+   [
+    "near",
+    "H1285",
+    "H3550",
+    "--within",
+    "6"
+   ],
+   [
+    "near",
+    "H3550",
+    "H5769",
+    "--within",
+    "6"
+   ],
+   [
+    "near",
+    "H7725",
+    "H2534",
+    "--within",
+    "6"
+   ],
+   [
+    "near",
+    "H6607",
+    "H6113",
+    "--within",
+    "6"
+   ],
+   [
+    "near",
+    "zeal*",
+    "jealous*"
+   ],
+   [
+    "near",
+    "zeal",
+    "god",
+    "--within",
+    "60"
+   ]
+  ]
+ },
+ {
+  "name": "search \"plague was stayed\"",
+  "steps": [
+   [
+    "search",
+    "\"plague was stayed\""
+   ]
+  ]
+ },
+ {
+  "name": "search \"covenant of peace\"",
+  "steps": [
+   [
+    "search",
+    "\"covenant of peace\""
+   ]
+  ]
+ },
+ {
+  "name": "search \"everlasting priesthood\"",
+  "steps": [
+   [
+    "search",
+    "\"everlasting priesthood\""
+   ]
+  ]
+ },
+ {
+  "name": "search \"unto him for righteousness\"",
+  "steps": [
+   [
+    "search",
+    "\"unto him for righteousness\""
+   ]
+  ]
+ },
+ {
+  "name": "search \"to him for righteousness\"",
+  "steps": [
+   [
+    "search",
+    "\"to him for righteousness\""
+   ]
+  ]
+ },
+ {
+  "name": "search \"the LORD was with him\"",
+  "steps": [
+   [
+    "search",
+    "\"the LORD was with him\""
+   ]
+  ]
+ },
+ {
+  "name": "search \"turned my wrath\"",
+  "steps": [
+   [
+    "search",
+    "\"turned my wrath\""
+   ]
+  ]
+ },
+ {
+  "name": "search \"turn away his wrath\"",
+  "steps": [
+   [
+    "search",
+    "\"turn away his wrath\""
+   ]
+  ]
+ },
+ {
+  "name": "search \"iniquity of Peor\"",
+  "steps": [
+   [
+    "search",
+    "\"iniquity of Peor\""
+   ]
+  ]
+ },
+ {
+  "name": "search \"covenant of the priesthood\"",
+  "steps": [
+   [
+    "search",
+    "\"covenant of the priesthood\""
+   ]
+  ]
+ },
+ {
+  "name": "search \"stood before it\"",
+  "steps": [
+   [
+    "search",
+    "\"stood before it\""
+   ]
+  ]
+ },
+ {
+  "name": "search peor",
+  "steps": [
+   [
+    "search",
+    "peor"
+   ]
+  ]
+ },
+ {
+  "name": "search putiel",
+  "steps": [
+   [
+    "search",
+    "putiel"
+   ]
+  ]
+ },
+ {
+  "name": "search cozbi",
+  "steps": [
+   [
+    "search",
+    "cozbi"
+   ]
+  ]
+ },
+ {
+  "name": "search phinehas",
+  "steps": [
+   [
+    "search",
+    "phinehas"
+   ]
+  ]
+ },
+ {
+  "name": "search zeal*",
+  "steps": [
+   [
+    "search",
+    "zeal*"
+   ]
+  ]
+ },
+ {
+  "name": "search so loved",
+  "steps": [
+   [
+    "search",
+    "so loved"
+   ]
+  ]
+ },
+ {
+  "name": "search love",
+  "steps": [
+   [
+    "search",
+    "love"
+   ]
+  ]
+ },
+ {
+  "name": "search the",
+  "steps": [
+   [
+    "search",
+    "the"
+   ]
+  ]
+ },
+ {
+  "name": "search scoped",
+  "steps": [
+   [
+    "search",
+    "\"door of the tabernacle of the congregation\"",
+    "--scope",
+    "1sa"
+   ],
+   [
+    "search",
+    "\"in those days\"",
+    "--scope",
+    "jdg"
+   ],
+   [
+    "search",
+    "balaam",
+    "--scope",
+    "nt"
+   ],
+   [
+    "search",
+    "zimri",
+    "--scope",
+    "num"
+   ]
+  ]
+ },
+ {
+  "name": "search options",
+  "steps": [
+   [
+    "search",
+    "LORD",
+    "--case"
+   ],
+   [
+    "search",
+    "/zeal(ous)? of/"
+   ],
+   [
+    "search",
+    "jealous",
+    "--regex"
+   ],
+   [
+    "search",
+    "love",
+    "--offset",
+    "300"
+   ],
+   [
+    "search",
+    "/x*/"
+   ],
+   [
+    "search",
+    "\""
+   ]
+  ]
+ },
+ {
+  "name": "lexiconc",
+  "steps": [
+   [
+    "lexiconc",
+    "zeal"
+   ],
+   [
+    "lexiconc",
+    "zeal*"
+   ],
+   [
+    "lexiconc",
+    "priest"
+   ]
+  ]
+ },
+ {
+  "name": "interlinear Num 25:6",
+  "steps": [
+   [
+    "interlinear",
+    "Num 25:6"
+   ]
+  ]
+ },
+ {
+  "name": "interlinear Num 25:7-8",
+  "steps": [
+   [
+    "interlinear",
+    "Num 25:7-8"
+   ]
+  ]
+ },
+ {
+  "name": "interlinear Num 25:11-13",
+  "steps": [
+   [
+    "interlinear",
+    "Num 25:11-13"
+   ]
+  ]
+ },
+ {
+  "name": "interlinear Psalm 106:30-31",
+  "steps": [
+   [
+    "interlinear",
+    "Psalm 106:30-31"
+   ]
+  ]
+ },
+ {
+  "name": "interlinear John 3:16",
+  "steps": [
+   [
+    "interlinear",
+    "John 3:16"
+   ]
+  ]
+ },
+ {
+  "name": "interlinear Psalm 51",
+  "steps": [
+   [
+    "interlinear",
+    "Psalm 51"
+   ]
+  ]
+ },
+ {
+  "name": "interlinear Gen 1",
+  "steps": [
+   [
+    "interlinear",
+    "Gen 1"
+   ]
+  ]
+ },
+ {
+  "name": "interlinear Rom 8",
+  "steps": [
+   [
+    "interlinear",
+    "Rom 8"
+   ]
+  ]
+ },
+ {
+  "name": "interlinear offset",
+  "steps": [
+   [
+    "interlinear",
+    "Psalm 119",
+    "--offset",
+    "40"
+   ]
+  ]
+ },
+ {
+  "name": "search bad pattern (message wording differs: the regex engines' own)",
+  "steps": [],
+  "note": "wb search /(/ is refused by both with exit 1"
+ }
+]

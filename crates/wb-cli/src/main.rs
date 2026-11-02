@@ -1,104 +1,130 @@
-//! `wb`: Bible Workbench from a terminal. Phase 0 has the commands the reader spike uses; phase 1 brings the Python
-//! app's full set (`wb help` there).
+//! `wb`: every Bible Workbench feature from a command line, so an AI (or the person, in a terminal) can do anything the
+//! window does. The same commands, arguments and output as the Python app's `wb` (docs/PLAN.md section 2.2): JSON unless a
+//! command prints text; `--json` forces JSON. Errors go to standard error as `error: ...`, with exit code 1.
 
-use serde_json::json;
-use wb_core::{bible::Bible, marks, study::Study, views};
+mod args;
+mod read;
+mod study;
 
-const HELP: &str = "wb: Bible Workbench (Rust, phase 0)
+use args::{Args, Spec};
+use serde_json::Value;
+use std::cell::OnceCell;
+use wb_core::bible::Bible;
 
-  wb text <place>              verbatim scripture with its reference (\"Num 25:11\", \"Numbers 25\", \"Num 25:10-13\")
-  wb chapter <BOOK> <n>        a chapter's words as JSON (what the reader draws)
-  wb marks <BOOK> <n>          highlights, notes and thread places on a chapter, from the study folder (JSON)
-  wb reader <BOOK> <n>         chapter and marks together (JSON; the UI's test fixture is made with it)
-  wb word <BOOK> <ch> <v> <i>  what the word sheet shows (word i, 0-based, of a verse) (JSON)
-  wb verse <BOOK> <ch> <v>     what the verse sheet shows (JSON)
-  wb fixture <BOOK> <ch>       reader, every word sheet and verse sheet of a chapter in one JSON (the UI's test data)
-  wb strong <H7065|G26>        a lexicon entry (JSON)
-  wb count <H7065|G26>         how often a Strong's number is used in the KJV (JSON)
-  wb books                     the books (JSON)
+pub enum Out {
+    Text(String),
+    Json(Value),
+    Nothing,
+}
 
-  WB_BIBLE_DB   the Bible database (read-only)      WB_STUDY_DIR   the study folder (a scratch copy)";
+pub type Res = Result<Out, String>;
 
-fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if let Err(e) = run(&args) {
-        eprintln!("wb: {e}");
-        std::process::exit(1);
+pub struct Ctx {
+    bible: OnceCell<Bible>,
+    study: OnceCell<wb_core::study::Study>,
+}
+
+impl Ctx {
+    pub fn bible(&self) -> Result<&Bible, String> {
+        if self.bible.get().is_none() {
+            let b = Bible::open(&wb_core::default_db_path()).map_err(|e| e.to_string())?;
+            let _ = self.bible.set(b);
+        }
+        Ok(self.bible.get().unwrap())
+    }
+
+    pub fn study(&self) -> Result<&wb_core::study::Study, String> {
+        if self.study.get().is_none() {
+            let s = wb_core::study::Study::open(&wb_core::default_study_dir()).map_err(|e| e.to_string())?;
+            let _ = self.study.set(s);
+        }
+        Ok(self.study.get().unwrap())
+    }
+
+    pub fn span(&self, text: &str) -> Result<wb_core::places::Span, String> {
+        wb_core::places::parse_span(text, self.bible()?.books()).map_err(|e| e.0)
+    }
+
+    pub fn scope(&self, text: &str) -> Result<String, String> {
+        wb_core::places::scope_of(text, self.bible()?.books()).map_err(|e| e.0)
     }
 }
 
-fn run(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
-    let cmd = args.first().map(String::as_str).unwrap_or("help");
-    let rest = &args[args.len().min(1)..];
-    let bible = || Bible::open(&wb_core::default_db_path());
-    let study = || Study::open(&wb_core::default_study_dir());
-    let chapter_args = || -> Result<(String, u32), Box<dyn std::error::Error>> {
-        match rest {
-            [b, c, ..] => Ok((b.to_uppercase(), c.parse()?)),
-            _ => Err(format!("usage: wb {cmd} <BOOK> <chapter>").into()),
+pub struct Command {
+    pub name: &'static str,
+    pub summary: &'static str,
+    pub args: Vec<Spec>,
+    pub run: fn(&Ctx, &Args) -> Res,
+}
+
+pub fn cmd(name: &'static str, summary: &'static str, args: Vec<Spec>, run: fn(&Ctx, &Args) -> Res) -> Command {
+    Command { name, summary, args, run }
+}
+
+fn commands() -> Vec<Command> {
+    let mut all = vec![cmd("help", "List the commands, or explain one (wb help thread add).", vec![Spec::Pos("topic", args::N::Any)], help)];
+    all.extend(read::commands());
+    all.extend(study::commands());
+    all
+}
+
+fn help(_: &Ctx, a: &Args) -> Res {
+    let all = commands();
+    let want = a.s("topic");
+    if !want.is_empty() {
+        let hits: Vec<&Command> = match all.iter().find(|c| c.name == want) {
+            Some(c) => vec![c],
+            None => all.iter().filter(|c| c.name.starts_with(&want)).collect(),
+        };
+        if hits.is_empty() {
+            return Err(format!("No command called “{want}”. Try: wb help"));
         }
-    };
-    let print = |v: serde_json::Value| println!("{}", serde_json::to_string_pretty(&v).unwrap());
-    match cmd {
-        "text" => {
-            let p = bible()?.passage(&rest.join(" "))?;
-            let one = p.verses.len() == 1;
-            for (_, v, text) in &p.verses {
-                if one {
-                    println!("{text}");
-                } else {
-                    println!("{v} {text}");
-                }
-            }
-            println!("({} KJV)", p.reference);
-        }
-        "chapter" => {
-            let (b, c) = chapter_args()?;
-            print(json!(bible()?.chapter(&b, c)?));
-        }
-        "marks" => {
-            let (b, c) = chapter_args()?;
-            print(json!(marks::chapter_marks(&study()?, &b, c)?));
-        }
-        "reader" => {
-            let (b, c) = chapter_args()?;
-            print(json!({"chapter": bible()?.chapter(&b, c)?, "marks": marks::chapter_marks(&study()?, &b, c)?}));
-        }
-        "word" => {
-            let (b, c) = chapter_args()?;
-            let n = |k: usize| -> Result<u32, Box<dyn std::error::Error>> { Ok(rest.get(k).ok_or("usage: wb word <BOOK> <ch> <v> <i>")?.parse()?) };
-            print(json!(views::word(&bible()?, &study()?, &b, c, n(2)?, n(3)?)?));
-        }
-        "verse" => {
-            let (b, c) = chapter_args()?;
-            let v: u32 = rest.get(2).ok_or("usage: wb verse <BOOK> <ch> <v>")?.parse()?;
-            print(json!(views::verse(&bible()?, &study()?, &b, c, v)?));
-        }
-        "fixture" => {
-            let (b, c) = chapter_args()?;
-            let (bible, study) = (bible()?, study()?);
-            let reader = views::reader(&bible, &study, &b, c)?;
-            let mut words = serde_json::Map::new();
-            let mut verses = serde_json::Map::new();
-            for v in &reader.chapter.verses {
-                verses.insert(v.v.to_string(), json!(views::verse(&bible, &study, &b, c, v.v)?));
-                for w in &v.words {
-                    words.insert(format!("{}.{}", v.v, w.i), json!(views::word(&bible, &study, &b, c, v.v, w.i)?));
-                }
-            }
-            println!("{}", json!({"reader": reader, "words": words, "verses": verses}));
-        }
-        "strong" => {
-            let s = rest.first().ok_or("usage: wb strong <H7065>")?.to_uppercase();
-            print(json!(bible()?.lexicon(&s)?.ok_or(format!("No lexicon entry {s}"))?));
-        }
-        "count" => {
-            let s = rest.first().ok_or("usage: wb count <H7065>")?.to_uppercase();
-            print(json!(bible()?.count(&s)?));
-        }
-        "books" => print(json!(bible()?.books())),
-        "help" | "-h" | "--help" => println!("{HELP}"),
-        other => return Err(format!("unknown command {other:?} (wb help)").into()),
+        return Ok(Out::Text(hits.iter().map(|c| format!("wb {}\n\n{}", c.name, c.summary)).collect::<Vec<_>>().join("\n\n")));
     }
-    Ok(())
+    let mut lines = vec!["wb: Bible Workbench from a command line (the Rust rebuild; phase 1 has the data commands).".to_string(), String::new()];
+    lines.extend(all.iter().map(|c| format!("  {:<22} {}", c.name, c.summary.lines().next().unwrap_or(""))));
+    lines.push(String::new());
+    lines.push("Places are typed as in the capture box: John 3:16, Num 25:10-26:4, Romans. WB_BIBLE_DB: the Bible database (read-only); WB_STUDY_DIR: the study folder.".into());
+    Ok(Out::Text(lines.join("\n")))
+}
+
+fn dispatch(argv: &[String]) -> Result<(Out, bool), String> {
+    let argv: Vec<String> = if argv.is_empty() || argv[0] == "-h" || argv[0] == "--help" { vec!["help".into()] } else { argv.to_vec() };
+    let all = commands();
+    // a group name alone ("wb thread") shows that group
+    if argv.len() == 1 && !all.iter().any(|c| c.name == argv[0]) && all.iter().any(|c| c.name.split(' ').next() == Some(&argv[0]) && c.name.contains(' ')) {
+        return dispatch(&["help".to_string(), argv[0].clone()]);
+    }
+    let mut found = None;
+    for n in [2, 1] {
+        if argv.len() >= n {
+            let key = argv[..n].join(" ");
+            if let Some(c) = all.iter().find(|c| c.name == key) {
+                found = Some((c, &argv[n..]));
+                break;
+            }
+        }
+    }
+    let Some((c, rest)) = found else {
+        let mut hits: Vec<&str> = all.iter().filter(|c| c.name.starts_with(&argv[0])).map(|c| c.name.split(' ').next().unwrap()).collect();
+        hits.dedup();
+        return Err(format!("Unknown command “{}”.{} Try: wb help", argv[0], if hits.is_empty() { String::new() } else { format!(" Did you mean {}?", hits.join(", ")) }));
+    };
+    let a = args::parse(&c.args, rest).map_err(|e| format!("wb {}: {e}", c.name))?;
+    let ctx = Ctx { bible: OnceCell::new(), study: OnceCell::new() };
+    Ok(((c.run)(&ctx, &a)?, a.flag("json")))
+}
+
+fn main() {
+    let argv: Vec<String> = std::env::args().skip(1).collect();
+    match dispatch(&argv) {
+        Ok((Out::Nothing, _)) => {}
+        Ok((Out::Text(t), false)) => println!("{t}"),
+        Ok((Out::Text(t), true)) => println!("{}", serde_json::to_string_pretty(&Value::String(t)).unwrap()),
+        Ok((Out::Json(v), _)) => println!("{}", serde_json::to_string_pretty(&v).unwrap()),
+        Err(e) => {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        }
+    }
 }

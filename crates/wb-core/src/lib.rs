@@ -5,7 +5,10 @@
 
 pub mod anchors;
 pub mod bible;
+pub mod lookup;
 pub mod marks;
+pub mod places;
+pub mod scripture;
 pub mod study;
 pub mod views;
 

@@ -1,0 +1,494 @@
+{
+ "spans": [
+  {
+   "in": "John 3:16",
+   "book": "John",
+   "c1": 3,
+   "v1": 16,
+   "c2": 3,
+   "v2": 16,
+   "label": "John 3:16",
+   "anchor": "JHN.3:16"
+  },
+  {
+   "in": "John 3",
+   "book": "John",
+   "c1": 3,
+   "v1": 0,
+   "c2": 3,
+   "v2": 0,
+   "label": "John 3",
+   "anchor": null
+  },
+  {
+   "in": "John 3-5",
+   "book": "John",
+   "c1": 3,
+   "v1": 0,
+   "c2": 5,
+   "v2": 0,
+   "label": "John 3–5",
+   "anchor": null
+  },
+  {
+   "in": "John 3:16-18",
+   "book": "John",
+   "c1": 3,
+   "v1": 16,
+   "c2": 3,
+   "v2": 18,
+   "label": "John 3:16–18",
+   "anchor": "JHN.3:16-3:18"
+  },
+  {
+   "in": "Num 25:10-26:4",
+   "book": "Numbers",
+   "c1": 25,
+   "v1": 10,
+   "c2": 26,
+   "v2": 4,
+   "label": "Numbers 25:10–26:4",
+   "anchor": "NUM.25:10-26:4"
+  },
+  {
+   "in": "Romans",
+   "book": "Romans",
+   "c1": 1,
+   "v1": 0,
+   "c2": 16,
+   "v2": 0,
+   "label": "Romans",
+   "anchor": null
+  },
+  {
+   "in": "Jude",
+   "book": "Jude",
+   "c1": 1,
+   "v1": 0,
+   "c2": 1,
+   "v2": 0,
+   "label": "Jude 1",
+   "anchor": null
+  },
+  {
+   "in": "1 cor 13:4-7",
+   "book": "1 Corinthians",
+   "c1": 13,
+   "v1": 4,
+   "c2": 13,
+   "v2": 7,
+   "label": "1 Corinthians 13:4–7",
+   "anchor": "1CO.13:4-13:7"
+  },
+  {
+   "in": "1john3:16",
+   "book": "1 John",
+   "c1": 3,
+   "v1": 16,
+   "c2": 3,
+   "v2": 16,
+   "label": "1 John 3:16",
+   "anchor": "1JN.3:16"
+  },
+  {
+   "in": "Song of Solomon 2:1",
+   "book": "Song of Solomon",
+   "c1": 2,
+   "v1": 1,
+   "c2": 2,
+   "v2": 1,
+   "label": "Song of Solomon 2:1",
+   "anchor": "SNG.2:1"
+  },
+  {
+   "in": "jhn 1:1",
+   "book": "John",
+   "c1": 1,
+   "v1": 1,
+   "c2": 1,
+   "v2": 1,
+   "label": "John 1:1",
+   "anchor": "JHN.1:1"
+  },
+  {
+   "in": "Ps 23",
+   "book": "Psalms",
+   "c1": 23,
+   "v1": 0,
+   "c2": 23,
+   "v2": 0,
+   "label": "Psalms 23",
+   "anchor": null
+  },
+  {
+   "in": "Psalms 119:105",
+   "book": "Psalms",
+   "c1": 119,
+   "v1": 105,
+   "c2": 119,
+   "v2": 105,
+   "label": "Psalms 119:105",
+   "anchor": "PSA.119:105"
+  },
+  {
+   "in": "John 99",
+   "error": "John has 21 chapters."
+  },
+  {
+   "in": "Jude 5",
+   "error": "Jude has 1 chapter."
+  },
+  {
+   "in": "Jude 1:5",
+   "book": "Jude",
+   "c1": 1,
+   "v1": 5,
+   "c2": 1,
+   "v2": 5,
+   "label": "Jude 1:5",
+   "anchor": "JUD.1:5"
+  },
+  {
+   "in": "jo 3:1",
+   "error": "Which book? Joshua, Job, Joel, Jonah, John"
+  },
+  {
+   "in": "zzz 1:1",
+   "error": "No book called “zzz”."
+  },
+  {
+   "in": "John 3:18-16",
+   "error": "A range runs upward, like John 3:16-18 or Num 25:10-26:4."
+  },
+  {
+   "in": "Num 26:4-25:10",
+   "error": "A range runs upward, like John 3:16-18 or Num 25:10-26:4."
+  },
+  {
+   "in": "John 3:16-",
+   "error": "Give a reference like John 3:16, John 3-5, Num 25:10-26:4 or Jude."
+  },
+  {
+   "in": "",
+   "error": "No book called “”."
+  },
+  {
+   "in": "   ",
+   "error": "No book called “”."
+  },
+  {
+   "in": "Genesis 50",
+   "book": "Genesis",
+   "c1": 50,
+   "v1": 0,
+   "c2": 50,
+   "v2": 0,
+   "label": "Genesis 50",
+   "anchor": null
+  },
+  {
+   "in": "Gen 51",
+   "error": "Genesis has 50 chapters."
+  },
+  {
+   "in": "2 Tim 3:16-17",
+   "book": "2 Timothy",
+   "c1": 3,
+   "v1": 16,
+   "c2": 3,
+   "v2": 17,
+   "label": "2 Timothy 3:16–17",
+   "anchor": "2TI.3:16-3:17"
+  },
+  {
+   "in": "Revelation 22:21",
+   "book": "Revelation",
+   "c1": 22,
+   "v1": 21,
+   "c2": 22,
+   "v2": 21,
+   "label": "Revelation 22:21",
+   "anchor": "REV.22:21"
+  },
+  {
+   "in": "Mat 5-7",
+   "book": "Matthew",
+   "c1": 5,
+   "v1": 0,
+   "c2": 7,
+   "v2": 0,
+   "label": "Matthew 5–7",
+   "anchor": null
+  },
+  {
+   "in": "Jn 3:16",
+   "book": "John",
+   "c1": 3,
+   "v1": 16,
+   "c2": 3,
+   "v2": 16,
+   "label": "John 3:16",
+   "anchor": "JHN.3:16"
+  },
+  {
+   "in": "Mk 1",
+   "book": "Mark",
+   "c1": 1,
+   "v1": 0,
+   "c2": 1,
+   "v2": 0,
+   "label": "Mark 1",
+   "anchor": null
+  },
+  {
+   "in": "1Kgs 19:10",
+   "book": "1 Kings",
+   "c1": 19,
+   "v1": 10,
+   "c2": 19,
+   "v2": 10,
+   "label": "1 Kings 19:10",
+   "anchor": "1KI.19:10"
+  },
+  {
+   "in": "1 Kgs 19:10",
+   "book": "1 Kings",
+   "c1": 19,
+   "v1": 10,
+   "c2": 19,
+   "v2": 10,
+   "label": "1 Kings 19:10",
+   "anchor": "1KI.19:10"
+  },
+  {
+   "in": "I Kings 19:10",
+   "book": "1 Kings",
+   "c1": 19,
+   "v1": 10,
+   "c2": 19,
+   "v2": 10,
+   "label": "1 Kings 19:10",
+   "anchor": "1KI.19:10"
+  },
+  {
+   "in": "II Cor 5:17",
+   "book": "2 Corinthians",
+   "c1": 5,
+   "v1": 17,
+   "c2": 5,
+   "v2": 17,
+   "label": "2 Corinthians 5:17",
+   "anchor": "2CO.5:17"
+  },
+  {
+   "in": "III John 1:4",
+   "book": "3 John",
+   "c1": 1,
+   "v1": 4,
+   "c2": 1,
+   "v2": 4,
+   "label": "3 John 1:4",
+   "anchor": "3JN.1:4"
+  },
+  {
+   "in": "Phil 4:13",
+   "book": "Philippians",
+   "c1": 4,
+   "v1": 13,
+   "c2": 4,
+   "v2": 13,
+   "label": "Philippians 4:13",
+   "anchor": "PHP.4:13"
+  },
+  {
+   "in": "Phlm 1:6",
+   "book": "Philemon",
+   "c1": 1,
+   "v1": 6,
+   "c2": 1,
+   "v2": 6,
+   "label": "Philemon 1:6",
+   "anchor": "PHM.1:6"
+  },
+  {
+   "in": "SoS 2:1",
+   "book": "Song of Solomon",
+   "c1": 2,
+   "v1": 1,
+   "c2": 2,
+   "v2": 1,
+   "label": "Song of Solomon 2:1",
+   "anchor": "SNG.2:1"
+  },
+  {
+   "in": "Isa 53",
+   "book": "Isaiah",
+   "c1": 53,
+   "v1": 0,
+   "c2": 53,
+   "v2": 0,
+   "label": "Isaiah 53",
+   "anchor": null
+  },
+  {
+   "in": "i 3:1",
+   "book": "Isaiah",
+   "c1": 3,
+   "v1": 1,
+   "c2": 3,
+   "v2": 1,
+   "label": "Isaiah 3:1",
+   "anchor": "ISA.3:1"
+  },
+  {
+   "in": "Ex 3",
+   "book": "Exodus",
+   "c1": 3,
+   "v1": 0,
+   "c2": 3,
+   "v2": 0,
+   "label": "Exodus 3",
+   "anchor": null
+  },
+  {
+   "in": "Jn",
+   "book": "John",
+   "c1": 1,
+   "v1": 0,
+   "c2": 21,
+   "v2": 0,
+   "label": "John",
+   "anchor": null
+  },
+  {
+   "in": "Psalm",
+   "book": "Psalms",
+   "c1": 1,
+   "v1": 0,
+   "c2": 150,
+   "v2": 0,
+   "label": "Psalms",
+   "anchor": null
+  },
+  {
+   "in": "phil 1-2",
+   "book": "Philippians",
+   "c1": 1,
+   "v1": 0,
+   "c2": 2,
+   "v2": 0,
+   "label": "Philippians 1–2",
+   "anchor": null
+  },
+  {
+   "in": "Ezek 44:15",
+   "book": "Ezekiel",
+   "c1": 44,
+   "v1": 15,
+   "c2": 44,
+   "v2": 15,
+   "label": "Ezekiel 44:15",
+   "anchor": "EZK.44:15"
+  },
+  {
+   "in": "Mal 2:5-6",
+   "book": "Malachi",
+   "c1": 2,
+   "v1": 5,
+   "c2": 2,
+   "v2": 6,
+   "label": "Malachi 2:5–6",
+   "anchor": "MAL.2:5-2:6"
+  },
+  {
+   "in": "1 Sam 2:12-17",
+   "book": "1 Samuel",
+   "c1": 2,
+   "v1": 12,
+   "c2": 2,
+   "v2": 17,
+   "label": "1 Samuel 2:12–17",
+   "anchor": "1SA.2:12-2:17"
+  }
+ ],
+ "scopes": {
+  "OT": "OT",
+  "nt": "NT",
+  "gospels": "40,41,42,43",
+  "Num": "4",
+  "all": "all",
+  "law": "1,2,3,4,5",
+  "twelve": "28,29,30,31,32,33,34,35,36,37,38,39",
+  "epistles": "45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65",
+  "1sa": "9",
+  "jdg": "7"
+ },
+ "short_names": {
+  "Genesis": "Gen",
+  "Exodus": "Exod",
+  "Leviticus": "Lev",
+  "Numbers": "Num",
+  "Deuteronomy": "Deut",
+  "Joshua": "Josh",
+  "Judges": "Judg",
+  "Ruth": "Ruth",
+  "1 Samuel": "1 Sam",
+  "2 Samuel": "2 Sam",
+  "1 Kings": "1 Kgs",
+  "2 Kings": "2 Kgs",
+  "1 Chronicles": "1 Chr",
+  "2 Chronicles": "2 Chr",
+  "Ezra": "Ezra",
+  "Nehemiah": "Neh",
+  "Esther": "Esth",
+  "Job": "Job",
+  "Psalms": "Ps",
+  "Proverbs": "Prov",
+  "Ecclesiastes": "Eccl",
+  "Song of Solomon": "Song",
+  "Isaiah": "Isa",
+  "Jeremiah": "Jer",
+  "Lamentations": "Lam",
+  "Ezekiel": "Ezek",
+  "Daniel": "Dan",
+  "Hosea": "Hos",
+  "Joel": "Joel",
+  "Amos": "Amos",
+  "Obadiah": "Obad",
+  "Jonah": "Jonah",
+  "Micah": "Mic",
+  "Nahum": "Nah",
+  "Habakkuk": "Hab",
+  "Zephaniah": "Zeph",
+  "Haggai": "Hag",
+  "Zechariah": "Zech",
+  "Malachi": "Mal",
+  "Matthew": "Matt",
+  "Mark": "Mark",
+  "Luke": "Luke",
+  "John": "John",
+  "Acts": "Acts",
+  "Romans": "Rom",
+  "1 Corinthians": "1 Cor",
+  "2 Corinthians": "2 Cor",
+  "Galatians": "Gal",
+  "Ephesians": "Eph",
+  "Philippians": "Phil",
+  "Colossians": "Col",
+  "1 Thessalonians": "1 Thess",
+  "2 Thessalonians": "2 Thess",
+  "1 Timothy": "1 Tim",
+  "2 Timothy": "2 Tim",
+  "Titus": "Titus",
+  "Philemon": "Phlm",
+  "Hebrews": "Heb",
+  "James": "Jas",
+  "1 Peter": "1 Pet",
+  "2 Peter": "2 Pet",
+  "1 John": "1 John",
+  "2 John": "2 John",
+  "3 John": "3 John",
+  "Jude": "Jude",
+  "Revelation": "Rev"
+ }
+}

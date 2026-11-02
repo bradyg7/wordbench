@@ -1,0 +1,208 @@
+//! Reading and looking things up: the Python `wb`'s commands of the same names, with the same output.
+
+use crate::args::{Args, Flag, Opt, Pos, N};
+use crate::{cmd, Command, Ctx, Out, Res};
+use serde_json::{json, Map, Value};
+use wb_core::{lookup, scripture, views};
+
+fn e(x: wb_core::Error) -> String {
+    x.0
+}
+
+fn strong_term(term: &str) -> String {
+    if lookup::is_strong(&term.to_uppercase()) { term.to_uppercase() } else { String::new() }
+}
+
+fn some(s: &str) -> Option<&str> {
+    if s.is_empty() { None } else { Some(s) }
+}
+
+pub fn commands() -> Vec<Command> {
+    vec![
+        cmd("books", "The 66 books: id, code, name, chapters, testament.", vec![], |c, _| {
+            let b = c.bible()?;
+            Ok(Out::Json(json!({"books": lookup::books(b), "versions": lookup::versions(b).map_err(e)?})))
+        }),
+        cmd("text", "Scripture, verbatim, with its reference: wb text \"John 3:16-18\" [--version ylt]. Several places: \"John 3:16; Rom 5:8\".",
+            vec![Pos("ref", N::Many), Opt("version", Some("KJV")), Flag("lines")], text),
+        cmd("copy", "Put verses on the clipboard with their reference, and print them: wb copy \"John 3:16-18\" --format quote.\n\
+                     Formats: lines (the default), block, para, quote.",
+            vec![Pos("ref", N::Many), Opt("format", Some("lines")), Opt("version", Some("KJV")), Flag("short"), Flag("no_clip")], copy),
+        cmd("preview", "What a hover card shows, as text: a verse reference (at most 6 verses) or a Strong's number.",
+            vec![Pos("place", N::Many), Opt("version", Some("KJV"))], preview),
+        cmd("chapter", "A chapter's KJV words with their Strong's numbers (word by word): wb chapter John 3.", vec![Pos("ref", N::Many)], |c, a| {
+            let s = c.span(&a.s("ref"))?;
+            if s.c1 != s.c2 && s.v1 == 0 {
+                return Err("One chapter at a time, like: wb chapter John 3".into());
+            }
+            Ok(Out::Json(lookup::chapter(c.bible()?, s.book.id, s.c1).map_err(e)?.ok_or("no such chapter")?))
+        }),
+        cmd("strong", "A lexicon entry for a Strong's number (H7065, G26).", vec![Pos("number", N::One)], |c, a| {
+            Ok(Out::Json(lookup::strong(c.bible()?, &a.s("number").to_uppercase()).map_err(e)?.ok_or("no such Strong's number")?))
+        }),
+        cmd("bdb", "Brown-Driver-Briggs for a Hebrew or Aramaic number (H7065), with the source file's own status.", vec![Pos("number", N::One)], |c, a| {
+            Ok(Out::Json(lookup::bdb(c.bible()?, &a.s("number").to_uppercase()).map_err(e)?))
+        }),
+        cmd("define", "The original words behind an English word, or a Strong's number, transliteration or spelling.", vec![Pos("word", N::One)], |c, a| {
+            Ok(Out::Json(lookup::define(c.bible()?, &a.s("word")).map_err(e)?))
+        }),
+        cmd("uses", "Every occurrence of an English word and/or Strong's number: wb uses zeal --scope gospels  |  wb uses H7065 --word zealous.",
+            vec![Pos("term", N::One), Opt("word", None), Opt("scope", Some("all")), Opt("rendering", None), Opt("cat", Some("all")), Opt("offset", Some("0"))], uses),
+        cmd("count", "How many occurrences in each book: wb count zeal  |  wb count H7065.", vec![Pos("term", N::One)], count),
+        cmd("search", "Search the KJV (every word must be in the verse; \"quotes\" for a phrase; zeal* for endings).",
+            vec![Pos("query", N::Many), Opt("scope", Some("all")), Flag("case"), Flag("regex"), Opt("offset", Some("0"))], |c, a| {
+                let scope = c.scope(&a.opt_or("scope", "all"))?;
+                let q = a.s("query");
+                Ok(Out::Json(lookup::search(c.bible()?, &lookup::SearchQuery { q: &q, case: a.flag("case"), scope: &scope,
+                    offset: a.int("offset")?.max(0) as usize, limit: lookup::PAGE, regex: a.flag("regex") }).map_err(e)?))
+            }),
+        cmd("forms", "Every English form that starts with a word (zeal, zealous, zealously) with its count.", vec![Pos("word", N::One)], |c, a| {
+            Ok(Out::Json(lookup::forms(c.bible()?, &a.s("word")).map_err(e)?))
+        }),
+        cmd("lexiconc", "Original words whose Strong's definition or KJV-usage line contains an English word (zeal* for endings).", vec![Pos("word", N::One)], |c, a| {
+            Ok(Out::Json(lookup::lexiconc(c.bible()?, &a.s("word"), 150).map_err(e)?))
+        }),
+        cmd("near", "Verses where two words (or Strong's numbers) come within N words of each other.",
+            vec![Pos("a", N::One), Pos("b", N::One), Opt("within", Some("10")), Opt("scope", Some("all")), Opt("offset", Some("0"))], |c, a| {
+                let scope = c.scope(&a.opt_or("scope", "all"))?;
+                Ok(Out::Json(lookup::near(c.bible()?, &a.s("a"), &a.s("b"), a.int("within")?, &scope, a.int("offset")?.max(0) as usize, lookup::PAGE).map_err(e)?))
+            }),
+        cmd("interlinear", "The Greek or Hebrew word by word with the KJV above it: wb interlinear John 3:16.",
+            vec![Pos("ref", N::Many), Opt("offset", Some("0"))], |c, a| {
+                let s = c.span(&a.s("ref"))?;
+                let c2 = if s.c2 != s.c1 { Some(s.c2) } else { None };
+                Ok(Out::Json(lookup::interlinear(c.bible()?, s.book.id, s.c1, s.v1 as i64, c2, s.v2 as i64, a.int("offset")?, lookup::INTERLINEAR_VERSES).map_err(e)?))
+            }),
+        // The app's own views (not in the Python wb): what the reader, the word sheet and the verse sheet show.
+        cmd("reader", "What the reader draws for a chapter: its words and the marks on them (JSON): wb reader NUM 25.", vec![Pos("book", N::One), Pos("ch", N::One)], |c, a| {
+            let (b, ch) = book_ch(a)?;
+            Ok(Out::Json(json!(views::reader(c.bible()?, c.study()?, &b, ch).map_err(e)?)))
+        }),
+        cmd("word", "What the word sheet shows: wb word NUM 25 11 24 (word 24, from 0, of Numbers 25:11).",
+            vec![Pos("book", N::One), Pos("ch", N::One), Pos("v", N::One), Pos("i", N::One)], |c, a| {
+                let (b, ch) = book_ch(a)?;
+                let n = |k: &str| a.s(k).parse::<u32>().map_err(|_| format!("{k} must be a number"));
+                Ok(Out::Json(json!(views::word(c.bible()?, c.study()?, &b, ch, n("v")?, n("i")?).map_err(e)?)))
+            }),
+        cmd("verse", "What the verse sheet shows: wb verse NUM 25 11.", vec![Pos("book", N::One), Pos("ch", N::One), Pos("v", N::One)], |c, a| {
+            let (b, ch) = book_ch(a)?;
+            let v = a.s("v").parse::<u32>().map_err(|_| "v must be a number")?;
+            Ok(Out::Json(json!(views::verse(c.bible()?, c.study()?, &b, ch, v).map_err(e)?)))
+        }),
+        cmd("fixture", "The reader, every word sheet and every verse sheet of a chapter in one JSON (the UI's test data): wb fixture NUM 25.",
+            vec![Pos("book", N::One), Pos("ch", N::One)], fixture),
+    ]
+}
+
+fn book_ch(a: &Args) -> Result<(String, u32), String> {
+    Ok((a.s("book").to_uppercase(), a.s("ch").parse().map_err(|_| "the chapter must be a number")?))
+}
+
+fn text(c: &Ctx, a: &Args) -> Res {
+    let psg = scripture::passage(c.bible()?, &a.s("ref"), &a.opt_or("version", "KJV")).map_err(e)?;
+    if a.flag("json") {
+        return Ok(Out::Json(psg));
+    }
+    if a.flag("lines") {
+        let vs = psg["verses"].as_array().unwrap();
+        return Ok(Out::Text(vs.iter().map(|v| format!("{} {}", v["ref"].as_str().unwrap(), v["text"].as_str().unwrap())).collect::<Vec<_>>().join("\n")));
+    }
+    Ok(Out::Text(scripture::block(&psg)))
+}
+
+fn copy(c: &Ctx, a: &Args) -> Res {
+    let mut out = scripture::copy(c.bible()?, &a.s("ref"), &a.opt_or("version", "KJV"), &a.opt_or("format", "lines"), a.flag("short")).map_err(e)?;
+    if !a.flag("no_clip") {
+        let clipped = clip(out["text"].as_str().unwrap());
+        out["clipped"] = json!(clipped);
+        if !clipped {
+            eprintln!("note: this computer's clipboard could not be reached, so the text is only printed.");
+        }
+    }
+    if a.flag("json") {
+        return Ok(Out::Json(out));
+    }
+    Ok(Out::Text(out["text"].as_str().unwrap().to_string()))
+}
+
+/// The text on the clipboard. Windows: PowerShell's Set-Clipboard, which takes Unicode from standard input.
+fn clip(text: &str) -> bool {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    let child = if cfg!(windows) {
+        Command::new("powershell")
+            .args(["-NoProfile", "-Command", "[Console]::InputEncoding=[Text.Encoding]::UTF8; Set-Clipboard -Value ([Console]::In.ReadToEnd())"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+    } else if cfg!(target_os = "macos") {
+        Command::new("pbcopy").stdin(Stdio::piped()).spawn()
+    } else {
+        Command::new("wl-copy").stdin(Stdio::piped()).spawn()
+    };
+    let Ok(mut child) = child else { return false };
+    if child.stdin.take().map(|mut s| s.write_all(text.as_bytes())).is_none() {
+        return false;
+    }
+    child.wait().map(|s| s.success()).unwrap_or(false)
+}
+
+fn preview(c: &Ctx, a: &Args) -> Res {
+    let d = scripture::preview(c.bible()?, &a.s("place"), &a.opt_or("version", "KJV"), scripture::PREVIEW_VERSES).map_err(e)?;
+    if a.flag("json") {
+        return Ok(Out::Json(d));
+    }
+    let s = |v: &Value| match v {
+        Value::Null => "None".to_string(),
+        Value::String(s) => s.clone(),
+        other => other.to_string(),
+    };
+    if d["kind"] == "strong" {
+        let usage = if d["usage"].as_str().is_some_and(|u| !u.is_empty()) { format!("KJV: {}", s(&d["usage"])) } else { String::new() };
+        let parts = [format!("{} {} {}", s(&d["strong"]), s(&d["lemma"]), s(&d["translit"])), if d["definition"].is_null() { String::new() } else { s(&d["definition"]) }, usage];
+        return Ok(Out::Text(parts.into_iter().filter(|x| !x.is_empty()).collect::<Vec<_>>().join("\n")));
+    }
+    let more = d["more"].as_u64().unwrap_or(0);
+    let lines: Vec<String> = d["verses"].as_array().unwrap().iter().map(|v| format!("{} {}", s(&v["ref"]), s(&v["text"]))).collect();
+    Ok(Out::Text(format!("{} ({})\n{}{}", s(&d["label"]), s(&d["version"]), lines.join("\n"), if more > 0 { format!("\n... and {more} more") } else { String::new() })))
+}
+
+fn uses(c: &Ctx, a: &Args) -> Res {
+    let term = a.s("term");
+    let strong = strong_term(&term);
+    let word = a.opt("word").unwrap_or_else(|| if strong.is_empty() { term.to_lowercase() } else { String::new() });
+    let scope = c.scope(&a.opt_or("scope", "all"))?;
+    let rendering = a.opt("rendering").unwrap_or_default();
+    let q = lookup::UsesQuery { strong: some(&strong), word: some(&word), cat: &a.opt_or("cat", "all"), scope: &scope,
+        offset: a.int("offset")?.max(0) as usize, limit: lookup::PAGE, rendering: some(&rendering) };
+    Ok(Out::Json(lookup::uses(c.bible()?, &q).map_err(e)?))
+}
+
+fn count(c: &Ctx, a: &Args) -> Res {
+    let term = a.s("term");
+    let strong = strong_term(&term);
+    let word = if strong.is_empty() { term.to_lowercase() } else { String::new() };
+    let d = lookup::uses(c.bible()?, &lookup::UsesQuery { strong: some(&strong), word: some(&word), cat: "all", scope: "all", offset: 1_000_000, limit: lookup::PAGE, rendering: None }).map_err(e)?;
+    let books = c.bible()?.books();
+    let mut by: Vec<(u32, i64)> = d["by_book"].as_object().unwrap().iter().map(|(k, n)| (k.parse().unwrap(), n.as_i64().unwrap())).collect();
+    by.sort_by_key(|x| x.0);
+    let by_book: Map<String, Value> = by.into_iter().map(|(id, n)| (books.iter().find(|b| b.id == id).unwrap().name.clone(), json!(n))).collect();
+    Ok(Out::Json(json!({"term": term, "occurrences": d["occurrences"], "verses": d["verses"], "by_book": by_book})))
+}
+
+fn fixture(c: &Ctx, a: &Args) -> Res {
+    let (b, ch) = book_ch(a)?;
+    let (bible, study) = (c.bible()?, c.study()?);
+    let reader = views::reader(bible, study, &b, ch).map_err(e)?;
+    let mut words = Map::new();
+    let mut verses = Map::new();
+    for v in &reader.chapter.verses {
+        verses.insert(v.v.to_string(), json!(views::verse(bible, study, &b, ch, v.v).map_err(e)?));
+        for w in &v.words {
+            words.insert(format!("{}.{}", v.v, w.i), json!(views::word(bible, study, &b, ch, v.v, w.i).map_err(e)?));
+        }
+    }
+    println!("{}", json!({"reader": reader, "words": words, "verses": verses}));
+    Ok(Out::Nothing)
+}
