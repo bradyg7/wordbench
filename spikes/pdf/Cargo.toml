@@ -1,0 +1,16 @@
+[package]
+name = "spike-pdf"
+description = "Phase 0 spike (c): a chapter PDF from Typst as a library, scripture filled from the database"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+wb-core.workspace = true
+serde_json.workspace = true
+typst = "0.15"
+typst-pdf = "0.15"
+typst-assets = { version = "0.15", features = ["fonts"] }
+flate2 = "1"
+typst-layout = "0.15"
+typst-render = "0.15"
