@@ -5902,6 +5902,7 @@ dependencies = [
 name = "wb-core"
 version = "0.0.1"
 dependencies = [
+ "chrono",
  "fancy-regex 0.20.0",
  "regex",
  "rusqlite",

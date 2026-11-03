@@ -62,6 +62,8 @@ fn key(flag: &str) -> String {
     flag.trim_start_matches('-').replace('-', "_")
 }
 
+const INT_OPTIONS: &[&str] = &["offset", "within"];
+
 pub fn parse(specs: &[Spec], argv: &[String]) -> Result<Args, String> {
     let mut a = Args::default();
     for s in specs {
@@ -135,5 +137,39 @@ pub fn parse(specs: &[Spec], argv: &[String]) -> Result<Args, String> {
     if !rest.is_empty() {
         return Err(format!("unrecognized arguments: {}", rest.join(" ")));
     }
+    // whole-number options are checked here, as argparse's type=int does
+    for n in INT_OPTIONS {
+        if let Some(Some(v)) = a.opts.get(n) {
+            if v.parse::<i64>().is_err() {
+                return Err(format!("argument --{n}: invalid int value: '{v}'"));
+            }
+        }
+    }
     Ok(a)
+}
+
+/// argparse's usage line: `usage: wb <name> [-h] [--opt OPT] [--flag] [--json] pos [many ...]` (unwrapped; argparse
+/// wraps lines past 78 characters).
+pub fn usage(name: &str, specs: &[Spec]) -> String {
+    let mut parts = vec!["[-h]".to_string()];
+    let dash = |n: &str| n.replace('_', "-");
+    for sp in specs {
+        match sp {
+            Opt(n, _) | Append(n) => parts.push(format!("[--{} {}]", dash(n), n.to_uppercase())),
+            Flag(n) => parts.push(format!("[--{}]", dash(n))),
+            Pos(..) => {}
+        }
+    }
+    parts.push("[--json]".into());
+    for sp in specs {
+        if let Pos(n, k) = sp {
+            parts.push(match k {
+                N::One => n.to_string(),
+                N::Opt => format!("[{n}]"),
+                N::Any => format!("[{n} ...]"),
+                N::Many => format!("{n} [{n} ...]"),
+            });
+        }
+    }
+    format!("usage: wb {name} {}", parts.join(" "))
 }

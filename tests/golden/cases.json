@@ -1063,5 +1063,695 @@
   "name": "search bad pattern (message wording differs: the regex engines' own)",
   "steps": [],
   "note": "wb search /(/ is refused by both with exit 1"
+ },
+ {
+  "name": "study: where things stand",
+  "steps": [
+   [
+    "find",
+    "phinehas"
+   ],
+   [
+    "thread",
+    "show",
+    "phin"
+   ],
+   [
+    "lesson",
+    "list"
+   ],
+   [
+    "set",
+    "list"
+   ],
+   [
+    "thread",
+    "list"
+   ],
+   [
+    "palette"
+   ],
+   [
+    "log",
+    "2026-11-02"
+   ],
+   [
+    "layout",
+    "list"
+   ]
+  ]
+ },
+ {
+  "name": "study: what was there",
+  "steps": [
+   [
+    "anchor",
+    "Num 25:11"
+   ],
+   [
+    "anchor",
+    "NUM.25:11.24"
+   ],
+   [
+    "anchor",
+    "H7065"
+   ],
+   [
+    "hl",
+    "list"
+   ],
+   [
+    "hl",
+    "list",
+    "--color",
+    "yellow"
+   ],
+   [
+    "trail",
+    "list"
+   ],
+   [
+    "trail",
+    "list",
+    "--status",
+    "all"
+   ],
+   [
+    "note",
+    "list",
+    "Num 25"
+   ],
+   [
+    "note",
+    "list",
+    "Num 24-26"
+   ],
+   [
+    "marks",
+    "Num 25"
+   ],
+   [
+    "marks",
+    "Psalm 106"
+   ]
+  ]
+ },
+ {
+  "name": "study: errors",
+  "steps": [
+   [
+    "note",
+    "rm",
+    "n_00000000000000_0000"
+   ],
+   [
+    "thread",
+    "show",
+    "zzz"
+   ],
+   [
+    "note",
+    "add",
+    "John 3",
+    "x"
+   ],
+   [
+    "note",
+    "add",
+    "Num 25:11"
+   ],
+   [
+    "hl",
+    "set",
+    "Num 25:11",
+    "purple"
+   ],
+   [
+    "hl",
+    "set",
+    "Num 25:11",
+    "c9"
+   ],
+   [
+    "trail",
+    "done",
+    "q_1"
+   ],
+   [
+    "set",
+    "show",
+    "nothing"
+   ],
+   [
+    "lesson",
+    "show",
+    "nothing"
+   ],
+   [
+    "anchor",
+    "NUM.99:1"
+   ],
+   [
+    "find"
+   ],
+   [
+    "log",
+    "yesterday"
+   ],
+   [
+    "note",
+    "add"
+   ],
+   [
+    "text",
+    "John 3:16",
+    "--nonsense"
+   ]
+  ]
+ },
+ {
+  "name": "study: threads",
+  "steps": [
+   [
+    "thread",
+    "from-search",
+    "Phinehas",
+    "phinehas",
+    "--dry-run"
+   ],
+   [
+    "thread",
+    "from-search",
+    "Phinehas Golden",
+    "phinehas"
+   ],
+   [
+    "thread",
+    "add",
+    "Phinehas Golden",
+    "H6372"
+   ],
+   [
+    "thread",
+    "edit",
+    "Phinehas Golden",
+    "--color",
+    "orange",
+    "--note",
+    "A test thread made by the golden tests."
+   ],
+   [
+    "thread",
+    "add-many",
+    "Echoes Golden",
+    "Num 16:47-48",
+    "Psalm 106:23",
+    "Gen 15:6",
+    "Exo 40:15",
+    "Num 25:6",
+    "1 Sam 2:22",
+    "Mal 2:5-6",
+    "H7065",
+    "H7068"
+   ],
+   [
+    "thread",
+    "edit",
+    "Echoes Golden",
+    "--color",
+    "blue",
+    "--note",
+    "Places found with uses, near or a phrase search."
+   ],
+   [
+    "thread",
+    "list",
+    "golden"
+   ],
+   [
+    "thread",
+    "show",
+    "echoes golden"
+   ],
+   [
+    "thread",
+    "move",
+    "Echoes Golden",
+    "Gen 15:6",
+    "first"
+   ],
+   [
+    "thread",
+    "move",
+    "Echoes Golden",
+    "3",
+    "up"
+   ],
+   [
+    "thread",
+    "move",
+    "Echoes Golden",
+    "H7068",
+    "2"
+   ],
+   [
+    "thread",
+    "sort",
+    "Echoes Golden"
+   ],
+   [
+    "thread",
+    "order",
+    "Echoes Golden",
+    "2",
+    "1",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9"
+   ],
+   [
+    "thread",
+    "rm",
+    "Echoes Golden",
+    "Mal 2:5"
+   ],
+   [
+    "thread",
+    "rm",
+    "Echoes Golden",
+    "H7068"
+   ],
+   [
+    "thread",
+    "rm",
+    "Echoes Golden",
+    "John 3:16"
+   ],
+   [
+    "thread",
+    "from-uses",
+    "Zeal Golden",
+    "H7065",
+    "--word",
+    "zealous",
+    "--dry-run"
+   ],
+   [
+    "thread",
+    "from-uses",
+    "Zeal Golden",
+    "H7065",
+    "--scope",
+    "num"
+   ],
+   [
+    "thread",
+    "from-uses",
+    "Zeal Verses Golden",
+    "zeal",
+    "--verses",
+    "--only",
+    "Rom 10:2; John 2:17"
+   ],
+   [
+    "thread",
+    "new",
+    "Empty Golden",
+    "--color",
+    "#E07B39",
+    "--note",
+    "nothing yet"
+   ],
+   [
+    "palette"
+   ],
+   [
+    "thread",
+    "edit",
+    "Empty Golden",
+    "--rename",
+    "Renamed Golden",
+    "--color",
+    "none"
+   ],
+   [
+    "thread",
+    "delete",
+    "Renamed Golden"
+   ],
+   [
+    "marks",
+    "Num 25"
+   ],
+   [
+    "hl",
+    "list",
+    "--thread",
+    "Phinehas Golden"
+   ],
+   [
+    "anchor",
+    "Num 25:7"
+   ]
+  ],
+  "files": true
+ },
+ {
+  "name": "study: notes",
+  "steps": [
+   [
+    "note",
+    "add",
+    "Num 25:8",
+    "Word study: a test note on the plague verse."
+   ],
+   [
+    "note",
+    "edit",
+    "$last",
+    "Num 25:8",
+    "Word study: the test note, edited."
+   ],
+   [
+    "note",
+    "add",
+    "NUM.25:11.24",
+    "A note on one word."
+   ],
+   [
+    "note",
+    "add",
+    "H7065",
+    "A note on the word everywhere."
+   ],
+   [
+    "note",
+    "add",
+    "Psalm 106:30-31",
+    "A note on two verses."
+   ],
+   [
+    "note",
+    "list",
+    "Num 25"
+   ],
+   [
+    "anchor",
+    "NUM.25:11.24"
+   ],
+   [
+    "anchor",
+    "Psalm 106:30"
+   ],
+   [
+    "find",
+    "test",
+    "note"
+   ],
+   [
+    "note",
+    "rm",
+    "$last"
+   ]
+  ],
+  "files": true
+ },
+ {
+  "name": "study: trails",
+  "steps": [
+   [
+    "trail",
+    "add",
+    "Num 25:9",
+    "How do the two numbers relate?"
+   ],
+   [
+    "trail",
+    "edit",
+    "$last",
+    "How do the two numbers relate (golden)?"
+   ],
+   [
+    "trail",
+    "done",
+    "$last"
+   ],
+   [
+    "trail",
+    "list"
+   ],
+   [
+    "trail",
+    "list",
+    "--status",
+    "done"
+   ],
+   [
+    "trail",
+    "reopen",
+    "$last"
+   ],
+   [
+    "find",
+    "relate"
+   ],
+   [
+    "trail",
+    "add",
+    "H7065",
+    "not a place"
+   ],
+   [
+    "trail",
+    "rm",
+    "$last"
+   ]
+  ],
+  "files": true
+ },
+ {
+  "name": "study: highlights",
+  "steps": [
+   [
+    "hl",
+    "set",
+    "Num 25:12-13",
+    "yellow"
+   ],
+   [
+    "hl",
+    "set",
+    "Psalm 106:30-31",
+    "green"
+   ],
+   [
+    "hl",
+    "set",
+    "Psalm 106:30",
+    "pink"
+   ],
+   [
+    "hl",
+    "set",
+    "PSA.106:31.3-106:31.5",
+    "blue"
+   ],
+   [
+    "hl",
+    "set",
+    "Num 25:14",
+    "#D3E2F3"
+   ],
+   [
+    "hl",
+    "list"
+   ],
+   [
+    "hl",
+    "list",
+    "--color",
+    "pink"
+   ],
+   [
+    "marks",
+    "Psalm 106"
+   ],
+   [
+    "anchor",
+    "Psalm 106:31"
+   ],
+   [
+    "palette"
+   ],
+   [
+    "hl",
+    "set",
+    "Psalm 106:31",
+    "c1"
+   ],
+   [
+    "hl",
+    "clear",
+    "Psalm 106:30-31"
+   ],
+   [
+    "hl",
+    "clear",
+    "Num 25:12-13"
+   ],
+   [
+    "palette",
+    "rm",
+    "#d3e2f3"
+   ]
+  ],
+  "files": true
+ },
+ {
+  "name": "study: lessons and sets",
+  "steps": [
+   [
+    "lesson",
+    "save",
+    "Golden Lesson",
+    "--file",
+    "$golden/lesson.md"
+   ],
+   [
+    "lesson",
+    "save",
+    "Golden Lesson",
+    "--append",
+    "Another paragraph."
+   ],
+   [
+    "lesson",
+    "list"
+   ],
+   [
+    "lesson",
+    "show",
+    "golden"
+   ],
+   [
+    "lesson",
+    "show",
+    "golden",
+    "--json"
+   ],
+   [
+    "set",
+    "new",
+    "Golden Study",
+    "--thread",
+    "Phinehas Golden",
+    "--thread",
+    "Echoes Golden",
+    "--lesson",
+    "golden",
+    "--place",
+    "Num 25:1-18",
+    "--place",
+    "Psalm 106:28-31",
+    "--pdf",
+    "Golden.pdf"
+   ],
+   [
+    "set",
+    "show",
+    "golden"
+   ],
+   [
+    "set",
+    "add",
+    "golden",
+    "--place",
+    "Num 25:1-18",
+    "--note",
+    "n_nothing"
+   ],
+   [
+    "set",
+    "list"
+   ],
+   [
+    "set",
+    "rm",
+    "golden",
+    "$key1"
+   ],
+   [
+    "set",
+    "rename",
+    "Golden Study",
+    "Golden Study 2"
+   ],
+   [
+    "set",
+    "new",
+    "golden study 2"
+   ],
+   [
+    "log",
+    "add",
+    "golden",
+    "test",
+    "--result",
+    "ok"
+   ],
+   [
+    "set",
+    "delete",
+    "Golden Study 2"
+   ],
+   [
+    "lesson",
+    "rm",
+    "golden"
+   ]
+  ],
+  "files": true
+ },
+ {
+  "name": "study: taking it back out",
+  "steps": [
+   [
+    "thread",
+    "delete",
+    "Phinehas Golden"
+   ],
+   [
+    "thread",
+    "delete",
+    "Echoes Golden"
+   ],
+   [
+    "thread",
+    "delete",
+    "Zeal Golden"
+   ],
+   [
+    "thread",
+    "delete",
+    "Zeal Verses Golden"
+   ],
+   [
+    "thread",
+    "list"
+   ]
+  ],
+  "files": true
+ },
+ {
+  "name": "known difference: argparse wraps long usage lines and lists choices; wb uses H7065 --offset x exits 2 in both",
+  "steps": []
+ },
+ {
+  "name": "known difference: records changed in the same second are ordered by file name (a fresh Python server does the same; a long-running one orders them by when it wrote them)",
+  "steps": []
  }
 ]

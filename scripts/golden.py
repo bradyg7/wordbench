@@ -33,11 +33,14 @@ RUST = REPO / "target" / "release" / ("wb.exe" if os.name == "nt" else "wb")
 ID = re.compile(r"\b[a-z]_\d{14}_[0-9a-f]{4}\b")
 TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z|\d{8}-\d{6}")
 DAY = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+KEY = re.compile(r"\bi[0-9a-f]{8}\b")                     # a set item's key
+MODIFIED = re.compile(r'"modified": [0-9.e+]+')           # a lesson file's time
+CLOCK = re.compile(r'"t": "\d{2}:\d{2}:\d{2}"')              # the local time of a log line
 
 
 class Side:
     def __init__(self, name, folder):
-        self.name, self.folder, self.ids = name, folder, []
+        self.name, self.folder, self.ids, self.keys = name, folder, [], []
 
     def norm(self, text):
         for path in {str(self.folder), str(self.folder).replace("\\", "\\\\"), self.folder.as_posix()}:
@@ -48,10 +51,26 @@ class Side:
                 self.ids.append(m.group(0))
             return "<id%d>" % (self.ids.index(m.group(0)) + 1)
         text = ID.sub(sub, text)
+        text = KEY.sub(lambda m: "<key%d>" % self.key(m.group(0)), text)
+        text = MODIFIED.sub('"modified": <mtime>', text)
+        text = CLOCK.sub('"t": "<clock>"', text)
         return DAY.sub("<day>", TIME.sub("<time>", text))
 
+    def key(self, k):
+        if k not in self.keys:
+            self.keys.append(k)
+        return self.keys.index(k) + 1
+
     def args(self, step):
-        return [re.sub(r"\$id(\d+)", lambda m: self.ids[int(m.group(1)) - 1] if int(m.group(1)) <= len(self.ids) else m.group(0), a) for a in step]
+        out = []
+        for a in step:
+            a = re.sub(r"\$id(\d+)", lambda m: self.ids[int(m.group(1)) - 1] if int(m.group(1)) <= len(self.ids) else m.group(0), a)
+            a = re.sub(r"\$key(\d+)", lambda m: self.keys[int(m.group(1)) - 1] if int(m.group(1)) <= len(self.keys) else m.group(0), a)
+            a = a.replace("$golden", str(REPO / "tests" / "golden"))
+            if a == "$last" and self.ids:
+                a = self.ids[-1]
+            out.append(a)
+        return out
 
 
 def run(cmd, env, cwd=None):
@@ -108,7 +127,12 @@ def main():
         for case in cases:
             ok, report = True, []
             for step in case["steps"]:
+                # In a case that writes, each step starts at a fresh second on both sides, so times written in the same
+                # second (which decide the order of ties) fall the same way for the slower Python side and the Rust one.
+                fresh = (lambda: time.sleep(1.02 - time.time() % 1)) if case.get("files") else (lambda: None)
+                fresh()
                 a = run([sys.executable, str(OLD / "wb.py")] + py.args(step), env_py, cwd=str(OLD))
+                fresh()
                 b = run([str(RUST)] + rs.args(step), env_rs)
                 got_a = "exit %d\n%s%s" % (a[0], py.norm(a[1]), py.norm(a[2]))
                 got_b = "exit %d\n%s%s" % (b[0], rs.norm(b[1]), rs.norm(b[2]))

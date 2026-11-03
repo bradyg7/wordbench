@@ -110,7 +110,15 @@ fn dispatch(argv: &[String]) -> Result<(Out, bool), String> {
         hits.dedup();
         return Err(format!("Unknown command “{}”.{} Try: wb help", argv[0], if hits.is_empty() { String::new() } else { format!(" Did you mean {}?", hits.join(", ")) }));
     };
-    let a = args::parse(&c.args, rest).map_err(|e| format!("wb {}: {e}", c.name))?;
+    let a = match args::parse(&c.args, rest) {
+        Ok(a) => a,
+        Err(msg) => {
+            // as argparse does: the usage line, the error, exit code 2
+            eprintln!("{}
+wb {}: error: {msg}", args::usage(c.name, &c.args), c.name);
+            std::process::exit(2);
+        }
+    };
     let ctx = Ctx { bible: OnceCell::new(), study: OnceCell::new() };
     Ok(((c.run)(&ctx, &a)?, a.flag("json")))
 }

@@ -15,6 +15,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 regex = "1"
 fancy-regex = "0.20"
 unicode-normalization = "0.1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
 [profile.release]
 opt-level = 3

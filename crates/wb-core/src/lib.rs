@@ -9,6 +9,8 @@ pub mod lookup;
 pub mod marks;
 pub mod places;
 pub mod scripture;
+pub mod store;
+pub mod studyapi;
 pub mod study;
 pub mod views;
 
