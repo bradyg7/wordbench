@@ -7,7 +7,7 @@
 //
 // A pane keeps its element (and so its scroll and state) while it is open; switching tabs only hides it. Nothing here
 // moves the reader: opening, closing or switching panes never loses the place.
-import { h, icon, sizeClass } from './ui';
+import { h, icon, popMenu, sizeClass } from './ui';
 
 export type Side = 'left' | 'right' | 'float';
 
@@ -25,6 +25,8 @@ export interface Pane {
 
 const WIDTH: Record<string, [number, number]> = { large: [440, 420], expanded: [0, 380], medium: [0, 320], compact: [0, 0] };
 const STORE = 'wb.dock.v1';
+/** A column is never narrower than this, and the reader keeps at least READER_MIN beside the columns. */
+const COL_MIN = 280, READER_MIN = 460;
 let seq = 0;
 
 export class Dock {
@@ -33,6 +35,11 @@ export class Dock {
   hidden: Partial<Record<Side, boolean>> = {};
   /** Where the floating column sits. */
   floatAt = { x: 0, y: 0, w: 420, h: 520 };
+  /** Widths the person set by dragging a column's edge (per side), and columns expanded to half the window. */
+  widths: Partial<Record<'left' | 'right', number>> = {};
+  wide: Partial<Record<'left' | 'right', boolean>> = {};
+  /** Where each tab strip was scrolled, kept while the strips are drawn again. */
+  private stripScroll: Partial<Record<Side, number>> = {};
   private cols: Record<Side, HTMLElement>;
   private sheet: HTMLElement;
   backLabel = () => '';
@@ -43,7 +50,12 @@ export class Dock {
     this.cols = { left: this.column('left'), right: this.column('right'), float: this.column('float') };
     this.sheet = h('section', 'pane-sheet');
     host.append(this.cols.left, this.cols.right, this.cols.float, this.sheet);
-    try { Object.assign(this.floatAt, JSON.parse(localStorage.getItem(STORE) || '{}').floatAt || {}); } catch { /* defaults */ }
+    try {
+      const kept = JSON.parse(localStorage.getItem(STORE) || '{}');
+      Object.assign(this.floatAt, kept.floatAt || {});
+      Object.assign(this.widths, kept.widths || {});
+      Object.assign(this.wide, kept.wide || {});
+    } catch { /* defaults */ }
     window.addEventListener('resize', () => this.layout());
     // the floating column is resized from its corner; its size is kept
     new ResizeObserver(() => {
@@ -51,7 +63,7 @@ export class Dock {
       if (!f.classList.contains('open') || !f.offsetWidth) return;
       this.floatAt.w = f.offsetWidth;
       this.floatAt.h = f.offsetHeight;
-      try { localStorage.setItem(STORE, JSON.stringify({ floatAt: this.floatAt })); } catch { /* this run only */ }
+      this.save();
     }).observe(this.cols.float);
   }
 
@@ -136,6 +148,35 @@ export class Dock {
     for (const p of this.panes) Promise.resolve(p.refresh?.()).catch(() => {});
   }
 
+  private save() {
+    try { localStorage.setItem(STORE, JSON.stringify({ floatAt: this.floatAt, widths: this.widths, wide: this.wide })); } catch { /* this run only */ }
+  }
+
+  /** The column last widened or narrowed by the person keeps its width; the other one gives way first. */
+  private lastSized: 'left' | 'right' = 'right';
+
+  /**
+   * The columns' widths now: each expanded (half the window), as dragged, or the size class's own. The reader keeps at
+   * least READER_MIN; when both columns want more than that leaves, the one not touched last narrows (to COL_MIN), then
+   * the other.
+   */
+  private widthsNow(leftOpen: boolean, rightOpen: boolean): [number, number] {
+    const size = sizeClass(), W = window.innerWidth;
+    const want = (side: 'left' | 'right') => {
+      const base = WIDTH[size][side === 'left' ? 0 : 1];
+      if (!base) return 0;
+      return this.wide[side] ? Math.round(W * 0.5) : this.widths[side] ?? base;
+    };
+    let l = leftOpen ? want('left') : 0, r = rightOpen ? want('right') : 0;
+    const room = Math.max(0, W - READER_MIN);
+    const min = (x: number) => (x ? Math.min(COL_MIN, x) : 0);
+    if (l + r > room) {
+      if (this.lastSized === 'right') { l = Math.max(min(l), room - r); r = Math.max(min(r), room - l); }
+      else { r = Math.max(min(r), room - l); l = Math.max(min(l), room - r); }
+    }
+    return [l, r];
+  }
+
   /** Puts every pane in its column, draws the tab strips, and moves the reader over to make room. */
   layout() {
     const size = sizeClass();
@@ -150,6 +191,7 @@ export class Dock {
       if (!list.length) { col.replaceChildren(); continue; }
       if (!list.some(p => p.id === this.front[side])) this.front[side] = list[list.length - 1].id;
       col.replaceChildren(this.strip(side, list), ...list.map(p => p.el));
+      if (side !== 'float') col.append(this.grip(side));
       for (const p of list) p.el.hidden = p.id !== this.front[side];
       if (this.hidden[side]) {
         const back = h('button', 'dock-restore', list.map(p => p.title).join(' · '));
@@ -159,8 +201,9 @@ export class Dock {
       }
     }
     const restore = this.keepPlace();
-    const [lw, rw] = WIDTH[size];
     const leftOpen = by.left.length > 0 && !this.hidden.left, rightOpen = by.right.length > 0 && !this.hidden.right;
+    const [lw, rw] = this.widthsNow(leftOpen, rightOpen);
+    void size;
     root.style.setProperty('--dock-l', `${leftOpen ? lw : 0}px`);
     root.style.setProperty('--dock-r', `${rightOpen ? rw : 0}px`);
     root.style.setProperty('--dock-lw', `${lw}px`);
@@ -169,6 +212,70 @@ export class Dock {
     const f = this.cols.float;
     Object.assign(f.style, { left: `${this.floatAt.x || window.innerWidth - this.floatAt.w - 40}px`, top: `${this.floatAt.y || 90}px`, width: `${this.floatAt.w}px`, height: `${this.floatAt.h}px` });
     this.drawSheet(by.sheet);
+    requestAnimationFrame(() => this.fitStrips());
+  }
+
+  // ---- a column's width: drag its inner edge (double-click puts it back) ----------------------------------------------
+  private grip(side: 'left' | 'right'): HTMLElement {
+    const g = h('div', `dock-grip grip-${side}`);
+    g.title = 'Drag to make the column wider or narrower (double-click: its usual width)';
+    g.setAttribute('role', 'separator');
+    g.setAttribute('aria-orientation', 'vertical');
+    g.addEventListener('dblclick', () => { delete this.widths[side]; this.wide[side] = false; this.lastSized = side; this.save(); this.layout(); });
+    g.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      g.setPointerCapture(e.pointerId);
+      g.classList.add('dragging');
+      const restore = this.keepPlace();
+      this.lastSized = side;
+      const move = (m: PointerEvent) => {
+        this.wide[side] = false;
+        this.widths[side] = side === 'left' ? m.clientX : window.innerWidth - m.clientX;
+        const [lw, rw] = this.widthsNow(this.cols.left.classList.contains('open'), this.cols.right.classList.contains('open'));
+        const root = document.documentElement;
+        root.style.setProperty('--dock-l', `${this.cols.left.classList.contains('open') ? lw : 0}px`);
+        root.style.setProperty('--dock-r', `${this.cols.right.classList.contains('open') ? rw : 0}px`);
+        if (lw) root.style.setProperty('--dock-lw', `${lw}px`);
+        if (rw) root.style.setProperty('--dock-rw', `${rw}px`);
+      };
+      const up = () => {
+        g.removeEventListener('pointermove', move);
+        g.removeEventListener('pointerup', up);
+        g.classList.remove('dragging');
+        this.save();
+        restore();
+        this.fitStrips();
+      };
+      g.addEventListener('pointermove', move);
+      g.addEventListener('pointerup', up);
+    });
+    return g;
+  }
+
+  // ---- tab strips: tabs keep their size and scroll; ‹ › show when there is more; the front tab stays in view ----------
+  private fitStrips() {
+    for (const side of ['left', 'right', 'float'] as Side[]) {
+      const strip = this.cols[side].querySelector<HTMLElement>('.tabstrip');
+      const tabs = strip?.querySelector<HTMLElement>('.tab-row');
+      if (!strip || !tabs) continue;
+      // the arrows first: when they appear the tabs get narrower, and the front tab must fit what is left
+      this.arrows(strip, tabs);
+      const on = tabs.querySelector<HTMLElement>('.tab.on');
+      if (on) {
+        const l = on.offsetLeft, r = l + on.offsetWidth;
+        if (l < tabs.scrollLeft) tabs.scrollLeft = l - 24;
+        else if (r > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = r - tabs.clientWidth + 24;
+      }
+      this.arrows(strip, tabs);
+    }
+  }
+
+  private arrows(strip: HTMLElement, tabs: HTMLElement) {
+    const more = tabs.scrollWidth > tabs.clientWidth + 1;
+    strip.classList.toggle('overflowing', more);
+    strip.querySelector<HTMLButtonElement>('.tab-scroll.back')!.disabled = tabs.scrollLeft <= 0;
+    strip.querySelector<HTMLButtonElement>('.tab-scroll.fwd')!.disabled = tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 1;
   }
 
   private drawSheet(list: Pane[]) {
@@ -190,7 +297,23 @@ export class Dock {
 
   private strip(side: Side, list: Pane[]) {
     const s = h('div', 'tabstrip');
-    s.setAttribute('role', 'tablist');
+    const tabs = h('div', 'tab-row');
+    tabs.setAttribute('role', 'tablist');
+    const scrollBy = (dx: number) => tabs.scrollBy({ left: dx, behavior: 'smooth' });
+    const back = h('button', 'tab-scroll back');
+    back.append(icon('left', 14));
+    back.setAttribute('aria-label', 'Earlier tabs');
+    back.onclick = () => scrollBy(-tabs.clientWidth * 0.7);
+    const fwd = h('button', 'tab-scroll fwd');
+    fwd.append(icon('right', 14));
+    fwd.setAttribute('aria-label', 'Later tabs');
+    fwd.onclick = () => scrollBy(tabs.clientWidth * 0.7);
+    // a mouse wheel over the tabs scrolls them sideways
+    tabs.addEventListener('wheel', e => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { tabs.scrollLeft += e.deltaY; e.preventDefault(); }
+    }, { passive: false });
+    tabs.addEventListener('scroll', () => { this.stripScroll[side] = tabs.scrollLeft; this.arrows(s, tabs); }, { passive: true });
+    s.append(back, tabs, fwd);
     for (const p of list) {
       const t = h('div', `tab${p.id === this.front[side] ? ' on' : ''}`);
       t.setAttribute('role', 'tab');
@@ -202,9 +325,26 @@ export class Dock {
       x.setAttribute('aria-label', `Close ${p.title}`);
       x.onclick = () => this.close(p);
       t.append(name, x);
-      s.append(t);
+      tabs.append(t);
     }
-    s.append(h('span', 'grow'));
+    tabs.scrollLeft = this.stripScroll[side] ?? 0;
+    // every tab in this column, by name
+    if (list.length > 1) {
+      const all = h('button', 'strip-btn tab-list');
+      all.append(icon('down', 14));
+      all.title = `All ${list.length} tabs`;
+      all.setAttribute('aria-label', `All ${list.length} tabs`);
+      all.onclick = () => {
+        const box = h('div', 'menu-list');
+        for (const p of list) {
+          const b = h('button', `menu-item${p.id === this.front[side] ? ' on' : ''}`, p.title);
+          b.onclick = () => { close(); this.show(p); };
+          box.append(b);
+        }
+        const close = popMenu(all, box, { align: 'right', width: 240 });
+      };
+      s.append(all);
+    }
     const tool = (ico: string, label: string, fn: () => void) => {
       const b = h('button', 'strip-btn');
       b.append(icon(ico, 14));
@@ -214,6 +354,15 @@ export class Dock {
       s.append(b);
     };
     const front = list.find(p => p.id === this.front[side])!;
+    if (side !== 'float' && sizeClass() !== 'compact') {
+      const wide = !!this.wide[side];
+      tool(wide ? 'collapse' : 'expand', wide ? 'Back to its width' : 'Expand to half the window', () => {
+        this.wide[side] = !wide;
+        this.lastSized = side;
+        this.save();
+        this.layout();
+      });
+    }
     tool('minus', 'Minimize', () => { this.hidden[side] = true; this.layout(); });
     if (side === 'float') tool('float', 'Dock it again', () => this.move(front, front.kind === 'notebook' || front.kind === 'threads' || front.kind === 'thread' ? 'right' : 'left'));
     else tool('float', 'Float it', () => this.move(front, 'float'));
@@ -285,7 +434,7 @@ export class Dock {
       const up = () => {
         strip.removeEventListener('pointermove', move);
         strip.removeEventListener('pointerup', up);
-        try { localStorage.setItem(STORE, JSON.stringify({ floatAt: this.floatAt })); } catch { /* this run only */ }
+        this.save();
       };
       strip.addEventListener('pointermove', move);
       strip.addEventListener('pointerup', up);

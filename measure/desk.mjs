@@ -201,6 +201,51 @@ try {
   await drag(await tabAt('Interlinear'), 60, 400);
   check('dropped at the left edge, it docks there', await page.locator('.dock-left.open .tab-name', { hasText: 'Interlinear' }).count() === 1);
 
+  // many tabs in one column: they keep their size and scroll; ‹ › and the ▾ list reach every one
+  for (let v = 1; v <= 8; v++) await page.evaluate(v => window.__wb.run(`notes @Num 25:${v}`), v);
+  await page.waitForSelector('.dock-right .tabstrip.overflowing', { timeout: 10000 });
+  const strip = await page.evaluate(() => {
+    const t = document.querySelector('.dock-right .tab-row'), on = t.querySelector('.tab.on');
+    const widths = [...t.querySelectorAll('.tab')].map(x => x.getBoundingClientRect().width);
+    const sr = t.getBoundingClientRect(), r = on.getBoundingClientRect();
+    return { n: widths.length, narrowest: Math.min(...widths), onVisible: r.left >= sr.left - 1 && r.right <= sr.right + 1, scroll: t.scrollLeft };
+  });
+  check('many tabs keep a usable width and the front one stays in view', strip.n >= 9 && strip.narrowest >= 84 && strip.onVisible, `${strip.n} tabs, narrowest ${Math.round(strip.narrowest)} px`);
+  await page.locator('.dock-right .tab-scroll.back').click();
+  await sleep(500);
+  const after = await page.evaluate(() => document.querySelector('.dock-right .tab-row').scrollLeft);
+  check('‹ scrolls the tabs back', after < strip.scroll, `${Math.round(strip.scroll)} → ${Math.round(after)}`);
+  await page.locator('.dock-right .tab-row').hover();
+  await page.mouse.wheel(0, 400);
+  await sleep(300);
+  check('the mouse wheel scrolls the tabs sideways', (await page.evaluate(() => document.querySelector('.dock-right .tab-row').scrollLeft)) > after);
+  await page.locator('.dock-right .tab-list').click();
+  const listed = await page.locator('.menu .menu-item').count();
+  check('▾ lists every tab in the column', listed === strip.n, `${listed}`);
+  await page.locator('.menu .menu-item', { hasText: 'Notebook' }).click();
+  check('choosing one from the list brings it to the front', await page.locator('.dock-right .pane-notebook:visible').count() === 1);
+  await page.screenshot({ path: shots + '1440-many-tabs.png' });
+  // the column's width: drag its edge, expand to half the window, double-click the edge to put it back
+  const colW = () => page.evaluate(() => document.querySelector('.dock-right').getBoundingClientRect().width);
+  const cw0 = await colW();
+  const g = await page.locator('.dock-right .dock-grip').boundingBox();
+  await page.mouse.move(g.x + g.width / 2, 400); await page.mouse.down();
+  for (let k = 1; k <= 8; k++) await page.mouse.move(g.x + g.width / 2 - 20 * k, 400);
+  await page.mouse.up();
+  await sleep(300);
+  const cw1 = await colW();
+  check('dragging the column’s edge makes it wider', Math.abs(cw1 - (cw0 + 160)) <= 6, `${Math.round(cw0)} → ${Math.round(cw1)} px`);
+  await page.locator('.dock-right .strip-btn[aria-label="Expand to half the window"]').click();
+  await sleep(300);
+  const cw2 = await colW();
+  check('expand gives the column half the window, the reader keeping room', cw2 > cw1 && (await page.evaluate(() => document.getElementById('scroller').getBoundingClientRect().width)) >= 460, `${Math.round(cw2)} px`);
+  await page.screenshot({ path: shots + '1440-expanded-column.png' });
+  await page.locator('.dock-right .strip-btn[aria-label="Back to its width"]').click();
+  await page.locator('.dock-right .dock-grip').dblclick();
+  await sleep(300);
+  check('double-clicking the edge puts the usual width back', Math.abs((await colW()) - cw0) <= 2);
+  for (const p of await page.evaluate(() => window.__wb.dock().panes.filter(p => p.kind === 'place').map(p => p.id))) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, p);
+
   // keyboard: arrows turn chapters, find, text size
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('ArrowRight');

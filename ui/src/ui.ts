@@ -30,6 +30,8 @@ const PATHS: Record<string, string> = {
   grip: 'M6 4h.01M10 4h.01M6 8h.01M10 8h.01M6 12h.01M10 12h.01',
   prompt: 'M3 5l3 3-3 3M8 11h5',
   filter: 'M2 3h12M4 8h8M6 13h4',
+  expand: 'M10 2h4v4M14 2L9 7M6 14H2v-4M2 14l5-5',
+  collapse: 'M13 3L9 7M9 3v4h4M3 13l4-4M7 13V9H3',
 };
 
 export function icon(name: string, size = 16): SVGSVGElement {
