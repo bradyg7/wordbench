@@ -175,11 +175,47 @@ fn ui_ready(app: State<App>, report: Value) -> Result<Value, String> {
     Ok(out)
 }
 
+/// Options for a shortcut (a Start menu or taskbar icon cannot carry the settings a terminal can):
+/// `--study <folder>` is WB_STUDY_DIR, `--allow-real-study` is WB_ALLOW_REAL_STUDY=1, `--window <size>` is WB_WINDOW.
+/// Nothing in this repository passes `--allow-real-study`; the person's own shortcut does.
+fn take_options() -> Result<(), String> {
+    let mut args = std::env::args().skip(1);
+    while let Some(a) = args.next() {
+        match a.as_str() {
+            "--study" => std::env::set_var("WB_STUDY_DIR", args.next().ok_or("--study needs a folder after it")?),
+            "--allow-real-study" => std::env::set_var("WB_ALLOW_REAL_STUDY", "1"),
+            "--window" => std::env::set_var("WB_WINDOW", args.next().ok_or("--window needs a size after it (laptop, desktop, ...)")?),
+            other => return Err(format!("Unknown option “{other}”. The options are --study <folder>, --allow-real-study and --window <size>.")),
+        }
+    }
+    Ok(())
+}
+
+/// Says why the app cannot start, in a window (the release app has no console), then stops.
+fn fail(msg: &str) -> ! {
+    #[cfg(windows)]
+    {
+        #[link(name = "user32")]
+        extern "system" {
+            fn MessageBoxW(hwnd: *mut std::ffi::c_void, text: *const u16, caption: *const u16, kind: u32) -> i32;
+        }
+        let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
+        let (text, caption) = (wide(msg), wide("Bible Workbench"));
+        // MB_OK | MB_ICONWARNING
+        unsafe { MessageBoxW(std::ptr::null_mut(), text.as_ptr(), caption.as_ptr(), 0x30) };
+    }
+    eprintln!("{msg}");
+    std::process::exit(1)
+}
+
 fn main() {
     let started = Instant::now();
     let started_wall_ms = wall_ms();
-    let bible = Bible::open(&wb_core::default_db_path()).unwrap_or_else(|e| panic!("{e}"));
-    let mut store = Store::open(&wb_core::default_study_dir()).unwrap_or_else(|e| panic!("{e}"));
+    if let Err(e) = take_options() {
+        fail(&e);
+    }
+    let bible = Bible::open(&wb_core::default_db_path()).unwrap_or_else(|e| fail(&format!("The Bible database could not be opened: {e}")));
+    let mut store = Store::open(&wb_core::default_study_dir()).unwrap_or_else(|e| fail(&format!("The study folder could not be opened: {e}")));
     store.recheck = std::time::Duration::from_secs(1);
     tauri::Builder::default()
         .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
