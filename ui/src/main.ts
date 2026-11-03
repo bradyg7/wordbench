@@ -16,7 +16,7 @@ import { perf, afterPaint, record } from './perf';
 import { app, here, type At } from './app';
 import { layers } from './layers';
 import { h, icon, popMenu, sizeClass, closeMenu } from './ui';
-import { dock, initPanes, openInterlinear, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
+import { dock, initPanes, openPlace, openInterlinear, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
 import { countInbox, notebookBadge, openNotebook, refreshNotebook } from './notebook';
 import { attachCommandField, loadThreads } from './command';
 import { parse, runLine, written } from './actions';
@@ -186,7 +186,7 @@ function verseBody(v: VerseView, card = false): HTMLElement {
   b.append(colorRow(v.color, c => {
     const [, cv] = v.anchor.split('.');
     const [ch, vs] = cv.split(':').map(Number);
-    addHighlight({ kind: 'verse', code: drawn!.chapter.code, c1: ch, v1: vs, i1: null, c2: null, v2: null, i2: null, id: `session_${Date.now()}`, color: c });
+    addHighlight({ kind: 'verse', code: drawn!.chapter.code, c1: ch, v1: vs, i1: null, c2: null, v2: null, i2: null, id: `session_${Date.now()}`, color: c ?? undefined });
     closeSheet();
   }));
   for (const n of v.notes) b.append(noteCard(v.reference, n.text));
@@ -202,31 +202,57 @@ function verseBody(v: VerseView, card = false): HTMLElement {
     b.append(t);
   }
   const at: At = { anchor: v.anchor, label: v.reference };
-  b.append(actions(['Note', 'Question', 'Thread', 'Copy'], (a, el) => {
+  b.append(actions(compact() ? ['Note', 'Question', 'Thread', 'Copy'] : ['Note', 'Question', 'Thread', 'Copy', 'Notes & lookup'], (a, el) => {
     if (a === 'Copy') copy(`${v.text} (${v.reference} KJV)`);
+    else if (a === 'Notes & lookup') { closeSheet(); openPlace(at.anchor, at.label); }
     else if (a === 'Thread') addToThread(el, at);
     else writeNote(el, at, a === 'Note' ? 'note' : 'question');
   }));
   return b;
 }
 
-function colorRow(current: string | undefined, pick: (c: string) => void) {
+// Your saved custom colors (settings/palette.json, c1–c8), newest first; a custom color used once is saved by wb-core.
+let palette: string[] = [];
+async function loadPalette() {
+  if (!inApp) return;
+  try { palette = (await wb(['palette'])).colors; } catch { /* none */ }
+}
+
+// The five colors, your saved ones, any color, and × to remove (when there is something to remove, or `clear`).
+function colorRow(current: string | undefined, pick: (c: string | null) => void, clear = false) {
   const row = h('div', 'colors');
-  for (const c of COLORS) {
+  COLORS.forEach((c, n) => {
     const dot = h('button', `swatch c-${c}${c === current ? ' on' : ''}`);
     dot.setAttribute('aria-label', c);
+    dot.title = `${c[0].toUpperCase() + c.slice(1)} (${n + 1})`;
     dot.onclick = () => pick(c);
     row.append(dot);
-  }
+  });
+  palette.forEach((c, n) => {
+    const dot = h('button', `swatch saved${c === current ? ' on' : ''}`);
+    dot.style.background = c;
+    dot.setAttribute('aria-label', `Saved color c${n + 1}`);
+    dot.title = `c${n + 1} ${c}`;
+    dot.onclick = () => pick(c);
+    row.append(dot);
+  });
   const plus = h('button', 'swatch plus', '+');
   plus.setAttribute('aria-label', 'Custom color');
+  plus.title = 'Any color (it is saved for next time)';
   plus.onclick = () => {
     const i = h('input') as HTMLInputElement;
     i.type = 'color';
-    i.onchange = () => pick(i.value);
+    i.onchange = () => { pick(i.value); setTimeout(loadPalette, 500); };
     i.click();
   };
   row.append(plus);
+  if (clear || current) {
+    const x = h('button', 'swatch clear', '×');
+    x.setAttribute('aria-label', 'Remove the highlight');
+    x.title = 'Remove the highlight (0)';
+    x.onclick = () => pick(null);
+    row.append(x);
+  }
   return row;
 }
 
@@ -287,6 +313,7 @@ const anchorOf = (m: Mark) => {
 };
 
 async function addHighlight(m: Mark) {
+  if (!inApp && !m.color) return toast('Removed (this session only)');
   if (!inApp) {
     // In the WebKit tests there is no Rust: the mark is drawn for this session only.
     drawn!.marks.highlights.push(m);
@@ -298,7 +325,7 @@ async function addHighlight(m: Mark) {
   try {
     await api.highlight(anchorOf(m), m.color ?? null);
     await refreshMarks();
-    toast('Highlighted');
+    toast(m.color ? 'Highlighted' : 'Highlight removed');
   } catch (e) {
     toast(String(e));
   }
@@ -317,14 +344,18 @@ function showBar(a: number, b: number, touch: boolean) {
   bar?.remove();
   app.picked = selectionAt(a, b);
   bar = h('div', touch ? 'selbar' : 'colorbar');
-  bar.append(colorRow(undefined, c => {
+  const pick = (c: string | null) => {
     const d = drawn!;
-    addHighlight({ kind: a === b ? 'word' : 'phrase', code: d.chapter.code, c1: d.chapter.chapter, v1: d.v[a], i1: d.i[a], c2: a === b ? null : d.chapter.chapter, v2: a === b ? null : d.v[b], i2: a === b ? null : d.i[b], id: `session_${Date.now()}`, color: c });
+    addHighlight({ kind: a === b ? 'word' : 'phrase', code: d.chapter.code, c1: d.chapter.chapter, v1: d.v[a], i1: d.i[a], c2: a === b ? null : d.chapter.chapter, v2: a === b ? null : d.v[b], i2: a === b ? null : d.i[b], id: `session_${Date.now()}`, color: c ?? undefined });
     selector.clear();
-  }));
-  bar.append(actions(touch ? ['Note', 'Thread', 'Look up', 'Copy'] : ['Note', 'Thread', 'Copy'], (act, el) => {
+  };
+  barPick = pick;
+  bar.append(colorRow(undefined, pick, true));
+  if (!touch) bar.append(threadChips(selectionAt(a, b)));
+  bar.append(actions(touch ? ['Note', 'Thread', 'Look up', 'Copy'] : ['Note', 'Thread', 'Copy', 'Notes & lookup'], (act, el) => {
     const d = drawn!;
     if (act === 'Copy') copy(`${textOf(d, a, b)} (${labelOf(d, a, b)} KJV)`);
+    else if (act === 'Notes & lookup') { const at = selectionAt(a, b); selector.clear(); openPlace(at.anchor, at.label); }
     else if (act === 'Look up') {
       const k = [...Array(b - a + 1).keys()].map(n => a + n).find(k => d.strong[k]);
       if (k !== undefined) openWord(k, d.el[k], performance.now());
@@ -334,6 +365,34 @@ function showBar(a: number, b: number, touch: boolean) {
   bar.addEventListener('pointerdown', e => e.stopPropagation());
   document.getElementById('overlay')!.append(bar);
   placeBar();
+}
+
+// On the color bar: your three most recently changed threads, one click to add the selection (again to take it out).
+let barPick: ((c: string | null) => void) | null = null;
+function threadChips(at: At): HTMLElement {
+  const box = h('span', 'cb-chips');
+  if (!inApp) return box;
+  Promise.all([wb(['thread', 'list']), wb(['anchor', at.anchor]).catch(() => ({ threads: [] }))]).then(([ts, here]) => {
+    const holding = new Set((here.threads || []).map((t: any) => t.id));
+    for (const t of (ts as any[]).slice(0, 3)) {
+      const chip = h('button', `cb-chip${holding.has(t.id) ? ' in' : ''}`);
+      chip.append(h('i', `dot c-${t.color}`), document.createTextNode(` ${t.name}`));
+      chip.title = holding.has(t.id) ? `In ${t.name}: click to take it out` : `Add to ${t.name}`;
+      chip.onclick = async () => {
+        const inIt = chip.classList.contains('in');
+        try {
+          await wb(['thread', inIt ? 'rm' : 'add', t.name, at.anchor]);
+          chip.classList.toggle('in', !inIt);
+          chip.title = !inIt ? `In ${t.name}: click to take it out` : `Add to ${t.name}`;
+          toast(inIt ? `Taken out of ${t.name}` : `${at.label} added to ${t.name}`);
+          written();
+        } catch (e) { toast(String(e)); }
+      };
+      box.append(chip);
+    }
+    placeBar();
+  }).catch(() => {});
+  return box;
 }
 
 function placeBar() {
@@ -390,7 +449,7 @@ const selector = new Selector(reader, scroller, {
   },
   unhover: () => { hoverSeq++; hideCard(); },
   selected: (a, b, touch) => showBar(a, b, touch),
-  cleared: () => { bar?.remove(); bar = null; },
+  cleared: () => { bar?.remove(); bar = null; barPick = null; },
 });
 document.getElementById('overlay')!.addEventListener('pointerleave', e => { if ((e.target as HTMLElement).classList?.contains('hovercard')) hideCard(); }, true);
 // Alt+click a word: the interlinear for its verse.
@@ -717,6 +776,12 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
   if (typing) return;
+  // a selection with its bar: 1–5 color it, 0 removes the highlight
+  if (bar && selector.sel && barPick && /^[0-5]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    e.preventDefault();
+    barPick(e.key === '0' ? null : COLORS[+e.key - 1]);
+    return;
+  }
   if (e.key === 'ArrowRight' && !e.altKey) step(1);
   if (e.key === 'ArrowLeft' && !e.altKey) step(-1);
   if (e.key === 'ArrowLeft' && e.altKey) back();
@@ -774,6 +839,7 @@ async function start() {
   onDo(runLine);
   if (inApp) {
     countInbox();
+    loadPalette();
     if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') openNotebook();
   }
 }

@@ -7,7 +7,7 @@ import { layers } from './layers';
 import { countInbox, openNotebook, refreshNotebook } from './notebook';
 import {
   dock, frontResults, jumpTo, openBdb, openCount, openDefine, openFind, openForms, openHelp, openInterlinear, openKeys, openLesson, openLexiconc,
-  openMarked, openNear, openNotesAt, openPassage, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
+  openMarked, openNear, openPlace, openPassage, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
 } from './panes';
 
 // The last write, so `undo` can take it back.
@@ -98,7 +98,7 @@ export async function perform(a: any, line: string): Promise<string> {
     case 'sets': openShelf(); return 'The Shelf';
     case 'notes': {
       const p = at(a);
-      if (a.action === 'open') { openNotesAt(p.anchor, p.label); return `Your notes on ${p.label}`; }
+      if (a.action === 'open') { openPlace(p.anchor, p.label); return `Your notes on ${p.label}`; }
       return changeNote(a, p);
     }
     // ---- writing (each through a wb command, then drawn again) ----
@@ -353,6 +353,7 @@ async function reopen(key: string) {
     bdb: () => openBdb(x[0]), count: () => openCount(x[0]), forms: () => openForms(x[0]), lexiconc: () => openLexiconc(x[0]),
     thread: () => openThread(x[0]), threads: () => openThreads(), notebook: () => openNotebook(), help: () => openHelp(), keys: () => openKeys(),
     shelf: () => openShelf(), find: () => openFind(x[0]), interlinear: () => openInterlinear(x[0], x[0]),
+    place: () => openPlace(x[0], x[0]),
     passage: () => openPassage(x[0].split(';'), x[1], x[0]), today: () => openToday(x[0]), lesson: () => openLesson(x[0]),
   };
   f[kind]?.();

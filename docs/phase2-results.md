@@ -7,7 +7,7 @@ study without the Python app) started on 2026-11-02 on the real folder**, on the
 
 | | Result |
 |---|---|
-| Desktop in the real app | `node measure/desk.mjs`: **31 of 31** checks, in WebView2, at 1440×900 and the other sizes |
+| Desktop in the real app | `node measure/desk.mjs`: **37 of 37** checks, in WebView2, at 1440×900 and the other sizes |
 | WebKit (the iPhone and iPad engine) | `npm run test:webkit`: **12 of 12** (the 10 of phase 0 and 2 for the new shell) |
 | Rust tests | `cargo test`: **105** (97 before; 4 for the Notebook's `wb` commands, 4 for the command language) |
 | The command language against the Python parser | **480 of 480** lines and **108 of 108** texts with references give the same answer |
@@ -72,6 +72,14 @@ passages (`open`, `compare` with the YLT under each verse, several places), the 
 and a thread (drag to reorder, which writes the whole order as `wb thread order` does; take a place out; rename, note,
 color, sort, delete), find in your own notes, marked, the day's log (a line can be run again), Help (the manual, with
 each example runnable), Keys, the Shelf (sets), a lesson's text, and notes on a place.
+
+**The color bar** (a selection with the mouse) has what the Python app's had: the five colors (keys 1–5), your saved
+colors (c1–c8; a custom color is saved when used), any color, × to remove the highlight (key 0), chips for your three
+most recently changed threads (a click adds the selection; a second click takes it out), Note, Thread, Copy, and
+**Notes & lookup**. That opens the place pane (as the Python app's My notes): the words verbatim, their highlight
+(colors and ×), your notes there with Edit and Delete, a box to add one, questions there (mark answered or open again),
+notes nearby and on the original word everywhere, the threads holding it (open, or take it out), Add to a thread,
+Interlinear, and its Strong's numbers. The verse popover has Notes & lookup too; `notes [@place]` opens it.
 
 The verse popover, the word sheet and the selection bar now write: Note, Question and Thread (a chooser with a new name)
 go through `wb note add`, `wb trail add` and `wb thread add`; colors as before through the no-overlap rule; Every use and
@@ -175,6 +183,9 @@ How it is started, typed in a terminal (**nothing in this repository sets `WB_AL
 ```
 $env:WB_STUDY_DIR = 'C:\Users\brady\github\bible-study-data'; $env:WB_ALLOW_REAL_STUDY = '1'; $env:WB_WINDOW = 'laptop-large'; & "$env:LOCALAPPDATA\bible-workbench-rs\app\bible-workbench.exe"
 ```
+
+A newer build reaches this app with `scripts/install-app.ps1` (after `npx tauri build --no-bundle`), which copies it
+into `%LOCALAPPDATA%ible-workbench-rspp\` and refuses while the app is open.
 
 `wb` on the real folder, from that same terminal: `& "$env:LOCALAPPDATA\bible-workbench-rs\app\wb.exe" journal`.
 

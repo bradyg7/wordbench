@@ -646,20 +646,144 @@ export function openMarked(color: string, scope: string, thread?: string) {
   });
 }
 
-/** My notes on a place: notes, its highlight, the threads it is in (wb anchor). */
-export function openNotesAt(anchor: string, label: string) {
-  return dock.open('notes', `Notes: ${label}`, `notes|${anchor}`, MINE, async el => {
+/**
+ * Notes & lookup for a place (the Python app's My notes pane): the words verbatim, their highlight, your notes there (edit,
+ * delete, add), questions there, notes nearby, notes on the original word everywhere, the threads holding it, and its
+ * Strong's numbers. Everything through `wb anchor` and the note, trail, highlight and thread commands.
+ */
+export function openPlace(anchor: string, label: string) {
+  return dock.open('place', label, `place|${anchor}`, MINE, async el => {
     el.replaceChildren();
-    const d = await wb(['anchor', anchor]);
-    head(el, label, d.quote || '');
-    const notes = d.notes || [];
-    for (const n of notes) {
-      const c = h('div', 'note-card');
-      c.append(placePill(n.label || label, () => goTo(n.anchor)), h('p', '', n.text));
-      el.append(c);
+    const [d, qs] = await Promise.all([wb(['anchor', anchor]), wb(['trail', 'list', '--status', 'all']).catch(() => ({ trails: [] }))]);
+    const hd = head(el, d.label || label, '');
+    if (d.kind !== 'verse' && d.kind !== 'lemma') (hd.querySelector('.pane-sub') as HTMLElement).textContent = d.kind === 'word' ? 'A word' : 'Words';
+    if (d.quote) el.append(h('p', 'scripture place-quote', d.kind === 'verse' || d.kind === 'verses' ? d.quote : `“${d.quote}”`));
+    if (d.ok && d.kind !== 'lemma') {
+      el.append(h('div', 'label', 'Highlight'));
+      const row = h('div', 'colors');
+      for (const c of ['yellow', 'green', 'blue', 'pink', 'orange']) {
+        const sw = h('button', `swatch c-${c}${d.highlight === c ? ' on' : ''}`);
+        sw.setAttribute('aria-label', c);
+        sw.onclick = async () => { await wb(['hl', 'set', anchor, c]); app.changed(); };
+        row.append(sw);
+      }
+      if (d.highlight && !['yellow', 'green', 'blue', 'pink', 'orange'].includes(d.highlight)) {
+        const sw = h('button', 'swatch on');
+        sw.style.background = d.highlight;
+        sw.setAttribute('aria-label', d.highlight);
+        row.append(sw);
+      }
+      if (d.highlight || d.highlighted) {
+        const x = h('button', 'swatch clear', '×');
+        x.setAttribute('aria-label', 'Remove the highlight');
+        x.title = 'Remove the highlight here';
+        x.onclick = async () => { await wb(['hl', 'clear', anchor]); app.changed(); };
+        row.append(x);
+      }
+      el.append(row);
     }
-    if (!notes.length) el.append(h('p', 'muted', 'No notes here yet.'));
+    el.append(h('div', 'label', 'Your notes here'));
+    for (const n of d.notes || []) el.append(noteCardEditable(n, d.label || label));
+    if (!(d.notes || []).length) el.append(h('p', 'muted small', 'None yet.'));
+    el.append(addNoteBox(anchor));
+    const here = (qs.trails || []).filter((t: any) => t.anchor === anchor);
+    if (here.length) {
+      el.append(h('div', 'label', 'Questions here'));
+      for (const t of here) {
+        const c = h('div', `note-card${t.status === 'done' ? ' done' : ''}`);
+        const top = h('div', 'nb-top');
+        top.append(h('span', 'pill question-pill', t.status === 'done' ? '? Answered' : '? Question'), h('span', 'grow'));
+        top.append(button('link-btn', t.status === 'done' ? 'Open again' : 'Answered', async () => { await wb(['trail', t.status === 'done' ? 'reopen' : 'done', t.id]); app.changed(); }));
+        c.append(top, h('p', 'nb-text', t.text));
+        el.append(c);
+      }
+    }
+    const near = d.nearby || [];
+    if (near.length) {
+      el.append(h('div', 'label', 'Nearby'));
+      for (const n of near) el.append(card(n.quote ? `${placeLabel(n)} · “${short(n.quote)}”` : placeLabel(n), n.text, () => openPlace(n.anchor, placeLabel(n))));
+    }
+    const ev = d.everywhere;
+    if (ev?.word_notes?.length) {
+      el.append(h('div', 'label', `${ev.strong} everywhere`));
+      for (const n of ev.word_notes) el.append(card(`${ev.strong} ${ev.translit || ''}`.trim(), n.text, () => openStrong(ev.strong)));
+    }
+    if ((d.threads || []).length) {
+      el.append(h('div', 'label', 'In threads'));
+      const row = h('div', 'in-threads');
+      for (const t of d.threads) {
+        const chip = h('span', 'chip thread');
+        chip.append(h('i', `dot c-${t.color}`), button('link-btn', t.name, () => openThread(t.name)));
+        const x = h('button', 'member-x shown');
+        x.append(icon('x', 12));
+        x.title = `Take it out of ${t.name}`;
+        x.onclick = async () => { await wb(['thread', 'rm', t.name, anchor]); app.changed(); };
+        chip.append(x);
+        row.append(chip);
+      }
+      el.append(row);
+    }
+    const acts = h('div', 'acts two');
+    acts.append(button('btn', 'Add to a thread…', e => threadChooser(e.currentTarget as HTMLElement, async name => { await wb(['thread', 'add', name, anchor]); app.changed(); })));
+    if (d.ref) acts.append(button('btn', 'Interlinear', () => openInterlinear(`${d.ref.code} ${d.ref.c}:${d.ref.v}`, `${d.ref.name} ${d.ref.c}:${d.ref.v}`)));
+    el.append(acts);
+    if ((d.strongs || []).length) {
+      el.append(h('div', 'label', 'Original words'));
+      const row = h('div', 'chips');
+      for (const sn of d.strongs) row.append(button('chip link', sn, () => openStrong(sn)));
+      el.append(row);
+    }
   });
+}
+
+const short = (q: string) => (q.length > 40 ? q.slice(0, 38) + '…' : q);
+const placeLabel = (n: any) => n.label || n.anchor;
+
+function noteCardEditable(n: any, label: string): HTMLElement {
+  const c = h('div', 'note-card');
+  const top = h('div', 'nb-top');
+  top.append(placePill(n.kind === 'verse' ? label : `${label} · “${short(n.quote || '')}”`), h('span', 'grow'));
+  const edit = button('link-btn', 'Edit', () => {
+    const ta = h('textarea', 'field nb-edit') as HTMLTextAreaElement;
+    ta.value = n.text;
+    p.replaceWith(ta);
+    ta.focus();
+    const save = async () => {
+      const text = ta.value.trim();
+      if (text && text !== n.text) await wb(['note', 'edit', n.id, n.anchor, '-'], text);
+      app.changed();
+    };
+    ta.onkeydown = e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); }
+      if (e.key === 'Escape') { e.stopPropagation(); app.changed(); }
+    };
+    ta.onblur = () => save();
+  });
+  const del = button('link-btn', 'Delete', async () => {
+    if (!confirm('Delete this note? It goes to .trash in the study folder.')) return;
+    await wb(['note', 'rm', n.id]);
+    app.changed();
+  });
+  top.append(edit, del);
+  const p = h('p', 'nb-text', n.text);
+  c.append(top, p);
+  return c;
+}
+
+function addNoteBox(anchor: string): HTMLElement {
+  const box = h('div', 'nb-write place-write');
+  const ta = h('textarea', 'nb-input') as HTMLTextAreaElement;
+  ta.placeholder = 'Write a note here…';
+  ta.rows = 2;
+  box.append(ta, h('div', 'muted small', 'Enter saves · Shift+Enter: a new line'));
+  ta.onkeydown = async e => {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    e.preventDefault();
+    const text = ta.value.trim();
+    if (!text) return;
+    try { await wb(['note', 'add', anchor, '-'], text); ta.value = ''; app.changed(); } catch (x) { toast(String(x)); }
+  };
+  return box;
 }
 
 export function openToday(day: string) {

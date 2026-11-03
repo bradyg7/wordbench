@@ -243,3 +243,18 @@ button.place-pill:hover { filter: brightness(.96); }
 .place-opt-label { font: var(--type-small-strong); font-size: 15px; }
 .place-other { display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius-control); color: var(--muted); }
 .place-other .field { border: 0; padding-left: 0; }
+
+/* the color bar's extras: saved colors, ×, recent threads */
+.swatch.clear { color: var(--muted); font-size: 16px; line-height: 1; background: var(--surface); }
+.colorbar .swatch.clear { font-size: 14px; }
+.cb-chips { display: inline-flex; gap: 4px; }
+.cb-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: var(--radius-pill); border: 1px solid var(--line); font: var(--type-small); white-space: nowrap; }
+.cb-chip.in { border-color: var(--accent); background: var(--accent-soft); }
+.cb-chip:hover { border-color: var(--accent); }
+
+/* Notes & lookup for a place */
+.place-quote { margin: 4px 0 8px; }
+.place-write { margin: 10px 0 0; }
+.member-x.shown { opacity: 1; }
+.note-card.done { opacity: .7; }
+.pane-place .colors { margin: 6px 0; }

@@ -118,6 +118,56 @@ try {
   await page.waitForSelector('.vn[data-v="9"].vq', { timeout: 10000 });
   check('a question puts a ? on its verse number', true);
 
+  // the color bar: select words with the mouse, 2 colors them green, the recent threads are chips, 0 removes the color
+  const anchorOf = () => page.evaluate(() => {
+    const d = window.__wb.drawn, s = window.__wb.selector.sel;
+    return `NUM.25:${d.v[s.a]}.${d.i[s.a]}-25:${d.v[s.b]}.${d.i[s.b]}`;
+  });
+  const boxOf = async (v, i) => page.evaluate(([v, i]) => {
+    const d = window.__wb.drawn, k = d.v.findIndex((x, n) => x === v && d.i[n] === i);
+    const e = d.el[k]; e.scrollIntoView({ block: 'center' });
+    const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }, [v, i]);
+  const w1 = await boxOf(16, 2), w2 = await boxOf(16, 5);
+  await page.mouse.move(w1.x, w1.y); await page.mouse.down();
+  for (let k = 1; k <= 6; k++) await page.mouse.move(w1.x + (w2.x - w1.x) * k / 6, w1.y + (w2.y - w1.y) * k / 6);
+  await page.mouse.up();
+  await page.waitForSelector('.colorbar', { timeout: 5000 });
+  const sel = await anchorOf();
+  await page.waitForSelector('.colorbar .cb-chip', { timeout: 5000 }).catch(() => {});
+  check('the color bar has ×, and chips for recent threads', await page.locator('.colorbar .swatch.clear').count() === 1 && await page.locator('.colorbar .cb-chip').count() > 0);
+  await page.screenshot({ path: shots + '1440-color-bar.png' });
+  await page.keyboard.press('2');
+  await sleep(800);
+  const hl = () => JSON.parse(execFileSync(wbExe, ['anchor', sel], { env }).toString()).highlight;
+  check('2 colors the selection green', hl() === 'green', sel);
+  // the same words again, then 0
+  await page.mouse.move(w1.x, w1.y); await page.mouse.down();
+  for (let k = 1; k <= 6; k++) await page.mouse.move(w1.x + (w2.x - w1.x) * k / 6, w1.y + (w2.y - w1.y) * k / 6);
+  await page.mouse.up();
+  await page.waitForSelector('.colorbar', { timeout: 5000 });
+  await page.keyboard.press('0');
+  await sleep(800);
+  check('0 removes the highlight', hl() === null);
+
+  // Notes & lookup for a verse: color it, write a note there, and take the color off again
+  await page.locator('.vn[data-v="4"]').click();
+  await page.locator('.popover .act', { hasText: 'Notes & lookup' }).click();
+  await page.waitForSelector('.pane-place:visible .place-quote', { timeout: 10000 });
+  const v4 = JSON.parse(execFileSync(wbExe, ['text', 'Num 25:4', '--json'], { env }).toString()).verses[0].text;
+  check('Notes & lookup shows the verse verbatim', (await page.locator('.pane-place:visible .place-quote').textContent()) === v4);
+  await page.locator('.pane-place:visible .swatch.c-blue').click();
+  await page.waitForSelector('.pane-place:visible .swatch.c-blue.on', { timeout: 10000 });
+  await page.locator('.pane-place:visible .place-write textarea').fill('A note written in the place pane');
+  await page.locator('.pane-place:visible .place-write textarea').press('Enter');
+  await page.waitForSelector('.pane-place:visible .note-card .nb-text', { timeout: 10000 });
+  const at4 = JSON.parse(execFileSync(wbExe, ['anchor', 'Num 25:4'], { env }).toString());
+  check('the place pane colors the verse and writes a note there', at4.highlight === 'blue' && at4.notes.some(n => n.text === 'A note written in the place pane'));
+  await page.screenshot({ path: shots + '1440-notes-and-lookup.png' });
+  await page.locator('.pane-place:visible .swatch.clear').click();
+  await sleep(800);
+  check('× in the place pane removes the highlight', JSON.parse(execFileSync(wbExe, ['anchor', 'Num 25:4'], { env }).toString()).highlight === null);
+
   // threads and layers
   await page.evaluate(() => window.__wb.run('+Plague stayed @Num 25:8'));
   await page.evaluate(() => window.__wb.run('thread Plague stayed'));
