@@ -25,7 +25,7 @@ const HL: &str = "highlights/NUM.json";
 fn main() -> Res<()> {
     let root = std::env::temp_dir().join("bible-workbench-rs").join("sync-spike");
     let scratch = wb_core::default_study_dir();
-    wb_core::study::Study::open(&scratch)?; // refuses the real folder
+    wb_core::store::guard(&scratch)?; // refuses the real folder
     if root.exists() {
         fs::remove_dir_all(&root)?;
     }

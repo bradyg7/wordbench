@@ -19,7 +19,7 @@ use typst::text::{Font, FontBook};
 use typst::utils::LazyHash;
 use typst::{Library, LibraryExt, World};
 use typst_layout::PagedDocument;
-use wb_core::{bible::Bible, marks, study::Study};
+use wb_core::{bible::Bible, marks, store::Store};
 
 const TEMPLATE: &str = r##"
 #let data = json("data.json")
@@ -182,7 +182,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The chapter, with the person's highlights from the scratch study folder.
     let bible = Bible::open(&wb_core::default_db_path())?;
     let ch = bible.chapter(&code, chapter)?;
-    let m = Study::open(&wb_core::default_study_dir()).and_then(|s| marks::chapter_marks(&s, &code, chapter)).unwrap_or_default();
+    let m = Store::open(&wb_core::default_study_dir()).and_then(|s| marks::chapter_marks(&s, &code, chapter)).unwrap_or_default();
     let color_of = |v: u32, i: u32| -> Option<&'static str> {
         let mut c = None;
         for h in &m.highlights {

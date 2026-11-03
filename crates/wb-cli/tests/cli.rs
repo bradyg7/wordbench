@@ -327,3 +327,71 @@ fn help_lists_every_command_and_explains_one() {
     assert!(wb.ok(&["help", "thread", "move"]).contains("wb thread move"));
     assert!(wb.ok(&["thread"]).contains("thread add-many")); // a group name alone shows the group
 }
+
+// ---- reading plans and progress (new in the Rust app) ----
+
+#[test]
+fn a_plan_covers_every_chapter_once_in_order_as_whole_chapters() {
+    let Some(wb) = Wb::new() else { return };
+    for (kind, days, chapters) in [("canonical", "365", 1189), ("nt", "90", 260), ("psalms-proverbs", "31", 181), ("ot-nt", "365", 1189)] {
+        wb.js(&["plan", "start", kind, "--kind", kind, "--days", days, "--start", "2026-01-01"]);
+        let p = wb.js(&["plan", "show", kind, "--on", "2026-01-01"]);
+        let sched = p["schedule"].as_array().unwrap();
+        assert_eq!(sched.len(), days.parse::<usize>().unwrap(), "{kind}");
+        let all: Vec<String> = sched.iter().flat_map(|d| d["entries"].as_array().unwrap().iter().map(|e| e.as_str().unwrap().to_string())).collect();
+        let mut once = all.clone();
+        once.sort();
+        once.dedup();
+        assert_eq!((all.len(), once.len()), (chapters, chapters), "{kind}: every chapter once");
+        assert!(all.iter().all(|e| !e.contains(':')), "{kind}: whole chapters");
+        assert!(sched.iter().all(|d| !d["entries"].as_array().unwrap().is_empty()), "{kind}: something every day");
+    }
+    let books = wb.js(&["plan", "start", "Gospels", "--kind", "books", "--books", "gospels", "--days", "30"]);
+    assert_eq!(books["days"], 30);
+    assert!(wb.fails(&["plan", "start", "Too short", "--kind", "books", "--books", "jude", "--days", "5"]).contains("at least one a day"));
+    assert!(wb.fails(&["plan", "start", "Gospels"]).contains("already a plan"));
+    assert!(wb.fails(&["plan", "start", "Odd", "--kind", "chronological"]).contains("No plan kind"));
+}
+
+#[test]
+fn a_plan_knows_today_what_is_behind_and_what_is_done() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["plan", "start", "Year", "--start", "2026-01-01"]);
+    let t = wb.js(&["plan", "today", "--on", "2026-01-03"]);
+    let p = &t["plans"][0];
+    assert_eq!((p["day"].clone(), p["behind"].clone()), (json!(3), json!(3)));
+    assert_eq!(p["to_read"].as_array().unwrap().len(), 3);
+    let d = wb.js(&["plan", "done", "year"]); // the first day not yet done
+    assert_eq!((d["day"].clone(), d["done"].clone()), (json!(1), json!(1)));
+    let second: Vec<String> = wb.js(&["plan", "show", "year"])["schedule"][1]["entries"].as_array().unwrap().iter().map(|e| e.as_str().unwrap().to_string()).collect();
+    let (code, ch) = second[0].split_once('.').unwrap();
+    let first_book = wb.js(&["books"])["books"].as_array().unwrap().iter().find(|b| b["code"] == code).unwrap()["name"].as_str().unwrap().to_string();
+    for e in &second {
+        let c = e.split_once('.').unwrap().1;
+        wb.js(&["read", "mark", &format!("{first_book} {c}")]); // read from the reader, with no plan named: still counts
+    }
+    let _ = ch;
+    assert_eq!(wb.js(&["plan", "today", "year", "--on", "2026-01-03"])["plans"][0]["behind"], 1);
+    assert_eq!(wb.js(&["plan", "done", "year", "--day", "3"])["done"], 3);
+    assert_eq!(wb.js(&["plan", "today", "--on", "2026-01-03"])["plans"][0]["behind"], 0);
+    assert!(wb.fails(&["plan", "done", "year", "--day", "400"]).contains("no day 400"));
+    let pr = wb.js(&["read", "progress"]);
+    assert!(pr["chapters"].as_u64().unwrap() >= 3);
+    wb.js(&["plan", "rm", "year"]);
+    assert_eq!(wb.js(&["plan", "list"]), json!([]));
+    assert!(pr["chapters"] == wb.js(&["read", "progress"])["chapters"]); // what was read stays in the log
+}
+
+#[test]
+fn a_plan_of_your_own_is_imported_from_a_text_file() {
+    let Some(wb) = Wb::new() else { return };
+    let text = "# my own order\nGen 1-3\nJob 1-5; Ps 1\nPs 119:1-88  # half of it\n";
+    assert_eq!(wb.run(&["plan", "import", "Mine", "--start", "2026-01-01"], Some(text)).0, 0);
+    let p = wb.js(&["plan", "show", "mine", "--on", "2026-01-01"]);
+    let labels: Vec<&str> = p["schedule"].as_array().unwrap().iter().map(|d| d["label"].as_str().unwrap()).collect();
+    assert_eq!(labels, vec!["Genesis 1–3", "Job 1–5; Psalms 1", "Psalms 119:1–88"]);
+    assert_eq!(p["kind"], "imported");
+    let (code, _, err) = wb.run(&["plan", "import", "Bad"], Some("Gen 1\nNum 99\n"));
+    assert_eq!(code, 1);
+    assert!(err.contains("Line 2"), "{err}");
+}

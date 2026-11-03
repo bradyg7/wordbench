@@ -10,7 +10,13 @@ const INTERNAL: &[&str] = &[
     "threads", "thread", "trails", "sets", "find_set", "add_note", "update_note", "add_trail", "create_thread", "add_to_thread",
     "add_many_to_thread", "remove_from_thread", "update_thread", "versions",
     // the file formats and small helpers of the store and of scripture
-    "bad", "missing", "now", "new_id", "parse_md", "dump_md", "write_atomic", "cut", "check_color", "parse_thread", "verses", "copy_text",
+    "bad", "missing", "now", "new_id", "parse_md", "dump_md", "write_atomic", "cut", "check_color", "parse_thread", "verses", "copy_text", "guard", "search_every_verse", "warm",
+    // the store keeping in step with its folder, and plain forms the commands reach through others (hl set keeps the
+    // no-overlap rule over set_highlight; set rename is update_set without pane views, which come from the window)
+    "refresh", "look_again", "set_highlight", "update_set",
+    // reading: the pieces wb plan and wb read are made of
+    "today", "schedule", "parse_plan_text", "label", "read_plan", "plans", "find_plan", "start_plan", "remove_plan", "log", "mark",
+    "chapters_of", "progress", "today_view", "overall",
 ];
 
 fn public_fns(src: &str) -> Vec<String> {
@@ -24,9 +30,9 @@ fn public_fns(src: &str) -> Vec<String> {
 fn every_action_has_a_command() {
     let core = env!("CARGO_MANIFEST_DIR").to_string() + "/../wb-core/src/";
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
-    let cli_src: String = ["main.rs", "read.rs", "study.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
+    let cli_src: String = ["main.rs", "read.rs", "study.rs", "reading.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["lookup.rs", "studyapi.rs", "store.rs", "scripture.rs"] {
+    for file in ["lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;

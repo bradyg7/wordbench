@@ -4,6 +4,7 @@
 
 mod args;
 mod read;
+mod reading;
 mod study;
 
 use args::{Args, Spec};
@@ -21,7 +22,7 @@ pub type Res = Result<Out, String>;
 
 pub struct Ctx {
     bible: OnceCell<Bible>,
-    study: OnceCell<wb_core::study::Study>,
+    study: OnceCell<wb_core::store::Store>,
 }
 
 impl Ctx {
@@ -33,9 +34,9 @@ impl Ctx {
         Ok(self.bible.get().unwrap())
     }
 
-    pub fn study(&self) -> Result<&wb_core::study::Study, String> {
+    pub fn study(&self) -> Result<&wb_core::store::Store, String> {
         if self.study.get().is_none() {
-            let s = wb_core::study::Study::open(&wb_core::default_study_dir()).map_err(|e| e.to_string())?;
+            let s = wb_core::store::Store::open(&wb_core::default_study_dir()).map_err(|e| e.to_string())?;
             let _ = self.study.set(s);
         }
         Ok(self.study.get().unwrap())
@@ -65,6 +66,7 @@ fn commands() -> Vec<Command> {
     let mut all = vec![cmd("help", "List the commands, or explain one (wb help thread add).", vec![Spec::Pos("topic", args::N::Any)], help)];
     all.extend(read::commands());
     all.extend(study::commands());
+    all.extend(reading::commands());
     all
 }
 

@@ -72,7 +72,10 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   record('chapter', performance.now() - t0, { rust_ms, ipc_ms: t1 - t0 - rust_ms, ...drawTimes, frame_ms: performance.now() - t2, words: drawn.el.length, at: `${code} ${chapter}` });
   // The rest of a long chapter, a part at a time between frames.
   const d = drawn;
-  const rest = () => { if (seq === drawSeq && d.more()) setTimeout(rest, 0); else if (seq === drawSeq) record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); };
+  const rest = () => {
+    if (seq === drawSeq && d.more()) setTimeout(rest, 0);
+    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); }
+  };
   setTimeout(rest, 0);
   savePlace();
 }
@@ -189,11 +192,32 @@ async function copy(text: string) {
   try { await navigator.clipboard.writeText(text); toast('Copied with its reference'); } catch { toast('Copy is not allowed here'); }
 }
 
-function addHighlight(m: Mark) {
-  // Session only in the spike: the study files are not written until phase 1 brings the no-overlap rule.
-  drawn!.marks.highlights.push(m);
-  paint(reader, drawn!);
-  toast('Highlighted (this session only)');
+const anchorOf = (m: Mark) => {
+  const start = `${m.code}.${m.c1}:${m.v1}` + (m.i1 !== null ? `.${m.i1}` : '');
+  return m.c2 === null ? start : `${start}-${m.c2}:${m.v2}` + (m.i2 !== null ? `.${m.i2}` : '');
+};
+
+async function addHighlight(m: Mark) {
+  if (!inApp) {
+    // In the WebKit tests there is no Rust: the mark is drawn for this session only.
+    drawn!.marks.highlights.push(m);
+    paint(reader, drawn!);
+    toast('Highlighted (this session only)');
+    return;
+  }
+  // Saved in the study folder by the no-overlap rule (as wb hl set does), then the marks are read back.
+  const d = drawn!;
+  try {
+    await api.highlight(anchorOf(m), m.color ?? null);
+    const { data } = await api.reader(d.chapter.code, d.chapter.chapter);
+    if (drawn === d) {
+      d.marks = data.marks;
+      paint(reader, d);
+    }
+    toast('Highlighted');
+  } catch (e) {
+    toast(String(e));
+  }
 }
 
 // ---- selection bar (touch) and color bar (mouse) --------------------------------------------------------------------
@@ -276,9 +300,50 @@ document.getElementById('overlay')!.addEventListener('pointerleave', e => { if (
 // ---- the spike's settings (More) ------------------------------------------------------------------------------------
 const PRESETS = [['phone', 'Phone 390×844'], ['phone-landscape', 'Phone landscape'], ['ipad', 'iPad portrait 820×1180'], ['ipad-landscape', 'iPad landscape'], ['laptop', 'Laptop 1280×800'], ['laptop-large', 'Laptop 1440×900'], ['desktop', 'Desktop 1920×1080']];
 
+// At the end of a chapter: a quiet way to record it as read (the reading log; wb read mark does the same).
+function chapterEnd(d: Drawn) {
+  if (!inApp) return;
+  const place = `${d.chapter.name} ${d.chapter.chapter}`;
+  const end = h('div', 'chapter-end');
+  const btn = h('button', 'btn soft', `Mark ${place} read`);
+  btn.onclick = async () => {
+    try { await api.readMark(place); btn.textContent = `${place}: read`; btn.setAttribute('disabled', ''); } catch (e) { toast(String(e)); }
+  };
+  end.append(btn);
+  reader.append(end);
+}
+
+// Today's readings in each plan the person started (wb plan start / wb plan import); a day opens at its first place.
+async function todaySection(into: HTMLElement) {
+  if (!inApp) return;
+  let today;
+  try { today = (await api.planToday()).data; } catch { return; }
+  if (!today.plans.length) return;
+  into.append(h('div', 'label', "Today’s reading"));
+  for (const p of today.plans) {
+    const line = p.finished ? 'finished' : `day ${p.day ?? '–'} of ${p.of}` + (p.behind > 1 ? ` · ${p.behind} days to catch up` : '');
+    into.append(h('div', 'plan-name', `${p.plan} — ${line}`));
+    const row = h('div', 'wrap');
+    for (const day of p.to_read.slice(-3)) {
+      const go = h('button', 'btn', day.label);
+      go.onclick = () => {
+        const [code, rest] = day.entries[0].split('.');
+        const [ch, v] = rest.split(':');
+        closeSheet();
+        open(code, +ch, v ? parseInt(v, 10) : 1);
+      };
+      row.append(go);
+    }
+    into.append(row);
+  }
+}
+
 function settings() {
   const b = h('div', 'settings');
   b.append(h('h2', 'sheet-title', 'Spike settings'));
+  const reading = h('div');
+  b.append(reading);
+  todaySection(reading);
   if (inApp) {
     b.append(h('div', 'label', 'Window size'));
     const row = h('div', 'wrap');

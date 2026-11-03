@@ -19,6 +19,18 @@ fn some(s: &str) -> Option<&str> {
 
 pub fn commands() -> Vec<Command> {
     vec![
+        cmd("status", "Where everything is: the Bible database (read-only), the study folder, the cache of derived indexes.", vec![], |c, _| {
+            let db = wb_core::default_db_path();
+            let study = wb_core::default_study_dir();
+            let st = wb_core::store::Store::open(&study);
+            Ok(Out::Json(json!({
+                "bible": {"path": db.display().to_string(), "found": db.exists(), "signature": c.bible().map(|b| b.signature().to_string()).ok()},
+                "study": {"root": study.display().to_string(), "available": st.is_ok(), "error": st.as_ref().err().map(|e| e.0.clone()),
+                    "notes": st.as_ref().map(|s| s.notes().len()).ok(), "threads": st.as_ref().map(|s| s.threads().len()).ok(),
+                    "trails": st.as_ref().map(|s| s.trails().len()).ok()},
+                "cache": wb_core::cache::dir().display().to_string(),
+            })))
+        }),
         cmd("books", "The 66 books: id, code, name, chapters, testament.", vec![], |c, _| {
             let b = c.bible()?;
             Ok(Out::Json(json!({"books": lookup::books(b), "versions": lookup::versions(b).map_err(e)?})))

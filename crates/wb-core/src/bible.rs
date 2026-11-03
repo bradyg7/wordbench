@@ -9,6 +9,8 @@ use std::path::Path;
 pub struct Bible {
     conn: Connection,
     books: Vec<Book>,
+    /// The database file's size and time: names what is worked out from it (see cache).
+    signature: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -103,7 +105,14 @@ impl Bible {
                 Ok(Book { id: r.get(0)?, code: r.get(1)?, name: r.get(2)?, testament: r.get(3)?, chapters: r.get(4)? })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
-        Ok(Bible { conn, books })
+        let meta = std::fs::metadata(path)?;
+        let modified = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_nanos()).unwrap_or(0);
+        let signature = format!("{}-{modified}", meta.len());
+        Ok(Bible { conn, books, signature })
+    }
+
+    pub fn signature(&self) -> &str {
+        &self.signature
     }
 
     /// The connection, read-only (for the lookups in `lookup`).

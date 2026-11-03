@@ -2,7 +2,7 @@
 //! of threads that have a color, as raw anchor coordinates. The reader turns them into word ranges.
 
 use crate::anchors::{self, Anchor, Kind};
-use crate::study::Study;
+use crate::store::{s, Store};
 use crate::Result;
 use serde::Serialize;
 
@@ -29,31 +29,32 @@ fn inside(a: &Anchor, code: &str, chapter: u32) -> bool {
     a.kind != Kind::Lemma && a.code == code && a.c1 <= chapter && chapter <= a.last_chapter()
 }
 
-pub fn chapter_marks(study: &Study, code: &str, chapter: u32) -> Result<ChapterMarks> {
+pub fn chapter_marks(store: &Store, code: &str, chapter: u32) -> Result<ChapterMarks> {
     let mut m = ChapterMarks::default();
-    for h in study.highlights(code)? {
-        if let Ok(a) = anchors::parse(&h.anchor) {
+    for h in store.highlights(code) {
+        if let Ok(a) = anchors::parse(&s(&h, "anchor")) {
             if inside(&a, code, chapter) {
-                m.highlights.push(Mark { at: a, id: h.id, color: h.color });
+                m.highlights.push(Mark { at: a, id: s(&h, "id"), color: s(&h, "color") });
             }
         }
     }
-    for n in study.notes(code)? {
-        if let Ok(a) = anchors::parse(&n.anchor) {
+    for n in store.notes() {
+        if let Ok(a) = anchors::parse(&s(n, "anchor")) {
             if inside(&a, code, chapter) {
-                m.notes.push(Mark { at: a, id: n.id, color: String::new() });
+                m.notes.push(Mark { at: a, id: s(n, "id"), color: String::new() });
             }
         }
     }
-    for t in study.threads()? {
-        if t.color.is_empty() {
+    for t in store.threads() {
+        let (id, color) = (s(t, "id"), s(t, "color"));
+        if color.is_empty() {
             continue;
         }
-        for member in &t.members {
-            if let Ok(a) = anchors::parse(member) {
+        for member in t["members"].as_array().unwrap() {
+            if let Ok(a) = anchors::parse(member["anchor"].as_str().unwrap_or("")) {
                 if inside(&a, code, chapter) {
-                    m.thread_names.insert(t.id.clone(), t.name.clone());
-                    m.threads.push(Mark { at: a, id: t.id.clone(), color: t.color.clone() });
+                    m.thread_names.insert(id.clone(), s(t, "name"));
+                    m.threads.push(Mark { at: a, id: id.clone(), color: color.clone() });
                 }
             }
         }

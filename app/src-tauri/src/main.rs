@@ -6,11 +6,12 @@ use serde_json::{json, Value};
 use std::sync::Mutex;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tauri::{LogicalSize, State, WebviewUrl, WebviewWindowBuilder};
-use wb_core::{bible::Bible, study::Study, views};
+use wb_core::{bible::Bible, store::Store, studyapi, views};
 
 struct App {
     bible: Mutex<Bible>,
-    study: Study,
+    /// The person's files, kept in step with the folder: refreshed (at most once a second) before each request.
+    store: Mutex<Store>,
     started: Instant,
     started_wall_ms: u128,
 }
@@ -37,22 +38,56 @@ fn timed<T: Serialize>(f: impl FnOnce() -> wb_core::Result<T>) -> Result<Value, 
     Ok(json!({ "data": v, "rust_ms": t.elapsed().as_secs_f64() * 1000.0 }))
 }
 
+/// The store, brought up to date with the folder (hand edits, `wb` in a terminal, a git pull).
+fn fresh<'a>(app: &'a App) -> Result<std::sync::MutexGuard<'a, Store>, String> {
+    let mut st = app.store.lock().unwrap();
+    st.refresh().map_err(|e| e.to_string())?;
+    Ok(st)
+}
+
 #[tauri::command]
 fn reader(app: State<App>, code: String, chapter: u32) -> Result<Value, String> {
+    let st = fresh(&app)?;
     let bible = app.bible.lock().unwrap();
-    timed(|| views::reader(&bible, &app.study, &code, chapter))
+    timed(|| views::reader(&bible, &st, &code, chapter))
 }
 
 #[tauri::command]
 fn word(app: State<App>, code: String, chapter: u32, verse: u32, word: u32) -> Result<Value, String> {
+    let st = fresh(&app)?;
     let bible = app.bible.lock().unwrap();
-    timed(|| views::word(&bible, &app.study, &code, chapter, verse, word))
+    timed(|| views::word(&bible, &st, &code, chapter, verse, word))
 }
 
 #[tauri::command]
 fn verse(app: State<App>, code: String, chapter: u32, verse: u32) -> Result<Value, String> {
+    let st = fresh(&app)?;
     let bible = app.bible.lock().unwrap();
-    timed(|| views::verse(&bible, &app.study, &code, chapter, verse))
+    timed(|| views::verse(&bible, &st, &code, chapter, verse))
+}
+
+/// Today's readings in every plan (the same as `wb plan today`).
+#[tauri::command]
+fn plan_today(app: State<App>) -> Result<Value, String> {
+    let st = fresh(&app)?;
+    let bible = app.bible.lock().unwrap();
+    timed(|| wb_core::reading::today_view(&bible, &st.root, wb_core::reading::today()))
+}
+
+/// Record chapters as read (the same as `wb read mark`).
+#[tauri::command]
+fn read_mark(app: State<App>, place: String) -> Result<Value, String> {
+    let st = fresh(&app)?;
+    let bible = app.bible.lock().unwrap();
+    timed(|| wb_core::reading::mark(&st.root, &wb_core::reading::chapters_of(&bible, &place)?, ""))
+}
+
+/// Color a place (or clear it with no color), by the no-overlap rule; the same as `wb hl set` / `wb hl clear`.
+#[tauri::command]
+fn highlight(app: State<App>, anchor: String, color: Option<String>) -> Result<Value, String> {
+    let mut st = fresh(&app)?;
+    let bible = app.bible.lock().unwrap();
+    timed(|| studyapi::save_highlight(&bible, &mut st, &anchor, color.as_deref()))
 }
 
 #[tauri::command]
@@ -91,11 +126,19 @@ fn main() {
     let started = Instant::now();
     let started_wall_ms = wall_ms();
     let bible = Bible::open(&wb_core::default_db_path()).unwrap_or_else(|e| panic!("{e}"));
-    let study = Study::open(&wb_core::default_study_dir()).unwrap_or_else(|e| panic!("{e}"));
+    let mut store = Store::open(&wb_core::default_study_dir()).unwrap_or_else(|e| panic!("{e}"));
+    store.recheck = std::time::Duration::from_secs(1);
     tauri::Builder::default()
-        .manage(App { bible: Mutex::new(bible), study, started, started_wall_ms })
-        .invoke_handler(tauri::generate_handler![reader, word, verse, books, set_window, ui_ready])
+        .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms })
+        .invoke_handler(tauri::generate_handler![reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready])
         .setup(|app| {
+            // The search index and the word offsets, built (or read from the cache) while the reader opens, so the first
+            // search does not wait for them.
+            std::thread::spawn(|| {
+                if let Ok(b) = Bible::open(&wb_core::default_db_path()) {
+                    let _ = wb_core::lookup::warm(&b);
+                }
+            });
             let preset = std::env::var("WB_WINDOW").unwrap_or_else(|_| "laptop".into());
             let &(_, w, h) = PRESETS.iter().find(|p| p.0 == preset).unwrap_or(&PRESETS[4]);
             let mut b = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())

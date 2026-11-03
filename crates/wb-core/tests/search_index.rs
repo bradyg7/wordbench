@@ -63,3 +63,29 @@ fn a_word_not_everywhere_is_much_faster_than_testing_every_verse() {
     let every = t.elapsed();
     assert!(indexed * 5 < every, "indexed {indexed:?}, every verse {every:?}");
 }
+
+#[test]
+fn the_index_is_rebuilt_when_the_database_file_changes() {
+    let dir = std::env::temp_dir().join("bible-workbench-rs").join("tests").join(format!("db-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::env::set_var("WB_CACHE_DIR", dir.join("cache"));
+    let path = dir.join("t.db");
+    {
+        let c = rusqlite::Connection::open(&path).unwrap();
+        c.execute_batch("CREATE TABLE books (id INTEGER PRIMARY KEY, code TEXT, name TEXT, testament TEXT, chapters INTEGER);
+                         INSERT INTO books VALUES (1, 'GEN', 'Genesis', 'OT', 50);
+                         CREATE TABLE verses (book INT, chapter INT, verse INT, text TEXT);
+                         INSERT INTO verses VALUES (1, 1, 1, 'alpha beta');").unwrap();
+    }
+    let n = |q: &str| {
+        let b = wb_core::bible::Bible::open(&path).unwrap();
+        search(&b, &SearchQuery { q, case: false, scope: "all", offset: 0, limit: 100, regex: false }).unwrap()["verses"].as_u64().unwrap()
+    };
+    assert_eq!(n("alpha"), 1);
+    assert_eq!(n("gamma"), 0);
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    rusqlite::Connection::open(&path).unwrap().execute("INSERT INTO verses VALUES (1, 1, 2, 'gamma delta')", []).unwrap();
+    assert_eq!(n("gamma"), 1); // a changed file is read again
+    let _ = std::fs::remove_dir_all(&dir);
+}

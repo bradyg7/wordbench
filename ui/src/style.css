@@ -164,5 +164,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .go input { flex: 1; font: var(--type-body); padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); color: var(--fg); }
 .perf { font: 12px/18px ui-monospace, Consolas, monospace; background: var(--sunken); padding: 10px; border-radius: var(--radius-control); white-space: pre-wrap; }
 .error { color: var(--jesus); font: var(--type-body); }
+.chapter-end { margin: 28px 0 0; font: var(--type-body); }
+.plan-name { font: var(--type-small-strong); margin: 6px 0 6px; }
 
 @media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }

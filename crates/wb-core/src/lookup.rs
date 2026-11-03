@@ -468,14 +468,78 @@ fn word_tokens(s: &str) -> impl Iterator<Item = &str> {
     RE.get_or_init(|| regex::Regex::new(r"\w+").unwrap()).find_iter(s).map(|m| m.as_str())
 }
 
-static CORPUS: OnceLock<Corpus> = OnceLock::new();
+impl Corpus {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut o = crate::cache::Out::default();
+        o.u32(self.rows.len() as u32);
+        for (b, c, v, t) in &self.rows {
+            o.u32(*b);
+            o.u32(*c);
+            o.u32(*v);
+            o.str(t);
+        }
+        o.u32(self.tokens.len() as u32);
+        for t in &self.tokens {
+            o.str(t);
+            let ps = &self.index[t];
+            o.u32(ps.len() as u32);
+            for p in ps {
+                o.u32(*p as u32);
+            }
+        }
+        o.0
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Option<Corpus> {
+        let mut i = crate::cache::In::new(bytes);
+        let n = i.u32()?;
+        let mut rows = Vec::with_capacity(n as usize);
+        for _ in 0..n {
+            rows.push((i.u32()?, i.u32()?, i.u32()?, i.str()?));
+        }
+        let n = i.u32()?;
+        let (mut tokens, mut index) = (Vec::with_capacity(n as usize), HashMap::with_capacity(n as usize));
+        for _ in 0..n {
+            let t = i.str()?;
+            let k = i.u32()?;
+            let mut ps = Vec::with_capacity(k as usize);
+            for _ in 0..k {
+                ps.push(i.u32()? as usize);
+            }
+            index.insert(t.clone(), ps);
+            tokens.push(t);
+        }
+        i.done().then_some(Corpus { rows, index, tokens })
+    }
+}
+
+/// Built once per database: kept in memory for the life of the process, and in the cache folder between runs.
+static CORPORA: std::sync::Mutex<Vec<(String, &'static Corpus)>> = std::sync::Mutex::new(Vec::new());
 
 fn corpus(bible: &Bible) -> Result<&'static Corpus> {
-    if let Some(c) = CORPUS.get() {
+    let sig = bible.signature().to_string();
+    let mut held = CORPORA.lock().unwrap();
+    if let Some((_, c)) = held.iter().find(|(s, _)| *s == sig) {
         return Ok(c);
     }
-    let c = Corpus::build(bible)?;
-    Ok(CORPUS.get_or_init(|| c))
+    let c = match crate::cache::read("search", &sig).and_then(|b| Corpus::from_bytes(&b)) {
+        Some(c) => c,
+        None => {
+            let c = Corpus::build(bible)?;
+            crate::cache::write("search", &sig, &c.to_bytes());
+            c
+        }
+    };
+    let c: &'static Corpus = Box::leak(Box::new(c));
+    held.push((sig, c));
+    Ok(c)
+}
+
+/// Builds what search and near use ahead of their first call (the app does this when it starts).
+pub fn warm(bible: &Bible) -> Result<()> {
+    corpus(bible)?;
+    word_offsets(bible)?;
+    Ok(())
 }
 
 /// Spans of every term, merged, as character offsets; empty unless every term occurs in the text.
@@ -628,13 +692,45 @@ pub fn lexiconc(bible: &Bible, q: &str, limit: usize) -> Result<Value> {
     Ok(json!({"q": q, "total": total, "entries": hits}))
 }
 
-static OFFSETS: OnceLock<HashMap<Key, i64>> = OnceLock::new();
+static OFFSETS: std::sync::Mutex<Vec<(String, &'static HashMap<Key, i64>)>> = std::sync::Mutex::new(Vec::new());
 
-/// {(book, chapter, verse): how many words of that book come before the verse}.
+/// {(book, chapter, verse): how many words of that book come before the verse}, kept like the search index.
 fn word_offsets(bible: &Bible) -> Result<&'static HashMap<Key, i64>> {
-    if let Some(o) = OFFSETS.get() {
+    let sig = bible.signature().to_string();
+    let mut held = OFFSETS.lock().unwrap();
+    if let Some((_, o)) = held.iter().find(|(s, _)| *s == sig) {
         return Ok(o);
     }
+    let offs = match crate::cache::read("offsets", &sig).and_then(|b| {
+        let mut i = crate::cache::In::new(&b);
+        let n = i.u32()?;
+        let mut m = HashMap::with_capacity(n as usize);
+        for _ in 0..n {
+            m.insert((i.u32()?, i.u32()?, i.u32()?), i.u32()? as i64);
+        }
+        i.done().then_some(m)
+    }) {
+        Some(m) => m,
+        None => {
+            let m = count_offsets(bible)?;
+            let mut o = crate::cache::Out::default();
+            o.u32(m.len() as u32);
+            for ((b, c, v), n) in &m {
+                o.u32(*b);
+                o.u32(*c);
+                o.u32(*v);
+                o.u32(*n as u32);
+            }
+            crate::cache::write("offsets", &sig, &o.0);
+            m
+        }
+    };
+    let o: &'static HashMap<Key, i64> = Box::leak(Box::new(offs));
+    held.push((sig, o));
+    Ok(o)
+}
+
+fn count_offsets(bible: &Bible) -> Result<HashMap<Key, i64>> {
     let mut offs = HashMap::new();
     let (mut book, mut total) = (0u32, 0i64);
     let mut stmt = bible.conn().prepare("SELECT book, chapter, verse, COUNT(*) AS n FROM words GROUP BY book, chapter, verse ORDER BY book, chapter, verse")?;
@@ -646,7 +742,7 @@ fn word_offsets(bible: &Bible) -> Result<&'static HashMap<Key, i64>> {
         offs.insert((b, c, v), total);
         total += n;
     }
-    Ok(OFFSETS.get_or_init(|| offs))
+    Ok(offs)
 }
 
 fn term_words(bible: &Bible, term: &str) -> Result<Vec<(u32, u32, u32, i64)>> {

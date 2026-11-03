@@ -5894,6 +5894,7 @@ dependencies = [
 name = "wb-cli"
 version = "0.0.1"
 dependencies = [
+ "chrono",
  "serde_json",
  "wb-core",
 ]

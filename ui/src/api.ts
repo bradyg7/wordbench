@@ -14,6 +14,8 @@ export interface Note { id: string; anchor: string; kind: string; quote: string;
 export interface WordView { reference: string; anchor: string; text: string; strong?: string; lexicon?: Lexicon; count?: Count; notes: Note[] }
 export interface VerseView { reference: string; anchor: string; text: string; color?: string; notes: Note[]; threads: { id: string; name: string; color: string }[] }
 export interface Book { id: number; code: string; name: string; chapters: number }
+export interface PlanDay { day: number; date: string; label: string; entries: string[]; done: boolean }
+export interface Today { date: string; plans: { plan: string; id: string; day: number | null; of: number; behind: number; ahead: number; finished: boolean; to_read: PlanDay[]; next: PlanDay | null }[] }
 
 export const inApp = '__TAURI_INTERNALS__' in window;
 
@@ -44,6 +46,9 @@ export const api = {
   word: (code: string, chapter: number, verse: number, word: number) => call<WordView>('word', { code, chapter, verse, word }),
   verse: (code: string, chapter: number, verse: number) => call<VerseView>('verse', { code, chapter, verse }),
   books: () => call<Book[]>('books', {}),
+  highlight: (anchor: string, color: string | null) => invoke<Answer<unknown>>('highlight', { anchor, color }),
+  planToday: () => invoke<Answer<Today>>('plan_today', {}),
+  readMark: (place: string) => invoke<Answer<unknown>>('read_mark', { place }),
   setWindow: (preset: string) => invoke<any>('set_window', { preset }),
   uiReady: (report: unknown) => (inApp ? invoke<any>('ui_ready', { report }) : Promise.resolve(null)),
 };

@@ -212,6 +212,21 @@ fn sig_of(p: &Path) -> Option<Sig> {
     Some((t, m.len()))
 }
 
+/// The study folder must exist, and the person's real one is refused unless `WB_ALLOW_REAL_STUDY=1` (CLAUDE.md).
+pub fn guard(root: &Path) -> Result<()> {
+    if !root.is_dir() {
+        return Err(bad(format!("No study folder at {} (make a scratch copy with scripts/scratch-study.ps1, or set WB_STUDY_DIR)", root.display())));
+    }
+    let same = match (fs::canonicalize(root), fs::canonicalize(crate::real_study_dir())) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => false,
+    };
+    if same && std::env::var("WB_ALLOW_REAL_STUDY").as_deref() != Ok("1") {
+        return Err(bad(format!("{} is the person's real study folder; use a scratch copy", root.display())));
+    }
+    Ok(())
+}
+
 /// Files of a folder in name order (as the Python app's scandir returns them on Windows), optionally in subfolders.
 fn files(dir: &Path, ending: &str, deep: bool) -> Vec<PathBuf> {
     let Ok(rd) = fs::read_dir(dir) else { return vec![] };
@@ -233,7 +248,7 @@ fn files(dir: &Path, ending: &str, deep: bool) -> Vec<PathBuf> {
 
 impl Store {
     pub fn open(root: &Path) -> Result<Store> {
-        crate::study::Study::open(root)?; // the same guard: never the real folder unless allowed
+        guard(root)?;
         let mut st = Store {
             root: root.to_path_buf(),
             notes: vec![],

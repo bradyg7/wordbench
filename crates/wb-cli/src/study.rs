@@ -325,6 +325,12 @@ pub fn commands() -> Vec<Command> {
         }),
         cmd("layout list", "Saved pane arrangements.", vec![], |_, _| j(json!(store()?.layouts()))),
         cmd("layout show", "One saved arrangement (the JSON).", vec![Pos("name", N::One)], |_, a| j(store()?.layout(&a.s("name")).map_err(e)?)),
+        cmd("layout save", "Keep an arrangement of panes under a name, from a JSON file (the window saves its own in phase 2): wb layout save Study --file layout.json.",
+            vec![Pos("name", N::One), Opt("file", None)], |_, a| {
+                let text = body_text("-", a.opt("file"))?;
+                let layout: Value = serde_json::from_str(&text).map_err(|_| "The layout must be a JSON object.")?;
+                j(store()?.save_layout(&a.s("name"), &layout).map_err(e)?)
+            }),
         cmd("lesson list", "Your lessons (study-folder/lessons/*.md).", vec![], |_, _| j(json!(sa::lesson_listing(&store()?).map_err(e)?))),
         cmd("lesson show", "A lesson's file text.", vec![Pos("name", N::Many)], |_, a| {
             let r = sa::lesson_read(&store()?, &a.s("name")).map_err(e)?;

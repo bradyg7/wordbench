@@ -3,7 +3,7 @@
 use crate::anchors::{self, Kind};
 use crate::bible::{Bible, Chapter, Count, Lexicon};
 use crate::marks::{self, ChapterMarks};
-use crate::study::{Note, Study};
+use crate::store::{s, Rec, Store};
 use crate::{Error, Result};
 use serde::Serialize;
 
@@ -22,7 +22,7 @@ pub struct WordView {
     pub lexicon: Option<Lexicon>,
     pub count: Option<Count>,
     /// Notes on this word, and on its Strong's number everywhere.
-    pub notes: Vec<Note>,
+    pub notes: Vec<Rec>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -40,12 +40,12 @@ pub struct VerseView {
     pub text: String,
     /// The color of a highlight on exactly this verse, if any.
     pub color: Option<String>,
-    pub notes: Vec<Note>,
+    pub notes: Vec<Rec>,
     pub threads: Vec<ThreadRef>,
 }
 
-pub fn reader(bible: &Bible, study: &Study, code: &str, chapter: u32) -> Result<ReaderView> {
-    Ok(ReaderView { chapter: bible.chapter(code, chapter)?, marks: marks::chapter_marks(study, code, chapter)? })
+pub fn reader(bible: &Bible, store: &Store, code: &str, chapter: u32) -> Result<ReaderView> {
+    Ok(ReaderView { chapter: bible.chapter(code, chapter)?, marks: marks::chapter_marks(store, code, chapter)? })
 }
 
 fn touches_verse(anchor: &str, code: &str, c: u32, v: u32) -> bool {
@@ -57,19 +57,13 @@ fn touches_verse(anchor: &str, code: &str, c: u32, v: u32) -> bool {
     }
 }
 
-pub fn word(bible: &Bible, study: &Study, code: &str, c: u32, v: u32, i: u32) -> Result<WordView> {
+pub fn word(bible: &Bible, store: &Store, code: &str, c: u32, v: u32, i: u32) -> Result<WordView> {
     let (name, w) = bible.word(code, c, v, i)?;
     let strong = w.strong.clone();
     let anchor = format!("{code}.{c}:{v}.{i}");
-    let notes = study
-        .notes(code)?
-        .into_iter()
-        .filter(|n| n.anchor == anchor)
-        .chain(match &strong {
-            Some(s) => study.notes("_words")?.into_iter().filter(|n| &n.anchor == s).collect(),
-            None => vec![],
-        })
-        .collect();
+    let here = store.notes().into_iter().filter(|n| s(n, "anchor") == anchor);
+    let everywhere = store.notes().into_iter().filter(|n| strong.as_deref().is_some_and(|x| s(n, "anchor") == x));
+    let notes = here.chain(everywhere).cloned().collect();
     Ok(WordView {
         reference: format!("{name} {c}:{v}"),
         anchor,
@@ -87,7 +81,7 @@ pub fn word(bible: &Bible, study: &Study, code: &str, c: u32, v: u32, i: u32) ->
     })
 }
 
-pub fn verse(bible: &Bible, study: &Study, code: &str, c: u32, v: u32) -> Result<VerseView> {
+pub fn verse(bible: &Bible, store: &Store, code: &str, c: u32, v: u32) -> Result<VerseView> {
     let book = bible.book(code)?;
     let text = bible
         .verses(code, c, v, c, v)?
@@ -96,13 +90,13 @@ pub fn verse(bible: &Bible, study: &Study, code: &str, c: u32, v: u32) -> Result
         .map(|x| x.2)
         .ok_or_else(|| Error(format!("No verse {} {c}:{v}", book.name)))?;
     let anchor = format!("{code}.{c}:{v}");
-    let color = study.highlights(code)?.into_iter().rev().find(|h| h.anchor == anchor).map(|h| h.color);
-    let notes = study.notes(code)?.into_iter().filter(|n| touches_verse(&n.anchor, code, c, v)).collect();
-    let threads = study
-        .threads()?
+    let color = store.highlights(code).into_iter().rev().find(|h| s(h, "anchor") == anchor).map(|h| s(&h, "color"));
+    let notes = store.notes().into_iter().filter(|n| touches_verse(&s(n, "anchor"), code, c, v)).cloned().collect();
+    let threads = store
+        .threads()
         .into_iter()
-        .filter(|t| t.members.iter().any(|m| touches_verse(m, code, c, v)))
-        .map(|t| ThreadRef { id: t.id, name: t.name, color: t.color })
+        .filter(|t| t["members"].as_array().unwrap().iter().any(|m| touches_verse(m["anchor"].as_str().unwrap_or(""), code, c, v)))
+        .map(|t| ThreadRef { id: s(t, "id"), name: s(t, "name"), color: s(t, "color") })
         .collect();
     Ok(VerseView { reference: format!("{} {c}:{v}", book.name), anchor, text, color, notes, threads })
 }
