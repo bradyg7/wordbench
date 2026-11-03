@@ -4,7 +4,7 @@
 // moves the reader.
 import { wb } from './api';
 import { app, goTo, here, type At } from './app';
-import { dock } from './panes';
+import { dock, refHover } from './panes';
 import type { Pane } from './dock';
 import { toast } from './sheets';
 import { button, h, icon, linkedText, placePill, popMenu, type Found } from './ui';
@@ -122,9 +122,14 @@ function entryCard(e: Entry, inInbox = false): HTMLElement {
   more.onclick = () => entryMenu(more, e, c);
   top.append(time, more);
   const p = h('p', 'nb-text');
-  p.append(linkedText(e.text, e.refs, ref => goTo(ref)));
+  p.append(linkedText(e.text, e.refs, ref => goTo(ref), refHover));
   c.append(top, p);
   if (!e.placed) {
+    // drag it onto a verse in the reader to give it that place
+    c.draggable = true;
+    c.title = 'Drag onto a verse to place it there';
+    c.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-jot', e.id); ev.dataTransfer!.effectAllowed = 'move'; c.classList.add('dragging'); };
+    c.ondragend = () => c.classList.remove('dragging');
     const acts = h('div', 'nb-acts');
     const place = button('btn soft small', 'Place it…', ev => placeMenu(ev.currentTarget as HTMLElement, e), 'pin');
     acts.append(place);

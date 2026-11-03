@@ -403,6 +403,41 @@ reader.addEventListener('click', e => {
   openInterlinear(`${d.chapter.code} ${d.chapter.chapter}:${d.v[k]}`, `${d.chapter.name} ${d.chapter.chapter}:${d.v[k]}`);
 }, true);
 
+// ---- an Inbox note dragged from the Notebook onto a verse: placed there (wb note place) -------------------------------
+let dropVerse = 0;
+function markDrop(v: number) {
+  if (v === dropVerse || !drawn) return;
+  dropVerse = v;
+  drawn.el.forEach((e, k) => e?.classList.toggle('drop-verse', drawn!.v[k] === v));
+}
+function verseUnder(t: EventTarget | null): number {
+  const e = (t as HTMLElement | null)?.closest?.<HTMLElement>('.w, .vn, .g');
+  if (!e || !drawn) return 0;
+  return e.classList.contains('vn') ? +e.dataset.v! : drawn.v[+e.dataset.k!];
+}
+reader.addEventListener('dragover', e => {
+  if (!e.dataTransfer?.types.includes('text/wb-jot')) return;
+  const v = verseUnder(e.target);
+  if (!v) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  markDrop(v);
+});
+reader.addEventListener('dragleave', e => { if (!reader.contains(e.relatedTarget as Node)) markDrop(0); });
+reader.addEventListener('drop', async e => {
+  const id = e.dataTransfer?.getData('text/wb-jot');
+  const v = verseUnder(e.target);
+  markDrop(0);
+  if (!id || !v || !drawn) return;
+  e.preventDefault();
+  const d = drawn;
+  try {
+    const r = await wb(['note', 'place', id, `${d.chapter.code}.${d.chapter.chapter}:${v}`]);
+    toast(`Placed on ${r.label}`);
+    written();
+  } catch (x) { toast(String(x)); }
+});
+
 // ---- the book and chapter picker --------------------------------------------------------------------------------------
 function picker(from: HTMLElement) {
   const box = h('div', 'picker');

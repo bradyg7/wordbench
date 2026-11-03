@@ -84,6 +84,11 @@ try {
   check('a jot is a file in notes/_inbox', inbox.length === 1, inbox[0]);
   check('the jot shows in the Journal with no place', await page.locator('.nb-entry .unplaced').first().waitFor({ timeout: 5000 }).then(() => true, () => false));
   await page.locator('.nb-seg button', { hasText: 'Inbox' }).click();
+  // a reference in a note shows its verse on hover, verbatim
+  await page.locator('.nb-entry a.ref').first().hover();
+  const cor = JSON.parse(execFileSync(wbExe, ['text', '1 Cor 10:8', '--json'], { env }).toString()).verses[0].text;
+  check('hovering a reference in a note shows the verse', await page.locator('.hovercard', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.mouse.move(700, 300);
   await page.locator('.nb-entry .btn', { hasText: 'Place it' }).first().click();
   await page.waitForSelector('.place-menu .place-opt');
   const offered = await page.locator('.place-menu .place-opt-label').allTextContents();
@@ -92,6 +97,18 @@ try {
   await page.locator('.place-menu .place-opt', { hasText: '1 Corinthians 10:8' }).click();
   await page.waitForFunction(() => !document.querySelector('#tb-notebook .badge') || document.querySelector('#tb-notebook .badge').hidden, null, { timeout: 10000 });
   check('placing moves the file to notes/1CO', existsSync(path.join(study, 'notes', '1CO', inbox[0])) && !existsSync(path.join(study, 'notes', '_inbox', inbox[0])));
+
+  // an Inbox note dragged onto a verse in the reader is placed there
+  await page.locator('.nb-seg button', { hasText: 'Journal' }).click();
+  await ta.click();
+  await ta.fill('Dragged onto its verse');
+  await ta.press('Enter');
+  await page.waitForFunction(() => document.querySelector('#tb-notebook .badge')?.textContent === '1', null, { timeout: 10000 });
+  await page.locator('.nb-seg button', { hasText: 'Inbox' }).click();
+  const dragged = readdirSync(path.join(study, 'notes', '_inbox'))[0];
+  await page.locator('.nb-entry[draggable="true"]').first().dragTo(page.locator('.vn[data-v="3"]'));
+  for (let i = 0; i < 50 && !existsSync(path.join(study, 'notes', 'NUM', dragged)); i++) await sleep(100);
+  check('an Inbox note dropped on a verse is placed there', existsSync(path.join(study, 'notes', 'NUM', dragged)) && /anchor: "NUM.25:3"/.test(readFileSync(path.join(study, 'notes', 'NUM', dragged), 'utf8')));
 
   // a note and a question from the verse popover
   await page.locator('.vn[data-v="9"]').click();
@@ -118,6 +135,21 @@ try {
   await sleep(600);
   check('the thread’s eye hides and draws its underline', hidden < before && (await lines()) === before, `${before} → ${hidden}`);
   await page.screenshot({ path: shots + '1440-a-thread.png' });
+
+  // a tab dragged over the reader floats its pane; dragged to the left edge, it docks there again
+  const tabAt = async title => (await page.locator('.dock-col.open .tab-name', { hasText: title }).first().boundingBox());
+  const drag = async (from, x, y) => {
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    for (let k = 1; k <= 10; k++) await page.mouse.move(from.x + (x - from.x) * k / 10, from.y + (y - from.y) * k / 10);
+    await page.mouse.up();
+    await sleep(300);
+  };
+  await drag(await tabAt('Interlinear'), 720, 400);
+  check('a tab dropped over the reader floats', await page.locator('.dock-float.open .tab-name', { hasText: 'Interlinear' }).count() === 1);
+  await page.screenshot({ path: shots + '1440-a-floating-pane.png' });
+  await drag(await tabAt('Interlinear'), 60, 400);
+  check('dropped at the left edge, it docks there', await page.locator('.dock-left.open .tab-name', { hasText: 'Interlinear' }).count() === 1);
 
   // keyboard: arrows turn chapters, find, text size
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });

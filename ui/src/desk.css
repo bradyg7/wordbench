@@ -84,6 +84,17 @@
 .pane-sub { color: var(--muted); font: var(--type-small); margin-top: 4px; }
 .pane .label, .menu .label, .picker .label { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
 
+/* an Inbox note dragged onto a verse */
+.nb-entry[draggable="true"] { cursor: grab; }
+.nb-entry.dragging { opacity: .5; }
+.w.drop-verse { background-color: var(--accent-soft) !important; box-shadow: 0 2px 0 var(--accent); }
+
+/* dragging a tab: the label follows the pointer; the zone shows where the pane would go */
+.tab-ghost { position: fixed; z-index: 40; pointer-events: none; padding: 6px 12px; border-radius: var(--radius-control); background: var(--surface); border: 1px solid var(--accent);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .18); font: var(--type-small-strong); }
+.drop-zone { position: fixed; z-index: 39; pointer-events: none; background: var(--accent-soft); opacity: .6; border: 2px dashed var(--accent); border-radius: var(--radius-card); }
+.tab-name { touch-action: none; }
+
 /* a pane on a phone: the whole screen, with the way back */
 .pane-sheet { position: fixed; inset: 0; z-index: 12; background: var(--bg); display: none; flex-direction: column; }
 .pane-sheet.open { display: flex; }

@@ -64,7 +64,7 @@ export function placePill(label: string, go?: () => void): HTMLElement {
 
 // Text with verse references made into links (positions from wb-core's find_refs, counted in characters).
 export interface Found { start: number; end: number; ref: string; hash: string }
-export function linkedText(text: string, refs: Found[] | undefined, go: (ref: string) => void): DocumentFragment {
+export function linkedText(text: string, refs: Found[] | undefined, go: (ref: string) => void, hover?: (a: HTMLElement, ref: string) => void): DocumentFragment {
   const f = document.createDocumentFragment();
   const chars = [...text];
   let at = 0;
@@ -74,6 +74,7 @@ export function linkedText(text: string, refs: Found[] | undefined, go: (ref: st
     const a = h('a', 'ref', chars.slice(r.start, r.end).join(''));
     a.href = r.hash;
     a.onclick = e => { e.preventDefault(); go(r.ref); };
+    if (hover) hover(a, r.ref);
     f.append(a);
     at = r.end;
   }

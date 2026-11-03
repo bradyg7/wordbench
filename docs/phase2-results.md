@@ -7,7 +7,7 @@ study without the Python app) has not started**: it needs the person's go-ahead 
 
 | | Result |
 |---|---|
-| Desktop in the real app | `node measure/desk.mjs`: **27 of 27** checks, in WebView2, at 1440×900 and the other sizes |
+| Desktop in the real app | `node measure/desk.mjs`: **31 of 31** checks, in WebView2, at 1440×900 and the other sizes |
 | WebKit (the iPhone and iPad engine) | `npm run test:webkit`: **12 of 12** (the 10 of phase 0 and 2 for the new shell) |
 | Rust tests | `cargo test`: **105** (97 before; 4 for the Notebook's `wb` commands, 4 for the command language) |
 | The command language against the Python parser | **480 of 480** lines and **108 of 108** texts with references give the same answer |
@@ -16,7 +16,7 @@ study without the Python app) has not started**: it needs the person's go-ahead 
 
 Screenshots of the app itself are in [phase2/](phase2/): [the reader with the Notebook](phase2/1440-reader-with-the-notebook.png),
 [the command field](phase2/1440-command-field-open.png), [word study and the interlinear](phase2/1440-word-study-and-interlinear.png),
-[placing a note](phase2/1440-placing-a-note.png), [a thread](phase2/1440-a-thread.png), and the size classes
+[placing a note](phase2/1440-placing-a-note.png), [a thread](phase2/1440-a-thread.png), [a floating pane](phase2/1440-a-floating-pane.png), and the size classes
 ([laptop](phase2/laptop-expanded.png), [iPad portrait](phase2/ipad-medium.png), [phone](phase2/phone-compact.png)).
 
 ## 1. One set of actions: `wb` in-process
@@ -37,9 +37,11 @@ message instead of exiting.
 - **The dock** (`ui/src/dock.ts`): tabbed columns beside the reader. Large (≥ 1440): study panes on the left, the
   Notebook and threads on the right. Expanded and Medium: one column on the right. Compact: no columns; the pane in front
   is a full screen with "Back to Numbers 25:11". Columns minimize to a tab at the edge; any pane can float (dragged by
-  its tab strip, resized from its corner). **dockview-core was not used**: the layouts on the sheets need fixed columns
+  its tab strip, resized from its corner; where and how big it is are kept). A tab dragged over the reader floats its
+  pane; dragged to an edge, it docks in that column (the zone it would go to is shown while dragging).
+  **dockview-core was not used**: the layouts on the sheets need fixed columns
   with tabs, not free tiling, and a phone needs the pane as a screen; about 250 lines did that, with no dependency and
-  nothing to style against. Dragging panes between columns is left for later (the ⧉ and `dock`/`float` commands move them).
+  nothing to style against.
 - **Never lose the place:** opening, closing and moving panes, resizing the window, crossing a size class and changing
   the text size all keep the verse at the top of the reader at the top (checked at Psalm 119:50 through every size). A
   jump (`go`, a reference clicked in a note, `first`/`last`, a plan's day) keeps the place left for `back` (Alt+←).
@@ -87,7 +89,9 @@ placing a note"):
 - **Inbox:** notes with no place yet, newest first. **Place it…** offers the place selected in the reader, then the
   place the note's text names (`find_refs`), then any place typed. "Ask it as a question" turns a note into one.
 - **All notes:** placed notes in Bible order by book (notes on a Strong's number everywhere last), with a filter.
-- References in a note's text are links (wb-core's `find_refs`, the same rules as the Python app's).
+- References in a note's text are links (wb-core's `find_refs`, the same rules as the Python app's); with a mouse, a
+  hover shows the verse, verbatim.
+- An Inbox note can be dragged onto a verse in the reader to place it there (PLAN-design.md's second Notebook step).
 - Each entry: edit in place, mark a question answered or open again, delete (to `.trash/`).
 
 **The files** (the decision in PLAN-design.md that keeps it safe): an unplaced note is its own Markdown file in

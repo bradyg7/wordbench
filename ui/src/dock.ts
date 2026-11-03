@@ -45,6 +45,14 @@ export class Dock {
     host.append(this.cols.left, this.cols.right, this.cols.float, this.sheet);
     try { Object.assign(this.floatAt, JSON.parse(localStorage.getItem(STORE) || '{}').floatAt || {}); } catch { /* defaults */ }
     window.addEventListener('resize', () => this.layout());
+    // the floating column is resized from its corner; its size is kept
+    new ResizeObserver(() => {
+      const f = this.cols.float;
+      if (!f.classList.contains('open') || !f.offsetWidth) return;
+      this.floatAt.w = f.offsetWidth;
+      this.floatAt.h = f.offsetHeight;
+      try { localStorage.setItem(STORE, JSON.stringify({ floatAt: this.floatAt })); } catch { /* this run only */ }
+    }).observe(this.cols.float);
   }
 
   private column(side: Side) {
@@ -187,7 +195,8 @@ export class Dock {
       const t = h('div', `tab${p.id === this.front[side] ? ' on' : ''}`);
       t.setAttribute('role', 'tab');
       const name = h('button', 'tab-name', p.title);
-      name.onclick = () => this.show(p);
+      name.onclick = () => { if (!this.dragged) this.show(p); };
+      name.addEventListener('pointerdown', e => this.dragTab(e, p));
       const x = h('button', 'tab-x');
       x.append(icon('x', 12));
       x.setAttribute('aria-label', `Close ${p.title}`);
@@ -211,6 +220,54 @@ export class Dock {
     tool('x', 'Close these panes', () => list.forEach(p => this.close(p)));
     if (side === 'float') this.dragBy(s);
     return s;
+  }
+
+  // A tab dragged to the other column docks its pane there; dropped over the reader, it floats. The zone it would go to
+  // is shown while dragging. A press that does not move is an ordinary click.
+  private dragged = false;
+  private dragTab(e: PointerEvent, p: Pane) {
+    if (e.button !== 0 || sizeClass() === 'compact') return;
+    const x0 = e.clientX, y0 = e.clientY;
+    let ghost: HTMLElement | null = null, zone: HTMLElement | null = null, target: Side | null = null;
+    this.dragged = false;
+    const large = sizeClass() === 'large';
+    const sideAt = (x: number): Side => {
+      const w = window.innerWidth, lw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-lw')) || 440;
+      const rw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-rw')) || 380;
+      if (large && x < Math.max(lw, w * 0.22)) return 'left';
+      if (x > w - Math.max(rw, w * 0.22)) return 'right';
+      return 'float';
+    };
+    const move = (m: PointerEvent) => {
+      if (!this.dragged && Math.hypot(m.clientX - x0, m.clientY - y0) < 8) return;
+      if (!this.dragged) {
+        this.dragged = true;
+        ghost = h('div', 'tab-ghost', p.title);
+        zone = h('div', 'drop-zone');
+        document.body.append(zone, ghost);
+      }
+      ghost!.style.left = `${m.clientX + 12}px`;
+      ghost!.style.top = `${m.clientY + 8}px`;
+      target = sideAt(m.clientX);
+      const top = this.host.ownerDocument.getElementById('bar')?.getBoundingClientRect().bottom ?? 56;
+      const w = window.innerWidth;
+      const r = target === 'left' ? [0, Math.min(440, w * 0.35)] : target === 'right' ? [w - Math.min(420, w * 0.35), w] : [w * 0.3, w * 0.7];
+      Object.assign(zone!.style, { left: `${r[0]}px`, width: `${r[1] - r[0]}px`, top: `${top}px`, height: target === 'float' ? '40%' : `calc(100% - ${top}px)` });
+      zone!.dataset.side = target;
+    };
+    // the whole document listens while the button is held, so a quick first move off the tab is not lost
+    const up = () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      ghost?.remove();
+      zone?.remove();
+      if (this.dragged && target && target !== p.side) this.move(p, target);
+      setTimeout(() => { this.dragged = false; });
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
   }
 
   // The floating column moves by its tab strip and keeps where it was put.

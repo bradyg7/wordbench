@@ -4,7 +4,7 @@ import { wb } from './api';
 import { app, book, goTo, here } from './app';
 import { Dock, type Pane, type Side } from './dock';
 import { layers } from './layers';
-import { toast } from './sheets';
+import { hideCard, showCard, toast } from './sheets';
 import { button, h, icon, placePill, popMenu } from './ui';
 
 export let dock: Dock;
@@ -116,6 +116,30 @@ export function threadChooser(from: HTMLElement, pick: (name: string) => void) {
     draw();
   }).catch(() => {});
   input.focus();
+}
+
+// ---- hover cards on references written in notes (a mouse only; `hover off` turns them off) --------------------------
+export function refHover(a: HTMLElement, ref: string) {
+  let timer = 0, seq = 0;
+  a.addEventListener('pointerenter', e => {
+    if (e.pointerType !== 'mouse' || document.documentElement.dataset.hover === 'off') return;
+    const my = ++seq;
+    timer = window.setTimeout(async () => {
+      const d = await wb(['preview', ref, '--json']).catch(() => null);
+      if (!d || my !== seq || !a.isConnected || !a.matches(':hover')) return;
+      const body = h('div', 'verse-view');
+      body.append(h('div', 'card-head', `${d.label} · ${d.version}`));
+      for (const v of d.verses || []) {
+        const p = h('p', 'scripture');
+        if ((d.verses || []).length > 1) p.append(h('span', 'vref', `${v.ref.split(':').pop()} `));
+        p.append(v.text);
+        body.append(p);
+      }
+      if (d.more) body.append(h('p', 'muted small', `and ${d.more} more verses`));
+      showCard(body, a.getBoundingClientRect());
+    }, 280);
+  });
+  a.addEventListener('pointerleave', () => { seq++; clearTimeout(timer); setTimeout(() => { if (!document.querySelector('.hovercard:hover')) hideCard(); }, 150); });
 }
 
 // ---- search ------------------------------------------------------------------------------------------------------------
