@@ -183,7 +183,19 @@ PLAN.md: *a week of daily study on the desktop without opening the Python app.*
 - The scratch watch window was closed, so one Bible Workbench window is open and `wb do` reaches it. The app announced
   the real folder; nothing in the folder had changed when it opened.
 
-How it is started, typed in a terminal (**nothing in this repository sets `WB_ALLOW_REAL_STUDY`**, as CLAUDE.md asks):
+How it is started: **the Start menu's "Bible Workbench (Rust)"** (added 2026-11-03 on the person's request; it can be
+pinned to Start or the taskbar, and the open window groups under the pinned icon). The shortcut runs the installed app
+with the options the app takes for this (`--study <folder>`, `--allow-real-study`, `--window <size>`, the same as the
+`WB_STUDY_DIR`, `WB_ALLOW_REAL_STUDY` and `WB_WINDOW` settings):
+
+```
+%LOCALAPPDATA%\bible-workbench-rs\app\bible-workbench.exe --study "C:\Users\brady\github\bible-study-data" --allow-real-study --window laptop-large
+```
+
+The shortcut is the person's own (made once, not by a script in this repository): **nothing in this repository passes
+`--allow-real-study` or sets `WB_ALLOW_REAL_STUDY`**, as CLAUDE.md asks. Without it, wb-core still refuses the real
+folder, and the app now says so in a message box instead of closing silently. From a terminal the settings work as
+before:
 
 ```
 $env:WB_STUDY_DIR = 'C:\Users\brady\github\bible-study-data'; $env:WB_ALLOW_REAL_STUDY = '1'; $env:WB_WINDOW = 'laptop-large'; & "$env:LOCALAPPDATA\bible-workbench-rs\app\bible-workbench.exe"
