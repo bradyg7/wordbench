@@ -9,12 +9,6 @@ fn e(x: wb_core::Error) -> String {
     x.0
 }
 
-fn root() -> Result<std::path::PathBuf, String> {
-    let r = wb_core::default_study_dir();
-    wb_core::store::guard(&r).map_err(e)?;
-    Ok(r)
-}
-
 fn day(a: &crate::args::Args) -> Result<chrono::NaiveDate, String> {
     match a.opt("on") {
         Some(d) => chrono::NaiveDate::parse_from_str(&d, "%Y-%m-%d").map_err(|_| "A day looks like 2026-11-03.".to_string()),
@@ -52,35 +46,30 @@ pub fn commands() -> Vec<Command> {
                     return j(json!({"name": a.s("name"), "kind": kind, "days": sched.len(), "first": sched.iter().take(7).map(|d| rd::label(b, d)).collect::<Vec<_>>(),
                         "last": rd::label(b, sched.last().unwrap())}));
                 }
-                let p = rd::start_plan(&root()?, &a.s("name"), &kind, a.opt("start").as_deref(), sched).map_err(e)?;
-                j(summary(&rd::progress(b, &root()?, &p, rd::today()).map_err(e)?))
+                let p = rd::start_plan(&c.root()?, &a.s("name"), &kind, a.opt("start").as_deref(), sched).map_err(e)?;
+                j(summary(&rd::progress(b, &c.root()?, &p, rd::today()).map_err(e)?))
             }),
         cmd("plan import", "Start a plan you chose (a chronological one, say) from a text file: one day to a line, places joined by ';' (Job 1-5; Ps 1). # starts a comment.",
             vec![Pos("name", N::One), Opt("file", None), Opt("start", None)], |c, a| {
                 let text = match a.opt("file") {
                     Some(f) => std::fs::read_to_string(&f).map_err(|x| format!("{f}: {x}"))?,
-                    None => {
-                        use std::io::Read;
-                        let mut s = String::new();
-                        std::io::stdin().read_to_string(&mut s).map_err(|x| x.to_string())?;
-                        s
-                    }
+                    None => c.stdin()?,
                 };
                 let b = c.bible()?;
                 let days = rd::parse_plan_text(b, &text).map_err(e)?;
-                let p = rd::start_plan(&root()?, &a.s("name"), "imported", a.opt("start").as_deref(), days).map_err(e)?;
-                j(summary(&rd::progress(b, &root()?, &p, rd::today()).map_err(e)?))
+                let p = rd::start_plan(&c.root()?, &a.s("name"), "imported", a.opt("start").as_deref(), days).map_err(e)?;
+                j(summary(&rd::progress(b, &c.root()?, &p, rd::today()).map_err(e)?))
             }),
         cmd("plan list", "Your reading plans and how far along each is.", vec![Opt("on", None)], |c, a| {
-            let (b, r, on) = (c.bible()?, root()?, day(a)?);
+            let (b, r, on) = (c.bible()?, c.root()?, day(a)?);
             j(json!(rd::plans(&r).iter().map(|p| rd::progress(b, &r, p, on).map(|x| summary(&x))).collect::<Result<Vec<_>, _>>().map_err(e)?))
         }),
         cmd("plan show", "One plan, every day with what it reads and whether it is done.", vec![Pos("name", N::Many), Opt("on", None)], |c, a| {
-            let r = root()?;
+            let r = c.root()?;
             j(rd::progress(c.bible()?, &r, &rd::find_plan(&r, &a.s("name")).map_err(e)?, day(a)?).map_err(e)?)
         }),
         cmd("plan today", "What to read today in each plan (or one), with any earlier day not yet done.", vec![Pos("name", N::Any), Opt("on", None)], |c, a| {
-            let (r, b) = (root()?, c.bible()?);
+            let (r, b) = (c.root()?, c.bible()?);
             let mut v = rd::today_view(b, &r, day(a)?).map_err(e)?;
             if a.has("name") {
                 let id = rd::find_plan(&r, &a.s("name")).map_err(e)?["id"].clone();
@@ -89,7 +78,7 @@ pub fn commands() -> Vec<Command> {
             j(v)
         }),
         cmd("plan done", "Mark a day of a plan read: the first day not yet done, or --day N.", vec![Pos("name", N::Many), Opt("day", None)], |c, a| {
-            let r = root()?;
+            let r = c.root()?;
             let b = c.bible()?;
             let p = rd::find_plan(&r, &a.s("name")).map_err(e)?;
             let pr = rd::progress(b, &r, &p, rd::today()).map_err(e)?;
@@ -108,14 +97,14 @@ pub fn commands() -> Vec<Command> {
             let after = rd::progress(b, &r, &p, rd::today()).map_err(e)?;
             j(json!({"plan": p["name"], "day": row["day"], "read": row["label"], "done": after["done"], "of": after["days"], "next": after["next"]["label"]}))
         }),
-        cmd("plan rm", "Stop a plan (its file goes to .trash; what you read stays in the log).", vec![Pos("name", N::Many)], |_, a| {
-            let r = root()?;
+        cmd("plan rm", "Stop a plan (its file goes to .trash; what you read stays in the log).", vec![Pos("name", N::Many)], |c, a| {
+            let r = c.root()?;
             let p = rd::find_plan(&r, &a.s("name")).map_err(e)?;
             rd::remove_plan(&r, p["id"].as_str().unwrap()).map_err(e)?;
             j(json!({"ok": true, "id": p["id"]}))
         }),
         cmd("read mark", "Record that you read chapters: wb read mark \"Num 25\"  |  \"Num 24-26\" [--plan \"Bible in a year\"].", vec![Pos("place", N::Many), Opt("plan", None)], |c, a| {
-            let r = root()?;
+            let r = c.root()?;
             let chs = rd::chapters_of(c.bible()?, &a.s("place")).map_err(e)?;
             let plan = match a.opt("plan") {
                 Some(n) => rd::find_plan(&r, &n).map_err(e)?["id"].as_str().unwrap().to_string(),
@@ -124,11 +113,11 @@ pub fn commands() -> Vec<Command> {
             j(json!(rd::mark(&r, &chs, &plan).map_err(e)?))
         }),
         cmd("read progress", "How much of the Bible you have read: chapters read at least once, by book.", vec![], |c, _| {
-            j(rd::overall(c.bible()?, &root()?).map_err(e)?)
+            j(rd::overall(c.bible()?, &c.root()?).map_err(e)?)
         }),
-        cmd("read log", "The reading log, newest last (--last N lines).", vec![Opt("last", Some("50"))], |_, a| {
+        cmd("read log", "The reading log, newest last (--last N lines).", vec![Opt("last", Some("50"))], |c, a| {
             let n: usize = a.opt_or("last", "50").parse().map_err(|_| "argument --last: invalid int value")?;
-            let lines = rd::log(&root()?);
+            let lines = rd::log(&c.root()?);
             j(json!(lines[lines.len().saturating_sub(n)..]))
         }),
     ]

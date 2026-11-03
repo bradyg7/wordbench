@@ -5,7 +5,10 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::sync::Mutex;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
-use tauri::{LogicalSize, State, WebviewUrl, WebviewWindowBuilder};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc;
+use tauri::{Emitter, Manager, LogicalSize, State, WebviewUrl, WebviewWindowBuilder};
 use wb_core::{bible::Bible, store::Store, studyapi, views};
 
 struct App {
@@ -14,6 +17,43 @@ struct App {
     store: Mutex<Store>,
     started: Instant,
     started_wall_ms: u128,
+    /// Lines from `wb do` waiting for the window's answer, by request number.
+    waiting: Mutex<HashMap<u64, mpsc::Sender<Value>>>,
+}
+
+static NEXT_DO: AtomicU64 = AtomicU64::new(1);
+
+/// `wb do`: lines from a terminal, handed to the window as a "wb-do" event; the window answers with `do_done`.
+fn serve_do(handle: tauri::AppHandle, study: std::path::PathBuf) {
+    let Ok((listener, token)) = wb_core::relay::listen(&study) else { return };
+    std::thread::spawn(move || {
+        for stream in listener.incoming().flatten() {
+            let handle = handle.clone();
+            let token = token.clone();
+            std::thread::spawn(move || {
+                let Some((line, wait_ms)) = wb_core::relay::read_request(&stream, &token) else {
+                    wb_core::relay::answer(&stream, &json!({"ok": false, "error": "refused: not from wb on this computer"}));
+                    return;
+                };
+                let id = NEXT_DO.fetch_add(1, Ordering::SeqCst);
+                let (tx, rx) = mpsc::channel();
+                let app = handle.state::<App>();
+                app.waiting.lock().unwrap().insert(id, tx);
+                let _ = handle.emit("wb-do", json!({"id": id, "line": line}));
+                let reply = rx.recv_timeout(std::time::Duration::from_millis(wait_ms)).unwrap_or_else(|_| json!({"ok": true, "said": "sent (the window did not say what it did)"}));
+                app.waiting.lock().unwrap().remove(&id);
+                wb_core::relay::answer(&stream, &reply);
+            });
+        }
+    });
+}
+
+/// The window's answer to a `wb do` line: `{ok, said}` or `{ok: false, error}`.
+#[tauri::command]
+fn do_done(app: State<App>, id: u64, reply: Value) {
+    if let Some(tx) = app.waiting.lock().unwrap().remove(&id) {
+        let _ = tx.send(reply);
+    }
 }
 
 /// The test sizes of docs/PLAN.md section 7 (logical pixels, the web view's own size).
@@ -90,6 +130,19 @@ fn highlight(app: State<App>, anchor: String, color: Option<String>) -> Result<V
     timed(|| studyapi::save_highlight(&bible, &mut st, &anchor, color.as_deref()))
 }
 
+/// Any `wb` command, run in-process on the window's own Bible and store: the UI and `wb` are one set of actions.
+/// `argv` is the command line without `wb`; `input` is what `-` reads. → `{"json": ...}` or `{"text": ...}`.
+#[tauri::command]
+fn wb(app: State<App>, argv: Vec<String>, input: Option<String>) -> Result<Value, String> {
+    let mut st = fresh(&app)?;
+    let bible = app.bible.lock().unwrap();
+    let t = Instant::now();
+    let mut ctx = wb_cli::Ctx::lent(&bible, &mut st);
+    ctx.input = input;
+    let v = wb_cli::run_value(&ctx, &argv)?;
+    Ok(json!({ "data": v, "rust_ms": t.elapsed().as_secs_f64() * 1000.0 }))
+}
+
 #[tauri::command]
 fn books(app: State<App>) -> Result<Value, String> {
     let bible = app.bible.lock().unwrap();
@@ -129,9 +182,10 @@ fn main() {
     let mut store = Store::open(&wb_core::default_study_dir()).unwrap_or_else(|e| panic!("{e}"));
     store.recheck = std::time::Duration::from_secs(1);
     tauri::Builder::default()
-        .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms })
-        .invoke_handler(tauri::generate_handler![reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready])
+        .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
+        .invoke_handler(tauri::generate_handler![wb, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready])
         .setup(|app| {
+            serve_do(app.handle().clone(), wb_core::default_study_dir());
             // The search index and the word offsets, built (or read from the cache) while the reader opens, so the first
             // search does not wait for them.
             std::thread::spawn(|| {

@@ -171,6 +171,11 @@ pub fn scope_of(token: &str, books: &[Book]) -> Result<String> {
     if t == "all" || t.is_empty() {
         return Ok("all".into());
     }
+    // already a scope: book ids joined by commas, as the window passes it on (the Python app's wb refused these)
+    let ids: Vec<&str> = token.split(',').map(str::trim).collect();
+    if ids.iter().all(|x| x.parse::<u32>().is_ok_and(|n| books.iter().any(|b| b.id == n))) {
+        return Ok(ids.join(","));
+    }
     for (key, a, b, aka) in GROUPS {
         if t == *key || aka.contains(&t.as_str()) {
             return Ok((*a..=*b).map(|i| i.to_string()).collect::<Vec<_>>().join(","));

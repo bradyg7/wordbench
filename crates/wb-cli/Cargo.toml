@@ -5,6 +5,10 @@ edition.workspace = true
 version.workspace = true
 publish.workspace = true
 
+[lib]
+name = "wb_cli"
+path = "src/lib.rs"
+
 [[bin]]
 name = "wb"
 path = "src/main.rs"

@@ -6,22 +6,34 @@
   <title>Bible Workbench</title>
   <link rel="stylesheet" href="./tokens.css">
   <link rel="stylesheet" href="./src/style.css">
+  <link rel="stylesheet" href="./src/desk.css">
 </head>
 <body>
   <header id="bar" class="bar">
     <button class="icon" id="prev" aria-label="Previous chapter">‹</button>
     <button id="place" class="place" aria-label="Book and chapter"></button>
     <button class="icon" id="next" aria-label="Next chapter">›</button>
-    <div class="command" aria-hidden="true">Search, go to a place, or type a command</div>
+    <div id="cmdbox" class="cmdbox">
+      <input id="cmd" type="text" autocomplete="off" spellcheck="false" placeholder="Search, go to a place, or type a command" aria-label="Command field">
+      <kbd class="cmd-key" title="Backtick opens the field">`</kbd>
+    </div>
     <span class="grow"></span>
+    <nav class="tools" aria-label="Panes">
+      <button class="tb" id="tb-notebook">Notebook<span class="badge" hidden></span></button>
+      <button class="tb" id="tb-threads">Threads</button>
+      <button class="tb roomy" id="tb-shelf">Shelf</button>
+      <button class="tb" id="hl-menu">Highlights</button>
+    </nav>
     <button class="icon" id="more" aria-label="More">⋯</button>
   </header>
+  <div id="findbar" class="findbar" hidden></div>
   <main id="scroller">
     <article id="reader" class="reader" aria-live="polite"></article>
   </main>
+  <div id="dock"></div>
   <button id="pen" class="fab" aria-label="Write">✎</button>
   <nav id="tabs" class="tabs">
-    <button class="on">Read</button><button>Notebook</button><button>Threads</button><button>Study</button><button id="tab-more">More</button>
+    <button class="on" id="tab-read">Read</button><button id="tab-notebook">Notebook</button><button id="tab-threads">Threads</button><button id="tab-study">Study</button><button id="tab-more">More</button>
   </nav>
   <div id="overlay"></div>
   <script type="module" src="./src/main.ts"></script>

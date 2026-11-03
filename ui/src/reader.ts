@@ -6,6 +6,7 @@
 // added in small steps after the first frame (appending below never moves what is on screen).
 import type { Chapter, Marks, Mark } from './api';
 import { computeMarks, key, type Computed } from './marks';
+import { layers } from './layers';
 
 export interface Drawn {
   chapter: Chapter;
@@ -19,6 +20,8 @@ export interface Drawn {
   el: HTMLElement[];             // filled as parts are drawn
   gap: (HTMLElement | null)[];   // the space after word k, when it has a span
   c: Computed;
+  /** Verses with an open question: a ? on the verse number. */
+  questions: Set<number>;
   more: () => boolean;           // draws the next part; false when the chapter is complete
 }
 
@@ -64,7 +67,13 @@ function apply(e: HTMLElement, m: Look) {
   e.style.cssText = styleOf(m);
 }
 
-export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVerse = 1): Drawn {
+// The marks the layers let through: no highlights when they are hidden, and only the threads shown.
+function compute(keys: number[], m: Marks, ch: number): Computed {
+  const shown = layers.highlightsShown() ? m : { ...m, highlights: [] };
+  return computeMarks(keys, shown, ch, id => layers.shown(id));
+}
+
+export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVerse = 1, questions = new Set<number>()): Drawn {
   const t0 = performance.now();
   const v: number[] = [], i: number[] = [], strong: (string | undefined)[] = [], text: string[] = [], gapText: string[] = [];
   const wordsAt: { para?: string; first: boolean; last: boolean; cls: string }[] = [];
@@ -80,7 +89,7 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
   }
   const n = v.length;
   // Marks are read through `now`, so parts drawn after a change (paint) use the new marks.
-  const now = { c: computeMarks(v.map((vv, k) => key(vv, i[k])), marks, chapter.chapter, () => true) };
+  const now = { c: compute(v.map((vv, k) => key(vv, i[k])), marks, chapter.chapter) };
   const el: HTMLElement[] = new Array(n), gap: (HTMLElement | null)[] = new Array(n).fill(null);
 
   // The markup of words from..to-1, ending at a block boundary at or after `want` words.
@@ -105,7 +114,7 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
         open = true;
       }
       const c = now.c;
-      if (w.first) out.push(`<span class="vn${c.verses.has(v[k]) ? ' vnote' : ''}" data-v="${v[k]}">${v[k]}</span>`);
+      if (w.first) out.push(`<span class="vn${c.verses.has(v[k]) ? ' vnote' : ''}${questions.has(v[k]) ? ' vq' : ''}" data-v="${v[k]}">${v[k]}</span>`);
       const m = look(c, k);
       out.push(`<span class="${w.cls}${m.hl ? ' hl' : ''}${m.note ? ' noted' : ''}" data-k="${k}"${marked(m) ? ` style="${styleOf(m)}"` : ''}>${esc(text[k])}</span>`);
       const g = gapLook(c, k, n);
@@ -127,7 +136,7 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
   Object.assign(drawTimes, { html_ms: t1 - t0, refs_ms: performance.now() - t1, first_words: next });
 
   const d: Drawn = {
-    chapter, marks, v, i, strong, text, gapText, el, gap,
+    chapter, marks, v, i, strong, text, gapText, el, gap, questions,
     get c() { return now.c; },
     set c(x) { now.c = x; },
     more: () => {
@@ -145,7 +154,7 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
 // Puts the marks on the drawn words again after a change (a new highlight), without redrawing the text.
 export function paint(root: HTMLElement, d: Drawn) {
   const n = d.v.length;
-  d.c = computeMarks(d.v.map((vv, k) => key(vv, d.i[k])), d.marks, d.chapter.chapter, () => true);
+  d.c = compute(d.v.map((vv, k) => key(vv, d.i[k])), d.marks, d.chapter.chapter);
   for (let k = 0; k < n; k++) {
     const e = d.el[k];
     if (!e) continue;
@@ -163,7 +172,10 @@ export function paint(root: HTMLElement, d: Drawn) {
     }
     if (ge) apply(ge, g);
   }
-  root.querySelectorAll<HTMLElement>('.vn').forEach(e => e.classList.toggle('vnote', d.c.verses.has(+e.dataset.v!)));
+  root.querySelectorAll<HTMLElement>('.vn').forEach(e => {
+    e.classList.toggle('vnote', d.c.verses.has(+e.dataset.v!));
+    e.classList.toggle('vq', d.questions.has(+e.dataset.v!));
+  });
 }
 
 // The words of keys a..b, verbatim as the database has them, for copying.

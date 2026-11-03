@@ -1,0 +1,281 @@
+{
+ "when": "2026-11-03T04:55:58.261Z",
+ "exe_mb": 16.5,
+ "startup": [
+  {
+   "ms": 724,
+   "main_to_ready_ms": 701.2496,
+   "ui_nav_to_ready_ms": 141.4000000357628,
+   "chapter_ms": 61.60000002384186
+  },
+  {
+   "ms": 731,
+   "main_to_ready_ms": 710.272,
+   "ui_nav_to_ready_ms": 149.69999998807907,
+   "chapter_ms": 65.20000004768372
+  },
+  {
+   "ms": 719,
+   "main_to_ready_ms": 695.4014,
+   "ui_nav_to_ready_ms": 151.60000002384186,
+   "chapter_ms": 69.10000002384186
+  },
+  {
+   "ms": 699,
+   "main_to_ready_ms": 676.4172000000001,
+   "ui_nav_to_ready_ms": 149.89999997615814,
+   "chapter_ms": 68.20000004768372
+  },
+  {
+   "ms": 711,
+   "main_to_ready_ms": 687.7741000000001,
+   "ui_nav_to_ready_ms": 146.39999997615814,
+   "chapter_ms": 65.70000004768372
+  }
+ ],
+ "memory": [
+  {
+   "total_ws_mb": 431.9,
+   "total_private_mb": 223.9,
+   "processes": 7
+  },
+  {
+   "total_ws_mb": 430.5,
+   "total_private_mb": 222.7,
+   "processes": 7
+  },
+  {
+   "total_ws_mb": 431.8,
+   "total_private_mb": 220.3,
+   "processes": 7
+  },
+  {
+   "total_ws_mb": 427.6,
+   "total_private_mb": 219.7,
+   "processes": 7
+  },
+  {
+   "total_ws_mb": 426.8,
+   "total_private_mb": 218.7,
+   "processes": 7
+  }
+ ],
+ "first_launch": {
+  "ms": 873,
+  "main_to_ready_ms": 827.7795,
+  "memory": {
+   "processes": [
+    {
+     "name": "bible-workbench.exe",
+     "pid": 21440,
+     "ws_mb": 45.9,
+     "private_mb": 20.7
+    },
+    {
+     "name": "msedgewebview2.exe",
+     "pid": 4276,
+     "ws_mb": 126.5,
+     "private_mb": 41.8
+    },
+    {
+     "name": "msedgewebview2.exe",
+     "pid": 23572,
+     "ws_mb": 9.9,
+     "private_mb": 2.5
+    },
+    {
+     "name": "msedgewebview2.exe",
+     "pid": 36784,
+     "ws_mb": 113.7,
+     "private_mb": 99.4
+    },
+    {
+     "name": "msedgewebview2.exe",
+     "pid": 9108,
+     "ws_mb": 38.5,
+     "private_mb": 12.3
+    },
+    {
+     "name": "msedgewebview2.exe",
+     "pid": 24804,
+     "ws_mb": 20.2,
+     "private_mb": 7.8
+    },
+    {
+     "name": "msedgewebview2.exe",
+     "pid": 37632,
+     "ws_mb": 72.7,
+     "private_mb": 34.6
+    }
+   ],
+   "total_ws_mb": 427.3,
+   "total_private_mb": 219.1
+  }
+ },
+ "throttle": 4,
+ "psalm119_complete_ms": 248,
+ "chapter": {
+  "NUM 24": {
+   "median_ms": 84.1,
+   "rust_ms": 2.3,
+   "ipc_ms": 43.3,
+   "html_ms": 13.2,
+   "refs_ms": 2.2,
+   "frame_ms": 30.8,
+   "first_words": 393,
+   "words": 659
+  },
+  "NUM 25": {
+   "median_ms": 84.3,
+   "rust_ms": 1.6,
+   "ipc_ms": 29.4,
+   "html_ms": 14.8,
+   "refs_ms": 2.2,
+   "frame_ms": 40.5,
+   "first_words": 388,
+   "words": 445
+  },
+  "NUM 26": {
+   "median_ms": 59.8,
+   "rust_ms": 2,
+   "ipc_ms": 19.1,
+   "html_ms": 9.7,
+   "refs_ms": 1.1,
+   "frame_ms": 26.7,
+   "first_words": 389,
+   "words": 1446
+  },
+  "JHN 3": {
+   "median_ms": 82.9,
+   "rust_ms": 2.4,
+   "ipc_ms": 39,
+   "html_ms": 9.4,
+   "refs_ms": 1.2,
+   "frame_ms": 30.5,
+   "first_words": 373,
+   "words": 765
+  },
+  "PSA 119": {
+   "median_ms": 90.8,
+   "rust_ms": 3.7,
+   "ipc_ms": 37.3,
+   "html_ms": 18.9,
+   "refs_ms": 1.8,
+   "frame_ms": 25.5,
+   "first_words": 356,
+   "words": 2423
+  }
+ },
+ "search": {
+  "data_median_ms": 8.4,
+  "data_max_ms": 15.5,
+  "rust_median_ms": 1.2,
+  "pane_drawn_median_ms": 37.9,
+  "pane_drawn_max_ms": 84.3,
+  "each": [
+   [
+    "grace",
+    16,
+    159
+   ],
+   [
+    "love",
+    10,
+    281
+   ],
+   [
+    "zeal",
+    8,
+    16
+   ],
+   [
+    "mercy",
+    10,
+    261
+   ],
+   [
+    "beginning",
+    8,
+    104
+   ],
+   [
+    "peace",
+    8,
+    400
+   ],
+   [
+    "faith hope",
+    5,
+    8
+   ],
+   [
+    "covenant",
+    7,
+    272
+   ]
+  ]
+ },
+ "word_sheet": {
+  "n": 6,
+  "median_ms": 55.4,
+  "max_ms": 72.1,
+  "rust_ms": 1,
+  "call_ms": 20.9,
+  "each": [
+   [
+    "zealous",
+    72
+   ],
+   [
+    "Phinehas",
+    55
+   ],
+   [
+    "zealous",
+    27
+   ],
+   [
+    "Baal-peor",
+    58
+   ],
+   [
+    "slain",
+    46
+   ],
+   [
+    "Phinehas",
+    49
+   ]
+  ]
+ },
+ "verse_sheet": {
+  "n": 3,
+  "median_ms": 40.7,
+  "max_ms": 51.5
+ },
+ "long_press": {
+  "selected": "7:2 – 8:3",
+  "bar": true,
+  "scrolled_px": 0,
+  "menu_or_native_selection": ""
+ },
+ "hover_card": {
+  "n": 4,
+  "median_ms": 24.2,
+  "note": "from the card being asked for (after the 280 ms hover delay) to drawn"
+ },
+ "psalm119_scroll": {
+  "frames": 811,
+  "median_frame_ms": 16.7,
+  "p95_frame_ms": 16.9,
+  "max_frame_ms": 33.5,
+  "long_frames": 1,
+  "marked_words": 1220
+ },
+ "summary": {
+  "startup_median_ms": 719,
+  "startup_max_ms": 731,
+  "memory_private_median_mb": 220.3,
+  "memory_working_set_median_mb": 430.5
+ }
+}

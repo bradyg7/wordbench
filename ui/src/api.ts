@@ -1,19 +1,21 @@
 // The one door to Rust. In the app every call goes to a Tauri command (app/src-tauri/src/main.rs), which calls wb-core.
 // Outside the app (the WebKit tests) the same answers come from fixtures that `wb fixture` generated from the database.
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 export interface Word { i: number; lead?: string; text: string; trail?: string; strong?: string; italic?: boolean; nd?: boolean; wj?: boolean; para?: string }
 export interface Verse { v: number; words: Word[] }
 export interface Chapter { code: string; name: string; chapter: number; chapters: number; title?: string; verses: Verse[] }
 export interface Mark { kind: string; code: string; c1: number; v1: number; i1: number | null; c2: number | null; v2: number | null; i2: number | null; id: string; color?: string }
 export interface Marks { highlights: Mark[]; notes: Mark[]; threads: Mark[]; thread_names: Record<string, string> }
-export interface ReaderView { chapter: Chapter; marks: Marks }
+export interface Question { id: string; v: number; text: string }
+export interface ReaderView { chapter: Chapter; marks: Marks; questions?: Question[] }
 export interface Lexicon { strong: string; lang: string; lemma: string; translit?: string; pron?: string; pos?: string; derivation?: string; definition?: string; usage?: string }
 export interface Count { strong: string; times: number; verses: number; books: number }
 export interface Note { id: string; anchor: string; kind: string; quote: string; strong: string; created: string; text: string }
 export interface WordView { reference: string; anchor: string; text: string; strong?: string; lexicon?: Lexicon; count?: Count; notes: Note[] }
 export interface VerseView { reference: string; anchor: string; text: string; color?: string; notes: Note[]; threads: { id: string; name: string; color: string }[] }
-export interface Book { id: number; code: string; name: string; chapters: number }
+export interface Book { id: number; code: string; name: string; chapters: number; testament?: string }
 export interface PlanDay { day: number; date: string; label: string; entries: string[]; done: boolean }
 export interface Today { date: string; plans: { plan: string; id: string; day: number | null; of: number; behind: number; ahead: number; finished: boolean; to_read: PlanDay[]; next: PlanDay | null }[] }
 
@@ -52,3 +54,27 @@ export const api = {
   setWindow: (preset: string) => invoke<any>('set_window', { preset }),
   uiReady: (report: unknown) => (inApp ? invoke<any>('ui_ready', { report }) : Promise.resolve(null)),
 };
+
+// ---- every other action: the `wb` command table, run in-process (the UI and `wb` are one set of actions) -------------
+// Outside the app (the WebKit tests) answers come from fixtures named by the command line (scripts/fixtures.mjs).
+export const wbFixtureName = (argv: string[]) => argv.join(' ').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+
+export async function wb(argv: string[], input?: string): Promise<any> {
+  if (inApp) {
+    const r = await invoke<Answer<{ json?: unknown; text?: string }>>('wb', { argv, input });
+    return r.data.json !== undefined ? r.data.json : r.data.text;
+  }
+  const r = await fetch(`fixtures/wb/${wbFixtureName(argv)}.json`);
+  if (!r.ok) throw new Error(`Not in the app: wb ${argv.join(' ')}`);
+  return r.json();
+}
+
+// `wb do` from a terminal: each line arrives as an event; the answer goes back with do_done.
+export function onDo(run: (line: string) => Promise<{ ok: boolean; said?: string; error?: string }>) {
+  if (!inApp) return;
+  listen<{ id: number; line: string }>('wb-do', async e => {
+    let reply;
+    try { reply = await run(e.payload.line); } catch (x) { reply = { ok: false, error: String(x) }; }
+    invoke('do_done', { id: e.payload.id, reply }).catch(() => {});
+  });
+}

@@ -88,18 +88,18 @@ pub fn commands() -> Vec<Command> {
         // The app's own views (not in the Python wb): what the reader, the word sheet and the verse sheet show.
         cmd("reader", "What the reader draws for a chapter: its words and the marks on them (JSON): wb reader NUM 25.", vec![Pos("book", N::One), Pos("ch", N::One)], |c, a| {
             let (b, ch) = book_ch(a)?;
-            Ok(Out::Json(json!(views::reader(c.bible()?, c.study()?, &b, ch).map_err(e)?)))
+            Ok(Out::Json(json!(views::reader(c.bible()?, &*c.study()?, &b, ch).map_err(e)?)))
         }),
         cmd("word", "What the word sheet shows: wb word NUM 25 11 24 (word 24, from 0, of Numbers 25:11).",
             vec![Pos("book", N::One), Pos("ch", N::One), Pos("v", N::One), Pos("i", N::One)], |c, a| {
                 let (b, ch) = book_ch(a)?;
                 let n = |k: &str| a.s(k).parse::<u32>().map_err(|_| format!("{k} must be a number"));
-                Ok(Out::Json(json!(views::word(c.bible()?, c.study()?, &b, ch, n("v")?, n("i")?).map_err(e)?)))
+                Ok(Out::Json(json!(views::word(c.bible()?, &*c.study()?, &b, ch, n("v")?, n("i")?).map_err(e)?)))
             }),
         cmd("verse", "What the verse sheet shows: wb verse NUM 25 11.", vec![Pos("book", N::One), Pos("ch", N::One), Pos("v", N::One)], |c, a| {
             let (b, ch) = book_ch(a)?;
             let v = a.s("v").parse::<u32>().map_err(|_| "v must be a number")?;
-            Ok(Out::Json(json!(views::verse(c.bible()?, c.study()?, &b, ch, v).map_err(e)?)))
+            Ok(Out::Json(json!(views::verse(c.bible()?, &*c.study()?, &b, ch, v).map_err(e)?)))
         }),
         cmd("fixture", "The reader, every word sheet and every verse sheet of a chapter in one JSON (the UI's test data): wb fixture NUM 25.",
             vec![Pos("book", N::One), Pos("ch", N::One)], fixture),
@@ -110,7 +110,7 @@ fn book_ch(a: &Args) -> Result<(String, u32), String> {
     Ok((a.s("book").to_uppercase(), a.s("ch").parse().map_err(|_| "the chapter must be a number")?))
 }
 
-fn text(c: &Ctx, a: &Args) -> Res {
+fn text(c: &Ctx<'_>, a: &Args) -> Res {
     let psg = scripture::passage(c.bible()?, &a.s("ref"), &a.opt_or("version", "KJV")).map_err(e)?;
     if a.flag("json") {
         return Ok(Out::Json(psg));
@@ -122,7 +122,7 @@ fn text(c: &Ctx, a: &Args) -> Res {
     Ok(Out::Text(scripture::block(&psg)))
 }
 
-fn copy(c: &Ctx, a: &Args) -> Res {
+fn copy(c: &Ctx<'_>, a: &Args) -> Res {
     let mut out = scripture::copy(c.bible()?, &a.s("ref"), &a.opt_or("version", "KJV"), &a.opt_or("format", "lines"), a.flag("short")).map_err(e)?;
     if !a.flag("no_clip") {
         let clipped = clip(out["text"].as_str().unwrap());
@@ -160,7 +160,7 @@ fn clip(text: &str) -> bool {
     child.wait().map(|s| s.success()).unwrap_or(false)
 }
 
-fn preview(c: &Ctx, a: &Args) -> Res {
+fn preview(c: &Ctx<'_>, a: &Args) -> Res {
     let d = scripture::preview(c.bible()?, &a.s("place"), &a.opt_or("version", "KJV"), scripture::PREVIEW_VERSES).map_err(e)?;
     if a.flag("json") {
         return Ok(Out::Json(d));
@@ -180,7 +180,7 @@ fn preview(c: &Ctx, a: &Args) -> Res {
     Ok(Out::Text(format!("{} ({})\n{}{}", s(&d["label"]), s(&d["version"]), lines.join("\n"), if more > 0 { format!("\n... and {more} more") } else { String::new() })))
 }
 
-fn uses(c: &Ctx, a: &Args) -> Res {
+fn uses(c: &Ctx<'_>, a: &Args) -> Res {
     let term = a.s("term");
     let strong = strong_term(&term);
     let word = a.opt("word").unwrap_or_else(|| if strong.is_empty() { term.to_lowercase() } else { String::new() });
@@ -191,7 +191,7 @@ fn uses(c: &Ctx, a: &Args) -> Res {
     Ok(Out::Json(lookup::uses(c.bible()?, &q).map_err(e)?))
 }
 
-fn count(c: &Ctx, a: &Args) -> Res {
+fn count(c: &Ctx<'_>, a: &Args) -> Res {
     let term = a.s("term");
     let strong = strong_term(&term);
     let word = if strong.is_empty() { term.to_lowercase() } else { String::new() };
@@ -203,9 +203,10 @@ fn count(c: &Ctx, a: &Args) -> Res {
     Ok(Out::Json(json!({"term": term, "occurrences": d["occurrences"], "verses": d["verses"], "by_book": by_book})))
 }
 
-fn fixture(c: &Ctx, a: &Args) -> Res {
+fn fixture(c: &Ctx<'_>, a: &Args) -> Res {
     let (b, ch) = book_ch(a)?;
-    let (bible, study) = (c.bible()?, c.study()?);
+    let st = c.study()?;
+    let (bible, study) = (c.bible()?, &*st);
     let reader = views::reader(bible, study, &b, ch).map_err(e)?;
     let mut words = Map::new();
     let mut verses = Map::new();
@@ -215,6 +216,5 @@ fn fixture(c: &Ctx, a: &Args) -> Res {
             words.insert(format!("{}.{}", v.v, w.i), json!(views::word(bible, study, &b, ch, v.v, w.i).map_err(e)?));
         }
     }
-    println!("{}", json!({"reader": reader, "words": words, "verses": verses}));
-    Ok(Out::Nothing)
+    Ok(Out::Text(json!({"reader": reader, "words": words, "verses": verses}).to_string()))
 }

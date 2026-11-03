@@ -395,3 +395,71 @@ fn a_plan_of_your_own_is_imported_from_a_text_file() {
     assert_eq!(code, 1);
     assert!(err.contains("Line 2"), "{err}");
 }
+
+// ---- the Notebook (new in the Rust app) ----
+
+#[test]
+fn a_jot_waits_in_the_inbox_apart_from_placed_notes_then_is_placed() {
+    let Some(wb) = Wb::new() else { return };
+    let n = wb.js(&["note", "jot", "check where else this phrase is used; see Rom 10:2"]);
+    let id = n["id"].as_str().unwrap().to_string();
+    assert_eq!((n["placed"].clone(), n["kind"].clone(), n["offer"]["anchor"].clone()), (json!(false), json!("note"), json!("ROM.10:2")));
+    // its own file in notes/_inbox, in the notes' format, with an empty anchor (the Python app passes over it)
+    let file = wb.dir.join("notes").join("_inbox").join(format!("{id}.md"));
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert!(text.starts_with("---\nid: \"") && text.contains("\nanchor: \"\"\n") && text.contains("kind: \"jot\""), "{text}");
+    // not a placed note: the margins, note list, anchor views and find do not see it
+    assert_eq!(wb.js(&["note", "list", "Romans 10"]), json!([]));
+    assert_eq!(wb.js(&["find", "phrase"])["notes"], json!([]));
+    assert_eq!(wb.js(&["inbox"])["notes"].as_array().unwrap().len(), 1);
+    assert_eq!(wb.js(&["journal"])["days"][0]["entries"][0]["id"], json!(id));
+    // placed by part of its text, on the place its text names
+    let placed = wb.js(&["note", "place", "where else"]);
+    assert_eq!((placed["placed"].clone(), placed["anchor"].clone(), placed["label"].clone()), (json!(true), json!("ROM.10:2"), json!("Romans 10:2")));
+    assert!(!file.exists());
+    assert!(wb.dir.join("notes").join("ROM").join(format!("{id}.md")).exists());
+    let listed = wb.js(&["note", "list", "Romans 10"]);
+    assert_eq!((listed[0]["id"].clone(), listed[0]["quote"].clone()), (json!(id), json!(verse_texts(&wb, "Rom 10:2")[0])));
+    assert_eq!(wb.js(&["inbox"])["notes"], json!([]));
+    // the day it was written is kept
+    assert_eq!(wb.js(&["journal"])["days"][0]["entries"][0]["created"], n["created"]);
+    assert_eq!(wb.js(&["note", "all"])["books"][0]["code"], json!("ROM"));
+}
+
+#[test]
+fn a_question_with_no_place_becomes_a_trail_when_placed() {
+    let Some(wb) = Wb::new() else { return };
+    let q = wb.js(&["note", "jot", "how do the two numbers relate", "--question"]);
+    let id = q["id"].as_str().unwrap().to_string();
+    assert_eq!(wb.js(&["questions"])["questions"][0]["id"], json!(id));
+    assert!(wb.fails(&["note", "place", "two numbers"]).contains("names no place"));
+    assert!(wb.fails(&["note", "place", "two numbers", "H7065"]).contains("question is placed on words or verses"));
+    wb.js(&["note", "place", &id, "Num 25:9"]);
+    let trails = wb.js(&["trail", "list"])["trails"].clone();
+    assert_eq!((trails[0]["id"].clone(), trails[0]["anchor"].clone(), trails[0]["status"].clone()), (json!(id), json!("NUM.25:9"), json!("open")));
+    assert_eq!(wb.js(&["reader", "NUM", "25"])["questions"][0]["v"], json!(9));
+    wb.js(&["trail", "done", &id]);
+    assert_eq!(wb.js(&["questions"])["questions"], json!([]));
+    assert_eq!(wb.js(&["questions", "--status", "done"])["questions"][0]["id"], json!(id));
+}
+
+#[test]
+fn an_inbox_note_is_changed_made_a_question_or_deleted_to_the_trash() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["note", "jot", "first thought"]);
+    assert_eq!(wb.js(&["inbox", "edit", "first", "a better thought"])["text"], json!("a better thought"));
+    assert_eq!(wb.js(&["inbox", "edit", "better", "--question"])["kind"], json!("question"));
+    assert!(wb.fails(&["inbox", "edit", "nothing like it", "x"]).contains("No note in the Inbox"));
+    wb.js(&["inbox", "rm", "better"]);
+    assert_eq!(wb.js(&["inbox"])["notes"], json!([]));
+    assert_eq!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().count(), 1);
+}
+
+#[test]
+fn the_capture_box_language_and_its_manual() {
+    let Some(wb) = Wb::new() else { return };
+    assert_eq!(wb.js(&["parse", "uses", "zeal", "gospels"])["action"], json!({"cmd": "uses", "strong": "", "word": "zeal", "scope": "40,41,42,43"}));
+    assert!(wb.js(&["parse", "hl", "red"])["error"].as_str().unwrap().starts_with("Colors are"));
+    assert!(wb.ok(&["manual", "uses"]).starts_with("uses <word> [scope]"));
+    assert_eq!(wb.js(&["refs", "see 1 Cor 10:8 and Num 25:9"]).as_array().unwrap().len(), 2);
+}

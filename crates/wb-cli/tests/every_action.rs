@@ -17,6 +17,11 @@ const INTERNAL: &[&str] = &[
     // reading: the pieces wb plan and wb read are made of
     "today", "schedule", "parse_plan_text", "label", "read_plan", "plans", "find_plan", "start_plan", "remove_plan", "log", "mark",
     "chapters_of", "progress", "today_view", "overall",
+    // the Notebook and the command language: pieces of the commands that reach them (note place finds and places;
+    // the reader draws the questions)
+    "place_jot", "named_place", "chapter_questions", "command_names", "split_at", "anchor_ref",
+    // wb do: the app's side of the socket (wb do is the other side)
+    "address_file", "listen", "read_request", "answer",
 ];
 
 fn public_fns(src: &str) -> Vec<String> {
@@ -30,9 +35,9 @@ fn public_fns(src: &str) -> Vec<String> {
 fn every_action_has_a_command() {
     let core = env!("CARGO_MANIFEST_DIR").to_string() + "/../wb-core/src/";
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
-    let cli_src: String = ["main.rs", "read.rs", "study.rs", "reading.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
+    let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs"] {
+    for file in ["lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "commands.rs", "relay.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;

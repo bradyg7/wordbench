@@ -29,8 +29,8 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
 
 | Path | What |
 |---|---|
-| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views` |
-| `crates/wb-cli` | The `wb` binary over wb-core |
+| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `relay` (`wb do`) |
+| `crates/wb-cli` | The `wb` command table (a library the app runs in-process) and the `wb` binary |
 | `app/src-tauri` | The Tauri 2 shell: commands that call wb-core |
 | `ui/` | The UI: TypeScript, CSS, fonts (Literata for scripture, Inter for the interface), `tokens.css` from the design tokens |
 | `spikes/` | Phase 0 experiments (git sync, Typst PDF), kept for reference |
@@ -44,6 +44,9 @@ cargo run -p wb-cli -- text "Num 25:11"      # verbatim scripture
 npm install && npm run tauri dev             # the app (from the repo root)
 npm run test:webkit                          # the UI in Playwright's WebKit at phone size
 python scripts/golden.py                     # the Rust wb against the Python wb on the same inputs (scratch folders)
+node scripts/commands-cases.mjs              # the command language's cases and manual, from the Python app's commands.js
+node measure/desk.mjs                        # the desktop checked in the real app (its own instance and scratch copy)
+npm run measure                              # the speed budgets (after npx tauri build --no-bundle)
 ```
 
 The Rust `wb` must give the same output as the Python `wb`: when changing a command, add or update its case in

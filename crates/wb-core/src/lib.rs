@@ -6,10 +6,13 @@
 pub mod anchors;
 pub mod bible;
 pub mod cache;
+pub mod commands;
 pub mod lookup;
 pub mod marks;
+pub mod notebook;
 pub mod places;
 pub mod reading;
+pub mod relay;
 pub mod scripture;
 pub mod store;
 pub mod studyapi;

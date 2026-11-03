@@ -1,0 +1,127 @@
+//! The Notebook (wb-core's notebook module): notes written before they have a place (notes/_inbox/), the journal by day,
+//! questions, and placing a note. And the capture box's language: what a line means (`wb parse`), the manual, and the
+//! references in a piece of text.
+
+use crate::args::{Flag, Opt, Pos, N};
+use crate::{cmd, Command, Ctx, Out, Res};
+use serde_json::{json, Value};
+use wb_core::{commands as lang, notebook as nb};
+
+fn e(x: wb_core::Error) -> String {
+    x.0
+}
+
+fn j(v: Value) -> Res {
+    Ok(Out::Json(v))
+}
+
+/// A place as typed → an anchor (the same forms `wb note add` takes).
+fn anchor(c: &Ctx<'_>, text: &str) -> Result<String, String> {
+    crate::study::anchor(c, text)
+}
+
+fn text_of(c: &Ctx<'_>, words: &str) -> Result<String, String> {
+    if words.trim() == "-" { c.stdin() } else { Ok(words.to_string()) }
+}
+
+pub fn commands() -> Vec<Command> {
+    vec![
+        cmd("note jot", "Write a thought with no place yet, into the Notebook's Inbox: wb note jot \"check where else this is used\" [--question]. (text - reads standard input)",
+            vec![Pos("text", N::Many), Flag("question")], |c, a| {
+                let text = text_of(c, &a.s("text"))?;
+                j(nb::jot(c.bible()?, &mut *c.study()?, &text, a.flag("question")).map_err(e)?)
+            }),
+        cmd("note place", "Give an Inbox note its place: wb note place <id or part of it> \"Num 25:11\". With no place, the place its text names.",
+            vec![Pos("note", N::One), Pos("place", N::Any)], |c, a| {
+                let mut st = c.study()?;
+                let id = nb::find_jot(&st, &a.s("note")).map_err(e)?;
+                let place = if a.has("place") {
+                    anchor(c, &a.s("place"))?
+                } else {
+                    let text = st.inbox().into_iter().find(|n| n["id"] == id.as_str()).map(|n| n["text"].as_str().unwrap_or("").to_string()).unwrap_or_default();
+                    let named = nb::named_place(c.bible()?, &text).ok_or("The note names no place; give one: wb note place <id> \"Num 25:11\"")?;
+                    named["anchor"].as_str().unwrap().to_string()
+                };
+                j(nb::place(c.bible()?, &mut st, &id, &place).map_err(e)?)
+            }),
+        cmd("note all", "Every placed note in Bible order, by book; with words, only the notes that have them all.", vec![Pos("words", N::Any)], |c, a| {
+            j(nb::all_notes(c.bible()?, &*c.study()?, &a.s("words")).map_err(e)?)
+        }),
+        cmd("journal", "The Notebook's journal: every note and question by the day it was written, newest first (or one day: wb journal 2026-11-02).",
+            vec![Pos("day", N::Opt)], |c, a| {
+                let d = a.s("day");
+                let day = if d.is_empty() { None } else { Some(chrono::NaiveDate::parse_from_str(&d, "%Y-%m-%d").map_err(|_| "A day looks like 2026-11-02.")?) };
+                j(nb::journal(c.bible()?, &*c.study()?, day).map_err(e)?)
+            }),
+        cmd("inbox", "The notes with no place yet, newest first, each with the place its text names (offer), if any.", vec![], |c, _| {
+            j(nb::inbox(c.bible()?, &*c.study()?).map_err(e)?)
+        }),
+        cmd("inbox edit", "Change an Inbox note's text (id or part of it), or make it a question (--question) or a plain note (--plain).",
+            vec![Pos("note", N::One), Pos("text", N::Any), Flag("question"), Flag("plain")], |c, a| {
+                let mut st = c.study()?;
+                let id = nb::find_jot(&st, &a.s("note")).map_err(e)?;
+                let text = if a.has("text") { Some(text_of(c, &a.s("text"))?) } else { None };
+                let q = if a.flag("question") { Some(true) } else if a.flag("plain") { Some(false) } else { None };
+                if text.is_none() && q.is_none() {
+                    return Err("Give the new text, or --question or --plain.".into());
+                }
+                j(json!(st.update_jot(&id, text.as_deref(), q).map_err(e)?))
+            }),
+        cmd("inbox rm", "Delete an Inbox note (moved to .trash in the study folder).", vec![Pos("note", N::Many)], |c, a| {
+            let mut st = c.study()?;
+            let id = nb::find_jot(&st, &a.s("note")).map_err(e)?;
+            st.delete_jot(&id).map_err(e)?;
+            j(json!({"ok": true, "id": id}))
+        }),
+        cmd("questions", "Your questions: those in the Inbox and those at a place (trails), newest first.", vec![Opt("status", Some("open"))], |c, a| {
+            j(nb::questions(c.bible()?, &*c.study()?, &a.opt_or("status", "open")).map_err(e)?)
+        }),
+        cmd("parse", "What a line of the capture box means, as the window reads it: wb parse \"uses zeal gospels\" (an action, or the error).",
+            vec![Pos("line", N::Any)], |c, a| {
+                Ok(Out::Json(match lang::parse(&a.s("line"), c.bible()?.books()) {
+                    Ok(act) => json!({"action": act}),
+                    Err(m) => json!({"error": m}),
+                }))
+            }),
+        cmd("manual", "The capture box's manual: every command, or one (wb manual uses), or a topic (scopes, places, refs, keys).",
+            vec![Pos("topic", N::Any)], |_, a| {
+                let t = a.s("topic");
+                if t.is_empty() {
+                    return j(lang::manual().clone());
+                }
+                let d = lang::find_doc(&t).ok_or_else(|| format!("No command or topic called “{t}”. Try: wb manual"))?;
+                if a.flag("json") {
+                    return j(d.clone());
+                }
+                let lines = |k: &str| d[k].as_array().map(|x| x.iter().filter_map(|l| l.as_str()).collect::<Vec<_>>().join("\n")).unwrap_or_default();
+                let examples = d["examples"].as_array().map(|x| x.iter().map(|p| format!("  {}    {}", p[0].as_str().unwrap_or(""), p[1].as_str().unwrap_or(""))).collect::<Vec<_>>().join("\n")).unwrap_or_default();
+                Ok(Out::Text(format!("{}\n\n{}\n\n{}\n\n{}", lines("usage"), d["what"].as_str().unwrap_or(""), lines("details"), examples).trim_end().to_string()))
+            }),
+        cmd("do", "Send a line to the capture box of the running app, as if typed there: wb do \"open John 3\"  |  wb do \"uses zeal gospels\". Prints what the window did.
+                   Several lines: one per argument, or - for standard input. --wait N: seconds to wait for the window (default 10).",
+            vec![Pos("line", N::Many), Opt("wait", Some("10")), Flag("each")], |c, a| {
+                let lines: Vec<String> = if a.s("line").trim() == "-" {
+                    c.stdin()?.lines().map(str::trim).filter(|l| !l.is_empty()).map(String::from).collect()
+                } else if a.flag("each") {
+                    a.list("line")
+                } else {
+                    vec![a.s("line")]
+                };
+                let wait: f64 = a.opt_or("wait", "10").parse().map_err(|_| "argument --wait: a number of seconds")?;
+                let mut out = vec![];
+                for l in lines {
+                    let r = wb_core::relay::send(&l, std::time::Duration::from_secs_f64(wait.max(0.1))).map_err(e)?;
+                    if r["ok"] == false {
+                        return Err(format!("{l}: {}", r["error"].as_str().unwrap_or("the window refused it")));
+                    }
+                    out.push(r);
+                }
+                if out.len() == 1 && !a.flag("json") {
+                    return Ok(Out::Text(out[0]["said"].as_str().unwrap_or("done").to_string()));
+                }
+                j(json!(out))
+            }),
+        cmd("refs", "The verse references in a piece of text, as the Notebook links them: wb refs \"see 1 Cor 10:8 and Num 25:9\".",
+            vec![Pos("text", N::Many)], |c, a| j(json!(lang::find_refs(&a.s("text"), c.bible()?.books())))),
+    ]
+}

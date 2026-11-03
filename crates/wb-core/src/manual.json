@@ -1,0 +1,2348 @@
+{
+ "made_by": "scripts/commands-cases.mjs from the Python app's web/help-docs.js and web/commands.js",
+ "commands": [
+  {
+   "name": "def",
+   "usage": "def <word or H7065>",
+   "help": "the original words behind a word"
+  },
+  {
+   "name": "uses",
+   "usage": "uses <word or H7065> [book | group | OT | NT]",
+   "help": "every place it occurs"
+  },
+  {
+   "name": "forms",
+   "usage": "forms <word>",
+   "help": "zeal, zealous, zealously: each form with its count"
+  },
+  {
+   "name": "lexiconc",
+   "usage": "lexiconc <english word>",
+   "help": "original words whose lexicon definition contains it"
+  },
+  {
+   "name": "lex",
+   "usage": "lex bdb H7065 | lex strongs G26",
+   "help": "a lexicon entry (BDB for Hebrew)"
+  },
+  {
+   "name": "count",
+   "usage": "count <word or H7065>",
+   "help": "how many in each book"
+  },
+  {
+   "name": "near",
+   "usage": "near <a> <b> [within N] [scope]",
+   "help": "verses where the two come close together"
+  },
+  {
+   "name": "first",
+   "usage": "first <word or H7065> [scope]",
+   "help": "jump to its first occurrence"
+  },
+  {
+   "name": "last",
+   "usage": "last <word or H7065> [scope]",
+   "help": "jump to its last occurrence"
+  },
+  {
+   "name": "search",
+   "usage": "search <words> [in gospels]",
+   "help": "or just type the words"
+  },
+  {
+   "name": "find",
+   "usage": "find <text>",
+   "help": "search your own notes, threads and trails"
+  },
+  {
+   "name": "open",
+   "usage": "open <reference>[; <reference>] [kjv | ylt | both]",
+   "help": "a passage, a range, a whole book or a list"
+  },
+  {
+   "name": "compare",
+   "usage": "compare <reference>[; ...]",
+   "help": "the KJV with the YLT under each verse"
+  },
+  {
+   "name": "interlinear",
+   "usage": "interlinear <reference>",
+   "help": "the original Greek or Hebrew, word by word"
+  },
+  {
+   "name": "copy",
+   "usage": "copy [<reference>[; <reference>]] [kjv | ylt] [lines | block | para | quote] [short] | copy format <format> [short]",
+   "help": "verses on the clipboard, with their reference"
+  },
+  {
+   "name": "preview",
+   "usage": "preview <reference or H7065> [ylt]",
+   "help": "the hover card for a place or a Strong’s number"
+  },
+  {
+   "name": "hover",
+   "usage": "hover on | off | refs",
+   "help": "whether hover cards appear, and on the words of the text"
+  },
+  {
+   "name": "go",
+   "usage": "go <reference>",
+   "help": "move the reader there"
+  },
+  {
+   "name": "next",
+   "usage": "next",
+   "help": "the next chapter in the reader"
+  },
+  {
+   "name": "prev",
+   "usage": "prev",
+   "help": "the previous chapter in the reader"
+  },
+  {
+   "name": "back",
+   "usage": "back",
+   "help": "return to where the reader just was"
+  },
+  {
+   "name": "listen",
+   "usage": "listen [place] | pause | resume | stop | speed 1.2 | voices | voice <name> | voice mine",
+   "help": "read aloud in the browser’s voice, or in your own recorded voice"
+  },
+  {
+   "name": "hl",
+   "usage": "hl <color|#rrggbb|c1-c8|clear> [@ref]",
+   "help": "highlight the current place"
+  },
+  {
+   "name": "marked",
+   "usage": "marked [color] [scope] [in <thread>]",
+   "help": "your highlights, in Bible order"
+  },
+  {
+   "name": "note",
+   "usage": "note <text> [@ref]",
+   "help": "a note on the current place"
+  },
+  {
+   "name": "+",
+   "usage": "+<thread name> [@ref]",
+   "help": "add the current place to a thread"
+  },
+  {
+   "name": "?",
+   "usage": "?<question> [@ref]",
+   "help": "queue it for later, anchored here"
+  },
+  {
+   "name": "notes",
+   "usage": "notes [@ref] | notes edit <part of it> = <new text> [@ref] | notes delete <part of it> [@ref]",
+   "help": "see, change or delete your notes"
+  },
+  {
+   "name": "trail",
+   "usage": "trail done|reopen|delete <part of it> | trail edit <part of it> = <new text>",
+   "help": "finish, change or delete a queued question"
+  },
+  {
+   "name": "thread",
+   "usage": "thread <name> [- <ref>] | thread color <name> <color|none> | thread rename <name> = <new name> | thread note <name> = <text> | thread move <name> - <place|number> up|down|first|last|<number> | thread sort <name> | thread delete <name>",
+   "help": "open or change a thread, reorder it, or take a place out of it"
+  },
+  {
+   "name": "results",
+   "usage": "results | results tick all|none|<places> | results untick <places> | results as words|verses | results add <thread>",
+   "help": "tick places in the list in front, and add them to a thread"
+  },
+  {
+   "name": "palette",
+   "usage": "palette | palette rm <c1-c8 or #rrggbb>",
+   "help": "your saved colors, or forget one"
+  },
+  {
+   "name": "today",
+   "usage": "today [2026-10-18]",
+   "help": "what you typed into this box that day"
+  },
+  {
+   "name": "layout",
+   "usage": "layout save|load <name> | layout list",
+   "help": "keep or bring back an arrangement of panes"
+  },
+  {
+   "name": "sets",
+   "usage": "sets",
+   "help": "the Shelf: every set and what it holds"
+  },
+  {
+   "name": "set",
+   "usage": "set <name> | set new <name>[: items] | set add <name>: items | set rm <name>: items | set minimize|restore|close|open <name> | set rename <name> = <new name> | set delete <name>",
+   "help": "a named group of panes, threads, places, notes, lessons and PDFs"
+  },
+  {
+   "name": "undo",
+   "usage": "undo",
+   "help": "take back your last note, highlight, trail or thread add"
+  },
+  {
+   "name": "help",
+   "usage": "help [command | scopes | places | refs | keys | wb]",
+   "help": "the full manual, or one command in detail"
+  },
+  {
+   "name": "keys",
+   "usage": "keys",
+   "help": "every keyboard shortcut and mouse gesture, in one panel"
+  },
+  {
+   "name": "pdf",
+   "usage": "pdf",
+   "help": "save this chapter as a PDF and open it"
+  },
+  {
+   "name": "pdfs",
+   "usage": "pdfs [name]",
+   "help": "the PDF viewer, or one saved PDF"
+  },
+  {
+   "name": "doc",
+   "usage": "doc thread <name> [structure] [theme] | doc <reference>[; <reference>] [kjv|ylt] [structure] [theme]",
+   "help": "a Word document from a thread or a passage"
+  },
+  {
+   "name": "deck",
+   "usage": "deck thread <name> [structure] [theme] | deck <reference>[; <reference>] [kjv|ylt] [structure] [theme]",
+   "help": "a slide deck from a thread or a passage"
+  },
+  {
+   "name": "docs",
+   "usage": "docs [name] | docs update [name] [theme] [force] | docs forget|remember|delete <name>",
+   "help": "your Word documents and slide decks, kept up to date"
+  },
+  {
+   "name": "theme",
+   "usage": "theme [vellum|vigil|olivet|veil|daylight|print]",
+   "help": "the colors for new slides and Word documents"
+  },
+  {
+   "name": "lesson",
+   "usage": "lesson list | show|check|build <name> [structures] [theme] [pdf]",
+   "help": "your lessons, and their documents"
+  },
+  {
+   "name": "packet",
+   "usage": "packet <pdf>; <pdf>[; ...]",
+   "help": "join saved PDFs, in that order, into one"
+  },
+  {
+   "name": "layers",
+   "usage": "layers [show|hide <thread> | mine on|off | all | none | panel]",
+   "help": "which highlight layers are drawn"
+  },
+  {
+   "name": "highlights",
+   "usage": "highlights on|off",
+   "help": "show or hide all highlights"
+  },
+  {
+   "name": "size",
+   "usage": "size <percent> | size + | size -",
+   "help": "the reader’s text size"
+  },
+  {
+   "name": "toolbar",
+   "usage": "toolbar show|hide",
+   "help": "show or hide the toolbar"
+  },
+  {
+   "name": "findpage",
+   "usage": "findpage <text>",
+   "help": "find in the chapter you are reading"
+  },
+  {
+   "name": "panes",
+   "usage": "panes",
+   "help": "list what is open"
+  },
+  {
+   "name": "close",
+   "usage": "close <pane>[; <pane>] | close minimized | close all",
+   "help": "close a pane, or several"
+  },
+  {
+   "name": "minimize",
+   "usage": "minimize <pane>",
+   "help": "minimize a pane"
+  },
+  {
+   "name": "restore",
+   "usage": "restore <pane> | restore all",
+   "help": "bring a minimized pane back"
+  },
+  {
+   "name": "dock",
+   "usage": "dock <pane>",
+   "help": "move a floating pane to the side column"
+  },
+  {
+   "name": "float",
+   "usage": "float <pane>",
+   "help": "make a docked pane float"
+  },
+  {
+   "name": "trails",
+   "usage": "trails",
+   "help": "the queue of questions"
+  },
+  {
+   "name": "threads",
+   "usage": "threads",
+   "help": "your thread list"
+  }
+ ],
+ "sections": [
+  [
+   "words",
+   "Words and the original languages"
+  ],
+  [
+   "text",
+   "Reading and moving around"
+  ],
+  [
+   "mine",
+   "Your own study work"
+  ],
+  [
+   "files",
+   "Layout, log and files"
+  ],
+  [
+   "make",
+   "Documents: Word, slides, lessons, packets"
+  ],
+  [
+   "window",
+   "The window and its panes"
+  ],
+  [
+   "topics",
+   "Things that work in many commands"
+  ]
+ ],
+ "docs": [
+  {
+   "name": "def",
+   "section": "words",
+   "usage": [
+    "def <word>",
+    "def H7065",
+    "def agape"
+   ],
+   "what": "Shows the original-language (Hebrew, Aramaic or Greek) words behind a word.",
+   "details": [
+    "An English word is looked up as the KJV uses it: you get the Strong’s words it translates, each with how many times, most used first (up to 8).",
+    "A Strong’s number (H… Hebrew and Aramaic, G… Greek) opens that lexicon entry directly.",
+    "A transliteration (agape) or the original spelling is matched exactly, or by its start once it has four letters.",
+    "If only one word fits, its entry opens; if several fit, a list opens and you click one.",
+    "One word at a time, and whole English words only: “zeal” does not find “zealous” (see forms)."
+   ],
+   "examples": [
+    [
+     "def zeal",
+     "the Hebrew and Greek words the KJV renders “zeal”"
+    ],
+    [
+     "def H7065",
+     "the entry for qânâʼ"
+    ],
+    [
+     "def agape",
+     "the Greek words spelled that way"
+    ]
+   ]
+  },
+  {
+   "name": "uses",
+   "section": "words",
+   "usage": [
+    "uses <word> [scope]",
+    "uses H7065 [scope]",
+    "uses H7065 <word> [scope]"
+   ],
+   "what": "Every place a word occurs, with the original-language word and its English side by side.",
+   "details": [
+    "Give an English word, a Strong’s number, or both. With both, each place is marked: both (the unit contains the English word), only the original (translated another way), or only the English (it translates a different original), with a count for each and chips to filter.",
+    "End with a scope to limit it: a book, a group of books, OT or NT (see scopes).",
+    "One Strong’s number and one English word at most; the English word matches whole words only (use forms, or search zeal*, for endings). When the word is not in the scope but other forms of it are, the pane names them with a button for each.",
+    "The pane shows full verses with the matching words marked, a book filter with counts, and tick boxes to add places to a thread (see results)."
+   ],
+   "examples": [
+    [
+     "uses zeal",
+     "every “zeal”"
+    ],
+    [
+     "uses H7065 zealous",
+     "where qânâʼ and “zealous” meet and where they part"
+    ],
+    [
+     "uses H7065 pentateuch",
+     "qânâʼ in the first five books"
+    ],
+    [
+     "uses love gospels",
+     "“love” in Matthew–John"
+    ]
+   ]
+  },
+  {
+   "name": "forms",
+   "section": "words",
+   "usage": [
+    "forms <word>"
+   ],
+   "what": "Every English form in the KJV that begins with the word, with how many times each occurs.",
+   "details": [
+    "zeal gives zeal, zealous, zealously. A word ending in e also finds its -ing, -ed and -er forms (love finds loving).",
+    "Matching is by the start of the word, so irregular forms are not found. Click a form to open all its occurrences."
+   ],
+   "examples": [
+    [
+     "forms zeal",
+     "zeal 16, zealous 8, zealously 2"
+    ],
+    [
+     "forms love",
+     "love, loved, loveth, loving …"
+    ]
+   ]
+  },
+  {
+   "name": "lexiconc",
+   "section": "words",
+   "usage": [
+    "lexiconc <word>",
+    "lexiconc <word>*"
+   ],
+   "what": "Original-language words whose Strong’s definition or KJV-usage line contains an English word.",
+   "details": [
+    "Most-used first, each showing where the word matched (the definition, the KJV usage, or both). Click one for its entry.",
+    "Whole word by default; add * for endings (zeal* also finds zealous). Only Strong’s own wording is searched, nothing is reworded.",
+    "This is the reverse of def: def starts from how the KJV renders a word, lexiconc from how the lexicon defines the original."
+   ],
+   "examples": [
+    [
+     "lexiconc zeal",
+     "words defined with “zeal”"
+    ],
+    [
+     "lexiconc jealous*",
+     "jealous, jealousy …"
+    ]
+   ]
+  },
+  {
+   "name": "lex",
+   "section": "words",
+   "usage": [
+    "lex bdb H7065",
+    "lex strongs G26",
+    "lex strong G26"
+   ],
+   "what": "Opens a particular lexicon for a Strong’s number.",
+   "details": [
+    "bdb is Brown-Driver-Briggs, for Hebrew and Aramaic numbers only. Each entry shows the source file’s own status; most entries are only partly transcribed in that file, and the pane says so.",
+    "strongs (or strong) opens the usual Strong’s entry (the same as clicking a word), for Hebrew or Greek.",
+    "Thayer’s lexicon is not installed, because no copy with a verified license has been found. lex thayer says so."
+   ],
+   "examples": [
+    [
+     "lex bdb H7065",
+     "BDB for qânâʼ"
+    ],
+    [
+     "lex strongs G26",
+     "the Strong’s entry for agapē"
+    ]
+   ]
+  },
+  {
+   "name": "interlinear",
+   "section": "words",
+   "usage": [
+    "interlinear <place>",
+    "interlinear John 3:16-18",
+    "interlinear Gen 1",
+    "interlinear Jude"
+   ],
+   "what": "The original Greek or Hebrew, word by word, with the KJV verse above it.",
+   "details": [
+    "Each word is a small column in the original’s own order: the original word, its transliteration, its Strong’s number (click it for the lexicon entry, which opens in a new pane), its parsing (hover for the plain-language meaning) and the English under it. Hebrew reads right to left. The three checkboxes at the top hide the transliteration, Strong’s numbers or parsing.",
+    "The Greek is the Textus Receptus, the text the KJV was translated from; where it differs from the Nestlé-Aland text, the Textus Receptus reading is shown. The Hebrew is the Leningrad Codex with the Qere (the reading) in place of the Ketiv. Verse numbers are the KJV’s, and a Psalm’s title is shown as its own entry.",
+    "It takes the same places as open: a verse, a range, a chapter or a whole book. Long stretches load 40 verses at a time (Show more verses).",
+    "The English under each word is the STEP Bible gloss for that word in its sentence, so it will not always match the KJV’s wording; the KJV verse is above it. Limit: a Greek word the Textus Receptus places in a different order from Nestlé-Aland keeps the Nestlé-Aland position.",
+    "Text, parsing and glosses are from STEP Bible (www.STEPBible.org), licensed CC BY 4.0."
+   ],
+   "examples": [
+    [
+     "interlinear John 3:16",
+     "one verse"
+    ],
+    [
+     "interlinear Gen 1:1-5",
+     "five verses, Hebrew, right to left"
+    ],
+    [
+     "interlinear Jude",
+     "a whole book, 40 verses at a time"
+    ]
+   ]
+  },
+  {
+   "name": "count",
+   "section": "words",
+   "usage": [
+    "count <word>",
+    "count H7065",
+    "count H7065 <word>",
+    "count … by book"
+   ],
+   "what": "How many times a word occurs in each book, with bars, and the Old and New Testament totals.",
+   "details": [
+    "Takes the same words as uses, but always covers every book (for one part, use uses with a scope). Click a book to see its occurrences.",
+    "The words “by book” at the end are allowed and change nothing."
+   ],
+   "examples": [
+    [
+     "count zeal",
+     "zeal across the Bible"
+    ],
+    [
+     "count H7065 by book",
+     "qânâʼ per book"
+    ]
+   ]
+  },
+  {
+   "name": "near",
+   "section": "words",
+   "usage": [
+    "near <a> <b> [within N] [scope]"
+   ],
+   "what": "Verses where one word comes close to another.",
+   "details": [
+    "Each of a and b is an English word, a word with * for its endings (zeal* takes in zealous and zealously), or a Strong’s number. Closeness is counted in words, across verse and chapter breaks, inside one book. Default 10; N can be 1 to 50.",
+    "Words of the first term are marked one color, the second another, and both when a word is each.",
+    "Only the verses that hold a meeting are listed. End with a scope to limit it. Two terms exactly; phrases are not supported."
+   ],
+   "examples": [
+    [
+     "near Phinehas zealous within 30",
+     "Numbers 25:11"
+    ],
+    [
+     "near zeal* jealous* within 20",
+     "any form of each"
+    ],
+    [
+     "near H7065 love within 20 OT",
+     "qânâʼ near “love” in the Old Testament"
+    ]
+   ]
+  },
+  {
+   "name": "first",
+   "section": "words",
+   "usage": [
+    "first <word> [scope]",
+    "first H7065 [scope]"
+   ],
+   "what": "Moves the reader to the first place a word occurs.",
+   "details": [
+    "Takes what uses takes (a word, a number, or both, and a scope). The reader jumps to the verse and a message names it."
+   ],
+   "examples": [
+    [
+     "first zeal",
+     "the first “zeal”"
+    ],
+    [
+     "first H7065 pentateuch",
+     "qânâʼ’s first use in the Law"
+    ]
+   ]
+  },
+  {
+   "name": "last",
+   "section": "words",
+   "usage": [
+    "last <word> [scope]",
+    "last H7065 [scope]"
+   ],
+   "what": "Moves the reader to the last place a word occurs.",
+   "details": [
+    "The same words as first. “Last” means latest in Bible order."
+   ],
+   "examples": [
+    [
+     "last zeal NT",
+     "the last “zeal” in the New Testament"
+    ]
+   ]
+  },
+  {
+   "name": "search",
+   "section": "words",
+   "usage": [
+    "search <words>",
+    "search <words> in <scope>",
+    "search \"exact phrase\"",
+    "search zeal*",
+    "search /regex/",
+    "<words>  (typing words with no command)"
+   ],
+   "what": "Searches the KJV text.",
+   "details": [
+    "Plain by default: every word must be in the verse, in any order, as whole words. “Quotes” make an exact phrase. A trailing * means any ending (zeal*). Case is ignored.",
+    "Between slashes it is a regular expression. In the pane you can also tick “match case” or “regex” and pick a book to limit it.",
+    "in <scope> at the end limits it to a book, group, OT or NT. (So “faith in Acts” searches Acts for “faith”; quote the phrase to search for those words together.) OT or NT alone at the end works without the in: search love OT.",
+    "A Strong’s number alone (search H7065) opens uses instead. Typing words with no command is a search; a word that is one slip from a command (usess zeal) is refused with a suggestion, and search usess zeal forces the search."
+   ],
+   "examples": [
+    [
+     "grace truth",
+     "verses with both words"
+    ],
+    [
+     "search \"so loved\"",
+     "the exact phrase"
+    ],
+    [
+     "search love in gospels",
+     "“love” in Matthew–John"
+    ],
+    [
+     "search love OT",
+     "“love” in the Old Testament"
+    ],
+    [
+     "search /^the lord/",
+     "a pattern"
+    ]
+   ]
+  },
+  {
+   "name": "find",
+   "section": "words",
+   "usage": [
+    "find <text>"
+   ],
+   "what": "Searches your own writing: notes, thread names and notes, and trails.",
+   "details": [
+    "Every word you type must appear. Results come in three groups; click one to open its notes, thread or trails. Ctrl+F is different: that finds text on the page you are reading."
+   ],
+   "examples": [
+    [
+     "find turned wrath",
+     "notes, threads and trails that mention both"
+    ]
+   ]
+  },
+  {
+   "name": "open",
+   "section": "text",
+   "usage": [
+    "open <place>",
+    "open <place>; <place>; …",
+    "open <place> kjv|ylt|both"
+   ],
+   "what": "Shows a passage in its own pane beside the reader.",
+   "details": [
+    "A place is a verse, a verse range, a chapter, chapters, a whole book, or a range across a chapter break (see refs). A single chapter opens the normal passage pane, with its version menu and previous/next buttons. Anything bigger opens an excerpt pane that draws a chapter at a time as you scroll.",
+    "Separate several places with a semicolon to see them one after another in one pane.",
+    "ylt shows the Young’s Literal Translation; both (or parallel) shows each KJV verse with the YLT under it. The KJV words stay clickable. kjv is what you get without any of these."
+   ],
+   "examples": [
+    [
+     "open John 3:16",
+     "John 3, at verse 16"
+    ],
+    [
+     "open Num 25:10-26:4",
+     "across a chapter break"
+    ],
+    [
+     "open John 3-5",
+     "three chapters"
+    ],
+    [
+     "open Romans",
+     "the whole book, loaded as you scroll"
+    ],
+    [
+     "open John 3:16; Rom 5:8; 1 John 4:9",
+     "three verses together"
+    ]
+   ]
+  },
+  {
+   "name": "compare",
+   "section": "text",
+   "usage": [
+    "compare <place>",
+    "compare <place>; <place>"
+   ],
+   "what": "Shows the KJV with the YLT under each verse.",
+   "details": [
+    "The same as open … both, and it takes the same places, ranges and lists. The KJV and YLT are the only versions installed."
+   ],
+   "examples": [
+    [
+     "compare John 3:16",
+     "both versions of the verse"
+    ],
+    [
+     "compare Num 25:10-26:4 ylt",
+     "a final ylt overrides it to show the YLT alone"
+    ]
+   ]
+  },
+  {
+   "name": "copy",
+   "section": "text",
+   "usage": [
+    "copy",
+    "copy <place>",
+    "copy <place>; <place>",
+    "copy <place> [ylt] [lines|block|para|quote] [short]",
+    "copy format <format> [short]"
+   ],
+   "what": "Puts verses on the clipboard with their reference, word for word from the text.",
+   "details": [
+    "Alone it copies the verse you last clicked (or the verse at the top of the reader); a word or phrase you clicked copies the whole verses it sits in. With a place it copies that place, without moving anything: a verse, a range, a chapter or a list.",
+    "lines is one verse to a line, each with its reference (John 3:16 For God…). block is the reference, then numbered lines. para is the reference, then the verses run together. quote is the words in quotation marks, then the reference. Places joined by ; stay apart.",
+    "short shortens the book names (Rom 5:8). copy format sets what a plain copy and the Copy button use from now on, in this window. The YLT keeps its own quotation marks, as the source file has them.",
+    "With the mouse: select words, double-click a word or click a verse number, then press Copy on the color bar. The ▾ beside it chooses the format. Paste with Ctrl+V anywhere, including a note.",
+    "In a YLT pane, Copy on a verse number copies the YLT verse. From a terminal: wb copy \"John 3:16\" --format quote."
+   ],
+   "examples": [
+    [
+     "copy",
+     "the verse you are on"
+    ],
+    [
+     "copy John 3:16-18",
+     "three verses, one to a line"
+    ],
+    [
+     "copy Rom 5:8; John 3:16 quote",
+     "two quotations, each with its reference"
+    ],
+    [
+     "copy Psalm 23 block",
+     "a heading and numbered lines"
+    ],
+    [
+     "copy John 3:16 ylt",
+     "the YLT"
+    ],
+    [
+     "copy Num 25:11 short",
+     "Num 25:11 …"
+    ],
+    [
+     "copy format quote",
+     "a plain copy gives a quotation from now on"
+    ]
+   ]
+  },
+  {
+   "name": "preview",
+   "section": "text",
+   "usage": [
+    "preview <place>",
+    "preview <place> ylt",
+    "preview H7065"
+   ],
+   "what": "Shows the hover card for a place or a Strong’s number, by name.",
+   "details": [
+    "Rest the pointer on a verse reference anywhere outside the lists of results (a note, a thread, a trail, your highlights), on a Strong’s number, or on a word of the text, and a small card shows the verse or the lexicon entry, word for word. A card shows at most six verses and says how many more there are. Nothing is opened and the reader does not move.",
+    "preview shows the same card at the top of the window, until the mouse moves or a key is pressed. From a terminal: wb preview \"John 3:16\" prints what it shows.",
+    "Verse references you write in a note or a question become links: a click opens the verse in a passage pane, and a hover shows it. A reference with a verse works with any usual book name (Rom 5:8, 1 Cor 13:4-7, Rom 5:8; 6:23, John 3:16, 18). A chapter alone needs the book’s whole name (John 3, Psalm 23). What is written is not changed."
+   ],
+   "examples": [
+    [
+     "preview John 3:16",
+     "the verse"
+    ],
+    [
+     "preview Psalm 23",
+     "the first six verses, and how many more"
+    ],
+    [
+     "preview John 3:16 ylt",
+     "the YLT"
+    ],
+    [
+     "preview H7065",
+     "the lexicon entry"
+    ]
+   ]
+  },
+  {
+   "name": "go",
+   "section": "text",
+   "usage": [
+    "go <place>"
+   ],
+   "what": "Moves the main reader to a place.",
+   "details": [
+    "One place only (a range or whole book goes to its start). Use back to return to where you were."
+   ],
+   "examples": [
+    [
+     "go John 3:16",
+     "the reader jumps there"
+    ],
+    [
+     "go Jude",
+     "Jude 1"
+    ]
+   ]
+  },
+  {
+   "name": "next",
+   "section": "text",
+   "usage": [
+    "next"
+   ],
+   "what": "The next chapter in the reader.",
+   "details": [
+    "Crosses into the next book at the end of a book."
+   ],
+   "examples": [
+    [
+     "next",
+     "one chapter forward"
+    ]
+   ]
+  },
+  {
+   "name": "prev",
+   "section": "text",
+   "aka": [
+    "previous"
+   ],
+   "usage": [
+    "prev"
+   ],
+   "what": "The previous chapter in the reader.",
+   "details": [
+    "previous works too."
+   ],
+   "examples": [
+    [
+     "prev",
+     "one chapter back"
+    ]
+   ]
+  },
+  {
+   "name": "back",
+   "section": "text",
+   "usage": [
+    "back"
+   ],
+   "what": "Returns the reader to where it just was.",
+   "details": [
+    "It is the browser’s Back, so it also undoes next, prev, go and first/last jumps, one step at a time."
+   ],
+   "examples": [
+    [
+     "back",
+     "the previous place"
+    ]
+   ]
+  },
+  {
+   "name": "listen",
+   "section": "text",
+   "usage": [
+    "listen",
+    "listen <place>",
+    "listen pause",
+    "listen resume",
+    "listen stop",
+    "listen speed <0.5 to 2>",
+    "listen voices",
+    "listen voice <name>",
+    "listen voice mine",
+    "listen voice mine all"
+   ],
+   "what": "Reads the KJV aloud in the browser’s own voice, or in your own recorded voice, marking each verse and keeping it on screen.",
+   "details": [
+    "With no place it starts at the verse you last clicked, or the top of the reader, and keeps going through the chapters until you stop it. With a place it reads just that (a verse, a range, chapters or a whole book), moving the reader there; back returns.",
+    "A small bar at the bottom shows the place, with Pause, Stop and a list of voices; choosing one takes over from the start of the verse. Read aloud in the ... menu does the same as listen. Moving the reader to another chapter yourself stops the reading.",
+    "Pausing and resuming starts the verse again from its beginning. The word being spoken is marked too, where the voice reports it; some voices only allow the verse to be marked.",
+    "The voice reads the words on the page, without a footnote. A word in capitals is said as a normal word (LORD as Lord) so that no voice spells it out, and the reader still shows it as it is. A computer voice can mispronounce names; go by the text.",
+    "listen voice mine plays the chapters you have recorded and approved (wb record add, then wb record approve) in your own voice, verse by verse, marked on screen as the browser’s voice is. A verse or chapter with no recording is read by the browser’s voice, and the bar says which is speaking. listen voice mine all includes recordings not yet approved; choosing any other voice goes back to the browser’s voice. A recording made before the text was corrected is not played.",
+    "The voice and speed are remembered in this browser. Voices named Natural sound best but need the internet (the verse text is sent to the voice’s online service, Microsoft’s in Edge). If one fails, a voice on this computer takes over."
+   ],
+   "examples": [
+    [
+     "listen",
+     "from here on, until you stop it"
+    ],
+    [
+     "listen John 3:16-21",
+     "just those verses"
+    ],
+    [
+     "listen Psalm 23",
+     "a whole psalm, with its title"
+    ],
+    [
+     "listen Jude",
+     "a whole book"
+    ],
+    [
+     "listen pause",
+     ""
+    ],
+    [
+     "listen speed 1.2",
+     "a little faster"
+    ],
+    [
+     "listen voices",
+     "the English voices on this computer"
+    ],
+    [
+     "listen voice aria",
+     "use the voice with aria in its name"
+    ],
+    [
+     "listen voice mine",
+     "your own recordings, where there are any"
+    ],
+    [
+     "listen stop",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "hl",
+   "section": "mine",
+   "usage": [
+    "hl <color>",
+    "hl #rrggbb",
+    "hl c<1-8>",
+    "hl clear",
+    "hl off|none|remove|x",
+    "hl <color> @<place>"
+   ],
+   "what": "Highlights the current place.",
+   "details": [
+    "Colors: yellow, green, blue, pink, orange (a short start works: y, g, b, p, o), any #rrggbb of your own, or c1 to c8 for the first to eighth of your saved colors (the ones beside the color wheel on the color bar, newest first). There is no red name; use #d9362b.",
+    "The current place is the word, phrase or verse number you last clicked, or name another with @place. Only the words in that place change: a highlight that reaches past it is cut back to the part outside. hl clear removes the color from those words, even when they were colored as part of a longer highlight (off, none, remove and x do the same). undo puts back everything the command cut or changed.",
+    "You can also select words, double-click a word or click a verse number and pick a color on the bar that appears, or press 1 to 5 for yellow, green, blue, pink or orange. See your highlights with marked."
+   ],
+   "examples": [
+    [
+     "hl yellow",
+     "highlight what you last clicked"
+    ],
+    [
+     "hl g @John 3:16",
+     "green on a whole verse"
+    ],
+    [
+     "hl #e07b39",
+     "a color of your own"
+    ],
+    [
+     "hl c1 @Num 25:11",
+     "your newest saved color on that verse"
+    ],
+    [
+     "hl clear",
+     "remove it"
+    ]
+   ]
+  },
+  {
+   "name": "marked",
+   "section": "mine",
+   "usage": [
+    "marked",
+    "marked <color>",
+    "marked [color] [scope]",
+    "marked [color] [scope] in <thread>"
+   ],
+   "what": "Lists your highlights in Bible order.",
+   "details": [
+    "The pane has a chip for each color you have used (the five names, and each custom color) with its count, a menu to limit it to a part of the Bible, and a menu of threads. Click ✎ to see the notes on one.",
+    "The color can be a name, a #rrggbb, or c1 to c8. in <thread> shows only the highlights that share a word with a place the thread holds (the same name matching as + and thread). A thread of only \"this word everywhere\" has no places in the text and shows nothing."
+   ],
+   "examples": [
+    [
+     "marked",
+     "every highlight"
+    ],
+    [
+     "marked blue NT",
+     "blue ones in the New Testament"
+    ],
+    [
+     "marked gospels",
+     "any color in Matthew–John"
+    ],
+    [
+     "marked #e07b39",
+     "one custom color"
+    ],
+    [
+     "marked in Phinehas",
+     "everything highlighted inside that thread"
+    ]
+   ]
+  },
+  {
+   "name": "note",
+   "section": "mine",
+   "usage": [
+    "note <text>",
+    "note <text> @<place>"
+   ],
+   "what": "Writes a note on the current place.",
+   "details": [
+    "The place is what you last clicked, or what @place names. The note is a plain file in your study folder; undo takes the last one back (to .trash)."
+   ],
+   "examples": [
+    [
+     "note he turned wrath away",
+     "on the place you clicked"
+    ],
+    [
+     "note he turned wrath away @Num 25:13",
+     "on that verse"
+    ]
+   ]
+  },
+  {
+   "name": "+",
+   "usage": [
+    "+<thread>",
+    "+<thread> @<place>"
+   ],
+   "section": "mine",
+   "what": "Adds the current place to a thread, or starts the thread.",
+   "details": [
+    "The name may be an exact name, the start of one, or a part of one, when only one thread fits (else you are asked which). A new name starts a new thread with this place in it.",
+    "undo removes the place again (or moves a thread you just started to .trash)."
+   ],
+   "examples": [
+    [
+     "+Phinehas",
+     "add what you clicked"
+    ],
+    [
+     "+Phinehas @Num 25:11",
+     "add that verse"
+    ],
+    [
+     "+Day of the Lord",
+     "start a thread"
+    ]
+   ]
+  },
+  {
+   "name": "?",
+   "usage": [
+    "?<question>",
+    "?<question> @<place>"
+   ],
+   "section": "mine",
+   "what": "Queues a question (a rabbit trail) under the current place.",
+   "details": [
+    "Nothing leaves the page: the question waits in Trails (see trails) with the place it came from. undo takes the last one back."
+   ],
+   "examples": [
+    [
+     "?is this the same zeal as Rom 10:2",
+     "queued under the verse you are on"
+    ]
+   ]
+  },
+  {
+   "name": "notes",
+   "section": "mine",
+   "usage": [
+    "notes",
+    "notes @<place>",
+    "notes edit <part of it> = <new text> [@<place>]",
+    "notes delete <part of it> [@<place>]",
+    "notes rm <part of it> [@<place>]"
+   ],
+   "what": "Opens your notes on a place, or changes or deletes one note.",
+   "details": [
+    "Alone it opens the notes on what you last clicked, or on @place.",
+    "For edit and delete, give some words from the note. They may be anywhere in your notes; if several notes fit you are told which, and @place narrows it to the notes on that place. With @place and only one note there, the words can be left out.",
+    "The new text goes after an = with spaces around it. undo takes back an edit. A delete asks first in the window (a wb do line does not ask); the note goes to .trash in your study folder, and undo does not bring it back."
+   ],
+   "examples": [
+    [
+     "notes",
+     "the notes on what you clicked"
+    ],
+    [
+     "notes @Num 25:13",
+     "the notes on that verse"
+    ],
+    [
+     "notes edit turned wrath = he stayed the plague",
+     "replace the note with those words in it"
+    ],
+    [
+     "notes delete turned wrath",
+     "delete it"
+    ],
+    [
+     "notes delete @Num 25:13",
+     "the one note on that verse"
+    ]
+   ]
+  },
+  {
+   "name": "trail",
+   "section": "mine",
+   "usage": [
+    "trail done <part of it>",
+    "trail reopen <part of it>",
+    "trail edit <part of it> = <new words>",
+    "trail delete <part of it>",
+    "trail rm <part of it>"
+   ],
+   "what": "Finishes, reopens, changes or deletes a question in your Trails.",
+   "details": [
+    "Give some words from the question: the whole question, its start, or any part of it. If several fit you are told which. done looks among the open ones, reopen among the finished ones.",
+    "undo takes back done, reopen and edit. A delete asks first in the window (a wb do line does not ask); the question goes to .trash in your study folder, and undo does not bring it back. To queue a new question, use ?."
+   ],
+   "examples": [
+    [
+     "trail done same zeal",
+     "mark it done"
+    ],
+    [
+     "trail reopen same zeal",
+     "open it again"
+    ],
+    [
+     "trail edit same zeal = is it the same zeal?",
+     "change the wording"
+    ],
+    [
+     "trail delete same zeal",
+     "delete it"
+    ]
+   ]
+  },
+  {
+   "name": "thread",
+   "section": "mine",
+   "usage": [
+    "thread <name>",
+    "thread <name> - <verse>",
+    "thread <name> - H7065",
+    "thread color <name> <color|none>",
+    "thread rename <name> = <new name>",
+    "thread note <name> = <text>",
+    "thread move <name> - <place> up",
+    "thread move <name> - <number> <number>",
+    "thread sort <name>",
+    "thread delete <name>"
+   ],
+   "what": "Opens a thread, takes a place out of it, or changes it.",
+   "details": [
+    "The name matches as for +. With “- <verse>” (or a verse range) every anchor of the thread that sits in those verses is removed (a verse and phrases inside it); “- H7065” removes that word’s own anchor. undo puts them back.",
+    "color takes a color name, a #rrggbb or c1 to c8, as hl does; none (or clear, or off) takes the color away. rename and note put the new words after an = with spaces around it; nothing after the = clears the note, and it replaces the note that was there.",
+    "move takes a verse, H7065 or the number beside a place in the thread pane, after a - with spaces around it, then up, down, first, last or a position (to 3 also works). If a verse holds several places (the verse and a word in it), you are told their numbers. sort puts the thread in Bible order: by book, chapter, verse and word, a whole verse before a word in it, and original words like H7065 last. In the pane, the ▲ and ▼ on each place and Sort in Bible order do the same, and Undo sort puts it back. Documents made from the thread follow this order.",
+    "undo takes back color, rename, note, move and sort. delete asks first in the window (a wb do line does not ask); the thread goes to .trash in your study folder, and undo does not bring it back.",
+    "If you have a thread whose whole name starts with one of those words (“note on grace”), typing its whole name still opens it.",
+    "To start a thread or add to one, use + instead."
+   ],
+   "examples": [
+    [
+     "thread phin",
+     "open Phinehas"
+    ],
+    [
+     "thread phin - Num 25:11",
+     "take that verse out of it"
+    ],
+    [
+     "thread color phin blue",
+     "underline it in blue"
+    ],
+    [
+     "thread color phin none",
+     "no color"
+    ],
+    [
+     "thread rename phin = Phinehas and zeal",
+     "a new name"
+    ],
+    [
+     "thread note phin = Why does the zeal matter?",
+     "replace its note"
+    ],
+    [
+     "thread move phin - Num 25:13 up",
+     "one place higher"
+    ],
+    [
+     "thread move phin - 3 first",
+     "the third place to the top"
+    ],
+    [
+     "thread move phin - H7065 last",
+     "that word to the bottom"
+    ],
+    [
+     "thread move phin - 4 2",
+     "the fourth place to second"
+    ],
+    [
+     "thread sort phin",
+     "Bible order"
+    ],
+    [
+     "thread delete phin",
+     "delete it"
+    ]
+   ]
+  },
+  {
+   "name": "results",
+   "section": "mine",
+   "usage": [
+    "results",
+    "results tick all",
+    "results tick none",
+    "results tick <place>[; <place>]",
+    "results untick <place>[; <place>]",
+    "results as words",
+    "results as verses",
+    "results add <thread>"
+   ],
+   "what": "Ticks places in the list in front, and adds them to a thread in one go.",
+   "details": [
+    "Search, occurrences (uses), near and a thread’s “Where these words occur” all have a tick box on each row and a bar above them: All, how many are ticked, and the thread to add to. Type a thread’s name (the start or a part of it works, as with +) or a new name, which starts the thread. Shift-click ticks a run of rows. These commands do the same to the list you last opened or touched.",
+    "All and results tick all load the whole list first, up to 1,000 places at once; past that, limit the list to a book or a group of books.",
+    "Occurrences add the marked words, the same place the + button adds, and results as verses (or the menu on the bar) adds whole verses. Near adds whole verses unless you choose the marked words. Search always adds whole verses. A place the thread already holds is left alone, and the message says how many.",
+    "A thread you add to from a list is switched on, and given a color if it had none. After results add, undo takes the whole add back, or moves a thread it started to .trash; the bar’s button has no undo (take places out in the thread pane). From a terminal: wb thread from-search, wb thread from-uses, wb thread add-many."
+   ],
+   "examples": [
+    [
+     "results",
+     "how many are ticked"
+    ],
+    [
+     "results tick all",
+     "every row of the list"
+    ],
+    [
+     "results tick John 2:17; Rom 10:2",
+     "those places"
+    ],
+    [
+     "results untick Rom 10:2",
+     "not that one"
+    ],
+    [
+     "results as verses",
+     "add whole verses, not the marked words"
+    ],
+    [
+     "results add Phinehas",
+     "into the thread (a new name starts it)"
+    ]
+   ]
+  },
+  {
+   "name": "palette",
+   "section": "mine",
+   "usage": [
+    "palette",
+    "palette rm <c1-c8>",
+    "palette rm <#rrggbb>"
+   ],
+   "what": "Lists your saved colors, or forgets one.",
+   "details": [
+    "These are the custom colors beside the color wheel, newest first; c1 to c8 mean them in hl, marked and thread color. Highlights already made in a color you forget stay as they are. undo does not bring it back, but using the color again saves it again."
+   ],
+   "examples": [
+    [
+     "palette",
+     "c1 to c8 with their colors"
+    ],
+    [
+     "palette rm c2",
+     "forget the second"
+    ],
+    [
+     "palette rm #e07b39",
+     "forget that color"
+    ]
+   ]
+  },
+  {
+   "name": "undo",
+   "section": "mine",
+   "aka": [
+    "rm"
+   ],
+   "usage": [
+    "undo"
+   ],
+   "what": "Takes back the last thing you made or changed from the box.",
+   "details": [
+    "Covers notes, highlights, trails, adding to a thread, starting a thread, taking a place out of one, and changes made with notes edit, trail done, trail reopen, trail edit, thread color, thread rename and thread note, newest first, as many steps as you like (the last 30) during this page session. rm does the same.",
+    "Deleted files go to .trash in your study folder, like every other delete, and stay there: undo does not bring back a delete made with notes, trail or thread."
+   ],
+   "examples": [
+    [
+     "undo",
+     "reverse the last capture"
+    ]
+   ]
+  },
+  {
+   "name": "sets",
+   "section": "mine",
+   "usage": [
+    "sets"
+   ],
+   "what": "Opens the Shelf: every set and what it holds.",
+   "details": [
+    "Click an item to open it. Each set has Open, minimize, Close, Rename and delete; × beside an item takes it out of the set. The Shelf button on the toolbar opens it too.",
+    "Alt-drag across rows here, or Ctrl-click them, to take several out at once or add them to another set."
+   ],
+   "examples": [
+    [
+     "sets",
+     "the Shelf"
+    ]
+   ]
+  },
+  {
+   "name": "set",
+   "section": "mine",
+   "usage": [
+    "set <name>",
+    "set new <name>",
+    "set new <name>: <items>",
+    "set add <name>: <items>",
+    "set rm <name>: <item>; <item>",
+    "set open <name>",
+    "set minimize <name>",
+    "set restore <name>",
+    "set close <name>",
+    "set rename <name> = <new name>",
+    "set delete <name>",
+    "set list"
+   ],
+   "what": "A named group of anything: open panes, threads, places, notes, lessons and PDFs.",
+   "details": [
+    "The quick way in is the select box: hold Alt and drag across tabs or panes, then choose from the menu at the cursor (Minimize, Group and name, Float together, Dock together, Close). Ctrl-click adds or takes away one tab. The same works on the rows of your Threads list, a Find result and your Highlights list.",
+    "Items are separated by ;  A pane by its name (see panes), or thread <name>, lesson <name>, pdf <name>, note <part of it>, or a place like @Num 25:11. A place in a set is a bookmark. If one name does not fit, nothing is added.",
+    "open opens everything that is a pane, together in one group; places and notes wait on the Shelf, since there can be dozens. set <name> alone is the same as set open. minimize, restore and close act on what is open from the set. close remembers what each pane shows, so open brings back the same views.",
+    "A set only points at things. Closing a pane leaves it in the set; set rm takes an item out; set delete moves the set’s file to .trash. None of these touches the thread, note, lesson or PDF itself. If one of those is deleted, the set shows it as gone.",
+    "Panes in a set are never closed to keep the window quick (see panes). Each set is sets/<name>.md in your study folder; from a terminal: wb set."
+   ],
+   "examples": [
+    [
+     "set new Zeal study: Occurrences; thread Phinehas; @Num 25:11",
+     "start one with three things in it"
+    ],
+    [
+     "set add Zeal: lesson prayer",
+     "add to it (the start of its name is enough)"
+    ],
+    [
+     "set minimize Zeal",
+     "hide its panes"
+    ],
+    [
+     "set restore Zeal",
+     "bring them back"
+    ],
+    [
+     "set close Zeal",
+     "close its panes; it stays on the Shelf"
+    ],
+    [
+     "set open Zeal",
+     "open them again"
+    ],
+    [
+     "set rm Zeal: Numbers 25:11",
+     "take one thing out"
+    ],
+    [
+     "set rename Zeal = Phinehas study",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "trails",
+   "section": "mine",
+   "usage": [
+    "trails"
+   ],
+   "what": "Opens the queue of questions you captured with ?.",
+   "details": [
+    "Open, done or all; edit, mark done or delete each. The Trails button on the toolbar shows how many are waiting."
+   ],
+   "examples": [
+    [
+     "trails",
+     "the queue"
+    ]
+   ]
+  },
+  {
+   "name": "threads",
+   "section": "mine",
+   "usage": [
+    "threads"
+   ],
+   "what": "Opens your thread list.",
+   "details": [
+    "Start, open or delete threads. A thread gathers words, phrases and verses around one thing you are following."
+   ],
+   "examples": [
+    [
+     "threads",
+     "the list"
+    ]
+   ]
+  },
+  {
+   "name": "today",
+   "section": "files",
+   "usage": [
+    "today",
+    "today <YYYY-MM-DD>"
+   ],
+   "what": "Shows what you typed into this box on a day.",
+   "details": [
+    "Each command that worked is kept with the time and its result in sessions/<day>.jsonl in your study folder. Only the box is logged, not clicks, and looking at the log is not logged. Other days appear as buttons."
+   ],
+   "examples": [
+    [
+     "today",
+     "today’s commands"
+    ],
+    [
+     "today 2026-10-17",
+     "an earlier day"
+    ]
+   ]
+  },
+  {
+   "name": "layout",
+   "section": "files",
+   "usage": [
+    "layout save <name>",
+    "layout load <name>",
+    "layout list",
+    "layout"
+   ],
+   "what": "Keeps an arrangement of panes and brings it back.",
+   "details": [
+    "Saves which panes are open, where (floating, docked, tabbed, minimized) and each pane’s own state (a query, a filter, a chapter). Saving a name again replaces it; load accepts the start of a name. layout alone is the same as layout list.",
+    "Files are kept in sessions/layouts/ in your study folder. The reader’s position is not part of a layout."
+   ],
+   "examples": [
+    [
+     "layout save phinehas",
+     "keep this arrangement"
+    ],
+    [
+     "layout load phin",
+     "bring it back"
+    ],
+    [
+     "layout list",
+     "the saved names"
+    ]
+   ]
+  },
+  {
+   "name": "pdf",
+   "section": "files",
+   "usage": [
+    "pdf"
+   ],
+   "what": "Saves the chapter you are reading as a PDF and opens it.",
+   "details": [
+    "Includes red letters, your highlights and your notes as endnotes. Needs Edge or Chrome installed. The file goes to Documents/Bible Workbench."
+   ],
+   "examples": [
+    [
+     "pdf",
+     "save this chapter"
+    ]
+   ]
+  },
+  {
+   "name": "pdfs",
+   "section": "files",
+   "usage": [
+    "pdfs",
+    "pdfs <name>"
+   ],
+   "what": "Opens the PDF viewer, or one saved PDF in it.",
+   "details": [
+    "Shows saved chapters and any PDF from disk, with zoom, page jump and selectable text.",
+    "With a name (or a unique part of one) that saved PDF opens at once."
+   ],
+   "examples": [
+    [
+     "pdfs",
+     "the viewer"
+    ],
+    [
+     "pdfs John 3",
+     "the saved PDF whose name has “John 3”"
+    ]
+   ]
+  },
+  {
+   "name": "doc",
+   "section": "make",
+   "usage": [
+    "doc thread <name> [structure] [theme]",
+    "doc <reference>[; <reference>] [kjv|ylt] [structure] [theme]",
+    "doc new ..."
+   ],
+   "what": "Writes a Word document with WordCraft from a thread or from a passage, and opens it. Asking again updates the same file (see docs).",
+   "details": [
+    "The structures: reading (a Reading Sheet: only the verses, in two columns), share (a Share Copy: the words and the verses, no notes), script (a Speaker Script: everything in large print, with a cue for each Pulpit slide), study (a Study Sheet: each verse beside your notes, with room to write) and, for a thread only, dossier.",
+    "A passage starts as a Reading Sheet. A thread starts as a Thread Dossier: a reference file on the thread, with a table of every place and the words you marked, each whole verse with its notes, then the original words you added. Any other structure reads the thread like a lesson: its note is the opening words, then each place in the thread’s order, then its words as word cards.",
+    "Separate several places with a semicolon; each gets its own reference.",
+    "End with a theme (see theme) to use it for this file only. Add ylt to a passage for the Young’s Literal (kjv is what you get without it). Files go next to your saved PDFs. WordCraft must be installed (the ArtCraft launcher installs it).",
+    "The Documents pane (the Documents button, or docs) offers the same choices for a passage, a thread or a lesson: pick what to make it from, then from the Word and Theme menus, and press Make Word. A thread or lesson pane has the same menus for itself."
+   ],
+   "examples": [
+    [
+     "doc thread Phinehas",
+     "the thread as a dossier"
+    ],
+    [
+     "doc thread Phinehas study",
+     "a study sheet of the thread"
+    ],
+    [
+     "doc John 3:16-21",
+     "a reading sheet"
+    ],
+    [
+     "doc John 3:16; Rom 5:8",
+     "two places on one sheet"
+    ],
+    [
+     "doc Romans 8 study vigil",
+     "a study sheet in the Vigil theme"
+    ],
+    [
+     "doc Romans 8:1-4 ylt",
+     "in the YLT"
+    ]
+   ]
+  },
+  {
+   "name": "deck",
+   "section": "make",
+   "usage": [
+    "deck thread <name> [structure] [theme]",
+    "deck <reference>[; <reference>] [kjv|ylt] [structure] [theme]",
+    "deck new ..."
+   ],
+   "what": "Makes a slide deck with DeckCraft from a thread or a passage, and opens it. Asking again updates the same file (see docs).",
+   "details": [
+    "The structures: reader (scripture only, up to three verses on a slide), pulpit (the same screen, with your words and notes in the speaker notes), verse (one slide per verse, the verses either side faint, your highlights showing), table (your notes beside the verse on the slide) and, for a thread only, map.",
+    "A passage starts as a Reader deck. A thread starts as a Thread Map: a contents slide of its places where each row jumps to its slide, each whole verse with the words you marked picked out, the original words you added, then the marked words side by side. Any other structure reads the thread like a lesson: its note in the speaker notes of the first slide, then each place in the thread’s order.",
+    "Separate several places with a semicolon; a new slide starts at each, with its own reference.",
+    "End with a theme (see theme) to use it for this deck only. Add ylt to a passage for the Young’s Literal (kjv is what you get without it).",
+    "The Documents pane (the Documents button, or docs) offers the same choices for a passage, a thread or a lesson: pick what to make it from, then from the Slides and Theme menus, and press Make slides. A thread or lesson pane has the same menus for itself."
+   ],
+   "examples": [
+    [
+     "deck thread Phinehas",
+     "a map of the thread"
+    ],
+    [
+     "deck thread Phinehas pulpit",
+     "its places as slides, your notes in the speaker notes"
+    ],
+    [
+     "deck Psalm 23",
+     "the psalm as scripture slides"
+    ],
+    [
+     "deck John 3:16; Rom 5:8",
+     "two places, a slide for each"
+    ],
+    [
+     "deck Romans 8:28-39 verse vigil",
+     "verse by verse, in Vigil"
+    ],
+    [
+     "deck John 1:1-14 ylt",
+     "in the YLT"
+    ]
+   ]
+  },
+  {
+   "name": "docs",
+   "section": "make",
+   "usage": [
+    "docs",
+    "docs <name>",
+    "docs update",
+    "docs update <name> [theme] [force]",
+    "docs forget <name>",
+    "docs remember <name>",
+    "docs delete <name>"
+   ],
+   "what": "Your Word documents and slide decks. Each is one file that remembers what it was made from, and is brought up to date instead of made again.",
+   "details": [
+    "docs alone opens the Documents pane (the Documents button on the toolbar, or the ... menu): at the top, what to make a new one from and how, then every document and how it stands, with Update and Open.",
+    "Making one starts with the presets, one button for each purpose: Teach it (Pulpit slides and a Speaker Script), Hand it out (a Reading Sheet in Print), Study it (Study Table slides and a Study Sheet), Send it (a Share Copy in Print) and, for a thread, Thread overview (a Thread Map and a Dossier). Rest the pointer on one to see what it makes. Customize opens the menus to pick a structure and theme yourself, and Keep these as a preset saves what you picked as a button of your own (× forgets it). A thread or lesson pane has the same buttons for itself. A thread or lesson pane shows its own the same way. docs <name> opens that file in its app.",
+    "When you change a thread, a note, a highlight or a lesson, the documents it affects are marked Out of date. Nothing is rebuilt until you say so: docs update <name> rebuilds that file under the same name, and docs update does every one that is out of date. Asking for it again with doc, deck, Make Word or Make slides does the same.",
+    "Anything you want to stay belongs in a note or the lesson, because a rebuild comes from those. If you changed the file itself, a rebuild first keeps your version beside it as “<name> (your edits <date>)”. If nothing in your study work changed, your edited file is left alone; force rebuilds it anyway.",
+    "A file open in Word or PowerPoint has to be closed first, and you are told so. WordCraft and DeckCraft do not hold the file, so if one is showing it, open it again there after an update; saving from the old window would put the old words back.",
+    "A theme at the end of docs update changes that document’s theme. doc new or deck new makes a second file for the same source and structure.",
+    "docs forget stops keeping a file up to date: it stays in the list, its file is left alone, and asking for that document again makes a new file instead of touching it. docs remember (or Remember in the pane) keeps it up to date again, and says if your study work has moved on meanwhile. docs delete (or Delete in the Documents pane) works on any document, forgotten or not, even if its thread is gone: the file, its PDF and any kept versions are deleted from your computer for good (they do not go to a .trash folder)."
+   ],
+   "examples": [
+    [
+     "docs",
+     "the Documents pane"
+    ],
+    [
+     "docs love",
+     "open that document"
+    ],
+    [
+     "docs update",
+     "everything that is out of date"
+    ],
+    [
+     "docs update love",
+     "just that one"
+    ],
+    [
+     "docs update love vigil",
+     "in the Vigil theme"
+    ],
+    [
+     "docs update love force",
+     "rebuild it even if nothing changed"
+    ],
+    [
+     "docs forget love",
+     "leave the file as it is from now on"
+    ],
+    [
+     "docs remember love",
+     "keep it up to date again"
+    ],
+    [
+     "docs delete love",
+     "delete it for good"
+    ]
+   ]
+  },
+  {
+   "name": "theme",
+   "section": "make",
+   "usage": [
+    "theme",
+    "theme <name>"
+   ],
+   "what": "Shows or sets the colors for new slides and Word documents: vellum, vigil, olivet, veil, daylight, or print (black on white with no fills, to save printer ink).",
+   "details": [
+    "Vellum (ivory and oxblood) suits bright rooms and printing. Vigil (navy and gold) suits dim rooms. Olivet (dark olive and sage) suits small rooms and LED screens. Veil (purple, with blue and scarlet) suits evening teaching. Daylight (white and cobalt) stands up to a washed-out projector or a photocopier.",
+    "Word documents stay on white so they print, and take the theme’s heading color and fonts. The theme is kept in your study folder (settings/export.json).",
+    "The Theme menu in a thread or lesson pane sets the same saved theme."
+   ],
+   "examples": [
+    [
+     "theme",
+     "which one is in use, and the others"
+    ],
+    [
+     "theme vigil",
+     "use Vigil from now on"
+    ]
+   ]
+  },
+  {
+   "name": "lesson",
+   "section": "make",
+   "usage": [
+    "lesson",
+    "lesson list",
+    "lesson show <name>",
+    "lesson check <name>",
+    "lesson build <name> [structures] [theme] [pdf]"
+   ],
+   "what": "Your lessons: a speech with its scriptures, kept as a plain file, turned into documents.",
+   "details": [
+    "A lesson is lessons/<name>.md in your study folder. # is the title, ## a section, plain paragraphs are the speech, a line like @John 3:16-17 is a scripture filled in verbatim (add ylt for the YLT), a line starting // is a delivery note, and a line like &G26 is a word card from the lexicon. Two @ lines in a row for one place, one KJV and one YLT, go side by side.",
+    "build makes any of these. Slides: pulpit (the screen shows scripture; your speech, delivery notes and study notes are in the speaker notes), reader (scripture only, nothing else), verse (one verse to a slide), table (your notes beside the verse on the slide). Word: script (everything in large print, with a cue where each Pulpit slide comes up), share (speech and scriptures, for sending to friends), reading (only the scriptures), study (each verse beside your notes). With none named it makes script, share and pulpit; deck means pulpit. Add pdf for a PDF of each.",
+    "lesson alone is the same as lesson list. show opens the lesson in a pane; check lists every scripture it names and stops at the first line that cannot be read. From a terminal: wb lesson save, wb lesson build."
+   ],
+   "examples": [
+    [
+     "lesson list",
+     "the lessons you have"
+    ],
+    [
+     "lesson check prayer",
+     "read it without making anything"
+    ],
+    [
+     "lesson build prayer pulpit script",
+     "the slides and the script that goes with them"
+    ],
+    [
+     "lesson build prayer reader vigil",
+     "scripture-only slides in Vigil"
+    ],
+    [
+     "lesson build prayer all pdf",
+     "everything, and PDFs"
+    ]
+   ]
+  },
+  {
+   "name": "packet",
+   "section": "make",
+   "usage": [
+    "packet <pdf> ; <pdf> [; <pdf> ...]"
+   ],
+   "what": "Joins saved PDFs, in the order you give them, into one packet with PdfCraft, and opens it.",
+   "details": [
+    "Each name is a saved PDF, or a unique part of one (pdfs lists them). Two or more. The packet is saved as Study packet - <date>.pdf.",
+    "The Packet… button in the PDF viewer does the same by choosing from a list."
+   ],
+   "examples": [
+    [
+     "packet John 3 ; Romans 8",
+     "two chapters, in that order"
+    ]
+   ]
+  },
+  {
+   "name": "layers",
+   "section": "window",
+   "usage": [
+    "layers",
+    "layers list",
+    "layers show <thread>",
+    "layers hide <thread>",
+    "layers mine on|off",
+    "layers all",
+    "layers none",
+    "layers panel"
+   ],
+   "what": "Chooses which highlight layers are drawn: your own highlights, and each thread as a colored underline.",
+   "details": [
+    "Alone (or with list) it lists what is on. show gives a thread without a color one first. all and none switch every layer on or off; panel opens the Layers panel.",
+    "Thread names match like + and thread do: the exact name, a unique start, or a unique part."
+   ],
+   "examples": [
+    [
+     "layers",
+     "what is on"
+    ],
+    [
+     "layers show Phinehas",
+     "underline the thread"
+    ],
+    [
+     "layers mine off",
+     "hide only the fills"
+    ],
+    [
+     "layers none",
+     "plain text"
+    ]
+   ]
+  },
+  {
+   "name": "highlights",
+   "section": "window",
+   "usage": [
+    "highlights on",
+    "highlights off"
+   ],
+   "what": "Shows or hides every highlight, like the toolbar’s Highlights button.",
+   "details": [
+    "Layers still decide which are drawn when highlights are on."
+   ],
+   "examples": [
+    [
+     "highlights off",
+     ""
+    ],
+    [
+     "highlights on",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "size",
+   "section": "window",
+   "usage": [
+    "size <percent>",
+    "size +",
+    "size -"
+   ],
+   "what": "Sets the reader’s text size.",
+   "details": [
+    "A percent from 75 to 183, or + and - for one step. 100 is the usual size."
+   ],
+   "examples": [
+    [
+     "size 120",
+     "larger text"
+    ],
+    [
+     "size +",
+     "one step up"
+    ],
+    [
+     "size -",
+     "one step down"
+    ]
+   ]
+  },
+  {
+   "name": "toolbar",
+   "section": "window",
+   "usage": [
+    "toolbar hide",
+    "toolbar show"
+   ],
+   "what": "Hides the toolbar for room to read, or brings it back.",
+   "details": [
+    "A small tab at the top edge also brings it back."
+   ],
+   "examples": [
+    [
+     "toolbar hide",
+     ""
+    ],
+    [
+     "toolbar show",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "findpage",
+   "section": "window",
+   "usage": [
+    "findpage <text>"
+   ],
+   "what": "Finds words in the chapter you are reading (the Ctrl+F bar) and reports how many.",
+   "details": [
+    "Several words in a row work, and zeal* finds endings. With nothing after it, the bar is just opened. (find searches your notes; findpage searches the page.)"
+   ],
+   "examples": [
+    [
+     "findpage so loved",
+     ""
+    ],
+    [
+     "findpage zeal*",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "hover",
+   "section": "window",
+   "usage": [
+    "hover on",
+    "hover refs",
+    "hover off"
+   ],
+   "what": "Chooses whether hover cards appear.",
+   "details": [
+    "on is the usual: cards for verse references, Strong’s numbers and the words of the text. A word waits a little longer than a link, so reading past one shows nothing. refs keeps references and numbers and leaves the words alone. off stops them all.",
+    "Hover cards in the ... menu changes the same setting. It is kept in this window."
+   ],
+   "examples": [
+    [
+     "hover refs",
+     "no cards on the words of the text"
+    ],
+    [
+     "hover off",
+     "no cards at all"
+    ],
+    [
+     "hover on",
+     "cards everywhere"
+    ]
+   ]
+  },
+  {
+   "name": "panes",
+   "section": "window",
+   "usage": [
+    "panes"
+   ],
+   "what": "Lists what is open: each pane’s title, where it is (floating, docked, with the reader) and whether it is minimized.",
+   "details": [
+    "These are the names close, minimize, restore, dock and float take.",
+    "To keep the window quick there are at most 16 panes: opening another closes the lookups you have gone longest without touching (never your notes, threads, trails, lessons or PDFs, a minimized pane, a pane in a set, or the one in front) and says what it closed."
+   ],
+   "examples": [
+    [
+     "panes",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "close",
+   "section": "window",
+   "usage": [
+    "close <pane>",
+    "close <pane>; <pane>; …",
+    "close minimized",
+    "close all"
+   ],
+   "what": "Closes a pane, or several.",
+   "details": [
+    "The pane is its title, or a unique part of it; if several match, you are told which. Separate several panes with a semicolon; if one name does not fit, none of them close. minimized closes every pane in the minimized-panes button. all closes every pane except the reader."
+   ],
+   "examples": [
+    [
+     "close Occurrences",
+     ""
+    ],
+    [
+     "close Occurrences; Help",
+     "both"
+    ],
+    [
+     "close minimized",
+     ""
+    ],
+    [
+     "close all",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "minimize",
+   "section": "window",
+   "usage": [
+    "minimize <pane>"
+   ],
+   "what": "Minimizes a pane’s group to the minimized-panes button.",
+   "details": [
+    "Name it as for close.",
+    "The button’s menu lists each minimized tab: click a name to bring it back, or tick boxes and press Close selected. Close all closes them all."
+   ],
+   "examples": [
+    [
+     "minimize Threads",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "restore",
+   "section": "window",
+   "usage": [
+    "restore <pane>",
+    "restore all"
+   ],
+   "what": "Brings a pane forward, or back from the minimized-panes button.",
+   "details": [
+    "Name it as for close. all restores every minimized group."
+   ],
+   "examples": [
+    [
+     "restore Threads",
+     ""
+    ],
+    [
+     "restore all",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "dock",
+   "section": "window",
+   "usage": [
+    "dock <pane>"
+   ],
+   "what": "Moves a floating pane to the side column.",
+   "details": [
+    "Name it as for close."
+   ],
+   "examples": [
+    [
+     "dock Search",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "float",
+   "section": "window",
+   "usage": [
+    "float <pane>"
+   ],
+   "what": "Makes a docked pane float again.",
+   "details": [
+    "Name it as for close."
+   ],
+   "examples": [
+    [
+     "float Search",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "help",
+   "section": "files",
+   "usage": [
+    "help",
+    "help <command>",
+    "help <topic>"
+   ],
+   "what": "This manual.",
+   "details": [
+    "help alone shows everything, with a filter box. help uses shows just that command. Topics: scopes, places, refs, keys, wb.",
+    "help is now a command, so to search for the word itself type search help."
+   ],
+   "examples": [
+    [
+     "help",
+     "every command"
+    ],
+    [
+     "help near",
+     "one command"
+    ],
+    [
+     "help scopes",
+     "how to limit things to part of the Bible"
+    ]
+   ]
+  },
+  {
+   "name": "scopes",
+   "section": "topics",
+   "usage": [
+    "… OT",
+    "… NT",
+    "… <book>",
+    "… <group>"
+   ],
+   "what": "Limiting a command to part of the Bible.",
+   "details": [
+    "Used by uses, first, last, near, marked and search (as “in <scope>”).",
+    "OT and NT are the testaments. A book is written as its name, its code or the start of its name, when only one book fits: num, Numbers, 1cor, jhn, Song of Solomon. If several fit (jo), you are told which.",
+    "A group is a named run of books: pentateuch (Genesis–Deuteronomy; also torah, law, moses); history (Joshua–Esther; also historical); wisdom (Job–Song of Solomon; also poetry, poetical); prophets (Isaiah–Malachi; also prophet); major (Isaiah–Daniel; also majorprophets); minor (Hosea–Malachi; also minorprophets, twelve); gospels (Matthew–John; also gospel); paul (Romans–Philemon; also pauline, pauls); general (Hebrews–Jude; also catholic); epistles (Romans–Jude; also letters, epistle).",
+    "The scope goes last. A lone word is a word, not a scope: uses law is the word, uses love law is “love” in the Pentateuch."
+   ],
+   "examples": [
+    [
+     "uses zeal NT",
+     ""
+    ],
+    [
+     "uses grace paul",
+     ""
+    ],
+    [
+     "search love in john",
+     ""
+    ],
+    [
+     "marked gospels",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "places",
+   "section": "topics",
+   "usage": [
+    "… @John 3:16",
+    "… @Num 25:11-13"
+   ],
+   "what": "Naming the place a note, highlight, thread-add or question belongs to.",
+   "details": [
+    "note, hl, + and ? use the word or verse number you last clicked. End them with @place to name another place instead, without moving the reader.",
+    "The place needs a verse (@John 3:16) or a verse range in one chapter (@Num 25:11-13). A chapter alone is refused.",
+    "If the @ part is meant as a place but cannot be read, the command stops with a message instead of putting it into your note. Text like “meet @ 5pm” stays text."
+   ],
+   "examples": [
+    [
+     "note he turned wrath away @Num 25:13",
+     ""
+    ],
+    [
+     "+Phinehas @Num 25:11-13",
+     ""
+    ],
+    [
+     "hl blue @John 3:16",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "refs",
+   "section": "topics",
+   "usage": [
+    "Jude",
+    "John 3",
+    "John 3-5",
+    "John 3:16",
+    "John 3:16-18",
+    "Num 25:10-26:4"
+   ],
+   "what": "How to write a place for open, compare and go.",
+   "details": [
+    "A book is its name, code or the start of its name (1 Cor, 1cor, jhn), a usual short form (Jn, Mk, 1 Kgs, Phil for Philippians, Phlm, SoS), or a Roman numeral for its number (I Kings, II Cor). Alone it means the whole book; with a chapter, that chapter; with chapter-chapter, those chapters; with :verse, that verse; with a verse range, those verses; with a range across a break, from one verse to the other.",
+    "Add kjv, ylt, both or parallel at the very end of an open or compare to choose the version.",
+    "Several places go in one open separated by semicolons. go takes one."
+   ],
+   "examples": [
+    [
+     "open Jude",
+     ""
+    ],
+    [
+     "open 1 Cor 13:4-7",
+     ""
+    ],
+    [
+     "compare Num 25:10-26:4",
+     ""
+    ]
+   ]
+  },
+  {
+   "name": "keys",
+   "section": "topics",
+   "usage": [
+    "keys",
+    "` (backtick)",
+    "Enter",
+    "Esc",
+    "↑ ↓",
+    "← →",
+    "/",
+    "?",
+    "1 to 5",
+    "Ctrl+Enter",
+    "Ctrl+F, then Enter or Shift+Enter",
+    "Alt-drag",
+    "Ctrl-click"
+   ],
+   "aka": [
+    "shortcuts"
+   ],
+   "what": "Using the capture box, and the other keys in the window.",
+   "details": [
+    "Type keys (or press ? when not typing) to open the shortcuts panel: every key and mouse gesture in one list, including dragging across words to select a phrase.",
+    "In the reader, ↑ and ↓ scroll and ← and → turn to the chapter before or after, crossing into the next or previous book. A pane you clicked last keeps its own arrows; click the reader to give them back.",
+    "Press ` anywhere that is not a text box (or press Capture) and a box floats over the page; the reader does not move. Enter runs the command, Esc closes, ↑ and ↓ recall earlier commands from this page session.",
+    "The box shows the place it is anchored to: the word or verse number you last clicked in the reader or any passage pane, or the verse at the top of the reader. Click a word or verse number to change it.",
+    "The box only reminds you to type help. Errors stay in the box with a message; nothing is changed by a command that fails.",
+    "Words with no command are a search. A word one slip from a command is refused with “Did you mean …?” unless it is really in the text.",
+    "Elsewhere in the window, when you are not typing in a box: / jumps to the search box, and 1 to 5 pick yellow, green, blue, pink or orange while the color bar is showing.",
+    "Ctrl+Enter saves a note while you are writing it. In the find bar (Ctrl+F), Enter goes to the next match and Shift+Enter to the one before.",
+    "Hold Alt and drag to draw a select box across tabs and panes, or across the rows of your Threads list, a Find result, your Highlights list or the Shelf. A menu at the cursor offers what can be done with them (see set). Ctrl-click adds or takes away one tab or row. Esc lets go of them."
+   ],
+   "examples": []
+  },
+  {
+   "name": "wb",
+   "section": "topics",
+   "usage": [
+    "wb help",
+    "wb help <command>",
+    "wb status",
+    "wb do \"<line>\" [\"<line>\" …]",
+    "wb ui state",
+    "wb craft topdf <name>",
+    "wb craft pdf info|text|extract|edit <name>",
+    "wb craft open <name>",
+    "wb craft raw word|deck|pdf …"
+   ],
+   "what": "The workbench from a terminal, for you or an AI.",
+   "details": [
+    "Run these in a terminal, from the Bible Workbench folder. If wb alone is not found, use python wb.py. They are not typed into this box.",
+    "wb help lists every command and wb help <command> explains one. wb status says where everything is: server, window, study folder, PDF folder and the ArtCraft apps.",
+    "wb do runs lines exactly as if you had typed them into this box, in the open window, opening it if it is closed. They run in order and stop at the first error (--keep-going carries on). wb ui state prints what the window shows now.",
+    "Most lookups and study work also have a command of their own (wb text, wb uses, wb note add …) that prints the result and works with or without the window. Those that write, write to your real study folder, like the box does.",
+    "Four have no command in this box: wb craft topdf writes a saved .docx or .pptx again as a PDF; wb craft pdf works on a saved PDF (its details, its text, pulling out pages, or rotating, deleting and moving them); wb craft open opens a saved file in its app; wb craft raw runs an ArtCraft app’s own command line."
+   ],
+   "examples": []
+  }
+ ],
+ "shortcuts": [
+  [
+   "Anywhere (when you are not typing in a box)",
+   [
+    [
+     "`",
+     "Open the capture box"
+    ],
+    [
+     "?",
+     "Open this shortcuts panel"
+    ],
+    [
+     "/",
+     "Jump to the search box"
+    ],
+    [
+     "Ctrl+F",
+     "Find in the page (a text box keeps the browser’s own find)"
+    ],
+    [
+     "Esc",
+     "Close the capture box, color bar, find bar, menu or dialog that is open"
+    ]
+   ]
+  ],
+  [
+   "Reading (when the reader is the last thing you clicked)",
+   [
+    [
+     "↑ ↓",
+     "Scroll the reader up or down"
+    ],
+    [
+     "← →",
+     "The chapter before or after, on into the next or previous book"
+    ]
+   ]
+  ],
+  [
+   "Selecting several tabs, panes or list rows",
+   [
+    [
+     "Alt+drag",
+     "Draw a select box over tabs, panes, or rows in Threads, Find results, Highlights and the Shelf; a menu at the cursor offers minimize, group and name, float or dock together, close, add to a set"
+    ],
+    [
+     "Ctrl+click",
+     "Add or take away one tab or row"
+    ],
+    [
+     "Esc",
+     "Let go of the selection"
+    ]
+   ]
+  ],
+  [
+   "In the capture box",
+   [
+    [
+     "Enter",
+     "Run the command"
+    ],
+    [
+     "↑ ↓",
+     "Recall earlier commands from this page session"
+    ],
+    [
+     "Esc",
+     "Close the box"
+    ]
+   ]
+  ],
+  [
+   "Selecting text in the reader or any passage pane",
+   [
+    [
+     "Click a word",
+     "Look up its original-language word (opens after a short wait, in case it is a double-click)"
+    ],
+    [
+     "Double-click a word",
+     "Select it and show the color bar"
+    ],
+    [
+     "Drag across two or more words",
+     "Select that phrase and show the color bar; its notes and threads attach to exactly those words"
+    ],
+    [
+     "Click a verse number",
+     "Select the whole verse and show the color bar"
+    ],
+    [
+     "Shift+click",
+     "Pin the notes or lookup pane for that word or verse instead of replacing it"
+    ]
+   ]
+  ],
+  [
+   "While the color bar is showing",
+   [
+    [
+     "1 2 3 4 5",
+     "Yellow, green, blue, pink, orange"
+    ],
+    [
+     "Enter (in its thread box)",
+     "Add the selection to the thread named there, or start one"
+    ],
+    [
+     "Esc or `",
+     "Put the bar away"
+    ]
+   ]
+  ],
+  [
+   "Notes and find",
+   [
+    [
+     "Ctrl+Enter",
+     "Save the note you are writing"
+    ],
+    [
+     "Enter / Shift+Enter (in the find bar)",
+     "Next match / the match before"
+    ]
+   ]
+  ]
+ ]
+}

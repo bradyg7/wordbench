@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 // The fixture holds what the database says (made by `wb fixture`); the test compares the screen with it, never with
 // text typed here.
 const fx = JSON.parse(readFileSync(new URL('../public/fixtures/NUM.25.json', import.meta.url), 'utf8'));
-const shots = 'docs/phase0';
+const shots = 'docs/phase2';
 
 async function ready(page: Page) {
   await page.goto('/?at=NUM.25');
@@ -152,4 +152,28 @@ test('a mark made while a long chapter is still being drawn reaches its last ver
   await page.waitForFunction(() => { const d = (window as any).__wb.drawn; return d.el.filter(Boolean).length === d.v.length; });
   const k = await page.evaluate(() => (window as any).__wb.drawn.v.indexOf(170));
   await expect(page.locator(`.w[data-k="${k}"]`)).toHaveClass(/hl/);
+});
+
+// Phase 2: the desktop shell around the reader. (The panes and the Notebook call Rust, so they are checked in the app
+// itself by measure/desk.mjs; here WebKit checks the layout the iPad and Mac web views will draw.)
+test('desktop: the toolbar with the command field, opened by backtick', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'desktop');
+  await ready(page);
+  expect(await page.evaluate(() => document.documentElement.dataset.size)).toBe('large');
+  for (const id of ['#cmd', '#tb-notebook', '#tb-threads', '#hl-menu']) await expect(page.locator(id)).toBeVisible();
+  await expect(page.locator('#tabs')).toBeHidden();
+  await page.locator('.ch-title').click();
+  await page.keyboard.press('Backquote');
+  expect(await page.evaluate(() => document.activeElement?.id)).toBe('cmd');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#place .place-label')).toHaveText('Numbers 25');
+});
+
+test('phone: the tabs and the pen, no desktop toolbar', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-desktop', 'phone');
+  await ready(page);
+  expect(await page.evaluate(() => document.documentElement.dataset.size)).toBe('compact');
+  await expect(page.locator('#tabs')).toBeVisible();
+  await expect(page.locator('#pen')).toBeVisible();
+  for (const id of ['#cmd', '#tb-notebook']) await expect(page.locator(id)).toBeHidden();
 });

@@ -4,7 +4,6 @@
 use crate::args::{Append, Args, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Value};
-use std::io::Read;
 use wb_core::store::{s, Store};
 use wb_core::{lookup, places, studyapi as sa};
 
@@ -12,12 +11,8 @@ fn e(x: wb_core::Error) -> String {
     x.0
 }
 
-fn store() -> Result<Store, String> {
-    Store::open(&wb_core::default_study_dir()).map_err(e)
-}
-
 /// A place as typed → an anchor: John 3:16, John 3:16-18, Num 25:10-26:4, H7065, or a raw anchor (JHN.3:16.4).
-fn anchor(c: &Ctx, text: &str) -> Result<String, String> {
+pub(crate) fn anchor(c: &Ctx<'_>, text: &str) -> Result<String, String> {
     let t = text.trim();
     if lookup::is_strong(&t.to_uppercase()) {
         return Ok(t.to_uppercase());
@@ -60,14 +55,12 @@ fn tid(st: &Store, name: &str) -> Result<String, String> {
 }
 
 /// Text given as arguments, or '-' for standard input, or --file.
-fn body_text(words: &str, file: Option<String>) -> Result<String, String> {
+fn body_text(c: &Ctx<'_>, words: &str, file: Option<String>) -> Result<String, String> {
     if let Some(f) = file {
         return std::fs::read_to_string(&f).map_err(|x| format!("{f}: {x}"));
     }
     if words.trim() == "-" {
-        let mut s = String::new();
-        std::io::stdin().read_to_string(&mut s).map_err(|x| x.to_string())?;
-        return Ok(s);
+        return c.stdin();
     }
     Ok(words.to_string())
 }
@@ -84,20 +77,20 @@ pub fn commands() -> Vec<Command> {
     };
     vec![
         cmd("anchor", "Everything on one place: your notes, highlight, threads, original words. wb anchor John 3:16  |  wb anchor H7065.", vec![Pos("place", N::Many)], |c, a| {
-            j(sa::anchor_view(c.bible()?, &store()?, &anchor(c, &a.s("place"))?).map_err(e)?)
+            j(sa::anchor_view(c.bible()?, &*c.study()?, &anchor(c, &a.s("place"))?).map_err(e)?)
         }),
         cmd("note add", "Write a note on a place: wb note add John 3:16 \"text\"  (text - reads standard input). A raw anchor (JHN.3:16.4) or H7065 also works.",
             vec![Pos("place", N::One), Pos("text", N::Any), Opt("file", None)], |c, a| {
-                let text = body_text(&a.s("text"), a.opt("file"))?;
+                let text = body_text(c, &a.s("text"), a.opt("file"))?;
                 if text.trim().is_empty() {
                     return Err("Write the note text.".into());
                 }
                 let an = anchor(c, &a.s("place"))?;
-                j(json!(sa::save_note(c.bible()?, &mut store()?, &an, &text, None).map_err(e)?))
+                j(json!(sa::save_note(c.bible()?, &mut *c.study()?, &an, &text, None).map_err(e)?))
             }),
         cmd("note list", "Your notes on a chapter or passage, in reading order: wb note list John 3.", vec![Pos("ref", N::Many)], |c, a| {
             let sp = c.span(&a.s("ref"))?;
-            let st = store()?;
+            let st = c.study()?;
             let mut out = vec![];
             for ch in sp.c1..=sp.c2 {
                 out.extend(sa::chapter_notes(c.bible()?, &st, &sp.book.code, ch as i64).map_err(e)?);
@@ -106,16 +99,16 @@ pub fn commands() -> Vec<Command> {
         }),
         cmd("note edit", "Replace a note's text (id from note list / anchor).", vec![Pos("id", N::One), Pos("anchor", N::One), Pos("text", N::Any), Opt("file", None)], |c, a| {
             let an = anchor(c, &a.s("anchor"))?;
-            let text = body_text(&a.s("text"), a.opt("file"))?;
-            j(json!(sa::save_note(c.bible()?, &mut store()?, &an, &text, Some(&a.s("id"))).map_err(e)?))
+            let text = body_text(c, &a.s("text"), a.opt("file"))?;
+            j(json!(sa::save_note(c.bible()?, &mut *c.study()?, &an, &text, Some(&a.s("id"))).map_err(e)?))
         }),
-        cmd("note rm", "Delete a note (moved to .trash in the study folder).", vec![Pos("id", N::One)], |_, a| {
-            store()?.delete_note(&a.s("id")).map_err(e)?;
+        cmd("note rm", "Delete a note (moved to .trash in the study folder).", vec![Pos("id", N::One)], |c, a| {
+            c.study()?.delete_note(&a.s("id")).map_err(e)?;
             j(json!({"ok": true}))
         }),
         cmd("hl set", "Highlight a place: wb hl set John 3:16 yellow  (yellow green blue pink orange, or #rrggbb). Returns an undo record.",
             vec![Pos("place", N::One), Pos("color", N::One)], |c, a| {
-                let mut st = store()?;
+                let mut st = c.study()?;
                 let mut color = a.s("color").to_lowercase();
                 if color.len() > 1 && color.starts_with('c') && color[1..].chars().all(|x| x.is_ascii_digit()) {
                     let saved = st.palette();
@@ -130,15 +123,15 @@ pub fn commands() -> Vec<Command> {
             }),
         cmd("hl clear", "Remove the highlight from a place.", vec![Pos("place", N::One)], |c, a| {
             let an = anchor(c, &a.s("place"))?;
-            j(sa::save_highlight(c.bible()?, &mut store()?, &an, None).map_err(e)?)
+            j(sa::save_highlight(c.bible()?, &mut *c.study()?, &an, None).map_err(e)?)
         }),
-        cmd("hl undo", "Put back exactly what a highlight changed (pass the 'undo' record that hl set printed, as JSON or - for stdin).", vec![Pos("record", N::Many)], |_, a| {
-            let rec: Value = serde_json::from_str(&body_text(&a.s("record"), None)?).map_err(|_| "The undo record must be the JSON hl set printed.")?;
+        cmd("hl undo", "Put back exactly what a highlight changed (pass the 'undo' record that hl set printed, as JSON or - for stdin).", vec![Pos("record", N::Many)], |c, a| {
+            let rec: Value = serde_json::from_str(&body_text(c, &a.s("record"), None)?).map_err(|_| "The undo record must be the JSON hl set printed.")?;
             let undo = rec.get("undo").cloned().unwrap_or(rec);
-            j(sa::undo_highlight(&mut store()?, &undo).map_err(e)?)
+            j(sa::undo_highlight(&mut *c.study()?, &undo).map_err(e)?)
         }),
         cmd("hl list", "Your highlights in Bible order, optionally one color and/or the places a thread holds.", vec![Opt("color", None), Opt("thread", None)], |c, a| {
-            let st = store()?;
+            let st = c.study()?;
             let t = match a.opt("thread") {
                 Some(n) => Some(tid(&st, &n)?),
                 None => None,
@@ -147,17 +140,17 @@ pub fn commands() -> Vec<Command> {
         }),
         cmd("marks", "What is drawn on a chapter: highlights, notes, colored-thread places.", vec![Pos("ref", N::Many)], |c, a| {
             let sp = c.span(&a.s("ref"))?;
-            j(sa::chapter_marks(&store()?, &sp.book.code, sp.c1 as i64).map_err(e)?)
+            j(sa::chapter_marks(&*c.study()?, &sp.book.code, sp.c1 as i64).map_err(e)?)
         }),
-        cmd("palette", "Your saved custom colors (c1 .. c8).", vec![], |_, _| j(json!({"colors": store()?.palette()}))),
-        cmd("palette rm", "Forget a saved color (highlights already made in it stay).", vec![Pos("color", N::One)], |_, a| {
-            j(json!({"colors": store()?.drop_palette_color(Some(&a.s("color"))).map_err(e)?}))
+        cmd("palette", "Your saved custom colors (c1 .. c8).", vec![], |c, _| j(json!({"colors": c.study()?.palette()}))),
+        cmd("palette rm", "Forget a saved color (highlights already made in it stay).", vec![Pos("color", N::One)], |c, a| {
+            j(json!({"colors": c.study()?.drop_palette_color(Some(&a.s("color"))).map_err(e)?}))
         }),
-        cmd("thread list", "Your threads, newest first; with words, only those whose name or note has them all.", vec![Pos("words", N::Any)], |_, a| {
-            j(sa::thread_list(&store()?, Some(&a.s("words"))).map_err(e)?)
+        cmd("thread list", "Your threads, newest first; with words, only those whose name or note has them all.", vec![Pos("words", N::Any)], |c, a| {
+            j(sa::thread_list(&*c.study()?, Some(&a.s("words"))).map_err(e)?)
         }),
         cmd("thread show", "A thread: its note, every place with its text, and its original words.", vec![Pos("name", N::Many)], |c, a| {
-            let st = store()?;
+            let st = c.study()?;
             j(sa::thread_view(c.bible()?, &st, &tid(&st, &a.s("name"))?).map_err(e)?)
         }),
         cmd("thread new", "Start a thread, optionally with a note, a color and a first place.", vec![Pos("name", N::One), Opt("note", Some("")), Opt("color", None), Opt("at", None)], |c, a| {
@@ -165,11 +158,11 @@ pub fn commands() -> Vec<Command> {
                 Some(p) => Some(anchor(c, &p)?),
                 None => None,
             };
-            j(sa::create_thread(c.bible()?, &mut store()?, &a.s("name"), &a.opt_or("note", ""), a.opt("color").as_deref(), at.as_deref()).map_err(e)?)
+            j(sa::create_thread(c.bible()?, &mut *c.study()?, &a.s("name"), &a.opt_or("note", ""), a.opt("color").as_deref(), at.as_deref()).map_err(e)?)
         }),
         cmd("thread add", "Add a place to a thread (a new name starts the thread, like +name in the box).", vec![Pos("name", N::One), Pos("place", N::Many)], |c, a| {
             let an = anchor(c, &a.s("place"))?;
-            let mut st = store()?;
+            let mut st = c.study()?;
             match thread(&st, &a.s("name")) {
                 Ok(t) => j(sa::add_to_thread(c.bible()?, &mut st, t["id"].as_str().unwrap(), &an).map_err(e)?),
                 Err(m) if m.starts_with("No thread") => j(sa::create_thread(c.bible()?, &mut st, &a.s("name"), "", None, Some(&an)).map_err(e)?),
@@ -187,7 +180,7 @@ pub fn commands() -> Vec<Command> {
             result_args(vec![Pos("name", N::One), Pos("term", N::One), Opt("word", None), Opt("cat", Some("all")), Opt("rendering", None), Flag("verses")]), from_uses),
         cmd("thread move", "Move one place in a thread: wb thread move Phinehas \"Num 25:13\" up  |  wb thread move Phinehas 3 first.",
             vec![Pos("name", N::One), Pos("place", N::One), Pos("to", N::One)], |c, a| {
-                let mut st = store()?;
+                let mut st = c.study()?;
                 let id = tid(&st, &a.s("name"))?;
                 let p = a.s("place");
                 let place = if !p.is_empty() && p.chars().all(|x| x.is_ascii_digit()) { json!(p.parse::<i64>().unwrap()) } else { json!(anchor(c, &p)?) };
@@ -195,13 +188,13 @@ pub fn commands() -> Vec<Command> {
                 j(json!({"thread": t["name"], "moved": t["moved"], "anchor": t["anchor"], "position": t["position"], "order": labels(&t)}))
             }),
         cmd("thread sort", "Put a thread in Bible order (original words like H7065 go last). Prints the old order, so wb thread order can put it back.", vec![Pos("name", N::Many)], |c, a| {
-            let mut st = store()?;
+            let mut st = c.study()?;
             let id = tid(&st, &a.s("name"))?;
             let t = sa::sort_thread(c.bible()?, &mut st, &id).map_err(e)?;
             j(json!({"thread": t["name"], "changed": t["changed"], "before": t["before"], "order": labels(&t)}))
         }),
         cmd("thread order", "Set a thread's whole order: wb thread order Phinehas 3 1 2  (numbers from the list, or places; every place once).", vec![Pos("name", N::One), Pos("places", N::Many)], |c, a| {
-            let mut st = store()?;
+            let mut st = c.study()?;
             let id = tid(&st, &a.s("name"))?;
             let members: Vec<String> = st.thread(&id).map_err(e)?["members"].as_array().unwrap().iter().map(|m| m["anchor"].as_str().unwrap().to_string()).collect();
             let mut order = vec![];
@@ -221,27 +214,27 @@ pub fn commands() -> Vec<Command> {
             j(json!({"thread": v["name"], "order": labels(&v)}))
         }),
         cmd("thread rm", "Take what sits at a place (a verse, a run, or H7065) out of a thread.", vec![Pos("name", N::One), Pos("place", N::Many)], |c, a| {
-            let mut st = store()?;
+            let mut st = c.study()?;
             let id = tid(&st, &a.s("name"))?;
             let an = anchor(c, &a.s("place"))?;
             j(sa::remove_place(c.bible()?, &mut st, &id, &an).map_err(e)?)
         }),
         cmd("thread edit", "Rename a thread, change its note or color (--color none clears it).", vec![Pos("name", N::One), Opt("rename", None), Opt("note", None), Opt("color", None)], |c, a| {
-            let mut st = store()?;
+            let mut st = c.study()?;
             let id = tid(&st, &a.s("name"))?;
             let color = a.opt("color").map(|x| if x.eq_ignore_ascii_case("none") || x.is_empty() { None } else { Some(x) });
             st.update_thread(&id, a.opt("rename").as_deref(), a.opt("note").as_deref(), color.as_ref().map(|x| x.as_deref())).map_err(e)?;
             j(sa::thread_view(c.bible()?, &st, &id).map_err(e)?)
         }),
-        cmd("thread delete", "Delete a thread (moved to .trash).", vec![Pos("name", N::One)], |_, a| {
-            let mut st = store()?;
+        cmd("thread delete", "Delete a thread (moved to .trash).", vec![Pos("name", N::One)], |c, a| {
+            let mut st = c.study()?;
             let id = tid(&st, &a.s("name"))?;
             st.delete_thread(&id).map_err(e)?;
             j(json!({"ok": true}))
         }),
-        cmd("set list", "Your sets, each with what it holds.", vec![], |c, _| j(sa::set_list(c.bible()?, &store()?).map_err(e)?)),
+        cmd("set list", "Your sets, each with what it holds.", vec![], |c, _| j(sa::set_list(c.bible()?, &*c.study()?).map_err(e)?)),
         cmd("set show", "One set by name (a unique start or part of it works): its items and their keys.", vec![Pos("name", N::Many)], |c, a| {
-            let st = store()?;
+            let st = c.study()?;
             j(sa::set_view(c.bible()?, &st, &st.find_set(&a.s("name")).map_err(e)?).map_err(e)?)
         }),
         cmd("set new", "Start a set, optionally with threads, places, notes, lessons and PDFs in it.", {
@@ -249,7 +242,7 @@ pub fn commands() -> Vec<Command> {
             v.extend(set_items());
             v
         }, |c, a| {
-            let mut st = store()?;
+            let mut st = c.study()?;
             let items = items_of(c, &st, a)?;
             let t = st.create_set(&a.s("name"), &items).map_err(e)?;
             j(sa::set_view(c.bible()?, &st, &t).map_err(e)?)
@@ -259,7 +252,7 @@ pub fn commands() -> Vec<Command> {
             v.extend(set_items());
             v
         }, |c, a| {
-            let mut st = store()?;
+            let mut st = c.study()?;
             let items = items_of(c, &st, a)?;
             if items.is_empty() {
                 return Err("Name something to add: --thread, --place, --note, --lesson or --pdf.".into());
@@ -269,85 +262,85 @@ pub fn commands() -> Vec<Command> {
             j(sa::set_view(c.bible()?, &st, &t).map_err(e)?)
         }),
         cmd("set rm", "Take items out of a set by key (set show lists them). The things themselves are not touched.", vec![Pos("name", N::One), Pos("key", N::Many)], |c, a| {
-            let mut st = store()?;
+            let mut st = c.study()?;
             let id = s(&st.find_set(&a.s("name")).map_err(e)?, "id");
             let t = st.remove_from_set(&id, &a.list("key")).map_err(e)?;
             j(sa::set_view(c.bible()?, &st, &t).map_err(e)?)
         }),
         cmd("set rename", "Rename a set.", vec![Pos("name", N::One), Pos("to", N::Many)], |c, a| {
-            let mut st = store()?;
+            let mut st = c.study()?;
             let id = s(&st.find_set(&a.s("name")).map_err(e)?, "id");
             let t = st.rename_set(&id, &a.s("to")).map_err(e)?;
             j(sa::set_view(c.bible()?, &st, &t).map_err(e)?)
         }),
-        cmd("set delete", "Delete a set (moved to .trash). What it pointed at is not touched.", vec![Pos("name", N::Many)], |_, a| {
-            let mut st = store()?;
+        cmd("set delete", "Delete a set (moved to .trash). What it pointed at is not touched.", vec![Pos("name", N::Many)], |c, a| {
+            let mut st = c.study()?;
             let id = s(&st.find_set(&a.s("name")).map_err(e)?, "id");
             st.delete_set(&id).map_err(e)?;
             j(json!({"ok": true}))
         }),
         cmd("trail add", "Queue a question under a place.", vec![Pos("place", N::One), Pos("text", N::Many)], |c, a| {
             let an = anchor(c, &a.s("place"))?;
-            j(sa::save_trail(c.bible()?, &mut store()?, &an, &a.s("text")).map_err(e)?)
+            j(sa::save_trail(c.bible()?, &mut *c.study()?, &an, &a.s("text")).map_err(e)?)
         }),
         cmd("trail list", "The questions you have queued.", vec![Opt("status", Some("open"))], |c, a| {
             let st = a.opt_or("status", "open");
             if !["open", "done", "all"].contains(&st.as_str()) {
                 return Err(format!("wb trail list: argument --status: invalid choice: '{st}' (choose from 'open', 'done', 'all')"));
             }
-            j(sa::trail_list(c.bible()?, &store()?, &st).map_err(e)?)
+            j(sa::trail_list(c.bible()?, &*c.study()?, &st).map_err(e)?)
         }),
-        cmd("trail done", "Mark a question done (trail reopen undoes it).", vec![Pos("id", N::One)], |_, a| {
-            store()?.set_trail_status(&a.s("id"), "done").map_err(e)?;
+        cmd("trail done", "Mark a question done (trail reopen undoes it).", vec![Pos("id", N::One)], |c, a| {
+            c.study()?.set_trail_status(&a.s("id"), "done").map_err(e)?;
             j(json!({"ok": true}))
         }),
-        cmd("trail reopen", "Mark a question open again.", vec![Pos("id", N::One)], |_, a| {
-            store()?.set_trail_status(&a.s("id"), "open").map_err(e)?;
+        cmd("trail reopen", "Mark a question open again.", vec![Pos("id", N::One)], |c, a| {
+            c.study()?.set_trail_status(&a.s("id"), "open").map_err(e)?;
             j(json!({"ok": true}))
         }),
-        cmd("trail edit", "Change a question's text.", vec![Pos("id", N::One), Pos("text", N::Many)], |_, a| {
-            store()?.update_trail(&a.s("id"), &a.s("text")).map_err(e)?;
+        cmd("trail edit", "Change a question's text.", vec![Pos("id", N::One), Pos("text", N::Many)], |c, a| {
+            c.study()?.update_trail(&a.s("id"), &a.s("text")).map_err(e)?;
             j(json!({"ok": true}))
         }),
-        cmd("trail rm", "Delete a question (moved to .trash).", vec![Pos("id", N::One)], |_, a| {
-            store()?.delete_trail(&a.s("id")).map_err(e)?;
+        cmd("trail rm", "Delete a question (moved to .trash).", vec![Pos("id", N::One)], |c, a| {
+            c.study()?.delete_trail(&a.s("id")).map_err(e)?;
             j(json!({"ok": true}))
         }),
         cmd("find", "Search your own notes, thread names and notes, and trails.", vec![Pos("words", N::Many)], |c, a| {
-            j(sa::find_mine(c.bible()?, &store()?, &a.s("words")).map_err(e)?)
+            j(sa::find_mine(c.bible()?, &*c.study()?, &a.s("words")).map_err(e)?)
         }),
-        cmd("log", "What was typed into the capture box on a day (default today); log add records a line.", vec![Pos("day", N::Opt)], |_, a| {
+        cmd("log", "What was typed into the capture box on a day (default today); log add records a line.", vec![Pos("day", N::Opt)], |c, a| {
             let d = a.s("day");
-            j(store()?.log_day(if d.is_empty() { None } else { Some(&d) }).map_err(e)?)
+            j(c.study()?.log_day(if d.is_empty() { None } else { Some(&d) }).map_err(e)?)
         }),
-        cmd("log add", "Record a line in today's log.", vec![Pos("text", N::Many), Opt("result", Some(""))], |_, a| {
-            j(store()?.log_event(&a.s("text"), &a.opt_or("result", "")).map_err(e)?)
+        cmd("log add", "Record a line in today's log.", vec![Pos("text", N::Many), Opt("result", Some(""))], |c, a| {
+            j(c.study()?.log_event(&a.s("text"), &a.opt_or("result", "")).map_err(e)?)
         }),
-        cmd("layout list", "Saved pane arrangements.", vec![], |_, _| j(json!(store()?.layouts()))),
-        cmd("layout show", "One saved arrangement (the JSON).", vec![Pos("name", N::One)], |_, a| j(store()?.layout(&a.s("name")).map_err(e)?)),
+        cmd("layout list", "Saved pane arrangements.", vec![], |c, _| j(json!(c.study()?.layouts()))),
+        cmd("layout show", "One saved arrangement (the JSON).", vec![Pos("name", N::One)], |c, a| j(c.study()?.layout(&a.s("name")).map_err(e)?)),
         cmd("layout save", "Keep an arrangement of panes under a name, from a JSON file (the window saves its own in phase 2): wb layout save Study --file layout.json.",
-            vec![Pos("name", N::One), Opt("file", None)], |_, a| {
-                let text = body_text("-", a.opt("file"))?;
+            vec![Pos("name", N::One), Opt("file", None)], |c, a| {
+                let text = body_text(c, "-", a.opt("file"))?;
                 let layout: Value = serde_json::from_str(&text).map_err(|_| "The layout must be a JSON object.")?;
-                j(store()?.save_layout(&a.s("name"), &layout).map_err(e)?)
+                j(c.study()?.save_layout(&a.s("name"), &layout).map_err(e)?)
             }),
-        cmd("lesson list", "Your lessons (study-folder/lessons/*.md).", vec![], |_, _| j(json!(sa::lesson_listing(&store()?).map_err(e)?))),
-        cmd("lesson show", "A lesson's file text.", vec![Pos("name", N::Many)], |_, a| {
-            let r = sa::lesson_read(&store()?, &a.s("name")).map_err(e)?;
+        cmd("lesson list", "Your lessons (study-folder/lessons/*.md).", vec![], |c, _| j(json!(sa::lesson_listing(&*c.study()?).map_err(e)?))),
+        cmd("lesson show", "A lesson's file text.", vec![Pos("name", N::Many)], |c, a| {
+            let r = sa::lesson_read(&*c.study()?, &a.s("name")).map_err(e)?;
             if a.flag("json") {
                 return j(r);
             }
             Ok(Out::Text(r["text"].as_str().unwrap().to_string()))
         }),
         cmd("lesson save", "Write a lesson from standard input or --file (replaces it; --append adds to the end).",
-            vec![Pos("name", N::One), Opt("file", None), Flag("append"), Pos("text", N::Any)], |_, a| {
+            vec![Pos("name", N::One), Opt("file", None), Flag("append"), Pos("text", N::Any)], |c, a| {
                 let words = if a.has("text") { a.s("text") } else { "-".into() };
-                let text = body_text(&words, a.opt("file"))?;
-                j(sa::lesson_save(&store()?, &a.s("name"), &text, a.flag("append")).map_err(e)?)
+                let text = body_text(c, &words, a.opt("file"))?;
+                j(sa::lesson_save(&*c.study()?, &a.s("name"), &text, a.flag("append")).map_err(e)?)
             }),
-        cmd("lesson rm", "Delete a lesson (moved to .trash).", vec![Pos("name", N::One)], |_, a| j(sa::lesson_delete(&store()?, &a.s("name")).map_err(e)?)),
+        cmd("lesson rm", "Delete a lesson (moved to .trash).", vec![Pos("name", N::One)], |c, a| j(sa::lesson_delete(&*c.study()?, &a.s("name")).map_err(e)?)),
         cmd("lesson check", "Read a lesson the way a build would: its scriptures and slide count, or the first line that cannot be read.", vec![Pos("name", N::Many)], |c, a| {
-            j(sa::lesson_check(c.bible()?, &store()?, &a.s("name")).map_err(e)?)
+            j(sa::lesson_check(c.bible()?, &*c.study()?, &a.s("name")).map_err(e)?)
         }),
     ]
 }
@@ -357,8 +350,8 @@ fn labels(t: &Value) -> Vec<Value> {
 }
 
 /// Places into the thread with this name, in one write (a new name starts the thread).
-fn add_places(c: &Ctx, name: &str, list: Vec<String>) -> Res {
-    let mut st = store()?;
+fn add_places(c: &Ctx<'_>, name: &str, list: Vec<String>) -> Res {
+    let mut st = c.study()?;
     let id = match thread(&st, name) {
         Ok(t) => t["id"].as_str().unwrap().to_string(),
         Err(m) if m.starts_with("No thread") => sa::create_thread(c.bible()?, &mut st, name, "", None, None).map_err(e)?["id"].as_str().unwrap().to_string(),
@@ -367,7 +360,7 @@ fn add_places(c: &Ctx, name: &str, list: Vec<String>) -> Res {
     j(sa::add_many_to_thread(c.bible()?, &mut st, &id, &list).map_err(e)?)
 }
 
-fn items_of(c: &Ctx, st: &Store, a: &Args) -> Result<Vec<Value>, String> {
+fn items_of(c: &Ctx<'_>, st: &Store, a: &Args) -> Result<Vec<Value>, String> {
     let mut items = vec![];
     for n in a.list("thread") {
         items.push(json!({"kind": "thread", "ref": tid(st, &n)?}));
@@ -405,7 +398,7 @@ fn every_row(page: &dyn Fn(usize) -> Result<Value, String>) -> Result<Vec<Value>
 }
 
 /// The rows inside the places named (--only), and an error for a place that holds none of them.
-fn picked(c: &Ctx, rows: Vec<Value>, only: Option<String>) -> Result<Vec<Value>, String> {
+fn picked(c: &Ctx<'_>, rows: Vec<Value>, only: Option<String>) -> Result<Vec<Value>, String> {
     let Some(only) = only.filter(|o| !o.is_empty()) else { return Ok(rows) };
     let mut keep: Vec<Value> = vec![];
     for part in only.split(';') {
@@ -433,14 +426,14 @@ fn verse_anchor(r: &Value) -> String {
     format!("{}.{}:{}", r["ref"]["code"].as_str().unwrap(), r["ref"]["c"], r["ref"]["v"])
 }
 
-fn results_out(c: &Ctx, a: &Args, places: Vec<String>) -> Res {
+fn results_out(c: &Ctx<'_>, a: &Args, places: Vec<String>) -> Res {
     if a.flag("dry_run") {
         return j(json!({"thread": a.s("name"), "would_add": places}));
     }
     add_places(c, &a.s("name"), places)
 }
 
-fn from_search(c: &Ctx, a: &Args) -> Res {
+fn from_search(c: &Ctx<'_>, a: &Args) -> Res {
     let scope = c.scope(&a.opt_or("scope", "all"))?;
     let q = a.s("query");
     let b = c.bible()?;
@@ -451,7 +444,7 @@ fn from_search(c: &Ctx, a: &Args) -> Res {
     results_out(c, a, places)
 }
 
-fn from_uses(c: &Ctx, a: &Args) -> Res {
+fn from_uses(c: &Ctx<'_>, a: &Args) -> Res {
     let term = a.s("term");
     let strong = if lookup::is_strong(&term.to_uppercase()) { term.to_uppercase() } else { String::new() };
     let word = a.opt("word").unwrap_or_else(|| if strong.is_empty() { term.to_lowercase() } else { String::new() });

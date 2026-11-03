@@ -1,0 +1,4904 @@
+{
+ "made_by": "scripts/commands-cases.mjs from the Python app's web/commands.js",
+ "parse": [
+  {
+   "input": "def zeal",
+   "action": {
+    "cmd": "def",
+    "q": "zeal"
+   }
+  },
+  {
+   "input": "DEF h7065",
+   "action": {
+    "cmd": "def",
+    "q": "h7065"
+   }
+  },
+  {
+   "input": "search grace truth",
+   "action": {
+    "cmd": "search",
+    "q": "grace truth"
+   }
+  },
+  {
+   "input": "grace and truth",
+   "action": {
+    "cmd": "search",
+    "q": "grace and truth"
+   }
+  },
+  {
+   "input": "+Phinehas",
+   "action": {
+    "cmd": "thread",
+    "name": "Phinehas"
+   }
+  },
+  {
+   "input": "+ Day of the Lord",
+   "action": {
+    "cmd": "thread",
+    "name": "Day of the Lord"
+   }
+  },
+  {
+   "input": "? Is this zeal the same as Rom 10:2?",
+   "action": {
+    "cmd": "ask",
+    "text": "Is this zeal the same as Rom 10:2?"
+   }
+  },
+  {
+   "input": "note he turned wrath away",
+   "action": {
+    "cmd": "note",
+    "text": "he turned wrath away"
+   }
+  },
+  {
+   "input": "trails",
+   "action": {
+    "cmd": "trails"
+   }
+  },
+  {
+   "input": "threads",
+   "action": {
+    "cmd": "threads"
+   }
+  },
+  {
+   "input": "pdf",
+   "action": {
+    "cmd": "pdf"
+   }
+  },
+  {
+   "input": "PDFs",
+   "action": {
+    "cmd": "pdfs"
+   }
+  },
+  {
+   "input": "   ",
+   "action": {
+    "cmd": "none"
+   }
+  },
+  {
+   "input": "open John 3:16",
+   "action": {
+    "cmd": "open",
+    "book": "JHN",
+    "ch": 3,
+    "v": 16,
+    "v2": 0,
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "go 1 John 4",
+   "action": {
+    "cmd": "go",
+    "book": "1JN",
+    "ch": 4,
+    "v": 0,
+    "v2": 0,
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "open John 3:16 ylt",
+   "action": {
+    "cmd": "open",
+    "book": "JHN",
+    "ch": 3,
+    "v": 16,
+    "v2": 0,
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "open John 3 BOTH",
+   "action": {
+    "cmd": "open",
+    "book": "JHN",
+    "ch": 3,
+    "v": 0,
+    "v2": 0,
+    "version": "PAR"
+   }
+  },
+  {
+   "input": "open 1 John 4:8 ylt",
+   "action": {
+    "cmd": "open",
+    "book": "1JN",
+    "ch": 4,
+    "v": 8,
+    "v2": 0,
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "open John 3 foo",
+   "error": "Give a reference like John 3:16, John 3-5, Num 25:10-26:4 or Jude."
+  },
+  {
+   "input": "uses zeal",
+   "action": {
+    "cmd": "uses",
+    "strong": "",
+    "word": "zeal",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "uses h7065",
+   "action": {
+    "cmd": "uses",
+    "strong": "H7065",
+    "word": "",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "uses zeal Num",
+   "action": {
+    "cmd": "uses",
+    "strong": "",
+    "word": "zeal",
+    "scope": "4"
+   }
+  },
+  {
+   "input": "uses H7065 zealous NT",
+   "action": {
+    "cmd": "uses",
+    "strong": "H7065",
+    "word": "zealous",
+    "scope": "NT"
+   }
+  },
+  {
+   "input": "uses love 1 john",
+   "action": {
+    "cmd": "uses",
+    "strong": "",
+    "word": "love",
+    "scope": "62"
+   }
+  },
+  {
+   "input": "uses H7065 zealous",
+   "action": {
+    "cmd": "uses",
+    "strong": "H7065",
+    "word": "zealous",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "uses",
+   "error": "Uses what? Try: uses zeal  or  uses H7065 Num"
+  },
+  {
+   "input": "uses H1 H2",
+   "error": "One Strong’s number at a time."
+  },
+  {
+   "input": "uses a b",
+   "error": "One English word at a time (use search for several). If “b” was meant to limit it, it is not a book, group, OT or NT."
+  },
+  {
+   "input": "def zeal jealous",
+   "error": "Define one word at a time: def zeal. (To look for several words together, use search.)"
+  },
+  {
+   "input": "def H7065 H1",
+   "error": "Define one word at a time: def H7065. (To look for several words together, use search.)"
+  },
+  {
+   "input": "usess zeal",
+   "action": {
+    "cmd": "search",
+    "q": "usess zeal",
+    "suspect": "uses"
+   }
+  },
+  {
+   "input": "serch grace",
+   "action": {
+    "cmd": "search",
+    "q": "serch grace",
+    "suspect": "search"
+   }
+  },
+  {
+   "input": "thraed phinehas",
+   "action": {
+    "cmd": "search",
+    "q": "thraed phinehas",
+    "suspect": "thread"
+   }
+  },
+  {
+   "input": "deaf",
+   "action": {
+    "cmd": "search",
+    "q": "deaf",
+    "suspect": "def"
+   }
+  },
+  {
+   "input": "uses love gospels",
+   "action": {
+    "cmd": "uses",
+    "strong": "",
+    "word": "love",
+    "scope": "40,41,42,43"
+   }
+  },
+  {
+   "input": "uses H7065 Pentateuch",
+   "action": {
+    "cmd": "uses",
+    "strong": "H7065",
+    "word": "",
+    "scope": "1,2,3,4,5"
+   }
+  },
+  {
+   "input": "uses grace minor prophets",
+   "action": {
+    "cmd": "uses",
+    "strong": "",
+    "word": "grace",
+    "scope": "28,29,30,31,32,33,34,35,36,37,38,39"
+   }
+  },
+  {
+   "input": "uses grace paul",
+   "action": {
+    "cmd": "uses",
+    "strong": "",
+    "word": "grace",
+    "scope": "45,46,47,48,49,50,51,52,53,54,55,56,57"
+   }
+  },
+  {
+   "input": "search grace truth in gospels",
+   "action": {
+    "cmd": "search",
+    "q": "grace truth",
+    "scope": "40,41,42,43"
+   }
+  },
+  {
+   "input": "search love in john",
+   "action": {
+    "cmd": "search",
+    "q": "love",
+    "scope": "43"
+   }
+  },
+  {
+   "input": "grace in NT",
+   "action": {
+    "cmd": "search",
+    "q": "grace",
+    "scope": "NT"
+   }
+  },
+  {
+   "input": "worship in spirit",
+   "action": {
+    "cmd": "search",
+    "q": "worship in spirit"
+   }
+  },
+  {
+   "input": "search love OT",
+   "action": {
+    "cmd": "search",
+    "q": "love",
+    "scope": "OT"
+   }
+  },
+  {
+   "input": "grace and truth nt",
+   "action": {
+    "cmd": "search",
+    "q": "grace and truth",
+    "scope": "NT"
+   }
+  },
+  {
+   "input": "search OT",
+   "action": {
+    "cmd": "search",
+    "q": "OT"
+   }
+  },
+  {
+   "input": "search love john",
+   "action": {
+    "cmd": "search",
+    "q": "love john"
+   }
+  },
+  {
+   "input": "uses law",
+   "action": {
+    "cmd": "uses",
+    "strong": "",
+    "word": "law",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "uses zeal jealous",
+   "error": "One English word at a time (use search for several). If “jealous” was meant to limit it, it is not a book, group, OT or NT."
+  },
+  {
+   "input": "first zeal",
+   "action": {
+    "cmd": "first",
+    "strong": "",
+    "word": "zeal",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "last H7065 OT",
+   "action": {
+    "cmd": "last",
+    "strong": "H7065",
+    "word": "",
+    "scope": "OT"
+   }
+  },
+  {
+   "input": "last love gospels",
+   "action": {
+    "cmd": "last",
+    "strong": "",
+    "word": "love",
+    "scope": "40,41,42,43"
+   }
+  },
+  {
+   "input": "first",
+   "error": "First what? Try: first zeal  or  first H7065 Num"
+  },
+  {
+   "input": "forms Zeal",
+   "action": {
+    "cmd": "forms",
+    "word": "zeal"
+   }
+  },
+  {
+   "input": "forms zeal love",
+   "error": "One English word at a time, like: forms zeal"
+  },
+  {
+   "input": "find turned wrath away",
+   "action": {
+    "cmd": "find",
+    "q": "turned wrath away"
+   }
+  },
+  {
+   "input": "thread Day of the Lord",
+   "action": {
+    "cmd": "openthread",
+    "name": "Day of the Lord"
+   }
+  },
+  {
+   "input": "previous",
+   "action": {
+    "cmd": "prev"
+   }
+  },
+  {
+   "input": "rm",
+   "action": {
+    "cmd": "undo"
+   }
+  },
+  {
+   "input": "hl yellow",
+   "action": {
+    "cmd": "hl",
+    "color": "yellow"
+   }
+  },
+  {
+   "input": "HL g",
+   "action": {
+    "cmd": "hl",
+    "color": "green"
+   }
+  },
+  {
+   "input": "hl clear",
+   "action": {
+    "cmd": "hl",
+    "color": null
+   }
+  },
+  {
+   "input": "hl red",
+   "error": "Colors are yellow, green, blue, pink, orange, a #rrggbb like #e07b39, or c1-c8 for a saved color (or: hl clear)."
+  },
+  {
+   "input": "hl",
+   "error": "Which color? yellow, green, blue, pink, orange, a #rrggbb, c1-c8 (a saved color), or: hl clear"
+  },
+  {
+   "input": "hl #E07B39",
+   "action": {
+    "cmd": "hl",
+    "color": "#e07b39"
+   }
+  },
+  {
+   "input": "hl c3",
+   "action": {
+    "cmd": "hl",
+    "saved": 3
+   }
+  },
+  {
+   "input": "hl C1 @John 3:16",
+   "action": {
+    "cmd": "hl",
+    "saved": 1,
+    "at": {
+     "anchor": "JHN.3:16",
+     "label": "John 3:16"
+    }
+   }
+  },
+  {
+   "input": "hl #336699 @John 3:16",
+   "action": {
+    "cmd": "hl",
+    "color": "#336699",
+    "at": {
+     "anchor": "JHN.3:16",
+     "label": "John 3:16"
+    }
+   }
+  },
+  {
+   "input": "marked #E07B39",
+   "action": {
+    "cmd": "marked",
+    "color": "#e07b39",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "marked c2 NT",
+   "action": {
+    "cmd": "marked",
+    "color": "",
+    "saved": 2,
+    "scope": "NT"
+   }
+  },
+  {
+   "input": "marked in Phinehas",
+   "action": {
+    "cmd": "marked",
+    "color": "",
+    "thread": "Phinehas",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "marked blue gospels in Day of the Lord",
+   "action": {
+    "cmd": "marked",
+    "color": "blue",
+    "thread": "Day of the Lord",
+    "scope": "40,41,42,43"
+   }
+  },
+  {
+   "input": "marked in",
+   "error": "In which thread? Like: marked in Phinehas"
+  },
+  {
+   "input": "marked blue in",
+   "error": "In which thread? Like: marked in Phinehas"
+  },
+  {
+   "input": "marked purple in Phinehas",
+   "error": "“purple” is not a color (yellow, green, blue, pink, orange, #rrggbb, c1-c8), book, group, OT or NT."
+  },
+  {
+   "input": "marked",
+   "action": {
+    "cmd": "marked",
+    "color": "",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "marked blue",
+   "action": {
+    "cmd": "marked",
+    "color": "blue",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "marked pink NT",
+   "action": {
+    "cmd": "marked",
+    "color": "pink",
+    "scope": "NT"
+   }
+  },
+  {
+   "input": "marked gospels",
+   "action": {
+    "cmd": "marked",
+    "color": "",
+    "scope": "40,41,42,43"
+   }
+  },
+  {
+   "input": "marked green num",
+   "action": {
+    "cmd": "marked",
+    "color": "green",
+    "scope": "4"
+   }
+  },
+  {
+   "input": "marked purple",
+   "error": "“purple” is not a color (yellow, green, blue, pink, orange, #rrggbb, c1-c8), book, group, OT or NT."
+  },
+  {
+   "input": "open Jude",
+   "action": {
+    "cmd": "open",
+    "book": "JUD",
+    "ch": 1,
+    "v": 0,
+    "v2": 0,
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "open John 3:16-18",
+   "action": {
+    "cmd": "open",
+    "book": "JHN",
+    "ch": 3,
+    "v": 16,
+    "v2": 18,
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "open Romans",
+   "action": {
+    "cmd": "excerpt",
+    "spans": [
+     {
+      "book": "ROM",
+      "c1": 1,
+      "v1": 0,
+      "c2": 16,
+      "v2": 0
+     }
+    ],
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "open Num 25:10-26:4 ylt",
+   "action": {
+    "cmd": "excerpt",
+    "spans": [
+     {
+      "book": "NUM",
+      "c1": 25,
+      "v1": 10,
+      "c2": 26,
+      "v2": 4
+     }
+    ],
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "open John 3-5",
+   "action": {
+    "cmd": "excerpt",
+    "spans": [
+     {
+      "book": "JHN",
+      "c1": 3,
+      "v1": 0,
+      "c2": 5,
+      "v2": 0
+     }
+    ],
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "open John 3:16; Rom 5:8 ; 1 John 4:9 both",
+   "action": {
+    "cmd": "excerpt",
+    "spans": [
+     {
+      "book": "JHN",
+      "c1": 3,
+      "v1": 16,
+      "c2": 3,
+      "v2": 16
+     },
+     {
+      "book": "ROM",
+      "c1": 5,
+      "v1": 8,
+      "c2": 5,
+      "v2": 8
+     },
+     {
+      "book": "1JN",
+      "c1": 4,
+      "v1": 9,
+      "c2": 4,
+      "v2": 9
+     }
+    ],
+    "version": "PAR"
+   }
+  },
+  {
+   "input": "open John 3:16; Foo 1:1",
+   "error": "No book called “Foo”."
+  },
+  {
+   "input": "go John 3:16; Rom 5:8",
+   "error": "go takes one place. Use open for several, like open John 3:16; Rom 5:8"
+  },
+  {
+   "input": "go Num 25:10-26:4",
+   "action": {
+    "cmd": "go",
+    "book": "NUM",
+    "ch": 25,
+    "v": 10,
+    "v2": 0,
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "go Jude",
+   "action": {
+    "cmd": "go",
+    "book": "JUD",
+    "ch": 1,
+    "v": 0,
+    "v2": 0,
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "compare John 3:16",
+   "action": {
+    "cmd": "open",
+    "book": "JHN",
+    "ch": 3,
+    "v": 16,
+    "v2": 0,
+    "version": "PAR"
+   }
+  },
+  {
+   "input": "compare John 3:16; Rom 5:8",
+   "action": {
+    "cmd": "excerpt",
+    "spans": [
+     {
+      "book": "JHN",
+      "c1": 3,
+      "v1": 16,
+      "c2": 3,
+      "v2": 16
+     },
+     {
+      "book": "ROM",
+      "c1": 5,
+      "v1": 8,
+      "c2": 5,
+      "v2": 8
+     }
+    ],
+    "version": "PAR"
+   }
+  },
+  {
+   "input": "compare John 3:16 ylt",
+   "action": {
+    "cmd": "open",
+    "book": "JHN",
+    "ch": 3,
+    "v": 16,
+    "v2": 0,
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "compare",
+   "error": "Compare what? Try: compare John 3:16"
+  },
+  {
+   "input": "count zeal",
+   "action": {
+    "cmd": "count",
+    "strong": "",
+    "word": "zeal",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "count H7065 by book",
+   "action": {
+    "cmd": "count",
+    "strong": "H7065",
+    "word": "",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "count zeal gospels",
+   "error": "count shows every book at once. For one part of the Bible use: uses zeal gospels"
+  },
+  {
+   "input": "count",
+   "error": "Count what? Try: count zeal  or  count H7065 Num"
+  },
+  {
+   "input": "near zeal jealous",
+   "action": {
+    "cmd": "near",
+    "a": "zeal",
+    "b": "jealous",
+    "within": 10,
+    "scope": "all"
+   }
+  },
+  {
+   "input": "near H7065 Love within 20 OT",
+   "action": {
+    "cmd": "near",
+    "a": "H7065",
+    "b": "love",
+    "within": 20,
+    "scope": "OT"
+   }
+  },
+  {
+   "input": "near grace truth gospels",
+   "action": {
+    "cmd": "near",
+    "a": "grace",
+    "b": "truth",
+    "within": 10,
+    "scope": "40,41,42,43"
+   }
+  },
+  {
+   "input": "near love john",
+   "action": {
+    "cmd": "near",
+    "a": "love",
+    "b": "john",
+    "within": 10,
+    "scope": "all"
+   }
+  },
+  {
+   "input": "near zeal",
+   "error": "Near takes two words or Strong’s numbers, like: near zeal jealous  or  near H7065 love within 20 OT"
+  },
+  {
+   "input": "near a b zzz",
+   "error": "Near takes two words or Strong’s numbers, like: near zeal jealous  or  near H7065 love within 20 OT"
+  },
+  {
+   "input": "near a b c",
+   "action": {
+    "cmd": "near",
+    "a": "a",
+    "b": "b",
+    "within": 10,
+    "scope": "51"
+   }
+  },
+  {
+   "input": "near zeal jealous within",
+   "error": "Within how many words? A number from 1 to 50, like: near zeal jealous within 20"
+  },
+  {
+   "input": "near zeal jealous within 99",
+   "error": "Within how many words? A number from 1 to 50, like: near zeal jealous within 20"
+  },
+  {
+   "input": "lexiconc Zeal",
+   "action": {
+    "cmd": "lexiconc",
+    "q": "zeal"
+   }
+  },
+  {
+   "input": "lexiconc zeal*",
+   "action": {
+    "cmd": "lexiconc",
+    "q": "zeal*"
+   }
+  },
+  {
+   "input": "lexiconc zeal love",
+   "error": "One English word at a time, like: lexiconc zeal"
+  },
+  {
+   "input": "lexiconc",
+   "error": "Which English word? Try: lexiconc zeal  (or zeal* for endings)"
+  },
+  {
+   "input": "lex bdb h7065",
+   "action": {
+    "cmd": "lex",
+    "source": "bdb",
+    "strong": "H7065"
+   }
+  },
+  {
+   "input": "lex strongs G26",
+   "action": {
+    "cmd": "lex",
+    "source": "strongs",
+    "strong": "G26"
+   }
+  },
+  {
+   "input": "lex bdb G26",
+   "error": "BDB is a Hebrew and Aramaic lexicon. For G26 try: lex strongs G26"
+  },
+  {
+   "input": "lex thayer G26",
+   "error": "Thayer’s lexicon is not installed: no copy with a verified license has been found yet. BDB (Hebrew) and Strong’s are: lex bdb H7065, lex strongs G26"
+  },
+  {
+   "input": "lex bdb",
+   "error": "Try: lex bdb H7065  or  lex strongs G26"
+  },
+  {
+   "input": "lex bdb zeal",
+   "error": "Give a Strong’s number like H7065 or G26."
+  },
+  {
+   "input": "sets",
+   "action": {
+    "cmd": "sets"
+   }
+  },
+  {
+   "input": "set",
+   "action": {
+    "cmd": "set",
+    "action": "list"
+   }
+  },
+  {
+   "input": "set list",
+   "action": {
+    "cmd": "set",
+    "action": "list"
+   }
+  },
+  {
+   "input": "set new Zeal study",
+   "action": {
+    "cmd": "set",
+    "action": "new",
+    "name": "Zeal study",
+    "items": []
+   }
+  },
+  {
+   "input": "set Zeal study",
+   "action": {
+    "cmd": "set",
+    "action": "open",
+    "name": "Zeal study"
+   }
+  },
+  {
+   "input": "set new Zeal study: Occurrences; thread Phinehas; @Num 25:11; lesson prayer; pdf John 3; note turned wrath",
+   "action": {
+    "cmd": "set",
+    "action": "new",
+    "name": "Zeal study",
+    "items": [
+     {
+      "type": "pane",
+      "name": "Occurrences"
+     },
+     {
+      "type": "thread",
+      "name": "Phinehas"
+     },
+     {
+      "type": "place",
+      "anchor": "NUM.25:11",
+      "label": "Numbers 25:11"
+     },
+     {
+      "type": "lesson",
+      "name": "prayer"
+     },
+     {
+      "type": "pdf",
+      "name": "John 3"
+     },
+     {
+      "type": "note",
+      "name": "turned wrath"
+     }
+    ]
+   }
+  },
+  {
+   "input": "set add Zeal: @John 3:16",
+   "action": {
+    "cmd": "set",
+    "action": "add",
+    "name": "Zeal",
+    "items": [
+     {
+      "type": "place",
+      "anchor": "JHN.3:16",
+      "label": "John 3:16"
+     }
+    ]
+   }
+  },
+  {
+   "input": "set rm Zeal: Numbers 25:11; Occurrences",
+   "action": {
+    "cmd": "set",
+    "action": "rm",
+    "name": "Zeal",
+    "parts": [
+     "Numbers 25:11",
+     "Occurrences"
+    ]
+   }
+  },
+  {
+   "input": "set rename Zeal = Phinehas study",
+   "action": {
+    "cmd": "set",
+    "action": "rename",
+    "name": "Zeal",
+    "to": "Phinehas study"
+   }
+  },
+  {
+   "input": "set add Zeal",
+   "error": "Say what to add after a colon, like: set add Zeal study: thread Phinehas; @Num 25:11; Occurrences"
+  },
+  {
+   "input": "set rm Zeal",
+   "error": "Say what to take out after a colon, like: set rm Zeal study: Numbers 25:11"
+  },
+  {
+   "input": "set rename Zeal",
+   "error": "Try: set rename Zeal study = Phinehas study"
+  },
+  {
+   "input": "set new",
+   "error": "Which set? Try: set new Zeal study  (sets shows them all)"
+  },
+  {
+   "input": "set add Zeal: @Nowhere 3:16",
+   "error": "No book called “Nowhere”."
+  },
+  {
+   "input": "today",
+   "action": {
+    "cmd": "today",
+    "day": ""
+   }
+  },
+  {
+   "input": "today 2026-10-17",
+   "action": {
+    "cmd": "today",
+    "day": "2026-10-17"
+   }
+  },
+  {
+   "input": "today yesterday",
+   "error": "A day looks like 2026-10-18 (or just: today)."
+  },
+  {
+   "input": "layout save Phinehas study",
+   "action": {
+    "cmd": "layout",
+    "action": "save",
+    "name": "Phinehas study"
+   }
+  },
+  {
+   "input": "layout load phin",
+   "action": {
+    "cmd": "layout",
+    "action": "load",
+    "name": "phin"
+   }
+  },
+  {
+   "input": "layout list",
+   "action": {
+    "cmd": "layout",
+    "action": "list",
+    "name": ""
+   }
+  },
+  {
+   "input": "layout",
+   "action": {
+    "cmd": "layout",
+    "action": "list",
+    "name": ""
+   }
+  },
+  {
+   "input": "layout save",
+   "error": "Name the layout: layout save phinehas"
+  },
+  {
+   "input": "layout burn x",
+   "error": "Try: layout save <name>, layout load <name>, or layout list"
+  },
+  {
+   "input": "thread Phinehas - Num 25:11",
+   "action": {
+    "cmd": "threadrm",
+    "name": "Phinehas",
+    "at": {
+     "anchor": "NUM.25:11",
+     "label": "Numbers 25:11"
+    }
+   }
+  },
+  {
+   "input": "thread Day of the Lord - Isa 13:6-9",
+   "action": {
+    "cmd": "threadrm",
+    "name": "Day of the Lord",
+    "at": {
+     "anchor": "ISA.13:6-13:9",
+     "label": "Isaiah 13:6–9"
+    }
+   }
+  },
+  {
+   "input": "thread Phinehas - H7065",
+   "action": {
+    "cmd": "threadrm",
+    "name": "Phinehas",
+    "at": {
+     "anchor": "H7065",
+     "label": "H7065"
+    }
+   }
+  },
+  {
+   "input": "thread Phinehas - Num 25",
+   "error": "Add a verse after the chapter, like: thread Phinehas - Numbers 25:1"
+  },
+  {
+   "input": "thread Phinehas",
+   "action": {
+    "cmd": "openthread",
+    "name": "Phinehas"
+   }
+  },
+  {
+   "input": "thread Part 1 - the start",
+   "action": {
+    "cmd": "openthread",
+    "name": "Part 1 - the start"
+   }
+  },
+  {
+   "input": "keys",
+   "action": {
+    "cmd": "keys"
+   }
+  },
+  {
+   "input": "shortcuts",
+   "action": {
+    "cmd": "keys"
+   }
+  },
+  {
+   "input": "help keys",
+   "action": {
+    "cmd": "help",
+    "topic": "keys"
+   }
+  },
+  {
+   "input": "thread ",
+   "error": "Which thread? Try: thread Phinehas  (threads lists them all)"
+  },
+  {
+   "input": "notes",
+   "action": {
+    "cmd": "notes",
+    "action": "open"
+   }
+  },
+  {
+   "input": "notes @Num 25:13",
+   "action": {
+    "cmd": "notes",
+    "action": "open",
+    "at": {
+     "anchor": "NUM.25:13",
+     "label": "Numbers 25:13"
+    }
+   }
+  },
+  {
+   "input": "notes edit turned wrath = he stayed it",
+   "action": {
+    "cmd": "notes",
+    "action": "edit",
+    "part": "turned wrath",
+    "text": "he stayed it"
+   }
+  },
+  {
+   "input": "notes edit = he stayed it @Num 25:13",
+   "action": {
+    "cmd": "notes",
+    "action": "edit",
+    "part": "",
+    "text": "he stayed it",
+    "at": {
+     "anchor": "NUM.25:13",
+     "label": "Numbers 25:13"
+    }
+   }
+  },
+  {
+   "input": "notes delete turned wrath",
+   "action": {
+    "cmd": "notes",
+    "action": "delete",
+    "part": "turned wrath"
+   }
+  },
+  {
+   "input": "notes rm @Num 25:13",
+   "action": {
+    "cmd": "notes",
+    "action": "delete",
+    "part": "",
+    "at": {
+     "anchor": "NUM.25:13",
+     "label": "Numbers 25:13"
+    }
+   }
+  },
+  {
+   "input": "notes edit turned wrath",
+   "error": "Put the new text after an =, like: notes edit turned wrath = he stayed the plague"
+  },
+  {
+   "input": "notes edit = words",
+   "error": "Which note? Give part of its text, or the place at the end, like: notes edit turned wrath = new words"
+  },
+  {
+   "input": "notes delete",
+   "error": "Which note? Give part of its text, or the place at the end, like: notes delete turned wrath"
+  },
+  {
+   "input": "notes about grace",
+   "error": "Try: notes, notes @John 3:16, notes edit <part of the note> = <new text>, or notes delete <part of the note>"
+  },
+  {
+   "input": "note edit the margin",
+   "action": {
+    "cmd": "note",
+    "text": "edit the margin"
+   }
+  },
+  {
+   "input": "trail done same zeal",
+   "action": {
+    "cmd": "trail",
+    "action": "done",
+    "part": "same zeal"
+   }
+  },
+  {
+   "input": "trail reopen same zeal",
+   "action": {
+    "cmd": "trail",
+    "action": "reopen",
+    "part": "same zeal"
+   }
+  },
+  {
+   "input": "trail rm same zeal",
+   "action": {
+    "cmd": "trail",
+    "action": "delete",
+    "part": "same zeal"
+   }
+  },
+  {
+   "input": "trail edit same zeal = which zeal?",
+   "action": {
+    "cmd": "trail",
+    "action": "edit",
+    "part": "same zeal",
+    "text": "which zeal?"
+   }
+  },
+  {
+   "input": "trail edit same zeal",
+   "error": "Put the new words after an =, like: trail edit same zeal = is it the same zeal?"
+  },
+  {
+   "input": "trail",
+   "error": "Try: trail done <part of the question>, trail reopen …, trail delete …, or trail edit <part of it> = <new words>  (trails lists them; ? queues a new one)"
+  },
+  {
+   "input": "trial",
+   "action": {
+    "cmd": "search",
+    "q": "trial",
+    "suspect": "trail"
+   }
+  },
+  {
+   "input": "palette",
+   "action": {
+    "cmd": "palette",
+    "action": "list"
+   }
+  },
+  {
+   "input": "palette rm c2",
+   "action": {
+    "cmd": "palette",
+    "action": "rm",
+    "saved": 2
+   }
+  },
+  {
+   "input": "palette delete #E07B39",
+   "action": {
+    "cmd": "palette",
+    "action": "rm",
+    "color": "#e07b39"
+   }
+  },
+  {
+   "input": "palette rm blue",
+   "error": "Try: palette  to see your saved colors, then: palette rm c2  or  palette rm #e07b39"
+  },
+  {
+   "input": "palette rm",
+   "error": "Try: palette  to see your saved colors, then: palette rm c2  or  palette rm #e07b39"
+  },
+  {
+   "input": "lesson",
+   "action": {
+    "cmd": "lesson",
+    "action": "list"
+   }
+  },
+  {
+   "input": "layers list",
+   "action": {
+    "cmd": "layers",
+    "action": "list"
+   }
+  },
+  {
+   "input": "hl ",
+   "error": "Which color? yellow, green, blue, pink, orange, a #rrggbb, c1-c8 (a saved color), or: hl clear"
+  },
+  {
+   "input": "lex strong G26",
+   "action": {
+    "cmd": "lex",
+    "source": "strongs",
+    "strong": "G26"
+   }
+  },
+  {
+   "input": "open John 3 kjv",
+   "action": {
+    "cmd": "open",
+    "book": "JHN",
+    "ch": 3,
+    "v": 0,
+    "v2": 0,
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "deck John 3 kjv",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "ref": "John 3",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "doc John 3:16; Rom 5:8",
+   "action": {
+    "cmd": "make",
+    "kind": "word",
+    "ref": "John 3:16; Rom 5:8",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "help",
+   "action": {
+    "cmd": "help",
+    "topic": ""
+   }
+  },
+  {
+   "input": "HELP near",
+   "action": {
+    "cmd": "help",
+    "topic": "near"
+   }
+  },
+  {
+   "input": "help rm",
+   "action": {
+    "cmd": "help",
+    "topic": "undo"
+   }
+  },
+  {
+   "input": "help scopes",
+   "action": {
+    "cmd": "help",
+    "topic": "scopes"
+   }
+  },
+  {
+   "input": "help wb",
+   "action": {
+    "cmd": "help",
+    "topic": "wb"
+   }
+  },
+  {
+   "input": "help +",
+   "action": {
+    "cmd": "help",
+    "topic": "+"
+   }
+  },
+  {
+   "input": "help me please",
+   "error": "No command or topic called “me please”. Type help for the list. (To search for the words, type: search help me please)"
+  },
+  {
+   "input": "search help",
+   "action": {
+    "cmd": "search",
+    "q": "help"
+   }
+  },
+  {
+   "input": "interlinear John 3:16-18",
+   "action": {
+    "cmd": "interlinear",
+    "span": {
+     "book": "JHN",
+     "c1": 3,
+     "v1": 16,
+     "c2": 3,
+     "v2": 18
+    }
+   }
+  },
+  {
+   "input": "interlinear Jude",
+   "action": {
+    "cmd": "interlinear",
+    "span": {
+     "book": "JUD",
+     "c1": 1,
+     "v1": 0,
+     "c2": 1,
+     "v2": 0
+    }
+   }
+  },
+  {
+   "input": "interlinear Genesis 1",
+   "action": {
+    "cmd": "interlinear",
+    "span": {
+     "book": "GEN",
+     "c1": 1,
+     "v1": 0,
+     "c2": 1,
+     "v2": 0
+    }
+   }
+  },
+  {
+   "input": "interlinear",
+   "error": "Which place? Try: interlinear John 3:16"
+  },
+  {
+   "input": "interlinear Foo 3",
+   "error": "No book called “Foo”."
+  },
+  {
+   "input": "interlinear John 99",
+   "error": "John has 21 chapters."
+  },
+  {
+   "input": "note he turned wrath away @Num 25:11",
+   "action": {
+    "cmd": "note",
+    "text": "he turned wrath away",
+    "at": {
+     "anchor": "NUM.25:11",
+     "label": "Numbers 25:11"
+    }
+   }
+  },
+  {
+   "input": "+Phinehas @num 25:11-13",
+   "action": {
+    "cmd": "thread",
+    "name": "Phinehas",
+    "at": {
+     "anchor": "NUM.25:11-25:13",
+     "label": "Numbers 25:11–13"
+    }
+   }
+  },
+  {
+   "input": "?why this @1 John 4:8",
+   "action": {
+    "cmd": "ask",
+    "text": "why this",
+    "at": {
+     "anchor": "1JN.4:8",
+     "label": "1 John 4:8"
+    }
+   }
+  },
+  {
+   "input": "hl blue @John 3:16",
+   "action": {
+    "cmd": "hl",
+    "color": "blue",
+    "at": {
+     "anchor": "JHN.3:16",
+     "label": "John 3:16"
+    }
+   }
+  },
+  {
+   "input": "hl clear @John 3:16",
+   "action": {
+    "cmd": "hl",
+    "color": null,
+    "at": {
+     "anchor": "JHN.3:16",
+     "label": "John 3:16"
+    }
+   }
+  },
+  {
+   "input": "note meet me @ 5pm",
+   "action": {
+    "cmd": "note",
+    "text": "meet me @ 5pm"
+   }
+  },
+  {
+   "input": "note write to a@b.com",
+   "action": {
+    "cmd": "note",
+    "text": "write to a@b.com"
+   }
+  },
+  {
+   "input": "note x @Foo 3:1",
+   "error": "No book called “Foo”."
+  },
+  {
+   "input": "note x @John 99:1",
+   "error": "John has 21 chapters."
+  },
+  {
+   "input": "note x @John 3",
+   "error": "Add a verse after the chapter, like @John 3:1"
+  },
+  {
+   "input": "note x @John 3:18-16",
+   "error": "A verse range runs upward, like @John 3:16-18"
+  },
+  {
+   "input": "note @John 3:16 x",
+   "error": "Put the place at the end, like: note your words @John 3:16"
+  },
+  {
+   "input": "note @John 3:16",
+   "error": "Write the note before the @place."
+  },
+  {
+   "input": "layers",
+   "action": {
+    "cmd": "layers",
+    "action": "list"
+   }
+  },
+  {
+   "input": "layers show Day of the Lord",
+   "action": {
+    "cmd": "layers",
+    "action": "show",
+    "name": "Day of the Lord"
+   }
+  },
+  {
+   "input": "layers hide phin",
+   "action": {
+    "cmd": "layers",
+    "action": "hide",
+    "name": "phin"
+   }
+  },
+  {
+   "input": "layers mine off",
+   "action": {
+    "cmd": "layers",
+    "action": "mine",
+    "on": false
+   }
+  },
+  {
+   "input": "layers all",
+   "action": {
+    "cmd": "layers",
+    "action": "all"
+   }
+  },
+  {
+   "input": "layers none",
+   "action": {
+    "cmd": "layers",
+    "action": "none"
+   }
+  },
+  {
+   "input": "layers show",
+   "error": "Try: layers show Phinehas, layers hide Phinehas, layers mine off, layers all, layers none, or layers (the list)"
+  },
+  {
+   "input": "highlights off",
+   "action": {
+    "cmd": "highlights",
+    "on": false
+   }
+  },
+  {
+   "input": "highlights",
+   "error": "Try: highlights on  or  highlights off"
+  },
+  {
+   "input": "size 120",
+   "action": {
+    "cmd": "size",
+    "percent": 120
+   }
+  },
+  {
+   "input": "size 120%",
+   "action": {
+    "cmd": "size",
+    "percent": 120
+   }
+  },
+  {
+   "input": "size +",
+   "action": {
+    "cmd": "size",
+    "step": 1
+   }
+  },
+  {
+   "input": "size -",
+   "action": {
+    "cmd": "size",
+    "step": -1
+   }
+  },
+  {
+   "input": "size 500",
+   "error": "Try: size 120  (75 to 183 percent), size +, or size -"
+  },
+  {
+   "input": "toolbar hide",
+   "action": {
+    "cmd": "toolbar",
+    "show": false
+   }
+  },
+  {
+   "input": "toolbar",
+   "error": "Try: toolbar hide  or  toolbar show"
+  },
+  {
+   "input": "findpage so loved",
+   "action": {
+    "cmd": "findpage",
+    "q": "so loved"
+   }
+  },
+  {
+   "input": "findpage",
+   "action": {
+    "cmd": "findpage",
+    "q": ""
+   }
+  },
+  {
+   "input": "listen",
+   "action": {
+    "cmd": "listen",
+    "action": "start"
+   }
+  },
+  {
+   "input": "listen John 3:16-18",
+   "action": {
+    "cmd": "listen",
+    "action": "start",
+    "span": {
+     "book": "JHN",
+     "c1": 3,
+     "v1": 16,
+     "c2": 3,
+     "v2": 18
+    }
+   }
+  },
+  {
+   "input": "listen Jude",
+   "action": {
+    "cmd": "listen",
+    "action": "start",
+    "span": {
+     "book": "JUD",
+     "c1": 1,
+     "v1": 0,
+     "c2": 1,
+     "v2": 0
+    }
+   }
+  },
+  {
+   "input": "listen speed 1.2",
+   "action": {
+    "cmd": "listen",
+    "action": "speed",
+    "rate": 1.2
+   }
+  },
+  {
+   "input": "listen speed 9",
+   "error": "Try: listen speed 1.2  (0.5 to 2, and 1 is the usual speed)"
+  },
+  {
+   "input": "listen speed",
+   "error": "Try: listen speed 1.2  (0.5 to 2, and 1 is the usual speed)"
+  },
+  {
+   "input": "listen voice Microsoft Aria",
+   "action": {
+    "cmd": "listen",
+    "action": "voice",
+    "name": "Microsoft Aria"
+   }
+  },
+  {
+   "input": "listen voice",
+   "error": "Which voice? Try: listen voices  to see them, then: listen voice aria"
+  },
+  {
+   "input": "listen voice mine",
+   "action": {
+    "cmd": "listen",
+    "action": "mine",
+    "all": false
+   }
+  },
+  {
+   "input": "listen voice mine --all",
+   "action": {
+    "cmd": "listen",
+    "action": "mine",
+    "all": true
+   }
+  },
+  {
+   "input": "listen John 3; Rom 5",
+   "error": "listen takes one place, like: listen John 3:16-21"
+  },
+  {
+   "input": "listen zzz 3",
+   "error": "No book called “zzz”."
+  },
+  {
+   "input": "panes",
+   "action": {
+    "cmd": "panes"
+   }
+  },
+  {
+   "input": "close Occurrences — zeal",
+   "action": {
+    "cmd": "pane",
+    "action": "close",
+    "target": "Occurrences — zeal"
+   }
+  },
+  {
+   "input": "close all",
+   "action": {
+    "cmd": "pane",
+    "action": "close",
+    "target": "all"
+   }
+  },
+  {
+   "input": "close minimized",
+   "action": {
+    "cmd": "pane",
+    "action": "close",
+    "target": "minimized"
+   }
+  },
+  {
+   "input": "close",
+   "error": "Which pane? Try: close all  or  close occurrences  (panes lists what is open)"
+  },
+  {
+   "input": "dock",
+   "error": "Which pane? Try: dock occurrences  (panes lists what is open)"
+  },
+  {
+   "input": "docs",
+   "action": {
+    "cmd": "docs",
+    "action": "list"
+   }
+  },
+  {
+   "input": "docs Thread Map - Love",
+   "action": {
+    "cmd": "docs",
+    "action": "open",
+    "name": "Thread Map - Love"
+   }
+  },
+  {
+   "input": "docs update",
+   "action": {
+    "cmd": "docs",
+    "action": "update",
+    "name": ""
+   }
+  },
+  {
+   "input": "docs update love",
+   "action": {
+    "cmd": "docs",
+    "action": "update",
+    "name": "love"
+   }
+  },
+  {
+   "input": "docs update day of the lord vigil force",
+   "action": {
+    "cmd": "docs",
+    "action": "update",
+    "name": "day of the lord",
+    "force": true,
+    "theme": "vigil"
+   }
+  },
+  {
+   "input": "docs forget love",
+   "action": {
+    "cmd": "docs",
+    "action": "forget",
+    "name": "love"
+   }
+  },
+  {
+   "input": "docs remember love",
+   "action": {
+    "cmd": "docs",
+    "action": "remember",
+    "name": "love"
+   }
+  },
+  {
+   "input": "docs delete Thread Map - Love",
+   "action": {
+    "cmd": "docs",
+    "action": "delete",
+    "name": "Thread Map - Love"
+   }
+  },
+  {
+   "input": "docs forget",
+   "error": "Which document? Try: docs forget love  (docs lists them)"
+  },
+  {
+   "input": "docs delete",
+   "error": "Which document? Try: docs delete love  (docs lists them)"
+  },
+  {
+   "input": "docs update force",
+   "error": "Which document? Try: docs update love vigil  (docs update alone updates everything out of date)"
+  },
+  {
+   "input": "doc new thread Love",
+   "action": {
+    "cmd": "make",
+    "kind": "word",
+    "thread": "Love",
+    "new": true
+   }
+  },
+  {
+   "input": "deck new Psalm 23 verse",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "ref": "Psalm 23",
+    "version": "KJV",
+    "new": true,
+    "structure": "verse"
+   }
+  },
+  {
+   "input": "doc thread Phinehas",
+   "action": {
+    "cmd": "make",
+    "kind": "word",
+    "thread": "Phinehas"
+   }
+  },
+  {
+   "input": "deck thread Day of the Lord",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "thread": "Day of the Lord"
+   }
+  },
+  {
+   "input": "doc John 3:16-21",
+   "action": {
+    "cmd": "make",
+    "kind": "word",
+    "ref": "John 3:16-21",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "deck Romans 8:1-4 ylt",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "ref": "Romans 8:1-4",
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "deck John 3:16; Rom 5:8",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "ref": "John 3:16; Rom 5:8",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "doc",
+   "error": "Make it from what? Try: doc thread Phinehas  or  doc John 3:16-21"
+  },
+  {
+   "input": "doc John 99",
+   "error": "John has 21 chapters."
+  },
+  {
+   "input": "deck zzz 1:1",
+   "error": "No book called “zzz”."
+  },
+  {
+   "input": "deck thread Day of the Lord map vigil",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "thread": "Day of the Lord",
+    "theme": "vigil",
+    "structure": "map"
+   }
+  },
+  {
+   "input": "doc John 3 reading veil",
+   "action": {
+    "cmd": "make",
+    "kind": "word",
+    "ref": "John 3",
+    "version": "KJV",
+    "theme": "veil",
+    "structure": "reading"
+   }
+  },
+  {
+   "input": "deck Romans 8:1-4 vigil ylt verse",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "ref": "Romans 8:1-4",
+    "version": "YLT",
+    "structure": "verse",
+    "theme": "vigil"
+   }
+  },
+  {
+   "input": "doc thread Bible reading",
+   "action": {
+    "cmd": "make",
+    "kind": "word",
+    "thread": "Bible",
+    "structure": "reading"
+   }
+  },
+  {
+   "input": "doc thread study",
+   "action": {
+    "cmd": "make",
+    "kind": "word",
+    "thread": "study"
+   }
+  },
+  {
+   "input": "deck John 3 reading",
+   "error": "reading is a Word structure. deck can be: reader, pulpit, verse, table, map"
+  },
+  {
+   "input": "doc John 3 reader",
+   "error": "reader is a slide structure. doc can be: reading, share, script, study, dossier"
+  },
+  {
+   "input": "theme",
+   "action": {
+    "cmd": "theme"
+   }
+  },
+  {
+   "input": "theme Vigil",
+   "action": {
+    "cmd": "theme",
+    "theme": "vigil"
+   }
+  },
+  {
+   "input": "theme purple",
+   "error": "Themes: vellum, vigil, olivet, veil, daylight, print"
+  },
+  {
+   "input": "lesson list",
+   "action": {
+    "cmd": "lesson",
+    "action": "list"
+   }
+  },
+  {
+   "input": "lesson show prayer",
+   "action": {
+    "cmd": "lesson",
+    "action": "show",
+    "name": "prayer"
+   }
+  },
+  {
+   "input": "lesson check Prayer and Fasting",
+   "action": {
+    "cmd": "lesson",
+    "action": "check",
+    "name": "Prayer and Fasting"
+   }
+  },
+  {
+   "input": "lesson build prayer",
+   "action": {
+    "cmd": "lesson",
+    "action": "build",
+    "name": "prayer",
+    "make": [
+     "script",
+     "share",
+     "pulpit"
+    ],
+    "pdf": false
+   }
+  },
+  {
+   "input": "lesson build prayer deck pdf",
+   "action": {
+    "cmd": "lesson",
+    "action": "build",
+    "name": "prayer",
+    "make": [
+     "deck"
+    ],
+    "pdf": true
+   }
+  },
+  {
+   "input": "lesson build prayer script share",
+   "action": {
+    "cmd": "lesson",
+    "action": "build",
+    "name": "prayer",
+    "make": [
+     "script",
+     "share"
+    ],
+    "pdf": false
+   }
+  },
+  {
+   "input": "lesson build prayer all",
+   "action": {
+    "cmd": "lesson",
+    "action": "build",
+    "name": "prayer",
+    "make": [
+     "script",
+     "share",
+     "pulpit"
+    ],
+    "pdf": false
+   }
+  },
+  {
+   "input": "lesson build prayer pulpit script vigil",
+   "action": {
+    "cmd": "lesson",
+    "action": "build",
+    "name": "prayer",
+    "make": [
+     "pulpit",
+     "script"
+    ],
+    "pdf": false,
+    "theme": "vigil"
+   }
+  },
+  {
+   "input": "lesson build the deck",
+   "action": {
+    "cmd": "lesson",
+    "action": "build",
+    "name": "the",
+    "make": [
+     "deck"
+    ],
+    "pdf": false
+   }
+  },
+  {
+   "input": "lesson build",
+   "error": "Which lesson? Try: lesson build phinehas  (lesson list shows them)"
+  },
+  {
+   "input": "lesson burn x",
+   "error": "Try: lesson list, lesson show <name>, lesson check <name>, or lesson build <name> [script|share|pulpit|...] [theme] [pdf]"
+  },
+  {
+   "input": "packet John 3 ; Romans 8",
+   "action": {
+    "cmd": "packet",
+    "names": [
+     "John 3",
+     "Romans 8"
+    ]
+   }
+  },
+  {
+   "input": "packet John 3",
+   "error": "Name two or more saved PDFs, joined by ;  like: packet John 3 ; Romans 8   (pdfs lists them)"
+  },
+  {
+   "input": "pdfs",
+   "action": {
+    "cmd": "pdfs"
+   }
+  },
+  {
+   "input": "pdfs John 3",
+   "action": {
+    "cmd": "pdfs",
+    "name": "John 3"
+   }
+  },
+  {
+   "input": "copy",
+   "action": {
+    "cmd": "copy",
+    "action": "copy",
+    "ref": "",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "copy John 3:16-18",
+   "action": {
+    "cmd": "copy",
+    "action": "copy",
+    "ref": "John 3:16-18",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "copy Rom 5:8; Jn 3:16 ylt quote short",
+   "action": {
+    "cmd": "copy",
+    "action": "copy",
+    "ref": "Rom 5:8; Jn 3:16",
+    "version": "YLT",
+    "short": true,
+    "format": "quote"
+   }
+  },
+  {
+   "input": "copy quote",
+   "action": {
+    "cmd": "copy",
+    "action": "copy",
+    "ref": "",
+    "version": "KJV",
+    "format": "quote"
+   }
+  },
+  {
+   "input": "copy format para short",
+   "action": {
+    "cmd": "copy",
+    "action": "format",
+    "format": "para",
+    "short": true
+   }
+  },
+  {
+   "input": "COPY FORMAT lines",
+   "action": {
+    "cmd": "copy",
+    "action": "format",
+    "format": "lines",
+    "short": false
+   }
+  },
+  {
+   "input": "copy format fancy",
+   "error": "Copy formats: lines, block, para, quote. Try: copy format quote  or  copy format lines short"
+  },
+  {
+   "input": "copy format",
+   "error": "Copy formats: lines, block, para, quote. Try: copy format quote  or  copy format lines short"
+  },
+  {
+   "input": "copy John 99",
+   "error": "John has 21 chapters."
+  },
+  {
+   "input": "copy Zzz 3:16",
+   "error": "No book called “Zzz”."
+  },
+  {
+   "input": "preview John 3:16",
+   "action": {
+    "cmd": "preview",
+    "q": "John 3:16",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "preview Rom 5:8; Jude 1:25 ylt",
+   "action": {
+    "cmd": "preview",
+    "q": "Rom 5:8; Jude 1:25",
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "preview g26",
+   "action": {
+    "cmd": "preview",
+    "q": "G26",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "preview",
+   "error": "Preview what? Try: preview John 3:16  or  preview G26"
+  },
+  {
+   "input": "preview Zzz 1:1",
+   "error": "No book called “Zzz”."
+  },
+  {
+   "input": "hover refs",
+   "action": {
+    "cmd": "hover",
+    "mode": "refs"
+   }
+  },
+  {
+   "input": "hover maybe",
+   "error": "Try: hover on, hover off, or hover refs  (references and numbers, not the words of the text)"
+  },
+  {
+   "input": "results",
+   "action": {
+    "cmd": "results",
+    "action": "status"
+   }
+  },
+  {
+   "input": "results tick all",
+   "action": {
+    "cmd": "results",
+    "action": "all"
+   }
+  },
+  {
+   "input": "results tick NONE",
+   "action": {
+    "cmd": "results",
+    "action": "none"
+   }
+  },
+  {
+   "input": "results tick John 2:17; Rom 10",
+   "action": {
+    "cmd": "results",
+    "action": "tick",
+    "spans": [
+     {
+      "book": "JHN",
+      "c1": 2,
+      "v1": 17,
+      "c2": 2,
+      "v2": 17
+     },
+     {
+      "book": "ROM",
+      "c1": 10,
+      "v1": 0,
+      "c2": 10,
+      "v2": 0
+     }
+    ]
+   }
+  },
+  {
+   "input": "results untick Jude 1:5",
+   "action": {
+    "cmd": "results",
+    "action": "untick",
+    "spans": [
+     {
+      "book": "JUD",
+      "c1": 1,
+      "v1": 5,
+      "c2": 1,
+      "v2": 5
+     }
+    ]
+   }
+  },
+  {
+   "input": "results as verses",
+   "action": {
+    "cmd": "results",
+    "action": "as",
+    "as": "verses"
+   }
+  },
+  {
+   "input": "results add Day of the Lord",
+   "action": {
+    "cmd": "results",
+    "action": "add",
+    "name": "Day of the Lord"
+   }
+  },
+  {
+   "input": "results add",
+   "error": "Add them to which thread? Try: results add Phinehas"
+  },
+  {
+   "input": "results as maybe",
+   "error": "Try: results as words  or  results as verses"
+  },
+  {
+   "input": "results tick",
+   "error": "Try: results tick all, results tick John 3:16; Rom 5:8, results untick John 3:16, results as verses, or results add Phinehas"
+  },
+  {
+   "input": "results frob",
+   "error": "Try: results tick all, results tick John 3:16; Rom 5:8, results untick John 3:16, results as verses, or results add Phinehas"
+  },
+  {
+   "input": "results tick Zzz 1:1",
+   "error": "No book called “Zzz”."
+  },
+  {
+   "input": "thread move phin - Num 25 up",
+   "error": "Add a verse after the chapter, like: thread move phin - Numbers 25:1 up"
+  },
+  {
+   "input": "thread move phin - Zzz 1:1 up",
+   "error": "No book called “Zzz”."
+  },
+  {
+   "input": "thread sort Day of the Lord",
+   "action": {
+    "cmd": "threadset",
+    "action": "sort",
+    "plain": "sort Day of the Lord",
+    "name": "Day of the Lord"
+   }
+  },
+  {
+   "input": "thread move on",
+   "action": {
+    "cmd": "openthread",
+    "name": "move on"
+   }
+  },
+  {
+   "input": "thread sort",
+   "action": {
+    "cmd": "openthread",
+    "name": "sort"
+   }
+  },
+  {
+   "input": "thread sort of - Num 25:11",
+   "action": {
+    "cmd": "threadrm",
+    "name": "sort of",
+    "at": {
+     "anchor": "NUM.25:11",
+     "label": "Numbers 25:11"
+    }
+   }
+  },
+  {
+   "input": "thread color phin blue",
+   "action": {
+    "cmd": "threadset",
+    "action": "color",
+    "plain": "color phin blue",
+    "name": "phin",
+    "color": "blue"
+   }
+  },
+  {
+   "input": "thread color Day of the Lord #E07B39",
+   "action": {
+    "cmd": "threadset",
+    "action": "color",
+    "plain": "color Day of the Lord #E07B39",
+    "name": "Day of the Lord",
+    "color": "#e07b39"
+   }
+  },
+  {
+   "input": "thread color phin c2",
+   "action": {
+    "cmd": "threadset",
+    "action": "color",
+    "plain": "color phin c2",
+    "name": "phin",
+    "saved": 2
+   }
+  },
+  {
+   "input": "thread color phin none",
+   "action": {
+    "cmd": "threadset",
+    "action": "color",
+    "plain": "color phin none",
+    "name": "phin",
+    "color": ""
+   }
+  },
+  {
+   "input": "thread rename phin = Phinehas and zeal",
+   "action": {
+    "cmd": "threadset",
+    "action": "rename",
+    "plain": "rename phin = Phinehas and zeal",
+    "name": "phin",
+    "to": "Phinehas and zeal"
+   }
+  },
+  {
+   "input": "thread rename phin =",
+   "error": "What should it be called? Try: thread rename phin = the new name"
+  },
+  {
+   "input": "thread note phin = a = b",
+   "action": {
+    "cmd": "threadset",
+    "action": "note",
+    "plain": "note phin = a = b",
+    "name": "phin",
+    "note": "a = b"
+   }
+  },
+  {
+   "input": "thread note phin =",
+   "action": {
+    "cmd": "threadset",
+    "action": "note",
+    "plain": "note phin =",
+    "name": "phin",
+    "note": ""
+   }
+  },
+  {
+   "input": "thread delete phin",
+   "action": {
+    "cmd": "threadset",
+    "action": "delete",
+    "plain": "delete phin",
+    "name": "phin"
+   }
+  },
+  {
+   "input": "thread color of the robe",
+   "action": {
+    "cmd": "openthread",
+    "name": "color of the robe"
+   }
+  },
+  {
+   "input": "thread note on grace",
+   "action": {
+    "cmd": "openthread",
+    "name": "note on grace"
+   }
+  },
+  {
+   "input": "thread delete",
+   "action": {
+    "cmd": "openthread",
+    "name": "delete"
+   }
+  },
+  {
+   "input": "thread delete me - Num 25:11",
+   "action": {
+    "cmd": "threadrm",
+    "name": "delete me",
+    "at": {
+     "anchor": "NUM.25:11",
+     "label": "Numbers 25:11"
+    }
+   }
+  },
+  {
+   "input": "thread note on grace - Num 25:11",
+   "action": {
+    "cmd": "threadrm",
+    "name": "note on grace",
+    "at": {
+     "anchor": "NUM.25:11",
+     "label": "Numbers 25:11"
+    }
+   }
+  },
+  {
+   "input": "def",
+   "error": "Define what? Try: def zeal  or  def H7065"
+  },
+  {
+   "input": "search",
+   "error": "Search for what?"
+  },
+  {
+   "input": "note",
+   "error": "Write the note before the @place."
+  },
+  {
+   "input": "open",
+   "error": "Give a reference like John 3:16."
+  },
+  {
+   "input": "?",
+   "error": "Write the question after the ?"
+  },
+  {
+   "input": "+",
+   "error": "Name the thread after the +"
+  },
+  {
+   "input": "go",
+   "error": "Give a reference like John 3:16."
+  },
+  {
+   "input": "forms",
+   "error": "Forms of what? Try: forms zeal"
+  },
+  {
+   "input": "find",
+   "error": "Find what in your notes, threads and trails?"
+  },
+  {
+   "input": "thread",
+   "error": "Which thread? Try: thread Phinehas  (threads lists them all)"
+  },
+  {
+   "input": "last",
+   "error": "Last what? Try: last zeal  or  last H7065 Num"
+  },
+  {
+   "input": "next",
+   "action": {
+    "cmd": "next"
+   }
+  },
+  {
+   "input": "prev",
+   "action": {
+    "cmd": "prev"
+   }
+  },
+  {
+   "input": "back",
+   "action": {
+    "cmd": "back"
+   }
+  },
+  {
+   "input": "undo",
+   "action": {
+    "cmd": "undo"
+   }
+  },
+  {
+   "input": "hl off",
+   "action": {
+    "cmd": "hl",
+    "color": null
+   }
+  },
+  {
+   "input": "hl none",
+   "action": {
+    "cmd": "hl",
+    "color": null
+   }
+  },
+  {
+   "input": "hl remove",
+   "action": {
+    "cmd": "hl",
+    "color": null
+   }
+  },
+  {
+   "input": "hl x",
+   "action": {
+    "cmd": "hl",
+    "color": null
+   }
+  },
+  {
+   "input": "set open zeal",
+   "action": {
+    "cmd": "set",
+    "action": "open",
+    "name": "zeal"
+   }
+  },
+  {
+   "input": "set close zeal",
+   "action": {
+    "cmd": "set",
+    "action": "close",
+    "name": "zeal"
+   }
+  },
+  {
+   "input": "set minimize zeal",
+   "action": {
+    "cmd": "set",
+    "action": "minimize",
+    "name": "zeal"
+   }
+  },
+  {
+   "input": "set restore zeal",
+   "action": {
+    "cmd": "set",
+    "action": "restore",
+    "name": "zeal"
+   }
+  },
+  {
+   "input": "set delete zeal",
+   "action": {
+    "cmd": "set",
+    "action": "delete",
+    "name": "zeal"
+   }
+  },
+  {
+   "input": "listen pause",
+   "action": {
+    "cmd": "listen",
+    "action": "pause"
+   }
+  },
+  {
+   "input": "listen resume",
+   "action": {
+    "cmd": "listen",
+    "action": "resume"
+   }
+  },
+  {
+   "input": "listen stop",
+   "action": {
+    "cmd": "listen",
+    "action": "stop"
+   }
+  },
+  {
+   "input": "listen voices",
+   "action": {
+    "cmd": "listen",
+    "action": "voices"
+   }
+  },
+  {
+   "input": "minimize threads",
+   "action": {
+    "cmd": "pane",
+    "action": "minimize",
+    "target": "threads"
+   }
+  },
+  {
+   "input": "restore threads",
+   "action": {
+    "cmd": "pane",
+    "action": "restore",
+    "target": "threads"
+   }
+  },
+  {
+   "input": "dock threads",
+   "action": {
+    "cmd": "pane",
+    "action": "dock",
+    "target": "threads"
+   }
+  },
+  {
+   "input": "float threads",
+   "action": {
+    "cmd": "pane",
+    "action": "float",
+    "target": "threads"
+   }
+  },
+  {
+   "input": "close threads",
+   "action": {
+    "cmd": "pane",
+    "action": "close",
+    "target": "threads"
+   }
+  },
+  {
+   "input": "hl #fff",
+   "error": "Colors are yellow, green, blue, pink, orange, a #rrggbb like #e07b39, or c1-c8 for a saved color (or: hl clear)."
+  },
+  {
+   "input": "hl #12345g",
+   "error": "Colors are yellow, green, blue, pink, orange, a #rrggbb like #e07b39, or c1-c8 for a saved color (or: hl clear)."
+  },
+  {
+   "input": "hl c0",
+   "error": "Colors are yellow, green, blue, pink, orange, a #rrggbb like #e07b39, or c1-c8 for a saved color (or: hl clear)."
+  },
+  {
+   "input": "hl c9",
+   "error": "Colors are yellow, green, blue, pink, orange, a #rrggbb like #e07b39, or c1-c8 for a saved color (or: hl clear)."
+  },
+  {
+   "input": "hl c12",
+   "error": "Colors are yellow, green, blue, pink, orange, a #rrggbb like #e07b39, or c1-c8 for a saved color (or: hl clear)."
+  },
+  {
+   "input": "hl #e07b39 #336699",
+   "error": "Colors are yellow, green, blue, pink, orange, a #rrggbb like #e07b39, or c1-c8 for a saved color (or: hl clear)."
+  },
+  {
+   "input": "def H7065",
+   "action": {
+    "cmd": "def",
+    "q": "H7065"
+   }
+  },
+  {
+   "input": "def agape",
+   "action": {
+    "cmd": "def",
+    "q": "agape"
+   }
+  },
+  {
+   "input": "uses H7065 pentateuch",
+   "action": {
+    "cmd": "uses",
+    "strong": "H7065",
+    "word": "",
+    "scope": "1,2,3,4,5"
+   }
+  },
+  {
+   "input": "forms zeal",
+   "action": {
+    "cmd": "forms",
+    "word": "zeal"
+   }
+  },
+  {
+   "input": "forms love",
+   "action": {
+    "cmd": "forms",
+    "word": "love"
+   }
+  },
+  {
+   "input": "lexiconc zeal",
+   "action": {
+    "cmd": "lexiconc",
+    "q": "zeal"
+   }
+  },
+  {
+   "input": "lexiconc jealous*",
+   "action": {
+    "cmd": "lexiconc",
+    "q": "jealous*"
+   }
+  },
+  {
+   "input": "lex bdb H7065",
+   "action": {
+    "cmd": "lex",
+    "source": "bdb",
+    "strong": "H7065"
+   }
+  },
+  {
+   "input": "interlinear John 3:16",
+   "action": {
+    "cmd": "interlinear",
+    "span": {
+     "book": "JHN",
+     "c1": 3,
+     "v1": 16,
+     "c2": 3,
+     "v2": 16
+    }
+   }
+  },
+  {
+   "input": "interlinear Gen 1:1-5",
+   "action": {
+    "cmd": "interlinear",
+    "span": {
+     "book": "GEN",
+     "c1": 1,
+     "v1": 1,
+     "c2": 1,
+     "v2": 5
+    }
+   }
+  },
+  {
+   "input": "near Phinehas zealous within 30",
+   "action": {
+    "cmd": "near",
+    "a": "phinehas",
+    "b": "zealous",
+    "within": 30,
+    "scope": "all"
+   }
+  },
+  {
+   "input": "near zeal* jealous* within 20",
+   "action": {
+    "cmd": "near",
+    "a": "zeal*",
+    "b": "jealous*",
+    "within": 20,
+    "scope": "all"
+   }
+  },
+  {
+   "input": "near H7065 love within 20 OT",
+   "action": {
+    "cmd": "near",
+    "a": "H7065",
+    "b": "love",
+    "within": 20,
+    "scope": "OT"
+   }
+  },
+  {
+   "input": "first H7065 pentateuch",
+   "action": {
+    "cmd": "first",
+    "strong": "H7065",
+    "word": "",
+    "scope": "1,2,3,4,5"
+   }
+  },
+  {
+   "input": "last zeal NT",
+   "action": {
+    "cmd": "last",
+    "strong": "",
+    "word": "zeal",
+    "scope": "NT"
+   }
+  },
+  {
+   "input": "grace truth",
+   "action": {
+    "cmd": "search",
+    "q": "grace truth"
+   }
+  },
+  {
+   "input": "search \"so loved\"",
+   "action": {
+    "cmd": "search",
+    "q": "\"so loved\""
+   }
+  },
+  {
+   "input": "search love in gospels",
+   "action": {
+    "cmd": "search",
+    "q": "love",
+    "scope": "40,41,42,43"
+   }
+  },
+  {
+   "input": "search /^the lord/",
+   "action": {
+    "cmd": "search",
+    "q": "/^the lord/"
+   }
+  },
+  {
+   "input": "find turned wrath",
+   "action": {
+    "cmd": "find",
+    "q": "turned wrath"
+   }
+  },
+  {
+   "input": "open Num 25:10-26:4",
+   "action": {
+    "cmd": "excerpt",
+    "spans": [
+     {
+      "book": "NUM",
+      "c1": 25,
+      "v1": 10,
+      "c2": 26,
+      "v2": 4
+     }
+    ],
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "open John 3:16; Rom 5:8; 1 John 4:9",
+   "action": {
+    "cmd": "excerpt",
+    "spans": [
+     {
+      "book": "JHN",
+      "c1": 3,
+      "v1": 16,
+      "c2": 3,
+      "v2": 16
+     },
+     {
+      "book": "ROM",
+      "c1": 5,
+      "v1": 8,
+      "c2": 5,
+      "v2": 8
+     },
+     {
+      "book": "1JN",
+      "c1": 4,
+      "v1": 9,
+      "c2": 4,
+      "v2": 9
+     }
+    ],
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "compare Num 25:10-26:4 ylt",
+   "action": {
+    "cmd": "excerpt",
+    "spans": [
+     {
+      "book": "NUM",
+      "c1": 25,
+      "v1": 10,
+      "c2": 26,
+      "v2": 4
+     }
+    ],
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "copy Rom 5:8; John 3:16 quote",
+   "action": {
+    "cmd": "copy",
+    "action": "copy",
+    "ref": "Rom 5:8; John 3:16",
+    "version": "KJV",
+    "format": "quote"
+   }
+  },
+  {
+   "input": "copy Psalm 23 block",
+   "action": {
+    "cmd": "copy",
+    "action": "copy",
+    "ref": "Psalm 23",
+    "version": "KJV",
+    "format": "block"
+   }
+  },
+  {
+   "input": "copy John 3:16 ylt",
+   "action": {
+    "cmd": "copy",
+    "action": "copy",
+    "ref": "John 3:16",
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "copy Num 25:11 short",
+   "action": {
+    "cmd": "copy",
+    "action": "copy",
+    "ref": "Num 25:11",
+    "version": "KJV",
+    "short": true
+   }
+  },
+  {
+   "input": "copy format quote",
+   "action": {
+    "cmd": "copy",
+    "action": "format",
+    "format": "quote",
+    "short": false
+   }
+  },
+  {
+   "input": "preview Psalm 23",
+   "action": {
+    "cmd": "preview",
+    "q": "Psalm 23",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "preview John 3:16 ylt",
+   "action": {
+    "cmd": "preview",
+    "q": "John 3:16",
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "preview H7065",
+   "action": {
+    "cmd": "preview",
+    "q": "H7065",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "go John 3:16",
+   "action": {
+    "cmd": "go",
+    "book": "JHN",
+    "ch": 3,
+    "v": 16,
+    "v2": 0,
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "listen John 3:16-21",
+   "action": {
+    "cmd": "listen",
+    "action": "start",
+    "span": {
+     "book": "JHN",
+     "c1": 3,
+     "v1": 16,
+     "c2": 3,
+     "v2": 21
+    }
+   }
+  },
+  {
+   "input": "listen Psalm 23",
+   "action": {
+    "cmd": "listen",
+    "action": "start",
+    "span": {
+     "book": "PSA",
+     "c1": 23,
+     "v1": 0,
+     "c2": 23,
+     "v2": 0
+    }
+   }
+  },
+  {
+   "input": "listen voice aria",
+   "action": {
+    "cmd": "listen",
+    "action": "voice",
+    "name": "aria"
+   }
+  },
+  {
+   "input": "hl g @John 3:16",
+   "action": {
+    "cmd": "hl",
+    "color": "green",
+    "at": {
+     "anchor": "JHN.3:16",
+     "label": "John 3:16"
+    }
+   }
+  },
+  {
+   "input": "hl #e07b39",
+   "action": {
+    "cmd": "hl",
+    "color": "#e07b39"
+   }
+  },
+  {
+   "input": "hl c1 @Num 25:11",
+   "action": {
+    "cmd": "hl",
+    "saved": 1,
+    "at": {
+     "anchor": "NUM.25:11",
+     "label": "Numbers 25:11"
+    }
+   }
+  },
+  {
+   "input": "marked blue NT",
+   "action": {
+    "cmd": "marked",
+    "color": "blue",
+    "scope": "NT"
+   }
+  },
+  {
+   "input": "marked #e07b39",
+   "action": {
+    "cmd": "marked",
+    "color": "#e07b39",
+    "scope": "all"
+   }
+  },
+  {
+   "input": "note he turned wrath away @Num 25:13",
+   "action": {
+    "cmd": "note",
+    "text": "he turned wrath away",
+    "at": {
+     "anchor": "NUM.25:13",
+     "label": "Numbers 25:13"
+    }
+   }
+  },
+  {
+   "input": "+Phinehas @Num 25:11",
+   "action": {
+    "cmd": "thread",
+    "name": "Phinehas",
+    "at": {
+     "anchor": "NUM.25:11",
+     "label": "Numbers 25:11"
+    }
+   }
+  },
+  {
+   "input": "+Day of the Lord",
+   "action": {
+    "cmd": "thread",
+    "name": "Day of the Lord"
+   }
+  },
+  {
+   "input": "?is this the same zeal as Rom 10:2",
+   "action": {
+    "cmd": "ask",
+    "text": "is this the same zeal as Rom 10:2"
+   }
+  },
+  {
+   "input": "notes edit turned wrath = he stayed the plague",
+   "action": {
+    "cmd": "notes",
+    "action": "edit",
+    "part": "turned wrath",
+    "text": "he stayed the plague"
+   }
+  },
+  {
+   "input": "notes delete @Num 25:13",
+   "action": {
+    "cmd": "notes",
+    "action": "delete",
+    "part": "",
+    "at": {
+     "anchor": "NUM.25:13",
+     "label": "Numbers 25:13"
+    }
+   }
+  },
+  {
+   "input": "trail edit same zeal = is it the same zeal?",
+   "action": {
+    "cmd": "trail",
+    "action": "edit",
+    "part": "same zeal",
+    "text": "is it the same zeal?"
+   }
+  },
+  {
+   "input": "trail delete same zeal",
+   "action": {
+    "cmd": "trail",
+    "action": "delete",
+    "part": "same zeal"
+   }
+  },
+  {
+   "input": "thread phin",
+   "action": {
+    "cmd": "openthread",
+    "name": "phin"
+   }
+  },
+  {
+   "input": "thread phin - Num 25:11",
+   "action": {
+    "cmd": "threadrm",
+    "name": "phin",
+    "at": {
+     "anchor": "NUM.25:11",
+     "label": "Numbers 25:11"
+    }
+   }
+  },
+  {
+   "input": "thread note phin = Why does the zeal matter?",
+   "action": {
+    "cmd": "threadset",
+    "action": "note",
+    "plain": "note phin = Why does the zeal matter?",
+    "name": "phin",
+    "note": "Why does the zeal matter?"
+   }
+  },
+  {
+   "input": "thread move phin - Num 25:13 up",
+   "action": {
+    "cmd": "threadset",
+    "action": "move",
+    "plain": "move phin - Num 25:13 up",
+    "name": "phin",
+    "place": "NUM.25:13",
+    "label": "Numbers 25:13",
+    "to": "up"
+   }
+  },
+  {
+   "input": "thread move phin - 3 first",
+   "action": {
+    "cmd": "threadset",
+    "action": "move",
+    "plain": "move phin - 3 first",
+    "name": "phin",
+    "place": 3,
+    "label": "number 3",
+    "to": "first"
+   }
+  },
+  {
+   "input": "thread move phin - H7065 last",
+   "action": {
+    "cmd": "threadset",
+    "action": "move",
+    "plain": "move phin - H7065 last",
+    "name": "phin",
+    "place": "H7065",
+    "label": "H7065",
+    "to": "last"
+   }
+  },
+  {
+   "input": "thread move phin - 4 2",
+   "action": {
+    "cmd": "threadset",
+    "action": "move",
+    "plain": "move phin - 4 2",
+    "name": "phin",
+    "place": 4,
+    "label": "number 4",
+    "to": "2"
+   }
+  },
+  {
+   "input": "thread sort phin",
+   "action": {
+    "cmd": "threadset",
+    "action": "sort",
+    "plain": "sort phin",
+    "name": "phin"
+   }
+  },
+  {
+   "input": "results tick John 2:17; Rom 10:2",
+   "action": {
+    "cmd": "results",
+    "action": "tick",
+    "spans": [
+     {
+      "book": "JHN",
+      "c1": 2,
+      "v1": 17,
+      "c2": 2,
+      "v2": 17
+     },
+     {
+      "book": "ROM",
+      "c1": 10,
+      "v1": 2,
+      "c2": 10,
+      "v2": 2
+     }
+    ]
+   }
+  },
+  {
+   "input": "results untick Rom 10:2",
+   "action": {
+    "cmd": "results",
+    "action": "untick",
+    "spans": [
+     {
+      "book": "ROM",
+      "c1": 10,
+      "v1": 2,
+      "c2": 10,
+      "v2": 2
+     }
+    ]
+   }
+  },
+  {
+   "input": "results add Phinehas",
+   "action": {
+    "cmd": "results",
+    "action": "add",
+    "name": "Phinehas"
+   }
+  },
+  {
+   "input": "palette rm #e07b39",
+   "action": {
+    "cmd": "palette",
+    "action": "rm",
+    "color": "#e07b39"
+   }
+  },
+  {
+   "input": "set new Zeal study: Occurrences; thread Phinehas; @Num 25:11",
+   "action": {
+    "cmd": "set",
+    "action": "new",
+    "name": "Zeal study",
+    "items": [
+     {
+      "type": "pane",
+      "name": "Occurrences"
+     },
+     {
+      "type": "thread",
+      "name": "Phinehas"
+     },
+     {
+      "type": "place",
+      "anchor": "NUM.25:11",
+      "label": "Numbers 25:11"
+     }
+    ]
+   }
+  },
+  {
+   "input": "set add Zeal: lesson prayer",
+   "action": {
+    "cmd": "set",
+    "action": "add",
+    "name": "Zeal",
+    "items": [
+     {
+      "type": "lesson",
+      "name": "prayer"
+     }
+    ]
+   }
+  },
+  {
+   "input": "set minimize Zeal",
+   "action": {
+    "cmd": "set",
+    "action": "minimize",
+    "name": "Zeal"
+   }
+  },
+  {
+   "input": "set restore Zeal",
+   "action": {
+    "cmd": "set",
+    "action": "restore",
+    "name": "Zeal"
+   }
+  },
+  {
+   "input": "set close Zeal",
+   "action": {
+    "cmd": "set",
+    "action": "close",
+    "name": "Zeal"
+   }
+  },
+  {
+   "input": "set open Zeal",
+   "action": {
+    "cmd": "set",
+    "action": "open",
+    "name": "Zeal"
+   }
+  },
+  {
+   "input": "set rm Zeal: Numbers 25:11",
+   "action": {
+    "cmd": "set",
+    "action": "rm",
+    "name": "Zeal",
+    "parts": [
+     "Numbers 25:11"
+    ]
+   }
+  },
+  {
+   "input": "layout save phinehas",
+   "action": {
+    "cmd": "layout",
+    "action": "save",
+    "name": "phinehas"
+   }
+  },
+  {
+   "input": "doc thread Phinehas study",
+   "action": {
+    "cmd": "make",
+    "kind": "word",
+    "thread": "Phinehas",
+    "structure": "study"
+   }
+  },
+  {
+   "input": "doc Romans 8 study vigil",
+   "action": {
+    "cmd": "make",
+    "kind": "word",
+    "ref": "Romans 8",
+    "version": "KJV",
+    "theme": "vigil",
+    "structure": "study"
+   }
+  },
+  {
+   "input": "doc Romans 8:1-4 ylt",
+   "action": {
+    "cmd": "make",
+    "kind": "word",
+    "ref": "Romans 8:1-4",
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "deck thread Phinehas",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "thread": "Phinehas"
+   }
+  },
+  {
+   "input": "deck thread Phinehas pulpit",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "thread": "Phinehas",
+    "structure": "pulpit"
+   }
+  },
+  {
+   "input": "deck Psalm 23",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "ref": "Psalm 23",
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "deck Romans 8:28-39 verse vigil",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "ref": "Romans 8:28-39",
+    "version": "KJV",
+    "theme": "vigil",
+    "structure": "verse"
+   }
+  },
+  {
+   "input": "deck John 1:1-14 ylt",
+   "action": {
+    "cmd": "make",
+    "kind": "deck",
+    "ref": "John 1:1-14",
+    "version": "YLT"
+   }
+  },
+  {
+   "input": "docs love",
+   "action": {
+    "cmd": "docs",
+    "action": "open",
+    "name": "love"
+   }
+  },
+  {
+   "input": "docs update love vigil",
+   "action": {
+    "cmd": "docs",
+    "action": "update",
+    "name": "love",
+    "theme": "vigil"
+   }
+  },
+  {
+   "input": "docs update love force",
+   "action": {
+    "cmd": "docs",
+    "action": "update",
+    "name": "love",
+    "force": true
+   }
+  },
+  {
+   "input": "docs delete love",
+   "action": {
+    "cmd": "docs",
+    "action": "delete",
+    "name": "love"
+   }
+  },
+  {
+   "input": "theme vigil",
+   "action": {
+    "cmd": "theme",
+    "theme": "vigil"
+   }
+  },
+  {
+   "input": "lesson check prayer",
+   "action": {
+    "cmd": "lesson",
+    "action": "check",
+    "name": "prayer"
+   }
+  },
+  {
+   "input": "lesson build prayer pulpit script",
+   "action": {
+    "cmd": "lesson",
+    "action": "build",
+    "name": "prayer",
+    "make": [
+     "pulpit",
+     "script"
+    ],
+    "pdf": false
+   }
+  },
+  {
+   "input": "lesson build prayer reader vigil",
+   "action": {
+    "cmd": "lesson",
+    "action": "build",
+    "name": "prayer",
+    "make": [
+     "reader"
+    ],
+    "pdf": false,
+    "theme": "vigil"
+   }
+  },
+  {
+   "input": "lesson build prayer all pdf",
+   "action": {
+    "cmd": "lesson",
+    "action": "build",
+    "name": "prayer",
+    "make": [
+     "script",
+     "share",
+     "pulpit"
+    ],
+    "pdf": true
+   }
+  },
+  {
+   "input": "layers show Phinehas",
+   "action": {
+    "cmd": "layers",
+    "action": "show",
+    "name": "Phinehas"
+   }
+  },
+  {
+   "input": "highlights on",
+   "action": {
+    "cmd": "highlights",
+    "on": true
+   }
+  },
+  {
+   "input": "toolbar show",
+   "action": {
+    "cmd": "toolbar",
+    "show": true
+   }
+  },
+  {
+   "input": "findpage zeal*",
+   "action": {
+    "cmd": "findpage",
+    "q": "zeal*"
+   }
+  },
+  {
+   "input": "hover off",
+   "action": {
+    "cmd": "hover",
+    "mode": "off"
+   }
+  },
+  {
+   "input": "hover on",
+   "action": {
+    "cmd": "hover",
+    "mode": "on"
+   }
+  },
+  {
+   "input": "close Occurrences",
+   "action": {
+    "cmd": "pane",
+    "action": "close",
+    "target": "Occurrences"
+   }
+  },
+  {
+   "input": "close Occurrences; Help",
+   "action": {
+    "cmd": "pane",
+    "action": "close",
+    "target": "Occurrences; Help"
+   }
+  },
+  {
+   "input": "minimize Threads",
+   "action": {
+    "cmd": "pane",
+    "action": "minimize",
+    "target": "Threads"
+   }
+  },
+  {
+   "input": "restore Threads",
+   "action": {
+    "cmd": "pane",
+    "action": "restore",
+    "target": "Threads"
+   }
+  },
+  {
+   "input": "restore all",
+   "action": {
+    "cmd": "pane",
+    "action": "restore",
+    "target": "all"
+   }
+  },
+  {
+   "input": "dock Search",
+   "action": {
+    "cmd": "pane",
+    "action": "dock",
+    "target": "Search"
+   }
+  },
+  {
+   "input": "float Search",
+   "action": {
+    "cmd": "pane",
+    "action": "float",
+    "target": "Search"
+   }
+  },
+  {
+   "input": "help near",
+   "action": {
+    "cmd": "help",
+    "topic": "near"
+   }
+  },
+  {
+   "input": "uses zeal NT",
+   "action": {
+    "cmd": "uses",
+    "strong": "",
+    "word": "zeal",
+    "scope": "NT"
+   }
+  },
+  {
+   "input": "+Phinehas @Num 25:11-13",
+   "action": {
+    "cmd": "thread",
+    "name": "Phinehas",
+    "at": {
+     "anchor": "NUM.25:11-25:13",
+     "label": "Numbers 25:11–13"
+    }
+   }
+  },
+  {
+   "input": "open 1 Cor 13:4-7",
+   "action": {
+    "cmd": "open",
+    "book": "1CO",
+    "ch": 13,
+    "v": 4,
+    "v2": 7,
+    "version": "KJV"
+   }
+  },
+  {
+   "input": "compare Num 25:10-26:4",
+   "action": {
+    "cmd": "excerpt",
+    "spans": [
+     {
+      "book": "NUM",
+      "c1": 25,
+      "v1": 10,
+      "c2": 26,
+      "v2": 4
+     }
+    ],
+    "version": "PAR"
+   }
+  }
+ ],
+ "refs": [
+  {
+   "text": "See John 3:16.",
+   "refs": [
+    {
+     "start": 4,
+     "end": 13,
+     "ref": "JHN 3:16",
+     "hash": "#JHN.3.16"
+    }
+   ]
+  },
+  {
+   "text": "Num 25:10-26:4 and 1 Cor 13:4–7",
+   "refs": [
+    {
+     "start": 0,
+     "end": 14,
+     "ref": "NUM 25:10-26:4",
+     "hash": "#NUM.25.10"
+    },
+    {
+     "start": 19,
+     "end": 31,
+     "ref": "1CO 13:4-7",
+     "hash": "#1CO.13.4"
+    }
+   ]
+  },
+  {
+   "text": "(Rom. 5:8)",
+   "refs": [
+    {
+     "start": 1,
+     "end": 9,
+     "ref": "ROM 5:8",
+     "hash": "#ROM.5.8"
+    }
+   ]
+  },
+  {
+   "text": "john 3:16",
+   "refs": [
+    {
+     "start": 0,
+     "end": 9,
+     "ref": "JHN 3:16",
+     "hash": "#JHN.3.16"
+    }
+   ]
+  },
+  {
+   "text": "1John 4:8; II Cor 5:17; I Kings 19:10",
+   "refs": [
+    {
+     "start": 0,
+     "end": 9,
+     "ref": "1JN 4:8",
+     "hash": "#1JN.4.8"
+    },
+    {
+     "start": 11,
+     "end": 22,
+     "ref": "2CO 5:17",
+     "hash": "#2CO.5.17"
+    },
+    {
+     "start": 24,
+     "end": 37,
+     "ref": "1KI 19:10",
+     "hash": "#1KI.19.10"
+    }
+   ]
+  },
+  {
+   "text": "Song of Solomon 2:1 and Ps 23:1",
+   "refs": [
+    {
+     "start": 0,
+     "end": 19,
+     "ref": "SNG 2:1",
+     "hash": "#SNG.2.1"
+    },
+    {
+     "start": 24,
+     "end": 31,
+     "ref": "PSA 23:1",
+     "hash": "#PSA.23.1"
+    }
+   ]
+  },
+  {
+   "text": "Jn 3:16, Mk 1:1",
+   "refs": [
+    {
+     "start": 0,
+     "end": 7,
+     "ref": "JHN 3:16",
+     "hash": "#JHN.3.16"
+    },
+    {
+     "start": 9,
+     "end": 15,
+     "ref": "MRK 1:1",
+     "hash": "#MRK.1.1"
+    }
+   ]
+  },
+  {
+   "text": "Jude 1:5",
+   "refs": [
+    {
+     "start": 0,
+     "end": 8,
+     "ref": "JUD 1:5",
+     "hash": "#JUD.1.5"
+    }
+   ]
+  },
+  {
+   "text": "John 3 and Psalm 23 and Psalms 119 and 1 John 4",
+   "refs": [
+    {
+     "start": 0,
+     "end": 6,
+     "ref": "JHN 3",
+     "hash": "#JHN.3"
+    },
+    {
+     "start": 11,
+     "end": 19,
+     "ref": "PSA 23",
+     "hash": "#PSA.23"
+    },
+    {
+     "start": 24,
+     "end": 34,
+     "ref": "PSA 119",
+     "hash": "#PSA.119"
+    },
+    {
+     "start": 39,
+     "end": 47,
+     "ref": "1JN 4",
+     "hash": "#1JN.4"
+    }
+   ]
+  },
+  {
+   "text": "John 3-5",
+   "refs": [
+    {
+     "start": 0,
+     "end": 8,
+     "ref": "JHN 3-5",
+     "hash": "#JHN.3"
+    }
+   ]
+  },
+  {
+   "text": "Rom 5:8; 6:23",
+   "refs": [
+    {
+     "start": 0,
+     "end": 7,
+     "ref": "ROM 5:8",
+     "hash": "#ROM.5.8"
+    },
+    {
+     "start": 9,
+     "end": 13,
+     "ref": "ROM 6:23",
+     "hash": "#ROM.6.23"
+    }
+   ]
+  },
+  {
+   "text": "John 3:16, 18",
+   "refs": [
+    {
+     "start": 0,
+     "end": 9,
+     "ref": "JHN 3:16",
+     "hash": "#JHN.3.16"
+    },
+    {
+     "start": 11,
+     "end": 13,
+     "ref": "JHN 3:18",
+     "hash": "#JHN.3.18"
+    }
+   ]
+  },
+  {
+   "text": "John 3:16, 18-20; 4:2.",
+   "refs": [
+    {
+     "start": 0,
+     "end": 9,
+     "ref": "JHN 3:16",
+     "hash": "#JHN.3.16"
+    },
+    {
+     "start": 11,
+     "end": 16,
+     "ref": "JHN 3:18-20",
+     "hash": "#JHN.3.18"
+    },
+    {
+     "start": 18,
+     "end": 21,
+     "ref": "JHN 4:2",
+     "hash": "#JHN.4.2"
+    }
+   ]
+  },
+  {
+   "text": "John 3:16, 5 men",
+   "refs": [
+    {
+     "start": 0,
+     "end": 9,
+     "ref": "JHN 3:16",
+     "hash": "#JHN.3.16"
+    }
+   ]
+  },
+  {
+   "text": "John 3, 5",
+   "refs": [
+    {
+     "start": 0,
+     "end": 6,
+     "ref": "JHN 3",
+     "hash": "#JHN.3"
+    }
+   ]
+  },
+  {
+   "text": "Spirit of John 3:16",
+   "refs": [
+    {
+     "start": 10,
+     "end": 19,
+     "ref": "JHN 3:16",
+     "hash": "#JHN.3.16"
+    }
+   ]
+  },
+  {
+   "text": "verse 7 Rom 5:8",
+   "refs": [
+    {
+     "start": 8,
+     "end": 15,
+     "ref": "ROM 5:8",
+     "hash": "#ROM.5.8"
+    }
+   ]
+  },
+  {
+   "text": "Mar 5",
+   "refs": []
+  },
+  {
+   "text": "Rom 5",
+   "refs": []
+  },
+  {
+   "text": "john 3",
+   "refs": []
+  },
+  {
+   "text": "psalm 23",
+   "refs": []
+  },
+  {
+   "text": "Num 25",
+   "refs": []
+  },
+  {
+   "text": "at 5:30",
+   "refs": []
+  },
+  {
+   "text": "is 5:2",
+   "refs": []
+  },
+  {
+   "text": "Is 5:2",
+   "refs": []
+  },
+  {
+   "text": "am 5:30",
+   "refs": []
+  },
+  {
+   "text": "He 3:3",
+   "refs": []
+  },
+  {
+   "text": "so 3:1",
+   "refs": []
+  },
+  {
+   "text": "Mark 5:30pm",
+   "refs": []
+  },
+  {
+   "text": "John 3:1600",
+   "refs": []
+  },
+  {
+   "text": "John",
+   "refs": []
+  },
+  {
+   "text": "verse 16",
+   "refs": []
+  },
+  {
+   "text": "H7065",
+   "refs": []
+  },
+  {
+   "text": "G26",
+   "refs": []
+  },
+  {
+   "text": "Gen 51:1",
+   "refs": []
+  },
+  {
+   "text": "John 99:1",
+   "refs": []
+  },
+  {
+   "text": "Jude 5",
+   "refs": []
+  },
+  {
+   "text": "Zzz 1:1",
+   "refs": []
+  },
+  {
+   "text": "Sam 3:1",
+   "refs": []
+  },
+  {
+   "text": "the John3:16x",
+   "refs": []
+  },
+  {
+   "text": "John 3:18-16",
+   "refs": []
+  },
+  {
+   "text": "",
+   "refs": []
+  },
+  {
+   "text": "see Genesis 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "GEN 1:1",
+     "hash": "#GEN.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Exodus 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "EXO 1:1",
+     "hash": "#EXO.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Leviticus 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 17,
+     "ref": "LEV 1:1",
+     "hash": "#LEV.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Numbers 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "NUM 1:1",
+     "hash": "#NUM.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Deuteronomy 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 19,
+     "ref": "DEU 1:1",
+     "hash": "#DEU.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Joshua 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "JOS 1:1",
+     "hash": "#JOS.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Judges 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "JDG 1:1",
+     "hash": "#JDG.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Ruth 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 12,
+     "ref": "RUT 1:1",
+     "hash": "#RUT.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 1 Samuel 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 16,
+     "ref": "1SA 1:1",
+     "hash": "#1SA.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 2 Samuel 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 16,
+     "ref": "2SA 1:1",
+     "hash": "#2SA.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 1 Kings 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "1KI 1:1",
+     "hash": "#1KI.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 2 Kings 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "2KI 1:1",
+     "hash": "#2KI.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 1 Chronicles 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 20,
+     "ref": "1CH 1:1",
+     "hash": "#1CH.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 2 Chronicles 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 20,
+     "ref": "2CH 1:1",
+     "hash": "#2CH.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Ezra 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 12,
+     "ref": "EZR 1:1",
+     "hash": "#EZR.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Nehemiah 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 16,
+     "ref": "NEH 1:1",
+     "hash": "#NEH.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Esther 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "EST 1:1",
+     "hash": "#EST.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Job 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 11,
+     "ref": "JOB 1:1",
+     "hash": "#JOB.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Psalms 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "PSA 1:1",
+     "hash": "#PSA.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Proverbs 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 16,
+     "ref": "PRO 1:1",
+     "hash": "#PRO.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Ecclesiastes 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 20,
+     "ref": "ECC 1:1",
+     "hash": "#ECC.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Song of Solomon 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 23,
+     "ref": "SNG 1:1",
+     "hash": "#SNG.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Isaiah 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "ISA 1:1",
+     "hash": "#ISA.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Jeremiah 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 16,
+     "ref": "JER 1:1",
+     "hash": "#JER.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Lamentations 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 20,
+     "ref": "LAM 1:1",
+     "hash": "#LAM.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Ezekiel 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "EZK 1:1",
+     "hash": "#EZK.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Daniel 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "DAN 1:1",
+     "hash": "#DAN.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Hosea 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 13,
+     "ref": "HOS 1:1",
+     "hash": "#HOS.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Joel 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 12,
+     "ref": "JOL 1:1",
+     "hash": "#JOL.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Amos 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 12,
+     "ref": "AMO 1:1",
+     "hash": "#AMO.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Obadiah 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "OBA 1:1",
+     "hash": "#OBA.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Jonah 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 13,
+     "ref": "JON 1:1",
+     "hash": "#JON.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Micah 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 13,
+     "ref": "MIC 1:1",
+     "hash": "#MIC.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Nahum 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 13,
+     "ref": "NAM 1:1",
+     "hash": "#NAM.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Habakkuk 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 16,
+     "ref": "HAB 1:1",
+     "hash": "#HAB.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Zephaniah 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 17,
+     "ref": "ZEP 1:1",
+     "hash": "#ZEP.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Haggai 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "HAG 1:1",
+     "hash": "#HAG.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Zechariah 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 17,
+     "ref": "ZEC 1:1",
+     "hash": "#ZEC.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Malachi 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "MAL 1:1",
+     "hash": "#MAL.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Matthew 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "MAT 1:1",
+     "hash": "#MAT.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Mark 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 12,
+     "ref": "MRK 1:1",
+     "hash": "#MRK.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Luke 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 12,
+     "ref": "LUK 1:1",
+     "hash": "#LUK.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see John 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 12,
+     "ref": "JHN 1:1",
+     "hash": "#JHN.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Acts 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 12,
+     "ref": "ACT 1:1",
+     "hash": "#ACT.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Romans 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "ROM 1:1",
+     "hash": "#ROM.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 1 Corinthians 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 21,
+     "ref": "1CO 1:1",
+     "hash": "#1CO.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 2 Corinthians 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 21,
+     "ref": "2CO 1:1",
+     "hash": "#2CO.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Galatians 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 17,
+     "ref": "GAL 1:1",
+     "hash": "#GAL.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Ephesians 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 17,
+     "ref": "EPH 1:1",
+     "hash": "#EPH.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Philippians 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 19,
+     "ref": "PHP 1:1",
+     "hash": "#PHP.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Colossians 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 18,
+     "ref": "COL 1:1",
+     "hash": "#COL.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 1 Thessalonians 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 23,
+     "ref": "1TH 1:1",
+     "hash": "#1TH.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 2 Thessalonians 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 23,
+     "ref": "2TH 1:1",
+     "hash": "#2TH.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 1 Timothy 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 17,
+     "ref": "1TI 1:1",
+     "hash": "#1TI.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 2 Timothy 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 17,
+     "ref": "2TI 1:1",
+     "hash": "#2TI.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Titus 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 13,
+     "ref": "TIT 1:1",
+     "hash": "#TIT.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Philemon 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 16,
+     "ref": "PHM 1:1",
+     "hash": "#PHM.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Hebrews 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "HEB 1:1",
+     "hash": "#HEB.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see James 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 13,
+     "ref": "JAS 1:1",
+     "hash": "#JAS.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 1 Peter 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "1PE 1:1",
+     "hash": "#1PE.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 2 Peter 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 15,
+     "ref": "2PE 1:1",
+     "hash": "#2PE.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 1 John 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "1JN 1:1",
+     "hash": "#1JN.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 2 John 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "2JN 1:1",
+     "hash": "#2JN.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see 3 John 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 14,
+     "ref": "3JN 1:1",
+     "hash": "#3JN.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Jude 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 12,
+     "ref": "JUD 1:1",
+     "hash": "#JUD.1.1"
+    }
+   ]
+  },
+  {
+   "text": "see Revelation 1:1 here",
+   "refs": [
+    {
+     "start": 4,
+     "end": 18,
+     "ref": "REV 1:1",
+     "hash": "#REV.1.1"
+    }
+   ]
+  }
+ ]
+}

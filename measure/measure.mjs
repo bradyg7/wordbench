@@ -6,12 +6,15 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync, mkdirSync, statSync } from 'node:fs';
 import { chromium } from '@playwright/test';
+import os from 'node:os';
+import path from 'node:path';
 
 const root = new URL('..', import.meta.url);
 // --debug: the debug app (it loads the UI from `npm run dev`); --chapters: only the chapter draws, for quick profiling.
-const debug = process.argv.includes('--debug'), only = process.argv.includes('--chapters');
+const debug = process.argv.includes('--debug'), only = process.argv.includes('--chapters'), sheets = process.argv.includes('--sheets');
 const exe = new URL(`target/${debug ? 'debug' : 'release'}/bible-workbench.exe`, root).pathname.slice(1);
 const out = new URL('measure/out/', root);
+const profile = path.join(os.tmpdir(), 'bible-workbench-rs', 'measure-webview');
 mkdirSync(out, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const median = xs => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
@@ -20,7 +23,8 @@ const p95 = xs => [...xs].sort((a, b) => a - b)[Math.min(xs.length - 1, Math.flo
 function launch(env) {
   const ready = new URL(`ready-${Date.now()}.json`, out).pathname.slice(1);
   const t0 = Date.now();
-  const proc = spawn(exe, [], { env: { ...process.env, WB_WINDOW: 'phone', WB_MEASURE_OUT: ready, ...env }, stdio: 'ignore' });
+  // its own web view profile, so a watch window open at the same time (another profile's options) does not stop it
+  const proc = spawn(exe, [], { env: { ...process.env, WB_WINDOW: 'phone', WB_MEASURE_OUT: ready, WEBVIEW2_USER_DATA_FOLDER: profile, ...env }, stdio: 'ignore' });
   return { proc, t0, ready };
 }
 
@@ -38,10 +42,14 @@ async function waitReady(l) {
 const memory = pid => JSON.parse(execFileSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', new URL('measure/memory.ps1', root).pathname.slice(1), '-ProcessId', String(pid)]).toString());
 const kill = pid => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
 
+// The measured instances write their wb do address over the watch window's; it is put back at the end.
+const appJson = path.join(process.env.WB_CACHE_DIR || path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'bible-workbench-rs', 'cache'), 'app.json');
+const appJsonBefore = existsSync(appJson) ? readFileSync(appJson) : null;
+
 const results = { when: new Date().toISOString(), exe_mb: +(statSync(exe).size / 1048576).toFixed(1), startup: [], memory: [] };
 
 // ---- start-up and memory ------------------------------------------------------------------------------------------
-for (let run = 0; run < (only ? 0 : 6); run++) {
+for (let run = 0; run < (only || sheets ? 0 : 6); run++) {
   const l = launch({});
   const r = await waitReady(l);
   const ms = r.ready_wall_ms - l.t0;
@@ -72,12 +80,13 @@ const clear = () => page.evaluate(() => { window.__wb.perf.entries.length = 0; }
 
 // A chapter drawn (open → on screen), several chapters, three times each.
 await clear();
-for (let i = 0; i < 3; i++) for (const [b, c] of [['NUM', 24], ['NUM', 25], ['NUM', 26], ['JHN', 3], ['PSA', 119]]) await page.evaluate(([b, c]) => window.__wb.open(b, c), [b, c]);
+for (let i = 0; i < (sheets ? 0 : 3); i++) for (const [b, c] of [['NUM', 24], ['NUM', 25], ['NUM', 26], ['JHN', 3], ['PSA', 119]]) await page.evaluate(([b, c]) => window.__wb.open(b, c), [b, c]);
 const ch = await entries('chapter');
 if (only) {
   for (const e of ch.slice(-5)) console.log(e.at, Object.entries(e).filter(([k]) => k.endsWith('_ms') || k === 'ms').map(([k, v]) => `${k} ${v.toFixed(1)}`).join('  '));
   await browser.close().catch(() => {}); kill(l.proc.pid); process.exit(0);
 }
+if (!sheets) {
 await sleep(1500);   // let the last chapter's later parts finish
 const done = (await entries('chapter-complete')).filter(e => e.at === 'PSA 119').map(e => e.ms);
 results.psalm119_complete_ms = done.length ? +median(done).toFixed(0) : null;
@@ -86,6 +95,40 @@ results.chapter = Object.fromEntries(['NUM 24', 'NUM 25', 'NUM 26', 'JHN 3', 'PS
   const md = f => +median(xs.map(f)).toFixed(1);
   return [at, { median_ms: md(e => e.ms), rust_ms: md(e => e.rust_ms), ipc_ms: md(e => e.ipc_ms), html_ms: md(e => e.html_ms), refs_ms: md(e => e.refs_ms), frame_ms: md(e => e.frame_ms), first_words: xs[0].first_words, words: xs[0].words }];
 }));
+
+}
+// A plain search (PLAN.md section 6: under 50 ms): the data through the wb command, and the whole line, typed and run,
+// until the results are drawn in their pane.
+if (!sheets) {
+  const qs = ['grace', 'love', 'zeal', 'mercy', 'beginning', 'peace', 'faith hope', 'covenant'];
+  const data = await page.evaluate(async qs => {
+    const out = [];
+    for (const q of qs) {
+      const t = performance.now();
+      const r = await window.__TAURI_INTERNALS__.invoke('wb', { argv: ['search', q] });
+      out.push({ q, ms: performance.now() - t, rust_ms: r.rust_ms, verses: r.data.json.verses });
+    }
+    return out;
+  }, qs);
+  const drawn = [];
+  // as the person searches: the command field parses the words for its suggestions while they are typed, so Enter
+  // only runs them; timed from Enter (the run) to the results drawn
+  for (const q of qs.slice(0, 5)) {
+    await page.evaluate(q => window.__wb.parse(`search ${q}`), q);
+    await sleep(300);
+    drawn.push(await page.evaluate(async q => {
+      const t = performance.now();
+      window.__wb.run(`search ${q}`);
+      for (let i = 0; i < 500 && ![...document.querySelectorAll('.pane-search')].some(p => !p.hidden && p.querySelector('.row') && p.querySelector('.pane-title')?.textContent === `“${q}”`); i++) await new Promise(r => requestAnimationFrame(r));
+      return performance.now() - t;
+    }, q));
+    await page.evaluate(() => { const d = window.__wb.dock(); for (const p of [...d.panes]) d.close(p); });
+  }
+  results.search = {
+    data_median_ms: +median(data.map(x => x.ms)).toFixed(1), data_max_ms: +Math.max(...data.map(x => x.ms)).toFixed(1), rust_median_ms: +median(data.map(x => x.rust_ms)).toFixed(2),
+    pane_drawn_median_ms: +median(drawn).toFixed(1), pane_drawn_max_ms: +Math.max(...drawn).toFixed(1), each: data.map(x => [x.q, Math.round(x.ms), x.verses]),
+  };
+}
 
 // Tap cards with real touch events (WebView2's own touch path, as a finger on the touchscreen would give).
 await page.evaluate(() => window.__wb.open('NUM', 25));
@@ -111,6 +154,12 @@ const ws = (await entries('word-sheet')).map(e => e.ms), vs = (await entries('ve
 const wsE = await entries('word-sheet');
 results.word_sheet = { n: ws.length, median_ms: +median(ws).toFixed(1), max_ms: +Math.max(...ws).toFixed(1), rust_ms: +median(wsE.map(e => e.rust_ms)).toFixed(1), call_ms: +median(wsE.map(e => e.call_ms)).toFixed(1), each: wsE.map(e => [e.word, Math.round(e.ms)]) };
 results.verse_sheet = { n: vs.length, median_ms: +median(vs).toFixed(1), max_ms: +Math.max(...vs).toFixed(1) };
+if (sheets) {
+  console.log(JSON.stringify({ word_sheet: results.word_sheet, verse_sheet: results.verse_sheet }));
+  await browser.close().catch(() => {}); kill(l.proc.pid);
+  if (appJsonBefore) writeFileSync(appJson, appJsonBefore);
+  process.exit(0);
+}
 
 // Press and hold, then drag across verses, with real touch events: does the web view scroll instead?
 {
@@ -180,5 +229,6 @@ results.summary = {
   memory_private_median_mb: median(m), memory_working_set_median_mb: median(w),
 };
 writeFileSync(new URL('results.json', out), JSON.stringify(results, null, 1));
-console.log(JSON.stringify({ exe_mb: results.exe_mb, first_launch_ms: results.first_launch.ms, ...results.summary, chapter: results.chapter, word_sheet: results.word_sheet, verse_sheet: results.verse_sheet, hover_card: results.hover_card, long_press: results.long_press, psalm119_scroll: results.psalm119_scroll }, null, 1));
+if (appJsonBefore) writeFileSync(appJson, appJsonBefore);
+console.log(JSON.stringify({ exe_mb: results.exe_mb, first_launch_ms: results.first_launch.ms, ...results.summary, chapter: results.chapter, word_sheet: results.word_sheet, verse_sheet: results.verse_sheet, hover_card: results.hover_card, search: results.search, long_press: results.long_press, psalm119_scroll: results.psalm119_scroll }, null, 1));
 process.exit(0);

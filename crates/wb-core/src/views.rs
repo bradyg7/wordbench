@@ -11,6 +11,8 @@ use serde::Serialize;
 pub struct ReaderView {
     pub chapter: Chapter,
     pub marks: ChapterMarks,
+    /// Open questions (trails) in the chapter, by verse: a ? on the verse number.
+    pub questions: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -45,7 +47,7 @@ pub struct VerseView {
 }
 
 pub fn reader(bible: &Bible, store: &Store, code: &str, chapter: u32) -> Result<ReaderView> {
-    Ok(ReaderView { chapter: bible.chapter(code, chapter)?, marks: marks::chapter_marks(store, code, chapter)? })
+    Ok(ReaderView { chapter: bible.chapter(code, chapter)?, marks: marks::chapter_marks(store, code, chapter)?, questions: crate::notebook::chapter_questions(store, code, chapter) })
 }
 
 fn touches_verse(anchor: &str, code: &str, c: u32, v: u32) -> bool {

@@ -2,6 +2,8 @@
 //!
 //! ```text
 //! notes/<CODE>/<id>.md      one note per file (notes about an original word live in notes/_words/)
+//! notes/_inbox/<id>.md      the Notebook's notes with no place yet (new in the Rust app; the Python app skips them,
+//!                           as it skips any note without an anchor)
 //! highlights/<CODE>.json    colored anchors, one file per book
 //! threads/<slug>.md         a named set of anchors with the person's note
 //! trails/<id>.md            questions waiting to be followed up
@@ -165,7 +167,16 @@ enum Kind {
     Trail,
     Hl,
     Set,
+    /// A note in notes/_inbox/: written before it has a place.
+    Inbox,
 }
+
+/// Inbox notes live in notes/_inbox/, inside the notes folder the Python app reads (it skips them: no anchor).
+fn in_inbox(p: &Path) -> bool {
+    p.parent().and_then(|d| d.file_name()).is_some_and(|n| n == INBOX)
+}
+
+pub const INBOX: &str = "_inbox";
 
 /// The kinds of tracked file: folder, file ending, looked into subfolders?
 const TRACKED: &[(Kind, &str, &str, bool)] = &[
@@ -189,6 +200,7 @@ pub struct Store {
     threads: Vec<Rec>,
     trails: Vec<Rec>,
     sets: Vec<Rec>,
+    inbox: Vec<Rec>,
     sigs: HashMap<PathBuf, Sig>,
     paths: HashMap<PathBuf, (Kind, String)>,
     pub recheck: Duration,
@@ -256,6 +268,7 @@ impl Store {
             threads: vec![],
             trails: vec![],
             sets: vec![],
+            inbox: vec![],
             sigs: HashMap::new(),
             paths: HashMap::new(),
             recheck: Duration::ZERO,
@@ -282,7 +295,8 @@ impl Store {
         for (kind, sub, ending, deep) in TRACKED {
             for p in files(&self.root.join(sub), ending, *deep) {
                 if let Some(sig) = sig_of(&p) {
-                    found.push((p, sig, *kind));
+                    let kind = if *kind == Kind::Note && in_inbox(&p) { Kind::Inbox } else { *kind };
+                    found.push((p, sig, kind));
                 }
             }
         }
@@ -316,6 +330,7 @@ impl Store {
                 Kind::Trail => self.trails.retain(|n| s(n, "id") != key),
                 Kind::Thread => self.threads.retain(|n| s(n, "id") != key),
                 Kind::Set => self.sets.retain(|n| s(n, "id") != key),
+                Kind::Inbox => self.inbox.retain(|n| s(n, "id") != key),
                 Kind::Hl => self.hl.retain(|(c, _)| *c != key),
             }
         }
@@ -347,6 +362,17 @@ impl Store {
                 }
                 key
             }
+            Kind::Inbox => {
+                let (mut meta, body) = parse_md(&text);
+                if s(&meta, "id").is_empty() {
+                    return;
+                }
+                meta.insert("text".into(), json!(body.trim()));
+                let key = s(&meta, "id");
+                self.inbox.retain(|n| s(n, "id") != key);
+                self.inbox.push(meta);
+                key
+            }
             Kind::Note | Kind::Trail => {
                 let (mut meta, body) = parse_md(&text);
                 if s(&meta, "id").is_empty() || s(&meta, "anchor").is_empty() {
@@ -368,7 +394,7 @@ impl Store {
         TRACKED
             .iter()
             .find(|(_, sub, ending, deep)| rel.first().map(String::as_str) == Some(*sub) && rel.last().is_some_and(|l| l.ends_with(ending)) && (*deep || rel.len() == 2))
-            .map(|t| t.0)
+            .map(|t| if t.0 == Kind::Note && in_inbox(path) { Kind::Inbox } else { t.0 })
     }
 
     /// Write a tracked file and take it into memory (nothing else is read again).
@@ -659,6 +685,90 @@ impl Store {
     pub fn delete_thread(&mut self, id: &str) -> Result<()> {
         self.thread(id)?;
         self.trash(&self.root.join("threads").join(format!("{id}.md")))
+    }
+
+    // ---- the Notebook's Inbox: notes with no place yet ----
+
+    fn inbox_path(&self, id: &str) -> PathBuf {
+        self.root.join("notes").join(INBOX).join(format!("{id}.md"))
+    }
+
+    /// Every note with no place yet, oldest first.
+    pub fn inbox(&self) -> Vec<&Rec> {
+        let mut v: Vec<&Rec> = self.inbox.iter().collect();
+        v.sort_by_key(|n| s(n, "created"));
+        v
+    }
+
+    fn jotted(&self, id: &str) -> Result<Rec> {
+        self.inbox.iter().find(|n| s(n, "id") == id).cloned().ok_or_else(|| missing("No such note in the Inbox."))
+    }
+
+    /// A thought with no place yet, into the Inbox; a question (`question`) waits there to be placed and answered.
+    /// Same front matter as a note, with an empty anchor (so the Python app passes over it) and kind "jot" or "question".
+    pub fn jot(&mut self, text: &str, question: bool) -> Result<Rec> {
+        let text = text.trim();
+        if text.is_empty() {
+            return Err(bad("Write the thought first."));
+        }
+        let kind = if question { "question" } else { "jot" };
+        let meta = json!({"id": new_id(if question { "q" } else { "n" }), "anchor": "", "kind": kind, "quote": "", "strong": "", "created": now(), "updated": now()});
+        let meta = meta.as_object().unwrap().clone();
+        self.put(&self.inbox_path(&s(&meta, "id")), &dump_md(&meta, text))?;
+        let mut n = meta;
+        n.insert("text".into(), json!(text));
+        Ok(n)
+    }
+
+    /// Change an Inbox note's text, or make it a question (or a plain note again).
+    pub fn update_jot(&mut self, id: &str, text: Option<&str>, question: Option<bool>) -> Result<Rec> {
+        let mut meta = self.jotted(id)?;
+        let text = match text {
+            Some(t) if t.trim().is_empty() => return Err(bad("A note needs some text. To remove it, delete the note.")),
+            Some(t) => t.trim().to_string(),
+            None => s(&meta, "text"),
+        };
+        if let Some(q) = question {
+            meta.insert("kind".into(), json!(if q { "question" } else { "jot" }));
+        }
+        meta.shift_remove("text");
+        meta.insert("updated".into(), json!(now()));
+        self.put(&self.inbox_path(id), &dump_md(&meta, &text))?;
+        meta.insert("text".into(), json!(text));
+        Ok(meta)
+    }
+
+    pub fn delete_jot(&mut self, id: &str) -> Result<()> {
+        self.jotted(id)?;
+        self.trash(&self.inbox_path(id))
+    }
+
+    /// Give an Inbox note its place: a note moves to notes/<BOOK>/ (or notes/_words/ for H7065), a question becomes a
+    /// trail (trails/), both in the Python app's formats, keeping the id and the day it was written. `anchor` is
+    /// canonical; `kind`, `quote` and `strong` come from resolving it against the text.
+    pub fn place_jot(&mut self, id: &str, anchor: &str, kind: &str, quote: &str, strong: &str) -> Result<Rec> {
+        let old = self.jotted(id)?;
+        let question = s(&old, "kind") == "question";
+        if question && kind == "lemma" {
+            return Err(bad("A question is placed on words or verses in the text, not on a Strong's number everywhere."));
+        }
+        let text = s(&old, "text");
+        let mut meta = if question {
+            json!({"id": id, "anchor": anchor, "kind": kind, "quote": quote, "status": "open", "created": old["created"], "updated": now()})
+        } else {
+            json!({"id": id, "anchor": anchor, "kind": kind, "quote": quote, "strong": strong, "created": old["created"], "updated": now()})
+        }
+        .as_object()
+        .unwrap()
+        .clone();
+        let path = if question { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&meta) };
+        self.put(&path, &dump_md(&meta, &text))?;
+        // the note now lives at its place; the Inbox file is removed only after that is written
+        let from = self.inbox_path(id);
+        fs::remove_file(&from)?;
+        self.drop_file(&from);
+        meta.insert("text".into(), json!(text));
+        Ok(meta)
     }
 
     // ---- trails ----
