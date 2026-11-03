@@ -13,7 +13,7 @@ if ($open) { Write-Output "The app is open (process $($open.Id)). Close its wind
 New-Item -ItemType Directory -Force $dest | Out-Null
 foreach ($f in "bible-workbench.exe", "wb.exe") {
     $src = Join-Path $repo "target\release\$f"
-    if (-not (Test-Path $src)) { Write-Output "No $src: build first (npx tauri build --no-bundle; cargo build --release -p wb-cli)."; exit 1 }
+    if (-not (Test-Path $src)) { Write-Output "No ${src}: build first (npx tauri build --no-bundle; cargo build --release -p wb-cli)."; exit 1 }
     Copy-Item $src $dest -Force
 }
 $commit = git -C $repo log -1 --format="%h %s"
