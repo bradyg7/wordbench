@@ -29,7 +29,7 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
 
 | Path | What |
 |---|---|
-| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `marks`, `views` |
+| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views` |
 | `crates/wb-cli` | The `wb` binary over wb-core |
 | `app/src-tauri` | The Tauri 2 shell: commands that call wb-core |
 | `ui/` | The UI: TypeScript, CSS, fonts (Literata for scripture, Inter for the interface), `tokens.css` from the design tokens |
@@ -47,6 +47,7 @@ python scripts/golden.py                     # the Rust wb against the Python wb
 ```
 
 The Rust `wb` must give the same output as the Python `wb`: when changing a command, add or update its case in
-`tests/golden/cases.json` and run the golden tests. Known, deliberate differences are listed in docs/phase1-progress.md.
+`tests/golden/cases.json` and run the golden tests. Known, deliberate differences are listed in docs/phase1-results.md. Rust tests: `cargo test` (the Python app's
+own tests carried over, plus the reading plans).
 
 No remote yet: do not push anywhere without the person's go-ahead.

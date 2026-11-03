@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Group (mock)</title>
+  <!-- A mock for docs/PLAN-community.md: sample people and words, not real data. Scripture is shown only as references;
+       in the app each member's own database would fill the verse in. -->
+  <link rel="stylesheet" href="../tokens.css">
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: var(--type-body); }
+    .phone { max-width: 430px; margin: 0 auto; min-height: 100vh; padding: 16px 16px 90px; }
+    .banner { font: var(--type-caption); color: var(--muted); background: var(--sunken); border-radius: var(--radius-control); padding: 6px 10px; margin-bottom: 12px; }
+    h1 { font: var(--type-display); margin: 6px 0 2px; }
+    .sub { color: var(--muted); font: var(--type-small); margin-bottom: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 14px 16px; margin: 12px 0; }
+    .label { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); margin: 18px 0 6px; }
+    .pill { display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--accent); font: var(--type-small-strong); }
+    .row { display: flex; align-items: center; gap: 10px; }
+    .grow { flex: 1; }
+    .who { width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; font: var(--type-small-strong); background: var(--sunken); color: var(--muted); }
+    .who.read { background: var(--hl-green); color: var(--fg); }
+    .muted { color: var(--muted); }
+    .small { font: var(--type-small); }
+    .q { border-left: 3px solid var(--question); padding: 2px 0 2px 10px; margin: 8px 0; }
+    .ref-note { font: var(--type-caption); color: var(--muted); margin-top: 6px; }
+    .btn { font: var(--type-small-strong); padding: 9px 14px; border-radius: var(--radius-control); border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+    .end { text-align: center; color: var(--muted); font: var(--type-small); margin: 22px 0; }
+    .tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: var(--bg); border-top: 1px solid var(--line); height: 64px; }
+    .tabs span { flex: 1; display: grid; place-items: center; font: var(--type-caption); color: var(--muted); }
+    .tabs .on { color: var(--accent); }
+    .tabs span.on { position: relative; }
+    .dot { position: absolute; top: 14px; right: calc(50% - 30px); width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+    textarea { width: 100%; font: var(--type-body); padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); color: var(--fg); resize: vertical; min-height: 64px; }
+    .seg { display: inline-flex; background: var(--sunken); border-radius: var(--radius-control); padding: 3px; margin-bottom: 4px; }
+    .seg button { font: var(--type-small); border: 0; background: none; padding: 7px 12px; border-radius: 6px; color: var(--fg); }
+    .seg .on { background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="phone">
+  <div class="banner">Mock for a decision (docs/PLAN-community.md): sample people and words. Verses appear as references; each member's app fills the text in from its own database.</div>
+  <h1>Thursday group</h1>
+  <div class="sub">5 members · shared by a private group folder · nothing here is public</div>
+
+  <div class="seg" role="tablist">
+    <button class="on" data-view="week">This week</button><button data-view="page">Group page</button><button data-view="plan">Plan</button>
+  </div>
+
+  <section data-panel="week">
+    <div class="card">
+      <div class="row"><div class="grow"><div class="label" style="margin-top:0">Next meeting</div><b>Thursday, 7 pm</b></div><span class="pill">Numbers 25</span></div>
+      <div class="label">To think about before then</div>
+      <div class="q">What does the passage say happened, in order?</div>
+      <div class="q">Where else do these words occur? (bring one place you found)</div>
+      <div class="q">What question would you bring to the group?</div>
+      <div class="ref-note">The leader's own questions. The passage opens in the reader; nothing here explains it.</div>
+    </div>
+    <div class="label">Questions members asked on the passage</div>
+    <div class="card">
+      <div class="row"><span class="who">D</span><div class="grow"><b>Dana</b> <span class="muted small">at</span> <span class="pill">Numbers 25:9</span></div><span class="muted small">Tue</span></div>
+      <p>How do the numbers here relate to the count given elsewhere?</p>
+      <div class="small muted">2 answers, each in the member's own words · <a href="#">Read</a> · <a href="#">Answer</a></div>
+    </div>
+  </section>
+
+  <section data-panel="page" hidden>
+    <div class="card">
+      <div class="row"><span class="who">M</span><div class="grow"><b>Marcus</b> shared a note <span class="muted small">at</span> <span class="pill">Numbers 25:11</span></div><span class="muted small">Wed</span></div>
+      <p>The same Hebrew verb is used twice in this verse; I counted where else it occurs.</p>
+      <div class="ref-note">Tapping the place opens the verse; "Back to the group" returns here.</div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="who">G</span><div class="grow"><b>Grace</b> added 2 places to the thread <span class="pill">Zeal</span></div><span class="muted small">Tue</span></div>
+      <div class="small"><span class="pill">Psalms 106:30</span> <span class="pill">Romans 10:2</span></div>
+      <p class="small">"Both use the word in a different setting."</p>
+    </div>
+    <div class="card">
+      <div class="row"><span class="who">J</span><div class="grow"><b>Jordan</b> read day 64 of the group plan</div><span class="muted small">Mon</span></div>
+    </div>
+    <div class="end">You're caught up. Nothing older is shown unless you look for it.</div>
+    <div class="label">Share with the group</div>
+    <textarea placeholder="Your own words. Name a place with @Num 25:11; the verse itself is filled in by each member's app."></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn">Attach a place</button><span class="grow"></span><button class="btn primary">Share</button></div>
+  </section>
+
+  <section data-panel="plan" hidden>
+    <div class="card">
+      <div class="label" style="margin-top:0">The group's plan</div>
+      <b>The New Testament in 90 days</b>
+      <div class="small muted">Day 64 · today's portion opens in the reader</div>
+      <div class="label">Who chose to show they read today</div>
+      <div class="row"><span class="who read">D</span><span class="who read">M</span><span class="who">G</span><span class="who read">J</span><span class="who">You</span></div>
+      <div class="ref-note">Showing this is each member's choice. A missed day is shown as nothing, never in red, and there are no streaks.</div>
+    </div>
+    <div class="row"><button class="btn primary">Mark today's reading read</button><span class="grow"></span><button class="btn">Keep it private</button></div>
+  </section>
+</div>
+<nav class="tabs"><span>Read</span><span>Notebook</span><span class="on">Group<span class="dot" title="something new, no notification"></span></span><span>Study</span><span>More</span></nav>
+<script>
+  const show = view => {
+    document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x.dataset.view === view));
+    document.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== view; });
+  };
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
+  if (location.hash) show(location.hash.slice(1));   // #week, #page, #plan open that view
+</script>
+</body>
+</html>

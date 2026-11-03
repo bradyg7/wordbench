@@ -145,7 +145,8 @@ before sync first touches the real folder, at the phone phase; phase 0 uses a sc
 | `highlights/<BOOK>.json` | By highlight id, then re-run the no-overlap rule on the result |
 | `threads/*.md` | Members as a set, in the order of the side that changed the order last; name, note and color from the newer side |
 | `trails/`, `sets/`, `lessons/` | One item per file; a lesson edited on both sides keeps both, as notes do |
-| `sessions/*.jsonl` (logs) | Append both |
+| `sessions/*.jsonl` (logs), `reading/log.jsonl` (chapters read) | Append both |
+| `reading/plans/*.json` (reading plans) | One plan per file; the same plan changed on both sides keeps the newer and puts the other in `.trash/` |
 | `settings/*.json` | Per key, newer wins |
 
   Nothing is ever dropped: a losing version goes to `.trash/` as deletes do today.
@@ -181,6 +182,8 @@ Tiers: **Full** (as on the desktop), **Shaped** (all of it, in a form made for t
 | Documents (slides, Word, PDF) | Shaped: make a PDF on the phone and share it; list and open the rest | Full | Full |
 | PDF viewer | Full: the platform's viewer | Full | Full |
 | Today's log | Full | Full | Full |
+| Reading plans and progress (built 2026-11-02 in wb-core and `wb`) | Full | Full | Full |
+| Studying together (a proposal: [PLAN-community.md](PLAN-community.md)) | To decide | To decide | To decide |
 | `wb` CLI, `wb do`, AI driving | — | — | Full |
 
 **Documents without the Craft apps.** WordCraft, DeckCraft and PdfCraft are Windows apps; the Rust app cannot depend on
