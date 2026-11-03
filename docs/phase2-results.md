@@ -7,7 +7,7 @@ study without the Python app) started on 2026-11-02 on the real folder**, on the
 
 | | Result |
 |---|---|
-| Desktop in the real app | `node measure/desk.mjs`: **37 of 37** checks, in WebView2, at 1440×900 and the other sizes |
+| Desktop in the real app | `node measure/desk.mjs`: **45 of 45** checks, in WebView2, at 1440×900 and the other sizes |
 | WebKit (the iPhone and iPad engine) | `npm run test:webkit`: **12 of 12** (the 10 of phase 0 and 2 for the new shell) |
 | Rust tests | `cargo test`: **105** (97 before; 4 for the Notebook's `wb` commands, 4 for the command language) |
 | The command language against the Python parser | **480 of 480** lines and **108 of 108** texts with references give the same answer |
@@ -39,6 +39,11 @@ message instead of exiting.
   is a full screen with "Back to Numbers 25:11". Columns minimize to a tab at the edge; any pane can float (dragged by
   its tab strip, resized from its corner; where and how big it is are kept). A tab dragged over the reader floats its
   pane; dragged to an edge, it docks in that column (the zone it would go to is shown while dragging).
+  **Many tabs** (on the person's request, 2026-11-03): a tab keeps its width (its whole title, up to 200 px) and the
+  strip scrolls: the mouse wheel, ‹ › at its ends when there is more, and ▾ listing every tab in that column; the tab in
+  front is kept in view, and the column's buttons stay put. **A column's width:** drag its inner edge (double-click puts
+  it back), or expand it to half the window and back; widths are kept between runs. The reader keeps at least 460 px;
+  when both columns want more, the one not touched last gives way, down to 280 px.
   **dockview-core was not used**: the layouts on the sheets need fixed columns
   with tabs, not free tiling, and a phone needs the pane as a screen; about 250 lines did that, with no dependency and
   nothing to style against.
