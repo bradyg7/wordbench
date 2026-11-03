@@ -951,3 +951,23 @@ pub fn interlinear(bible: &Bible, book: u32, c1: u32, v1: i64, c2: Option<u32>, 
     out["verses"] = json!(verses);
     Ok(out)
 }
+
+/// What search did before the index: every verse through the patterns, in Bible order, with the spans. Kept as the
+/// reference the index is tested against.
+#[doc(hidden)]
+pub fn search_every_verse(bible: &Bible, q: &str, case: bool, scope: &str) -> Result<(Vec<(u32, u32, u32, Vec<(usize, usize)>)>, Map<String, Value>)> {
+    let rxs = plain_regexes(&plain_terms(q.trim())?, case);
+    let mut stmt = bible.conn().prepare("SELECT book, chapter, verse, text FROM verses ORDER BY book, chapter, verse")?;
+    let all: Vec<(u32, u32, u32, String)> = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?.collect::<rusqlite::Result<_>>()?;
+    let (mut rows, mut by_book) = (vec![], Map::new());
+    for (b, c, v, text) in all {
+        let sp = spans(&rxs, &text);
+        if !sp.is_empty() {
+            let e = by_book.entry(b.to_string()).or_insert(json!(0));
+            *e = json!(e.as_i64().unwrap() + 1);
+            rows.push((b, c, v, sp));
+        }
+    }
+    rows.retain(|r| in_scope(book_by_id(bible, r.0).unwrap(), scope));
+    Ok((rows, by_book))
+}

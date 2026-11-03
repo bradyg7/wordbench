@@ -17,8 +17,10 @@
 use crate::anchors;
 use crate::{Error, Result};
 use serde_json::{json, Map, Value};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 pub type Rec = Map<String, Value>;
 
@@ -156,6 +158,30 @@ pub fn check_color(color: Option<&str>) -> Result<Option<String>> {
 
 // ---- the store ----------------------------------------------------------------------------------------------------
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Kind {
+    Note,
+    Thread,
+    Trail,
+    Hl,
+    Set,
+}
+
+/// The kinds of tracked file: folder, file ending, looked into subfolders?
+const TRACKED: &[(Kind, &str, &str, bool)] = &[
+    (Kind::Note, "notes", ".md", true),
+    (Kind::Thread, "threads", ".md", false),
+    (Kind::Trail, "trails", ".md", false),
+    (Kind::Hl, "highlights", ".json", false),
+    (Kind::Set, "sets", ".md", false),
+];
+
+type Sig = (u128, u64); // modified time in ns, size
+
+/// The person's files, held in memory and kept in step with them (the Python app's `Study`). Each tracked file is read
+/// once; afterwards only a file whose time or size changed is read again. What the store writes it takes in at once
+/// (reading back the one file it wrote). Files changed from outside (hand edits, git pull) are noticed by `refresh`,
+/// which looks at the folder at most every `recheck`.
 pub struct Store {
     pub root: PathBuf,
     notes: Vec<Rec>,
@@ -163,6 +189,27 @@ pub struct Store {
     threads: Vec<Rec>,
     trails: Vec<Rec>,
     sets: Vec<Rec>,
+    sigs: HashMap<PathBuf, Sig>,
+    paths: HashMap<PathBuf, (Kind, String)>,
+    pub recheck: Duration,
+    checked: Option<Instant>,
+    /// How many files have been read and how often the folder was looked at (for the tests).
+    pub loads: usize,
+    pub scans: usize,
+}
+
+fn stem(p: &Path) -> String {
+    p.file_stem().unwrap_or_default().to_string_lossy().into_owned()
+}
+
+fn read(p: &Path) -> Option<String> {
+    fs::read_to_string(p).ok()
+}
+
+fn sig_of(p: &Path) -> Option<Sig> {
+    let m = fs::metadata(p).ok()?;
+    let t = m.modified().ok()?.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    Some((t, m.len()))
 }
 
 /// Files of a folder in name order (as the Python app's scandir returns them on Windows), optionally in subfolders.
@@ -184,52 +231,145 @@ fn files(dir: &Path, ending: &str, deep: bool) -> Vec<PathBuf> {
     out
 }
 
-fn stem(p: &Path) -> String {
-    p.file_stem().unwrap_or_default().to_string_lossy().into_owned()
-}
-
-fn read(p: &Path) -> Option<String> {
-    fs::read_to_string(p).ok()
-}
-
 impl Store {
     pub fn open(root: &Path) -> Result<Store> {
         crate::study::Study::open(root)?; // the same guard: never the real folder unless allowed
-        let mut st = Store { root: root.to_path_buf(), notes: vec![], hl: vec![], threads: vec![], trails: vec![], sets: vec![] };
-        st.load()?;
+        let mut st = Store {
+            root: root.to_path_buf(),
+            notes: vec![],
+            hl: vec![],
+            threads: vec![],
+            trails: vec![],
+            sets: vec![],
+            sigs: HashMap::new(),
+            paths: HashMap::new(),
+            recheck: Duration::ZERO,
+            checked: None,
+            loads: 0,
+            scans: 0,
+        };
+        st.refresh()?;
         Ok(st)
     }
 
-    fn load(&mut self) -> Result<()> {
-        let r = self.root.clone();
-        self.notes = files(&r.join("notes"), ".md", true).iter().filter_map(|p| Self::note_like(&read(p)?)).collect();
-        self.trails = files(&r.join("trails"), ".md", false).iter().filter_map(|p| Self::note_like(&read(p)?)).collect();
-        self.hl = files(&r.join("highlights"), ".json", false)
+    /// Look at the folder (at most every `recheck`) and read again what changed. → true if anything did.
+    pub fn refresh(&mut self) -> Result<bool> {
+        if !self.root.is_dir() {
+            return Err(bad(format!("The study-data folder was not found: {}", self.root.display())));
+        }
+        if let Some(t) = self.checked {
+            if t.elapsed() < self.recheck {
+                return Ok(false);
+            }
+        }
+        self.scans += 1;
+        let mut found: Vec<(PathBuf, Sig, Kind)> = vec![];
+        for (kind, sub, ending, deep) in TRACKED {
+            for p in files(&self.root.join(sub), ending, *deep) {
+                if let Some(sig) = sig_of(&p) {
+                    found.push((p, sig, *kind));
+                }
+            }
+        }
+        let mut changed = false;
+        for (p, sig, kind) in &found {
+            if self.sigs.get(p) != Some(sig) {
+                self.load_file(p, *sig, *kind);
+                changed = true;
+            }
+        }
+        let gone: Vec<PathBuf> = self.sigs.keys().filter(|p| !found.iter().any(|f| &f.0 == *p)).cloned().collect();
+        for p in gone {
+            self.drop_file(&p);
+            changed = true;
+        }
+        self.checked = Some(Instant::now());
+        Ok(changed)
+    }
+
+    /// Look at the folder next time `refresh` is called, however recently it last looked.
+    pub fn look_again(&mut self) {
+        self.checked = None;
+    }
+
+    /// Forget what a file held (it was removed, or is about to be read again).
+    fn drop_file(&mut self, path: &Path) {
+        self.sigs.remove(path);
+        if let Some((kind, key)) = self.paths.remove(path) {
+            match kind {
+                Kind::Note => self.notes.retain(|n| s(n, "id") != key),
+                Kind::Trail => self.trails.retain(|n| s(n, "id") != key),
+                Kind::Thread => self.threads.retain(|n| s(n, "id") != key),
+                Kind::Set => self.sets.retain(|n| s(n, "id") != key),
+                Kind::Hl => self.hl.retain(|(c, _)| *c != key),
+            }
+        }
+    }
+
+    /// Read one file into memory. What it holds goes to the end of its kind, as a Python dict re-insert does (that order
+    /// decides ties between equal times).
+    fn load_file(&mut self, path: &Path, sig: Sig, kind: Kind) {
+        self.drop_file(path);
+        let Some(text) = read(path) else { return };
+        self.loads += 1;
+        self.sigs.insert(path.to_path_buf(), sig); // recorded even when the file holds nothing usable
+        let key = match kind {
+            Kind::Hl => {
+                let items = serde_json::from_str::<Value>(&text).ok().and_then(|v| v.get("highlights").and_then(|h| h.as_array().cloned()));
+                let Some(items) = items else { return };
+                let key = stem(path);
+                self.hl.push((key.clone(), items.into_iter().filter_map(|h| h.as_object().cloned()).collect()));
+                key
+            }
+            Kind::Thread | Kind::Set => {
+                let t = if kind == Kind::Thread { parse_thread(&stem(path), &text) } else { parse_set(&stem(path), &text) };
+                let Some(t) = t else { return };
+                let key = s(&t, "id");
+                if kind == Kind::Thread {
+                    self.threads.push(t);
+                } else {
+                    self.sets.push(t);
+                }
+                key
+            }
+            Kind::Note | Kind::Trail => {
+                let (mut meta, body) = parse_md(&text);
+                if s(&meta, "id").is_empty() || s(&meta, "anchor").is_empty() {
+                    return;
+                }
+                meta.insert("text".into(), json!(body.trim()));
+                let key = s(&meta, "id");
+                let list = if kind == Kind::Note { &mut self.notes } else { &mut self.trails };
+                list.retain(|n| s(n, "id") != key);
+                list.push(meta);
+                key
+            }
+        };
+        self.paths.insert(path.to_path_buf(), (kind, key));
+    }
+
+    fn kind_of(&self, path: &Path) -> Option<Kind> {
+        let rel: Vec<String> = path.strip_prefix(&self.root).ok()?.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
+        TRACKED
             .iter()
-            .filter_map(|p| {
-                let v: Value = serde_json::from_str(&read(p)?).ok()?;
-                let items = v.get("highlights")?.as_array()?.iter().filter_map(|h| h.as_object().cloned()).collect();
-                Some((stem(p), items))
-            })
-            .collect();
-        self.threads = files(&r.join("threads"), ".md", false).iter().filter_map(|p| parse_thread(&stem(p), &read(p)?)).collect();
-        self.sets = files(&r.join("sets"), ".md", false).iter().filter_map(|p| parse_set(&stem(p), &read(p)?)).collect();
+            .find(|(_, sub, ending, deep)| rel.first().map(String::as_str) == Some(*sub) && rel.last().is_some_and(|l| l.ends_with(ending)) && (*deep || rel.len() == 2))
+            .map(|t| t.0)
+    }
+
+    /// Write a tracked file and take it into memory (nothing else is read again).
+    fn put(&mut self, path: &Path, text: &str) -> Result<()> {
+        write_atomic(path, text)?;
+        if let (Some(kind), Some(sig)) = (self.kind_of(path), sig_of(path)) {
+            self.load_file(path, sig, kind);
+        }
         Ok(())
     }
 
-    fn note_like(text: &str) -> Option<Rec> {
-        let (mut meta, body) = parse_md(text);
-        if s(&meta, "id").is_empty() || s(&meta, "anchor").is_empty() {
-            return None;
-        }
-        meta.insert("text".into(), json!(body.trim()));
-        Some(meta)
-    }
-
-    fn trash(&self, path: &Path) -> Result<()> {
+    fn trash(&mut self, path: &Path) -> Result<()> {
         let dest = self.root.join(".trash").join(format!("{}-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S"), path.file_name().unwrap().to_string_lossy()));
         fs::create_dir_all(dest.parent().unwrap())?;
         fs::rename(path, dest)?;
+        self.drop_file(path);
         Ok(())
     }
 
@@ -255,10 +395,9 @@ impl Store {
         }
         let meta = json!({"id": new_id("n"), "anchor": p["id"], "kind": p["kind"], "quote": quote, "strong": strong, "created": now(), "updated": now()});
         let meta = meta.as_object().unwrap().clone();
-        write_atomic(&self.note_path(&meta), &dump_md(&meta, text))?;
+        self.put(&self.note_path(&meta), &dump_md(&meta, text))?;
         let mut n = meta;
         n.insert("text".into(), json!(text));
-        self.notes.push(n.clone());
         Ok(n)
     }
 
@@ -271,18 +410,15 @@ impl Store {
         let mut meta = self.notes[at].clone();
         meta.shift_remove("text");
         meta.insert("updated".into(), json!(now()));
-        write_atomic(&self.note_path(&meta), &dump_md(&meta, text))?;
+        self.put(&self.note_path(&meta), &dump_md(&meta, text))?;
         meta.insert("text".into(), json!(text));
-        // A file written moves to the end of what is held, as in the Python app (it decides ties between equal times).
-        self.notes.remove(at);
-        self.notes.push(meta.clone());
         Ok(meta)
     }
 
     pub fn delete_note(&mut self, id: &str) -> Result<()> {
         let at = self.notes.iter().position(|n| s(n, "id") == id).ok_or_else(|| missing("No such note."))?;
-        let n = self.notes.remove(at);
-        self.trash(&self.note_path(&n))
+        let path = self.note_path(&self.notes[at]);
+        self.trash(&path)
     }
 
     // ---- highlights ----
@@ -304,16 +440,29 @@ impl Store {
         items.sort_by_key(|h| s(h, "created"));
         let path = self.root.join("highlights").join(format!("{code}.json"));
         if !items.is_empty() {
-            write_atomic(&path, &(py_dumps_indent1(&json!({"highlights": items})) + "\n"))?;
+            self.put(&path, &(py_dumps_indent1(&json!({"highlights": items})) + "\n"))?;
         } else if path.exists() {
             self.trash(&path)?;
         }
-        self.hl.retain(|(c, _)| c != code);
-        if !path.exists() {
-            return Ok(());
-        }
-        self.hl.push((code.into(), items));
         Ok(())
+    }
+
+    /// Color exactly this anchor (replacing a highlight on the same anchor), or clear it with None. The study requests
+    /// use studyapi::save_highlight, which keeps highlights from overlapping; this is the store's own plain form.
+    pub fn set_highlight(&mut self, anchor: &str, color: Option<&str>, quote: &str) -> Result<()> {
+        let p = anchors::py_parse(anchor)?;
+        if p["kind"] == "lemma" {
+            return Err(bad("Highlights go on words, phrases or verses."));
+        }
+        let color = check_color(color)?;
+        let code = s(&p, "code");
+        let id = s(&p, "id");
+        let drop: Vec<String> = self.highlights(&code).iter().filter(|h| s(h, "anchor") == id).map(|h| s(h, "id")).collect();
+        let add = match color {
+            Some(c) => vec![json!({"id": new_id("h"), "anchor": id, "color": c, "quote": quote, "created": now()}).as_object().unwrap().clone()],
+            None => vec![],
+        };
+        self.edit_highlights(&code, &drop, add)
     }
 
     // ---- palette ----
@@ -378,10 +527,7 @@ impl Store {
         let note = s(t, "note").replace(ANCHORS_MARK, "");
         let body = format!("{}\n\n{ANCHORS_MARK}\n{}", note.trim(), bullets.join("\n"));
         let id = s(t, "id");
-        write_atomic(&self.root.join("threads").join(format!("{id}.md")), &dump_md(&meta, &body))?;
-        self.threads.retain(|x| s(x, "id") != id);
-        self.threads.push(t.clone());
-        Ok(())
+        self.put(&self.root.join("threads").join(format!("{id}.md")), &dump_md(&meta, &body))
     }
 
     fn slug(&self, name: &str, folder: &str) -> String {
@@ -497,7 +643,6 @@ impl Store {
 
     pub fn delete_thread(&mut self, id: &str) -> Result<()> {
         self.thread(id)?;
-        self.threads.retain(|t| s(t, "id") != id);
         self.trash(&self.root.join("threads").join(format!("{id}.md")))
     }
 
@@ -521,10 +666,9 @@ impl Store {
         }
         let meta = json!({"id": new_id("q"), "anchor": p["id"], "kind": p["kind"], "quote": quote, "status": "open", "created": now(), "updated": now()});
         let meta = meta.as_object().unwrap().clone();
-        write_atomic(&self.root.join("trails").join(format!("{}.md", s(&meta, "id"))), &dump_md(&meta, text))?;
+        self.put(&self.root.join("trails").join(format!("{}.md", s(&meta, "id"))), &dump_md(&meta, text))?;
         let mut t = meta;
         t.insert("text".into(), json!(text));
-        self.trails.push(t.clone());
         Ok(t)
     }
 
@@ -532,11 +676,8 @@ impl Store {
         let text = s(&t, "text");
         t.shift_remove("text");
         t.insert("updated".into(), json!(now()));
-        write_atomic(&self.root.join("trails").join(format!("{}.md", s(&t, "id"))), &dump_md(&t, &text))?;
+        self.put(&self.root.join("trails").join(format!("{}.md", s(&t, "id"))), &dump_md(&t, &text))?;
         t.insert("text".into(), json!(text));
-        let id = s(&t, "id");
-        self.trails.retain(|x| s(x, "id") != id);
-        self.trails.push(t.clone());
         Ok(t)
     }
 
@@ -563,7 +704,6 @@ impl Store {
         if !self.trails.iter().any(|t| s(t, "id") == id) {
             return Err(missing("No such trail."));
         }
-        self.trails.retain(|t| s(t, "id") != id);
         self.trash(&self.root.join("trails").join(format!("{id}.md")))
     }
 
@@ -607,12 +747,7 @@ impl Store {
         let bullets: Vec<String> = t["items"].as_array().unwrap().iter().map(|i| format!("- {}", py_dumps(i))).collect();
         let body = format!("{}\n\n{}", s(t, "note"), bullets.join("\n"));
         let id = s(t, "id");
-        write_atomic(&self.root.join("sets").join(format!("{id}.md")), &dump_md(&meta, &body))?;
-        let mut stored = t.clone();
-        stored.shift_remove("keys");
-        self.sets.retain(|x| s(x, "id") != id);
-        self.sets.push(stored);
-        Ok(())
+        self.put(&self.root.join("sets").join(format!("{id}.md")), &dump_md(&meta, &body))
     }
 
     fn set_item(raw: &Value) -> Result<Rec> {
@@ -699,22 +834,37 @@ impl Store {
     }
 
     pub fn rename_set(&mut self, id: &str, name: &str) -> Result<Rec> {
+        self.update_set(id, Some(name), &[])
+    }
+
+    /// name: call it this. panes: [{key, title, params}], what its open panes show now, so reopening brings back the
+    /// same view.
+    pub fn update_set(&mut self, id: &str, name: Option<&str>, panes: &[Value]) -> Result<Rec> {
         let mut t = self.set(id)?;
-        let name = name.trim();
-        if name.is_empty() {
-            return Err(bad("A set needs a name."));
+        if let Some(name) = name {
+            let name = name.trim();
+            if name.is_empty() {
+                return Err(bad("A set needs a name."));
+            }
+            if self.sets.iter().any(|o| s(o, "id") != id && s(o, "name").to_lowercase() == name.to_lowercase()) {
+                return Err(bad(format!("There is already a set called “{name}”.")));
+            }
+            t.insert("name".into(), json!(cut(name, 120)));
         }
-        if self.sets.iter().any(|o| s(o, "id") != id && s(o, "name").to_lowercase() == name.to_lowercase()) {
-            return Err(bad(format!("There is already a set called “{name}”.")));
+        for i in t["items"].as_array_mut().unwrap() {
+            let Some(p) = panes.iter().find(|p| p.get("key") == i.get("key")) else { continue };
+            if i["kind"] == "pane" {
+                let title = p.get("title").and_then(|x| x.as_str()).filter(|x| !x.is_empty()).map(String::from).unwrap_or_else(|| i["title"].as_str().unwrap_or("").to_string());
+                i["title"] = json!(cut(&title, 200));
+                i["params"] = p.get("params").cloned().unwrap_or_else(|| i["params"].clone());
+            }
         }
-        t.insert("name".into(), json!(cut(name, 120)));
         self.write_set(&mut t)?;
         Ok(t)
     }
 
     pub fn delete_set(&mut self, id: &str) -> Result<()> {
         self.set(id)?;
-        self.sets.retain(|t| s(t, "id") != id);
         self.trash(&self.root.join("sets").join(format!("{id}.md")))
     }
 
@@ -748,6 +898,20 @@ impl Store {
         let mut days: Vec<String> = files(&self.root.join("sessions"), ".jsonl", false).iter().map(|p| stem(p)).collect();
         days.sort_by(|a, b| b.cmp(a));
         Ok(json!({"day": day, "entries": entries, "days": days}))
+    }
+
+    pub fn save_layout(&self, name: &str, layout: &Value) -> Result<Value> {
+        let name = cut(name.trim(), 60);
+        if name.is_empty() {
+            return Err(bad("A layout needs a name."));
+        }
+        if !layout.is_object() {
+            return Err(bad("There is no layout to save."));
+        }
+        let slug = slug_base(&name, "layout");
+        let text = py_dumps_indent1(&json!({"name": name, "saved": now(), "layout": layout})) + "\n";
+        write_atomic(&self.root.join("sessions").join("layouts").join(format!("{slug}.json")), &text)?;
+        Ok(json!({"name": name, "id": slug}))
     }
 
     pub fn layouts(&self) -> Vec<Value> {
