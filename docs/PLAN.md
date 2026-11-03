@@ -183,7 +183,7 @@ Tiers: **Full** (as on the desktop), **Shaped** (all of it, in a form made for t
 | PDF viewer | Full: the platform's viewer | Full | Full |
 | Today's log | Full | Full | Full |
 | Reading plans and progress (built 2026-11-02 in wb-core and `wb`) | Full | Full | Full |
-| Studying together (a proposal: [PLAN-community.md](PLAN-community.md)) | To decide | To decide | To decide |
+| Studying together (proposed in [PLAN-community.md](PLAN-community.md); decided 2026-11-02: the app stays personal) | Not planned | Not planned | Not planned |
 | `wb` CLI, `wb do`, AI driving | — | — | Full |
 
 **Documents without the Craft apps.** WordCraft, DeckCraft and PdfCraft are Windows apps; the Rust app cannot depend on

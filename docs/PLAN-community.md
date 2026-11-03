@@ -1,6 +1,7 @@
 # Proposal: studying together (community, coordination, a group feed)
 
-Status: an idea for the person to decide on (2026-11-02). Nothing here is built. The mock is
+Status: **decided 2026-11-02: the app stays personal.** None of this is to be built; the proposal and its mock are kept
+for the record, in case the question comes back. Nothing here is built. The mock is
 [ui/prototypes/community.html](../ui/prototypes/community.html). Pictures of its three views are in
 [prototypes/](prototypes/): [this week](prototypes/community-week.png), [the group page](prototypes/community-page.png)
 and [the plan](prototypes/community-plan.png). Open the mock with `npm run dev`, then
