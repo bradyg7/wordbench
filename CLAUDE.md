@@ -47,6 +47,7 @@ python scripts/golden.py                     # the Rust wb against the Python wb
 node scripts/commands-cases.mjs              # the command language's cases and manual, from the Python app's commands.js
 node measure/desk.mjs                        # the desktop checked in the real app (its own instance and scratch copy)
 npm run measure                              # the speed budgets (after npx tauri build --no-bundle)
+powershell -File scripts\backup-study.ps1   # a hashed copy of the real study folder (reads it only), before the app uses it
 ```
 
 The Rust `wb` must give the same output as the Python `wb`: when changing a command, add or update its case in

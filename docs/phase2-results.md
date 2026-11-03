@@ -2,8 +2,8 @@
 
 2026-11-02. Phase 2 of [PLAN.md](PLAN.md), section 8: the Large and Expanded layouts around the phase 0 reader, the
 command field, the dock of panes, the Notebook, threads and layers, search and word study, lexicons and the interlinear,
-find, text size, the keyboard and `wb do`. Built against the scratch study folder; **the phase 2 check (a week of daily
-study without the Python app) has not started**: it needs the person's go-ahead to open the real folder (see the end).
+find, text size, the keyboard and `wb do`. Built against the scratch study folder. **The phase 2 check (a week of daily
+study without the Python app) started on 2026-11-02 on the real folder**, on the person's go-ahead (section 9).
 
 | | Result |
 |---|---|
@@ -153,16 +153,39 @@ noisy numbers (word sheet 110 ms); on a quiet machine it was 46–55 ms in three
 - Tauri needed a capability file (`app/src-tauri/capabilities/default.json`, `core:default`) for the window to listen
   for `wb do`'s events.
 
-## 9. The phase 2 check, and what the person needs to decide
+## 9. The phase 2 check: started
 
-PLAN.md: *a week of daily study on the desktop without opening the Python app.* That means pointing the app at the real
-study folder, which wb-core refuses unless `WB_ALLOW_REAL_STUDY=1` is set, and nothing in this repository sets it. Until
-the person says so, the app runs on the scratch copy:
+PLAN.md: *a week of daily study on the desktop without opening the Python app.*
+
+**Started 2026-11-02, about 23:15, on the person's go-ahead** ("Yes, use the real folder"). Before the app opened it:
+
+- The real folder was copied by `scripts/backup-study.ps1`, which only reads the folder and compares every copy with
+  its original by hash: 101 files, all the same, in
+  `%LOCALAPPDATA%\bible-workbench-rs\backups\bible-study-data-20261102-231033`. (A first copy made from this session's
+  own shell did not count: that shell's writes outside the repository stay in its sandbox. The script was run in the
+  person's terminal.)
+- The release app (built from e0a5410) was copied out of `target/` to `%LOCALAPPDATA%\bible-workbench-rs\app\`, so a
+  later build neither replaces it mid-week nor fails on its locked file. `wb.exe` is beside it.
+- `wb status` with the go-ahead found the folder: 23 notes, 3 threads, 8 questions. Without it, wb-core still refuses.
+- The scratch watch window was closed, so one Bible Workbench window is open and `wb do` reaches it. The app announced
+  the real folder; nothing in the folder had changed when it opened.
+
+How it is started, typed in a terminal (**nothing in this repository sets `WB_ALLOW_REAL_STUDY`**, as CLAUDE.md asks):
 
 ```
-powershell -ExecutionPolicy Bypass -File scripts\watch-app.ps1            # the app, on the scratch copy
+$env:WB_STUDY_DIR = 'C:\Users\brady\github\bible-study-data'; $env:WB_ALLOW_REAL_STUDY = '1'; $env:WB_WINDOW = 'laptop-large'; & "$env:LOCALAPPDATA\bible-workbench-rs\app\bible-workbench.exe"
 ```
 
-To try it: open the Notebook and write a thought (Enter); place it from the Inbox; press backtick and type
+`wb` on the real folder, from that same terminal: `& "$env:LOCALAPPDATA\bible-workbench-rs\app\wb.exe" journal`.
+
+What the week writes, in the Python app's formats: notes, highlights, threads and trails as before; notes with no place
+in `notes/_inbox/` (the one new folder); each command-field line in `sessions/<day>.jsonl`, as the Python app logs them.
+The Python app can still open the folder at any time. If anything goes wrong, the backup above is the folder as it was.
+
+To report at the end of the week: what was missed from the Python app, what got in the way, and anything that looked
+wrong in the files.
+
+The scratch copy still works for trying things out: `powershell -ExecutionPolicy Bypass -File scripts\watch-app.ps1`.
+To try a feature: open the Notebook and write a thought (Enter); place it from the Inbox; press backtick and type
 `uses zeal gospels`, `def H7065`, `interlinear Num 25:11`, `+Phinehas`, `thread Phinehas`; turn chapters with ← →; Ctrl+F;
 Ctrl+= and Ctrl+-; make the window narrower; from a terminal, `wb do "open John 3:16-18"`.
