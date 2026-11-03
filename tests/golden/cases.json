@@ -1747,6 +1747,387 @@
   "files": true
  },
  {
+  "name": "study: lesson check (the walkthrough's lesson)",
+  "steps": [
+   [
+    "lesson",
+    "save",
+    "Phinehas Golden",
+    "--file",
+    "$golden/phinehas-lesson.md"
+   ],
+   [
+    "lesson",
+    "check",
+    "Phinehas Golden"
+   ],
+   [
+    "lesson",
+    "save",
+    "Golden Small",
+    "--file",
+    "$golden/lesson.md"
+   ],
+   [
+    "lesson",
+    "check",
+    "golden small"
+   ],
+   [
+    "lesson",
+    "save",
+    "Golden Broken",
+    "--file",
+    "$golden/broken-lesson.md"
+   ],
+   [
+    "lesson",
+    "check",
+    "golden broken"
+   ],
+   [
+    "lesson",
+    "check",
+    "golden"
+   ],
+   [
+    "lesson",
+    "rm",
+    "Phinehas Golden"
+   ],
+   [
+    "lesson",
+    "rm",
+    "golden small"
+   ],
+   [
+    "lesson",
+    "rm",
+    "golden broken"
+   ]
+  ],
+  "files": true
+ },
+ {
+  "name": "the Phinehas walkthrough (demo/phinehas-command-log.md, the data commands)",
+  "steps": [
+   [
+    "find",
+    "phinehas"
+   ],
+   [
+    "thread",
+    "show",
+    "phin"
+   ],
+   [
+    "lesson",
+    "list"
+   ],
+   [
+    "set",
+    "list"
+   ],
+   [
+    "search",
+    "phinehas"
+   ],
+   [
+    "count",
+    "phinehas"
+   ],
+   [
+    "forms",
+    "phinehas"
+   ],
+   [
+    "define",
+    "phinehas"
+   ],
+   [
+    "strong",
+    "H6372"
+   ],
+   [
+    "bdb",
+    "H6372"
+   ],
+   [
+    "anchor",
+    "Num 25:11"
+   ],
+   [
+    "hl",
+    "list"
+   ],
+   [
+    "trail",
+    "list"
+   ],
+   [
+    "note",
+    "list",
+    "Num 25"
+   ],
+   [
+    "thread",
+    "from-search",
+    "Phinehas",
+    "phinehas",
+    "--dry-run"
+   ],
+   [
+    "thread",
+    "from-search",
+    "Phinehas",
+    "phinehas"
+   ],
+   [
+    "thread",
+    "add",
+    "Phinehas",
+    "H6372"
+   ],
+   [
+    "thread",
+    "edit",
+    "Phinehas",
+    "--color",
+    "orange",
+    "--note",
+    "Every verse that names Phinehas in the KJV."
+   ],
+   [
+    "thread",
+    "add-many",
+    "Phinehas echoes",
+    "Num 16:47-48",
+    "Psalm 106:23",
+    "Gen 15:6",
+    "Exo 40:15",
+    "Num 25:6",
+    "1 Sam 2:22",
+    "1 Sam 3:14",
+    "1 Sam 4:17",
+    "1 Chr 24:3",
+    "1 Kgs 2:27",
+    "1 Kgs 2:35",
+    "Neh 13:29",
+    "Mal 2:5-6",
+    "1 Kgs 19:10",
+    "2 Kgs 10:16",
+    "H7065",
+    "H7068",
+    "H4046",
+    "H3722"
+   ],
+   [
+    "thread",
+    "edit",
+    "Phinehas echoes",
+    "--color",
+    "blue",
+    "--note",
+    "Places that share wording with the Phinehas record."
+   ],
+   [
+    "thread",
+    "list",
+    "Phinehas"
+   ],
+   [
+    "note",
+    "add",
+    "Num 25:8",
+    "Word study (walkthrough test) on Num 25:8."
+   ],
+   [
+    "note",
+    "add",
+    "Num 25:13",
+    "Word study (walkthrough test) on Num 25:13."
+   ],
+   [
+    "note",
+    "add",
+    "Num 31:6",
+    "Word study (walkthrough test) on Num 31:6."
+   ],
+   [
+    "note",
+    "add",
+    "Josh 22:31",
+    "Word study (walkthrough test) on Josh 22:31."
+   ],
+   [
+    "note",
+    "add",
+    "Judg 20:28",
+    "Word study (walkthrough test) on Judg 20:28."
+   ],
+   [
+    "note",
+    "add",
+    "1 Chr 9:20",
+    "Word study (walkthrough test) on 1 Chr 9:20."
+   ],
+   [
+    "note",
+    "add",
+    "Psalm 106:30",
+    "Word study (walkthrough test) on Psalm 106:30."
+   ],
+   [
+    "note",
+    "add",
+    "Psalm 106:31",
+    "Word study (walkthrough test) on Psalm 106:31."
+   ],
+   [
+    "note",
+    "add",
+    "1 Sam 2:22",
+    "Word study (walkthrough test) on 1 Sam 2:22."
+   ],
+   [
+    "note",
+    "add",
+    "1 Sam 3:14",
+    "Word study (walkthrough test) on 1 Sam 3:14."
+   ],
+   [
+    "note",
+    "add",
+    "1 Sam 4:17",
+    "Word study (walkthrough test) on 1 Sam 4:17."
+   ],
+   [
+    "note",
+    "edit",
+    "$last",
+    "1 Sam 4:17",
+    "Word study (walkthrough test), edited."
+   ],
+   [
+    "trail",
+    "add",
+    "Num 25:5",
+    "Does any verse record the judges doing it?"
+   ],
+   [
+    "trail",
+    "add",
+    "Num 25:9",
+    "How do the two numbers relate?"
+   ],
+   [
+    "trail",
+    "add",
+    "Num 25:13",
+    "What does the covenant add?"
+   ],
+   [
+    "trail",
+    "add",
+    "Num 31:6",
+    "Why is Phinehas sent to the war?"
+   ],
+   [
+    "trail",
+    "add",
+    "Psalm 106:30",
+    "Judging, interceding, or both?"
+   ],
+   [
+    "trail",
+    "add",
+    "1 Sam 2:30",
+    "How do the two read together?"
+   ],
+   [
+    "trail",
+    "add",
+    "Mal 2:5",
+    "Is Num 25:12 in view?"
+   ],
+   [
+    "hl",
+    "set",
+    "Num 25:12-13",
+    "yellow"
+   ],
+   [
+    "hl",
+    "set",
+    "Psalm 106:30-31",
+    "yellow"
+   ],
+   [
+    "lesson",
+    "save",
+    "Phinehas",
+    "--file",
+    "$golden/phinehas-lesson.md"
+   ],
+   [
+    "lesson",
+    "check",
+    "Phinehas"
+   ],
+   [
+    "set",
+    "new",
+    "Phinehas study",
+    "--thread",
+    "Phinehas",
+    "--thread",
+    "Phinehas echoes",
+    "--lesson",
+    "Phinehas",
+    "--place",
+    "Num 25:1-18",
+    "--place",
+    "Psalm 106:28-31"
+   ],
+   [
+    "set",
+    "show",
+    "phinehas"
+   ],
+   [
+    "set",
+    "delete",
+    "Phinehas study"
+   ],
+   [
+    "hl",
+    "clear",
+    "Num 25:12-13"
+   ],
+   [
+    "hl",
+    "clear",
+    "Psalm 106:30-31"
+   ],
+   [
+    "note",
+    "rm",
+    "$last"
+   ],
+   [
+    "trail",
+    "list",
+    "--status",
+    "all"
+   ],
+   [
+    "find",
+    "walkthrough"
+   ]
+  ],
+  "files": true
+ },
+ {
   "name": "known difference: argparse wraps long usage lines and lists choices; wb uses H7065 --offset x exits 2 in both",
   "steps": []
  },

@@ -797,3 +797,110 @@ pub fn lesson_delete(store: &Store, name: &str) -> Result<Value> {
     Ok(json!({"ok": true, "id": id}))
 }
 
+
+/// A lesson read the way a build reads it: (kind, value) blocks of title, section, speech, note, scripture (a passage),
+/// parallel (two passages, KJV and YLT side by side) and word (a Strong's number). An error names the first line that
+/// cannot be read.
+pub fn lesson_parse(bible: &Bible, text: &str) -> Result<Vec<(&'static str, Value)>> {
+    let version_re = regex::Regex::new(r"(?i)^(.*\S)\s+(kjv|ylt)\s*$").unwrap();
+    let mut blocks: Vec<(&'static str, Value)> = vec![];
+    let mut para: Vec<String> = vec![];
+    let flush = |blocks: &mut Vec<(&'static str, Value)>, para: &mut Vec<String>| {
+        if !para.is_empty() {
+            blocks.push(("speech", json!(para.join(" "))));
+            para.clear();
+        }
+    };
+    for (k, raw) in text.replace("\r\n", "\n").split('\n').enumerate() {
+        let line = raw.trim();
+        let n = k + 1;
+        if line.is_empty() {
+            flush(&mut blocks, &mut para);
+        } else if let Some(t) = line.strip_prefix("## ") {
+            flush(&mut blocks, &mut para);
+            blocks.push(("section", json!(t.trim())));
+        } else if let Some(t) = line.strip_prefix("# ") {
+            flush(&mut blocks, &mut para);
+            blocks.push(("title", json!(t.trim())));
+        } else if let Some(t) = line.strip_prefix("//") {
+            flush(&mut blocks, &mut para);
+            blocks.push(("note", json!(t.trim())));
+        } else if let Some(r) = line.strip_prefix('@') {
+            flush(&mut blocks, &mut para);
+            let (mut place, mut version) = (r.trim().to_string(), "KJV".to_string());
+            if let Some(m) = version_re.captures(&place.clone()) {
+                place = m[1].to_string();
+                version = m[2].to_uppercase();
+            }
+            let psg = crate::scripture::passage(bible, &place, &version).map_err(|e| bad(format!("Line {n} ({}): {}", cut(line, 40), e.0)))?;
+            match blocks.last() {
+                Some(("scripture", prev)) if prev["label"] == psg["label"] && prev["version"] != json!(version) => {
+                    let prev = prev.clone();
+                    *blocks.last_mut().unwrap() = ("parallel", json!([prev, psg]));
+                }
+                _ => blocks.push(("scripture", psg)),
+            }
+        } else if line.len() >= 3 && line.starts_with('&') && crate::lookup::is_strong(&line[1..].to_uppercase()) {
+            flush(&mut blocks, &mut para);
+            let sid = line[1..].to_uppercase();
+            if crate::lookup::strong(bible, &sid)?.is_none() {
+                return Err(bad(format!("Line {n} ({}): no such Strong's number.", cut(line, 40))));
+            }
+            blocks.push(("word", json!(sid)));
+        } else {
+            para.push(line.to_string());
+        }
+    }
+    flush(&mut blocks, &mut para);
+    Ok(blocks)
+}
+
+const SLIDE_VERSES: usize = 3;
+const SLIDE_CHARS: usize = 340;
+
+/// How many slides a passage takes: cut at verse boundaries, at most 3 verses or 340 characters, and between places.
+fn slides_for(verses: &[Value]) -> usize {
+    let (mut out, mut rows, mut size) = (0, 0usize, 0usize);
+    let mut last_span: Option<Value> = None;
+    for v in verses {
+        let len = v["text"].as_str().unwrap_or("").chars().count();
+        if rows > 0 && (rows >= SLIDE_VERSES || size + len > SLIDE_CHARS || v.get("span") != last_span.as_ref()) {
+            out += 1;
+            rows = 0;
+            size = 0;
+        }
+        rows += 1;
+        size += len;
+        last_span = v.get("span").cloned();
+    }
+    out + (rows > 0) as usize
+}
+
+/// What a build would use, without making anything: the title, every scripture with its verse count, and how many
+/// slides the Pulpit deck would have.
+pub fn lesson_check(bible: &Bible, store: &Store, name: &str) -> Result<Value> {
+    let lesson = lesson_read(store, name)?;
+    let text = lesson["text"].as_str().unwrap();
+    let blocks = lesson_parse(bible, text)?;
+    let mut passages = vec![];
+    let mut slides = 1; // the title slide
+    for (k, v) in &blocks {
+        match *k {
+            "section" | "word" => slides += 1,
+            "scripture" => {
+                passages.push(v.clone());
+                slides += slides_for(v["verses"].as_array().unwrap());
+            }
+            "parallel" => {
+                passages.extend(v.as_array().unwrap().iter().cloned());
+                slides += 1;
+            }
+            _ => {}
+        }
+    }
+    let title = title_of(text);
+    Ok(json!({"id": lesson["id"], "title": if title.is_empty() { lesson["id"].clone() } else { json!(title) },
+        "sections": blocks.iter().filter(|b| b.0 == "section").count(), "words": text.split_whitespace().count(),
+        "places": passages.iter().map(|p| json!({"label": p["label"], "version": p["version"], "verses": p["verses"].as_array().unwrap().len()})).collect::<Vec<_>>(),
+        "slides": slides}))
+}

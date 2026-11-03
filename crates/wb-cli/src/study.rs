@@ -340,6 +340,9 @@ pub fn commands() -> Vec<Command> {
                 j(sa::lesson_save(&store()?, &a.s("name"), &text, a.flag("append")).map_err(e)?)
             }),
         cmd("lesson rm", "Delete a lesson (moved to .trash).", vec![Pos("name", N::One)], |_, a| j(sa::lesson_delete(&store()?, &a.s("name")).map_err(e)?)),
+        cmd("lesson check", "Read a lesson the way a build would: its scriptures and slide count, or the first line that cannot be read.", vec![Pos("name", N::Many)], |c, a| {
+            j(sa::lesson_check(c.bible()?, &store()?, &a.s("name")).map_err(e)?)
+        }),
     ]
 }
 
