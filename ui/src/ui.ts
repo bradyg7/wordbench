@@ -67,7 +67,7 @@ export function placePill(label: string, go?: () => void): HTMLElement {
 
 // Text with verse references made into links (positions from wb-core's find_refs, counted in characters).
 export interface Found { start: number; end: number; ref: string; hash: string }
-export function linkedText(text: string, refs: Found[] | undefined, go: (ref: string) => void, hover?: (a: HTMLElement, ref: string) => void): DocumentFragment {
+export function linkedText(text: string, refs: Found[] | undefined, go: (ref: string, a: HTMLElement, e: MouseEvent) => void, hover?: (a: HTMLElement, ref: string) => void): DocumentFragment {
   const f = document.createDocumentFragment();
   const chars = [...text];
   let at = 0;
@@ -76,13 +76,21 @@ export function linkedText(text: string, refs: Found[] | undefined, go: (ref: st
     f.append(chars.slice(at, r.start).join(''));
     const a = h('a', 'ref', chars.slice(r.start, r.end).join(''));
     a.href = r.hash;
-    a.onclick = e => { e.preventDefault(); go(r.ref); };
+    a.onclick = e => { e.preventDefault(); go(r.ref, a, e); };
     if (hover) hover(a, r.ref);
     f.append(a);
     at = r.end;
   }
   f.append(chars.slice(at).join(''));
   return f;
+}
+
+// Hover cards: 'off' (the default; a click opens a card, as a tap does on a phone), 'refs' (only references in notes)
+// or 'on'. Kept between runs.
+export const hoverMode = () => document.documentElement.dataset.hover || 'off';
+export function setHover(mode: string) {
+  document.documentElement.dataset.hover = mode;
+  try { localStorage.setItem('wb.hover', mode); } catch { /* this run only */ }
 }
 
 export const sizeClass = () => {

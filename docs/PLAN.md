@@ -275,6 +275,9 @@ the start, with the size classes of section 3 in place, so the desktop phase doe
    Works on the real study folder directly (same files as the Python app; no sync needed on one machine). Documents
    stay with the Python app until phase 5. *Check:* a week of daily study on the desktop without opening the Python app.
    What the check finds is listed, each note under its phase, in [phase2-results.md](phase2-results.md) section 10.
+   **Phase 2b** (decided 2026-11-03): the desktop is finished before the phone: click cards, translations, a reading
+   plans pane, a design round (the dock, the Journal, the Shelf, settings), and documents from a thread brought forward
+   from phase 5. [PLAN-phase2b.md](PLAN-phase2b.md).
 3. **Phone.** The Compact layout from the phone sheets: tabs, tap cards, touch selection and the selection bar, sheets,
    the palette, the Notebook tab, the Study tab, "Back to …"; sync arrives (the remote is chosen here). *Check:* a week of
    reading and note taking in the phone-size window by finger on the touchscreen laptop, with the notes reaching the

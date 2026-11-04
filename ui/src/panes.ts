@@ -4,8 +4,8 @@ import { wb } from './api';
 import { app, book, goTo, here } from './app';
 import { Dock, type Pane, type Side } from './dock';
 import { layers } from './layers';
-import { hideCard, showCard, toast } from './sheets';
-import { button, h, icon, linkedText, placePill, popMenu } from './ui';
+import { closeSheet, compact, hideCard, openSheet, sheetOpen, showCard, toast } from './sheets';
+import { button, h, hoverMode, icon, linkedText, placePill, popMenu } from './ui';
 import { placeMenu, remove as removeNote } from './notebook';
 
 export let dock: Dock;
@@ -128,25 +128,43 @@ export function threadChooser(from: HTMLElement, pick: (name: string) => void) {
   input.focus();
 }
 
-// ---- hover cards on references written in notes (a mouse only; `hover off` turns them off) --------------------------
+// ---- references written in notes: a click opens the verse as a card; hover cards only when turned on ------------------
+function refBody(d: any): HTMLElement {
+  const body = h('div', 'verse-view');
+  body.append(h('div', 'card-head', `${d.label} · ${d.version}`));
+  for (const v of d.verses || []) {
+    const p = h('p', 'scripture');
+    if ((d.verses || []).length > 1) p.append(h('span', 'vref', `${v.ref.split(':').pop()} `));
+    p.append(v.text);
+    body.append(p);
+  }
+  if (d.more) body.append(h('p', 'muted small', `and ${d.more} more verses`));
+  return body;
+}
+
+// The verse, verbatim, beside the reference, with Go to and Open as a tab. Ctrl+click goes straight there.
+export async function refCard(ref: string, a: HTMLElement, e?: MouseEvent) {
+  if (e?.ctrlKey || e?.metaKey) return goTo(ref);
+  hideCard();
+  const d = await wb(['preview', ref, '--json']).catch(() => null);
+  if (!d) return goTo(ref);
+  const body = refBody(d);
+  const acts = h('div', 'acts');
+  acts.append(button('act', `Go to ${d.label}`, () => { closeSheet(); goTo(ref); }));
+  if (!compact()) acts.append(button('act', 'Open as a tab', () => { closeSheet(); openPassage([ref], 'KJV', d.label); }));
+  body.append(acts);
+  openSheet(body, a);
+}
+
 export function refHover(a: HTMLElement, ref: string) {
   let timer = 0, seq = 0;
   a.addEventListener('pointerenter', e => {
-    if (e.pointerType !== 'mouse' || document.documentElement.dataset.hover === 'off') return;
+    if (e.pointerType !== 'mouse' || hoverMode() === 'off' || sheetOpen()) return;
     const my = ++seq;
     timer = window.setTimeout(async () => {
       const d = await wb(['preview', ref, '--json']).catch(() => null);
-      if (!d || my !== seq || !a.isConnected || !a.matches(':hover')) return;
-      const body = h('div', 'verse-view');
-      body.append(h('div', 'card-head', `${d.label} · ${d.version}`));
-      for (const v of d.verses || []) {
-        const p = h('p', 'scripture');
-        if ((d.verses || []).length > 1) p.append(h('span', 'vref', `${v.ref.split(':').pop()} `));
-        p.append(v.text);
-        body.append(p);
-      }
-      if (d.more) body.append(h('p', 'muted small', `and ${d.more} more verses`));
-      showCard(body, a.getBoundingClientRect());
+      if (!d || my !== seq || !a.isConnected || !a.matches(':hover') || sheetOpen()) return;
+      showCard(refBody(d), a.getBoundingClientRect());
     }, 280);
   });
   a.addEventListener('pointerleave', () => { seq++; clearTimeout(timer); setTimeout(() => { if (!document.querySelector('.hovercard:hover')) hideCard(); }, 150); });
@@ -621,7 +639,7 @@ async function threadNotes(t: any, into: HTMLElement) {
     for (const a of n.also || []) top.append(placePill(a.label, () => goTo(a.anchor)));
     top.append(h('span', 'grow'), h('span', 'nb-time', n.time));
     const p = h('p', 'nb-text');
-    p.append(linkedText(n.text, n.refs, ref => goTo(ref), refHover));
+    p.append(linkedText(n.text, n.refs, refCard, refHover));
     const acts = h('div', 'nb-acts');
     acts.append(button('link-btn', 'Edit', () => {
       const ta = h('textarea', 'field nb-edit') as HTMLTextAreaElement;

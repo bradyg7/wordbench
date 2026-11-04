@@ -5,7 +5,7 @@
 // moves the reader.
 import { wb } from './api';
 import { app, goTo, here, type At } from './app';
-import { dock, refHover, openThread, threadChooser } from './panes';
+import { dock, refCard, refHover, openThread, threadChooser } from './panes';
 import type { Pane } from './dock';
 import { toast } from './sheets';
 import { button, h, icon, linkedText, placePill, popMenu, type Found } from './ui';
@@ -180,7 +180,7 @@ function entryCard(e: Entry, inInbox = false): HTMLElement {
   more.onclick = () => entryMenu(more, e, c);
   top.append(time, more);
   const p = h('p', 'nb-text');
-  p.append(linkedText(e.text, e.refs, ref => goTo(ref), refHover));
+  p.append(linkedText(e.text, e.refs, refCard, refHover));
   c.append(top, p);
   const chips = threadChips(e);
   if (chips.length) { const row = h('div', 'nb-threads'); row.append(...chips); c.append(row); }

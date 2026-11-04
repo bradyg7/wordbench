@@ -16,8 +16,8 @@ import { openSheet, closeSheet, showCard, hideCard, toast, compact } from './she
 import { perf, afterPaint, record } from './perf';
 import { app, here, type At } from './app';
 import { layers } from './layers';
-import { h, icon, popMenu, sizeClass, closeMenu } from './ui';
-import { dock, initPanes, openPlace, openInterlinear, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
+import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
+import { dock, initPanes, openPassage, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
 import { countInbox, notebookBadge, openNotebook, refreshNotebook, writeInNotebook } from './notebook';
 import { attachCommandField, loadThreads } from './command';
 import { parse, runLine, written } from './actions';
@@ -164,6 +164,7 @@ function lexiconBody(w: WordView, card = false): HTMLElement {
     inter.onclick = () => { closeSheet(); const [, cv] = w.anchor.split('.'); openInterlinear(`${w.anchor.slice(0, 3)} ${cv}`, w.reference); };
     acts.append(uses, inter);
     b.append(acts);
+    if (!compact()) b.append(actions(['Open as a tab'], () => { closeSheet(); openStrong(lx.strong); }));
     for (const n of w.notes) b.append(noteCard(n.anchor === w.anchor ? w.reference : `${lx.strong} everywhere`, n.text));
     const note = h('button', 'btn soft wide', `Note on ${lx.strong} everywhere`);
     note.onclick = () => writeNote(note, { anchor: lx.strong, label: `${lx.strong} everywhere` }, 'note');
@@ -203,9 +204,10 @@ function verseBody(v: VerseView, card = false): HTMLElement {
     b.append(t);
   }
   const at: At = { anchor: v.anchor, label: v.reference };
-  b.append(actions(compact() ? ['Note', 'Question', 'Thread', 'Copy'] : ['Note', 'Question', 'Thread', 'Copy', 'Notes & lookup'], (a, el) => {
+  b.append(actions(compact() ? ['Note', 'Question', 'Thread', 'Copy'] : ['Note', 'Question', 'Thread', 'Copy', 'Notes & lookup', 'Open as a tab'], (a, el) => {
     if (a === 'Copy') copy(`${v.text} (${v.reference} KJV)`);
     else if (a === 'Notes & lookup') { closeSheet(); openPlace(at.anchor, at.label); }
+    else if (a === 'Open as a tab') { closeSheet(); openPassage([at.anchor.replace('.', ' ')], 'KJV', at.label); }
     else if (a === 'Thread') addToThread(el, at);
     else writeNote(el, at, a === 'Note' ? 'note' : 'question');
   }));
@@ -437,12 +439,11 @@ async function openVerse(v: number, el: HTMLElement, at: number) {
 }
 
 let hoverSeq = 0;
-const hoverOff = () => document.documentElement.dataset.hover === 'off';
 const selector = new Selector(reader, scroller, {
   tapWord: (k, el, at) => openWord(k, el, at),
   tapVerse: (v, el, at) => openVerse(v, el, at),
   hoverWord: async (k, el) => {
-    if (hoverOff() || document.documentElement.dataset.hover === 'refs') return;
+    if (hoverMode() !== 'on') return;
     const seq = ++hoverSeq, t0 = performance.now(), d = drawn!;
     const { data } = await api.word(d.chapter.code, d.chapter.chapter, d.v[k], d.i[k]);
     if (seq !== hoverSeq) return;
@@ -451,7 +452,7 @@ const selector = new Selector(reader, scroller, {
     record('hover-card', performance.now() - t0, { word: data.text });
   },
   hoverVerse: async (v, el) => {
-    if (hoverOff()) return;
+    if (hoverMode() !== 'on') return;
     const seq = ++hoverSeq, d = drawn!;
     const { data } = await api.verse(d.chapter.code, d.chapter.chapter, v);
     if (seq === hoverSeq) showCard(verseBody(data, true), el.getBoundingClientRect());
@@ -717,7 +718,7 @@ function settings(from: HTMLElement) {
   sz.append(minus, pct, plus, reset);
   b.append(sz);
   b.append(h('div', 'label', 'Hover cards'));
-  b.append(segmented(['on', 'refs', 'off'], document.documentElement.dataset.hover || 'on', m => { document.documentElement.dataset.hover = m; }));
+  b.append(segmented(['off', 'refs', 'on'], hoverMode(), setHover));
   b.append(h('div', 'label', 'Theme'));
   b.append(segmented(['system', 'light', 'dark', 'eink'], document.documentElement.dataset.theme || 'system', t => {
     if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
@@ -841,6 +842,7 @@ async function start() {
   try {
     const t = localStorage.getItem('wb.theme');
     if (t && t !== 'system') document.documentElement.dataset.theme = t;
+    document.documentElement.dataset.hover = localStorage.getItem('wb.hover') || 'off';
     setSize(+(localStorage.getItem(SIZE_STORE) || 100));
   } catch { /* defaults */ }
   initPanes($('dock'));

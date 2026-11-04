@@ -119,6 +119,7 @@ test('press and hold, drag across verses, then a handle', async ({ page }, info)
 test('mouse: hover card and the color bar', async ({ page }, info) => {
   test.skip(info.project.name !== 'webkit-desktop', 'desktop');
   await ready(page);
+  await page.evaluate(() => { document.documentElement.dataset.hover = 'on'; });   // off by default: a click opens the card
   const z = await wordBox(page, 11, 24);
   await page.mouse.move(z.x + 5, z.y + z.height / 2);
   await expect(page.locator('.hovercard')).toBeVisible();

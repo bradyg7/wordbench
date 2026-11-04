@@ -178,8 +178,9 @@ if (sheets) {
   await page.keyboard.press('Escape');
 }
 
-// Hover card with the mouse.
+// Hover card with the mouse (hover cards are off by default; turned on for this).
 await clear();
+await page.evaluate(() => window.__wb.run('hover on'));
 for (const [v, i] of [[11, 24], [7, 2], [13, 20], [3, 5]]) {
   const p = await center(await wordSel(v, i));
   await page.mouse.move(p.x, p.y, { steps: 2 });

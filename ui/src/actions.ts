@@ -9,6 +9,7 @@ import {
   dock, frontResults, jumpTo, openBdb, openCount, openDefine, openFind, openForms, openHelp, openInterlinear, openKeys, openLesson, openLexiconc,
   openMarked, openNear, openPlace, openPassage, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
 } from './panes';
+import { setHover } from './ui';
 
 // The last write, so `undo` can take it back.
 type Undo = { kind: 'note'; id: string } | { kind: 'hl'; record: unknown } | { kind: 'trail'; id: string } | { kind: 'thread'; name: string; anchor: string } | { kind: 'jot'; id: string };
@@ -180,7 +181,7 @@ export async function perform(a: any, line: string): Promise<string> {
     case 'findpage': app.findInChapter(a.q); return a.q ? `Finding “${a.q}” in this chapter` : 'Find in this chapter';
     case 'panes': return dock.describe().map(p => p.title).join(' · ') || 'No panes open';
     case 'pane': return paneAction(a);
-    case 'hover': document.documentElement.dataset.hover = a.mode; return `Hover cards: ${a.mode}`;
+    case 'hover': setHover(a.mode); return `Hover cards: ${a.mode}`;
     case 'copy': {
       if (a.action === 'format') { localStorage.setItem('wb.copy', JSON.stringify({ format: a.format, short: a.short })); return `Copies are laid out as ${a.format}${a.short ? ', short' : ''}`; }
       const saved = (() => { try { return JSON.parse(localStorage.getItem('wb.copy') || '{}'); } catch { return {}; } })();

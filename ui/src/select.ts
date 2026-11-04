@@ -2,7 +2,7 @@
 //
 //   touch   tap a word → word sheet; tap a verse number → verse sheet; press and hold → a selection with two handles
 //           that snap to whole words, across verses; keep the finger down after the hold and drag to extend it
-//   mouse   hover a word or verse number → hover card; click → the same sheet (a popover at wide sizes);
+//   mouse   click a word or verse number → the same sheet (a popover at wide sizes); hover cards when `hover on`;
 //           press and drag → a selection, then the color bar
 //
 // Scrolling is left to the web view (touch-action: pan-y) until a hold starts a selection; then touchmove is cancelled.

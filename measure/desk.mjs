@@ -84,11 +84,22 @@ try {
   check('a jot is a file in notes/_inbox', inbox.length === 1, inbox[0]);
   check('the jot shows in the Journal with no place', await page.locator('.nb-entry .unplaced').first().waitFor({ timeout: 5000 }).then(() => true, () => false));
   await page.locator('.nb-seg button', { hasText: 'Inbox' }).click();
-  // a reference in a note shows its verse on hover, verbatim
-  await page.locator('.nb-entry a.ref').first().hover();
+  // a reference in a note: hover cards are off by default; a click shows its verse, verbatim, and opens it as a tab
   const cor = JSON.parse(execFileSync(wbExe, ['text', '1 Cor 10:8', '--json'], { env }).toString()).verses[0].text;
-  check('hovering a reference in a note shows the verse', await page.locator('.hovercard', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.locator('.nb-entry a.ref').first().hover();
+  await sleep(700);
+  check('hover cards are off by default', await page.locator('.hovercard').count() === 0 && await page.evaluate(() => document.documentElement.dataset.hover) === 'off');
+  const placeAtRef = await page.locator('#place .place-label').textContent();
+  await page.locator('.nb-entry a.ref').first().click();
+  check('clicking a reference in a note shows the verse', await page.locator('.popover', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  check('the click does not move the reader', (await page.locator('#place .place-label').textContent()) === placeAtRef);
+  await page.locator('.popover .act', { hasText: 'Open as a tab' }).click();
+  check('Open as a tab opens the verse as a pane', await page.locator('.pane-passage', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.evaluate(() => window.__wb.run('hover on'));
+  await page.locator('.nb-entry a.ref').first().hover();
+  check('with hover on, hovering a reference shows the verse', await page.locator('.hovercard', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
   await page.mouse.move(700, 300);
+  await page.evaluate(() => window.__wb.run('hover off'));
   await page.locator('.nb-entry .btn', { hasText: 'Place it' }).first().click();
   await page.waitForSelector('.place-menu .place-opt');
   const offered = await page.locator('.place-menu .place-opt-label').allTextContents();
@@ -109,6 +120,25 @@ try {
   await page.locator('.nb-entry[draggable="true"]').first().dragTo(page.locator('.vn[data-v="3"]'));
   for (let i = 0; i < 50 && !existsSync(path.join(study, 'notes', 'NUM', dragged)); i++) await sleep(100);
   check('an Inbox note dropped on a verse is placed there', existsSync(path.join(study, 'notes', 'NUM', dragged)) && /anchor: "NUM.25:3"/.test(readFileSync(path.join(study, 'notes', 'NUM', dragged), 'utf8')));
+
+  // a verse opened by a click can be a tab; so can a word
+  const v6 = JSON.parse(execFileSync(wbExe, ['text', 'Num 25:6', '--json'], { env }).toString()).verses[0].text;
+  await page.locator('.vn[data-v="6"]').click();
+  await page.locator('.popover .act', { hasText: 'Open as a tab' }).click();
+  check('Open as a tab on a verse opens it as a pane', await page.locator('.pane-passage', { hasText: v6 }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  const zeal = await page.evaluate(() => {   // "zealous" in Num 25:11, a word with a Strong's number
+    const d = window.__wb.drawn, k = d.v.findIndex((v, k) => v === 11 && String(d.strong[k]).includes('7065'));
+    d.el[k].scrollIntoView({ block: 'center' });
+    const r = d.el[k].getBoundingClientRect();
+    return [r.x + r.width / 2, r.y + r.height / 2];
+  });
+  await page.mouse.click(zeal[0], zeal[1]);
+  await page.waitForSelector('.popover .lemma', { timeout: 5000 });
+  const strongNum = (await page.locator('.popover .lemma-row .small').textContent()).split(' ')[0];
+  await page.locator('.popover .act', { hasText: 'Open as a tab' }).click();
+  check('Open as a tab on a word opens its Strong’s entry', await page.locator('.tab-name', { hasText: strongNum }).first().waitFor({ timeout: 5000 }).then(() => true, () => false), strongNum);
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'passage' || p.kind === 'strong')) d.close(p); });
 
   // a question from the verse popover: written in the Notebook's box (one writing box), with the place chosen
   await page.locator('.vn[data-v="9"]').click();
