@@ -64,7 +64,10 @@ app's formats.
 
 ### Step 4 — design round (FigCraft sheets, then the person's review)
 
-One round, in the same FigCraft file as the phase 2 sheets, covering:
+**Drawn 2026-11-04, for review: [phase2b-design.md](phase2b-design.md).** The person's notes of 2026-11-04 widened it: the
+Notebook and reading plans each from the start, with several designs (`09ef`, `6d32`), plus threads (sort and filter),
+Help as a guide to every button, and a word's English definition. In its own file, `design/phase2b.figcraft`, beside the
+phase 2 sheets. As first planned:
 
 1. **The dock, dockview-style** (`564e`, item 18): a clicked card (verse, word, reference) opens as a tab; any tab can be
    dragged to a column, to a top or bottom zone across the middle, split beside another, or floated; drop zones shown
@@ -84,7 +87,9 @@ One round, in the same FigCraft file as the phase 2 sheets, covering:
 
 ### Step 5 — build the design round
 
-In the order the person picks; the dock first unless they say otherwise, because cards as tabs touch every pane.
+Accepted 2026-11-04. The order, where each part goes and when it is done: [PLAN-phase2b-build.md](PLAN-phase2b-build.md)
+(tier 0 fixes, the dock, the Notebook, reading plans, documents, views and the toolbar, threads / Help / the Shelf, word
+definitions).
 
 ### Step 6 — documents from a thread, brought forward from phase 5
 

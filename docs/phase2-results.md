@@ -302,6 +302,42 @@ phase 2b, the desktop finished before the phone ([PLAN-phase2b.md](PLAN-phase2b.
 | 23 | `564e` | Verses and words clickable, not hoverable; once clicked, tabs that can be dragged, as in dockview | **Built** (phase 2b step 1): hover cards are off by default and the setting is kept between runs (More ⋯, or `hover on`/`off`/`refs`); a click on a word or verse number opens its card as before, and now a click on a reference in a note does too (the verse verbatim, **Go to**, **Open as a tab**; Ctrl+click goes straight there). The verse and word cards have **Open as a tab** (a passage pane, the Strong's entry), and tabs drag between columns and float as before. The dockview-style dock is phase 2b step 4 |
 | 24 | `7a77` | Room for translation changes (item 21 again) | **Built** (phase 2b step 2): **KJV / YLT** in the toolbar, under More ⋯, or `version ylt` / `version kjv`; kept between runs, and the verse at the top stays at the top. The YLT is drawn verbatim from the database (each verse's text split at its spaces; a test joins every verse of three chapters back and compares). It has no KJV word positions, so on the YLT highlights and thread places on whole verses are drawn, a note on words marks its verse, words cannot be selected (a toast says to use the KJV), and a click on a word opens its verse, in the YLT. `wb reader NUM 25 --version ylt` gives what the window draws. A third translation is a row in the database's `versions` and `verse_texts` tables, once its source and license are checked |
 
+## 12. What the check found: day 3 (2026-11-04)
+
+Fifteen notes about the app, written between 2026-11-03 22:25 and 2026-11-04 09:09 (one more, `cfb7` on Exodus 3:12, is
+the person's own study note). The person asked for them to shape the design round: which areas to redesign, and how
+much. Each is listed once.
+
+### Redesign (phase 2b step 4)
+
+| Area | Notes | What they say | How much |
+|---|---|---|---|
+| **The Notebook and the Journal** | `09ef` | The writing box reads like a chat, which suits short notes only; the Journal is meant for long writing (and still quick capture). "Take the notebook feature back to the drawing board until we get a settled design." | **From the start**, several designs to choose from |
+| **Reading plans** | `fbf6`, `6d32`, `c440`, `9ded` | More modular, less typed text, to avoid mistakes. Only a name and the scriptures required; days and dates optional ("like building your own form"); no separate "plan of your own" if the builder is good. Several books are hard to give ("--books" makes no sense in the window). Drag a day ahead in Days; "Spread the rest…" is unclear | **From the start**, several designs (the pane built in step 3 is the first try) |
+| **The dock** | `564e`, `8c69` | Dockview-style tabs; a thread opened from the threads list opens on the right even after the list was moved: new tabs should open where their pane sits | As planned (item 18), plus where new panes open |
+| **Threads** | `73c4` | Sort the scriptures and notes in a thread; filter and search them | A thread pane design |
+| **Help** | `9ded` | Every button and feature with a clear entry in a guide that is easy to find from Help | A Help design: the manual plus a guide to the window |
+| **Word definitions** | `0e98` | Click a word (in Strong's and BDB entries, and in your own notes) to get its English definition, since some words in the definitions are unfamiliar | A design, and a decision: which dictionary (it must be a source with a clear license, as the Bible texts are) |
+
+### Fix now (small)
+
+| Note | What it says | What to do |
+|---|---|---|
+| `c35b` | The color bar should close on a click or tap outside it | Close it, and clear the selection, on a click away |
+| `5a5a` | Writing a note resets the reading plans pane | Every write refreshes every pane, which redraws the plans pane and closes what was open. Refresh a pane only when what it shows changed, and keep what was open |
+| `8c69` | New thread tabs open on the right | A pane opens in the column where a pane of its kind (or the list it came from) is |
+| `c440` | "--books" in the plan form | No terminal flags in the window's words (until the plans redesign replaces the form) |
+| `e998` | A key for the Notebook on the desktop | A shortcut that opens and focuses the Notebook's writing, listed in Keys |
+| `c8dc` | Remove a verse a note is attached to | "Take off" on each of a note's places; a note's last place taken off sends it to the Inbox |
+
+### For the person to decide
+
+| Note | What it asks | The question |
+|---|---|---|
+| `e48c` | Notes in the Trash should have a permanent delete | "Erase now" on a note in the Trash (asked to confirm), beside the 7 days? It erases, so it changes the rule in CLAUDE.md |
+| `032f` | A chronological reading plan | The app ships no plan whose order is a judgment (reading.rs). Which published chronological plan, from what source, to import? |
+| `0e98` | A dictionary | Which English dictionary, with its license (for example a public-domain one) |
+
 The scratch copy still works for trying things out: `powershell -ExecutionPolicy Bypass -File scripts\watch-app.ps1`.
 To try a feature: open the Notebook and write a thought (Enter); place it from the Inbox; press backtick and type
 `uses zeal gospels`, `def H7065`, `interlinear Num 25:11`, `+Phinehas`, `thread Phinehas`; turn chapters with ← →; Ctrl+F;

@@ -8,3 +8,4 @@ node_modules/
 /spikes/*/out/
 *.db
 *.pdf
+/design/build/
