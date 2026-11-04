@@ -169,6 +169,8 @@ enum Kind {
     Set,
     /// A note in notes/_inbox/: written before it has a place.
     Inbox,
+    /// A note in notes/_threads/: on one or more threads, with no place in the text.
+    OnThread,
 }
 
 /// Inbox notes live in notes/_inbox/, inside the notes folder the Python app reads (it skips them: no anchor).
@@ -177,6 +179,43 @@ fn in_inbox(p: &Path) -> bool {
 }
 
 pub const INBOX: &str = "_inbox";
+
+/// Notes on a thread and on no place live in notes/_threads/ (the Python app skips them too: no anchor).
+pub const ON_THREADS: &str = "_threads";
+
+fn on_threads(p: &Path) -> bool {
+    p.parent().and_then(|d| d.file_name()).is_some_and(|n| n == ON_THREADS)
+}
+
+/// The kind a file in notes/ is, by its folder.
+fn note_kind(p: &Path) -> Kind {
+    if in_inbox(p) {
+        Kind::Inbox
+    } else if on_threads(p) {
+        Kind::OnThread
+    } else {
+        Kind::Note
+    }
+}
+
+/// Every place a note has: its anchor (where its file lives) and any more it was given (`also`, new in the Rust app;
+/// the Python app keeps the field and shows the note at its anchor only).
+pub fn places_of(n: &Rec) -> Vec<String> {
+    let mut v = vec![];
+    if !s(n, "anchor").is_empty() {
+        v.push(s(n, "anchor"));
+    }
+    v.extend(n.get("also").and_then(|a| a.as_array()).into_iter().flatten().filter_map(|x| x.as_str()).map(String::from));
+    v
+}
+
+/// The threads a note is on (`threads`: thread ids, new in the Rust app).
+pub fn threads_of(n: &Rec) -> Vec<String> {
+    n.get("threads").and_then(|a| a.as_array()).into_iter().flatten().filter_map(|x| x.as_str()).map(String::from).collect()
+}
+
+/// How long a deleted note or question waits in .trash before it is erased (the person's decision, 2026-11-03).
+pub const TRASH_DAYS: i64 = 7;
 
 /// The kinds of tracked file: folder, file ending, looked into subfolders?
 const TRACKED: &[(Kind, &str, &str, bool)] = &[
@@ -201,6 +240,7 @@ pub struct Store {
     trails: Vec<Rec>,
     sets: Vec<Rec>,
     inbox: Vec<Rec>,
+    on_thread: Vec<Rec>,
     sigs: HashMap<PathBuf, Sig>,
     paths: HashMap<PathBuf, (Kind, String)>,
     pub recheck: Duration,
@@ -269,6 +309,7 @@ impl Store {
             trails: vec![],
             sets: vec![],
             inbox: vec![],
+            on_thread: vec![],
             sigs: HashMap::new(),
             paths: HashMap::new(),
             recheck: Duration::ZERO,
@@ -295,7 +336,7 @@ impl Store {
         for (kind, sub, ending, deep) in TRACKED {
             for p in files(&self.root.join(sub), ending, *deep) {
                 if let Some(sig) = sig_of(&p) {
-                    let kind = if *kind == Kind::Note && in_inbox(&p) { Kind::Inbox } else { *kind };
+                    let kind = if *kind == Kind::Note { note_kind(&p) } else { *kind };
                     found.push((p, sig, kind));
                 }
             }
@@ -331,6 +372,7 @@ impl Store {
                 Kind::Thread => self.threads.retain(|n| s(n, "id") != key),
                 Kind::Set => self.sets.retain(|n| s(n, "id") != key),
                 Kind::Inbox => self.inbox.retain(|n| s(n, "id") != key),
+                Kind::OnThread => self.on_thread.retain(|n| s(n, "id") != key),
                 Kind::Hl => self.hl.retain(|(c, _)| *c != key),
             }
         }
@@ -362,15 +404,16 @@ impl Store {
                 }
                 key
             }
-            Kind::Inbox => {
+            Kind::Inbox | Kind::OnThread => {
                 let (mut meta, body) = parse_md(&text);
                 if s(&meta, "id").is_empty() {
                     return;
                 }
                 meta.insert("text".into(), json!(body.trim()));
                 let key = s(&meta, "id");
-                self.inbox.retain(|n| s(n, "id") != key);
-                self.inbox.push(meta);
+                let list = if kind == Kind::Inbox { &mut self.inbox } else { &mut self.on_thread };
+                list.retain(|n| s(n, "id") != key);
+                list.push(meta);
                 key
             }
             Kind::Note | Kind::Trail => {
@@ -394,7 +437,7 @@ impl Store {
         TRACKED
             .iter()
             .find(|(_, sub, ending, deep)| rel.first().map(String::as_str) == Some(*sub) && rel.last().is_some_and(|l| l.ends_with(ending)) && (*deep || rel.len() == 2))
-            .map(|t| if t.0 == Kind::Note && in_inbox(path) { Kind::Inbox } else { t.0 })
+            .map(|t| if t.0 == Kind::Note { note_kind(path) } else { t.0 })
     }
 
     /// Write a tracked file and take it into memory (nothing else is read again).
@@ -813,6 +856,11 @@ impl Store {
         .as_object()
         .unwrap()
         .clone();
+        for k in ["also", "threads"] {
+            if let Some(v) = old.get(k) {
+                meta.insert(k.into(), v.clone());
+            }
+        }
         let path = if to_q { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&meta) };
         self.put(&path, &dump_md(&meta, &text))?;
         if path != from {
@@ -821,6 +869,233 @@ impl Store {
         }
         meta.insert("text".into(), json!(text));
         Ok(meta)
+    }
+
+    // ---- more places, threads, and notes on a thread with no place ----
+
+    /// Every note on a thread with no place in the text, oldest first.
+    pub fn on_thread(&self) -> Vec<&Rec> {
+        let mut v: Vec<&Rec> = self.on_thread.iter().collect();
+        v.sort_by_key(|n| s(n, "created"));
+        v
+    }
+
+    fn on_thread_path(&self, id: &str) -> PathBuf {
+        self.root.join("notes").join(ON_THREADS).join(format!("{id}.md"))
+    }
+
+    /// A note written on a thread, with no place in the text (notes/_threads/).
+    pub fn add_thread_note(&mut self, thread_id: &str, text: &str) -> Result<Rec> {
+        self.thread(thread_id)?;
+        let text = text.trim();
+        if text.is_empty() {
+            return Err(bad("A note needs some text."));
+        }
+        let meta = json!({"id": new_id("n"), "anchor": "", "kind": "thread", "quote": "", "strong": "", "threads": [thread_id], "created": now(), "updated": now()});
+        let meta = meta.as_object().unwrap().clone();
+        self.put(&self.on_thread_path(&s(&meta, "id")), &dump_md(&meta, text))?;
+        let mut n = meta;
+        n.insert("text".into(), json!(text));
+        Ok(n)
+    }
+
+    /// Any note by its id, wherever it is: (its record, its file).
+    fn any_note(&self, id: &str) -> Result<(Rec, PathBuf)> {
+        if let Some(n) = self.notes.iter().find(|n| s(n, "id") == id) {
+            return Ok((n.clone(), self.note_path(n)));
+        }
+        if let Some(n) = self.on_thread.iter().find(|n| s(n, "id") == id) {
+            return Ok((n.clone(), self.on_thread_path(id)));
+        }
+        if let Some(n) = self.trails.iter().find(|n| s(n, "id") == id) {
+            return Ok((n.clone(), self.root.join("trails").join(format!("{id}.md"))));
+        }
+        if let Some(n) = self.inbox.iter().find(|n| s(n, "id") == id) {
+            return Ok((n.clone(), self.inbox_path(id)));
+        }
+        Err(missing("No note or question with that id."))
+    }
+
+    fn rewrite(&mut self, mut meta: Rec, path: &Path) -> Result<Rec> {
+        let text = s(&meta, "text");
+        meta.shift_remove("text");
+        meta.insert("updated".into(), json!(now()));
+        self.put(path, &dump_md(&meta, &text))?;
+        meta.insert("text".into(), json!(text));
+        Ok(meta)
+    }
+
+    /// The text of a note on a thread (placed notes: `update_note`).
+    pub fn update_thread_note(&mut self, id: &str, text: &str) -> Result<Rec> {
+        let text = text.trim();
+        if text.is_empty() {
+            return Err(bad("A note needs some text. To remove it, delete the note."));
+        }
+        let mut meta = self.on_thread.iter().find(|n| s(n, "id") == id).cloned().ok_or_else(|| missing("No such note."))?;
+        meta.insert("text".into(), json!(text));
+        let path = self.on_thread_path(id);
+        self.rewrite(meta, &path)
+    }
+
+    pub fn delete_thread_note(&mut self, id: &str) -> Result<()> {
+        if !self.on_thread.iter().any(|n| s(n, "id") == id) {
+            return Err(missing("No such note."));
+        }
+        self.trash(&self.on_thread_path(id))
+    }
+
+    /// Put a note on a thread or take it off (`on`). A note with no place that leaves its last thread goes to the
+    /// Inbox; an Inbox note put on a thread moves to notes/_threads/ (the thread is its place now).
+    pub fn set_note_thread(&mut self, id: &str, thread_id: &str, on: bool) -> Result<Rec> {
+        if on {
+            self.thread(thread_id)?;
+        }
+        let (mut meta, path) = self.any_note(id)?;
+        let mut ts = threads_of(&meta);
+        ts.retain(|t| t != thread_id);
+        if on {
+            ts.push(thread_id.to_string());
+        }
+        if ts.is_empty() {
+            meta.shift_remove("threads");
+        } else {
+            meta.insert("threads".into(), json!(ts));
+        }
+        let loose = self.on_thread.iter().any(|n| s(n, "id") == id);
+        let jotted = self.inbox.iter().any(|n| s(n, "id") == id);
+        let to = if loose && ts.is_empty() {
+            meta.insert("kind".into(), json!("jot"));
+            self.inbox_path(id)
+        } else if jotted && !ts.is_empty() && s(&meta, "kind") != "question" {
+            meta.insert("kind".into(), json!("thread"));
+            self.on_thread_path(id)
+        } else {
+            path.clone()
+        };
+        let r = self.rewrite(meta, &to)?;
+        if to != path {
+            fs::remove_file(&path)?;
+            self.drop_file(&path);
+        }
+        Ok(r)
+    }
+
+    /// Give a placed note one more place (`on`), or take one away. Its first place (the anchor, where its file lives)
+    /// changes by moving the note (`replace_placed`). `anchor` is canonical.
+    pub fn set_note_also(&mut self, id: &str, anchor: &str, on: bool) -> Result<Rec> {
+        let mut meta = self.notes.iter().find(|n| s(n, "id") == id).cloned().ok_or_else(|| missing("No placed note with that id."))?;
+        let mut also: Vec<String> = places_of(&meta).into_iter().skip(1).collect();
+        if on {
+            if s(&meta, "anchor") == anchor || also.iter().any(|a| a == anchor) {
+                return Ok(meta);
+            }
+            if s(&meta, "kind") == "lemma" || anchors::py_parse(anchor)?["kind"] == "lemma" {
+                return Err(bad("A note on a Strong's number everywhere has no other places; more places are verses or words."));
+            }
+            also.push(anchor.to_string());
+        } else {
+            if s(&meta, "anchor") == anchor {
+                return Err(bad("That is the note's first place; move the note (wb note move) to change it."));
+            }
+            if !also.iter().any(|a| a == anchor) {
+                return Err(missing("The note is not on that place."));
+            }
+            also.retain(|a| a != anchor);
+        }
+        if also.is_empty() {
+            meta.shift_remove("also");
+        } else {
+            meta.insert("also".into(), json!(also));
+        }
+        let path = self.note_path(&meta);
+        self.rewrite(meta, &path)
+    }
+
+    // ---- the trash: deleted files wait in .trash; notes and questions are erased after TRASH_DAYS ----
+
+    /// When a file in .trash was deleted, from its name (20261103-213450-n_….md, UTC; both apps name them so).
+    fn trashed_at(name: &str) -> Option<chrono::NaiveDateTime> {
+        chrono::NaiveDateTime::parse_from_str(name.get(..15)?, "%Y%m%d-%H%M%S").ok()
+    }
+
+    /// A deleted note or question (not a thread, a highlight file or a plan, which stay in .trash).
+    fn is_note_file(name: &str) -> bool {
+        let rest = name.get(16..).unwrap_or("");
+        Self::trashed_at(name).is_some() && (rest.starts_with("n_") || rest.starts_with("q_")) && rest.ends_with(".md")
+    }
+
+    /// The notes and questions in .trash, newest first: {name, id, anchor, kind, question, text, deleted, days_left}.
+    pub fn trashed(&self) -> Vec<Value> {
+        let Ok(rd) = fs::read_dir(self.root.join(".trash")) else { return vec![] };
+        let now = chrono::Utc::now().naive_utc();
+        let mut out: Vec<Value> = rd
+            .flatten()
+            .filter_map(|e| {
+                let name = e.file_name().to_string_lossy().into_owned();
+                if !Self::is_note_file(&name) {
+                    return None;
+                }
+                let at = Self::trashed_at(&name)?;
+                let (meta, body) = parse_md(&read(&e.path())?);
+                Some(json!({"name": name, "id": s(&meta, "id"), "anchor": s(&meta, "anchor"), "kind": s(&meta, "kind"),
+                    "question": meta.contains_key("status"), "text": body.trim(), "deleted": format!("{}Z", at.format("%Y-%m-%dT%H:%M:%S")),
+                    "days_left": (TRASH_DAYS - (now - at).num_days()).max(0)}))
+            })
+            .collect();
+        out.sort_by(|a, b| b["name"].as_str().cmp(&a["name"].as_str()));
+        out
+    }
+
+    /// Put a deleted note or question back where it was: its folder follows from what it is (a place, a thread, the
+    /// Inbox, a question). Refused if a file of that name is already there.
+    pub fn restore(&mut self, name: &str) -> Result<Rec> {
+        guard(&self.root)?;
+        if name.contains(['/', '\\']) || !Self::is_note_file(name) {
+            return Err(bad("Name a note or question in the trash (wb trash)."));
+        }
+        let from = self.root.join(".trash").join(name);
+        let text = read(&from).ok_or_else(|| missing("No such file in the trash."))?;
+        let (mut meta, body) = parse_md(&text);
+        let id = s(&meta, "id");
+        let anchor = s(&meta, "anchor");
+        let to = if meta.contains_key("status") && !anchor.is_empty() {
+            self.root.join("trails").join(format!("{id}.md"))
+        } else if anchor.is_empty() && s(&meta, "kind") == "thread" {
+            self.on_thread_path(&id)
+        } else if anchor.is_empty() {
+            self.inbox_path(&id)
+        } else {
+            self.note_path(&meta)
+        };
+        if to.exists() {
+            return Err(bad(format!("{} is already there; it was not put back.", to.display())));
+        }
+        fs::create_dir_all(to.parent().unwrap())?;
+        fs::rename(&from, &to)?;
+        if let (Some(kind), Some(sig)) = (self.kind_of(&to), sig_of(&to)) {
+            self.load_file(&to, sig, kind);
+        }
+        meta.insert("text".into(), json!(body.trim()));
+        Ok(meta)
+    }
+
+    /// Erase the notes and questions deleted at least `days` ago; other files in .trash stay. → their names.
+    pub fn empty_trash(&mut self, days: i64) -> Result<Vec<String>> {
+        guard(&self.root)?;
+        let Ok(rd) = fs::read_dir(self.root.join(".trash")) else { return Ok(vec![]) };
+        let now = chrono::Utc::now().naive_utc();
+        let mut gone = vec![];
+        for e in rd.flatten() {
+            let name = e.file_name().to_string_lossy().into_owned();
+            if let (true, Some(at)) = (Self::is_note_file(&name), Self::trashed_at(&name)) {
+                if (now - at).num_days() >= days {
+                    fs::remove_file(e.path())?;
+                    gone.push(name);
+                }
+            }
+        }
+        gone.sort();
+        Ok(gone)
     }
 
     // ---- trails ----

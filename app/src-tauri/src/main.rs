@@ -217,6 +217,10 @@ fn main() {
     let bible = Bible::open(&wb_core::default_db_path()).unwrap_or_else(|e| fail(&format!("The Bible database could not be opened: {e}")));
     let mut store = Store::open(&wb_core::default_study_dir()).unwrap_or_else(|e| fail(&format!("The study folder could not be opened: {e}")));
     store.recheck = std::time::Duration::from_secs(1);
+    // notes and questions deleted a week ago or more are erased (the person's decision; wb trash empty does the same)
+    if let Err(e) = store.empty_trash(wb_core::store::TRASH_DAYS) {
+        eprintln!("The trash could not be emptied: {e}");
+    }
     tauri::Builder::default()
         .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
         .invoke_handler(tauri::generate_handler![wb, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready])

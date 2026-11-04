@@ -290,3 +290,14 @@ button.question-pill:hover { text-decoration: line-through; }
 .member-x.shown { opacity: 1; }
 .note-card.done { opacity: .7; }
 .pane-place .colors { margin: 6px 0; }
+
+/* a note's threads, its other places, the Trash, and the notes on a thread */
+.nb-threads { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.nb-thread-chip { padding: 2px 4px 2px 8px; gap: 4px; }
+.nb-thread-chip .link-btn { padding: 2px; }
+.nb-top { flex-wrap: wrap; row-gap: 6px; }
+.nb-acts { flex-wrap: wrap; row-gap: 4px; }
+.nb-entry.trashed .nb-text { color: var(--muted); }
+.nb-trash-about { margin: 4px 0 12px; }
+.thread-notes { margin: 0 0 8px; display: flex; flex-direction: column; gap: 10px; }
+.thread-notes > .label { margin-bottom: -2px; }

@@ -1,15 +1,16 @@
 // The Notebook, docked on the right (docs/PLAN-design.md section 3): Journal (every note by day), Inbox (notes with no
-// place yet, each with Place it…) and All notes (placed notes in Bible order). Questions are notes marked "?": trails
-// once placed. A writing box sits at the bottom of the Journal; Enter adds, Shift+Enter is a new line. Writing here never
+// place yet, each with Place it…), All notes (placed notes in Bible order) and Trash (deleted notes, erased after 7 days
+// unless put back). Questions are notes marked "?": trails once placed. A note may have more places than its first, and
+// may be on threads (or on a thread alone, with no place in the text). A writing box sits at the bottom of the Journal; Enter adds, Shift+Enter is a new line. Writing here never
 // moves the reader.
 import { wb } from './api';
 import { app, goTo, here, type At } from './app';
-import { dock, refHover } from './panes';
+import { dock, refHover, openThread, threadChooser } from './panes';
 import type { Pane } from './dock';
 import { toast } from './sheets';
 import { button, h, icon, linkedText, placePill, popMenu, type Found } from './ui';
 
-type View = 'journal' | 'inbox' | 'all';
+type View = 'journal' | 'inbox' | 'all' | 'trash';
 let view: View = 'journal';
 let onlyQuestions = false;
 let filter = '';
@@ -20,6 +21,7 @@ export const notebookBadge = { set: (_n: number) => {} };
 interface Entry {
   id: string; kind: 'note' | 'question'; placed: boolean; anchor: string; label: string; text: string; time: string; created: string;
   status?: string; refs?: Found[]; offer?: At | null;
+  also?: At[]; threads?: { id: string; name: string }[];
 }
 
 export function openNotebook(v?: View, opts: { questions?: boolean } = {}) {
@@ -58,9 +60,11 @@ async function draw(el: HTMLElement) {
   tab('journal', 'Journal');
   tab('inbox', 'Inbox', inboxCount);
   tab('all', 'All notes');
+  tab('trash', 'Trash');
   const scroll = h('div', 'nb-scroll');
   if (view === 'journal') await journal(scroll);
   else if (view === 'inbox') await inbox(scroll);
+  else if (view === 'trash') await trash(scroll);
   else await allNotes(scroll);
   if (gen !== drawing) return;
   const keep = el.querySelector<HTMLElement>('.nb-scroll')?.scrollTop ?? 0;
@@ -119,6 +123,40 @@ async function allNotes(into: HTMLElement) {
   if (filter) requestAnimationFrame(() => { input.focus(); input.setSelectionRange(input.value.length, input.value.length); });
 }
 
+// Deleted notes and questions: each waits 7 days, then the window erases it when it opens (wb trash empty).
+async function trash(into: HTMLElement) {
+  const d = await wb(['trash']);
+  into.append(h('p', 'muted small nb-trash-about', `Deleted notes wait here ${d.days} days, then are erased. Put one back to keep it.`));
+  for (const t of d.notes) {
+    const c = h('div', 'note-card nb-entry trashed');
+    const top = h('div', 'nb-top');
+    if (t.question) top.append(h('span', 'pill question-pill', '? Question'));
+    top.append(h('span', 'pill unplaced', t.anchor || (t.kind === 'thread' ? 'On a thread' : 'No place')), h('span', 'grow'));
+    const left = t.days_left === 0 ? 'erased next time the app opens' : `erased in ${t.days_left} day${t.days_left === 1 ? '' : 's'}`;
+    top.append(h('span', 'nb-time', left));
+    c.append(top, h('p', 'nb-text', t.text));
+    const acts = h('div', 'nb-acts');
+    acts.append(button('btn soft small', 'Put it back', async () => {
+      try { await wb(['trash', 'restore', t.name]); toast('Put back'); changed(); } catch (x) { toast(String(x)); }
+    }));
+    c.append(acts);
+    into.append(c);
+  }
+  if (!d.notes.length) into.append(h('p', 'muted nb-empty', 'Nothing deleted.'));
+}
+
+/** A note's threads, as chips: a click opens the thread, × takes the note off it. */
+function threadChips(e: Entry): HTMLElement[] {
+  return (e.threads || []).map(t => {
+    const chip = h('span', 'chip thread nb-thread-chip');
+    chip.append(icon('threads', 12), button('link-btn', t.name, () => openThread(t.name)));
+    const x = button('member-x shown', '', async () => { await wb(['note', 'thread', e.id, t.id, '--remove']); changed(); }, 'x');
+    x.title = `Take it off ${t.name}`;
+    chip.append(x);
+    return chip;
+  });
+}
+
 function entryCard(e: Entry, inInbox = false): HTMLElement {
   const c = h('div', `note-card nb-entry${e.kind === 'question' ? ' is-question' : ''}${e.status === 'done' ? ' done' : ''}`);
   c.dataset.id = e.id;
@@ -129,8 +167,11 @@ function entryCard(e: Entry, inInbox = false): HTMLElement {
     tag.title = 'Click: make it a plain note';
     top.append(tag);
   }
-  if (e.placed) top.append(placePill(e.label, () => goTo(e.anchor)));
+  const onThreadOnly = e.placed && !e.anchor;
+  if (onThreadOnly) top.append(h('span', 'pill unplaced', e.label));
+  else if (e.placed) top.append(placePill(e.label, () => goTo(e.anchor)));
   else top.append(h('span', 'pill unplaced', 'No place yet'));
+  for (const a of e.also || []) top.append(placePill(a.label, () => goTo(a.anchor)));
   top.append(h('span', 'grow'));
   const time = h('span', 'nb-time', inInbox ? `${e.created.slice(0, 10) === new Date().toISOString().slice(0, 10) ? 'Today ' : ''}${e.time}` : e.time);
   const more = h('button', 'icon-btn small');
@@ -141,6 +182,8 @@ function entryCard(e: Entry, inInbox = false): HTMLElement {
   const p = h('p', 'nb-text');
   p.append(linkedText(e.text, e.refs, ref => goTo(ref), refHover));
   c.append(top, p);
+  const chips = threadChips(e);
+  if (chips.length) { const row = h('div', 'nb-threads'); row.append(...chips); c.append(row); }
   const acts = h('div', 'nb-acts');
   if (!e.placed) {
     // drag it onto a verse in the reader to give it that place
@@ -149,22 +192,35 @@ function entryCard(e: Entry, inInbox = false): HTMLElement {
     c.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-jot', e.id); ev.dataTransfer!.effectAllowed = 'move'; c.classList.add('dragging'); };
     c.ondragend = () => c.classList.remove('dragging');
     acts.append(button('btn soft small', 'Place it…', ev => placeMenu(ev.currentTarget as HTMLElement, e), 'pin'));
-  } else {
+  } else if (!onThreadOnly) {
     acts.append(button('link-btn', 'Move…', ev => placeMenu(ev.currentTarget as HTMLElement, e)));
+    if (e.kind === 'note') acts.append(button('link-btn', '+ Place', ev => placeMenu(ev.currentTarget as HTMLElement, e, 'also')));
   }
+  acts.append(button('link-btn', '+ Thread', ev => threadChooser(ev.currentTarget as HTMLElement, name => putOnThread(e.id, name))));
   if (e.kind === 'question') {
     const done = e.status === 'done';
     acts.append(button(`link-btn${done ? '' : ' answered'}`, done ? 'Open it again' : '✓ Answered', async () => { await wb(['note', 'answered', e.id, ...(done ? ['--open'] : [])]); changed(); }));
-  } else {
-    acts.append(button('link-btn', 'Ask it as a question', async () => { await wb(['note', 'question', e.id]); changed(); }));
+  } else if (!onThreadOnly) {
+    acts.append(button('link-btn', 'Ask as a question', async () => { await wb(['note', 'question', e.id]); changed(); }));
   }
   acts.append(h('span', 'grow'), button('link-btn danger', 'Delete', () => remove(e), 'trash'));
   c.append(acts);
   return c;
 }
 
-async function remove(e: Entry) {
-  if (!confirm('Delete this note? It goes to .trash in the study folder.')) return;
+/** Put a note on a thread by name; a name no thread has starts a new thread. */
+export async function putOnThread(id: string, name: string) {
+  try {
+    const ts: any[] = await wb(['thread', 'list']);
+    if (!ts.some(t => t.name.toLowerCase() === name.toLowerCase())) await wb(['thread', 'new', name]);
+    await wb(['note', 'thread', id, name]);
+    toast(`On ${name}`);
+    changed();
+  } catch (x) { toast(String(x)); }
+}
+
+export async function remove(e: Pick<Entry, 'id' | 'placed' | 'kind'>) {
+  if (!confirm('Delete this note? It waits in the Trash for 7 days, then is erased.')) return;
   if (!e.placed) await wb(['inbox', 'rm', e.id]);
   else if (e.kind === 'question') await wb(['trail', 'rm', e.id]);
   else await wb(['note', 'rm', e.id]);
@@ -175,16 +231,17 @@ function changed() {
   app.changed();
 }
 
-// "Place this note on" (or, for a placed note, "Move this note to"): the place picked in the reader, the place the
-// note names, or another typed.
-export function placeMenu(from: HTMLElement, e: Pick<Entry, 'id' | 'placed' | 'label' | 'offer'>) {
+// "Place this note on" (or, for a placed note, "Move this note to", or "Also on" for one more place): the place picked in
+// the reader, the place the note names, or another typed.
+export function placeMenu(from: HTMLElement, e: Pick<Entry, 'id' | 'placed' | 'label' | 'offer'>, mode?: 'also') {
   const box = h('div', 'place-menu');
-  box.append(h('div', 'muted small', e.placed ? `Move this note from ${e.label} to` : 'Place this note on'));
+  box.append(h('div', 'muted small', mode === 'also' ? `Put this note on another place too (it stays on ${e.label})` : e.placed ? `Move this note from ${e.label} to` : 'Place this note on'));
   const go = async (anchor: string) => {
     close();
     try {
-      const r = await wb(e.placed ? ['note', 'move', e.id, anchor] : ['note', 'place', e.id, anchor]);
-      toast(`${e.placed ? 'Moved' : 'Placed'} on ${r.label}`);
+      const argv = mode === 'also' ? ['note', 'also', e.id, anchor] : e.placed ? ['note', 'move', e.id, anchor] : ['note', 'place', e.id, anchor];
+      const r = await wb(argv);
+      toast(mode === 'also' ? `Also on ${r.also?.[r.also.length - 1]?.label ?? anchor}` : `${e.placed ? 'Moved' : 'Placed'} on ${r.label}`);
       changed();
     } catch (x) { toast(String(x)); }
   };
@@ -216,11 +273,14 @@ export function placeMenu(from: HTMLElement, e: Pick<Entry, 'id' | 'placed' | 'l
 function entryMenu(from: HTMLElement, e: Entry, cardEl: HTMLElement) {
   const box = h('div', 'menu-list');
   const item = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
+  const onThreadOnly = e.placed && !e.anchor;
   item('Edit', () => editInPlace(e, cardEl));
-  if (e.placed) item('Move to another place…', () => placeMenu(from, e));
+  if (e.placed && !onThreadOnly) item('Move to another place…', () => placeMenu(from, e));
+  if (e.placed && !onThreadOnly && e.kind === 'note') item('Put it on another place too…', () => placeMenu(from, e, 'also'));
+  for (const a of e.also || []) item(`Take it off ${a.label}`, async () => { await wb(['note', 'also', e.id, a.anchor, '--remove']); changed(); });
   if (e.kind === 'question') item(e.status === 'done' ? 'Open it again' : 'Answered: mark it done', async () => { await wb(['note', 'answered', e.id, ...(e.status === 'done' ? ['--open'] : [])]); changed(); });
-  item(e.kind === 'question' ? 'Make it a plain note' : 'Make it a question', async () => { await wb(['note', 'question', e.id, ...(e.kind === 'question' ? ['--plain'] : [])]); changed(); });
-  item('Delete (to .trash)', () => remove(e));
+  if (!onThreadOnly) item(e.kind === 'question' ? 'Make it a plain note' : 'Make it a question', async () => { await wb(['note', 'question', e.id, ...(e.kind === 'question' ? ['--plain'] : [])]); changed(); });
+  item('Delete (to the Trash)', () => remove(e));
   const close = popMenu(from, box, { align: 'right', width: 220 });
 }
 
@@ -233,9 +293,7 @@ function editInPlace(e: Entry, cardEl: HTMLElement) {
   const save = async () => {
     const text = ta.value.trim();
     if (!text || text === e.text) return changed();
-    if (!e.placed) await wb(['inbox', 'edit', e.id, '-'], text);
-    else if (e.kind === 'question') await wb(['trail', 'edit', e.id, text]);
-    else await wb(['note', 'edit', e.id, e.anchor, '-'], text);
+    await wb(['note', 'text', e.id, '-'], text);
     changed();
   };
   ta.onkeydown = ev => {

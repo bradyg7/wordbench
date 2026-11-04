@@ -50,7 +50,7 @@ fn thread(st: &Store, name: &str) -> Result<Value, String> {
     Ok(hit[0].clone())
 }
 
-fn tid(st: &Store, name: &str) -> Result<String, String> {
+pub fn tid(st: &Store, name: &str) -> Result<String, String> {
     Ok(thread(st, name)?["id"].as_str().unwrap().to_string())
 }
 
@@ -103,7 +103,10 @@ pub fn commands() -> Vec<Command> {
             j(json!(sa::save_note(c.bible()?, &mut *c.study()?, &an, &text, Some(&a.s("id"))).map_err(e)?))
         }),
         cmd("note rm", "Delete a note (moved to .trash in the study folder).", vec![Pos("id", N::One)], |c, a| {
-            c.study()?.delete_note(&a.s("id")).map_err(e)?;
+            let mut st = c.study()?;
+            let id = a.s("id");
+            // a note written on a thread (no place in the text) is deleted the same way
+            if st.on_thread().iter().any(|n| n["id"] == id.as_str()) { st.delete_thread_note(&id) } else { st.delete_note(&id) }.map_err(e)?;
             j(json!({"ok": true}))
         }),
         cmd("hl set", "Highlight a place: wb hl set John 3:16 yellow  (yellow green blue pink orange, or #rrggbb). Returns an undo record.",

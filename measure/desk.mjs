@@ -305,6 +305,49 @@ try {
   await page.evaluate(() => { delete document.documentElement.dataset.theme; });
   await page.emulateMedia({ colorScheme: null });
 
+  // the person's decisions of 2026-11-03: the pen, more places, notes on a thread, the Trash
+  await page.evaluate(() => window.__wb.open('NUM', 25, 11));
+  await sleep(400);
+  check('the pen is at the reader’s bottom right at desktop sizes', await page.locator('#pen').isVisible());
+  await page.locator('#pen').click();
+  await page.waitForFunction(() => document.activeElement?.classList.contains('nb-input'), null, { timeout: 10000 });
+  await page.keyboard.type('zeal in more than one place');
+  await page.keyboard.press('Enter');
+  const many = page.locator('.pane-notebook .nb-entry', { hasText: 'zeal in more than one place' }).first();
+  await many.waitFor({ timeout: 10000 });
+  const penAt = await many.locator('.pill').first().textContent();
+  check('the pen writes a note on the place picked or the verse at the top', /Numbers 25/.test(penAt), penAt);
+  await many.getByRole('button', { name: '+ Place' }).click();
+  await page.locator('.place-other input').fill('Ps 106:30');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => [...document.querySelectorAll('.pane-notebook .nb-entry')].some(e => e.textContent.includes('zeal in more than one place') && e.textContent.includes('Psalms 106:30')), null, { timeout: 10000 });
+  const ps106 = JSON.parse(execFileSync(wbExe, ['note', 'list', 'Psalms 106'], { env }).toString());
+  check('+ Place puts a note on a far place too', ps106.some(n => n.text === 'zeal in more than one place'));
+  await page.locator('.pane-notebook .nb-entry', { hasText: 'zeal in more than one place' }).first().getByRole('button', { name: '+ Thread' }).click();
+  await page.locator('.chooser input').fill('Zeal notes');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.pane-notebook .nb-thread-chip', { timeout: 10000 });
+  await page.evaluate(() => window.__wb.run('thread Zeal notes'));
+  await page.waitForSelector('.pane-thread:visible .thread-notes .note-card', { timeout: 10000 });
+  await page.locator('.pane-thread:visible .thread-notes textarea').fill('a note on the thread itself');
+  await page.locator('.pane-thread:visible .thread-notes textarea').press('Enter');
+  await page.waitForFunction(() => [...document.querySelectorAll('.pane-thread .thread-notes .note-card')].filter(e => e.offsetWidth).length === 2, null, { timeout: 10000 });
+  const tn = JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes;
+  check('a thread holds notes: one put on it, one written on it', tn.length === 2 && tn.some(n => n.text === 'a note on the thread itself' && n.anchor === ''));
+  await page.screenshot({ path: shots + '1440-notes-on-a-thread.png' });
+  page.once('dialog', d => d.accept());
+  await page.locator('.pane-thread:visible .thread-notes .note-card', { hasText: 'a note on the thread itself' }).getByRole('button', { name: 'Delete' }).click();
+  await page.waitForFunction(() => ![...document.querySelectorAll('.pane-thread .thread-notes .note-card')].some(e => e.offsetWidth && e.textContent.includes('a note on the thread itself')), null, { timeout: 10000 });
+  await page.evaluate(() => window.__wb.run('notebook'));
+  await page.locator('.nb-seg button', { hasText: 'Trash' }).click();
+  const gone = page.locator('.pane-notebook .nb-entry.trashed', { hasText: 'a note on the thread itself' }).first();
+  await gone.waitFor({ timeout: 10000 });
+  check('a deleted note is in the Trash with its days left', /erased in 7 days/.test(await gone.textContent()));
+  await gone.getByRole('button', { name: 'Put it back' }).click();
+  await page.waitForFunction(() => ![...document.querySelectorAll('.pane-notebook .nb-entry.trashed')].some(e => e.textContent.includes('a note on the thread itself')), null, { timeout: 10000 });
+  check('Put it back restores it to its thread', JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes.length === 2);
+  await page.locator('.nb-seg button', { hasText: 'Journal' }).click();
+
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();
   await page.waitForSelector('.pane-passage .passage-verse', { timeout: 10000 });

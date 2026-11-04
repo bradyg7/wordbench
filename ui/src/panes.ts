@@ -5,10 +5,19 @@ import { app, book, goTo, here } from './app';
 import { Dock, type Pane, type Side } from './dock';
 import { layers } from './layers';
 import { hideCard, showCard, toast } from './sheets';
-import { button, h, icon, placePill, popMenu } from './ui';
-import { placeMenu } from './notebook';
+import { button, h, icon, linkedText, placePill, popMenu } from './ui';
+import { placeMenu, remove as removeNote } from './notebook';
 
 export let dock: Dock;
+
+// A pane drawn again while an earlier draw still waits on wb: only the newest draw fills it (two at once each added their
+// own content, so a writing box showed twice). `newest(el)` → whether this draw is still the newest.
+const draws = new WeakMap<HTMLElement, number>();
+function newest(el: HTMLElement): () => boolean {
+  const n = (draws.get(el) ?? 0) + 1;
+  draws.set(el, n);
+  return () => draws.get(el) === n;
+}
 export function initPanes(host: HTMLElement) {
   dock = new Dock(host);
   dock.backLabel = () => here().label;
@@ -530,8 +539,10 @@ function eye(id: string, name: string) {
 
 export function openThread(name: string) {
   return dock.open('thread', name, `thread|${name.toLowerCase()}`, MINE, async (el, pane) => {
-    el.replaceChildren();
+    const current = newest(el);
     const t = await wb(['thread', 'show', name]);
+    if (!current()) return;
+    el.replaceChildren();
     dock.rename(pane, t.name);
     const hd = h('header', 'pane-head thread-head');
     const title = h('h2', 'pane-title');
@@ -547,6 +558,9 @@ export function openThread(name: string) {
     hd.append(title, drawn, menu);
     el.append(hd);
     el.append(threadNote(t));
+    const notes = h('div', 'thread-notes');
+    el.append(notes, h('div', 'label', `Places · ${t.members.length}`));
+    void threadNotes(t, notes);
     const list = h('div', 'members');
     t.members.forEach((m: any, k: number) => {
       const card = h('div', 'member');
@@ -592,6 +606,60 @@ export function openThread(name: string) {
     el.append(list);
     if (!t.members.length) el.append(h('p', 'muted', 'No places yet: type +' + t.name + ' in the command field to add the place you are at.'));
   });
+}
+
+// The notes on a thread: written on it (no place in the text), or placed notes and questions put on it. Each opens its
+// place, is edited in place, taken off the thread, or deleted; the box below writes a new one on the thread.
+async function threadNotes(t: any, into: HTMLElement) {
+  const d = await wb(['thread', 'notes', t.name]);
+  into.append(h('div', 'label', `Notes · ${d.notes.length}`));
+  for (const n of d.notes) {
+    const c = h('div', `note-card${n.kind === 'question' ? ' is-question' : ''}`);
+    const top = h('div', 'nb-top');
+    if (n.kind === 'question') top.append(h('span', 'pill question-pill', n.status === 'done' ? '? Answered' : '? Question'));
+    if (n.anchor) top.append(placePill(n.label, () => goTo(n.anchor)));
+    for (const a of n.also || []) top.append(placePill(a.label, () => goTo(a.anchor)));
+    top.append(h('span', 'grow'), h('span', 'nb-time', n.time));
+    const p = h('p', 'nb-text');
+    p.append(linkedText(n.text, n.refs, ref => goTo(ref), refHover));
+    const acts = h('div', 'nb-acts');
+    acts.append(button('link-btn', 'Edit', () => {
+      const ta = h('textarea', 'field nb-edit') as HTMLTextAreaElement;
+      ta.value = n.text;
+      p.replaceWith(ta);
+      ta.focus();
+      let done = false;
+      const save = async () => {
+        if (done) return;
+        done = true;
+        const v = ta.value.trim();
+        if (v && v !== n.text) await wb(['note', 'text', n.id, '-'], v);
+        app.changed();
+      };
+      ta.onkeydown = e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); }
+        if (e.key === 'Escape') { e.stopPropagation(); done = true; app.changed(); }
+      };
+      ta.onblur = () => save();
+    }));
+    acts.append(button('link-btn', 'Take off the thread', async () => { await wb(['note', 'thread', n.id, t.id, '--remove']); app.changed(); }));
+    acts.append(h('span', 'grow'), button('link-btn danger', 'Delete', () => removeNote(n), 'trash'));
+    c.append(top, p, acts);
+    into.append(c);
+  }
+  const box = h('div', 'nb-write place-write');
+  const ta = h('textarea', 'nb-input') as HTMLTextAreaElement;
+  ta.placeholder = `Write a note on ${t.name}…`;
+  ta.rows = 2;
+  box.append(ta, h('div', 'muted small', 'Enter saves · Shift+Enter: a new line'));
+  ta.onkeydown = async e => {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    e.preventDefault();
+    const text = ta.value.trim();
+    if (!text) return;
+    try { await wb(['thread', 'write', t.name, '-'], text); ta.value = ''; app.changed(); } catch (x) { toast(String(x)); }
+  };
+  into.append(box);
 }
 
 // The thread's own note, at its top: a click edits it in place (Enter saves, Shift+Enter: a new line, Esc: as it was).
@@ -709,8 +777,10 @@ export function openMarked(color: string, scope: string, thread?: string) {
  */
 export function openPlace(anchor: string, label: string) {
   return dock.open('place', label, `place|${anchor}`, MINE, async el => {
-    el.replaceChildren();
+    const current = newest(el);
     const [d, qs] = await Promise.all([wb(['anchor', anchor]), wb(['trail', 'list', '--status', 'all']).catch(() => ({ trails: [] }))]);
+    if (!current()) return;
+    el.replaceChildren();
     const hd = head(el, d.label || label, '');
     if (d.kind !== 'verse' && d.kind !== 'lemma') (hd.querySelector('.pane-sub') as HTMLElement).textContent = d.kind === 'word' ? 'A word' : 'Words';
     if (d.quote) el.append(h('p', 'scripture place-quote', d.kind === 'verse' || d.kind === 'verses' ? d.quote : `“${d.quote}”`));
@@ -809,7 +879,7 @@ function noteCardEditable(n: any, label: string): HTMLElement {
     ta.focus();
     const save = async () => {
       const text = ta.value.trim();
-      if (text && text !== n.text) await wb(['note', 'edit', n.id, n.anchor, '-'], text);
+      if (text && text !== n.text) await wb(['note', 'text', n.id, '-'], text);
       app.changed();
     };
     ta.onkeydown = e => {

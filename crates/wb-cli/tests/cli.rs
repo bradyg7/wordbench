@@ -484,6 +484,84 @@ fn a_placed_note_moves_and_a_question_is_untagged_or_answered_anywhere() {
 }
 
 #[test]
+fn a_note_sits_on_places_apart_from_each_other() {
+    let Some(wb) = Wb::new() else { return };
+    let n = wb.js(&["note", "add", "Num 25:11", "the same zeal"]);
+    let id = n["id"].as_str().unwrap().to_string();
+    let e = wb.js(&["note", "also", &id, "Ps 106:30"]);
+    assert_eq!(e["also"], json!([{"anchor": "PSA.106:30", "label": "Psalms 106:30"}]));
+    wb.js(&["note", "also", &id, "1 Cor 10:8"]);
+    // its file stays at its first place, with the others in its front matter (the Python app keeps the field)
+    let text = std::fs::read_to_string(wb.dir.join("notes").join("NUM").join(format!("{id}.md"))).unwrap();
+    assert!(text.contains("also: [\"PSA.106:30\", \"1CO.10:8\"]"), "{text}");
+    // it shows at each place: the note list, the place pane, the reader's marks
+    assert_eq!(wb.js(&["note", "list", "Psalms 106"])[0]["id"], json!(id));
+    assert_eq!(wb.js(&["anchor", "1 Cor 10:8"])["notes"][0]["id"], json!(id));
+    assert_eq!(wb.js(&["note", "list", "Numbers 25"])[0]["id"], json!(id));
+    // moving it keeps its other places; a place comes off, but not its first
+    let moved = wb.js(&["note", "move", &id, "Num 25:13"]);
+    assert_eq!(moved["also"].as_array().unwrap().len(), 2);
+    assert!(wb.fails(&["note", "also", &id, "Num 25:13", "--remove"]).contains("first place"));
+    assert_eq!(wb.js(&["note", "also", &id, "Ps 106:30", "--remove"])["also"], json!([{"anchor": "1CO.10:8", "label": "1 Corinthians 10:8"}]));
+    assert_eq!(wb.js(&["note", "list", "Psalms 106"]), json!([]));
+}
+
+#[test]
+fn a_thread_holds_notes_of_its_own_and_notes_put_on_it() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Zeal"]);
+    let w = wb.js(&["thread", "write", "Zeal", "what the thread is following"]);
+    let id = w["id"].as_str().unwrap().to_string();
+    assert_eq!((w["label"].clone(), w["placed"].clone()), (json!("On Zeal"), json!(true)));
+    assert!(wb.dir.join("notes").join("_threads").join(format!("{id}.md")).exists());
+    // a placed note is put on the thread too
+    let n = wb.js(&["note", "add", "Num 25:11", "his zeal"]);
+    let nid = n["id"].as_str().unwrap().to_string();
+    assert_eq!(wb.js(&["note", "thread", &nid, "zeal"])["threads"][0]["name"], json!("Zeal"));
+    let on = wb.js(&["thread", "notes", "Zeal"])["notes"].clone();
+    let mut got: Vec<&str> = on.as_array().unwrap().iter().map(|x| x["id"].as_str().unwrap()).collect();
+    got.sort();
+    let mut want = vec![id.as_str(), nid.as_str()];
+    want.sort();
+    assert_eq!(got, want);
+    // not in the margins or the note lists (it has no place), but in the Journal, All notes and find by its id
+    assert_eq!(wb.js(&["journal"])["days"][0]["entries"].as_array().unwrap().iter().filter(|e| e["id"] == id.as_str()).count(), 1);
+    assert_eq!(wb.js(&["note", "all"])["books"].as_array().unwrap().last().unwrap()["code"], json!("_threads"));
+    assert_eq!(wb.js(&["note", "text", &id, "what this thread follows"])["text"], json!("what this thread follows"));
+    // taken off its last thread, a note with no place waits in the Inbox
+    wb.js(&["note", "thread", &id, "Zeal", "--remove"]);
+    assert_eq!(wb.js(&["inbox"])["notes"][0]["id"], json!(id));
+    assert_eq!(wb.js(&["thread", "notes", "Zeal"])["notes"].as_array().unwrap().len(), 1);
+    // and put on a thread from the Inbox, it leaves the Inbox
+    wb.js(&["note", "thread", &id, "Zeal"]);
+    assert_eq!(wb.js(&["inbox"])["notes"], json!([]));
+    wb.js(&["note", "rm", &id]);
+    assert_eq!(wb.js(&["thread", "notes", "Zeal"])["notes"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn deleted_notes_wait_a_week_in_the_trash_and_can_be_put_back() {
+    let Some(wb) = Wb::new() else { return };
+    let n = wb.js(&["note", "add", "Num 25:11", "to delete"]);
+    let id = n["id"].as_str().unwrap().to_string();
+    wb.js(&["note", "rm", &id]);
+    let t = wb.js(&["trash"]);
+    assert_eq!((t["days"].clone(), t["notes"][0]["id"].clone(), t["notes"][0]["days_left"].clone()), (json!(7), json!(id), json!(7)));
+    let name = t["notes"][0]["name"].as_str().unwrap().to_string();
+    wb.js(&["trash", "restore", &name]);
+    assert_eq!(wb.js(&["note", "list", "Numbers 25"])[0]["id"], json!(id));
+    assert_eq!(wb.js(&["trash"])["notes"], json!([]));
+    // a week on, a deleted note is erased; other files in .trash (a thread, highlights) stay
+    let trash = wb.dir.join(".trash");
+    std::fs::write(trash.join("20200101-000000-n_20200101000000_aaaa.md"), "---\nid: \"n_20200101000000_aaaa\"\nanchor: \"\"\nkind: \"jot\"\n---\n\nold\n").unwrap();
+    std::fs::write(trash.join("20200101-000000-love.md"), "a thread").unwrap();
+    wb.js(&["note", "rm", &id]);
+    assert_eq!(wb.js(&["trash", "empty"])["erased"], json!(["20200101-000000-n_20200101000000_aaaa.md"]));
+    assert!(trash.join("20200101-000000-love.md").exists());
+    assert_eq!(wb.js(&["trash"])["notes"].as_array().unwrap().len(), 1); // deleted today: it waits
+}
+
+#[test]
 fn reading_a_chapter_is_remembered_and_asked_for_by_place() {
     let Some(wb) = Wb::new() else { return };
     assert_eq!(wb.js(&["read", "when", "Num 25"]), json!({}));

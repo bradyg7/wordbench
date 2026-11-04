@@ -3,7 +3,7 @@
 use crate::anchors::{self, Kind};
 use crate::bible::{Bible, Chapter, Count, Lexicon};
 use crate::marks::{self, ChapterMarks};
-use crate::store::{s, Rec, Store};
+use crate::store::{places_of, s, Rec, Store};
 use crate::{Error, Result};
 use serde::Serialize;
 
@@ -63,7 +63,7 @@ pub fn word(bible: &Bible, store: &Store, code: &str, c: u32, v: u32, i: u32) ->
     let (name, w) = bible.word(code, c, v, i)?;
     let strong = w.strong.clone();
     let anchor = format!("{code}.{c}:{v}.{i}");
-    let here = store.notes().into_iter().filter(|n| s(n, "anchor") == anchor);
+    let here = store.notes().into_iter().filter(|n| places_of(n).contains(&anchor));
     let everywhere = store.notes().into_iter().filter(|n| strong.as_deref().is_some_and(|x| s(n, "anchor") == x));
     let notes = here.chain(everywhere).cloned().collect();
     Ok(WordView {
@@ -93,7 +93,7 @@ pub fn verse(bible: &Bible, store: &Store, code: &str, c: u32, v: u32) -> Result
         .ok_or_else(|| Error(format!("No verse {} {c}:{v}", book.name)))?;
     let anchor = format!("{code}.{c}:{v}");
     let color = store.highlights(code).into_iter().rev().find(|h| s(h, "anchor") == anchor).map(|h| s(&h, "color"));
-    let notes = store.notes().into_iter().filter(|n| touches_verse(&s(n, "anchor"), code, c, v)).cloned().collect();
+    let notes = store.notes().into_iter().filter(|n| places_of(n).iter().any(|p| touches_verse(p, code, c, v))).cloned().collect();
     let threads = store
         .threads()
         .into_iter()

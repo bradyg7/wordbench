@@ -2,7 +2,7 @@
 //! of threads that have a color, as raw anchor coordinates. The reader turns them into word ranges.
 
 use crate::anchors::{self, Anchor, Kind};
-use crate::store::{s, Store};
+use crate::store::{places_of, s, Store};
 use crate::Result;
 use serde::Serialize;
 
@@ -39,9 +39,11 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: u32) -> Result<ChapterM
         }
     }
     for n in store.notes() {
-        if let Ok(a) = anchors::parse(&s(n, "anchor")) {
-            if inside(&a, code, chapter) {
-                m.notes.push(Mark { at: a, id: s(n, "id"), color: String::new() });
+        for place in places_of(n) {
+            if let Ok(a) = anchors::parse(&place) {
+                if inside(&a, code, chapter) {
+                    m.notes.push(Mark { at: a, id: s(n, "id"), color: String::new() });
+                }
             }
         }
     }

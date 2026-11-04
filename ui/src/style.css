@@ -55,12 +55,14 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 }
 .tabs button { flex: 1; font: var(--type-caption); color: var(--muted); }
 .tabs button.on { color: var(--accent); }
-.fab { display: none; }
-:root[data-size="compact"] .fab {
-  display: block; position: fixed; right: 16px; bottom: calc(var(--tabs-h) + 16px + env(safe-area-inset-bottom)); z-index: 6;
+/* the pen: on a phone above the tabs; at desktop sizes at the reader's bottom right, beside the docked columns */
+.fab {
+  display: grid; place-items: center; position: fixed; right: calc(var(--dock-r, 0px) + 24px); bottom: 24px; z-index: 6;
   width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-size: 24px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, .22);
 }
+.fab:hover { filter: brightness(1.06); }
+:root[data-size="compact"] .fab { right: 16px; bottom: calc(var(--tabs-h) + 16px + env(safe-area-inset-bottom)); }
 
 /* ---- the reader ---- */
 #scroller {

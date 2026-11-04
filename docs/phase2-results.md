@@ -265,14 +265,16 @@ Bugs, or things that got in the way of daily study.
 11. A thread's note is at its top and edited there with a click ("Add a note to this thread…" when it has none). An
     original word in a thread shows its KJV renderings, its definition and how many times it is used.
 
-### Needs the person's decision first
+### Decided by the person (2026-11-03), and built
 
-| # | Note | What it says | The question |
+| # | Note | The person's answer | Built |
 |---|---|---|---|
-| 12 | `a4a8` | Delete should delete forever, not send to the trash | CLAUDE.md says deletes go to `.trash/` and nothing is erased. Keep that, or add "Empty the trash" that the person runs? |
-| 13 | `e0a3` | Notes on several verses | A run of verses (Num 25:7-13) is already a place a note can have. Verses apart from each other would change the note's file, which the Python app reads. Is a run enough? |
-| 14 | `6572`, `4ad9` | Notes attached to threads, not only verses | A thread holds one note now. Several notes on a thread is a new kind of note the Python app will not show |
-| 15 | `56e7` | The notes button should appear the way it does on mobile | Which button: the phone's pen (the palette), its Notebook tab, or the verse sheet's Note? |
+| 12 | `a4a8` | "Delete should send notes to a trashbin that auto deletes notes after 7 days" | A deleted note or question waits in `.trash/`; the window erases those deleted 7 days ago or more when it opens. The Notebook's **Trash** tab lists them with the days left and **Put it back**. Other files in `.trash` (threads, highlight files, plans) stay. `wb trash`, `wb trash restore <name>`, `wb trash empty [--days 7]`. CLAUDE.md's rule changed to say so |
+| 13 | `e0a3` | "One note should be able to sit on multiple verses even if they aren't next to each other" | **+ Place** on a note puts it on another place too, as many as wanted; it shows at each (margins, Notes & lookup, the verse card, note lists, a pill on its card). The file stays at its first place with `also: [...]` in its front matter; the Python app keeps the field and shows the note at its first place. `wb note also <id> <place> [--remove]` |
+| 14 | `6572`, `4ad9` | "A thread can hold more than one note (how else would the thread building the documents be valuable, unless the notes were attached?)" | A thread pane has **Notes**: notes written on the thread (with no place, in `notes/_threads/`, which the Python app passes over) and any note or question put on it (**+ Thread** on a card; `threads: [...]` in its front matter). A note's threads are chips on its card. `wb thread write`, `wb thread notes`, `wb note thread <id> <thread> [--remove]`. They are kept for the documents of phase 5 |
+| 15 | `56e7` | "The pencil button is the notes button on mobile" | The pen is at the reader's bottom right at every size. At desktop sizes it writes in the Notebook's box on the place picked (or the verse at the top); on a phone it is still the palette's place (phase 3) |
+
+`wb note text <id>` edits any note wherever it is (at a place, on a thread, in the Inbox, a question).
 
 ### Design first, then build
 

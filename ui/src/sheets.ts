@@ -116,6 +116,8 @@ export function cardShown() {
 
 // ---- toast ----------------------------------------------------------------------------------------------------------
 export function toast(text: string) {
+  // a new one replaces the one showing, so two never sit on top of each other
+  overlay().querySelectorAll('.toast').forEach(x => x.remove());
   const t = document.createElement('div');
   t.className = 'toast';
   t.textContent = text;

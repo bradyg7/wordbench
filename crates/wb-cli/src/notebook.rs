@@ -61,6 +61,45 @@ pub fn commands() -> Vec<Command> {
                 let id = nb::find_jot(&st, &a.s("id")).unwrap_or_else(|_| a.s("id"));
                 j(nb::answer(c.bible()?, &mut st, &id, !a.flag("open")).map_err(e)?)
             }),
+        cmd("note text", "Change the text of any note or question, wherever it is (at a place, on a thread, in the Inbox): wb note text <id> \"new text\" (- reads standard input).",
+            vec![Pos("id", N::One), Pos("text", N::Many)], |c, a| {
+                let text = text_of(c, &a.s("text"))?;
+                j(nb::edit_text(c.bible()?, &mut *c.study()?, &a.s("id"), &text).map_err(e)?)
+            }),
+        cmd("note also", "Put a placed note on one more place, as many as you like, near or far: wb note also <id> \"Ps 106:30\"; --remove takes that place off it.",
+            vec![Pos("id", N::One), Pos("place", N::Many), Flag("remove")], |c, a| {
+                let place = anchor(c, &a.s("place"))?;
+                j(nb::also_at(c.bible()?, &mut *c.study()?, &a.s("id"), &place, !a.flag("remove")).map_err(e)?)
+            }),
+        cmd("note thread", "Put a note or question on a thread: wb note thread <id> Phinehas; --remove takes it off. (A note on no place that leaves its last thread goes to the Inbox.)",
+            vec![Pos("id", N::One), Pos("thread", N::Many), Flag("remove")], |c, a| {
+                let mut st = c.study()?;
+                let t = crate::study::tid(&st, &a.s("thread"))?;
+                j(nb::on_thread(c.bible()?, &mut st, &a.s("id"), &t, !a.flag("remove")).map_err(e)?)
+            }),
+        cmd("thread notes", "The notes on a thread, oldest first: those written on it and the notes and questions put on it.", vec![Pos("name", N::Many)], |c, a| {
+            let st = c.study()?;
+            let t = crate::study::tid(&st, &a.s("name"))?;
+            j(nb::thread_notes(c.bible()?, &st, &t).map_err(e)?)
+        }),
+        cmd("thread write", "Write a note on a thread, with no place in the text: wb thread write Phinehas \"text\" (- reads standard input).",
+            vec![Pos("name", N::One), Pos("text", N::Many)], |c, a| {
+                let text = text_of(c, &a.s("text"))?;
+                let mut st = c.study()?;
+                let t = crate::study::tid(&st, &a.s("name"))?;
+                j(nb::write_on_thread(c.bible()?, &mut st, &t, &text).map_err(e)?)
+            }),
+        cmd("trash", "The deleted notes and questions in .trash, newest first, with the days each has left before it is erased.", vec![], |c, _| {
+            j(nb::trash(&*c.study()?))
+        }),
+        cmd("trash restore", "Put a deleted note or question back where it was: wb trash restore <its name from wb trash>.", vec![Pos("name", N::One)], |c, a| {
+            j(json!(c.study()?.restore(&a.s("name")).map_err(e)?))
+        }),
+        cmd("trash empty", "Erase the notes and questions deleted at least --days ago (default 7; the window does this when it opens). Other files in .trash stay.",
+            vec![Opt("days", Some("7"))], |c, a| {
+                let days: i64 = a.opt_or("days", "7").parse().map_err(|_| "argument --days: invalid int value")?;
+                j(json!({"erased": c.study()?.empty_trash(days.max(0)).map_err(e)?}))
+            }),
         cmd("note all","Every placed note in Bible order, by book; with words, only the notes that have them all.", vec![Pos("words", N::Any)], |c, a| {
             j(nb::all_notes(c.bible()?, &*c.study()?, &a.s("words")).map_err(e)?)
         }),

@@ -13,7 +13,7 @@ use crate::anchors::{py_parse, resolve};
 use crate::bible::Bible;
 use crate::commands::find_refs;
 use crate::places::{parse_span, span_anchor, span_label};
-use crate::store::{bad, missing, s, Rec, Store};
+use crate::store::{bad, missing, places_of, s, threads_of, Rec, Store};
 use crate::Result;
 use chrono::{DateTime, Local, NaiveDate};
 use serde_json::{json, Value};
@@ -28,13 +28,29 @@ fn label(bible: &Bible, anchor: &str) -> String {
     resolve(bible, anchor).map(|r| s(&r, "label")).unwrap_or_else(|_| anchor.to_string())
 }
 
-/// One line of the Notebook, whatever file it came from.
+/// One line of the Notebook, whatever file it came from. A note on a thread with no place in the text counts as placed
+/// (the thread is its place); `also` and `threads` list the note's other places and its threads.
+fn entry_in(bible: &Bible, store: &Store, r: &Rec, kind: &str, placed: bool) -> Value {
+    let mut e = entry(bible, r, kind, placed);
+    let also: Vec<Value> = places_of(r).into_iter().skip(1).map(|a| json!({"anchor": a, "label": label(bible, &a)})).collect();
+    let threads: Vec<Value> = threads_of(r)
+        .into_iter()
+        .map(|t| json!({"id": t, "name": store.thread(&t).map(|x| s(&x, "name")).unwrap_or_else(|_| t.clone())}))
+        .collect();
+    if s(r, "anchor").is_empty() && !threads.is_empty() {
+        e["label"] = json!(format!("On {}", threads.iter().map(|t| t["name"].as_str().unwrap_or("")).collect::<Vec<_>>().join(", ")));
+    }
+    e["also"] = json!(also);
+    e["threads"] = json!(threads);
+    e
+}
+
 fn entry(bible: &Bible, r: &Rec, kind: &str, placed: bool) -> Value {
     let anchor = s(r, "anchor");
     let time = local(&s(r, "created")).map(|x| x.1).unwrap_or_default();
     let mut e = json!({
         "id": r["id"], "kind": kind, "placed": placed, "anchor": anchor,
-        "label": if placed { label(bible, &anchor) } else { String::new() },
+        "label": if placed && !anchor.is_empty() { label(bible, &anchor) } else { String::new() },
         "quote": s(r, "quote"), "text": s(r, "text"), "created": r["created"], "updated": r["updated"], "time": time,
         "refs": find_refs(&s(r, "text"), bible.books()),
     });
@@ -45,14 +61,15 @@ fn entry(bible: &Bible, r: &Rec, kind: &str, placed: bool) -> Value {
 }
 
 fn inbox_entries(bible: &Bible, store: &Store) -> Vec<Value> {
-    store.inbox().into_iter().map(|n| entry(bible, n, if s(n, "kind") == "question" { "question" } else { "note" }, false)).collect()
+    store.inbox().into_iter().map(|n| entry_in(bible, store, n, if s(n, "kind") == "question" { "question" } else { "note" }, false)).collect()
 }
 
-/// Every entry: placed notes, the Inbox, and questions (trails).
+/// Every entry: placed notes, notes on threads, the Inbox, and questions (trails).
 fn every(bible: &Bible, store: &Store) -> Vec<Value> {
-    let mut all: Vec<Value> = store.notes().into_iter().map(|n| entry(bible, n, "note", true)).collect();
+    let mut all: Vec<Value> = store.notes().into_iter().map(|n| entry_in(bible, store, n, "note", true)).collect();
+    all.extend(store.on_thread().into_iter().map(|n| entry_in(bible, store, n, "note", true)));
     all.extend(inbox_entries(bible, store));
-    all.extend(store.trails().into_iter().map(|t| entry(bible, t, "question", true)));
+    all.extend(store.trails().into_iter().map(|t| entry_in(bible, store, t, "question", true)));
     all
 }
 
@@ -103,7 +120,7 @@ pub fn all_notes(bible: &Bible, store: &Store, filter: &str) -> Result<Value> {
     let words: Vec<String> = filter.to_lowercase().split_whitespace().map(String::from).collect();
     let mut rows: Vec<((u32, i64, i64, i64), String, String, Value)> = vec![];
     for n in store.notes() {
-        let e = entry(bible, n, "note", true);
+        let e = entry_in(bible, store, n, "note", true);
         let blob = format!("{} {} {}", s(n, "text"), e["label"].as_str().unwrap_or(""), s(n, "quote")).to_lowercase();
         if !words.iter().all(|w| blob.contains(w.as_str())) {
             continue;
@@ -126,6 +143,16 @@ pub fn all_notes(bible: &Bible, store: &Store, filter: &str) -> Result<Value> {
         }
         books.last_mut().unwrap()["notes"].as_array_mut().unwrap().push(e);
     }
+    // notes on a thread with no place in the text come last, together
+    let loose: Vec<Value> = store
+        .on_thread()
+        .into_iter()
+        .filter(|n| words.iter().all(|w| s(n, "text").to_lowercase().contains(w.as_str())))
+        .map(|n| entry_in(bible, store, n, "note", true))
+        .collect();
+    if !loose.is_empty() {
+        books.push(json!({"code": "_threads", "name": "Notes on threads", "notes": loose}));
+    }
     Ok(json!({"books": books}))
 }
 
@@ -135,7 +162,7 @@ pub fn questions(bible: &Bible, store: &Store, status: &str) -> Result<Value> {
         return Err(bad("Status must be open, done or all."));
     }
     let mut out: Vec<Value> = inbox_entries(bible, store).into_iter().filter(|e| e["kind"] == "question").collect();
-    out.extend(store.trails().into_iter().map(|t| entry(bible, t, "question", true)));
+    out.extend(store.trails().into_iter().map(|t| entry_in(bible, store, t, "question", true)));
     out.retain(|e| status == "all" || e["status"] == status);
     out.sort_by(|a, b| b["created"].as_str().cmp(&a["created"].as_str()));
     Ok(json!({"questions": out}))
@@ -168,6 +195,63 @@ pub fn place(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -> Result
     Ok(entry(bible, &r, if question { "question" } else { "note" }, true))
 }
 
+/// The notes on a thread, oldest first: those written on it with no place, and placed notes and questions put on it.
+pub fn thread_notes(bible: &Bible, store: &Store, thread_id: &str) -> Result<Value> {
+    let t = store.thread(thread_id)?;
+    let on = |n: &&Rec| threads_of(n).iter().any(|x| x == thread_id);
+    let mut out: Vec<Value> = store.notes().into_iter().filter(on).map(|n| entry_in(bible, store, n, "note", true)).collect();
+    out.extend(store.on_thread().into_iter().filter(on).map(|n| entry_in(bible, store, n, "note", true)));
+    out.extend(store.trails().into_iter().filter(on).map(|n| entry_in(bible, store, n, "question", true)));
+    out.extend(store.inbox().into_iter().filter(on).map(|n| entry_in(bible, store, n, "question", false)));
+    out.sort_by(|a, b| a["created"].as_str().cmp(&b["created"].as_str()));
+    Ok(json!({"id": t["id"], "name": t["name"], "notes": out}))
+}
+
+/// Write a note on a thread, with no place in the text. → the entry.
+pub fn write_on_thread(bible: &Bible, store: &mut Store, thread_id: &str, text: &str) -> Result<Value> {
+    let r = store.add_thread_note(thread_id, text)?;
+    Ok(entry_in(bible, store, &r, "note", true))
+}
+
+/// Put any note or question on a thread, or take it off. → the entry.
+pub fn on_thread(bible: &Bible, store: &mut Store, id: &str, thread_id: &str, on: bool) -> Result<Value> {
+    let r = store.set_note_thread(id, thread_id, on)?;
+    let question = s(&r, "kind") == "question" || r.contains_key("status");
+    let placed = !s(&r, "anchor").is_empty() || !threads_of(&r).is_empty();
+    Ok(entry_in(bible, store, &r, if question { "question" } else { "note" }, placed))
+}
+
+/// Give a placed note one more place, or take one away (`on`). → the entry.
+pub fn also_at(bible: &Bible, store: &mut Store, id: &str, anchor: &str, on: bool) -> Result<Value> {
+    let (a, _, _, _) = if on { resolved(bible, anchor)? } else { (crate::anchors::canonical(anchor)?, String::new(), String::new(), String::new()) };
+    let r = store.set_note_also(id, &a, on)?;
+    Ok(entry_in(bible, store, &r, "note", true))
+}
+
+/// Change the text of any note or question, wherever it is. → the entry.
+pub fn edit_text(bible: &Bible, store: &mut Store, id: &str, text: &str) -> Result<Value> {
+    if store.inbox().iter().any(|n| s(n, "id") == id) {
+        let r = store.update_jot(id, Some(text), None)?;
+        let q = s(&r, "kind") == "question";
+        return Ok(entry_in(bible, store, &r, if q { "question" } else { "note" }, false));
+    }
+    if store.on_thread().iter().any(|n| s(n, "id") == id) {
+        let r = store.update_thread_note(id, text)?;
+        return Ok(entry_in(bible, store, &r, "note", true));
+    }
+    if store.trails().iter().any(|n| s(n, "id") == id) {
+        let r = store.update_trail(id, text)?;
+        return Ok(entry_in(bible, store, &r, "question", true));
+    }
+    let r = store.update_note(id, text)?;
+    Ok(entry_in(bible, store, &r, "note", true))
+}
+
+/// The deleted notes and questions waiting in .trash, with how many days each has left.
+pub fn trash(store: &Store) -> Value {
+    json!({"days": crate::store::TRASH_DAYS, "notes": store.trashed()})
+}
+
 /// A placed note or question by its id: (is it a question, its anchor).
 fn placed(store: &Store, id: &str) -> Result<(bool, String)> {
     if let Some(n) = store.notes().into_iter().find(|n| s(n, "id") == id) {
@@ -191,7 +275,7 @@ pub fn move_to(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -> Resu
     let (q, _) = placed(store, id)?;
     let (a, kind, quote, strong) = resolved(bible, anchor)?;
     let r = store.replace_placed(id, &a, &kind, &quote, &strong, None)?;
-    Ok(entry(bible, &r, if q { "question" } else { "note" }, true))
+    Ok(entry_in(bible, store, &r, if q { "question" } else { "note" }, true))
 }
 
 /// Make a note a question or a question a plain note, wherever it is: in the Inbox, or at its place (a placed question

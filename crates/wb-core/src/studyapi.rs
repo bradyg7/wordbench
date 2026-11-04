@@ -3,7 +3,7 @@
 
 use crate::anchors::{py_parse, resolve};
 use crate::bible::Bible;
-use crate::store::{bad, check_color, cut, missing, new_id, now, s, Rec, Store, COLORS};
+use crate::store::{bad, check_color, cut, missing, new_id, now, places_of, s, Rec, Store, COLORS};
 use crate::Result;
 use rusqlite::OptionalExtension;
 use serde_json::{json, Map, Value};
@@ -18,7 +18,7 @@ fn n(p: &Rec, k: &str) -> Option<i64> {
 
 pub fn public(note: &Rec, current_quote: Option<&str>) -> Rec {
     let mut out = Map::new();
-    for k in ["id", "anchor", "kind", "quote", "strong", "created", "updated", "text"] {
+    for k in ["id", "anchor", "kind", "quote", "strong", "created", "updated", "text", "also", "threads"] {
         if let Some(v) = note.get(k) {
             out.insert(k.into(), v.clone());
         }
@@ -51,11 +51,13 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: i64) -> Result<Value> {
     }
     for nt in store.notes() {
         if s(nt, "kind") != "lemma" {
-            let p = py_parse(&s(nt, "anchor"))?;
-            if inside(&p, code, chapter) {
-                let mut m = coords(&p);
-                m.insert("id".into(), nt["id"].clone());
-                notes.push(m);
+            for place in places_of(nt) {
+                let p = py_parse(&place)?;
+                if inside(&p, code, chapter) {
+                    let mut m = coords(&p);
+                    m.insert("id".into(), nt["id"].clone());
+                    notes.push(m);
+                }
             }
         }
     }
@@ -164,7 +166,7 @@ pub fn anchor_view(bible: &Bible, store: &Store, anchor: &str) -> Result<Value> 
     let ok = res["ok"] == true;
     let quote = s(&res, "quote");
     let notes = store.notes();
-    let here: Vec<Rec> = notes.iter().filter(|n| s(n, "anchor") == a).map(|n| public(n, if ok { Some(&quote) } else { None })).collect();
+    let here: Vec<Rec> = notes.iter().filter(|n| places_of(n).contains(&a)).map(|n| public(n, if ok && s(n, "anchor") == a { Some(&quote) } else { None })).collect();
     let threads: Vec<Value> = store
         .threads()
         .into_iter()
@@ -226,11 +228,17 @@ pub fn chapter_notes(bible: &Bible, store: &Store, code: &str, chapter: i64) -> 
         if s(nt, "kind") == "lemma" {
             continue;
         }
-        let p = py_parse(&s(nt, "anchor"))?;
-        if !inside(&p, code, chapter) {
-            continue;
+        // a note with more places is listed once, at the first of them in this chapter
+        let mut at = None;
+        for place in places_of(nt) {
+            let p = py_parse(&place)?;
+            if inside(&p, code, chapter) {
+                at = Some((place, p));
+                break;
+            }
         }
-        let res = resolve(bible, &s(nt, "anchor"))?;
+        let Some((place, p)) = at else { continue };
+        let res = resolve(bible, &place)?;
         let quote = if res["ok"] == true { res["quote"].clone() } else { json!(s(nt, "quote")) };
         out.push(((n(&p, "c1"), n(&p, "v1"), n(&p, "i1").unwrap_or(-1)), json!({"id": nt["id"], "anchor": nt["anchor"], "kind": nt["kind"],
             "label": res["label"], "quote": quote, "text": nt["text"]})));

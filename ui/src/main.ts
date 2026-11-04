@@ -770,7 +770,10 @@ $('tab-more').onclick = () => settings($('tab-more'));
 $('prev').onclick = () => step(-1);
 $('next').onclick = () => step(1);
 $('place').onclick = () => (compact() ? settings($('place')) : picker($('place')));
-$('pen').onclick = () => toast('Phase 3: the palette');
+// the pen: at desktop sizes, write in the Notebook's box on the place picked in the reader (or the verse at the top);
+// on a phone it will open the palette (phase 3)
+$('pen').onclick = () => (compact() ? toast('Phase 3: the palette') : void writeInNotebook(here(), false));
+$('pen').title = 'Write a note (on the place you picked, or the verse at the top)';
 $('tb-notebook').onclick = () => openNotebook();
 $('tb-threads').onclick = () => openThreads();
 $('tb-shelf').onclick = () => openShelf();
