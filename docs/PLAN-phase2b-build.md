@@ -45,15 +45,18 @@ section 13.
 
 Designs: D1 drop zones, D4 where new tabs open, V2 separate floats ([phase2b-design.md](phase2b-design.md) sections 3 and 7).
 
-1. **Decide the base first** (PLAN-phase2b step 4.1): our dock (`ui/src/dock.ts`, ~475 lines) extended, or dockview-core.
+**Built 2026-11-04, all five (✓ below);** what each does and how it was checked: [phase2-results.md](phase2-results.md)
+section 14.
+
+1. ✓ **Decide the base first** (PLAN-phase2b step 4.1): our dock (`ui/src/dock.ts`, ~475 lines) extended, or dockview-core.
    A short spike of each against the WebKit tests and the Compact size (a pane as a full screen with "Back to …" must
-   keep working). Record the choice in PLAN-design.md.
-2. **Drop zones** while a tab is dragged: left column, right column, a top band and a bottom band across the reader,
+   keep working). Record the choice in PLAN-design.md. *Our dock, extended.*
+2. ✓ **Drop zones** while a tab is dragged: left column, right column, a top band and a bottom band across the reader,
    split beside a pane, float anywhere else; each zone labeled (D1).
-3. **Each float on its own** (V2): its own tab strip, moved, sized and minimized on its own; two floats join only when a
+3. ✓ **Each float on its own** (V2): its own tab strip, moved, sized and minimized on its own; two floats join only when a
    tab is dropped on the other's strip; minimized floats wait as chips.
-4. **Where new tabs open** (D4): beside the pane they came from (replaces 0.3's first step).
-5. **Never lose the place:** every move keeps the verse at the top (the checks at Psalm 119:50 through every size stay).
+4. ✓ **Where new tabs open** (D4): beside the pane they came from (replaces 0.3's first step).
+5. ✓ **Never lose the place:** every move keeps the verse at the top (the checks at Psalm 119:50 through every size stay).
 
 *Done when:* desk checks for each zone, two floats moved separately, join by strip, reopen where they were; the phone
 layout unchanged (WebKit tests).

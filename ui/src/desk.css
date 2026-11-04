@@ -1,6 +1,6 @@
 /* The desktop around the reader (phase 2): toolbar with the command field, the dock of tabbed panes, the Notebook, menus.
    Colors, type and spacing come from tokens.css; the layouts follow the laptop and desktop design sheets. */
-:root { --dock-l: 0px; --dock-r: 0px; --read-scale: 1; --read-px: 19px; --read-lh: 34px; }
+:root { --dock-l: 0px; --dock-r: 0px; --dock-t: 0px; --dock-b: 0px; --read-scale: 1; --read-px: 19px; --read-lh: 34px; }
 :root[data-size="compact"] { --read-px: 18px; --read-lh: 32px; }
 :root[data-theme="eink"] { --read-px: 21px; --read-lh: 38px; }
 .reader { font-size: calc(var(--read-px) * var(--read-scale)); line-height: calc(var(--read-lh) * var(--read-scale)); }
@@ -28,7 +28,8 @@
 @media (max-width: 1365px) { .tb.roomy { display: none; } }
 @media (max-width: 1150px) { .tb { padding: 0 8px; } .cmdbox { flex-basis: 300px; } }
 :root.no-toolbar .bar { display: none; }
-:root.no-toolbar #scroller, :root.no-toolbar .dock-col { top: 0; }
+:root.no-toolbar #scroller { top: var(--dock-t) !important; }
+:root.no-toolbar .dock-col, :root.no-toolbar .dock-top { top: 0; }
 
 /* the field's suggestions, grouped */
 .suggest { position: absolute; top: 42px; left: -4px; width: max(100%, 600px); max-width: calc(100vw - 24px); background: var(--surface); border: 1px solid var(--line);
@@ -45,7 +46,7 @@
 .cmd-status.error { background: var(--jesus); color: #fff; white-space: normal; }
 
 /* find in the chapter */
-.findbar { position: fixed; top: calc(var(--bar-h) + 8px); right: calc(var(--dock-r) + 16px); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+.findbar { position: fixed; top: calc(var(--bar-h) + var(--dock-t) + 8px); right: calc(var(--dock-r) + 16px); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 6px 8px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: 0 8px 24px rgba(0, 0, 0, .14); }
 .findbar[hidden] { display: none; }
 .findbar input { width: 220px; }
@@ -54,6 +55,7 @@
 
 /* ---- the reader beside the dock ---- */
 #scroller { left: var(--dock-l); right: var(--dock-r); }
+:root:not([data-size="compact"]) #scroller { top: calc(var(--bar-h) + env(safe-area-inset-top) + var(--dock-t)); bottom: var(--dock-b); }
 .vn.vq::after { content: '?'; position: absolute; left: calc(100% + 1px); top: -1px; width: 15px; height: 15px; border-radius: 50%; background: var(--question); color: #fff;
   font: 700 10px/15px var(--font-ui, Inter); text-align: center; }
 .vn.vq { margin-right: 20px; }
@@ -66,12 +68,36 @@
 .dock-right { right: 0; width: var(--dock-rw); border-left: 1px solid var(--line); }
 .dock-col.minimized { width: auto; background: none; border: 0; top: calc(var(--bar-h) + 60px); bottom: auto; }
 .dock-restore { writing-mode: vertical-rl; padding: 12px 6px; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--radius-control); font: var(--type-small-strong); color: var(--muted); max-height: 60vh; overflow: hidden; }
-.dock-float { top: 90px; bottom: auto; border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: 0 18px 48px rgba(0, 0, 0, .22); overflow: hidden; z-index: 7; background: var(--surface); }
-/* the floating column's own resize corner, above the pane and its scrollbar */
+/* a group: one tab strip and its panes; a split column holds two or more, one above another */
+.dock-group { position: relative; display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
+.dock-group + .dock-group { border-top: 1px solid var(--line); }
+/* the bands across the top and the bottom of the reader, between the columns */
+.dock-band { position: fixed; left: var(--dock-l); right: var(--dock-r); z-index: 4; display: none; flex-direction: column; background: var(--bg); }
+.dock-band.open { display: flex; }
+.dock-top { top: calc(var(--bar-h) + env(safe-area-inset-top)); height: var(--dock-t); border-bottom: 1px solid var(--line); }
+.dock-bottom { bottom: 0; height: var(--dock-b); border-top: 1px solid var(--line); }
+.band-grip { left: 0; right: 0; top: auto; bottom: auto; width: auto; height: 8px; cursor: row-resize; }
+.band-grip.grip-top { bottom: -4px; }
+.band-grip.grip-bottom { top: -4px; }
+.band-grip::after { top: 3px; bottom: auto; left: 0; right: 0; width: auto; height: 2px; }
+body:has(.band-grip.dragging) { cursor: row-resize; user-select: none; }
+/* each floating pane is a window of its own: its own tabs, moved, sized and minimized on its own */
+.dock-float { position: fixed; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: 0 18px 48px rgba(0, 0, 0, .22); overflow: hidden; z-index: 7; background: var(--surface); }
+/* a floating window's own resize corner, above the pane and its scrollbar */
 .float-corner { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; z-index: 3; touch-action: none;
   background: linear-gradient(135deg, transparent 50%, var(--line) 50%, var(--line) 58%, transparent 58%, transparent 70%, var(--line) 70%, var(--line) 78%, transparent 78%); }
 .dock-float .pane { padding-bottom: 40px; }
-:root[data-size="compact"] .dock-col { display: none !important; }
+/* minimized floats and bands wait as chips at the reader's foot */
+/* the floats stack from 7 (at most 16 panes, so below 24); the chips, the toolbar with its suggestions, and the overlay
+   (cards, menus, toasts) stay above every float */
+:root:not([data-size="compact"]) #bar { z-index: 30; }
+#overlay { z-index: 50; }
+.dock-chips { position: fixed; left: var(--dock-l); right: var(--dock-r); bottom: calc(var(--dock-b) + 20px); z-index: 25; display: none; justify-content: center; flex-wrap: wrap; gap: 8px; pointer-events: none; }
+.dock-chips.open { display: flex; }
+.dock-chip { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; max-width: 360px; padding: 8px 14px; border-radius: var(--radius-pill); background: var(--surface);
+  border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0, 0, 0, .14); font: var(--type-small-strong); color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dock-chip:hover { border-color: var(--accent); }
+:root[data-size="compact"] .dock-col, :root[data-size="compact"] .dock-band, :root[data-size="compact"] .dock-float, :root[data-size="compact"] .dock-chips { display: none !important; }
 .tabstrip { display: flex; align-items: stretch; gap: 0; min-height: 40px; padding: 0 4px 0 0; background: var(--sunken); border-bottom: 1px solid var(--line); flex: none; min-width: 0; }
 /* the tabs keep their size and scroll sideways; the column's buttons stay put */
 .tab-row { position: relative; display: flex; align-items: stretch; flex: 1 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-behavior: auto; }
@@ -113,7 +139,13 @@ body:has(.dock-grip.dragging) { cursor: col-resize; user-select: none; }
 /* dragging a tab: the label follows the pointer; the zone shows where the pane would go */
 .tab-ghost { position: fixed; z-index: 40; pointer-events: none; padding: 6px 12px; border-radius: var(--radius-control); background: var(--surface); border: 1px solid var(--accent);
   box-shadow: 0 8px 20px rgba(0, 0, 0, .18); font: var(--type-small-strong); }
-.drop-zone { position: fixed; z-index: 39; pointer-events: none; background: var(--accent-soft); opacity: .6; border: 2px dashed var(--accent); border-radius: var(--radius-card); }
+.drop-zone { position: fixed; z-index: 39; pointer-events: none; background: color-mix(in srgb, var(--accent-soft) 60%, transparent); border: 2px dashed var(--accent); border-radius: var(--radius-card);
+  display: grid; place-items: center; }
+.drop-zone[hidden] { display: none; }
+.drop-label { font: var(--type-small-strong); color: var(--accent); background: var(--surface); padding: 4px 10px; border-radius: var(--radius-pill); }
+.drop-hint { position: fixed; z-index: 41; pointer-events: none; left: calc((100vw + var(--dock-l) - var(--dock-r)) / 2); top: 50%; transform: translateX(-50%); padding: 6px 12px;
+  border-radius: var(--radius-control); background: var(--fg); color: var(--bg); font: var(--type-small); white-space: nowrap; }
+body.tab-dragging { user-select: none; }
 .tab-name { touch-action: none; }
 
 /* a pane on a phone: the whole screen, with the way back */

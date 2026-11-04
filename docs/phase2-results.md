@@ -372,3 +372,32 @@ The scratch copy still works for trying things out: `powershell -ExecutionPolicy
 To try a feature: open the Notebook and write a thought (Enter); place it from the Inbox; press backtick and type
 `uses zeal gospels`, `def H7065`, `interlinear Num 25:11`, `+Phinehas`, `thread Phinehas`; turn chapters with ← →; Ctrl+F;
 Ctrl+= and Ctrl+-; make the window narrower; from a terminal, `wb do "open John 3:16-18"`.
+
+## 14. Phase 2b, tier 1: the dock (2026-11-04)
+
+Tier 1 of [PLAN-phase2b-build.md](PLAN-phase2b-build.md), designs D1, D4 and V2 ([phase2b-design.md](phase2b-design.md)),
+for notes `564e` (tabs dragged as in dockview), `2395` and `8c69` (its first step, from tier 0, replaced). UI only:
+`ui/src/dock.ts`, `ui/src/desk.css`, two lines of `ui/src/actions.ts`; no file in the study folder changes. Where panes
+were put is kept in the window's own storage (`wb.dock.v1`), as the column widths were.
+
+| # | Built | Checked |
+|---|---|---|
+| 1.1 | **The base: our dock, extended**, not dockview-core. The spike and the reasons: [PLAN-design.md](PLAN-design.md), section 5 ("The dock's base"). The dock is now made of groups: one tab strip and its panes, in a column, a band or a floating window | `spikes/dock/dockview-spike.mjs` in WebKit at both sizes |
+| 1.2 | **Drop zones (D1)** while a tab is dragged, each shown as a dashed box with its name: *Left column*, *Right column* (at the window's edges); *Top band*, *Bottom band* (the top or the foot of the reader: a band across the reader, between the columns, its height dragged at its edge); *Split beside …* (over a pane in a column: the column splits, the tab's own group above or below it); *Beside …* (over any strip: the tab joins those tabs, where it is dropped); *Float* (anywhere else over the reader). Shift over the reader: split beside the pane it came from. A hint says so while dragging | desk: each zone's name while dragging, then where the pane is after the drop |
+| 1.3 | **Each float on its own (V2)**: every floating pane is its own window with its own tabs, moved by its strip, sized by its corner, minimized on its own to a chip at the reader's foot (a band minimized waits there too), brought forward by a press. Two floats join only when a tab is dropped on the other's strip. Floating several panes at once (`float all`) makes a window each | desk: two floats, one moved, the other still; one minimized to a chip and shown again where it was; joined by strip |
+| 1.4 | **Where new tabs open (D4)**: beside the pane they were opened from, in its group (a column, a band or a float), with "Opened beside Threads, where you put it" when that pane was put somewhere by the person; else where the pane was when it was last closed (a float at the same place, joining the window there); else beside a pane of its kind; else its usual side. **Dock it again** goes back to the column it floated from | desk: a thread opened from Threads in a float opens in that float, and says so; a pane closed in the left column, and a float, each reopen where they were |
+| 1.5 | **The place kept**: bands change the reader's height; the reader keeps the verse at the top through each move, as it does through the columns' widths | desk: verse 6 at the top through the top band, the bottom band, a column, the floats; the Psalm 119:50 checks through every size, unchanged |
+
+**On the way:** the floats now stack above one another, so the cards, menus and toasts (`#overlay`) and the toolbar
+with its suggestions were raised above every float; before, a float could cover a hover card (one desk check failed so
+until this was done). The phone is unchanged: at Compact a pane is still the whole screen with "Back to …".
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **123 of 123** (27 new) |
+| WebKit | `npm run test:webkit`: **14 passed**, 8 skipped (2 new: the dock at desktop size in WebKit; a pane on the phone is the whole screen with the way back) |
+| Rust tests | `cargo test`: **118**, unchanged (no Rust changed) |
+| Golden suite | not run: no `wb` command changed |
+
+To try it: drag a tab by its name and watch the box name where it would go; hold Shift over the reader to split it
+beside its column; float two panes, move one by its strip, minimize the other, then drop one's tab on the other's strip.

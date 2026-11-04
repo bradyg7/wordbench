@@ -367,14 +367,14 @@ async function reopen(key: string) {
 }
 
 function paneAction(a: any): string {
-  const ps = a.target.toLowerCase() === 'minimized' ? dock.panes.filter(p => dock.hidden[p.side]) : dock.named(a.target);
+  const ps = a.target.toLowerCase() === 'minimized' ? dock.panes.filter(p => dock.isMinimized(p)) : dock.named(a.target);
   if (!ps.length) return `No pane called “${a.target}” is open.`;
   for (const p of ps) {
     if (a.action === 'close') dock.close(p);
     else if (a.action === 'float') dock.move(p, 'float');
-    else if (a.action === 'dock') dock.move(p, p.kind === 'notebook' || p.kind.startsWith('thread') ? 'right' : 'left');
-    else if (a.action === 'minimize') { dock.hidden[dock.where(p) as 'left'] = true; dock.layout(); }
-    else { dock.hidden[dock.where(p) as 'left'] = false; dock.show(p); }
+    else if (a.action === 'dock') dock.dockAgain(p);
+    else if (a.action === 'minimize') dock.minimize(p);
+    else dock.show(p);
   }
   return `${a.action}: ${ps.map(p => p.title).join(', ')}`;
 }

@@ -181,6 +181,16 @@ field and Trails folded into the Notebook are accepted; the reading font is **Li
   Iowan Old Style / Palatino. **Which reading face the app should use is the person's choice** (Merriweather is OFL and
   could ship with the app, so phone and e-reader would match the desktop).
 
+**The dock's base (decided 2026-11-04, phase 2b tier 1 step 1): our own dock, extended; not dockview-core.** A short
+spike (`spikes/dock/dockview-spike.mjs`, run against the Python app's vendored dockview-core 8.6.0) put a reader panel
+between two columns and two floats in WebKit. It drew them with no errors and kept the reader's scroll when a column
+closed, but at phone width it only splits the screen (the reader was 195 px of 390), so the Compact form, one pane as a
+full screen with "Back to …", would still be our own code beside it: two docks. dockview-core is 537 KB minified, against
+121 KB for the whole of our UI's script, and the reader would have to become one of its panels, moving the reader's own
+scrolling and the place-keeping that every size change relies on. What dockview would have given, drop zones and
+separate floats (D1, V2), is built into `ui/src/dock.ts` as groups: a group is one tab strip and its panes, in a
+column (split one above another), a band across the top or the bottom of the reader, or a floating window of its own.
+
 Not designed yet: the iPad (portrait, landscape, split view and Stage Manager windows; see PLAN-mobile.md section 3), the
 e-reader layout (parked), landscape beyond one screen, tablet sizes between phone and
 laptop, the Help, Lesson, PDF viewer and Shelf panes in their new form, and the document maker's preview.

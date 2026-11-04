@@ -170,6 +170,54 @@ test('desktop: the toolbar with the command field, opened by backtick', async ({
   await expect(page.locator('#place .place-label')).toHaveText('Numbers 25');
 });
 
+// The dock in WebKit (tier 1): panes filled here with a word, not from Rust. The verse at the top is read as the desk
+// check reads it.
+const topVerse = (page: Page) => page.evaluate(() => {
+  const sc = document.getElementById('scroller')!, r = document.getElementById('reader')!;
+  let v = 1;
+  for (const e of r.querySelectorAll<HTMLElement>('.vn')) { if (r.offsetTop + e.offsetTop - 12 > sc.scrollTop + 2) break; v = +e.dataset.v!; }
+  return v;
+});
+const openPane = (page: Page, key: string, side: string) => page.evaluate(([key, side]) => {
+  (window as any).__wb.dock().open('test', key, key, side, (el: HTMLElement) => { el.textContent = key; });
+}, [key, side]);
+
+test('desktop: a band across the reader and floats each on their own, the verse kept', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'desktop');
+  await ready(page);
+  await page.evaluate(() => (window as any).__wb.open('NUM', 25, 10));
+  await page.waitForTimeout(300);
+  const v0 = await topVerse(page);
+  await openPane(page, 'One', 'left');
+  await openPane(page, 'Two', 'left');
+  await expect(page.locator('.dock-left.open .tab')).toHaveCount(2);
+  const y0 = (await page.locator('#scroller').boundingBox())!.y;
+  await page.evaluate(() => { const d = (window as any).__wb.dock(); d.move(d.find('One'), 'top'); });
+  await expect(page.locator('.dock-top.open .pane-test')).toHaveCount(1);
+  expect((await page.locator('#scroller').boundingBox())!.y).toBeGreaterThan(y0 + 100);
+  expect(await topVerse(page)).toBe(v0);
+  await page.evaluate(() => { const d = (window as any).__wb.dock(); d.move(d.find('One'), 'float'); d.move(d.find('Two'), 'float'); });
+  await expect(page.locator('.dock-float')).toHaveCount(2);
+  await expect(page.locator('.dock-top.open')).toHaveCount(0);
+  expect(await topVerse(page)).toBe(v0);
+  await page.locator('.dock-float').nth(1).locator('.strip-btn[aria-label="Minimize"]').click();
+  await expect(page.locator('.dock-chip')).toHaveCount(1);
+  await expect(page.locator('.dock-float')).toHaveCount(1);
+  await page.screenshot({ path: `${shots}/${info.project.name}-dock-floats.png` });
+});
+
+test('phone: a pane is the whole screen with the way back', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-desktop', 'phone');
+  await ready(page);
+  await openPane(page, 'One', 'float');
+  await expect(page.locator('.pane-sheet.open .pane-test')).toHaveText('One');
+  await expect(page.locator('.pane-sheet .back-pill')).toContainText('Back to');
+  for (const sel of ['.dock-col.open', '.dock-band.open', '.dock-float', '.dock-chips.open']) await expect(page.locator(sel)).toHaveCount(0);
+  await page.locator('.pane-sheet .back-pill').click();
+  await expect(page.locator('.pane-sheet.open')).toHaveCount(0);
+  await expect(page.locator('#place .place-label')).toHaveText('Numbers 25');
+});
+
 test('phone: the tabs and the pen, no desktop toolbar', async ({ page }, info) => {
   test.skip(info.project.name === 'webkit-desktop', 'phone');
   await ready(page);

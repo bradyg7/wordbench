@@ -231,7 +231,7 @@ try {
   await page.screenshot({ path: shots + '1440-a-thread.png' });
 
   // a tab dragged over the reader floats its pane; dragged to the left edge, it docks there again
-  const tabAt = async title => (await page.locator('.dock-col.open .tab-name', { hasText: title }).first().boundingBox());
+  const tabAt = async title => (await page.locator('.dock-group .tab-name', { hasText: title }).first().boundingBox());
   const drag = async (from, x, y) => {
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
     await page.mouse.down();
@@ -339,7 +339,10 @@ try {
   await page.locator('.pane-strong:visible button.chip.link', { hasText: /^zealous / }).first().click();
   await page.waitForSelector('.pane-uses:visible .row', { timeout: 10000 });
   const zealous = JSON.parse(execFileSync(wbExe, ['uses', 'H7065', '--rendering', 'zealous'], { env }).toString());
-  check('a rendering in word study opens only the verses rendered that way', await page.locator('.pane-uses:visible .row').count() === zealous.verses, `${zealous.verses} verses`);
+  // the uses pane just opened (a split column can show another one too)
+  const usesRows = () => page.evaluate(() => window.__wb.dock().panes.filter(p => p.kind === 'uses').at(-1).el.querySelectorAll('.row').length);
+  for (let i = 0; i < 30 && (await usesRows()) !== zealous.verses; i++) await sleep(100);
+  check('a rendering in word study opens only the verses rendered that way', (await usesRows()) === zealous.verses, `${zealous.verses} verses`);
   await page.evaluate(() => window.__wb.run('notebook'));
   const q9 = page.locator('.pane-notebook .nb-entry', { hasText: 'two numbers relate' }).first();
   await q9.getByRole('button', { name: '✓ Answered' }).click();
@@ -531,6 +534,105 @@ try {
   await page.evaluate(() => window.__wb.run('version kjv'));
   await page.waitForFunction(() => window.__wb.drawn && !window.__wb.drawn.chapter.version, null, { timeout: 10000 });
   check('version kjv: back in the KJV, the choice kept', (await page.locator('#tb-version').textContent()) === 'KJV' && await page.evaluate(() => localStorage.getItem('wb.version')) === 'KJV');
+
+  // the dock (phase 2b tier 1): each drop zone, named while dragging; floats each on their own; a pane reopens where it
+  // was; a pane opened from a pane opens beside it. Every move keeps the verse at the top.
+  {
+    const dragHold = async (from, x, y, shift = false) => {
+      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await page.mouse.down();
+      if (shift) await page.keyboard.down('Shift');
+      for (let k = 1; k <= 10; k++) await page.mouse.move(from.x + (x - from.x) * k / 10, from.y + (y - from.y) * k / 10);
+      await sleep(100);
+      const label = await page.locator('.drop-label').textContent().catch(() => '');
+      await page.mouse.up();
+      if (shift) await page.keyboard.up('Shift');
+      await sleep(400);
+      return label;
+    };
+    const closeKind = kinds => page.evaluate(ks => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => ks.includes(p.kind))) d.close(p); }, kinds);
+    const box = sel => page.locator(sel).first().boundingBox();
+    await page.evaluate(() => window.__wb.open('NUM', 25, 6));
+    await sleep(500);
+    await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.side === 'left')) d.close(p); });
+    await page.evaluate(() => window.__wb.run('interlinear Num 25:11'));
+    await page.waitForSelector('.pane-interlinear .inter-card', { timeout: 10000 });
+    check('a pane closed in the left column reopens there', await page.locator('.dock-left.open .pane-interlinear').count() === 1);
+    const v0 = await top();
+    let rd = await box('#scroller');
+    let said = await dragHold(await tabAt('Interlinear'), rd.x + rd.width / 2, rd.y + 40);
+    check('a tab over the reader’s top shows “Top band”', said === 'Top band', said);
+    check('dropped there, the pane is a band across the top of the reader', await page.locator('.dock-top.open .pane-interlinear').count() === 1 && (await box('#scroller')).y > rd.y + 100);
+    check('the top band keeps the verse at the top', (await top()) === v0, `verse ${v0} → ${await top()}`);
+    await page.screenshot({ path: shots + '1440-dock-top-band.png' });
+    rd = await box('#scroller');
+    said = await dragHold(await tabAt('Interlinear'), rd.x + rd.width / 2, rd.y + rd.height - 30);
+    check('a tab over the reader’s foot shows “Bottom band”', said === 'Bottom band', said);
+    check('dropped there, the pane is a band across the bottom, the top band gone', await page.locator('.dock-bottom.open .pane-interlinear').count() === 1 && await page.locator('.dock-top.open').count() === 0);
+    check('the bottom band keeps the verse at the top', (await top()) === v0, `verse ${v0} → ${await top()}`);
+    said = await dragHold(await tabAt('Interlinear'), 60, 400);
+    check('a tab at the left edge shows “Left column”', said === 'Left column', said);
+    check('dropped there, it docks in the left column, the band gone', await page.locator('.dock-left.open .pane-interlinear').count() === 1 && await page.locator('.dock-bottom.open').count() === 0);
+    check('the left column keeps the verse at the top', (await top()) === v0, `verse ${v0} → ${await top()}`);
+    await page.evaluate(() => window.__wb.run('def H7065'));
+    await page.waitForSelector('.dock-left .tab-name:text("H7065")', { timeout: 10000 });
+    const lg = await box('.dock-left .dock-group');
+    said = await dragHold(await tabAt('H7065'), lg.x + lg.width / 2, lg.y + lg.height * 0.8);
+    check('a tab over a pane’s lower half shows “Split beside …”', said === 'Split beside Interlinear', said);
+    check('dropped there, the column splits: two groups, each with its tabs', await page.locator('.dock-left .dock-group').count() === 2 && await page.locator('.dock-left .dock-group').nth(1).locator('.tab-name', { hasText: 'H7065' }).count() === 1);
+    await page.screenshot({ path: shots + '1440-dock-split-column.png' });
+    const rs = await box('.dock-right .tab-row');
+    said = await dragHold(await tabAt('H7065'), rs.x + 30, rs.y + rs.height / 2);
+    check('a tab over another strip shows “Beside …”', said.startsWith('Beside '), said);
+    check('dropped there, it joins those tabs; the split closes', await page.locator('.dock-right .tab-name', { hasText: 'H7065' }).count() === 1 && await page.locator('.dock-left .dock-group').count() === 1);
+    said = await dragHold(await tabAt('H7065'), 640, 420, true);
+    check('Shift over the reader: split beside the pane it came from', said.startsWith('Split beside ') && await page.locator('.dock-right .dock-group').count() === 2, said);
+    said = await dragHold(await tabAt('Interlinear'), 640, 360);
+    check('a tab over the reader shows “Float”', said === 'Float', said);
+    await dragHold(await tabAt('H7065'), 980, 620);
+    check('two panes floated are two windows', await page.locator('.dock-float').count() === 2, `${await page.locator('.dock-float').count()}`);
+    check('floating keeps the verse at the top', (await top()) === v0, `verse ${v0} → ${await top()}`);
+    const fA = page.locator('.dock-float', { has: page.locator('.pane-interlinear') }), fB = page.locator('.dock-float', { has: page.locator('.pane-strong') });
+    const a0 = await fA.boundingBox(), b0 = await fB.boundingBox();
+    const row = await fA.locator('.tab-row').boundingBox();
+    await page.mouse.move(row.x + row.width - 12, row.y + row.height / 2);
+    await page.mouse.down();
+    for (let k = 1; k <= 8; k++) await page.mouse.move(row.x + row.width - 12 - 15 * k, row.y + row.height / 2 + 10 * k);
+    await page.mouse.up();
+    await sleep(200);
+    const a1 = await fA.boundingBox(), b1 = await fB.boundingBox();
+    check('a float moves by its strip on its own; the other stays', Math.abs(a1.x - (a0.x - 120)) <= 2 && Math.abs(a1.y - (a0.y + 80)) <= 2 && b1.x === b0.x && b1.y === b0.y, `(${a0.x},${a0.y}) → (${a1.x},${a1.y})`);
+    await page.screenshot({ path: shots + '1440-dock-two-floats.png' });
+    await fB.locator('.strip-btn[aria-label="Minimize"]').click();
+    await sleep(200);
+    check('a float minimized waits as a chip; the other stays open', await page.locator('.dock-chip', { hasText: 'H7065 · minimized' }).count() === 1 && await fA.isVisible());
+    await page.locator('.dock-chip', { hasText: 'H7065' }).click();
+    await sleep(200);
+    const b2 = await fB.boundingBox();
+    check('its chip shows it again where it was', !!b2 && b2.x === b0.x && b2.y === b0.y);
+    const as = await fA.locator('.tab-row').boundingBox();
+    said = await dragHold(await tabAt('H7065'), as.x + as.width - 20, as.y + as.height / 2);
+    check('two floats join only when a tab is dropped on the other’s strip', said === 'Beside Interlinear' && await page.locator('.dock-float').count() === 1 && await fA.locator('.tab').count() === 2, said);
+    const at = await fA.boundingBox();
+    await closeKind(['interlinear']);
+    await page.evaluate(() => window.__wb.run('interlinear Num 25:11'));
+    await page.waitForSelector('.dock-float .pane-interlinear', { timeout: 10000 }).catch(() => {});
+    const back = await page.locator('.dock-float', { has: page.locator('.pane-interlinear') }).boundingBox();
+    check('a float closed reopens where it was, with the tabs it was with', !!back && back.x === at.x && back.y === at.y && await page.locator('.dock-float').count() === 1, back ? `(${back.x},${back.y})` : 'not floating');
+    await closeKind(['interlinear', 'strong']);
+    check('closing a float’s last tab closes the window', await page.locator('.dock-float').count() === 0);
+    // D4: a pane opened from a pane opens beside it, wherever that pane was put (a pane already open only comes forward)
+    await closeKind(['thread']);
+    await page.evaluate(() => window.__wb.run('threads'));
+    await page.waitForSelector('.pane-threads .thread-open', { timeout: 10000 });
+    await dragHold(await tabAt('Threads'), 640, 400);
+    await page.locator('.dock-float .pane-threads .thread-open').first().click();
+    check('a thread opened from Threads in a float opens beside it, in that float', await page.locator('.dock-float .pane-thread').first().waitFor({ timeout: 10000 }).then(() => true, () => false));
+    check('it says where it opened', await page.locator('.toast', { hasText: 'Opened beside Threads' }).first().waitFor({ timeout: 3000 }).then(() => true, () => false));
+    await page.screenshot({ path: shots + '1440-dock-opened-beside.png' });
+    await closeKind(['threads', 'thread']);
+    check('the dock never moved the reader', (await top()) === v0, `verse ${v0} → ${await top()}`);
+  }
 
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();
