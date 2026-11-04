@@ -71,7 +71,12 @@ pub fn commands() -> Vec<Command> {
                 let place = anchor(c, &a.s("place"))?;
                 j(nb::also_at(c.bible()?, &mut *c.study()?, &a.s("id"), &place, !a.flag("remove")).map_err(e)?)
             }),
-        cmd("note thread", "Put a note or question on a thread: wb note thread <id> Phinehas; --remove takes it off. (A note on no place that leaves its last thread goes to the Inbox.)",
+        cmd("note unplace", "Take a place off a placed note or question, its first place too: wb note unplace <id> \"Num 25:11\". The next of its places becomes its place; its last place taken off sends it to the Inbox.",
+            vec![Pos("id", N::One), Pos("place", N::Many)], |c, a| {
+                let place = anchor(c, &a.s("place"))?;
+                j(nb::unplace(c.bible()?, &mut *c.study()?, &a.s("id"), &place).map_err(e)?)
+            }),
+        cmd("note thread","Put a note or question on a thread: wb note thread <id> Phinehas; --remove takes it off. (A note on no place that leaves its last thread goes to the Inbox.)",
             vec![Pos("id", N::One), Pos("thread", N::Many), Flag("remove")], |c, a| {
                 let mut st = c.study()?;
                 let t = crate::study::tid(&st, &a.s("thread"))?;
@@ -95,7 +100,12 @@ pub fn commands() -> Vec<Command> {
         cmd("trash restore", "Put a deleted note or question back where it was: wb trash restore <its name from wb trash>.", vec![Pos("name", N::One)], |c, a| {
             j(json!(c.study()?.restore(&a.s("name")).map_err(e)?))
         }),
-        cmd("trash empty", "Erase the notes and questions deleted at least --days ago (default 7; the window does this when it opens). Other files in .trash stay.",
+        cmd("trash erase", "Erase one deleted note or question now, without waiting the 7 days: wb trash erase <its name from wb trash>. It cannot be put back.",
+            vec![Pos("name", N::One)], |c, a| {
+                c.study()?.erase(&a.s("name")).map_err(e)?;
+                j(json!({"erased": [a.s("name")]}))
+            }),
+        cmd("trash empty","Erase the notes and questions deleted at least --days ago (default 7; the window does this when it opens). Other files in .trash stay.",
             vec![Opt("days", Some("7"))], |c, a| {
                 let days: i64 = a.opt_or("days", "7").parse().map_err(|_| "argument --days: invalid int value")?;
                 j(json!({"erased": c.study()?.empty_trash(days.max(0)).map_err(e)?}))

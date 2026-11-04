@@ -354,6 +354,22 @@ fn a_plan_covers_every_chapter_once_in_order_as_whole_chapters() {
 }
 
 #[test]
+fn a_plan_of_several_books_reads_them_in_the_bibles_order() {
+    let Some(wb) = Wb::new() else { return };
+    // the window's words: no terminal flags in what the kinds say
+    assert!(wb.js(&["plan", "kinds"]).as_array().unwrap().iter().all(|k| !k["reads"].as_str().unwrap().contains("--")));
+    for named in ["gospels, rom", "rom; gospels", "Matt-John, Rom"] {
+        wb.js(&["plan", "start", named, "--kind", "books", "--books", named, "--days", "30", "--start", "2026-01-01"]);
+        let sched = wb.js(&["plan", "show", named, "--on", "2026-01-01"])["schedule"].clone();
+        let all: Vec<String> = sched.as_array().unwrap().iter().flat_map(|d| d["entries"].as_array().unwrap().iter().map(|e| e.as_str().unwrap().to_string())).collect();
+        let books: Vec<&str> = all.iter().map(|e| &e[..3]).fold(vec![], |mut v, b| { if v.last() != Some(&b) { v.push(b); } v });
+        assert_eq!(books, ["MAT", "MRK", "LUK", "JHN", "ROM"], "{named}");
+        assert_eq!((all.first().unwrap().as_str(), all.last().unwrap().as_str()), ("MAT.1", "ROM.16"), "{named}");
+    }
+    assert!(wb.fails(&["plan", "start", "Odd", "--kind", "books", "--books", "gospels, nobook"]).contains("No book called “nobook”"));
+}
+
+#[test]
 fn a_plan_knows_today_what_is_behind_and_what_is_done() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["plan", "start", "Year", "--start", "2026-01-01"]);
@@ -551,6 +567,49 @@ fn a_note_sits_on_places_apart_from_each_other() {
 }
 
 #[test]
+fn a_place_is_taken_off_a_note_its_first_too_and_the_last_sends_it_to_the_inbox() {
+    let Some(wb) = Wb::new() else { return };
+    let id = wb.js(&["note", "add", "Num 25:11", "on three places"])["id"].as_str().unwrap().to_string();
+    wb.js(&["note", "also", &id, "Ps 106:30"]);
+    wb.js(&["note", "also", &id, "1 Cor 10:8"]);
+    // another place comes off as note also --remove takes it
+    let e = wb.js(&["note", "unplace", &id, "1 Cor 10:8"]);
+    assert_eq!((e["anchor"].clone(), e["also"].clone()), (json!("NUM.25:11"), json!([{"anchor": "PSA.106:30", "label": "Psalms 106:30"}])));
+    wb.js(&["note", "also", &id, "1 Cor 10:8"]);
+    // its first place: the next becomes its place, and its file moves to that book's folder in the Python app's format
+    let e = wb.js(&["note", "unplace", &id, "Num 25:11"]);
+    assert_eq!((e["anchor"].clone(), e["label"].clone(), e["placed"].clone()), (json!("PSA.106:30"), json!("Psalms 106:30"), json!(true)));
+    assert_eq!(e["also"], json!([{"anchor": "1CO.10:8", "label": "1 Corinthians 10:8"}]));
+    assert!(!wb.dir.join("notes").join("NUM").join(format!("{id}.md")).exists());
+    let text = std::fs::read_to_string(wb.dir.join("notes").join("PSA").join(format!("{id}.md"))).unwrap();
+    assert!(text.contains("anchor: \"PSA.106:30\"") && text.contains("kind: \"verse\"") && text.contains("also: [\"1CO.10:8\"]"), "{text}");
+    assert_eq!(wb.js(&["note", "list", "Psalms 106"])[0]["id"], json!(id));
+    assert_eq!(wb.js(&["note", "list", "Numbers 25"]), json!([]));
+    assert!(wb.fails(&["note", "unplace", &id, "Num 25:11"]).contains("not on that place"));
+    // its last place: into the Inbox, no longer in the note lists
+    wb.js(&["note", "unplace", &id, "Ps 106:30"]);
+    let e = wb.js(&["note", "unplace", &id, "1 Cor 10:8"]);
+    assert_eq!((e["placed"].clone(), e["anchor"].clone()), (json!(false), json!("")));
+    assert_eq!(wb.js(&["inbox"])["notes"][0]["id"], json!(id));
+    assert!(wb.dir.join("notes").join("_inbox").join(format!("{id}.md")).exists());
+    assert_eq!(wb.js(&["note", "all"])["books"], json!([]));
+    // a question at its place waits in the Inbox as a question, still answered
+    let q = wb.js(&["trail", "add", "Num 25:11", "who else was zealous"])["id"].as_str().unwrap().to_string();
+    wb.js(&["note", "answered", &q]);
+    wb.js(&["note", "unplace", &q, "Num 25:11"]);
+    let back = wb.js(&["inbox"])["notes"].as_array().unwrap().iter().find(|n| n["id"] == q.as_str()).cloned().unwrap();
+    assert_eq!((back["kind"].clone(), back["status"].clone()), (json!("question"), json!("done")));
+    assert!(!wb.dir.join("trails").join(format!("{q}.md")).exists());
+    // a note still on a thread keeps the thread as its place
+    wb.js(&["thread", "new", "Zeal"]);
+    let t = wb.js(&["note", "add", "Num 25:11", "on a thread too"])["id"].as_str().unwrap().to_string();
+    wb.js(&["note", "thread", &t, "Zeal"]);
+    let e = wb.js(&["note", "unplace", &t, "Num 25:11"]);
+    assert_eq!((e["label"].clone(), e["placed"].clone()), (json!("On Zeal"), json!(true)));
+    assert!(wb.dir.join("notes").join("_threads").join(format!("{t}.md")).exists());
+}
+
+#[test]
 fn a_thread_holds_notes_of_its_own_and_notes_put_on_it() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Zeal"]);
@@ -603,6 +662,30 @@ fn deleted_notes_wait_a_week_in_the_trash_and_can_be_put_back() {
     assert_eq!(wb.js(&["trash", "empty"])["erased"], json!(["20200101-000000-n_20200101000000_aaaa.md"]));
     assert!(trash.join("20200101-000000-love.md").exists());
     assert_eq!(wb.js(&["trash"])["notes"].as_array().unwrap().len(), 1); // deleted today: it waits
+}
+
+#[test]
+fn erase_now_erases_one_deleted_note_and_nothing_else() {
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["note", "add", "Num 25:11", "to erase now"])["id"].as_str().unwrap().to_string();
+    let b = wb.js(&["note", "jot", "to keep in the trash"])["id"].as_str().unwrap().to_string();
+    wb.js(&["note", "rm", &a]);
+    wb.js(&["inbox", "rm", &b]);
+    let t = wb.js(&["trash"]);
+    let name = |id: &str| t["notes"].as_array().unwrap().iter().find(|n| n["id"] == id).unwrap()["name"].as_str().unwrap().to_string();
+    let (na, nb) = (name(&a), name(&b));
+    assert_eq!(wb.js(&["trash", "erase", &na]), json!({"erased": [na]}));
+    assert!(!wb.dir.join(".trash").join(&na).exists());
+    let left: Vec<Value> = wb.js(&["trash"])["notes"].as_array().unwrap().iter().map(|n| n["id"].clone()).collect();
+    assert_eq!(left, vec![json!(b)]);
+    assert!(wb.fails(&["trash", "restore", &na]).contains("No such file"));
+    assert!(wb.fails(&["trash", "erase", &na]).contains("No such file"));
+    // only notes and questions: a thread, a highlight file or a plan in .trash is never erased
+    std::fs::write(wb.dir.join(".trash").join("20200101-000000-love.md"), "a thread").unwrap();
+    assert!(wb.fails(&["trash", "erase", "20200101-000000-love.md"]).contains("Name a note or question"));
+    assert!(wb.fails(&["trash", "erase", &format!("../notes/{nb}")]).contains("Name a note or question"));
+    assert!(wb.dir.join(".trash").join("20200101-000000-love.md").exists());
+    assert!(wb.dir.join(".trash").join(&nb).exists());
 }
 
 #[test]

@@ -1,12 +1,12 @@
 // The Notebook, docked on the right (docs/PLAN-design.md section 3): Journal (every note by day), Inbox (notes with no
 // place yet, each with Place it…), All notes (placed notes in Bible order) and Trash (deleted notes, erased after 7 days
-// unless put back). Questions are notes marked "?": trails once placed. A note may have more places than its first, and
+// unless put back, or at once with Erase now). Questions are notes marked "?": trails once placed. A note may have more places than its first, and
 // may be on threads (or on a thread alone, with no place in the text). A writing box sits at the bottom of the Journal; Enter adds, Shift+Enter is a new line. Writing here never
 // moves the reader.
 import { wb } from './api';
 import { app, goTo, here, type At } from './app';
 import { dock, refCard, refHover, openThread, threadChooser } from './panes';
-import type { Pane } from './dock';
+import type { Change, Pane } from './dock';
 import { toast } from './sheets';
 import { button, h, icon, linkedText, placePill, popMenu, type Found } from './ui';
 
@@ -126,7 +126,7 @@ async function allNotes(into: HTMLElement) {
 // Deleted notes and questions: each waits 7 days, then the window erases it when it opens (wb trash empty).
 async function trash(into: HTMLElement) {
   const d = await wb(['trash']);
-  into.append(h('p', 'muted small nb-trash-about', `Deleted notes wait here ${d.days} days, then are erased. Put one back to keep it.`));
+  into.append(h('p', 'muted small nb-trash-about', `Deleted notes wait here ${d.days} days, then are erased. Put one back to keep it, or erase it now.`));
   for (const t of d.notes) {
     const c = h('div', 'note-card nb-entry trashed');
     const top = h('div', 'nb-top');
@@ -139,6 +139,11 @@ async function trash(into: HTMLElement) {
     acts.append(button('btn soft small', 'Put it back', async () => {
       try { await wb(['trash', 'restore', t.name]); toast('Put back'); changed(); } catch (x) { toast(String(x)); }
     }));
+    // the only erase besides the 7 days (the person's decision, 2026-11-04), asked first
+    acts.append(h('span', 'grow'), button('link-btn danger', 'Erase now', async () => {
+      if (!confirm(`Erase this ${t.question ? 'question' : 'note'} now? It cannot be put back.`)) return;
+      try { await wb(['trash', 'erase', t.name]); toast('Erased'); changed(); } catch (x) { toast(String(x)); }
+    }, 'trash'));
     c.append(acts);
     into.append(c);
   }
@@ -169,9 +174,9 @@ function entryCard(e: Entry, inInbox = false): HTMLElement {
   }
   const onThreadOnly = e.placed && !e.anchor;
   if (onThreadOnly) top.append(h('span', 'pill unplaced', e.label));
-  else if (e.placed) top.append(placePill(e.label, () => goTo(e.anchor)));
+  else if (e.placed) top.append(placeOff(e, { anchor: e.anchor, label: e.label }));
   else top.append(h('span', 'pill unplaced', 'No place yet'));
-  for (const a of e.also || []) top.append(placePill(a.label, () => goTo(a.anchor)));
+  for (const a of e.also || []) top.append(placeOff(e, a));
   top.append(h('span', 'grow'));
   const time = h('span', 'nb-time', inInbox ? `${e.created.slice(0, 10) === new Date().toISOString().slice(0, 10) ? 'Today ' : ''}${e.time}` : e.time);
   const more = h('button', 'icon-btn small');
@@ -208,6 +213,25 @@ function entryCard(e: Entry, inInbox = false): HTMLElement {
   return c;
 }
 
+/** A note's place as a pill (a click goes there) with × to take it off: its first place too, the next then being its
+ * place; its last place taken off sends it to the Inbox. */
+function placeOff(e: Pick<Entry, 'id'>, at: At): HTMLElement {
+  const chip = h('span', 'place-off');
+  const x = button('member-x shown', '', () => takeOff(e.id, at), 'x');
+  x.title = `Take it off ${at.label}`;
+  x.setAttribute('aria-label', x.title);
+  chip.append(placePill(at.label, () => goTo(at.anchor)), x);
+  return chip;
+}
+
+export async function takeOff(id: string, at: At) {
+  try {
+    const r = await wb(['note', 'unplace', id, at.anchor]);
+    toast(!r.placed ? `Taken off ${at.label}: it waits in the Inbox` : r.anchor ? `Taken off ${at.label}: now on ${r.label}` : `Taken off ${at.label}: ${r.label}`);
+    changed();
+  } catch (x) { toast(String(x)); }
+}
+
 /** Put a note on a thread by name; a name no thread has starts a new thread. */
 export async function putOnThread(id: string, name: string) {
   try {
@@ -215,7 +239,7 @@ export async function putOnThread(id: string, name: string) {
     if (!ts.some(t => t.name.toLowerCase() === name.toLowerCase())) await wb(['thread', 'new', name]);
     await wb(['note', 'thread', id, name]);
     toast(`On ${name}`);
-    changed();
+    changed('notes', 'threads');
   } catch (x) { toast(String(x)); }
 }
 
@@ -227,8 +251,8 @@ export async function remove(e: Pick<Entry, 'id' | 'placed' | 'kind'>) {
   changed();
 }
 
-function changed() {
-  app.changed();
+function changed(...what: Change[]) {
+  app.changed(...(what.length ? what : ['notes' as const]));
 }
 
 // "Place this note on" (or, for a placed note, "Move this note to", or "Also on" for one more place): the place picked in
@@ -277,7 +301,7 @@ function entryMenu(from: HTMLElement, e: Entry, cardEl: HTMLElement) {
   item('Edit', () => editInPlace(e, cardEl));
   if (e.placed && !onThreadOnly) item('Move to another place…', () => placeMenu(from, e));
   if (e.placed && !onThreadOnly && e.kind === 'note') item('Put it on another place too…', () => placeMenu(from, e, 'also'));
-  for (const a of e.also || []) item(`Take it off ${a.label}`, async () => { await wb(['note', 'also', e.id, a.anchor, '--remove']); changed(); });
+  if (e.placed && !onThreadOnly) for (const a of [{ anchor: e.anchor, label: e.label }, ...(e.also || [])]) item(`Take it off ${a.label}`, () => takeOff(e.id, a));
   if (e.kind === 'question') item(e.status === 'done' ? 'Open it again' : 'Answered: mark it done', async () => { await wb(['note', 'answered', e.id, ...(e.status === 'done' ? ['--open'] : [])]); changed(); });
   if (!onThreadOnly) item(e.kind === 'question' ? 'Make it a plain note' : 'Make it a question', async () => { await wb(['note', 'question', e.id, ...(e.kind === 'question' ? ['--plain'] : [])]); changed(); });
   item('Delete (to the Trash)', () => remove(e));
@@ -367,8 +391,11 @@ export async function writeInNotebook(at: At, question: boolean) {
   await p.refresh?.();
 }
 
-/** After a write elsewhere: draw the Notebook again if it is open. */
-export function refreshNotebook() {
-  void pane?.refresh?.();
-  void countInbox();
+/** Ctrl+J: the Notebook's writing, ready to type in, from anywhere. The place picked in the reader is offered, as it is
+ * in the box; otherwise it waits in the Inbox. */
+export async function writeInNotebookNow() {
+  view = 'journal';
+  const p = openNotebook();
+  if (!p.el.querySelector('.nb-write textarea')) await p.refresh?.();
+  p.el.querySelector<HTMLTextAreaElement>('.nb-write textarea')?.focus();
 }

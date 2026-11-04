@@ -95,6 +95,8 @@ try {
   check('the click does not move the reader', (await page.locator('#place .place-label').textContent()) === placeAtRef);
   await page.locator('.popover .act', { hasText: 'Open as a tab' }).click();
   check('Open as a tab opens the verse as a pane', await page.locator('.pane-passage', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  check('a verse opened from a note opens in the Notebook’s column', await page.locator('.dock-right .pane-passage', { hasText: cor }).count() === 1);
+  await page.evaluate(() => window.__wb.run('notebook'));
   await page.evaluate(() => window.__wb.run('hover on'));
   await page.locator('.nb-entry a.ref').first().hover();
   check('with hover on, hovering a reference shows the verse', await page.locator('.hovercard', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
@@ -183,6 +185,14 @@ try {
   await page.keyboard.press('0');
   await sleep(800);
   check('0 removes the highlight', hl() === null);
+  // a click away from the color bar closes it and clears the selection (note c35b)
+  await page.mouse.move(w1.x, w1.y); await page.mouse.down();
+  for (let k = 1; k <= 6; k++) await page.mouse.move(w1.x + (w2.x - w1.x) * k / 6, w1.y + (w2.y - w1.y) * k / 6);
+  await page.mouse.up();
+  await page.waitForSelector('.colorbar', { timeout: 5000 });
+  await page.locator('.dock-right .pane:visible').first().click({ position: { x: 4, y: 4 } });
+  await sleep(200);
+  check('a click away from the color bar closes it and clears the selection', await page.locator('.colorbar').count() === 0 && await page.evaluate(() => !window.__wb.selector.sel && !document.querySelector('.w.sel')));
 
   // Notes & lookup for a verse: color it, write a note there, and take the color off again
   await page.locator('.vn[data-v="4"]').click();
@@ -234,6 +244,17 @@ try {
   await page.screenshot({ path: shots + '1440-a-floating-pane.png' });
   await drag(await tabAt('Interlinear'), 60, 400);
   check('dropped at the left edge, it docks there', await page.locator('.dock-left.open .tab-name', { hasText: 'Interlinear' }).count() === 1);
+  // a new pane opens where a pane of its kind, or the pane it was opened from, is (note 8c69)
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'thread')) d.close(p); });
+  await page.evaluate(() => window.__wb.run('threads'));
+  await page.waitForSelector('.pane-threads .thread-open', { timeout: 10000 });
+  await drag(await tabAt('Threads'), 60, 400);
+  await page.locator('.dock-left .pane-threads .thread-open').first().click();
+  check('with Threads moved left, a thread opened from it opens left', await page.locator('.dock-left .pane-thread').first().waitFor({ timeout: 10000 }).then(() => true, () => false) && await page.locator('.dock-right .pane-thread').count() === 0);
+  await page.locator('#reader').click({ position: { x: 5, y: 5 } });
+  await page.evaluate(() => window.__wb.run('thread Plague stayed'));
+  check('a thread opened from the command field opens beside the other threads', await page.locator('.dock-left .tab-name', { hasText: 'Plague stayed' }).first().waitFor({ timeout: 10000 }).then(() => true, () => false));
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind.startsWith('thread'))) d.close(p); });
 
   // many tabs in one column: they keep their size and scroll; ‹ › and the ▾ list reach every one
   for (let v = 1; v <= 8; v++) await page.evaluate(v => window.__wb.run(`notes @Num 25:${v}`), v);
@@ -297,6 +318,18 @@ try {
   await page.keyboard.press('Control+=');
   check('Ctrl+= makes the text larger', (await px()) > f0);
   await page.keyboard.press('Control+0');
+  // Ctrl+J: the Notebook's writing from anywhere, listed in Keys (note e998)
+  const inNotebookBox = () => page.waitForFunction(() => document.activeElement?.classList.contains('nb-input') && !!document.activeElement.closest('.pane-notebook'), null, { timeout: 5000 }).then(() => true, () => false);
+  await page.locator('#reader').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Control+j');
+  check('Ctrl+J from the reader puts the cursor in the Notebook’s box', await inNotebookBox());
+  await page.locator('#cmd').focus();
+  await page.keyboard.press('Control+j');
+  check('Ctrl+J from the command field does too', await inNotebookBox());
+  await page.evaluate(() => window.__wb.run('keys'));
+  check('Keys lists Ctrl+J', await page.locator('.pane-keys kbd', { hasText: 'Ctrl+J' }).first().waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'keys')) d.close(p); });
+  await page.locator('#reader').click({ position: { x: 5, y: 5 } });
 
   // the phase 2 check's first findings (docs/phase2-results.md section 10)
   await page.evaluate(() => window.__wb.run('threads'));
@@ -378,14 +411,52 @@ try {
   check('Put it back restores it to its thread', JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes.length === 2);
   await page.locator('.nb-seg button', { hasText: 'Journal' }).click();
 
+  // Take off a note's place, its first too (note c8dc): the next of its places becomes its place; the last, the Inbox
+  const entryWith = t => page.locator('.pane-notebook .nb-entry', { hasText: t }).first();
+  const notesAt = place => JSON.parse(execFileSync(wbExe, ['note', 'list', place], { env }).toString());
+  await entryWith('zeal in more than one place').waitFor({ timeout: 10000 });
+  const firstAt = await entryWith('zeal in more than one place').locator('.place-off .place-pill').first().textContent();
+  await entryWith('zeal in more than one place').locator('.place-off .member-x').first().click();
+  await page.waitForFunction(() => { const e = [...document.querySelectorAll('.pane-notebook .nb-entry')].find(e => e.textContent.includes('zeal in more than one place')); return e && e.querySelectorAll('.place-off').length === 1 && e.querySelector('.place-off').textContent.includes('Psalms 106:30'); }, null, { timeout: 10000 });
+  const nowAt = notesAt('Psalms 106').find(n => n.text === 'zeal in more than one place');
+  check('Take off on a note’s first place: the next becomes its place', nowAt?.anchor === 'PSA.106:30' && !notesAt('Numbers 25').some(n => n.text === 'zeal in more than one place'), `${firstAt} → ${nowAt?.anchor}`);
+  await page.evaluate(() => window.__wb.run('note a place to take off @Num 25:2'));
+  await entryWith('a place to take off').locator('.place-off .member-x').click();
+  await page.waitForFunction(() => [...document.querySelectorAll('.pane-notebook .nb-entry')].some(e => e.textContent.includes('a place to take off') && e.textContent.includes('No place yet')), null, { timeout: 10000 });
+  const inInbox = JSON.parse(execFileSync(wbExe, ['inbox'], { env }).toString()).notes.find(n => n.text === 'a place to take off');
+  check('Take off on a note’s last place sends it to the Inbox', !!inInbox && existsSync(path.join(study, 'notes', '_inbox', `${inInbox.id}.md`)));
+  await page.screenshot({ path: shots + '1440-take-off-a-place.png' });
+
+  // Erase now in the Trash, asked first (note e48c, the person's decision of 2026-11-04)
+  page.once('dialog', d => d.accept());
+  await entryWith('a place to take off').getByRole('button', { name: 'Delete' }).click();
+  await page.locator('.nb-seg button', { hasText: 'Trash' }).click();
+  const doomed = page.locator('.pane-notebook .nb-entry.trashed', { hasText: 'a place to take off' }).first();
+  await doomed.waitFor({ timeout: 10000 });
+  const inTrash = () => JSON.parse(execFileSync(wbExe, ['trash'], { env }).toString()).notes.filter(n => n.text === 'a place to take off');
+  const trashName = inTrash()[0]?.name;
+  page.once('dialog', d => d.dismiss());
+  await doomed.getByRole('button', { name: 'Erase now' }).click();
+  await sleep(600);
+  check('Erase now asks first; Cancel keeps the note in the Trash', inTrash().length === 1);
+  let asked = '';
+  page.once('dialog', d => { asked = d.message(); d.accept(); });
+  await doomed.getByRole('button', { name: 'Erase now' }).click();
+  await page.waitForFunction(() => ![...document.querySelectorAll('.pane-notebook .nb-entry.trashed')].some(e => e.textContent.includes('a place to take off')), null, { timeout: 10000 });
+  check('Erase now, confirmed, erases it from .trash', inTrash().length === 0 && !!trashName && !existsSync(path.join(study, '.trash', trashName)), asked);
+  await page.locator('.nb-seg button', { hasText: 'Journal' }).click();
+
   // reading plans: start one in the pane, mark a day read, spread the rest, rename, edit as text, stop
   await page.evaluate(() => window.__wb.run('plans'));
   await page.waitForSelector('.pane-plans .plan-form', { timeout: 10000 });
   check('plans opens the Reading plans pane', true);
   const form = page.locator('.pane-plans .plan-form').first();
+  const words = await page.locator('.pane-plans').innerText() + (await form.locator('input, textarea').evaluateAll(fs => fs.map(f => f.placeholder).join(' ')));
+  check('no terminal words in the plans pane', !/--\w/.test(words));
   await form.locator('input').first().fill('Gospels in a month');
   await form.locator('select').selectOption('books');
-  await form.locator('input[placeholder^="Books"]').fill('gospels');
+  check('the form says “The books you choose”', (await form.locator('select option[value="books"]').textContent()).startsWith('The books you choose') && await form.locator('input[aria-label="The books you choose"]').isVisible());
+  await form.locator('input[aria-label="The books you choose"]').fill('gospels, rom');
   await form.locator('input[type=number]').fill('30');
   await form.locator('input[type=number]').dispatchEvent('change');
   await page.waitForFunction(() => /^30 days: Matthew/.test(document.querySelector('.pane-plans .plan-form .muted.small')?.textContent || ''), null, { timeout: 10000 });
@@ -394,9 +465,18 @@ try {
   const card = page.locator('.pane-plans .plan-card[data-plan="gospels-in-a-month"]');
   await card.waitFor({ timeout: 10000 });
   const planFile = path.join(study, 'reading', 'plans', 'gospels-in-a-month.json');
-  check('Start writes the plan to reading/plans', existsSync(planFile) && JSON.parse(readFileSync(planFile, 'utf8')).days.length === 30);
+  const planDays = JSON.parse(readFileSync(planFile, 'utf8')).days;
+  check('Start writes the plan to reading/plans; several books work', existsSync(planFile) && planDays.length === 30 && JSON.stringify(planDays).includes('"ROM.16"'));
+  // a pane keeps what is open when it is drawn again, and a write elsewhere does not draw it again (note 5a5a)
+  await card.getByRole('button', { name: 'Days' }).click();
+  await card.locator('.plan-days .plan-row').first().waitFor({ timeout: 10000 });
   await card.getByRole('button', { name: 'Mark read' }).first().click();
   await page.waitForFunction(() => /1 done/.test(document.querySelector('.pane-plans .plan-card[data-plan="gospels-in-a-month"] .plan-where')?.textContent || ''), null, { timeout: 10000 });
+  check('a change to the plan keeps its Days open', await card.locator('.plan-days .plan-row').first().waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.evaluate(() => { document.querySelector('.pane-plans .plan-card').dataset.drawn = 'before'; });
+  await page.evaluate(() => window.__wb.run('note Days stay open @Num 25:1'));
+  await sleep(800);
+  check('writing a note leaves the plans pane as it was, Days open', await page.evaluate(() => document.querySelector('.pane-plans .plan-card')?.dataset.drawn === 'before') && await card.locator('.plan-days .plan-row').first().isVisible());
   const logged = readFileSync(path.join(study, 'reading', 'log.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l)).filter(l => l.plan === 'gospels-in-a-month');
   check('Mark read writes the day to the reading log', logged.length > 0 && logged[0].ch === 'MAT.1', logged.map(l => l.ch).join(' '));
   await card.getByRole('button', { name: 'Spread the rest…' }).click();

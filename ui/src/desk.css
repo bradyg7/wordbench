@@ -251,6 +251,9 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-empty { padding: 12px 2px; }
 .place-pill { display: inline-flex; align-items: center; gap: 5px; }
 button.place-pill:hover { filter: brightness(.96); }
+/* a note's place with × to take it off */
+.place-off { display: inline-flex; align-items: center; gap: 0; }
+.place-off .member-x { width: 20px; height: 20px; }
 .pill.unplaced { background: var(--sunken); color: var(--muted); }
 .question-pill { background: none; border: 1px solid var(--question); color: var(--question); cursor: pointer; }
 button.question-pill:hover { text-decoration: line-through; }

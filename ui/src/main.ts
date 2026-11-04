@@ -18,7 +18,8 @@ import { app, here, type At } from './app';
 import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
 import { dock, initPanes, openPassage, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
-import { countInbox, notebookBadge, openNotebook, refreshNotebook, writeInNotebook } from './notebook';
+import { countInbox, notebookBadge, openNotebook, writeInNotebook, writeInNotebookNow } from './notebook';
+import type { Change } from './dock';
 import { attachCommandField, loadThreads } from './command';
 import { parse, runLine, written } from './actions';
 
@@ -313,7 +314,7 @@ function writeNote(from: HTMLElement, at: At, kind: 'note' | 'question') {
       closeSheet();
       selector.clear();
       toast(kind === 'note' ? `Note on ${at.label}` : `Question on ${at.label}`);
-      written();
+      written('notes');
     } catch (e) { toast(String(e)); }
   };
   ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); } };
@@ -330,7 +331,7 @@ function addToThread(from: HTMLElement, at: At) {
       closeSheet();
       selector.clear();
       toast(`${at.label} added to ${name}`);
-      written();
+      written('threads');
     } catch (e) { toast(String(e)); }
   });
 }
@@ -352,7 +353,7 @@ async function addHighlight(m: Mark) {
   // Saved in the study folder by the no-overlap rule (as wb hl set does), then the marks are read back.
   try {
     await api.highlight(anchorOf(m), m.color ?? null);
-    await refreshMarks();
+    written('highlights');
     toast(m.color ? 'Highlighted' : 'Highlight removed');
   } catch (e) {
     toast(String(e));
@@ -414,7 +415,7 @@ function threadChips(at: At): HTMLElement {
           chip.classList.toggle('in', !inIt);
           chip.title = !inIt ? `In ${t.name}: click to take it out` : `Add to ${t.name}`;
           toast(inIt ? `Taken out of ${t.name}` : `${at.label} added to ${t.name}`);
-          written();
+          written('threads');
         } catch (e) { toast(String(e)); }
       };
       box.append(chip);
@@ -483,6 +484,14 @@ const selector = new Selector(reader, scroller, {
   selected: (a, b, touch) => showBar(a, b, touch),
   cleared: () => { bar?.remove(); bar = null; barPick = null; },
 });
+// A click or tap away from the color bar closes it and clears the selection: anywhere but the bar itself (its presses
+// stop at it) and the menus or cards opened from it. In the reader the selector does the same on a tap.
+document.addEventListener('pointerdown', e => {
+  if (!bar || !selector.sel) return;
+  const t = e.target as HTMLElement;
+  if (reader.contains(t) || t.closest('.menu, .popover, .sheet, .hovercard')) return;
+  selector.clear();
+});
 document.getElementById('overlay')!.addEventListener('pointerleave', e => { if ((e.target as HTMLElement).classList?.contains('hovercard')) hideCard(); }, true);
 // Alt+click a word: the interlinear for its verse.
 reader.addEventListener('click', e => {
@@ -525,7 +534,7 @@ reader.addEventListener('drop', async e => {
   try {
     const r = await wb(['note', 'place', id, `${d.chapter.code}.${d.chapter.chapter}:${v}`]);
     toast(`Placed on ${r.label}`);
-    written();
+    written('notes');
   } catch (x) { toast(String(x)); }
 });
 
@@ -685,6 +694,7 @@ function chapterEnd(d: Drawn) {
     try {
       const lines = (await api.readMark(place)).data as { t: string }[];
       show(lines[lines.length - 1]?.t);
+      app.changed('plans');
     } catch (e) { toast(String(e)); }
   };
   end.append(said, btn);
@@ -824,6 +834,8 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
+  // Ctrl+J: write in the Notebook, from anywhere (a field being typed in too)
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); void writeInNotebookNow(); return; }
   if (typing) return;
   // a selection with its bar: 1–5 color it, 0 removes the highlight
   if (bar && selector.sel && barPick && /^[0-5]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
@@ -861,7 +873,7 @@ Object.assign(app, {
   version: () => version,
   setVersion,
   findInChapter,
-  changed: () => { written(); loadThreads(); },
+  changed: (...what: Change[]) => { written(...what); if (!what.length || what.includes('threads')) loadThreads(); },
 });
 
 // ---- start ------------------------------------------------------------------------------------------------------------
@@ -898,5 +910,4 @@ async function start() {
 
 (window as any).__wb = { open, perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
 start().catch(e => { reader.innerHTML = `<p class="error">${String(e)}</p>`; });
-void refreshNotebook;
 void here;

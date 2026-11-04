@@ -338,6 +338,36 @@ much. Each is listed once.
 | `032f` | A chronological reading plan | The app ships no plan whose order is a judgment (reading.rs). Which published chronological plan, from what source, to import? |
 | `0e98` | A dictionary | Which English dictionary, with its license (for example a public-domain one) |
 
+## 13. Phase 2b, tier 0: the day-3 fixes (2026-11-04)
+
+Tier 0 of [PLAN-phase2b-build.md](PLAN-phase2b-build.md): the six "fix now" notes of section 12 and the person's decision
+on `e48c`. No new kind of file: a note taken off its places is an Inbox note (`notes/_inbox/`) or a note on a thread
+(`notes/_threads/`), as before; a note whose first place comes off moves to the next place's book folder in the Python
+app's format (the Python `wb note list "Psalms 106"` lists it there, checked on a scratch folder).
+
+| # | Note | Built | Checked |
+|---|---|---|---|
+| 0.1 | `c35b` | A press anywhere away from the color bar (a pane, the toolbar, the margin) closes it and clears the selection; menus and cards opened from the bar keep it | desk: select, click in a pane, no bar, no selection |
+| 0.2 | `5a5a` | `app.changed(what)`: each write says what it changed (notes, threads, highlights, plans, sets) and only the panes that show it are drawn again, keeping their scroll; the panes that show only the Bible database are never drawn again by a write. The plans pane keeps its open Days and what was typed in its forms when it is drawn again | desk: Days open, Mark read, Days still open; a note written, the plans pane not drawn again |
+| 0.3 | `8c69` | A new pane opens in the column of a pane of its kind, else in the column it was opened from (the column last pressed in, within a few seconds, forgotten on typing elsewhere), else its usual side. So a verse opened as a tab from a note opens beside the Notebook | desk: Threads moved left, a thread opened from it opens left; `thread …` from the command field opens beside it |
+| 0.4 | `c440` | The books kind reads "The books you choose, in the Bible's order"; no `--` in the pane. Several books: names, groups and runs joined by commas or semicolons (`gospels, rom`, `Matt-John, Rom`, `Gen-Deut; Ps`) | CLI `a_plan_of_several_books_reads_them_in_the_bibles_order`; desk: the form's words, `gospels, rom` starts a plan ending at Romans 16 |
+| 0.5 | `e998` | Ctrl+J, from anywhere (a field too): the Notebook's Journal with the cursor in its writing box; listed in Keys | desk: from the reader and from the command field; Keys lists it |
+| 0.6 | `c8dc` | `wb note unplace <id> <place>` (`Store::unplace`): another place comes off as `note also --remove` does; the first place, and the next becomes its place (its file moves there); the last, and it goes to the Inbox (a question stays a question, answered or not; a note still on a thread goes to `notes/_threads/`). × on each place chip in the Notebook, "Take it off …" for every place in its ⋯ menu, and Take off in Notes & lookup | CLI `a_place_is_taken_off_a_note_its_first_too_and_the_last_sends_it_to_the_inbox`; desk: × on the first place, then on a last place |
+| 0.7 | `e48c` | Erase now on each note and question in the Trash, after a confirm ("It cannot be put back"); `wb trash erase <name>` (`Store::erase`), refused for anything in `.trash` that is not a deleted note or question. CLAUDE.md's rule says so | CLI `erase_now_erases_one_deleted_note_and_nothing_else`; desk: Cancel keeps it, OK erases the file |
+
+**A bug found on the way:** in the window, where one store stays open, a note whose file moved to another folder
+(Move… to another book, and now Take off its first place) vanished from every list until the app was opened again: the
+old file was forgotten by the note's id, which the new file shares. `Store::moved` now reads the new file again after
+forgetting the old; `a_note_that_moves_to_another_book_stays_in_memory` checks it in one process (the CLI tests, a process
+each, could not see it).
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **96 of 96** (15 new) |
+| WebKit | `npm run test:webkit`: **12 passed**, 6 skipped (each test runs at the size it belongs to) |
+| Rust tests | `cargo test`: **118** (3 new CLI tests, 1 store test) |
+| Golden suite | **99 of 99** the same |
+
 The scratch copy still works for trying things out: `powershell -ExecutionPolicy Bypass -File scripts\watch-app.ps1`.
 To try a feature: open the Notebook and write a thought (Enter); place it from the Inbox; press backtick and type
 `uses zeal gospels`, `def H7065`, `interlinear Num 25:11`, `+Phinehas`, `thread Phinehas`; turn chapters with ← →; Ctrl+F;

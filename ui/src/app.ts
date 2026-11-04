@@ -2,6 +2,7 @@
 // person last clicked (where a note, a highlight or a thread-add goes), and the layers drawn. main.ts fills it in.
 import type { Book } from './api';
 import type { Drawn } from './reader';
+import type { Change } from './dock';
 
 export interface At { anchor: string; label: string }
 
@@ -25,8 +26,8 @@ export const app = {
   findInChapter: (_q: string) => {},
   /** Runs a line as if typed into the command field. */
   run: async (_line: string): Promise<string> => '',
-  /** Something changed in the study folder: panes that show it read it again. */
-  changed: () => {},
+  /** Something changed in the study folder (what, or everything when not said): the panes that show it read it again. */
+  changed: (..._what: Change[]) => {},
 };
 
 export const book = (code: string) => app.books.find(b => b.code === code);

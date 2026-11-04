@@ -1,12 +1,12 @@
 // The panes beside the reader. Each draws what a `wb` command returns (the same answers as in a terminal), and nothing
 // here interprets the text: scripture is shown verbatim from the database, with its reference.
 import { wb } from './api';
-import { app, book, goTo, here } from './app';
+import { app, book, goTo, here, type At } from './app';
 import { Dock, type Pane, type Side } from './dock';
 import { layers } from './layers';
 import { closeSheet, compact, hideCard, openSheet, sheetOpen, showCard, toast } from './sheets';
 import { button, h, hoverMode, icon, linkedText, placePill, popMenu } from './ui';
-import { placeMenu, remove as removeNote } from './notebook';
+import { placeMenu, remove as removeNote, takeOff } from './notebook';
 
 export let dock: Dock;
 
@@ -89,7 +89,7 @@ function resultsBar(el: HTMLElement, list: ResultList) {
     if (!places.length) return toast('Nothing to add');
     const r = await wb(['thread', 'add-many', name, ...expand(list, places)]);
     toast(`${r.added?.length ?? places.length} added to ${name}`);
-    app.changed();
+    app.changed('threads');
   }));
   bar.append(all, none, add);
   el.append(bar);
@@ -524,7 +524,7 @@ export function openThreads() {
       e.preventDefault();
       if (!name.value.trim()) return;
       await wb(['thread', 'new', name.value.trim()]);
-      app.changed();
+      app.changed('threads');
     };
     el.append(form);
     const ts: any[] = await wb(['thread', 'list']);
@@ -601,7 +601,7 @@ export function openThread(name: string) {
       const x = h('button', 'member-x');
       x.append(icon('x', 12));
       x.title = 'Take it out of the thread';
-      x.onclick = async () => { await wb(['thread', 'rm', t.name, m.anchor]); app.changed(); };
+      x.onclick = async () => { await wb(['thread', 'rm', t.name, m.anchor]); app.changed('threads'); };
       card.append(grip, body, x);
       // drag to reorder: the whole order is written in one change, as wb thread order does
       card.ondragstart = e => { e.dataTransfer!.setData('text/plain', String(k)); card.classList.add('dragging'); };
@@ -617,7 +617,7 @@ export function openThread(name: string) {
         const [moved] = order.splice(from, 1);
         order.splice(k, 0, moved);
         await wb(['thread', 'order', t.name, ...order]);
-        app.changed();
+        app.changed('threads');
       };
       list.append(card);
     });
@@ -652,15 +652,15 @@ async function threadNotes(t: any, into: HTMLElement) {
         done = true;
         const v = ta.value.trim();
         if (v && v !== n.text) await wb(['note', 'text', n.id, '-'], v);
-        app.changed();
+        app.changed('notes');
       };
       ta.onkeydown = e => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); }
-        if (e.key === 'Escape') { e.stopPropagation(); done = true; app.changed(); }
+        if (e.key === 'Escape') { e.stopPropagation(); done = true; app.changed('notes'); }
       };
       ta.onblur = () => save();
     }));
-    acts.append(button('link-btn', 'Take off the thread', async () => { await wb(['note', 'thread', n.id, t.id, '--remove']); app.changed(); }));
+    acts.append(button('link-btn', 'Take off the thread', async () => { await wb(['note', 'thread', n.id, t.id, '--remove']); app.changed('notes'); }));
     acts.append(h('span', 'grow'), button('link-btn danger', 'Delete', () => removeNote(n), 'trash'));
     c.append(top, p, acts);
     into.append(c);
@@ -675,7 +675,7 @@ async function threadNotes(t: any, into: HTMLElement) {
     e.preventDefault();
     const text = ta.value.trim();
     if (!text) return;
-    try { await wb(['thread', 'write', t.name, '-'], text); ta.value = ''; app.changed(); } catch (x) { toast(String(x)); }
+    try { await wb(['thread', 'write', t.name, '-'], text); ta.value = ''; app.changed('notes'); } catch (x) { toast(String(x)); }
   };
   into.append(box);
 }
@@ -701,7 +701,7 @@ function threadNote(t: any): HTMLElement {
       const v = ta.value.trim();
       if (v === (t.note || '')) return show();
       await wb(['thread', 'edit', t.name, '--note', v]);
-      app.changed();
+      app.changed('threads');
     };
     ta.onkeydown = e => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); }
@@ -726,19 +726,19 @@ function threadMenu(from: HTMLElement, t: any) {
     i.focus();
     i.select();
   };
-  item('Add the place you are at', async () => { await wb(['thread', 'add', t.name, here().anchor]); app.changed(); toast(`${here().label} added`); });
-  item('Rename…', () => ask('New name', t.name, async v => { await wb(['thread', 'edit', t.name, '--rename', v]); app.changed(); }));
-  item('Note…', () => ask('The thread’s note', t.note || '', async v => { await wb(['thread', 'edit', t.name, '--note', v]); app.changed(); }));
+  item('Add the place you are at', async () => { await wb(['thread', 'add', t.name, here().anchor]); app.changed('threads'); toast(`${here().label} added`); });
+  item('Rename…', () => ask('New name', t.name, async v => { await wb(['thread', 'edit', t.name, '--rename', v]); app.changed('threads', 'notes'); }));
+  item('Note…', () => ask('The thread’s note', t.note || '', async v => { await wb(['thread', 'edit', t.name, '--note', v]); app.changed('threads'); }));
   const colors = h('div', 'colors');
   for (const c of ['yellow', 'green', 'blue', 'pink', 'orange']) {
     const s = h('button', `swatch c-${c}${t.color === c ? ' on' : ''}`);
     s.setAttribute('aria-label', c);
-    s.onclick = async () => { close(); await wb(['thread', 'edit', t.name, '--color', c]); app.changed(); };
+    s.onclick = async () => { close(); await wb(['thread', 'edit', t.name, '--color', c]); app.changed('threads'); };
     colors.append(s);
   }
   box.append(h('div', 'label', 'Color'), colors);
-  item('Put it in Bible order', async () => { await wb(['thread', 'sort', t.name]); app.changed(); });
-  item('Delete the thread', async () => { if (confirm(`Delete the thread “${t.name}”? It goes to .trash in the study folder.`)) { await wb(['thread', 'delete', t.name]); app.changed(); } });
+  item('Put it in Bible order', async () => { await wb(['thread', 'sort', t.name]); app.changed('threads'); });
+  item('Delete the thread', async () => { if (confirm(`Delete the thread “${t.name}”? It goes to .trash in the study folder.`)) { await wb(['thread', 'delete', t.name]); app.changed('threads', 'notes'); } });
   const close = popMenu(from, box, { align: 'right', width: 240 });
 }
 
@@ -808,7 +808,7 @@ export function openPlace(anchor: string, label: string) {
       for (const c of ['yellow', 'green', 'blue', 'pink', 'orange']) {
         const sw = h('button', `swatch c-${c}${d.highlight === c ? ' on' : ''}`);
         sw.setAttribute('aria-label', c);
-        sw.onclick = async () => { await wb(['hl', 'set', anchor, c]); app.changed(); };
+        sw.onclick = async () => { await wb(['hl', 'set', anchor, c]); app.changed('highlights'); };
         row.append(sw);
       }
       if (d.highlight && !['yellow', 'green', 'blue', 'pink', 'orange'].includes(d.highlight)) {
@@ -821,13 +821,13 @@ export function openPlace(anchor: string, label: string) {
         const x = h('button', 'swatch clear', '×');
         x.setAttribute('aria-label', 'Remove the highlight');
         x.title = 'Remove the highlight here';
-        x.onclick = async () => { await wb(['hl', 'clear', anchor]); app.changed(); };
+        x.onclick = async () => { await wb(['hl', 'clear', anchor]); app.changed('highlights'); };
         row.append(x);
       }
       el.append(row);
     }
     el.append(h('div', 'label', 'Your notes here'));
-    for (const n of d.notes || []) el.append(noteCardEditable(n, d.label || label));
+    for (const n of d.notes || []) el.append(noteCardEditable(n, { anchor, label: d.label || label }));
     if (!(d.notes || []).length) el.append(h('p', 'muted small', 'None yet.'));
     el.append(addNoteBox(anchor));
     const here = (qs.trails || []).filter((t: any) => t.anchor === anchor);
@@ -836,11 +836,12 @@ export function openPlace(anchor: string, label: string) {
       for (const t of here) {
         const c = h('div', `note-card${t.status === 'done' ? ' done' : ''}`);
         const top = h('div', 'nb-top');
-        const tag = button('pill question-pill', t.status === 'done' ? '? Answered' : '? Question', async () => { await wb(['note', 'question', t.id, '--plain']); app.changed(); });
+        const tag = button('pill question-pill', t.status === 'done' ? '? Answered' : '? Question', async () => { await wb(['note', 'question', t.id, '--plain']); app.changed('notes'); });
         tag.title = 'Click: make it a plain note';
         top.append(tag, h('span', 'grow'));
-        top.append(button(`link-btn${t.status === 'done' ? '' : ' answered'}`, t.status === 'done' ? 'Open again' : '✓ Answered', async () => { await wb(['note', 'answered', t.id, ...(t.status === 'done' ? ['--open'] : [])]); app.changed(); }));
+        top.append(button(`link-btn${t.status === 'done' ? '' : ' answered'}`, t.status === 'done' ? 'Open again' : '✓ Answered', async () => { await wb(['note', 'answered', t.id, ...(t.status === 'done' ? ['--open'] : [])]); app.changed('notes'); }));
         top.append(button('link-btn', 'Move…', e => placeMenu(e.currentTarget as HTMLElement, { id: t.id, placed: true, label: d.label || label })));
+        top.append(button('link-btn', 'Take off', () => takeOff(t.id, { anchor, label: d.label || label })));
         c.append(top, h('p', 'nb-text', t.text));
         el.append(c);
       }
@@ -864,14 +865,14 @@ export function openPlace(anchor: string, label: string) {
         const x = h('button', 'member-x shown');
         x.append(icon('x', 12));
         x.title = `Take it out of ${t.name}`;
-        x.onclick = async () => { await wb(['thread', 'rm', t.name, anchor]); app.changed(); };
+        x.onclick = async () => { await wb(['thread', 'rm', t.name, anchor]); app.changed('threads'); };
         chip.append(x);
         row.append(chip);
       }
       el.append(row);
     }
     const acts = h('div', 'acts two');
-    acts.append(button('btn', 'Add to a thread…', e => threadChooser(e.currentTarget as HTMLElement, async name => { await wb(['thread', 'add', name, anchor]); app.changed(); })));
+    acts.append(button('btn', 'Add to a thread…', e => threadChooser(e.currentTarget as HTMLElement, async name => { await wb(['thread', 'add', name, anchor]); app.changed('threads'); })));
     if (d.ref) acts.append(button('btn', 'Interlinear', () => openInterlinear(`${d.ref.code} ${d.ref.c}:${d.ref.v}`, `${d.ref.name} ${d.ref.c}:${d.ref.v}`)));
     el.append(acts);
     if ((d.strongs || []).length) {
@@ -886,7 +887,8 @@ export function openPlace(anchor: string, label: string) {
 const short = (q: string) => (q.length > 40 ? q.slice(0, 38) + '…' : q);
 const placeLabel = (n: any) => n.label || n.anchor;
 
-function noteCardEditable(n: any, label: string): HTMLElement {
+function noteCardEditable(n: any, at: At): HTMLElement {
+  const label = at.label;
   const c = h('div', 'note-card');
   const top = h('div', 'nb-top');
   top.append(placePill(n.kind === 'verse' ? label : `${label} · “${short(n.quote || '')}”`), h('span', 'grow'));
@@ -898,21 +900,24 @@ function noteCardEditable(n: any, label: string): HTMLElement {
     const save = async () => {
       const text = ta.value.trim();
       if (text && text !== n.text) await wb(['note', 'text', n.id, '-'], text);
-      app.changed();
+      app.changed('notes');
     };
     ta.onkeydown = e => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); }
-      if (e.key === 'Escape') { e.stopPropagation(); app.changed(); }
+      if (e.key === 'Escape') { e.stopPropagation(); app.changed('notes'); }
     };
     ta.onblur = () => save();
   });
   const move = button('link-btn', 'Move…', e => placeMenu(e.currentTarget as HTMLElement, { id: n.id, placed: true, label }));
+  // this place off the note (it stays on its others; on none, it waits in the Inbox)
+  const off = button('link-btn', 'Take off', () => takeOff(n.id, at));
+  off.title = `Take this note off ${label}`;
   const del = button('link-btn danger', 'Delete', async () => {
     if (!confirm('Delete this note? It goes to .trash in the study folder.')) return;
     await wb(['note', 'rm', n.id]);
-    app.changed();
+    app.changed('notes');
   }, 'trash');
-  top.append(edit, move, del);
+  top.append(edit, move, off, del);
   const p = h('p', 'nb-text', n.text);
   c.append(top, p);
   return c;
@@ -929,7 +934,7 @@ function addNoteBox(anchor: string): HTMLElement {
     e.preventDefault();
     const text = ta.value.trim();
     if (!text) return;
-    try { await wb(['note', 'add', anchor, '-'], text); ta.value = ''; app.changed(); } catch (x) { toast(String(x)); }
+    try { await wb(['note', 'add', anchor, '-'], text); ta.value = ''; app.changed('notes'); } catch (x) { toast(String(x)); }
   };
   return box;
 }
@@ -973,6 +978,17 @@ function ask(from: HTMLElement, label: string, value: string, ok: (v: string) =>
 const entryGo = (entries: string[]) => () => { if (entries[0]) goTo(entries[0]); };
 
 let plansDraw = 0;
+// What is open in the plans pane stays open when it is drawn again (after a change to a plan): the plans whose Days are
+// shown, and the forms as far as they were filled in.
+const daysOpen = new Set<string>();
+const planForm: Record<string, string> = {};
+function kept<T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(field: T, key: string): T {
+  if (planForm[key] !== undefined) field.value = planForm[key];
+  field.addEventListener('input', () => { planForm[key] = field.value; });
+  field.addEventListener('change', () => { planForm[key] = field.value; });
+  return field;
+}
+
 export function openPlans() {
   return dock.open('plans', 'Reading plans', 'plans', MINE, async (into, pane) => {
     // drawn apart and put in the pane only if no newer draw started meanwhile (two at once would show each plan twice)
@@ -994,23 +1010,28 @@ export function openPlans() {
         const row = h('div', 'plan-day');
         row.append(button('ref-link', d.label, entryGo(d.entries)), h('span', 'muted small', `day ${d.day}`));
         row.append(button('btn soft', 'Mark read', async () => {
-          try { await wb(['plan', 'done', p.id, '--day', String(d.day)]); app.changed(); redraw(); } catch (x) { toast(String(x)); }
+          try { await wb(['plan', 'done', p.id, '--day', String(d.day)]); redraw(); } catch (x) { toast(String(x)); }
         }));
         card.append(row);
       }
       if (!t?.to_read?.length && p.next) card.append(h('p', 'muted small', `Next: ${p.next.label} (day ${p.next.day})`));
       const acts = h('div', 'wrap');
       const days = h('div', 'plan-days');
-      days.hidden = true;
-      acts.append(button('btn', 'Days', async () => {
-        days.hidden = !days.hidden;
-        if (days.hidden || days.childElementCount) return;
+      days.hidden = !daysOpen.has(p.id);
+      const fillDays = async () => {
         const full = await wb(['plan', 'show', p.id]);
         for (const d of full.schedule) {
           const row = h('div', `plan-row${d.done ? ' done' : ''}`);
           row.append(h('span', 'muted small', `${d.day} · ${d.date.slice(5)}`), button('ref-link', d.label, entryGo(d.entries)), h('span', 'plan-tick', d.done ? '✓' : ''));
           days.append(row);
         }
+      };
+      if (!days.hidden) void fillDays();
+      acts.append(button('btn', 'Days', async () => {
+        days.hidden = !days.hidden;
+        if (days.hidden) daysOpen.delete(p.id); else daysOpen.add(p.id);
+        if (days.hidden || days.childElementCount) return;
+        await fillDays();
       }));
       if (!p.finished && p.behind > 1) acts.append(button('btn', 'Catch up', () => change(p.id, ['--catch-up']).catch(x => toast(String(x)))));
       if (!p.finished) acts.append(button('btn', 'Spread the rest…', e => ask(e.currentTarget as HTMLElement, 'What is not read yet, over how many days from today?', '', v => change(p.id, ['--days', v.trim()]), { type: 'number' })));
@@ -1024,6 +1045,7 @@ export function openPlans() {
       acts.append(button('link-btn danger', 'Stop', async () => {
         if (!confirm(`Stop “${p.name}”? Its file goes to .trash; what you read stays in the log.`)) return;
         await wb(['plan', 'rm', p.id]);
+        daysOpen.delete(p.id);
         redraw();
       }));
       card.append(acts, days);
@@ -1040,37 +1062,47 @@ export function openPlans() {
     for (const k of kinds) { const o = h('option', '', k.reads) as HTMLOptionElement; o.value = k.kind; o.dataset.days = String(k.days); kind.append(o); }
     const nDays = h('input', 'ask-input') as HTMLInputElement;
     nDays.type = 'number'; nDays.min = '1'; nDays.value = String(kinds[0]?.days ?? 365);
+    // several books at once: names or groups joined by commas (gospels, rom), or a run (Gen-Deut)
     const books = h('input', 'ask-input') as HTMLInputElement;
-    books.placeholder = 'Books: gospels, rom, ot, Gen-Deut…';
-    books.hidden = true;
+    books.placeholder = 'The books you choose: gospels, rom, Gen-Deut…';
+    books.setAttribute('aria-label', 'The books you choose');
     const from = h('input', 'ask-input') as HTMLInputElement;
     from.type = 'date'; from.value = new Date().toLocaleDateString('en-CA');
+    kept(name, 'name'); kept(kind, 'kind'); kept(nDays, 'days'); kept(books, 'books'); kept(from, 'start');
+    books.hidden = kind.value !== 'books';
     const preview = h('p', 'muted small');
     const argv = (dry: boolean) => ['plan', 'start', name.value.trim() || 'My plan', '--kind', kind.value, '--days', nDays.value, '--start', from.value,
       ...(kind.value === 'books' ? ['--books', books.value] : []), ...(dry ? ['--dry-run'] : [])];
     const show = async () => {
       try { const d = await wb(argv(true)); preview.textContent = `${d.days} days: ${d.first.slice(0, 3).join(' · ')} … ${d.last}`; } catch (x) { preview.textContent = String(x); }
     };
-    kind.onchange = () => { nDays.value = kind.selectedOptions[0].dataset.days || '30'; books.hidden = kind.value !== 'books'; show(); };
+    kind.onchange = () => { nDays.value = planForm.days = kind.selectedOptions[0].dataset.days || '30'; books.hidden = kind.value !== 'books'; show(); };
     nDays.onchange = show;
     books.onchange = show;
     start.append(name, kind, nDays, books, from, preview, h('button', 'btn primary', 'Start'));
-    start.onsubmit = async e => { e.preventDefault(); try { await wb(argv(false)); redraw(); } catch (x) { preview.textContent = String(x); } };
+    start.onsubmit = async e => {
+      e.preventDefault();
+      try { await wb(argv(false)); for (const k of ['name', 'kind', 'days', 'books']) delete planForm[k]; redraw(); } catch (x) { preview.textContent = String(x); }
+    };
     el.append(start);
     show();
 
     // your own plan: one day to a line
     const own = h('form', 'plan-form');
     own.append(h('div', 'label', 'A plan of your own'));
-    const ownName = h('input', 'ask-input') as HTMLInputElement;
+    const ownName = kept(h('input', 'ask-input') as HTMLInputElement, 'ownName');
     ownName.placeholder = 'Name';
-    const ownText = h('textarea', 'ask-area') as HTMLTextAreaElement;
+    const ownText = kept(h('textarea', 'ask-area') as HTMLTextAreaElement, 'ownText');
     ownText.placeholder = 'One day to a line, like\nGen 1-3\nJob 1-5; Ps 1';
     const ownErr = h('p', 'muted small');
     own.append(ownName, ownText, ownErr, h('button', 'btn primary', 'Start'));
     own.onsubmit = async e => {
       e.preventDefault();
-      try { await wb(['plan', 'import', ownName.value.trim() || 'My plan', '--start', from.value], ownText.value); redraw(); } catch (x) { ownErr.textContent = String(x); }
+      try {
+        await wb(['plan', 'import', ownName.value.trim() || 'My plan', '--start', from.value], ownText.value);
+        delete planForm.ownName; delete planForm.ownText;
+        redraw();
+      } catch (x) { ownErr.textContent = String(x); }
     };
     el.append(own);
 
@@ -1174,6 +1206,7 @@ export function openKeys() {
       ['Ctrl+= / Ctrl+-', 'Text size'],
       ['Esc', 'Close a card, a menu or the field'],
       ['Alt+click a word', 'The interlinear for its verse'],
+      ['Ctrl+J', 'Write in the Notebook, from anywhere'],
       ['Enter in the Notebook', 'Add the entry (Shift+Enter: a new line)'],
     ];
     for (const [k, what] of rows) {

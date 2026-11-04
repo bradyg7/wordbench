@@ -228,6 +228,19 @@ pub fn also_at(bible: &Bible, store: &mut Store, id: &str, anchor: &str, on: boo
     Ok(entry_in(bible, store, &r, "note", true))
 }
 
+/// Take a place off a placed note or question, its first place too: the next of its places becomes its place, and its
+/// last place taken off sends it to the Inbox. → the entry.
+pub fn unplace(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -> Result<Value> {
+    let (q, _) = placed(store, id)?;
+    let want = crate::anchors::canonical(anchor)?;
+    let places: Vec<String> = store.notes().into_iter().chain(store.trails()).find(|n| s(n, "id") == id).map(places_of).unwrap_or_default();
+    let at = places.iter().find(|p| crate::anchors::canonical(p).is_ok_and(|c| c == want)).cloned().ok_or_else(|| missing("The note is not on that place."))?;
+    let next = if places.first() == Some(&at) && places.len() > 1 { Some(resolved(bible, &places[1])?) } else { None };
+    let r = store.unplace(id, &at, next.as_ref().map(|(a, k, qu, st)| (a.as_str(), k.as_str(), qu.as_str(), st.as_str())))?;
+    let placed = !s(&r, "anchor").is_empty() || !threads_of(&r).is_empty();
+    Ok(entry_in(bible, store, &r, if q { "question" } else { "note" }, placed))
+}
+
 /// Change the text of any note or question, wherever it is. → the entry.
 pub fn edit_text(bible: &Bible, store: &mut Store, id: &str, text: &str) -> Result<Value> {
     if store.inbox().iter().any(|n| s(n, "id") == id) {

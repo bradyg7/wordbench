@@ -4,7 +4,8 @@
 import { api, inApp, wb } from './api';
 import { app, book, goTo, here, type At } from './app';
 import { layers } from './layers';
-import { countInbox, openNotebook, refreshNotebook } from './notebook';
+import { CHANGES, type Change } from './dock';
+import { countInbox, openNotebook } from './notebook';
 import {
   dock, frontResults, jumpTo, openBdb, openCount, openDefine, openFind, openForms, openHelp, openInterlinear, openKeys, openLesson, openLexiconc,
   openMarked, openNear, openPlace, openPassage, openPlans, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
@@ -34,10 +35,13 @@ function spanLabel(s: { book: string; c1: number; v1: number; c2: number; v2: nu
   return `${headTxt}–${s.c2}${s.v2 ? ':' + s.v2 : ''}`;
 }
 
-export function written() {
-  refreshNotebook();
-  app.refreshMarks();
-  dock.refreshAll();
+/** After a write: the panes that show what it changed are drawn again (all of them when it is not said), the reader's
+ * marks when notes, threads or highlights changed, and the Inbox count when notes did. */
+export function written(...what: Change[]) {
+  const w = what.length ? what : CHANGES;
+  if (w.includes('notes')) void countInbox();
+  if (w.some(c => c === 'notes' || c === 'threads' || c === 'highlights')) void app.refreshMarks();
+  dock.refresh(w);
 }
 
 /** Runs one parsed action. → what it did, in a sentence. */
@@ -107,25 +111,25 @@ export async function perform(a: any, line: string): Promise<string> {
       const p = at(a);
       const n = await wb(['note', 'add', p.anchor, '-'], a.text);
       last = { kind: 'note', id: n.id };
-      written();
+      written('notes');
       return `Note on ${p.label}`;
     }
     case 'ask': {
       const p = at(a);
       const t = await wb(['trail', 'add', p.anchor, a.text]);
       last = { kind: 'trail', id: t.id };
-      written();
+      written('notes');
       return `Question on ${p.label}`;
     }
     case 'jot': {
       const n = await wb(a.question ? ['note', 'jot', '-', '--question'] : ['note', 'jot', '-'], a.text);
       last = { kind: 'jot', id: n.id };
-      written();
+      written('notes');
       return a.question ? 'A question in the Inbox' : 'In the Inbox';
     }
     case 'place': {
       const r = await wb(['note', 'place', a.part, a.at.anchor]);
-      written();
+      written('notes');
       return `Placed on ${r.label}`;
     }
     case 'journal': openNotebook('journal'); return 'The Journal';
@@ -135,10 +139,10 @@ export async function perform(a: any, line: string): Promise<string> {
       const p = at(a);
       await wb(['thread', 'add', a.name, p.anchor]);
       last = { kind: 'thread', name: a.name, anchor: p.anchor };
-      written();
+      written('threads');
       return `${p.label} added to ${a.name}`;
     }
-    case 'threadrm': await wb(['thread', 'rm', a.name, a.at.anchor]); written(); return `${a.at.label} taken out of ${a.name}`;
+    case 'threadrm': await wb(['thread', 'rm', a.name, a.at.anchor]); written('threads'); return `${a.at.label} taken out of ${a.name}`;
     case 'threadset': return changeThread(a);
     case 'hl': {
       const p = at(a);
@@ -149,7 +153,7 @@ export async function perform(a: any, line: string): Promise<string> {
       }
       const r = color ? await wb(['hl', 'set', p.anchor, color]) : await wb(['hl', 'clear', p.anchor]);
       last = { kind: 'hl', record: r.undo };
-      written();
+      written('highlights');
       return color ? `${p.label} ${color}` : `${p.label} cleared`;
     }
     case 'undo': return undo();
@@ -228,7 +232,7 @@ async function changeNote(a: any, p: At): Promise<string> {
   if (hit.length > 1) return `Which note? ${hit.length} on ${p.label} fit; give more of its words.`;
   if (a.action === 'delete') await wb(['note', 'rm', hit[0].id]);
   else await wb(['note', 'edit', hit[0].id, hit[0].anchor, '-'], a.text);
-  written();
+  written('notes');
   return a.action === 'delete' ? 'Deleted (to .trash)' : 'Changed';
 }
 
@@ -244,7 +248,7 @@ async function changeTrail(a: any): Promise<string> {
   if (a.action === 'edit') await wb(['trail', 'edit', id, a.text]);
   else if (a.action === 'delete') await wb(['trail', 'rm', id]);
   else await wb(['trail', a.action, id]);
-  written();
+  written('notes');
   return a.action === 'done' ? 'Marked answered' : a.action === 'reopen' ? 'Open again' : a.action === 'delete' ? 'Deleted (to .trash)' : 'Changed';
 }
 
@@ -262,7 +266,7 @@ async function changeThread(a: any): Promise<string> {
     case 'sort': await wb(['thread', 'sort', a.name]); break;
     case 'move': await wb(['thread', 'move', a.name, String(a.place), a.to]); break;
   }
-  written();
+  written('threads', 'notes');
   return `${a.name}: ${a.action === 'move' ? `${a.label} moved ${a.to}` : a.action}`;
 }
 
@@ -311,7 +315,7 @@ async function results(a: any): Promise<string> {
       const places = r.ticked.size ? [...r.ticked] : anchors;
       const words = r.shape === 'words' && r.words ? r.words().filter(w => places.some(p => w.startsWith(p + '.'))) : places;
       await wb(['thread', 'add-many', a.name, ...words]);
-      written();
+      written('threads');
       return `${places.length} added to ${a.name}`;
     }
   }
@@ -330,7 +334,7 @@ async function changeSet(a: any): Promise<string> {
     case 'delete': await wb(['set', 'delete', a.name]); break;
     default: openShelf(); return `The Shelf (opening a set’s panes comes in phase 6)`;
   }
-  dock.refreshAll();
+  dock.refresh(['sets']);
   return `Set ${a.name}: ${a.action}`;
 }
 

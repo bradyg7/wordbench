@@ -28,7 +28,7 @@ pub const KINDS: &[(&str, &str, u32)] = &[
     ("ot-nt", "The Old Testament and the New side by side: some of each every day", 365),
     ("nt", "The New Testament, Matthew to Revelation", 90),
     ("psalms-proverbs", "Psalms and Proverbs", 31),
-    ("books", "The books you name (--books), in the Bible's order", 30),
+    ("books", "The books you choose, in the Bible's order", 30),
 ];
 
 fn folder(root: &Path) -> PathBuf {
@@ -116,6 +116,26 @@ fn ids(from: u32, to: u32) -> Vec<u32> {
     (from..=to).collect()
 }
 
+/// The books a plan of the books kind reads, in the Bible's order: one name or group (gospels, rom, ot, Gen-Deut), or
+/// several joined by commas or semicolons ("gospels, rom").
+fn books_named(bible: &Bible, named: &str) -> Result<Vec<u32>> {
+    use crate::places::{in_scope, match_book, scope_of};
+    let one = |p: &str| -> Result<String> {
+        match p.split_once('-') {
+            Some((a, b)) if scope_of(p, bible.books()).is_err() => {
+                let (a, b) = (match_book(a, bible.books())?.id, match_book(b, bible.books())?.id);
+                Ok((a.min(b)..=a.max(b)).map(|i| i.to_string()).collect::<Vec<_>>().join(","))
+            }
+            _ => scope_of(p, bible.books()),
+        }
+    };
+    let scopes = match one(named) {
+        Ok(s) => vec![s],
+        Err(_) => named.split([',', ';']).map(str::trim).filter(|p| !p.is_empty()).map(one).collect::<Result<_>>()?,
+    };
+    Ok(bible.books().iter().filter(|b| scopes.iter().any(|s| in_scope(b, s))).map(|b| b.id).collect())
+}
+
 /// The days of a built-in plan.
 pub fn schedule(bible: &Bible, kind: &str, days: u32, books: Option<&str>) -> Result<Vec<Vec<String>>> {
     let days = days as usize;
@@ -143,9 +163,8 @@ pub fn schedule(bible: &Bible, kind: &str, days: u32, books: Option<&str>) -> Re
             }).collect())
         }
         "books" => {
-            let scope = crate::places::scope_of(books.ok_or_else(|| bad("Name the books: --books gospels, --books rom, --books ot ..."))?, bible.books())?;
-            let picked: Vec<u32> = bible.books().iter().filter(|b| crate::places::in_scope(b, &scope)).map(|b| b.id).collect();
-            make(picked)
+            let named = books.map(str::trim).filter(|b| !b.is_empty()).ok_or_else(|| bad("Name the books, like gospels, rom, ot or Gen-Deut."))?;
+            make(books_named(bible, named)?)
         }
         other => Err(bad(format!("No plan kind “{other}”. Kinds: {}.", KINDS.iter().map(|k| k.0).collect::<Vec<_>>().join(", ")))),
     }

@@ -11,6 +11,16 @@ import { h, icon, popMenu, sizeClass } from './ui';
 
 export type Side = 'left' | 'right' | 'float';
 
+/** What a write changed in the study folder. */
+export type Change = 'notes' | 'threads' | 'highlights' | 'plans' | 'sets';
+export const CHANGES: Change[] = ['notes', 'threads', 'highlights', 'plans', 'sets'];
+/** What each kind of pane shows from the study folder. A write draws again only the panes that show what it changed;
+ * the other kinds show the Bible database alone and are never drawn again by a write. */
+const SHOWS: Record<string, Change[]> = {
+  notebook: ['notes', 'threads'], threads: ['threads'], thread: ['threads', 'notes'], place: ['notes', 'highlights', 'threads'],
+  find: ['notes', 'threads'], marked: ['highlights', 'threads'], plans: ['plans'], shelf: ['sets', 'threads'],
+};
+
 export interface Pane {
   id: string;
   key: string;
@@ -57,6 +67,15 @@ export class Dock {
       Object.assign(this.wide, kept.wide || {});
     } catch { /* defaults */ }
     window.addEventListener('resize', () => this.layout());
+    // the column last pressed in: a pane opened from a pane there opens beside it (a press in a menu or card opened from
+    // it keeps it). Typing anywhere else (the command field) forgets it, and so do a few seconds.
+    document.addEventListener('pointerdown', e => {
+      const t = e.target as Element;
+      if (t.closest?.('.menu, .popover, .hovercard')) return;
+      const side = ((t.closest?.('.dock-col') as HTMLElement | null)?.dataset.side as Side | undefined) ?? null;
+      this.origin = side && { side, at: performance.now() };
+    }, true);
+    document.addEventListener('keydown', e => { if (!(e.target as Element).closest?.('.dock-col')) this.origin = null; }, true);
     // the floating column is resized from its corner; its size is kept
     new ResizeObserver(() => {
       const f = this.cols.float;
@@ -86,9 +105,13 @@ export class Dock {
     return this.panes.find(p => p.key === key);
   }
 
+  /** The column of the pane last pressed in, if the last press was in one, and when. */
+  private origin: { side: Side; at: number } | null = null;
+
   /**
    * Opens a pane, or brings forward the one already open with the same key. `fill` draws into the pane's element (it may
-   * be called again by refresh).
+   * be called again by refresh). A new pane opens in the column where a pane of its kind already is, else where the pane
+   * it was opened from is, else on its usual `side`.
    */
   open(kind: string, title: string, key: string, side: Side, fill: (el: HTMLElement, p: Pane) => void | Promise<void>): Pane {
     const have = this.find(key);
@@ -97,7 +120,9 @@ export class Dock {
       return have;
     }
     const el = h('div', `pane pane-${kind}`);
-    const p: Pane = { id: `p${++seq}`, key, kind, title, side, el };
+    const from = this.origin && performance.now() - this.origin.at < 3000 ? this.origin.side : null;
+    const at = this.panes.find(x => x.kind === kind)?.side ?? from ?? side;
+    const p: Pane = { id: `p${++seq}`, key, kind, title, side: at, el };
     p.refresh = () => fill(el, p);
     this.panes.push(p);
     this.show(p);
@@ -144,8 +169,13 @@ export class Dock {
     return [];
   }
 
-  refreshAll() {
-    for (const p of this.panes) Promise.resolve(p.refresh?.()).catch(() => {});
+  /** Draws again the panes that show what changed, each keeping where it was scrolled. */
+  refresh(changed: Change[] = CHANGES) {
+    for (const p of this.panes) {
+      if (!(SHOWS[p.kind] || []).some(c => changed.includes(c))) continue;
+      const top = p.el.scrollTop;
+      Promise.resolve(p.refresh?.()).then(() => { if (p.el.scrollTop !== top) p.el.scrollTop = top; }).catch(() => {});
+    }
   }
 
   private save() {

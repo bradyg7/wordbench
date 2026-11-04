@@ -10,7 +10,8 @@
 //! sets/<slug>.md            a named group of threads, places, notes, lessons, PDFs and panes
 //! settings/palette.json     saved custom colors
 //! sessions/<day>.jsonl      what was typed into the capture box, by day; sessions/layouts/*.json pane layouts
-//! .trash/                   anything deleted is moved here, never erased
+//! .trash/                   anything deleted is moved here; only notes and questions are erased, after TRASH_DAYS
+//!                           or at once with Erase now
 //! ```
 //!
 //! Records are JSON objects with their keys in the order the files have them, as the Python app holds them in dicts.
@@ -863,10 +864,7 @@ impl Store {
         }
         let path = if to_q { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&meta) };
         self.put(&path, &dump_md(&meta, &text))?;
-        if path != from {
-            fs::remove_file(&from)?;
-            self.drop_file(&from);
-        }
+        self.moved(&from, &path)?;
         meta.insert("text".into(), json!(text));
         Ok(meta)
     }
@@ -1011,6 +1009,79 @@ impl Store {
         self.rewrite(meta, &path)
     }
 
+    /// Take a place off a placed note or question (`anchor`, as the note has it). One of its other places comes off as
+    /// `set_note_also` takes it; its first place taken off, the next (`next`: anchor, kind, quote and strong, resolved
+    /// by the caller) becomes its place and its file moves there; its last place taken off, it goes to the Inbox (a
+    /// note still on a thread goes to notes/_threads/, the thread being its place). It keeps its id, its text, its
+    /// threads and the day it was written; the new file is written before the old one is removed.
+    pub fn unplace(&mut self, id: &str, anchor: &str, next: Option<(&str, &str, &str, &str)>) -> Result<Rec> {
+        let (old, was_q) = match self.notes.iter().find(|n| s(n, "id") == id) {
+            Some(n) => (n.clone(), false),
+            None => (self.trails.iter().find(|t| s(t, "id") == id).cloned().ok_or_else(|| missing("No placed note or question with that id."))?, true),
+        };
+        let places = places_of(&old);
+        if !places.iter().any(|p| p == anchor) {
+            return Err(missing("The note is not on that place."));
+        }
+        if s(&old, "anchor") != anchor {
+            return self.set_note_also(id, anchor, false);
+        }
+        let rest: Vec<String> = places.into_iter().skip(1).collect();
+        if rest.is_empty() != next.is_none() {
+            return Err(bad("The note's next place is needed to take off its first."));
+        }
+        let from = if was_q { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&old) };
+        let text = s(&old, "text");
+        let threads = threads_of(&old);
+        let mut meta = match next {
+            Some((a, kind, quote, strong)) => {
+                json!({"id": id, "anchor": a, "kind": kind, "quote": quote, "strong": strong, "created": old["created"], "updated": now()})
+            }
+            None if was_q => {
+                let status = if s(&old, "status") == "done" { "done" } else { "open" };
+                json!({"id": id, "anchor": "", "kind": "question", "quote": "", "strong": "", "status": status, "created": old["created"], "updated": now()})
+            }
+            None => {
+                let kind = if threads.is_empty() { "jot" } else { "thread" };
+                json!({"id": id, "anchor": "", "kind": kind, "quote": "", "strong": "", "created": old["created"], "updated": now()})
+            }
+        }
+        .as_object()
+        .unwrap()
+        .clone();
+        if rest.len() > 1 {
+            meta.insert("also".into(), json!(rest[1..]));
+        }
+        if !threads.is_empty() {
+            meta.insert("threads".into(), json!(threads));
+        }
+        let path = if next.is_some() {
+            self.note_path(&meta)
+        } else if !was_q && !threads.is_empty() {
+            self.on_thread_path(id)
+        } else {
+            self.inbox_path(id)
+        };
+        self.put(&path, &dump_md(&meta, &text))?;
+        self.moved(&from, &path)?;
+        meta.insert("text".into(), json!(text));
+        Ok(meta)
+    }
+
+    /// A record written at its new file (`to`, already put) leaves its old one (`from`): the old file is removed and
+    /// forgotten, and the new one read again, since forgetting the old forgets its id, which the new one shares.
+    fn moved(&mut self, from: &Path, to: &Path) -> Result<()> {
+        if from == to {
+            return Ok(());
+        }
+        fs::remove_file(from)?;
+        self.drop_file(from);
+        if let (Some(kind), Some(sig)) = (self.kind_of(to), sig_of(to)) {
+            self.load_file(to, sig, kind);
+        }
+        Ok(())
+    }
+
     // ---- the trash: deleted files wait in .trash; notes and questions are erased after TRASH_DAYS ----
 
     /// When a file in .trash was deleted, from its name (20261103-213450-n_….md, UTC; both apps name them so).
@@ -1096,6 +1167,21 @@ impl Store {
         }
         gone.sort();
         Ok(gone)
+    }
+
+    /// Erase one deleted note or question at once (Erase now in the Trash; the person's decision, 2026-11-04). It is the
+    /// only erase besides the 7 days, and only for notes and questions: other files in .trash are never erased.
+    pub fn erase(&mut self, name: &str) -> Result<()> {
+        guard(&self.root)?;
+        if name.contains(['/', '\\']) || !Self::is_note_file(name) {
+            return Err(bad("Name a note or question in the trash (wb trash)."));
+        }
+        let p = self.root.join(".trash").join(name);
+        if !p.is_file() {
+            return Err(missing("No such file in the trash."));
+        }
+        fs::remove_file(p)?;
+        Ok(())
     }
 
     // ---- trails ----

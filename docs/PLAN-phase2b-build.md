@@ -28,15 +28,18 @@ step 3 (a first reading plans pane, `wb plan edit`, `wb plan text`; 0c73afb). Th
 
 Each is a day-3 note ([phase2-results.md](phase2-results.md) section 12). Small, and they get in the way now.
 
+**Built 2026-11-04, all seven (✓ below);** what each does and how it was checked: [phase2-results.md](phase2-results.md)
+section 13.
+
 | # | Note | What | Where | Done when |
 |---|---|---|---|---|
-| 0.1 | `c35b` | The color bar closes, and the selection clears, on a click or tap outside it | `ui/src/main.ts` (`showBar`, the overlay's pointerdown), `ui/src/select.ts` | desk check: select, click away, no bar, no selection |
-| 0.2 | `5a5a` | A write refreshes only the panes that show what changed; a pane keeps what is open (Days, a form) when it does refresh | `ui/src/app.ts` (`changed(kind)`), `ui/src/dock.ts` (refresh by kind), every `open*` in `ui/src/panes.ts` | desk check: plans pane with Days open, write a note, Days still open |
-| 0.3 | `8c69` | A new pane opens in the column where a pane of its kind, or the pane it was opened from, already is | `ui/src/dock.ts` `open()` | desk check: move Threads left, open a thread, it opens left |
-| 0.4 | `c440` | No terminal words in the window ("--books"); the books kind takes several books | `crates/wb-core/src/reading.rs` `KINDS` texts; `ui/src/panes.ts` plan form | the form says "The books you choose"; `gospels, rom` works |
-| 0.5 | `e998` | Ctrl+J opens the Notebook's writing (focus in its box) from anywhere; in Keys | `ui/src/main.ts` keys; `openKeys` in `ui/src/panes.ts` | desk check |
-| 0.6 | `c8dc` | Take a place off a note, its first place too: the next `also` place becomes its place; a note's last place taken off sends it to the Inbox | `crates/wb-core/src/store.rs` (beside `note also --remove`); `wb note unplace <id> <place>`; "Take off" on place chips in `ui/src/notebook.ts` and Notes & lookup | CLI test for each case; the Python `wb` still lists the note |
-| 0.7 | `e48c` (decided 2026-11-04) | **Erase now** on a note or question in the Trash, asked to confirm; the only erase besides the 7 days | `crates/wb-core/src/store.rs` (next to the 7-day erase); `wb trash erase <name>`; the Notebook's Trash tab; **CLAUDE.md's rule** ("erased after 7 days … unless put back") gains "or at once with Erase now" | CLI test; desk check with the confirm |
+| ✓ 0.1 | `c35b` | The color bar closes, and the selection clears, on a click or tap outside it | `ui/src/main.ts` (`showBar`, the overlay's pointerdown), `ui/src/select.ts` | desk check: select, click away, no bar, no selection |
+| ✓ 0.2 | `5a5a` | A write refreshes only the panes that show what changed; a pane keeps what is open (Days, a form) when it does refresh | `ui/src/app.ts` (`changed(kind)`), `ui/src/dock.ts` (refresh by kind), every `open*` in `ui/src/panes.ts` | desk check: plans pane with Days open, write a note, Days still open |
+| ✓ 0.3 | `8c69` | A new pane opens in the column where a pane of its kind, or the pane it was opened from, already is | `ui/src/dock.ts` `open()` | desk check: move Threads left, open a thread, it opens left |
+| ✓ 0.4 | `c440` | No terminal words in the window ("--books"); the books kind takes several books | `crates/wb-core/src/reading.rs` `KINDS` texts; `ui/src/panes.ts` plan form | the form says "The books you choose"; `gospels, rom` works |
+| ✓ 0.5 | `e998` | Ctrl+J opens the Notebook's writing (focus in its box) from anywhere; in Keys | `ui/src/main.ts` keys; `openKeys` in `ui/src/panes.ts` | desk check |
+| ✓ 0.6 | `c8dc` | Take a place off a note, its first place too: the next `also` place becomes its place; a note's last place taken off sends it to the Inbox | `crates/wb-core/src/store.rs` (beside `note also --remove`); `wb note unplace <id> <place>`; "Take off" on place chips in `ui/src/notebook.ts` and Notes & lookup | CLI test for each case; the Python `wb` still lists the note |
+| ✓ 0.7 | `e48c` (decided 2026-11-04) | **Erase now** on a note or question in the Trash, asked to confirm; the only erase besides the 7 days | `crates/wb-core/src/store.rs` (next to the 7-day erase); `wb trash erase <name>`; the Notebook's Trash tab; **CLAUDE.md's rule** ("erased after 7 days … unless put back") gains "or at once with Erase now" | CLI test; desk check with the confirm |
 
 ## Tier 1: the dock (the foundation: cards as tabs, views and floats all stand on it)
 

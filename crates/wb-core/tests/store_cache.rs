@@ -148,3 +148,19 @@ fn a_file_the_store_wrote_is_not_read_again_by_the_next_look() {
     }
     assert_eq!(st.loads, 0);
 }
+
+#[test]
+fn a_note_that_moves_to_another_book_stays_in_memory() {
+    // the window keeps one store open: a note whose file moves (Move…, Take off its first place) is still there after
+    let t = Scratch::new();
+    let mut st = Store::open(t.path()).unwrap();
+    let n = s(&st.add_note("NUM.25:11", "his zeal", "", "").unwrap(), "id");
+    st.set_note_also(&n, "PSA.106:30", true).unwrap();
+    st.unplace(&n, "NUM.25:11", Some(("PSA.106:30", "verse", "", ""))).unwrap();
+    assert_eq!(st.notes().iter().map(|x| (s(x, "id"), s(x, "anchor"))).collect::<Vec<_>>(), vec![(n.clone(), "PSA.106:30".to_string())]);
+    st.replace_placed(&n, "JHN.3:16", "verse", "", "", None).unwrap();
+    assert_eq!(st.notes().iter().map(|x| (s(x, "id"), s(x, "anchor"))).collect::<Vec<_>>(), vec![(n.clone(), "JHN.3:16".to_string())]);
+    st.unplace(&n, "JHN.3:16", None).unwrap();
+    assert!(st.notes().is_empty());
+    assert_eq!(st.inbox().iter().map(|x| s(x, "id")).collect::<Vec<_>>(), vec![n]);
+}
