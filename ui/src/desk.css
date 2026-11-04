@@ -301,3 +301,18 @@ button.question-pill:hover { text-decoration: line-through; }
 .nb-trash-about { margin: 4px 0 12px; }
 .thread-notes { margin: 0 0 8px; display: flex; flex-direction: column; gap: 10px; }
 .thread-notes > .label { margin-bottom: -2px; }
+
+/* reading plans */
+.plan-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; }
+.plan-title { font: var(--type-heading); margin: 0 0 2px; }
+.plan-where { margin: 0 0 8px; }
+.plan-day { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+.plan-day .ref-link { flex: 1; text-align: left; }
+.plan-days { margin-top: 8px; max-height: 320px; overflow: auto; }
+.plan-row { display: grid; grid-template-columns: 72px 1fr 18px; gap: 8px; align-items: baseline; padding: 2px 0; }
+.plan-row.done .ref-link { color: var(--muted); }
+.plan-tick { color: var(--accent); }
+.plan-form { display: grid; gap: 6px; margin: 16px 0; }
+.ask { display: grid; gap: 6px; padding: 10px; }
+.ask-input, .ask-area { font: var(--type-body); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.ask-area { min-height: 160px; resize: vertical; font-family: var(--font-ui, inherit); }

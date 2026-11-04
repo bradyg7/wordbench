@@ -265,6 +265,8 @@ pub enum Action {
     Window { size: String },
     /// `version ylt`: the reader in that version (`version` alone: which one it is in).
     Version { version: String },
+    /// `plans`: the reading plans pane.
+    Plans,
 }
 
 // ---- the manual and the command list (from the Python app's web/help-docs.js and commands.js) -----------------------
@@ -293,7 +295,7 @@ pub fn find_doc(topic: &str) -> Option<&'static Value> {
 /// The commands' names, in the manual's order, then the ones new in the Rust app.
 pub fn command_names() -> Vec<String> {
     let mut v: Vec<String> = manual()["commands"].as_array().map(|a| a.iter().filter_map(|c| c["name"].as_str().map(String::from)).collect()).unwrap_or_default();
-    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version"].map(String::from));
+    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version", "plans"].map(String::from));
     v
 }
 
@@ -1360,6 +1362,7 @@ pub fn parse(input: &str, books: &[Book]) -> Result<Action, String> {
             }
             Action::Window { size: w }
         }
+        "plans" => Action::Plans,
         "version" => {
             let v = a.trim().to_uppercase();
             if !v.is_empty() && !regex!(r"^[A-Z0-9]{2,10}$").is_match(&v) {
@@ -1546,6 +1549,7 @@ mod tests {
         assert_eq!(p("window phone"), serde_json::json!({"cmd": "window", "size": "phone"}));
         assert_eq!(p("version ylt"), serde_json::json!({"cmd": "version", "version": "YLT"}));
         assert_eq!(p("version"), serde_json::json!({"cmd": "version", "version": ""}));
+        assert_eq!(p("plans"), serde_json::json!({"cmd": "plans"}));
         assert!(parse("jot", &bs).is_err());
         assert!(parse("place rose up", &bs).unwrap_err().contains("@"));
         assert!(parse("journal yesterday", &bs).is_err());

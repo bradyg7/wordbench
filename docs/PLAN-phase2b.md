@@ -2,7 +2,7 @@
 
 Status: accepted, 2026-11-03 ("Desktop first, as planned"): phase 2b comes before the phone, with the defaults below
 (documents brought forward, the phase 2 check runs to 2026-11-09, the dock decided by the spike, no third translation
-yet). Steps 1 and 2 are built (2026-11-03 and 11-04; [phase2-results.md](phase2-results.md) section 11).
+yet). Steps 1 to 3 are built (2026-11-03 and 11-04; [phase2-results.md](phase2-results.md) section 11).
 
 ## 1. Where things stand
 
@@ -56,7 +56,7 @@ golden suite where a `wb` command changed; and a `wb` command for any new core a
   (public-domain texts, or licensed ones) is the person's choice, each with its source and license checked before it is
   built into `workbench.db` (the database stays read-only for the app; it is built by the Python repo's scripts).
 
-### Step 3 — reading plans pane (medium; item 20)
+### Step 3 — reading plans pane (built 2026-11-04; item 20)
 
 wb-core and `wb` already have plans and progress. A pane: the plans there are, today's reading, start a preset plan,
 make one's own (books, days), change it later, and see what was read when (`reading/log.jsonl`). Plans keep the Python

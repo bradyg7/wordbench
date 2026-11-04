@@ -378,6 +378,49 @@ try {
   check('Put it back restores it to its thread', JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes.length === 2);
   await page.locator('.nb-seg button', { hasText: 'Journal' }).click();
 
+  // reading plans: start one in the pane, mark a day read, spread the rest, rename, edit as text, stop
+  await page.evaluate(() => window.__wb.run('plans'));
+  await page.waitForSelector('.pane-plans .plan-form', { timeout: 10000 });
+  check('plans opens the Reading plans pane', true);
+  const form = page.locator('.pane-plans .plan-form').first();
+  await form.locator('input').first().fill('Gospels in a month');
+  await form.locator('select').selectOption('books');
+  await form.locator('input[placeholder^="Books"]').fill('gospels');
+  await form.locator('input[type=number]').fill('30');
+  await form.locator('input[type=number]').dispatchEvent('change');
+  await page.waitForFunction(() => /^30 days: Matthew/.test(document.querySelector('.pane-plans .plan-form .muted.small')?.textContent || ''), null, { timeout: 10000 });
+  check('the form previews the days before starting', true);
+  await form.getByRole('button', { name: 'Start' }).click();
+  const card = page.locator('.pane-plans .plan-card[data-plan="gospels-in-a-month"]');
+  await card.waitFor({ timeout: 10000 });
+  const planFile = path.join(study, 'reading', 'plans', 'gospels-in-a-month.json');
+  check('Start writes the plan to reading/plans', existsSync(planFile) && JSON.parse(readFileSync(planFile, 'utf8')).days.length === 30);
+  await card.getByRole('button', { name: 'Mark read' }).first().click();
+  await page.waitForFunction(() => /1 done/.test(document.querySelector('.pane-plans .plan-card[data-plan="gospels-in-a-month"] .plan-where')?.textContent || ''), null, { timeout: 10000 });
+  const logged = readFileSync(path.join(study, 'reading', 'log.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l)).filter(l => l.plan === 'gospels-in-a-month');
+  check('Mark read writes the day to the reading log', logged.length > 0 && logged[0].ch === 'MAT.1', logged.map(l => l.ch).join(' '));
+  await card.getByRole('button', { name: 'Spread the rest…' }).click();
+  await page.locator('.menu .ask input').fill('10');
+  await page.locator('.menu .ask').getByRole('button', { name: 'OK' }).click();
+  await page.waitForFunction(() => /of 11/.test(document.querySelector('.pane-plans .plan-card[data-plan="gospels-in-a-month"] .plan-where')?.textContent || ''), null, { timeout: 10000 });
+  check('Spread the rest: the day read stays, the rest over 10 days', JSON.parse(readFileSync(planFile, 'utf8')).days.length === 11);
+  await card.getByRole('button', { name: 'Rename…' }).click();
+  await page.locator('.menu .ask input').fill('The four gospels');
+  await page.locator('.menu .ask').getByRole('button', { name: 'OK' }).click();
+  await page.waitForFunction(() => document.querySelector('.pane-plans .plan-card[data-plan="gospels-in-a-month"] .plan-title')?.textContent === 'The four gospels', null, { timeout: 10000 });
+  const kept = readdirSync(path.join(study, '.trash')).filter(f => f.includes('-plan-gospels-in-a-month')).length;
+  check('Rename changes the name; each change keeps the plan as it was in .trash', JSON.parse(readFileSync(planFile, 'utf8')).name === 'The four gospels' && kept === 2, `${kept} in .trash`);
+  await card.getByRole('button', { name: 'Edit as text…' }).click();
+  await page.locator('.menu .ask textarea').waitFor({ timeout: 5000 });
+  const asText = execFileSync(wbExe, ['plan', 'text', 'four gospels'], { env }).toString().trim();
+  check('Edit as text shows the plan one day to a line', (await page.locator('.menu .ask textarea').inputValue()).trim() === asText, asText.split('\n')[0]);
+  await page.keyboard.press('Escape');
+  page.once('dialog', d => d.accept());
+  await card.getByRole('button', { name: 'Stop' }).click();
+  await page.waitForFunction(() => !document.querySelector('.pane-plans .plan-card[data-plan="gospels-in-a-month"]'), null, { timeout: 10000 });
+  check('Stop puts the plan in .trash; what was read stays in the log', !existsSync(planFile) && readFileSync(path.join(study, 'reading', 'log.jsonl'), 'utf8').includes('gospels-in-a-month'));
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'plans')) d.close(p); });
+
   const top = () => page.evaluate(() => {
     const sc = document.getElementById('scroller'), r = document.getElementById('reader');
     let v = 1;

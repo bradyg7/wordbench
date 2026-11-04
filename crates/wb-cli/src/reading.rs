@@ -97,6 +97,34 @@ pub fn commands() -> Vec<Command> {
             let after = rd::progress(b, &r, &p, rd::today()).map_err(e)?;
             j(json!({"plan": p["name"], "day": row["day"], "read": row["label"], "done": after["done"], "of": after["days"], "next": after["next"]["label"]}))
         }),
+        cmd("plan text", "A plan's days as text, one day to a line (the form plan import and plan edit --text read).", vec![Pos("name", N::Many)], |c, a| {
+            let r = c.root()?;
+            Ok(Out::Text(rd::plan_text(c.bible()?, &rd::find_plan(&r, &a.s("name")).map_err(e)?).map_err(e)?.trim_end().to_string()))
+        }),
+        cmd("plan edit", "Change a plan: --rename \"New name\", --start 2026-11-10, --catch-up (today is the first day not done), --days 60 (what is not done, spread
+                          again over 60 days from today), --text FILE or - (every day replaced, one day to a line). The plan as it was goes to .trash.",
+            vec![Pos("name", N::Many), Opt("rename", None), Opt("start", None), Flag("catch_up"), Opt("days", None), Opt("text", None)], |c, a| {
+                let r = c.root()?;
+                let b = c.bible()?;
+                let p = rd::find_plan(&r, &a.s("name")).map_err(e)?;
+                let days = match a.opt("text") {
+                    Some(f) => {
+                        let text = if f == "-" { c.stdin()? } else { std::fs::read_to_string(&f).map_err(|x| format!("{f}: {x}"))? };
+                        Some(rd::parse_plan_text(b, &text).map_err(e)?)
+                    }
+                    None => None,
+                };
+                let spread = match a.opt("days") {
+                    Some(d) => Some(d.parse::<u32>().map_err(|_| format!("argument --days: invalid int value: '{d}'"))?),
+                    None => None,
+                };
+                let ch = rd::PlanChange { name: a.opt("rename"), days, start: a.opt("start"), spread, catch_up: a.flag("catch_up") };
+                if ch.name.is_none() && ch.days.is_none() && ch.start.is_none() && ch.spread.is_none() && !ch.catch_up {
+                    return Err("Say what to change: --rename, --start, --catch-up, --days or --text.".into());
+                }
+                let p = rd::edit_plan(b, &r, p["id"].as_str().unwrap(), ch).map_err(e)?;
+                j(summary(&rd::progress(b, &r, &p, rd::today()).map_err(e)?))
+            }),
         cmd("plan rm", "Stop a plan (its file goes to .trash; what you read stays in the log).", vec![Pos("name", N::Many)], |c, a| {
             let r = c.root()?;
             let p = rd::find_plan(&r, &a.s("name")).map_err(e)?;

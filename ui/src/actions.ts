@@ -7,7 +7,7 @@ import { layers } from './layers';
 import { countInbox, openNotebook, refreshNotebook } from './notebook';
 import {
   dock, frontResults, jumpTo, openBdb, openCount, openDefine, openFind, openForms, openHelp, openInterlinear, openKeys, openLesson, openLexiconc,
-  openMarked, openNear, openPlace, openPassage, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
+  openMarked, openNear, openPlace, openPassage, openPlans, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
 } from './panes';
 import { setHover } from './ui';
 
@@ -197,6 +197,7 @@ export async function perform(a: any, line: string): Promise<string> {
       const r = await api.setWindow(a.size);
       return `${a.size}: ${r.got[0]}×${r.got[1]}`;
     }
+    case 'plans': openPlans(); return 'Reading plans';
     case 'version': return a.version ? app.setVersion(a.version) : `The reader is in the ${app.version()}`;
     case 'listen': return later('Read aloud', 6);
     case 'pdf': case 'pdfs': case 'packet': case 'docs': case 'theme': case 'make': return later('Documents and PDFs', 5);

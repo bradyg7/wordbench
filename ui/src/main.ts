@@ -17,7 +17,7 @@ import { perf, afterPaint, record } from './perf';
 import { app, here, type At } from './app';
 import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
-import { dock, initPanes, openPassage, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
+import { dock, initPanes, openPassage, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
 import { countInbox, notebookBadge, openNotebook, refreshNotebook, writeInNotebook } from './notebook';
 import { attachCommandField, loadThreads } from './command';
 import { parse, runLine, written } from './actions';
@@ -728,6 +728,7 @@ function settings(from: HTMLElement) {
   item('Find in chapter', () => findInChapter(finding));
   item('Help', () => openHelp());
   item('Keys', () => openKeys());
+  item('Reading plans', () => openPlans());
   item('Today’s log', () => openToday(''));
   item('Shelf', () => openShelf());
   b.append(quick);

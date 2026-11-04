@@ -7,9 +7,9 @@ study without the Python app) started on 2026-11-02 on the real folder**, on the
 
 | | Result |
 |---|---|
-| Desktop in the real app | `node measure/desk.mjs`: **73 of 73** checks (45 at the start of the check, the rest for its findings), in WebView2, at 1440×900 and the other sizes |
+| Desktop in the real app | `node measure/desk.mjs`: **81 of 81** checks (45 at the start of the check, the rest for its findings), in WebView2, at 1440×900 and the other sizes |
 | WebKit (the iPhone and iPad engine) | `npm run test:webkit`: **12 of 12** (the 10 of phase 0 and 2 for the new shell) |
-| Rust tests | `cargo test`: **112** (97 before phase 2; 2 for the reader in the YLT; 4 for the Notebook's `wb` commands, 4 for the command language; 2 for moving notes, questions and `read when`) |
+| Rust tests | `cargo test`: **114** (97 before phase 2; 2 for changing reading plans; 2 for the reader in the YLT; 4 for the Notebook's `wb` commands, 4 for the command language; 2 for moving notes, questions and `read when`) |
 | The command language against the Python parser | **480 of 480** lines and **108 of 108** texts with references give the same answer |
 | Golden suite (the Rust `wb` against the Python `wb`) | **99 of 99** the same (`python scripts/golden.py`) |
 | Speed budgets | **All met** at 4× CPU slowdown (section 7); Psalm 119 scrolling down to one long frame of 34 ms |
@@ -284,7 +284,7 @@ Bugs, or things that got in the way of daily study.
 | 17 | `3fa7`, `a484` | The Shelf as folders, like Obsidian's files; a set should open all its tabs | Opening a set's panes was phase 6; the Shelf's redesign goes with it, brought forward |
 | 18 | `2395` | Dropping a tab at the top middle floats it; want fixed top and bottom middle areas like the side columns; view presets ("word study mode") | Dock zones now (phase 2); presets are the layouts of phase 6 |
 | 19 | `c551`, `8810` | Customizable throughout: the toolbar (choose what shows), the command bar, themes, how the Shelf works; a "customize" part of settings | A settings design; themes are phase 5 |
-| 20 | `a022` | Custom and preset reading plans that can be revisited and changed | wb-core and `wb` have plans (phase 1); the window has only "Today's reading". A plans pane |
+| 20 | `a022` | Custom and preset reading plans that can be revisited and changed | **Built** (phase 2b step 3, 2026-11-04): the **Reading plans** pane (More ⋯, or `plans`). Each plan: where you are (day, done, to catch up, ahead), today's readings with **Mark read**, every day with its date and a ✓, and changes: **Catch up** (today becomes the first day not read), **Spread the rest…** (what is not read, over N days from today), **Rename…**, **Start day…**, **Edit as text…** (one day to a line), **Stop**. Each change keeps the plan as it was in `.trash/`; a day counts as done by what the log shows read, so a change never loses what was read. **Start a plan** (a built-in kind, with the days previewed first) and **A plan of your own** (one day to a line). **What you have read**: chapters read at least once, by book. New `wb plan edit` (`--rename`, `--start`, `--catch-up`, `--days`, `--text`) and `wb plan text` |
 | 21 | `7a77` | Room for other translations (YLT or others) | The database has the KJV and the YLT (`compare` shows the YLT). A translation switch in the reader; other translations need a source and a license check |
 | 22 | `0863` | More than one font | With themes (phase 5) |
 

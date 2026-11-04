@@ -396,6 +396,50 @@ fn a_plan_of_your_own_is_imported_from_a_text_file() {
     assert!(err.contains("Line 2"), "{err}");
 }
 
+#[test]
+fn a_plan_as_text_reads_back_as_the_same_days() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["plan", "start", "Gospels", "--kind", "books", "--books", "gospels", "--days", "30", "--start", "2026-01-01"]);
+    assert_eq!(wb.run(&["plan", "import", "Mine", "--start", "2026-01-01"], Some("Gen 1-3
+Job 1-5; Ps 1
+Ps 119:1-88
+Ps 119:89-120:3
+")).0, 0);
+    for name in ["gospels", "mine"] {
+        let text = wb.run(&["plan", "text", name], None).1;
+        let days = |p: &Value| p["schedule"].as_array().unwrap().iter().map(|d| d["entries"].clone()).collect::<Vec<_>>();
+        let before = days(&wb.js(&["plan", "show", name]));
+        assert_eq!(wb.run(&["plan", "edit", name, "--text", "-"], Some(&text)).0, 0);
+        assert_eq!(days(&wb.js(&["plan", "show", name])), before, "{text}");
+    }
+    assert!(wb.run(&["plan", "text", "mine"], None).1.lines().nth(3).unwrap().starts_with("Psalms 119:89-120:3"));
+}
+
+#[test]
+fn a_plan_is_changed_without_losing_what_was_read() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["plan", "start", "Gospels", "--kind", "books", "--books", "gospels", "--days", "30", "--start", "2026-01-01"]);
+    wb.js(&["plan", "done", "gospels"]);
+    wb.js(&["plan", "done", "gospels"]);
+    let chapters = |p: &Value| p["schedule"].as_array().unwrap().iter().flat_map(|d| d["entries"].as_array().unwrap().clone()).collect::<Vec<_>>();
+    let all = chapters(&wb.js(&["plan", "show", "gospels"]));
+    // the rest spread over 10 days from today: two days done, ten to go, the same chapters in the same order; only
+    // today's day is due (behind counts today's day until it is read)
+    let p = wb.js(&["plan", "edit", "gospels", "--days", "10"]);
+    assert_eq!((p["days"].clone(), p["done"].clone(), p["behind"].clone(), p["today"].clone()), (json!(12), json!(2), json!(1), json!(3)));
+    assert_eq!(chapters(&wb.js(&["plan", "show", "gospels"])), all);
+    // renamed, moved, caught up; each change keeps the file as it was in .trash
+    assert_eq!(wb.js(&["plan", "edit", "gospels", "--rename", "The four gospels"])["name"], "The four gospels");
+    assert_eq!(wb.js(&["plan", "edit", "four gospels", "--start", "2026-01-01"])["behind"], 10);
+    assert_eq!(wb.js(&["plan", "edit", "four gospels", "--catch-up"])["behind"], 1);
+    let trashed = std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().contains("-plan-gospels")).count();
+    assert_eq!(trashed, 4);
+    assert!(wb.fails(&["plan", "edit", "four gospels"]).contains("Say what to change"));
+    assert!(wb.fails(&["plan", "edit", "four gospels", "--days", "400"]).contains("at least one a day"));
+    wb.js(&["plan", "start", "Other", "--kind", "nt", "--days", "90"]);
+    assert!(wb.fails(&["plan", "edit", "other", "--rename", "The four gospels"]).contains("already a plan"));
+}
+
 // ---- the Notebook (new in the Rust app) ----
 
 #[test]

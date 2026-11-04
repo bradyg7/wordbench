@@ -271,6 +271,150 @@ pub fn start_plan(root: &Path, name: &str, kind: &str, start: Option<&str>, days
     read_plan(root, &id)
 }
 
+// ---- changing a plan --------------------------------------------------------------------------------------------------
+
+/// A plan's days as text, one day to a line, in the form `plan import` and `plan edit --text` read back
+/// ("Genesis 1-3; Matthew 1", "Psalms 119:89-176").
+pub fn plan_text(bible: &Bible, plan: &Value) -> Result<String> {
+    let name = |code: &str| bible.books().iter().find(|b| b.code == code).map(|b| b.name.clone()).unwrap_or_else(|| code.to_string());
+    let mut lines = vec![];
+    for d in plan["days"].as_array().cloned().unwrap_or_default() {
+        let es: Vec<String> = d.as_array().unwrap_or(&vec![]).iter().filter_map(|e| e.as_str().map(String::from)).collect();
+        let mut parts: Vec<String> = vec![];
+        let mut run: Option<(String, u32, u32)> = None;
+        let flush = |run: &mut Option<(String, u32, u32)>, parts: &mut Vec<String>| {
+            if let Some((code, a, b)) = run.take() {
+                parts.push(if a == b { format!("{} {a}", name(&code)) } else { format!("{} {a}-{b}", name(&code)) });
+            }
+        };
+        for e in &es {
+            let (code, rest) = e.split_once('.').unwrap_or((e, ""));
+            if let Ok(c) = rest.parse::<u32>() {
+                match &mut run {
+                    Some((rc, _, b)) if rc == code && *b + 1 == c => *b = c,
+                    _ => {
+                        flush(&mut run, &mut parts);
+                        run = Some((code.to_string(), c, c));
+                    }
+                }
+                continue;
+            }
+            flush(&mut run, &mut parts);
+            let (c1, rest) = rest.split_once(':').unwrap_or((rest, ""));
+            let (v1, end) = rest.split_once('-').unwrap_or((rest, ""));
+            let (c2, v2) = end.split_once(':').unwrap_or((c1, end));
+            let v2 = if v2 == "999" { last_verse(bible, code, c2.parse().unwrap_or(0))?.to_string() } else { v2.to_string() };
+            parts.push(if c1 == c2 { format!("{} {c1}:{v1}-{v2}", name(code)) } else { format!("{} {c1}:{v1}-{c2}:{v2}", name(code)) });
+        }
+        flush(&mut run, &mut parts);
+        lines.push(if parts.is_empty() { "# (no reading this day)".to_string() } else { parts.join("; ") });
+    }
+    Ok(lines.join("
+") + "
+")
+}
+
+fn last_verse(bible: &Bible, code: &str, ch: u32) -> Result<u32> {
+    let id = bible.book(code)?.id;
+    Ok(bible.conn().query_row("SELECT COALESCE(MAX(verse), 0) FROM verses WHERE book = ?1 AND chapter = ?2", rusqlite::params![id, ch], |r| r.get(0))?)
+}
+
+/// The number of words an entry reads (a chapter, or a part of one), to balance days.
+fn entry_words(bible: &Bible, entry: &str) -> Result<u32> {
+    let (code, rest) = entry.split_once('.').unwrap_or((entry, ""));
+    let id = bible.book(code)?.id;
+    let (c1, v1, c2, v2) = match rest.parse::<u32>() {
+        Ok(c) => (c, 0, c, 999),
+        Err(_) => {
+            let (c1, rest) = rest.split_once(':').unwrap_or((rest, ""));
+            let (v1, end) = rest.split_once('-').unwrap_or((rest, ""));
+            let (c2, v2) = end.split_once(':').unwrap_or((c1, end));
+            (c1.parse().unwrap_or(0), v1.parse().unwrap_or(0), c2.parse().unwrap_or(0), v2.parse().unwrap_or(999))
+        }
+    };
+    Ok(bible.conn().query_row(
+        "SELECT COUNT(*) FROM words WHERE book = ?1 AND (chapter * 1000 + verse) BETWEEN ?2 AND ?3",
+        rusqlite::params![id, c1 * 1000 + v1, c2 * 1000 + v2],
+        |r| r.get(0),
+    )?)
+}
+
+/// What a change to a plan asks for (`plan edit`). Each is optional; they apply in this order.
+#[derive(Default)]
+pub struct PlanChange {
+    pub name: Option<String>,
+    /// Every day replaced (from `plan_text`'s form); the plan's first day stays.
+    pub days: Option<Vec<Vec<String>>>,
+    pub start: Option<String>,
+    /// The days not yet done, spread again over this many days from today (the days done stay as they are).
+    pub spread: Option<u32>,
+    /// Today becomes the first day not yet done (nothing is behind).
+    pub catch_up: bool,
+}
+
+/// Change a plan. The file as it was goes to .trash first, so nothing is lost; what was read stays in the log, and a
+/// day counts as done by its readings, so changing days never loses progress.
+pub fn edit_plan(bible: &Bible, root: &Path, id: &str, ch: PlanChange) -> Result<Value> {
+    crate::store::guard(root)?;
+    let mut plan = read_plan(root, id)?;
+    if let Some(n) = &ch.name {
+        let n = n.trim();
+        if n.is_empty() {
+            return Err(bad("A plan needs a name."));
+        }
+        if plans(root).iter().any(|p| p["id"] != id && p["name"].as_str().unwrap_or("").to_lowercase() == n.to_lowercase()) {
+            return Err(bad(format!("There is already a plan called “{n}”.")));
+        }
+        plan["name"] = json!(cut(n, 120));
+    }
+    if let Some(days) = ch.days {
+        plan["days"] = json!(days);
+    }
+    if let Some(s) = &ch.start {
+        plan["start"] = json!(parse_day(s)?.format("%Y-%m-%d").to_string());
+    }
+    if ch.spread.is_some() || ch.catch_up {
+        let pr = progress(bible, root, &plan, today())?;
+        let rows = pr["schedule"].as_array().cloned().unwrap_or_default();
+        let Some(first) = rows.iter().position(|r| r["done"] == false) else {
+            return Err(bad("Every day of this plan is done."));
+        };
+        if let Some(n) = ch.spread {
+            if n == 0 || n > 3650 {
+                return Err(bad("A plan is 1 to 3650 days."));
+            }
+            let rest: Vec<String> = rows[first..].iter().flat_map(|r| r["entries"].as_array().unwrap().iter().filter_map(|e| e.as_str().map(String::from))).collect();
+            if rest.len() < n as usize {
+                return Err(bad(format!("What is left is {} readings; spread over {n} days it needs at least one a day.", rest.len())));
+            }
+            let weighed = rest.iter().map(|e| Ok((e.clone(), entry_words(bible, e)?.max(1)))).collect::<Result<Vec<_>>>()?;
+            let mut days: Vec<Value> = plan["days"].as_array().unwrap()[..first].to_vec();
+            days.extend(spread(&weighed, n as usize).into_iter().map(|d| json!(d)));
+            plan["days"] = json!(days);
+        }
+        plan["start"] = json!((today() - chrono::Days::new(first as u64)).format("%Y-%m-%d").to_string());
+    }
+    if plan["days"].as_array().is_none_or(|d| d.is_empty()) {
+        return Err(bad("The plan has no days: one day to a line, like Gen 1-3."));
+    }
+    let path = plan_path(root, id);
+    let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
+    let mut dest = root.join(".trash").join(format!("{stamp}-plan-{id}.json"));
+    for n in 2.. {
+        if !dest.exists() {
+            break;
+        }
+        dest = root.join(".trash").join(format!("{stamp}-plan-{id}-{n}.json")); // two changes in one second keep both
+    }
+    fs::create_dir_all(dest.parent().unwrap())?;
+    fs::copy(&path, dest)?;
+    let mut out = plan.clone();
+    out.as_object_mut().unwrap().shift_remove("id");
+    write_atomic(&path, &(py_dumps_indent1(&out) + "
+"))?;
+    read_plan(root, id)
+}
+
 pub fn remove_plan(root: &Path, id: &str) -> Result<()> {
     let p = plan_path(root, id);
     if !p.exists() {

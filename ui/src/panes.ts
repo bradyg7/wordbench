@@ -950,6 +950,140 @@ export function openToday(day: string) {
   });
 }
 
+// ---- reading plans (wb plan …, wb read …): where you are in each plan; nothing reminds or counts streaks ----------------
+
+// A small form beside a button: one field (or a text box); OK runs `ok` with what was typed, and an error stays in the form.
+function ask(from: HTMLElement, label: string, value: string, ok: (v: string) => Promise<unknown>, opts: { area?: boolean; type?: string } = {}) {
+  const f = h('form', 'ask');
+  f.append(h('div', 'label', label));
+  const field = (opts.area ? h('textarea', 'ask-area') : h('input', 'ask-input')) as HTMLInputElement;
+  if (!opts.area) field.type = opts.type || 'text';
+  field.value = value;
+  const err = h('p', 'muted small');
+  f.append(field, err, h('button', 'btn primary', 'OK'));
+  let close = () => {};
+  f.onsubmit = async e => {
+    e.preventDefault();
+    try { await ok(field.value); close(); } catch (x) { err.textContent = String(x); }
+  };
+  close = popMenu(from, f, { width: opts.area ? 440 : 280 });
+  field.focus();
+}
+
+const entryGo = (entries: string[]) => () => { if (entries[0]) goTo(entries[0]); };
+
+let plansDraw = 0;
+export function openPlans() {
+  return dock.open('plans', 'Reading plans', 'plans', MINE, async (into, pane) => {
+    // drawn apart and put in the pane only if no newer draw started meanwhile (two at once would show each plan twice)
+    const my = ++plansDraw, el = h('div');
+    const redraw = () => { pane.refresh?.(); };
+    head(el, 'Reading plans', 'Where you are in each plan, and what you have read');
+    const [list, today, kinds, overall]: any[] = await Promise.all([wb(['plan', 'list']), wb(['plan', 'today']), wb(['plan', 'kinds']), wb(['read', 'progress'])]);
+    const change = async (id: string, args: string[], input?: string) => { await wb(['plan', 'edit', id, ...args], input); redraw(); };
+    for (const p of list) {
+      const card = h('section', 'plan-card');
+      card.dataset.plan = p.id;
+      card.append(h('h3', 'plan-title', p.name));
+      const where = p.finished ? `Finished · ${p.days} days`
+        : p.today == null ? `Starts ${p.start} · ${p.days} days`
+        : `Day ${p.today} of ${p.days} · ${p.done} done` + (p.behind > 1 ? ` · ${p.behind - 1} to catch up` : '') + (p.ahead ? ` · ${p.ahead} ahead` : '');
+      card.append(h('div', 'muted small plan-where', where));
+      const t = (today.plans || []).find((x: any) => x.id === p.id);
+      for (const d of (t?.to_read || []).slice(-3)) {
+        const row = h('div', 'plan-day');
+        row.append(button('ref-link', d.label, entryGo(d.entries)), h('span', 'muted small', `day ${d.day}`));
+        row.append(button('btn soft', 'Mark read', async () => {
+          try { await wb(['plan', 'done', p.id, '--day', String(d.day)]); app.changed(); redraw(); } catch (x) { toast(String(x)); }
+        }));
+        card.append(row);
+      }
+      if (!t?.to_read?.length && p.next) card.append(h('p', 'muted small', `Next: ${p.next.label} (day ${p.next.day})`));
+      const acts = h('div', 'wrap');
+      const days = h('div', 'plan-days');
+      days.hidden = true;
+      acts.append(button('btn', 'Days', async () => {
+        days.hidden = !days.hidden;
+        if (days.hidden || days.childElementCount) return;
+        const full = await wb(['plan', 'show', p.id]);
+        for (const d of full.schedule) {
+          const row = h('div', `plan-row${d.done ? ' done' : ''}`);
+          row.append(h('span', 'muted small', `${d.day} · ${d.date.slice(5)}`), button('ref-link', d.label, entryGo(d.entries)), h('span', 'plan-tick', d.done ? '✓' : ''));
+          days.append(row);
+        }
+      }));
+      if (!p.finished && p.behind > 1) acts.append(button('btn', 'Catch up', () => change(p.id, ['--catch-up']).catch(x => toast(String(x)))));
+      if (!p.finished) acts.append(button('btn', 'Spread the rest…', e => ask(e.currentTarget as HTMLElement, 'What is not read yet, over how many days from today?', '', v => change(p.id, ['--days', v.trim()]), { type: 'number' })));
+      acts.append(button('btn', 'Rename…', e => ask(e.currentTarget as HTMLElement, 'Name', p.name, v => change(p.id, ['--rename', v]))));
+      acts.append(button('btn', 'Start day…', e => ask(e.currentTarget as HTMLElement, 'The plan’s first day', p.start, v => change(p.id, ['--start', v]), { type: 'date' })));
+      acts.append(button('btn', 'Edit as text…', async e => {
+        const from = e.currentTarget as HTMLElement;
+        const text = await wb(['plan', 'text', p.id]);
+        ask(from, 'One day to a line, places joined by ; (what you have read stays read)', String(text), v => change(p.id, ['--text', '-'], v), { area: true });
+      }));
+      acts.append(button('link-btn danger', 'Stop', async () => {
+        if (!confirm(`Stop “${p.name}”? Its file goes to .trash; what you read stays in the log.`)) return;
+        await wb(['plan', 'rm', p.id]);
+        redraw();
+      }));
+      card.append(acts, days);
+      el.append(card);
+    }
+    if (!list.length) el.append(h('p', 'muted', 'No reading plans yet.'));
+
+    // a built-in plan: the Bible's own order, spread over days
+    const start = h('form', 'plan-form');
+    start.append(h('div', 'label', 'Start a plan'));
+    const name = h('input', 'ask-input') as HTMLInputElement;
+    name.placeholder = 'Name, like Bible in a year';
+    const kind = h('select', 'ask-input') as HTMLSelectElement;
+    for (const k of kinds) { const o = h('option', '', k.reads) as HTMLOptionElement; o.value = k.kind; o.dataset.days = String(k.days); kind.append(o); }
+    const nDays = h('input', 'ask-input') as HTMLInputElement;
+    nDays.type = 'number'; nDays.min = '1'; nDays.value = String(kinds[0]?.days ?? 365);
+    const books = h('input', 'ask-input') as HTMLInputElement;
+    books.placeholder = 'Books: gospels, rom, ot, Gen-Deut…';
+    books.hidden = true;
+    const from = h('input', 'ask-input') as HTMLInputElement;
+    from.type = 'date'; from.value = new Date().toLocaleDateString('en-CA');
+    const preview = h('p', 'muted small');
+    const argv = (dry: boolean) => ['plan', 'start', name.value.trim() || 'My plan', '--kind', kind.value, '--days', nDays.value, '--start', from.value,
+      ...(kind.value === 'books' ? ['--books', books.value] : []), ...(dry ? ['--dry-run'] : [])];
+    const show = async () => {
+      try { const d = await wb(argv(true)); preview.textContent = `${d.days} days: ${d.first.slice(0, 3).join(' · ')} … ${d.last}`; } catch (x) { preview.textContent = String(x); }
+    };
+    kind.onchange = () => { nDays.value = kind.selectedOptions[0].dataset.days || '30'; books.hidden = kind.value !== 'books'; show(); };
+    nDays.onchange = show;
+    books.onchange = show;
+    start.append(name, kind, nDays, books, from, preview, h('button', 'btn primary', 'Start'));
+    start.onsubmit = async e => { e.preventDefault(); try { await wb(argv(false)); redraw(); } catch (x) { preview.textContent = String(x); } };
+    el.append(start);
+    show();
+
+    // your own plan: one day to a line
+    const own = h('form', 'plan-form');
+    own.append(h('div', 'label', 'A plan of your own'));
+    const ownName = h('input', 'ask-input') as HTMLInputElement;
+    ownName.placeholder = 'Name';
+    const ownText = h('textarea', 'ask-area') as HTMLTextAreaElement;
+    ownText.placeholder = 'One day to a line, like\nGen 1-3\nJob 1-5; Ps 1';
+    const ownErr = h('p', 'muted small');
+    own.append(ownName, ownText, ownErr, h('button', 'btn primary', 'Start'));
+    own.onsubmit = async e => {
+      e.preventDefault();
+      try { await wb(['plan', 'import', ownName.value.trim() || 'My plan', '--start', from.value], ownText.value); redraw(); } catch (x) { ownErr.textContent = String(x); }
+    };
+    el.append(own);
+
+    // what you have read, from the reading log
+    el.append(h('div', 'label', 'What you have read'));
+    el.append(h('p', 'small plan-overall', `${overall.chapters} of ${overall.of} chapters (${overall.percent}%)`));
+    const chips = h('div', 'chips');
+    for (const b of overall.books) chips.append(h('span', 'chip', `${b.book} ${b.read}/${b.of}`));
+    el.append(chips);
+    if (my === plansDraw) into.replaceChildren(...el.childNodes);
+  });
+}
+
 export function openShelf() {
   return dock.open('shelf', 'Shelf', 'shelf', MINE, async el => {
     el.replaceChildren();
