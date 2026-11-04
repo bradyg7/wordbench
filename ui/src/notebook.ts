@@ -41,9 +41,12 @@ export async function countInbox() {
   return inboxCount;
 }
 
+// Draws can overlap (a write refreshes every pane while another draw is waiting on wb); each is built apart and only the
+// newest is put in the pane, so the Notebook never shows two writing boxes.
+let drawing = 0;
+
 async function draw(el: HTMLElement) {
-  const keep = el.querySelector<HTMLElement>('.nb-scroll')?.scrollTop ?? 0;
-  const draft = el.querySelector<HTMLTextAreaElement>('.nb-write textarea')?.value ?? '';
+  const gen = ++drawing;
   const seg = h('div', 'seg nb-seg');
   const tab = (v: View, label: string, badge?: number) => {
     const b = h('button', view === v ? 'on' : '', label);
@@ -56,11 +59,20 @@ async function draw(el: HTMLElement) {
   tab('inbox', 'Inbox', inboxCount);
   tab('all', 'All notes');
   const scroll = h('div', 'nb-scroll');
-  el.replaceChildren(seg, scroll);
   if (view === 'journal') await journal(scroll);
   else if (view === 'inbox') await inbox(scroll);
   else await allNotes(scroll);
-  if (view === 'journal') el.append(writer(draft));
+  if (gen !== drawing) return;
+  const keep = el.querySelector<HTMLElement>('.nb-scroll')?.scrollTop ?? 0;
+  const old = el.querySelector<HTMLTextAreaElement>('.nb-write textarea');
+  const draft = old?.value ?? '';
+  const typing = !!old && document.activeElement === old;
+  el.replaceChildren(seg, scroll);
+  if (view === 'journal') {
+    const w = writer(draft);
+    el.append(w);
+    if (typing) w.querySelector('textarea')?.focus();
+  }
   scroll.scrollTop = keep;
 }
 
@@ -111,7 +123,12 @@ function entryCard(e: Entry, inInbox = false): HTMLElement {
   const c = h('div', `note-card nb-entry${e.kind === 'question' ? ' is-question' : ''}${e.status === 'done' ? ' done' : ''}`);
   c.dataset.id = e.id;
   const top = h('div', 'nb-top');
-  if (e.kind === 'question') top.append(h('span', 'pill question-pill', e.status === 'done' ? '? Answered' : '? Question'));
+  // the tag is a switch: a click makes a question a plain note (and a note can be asked as a question from its acts)
+  if (e.kind === 'question') {
+    const tag = button('pill question-pill', e.status === 'done' ? '? Answered' : '? Question', async () => { await wb(['note', 'question', e.id, '--plain']); changed(); });
+    tag.title = 'Click: make it a plain note';
+    top.append(tag);
+  }
   if (e.placed) top.append(placePill(e.label, () => goTo(e.anchor)));
   else top.append(h('span', 'pill unplaced', 'No place yet'));
   top.append(h('span', 'grow'));
@@ -124,34 +141,50 @@ function entryCard(e: Entry, inInbox = false): HTMLElement {
   const p = h('p', 'nb-text');
   p.append(linkedText(e.text, e.refs, ref => goTo(ref), refHover));
   c.append(top, p);
+  const acts = h('div', 'nb-acts');
   if (!e.placed) {
     // drag it onto a verse in the reader to give it that place
     c.draggable = true;
     c.title = 'Drag onto a verse to place it there';
     c.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-jot', e.id); ev.dataTransfer!.effectAllowed = 'move'; c.classList.add('dragging'); };
     c.ondragend = () => c.classList.remove('dragging');
-    const acts = h('div', 'nb-acts');
-    const place = button('btn soft small', 'Place it…', ev => placeMenu(ev.currentTarget as HTMLElement, e), 'pin');
-    acts.append(place);
-    if (e.kind === 'note') acts.append(button('link-btn', 'Ask it as a question', async () => { await wb(['inbox', 'edit', e.id, '--question']); changed(); }));
-    c.append(acts);
+    acts.append(button('btn soft small', 'Place it…', ev => placeMenu(ev.currentTarget as HTMLElement, e), 'pin'));
+  } else {
+    acts.append(button('link-btn', 'Move…', ev => placeMenu(ev.currentTarget as HTMLElement, e)));
   }
+  if (e.kind === 'question') {
+    const done = e.status === 'done';
+    acts.append(button(`link-btn${done ? '' : ' answered'}`, done ? 'Open it again' : '✓ Answered', async () => { await wb(['note', 'answered', e.id, ...(done ? ['--open'] : [])]); changed(); }));
+  } else {
+    acts.append(button('link-btn', 'Ask it as a question', async () => { await wb(['note', 'question', e.id]); changed(); }));
+  }
+  acts.append(h('span', 'grow'), button('link-btn danger', 'Delete', () => remove(e), 'trash'));
+  c.append(acts);
   return c;
+}
+
+async function remove(e: Entry) {
+  if (!confirm('Delete this note? It goes to .trash in the study folder.')) return;
+  if (!e.placed) await wb(['inbox', 'rm', e.id]);
+  else if (e.kind === 'question') await wb(['trail', 'rm', e.id]);
+  else await wb(['note', 'rm', e.id]);
+  changed();
 }
 
 function changed() {
   app.changed();
 }
 
-// "Place this note on": the place picked in the reader, the place the note names, or another typed.
-function placeMenu(from: HTMLElement, e: Entry) {
+// "Place this note on" (or, for a placed note, "Move this note to"): the place picked in the reader, the place the
+// note names, or another typed.
+export function placeMenu(from: HTMLElement, e: Pick<Entry, 'id' | 'placed' | 'label' | 'offer'>) {
   const box = h('div', 'place-menu');
-  box.append(h('div', 'muted small', 'Place this note on'));
+  box.append(h('div', 'muted small', e.placed ? `Move this note from ${e.label} to` : 'Place this note on'));
   const go = async (anchor: string) => {
     close();
     try {
-      const r = await wb(['note', 'place', e.id, anchor]);
-      toast(`Placed on ${r.label}`);
+      const r = await wb(e.placed ? ['note', 'move', e.id, anchor] : ['note', 'place', e.id, anchor]);
+      toast(`${e.placed ? 'Moved' : 'Placed'} on ${r.label}`);
       changed();
     } catch (x) { toast(String(x)); }
   };
@@ -165,7 +198,7 @@ function placeMenu(from: HTMLElement, e: Entry) {
   };
   const picked = app.picked;
   if (picked) opt(picked, 'selected in the reader', true);
-  const offer = e.offer ?? null;
+  const offer = e.placed ? null : e.offer ?? null;
   if (offer && offer.anchor !== picked?.anchor) opt(offer, 'named in the note', !picked);
   if (!picked && !offer) opt(here(), 'at the top of the reader', true);
   const f = h('form', 'place-other');
@@ -184,17 +217,10 @@ function entryMenu(from: HTMLElement, e: Entry, cardEl: HTMLElement) {
   const box = h('div', 'menu-list');
   const item = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
   item('Edit', () => editInPlace(e, cardEl));
-  if (e.kind === 'question' && e.placed) {
-    item(e.status === 'done' ? 'Open it again' : 'Answered: mark it done', async () => { await wb(['trail', e.status === 'done' ? 'reopen' : 'done', e.id]); changed(); });
-  }
-  if (!e.placed) item(e.kind === 'question' ? 'Make it a plain note' : 'Make it a question', async () => { await wb(['inbox', 'edit', e.id, e.kind === 'question' ? '--plain' : '--question']); changed(); });
-  item('Delete (to .trash)', async () => {
-    if (!confirm('Delete this note? It goes to .trash in the study folder.')) return;
-    if (!e.placed) await wb(['inbox', 'rm', e.id]);
-    else if (e.kind === 'question') await wb(['trail', 'rm', e.id]);
-    else await wb(['note', 'rm', e.id]);
-    changed();
-  });
+  if (e.placed) item('Move to another place…', () => placeMenu(from, e));
+  if (e.kind === 'question') item(e.status === 'done' ? 'Open it again' : 'Answered: mark it done', async () => { await wb(['note', 'answered', e.id, ...(e.status === 'done' ? ['--open'] : [])]); changed(); });
+  item(e.kind === 'question' ? 'Make it a plain note' : 'Make it a question', async () => { await wb(['note', 'question', e.id, ...(e.kind === 'question' ? ['--plain'] : [])]); changed(); });
+  item('Delete (to .trash)', () => remove(e));
   const close = popMenu(from, box, { align: 'right', width: 220 });
 }
 
@@ -223,6 +249,7 @@ function editInPlace(e: Entry, cardEl: HTMLElement) {
 let writeAt: At | null = null;
 let writeQuestion = false;
 let lastPicked: string | null = null;
+let focusWriter = false;
 
 function writer(draft: string): HTMLElement {
   const box = h('div', 'nb-write');
@@ -245,6 +272,12 @@ function writer(draft: string): HTMLElement {
   qChip.onclick = () => { writeQuestion = !writeQuestion; qChip.classList.toggle('on', writeQuestion); ta.focus(); };
   row.append(placeChip, qChip, h('span', 'muted small nb-hint', 'Enter adds · Shift+Enter: new line'));
   box.append(ta, row);
+  // asked for from a verse (Note, Question): ready to type, saying where it goes
+  if (focusWriter && writeAt) {
+    focusWriter = false;
+    ta.placeholder = writeQuestion ? `Your question on ${writeAt.label}…` : `Your note on ${writeAt.label}…`;
+    requestAnimationFrame(() => ta.focus());
+  }
   ta.onkeydown = async e => {
     if (e.key !== 'Enter' || e.shiftKey) return;
     e.preventDefault();
@@ -262,6 +295,18 @@ function writer(draft: string): HTMLElement {
     } catch (x) { toast(String(x)); }
   };
   return box;
+}
+
+/** Write a note (or a question) on a place in the Notebook's box: the Journal comes forward with the place chosen and
+ * the box ready to type in. */
+export async function writeInNotebook(at: At, question: boolean) {
+  writeAt = at;
+  lastPicked = at.anchor;
+  writeQuestion = question;
+  view = 'journal';
+  focusWriter = true;
+  const p = openNotebook();
+  await p.refresh?.();
 }
 
 /** After a write elsewhere: draw the Notebook again if it is open. */

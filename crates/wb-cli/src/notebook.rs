@@ -44,7 +44,24 @@ pub fn commands() -> Vec<Command> {
                 };
                 j(nb::place(c.bible()?, &mut st, &id, &place).map_err(e)?)
             }),
-        cmd("note all", "Every placed note in Bible order, by book; with words, only the notes that have them all.", vec![Pos("words", N::Any)], |c, a| {
+        cmd("note move", "Give a placed note or question another place: wb note move <id> \"Num 25:7-13\". (An Inbox note: wb note place.)",
+            vec![Pos("id", N::One), Pos("place", N::Many)], |c, a| {
+                let place = anchor(c, &a.s("place"))?;
+                j(nb::move_to(c.bible()?, &mut *c.study()?, &a.s("id"), &place).map_err(e)?)
+            }),
+        cmd("note question", "Make a note a question, wherever it is (in the Inbox or at its place); --plain makes a question a plain note again.",
+            vec![Pos("id", N::One), Flag("plain")], |c, a| {
+                let mut st = c.study()?;
+                let id = nb::find_jot(&st, &a.s("id")).unwrap_or_else(|_| a.s("id"));
+                j(nb::set_question(c.bible()?, &mut st, &id, !a.flag("plain")).map_err(e)?)
+            }),
+        cmd("note answered", "Mark a question answered, in the Inbox or at its place; --open makes it open again.",
+            vec![Pos("id", N::One), Flag("open")], |c, a| {
+                let mut st = c.study()?;
+                let id = nb::find_jot(&st, &a.s("id")).unwrap_or_else(|_| a.s("id"));
+                j(nb::answer(c.bible()?, &mut st, &id, !a.flag("open")).map_err(e)?)
+            }),
+        cmd("note all","Every placed note in Bible order, by book; with words, only the notes that have them all.", vec![Pos("words", N::Any)], |c, a| {
             j(nb::all_notes(c.bible()?, &*c.study()?, &a.s("words")).map_err(e)?)
         }),
         cmd("journal", "The Notebook's journal: every note and question by the day it was written, newest first (or one day: wb journal 2026-11-02).",

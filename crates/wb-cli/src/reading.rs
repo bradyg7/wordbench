@@ -112,6 +112,11 @@ pub fn commands() -> Vec<Command> {
             };
             j(json!(rd::mark(&r, &chs, &plan).map_err(e)?))
         }),
+        cmd("read when", "When you last read chapters: wb read when \"Num 25\"  |  \"Num 24-26\" → {\"NUM.25\": time, ...}; a chapter never read is left out.",
+            vec![Pos("place", N::Many)], |c, a| {
+            let chs = rd::chapters_of(c.bible()?, &a.s("place")).map_err(e)?;
+            j(rd::last_read(&c.root()?, &chs))
+        }),
         cmd("read progress", "How much of the Bible you have read: chapters read at least once, by book.", vec![], |c, _| {
             j(rd::overall(c.bible()?, &c.root()?).map_err(e)?)
         }),

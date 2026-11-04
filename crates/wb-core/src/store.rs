@@ -753,8 +753,9 @@ impl Store {
             return Err(bad("A question is placed on words or verses in the text, not on a Strong's number everywhere."));
         }
         let text = s(&old, "text");
+        let status = if s(&old, "status") == "done" { "done" } else { "open" };
         let mut meta = if question {
-            json!({"id": id, "anchor": anchor, "kind": kind, "quote": quote, "status": "open", "created": old["created"], "updated": now()})
+            json!({"id": id, "anchor": anchor, "kind": kind, "quote": quote, "status": status, "created": old["created"], "updated": now()})
         } else {
             json!({"id": id, "anchor": anchor, "kind": kind, "quote": quote, "strong": strong, "created": old["created"], "updated": now()})
         }
@@ -767,6 +768,57 @@ impl Store {
         let from = self.inbox_path(id);
         fs::remove_file(&from)?;
         self.drop_file(&from);
+        meta.insert("text".into(), json!(text));
+        Ok(meta)
+    }
+
+    /// An Inbox question answered (`done`) or open again; the status is kept when it is placed.
+    pub fn set_jot_status(&mut self, id: &str, status: &str) -> Result<Rec> {
+        if status != "open" && status != "done" {
+            return Err(bad("A question is either open or done."));
+        }
+        let mut meta = self.jotted(id)?;
+        if s(&meta, "kind") != "question" {
+            return Err(bad("Only a question is answered."));
+        }
+        let text = s(&meta, "text");
+        meta.shift_remove("text");
+        meta.insert("status".into(), json!(status));
+        meta.insert("updated".into(), json!(now()));
+        self.put(&self.inbox_path(id), &dump_md(&meta, &text))?;
+        meta.insert("text".into(), json!(text));
+        Ok(meta)
+    }
+
+    /// A placed note or question somewhere else, or turned from one into the other (`question`): the file is written at
+    /// its new place first and the old one removed after, keeping the id, the text and the day it was written. `anchor`
+    /// is canonical; `kind`, `quote` and `strong` come from resolving it against the text.
+    pub fn replace_placed(&mut self, id: &str, anchor: &str, kind: &str, quote: &str, strong: &str, question: Option<bool>) -> Result<Rec> {
+        let (old, was_q) = match self.notes.iter().find(|n| s(n, "id") == id) {
+            Some(n) => (n.clone(), false),
+            None => (self.trails.iter().find(|t| s(t, "id") == id).cloned().ok_or_else(|| missing("No such note."))?, true),
+        };
+        let to_q = question.unwrap_or(was_q);
+        if to_q && kind == "lemma" {
+            return Err(bad("A question is placed on words or verses in the text, not on a Strong's number everywhere."));
+        }
+        let from = if was_q { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&old) };
+        let text = s(&old, "text");
+        let mut meta = if to_q {
+            let status = if was_q { s(&old, "status") } else { "open".into() };
+            json!({"id": id, "anchor": anchor, "kind": kind, "quote": quote, "status": status, "created": old["created"], "updated": now()})
+        } else {
+            json!({"id": id, "anchor": anchor, "kind": kind, "quote": quote, "strong": strong, "created": old["created"], "updated": now()})
+        }
+        .as_object()
+        .unwrap()
+        .clone();
+        let path = if to_q { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&meta) };
+        self.put(&path, &dump_md(&meta, &text))?;
+        if path != from {
+            fs::remove_file(&from)?;
+            self.drop_file(&from);
+        }
         meta.insert("text".into(), json!(text));
         Ok(meta)
     }

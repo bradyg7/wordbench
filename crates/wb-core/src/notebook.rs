@@ -39,7 +39,7 @@ fn entry(bible: &Bible, r: &Rec, kind: &str, placed: bool) -> Value {
         "refs": find_refs(&s(r, "text"), bible.books()),
     });
     if kind == "question" {
-        e["status"] = json!(if placed { s(r, "status") } else { "open".into() });
+        e["status"] = json!(if s(r, "status") == "done" { "done" } else { "open" });
     }
     e
 }
@@ -162,15 +162,60 @@ pub fn find_jot(store: &Store, part: &str) -> Result<String> {
 
 /// Give an Inbox note its place (a verse, a run of verses, words, or H7065). → the placed note or question.
 pub fn place(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -> Result<Value> {
+    let (a, kind, quote, strong) = resolved(bible, anchor)?;
+    let question = store.inbox().iter().any(|n| s(n, "id") == id && s(n, "kind") == "question");
+    let r = store.place_jot(id, &a, &kind, &quote, &strong)?;
+    Ok(entry(bible, &r, if question { "question" } else { "note" }, true))
+}
+
+/// A placed note or question by its id: (is it a question, its anchor).
+fn placed(store: &Store, id: &str) -> Result<(bool, String)> {
+    if let Some(n) = store.notes().into_iter().find(|n| s(n, "id") == id) {
+        return Ok((false, s(n, "anchor")));
+    }
+    store.trails().into_iter().find(|t| s(t, "id") == id).map(|t| (true, s(t, "anchor"))).ok_or_else(|| missing("No note or question with that id."))
+}
+
+fn resolved(bible: &Bible, anchor: &str) -> Result<(String, String, String, String)> {
     let res = resolve(bible, anchor)?;
     if res["ok"] != true {
         return Err(bad("That place is not in the text."));
     }
     let kind = s(&res, "kind");
     let strong = if kind == "word" || kind == "lemma" { res["strongs"].as_array().and_then(|a| a.first()).and_then(|x| x.as_str()).unwrap_or("").to_string() } else { String::new() };
-    let question = store.inbox().iter().any(|n| s(n, "id") == id && s(n, "kind") == "question");
-    let r = store.place_jot(id, &s(&res, "id"), &kind, &s(&res, "quote"), &strong)?;
+    Ok((s(&res, "id"), kind, s(&res, "quote"), strong))
+}
+
+/// Give a placed note or question another place (an Inbox note is placed with `place`). → the moved entry.
+pub fn move_to(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -> Result<Value> {
+    let (q, _) = placed(store, id)?;
+    let (a, kind, quote, strong) = resolved(bible, anchor)?;
+    let r = store.replace_placed(id, &a, &kind, &quote, &strong, None)?;
+    Ok(entry(bible, &r, if q { "question" } else { "note" }, true))
+}
+
+/// Make a note a question or a question a plain note, wherever it is: in the Inbox, or at its place (a placed question
+/// is a trail, so it moves between `notes/` and `trails/`). → the entry.
+pub fn set_question(bible: &Bible, store: &mut Store, id: &str, question: bool) -> Result<Value> {
+    if store.inbox().iter().any(|n| s(n, "id") == id) {
+        let r = store.update_jot(id, None, Some(question))?;
+        return Ok(entry(bible, &r, if question { "question" } else { "note" }, false));
+    }
+    let (_, anchor) = placed(store, id)?;
+    let (a, kind, quote, strong) = resolved(bible, &anchor)?;
+    let r = store.replace_placed(id, &a, &kind, &quote, &strong, Some(question))?;
     Ok(entry(bible, &r, if question { "question" } else { "note" }, true))
+}
+
+/// A question answered (`done`) or open again, in the Inbox or at its place. → the entry.
+pub fn answer(bible: &Bible, store: &mut Store, id: &str, done: bool) -> Result<Value> {
+    let status = if done { "done" } else { "open" };
+    if store.inbox().iter().any(|n| s(n, "id") == id) {
+        let r = store.set_jot_status(id, status)?;
+        return Ok(entry(bible, &r, "question", false));
+    }
+    let r = store.set_trail_status(id, status)?;
+    Ok(entry(bible, &r, "question", true))
 }
 
 /// A jot, with the place its text names (for the window to offer).

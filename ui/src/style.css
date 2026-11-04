@@ -10,6 +10,18 @@
   --read: var(--type-read-desk);
   color-scheme: light dark;
 }
+/* the scrollbars and form controls follow the theme chosen in the app, not only the system's */
+:root[data-theme="light"], :root[data-theme="eink"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* thin scrollbars in the tokens' colors, everywhere (WebView2 reads the standard properties; WebKit the ::-webkit ones) */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent; }
+@supports not (scrollbar-color: red transparent) {
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 45%, transparent); border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+}
 :root[data-size="compact"] { --tabs-h: 64px; --read: var(--type-read-phone); }
 :root[data-theme="eink"] { --read: var(--type-read-eink); }
 
@@ -71,7 +83,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 .w, .g { background-size: 100% 2px; background-repeat: no-repeat; }
 .w { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.w.it { font-style: italic; }
+/* the KJV's italics (words the translators supplied): a heavier italic in a slightly different ink, so they read clearly */
+.w.it { font-style: italic; font-weight: 500; color: color-mix(in srgb, var(--fg) 78%, var(--accent)); }
 .w.nd { font-variant-caps: small-caps; }
 .w.wj { color: var(--jesus); }
 .w.noted { text-decoration: underline dotted var(--muted) 1.5px; text-underline-offset: 6px; }
@@ -164,7 +177,9 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .go input { flex: 1; font: var(--type-body); padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); color: var(--fg); }
 .perf { font: 12px/18px ui-monospace, Consolas, monospace; background: var(--sunken); padding: 10px; border-radius: var(--radius-control); white-space: pre-wrap; }
 .error { color: var(--jesus); font: var(--type-body); }
-.chapter-end { margin: 28px 0 0; font: var(--type-body); }
+.chapter-end { margin: 28px 0 0; font: var(--type-body); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.chapter-read { color: var(--muted); }
+.chapter-read:empty { display: none; }
 .plan-name { font: var(--type-small-strong); margin: 6px 0 6px; }
 
 @media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }

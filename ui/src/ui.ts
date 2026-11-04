@@ -32,6 +32,7 @@ const PATHS: Record<string, string> = {
   filter: 'M2 3h12M4 8h8M6 13h4',
   expand: 'M10 2h4v4M14 2L9 7M6 14H2v-4M2 14l5-5',
   collapse: 'M13 3L9 7M9 3v4h4M3 13l4-4M7 13V9H3',
+  trash: 'M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.5 6.5v4.5M9.5 6.5v4.5',
 };
 
 export function icon(name: string, size = 16): SVGSVGElement {

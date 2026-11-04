@@ -3,6 +3,7 @@
 // layers, word study, find, text size and the keyboard. See docs/phase0-results.md and docs/phase2-results.md.
 import '@fontsource/literata/400.css';
 import '@fontsource/literata/400-italic.css';
+import '@fontsource/literata/500-italic.css';
 import '@fontsource/literata/700.css';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
@@ -17,7 +18,7 @@ import { app, here, type At } from './app';
 import { layers } from './layers';
 import { h, icon, popMenu, sizeClass, closeMenu } from './ui';
 import { dock, initPanes, openPlace, openInterlinear, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
-import { countInbox, notebookBadge, openNotebook, refreshNotebook } from './notebook';
+import { countInbox, notebookBadge, openNotebook, refreshNotebook, writeInNotebook } from './notebook';
 import { attachCommandField, loadThreads } from './command';
 import { parse, runLine, written } from './actions';
 
@@ -266,9 +267,17 @@ async function copy(text: string) {
   try { await navigator.clipboard.writeText(text); toast('Copied with its reference'); } catch { toast('Copy is not allowed here'); }
 }
 
-// A note or a question on a place: a small box beside what was clicked; Enter saves (through wb note add / trail add).
+// A note or a question on a place. At desktop sizes it is written in the Notebook's box, with the place already chosen
+// (one writing box, not a second one over the verse); on a phone, a small box beside what was clicked. Enter saves
+// (through wb note add / trail add).
 function writeNote(from: HTMLElement, at: At, kind: 'note' | 'question') {
   if (!inApp) return toast('Notes are written in the app');
+  if (!compact()) {
+    closeSheet();
+    selector.clear();
+    void writeInNotebook(at, kind === 'question');
+    return;
+  }
   const box = h('form', 'note-form');
   box.append(h('div', 'label', `${kind === 'note' ? 'Note' : 'Question'} on ${at.label}`));
   const ta = h('textarea', 'field') as HTMLTextAreaElement;
@@ -637,17 +646,27 @@ async function highlightsMenu(from: HTMLElement) {
 // ---- More ------------------------------------------------------------------------------------------------------------
 const PRESETS = [['phone', 'Phone 390×844'], ['phone-landscape', 'Phone landscape'], ['ipad', 'iPad portrait 820×1180'], ['ipad-landscape', 'iPad landscape'], ['laptop', 'Laptop 1280×800'], ['laptop-large', 'Laptop 1440×900'], ['desktop', 'Desktop 1920×1080']];
 
-// At the end of a chapter: a quiet way to record it as read (the reading log; wb read mark does the same).
+// At the end of a chapter: a quiet way to record it as read (the reading log; wb read mark does the same). The log
+// says whether it was read before (wb read when), so coming back to the chapter shows it.
 function chapterEnd(d: Drawn) {
   if (!inApp) return;
   const place = `${d.chapter.name} ${d.chapter.chapter}`;
   const end = h('div', 'chapter-end');
+  const said = h('span', 'chapter-read');
   const btn = h('button', 'btn soft', `Mark ${place} read`);
-  btn.onclick = async () => {
-    try { await api.readMark(place); btn.textContent = `${place}: read`; btn.setAttribute('disabled', ''); } catch (e) { toast(String(e)); }
+  const show = (t: string | undefined) => {
+    said.textContent = t ? `${place}: read ${new Date(t).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : '';
+    btn.textContent = t ? 'Read again' : `Mark ${place} read`;
   };
-  end.append(btn);
+  btn.onclick = async () => {
+    try {
+      const lines = (await api.readMark(place)).data as { t: string }[];
+      show(lines[lines.length - 1]?.t);
+    } catch (e) { toast(String(e)); }
+  };
+  end.append(said, btn);
   reader.append(end);
+  wb(['read', 'when', place]).then((r: any) => show(Object.values(r ?? {})[0] as string | undefined)).catch(() => { /* the button still works */ });
 }
 
 // Today's readings in each plan the person started (wb plan start / wb plan import); a day opens at its first place.

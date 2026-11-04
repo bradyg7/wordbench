@@ -19,7 +19,7 @@ const INTERNAL: &[&str] = &[
     "chapters_of", "progress", "today_view", "overall",
     // the Notebook and the command language: pieces of the commands that reach them (note place finds and places;
     // the reader draws the questions)
-    "place_jot", "named_place", "chapter_questions", "command_names", "split_at", "anchor_ref",
+    "place_jot", "replace_placed", "set_jot_status", "named_place", "chapter_questions", "command_names", "split_at", "anchor_ref",
     // wb do: the app's side of the socket (wb do is the other side)
     "address_file", "listen", "read_request", "answer",
 ];

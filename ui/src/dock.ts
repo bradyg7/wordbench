@@ -191,7 +191,7 @@ export class Dock {
       if (!list.length) { col.replaceChildren(); continue; }
       if (!list.some(p => p.id === this.front[side])) this.front[side] = list[list.length - 1].id;
       col.replaceChildren(this.strip(side, list), ...list.map(p => p.el));
-      if (side !== 'float') col.append(this.grip(side));
+      col.append(side === 'float' ? this.corner() : this.grip(side));
       for (const p of list) p.el.hidden = p.id !== this.front[side];
       if (this.hidden[side]) {
         const back = h('button', 'dock-restore', list.map(p => p.title).join(' · '));
@@ -213,6 +213,33 @@ export class Dock {
     Object.assign(f.style, { left: `${this.floatAt.x || window.innerWidth - this.floatAt.w - 40}px`, top: `${this.floatAt.y || 90}px`, width: `${this.floatAt.w}px`, height: `${this.floatAt.h}px` });
     this.drawSheet(by.sheet);
     requestAnimationFrame(() => this.fitStrips());
+  }
+
+  // ---- the floating column's size: its own corner, drawn over the pane (the browser's resize corner sat on the pane's
+  // scrollbar, so a drag there moved both) ------------------------------------------------------------------------------
+  private corner(): HTMLElement {
+    const g = h('div', 'float-corner');
+    g.title = 'Drag to resize';
+    g.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      g.setPointerCapture(e.pointerId);
+      const f = this.cols.float, r = f.getBoundingClientRect();
+      const dx = r.right - e.clientX, dy = r.bottom - e.clientY;
+      const move = (m: PointerEvent) => {
+        f.style.width = `${Math.max(280, Math.min(window.innerWidth - r.left - 8, m.clientX + dx - r.left))}px`;
+        f.style.height = `${Math.max(200, Math.min(window.innerHeight - r.top - 8, m.clientY + dy - r.top))}px`;
+      };
+      const up = () => {
+        g.removeEventListener('pointermove', move);
+        g.removeEventListener('pointerup', up);
+        this.fitStrips();
+      };
+      g.addEventListener('pointermove', move);
+      g.addEventListener('pointerup', up);
+    });
+    return g;
   }
 
   // ---- a column's width: drag its inner edge (double-click puts it back) ----------------------------------------------

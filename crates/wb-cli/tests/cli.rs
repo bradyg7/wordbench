@@ -456,6 +456,43 @@ fn an_inbox_note_is_changed_made_a_question_or_deleted_to_the_trash() {
 }
 
 #[test]
+fn a_placed_note_moves_and_a_question_is_untagged_or_answered_anywhere() {
+    let Some(wb) = Wb::new() else { return };
+    // a note moves to another verse, in another book: its file follows, with the id, text and day kept
+    let n = wb.js(&["note", "add", "Num 25:11", "the same zeal"]);
+    let id = n["id"].as_str().unwrap().to_string();
+    let moved = wb.js(&["note", "move", &id, "Ps 106:30-31"]);
+    assert_eq!((moved["anchor"].clone(), moved["label"].clone(), moved["created"].clone()), (json!("PSA.106:30-106:31"), json!("Psalms 106:30–31"), n["created"].clone()));
+    assert!(!wb.dir.join("notes").join("NUM").join(format!("{id}.md")).exists());
+    let text = std::fs::read_to_string(wb.dir.join("notes").join("PSA").join(format!("{id}.md"))).unwrap();
+    assert!(text.contains(&format!("quote: \"{}", verse_texts(&wb, "Ps 106:30")[0])) && text.ends_with("the same zeal\n"), "{text}");
+    assert_eq!(wb.js(&["note", "list", "Numbers 25"]), json!([]));
+    // the note becomes a question (a trail) at its place, then a plain note again
+    let q = wb.js(&["note", "question", &id]);
+    assert_eq!((q["kind"].clone(), q["status"].clone()), (json!("question"), json!("open")));
+    assert!(wb.dir.join("trails").join(format!("{id}.md")).exists() && !wb.dir.join("notes").join("PSA").join(format!("{id}.md")).exists());
+    assert_eq!(wb.js(&["note", "answered", &id])["status"], json!("done"));
+    assert_eq!(wb.js(&["note", "answered", &id, "--open"])["status"], json!("open"));
+    assert_eq!(wb.js(&["note", "question", &id, "--plain"])["kind"], json!("note"));
+    assert!(!wb.dir.join("trails").join(format!("{id}.md")).exists());
+    assert_eq!(wb.js(&["note", "list", "Psalms 106"])[0]["id"], json!(id));
+    // an Inbox question is answered before it has a place, and stays answered when placed
+    wb.js(&["note", "jot", "who else stood up", "--question"]);
+    assert_eq!(wb.js(&["note", "answered", "who else"])["status"], json!("done"));
+    assert_eq!(wb.js(&["note", "place", "who else", "Ps 106:30"])["status"], json!("done"));
+    assert!(wb.fails(&["note", "move", "n_nothing", "Ps 1:1"]).contains("No note or question"));
+}
+
+#[test]
+fn reading_a_chapter_is_remembered_and_asked_for_by_place() {
+    let Some(wb) = Wb::new() else { return };
+    assert_eq!(wb.js(&["read", "when", "Num 25"]), json!({}));
+    let m = wb.js(&["read", "mark", "Num 25"]);
+    let w = wb.js(&["read", "when", "Num 24-26"]);
+    assert_eq!(w, json!({"NUM.25": m[0]["t"]}));
+}
+
+#[test]
 fn the_capture_box_language_and_its_manual() {
     let Some(wb) = Wb::new() else { return };
     assert_eq!(wb.js(&["parse", "uses", "zeal", "gospels"])["action"], json!({"cmd": "uses", "strong": "", "word": "zeal", "scope": "40,41,42,43"}));

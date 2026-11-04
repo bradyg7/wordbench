@@ -7,9 +7,9 @@ study without the Python app) started on 2026-11-02 on the real folder**, on the
 
 | | Result |
 |---|---|
-| Desktop in the real app | `node measure/desk.mjs`: **45 of 45** checks, in WebView2, at 1440×900 and the other sizes |
+| Desktop in the real app | `node measure/desk.mjs`: **54 of 54** checks (45 at the start of the check, 9 for its first findings), in WebView2, at 1440×900 and the other sizes |
 | WebKit (the iPhone and iPad engine) | `npm run test:webkit`: **12 of 12** (the 10 of phase 0 and 2 for the new shell) |
-| Rust tests | `cargo test`: **105** (97 before; 4 for the Notebook's `wb` commands, 4 for the command language) |
+| Rust tests | `cargo test`: **107** (97 before phase 2; 4 for the Notebook's `wb` commands, 4 for the command language; 2 for moving notes, questions and `read when`) |
 | The command language against the Python parser | **480 of 480** lines and **108 of 108** texts with references give the same answer |
 | Golden suite (the Rust `wb` against the Python `wb`) | **99 of 99** the same (`python scripts/golden.py`) |
 | Speed budgets | **All met** at 4× CPU slowdown (section 7); Psalm 119 scrolling down to one long frame of 34 ms |
@@ -212,6 +212,82 @@ The Python app can still open the folder at any time. If anything goes wrong, th
 
 To report at the end of the week: what was missed from the Python app, what got in the way, and anything that looked
 wrong in the files.
+
+## 10. What the check found: day 2 (2026-11-03)
+
+The person wrote 25 notes in the app on 2026-11-03 (three on verses, twenty-two in the Inbox), between 14:36 and 15:56.
+Each is listed once below, under where it goes. The notes stay where the person wrote them in the study folder; their
+ids are given so each can be found.
+
+### Phase 2: fix now, during the check
+
+Bugs, or things that got in the way of daily study.
+
+| # | Note | What it says | What to do |
+|---|---|---|---|
+| 1 | `a022` | "Mark Numbers 25 as read" does not persist; going back shows it unmarked | The chapter's end never asks the log; it shows the button again every time. Show "read on …" from the log; `wb read when` |
+| 2 | `3c78`, `0698` | Scrollbars are dark in light mode (the Journal's too); want our own thin ones | `color-scheme` follows the system, not the chosen theme. Make it follow the theme; thin scrollbars in the tokens' colors |
+| 3 | `cfe4` | Stretching a floating pane from its corner moves the scrollbar | The resize corner sits over the pane's scrollbar; move it out of the scroll area |
+| 4 | `0928` | A thread scrolls sideways; wrap the text, and why so long? | Thread rows wrap; long verses are cut to a few lines with the rest on a click |
+| 5 | `6dcc` | In word study, clicking the rendering "zealous" (H7065) shows every use, with "both: 2", and none can be clicked | A rendering opens only the verses where the word is translated that way, and each row opens its verse |
+| 6 | `6f9f` (Ruth 4:16) | The note box appears twice at some points | Find where two writing boxes show at once (Notes & lookup beside the Notebook's box is the likely one) and keep one |
+| 7 | `eca5`, `e872` | Untag a question by clicking "Question", not ⋯; mark a question answered | The tag is a toggle; "Answered" in plain sight on each question |
+| 8 | `ecfc` | A delete button clearly visible on notes | Delete in plain sight on each note (still to `.trash/`) |
+| 9 | `e29e` | Change which verse a note is attached to | "Move to…" on a note, as Place it does for the Inbox; `wb note move` |
+| 10 | `0863` | Italics in the current font are not clear | KJV italics (supplied words) drawn so they read clearly; more fonts go with themes (phase 5) |
+| 11 | `4ad9` (Num 25:8) | Threads are hard to understand: one note, no notes to add, a word shows only its Hebrew | The thread's note shown at its top and editable there; a word in a thread shows its English rendering and gloss, not only the original |
+
+**Fixed 2026-11-03** (all eleven; `node measure/desk.mjs --release` checks each, 54 of 54):
+
+1. The chapter's end asks the log (`wb read when "Num 25"`, new) and says "Numbers 25: read Tue, Nov 3", with "Read
+   again"; marking writes `reading/log.jsonl` as before.
+2. `color-scheme` follows the theme chosen in the app, so the scrollbars are light in the light theme under a dark
+   system. Every scrollbar is thin, in the tokens' colors (the Journal's too).
+3. A floating pane has its own resize corner, drawn above the pane and its scrollbar (the browser's corner sat on the
+   scrollbar). Its size is kept as before.
+4. The threads list wraps each thread's note to two lines; the eye stays in view. (The list was 960 px wide in a 420 px
+   column: a note that would not wrap.)
+5. A rendering in a Strong's entry opens `uses H7065 --rendering zealous`: only those verses (2 for "zealous"). The
+   mark chips (both / only the original / only the English) are filters: a click shows only those verses.
+6. **The doubled box was a race:** two draws of the Notebook at once each added a writing box. Only the newest draw is
+   put in the pane now. And Note or Question on a verse at desktop sizes writes in the Notebook's box, with the place
+   chosen and the box focused ("Your note on Ruth 4:16…"), instead of a second box over the verse. On a phone it is
+   still the small box beside the verse.
+7. The "? Question" tag is a switch: a click makes it a plain note, at its place or in the Inbox (a placed question
+   moves from `trails/` to `notes/<BOOK>/`, keeping its id and day). "✓ Answered" and "Open it again" are in plain
+   sight, and an Inbox question can be answered before it has a place (`status` in its front matter, kept when placed).
+   `wb note question <id> [--plain]`, `wb note answered <id> [--open]`.
+8. Delete is in plain sight on every note in the Notebook and in Notes & lookup (still to `.trash/`).
+9. "Move…" on a placed note or question offers the place picked in the reader or any typed place; the file moves to
+   the new book's folder, written there before the old one is removed. `wb note move <id> "Num 25:7-13"`.
+10. The KJV's italics are a heavier italic (Literata 500) in a slightly warmer ink. A first try: the person to say if
+    it reads clearly.
+11. A thread's note is at its top and edited there with a click ("Add a note to this thread…" when it has none). An
+    original word in a thread shows its KJV renderings, its definition and how many times it is used.
+
+### Needs the person's decision first
+
+| # | Note | What it says | The question |
+|---|---|---|---|
+| 12 | `a4a8` | Delete should delete forever, not send to the trash | CLAUDE.md says deletes go to `.trash/` and nothing is erased. Keep that, or add "Empty the trash" that the person runs? |
+| 13 | `e0a3` | Notes on several verses | A run of verses (Num 25:7-13) is already a place a note can have. Verses apart from each other would change the note's file, which the Python app reads. Is a run enough? |
+| 14 | `6572`, `4ad9` | Notes attached to threads, not only verses | A thread holds one note now. Several notes on a thread is a new kind of note the Python app will not show |
+| 15 | `56e7` | The notes button should appear the way it does on mobile | Which button: the phone's pen (the palette), its Notebook tab, or the verse sheet's Note? |
+
+### Design first, then build
+
+| # | Note | What it says | Where it goes |
+|---|---|---|---|
+| 16 | `05f3`, `f4ac` | The Journal as a full writing space (Apple Notes, Notion, Obsidian), with references in it; the Notebook as the staging area for building a lesson | Notebook design now; the lesson half joins phase 5 (lessons) |
+| 17 | `3fa7`, `a484` | The Shelf as folders, like Obsidian's files; a set should open all its tabs | Opening a set's panes was phase 6; the Shelf's redesign goes with it, brought forward |
+| 18 | `2395` | Dropping a tab at the top middle floats it; want fixed top and bottom middle areas like the side columns; view presets ("word study mode") | Dock zones now (phase 2); presets are the layouts of phase 6 |
+| 19 | `c551`, `8810` | Customizable throughout: the toolbar (choose what shows), the command bar, themes, how the Shelf works; a "customize" part of settings | A settings design; themes are phase 5 |
+| 20 | `a022` | Custom and preset reading plans that can be revisited and changed | wb-core and `wb` have plans (phase 1); the window has only "Today's reading". A plans pane |
+| 21 | `7a77` | Room for other translations (YLT or others) | The database has the KJV and the YLT (`compare` shows the YLT). A translation switch in the reader; other translations need a source and a license check |
+| 22 | `0863` | More than one font | With themes (phase 5) |
+
+Notes counted twice above: `a022` (1 and 20), `0863` (10 and 22), `4ad9` (11 and 14). Every note from the day is in
+one of the tables.
 
 The scratch copy still works for trying things out: `powershell -ExecutionPolicy Bypass -File scripts\watch-app.ps1`.
 To try a feature: open the Notebook and write a thought (Enter); place it from the Inbox; press backtick and type

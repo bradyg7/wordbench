@@ -305,6 +305,19 @@ pub fn mark(root: &Path, entries: &[String], plan: &str) -> Result<Vec<Value>> {
     Ok(lines)
 }
 
+/// When each chapter was last read, from the log: `{"NUM.25": "2026-11-03T21:53:49Z", ...}`; a chapter never read is left out.
+pub fn last_read(root: &Path, chapters: &[String]) -> Value {
+    let mut out = serde_json::Map::new();
+    for l in log(root) {
+        if let (Some(ch), Some(t)) = (l["ch"].as_str(), l["t"].as_str()) {
+            if chapters.iter().any(|c| c == ch) {
+                out.insert(ch.to_string(), json!(t));
+            }
+        }
+    }
+    Value::Object(out)
+}
+
 /// A place as typed → the chapters it covers (whole chapters; a verse range counts its chapters).
 pub fn chapters_of(bible: &Bible, place: &str) -> Result<Vec<String>> {
     let mut out = vec![];

@@ -6,6 +6,7 @@ import { Dock, type Pane, type Side } from './dock';
 import { layers } from './layers';
 import { hideCard, showCard, toast } from './sheets';
 import { button, h, icon, placePill, popMenu } from './ui';
+import { placeMenu } from './notebook';
 
 export let dock: Dock;
 export function initPanes(host: HTMLElement) {
@@ -189,18 +190,25 @@ export function openSearch(query: string, scope = 'all') {
 
 const MARK_NAMES: Record<string, string> = { both: 'both', s: 'only the original', e: 'only the English' };
 
-export async function usesArgs(strong: string, word: string, scope: string, offset = 0) {
+/** A rendering (`rendering`) narrows a Strong's number to the verses where the KJV translates it with those words;
+ * `cat` narrows to one kind of mark (both, s: only the original, e: only the English). */
+export interface UsesOpts { rendering?: string; cat?: string }
+
+export async function usesArgs(strong: string, word: string, scope: string, offset = 0, o: UsesOpts = {}) {
   const argv = ['uses', strong || word];
-  if (strong && word) argv.push('--word', word);
+  if (strong && o.rendering) argv.push('--rendering', o.rendering);
+  else if (strong && word) argv.push('--word', word);
+  if (o.cat && o.cat !== 'all') argv.push('--cat', o.cat);
   argv.push('--scope', scope || 'all', '--offset', String(offset));
   return wb(argv);
 }
 
-export function openUses(strong: string, word: string, scope = 'all') {
-  const label = [strong, word].filter(Boolean).join(' ');
-  return dock.open('uses', `Every use: ${label}`, `uses|${strong}|${word}|${scope}`, STUDY, async (el, pane) => {
+export function openUses(strong: string, word: string, scope = 'all', o: UsesOpts = {}) {
+  const label = o.rendering ? `${strong} rendered “${o.rendering}”` : [strong, word].filter(Boolean).join(' ');
+  return dock.open('uses', `Every use: ${label}`, `uses|${strong}|${word}|${scope}|${o.rendering ?? ''}`, STUDY, async (el, pane) => {
     el.replaceChildren();
     let rows: any[] = [];
+    let cat = o.cat || 'all';
     const list: ResultList = {
       pane, ticked: new Set(), shape: 'words', redraw: () => draw(),
       anchors: () => rows.map(r => `${r.ref.code}.${r.ref.c}:${r.ref.v}`),
@@ -214,11 +222,17 @@ export function openUses(strong: string, word: string, scope = 'all') {
     const more = button('btn wide', 'More', () => page(rows.length));
     el.append(body, more);
     const page = async (offset: number) => {
-      const d = await usesArgs(strong, word, scope, offset);
+      const d = await usesArgs(strong, word, scope, offset, { ...o, cat });
       rows = offset ? rows.concat(d.rows) : d.rows;
       (hd.querySelector('.pane-sub') as HTMLElement).textContent = `${d.occurrences} time${d.occurrences === 1 ? '' : 's'} in ${d.verses} verse${d.verses === 1 ? '' : 's'}, ${scopeLabel(scope)}`;
-      chips.replaceChildren(...Object.entries(d.totals || {}).filter(([, n]) => (n as number) > 0).map(([k, n]) => h('span', `chip m-${k}`, `${MARK_NAMES[k] || k}: ${n}`)));
-      if (strong && word) chips.append(h('span', 'muted small', 'both: the verse’s word translates it'));
+      // each kind of mark is a filter: a click shows only those verses, a second click all of them again
+      const kinds = Object.entries(d.totals || {}).filter(([, n]) => (n as number) > 0);
+      chips.replaceChildren(...kinds.map(([k, n]) => {
+        const c = button(`chip link m-${k}${cat === k ? ' on' : ''}`, `${MARK_NAMES[k] || k}: ${n}`, () => { cat = cat === k ? 'all' : k; page(0); });
+        c.title = cat === k ? 'Show every verse again' : `Show only these verses`;
+        return c;
+      }));
+      if (strong && word && !o.rendering) chips.append(h('span', 'muted small', 'both: the verse’s word translates it'));
       more.hidden = !d.more;
       draw();
     };
@@ -317,7 +331,7 @@ export function openStrong(num: string) {
     if (d.renderings?.length) {
       el.append(h('div', 'label', 'Rendered'));
       const r = h('div', 'chips');
-      for (const x of d.renderings) r.append(button('chip link', `${x.w} ${x.n}`, () => openUses(num, x.w)));
+      for (const x of d.renderings) r.append(button('chip link', `${x.w} ${x.n}`, () => openUses(num, '', 'all', { rendering: x.w })));
       el.append(r);
     }
     const acts = h('div', 'acts two');
@@ -532,7 +546,7 @@ export function openThread(name: string) {
     menu.onclick = () => threadMenu(menu, t);
     hd.append(title, drawn, menu);
     el.append(hd);
-    if (t.note) el.append(h('p', 'pane-sub thread-note', t.note));
+    el.append(threadNote(t));
     const list = h('div', 'members');
     t.members.forEach((m: any, k: number) => {
       const card = h('div', 'member');
@@ -543,6 +557,15 @@ export function openThread(name: string) {
       const body = h('div', 'member-body');
       const lab = button('ref-link', m.label, () => (m.ref ? app.go(m.ref.code, m.ref.c, m.ref.v) : m.anchor.startsWith('H') || m.anchor.startsWith('G') ? openStrong(m.anchor) : goTo(m.anchor)));
       body.append(lab, h('p', 'scripture-row clamp', m.quote || ''));
+      // an original word everywhere: its English renderings and Strong's definition, not only the original
+      if (m.kind === 'lemma') {
+        const gloss = h('p', 'small thread-gloss');
+        body.append(gloss);
+        wb(['strong', m.anchor]).then(d => {
+          const used = (d.renderings || []).map((r: any) => r.w).join(', ');
+          gloss.textContent = [used && `KJV: ${used}`, d.definition, d.occurrences && `${d.occurrences} times`].filter(Boolean).join(' · ');
+        }).catch(() => {});
+      }
       const x = h('button', 'member-x');
       x.append(icon('x', 12));
       x.title = 'Take it out of the thread';
@@ -569,6 +592,39 @@ export function openThread(name: string) {
     el.append(list);
     if (!t.members.length) el.append(h('p', 'muted', 'No places yet: type +' + t.name + ' in the command field to add the place you are at.'));
   });
+}
+
+// The thread's own note, at its top: a click edits it in place (Enter saves, Shift+Enter: a new line, Esc: as it was).
+function threadNote(t: any): HTMLElement {
+  const box = h('div', 'thread-note-box');
+  const show = () => {
+    const p = button(`thread-note${t.note ? '' : ' empty'}`, t.note || 'Add a note to this thread…', edit);
+    p.title = 'Click to edit the thread’s note';
+    box.replaceChildren(p);
+  };
+  const edit = () => {
+    const ta = h('textarea', 'field nb-edit') as HTMLTextAreaElement;
+    ta.value = t.note || '';
+    ta.rows = Math.min(8, Math.max(2, Math.ceil(ta.value.length / 50)));
+    box.replaceChildren(ta, h('div', 'muted small', 'Enter saves · Shift+Enter: a new line · Esc: as it was'));
+    ta.focus();
+    let done = false;
+    const save = async () => {
+      if (done) return;
+      done = true;
+      const v = ta.value.trim();
+      if (v === (t.note || '')) return show();
+      await wb(['thread', 'edit', t.name, '--note', v]);
+      app.changed();
+    };
+    ta.onkeydown = e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); }
+      if (e.key === 'Escape') { e.stopPropagation(); done = true; show(); }
+    };
+    ta.onblur = () => save();
+  };
+  show();
+  return box;
 }
 
 function threadMenu(from: HTMLElement, t: any) {
@@ -692,8 +748,11 @@ export function openPlace(anchor: string, label: string) {
       for (const t of here) {
         const c = h('div', `note-card${t.status === 'done' ? ' done' : ''}`);
         const top = h('div', 'nb-top');
-        top.append(h('span', 'pill question-pill', t.status === 'done' ? '? Answered' : '? Question'), h('span', 'grow'));
-        top.append(button('link-btn', t.status === 'done' ? 'Open again' : 'Answered', async () => { await wb(['trail', t.status === 'done' ? 'reopen' : 'done', t.id]); app.changed(); }));
+        const tag = button('pill question-pill', t.status === 'done' ? '? Answered' : '? Question', async () => { await wb(['note', 'question', t.id, '--plain']); app.changed(); });
+        tag.title = 'Click: make it a plain note';
+        top.append(tag, h('span', 'grow'));
+        top.append(button(`link-btn${t.status === 'done' ? '' : ' answered'}`, t.status === 'done' ? 'Open again' : '✓ Answered', async () => { await wb(['note', 'answered', t.id, ...(t.status === 'done' ? ['--open'] : [])]); app.changed(); }));
+        top.append(button('link-btn', 'Move…', e => placeMenu(e.currentTarget as HTMLElement, { id: t.id, placed: true, label: d.label || label })));
         c.append(top, h('p', 'nb-text', t.text));
         el.append(c);
       }
@@ -759,12 +818,13 @@ function noteCardEditable(n: any, label: string): HTMLElement {
     };
     ta.onblur = () => save();
   });
-  const del = button('link-btn', 'Delete', async () => {
+  const move = button('link-btn', 'Move…', e => placeMenu(e.currentTarget as HTMLElement, { id: n.id, placed: true, label }));
+  const del = button('link-btn danger', 'Delete', async () => {
     if (!confirm('Delete this note? It goes to .trash in the study folder.')) return;
     await wb(['note', 'rm', n.id]);
     app.changed();
-  });
-  top.append(edit, del);
+  }, 'trash');
+  top.append(edit, move, del);
   const p = h('p', 'nb-text', n.text);
   c.append(top, p);
   return c;

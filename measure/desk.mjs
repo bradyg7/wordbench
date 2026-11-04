@@ -110,13 +110,17 @@ try {
   for (let i = 0; i < 50 && !existsSync(path.join(study, 'notes', 'NUM', dragged)); i++) await sleep(100);
   check('an Inbox note dropped on a verse is placed there', existsSync(path.join(study, 'notes', 'NUM', dragged)) && /anchor: "NUM.25:3"/.test(readFileSync(path.join(study, 'notes', 'NUM', dragged), 'utf8')));
 
-  // a note and a question from the verse popover
+  // a question from the verse popover: written in the Notebook's box (one writing box), with the place chosen
   await page.locator('.vn[data-v="9"]').click();
   await page.locator('.popover .act', { hasText: 'Question' }).click();
-  await page.locator('.note-form textarea').fill('How do the two numbers relate?');
-  await page.locator('.note-form textarea').press('Enter');
+  await page.waitForFunction(() => document.activeElement?.classList.contains('nb-input'), null, { timeout: 10000 });
+  const boxes = await page.evaluate(() => [...document.querySelectorAll('textarea')].filter(t => t.offsetWidth).map(t => t.placeholder));
+  check('Question on a verse writes in the Notebook’s box, the only one shown', boxes.length === 1 && boxes[0] === 'Your question on Numbers 25:9…', boxes.join(' | '));
+  await page.keyboard.type('How do the two numbers relate?');
+  await page.keyboard.press('Enter');
   await page.waitForSelector('.vn[data-v="9"].vq', { timeout: 10000 });
   check('a question puts a ? on its verse number', true);
+  check('the Notebook has one writing box after the write', await page.locator('.pane-notebook .nb-write').count() === 1);
 
   // the color bar: select words with the mouse, 2 colors them green, the recent threads are chips, 0 removes the color
   const anchorOf = () => page.evaluate(() => {
@@ -263,6 +267,43 @@ try {
   await page.keyboard.press('Control+=');
   check('Ctrl+= makes the text larger', (await px()) > f0);
   await page.keyboard.press('Control+0');
+
+  // the phase 2 check's first findings (docs/phase2-results.md section 10)
+  await page.evaluate(() => window.__wb.run('threads'));
+  await sleep(700);
+  check('the threads list wraps instead of scrolling sideways', await page.evaluate(() => { const p = [...document.querySelectorAll('.pane-threads')].find(x => x.offsetWidth); return !!p && p.scrollWidth <= p.clientWidth + 1; }));
+  await page.evaluate(() => window.__wb.run('def H7065'));
+  await page.locator('.pane-strong:visible button.chip.link', { hasText: /^zealous / }).first().click();
+  await page.waitForSelector('.pane-uses:visible .row', { timeout: 10000 });
+  const zealous = JSON.parse(execFileSync(wbExe, ['uses', 'H7065', '--rendering', 'zealous'], { env }).toString());
+  check('a rendering in word study opens only the verses rendered that way', await page.locator('.pane-uses:visible .row').count() === zealous.verses, `${zealous.verses} verses`);
+  await page.evaluate(() => window.__wb.run('notebook'));
+  const q9 = page.locator('.pane-notebook .nb-entry', { hasText: 'two numbers relate' }).first();
+  await q9.getByRole('button', { name: '✓ Answered' }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll('.pane-notebook .nb-entry.done')].some(e => e.textContent.includes('two numbers relate')), null, { timeout: 10000 });
+  await page.locator('.pane-notebook .nb-entry', { hasText: 'two numbers relate' }).first().locator('.question-pill').click();
+  await page.waitForFunction(() => { const e = [...document.querySelectorAll('.pane-notebook .nb-entry')].find(e => e.textContent.includes('two numbers relate')); return e && !e.querySelector('.question-pill'); }, null, { timeout: 10000 });
+  check('a question is answered, then made a plain note by clicking its tag', true);
+  const plain = page.locator('.pane-notebook .nb-entry', { hasText: 'two numbers relate' }).first();
+  check('a placed note shows Move… and Delete', await plain.getByRole('button', { name: 'Move…' }).isVisible() && await plain.getByRole('button', { name: 'Delete' }).isVisible());
+  await plain.getByRole('button', { name: 'Move…' }).click();
+  await page.locator('.place-other input').fill('Num 25:18');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => [...document.querySelectorAll('.pane-notebook .nb-entry')].some(e => e.textContent.includes('two numbers relate') && e.textContent.includes('25:18')), null, { timeout: 10000 });
+  check('Move… gives a placed note another verse', JSON.parse(execFileSync(wbExe, ['note', 'list', 'Num 25:18'], { env }).toString()).some(n => n.text.includes('two numbers relate')));
+  await page.evaluate(() => window.__wb.open('NUM', 25, 18));
+  await page.locator('.chapter-end button').click();
+  await page.waitForFunction(() => /read /.test(document.querySelector('.chapter-read')?.textContent || ''), null, { timeout: 10000 });
+  await page.evaluate(() => window.__wb.open('NUM', 26, 1));
+  await sleep(400);
+  await page.evaluate(() => window.__wb.open('NUM', 25, 18));
+  await page.waitForFunction(() => /read /.test(document.querySelector('.chapter-read')?.textContent || ''), null, { timeout: 10000 });
+  check('a chapter marked read says so when it is opened again', true, await page.locator('.chapter-read').textContent());
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
+  check('the light theme keeps light scrollbars under a dark system', await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme) === 'light');
+  await page.evaluate(() => { delete document.documentElement.dataset.theme; });
+  await page.emulateMedia({ colorScheme: null });
 
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();

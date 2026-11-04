@@ -274,6 +274,7 @@ the start, with the size classes of section 3 in place, so the desktop phase doe
    threads and layers, search and word study, lexicons and the interlinear, find, text size, keyboard use, `wb do`.
    Works on the real study folder directly (same files as the Python app; no sync needed on one machine). Documents
    stay with the Python app until phase 5. *Check:* a week of daily study on the desktop without opening the Python app.
+   What the check finds is listed, each note under its phase, in [phase2-results.md](phase2-results.md) section 10.
 3. **Phone.** The Compact layout from the phone sheets: tabs, tap cards, touch selection and the selection bar, sheets,
    the palette, the Notebook tab, the Study tab, "Back to …"; sync arrives (the remote is chosen here). *Check:* a week of
    reading and note taking in the phone-size window by finger on the touchscreen laptop, with the notes reaching the
