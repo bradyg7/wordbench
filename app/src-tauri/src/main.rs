@@ -86,10 +86,10 @@ fn fresh<'a>(app: &'a App) -> Result<std::sync::MutexGuard<'a, Store>, String> {
 }
 
 #[tauri::command]
-fn reader(app: State<App>, code: String, chapter: u32) -> Result<Value, String> {
+fn reader(app: State<App>, code: String, chapter: u32, version: Option<String>) -> Result<Value, String> {
     let st = fresh(&app)?;
     let bible = app.bible.lock().unwrap();
-    timed(|| views::reader(&bible, &st, &code, chapter))
+    timed(|| views::reader_in(&bible, &st, &code, chapter, version.as_deref().unwrap_or("KJV")))
 }
 
 #[tauri::command]

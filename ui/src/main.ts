@@ -63,11 +63,27 @@ scroller.addEventListener('scroll', () => {
   hideCard();
 }, { passive: true });
 
+// ---- the version: the KJV, or another in the database (the YLT), kept between runs. Another version has no KJV word
+// positions, so its words cannot be selected and only marks on whole verses are drawn (wb reader --version). ---------
+let version = (() => { try { return localStorage.getItem('wb.version') || 'KJV'; } catch { return 'KJV'; } })();
+const VERSIONS = ['KJV', 'YLT'];
+async function setVersion(v: string): Promise<string> {
+  v = v.toUpperCase();
+  if (!VERSIONS.includes(v)) return `No version ${v} here: ${VERSIONS.join(', ')}`;
+  if (v !== version) {
+    savePlace();
+    version = v;
+    try { localStorage.setItem('wb.version', v); } catch { /* this run only */ }
+    if (drawn) await open(place.code, place.chapter, place.verse, 0);
+  }
+  return v === 'KJV' ? 'The reader is in the KJV' : `The reader is in the ${v}: marks on whole verses are drawn; select words in the KJV`;
+}
+
 // ---- drawing ----------------------------------------------------------------------------------------------------------
 let drawSeq = 0;
 async function open(code: string, chapter: number, verse = 1, offset = 0) {
   const t0 = performance.now(), seq = ++drawSeq;
-  const { data, rust_ms } = await api.reader(code, chapter);
+  const { data, rust_ms } = await api.reader(code, chapter, version);
   if (seq !== drawSeq) return;
   const t1 = performance.now();
   closeSheet(); hideCard(); bar?.remove(); bar = null;
@@ -80,6 +96,7 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
     if (vn) scroller.scrollTop = reader.offsetTop + vn.offsetTop - 12 + offset;
   }
   placeButton(`${data.chapter.name} ${chapter}`);
+  $('tb-version').textContent = data.chapter.version || 'KJV';
   const t2 = performance.now();
   await afterPaint();
   record('chapter', performance.now() - t0, { rust_ms, ipc_ms: t1 - t0 - rust_ms, ...drawTimes, frame_ms: performance.now() - t2, words: drawn.el.length, at: `${code} ${chapter}` });
@@ -126,7 +143,7 @@ function step(n: number) {
 async function refreshMarks() {
   const d = drawn;
   if (!d || !inApp) { if (d) paint(reader, d); return; }
-  const { data } = await api.reader(d.chapter.code, d.chapter.chapter);
+  const { data } = await api.reader(d.chapter.code, d.chapter.chapter, d.chapter.version || 'KJV');
   if (drawn !== d) return;
   d.marks = data.marks;
   d.questions.clear();
@@ -179,10 +196,10 @@ function noteCard(placeLabel: string, text: string) {
   return c;
 }
 
-function verseBody(v: VerseView, card = false): HTMLElement {
+function verseBody(v: VerseView, card = false, ver = 'KJV'): HTMLElement {
   const b = h('div', 'verse-view');
-  if (card) b.append(h('div', 'card-head', `${v.reference} · KJV`));
-  else b.append(h('h2', 'sheet-title', v.reference), h('div', 'sheet-sub', 'KJV'));
+  if (card) b.append(h('div', 'card-head', `${v.reference} · ${ver}`));
+  else b.append(h('h2', 'sheet-title', v.reference), h('div', 'sheet-sub', ver));
   b.append(h('p', 'scripture', v.text));
   if (card) return b;
   b.append(colorRow(v.color, c => {
@@ -205,9 +222,9 @@ function verseBody(v: VerseView, card = false): HTMLElement {
   }
   const at: At = { anchor: v.anchor, label: v.reference };
   b.append(actions(compact() ? ['Note', 'Question', 'Thread', 'Copy'] : ['Note', 'Question', 'Thread', 'Copy', 'Notes & lookup', 'Open as a tab'], (a, el) => {
-    if (a === 'Copy') copy(`${v.text} (${v.reference} KJV)`);
+    if (a === 'Copy') copy(`${v.text} (${v.reference} ${ver})`);
     else if (a === 'Notes & lookup') { closeSheet(); openPlace(at.anchor, at.label); }
-    else if (a === 'Open as a tab') { closeSheet(); openPassage([at.anchor.replace('.', ' ')], 'KJV', at.label); }
+    else if (a === 'Open as a tab') { closeSheet(); openPassage([at.anchor.replace('.', ' ')], ver, at.label); }
     else if (a === 'Thread') addToThread(el, at);
     else writeNote(el, at, a === 'Note' ? 'note' : 'question');
   }));
@@ -353,6 +370,7 @@ function selectionAt(a: number, b: number): At {
 
 function showBar(a: number, b: number, touch: boolean) {
   bar?.remove();
+  if (drawn?.chapter.version) { selector.clear(); toast(`Words are selected in the KJV (version kjv): highlights and notes on words belong to its words`); return; }
   app.picked = selectionAt(a, b);
   bar = h('div', touch ? 'selbar' : 'colorbar');
   const pick = (c: string | null) => {
@@ -419,6 +437,7 @@ function placeBar() {
 // ---- taps -----------------------------------------------------------------------------------------------------------
 async function openWord(k: number, el: HTMLElement, at: number) {
   const d = drawn!;
+  if (d.chapter.version) return openVerse(d.v[k], el, at);   // no KJV word here: the verse
   app.picked = selectionAt(k, k);
   const { data, rust_ms } = await api.word(d.chapter.code, d.chapter.chapter, d.v[k], d.i[k]);
   const t1 = performance.now();
@@ -433,7 +452,10 @@ async function openVerse(v: number, el: HTMLElement, at: number) {
   app.picked = { anchor: `${d.chapter.code}.${d.chapter.chapter}:${v}`, label: `${d.chapter.name} ${d.chapter.chapter}:${v}` };
   const { data, rust_ms } = await api.verse(d.chapter.code, d.chapter.chapter, v);
   const t1 = performance.now();
-  openSheet(verseBody(data), el);
+  // In another version the verse is its text there, verbatim (its words joined as stored); notes and colors are the verse's.
+  const ver = d.chapter.version || 'KJV';
+  if (d.chapter.version) data.text = d.chapter.verses.find(x => x.v === v)?.words.map(w => w.text).join(' ') ?? data.text;
+  openSheet(verseBody(data, false, ver), el);
   await afterPaint();
   record('verse-sheet', performance.now() - at, { verse: v, rust_ms, call_ms: t1 - at });
 }
@@ -717,6 +739,8 @@ function settings(from: HTMLElement) {
   minus.onclick = () => step(-10); plus.onclick = () => step(10); reset.onclick = () => step(100 - sizePct);
   sz.append(minus, pct, plus, reset);
   b.append(sz);
+  b.append(h('div', 'label', 'Version'));
+  b.append(segmented(VERSIONS, version, v => { closeSheet(); closeMenu(); setVersion(v).then(toast); }));
   b.append(h('div', 'label', 'Hover cards'));
   b.append(segmented(['off', 'refs', 'on'], hoverMode(), setHover));
   b.append(h('div', 'label', 'Theme'));
@@ -777,6 +801,7 @@ $('pen').onclick = () => (compact() ? toast('Phase 3: the palette') : void write
 $('pen').title = 'Write a note (on the place you picked, or the verse at the top)';
 $('tb-notebook').onclick = () => openNotebook();
 $('tb-threads').onclick = () => openThreads();
+$('tb-version').onclick = async () => toast(await setVersion(version === 'KJV' ? 'YLT' : 'KJV'));
 $('tb-shelf').onclick = () => openShelf();
 $('hl-menu').onclick = () => highlightsMenu($('hl-menu'));
 $('tab-notebook').onclick = () => openNotebook();
@@ -832,6 +857,8 @@ Object.assign(app, {
   topVerse: () => topVerse().verse,
   setSize,
   size: () => sizePct,
+  version: () => version,
+  setVersion,
   findInChapter,
   changed: () => { written(); loadThreads(); },
 });

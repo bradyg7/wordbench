@@ -50,6 +50,14 @@ pub fn reader(bible: &Bible, store: &Store, code: &str, chapter: u32) -> Result<
     Ok(ReaderView { chapter: bible.chapter(code, chapter)?, marks: marks::chapter_marks(store, code, chapter)?, questions: crate::notebook::chapter_questions(store, code, chapter) })
 }
 
+/// The reader in a version: the KJV as `reader`; another version with the marks it can show (`marks::verse_level`).
+pub fn reader_in(bible: &Bible, store: &Store, code: &str, chapter: u32, version: &str) -> Result<ReaderView> {
+    let ch = bible.chapter_in(code, chapter, version)?;
+    let m = marks::chapter_marks(store, code, chapter)?;
+    let marks = if ch.version.is_some() { marks::verse_level(m) } else { m };
+    Ok(ReaderView { chapter: ch, marks, questions: crate::notebook::chapter_questions(store, code, chapter) })
+}
+
 fn touches_verse(anchor: &str, code: &str, c: u32, v: u32) -> bool {
     match anchors::parse(anchor) {
         Ok(a) if a.kind != Kind::Lemma && a.code == code => {

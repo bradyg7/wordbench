@@ -378,6 +378,37 @@ try {
   check('Put it back restores it to its thread', JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes.length === 2);
   await page.locator('.nb-seg button', { hasText: 'Journal' }).click();
 
+  const top = () => page.evaluate(() => {
+    const sc = document.getElementById('scroller'), r = document.getElementById('reader');
+    let v = 1;
+    for (const e of r.querySelectorAll('.vn')) { if (r.offsetTop + e.offsetTop - 12 > sc.scrollTop + 2) break; v = +e.dataset.v; }
+    return v;
+  });
+  // the reader in the YLT: verbatim, the same verse at the top, marks on whole verses only, no word selection; and back
+  await page.evaluate(() => window.__wb.open('NUM', 25, 6));
+  await sleep(400);
+  const kjvTop = await top();
+  const ylt11 = JSON.parse(execFileSync(wbExe, ['text', 'Num 25:11', '--version', 'ylt', '--json'], { env }).toString()).verses[0].text;
+  const said2 = await page.evaluate(() => window.__wb.run('version ylt'));
+  await page.waitForFunction(() => window.__wb.drawn?.chapter.version === 'YLT', null, { timeout: 10000 });
+  await sleep(300);
+  const shown11 = await page.evaluate(() => { const d = window.__wb.drawn; return d.text.filter((_, k) => d.v[k] === 11).join(' '); });
+  check('version ylt draws the YLT, verbatim', shown11 === ylt11, said2);
+  check('the version switch keeps the verse at the top', kjvTop === 6 && (await top()) === 6, `verse ${kjvTop} → ${await top()}`);
+  check('the toolbar and the chapter say YLT', (await page.locator('#tb-version').textContent()) === 'YLT' && await page.locator('.ch-version').isVisible());
+  const yr = JSON.parse(execFileSync(wbExe, ['reader', 'NUM', '25', '--version', 'ylt'], { env }).toString());
+  check('wb reader --version ylt: the YLT with marks on whole verses only', yr.chapter.version === 'YLT' && [...yr.marks.highlights, ...yr.marks.threads, ...yr.marks.notes].every(m => m.kind === 'verse' || m.kind === 'verses'));
+  const w11 = await page.evaluate(() => { const d = window.__wb.drawn, k = d.v.indexOf(11) + 2; d.el[k].scrollIntoView({ block: 'center' }); const r = d.el[k].getBoundingClientRect(), e = d.el[k + 3].getBoundingClientRect(); return [r.x + 3, r.y + r.height / 2, e.right - 3, e.y + e.height / 2]; });
+  await page.mouse.move(w11[0], w11[1]); await page.mouse.down(); await page.mouse.move(w11[2], w11[3], { steps: 6 }); await page.mouse.up();
+  await sleep(300);
+  check('words cannot be selected in the YLT (no color bar)', await page.locator('.colorbar').count() === 0);
+  await page.mouse.click(w11[0], w11[1]);
+  check('a word in the YLT opens its verse, in the YLT', await page.locator('.popover', { hasText: ylt11 }).waitFor({ timeout: 5000 }).then(async () => (await page.locator('.popover .sheet-sub').textContent()) === 'YLT', () => false));
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.__wb.run('version kjv'));
+  await page.waitForFunction(() => window.__wb.drawn && !window.__wb.drawn.chapter.version, null, { timeout: 10000 });
+  check('version kjv: back in the KJV, the choice kept', (await page.locator('#tb-version').textContent()) === 'KJV' && await page.evaluate(() => localStorage.getItem('wb.version')) === 'KJV');
+
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();
   await page.waitForSelector('.pane-passage .passage-verse', { timeout: 10000 });
@@ -386,12 +417,6 @@ try {
   check('wb do opens the passage in the window, verbatim', shown.length === 3 && shown[0].includes(john.verses[0].text), said);
 
   // size classes; the verse at the top stays at the top through each
-  const top = () => page.evaluate(() => {
-    const sc = document.getElementById('scroller'), r = document.getElementById('reader');
-    let v = 1;
-    for (const e of r.querySelectorAll('.vn')) { if (r.offsetTop + e.offsetTop - 12 > sc.scrollTop + 2) break; v = +e.dataset.v; }
-    return v;
-  });
   await page.evaluate(() => window.__wb.open('PSA', 119, 50));
   await sleep(500);
   await page.evaluate(() => window.__wb.run('interlinear Ps 119:50'));

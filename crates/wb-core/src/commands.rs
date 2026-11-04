@@ -263,6 +263,8 @@ pub enum Action {
     Notebook,
     /// `window phone`: the window at one of the test sizes.
     Window { size: String },
+    /// `version ylt`: the reader in that version (`version` alone: which one it is in).
+    Version { version: String },
 }
 
 // ---- the manual and the command list (from the Python app's web/help-docs.js and commands.js) -----------------------
@@ -291,7 +293,7 @@ pub fn find_doc(topic: &str) -> Option<&'static Value> {
 /// The commands' names, in the manual's order, then the ones new in the Rust app.
 pub fn command_names() -> Vec<String> {
     let mut v: Vec<String> = manual()["commands"].as_array().map(|a| a.iter().filter_map(|c| c["name"].as_str().map(String::from)).collect()).unwrap_or_default();
-    v.extend(["jot", "place", "journal", "inbox", "notebook", "window"].map(String::from));
+    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version"].map(String::from));
     v
 }
 
@@ -1358,6 +1360,13 @@ pub fn parse(input: &str, books: &[Book]) -> Result<Action, String> {
             }
             Action::Window { size: w }
         }
+        "version" => {
+            let v = a.trim().to_uppercase();
+            if !v.is_empty() && !regex!(r"^[A-Z0-9]{2,10}$").is_match(&v) {
+                return Err("Try: version ylt, or version kjv".into());
+            }
+            Action::Version { version: v }
+        }
         _ => {
             let mut q = parse_search(t, books);
             // A word one slip away from a command may be a typo; the box asks whether it is a real KJV word.
@@ -1535,6 +1544,8 @@ mod tests {
         assert_eq!(p("journal 2026-11-02"), serde_json::json!({"cmd": "journal", "day": "2026-11-02"}));
         assert_eq!(p("inbox"), serde_json::json!({"cmd": "inbox"}));
         assert_eq!(p("window phone"), serde_json::json!({"cmd": "window", "size": "phone"}));
+        assert_eq!(p("version ylt"), serde_json::json!({"cmd": "version", "version": "YLT"}));
+        assert_eq!(p("version"), serde_json::json!({"cmd": "version", "version": ""}));
         assert!(parse("jot", &bs).is_err());
         assert!(parse("place rose up", &bs).unwrap_err().contains("@"));
         assert!(parse("journal yesterday", &bs).is_err());

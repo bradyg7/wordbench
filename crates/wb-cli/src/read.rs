@@ -86,9 +86,10 @@ pub fn commands() -> Vec<Command> {
                 Ok(Out::Json(lookup::interlinear(c.bible()?, s.book.id, s.c1, s.v1 as i64, c2, s.v2 as i64, a.int("offset")?, lookup::INTERLINEAR_VERSES).map_err(e)?))
             }),
         // The app's own views (not in the Python wb): what the reader, the word sheet and the verse sheet show.
-        cmd("reader", "What the reader draws for a chapter: its words and the marks on them (JSON): wb reader NUM 25.", vec![Pos("book", N::One), Pos("ch", N::One)], |c, a| {
+        cmd("reader", "What the reader draws for a chapter: its words and the marks on them (JSON): wb reader NUM 25 [--version ylt]. Another version than the KJV shows the marks on whole verses only.",
+            vec![Pos("book", N::One), Pos("ch", N::One), Opt("version", Some("KJV"))], |c, a| {
             let (b, ch) = book_ch(a)?;
-            Ok(Out::Json(json!(views::reader(c.bible()?, &*c.study()?, &b, ch).map_err(e)?)))
+            Ok(Out::Json(json!(views::reader_in(c.bible()?, &*c.study()?, &b, ch, &a.opt_or("version", "KJV")).map_err(e)?)))
         }),
         cmd("word", "What the word sheet shows: wb word NUM 25 11 24 (word 24, from 0, of Numbers 25:11).",
             vec![Pos("book", N::One), Pos("ch", N::One), Pos("v", N::One), Pos("i", N::One)], |c, a| {

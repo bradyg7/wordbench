@@ -2,7 +2,7 @@
 
 Status: accepted, 2026-11-03 ("Desktop first, as planned"): phase 2b comes before the phone, with the defaults below
 (documents brought forward, the phase 2 check runs to 2026-11-09, the dock decided by the spike, no third translation
-yet). Step 1 is built (2026-11-03; [phase2-results.md](phase2-results.md) section 11).
+yet). Steps 1 and 2 are built (2026-11-03 and 11-04; [phase2-results.md](phase2-results.md) section 11).
 
 ## 1. Where things stand
 
@@ -46,7 +46,7 @@ golden suite where a `wb` command changed; and a `wb` command for any new core a
   the reader too).
 - One way to open a card on every device makes phase 3 simpler: the desktop and the phone share the cards.
 
-### Step 2 — translations (now; small to medium)
+### Step 2 — translations (built 2026-11-04)
 
 - A translation switch in the reader: KJV or YLT (both in the database; `compare` already shows the YLT). The place,
   marks and notes stay with the KJV's words; on the YLT the reader shows the text and its verse-level notes, and says

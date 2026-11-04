@@ -99,6 +99,7 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
     if (next === 0) {
       out.push(`<h1 class="ch-title">${esc(chapter.name)} ${chapter.chapter}</h1>`);
       if (chapter.title) out.push(`<p class="ch-sub">${esc(chapter.title)}</p>`);
+      if (chapter.version) out.push(`<p class="ch-version">${esc(chapter.version)} · marks on whole verses are shown here; words are selected in the KJV</p>`);
     }
     let open = false;
     for (let k = next; k < n; k++) {

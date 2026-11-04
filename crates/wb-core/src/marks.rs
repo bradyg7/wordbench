@@ -63,3 +63,31 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: u32) -> Result<ChapterM
     }
     Ok(m)
 }
+
+/// The marks a chapter in another version can show (it has no KJV word positions): highlights and thread places on whole
+/// verses as they are, a note on words as a mark on its verses, and nothing on words.
+pub fn verse_level(m: ChapterMarks) -> ChapterMarks {
+    let whole = |x: &Mark| matches!(x.at.kind, Kind::Verse | Kind::Verses);
+    let notes = m
+        .notes
+        .into_iter()
+        .map(|mut n| {
+            if matches!(n.at.kind, Kind::Word | Kind::Phrase) {
+                let (c2, v2) = (n.at.c2.unwrap_or(n.at.c1), n.at.v2.unwrap_or(n.at.v1));
+                let one = (c2, v2) == (n.at.c1, n.at.v1);
+                n.at = Anchor {
+                    kind: if one { Kind::Verse } else { Kind::Verses },
+                    c2: (!one).then_some(c2),
+                    v2: (!one).then_some(v2),
+                    i1: None,
+                    i2: None,
+                    ..n.at
+                };
+            }
+            n
+        })
+        .collect();
+    let threads: Vec<Mark> = m.threads.into_iter().filter(whole).collect();
+    let thread_names = m.thread_names.into_iter().filter(|(id, _)| threads.iter().any(|t| &t.id == id)).collect();
+    ChapterMarks { highlights: m.highlights.into_iter().filter(whole).collect(), notes, threads, thread_names }
+}

@@ -197,6 +197,7 @@ export async function perform(a: any, line: string): Promise<string> {
       const r = await api.setWindow(a.size);
       return `${a.size}: ${r.got[0]}×${r.got[1]}`;
     }
+    case 'version': return a.version ? app.setVersion(a.version) : `The reader is in the ${app.version()}`;
     case 'listen': return later('Read aloud', 6);
     case 'pdf': case 'pdfs': case 'packet': case 'docs': case 'theme': case 'make': return later('Documents and PDFs', 5);
     default: return `“${line}” is understood, but the window does not do it yet.`;

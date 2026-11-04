@@ -78,6 +78,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .ch-title { font: var(--type-chapter); margin: 20px 0 4px; }
 :root[data-size="compact"] .ch-title { font-size: 30px; line-height: 38px; }
 .ch-sub { font: var(--type-read-small); color: var(--muted); font-style: italic; margin: 0 0 8px; }
+.ch-version { font: var(--type-caption); color: var(--muted); margin: 0 0 12px; }
 .para { margin: 0 0 14px; }
 .line { margin: 0; }
 .line.q2 { padding-left: 1.5em; }

@@ -16,6 +16,9 @@ export const app = {
   /** Reads the chapter's marks again (after a note, highlight or thread change) and draws them. */
   refreshMarks: async () => {},
   topVerse: () => 1,
+  /** The reader's version (KJV, YLT); setting it redraws the chapter with the same verse at the top. */
+  version: () => 'KJV',
+  setVersion: async (_v: string): Promise<string> => '',
   /** The text size, as a percent. */
   setSize: (_percent: number) => {},
   size: () => 100,

@@ -614,6 +614,48 @@ fn versions_list_and_text() {
 }
 
 #[test]
+fn a_chapter_in_the_ylt_is_its_text_verbatim_split_at_spaces() {
+    let Some(b) = bible() else { return };
+    for (code, id, ch) in [("JHN", 43, 3), ("NUM", 4, 25), ("PSA", 19, 119)] {
+        let ylt = b.chapter_in(code, ch, "ylt").unwrap();
+        let stored = wb_core::lookup::text(&b, "YLT", id, ch).unwrap().unwrap();
+        assert_eq!(ylt.version.as_deref(), Some("YLT"));
+        assert_eq!(ylt.verses.len(), stored["verses"].as_array().unwrap().len());
+        for (v, s) in ylt.verses.iter().zip(stored["verses"].as_array().unwrap()) {
+            assert_eq!(v.v, s["v"].as_u64().unwrap() as u32);
+            let joined = v.words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>().join(" ");
+            assert_eq!(joined, s["text"].as_str().unwrap(), "{code} {ch}:{}", v.v);
+            assert!(v.words.iter().all(|w| w.strong.is_none()));
+        }
+    }
+    let kjv = b.chapter_in("JHN", 3, "KJV").unwrap();
+    assert!(kjv.version.is_none() && kjv.verses[0].words.iter().any(|w| w.strong.is_some()));
+    assert!(b.chapter_in("JHN", 3, "NIV").is_err());
+}
+
+#[test]
+fn in_another_version_only_marks_on_whole_verses_are_drawn() {
+    let Some(b) = bible() else { return };
+    let t = Scratch::new();
+    let mut st = store(&t);
+    let zeal = format!("NUM.25:11.{}", index_of(&b, "NUM", 25, 11, "zealous"));
+    sa::save_highlight(&b, &mut st, &zeal, Some("yellow")).unwrap();
+    sa::save_highlight(&b, &mut st, "NUM.25:7", Some("green")).unwrap();
+    sa::save_note(&b, &mut st, &zeal, "A note on a word.", None).unwrap();
+    st.create_thread("Zeal", "", Some("blue")).unwrap();
+    sa::add_to_thread(&b, &mut st, "zeal", &zeal).unwrap();
+    sa::add_to_thread(&b, &mut st, "zeal", "NUM.25:7-25:13").unwrap();
+    let kjv = wb_core::views::reader_in(&b, &st, "NUM", 25, "KJV").unwrap();
+    assert_eq!((kjv.marks.highlights.len(), kjv.marks.threads.len()), (2, 2));
+    let ylt = wb_core::views::reader_in(&b, &st, "NUM", 25, "YLT").unwrap();
+    let m = serde_json::to_value(&ylt.marks).unwrap();
+    assert_eq!(m["highlights"].as_array().unwrap().iter().map(|h| h["color"].clone()).collect::<Vec<_>>(), vec![json!("green")]);
+    assert_eq!(m["threads"].as_array().unwrap().iter().map(|h| h["kind"].clone()).collect::<Vec<_>>(), vec![json!("verses")]);
+    assert_eq!(m["notes"][0]["kind"], "verse"); // the note on a word marks its verse
+    assert_eq!((m["notes"][0]["v1"].as_u64(), m["notes"][0]["i1"].is_null()), (Some(11), true));
+}
+
+#[test]
 fn chapter_notes_are_in_reading_order_and_skip_other_chapters_and_lemmas() {
     let Some(b) = bible() else { return };
     let t = Scratch::new();

@@ -5,7 +5,7 @@ import { listen } from '@tauri-apps/api/event';
 
 export interface Word { i: number; lead?: string; text: string; trail?: string; strong?: string; italic?: boolean; nd?: boolean; wj?: boolean; para?: string }
 export interface Verse { v: number; words: Word[] }
-export interface Chapter { code: string; name: string; chapter: number; chapters: number; title?: string; verses: Verse[] }
+export interface Chapter { code: string; name: string; chapter: number; chapters: number; title?: string; verses: Verse[]; version?: string }
 export interface Mark { kind: string; code: string; c1: number; v1: number; i1: number | null; c2: number | null; v2: number | null; i2: number | null; id: string; color?: string }
 export interface Marks { highlights: Mark[]; notes: Mark[]; threads: Mark[]; thread_names: Record<string, string> }
 export interface Question { id: string; v: number; text: string }
@@ -44,7 +44,8 @@ async function call<T>(cmd: string, args: Record<string, unknown>): Promise<Answ
 }
 
 export const api = {
-  reader: (code: string, chapter: number) => call<ReaderView>('reader', { code, chapter }),
+  /** `version`: KJV (the default) or another in the database; see wb reader --version. */
+  reader: (code: string, chapter: number, version = 'KJV') => call<ReaderView>('reader', { code, chapter, version }),
   word: (code: string, chapter: number, verse: number, word: number) => call<WordView>('word', { code, chapter, verse, word }),
   verse: (code: string, chapter: number, verse: number) => call<VerseView>('verse', { code, chapter, verse }),
   books: () => call<Book[]>('books', {}),

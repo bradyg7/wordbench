@@ -7,9 +7,9 @@ study without the Python app) started on 2026-11-02 on the real folder**, on the
 
 | | Result |
 |---|---|
-| Desktop in the real app | `node measure/desk.mjs`: **66 of 66** checks (45 at the start of the check, the rest for its findings), in WebView2, at 1440×900 and the other sizes |
+| Desktop in the real app | `node measure/desk.mjs`: **73 of 73** checks (45 at the start of the check, the rest for its findings), in WebView2, at 1440×900 and the other sizes |
 | WebKit (the iPhone and iPad engine) | `npm run test:webkit`: **12 of 12** (the 10 of phase 0 and 2 for the new shell) |
-| Rust tests | `cargo test`: **107** (97 before phase 2; 4 for the Notebook's `wb` commands, 4 for the command language; 2 for moving notes, questions and `read when`) |
+| Rust tests | `cargo test`: **112** (97 before phase 2; 2 for the reader in the YLT; 4 for the Notebook's `wb` commands, 4 for the command language; 2 for moving notes, questions and `read when`) |
 | The command language against the Python parser | **480 of 480** lines and **108 of 108** texts with references give the same answer |
 | Golden suite (the Rust `wb` against the Python `wb`) | **99 of 99** the same (`python scripts/golden.py`) |
 | Speed budgets | **All met** at 4× CPU slowdown (section 7); Psalm 119 scrolling down to one long frame of 34 ms |
@@ -300,7 +300,7 @@ phase 2b, the desktop finished before the phone ([PLAN-phase2b.md](PLAN-phase2b.
 | # | Note | What it says | Where it goes |
 |---|---|---|---|
 | 23 | `564e` | Verses and words clickable, not hoverable; once clicked, tabs that can be dragged, as in dockview | **Built** (phase 2b step 1): hover cards are off by default and the setting is kept between runs (More ⋯, or `hover on`/`off`/`refs`); a click on a word or verse number opens its card as before, and now a click on a reference in a note does too (the verse verbatim, **Go to**, **Open as a tab**; Ctrl+click goes straight there). The verse and word cards have **Open as a tab** (a passage pane, the Strong's entry), and tabs drag between columns and float as before. The dockview-style dock is phase 2b step 4 |
-| 24 | `7a77` | Room for translation changes (item 21 again) | Phase 2b step 2 |
+| 24 | `7a77` | Room for translation changes (item 21 again) | **Built** (phase 2b step 2): **KJV / YLT** in the toolbar, under More ⋯, or `version ylt` / `version kjv`; kept between runs, and the verse at the top stays at the top. The YLT is drawn verbatim from the database (each verse's text split at its spaces; a test joins every verse of three chapters back and compares). It has no KJV word positions, so on the YLT highlights and thread places on whole verses are drawn, a note on words marks its verse, words cannot be selected (a toast says to use the KJV), and a click on a word opens its verse, in the YLT. `wb reader NUM 25 --version ylt` gives what the window draws. A third translation is a row in the database's `versions` and `verse_texts` tables, once its source and license are checked |
 
 The scratch copy still works for trying things out: `powershell -ExecutionPolicy Bypass -File scripts\watch-app.ps1`.
 To try a feature: open the Notebook and write a thought (Enter); place it from the Inbox; press backtick and type

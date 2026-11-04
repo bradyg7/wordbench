@@ -61,6 +61,9 @@ pub struct Chapter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     pub verses: Vec<Verse>,
+    /// Set for a version other than the KJV: its words are the verse's text split at spaces, with no Strong's numbers.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -178,7 +181,50 @@ impl Bible {
             .conn
             .query_row("SELECT title FROM chapter_titles WHERE book = ?1 AND chapter = ?2", params![book.id, chapter], |r| r.get(0))
             .optional()?;
-        Ok(Chapter { code: book.code, name: book.name, chapter, chapters: book.chapters, title, verses })
+        Ok(Chapter { code: book.code, name: book.name, chapter, chapters: book.chapters, title, verses, version: None })
+    }
+
+    /// A chapter in a version (`KJV`, `YLT`, any in the versions table). Another version's verse is its text verbatim,
+    /// split at its spaces into words (joined again by single spaces, it is the text as stored); paragraphs and the
+    /// chapter's title follow the KJV's.
+    pub fn chapter_in(&self, code: &str, chapter: u32, version: &str) -> Result<Chapter> {
+        let version = version.to_uppercase();
+        let kjv = self.chapter(code, chapter)?;
+        if version.is_empty() || version == "KJV" {
+            return Ok(kjv);
+        }
+        let known: Option<String> =
+            self.conn.query_row("SELECT id FROM versions WHERE id = ?1", [&version], |r| r.get(0)).optional()?;
+        if known.is_none() {
+            return Err(Error(format!("No such version: {version}")));
+        }
+        let id = self.book(code)?.id;
+        let mut stmt =
+            self.conn.prepare_cached("SELECT verse, text FROM verse_texts WHERE version = ?1 AND book = ?2 AND chapter = ?3 ORDER BY verse")?;
+        let rows = stmt.query_map(params![version, id, chapter], |r| Ok((r.get::<_, u32>(0)?, r.get::<_, String>(1)?)))?;
+        let mut verses = Vec::new();
+        for row in rows {
+            let (v, text) = row?;
+            let para = kjv.verses.iter().find(|x| x.v == v).and_then(|x| x.words.first()).map(|w| w.para.clone()).unwrap_or_default();
+            let words = text
+                .split(' ')
+                .filter(|t| !t.is_empty())
+                .enumerate()
+                .map(|(i, t)| Word {
+                    i: i as u32,
+                    lead: String::new(),
+                    text: t.to_string(),
+                    trail: String::new(),
+                    strong: None,
+                    italic: false,
+                    nd: false,
+                    wj: false,
+                    para: if i == 0 { para.clone() } else { String::new() },
+                })
+                .collect();
+            verses.push(Verse { v, words });
+        }
+        Ok(Chapter { verses, version: Some(version), ..kjv })
     }
 
     /// One word of a verse (`i` is its 0-based position), with the book's name.
