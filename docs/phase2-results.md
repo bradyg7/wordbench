@@ -401,3 +401,111 @@ until this was done). The phone is unchanged: at Compact a pane is still the who
 
 To try it: drag a tab by its name and watch the box name where it would go; hold Shift over the reader to split it
 beside its column; float two panes, move one by its strip, minimize the other, then drop one's tab on the other's strip.
+
+## 15. Phase 2b, tier 2: the Notebook, design B (2026-11-06)
+
+Tier 2 of [PLAN-phase2b-build.md](PLAN-phase2b-build.md), designs N1–N4 and B1–B2 ([phase2b-design.md](phase2b-design.md)
+section 7), for note `09ef` (the Notebook from the start) and `e998` (the key, now quick capture). Built in one session,
+all seven rows.
+
+| # | Built | Checked |
+|---|---|---|
+| 2.1 | **The list and the editor (B1).** The list: a search, the pen (a new note), ⋯ (questions only, the Inbox only, the Trash, settings) and **Group: Day, Chapter, Thread, None**. Each line: its title (the first line), a line of what follows, its place, threads, ? for a question. The open note is an editor: its title, its places and threads as chips (× takes one off; + Place, + Thread), the format bar (H B I • 1. “ write Markdown as plain text; Place writes the reader's place into the text; [[ ]] a link; ? Question), and the text shown as a page (headings, lists, quotes, references and links working). A click on the page writes in it, as plain Markdown; it is saved as it is typed (Esc or Ctrl+Enter: done). Wide (the column expanded, or a float), the list and the editor sit side by side; narrow, they take turns with ‹ Notes. `wb notebook --group day|chapter|thread|none [--search] [--at] [--questions] [--inbox-apart]`, `wb note show`, `wb note new` | desk: a new note with no place, its file in `notes/_inbox`, the page and its title; + Place, Move, Answered, the tag, Take off, Delete and Erase now from the editor and its ⋯; side by side when wide; `cargo test` (list by every group) |
+| 2.2 | **Places on chapters and books (N1).** + Place offers the verse picked, its chapter and its book (and the place the note names, or one typed: "Numbers 25", "Jude"). A chapter is the run of its verses (`NUM.25:1-25:18`), a book the run of all of them (`NUM.1:1-36:13`): the Python app reads both. Such a note keeps no copy of the text in its header (`quote: ""`), is named "Numbers 25" / "Numbers", and is marked in the reader by a dot at the chapter's title, not on every verse. `note place`, `note also`, `note move`, `note unplace` and `note new` take chapters and books; **`wb note add` keeps the Python app's verses-only rule** (its golden case) | CLI test; desk: + Place → the whole chapter, its anchor, the dot at the title and none on verse 5; the Python app's `Study` on a copy reads both notes |
+| 2.3 | **Links (N1).** `[[title]]`, `[[title#heading]]` and `[[title\|shown]]` in a note open that note (at the heading); a title no note has is shown dotted, and a click offers to start it. **Linked from** under a note. Typing `[[` offers the titles. A changed title offers to update the links to it (`wb note relink`). A day's page is linked by its day, `[[2026-11-06]]`, or its title. `wb note links`, `wb note backlinks`, `wb note relink` | CLI test (headings, shown text, relink keeps both); desk: a link opens its note, Linked from lists the linking note, a missing one is dotted |
+| 2.4 | **Today's page (N2).** One note per day, first in Group: Day, shown blank ("Not written in yet") and made the first time something is written in it: **new files `notes/_days/<YYYY-MM-DD>.md`**, front matter `id`, `day`, `kind: "day"`, times, no anchor, so the Python app passes over them (checked with its `Study` on a copy). Deleted, a page waits in the Trash as notes do and comes back. `wb day [date]`, `wb day add`, `wb day text`, `wb day rm` | CLI test; desk: today's page first and blank, then its file with no anchor, the format bar's list in the file and on the page |
+| 2.5 | **Group by chapter, following the reader (N3).** The chapter being read: the book's notes, then the chapter's, then by verse and word; it turns with the reader. With Follow the reader off, every chapter in Bible order, then the notes on original words | desk: "Numbers 25 · following the reader", then Numbers 26 after the reader turns; the chapter's note first |
+| 2.6 | **Quick capture (B2)**: Ctrl+J from anywhere opens a small box at the verse last clicked (else the top of the reader). Enter saves a short note there; Ctrl+Enter saves it and opens it in the editor; × on the place sends it to the Inbox; ? asks it. Writing on a verse from its card (Note, Question) and the pen open a new note in the editor with the place chosen | desk: from the reader and the command field, at verse 7, Enter, Ctrl+Enter, the Inbox; Keys |
+| 2.7 | **Settings → Notebook (N4)**, in the Notebook's ⋯ until the Settings window (tier 5): today's page, follow the reader, links, chapter and book places, the Inbox as its own group, the group it opens with, the capture key. **New file `settings/notebook.json`**, one value per key (only those changed). `wb settings notebook [key value]`, `--about` | CLI test; desk: the Inbox as its own group, and the file |
+
+**On the way:** `wb note show` gives an Inbox note the place its text names, as the old Inbox list did (the desk check
+found it missing). The Journal, Inbox and All notes of phase 2 are now Group: Day, the Inbox filter and Group: Chapter;
+`journal`, `inbox` and `notebook` in the command field open them so. The person's notes of 2026-11-03 to 11-05 read
+correctly in the new list (a fresh copy of the real folder, read only): titles from first lines, places, a note on a
+thread alone as "On salt 11/5/26".
+
+**Before this build reaches the real folder:** it writes two new kinds of file (`notes/_days/`, `settings/notebook.json`),
+so `scripts/backup-study.ps1` is run first (PLAN-phase2b-build, "For every item").
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **146 of 146** (Notebook checks rewritten for the list and the editor; 23 new) |
+| WebKit | `npm run test:webkit`: **14 passed**, 8 skipped (unchanged: the Notebook calls Rust, so it is checked in the app) |
+| Rust tests | `cargo test`: **125** (5 new CLI tests, 2 unit tests) |
+| Golden suite | `python scripts/golden.py`: **99 of 99** (`wb note add` keeps the Python app’s rule; every new command is Rust only) |
+
+To try it: Ctrl+J at a verse and write a line; open the Notebook, Group: Chapter, turn the chapter; open today's page,
+write `[[` and pick a note; expand the column (⤢) to see the list and the editor side by side.
+
+## 16. What the check found: days 3 and 4 (2026-11-04 and 11-05), and what was built
+
+Seventeen notes about the app, written between 2026-11-04 09:11 and 2026-11-05 18:41 (read from a fresh, read-only
+copy of the real folder). Five more from those days are the person's own study (`9e50`, `9a53`, `c873`, `645c`,
+`568d`) and are left out. Each note is listed once, by the last four characters of its id; `87bc` ("but notes show up")
+goes with `c39a`.
+
+| # | Note | What it says | Where it goes |
+|---|---|---|---|
+| 1 | `1b2d` | Minimizing a tab in one side panel, even a half-size one, minimizes every side panel | **Fixed now** (a bug in tier 1) |
+| 2 | `e3fe` | Take the pen off the desktop view, even when the reader is narrow because of other panes | **Fixed now** |
+| 3 | `5e36` | In the ⌄ list of all tabs, a trash on each tab, red on hover, to close it | **Fixed now** |
+| 4 | `5c4a` | Ctrl+F should find in the pane you are in, not only the reader | **Fixed now** |
+| 5 | `0cf1` | Right-click a verse to open it in a new tab, also in passages opened with `open` | **Fixed now**, with 6 and 7 |
+| 6 | `9587` | `open` should show the passage as the reader does (highlights, the same menu), but as a second reader: clicks there do not move the reader | **The person's choice (below), built** |
+| 7 | `21bd` | Several passages open at once; a verse clicked outside the reader should not always move the reader: "Go to reader" or "Open in tab" | **The person's choice (below), built** |
+| 8 | `523e` | The heights and widths of each side panel adjustable | Tier 1 gave the columns' widths (drag, expand, double-click), the bands' heights and the floats' corners. **What was missing, built now:** the heights of a split column's parts |
+| 9 | `4b90` | A clicked verse should look selected, with the color bar, and clear on a click away | **The person's choice (below), built** |
+| 10 | `c39a`, `87bc` | Questions do not always show in Notes & lookup, especially a question on part of a verse; notes do | **Fixed now** (a bug: the pane listed only questions on the very same place) |
+| 11 | `93b2` | Color customization for the whole app, as deep as the other customizing | **Tier 5**, Settings → Theme (added to the build plan) |
+| 12 | `1c6d` | More than one floating tab group | **Already done by tier 1** (V2, section 14: each float on its own, as many as wanted; desk checks "two panes floated are two windows" and "a float moves by its strip on its own") |
+| 13 | `2885` | A stopped reading plan goes to a "past plans" page, to reuse or delete, not to the trash | **Tier 3** (added as item 5 of the build plan) |
+| 14 | `50c1` | A personal debug place while the app is built, so these notes feed the development | **The person's choice (below), built** |
+| 15 | `c419` | Marking a chapter read: a count of times read, and Mark unread | **Fixed now** |
+| 16 | `28d3` (11-05) | On touch, in large-tablet mode (the laptop flipped), the note button drops the on-screen keyboard at once | **Checked again** on tier 2's editor with touch emulated over the DevTools protocol: no blur (below). The pen it was likely pressed is gone at desktop sizes (note 2) |
+| 17 | `797d` (11-05) | A history of commands in the command field, as PowerShell keeps, failed ones too | **Fixed now** |
+
+### Decided by the person (2026-11-06), and built
+
+| Note | The question | The person's answer |
+|---|---|---|
+| `9587` | What a passage opened with `open` (or Open as a tab) is | **A full second reader**: its chapter drawn as the reader draws it, its own selection, color bar and cards, its own chapter turning; nothing in it moves the reader, and its menu has "Go to in the reader" |
+| `21bd` | What a click on a verse reference outside the reader does | **Ask: the reader or a tab**, a small menu; Ctrl+click goes straight to the reader |
+| `4b90` | What a click on a verse number does (it opened the verse's card) | **Select the verse and show the color bar** with the card's actions; a click away clears both; a word's click still opens its card |
+| `50c1` | The debug place | **Findings in the app**: a key writes a finding with what was on screen, kept apart from the study, with a Findings list and Handled; `wb findings` for a development session |
+
+### Built
+
+| Note | Built | Checked |
+|---|---|---|
+| `1b2d` | Minimize hides **the group** it is pressed in, not the whole column: the other part of a split column takes the room, and the minimized part waits as a bar at the column's foot ("H7065", a click shows it again). The other column and the bands never change. A column whose every part is minimized collapses to its edge as before. At Expanded and Medium, where the right column is drawn as one strip, it is minimized as one (`ui/src/dock.ts`) | desk: split the left column, minimize its lower part: one part open, its bar at the foot, the right column open; the bar shows it again |
+| `523e` | **The line between a split column's parts drags** to give one part more height (each at least 120 px); double-click gives them the same height again. Widths, band heights and float sizes were tier 1's | desk: drag the line 120 px up, the upper part is 120 px shorter; double-click, the same height each |
+| `5e36` | In the ⌄ list of a strip's tabs, **a trash on each tab**, red on hover: it closes that tab and the list stays open with the rest | desk: a trash on every row, red under the pointer, a click closes that tab and leaves the list open |
+| `e3fe` | **No pen over the reader** at Large, Expanded and Medium, whatever the reader's width; the pen stays on the phone (Compact). On the desktop a note starts from the Notebook's pen, Note on a verse's bar, or Ctrl+J | desk: no pen at Large, laptop and iPad sizes; there on the phone size |
+| `5c4a` | **Ctrl+F finds in the pane last clicked or typed in**: a find bar at the pane's top, what is found marked (the CSS Custom Highlight API, so the pane's markup is not changed), Enter / Shift+Enter and ↑ ↓ to step, Esc to close. After a click in the reader (or the toolbar) it finds in the chapter as before. In Keys (`ui/src/panefind.ts`) | desk: in Keys, "chapter" found there and the reader's bar not opened; Esc closes it; after a click in the reader, Ctrl+F is the chapter's |
+| `9587` | **A second reader.** `open John 3:16-18`, Open as a tab on a verse, a reference's card and Open in a new tab open a pane that draws the passage's chapter as the reader does (highlights, thread lines, note and question marks), the verses asked for marked and scrolled to. In it: a word's card, a verse picked with its bar, words selected with the color bar, Alt+click for the interlinear, ‹ › to turn its own chapter, and "Go to in the reader" in its head (the verse at its top) and in a verse's right-click menu. Its marks are drawn again after a write, the text and its place kept. Nothing in it moves the reader. Several places at once (`excerpt`) and the KJV with the YLT (`compare`) stay a list, each verse asking as in `21bd`. One color bar at a time: a selection in one reader clears the other's (`ui/src/main.ts`: each reader is a "view" with its own selector) | desk: right-click → a second reader at verse 14, the reader's verse at the top unchanged; it draws the verse 12 highlight; verse 15 picked there, the main reader's selection empty; 1 colors it yellow in the study folder and both readers draw it; a word's card; › to Numbers 26, the reader still at Numbers 25; Go to in the reader → Numbers 26:3; `wb do "open John 3:16-18"` → verses 16–18 marked, verbatim |
+| `21bd` | **A verse clicked outside the reader asks**: "Go to in the reader" or "Open in a tab" (a second reader); Ctrl+click goes straight there; on a phone it goes there as before. In search, every use and the other result lists, a thread's places, find, the highlights list, the place chips of notes in the Notebook and on threads, and the verse rows of a several-place passage | desk: a search row asks, the reader stays; Open in a tab opens a second reader; Ctrl+click moves the reader there |
+| `0cf1` | **Right-click a verse** (its number or any word) in the reader or a second reader: Open in a new tab, Go to in the reader (in a second reader), Select the verse, Notes & lookup, Copy (with its reference). A long press on touch is still the selection | desk: right-click on verse 14 → Open in a new tab; right-click in the second reader → Go to in the reader |
+| `4b90` | **A click on a verse number selects the verse**: its words in the selection color, its number filled, and the color bar with the verse's own color and its actions (Note, Question, Thread, Copy, Notes & lookup, Open as a tab); 1–5 color the whole verse (a verse highlight, as the card did), 0 or × takes it off. A click or tap away, or Esc, clears both. A word's click still opens its card. In the YLT, and on a phone, the verse's card opens as before | desk: verse 12 → every word selected and the number filled, the bar's actions; 3 colors Numbers 25:12 blue; a click in a pane clears it; the checks that used the card now use the bar |
+| `c39a` | Notes & lookup lists **the questions on the place and on any part of it or around it** (a question on words of a verse shows at the verse, with its place and words on it), not only those on the very same place. **`wb trail list --at <place>`** (Rust only; `"here": true` when on the place itself) | CLI `a_question_on_words_of_a_verse_is_listed_at_the_verse_and_around_it`; desk: words 3–6 of Numbers 25:13 asked with `?`, listed at the verse |
+| `c419` | The chapter's end says **"Numbers 25: read 3 times · last Fri, Nov 6"**, with Read again and **Mark unread**: the latest mark comes off the reading log, and its line is kept in **`.trash/reading-unmarked.jsonl`** (nothing is erased). **`wb read times <place>`**, **`wb read unmark <place>`**. The log is the Rust app's own file (the Python app has no reading log) | CLI `a_chapter_counts_its_readings_and_mark_unread_takes_the_latest_off`; desk: Read again counts one more, Mark unread one less and the line in `.trash` |
+| `797d` | **The command field's history**, as PowerShell keeps it: every line run, the ones that did not work too (marked with a wavy line when brought back). ↑ in the empty field brings back the line before, ↓ the next; the empty field lists the last six as "Recent" (a click runs one; Enter in the empty field runs nothing). Kept in the window's storage, 500 lines; the first time, it starts from the study folder's log of the last three days (`wb log`, the lines that worked) | desk: `go Num 25:20`, then `go Nowhere 99` (fails); the empty field shows Recent; ↑ ↑ ↓ ↓ gives them back newest first, then the empty field |
+| `50c1` | **Findings.** **Ctrl+Shift+J** from anywhere opens a box for a finding; Enter keeps it with what was on screen: the size class and window size, input and touch, the panes open (and where), the place, the version and the build (the commit and the day the UI was built). `finding <words>` in the command field does the same; **Findings** (More ⋯, or `findings`) lists the open ones newest first with ✓ Handled, Open again and Delete (to `.trash`). **New files `findings/<id>.md`**, a header like a note's (`kind: "finding"`, `status`, `context`) and the text. They sit **beside `notes/`, not in `notes/_findings/`** as the question said: the Notebook reads every folder under `notes/`, so findings there would show among the study notes; beside it, the Notebook never lists them and the Python app passes over the folder (it reads `notes/`, `threads/`, `trails/`, `highlights/` and `sets/` only). **`wb findings [--all]`**, `wb finding add|handled [--open]|edit|rm` (an id or its last four characters) | CLI `findings_are_kept_apart_from_the_study`; desk: Ctrl+Shift+J, the file with its context and not in the Notebook, Findings lists it, ✓ Handled |
+| `28d3` | **Checked on touch, emulated.** Touch emulation and taps over the DevTools protocol (the web view's own touch events): the Notebook's pen tapped, and a verse tapped then Note on its bar, each followed by typing and the save after typing (the Notebook drawn again). The cursor stays in the note through both, with no blur, so nothing in the window takes the focus away (the on-screen keyboard closes when the field loses focus). What emulation cannot show is Windows' own keyboard; the pen the note was likely about is gone at desktop sizes. **For the person:** try writing a note in tablet mode again on this build; if the keyboard still drops, write a finding (Ctrl+Shift+J) right then: it records the input and size | desk: both taps, typing, 2.5 s, the cursor still in the note, no blur |
+
+**On the way:** typed fast, Enter in the command field could run a suggestion made for the line's first word (`go`
+instead of `go Nowhere 99`): Enter now runs a suggestion only when it was made for the line as it stands, else the
+line itself. Desk checks scoped to the reader (`#reader .vn`) now that a second reader draws verse numbers too.
+
+**New files in the study folder:** `findings/<id>.md` and `.trash/reading-unmarked.jsonl`, both passed over by the
+Python app. So `scripts/backup-study.ps1` is run before this build reaches the real folder.
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **185 of 185** (39 new; the checks that clicked a verse number for its card now use the verse's bar, and the passage checks the second reader) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped (4 new: a verse number selects the verse and a click away clears it; the pen only on the phone, in both projects; one part of a split column minimized alone and the tab list's trash) |
+| Rust tests | `cargo test`: **128** (3 new CLI tests; the command language's `finding` and `findings` in its unit test) |
+| Golden suite | `python scripts/golden.py`: **99 of 99** (`wb trail list` gained `--at`, which only the Rust `wb` has; every other new command is Rust only) |
+
+To try it: click a verse number and press 1; right-click a verse → Open in a new tab, then turn that pane's chapter
+with ›; click a row in a search and choose; Ctrl+F after a click in the Notebook; ↑ in the empty command field;
+Ctrl+Shift+J and write what you notice; More ⋯ → Findings.

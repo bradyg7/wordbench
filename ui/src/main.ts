@@ -14,13 +14,16 @@ import { draw, drawTimes, paint, textOf, labelOf, type Drawn } from './reader';
 import { Selector, type InputMode } from './select';
 import { openSheet, closeSheet, showCard, hideCard, toast, compact } from './sheets';
 import { perf, afterPaint, record } from './perf';
-import { app, here, type At } from './app';
+import { app, goTo, here, type At } from './app';
 import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
-import { dock, initPanes, openPassage, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
+import type { Pane } from './dock';
+import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
 import { countInbox, isCaptureKey, notebookBadge, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
 import type { Change } from './dock';
 import { attachCommandField, loadThreads } from './command';
+import { findInPane, paneForFind } from './panefind';
+import { findingBox, openFindings } from './findings';
 import { parse, runLine, written } from './actions';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -31,6 +34,11 @@ const SIZE_STORE = 'wb.size.v1';
 
 let drawn: Drawn | null = null;
 let books: Book[] = [];
+
+/** A reader on screen: the main one, or a second reader in a pane (notes 9587, 21bd). Each has what it draws, its own
+ * selection and its scroller; the color bar, the cards and the verse menu work in whichever one they came from, and
+ * nothing done in a second reader moves the main one. */
+interface View { root: HTMLElement; scroller: HTMLElement; drawn: Drawn | null; selector: Selector; main: boolean; pane?: Pane }
 let place = { code: 'NUM', chapter: 25, verse: 1, offset: 0 };
 /** Where the reader was before each jump (go, a link, first/last), for `back`. */
 const backStack: { code: string; chapter: number; verse: number; offset: number }[] = [];
@@ -87,7 +95,8 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   const { data, rust_ms } = await api.reader(code, chapter, version);
   if (seq !== drawSeq) return;
   const t1 = performance.now();
-  closeSheet(); hideCard(); bar?.remove(); bar = null;
+  closeSheet(); hideCard();
+  if (barView === mainView || !barView) { bar?.remove(); bar = null; barView = null; }
   scroller.scrollTop = 0;
   drawn = draw(reader, data.chapter, data.marks, verse, new Set((data.questions || []).map(q => q.v)));
   app.drawn = drawn;
@@ -205,9 +214,9 @@ function verseBody(v: VerseView, card = false, ver = 'KJV'): HTMLElement {
   b.append(h('p', 'scripture', v.text));
   if (card) return b;
   b.append(colorRow(v.color, c => {
-    const [, cv] = v.anchor.split('.');
+    const [code, cv] = v.anchor.split('.');
     const [ch, vs] = cv.split(':').map(Number);
-    addHighlight({ kind: 'verse', code: drawn!.chapter.code, c1: ch, v1: vs, i1: null, c2: null, v2: null, i2: null, id: `session_${Date.now()}`, color: c ?? undefined });
+    addHighlight({ kind: 'verse', code, c1: ch, v1: vs, i1: null, c2: null, v2: null, i2: null, id: `session_${Date.now()}`, color: c ?? undefined });
     closeSheet();
   }));
   for (const n of v.notes) b.append(noteCard(v.reference, n.text));
@@ -226,7 +235,7 @@ function verseBody(v: VerseView, card = false, ver = 'KJV'): HTMLElement {
   b.append(actions(compact() ? ['Note', 'Question', 'Thread', 'Copy'] : ['Note', 'Question', 'Thread', 'Copy', 'Notes & lookup', 'Open as a tab'], (a, el) => {
     if (a === 'Copy') copy(`${v.text} (${v.reference} ${ver})`);
     else if (a === 'Notes & lookup') { closeSheet(); openPlace(at.anchor, at.label); }
-    else if (a === 'Open as a tab') { closeSheet(); openPassage([at.anchor.replace('.', ' ')], ver, at.label); }
+    else if (a === 'Open as a tab') { closeSheet(); openSecondReader(at.anchor, ver); }
     else if (a === 'Thread') addToThread(el, at);
     else writeNote(el, at, a === 'Note' ? 'note' : 'question');
   }));
@@ -295,7 +304,7 @@ function writeNote(from: HTMLElement, at: At, kind: 'note' | 'question') {
   if (!inApp) return toast('Notes are written in the app');
   if (!compact()) {
     closeSheet();
-    selector.clear();
+    clearSelection();
     void writeInNotebook(at, kind === 'question');
     return;
   }
@@ -313,7 +322,7 @@ function writeNote(from: HTMLElement, at: At, kind: 'note' | 'question') {
       if (kind === 'note') await wb(['note', 'add', at.anchor, '-'], text);
       else await wb(['trail', 'add', at.anchor, text]);
       closeSheet();
-      selector.clear();
+      clearSelection();
       toast(kind === 'note' ? `Note on ${at.label}` : `Question on ${at.label}`);
       written('notes');
     } catch (e) { toast(String(e)); }
@@ -330,7 +339,7 @@ function addToThread(from: HTMLElement, at: At) {
     try {
       await wb(['thread', 'add', name, at.anchor]);
       closeSheet();
-      selector.clear();
+      clearSelection();
       toast(`${at.label} added to ${name}`);
       written('threads');
     } catch (e) { toast(String(e)); }
@@ -363,35 +372,72 @@ async function addHighlight(m: Mark) {
 
 // ---- selection bar (touch) and color bar (mouse) --------------------------------------------------------------------
 let bar: HTMLElement | null = null;
+/** The reader the bar belongs to, and the verse when a whole verse was picked by its number (note 4b90). */
+let barView: View | null = null;
+let barVerse = 0;
 
-function selectionAt(a: number, b: number): At {
-  const d = drawn!, c = d.chapter.code, ch = d.chapter.chapter;
+/** Clears the selection and its bar, in whichever reader it is. */
+function clearSelection() {
+  if (barView) barView.selector.clear();
+  else selector.clear();
+}
+
+function selectionAt(vw: View, a: number, b: number): At {
+  const d = vw.drawn!, c = d.chapter.code, ch = d.chapter.chapter;
   const anchor = a === b ? `${c}.${ch}:${d.v[a]}.${d.i[a]}` : `${c}.${ch}:${d.v[a]}.${d.i[a]}-${ch}:${d.v[b]}.${d.i[b]}`;
   return { anchor, label: labelOf(d, a, b) };
 }
 
-function showBar(a: number, b: number, touch: boolean) {
+const verseAt = (d: Drawn, v: number): At => ({ anchor: `${d.chapter.code}.${d.chapter.chapter}:${v}`, label: `${d.chapter.name} ${d.chapter.chapter}:${v}` });
+
+/** A click on a verse number selects the whole verse and shows the color bar for it; a click away clears both (note
+ * 4b90). On a phone, and in another version, the verse's card opens as before. */
+function selectVerse(vw: View, v: number, el: HTMLElement, at: number) {
+  const d = vw.drawn;
+  if (!d || compact() || d.chapter.version) return void openVerse(vw, v, el, at);
+  const a = d.v.indexOf(v), b = d.v.lastIndexOf(v);
+  if (a < 0) return;
+  while (!d.el[b] && d.more()) { /* the rest of the verse drawn first */ }
+  barVerse = v;
+  vw.root.querySelectorAll('.vn.vsel').forEach(e => e.classList.remove('vsel'));
+  vw.selector.set(a, b);
+  vw.root.querySelector(`.vn[data-v="${v}"]`)?.classList.add('vsel');
+  showBar(vw, a, b, false);
+}
+
+function showBar(vw: View, a: number, b: number, touch: boolean) {
   bar?.remove();
-  if (drawn?.chapter.version) { selector.clear(); toast(`Words are selected in the KJV (version kjv): highlights and notes on words belong to its words`); return; }
-  app.picked = selectionAt(a, b);
+  // one selection at a time: a selection in another reader clears the one before
+  if (barView && barView !== vw && barView.selector.sel) { const old = barView; barView = null; old.selector.clear(); }
+  const d = vw.drawn!;
+  if (d.chapter.version) { vw.selector.clear(); toast(`Words are selected in the KJV (version kjv): highlights and notes on words belong to its words`); return; }
+  const verse = barVerse && d.v[a] === barVerse && d.v[b] === barVerse && (a === 0 || d.v[a - 1] !== barVerse) && (b === d.v.length - 1 || d.v[b + 1] !== barVerse) ? barVerse : 0;
+  barVerse = 0;
+  barView = vw;
+  const at = verse ? verseAt(d, verse) : selectionAt(vw, a, b);
+  app.picked = at;
   bar = h('div', touch ? 'selbar' : 'colorbar');
+  if (verse) bar.classList.add('verse-bar');
   const pick = (c: string | null) => {
-    const d = drawn!;
-    addHighlight({ kind: a === b ? 'word' : 'phrase', code: d.chapter.code, c1: d.chapter.chapter, v1: d.v[a], i1: d.i[a], c2: a === b ? null : d.chapter.chapter, v2: a === b ? null : d.v[b], i2: a === b ? null : d.i[b], id: `session_${Date.now()}`, color: c ?? undefined });
-    selector.clear();
+    if (verse) addHighlight({ kind: 'verse', code: d.chapter.code, c1: d.chapter.chapter, v1: verse, i1: null, c2: null, v2: null, i2: null, id: `session_${Date.now()}`, color: c ?? undefined });
+    else addHighlight({ kind: a === b ? 'word' : 'phrase', code: d.chapter.code, c1: d.chapter.chapter, v1: d.v[a], i1: d.i[a], c2: a === b ? null : d.chapter.chapter, v2: a === b ? null : d.v[b], i2: a === b ? null : d.i[b], id: `session_${Date.now()}`, color: c ?? undefined });
+    vw.selector.clear();
   };
   barPick = pick;
-  bar.append(colorRow(undefined, pick, true));
-  if (!touch) bar.append(threadChips(selectionAt(a, b)));
-  bar.append(actions(touch ? ['Note', 'Thread', 'Look up', 'Copy'] : ['Note', 'Thread', 'Copy', 'Notes & lookup'], (act, el) => {
-    const d = drawn!;
-    if (act === 'Copy') copy(`${textOf(d, a, b)} (${labelOf(d, a, b)} KJV)`);
-    else if (act === 'Notes & lookup') { const at = selectionAt(a, b); selector.clear(); openPlace(at.anchor, at.label); }
+  // a whole verse: its own color shows on the bar
+  const current = verse ? d.marks.highlights.find(m => m.kind === 'verse' && m.c1 === d.chapter.chapter && m.v1 === verse && m.c2 === null)?.color : undefined;
+  bar.append(colorRow(current, pick, true));
+  if (!touch) bar.append(threadChips(at));
+  const names = touch ? ['Note', 'Thread', 'Look up', 'Copy'] : verse ? ['Note', 'Question', 'Thread', 'Copy', 'Notes & lookup', 'Open as a tab'] : ['Note', 'Thread', 'Copy', 'Notes & lookup'];
+  bar.append(actions(names, (act, el) => {
+    if (act === 'Copy') copy(`${textOf(d, a, b)} (${at.label} KJV)`);
+    else if (act === 'Notes & lookup') { vw.selector.clear(); openPlace(at.anchor, at.label); }
+    else if (act === 'Open as a tab') { vw.selector.clear(); openSecondReader(at.anchor, 'KJV'); }
     else if (act === 'Look up') {
       const k = [...Array(b - a + 1).keys()].map(n => a + n).find(k => d.strong[k]);
-      if (k !== undefined) openWord(k, d.el[k], performance.now());
-    } else if (act === 'Thread') addToThread(el, selectionAt(a, b));
-    else writeNote(el, selectionAt(a, b), 'note');
+      if (k !== undefined) openWord(vw, k, d.el[k], performance.now());
+    } else if (act === 'Thread') addToThread(el, at);
+    else writeNote(el, at, act === 'Question' ? 'question' : 'note');
   }));
   bar.addEventListener('pointerdown', e => e.stopPropagation());
   document.getElementById('overlay')!.append(bar);
@@ -427,8 +473,10 @@ function threadChips(at: At): HTMLElement {
 }
 
 function placeBar() {
-  if (!bar || !selector.sel || !drawn) return;
-  const first = drawn.el[selector.sel.a].getClientRects()[0], lastRects = drawn.el[selector.sel.b].getClientRects();
+  const vw = barView, d = vw?.drawn, sel = vw?.selector.sel;
+  if (!bar || !vw || !sel || !d) return;
+  const first = d.el[sel.a].getClientRects()[0], lastRects = d.el[sel.b].getClientRects();
+  if (!first || !lastRects.length) return;
   const last = lastRects[lastRects.length - 1];
   const w = bar.offsetWidth, hgt = bar.offsetHeight;
   const top = first.top - hgt - 14 > 60 ? first.top - hgt - 14 : Math.min(last.bottom + 18, window.innerHeight - hgt - 8);
@@ -437,10 +485,10 @@ function placeBar() {
 }
 
 // ---- taps -----------------------------------------------------------------------------------------------------------
-async function openWord(k: number, el: HTMLElement, at: number) {
-  const d = drawn!;
-  if (d.chapter.version) return openVerse(d.v[k], el, at);   // no KJV word here: the verse
-  app.picked = selectionAt(k, k);
+async function openWord(vw: View, k: number, el: HTMLElement, at: number) {
+  const d = vw.drawn!;
+  if (d.chapter.version) return openVerse(vw, d.v[k], el, at);   // no KJV word here: the verse
+  app.picked = selectionAt(vw, k, k);
   const { data, rust_ms } = await api.word(d.chapter.code, d.chapter.chapter, d.v[k], d.i[k]);
   const t1 = performance.now();
   el.classList.add('tapped');
@@ -449,9 +497,9 @@ async function openWord(k: number, el: HTMLElement, at: number) {
   record('word-sheet', performance.now() - at, { word: data.text, rust_ms, call_ms: t1 - at });
 }
 
-async function openVerse(v: number, el: HTMLElement, at: number) {
-  const d = drawn!;
-  app.picked = { anchor: `${d.chapter.code}.${d.chapter.chapter}:${v}`, label: `${d.chapter.name} ${d.chapter.chapter}:${v}` };
+async function openVerse(vw: View, v: number, el: HTMLElement, at: number) {
+  const d = vw.drawn!;
+  app.picked = verseAt(d, v);
   const { data, rust_ms } = await api.verse(d.chapter.code, d.chapter.chapter, v);
   const t1 = performance.now();
   // In another version the verse is its text there, verbatim (its words joined as stored); notes and colors are the verse's.
@@ -463,46 +511,181 @@ async function openVerse(v: number, el: HTMLElement, at: number) {
 }
 
 let hoverSeq = 0;
-const selector = new Selector(reader, scroller, {
-  tapWord: (k, el, at) => openWord(k, el, at),
-  tapVerse: (v, el, at) => openVerse(v, el, at),
-  hoverWord: async (k, el) => {
-    if (hoverMode() !== 'on') return;
-    const seq = ++hoverSeq, t0 = performance.now(), d = drawn!;
-    const { data } = await api.word(d.chapter.code, d.chapter.chapter, d.v[k], d.i[k]);
-    if (seq !== hoverSeq) return;
-    showCard(lexiconBody(data, true), el.getBoundingClientRect());
-    await afterPaint();
-    record('hover-card', performance.now() - t0, { word: data.text });
-  },
-  hoverVerse: async (v, el) => {
-    if (hoverMode() !== 'on') return;
-    const seq = ++hoverSeq, d = drawn!;
-    const { data } = await api.verse(d.chapter.code, d.chapter.chapter, v);
-    if (seq === hoverSeq) showCard(verseBody(data, true), el.getBoundingClientRect());
-  },
-  unhover: () => { hoverSeq++; hideCard(); },
-  selected: (a, b, touch) => showBar(a, b, touch),
-  cleared: () => { bar?.remove(); bar = null; barPick = null; },
-});
+/** What a reader does with clicks, hovers and selections. */
+function handlersFor(vw: View) {
+  return {
+    tapWord: (k: number, el: HTMLElement, at: number) => openWord(vw, k, el, at),
+    tapVerse: (v: number, el: HTMLElement, at: number) => selectVerse(vw, v, el, at),
+    hoverWord: async (k: number, el: HTMLElement) => {
+      if (hoverMode() !== 'on') return;
+      const seq = ++hoverSeq, t0 = performance.now(), d = vw.drawn!;
+      const { data } = await api.word(d.chapter.code, d.chapter.chapter, d.v[k], d.i[k]);
+      if (seq !== hoverSeq) return;
+      showCard(lexiconBody(data, true), el.getBoundingClientRect());
+      await afterPaint();
+      record('hover-card', performance.now() - t0, { word: data.text });
+    },
+    hoverVerse: async (v: number, el: HTMLElement) => {
+      if (hoverMode() !== 'on') return;
+      const seq = ++hoverSeq, d = vw.drawn!;
+      const { data } = await api.verse(d.chapter.code, d.chapter.chapter, v);
+      if (seq === hoverSeq) showCard(verseBody(data, true), el.getBoundingClientRect());
+    },
+    unhover: () => { hoverSeq++; hideCard(); },
+    selected: (a: number, b: number, touch: boolean) => showBar(vw, a, b, touch),
+    cleared: () => {
+      vw.root.querySelectorAll('.vn.vsel').forEach(e => e.classList.remove('vsel'));
+      if (barView !== vw && barView) return;
+      bar?.remove(); bar = null; barPick = null; barView = null;
+    },
+  };
+}
+const mainView = { root: reader, scroller, main: true, get drawn() { return drawn; } } as View;
+const selector = new Selector(reader, scroller, handlersFor(mainView));
+mainView.selector = selector;
+wireView(mainView);
+
 // A click or tap away from the color bar closes it and clears the selection: anywhere but the bar itself (its presses
-// stop at it) and the menus or cards opened from it. In the reader the selector does the same on a tap.
+// stop at it) and the menus or cards opened from it. In a reader the selector does the same on a tap.
 document.addEventListener('pointerdown', e => {
-  if (!bar || !selector.sel) return;
+  if (!bar || !barView?.selector.sel) return;
   const t = e.target as HTMLElement;
-  if (reader.contains(t) || t.closest('.menu, .popover, .sheet, .hovercard')) return;
-  selector.clear();
+  if (barView.root.contains(t) || t.closest('.menu, .popover, .sheet, .hovercard')) return;
+  barView.selector.clear();
 });
 document.getElementById('overlay')!.addEventListener('pointerleave', e => { if ((e.target as HTMLElement).classList?.contains('hovercard')) hideCard(); }, true);
-// Alt+click a word: the interlinear for its verse.
-reader.addEventListener('click', e => {
-  if (!e.altKey || !drawn) return;
-  const w = (e.target as HTMLElement).closest<HTMLElement>('.w');
-  if (!w) return;
-  const k = +w.dataset.k!, d = drawn;
-  closeSheet();
-  openInterlinear(`${d.chapter.code} ${d.chapter.chapter}:${d.v[k]}`, `${d.chapter.name} ${d.chapter.chapter}:${d.v[k]}`);
-}, true);
+
+/** What every reader has besides its selector: Alt+click a word for the interlinear, right-click a verse for its menu. */
+function wireView(vw: View) {
+  vw.root.addEventListener('click', e => {
+    if (!e.altKey || !vw.drawn) return;
+    const w = (e.target as HTMLElement).closest<HTMLElement>('.w');
+    if (!w) return;
+    const k = +w.dataset.k!, d = vw.drawn;
+    closeSheet();
+    openInterlinear(`${d.chapter.code} ${d.chapter.chapter}:${d.v[k]}`, `${d.chapter.name} ${d.chapter.chapter}:${d.v[k]}`);
+  }, true);
+  // right-click a verse (its number or any word in it): open it in a new tab, and more (note 0cf1). A long press on
+  // touch is the selection, so only a mouse's right-click opens the menu.
+  let lastPointer = 'mouse';
+  vw.root.addEventListener('pointerdown', e => { lastPointer = e.pointerType; }, true);
+  vw.root.addEventListener('contextmenu', e => {
+    const d = vw.drawn;
+    if (!d || lastPointer === 'touch' || compact()) return;
+    const t = (e.target as HTMLElement).closest<HTMLElement>('.w, .g, .vn');
+    if (!t) return;
+    const v = t.classList.contains('vn') ? +t.dataset.v! : d.v[+t.dataset.k!];
+    e.preventDefault();
+    verseMenu(vw, v, e.clientX, e.clientY);
+  });
+}
+
+/** The menu on a verse: Open in a new tab (a second reader at the verse), Go to in the reader (from a second reader),
+ * Select the verse, Notes & lookup, Copy. */
+function verseMenu(vw: View, v: number, x: number, y: number) {
+  const d = vw.drawn!, at = verseAt(d, v);
+  const box = h('div', 'menu-list verse-menu');
+  box.append(h('div', 'muted small nb-menu-note', at.label));
+  const item = (label: string, ico: string, fn: () => void) => {
+    const b = h('button', 'menu-item');
+    b.append(icon(ico, 14), document.createTextNode(` ${label}`));
+    b.onclick = () => { close(); fn(); };
+    box.append(b);
+  };
+  item('Open in a new tab', 'float', () => openSecondReader(at.anchor, d.chapter.version || 'KJV'));
+  if (!vw.main) item('Go to in the reader', 'book', () => void jump(d.chapter.code, d.chapter.chapter, v));
+  if (!d.chapter.version) item('Select the verse', 'pen', () => { const vn = vw.root.querySelector<HTMLElement>(`.vn[data-v="${v}"]`); if (vn) selectVerse(vw, v, vn, performance.now()); });
+  item('Notes & lookup', 'notebook', () => openPlace(at.anchor, at.label));
+  item('Copy', 'copy', () => {
+    const a = d.v.indexOf(v), b = d.v.lastIndexOf(v);
+    copy(`${textOf(d, a, b)} (${at.label} ${d.chapter.version || 'KJV'})`);
+  });
+  // the menu opens at the pointer
+  const spot = h('span', 'menu-spot');
+  Object.assign(spot.style, { position: 'fixed', left: `${x}px`, top: `${y}px`, width: '1px', height: '1px' });
+  document.body.append(spot);
+  const shut = popMenu(spot, box, { width: 230 });
+  const close = () => { shut(); spot.remove(); };
+  setTimeout(() => spot.remove(), 0);
+}
+
+// ---- second readers (notes 9587, 21bd, 0cf1) ---------------------------------------------------------------------------
+/**
+ * A passage opened in a pane is a second reader: its chapter drawn as the reader draws it (highlights, threads, note and
+ * question marks), with its own selection, color bar and verse cards, and ‹ › to turn its own chapter. The verses asked
+ * for are marked and scrolled to. Nothing in it moves the main reader; "Go to in the reader" does, when asked.
+ */
+async function openSecondReader(ref: string, version = 'KJV') {
+  const clean = ref.replace(/(:\d+)\.\d+/g, '$1');   // words of a verse: their verse
+  const ver = version === 'YLT' ? 'YLT' : 'KJV';
+  let t: any;
+  try { t = await wb(['text', clean, '--version', ver, '--json']); } catch { return void goTo(ref); }
+  const first = t?.verses?.[0];
+  const bk = first && books.find(b => b.name === first.book);
+  if (!bk) return void goTo(ref);
+  const asked = new Set<string>((t.verses as any[]).map(v => `${v.c}:${v.v}`));
+  const st = { code: bk.code, chapter: first.c as number, verse: first.v as number };
+  let vw: View | null = null, drawnAt = '', head: HTMLElement | null = null;
+  const draw2 = async (el: HTMLElement, p: Pane, toVerse: number) => {
+    const { data } = await api.reader(st.code, st.chapter, ver);
+    const v2 = vw!;
+    v2.drawn = draw(v2.root, data.chapter, data.marks, 999, new Set((data.questions || []).map(q => q.v)));
+    while (v2.drawn.more()) { /* the whole chapter at once: a pane holds one */ }
+    v2.selector.attach(v2.drawn);
+    drawnAt = `${st.code}.${st.chapter}`;
+    // the verses asked for, unless that is the whole chapter
+    const all = data.chapter.verses.every(x => asked.has(`${st.chapter}:${x.v}`));
+    if (!all) v2.root.querySelectorAll<HTMLElement>('.vn').forEach(e => e.classList.toggle('vn-asked', asked.has(`${st.chapter}:${e.dataset.v}`)));
+    const title = `${data.chapter.name} ${st.chapter}`;
+    dock.rename(p, title);
+    head!.querySelector('.reader2-title')!.textContent = title;
+    const vn = toVerse > 1 ? v2.root.querySelector<HTMLElement>(`.vn[data-v="${toVerse}"]`) : null;
+    el.scrollTop = vn ? el.scrollTop + vn.getBoundingClientRect().top - el.getBoundingClientRect().top - head!.offsetHeight - 16 : 0;
+  };
+  const turn = async (el: HTMLElement, p: Pane, n: number) => {
+    const i = books.findIndex(b => b.code === st.code);
+    let ch = st.chapter + n, code = st.code;
+    if (ch < 1) { if (i <= 0) return; code = books[i - 1].code; ch = books[i - 1].chapters; }
+    else if (ch > books[i].chapters) { if (i >= books.length - 1) return; code = books[i + 1].code; ch = 1; }
+    st.code = code; st.chapter = ch;
+    clearSelection();
+    await draw2(el, p, 1);
+  };
+  dock.open('reader2', `${bk.name} ${st.chapter}`, `reader2|${clean}|${ver}`, 'left', async (el, p) => {
+    if (!vw) {
+      el.replaceChildren();
+      head = h('header', 'pane-head reader2-head');
+      const prev = h('button', 'icon-btn reader2-prev'), next = h('button', 'icon-btn reader2-next'), go = h('button', 'link-btn reader2-go', 'Go to in the reader');
+      prev.append(icon('left', 14)); next.append(icon('right', 14));
+      prev.title = 'The chapter before (this pane only)'; next.title = 'The next chapter (this pane only)';
+      prev.onclick = () => turn(el, p, -1);
+      next.onclick = () => turn(el, p, 1);
+      go.title = 'Move the reader to this place';
+      go.onclick = () => {
+        const top = [...vw!.root.querySelectorAll<HTMLElement>('.vn')].find(e => e.getBoundingClientRect().top >= el.getBoundingClientRect().top + head!.offsetHeight);
+        void jump(st.code, st.chapter, top ? +top.dataset.v! : 1);
+      };
+      const row = h('div', 'reader2-row');
+      row.append(prev, h('h2', 'pane-title reader2-title', `${bk.name} ${st.chapter}`), next, h('span', 'grow'), go);
+      head.append(row, h('div', 'pane-sub', `${t.label} · ${ver} · a second reader: clicks here never move the reader`));
+      const root = h('div', 'reader reader2');
+      el.append(head, root);
+      el.classList.add('reader2-pane');
+      vw = { root, scroller: el, drawn: null, selector: null as unknown as Selector, main: false, pane: p };
+      vw.selector = new Selector(root, el, handlersFor(vw));
+      wireView(vw);
+      el.addEventListener('scroll', () => { if (vw!.selector.sel) vw!.selector.placeHandles(); if (barView === vw) placeBar(); hideCard(); }, { passive: true });
+      return draw2(el, p, st.verse);
+    }
+    // a write in the study folder: the marks drawn again, the text and the place stay
+    if (drawnAt !== `${st.code}.${st.chapter}` || !vw.drawn) return draw2(el, p, st.verse);
+    const { data } = await api.reader(st.code, st.chapter, ver);
+    vw.drawn.marks = data.marks;
+    vw.drawn.questions.clear();
+    for (const q of data.questions || []) vw.drawn.questions.add(q.v);
+    paint(vw.root, vw.drawn);
+  });
+}
 
 // ---- an Inbox note dragged from the Notebook onto a verse: placed there (wb note place) -------------------------------
 let dropVerse = 0;
@@ -680,27 +863,42 @@ async function highlightsMenu(from: HTMLElement) {
 const PRESETS = [['phone', 'Phone 390×844'], ['phone-landscape', 'Phone landscape'], ['ipad', 'iPad portrait 820×1180'], ['ipad-landscape', 'iPad landscape'], ['laptop', 'Laptop 1280×800'], ['laptop-large', 'Laptop 1440×900'], ['desktop', 'Desktop 1920×1080']];
 
 // At the end of a chapter: a quiet way to record it as read (the reading log; wb read mark does the same). The log
-// says whether it was read before (wb read when), so coming back to the chapter shows it.
+// says how many times it was read and when last (wb read times), so coming back to the chapter shows it; Mark unread
+// takes the latest mark off (wb read unmark; the line is kept in .trash). Note c419.
 function chapterEnd(d: Drawn) {
   if (!inApp) return;
   const place = `${d.chapter.name} ${d.chapter.chapter}`;
   const end = h('div', 'chapter-end');
   const said = h('span', 'chapter-read');
   const btn = h('button', 'btn soft', `Mark ${place} read`);
-  const show = (t: string | undefined) => {
-    said.textContent = t ? `${place}: read ${new Date(t).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}` : '';
-    btn.textContent = t ? 'Read again' : `Mark ${place} read`;
+  const unread = h('button', 'link-btn chapter-unread', 'Mark unread');
+  unread.title = 'Take the latest mark off the reading log';
+  const show = (r: { times: number; last: string } | undefined) => {
+    const when = r ? new Date(r.last).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+    said.textContent = r ? `${place}: read ${r.times === 1 ? 'once' : `${r.times} times`} · last ${when}` : '';
+    btn.textContent = r ? 'Read again' : `Mark ${place} read`;
+    unread.hidden = !r;
   };
+  const times = async () => show(Object.values((await wb(['read', 'times', place])) ?? {})[0] as any);
   btn.onclick = async () => {
     try {
-      const lines = (await api.readMark(place)).data as { t: string }[];
-      show(lines[lines.length - 1]?.t);
+      await api.readMark(place);
+      await times();
       app.changed('plans');
     } catch (e) { toast(String(e)); }
   };
-  end.append(said, btn);
+  unread.onclick = async () => {
+    try {
+      const r = await wb(['read', 'unmark', place]);
+      show(Object.values(r.now ?? {})[0] as any);
+      toast(Object.keys(r.now ?? {}).length ? `One mark taken off ${place}` : `${place} is marked unread`);
+      app.changed('plans');
+    } catch (e) { toast(String(e)); }
+  };
+  show(undefined);
+  end.append(said, btn, unread);
   reader.append(end);
-  wb(['read', 'when', place]).then((r: any) => show(Object.values(r ?? {})[0] as string | undefined)).catch(() => { /* the button still works */ });
+  times().catch(() => { /* the button still works */ });
 }
 
 // Today's readings in each plan the person started (wb plan start / wb plan import); a day opens at its first place.
@@ -742,6 +940,7 @@ function settings(from: HTMLElement) {
   item('Reading plans', () => openPlans());
   item('Today’s log', () => openToday(''));
   item('Shelf', () => openShelf());
+  item('Findings', () => openFindings());
   b.append(quick);
   b.append(h('div', 'label', 'Text size'));
   const sz = h('div', 'size-row');
@@ -830,16 +1029,19 @@ notebookBadge.set = n => {
 
 document.addEventListener('keydown', e => {
   const typing = !!(e.target as HTMLElement).closest('input, textarea, [contenteditable]');
-  if (e.key === 'Escape') { closeSheet(); selector.clear(); hideCard(); }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); findInChapter(finding); return; }
+  if (e.key === 'Escape') { closeSheet(); clearSelection(); hideCard(); }
+  // Ctrl+F finds in the pane last clicked or typed in, else in the chapter (note 5c4a)
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
   if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
+  // a finding about the app, from anywhere (note 50c1)
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); findingBox(); return; }
   // quick capture (Ctrl+J unless set otherwise in the Notebook's settings): a small box at the verse, from anywhere
   if (isCaptureKey(e)) { e.preventDefault(); quickCapture(); return; }
   if (typing) return;
   // a selection with its bar: 1–5 color it, 0 removes the highlight
-  if (bar && selector.sel && barPick && /^[0-5]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
+  if (bar && barView?.selector.sel && barPick && /^[0-5]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
     e.preventDefault();
     barPick(e.key === '0' ? null : COLORS[+e.key - 1]);
     return;
@@ -874,6 +1076,7 @@ Object.assign(app, {
   version: () => version,
   setVersion,
   findInChapter,
+  secondReader: (ref: string, version?: string) => void openSecondReader(ref, version),
   changed: (...what: Change[]) => { written(...what); if (!what.length || what.includes('threads')) loadThreads(); },
 });
 

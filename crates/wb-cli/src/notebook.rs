@@ -5,7 +5,7 @@
 use crate::args::{Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Value};
-use wb_core::{commands as lang, notebook as nb};
+use wb_core::{commands as lang, findings as fd, notebook as nb};
 
 fn e(x: wb_core::Error) -> String {
     x.0
@@ -30,6 +30,37 @@ fn text_of(c: &Ctx<'_>, words: &str) -> Result<String, String> {
 }
 
 pub fn commands() -> Vec<Command> {
+    let mut all = findings();
+    all.extend(notebook_commands());
+    all
+}
+
+/// The person's findings about the app while it is built (findings/<id>.md, kept apart from the study; note 50c1).
+fn findings() -> Vec<Command> {
+    vec![
+        cmd("findings", "Your findings about the app, newest first: the open ones (--all: the handled ones too), with what was on screen when each was written.",
+            vec![Flag("all")], |c, a| j(fd::list(&c.root()?, a.flag("all")).map_err(e)?)),
+        cmd("finding add", "Write a finding: wb finding add \"Ctrl+F finds only in the reader\" [--context '{\"size\": \"large\"}']  |  - for standard input.",
+            vec![Pos("text", N::Many), Opt("context", None)], |c, a| {
+            let text = text_of(c, &a.s("text"))?;
+            let context = match a.opt("context") {
+                Some(t) => Some(serde_json::from_str::<Value>(&t).map_err(|_| "The context must be a JSON object.".to_string())?),
+                None => None,
+            };
+            j(fd::add(&c.root()?, &text, context).map_err(e)?)
+        }),
+        cmd("finding handled", "Mark a finding handled (by its id, or the id's last four characters); --open: open again.",
+            vec![Pos("id", N::One), Flag("open")], |c, a| j(fd::set_status(&c.root()?, &a.s("id"), !a.flag("open")).map_err(e)?)),
+        cmd("finding edit", "Change a finding's words: wb finding edit 1b2d \"…\"  |  - for standard input.",
+            vec![Pos("id", N::One), Pos("text", N::Many)], |c, a| {
+            let text = text_of(c, &a.s("text"))?;
+            j(fd::edit(&c.root()?, &a.s("id"), &text).map_err(e)?)
+        }),
+        cmd("finding rm", "Delete a finding (it goes to .trash).", vec![Pos("id", N::One)], |c, a| j(fd::remove(&c.root()?, &a.s("id")).map_err(e)?)),
+    ]
+}
+
+fn notebook_commands() -> Vec<Command> {
     vec![
         cmd("notebook", "The Notebook's list, grouped: --group day (today's page first), chapter (--at \"Num 25\": that chapter, as following the reader), thread or none; --search words; --questions; --inbox-apart.
                    With no --group, the group it opens with (wb settings notebook).",

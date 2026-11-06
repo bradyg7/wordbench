@@ -71,6 +71,22 @@
 /* a group: one tab strip and its panes; a split column holds two or more, one above another */
 .dock-group { position: relative; display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
 .dock-group + .dock-group { border-top: 1px solid var(--line); }
+/* the line between two parts of a split column: drag it to give one part more height (note 523e) */
+.split-grip { flex: 0 0 7px; margin: -3px 0; position: relative; z-index: 5; cursor: row-resize; touch-action: none; }
+.split-grip::after { content: ''; position: absolute; left: 0; right: 0; top: 3px; height: 1px; background: var(--line); transition: background .15s; }
+.split-grip:hover::after, .split-grip.dragging::after { background: var(--accent); height: 2px; }
+.split-grip + .dock-group { border-top: 0; }
+body:has(.split-grip.dragging) { cursor: row-resize; user-select: none; }
+/* a part of a split column minimized on its own: a bar at the column's foot (note 1b2d) */
+.dock-restore-bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--sunken); font: var(--type-small-strong); color: var(--muted); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dock-restore-bar:hover { color: var(--fg); }
+/* the list of all tabs: a trash on each, red on hover, closes that tab (note 5e36) */
+.tab-list-row { display: flex; align-items: center; gap: 2px; }
+.tab-list-row .menu-item { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab-list-close { display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--radius-control); color: var(--muted); flex: none; }
+.tab-list-close:hover { color: var(--jesus); background: color-mix(in srgb, var(--jesus) 12%, transparent); }
+/* the pen is for the phone only; at desktop sizes the Notebook's pen, Note on a verse and Ctrl+J write (note e3fe) */
+:root:not([data-size="compact"]) .fab { display: none; }
 /* the bands across the top and the bottom of the reader, between the columns */
 .dock-band { position: fixed; left: var(--dock-l); right: var(--dock-r); z-index: 4; display: none; flex-direction: column; background: var(--bg); }
 .dock-band.open { display: flex; }
@@ -431,3 +447,29 @@ button.question-pill:hover { text-decoration: line-through; }
 .ask { display: grid; gap: 6px; padding: 10px; }
 .ask-input, .ask-area { font: var(--type-body); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
 .ask-area { min-height: 160px; resize: vertical; font-family: var(--font-ui, inherit); }
+
+/* ---- a second reader in a pane (notes 9587, 21bd): the reader's own drawing, its own place ---- */
+.reader2-pane { padding-top: 0; }
+.reader2-head { position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 10px 0 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.reader2-row { display: flex; align-items: center; gap: 4px; }
+.reader2-title { font-size: 18px; }
+.reader.reader2 { max-width: none; margin: 0; padding: 4px 2px 80px; }
+.reader2 .ch-title { font-size: 26px; line-height: 34px; margin-top: 10px; }
+/* the verses asked for */
+.vn.vn-asked { background: var(--accent-soft); border-radius: 6px; padding: 1px 4px; }
+/* a verse picked by its number: selected, with the color bar (note 4b90) */
+.vn.vsel { color: var(--on-accent); background: var(--accent); border-radius: 6px; padding: 1px 4px; }
+/* the menu a verse reference opens outside the reader, and a verse's right-click menu */
+.ref-choice-hint { padding: 4px 10px 2px; }
+.verse-menu .nb-menu-note, .ref-choice .nb-menu-note { padding: 4px 10px; }
+/* Ctrl+F in a pane (note 5c4a): a find bar at the pane's top; what is found is marked without changing the pane */
+.pane-find { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 6px; padding: 8px 0; background: var(--bg); border-bottom: 1px solid var(--line); }
+.pane-find .field { flex: 1; min-width: 0; }
+::highlight(pane-found) { background-color: var(--hl-yellow); color: inherit; }
+::highlight(pane-found-now) { background-color: var(--hl-orange); color: inherit; }
+#cmd.from-history-failed { text-decoration: underline wavy color-mix(in srgb, var(--jesus) 60%, transparent) 1px; text-underline-offset: 4px; }
+/* a finding about the app (note 50c1): the quick capture's box, a little taller */
+.finding-box .finding-field { width: 100%; resize: vertical; min-height: 52px; font: var(--type-body); border: 0; background: transparent; color: var(--fg); outline: none; padding: 6px 2px; }
+.finding-ctx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+.note-card.finding .finding-ctx { white-space: normal; max-width: none; margin-top: 6px; }
+.findings-acts { margin: 4px 0 8px; }

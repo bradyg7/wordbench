@@ -41,7 +41,7 @@ fn every_action_has_a_command() {
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
     let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "commands.rs", "relay.rs"] {
+    for file in ["findings.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "commands.rs", "relay.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;

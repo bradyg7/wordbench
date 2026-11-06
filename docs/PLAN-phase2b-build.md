@@ -7,7 +7,8 @@ and when it is done. Read first: [CLAUDE.md](../CLAUDE.md) (the rules), [PLAN-ph
 sections 10–12 (what the person's notes asked for, by id).
 
 **Built so far in phase 2b:** step 1 (cards open on a click, hover off by default; 2ccf300), step 2 (KJV/YLT; f9c521d),
-step 3 (a first reading plans pane, `wb plan edit`, `wb plan text`; 0c73afb). The step 3 pane is replaced by tier 3 below.
+step 3 (a first reading plans pane, `wb plan edit`, `wb plan text`; 0c73afb); tiers 0, 1 and 2 (below), and the
+findings of 2026-11-04 and 11-05 (below tier 2). The step 3 pane is replaced by tier 3 below.
 
 ## For every item
 
@@ -65,18 +66,45 @@ layout unchanged (WebKit tests).
 
 Designs: N1–N4 (second pass) and B1–B2 (first pass). Files stay one note per Markdown file.
 
+**Built 2026-11-06, all seven (✓ below);** what each does and how it was checked: [phase2-results.md](phase2-results.md)
+section 15.
+
 | # | What | Where | Files |
 |---|---|---|---|
-| 2.1 | **The list and the editor** (B1): the list (search; Group: Day, Chapter, Thread, None) and the open note as an editor: title (its first line), the format bar writing Markdown as plain text (headings, bold, italics, lists), places and threads as chips with + Place and + Thread | `ui/src/notebook.ts` (rewrite; the Journal/Inbox/All views become the groups), `crates/wb-core/src/notebook.rs` for the grouped lists | none new |
-| 2.2 | **Places on chapters and books** (N1): + Place offers the verse, its chapter and its book | `crates/wb-core/src/anchors.rs`, `places.rs`; the place picker | a chapter is the run of its verses (`NUM.25:1-25:18`, already readable by the Python app); a book is the run of all its verses (`NUM.1:1-36:13`) |
-| 2.3 | **Links** (N1): `[[title]]` and `[[title#heading]]` in a note open that note (or heading); **Linked from** under a note; renaming a note's title offers to update the links to it | `crates/wb-core/src/notebook.rs` (a link index from note bodies); `wb note links <id>`, `wb note backlinks <id>` | links are plain text in the body, so Obsidian reads them |
-| 2.4 | **Today's page** (N2): one note per day, made the first time something is written in it; first in Group: Day | `notebook.rs`; `wb day [date]`, `wb day add -` | **new:** `notes/_days/<YYYY-MM-DD>.md`, no anchor (check the Python app passes over the folder, as it does `notes/_inbox/`); backup first |
-| 2.5 | **Group by chapter, following the reader** (N3): the chapter being read, notes in verse order, chapter and book notes at the top; turns with the reader | `notebook.ts`, `notebook.rs` | none |
-| 2.6 | **Quick capture** (B2, Ctrl+J from 0.5): a small box at the verse last clicked; Enter saves a short note, Ctrl+Enter opens it in the editor | `ui/src/main.ts`, `notebook.ts` | none |
-| 2.7 | **Settings → Notebook** (N4): today's page, follow the reader, links, chapter and book places, the Inbox as its own group, the group it opens with, the capture key | the Settings window (built in tier 5; until then the More menu); `settings/notebook.json` | settings, per key |
+| ✓ 2.1 | **The list and the editor** (B1): the list (search; Group: Day, Chapter, Thread, None) and the open note as an editor: title (its first line), the format bar writing Markdown as plain text (headings, bold, italics, lists), places and threads as chips with + Place and + Thread | `ui/src/notebook.ts` (rewrite; the Journal/Inbox/All views become the groups), `crates/wb-core/src/notebook.rs` for the grouped lists | none new |
+| ✓ 2.2 | **Places on chapters and books** (N1): + Place offers the verse, its chapter and its book | `crates/wb-core/src/anchors.rs`, `places.rs`; the place picker | a chapter is the run of its verses (`NUM.25:1-25:18`, already readable by the Python app); a book is the run of all its verses (`NUM.1:1-36:13`) |
+| ✓ 2.3 | **Links** (N1): `[[title]]` and `[[title#heading]]` in a note open that note (or heading); **Linked from** under a note; renaming a note's title offers to update the links to it | `crates/wb-core/src/notebook.rs` (a link index from note bodies); `wb note links <id>`, `wb note backlinks <id>` | links are plain text in the body, so Obsidian reads them |
+| ✓ 2.4 | **Today's page** (N2): one note per day, made the first time something is written in it; first in Group: Day | `notebook.rs`; `wb day [date]`, `wb day add -` | **new:** `notes/_days/<YYYY-MM-DD>.md`, no anchor (check the Python app passes over the folder, as it does `notes/_inbox/`); backup first |
+| ✓ 2.5 | **Group by chapter, following the reader** (N3): the chapter being read, notes in verse order, chapter and book notes at the top; turns with the reader | `notebook.ts`, `notebook.rs` | none |
+| ✓ 2.6 | **Quick capture** (B2, Ctrl+J from 0.5): a small box at the verse last clicked; Enter saves a short note, Ctrl+Enter opens it in the editor | `ui/src/main.ts`, `notebook.ts` | none |
+| ✓ 2.7 | **Settings → Notebook** (N4): today's page, follow the reader, links, chapter and book places, the Inbox as its own group, the group it opens with, the capture key | the Settings window (built in tier 5; until then the More menu); `settings/notebook.json` | settings, per key |
 
 *Done when:* desk checks per row; `python scripts/golden.py` still 99 of 99; the Python app still opens the scratch
 folder and shows the notes; the person's notes of 2026-11-03 and 11-04 read correctly in the new list (on the scratch copy).
+
+## Between tiers 2 and 3: the findings of 2026-11-04 and 11-05
+
+The person's app notes of days 3 and 4 ([phase2-results.md](phase2-results.md) section 16), with their choices of
+2026-11-06 (a full second reader; a reference asks: the reader or a tab; a verse number selects the verse; findings in
+the app). **Built 2026-11-06, all twelve (✓ below);** what each does and how it was checked: section 16.
+
+| # | Note | What | Where | Files |
+|---|---|---|---|---|
+| ✓ F.1 | `1b2d` | Minimize hides one group, not every side panel | `ui/src/dock.ts` | none |
+| ✓ F.2 | `523e` | A split column's parts: the line between them drags | `ui/src/dock.ts`, `desk.css` | none |
+| ✓ F.3 | `5e36` | A trash on each tab in the ⌄ list, red on hover | `ui/src/dock.ts` | none |
+| ✓ F.4 | `e3fe` | No pen over the reader at desktop sizes | `desk.css` | none |
+| ✓ F.5 | `5c4a` | Ctrl+F in the pane last clicked or typed in | `ui/src/panefind.ts`, `main.ts` | none |
+| ✓ F.6 | `9587`, `0cf1` | A second reader in a pane; right-click a verse → Open in a new tab | `ui/src/main.ts` (each reader a view), `panes.ts` | none |
+| ✓ F.7 | `21bd` | A reference clicked outside the reader asks: the reader or a tab | `ui/src/ui.ts` (`refChoice`), `panes.ts`, `notebook.ts` | none |
+| ✓ F.8 | `4b90` | A verse number's click selects the verse with the color bar | `ui/src/main.ts` | none |
+| ✓ F.9 | `c39a` | Questions on part of a place show in Notes & lookup | `crates/wb-core/src/studyapi.rs` (`trail_at`); `wb trail list --at` | none |
+| ✓ F.10 | `c419` | Times read, and Mark unread | `crates/wb-core/src/reading.rs`; `wb read times`, `wb read unmark` | **new:** `.trash/reading-unmarked.jsonl` |
+| ✓ F.11 | `797d` | The command field's history, failed lines too | `ui/src/command.ts` | none (the window's storage) |
+| ✓ F.12 | `50c1` | Findings: Ctrl+Shift+J, the Findings pane, `wb findings` | `crates/wb-core/src/findings.rs`, `ui/src/findings.ts`; `finding`/`findings` in the command language | **new:** `findings/<id>.md` beside `notes/` |
+
+Checked, not changed: `28d3` (touch keeps the cursor in a new note; section 16). Already done: `1c6d` (tier 1, V2).
+Moved to later tiers: `2885` (tier 3, item 5), `93b2` (tier 5, item 1).
 
 ## Tier 3: reading plans, the form (A + presets), the plan (P), then the builder (C)
 
@@ -103,8 +131,13 @@ Designs: R1, A2, P1, P2, R2. Replaces the step 3 pane.
    lists** as a new kind: ten lists of books, one chapter from each list a day, each list starting again when done, no
    end date. Tyndale's day list is not on bible.com's page; it needs the person's own text. The plan file keeps the
    source's name.
+5. **Past plans** (note `2885`, 2026-11-04): Stop does not send a plan to the trash; it goes to **Past plans**, a page of
+   stopped and finished plans, each with **Use again** (a new plan from it, starting on a day chosen) and **Delete**
+   (then to `.trash/`, as now). The plan file stays in `reading/plans/` with `stopped: <day>` (a new field; what was
+   read stays in the log). `wb plan stop <name>`, `wb plan past`, `wb plan reuse <name> [--start]`; `wb plan rm` deletes.
+   Today's readings and the plan list leave stopped plans out.
 
-*Done when:* CLI tests for each pace, order, days off and missed-day choice; import tests on small samples written for
+*Done when:* CLI tests for each pace, order, days off and missed-day choice; Stop, Use again and Delete; import tests on small samples written for
 the tests (not the publishers' lists); desk checks for the form, the grid, a drag in the builder.
 
 ## Tier 4: documents from a thread (PLAN-phase2b step 6, unchanged)
@@ -118,7 +151,11 @@ keeps the Python app's format. This is what still sends the person back to the P
 Designs: V1, D3, D2, TB1, TB2, S2.
 
 1. **The Settings window** (S2's frame): Customize, Views, Reading, Notebook, Hover and cards, Theme, Keys; More ⋯ →
-   Settings. Settings in `settings/*.json`, per key.
+   Settings. Settings in `settings/*.json`, per key. **Theme** (note `93b2`, 2026-11-04: color customization for the
+   whole app, as deep as the other customizing): beside system, light, dark and e-ink, a theme of the person's own,
+   every color token in `ui/src/tokens.css` that a theme sets (the background, the surfaces, ink, the accent, the lines,
+   the five highlight colors and the thread colors, the words of Christ), each with a picker and a preview, saved as
+   a named theme in `settings/theme.json`; Reset to the theme it started from. The fonts go with it (note `0863`).
 2. **Views** (V1, D3, D2): a view is where each pane goes (columns, bands, float), its name, key, shown in the View menu,
    its own toolbar or not; the View menu in the toolbar; Save this view…; `view <name>` in the command language and
    `wb view list|apply|save` (through `wb do` for the window). `settings/views.json`.

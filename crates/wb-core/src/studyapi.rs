@@ -661,6 +661,34 @@ pub fn trail_list(bible: &Bible, store: &Store, status: &str) -> Result<Value> {
     Ok(json!({"trails": out, "counts": counts}))
 }
 
+/// The questions on a place and on any part of it or around it (a question on words of a verse shows at the verse, and a
+/// question on the verse shows at a word of it): `here` is true when the question is on this very place. Questions with
+/// no place yet (the Inbox) are not listed. Rust only (`wb trail list --at`).
+pub fn trail_at(bible: &Bible, store: &Store, anchor: &str, status: &str) -> Result<Value> {
+    if !["open", "done", "all"].contains(&status) {
+        return Err(bad("Status must be open, done or all."));
+    }
+    let res = resolve(bible, anchor)?;
+    let a = s(&res, "id");
+    let lemma = s(&res, "kind") == "lemma";
+    let mut out = vec![];
+    for t in store.trails() {
+        if status != "all" && s(t, "status") != status {
+            continue;
+        }
+        let places = places_of(t);
+        let here = places.iter().any(|p| *p == a);
+        let near = !lemma
+            && places.iter().any(|p| !p.is_empty() && !p.starts_with('H') && !p.starts_with('G') && py_parse(p).map(|q| overlaps(&res, &q)).unwrap_or(false));
+        if here || near {
+            let mut v = trail_public(t, &label(bible, &s(t, "anchor"))?);
+            v["here"] = json!(here);
+            out.push(v);
+        }
+    }
+    Ok(json!({"anchor": a, "label": res["label"], "trails": out}))
+}
+
 pub fn save_trail(bible: &Bible, store: &mut Store, anchor: &str, text: &str) -> Result<Value> {
     let res = resolve(bible, anchor)?;
     if res["ok"] != true {

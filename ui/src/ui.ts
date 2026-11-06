@@ -1,4 +1,5 @@
 // Small DOM helpers shared by the shell, the panes and the Notebook.
+import { app, goTo } from './app';
 
 export const h = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] => {
   const e = document.createElement(tag);
@@ -32,6 +33,7 @@ const PATHS: Record<string, string> = {
   filter: 'M2 3h12M4 8h8M6 13h4',
   expand: 'M10 2h4v4M14 2L9 7M6 14H2v-4M2 14l5-5',
   collapse: 'M13 3L9 7M9 3v4h4M3 13l4-4M7 13V9H3',
+  copy: 'M5.5 5.5h8v8h-8zM3 10.5V3h7.5',
   trash: 'M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.5 6.5v4.5M9.5 6.5v4.5',
 };
 
@@ -58,11 +60,33 @@ export function button(cls: string, label: string, onclick: (e: MouseEvent) => v
 }
 
 // A place pill: the pin and a label; click goes there.
-export function placePill(label: string, go?: () => void): HTMLElement {
+export function placePill(label: string, go?: (e: MouseEvent) => void): HTMLElement {
   const p = h(go ? 'button' : 'span', 'pill place-pill');
   p.append(icon('pin', 13), document.createTextNode(label));
   if (go) (p as HTMLButtonElement).onclick = go;
   return p;
+}
+
+/** A verse clicked outside the reader (note 21bd): a small menu, Go to in the reader or Open in a tab (a second reader,
+ * which never moves the reader). Ctrl+click goes straight to the reader; on a phone it goes there as before. */
+export function refChoice(from: HTMLElement, ref: string, e?: MouseEvent) {
+  if (e?.ctrlKey || e?.metaKey || sizeClass() === 'compact') return void goTo(ref);
+  const box = h('div', 'menu-list ref-choice');
+  const item = (label: string, ico: string, fn: () => void) => {
+    const b = h('button', 'menu-item');
+    b.append(icon(ico, 14), document.createTextNode(` ${label}`));
+    b.onclick = () => { close(); fn(); };
+    box.append(b);
+  };
+  item('Go to in the reader', 'book', () => void goTo(ref));
+  item('Open in a tab', 'float', () => app.secondReader(ref));
+  box.append(h('div', 'muted small ref-choice-hint', 'Ctrl+click: straight to the reader'));
+  const close = popMenu(from, box, { width: 230 });
+}
+
+/** A place pill whose click asks: the reader, or a tab. */
+export function placeGo(label: string, ref: string): HTMLElement {
+  return placePill(label, e => refChoice(e.currentTarget as HTMLElement, ref, e));
 }
 
 // Text with verse references made into links (positions from wb-core's find_refs, counted in characters).

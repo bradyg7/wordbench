@@ -24,6 +24,8 @@ export const app = {
   setSize: (_percent: number) => {},
   size: () => 100,
   findInChapter: (_q: string) => {},
+  /** Opens a place as a second reader in a pane (never moves the reader). */
+  secondReader: (_ref: string, _version?: string) => {},
   /** Runs a line as if typed into the command field. */
   run: async (_line: string): Promise<string> => '',
   /** Something changed in the study folder (what, or everything when not said): the panes that show it read it again. */

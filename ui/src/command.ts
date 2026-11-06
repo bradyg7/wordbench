@@ -10,6 +10,40 @@ import { h, icon } from './ui';
 
 interface Suggestion { group: string; line: string; what: string; ico: string }
 
+// ---- the history of lines run (note 797d): as PowerShell keeps it, failed lines too. ↑ in the empty field (or while
+// going through it) brings back the line before, ↓ the next; the empty field lists the last few as "Recent". Kept in
+// the window's storage; the first time, it starts from the study folder's log of the last few days (wb log), which has
+// the lines that worked. ------------------------------------------------------------------------------------------------
+interface Ran { line: string; ok: boolean }
+const HISTORY = 'wb.cmdhistory.v1', HISTORY_MAX = 500;
+let history: Ran[] = (() => { try { return JSON.parse(localStorage.getItem(HISTORY) || '[]'); } catch { return []; } })();
+function keep() { try { localStorage.setItem(HISTORY, JSON.stringify(history)); } catch { /* this run only */ } }
+export function remember(line: string, ok: boolean) {
+  const t = line.trim();
+  if (!t) return;
+  history = history.filter(r => r.line !== t);
+  history.push({ line: t, ok });
+  if (history.length > HISTORY_MAX) history = history.slice(-HISTORY_MAX);
+  keep();
+}
+/** The history, oldest first (for `history` and the tests). */
+export const commandHistory = () => history.slice();
+async function seedHistory() {
+  if (history.length || localStorage.getItem(HISTORY) !== null) return;
+  try {
+    const today = await wb(['log']);
+    const days: string[] = (today.days || []).slice(0, 3).reverse();
+    const seen: Ran[] = [];
+    for (const d of days) {
+      const log = d === today.day ? today : await wb(['log', d]);
+      for (const e of log.entries || []) if (e.text) seen.push({ line: e.text, ok: true });
+    }
+    if (history.length) return;   // something was run meanwhile
+    for (const r of seen) { history = history.filter(x => x.line !== r.line); history.push(r); }
+    keep();
+  } catch { /* outside the app */ }
+}
+
 let threads: { name: string; color: string }[] = [];
 export async function loadThreads() {
   try { threads = await wb(['thread', 'list']); } catch { threads = []; }
@@ -44,6 +78,11 @@ export class CommandField {
   private sel = 0;
   private seq = 0;
   private status: HTMLElement;
+  /** The line the suggestions were made for: Enter runs a suggestion only if it was made for the line as it is now
+   * (typed fast, Enter could run one made for the first word). */
+  private itemsFor = '';
+  /** Where ↑ ↓ are in the history (null: not going through it). */
+  private back: number | null = null;
 
   constructor(private input: HTMLInputElement, private box: HTMLElement) {
     this.list = h('div', 'suggest');
@@ -51,8 +90,8 @@ export class CommandField {
     this.status = h('div', 'cmd-status');
     this.status.hidden = true;
     box.append(this.list, this.status);
-    input.addEventListener('input', () => this.suggest());
-    input.addEventListener('focus', () => { loadThreads(); this.suggest(); });
+    input.addEventListener('input', () => { this.back = null; this.suggest(); });
+    input.addEventListener('focus', () => { loadThreads(); void seedHistory(); this.suggest(); });
     input.addEventListener('blur', () => setTimeout(() => { if (!box.contains(document.activeElement)) this.close(); }, 120));
     input.addEventListener('keydown', e => this.key(e));
     document.addEventListener('keydown', e => {
@@ -75,6 +114,21 @@ export class CommandField {
 
   private key(e: KeyboardEvent) {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.input.value = ''; this.close(); this.input.blur(); return; }
+    // ↑ ↓ go through the history when the field is empty or already going through it (as PowerShell does)
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && (this.back !== null || (!this.input.value.trim() && e.key === 'ArrowUp'))) {
+      e.preventDefault();
+      if (!history.length) return;
+      const at = this.back ?? history.length;
+      const to = e.key === 'ArrowUp' ? Math.max(0, at - 1) : at + 1;
+      this.close();
+      this.items = [];
+      if (to >= history.length) { this.back = null; this.input.value = ''; return; }
+      this.back = to;
+      this.input.value = history[to].line;
+      this.input.setSelectionRange(this.input.value.length, this.input.value.length);
+      this.input.classList.toggle('from-history-failed', !history[to].ok);
+      return;
+    }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (!this.items.length) return;
@@ -90,7 +144,7 @@ export class CommandField {
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      const s = this.items[this.sel];
+      const s = this.back === null && this.itemsFor === this.input.value.trim() ? this.items[this.sel] : undefined;
       this.run(s ? s.line : this.input.value);
     }
   }
@@ -98,7 +152,10 @@ export class CommandField {
   async run(line: string) {
     this.close();
     this.input.blur();
+    this.back = null;
+    this.input.classList.remove('from-history-failed');
     const r: { ok: boolean; said?: string; error?: string } = await runLine(line).catch(x => ({ ok: false, error: String(x) }));
+    remember(line, r.ok);
     this.say(r.ok ? r.said || '' : r.error || 'That did not work', !r.ok);
     if (r.ok) this.input.value = '';
     else { this.input.focus(); this.input.value = line; }
@@ -118,7 +175,14 @@ export class CommandField {
     const line = this.input.value;
     const seq = ++this.seq;
     const t = line.trim();
-    if (!t) { this.items = []; this.draw(); return; }
+    if (!t) {
+      // the empty field: the last lines run, newest first (a line that did not work says so)
+      this.items = history.slice(-6).reverse().map(r => ({ group: 'Recent · ↑ goes back through them', line: r.line, what: r.ok ? '' : 'did not work', ico: 'prompt' }));
+      this.itemsFor = '';
+      this.sel = -1;   // none marked: Enter in the empty field runs nothing; a click or ↓ then Enter does
+      this.draw();
+      return;
+    }
     const out: Suggestion[] = [];
     const parsed = await parse(t).catch(() => null);
     if (seq !== this.seq) return;
@@ -150,6 +214,7 @@ export class CommandField {
       out.push({ group: 'Search the KJV', line: t.startsWith('search ') ? t : `search ${t}`, what: a.suspect ? `or did you mean ${a.suspect}?` : `every verse with ${t.includes(' ') ? 'all these words' : `“${t}”`}`, ico: 'search' });
     }
     this.items = out;
+    this.itemsFor = t;
     this.sel = 0;
     this.draw();
   }

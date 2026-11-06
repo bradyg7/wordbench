@@ -145,6 +145,16 @@ pub fn commands() -> Vec<Command> {
             let chs = rd::chapters_of(c.bible()?, &a.s("place")).map_err(e)?;
             j(rd::last_read(&c.root()?, &chs))
         }),
+        cmd("read times", "How many times chapters were read, and when last: wb read times \"Num 25\" → {\"NUM.25\": {\"times\": 2, \"last\": time}}; a chapter never read is left out.",
+            vec![Pos("place", N::Many)], |c, a| {
+            let chs = rd::chapters_of(c.bible()?, &a.s("place")).map_err(e)?;
+            j(rd::read_times(&c.root()?, &chs))
+        }),
+        cmd("read unmark", "Mark unread: the latest mark of each chapter comes off the log (kept in .trash/reading-unmarked.jsonl): wb read unmark \"Num 25\".",
+            vec![Pos("place", N::Many)], |c, a| {
+            let chs = rd::chapters_of(c.bible()?, &a.s("place")).map_err(e)?;
+            j(rd::unmark(&c.root()?, &chs).map_err(e)?)
+        }),
         cmd("read progress", "How much of the Bible you have read: chapters read at least once, by book.", vec![], |c, _| {
             j(rd::overall(c.bible()?, &c.root()?).map_err(e)?)
         }),

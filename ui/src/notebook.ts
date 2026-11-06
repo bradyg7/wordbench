@@ -10,7 +10,7 @@ import { app, book, goTo, here, type At } from './app';
 import { dock, refCard, refHover, openThread, threadChooser } from './panes';
 import type { Change, Pane } from './dock';
 import { toast } from './sheets';
-import { button, h, icon, placePill, popMenu, type Found } from './ui';
+import { button, h, icon, placeGo, placePill, popMenu, type Found } from './ui';
 
 type Group = 'day' | 'chapter' | 'thread' | 'none';
 type Only = 'inbox' | 'questions' | null;
@@ -317,7 +317,7 @@ function chipsRow(e: Entry): HTMLElement {
     const chip = h('span', 'place-off');
     const x = button('member-x shown', '', () => { draft!.at = null; void pane?.refresh?.(); }, 'x');
     x.title = 'No place: it waits in the Inbox';
-    chip.append(placePill(draft.at.label, () => goTo(draft!.at!.anchor)), x);
+    chip.append(placeGo(draft.at.label, draft.at.anchor), x);
     row.append(chip);
   } else if (onThreadOnly) row.append(h('span', 'pill unplaced', e.label));
   else row.append(h('span', 'pill unplaced', 'No place yet'));
@@ -709,7 +709,7 @@ function placeOff(e: Pick<Entry, 'id'>, at: At): HTMLElement {
   const x = button('member-x shown', '', () => takeOff(e.id, at), 'x');
   x.title = `Take it off ${at.label}`;
   x.setAttribute('aria-label', x.title);
-  chip.append(placePill(at.label, () => goTo(at.anchor)), x);
+  chip.append(placeGo(at.label, at.anchor), x);
   return chip;
 }
 

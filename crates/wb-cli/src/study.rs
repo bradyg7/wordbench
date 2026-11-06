@@ -286,10 +286,15 @@ pub fn commands() -> Vec<Command> {
             let an = anchor(c, &a.s("place"))?;
             j(sa::save_trail(c.bible()?, &mut *c.study()?, &an, &a.s("text")).map_err(e)?)
         }),
-        cmd("trail list", "The questions you have queued.", vec![Opt("status", Some("open"))], |c, a| {
+        cmd("trail list", "The questions you have queued; --at a place: the questions on it and on any part of it (\"here\": on this very place).",
+            vec![Opt("status", Some("open")), Opt("at", None)], |c, a| {
             let st = a.opt_or("status", "open");
             if !["open", "done", "all"].contains(&st.as_str()) {
                 return Err(format!("wb trail list: argument --status: invalid choice: '{st}' (choose from 'open', 'done', 'all')"));
+            }
+            if let Some(at) = a.opt("at") {
+                let at = anchor(c, &at)?;
+                return j(sa::trail_at(c.bible()?, &*c.study()?, &at, &st).map_err(e)?);
             }
             j(sa::trail_list(c.bible()?, &*c.study()?, &st).map_err(e)?)
         }),

@@ -5,7 +5,7 @@ import { app, book, goTo, here, type At } from './app';
 import { Dock, type Pane, type Side } from './dock';
 import { layers } from './layers';
 import { closeSheet, compact, hideCard, openSheet, sheetOpen, showCard, toast } from './sheets';
-import { button, h, hoverMode, icon, linkedText, placePill, popMenu } from './ui';
+import { button, h, hoverMode, icon, linkedText, placeGo, placePill, popMenu, refChoice } from './ui';
 import { placeMenu, remove as removeNote, takeOff } from './notebook';
 
 export let dock: Dock;
@@ -45,7 +45,7 @@ function scopeLabel(scope: string) {
 
 function refLink(r: { code: string; name: string; c: number; v: number }) {
   const a = h('button', 'ref-link', `${r.name} ${r.c}:${r.v}`);
-  a.onclick = () => app.go(r.code, r.c, r.v);
+  a.onclick = e => refChoice(a, `${r.code} ${r.c}:${r.v}`, e);
   return a;
 }
 
@@ -151,7 +151,7 @@ export async function refCard(ref: string, a: HTMLElement, e?: MouseEvent) {
   const body = refBody(d);
   const acts = h('div', 'acts');
   acts.append(button('act', `Go to ${d.label}`, () => { closeSheet(); goTo(ref); }));
-  if (!compact()) acts.append(button('act', 'Open as a tab', () => { closeSheet(); openPassage([ref], 'KJV', d.label); }));
+  if (!compact()) acts.append(button('act', 'Open as a tab', () => { closeSheet(); app.secondReader(ref); }));
   body.append(acts);
   openSheet(body, a);
 }
@@ -488,8 +488,10 @@ export function openInterlinear(place: string, label: string) {
   });
 }
 
-/** open / compare / excerpt: one place or several, in the KJV, the YLT, or both (the YLT under each KJV verse). */
+/** open / compare / excerpt: one place in the KJV or the YLT is a second reader (note 9587); several places, or the KJV
+ * with the YLT under each verse, are listed here, each verse asking whether to go there or open it as a tab (note 21bd). */
 export function openPassage(places: string[], version: string, title: string) {
+  if (places.length === 1 && version !== 'PAR') return void app.secondReader(places[0], version);
   return dock.open('passage', title, `passage|${places.join(';')}|${version}`, STUDY, async el => {
     el.replaceChildren();
     head(el, title, version === 'PAR' ? 'KJV, with the YLT under each verse' : version);
@@ -499,7 +501,7 @@ export function openPassage(places: string[], version: string, title: string) {
       if (places.length > 1) el.append(h('div', 'label', kjv.label));
       kjv.verses.forEach((v: any, k: number) => {
         const row = h('div', 'passage-verse');
-        const ref = button('vref', `${v.c}:${v.v}`, () => goTo(v.ref));
+        const ref = button('vref', `${v.c}:${v.v}`, e => refChoice(ref, v.ref, e));
         const p = h('p', 'scripture-row');
         p.append(ref, document.createTextNode(` ${v.text}`));
         row.append(p);
@@ -587,7 +589,7 @@ export function openThread(name: string) {
       const grip = h('span', 'grip');
       grip.append(icon('grip', 14));
       const body = h('div', 'member-body');
-      const lab = button('ref-link', m.label, () => (m.ref ? app.go(m.ref.code, m.ref.c, m.ref.v) : m.anchor.startsWith('H') || m.anchor.startsWith('G') ? openStrong(m.anchor) : goTo(m.anchor)));
+      const lab = button('ref-link', m.label, e => (m.anchor.startsWith('H') || m.anchor.startsWith('G') ? openStrong(m.anchor) : refChoice(lab, m.anchor, e)));
       body.append(lab, h('p', 'scripture-row clamp', m.quote || ''));
       // an original word everywhere: its English renderings and Strong's definition, not only the original
       if (m.kind === 'lemma') {
@@ -635,8 +637,8 @@ async function threadNotes(t: any, into: HTMLElement) {
     const c = h('div', `note-card${n.kind === 'question' ? ' is-question' : ''}`);
     const top = h('div', 'nb-top');
     if (n.kind === 'question') top.append(h('span', 'pill question-pill', n.status === 'done' ? '? Answered' : '? Question'));
-    if (n.anchor) top.append(placePill(n.label, () => goTo(n.anchor)));
-    for (const a of n.also || []) top.append(placePill(a.label, () => goTo(a.anchor)));
+    if (n.anchor) top.append(placeGo(n.label, n.anchor));
+    for (const a of n.also || []) top.append(placeGo(a.label, a.anchor));
     top.append(h('span', 'grow'), h('span', 'nb-time', n.time));
     const p = h('p', 'nb-text');
     p.append(linkedText(n.text, n.refs, refCard, refHover));
@@ -753,14 +755,14 @@ export function openFind(words: string) {
       if (!items.length) return;
       el.append(h('div', 'label', title), ...items.map(row));
     };
-    sec('Notes', d.notes, n => card(n.label, n.snippet, () => goTo(n.anchor)));
+    sec('Notes', d.notes, n => card(n.label, n.snippet, e => refChoice(e.currentTarget as HTMLElement, n.anchor, e)));
     sec('Threads', d.threads, t => card(t.name, t.snippet || `${t.count} places`, () => openThread(t.name)));
-    sec('Questions', d.trails, t => card(t.label, t.snippet, () => goTo(t.anchor)));
+    sec('Questions', d.trails, t => card(t.label, t.snippet, e => refChoice(e.currentTarget as HTMLElement, t.anchor, e)));
     if (!d.notes.length && !d.threads.length && !d.trails.length) el.append(h('p', 'muted', 'Nothing of yours has all of these words.'));
   });
 }
 
-function card(place: string, text: string, go: () => void) {
+function card(place: string, text: string, go: (e: MouseEvent) => void) {
   const c = h('div', 'note-card');
   c.append(placePill(place, go), h('p', '', text));
   return c;
@@ -782,7 +784,7 @@ export function openMarked(color: string, scope: string, thread?: string) {
       const sw = h('i', `swatch-dot c-${r.color}`);
       if (r.color.startsWith('#')) sw.style.background = r.color;
       p.append(sw, document.createTextNode(` ${r.quote}`));
-      c.append(placePill(r.label, () => goTo(r.anchor)), p);
+      c.append(placeGo(r.label, r.anchor), p);
       el.append(c);
     }
   });
@@ -796,7 +798,8 @@ export function openMarked(color: string, scope: string, thread?: string) {
 export function openPlace(anchor: string, label: string) {
   return dock.open('place', label, `place|${anchor}`, MINE, async el => {
     const current = newest(el);
-    const [d, qs] = await Promise.all([wb(['anchor', anchor]), wb(['trail', 'list', '--status', 'all']).catch(() => ({ trails: [] }))]);
+    // the questions on this place and on any part of it: a question on words of a verse shows at the verse (note c39a)
+    const [d, qs] = await Promise.all([wb(['anchor', anchor]), wb(['trail', 'list', '--status', 'all', '--at', anchor]).catch(() => ({ trails: [] }))]);
     if (!current()) return;
     el.replaceChildren();
     const hd = head(el, d.label || label, '');
@@ -830,11 +833,13 @@ export function openPlace(anchor: string, label: string) {
     for (const n of d.notes || []) el.append(noteCardEditable(n, { anchor, label: d.label || label }));
     if (!(d.notes || []).length) el.append(h('p', 'muted small', 'None yet.'));
     el.append(addNoteBox(anchor));
-    const here = (qs.trails || []).filter((t: any) => t.anchor === anchor);
+    const here = [...(qs.trails || [])].sort((a: any, b: any) => Number(b.here) - Number(a.here));
     if (here.length) {
       el.append(h('div', 'label', 'Questions here'));
       for (const t of here) {
-        const c = h('div', `note-card${t.status === 'done' ? ' done' : ''}`);
+        const c = h('div', `note-card question-card${t.status === 'done' ? ' done' : ''}`);
+        // a question on part of this place (or around it) says where it is
+        if (!t.here) c.append(placePill(t.quote ? `${t.label} · “${short(t.quote)}”` : t.label, () => openPlace(t.anchor, t.label)));
         const top = h('div', 'nb-top');
         const tag = button('pill question-pill', t.status === 'done' ? '? Answered' : '? Question', async () => { await wb(['note', 'question', t.id, '--plain']); app.changed('notes'); });
         tag.title = 'Click: make it a plain note';
@@ -1202,11 +1207,15 @@ export function openKeys() {
     const rows: [string, string][] = [
       ['`', 'Open the command field (search, go to a place, or a command)'],
       ['← →', 'The previous and next chapter'],
-      ['Ctrl+F', 'Find in this chapter'],
+      ['Ctrl+F', 'Find: in the pane you last clicked or typed in, else in this chapter (Enter: the next, Shift+Enter: the one before)'],
+      ['↑ ↓ in the command field', 'The lines run before, newest first, the ones that did not work too (as PowerShell keeps them)'],
+      ['Right-click a verse', 'Open it in a new tab (a second reader), Notes & lookup, Copy'],
+      ['Ctrl+click a reference', 'Straight to the reader (a click asks: the reader, or a tab)'],
       ['Ctrl+= / Ctrl+-', 'Text size'],
       ['Esc', 'Close a card, a menu or the field'],
       ['Alt+click a word', 'The interlinear for its verse'],
       ['Ctrl+J', 'Quick capture: a small box at the verse you clicked, from anywhere (Enter saves, Ctrl+Enter keeps writing in the Notebook; the key is in Notebook settings)'],
+      ['Ctrl+Shift+J', 'A finding about the app: kept apart from your study, with what is on screen (Findings, under More)'],
       ['In a note', 'Ctrl+B bold, Ctrl+I italics, [[ a link to another note; Esc or Ctrl+Enter: done'],
     ];
     for (const [k, what] of rows) {

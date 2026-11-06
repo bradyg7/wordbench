@@ -16,13 +16,13 @@ type Docked = 'left' | 'right' | 'top' | 'bottom';
 type Rect = { x: number; y: number; w: number; h: number };
 
 /** What a write changed in the study folder. */
-export type Change = 'notes' | 'threads' | 'highlights' | 'plans' | 'sets';
-export const CHANGES: Change[] = ['notes', 'threads', 'highlights', 'plans', 'sets'];
+export type Change = 'notes' | 'threads' | 'highlights' | 'plans' | 'sets' | 'findings';
+export const CHANGES: Change[] = ['notes', 'threads', 'highlights', 'plans', 'sets', 'findings'];
 /** What each kind of pane shows from the study folder. A write draws again only the panes that show what it changed;
  * the other kinds show the Bible database alone and are never drawn again by a write. */
 const SHOWS: Record<string, Change[]> = {
   notebook: ['notes', 'threads'], threads: ['threads'], thread: ['threads', 'notes'], place: ['notes', 'highlights', 'threads'],
-  find: ['notes', 'threads'], marked: ['highlights', 'threads'], plans: ['plans'], shelf: ['sets', 'threads'],
+  reader2: ['notes', 'highlights', 'threads'], find: ['notes', 'threads'], marked: ['highlights', 'threads'], plans: ['plans'], findings: ['findings'], shelf: ['sets', 'threads'],
 };
 
 export interface Pane {
@@ -42,7 +42,7 @@ export interface Pane {
 }
 
 /** One tab strip and its panes: a column (or a part of one, when split), a band, or a floating window. */
-interface Group { id: string; side: Side; front?: string; rect?: Rect; z: number; min?: boolean }
+interface Group { id: string; side: Side; front?: string; rect?: Rect; z: number; min?: boolean; share?: number }
 
 /** Where a dragged tab would go, the box shown for it, and the box's label. */
 interface Drop { to: 'join' | 'split' | 'side' | 'float'; group?: Group; before?: Pane | null; after?: boolean; side?: Docked; rect?: Rect; label: string; box: Rect }
@@ -61,8 +61,6 @@ let seq = 0;
 export class Dock {
   panes: Pane[] = [];
   groups: Group[] = [];
-  /** Columns and bands minimized by the person (floats are minimized one by one). */
-  hidden: Partial<Record<Docked, boolean>> = {};
   /** The size a new floating window opens at. */
   floatAt = { w: 420, h: 520 };
   /** Widths the person set by dragging a column's edge (per side), and columns expanded to half the window. */
@@ -252,8 +250,17 @@ export class Dock {
     const w = this.drawn(g.side);
     if (w === 'sheet') this.sheetFor = p.id;
     else if (w === 'float') g.z = ++this.z;
-    else { this.colFront[w] = p.id; this.hidden[w] = false; }
+    else {
+      this.colFront[w] = p.id;
+      // a column drawn as one strip is minimized and shown as one
+      if (this.oneStrip(w)) for (const x of this.groups) if (this.drawn(x.side) === w) x.min = false;
+    }
     this.layout();
+  }
+
+  /** Expanded and Medium have one column: its groups are drawn as one strip. */
+  private oneStrip(w: Side | 'sheet') {
+    return w === 'right' && sizeClass() !== 'large' && this.groups.filter(g => this.drawn(g.side) === 'right').length > 1;
   }
 
   private sheetFor: string | null = null;
@@ -286,16 +293,19 @@ export class Dock {
     this.move(p, p.home && p.home !== 'float' ? p.home : p.kind === 'notebook' || p.kind.startsWith('thread') ? 'right' : 'left');
   }
 
+  /** Minimizes the group a pane is in, and only that group: the other part of a split column, the other column and the
+   * bands stay as they are (note 1b2d). A column drawn as one strip (Expanded, Medium) is minimized as one. */
   minimize(p: Pane) {
     const g = this.groupOf(p), w = this.drawn(g.side);
-    if (w === 'float') g.min = true;
-    else if (w !== 'sheet') this.hidden[w] = true;
+    if (w === 'sheet') return;
+    if (this.oneStrip(w)) { for (const x of this.groups) if (this.drawn(x.side) === w) x.min = true; }
+    else g.min = true;
     this.layout();
   }
 
   isMinimized(p: Pane) {
-    const g = this.groupOf(p), w = this.drawn(g.side);
-    return w === 'float' ? !!g.min : w !== 'sheet' && !!this.hidden[w];
+    const g = this.groupOf(p);
+    return this.drawn(g.side) !== 'sheet' && !!g.min;
   }
 
   /** Every open pane whose title or kind starts with or holds `name` (for `close threads`, `float occurrences`). */
@@ -388,29 +398,46 @@ export class Dock {
     const chips: HTMLElement[] = [];
     for (const side of ['left', 'right', 'top', 'bottom'] as Docked[]) {
       const frame = this.frames[side], gs = at[side], column = side === 'left' || side === 'right';
-      frame.classList.toggle('open', gs.length > 0 && !this.hidden[side]);
-      frame.classList.toggle('minimized', gs.length > 0 && !!this.hidden[side] && column);
+      const live = gs.filter(g => !g.min), mins = gs.filter(g => g.min);
+      const names = (list: Group[]) => this.panes.filter(p => list.some(g => g.id === p.group)).map(p => p.title).join(' · ');
+      const back = (list: Group[]) => () => { for (const g of list) g.min = false; this.layout(); };
+      frame.classList.toggle('open', live.length > 0);
+      frame.classList.toggle('minimized', gs.length > 0 && !live.length && column);
       if (!gs.length) { frame.replaceChildren(); continue; }
-      if (this.hidden[side]) {
-        const names = this.panes.filter(p => gs.some(g => g.id === p.group)).map(p => p.title).join(' · ');
-        const back = () => { this.hidden[side] = false; this.layout(); };
+      if (!live.length) {
         if (column) {
-          const b = h('button', 'dock-restore', names);
+          const b = h('button', 'dock-restore', names(gs));
           b.title = 'Show the panes again';
-          b.onclick = back;
+          b.onclick = back(gs);
           frame.replaceChildren(b);
         } else {
           frame.replaceChildren();
-          chips.push(this.chip(`${names} · minimized`, back));
+          chips.push(this.chip(`${names(gs)} · minimized`, back(gs)));
         }
         continue;
       }
       // Expanded and Medium have one column: its groups are drawn as one strip, as before tier 1
-      const one = side === 'right' && size !== 'large' && gs.length > 1;
+      const one = side === 'right' && size !== 'large' && live.length > 1;
       const parts = one
-        ? [{ g: gs.find(g => g.side === 'right') ?? gs[0], list: this.panes.filter(p => gs.some(g => g.id === p.group)), front: this.colFront[side] }]
-        : gs.map(g => ({ g, list: this.inGroup(g), front: g.front }));
-      frame.replaceChildren(...parts.map((x, i) => this.groupEl(x.g, x.list, x.front, side, i === 0, !one)));
+        ? [{ g: live.find(g => g.side === 'right') ?? live[0], list: this.panes.filter(p => live.some(g => g.id === p.group)), front: this.colFront[side] }]
+        : live.map(g => ({ g, list: this.inGroup(g), front: g.front }));
+      const els: HTMLElement[] = [];
+      parts.forEach((x, i) => {
+        const el = this.groupEl(x.g, x.list, x.front, side, i === 0, !one);
+        if (column && !one && parts.length > 1) el.style.flexGrow = String(x.g.share ?? 1);
+        if (i > 0 && column && !one) els.push(this.splitGrip(parts[i - 1].g, x.g));
+        els.push(el);
+      });
+      frame.replaceChildren(...els);
+      // a part of a split column minimized on its own waits as a bar at the column's foot; the other part has the room
+      for (const g of mins) {
+        if (!column) { chips.push(this.chip(`${names([g])} · minimized`, back([g]))); continue; }
+        const b = h('button', 'dock-restore-bar');
+        b.append(icon('float', 14), document.createTextNode(` ${names([g])}`));
+        b.title = 'Show it again';
+        b.onclick = back([g]);
+        frame.append(b);
+      }
       frame.append(column ? this.grip(side) : this.bandGrip(side));
     }
     // each floating window on its own (V2); minimized ones wait as chips
@@ -536,6 +563,54 @@ export class Dock {
     return g;
   }
 
+  // ---- the parts of a split column: drag the line between two (double-click: the same height each; note 523e) --------
+  private splitGrip(above: Group, below: Group): HTMLElement {
+    const g = h('div', 'split-grip');
+    g.title = 'Drag to make one part taller (double-click: the same height each)';
+    g.setAttribute('role', 'separator');
+    g.setAttribute('aria-orientation', 'horizontal');
+    g.addEventListener('dblclick', () => {
+      for (const x of this.groups) if (x.side === above.side) delete x.share;
+      this.layout();
+    });
+    g.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      g.setPointerCapture(e.pointerId);
+      g.classList.add('dragging');
+      const col = g.parentElement!;
+      const elOf = (x: Group) => col.querySelector<HTMLElement>(`:scope > .dock-group[data-group="${x.id}"]`)!;
+      // every part of the column measured first (setting one part's size changes the others'), then nothing changes
+      // until the pointer moves: a double-click is not a drag
+      const sizes = [...col.querySelectorAll<HTMLElement>(':scope > .dock-group')].map(el => ({ el, grp: this.groups.find(x => x.id === el.dataset.group), h: Math.round(el.getBoundingClientRect().height) }));
+      const a = elOf(above), b = elOf(below);
+      const top = a.getBoundingClientRect().top, y0 = e.clientY, MIN = 120;
+      const total = (sizes.find(x => x.el === a)?.h ?? 0) + (sizes.find(x => x.el === b)?.h ?? 0);
+      let started = false;
+      const move = (m: PointerEvent) => {
+        if (!started) {
+          if (Math.abs(m.clientY - y0) < 3) return;
+          started = true;
+          for (const x of sizes) if (x.grp) { x.grp.share = x.h; x.el.style.flexGrow = String(x.h); }
+        }
+        const ha = Math.round(Math.max(MIN, Math.min(total - MIN, m.clientY - top)));
+        above.share = ha;
+        below.share = total - ha;
+        a.style.flexGrow = String(above.share);
+        b.style.flexGrow = String(below.share);
+      };
+      const up = () => {
+        g.removeEventListener('pointermove', move);
+        g.removeEventListener('pointerup', up);
+        g.classList.remove('dragging');
+        this.fitStrips();
+      };
+      g.addEventListener('pointermove', move);
+      g.addEventListener('pointerup', up);
+    });
+    return g;
+  }
+
   // ---- a band's height: drag its edge next to the reader (double-click puts it back) ----------------------------------
   private bandGrip(side: 'top' | 'bottom'): HTMLElement {
     const g = h('div', `dock-grip band-grip grip-${side}`);
@@ -651,12 +726,25 @@ export class Dock {
       all.setAttribute('aria-label', `All ${list.length} tabs`);
       all.onclick = () => {
         const box = h('div', 'menu-list');
-        for (const p of list) {
-          const b = h('button', `menu-item${p.id === front ? ' on' : ''}`, p.title);
-          b.onclick = () => { close(); this.show(p); };
-          box.append(b);
-        }
-        const close = popMenu(all, box, { align: 'right', width: 240 });
+        const draw = () => {
+          const left = list.filter(p => this.panes.includes(p));
+          box.replaceChildren(...left.map(p => {
+            const row = h('div', 'tab-list-row');
+            const b = h('button', `menu-item${p.id === front ? ' on' : ''}`, p.title);
+            b.onclick = () => { close(); this.show(p); };
+            // a trash on each tab, red on hover: closes that tab, and the list stays open (note 5e36)
+            const x = h('button', 'tab-list-close');
+            x.append(icon('trash', 14));
+            x.title = `Close ${p.title}`;
+            x.setAttribute('aria-label', `Close ${p.title}`);
+            // with one tab left the strip has no list, so it closes
+            x.onclick = () => { this.close(p); if (left.length > 2) draw(); else close(); };
+            row.append(b, x);
+            return row;
+          }));
+        };
+        draw();
+        const close = popMenu(all, box, { align: 'right', width: 260 });
       };
       s.append(all);
     }

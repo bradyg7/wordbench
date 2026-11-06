@@ -54,7 +54,7 @@ try {
   await page.keyboard.press('Backquote');
   check('backtick opens the command field', await page.evaluate(() => document.activeElement?.id === 'cmd'));
   await page.keyboard.type('uses zeal gospels');
-  await page.waitForSelector('.suggest-row', { timeout: 5000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('.suggest-group')].some(g => g.textContent === 'Commands'), null, { timeout: 5000 }).catch(() => {});
   check('suggestions come grouped', (await page.locator('.suggest-group').allTextContents()).includes('Commands'));
   await page.screenshot({ path: shots + '1440-command-field-open.png' });
   await page.keyboard.press('Enter');
@@ -102,8 +102,8 @@ try {
   check('clicking a reference in a note shows the verse', await page.locator('.popover', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
   check('the click does not move the reader', (await page.locator('#place .place-label').textContent()) === placeAtRef);
   await page.locator('.popover .act', { hasText: 'Open as a tab' }).click();
-  check('Open as a tab opens the verse as a pane', await page.locator('.pane-passage', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
-  check('a verse opened from a note opens in the Notebook’s column', await page.locator('.dock-right .pane-passage', { hasText: cor }).count() === 1);
+  check('Open as a tab opens the verse in a second reader, marked', await page.locator('.pane-reader2 .vn-asked[data-v="8"]').waitFor({ timeout: 5000 }).then(() => true, () => false) && (await page.locator('.pane-reader2 .reader2-title').first().textContent()) === '1 Corinthians 10');
+  check('a verse opened from a note opens in the Notebook’s column', await page.locator('.dock-right .pane-reader2', { hasText: cor }).count() === 1);
   await page.evaluate(() => window.__wb.run('notebook'));
   await page.evaluate(() => window.__wb.run('hover on'));
   await ed.locator('.nb-page a.ref').first().hover();
@@ -128,15 +128,14 @@ try {
   await page.waitForFunction(() => document.querySelector('#tb-notebook .badge')?.textContent === '1', null, { timeout: 10000 });
   await nbBack();
   const dragged = readdirSync(path.join(study, 'notes', '_inbox'))[0];
-  await page.locator('.pane-notebook .nb-item[draggable="true"]').first().dragTo(page.locator('.vn[data-v="3"]'));
+  await page.locator('.pane-notebook .nb-item[draggable="true"]').first().dragTo(page.locator('#reader .vn[data-v="3"]'));
   for (let i = 0; i < 50 && !existsSync(path.join(study, 'notes', 'NUM', dragged)); i++) await sleep(100);
   check('an Inbox note dropped on a verse is placed there', existsSync(path.join(study, 'notes', 'NUM', dragged)) && /anchor: "NUM.25:3"/.test(readFileSync(path.join(study, 'notes', 'NUM', dragged), 'utf8')));
 
-  // a verse opened by a click can be a tab; so can a word
-  const v6 = JSON.parse(execFileSync(wbExe, ['text', 'Num 25:6', '--json'], { env }).toString()).verses[0].text;
-  await page.locator('.vn[data-v="6"]').click();
-  await page.locator('.popover .act', { hasText: 'Open as a tab' }).click();
-  check('Open as a tab on a verse opens it as a pane', await page.locator('.pane-passage', { hasText: v6 }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  // a verse picked by its number can be a tab (a second reader); so can a word
+  await page.locator('#reader .vn[data-v="6"]').click();
+  await page.locator('.colorbar .act', { hasText: 'Open as a tab' }).click();
+  check('Open as a tab on a verse opens it in a second reader', await page.locator('.pane-reader2 .vn-asked[data-v="6"]').waitFor({ timeout: 5000 }).then(() => true, () => false));
   const zeal = await page.evaluate(() => {   // "zealous" in Num 25:11, a word with a Strong's number
     const d = window.__wb.drawn, k = d.v.findIndex((v, k) => v === 11 && String(d.strong[k]).includes('7065'));
     d.el[k].scrollIntoView({ block: 'center' });
@@ -149,17 +148,17 @@ try {
   await page.locator('.popover .act', { hasText: 'Open as a tab' }).click();
   check('Open as a tab on a word opens its Strong’s entry', await page.locator('.tab-name', { hasText: strongNum }).first().waitFor({ timeout: 5000 }).then(() => true, () => false), strongNum);
   await page.keyboard.press('Escape');
-  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'passage' || p.kind === 'strong')) d.close(p); });
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => ['passage', 'reader2', 'strong'].includes(p.kind))) d.close(p); });
 
-  // a question from the verse popover: a new question in the Notebook's editor (one writing box), with the place chosen
-  await page.locator('.vn[data-v="9"]').click();
-  await page.locator('.popover .act', { hasText: 'Question' }).click();
+  // a question from the verse's bar: a new question in the Notebook's editor (one writing box), with the place chosen
+  await page.locator('#reader .vn[data-v="9"]').click();
+  await page.locator('.colorbar .act', { hasText: 'Question' }).click();
   await page.waitForFunction(() => document.activeElement?.classList.contains('nb-input'), null, { timeout: 10000 });
   const boxes = await page.evaluate(() => [...document.querySelectorAll('textarea')].filter(t => t.offsetWidth).map(t => t.placeholder));
   check('Question on a verse writes in the Notebook’s editor, the only box shown', boxes.length === 1 && boxes[0] === 'Your question on Numbers 25:9…', boxes.join(' | '));
   await page.keyboard.type('How do the two numbers relate?');
   await done();
-  await page.waitForSelector('.vn[data-v="9"].vq', { timeout: 10000 });
+  await page.waitForSelector('#reader .vn[data-v="9"].vq', { timeout: 10000 });
   check('a question puts a ? on its verse number', true);
   check('the Notebook has no second writing box', await page.locator('.pane-notebook textarea').count() <= 1);
   await nbBack();
@@ -200,13 +199,13 @@ try {
   for (let k = 1; k <= 6; k++) await page.mouse.move(w1.x + (w2.x - w1.x) * k / 6, w1.y + (w2.y - w1.y) * k / 6);
   await page.mouse.up();
   await page.waitForSelector('.colorbar', { timeout: 5000 });
-  await page.locator('.dock-right .pane:visible').first().click({ position: { x: 4, y: 4 } });
+  await page.locator('.dock-right .pane:visible').first().click({ position: { x: 60, y: 8 } });
   await sleep(200);
   check('a click away from the color bar closes it and clears the selection', await page.locator('.colorbar').count() === 0 && await page.evaluate(() => !window.__wb.selector.sel && !document.querySelector('.w.sel')));
 
   // Notes & lookup for a verse: color it, write a note there, and take the color off again
-  await page.locator('.vn[data-v="4"]').click();
-  await page.locator('.popover .act', { hasText: 'Notes & lookup' }).click();
+  await page.locator('#reader .vn[data-v="4"]').click();
+  await page.locator('.colorbar .act', { hasText: 'Notes & lookup' }).click();
   await page.waitForSelector('.pane-place:visible .place-quote', { timeout: 10000 });
   const v4 = JSON.parse(execFileSync(wbExe, ['text', 'Num 25:4', '--json'], { env }).toString()).verses[0].text;
   check('Notes & lookup shows the verse verbatim', (await page.locator('.pane-place:visible .place-quote').textContent()) === v4);
@@ -287,6 +286,20 @@ try {
   await page.locator('.dock-right .tab-list').click();
   const listed = await page.locator('.menu .menu-item').count();
   check('▾ lists every tab in the column', listed === strip.n, `${listed}`);
+  // a trash on each tab in the list, red on hover, closes that tab and keeps the list open (note 5e36)
+  check('each tab in the list has a trash (note 5e36)', await page.locator('.menu .tab-list-row .tab-list-close').count() === strip.n);
+  const trash = page.locator('.menu .tab-list-row', { hasText: 'Numbers 25:2' }).locator('.tab-list-close');
+  await trash.hover();
+  const red = await page.evaluate(() => {
+    const x = document.querySelector('.menu .tab-list-close:hover'), ref = document.createElement('i');
+    ref.style.color = 'var(--jesus)'; document.body.append(ref);
+    const want = getComputedStyle(ref).color; ref.remove();
+    return [x ? getComputedStyle(x).color : 'none', want];
+  });
+  check('the trash turns red on hover', red[0] === red[1], red.join(' / '));
+  await trash.click();
+  await sleep(300);
+  check('the trash closes that tab, and the list stays open', !(await page.evaluate(() => window.__wb.dock().panes.some(p => p.title === 'Numbers 25:2'))) && await page.locator('.menu .menu-item').count() === strip.n - 1);
   await page.locator('.menu .menu-item', { hasText: 'Notebook' }).click();
   check('choosing one from the list brings it to the front', await page.locator('.dock-right .pane-notebook:visible').count() === 1);
   await page.screenshot({ path: shots + '1440-many-tabs.png' });
@@ -323,6 +336,22 @@ try {
   await sleep(300);
   check('find in the chapter marks the words', await page.locator('.w.found').count() > 0, await page.locator('.find-count').textContent());
   await page.keyboard.press('Escape');
+  // Ctrl+F in a pane finds in that pane (note 5c4a); in the reader it still finds in the chapter
+  await page.evaluate(() => window.__wb.run('keys'));
+  await page.locator('.pane-keys:visible').click({ position: { x: 40, y: 10 } });
+  await page.keyboard.press('Control+f');
+  await page.keyboard.type('chapter');
+  await sleep(200);
+  const pf = await page.evaluate(() => { const b = document.querySelector('.pane-keys .pane-find'); return b && { found: +b.dataset.found, focus: document.activeElement?.closest('.pane-find') === b, reader: !document.getElementById('findbar').hidden }; });
+  check('Ctrl+F in a pane opens its own find bar and finds there (note 5c4a)', !!pf && pf.found > 0 && pf.focus && !pf.reader, JSON.stringify(pf));
+  await page.screenshot({ path: shots + '1440-find-in-a-pane.png' });
+  await page.keyboard.press('Escape');
+  check('Esc closes the pane’s find bar', await page.locator('.pane-find').count() === 0);
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'keys')) d.close(p); });
+  await page.locator('#reader').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Control+f');
+  check('Ctrl+F after a click in the reader finds in the chapter', await page.evaluate(() => !document.getElementById('findbar').hidden && document.activeElement?.closest('#findbar') !== null));
+  await page.keyboard.press('Escape');
   const px = () => page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('reader')).fontSize));
   const f0 = await px();
   await page.keyboard.press('Control+=');
@@ -341,8 +370,11 @@ try {
   await page.keyboard.press('Control+j');
   check('Ctrl+J from the command field does too', await capturing());
   await page.keyboard.press('Escape');
-  await page.locator('.vn[data-v="7"]').click();
+  await page.locator('#reader .vn[data-v="7"]').click();
+  await page.waitForSelector('.colorbar', { timeout: 5000 });
   await page.keyboard.press('Escape');
+  await sleep(300);
+  check('Esc clears the verse picked and its bar', await page.locator('.colorbar').count() === 0 && await page.locator('#reader .w.sel').count() === 0, await page.evaluate(() => document.getElementById('overlay').innerHTML.slice(0, 300)));
   await page.keyboard.press('Control+j');
   await capturing();
   check('quick capture is on the verse last clicked', (await page.locator('.capture .place-pill').textContent()).includes('Numbers 25:7'));
@@ -358,6 +390,7 @@ try {
   await page.keyboard.press('Control+Enter');
   check('Ctrl+Enter opens it in the Notebook to keep writing', await typing() && (await ed.locator('textarea.nb-input').inputValue()) === 'captured, then more');
   await done();
+  check('nothing is left open over the window after quick capture', await page.locator('#overlay .scrim').count() === 0, await page.evaluate(() => [...document.getElementById('overlay').children].map(c => c.className).join(', ')));
   check('with its place taken off, it waits in the Inbox', JSON.parse(execFileSync(wbExe, ['inbox'], { env }).toString()).notes.some(n => n.text === 'captured, then more'));
   await nbBack();
   await page.evaluate(() => window.__wb.run('keys'));
@@ -395,13 +428,23 @@ try {
   check('Move gives a placed note another verse', JSON.parse(execFileSync(wbExe, ['note', 'list', 'Num 25:18'], { env }).toString()).some(n => n.text.includes('two numbers relate')));
   await nbBack();
   await page.evaluate(() => window.__wb.open('NUM', 25, 18));
-  await page.locator('.chapter-end button').click();
+  await page.locator('.chapter-end .btn').click();
   await page.waitForFunction(() => /read /.test(document.querySelector('.chapter-read')?.textContent || ''), null, { timeout: 10000 });
   await page.evaluate(() => window.__wb.open('NUM', 26, 1));
   await sleep(400);
   await page.evaluate(() => window.__wb.open('NUM', 25, 18));
   await page.waitForFunction(() => /read /.test(document.querySelector('.chapter-read')?.textContent || ''), null, { timeout: 10000 });
   check('a chapter marked read says so when it is opened again', true, await page.locator('.chapter-read').textContent());
+  // how many times it was read, and Mark unread (note c419)
+  const times = () => JSON.parse(execFileSync(wbExe, ['read', 'times', 'Num 25'], { env }).toString())['NUM.25']?.times ?? 0;
+  const readSaid = n => (n === 1 ? 'read once' : `read ${n} times`);
+  const t0 = times();
+  await page.locator('.chapter-end .btn').click();
+  await page.waitForFunction(s => document.querySelector('.chapter-read')?.textContent.includes(s), readSaid(t0 + 1), { timeout: 10000 }).catch(() => {});
+  check('the chapter’s end counts the times read (note c419)', times() === t0 + 1 && (await page.locator('.chapter-read').textContent()).includes(readSaid(t0 + 1)), await page.locator('.chapter-read').textContent());
+  await page.locator('.chapter-end .chapter-unread').click();
+  await page.waitForFunction(s => document.querySelector('.chapter-read')?.textContent.includes(s), readSaid(t0), { timeout: 10000 }).catch(() => {});
+  check('Mark unread takes the latest mark off; the line is kept in .trash', times() === t0 && (await page.locator('.chapter-read').textContent()).includes(readSaid(t0)) && existsSync(path.join(study, '.trash', 'reading-unmarked.jsonl')));
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
   check('the light theme keeps light scrollbars under a dark system', await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme) === 'light');
@@ -411,8 +454,9 @@ try {
   // the person's decisions of 2026-11-03: the pen, more places, notes on a thread, the Trash
   await page.evaluate(() => window.__wb.open('NUM', 25, 11));
   await sleep(400);
-  check('the pen is at the reader’s bottom right at desktop sizes', await page.locator('#pen').isVisible());
-  await page.locator('#pen').click();
+  check('no pen over the reader at desktop sizes (note e3fe)', !(await page.locator('#pen').isVisible()));
+  await page.locator('#reader .vn[data-v="11"]').click();
+  await page.locator('.colorbar .act', { hasText: /^Note$/ }).click();
   await page.waitForFunction(() => document.activeElement?.classList.contains('nb-input'), null, { timeout: 10000 });
   await page.keyboard.type('zeal in more than one place');
   await done();
@@ -693,6 +737,27 @@ try {
     check('a tab over a pane’s lower half shows “Split beside …”', said === 'Split beside Interlinear', said);
     check('dropped there, the column splits: two groups, each with its tabs', await page.locator('.dock-left .dock-group').count() === 2 && await page.locator('.dock-left .dock-group').nth(1).locator('.tab-name', { hasText: 'H7065' }).count() === 1);
     await page.screenshot({ path: shots + '1440-dock-split-column.png' });
+    // one part of a split column minimized on its own: the other part, the other column and the bands stay (note 1b2d)
+    await page.locator('.dock-left .dock-group').nth(1).locator('.strip-btn[aria-label="Minimize"]').click();
+    await sleep(300);
+    check('minimizing one part of a split column minimizes only that part (note 1b2d)', await page.locator('.dock-left.open .dock-group').count() === 1 && await page.locator('.dock-left .pane-interlinear:visible').count() === 1 && await page.locator('.dock-left .dock-restore-bar', { hasText: 'H7065' }).count() === 1 && await page.locator('.dock-right.open').count() === 1);
+    await page.screenshot({ path: shots + '1440-dock-a-part-minimized.png' });
+    await page.locator('.dock-left .dock-restore-bar').click();
+    await sleep(300);
+    check('its bar at the column’s foot shows it again', await page.locator('.dock-left .dock-group').count() === 2);
+    // the line between the two parts, dragged: one part taller (note 523e)
+    const parts = () => page.evaluate(() => [...document.querySelectorAll('.dock-left > .dock-group')].map(e => Math.round(e.getBoundingClientRect().height)));
+    const [h0] = await parts();
+    const sg = await box('.dock-left .split-grip');
+    await page.mouse.move(sg.x + sg.width / 2, sg.y + sg.height / 2); await page.mouse.down();
+    for (let k = 1; k <= 8; k++) await page.mouse.move(sg.x + sg.width / 2, sg.y + sg.height / 2 - 15 * k);
+    await page.mouse.up(); await sleep(200);
+    const [h1, h2] = await parts();
+    check('dragging the line between a split column’s parts sets their heights (note 523e)', Math.abs(h1 - (h0 - 120)) <= 6, `${h0} → ${h1} px (the other ${h2})`);
+    await page.locator('.dock-left .split-grip').dblclick();
+    await sleep(200);
+    const [h3, h4] = await parts();
+    check('double-clicking the line gives the parts the same height again', Math.abs(h3 - h4) <= 2, `${h3} / ${h4}`);
     const rs = await box('.dock-right .tab-row');
     said = await dragHold(await tabAt('H7065'), rs.x + 30, rs.y + rs.height / 2);
     check('a tab over another strip shows “Beside …”', said.startsWith('Beside '), said);
@@ -746,12 +811,176 @@ try {
     check('the dock never moved the reader', (await top()) === v0, `verse ${v0} → ${await top()}`);
   }
 
+  // ---- the findings of 2026-11-04 and 11-05 (docs/phase2-results.md section 16) ----
+  {
+    const label = () => page.locator('#place .place-label').textContent();
+    const wordAt = v => page.evaluate(v => { const d = window.__wb.drawn, k = d.v.indexOf(v); d.el[k].scrollIntoView({ block: 'center' }); const r = d.el[k].getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, v);
+    await page.evaluate(() => window.__wb.open('NUM', 25, 10));
+    await sleep(500);
+    // 4b90: a click on a verse number selects the whole verse with the color bar; a color colors the verse; a click away clears
+    await page.locator('#reader .vn[data-v="12"]').click();
+    await page.waitForSelector('.colorbar.verse-bar', { timeout: 5000 });
+    const v12 = await page.evaluate(() => { const d = window.__wb.drawn; return { words: d.v.filter(v => v === 12).length, sel: document.querySelectorAll('#reader .w.sel').length, vsel: !!document.querySelector('#reader .vn.vsel[data-v="12"]') }; });
+    check('a click on a verse number selects the whole verse, with the color bar (note 4b90)', v12.sel === v12.words && v12.vsel, `${v12.sel} of ${v12.words} words`);
+    check('the verse’s bar has the verse’s actions', (await page.locator('.colorbar .act').allTextContents()).join(',') === 'Note,Question,Thread,Copy,Notes & lookup,Open as a tab');
+    await page.screenshot({ path: shots + '1440-a-verse-picked.png' });
+    await page.keyboard.press('3');
+    await sleep(800);
+    check('a color on the verse’s bar colors the whole verse', JSON.parse(execFileSync(wbExe, ['anchor', 'Num 25:12'], { env }).toString()).highlight === 'blue');
+    await page.locator('#reader .vn[data-v="13"]').click();
+    await page.waitForSelector('.colorbar.verse-bar', { timeout: 5000 });
+    await page.locator('.dock-right .pane:visible').first().click({ position: { x: 60, y: 8 } });
+    await sleep(200);
+    check('a click away clears the verse picked and its bar', await page.locator('.colorbar').count() === 0 && await page.locator('#reader .w.sel, #reader .vn.vsel').count() === 0);
+
+    // 0cf1: right-click a verse: Open in a new tab (a second reader at it)
+    let [x, y] = await wordAt(14);
+    const at0 = await top();
+    await page.mouse.click(x, y, { button: 'right' });
+    check('right-click on a verse offers to open it in a new tab (note 0cf1)', await page.locator('.verse-menu .menu-item', { hasText: 'Open in a new tab' }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+    await page.locator('.verse-menu .menu-item', { hasText: 'Open in a new tab' }).click();
+    const r2 = page.locator('.pane-reader2:visible').first();
+    check('it opens a second reader at that verse; the reader stays', await r2.locator('.vn-asked[data-v="14"]').waitFor({ timeout: 10000 }).then(() => true, () => false) && (await top()) === at0, `verse ${at0} → ${await top()}`);
+    // 9587: the second reader draws what the reader draws, and nothing in it moves the reader
+    check('the second reader draws the highlights (note 9587)', await page.evaluate(() => [...document.querySelectorAll('.pane-reader2 .vn[data-v="12"]')].some(v => v.nextElementSibling?.classList.contains('hl'))));
+    await r2.locator('.vn[data-v="15"]').click();
+    await page.waitForSelector('.colorbar.verse-bar', { timeout: 5000 });
+    check('a verse picked in the second reader has its own bar; the reader’s selection and place stay', await r2.locator('.w.sel').count() > 0 && await page.evaluate(() => !window.__wb.selector.sel) && (await top()) === at0);
+    await page.screenshot({ path: shots + '1440-a-second-reader.png' });
+    await page.keyboard.press('1');
+    await sleep(900);
+    const both = await page.evaluate(() => { const d = window.__wb.drawn; return [d.el[d.v.indexOf(15)].classList.contains('hl'), !!document.querySelector('.pane-reader2 .vn[data-v="15"]')?.nextElementSibling?.classList.contains('hl')]; });
+    check('its bar colors the verse in the study folder, and both readers draw it', JSON.parse(execFileSync(wbExe, ['anchor', 'Num 25:15'], { env }).toString()).highlight === 'yellow' && both.every(Boolean), both.join());
+    const wk = await r2.locator('.vn[data-v="16"] + .w').boundingBox();
+    await page.mouse.click(wk.x + wk.width / 2, wk.y + wk.height / 2);
+    check('a word clicked in the second reader opens its card; the reader stays', await page.locator('.popover .lex, .popover .lemma-row').first().waitFor({ timeout: 5000 }).then(() => true, () => false) && (await top()) === at0);
+    await page.keyboard.press('Escape');
+    await r2.locator('.reader2-next').click();
+    await page.waitForFunction(() => [...document.querySelectorAll('.pane-reader2 .reader2-title')].some(e => e.offsetWidth && e.textContent === 'Numbers 26'), null, { timeout: 10000 }).catch(() => {});
+    check('› turns the second reader’s own chapter; the reader stays', (await r2.locator('.reader2-title').textContent()) === 'Numbers 26' && (await label()) === 'Numbers 25' && (await top()) === at0);
+    const v3 = await r2.locator('.vn[data-v="3"]').boundingBox();
+    await page.mouse.click(v3.x + v3.width / 2, v3.y + v3.height / 2, { button: 'right' });
+    await page.locator('.verse-menu .menu-item', { hasText: 'Go to in the reader' }).click();
+    await page.waitForFunction(() => document.querySelector('#place .place-label')?.textContent === 'Numbers 26', null, { timeout: 10000 }).catch(() => {});
+    await sleep(300);
+    check('“Go to in the reader” on a verse in it moves the reader there', (await label()) === 'Numbers 26' && (await top()) === 3, `${await label()} verse ${await top()}`);
+    await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'reader2')) d.close(p); });
+
+    // 21bd: a verse clicked outside the reader asks: the reader, or a tab; Ctrl+click goes straight there
+    await page.evaluate(() => window.__wb.open('NUM', 25, 1));
+    await sleep(400);
+    await page.evaluate(() => window.__wb.run('search zealous'));
+    const link = page.locator('.pane-search:visible .ref-link').first();
+    await link.waitFor({ timeout: 10000 });
+    const refShown = await link.textContent();
+    await link.click();
+    check('a verse clicked outside the reader asks: the reader, or a tab (note 21bd)', await page.locator('.ref-choice .menu-item').count() === 2 && (await label()) === 'Numbers 25');
+    await page.locator('.ref-choice .menu-item', { hasText: 'Open in a tab' }).click();
+    check('Open in a tab opens it in a second reader; the reader stays', await page.locator('.pane-reader2 .vn-asked').first().waitFor({ timeout: 10000 }).then(() => true, () => false) && (await label()) === 'Numbers 25', refShown);
+    await page.evaluate(() => window.__wb.run('search zealous'));   // the search pane in front again
+    await link.click({ modifiers: ['Control'] });
+    await page.waitForFunction(() => document.querySelector('#place .place-label')?.textContent !== 'Numbers 25', null, { timeout: 10000 }).catch(() => {});
+    check('Ctrl+click goes straight to the reader', refShown.startsWith(await label()), `${refShown} → ${await label()}`);
+    await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => ['reader2', 'search'].includes(p.kind))) d.close(p); });
+    await page.evaluate(() => window.__wb.open('NUM', 25, 1));
+    await sleep(400);
+
+    // c39a: a question on part of a verse shows in Notes & lookup for the verse
+    // words 3–6 of verse 13 picked in the reader, then ? asks a question there (the window's own store writes it)
+    const q1 = await boxOf(13, 3), q2 = await boxOf(13, 6);
+    await page.mouse.move(q1.x, q1.y); await page.mouse.down();
+    for (let k = 1; k <= 6; k++) await page.mouse.move(q1.x + (q2.x - q1.x) * k / 6, q1.y + (q2.y - q1.y) * k / 6);
+    await page.mouse.up();
+    await page.waitForSelector('.colorbar', { timeout: 5000 });
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => window.__wb.run('?Why these words here?'));
+    const asked = JSON.parse(execFileSync(wbExe, ['trail', 'list', '--status', 'all', '--at', 'Num 25:13'], { env }).toString()).trails.find(t => t.text === 'Why these words here?');
+    check('a question on words of a verse is at those words; wb trail list --at lists it at the verse', !!asked && asked.anchor.startsWith('NUM.25:13.') && asked.here === false, asked?.anchor);
+    await page.evaluate(() => window.__wb.run('notes @Num 25:13'));
+    check('Notes & lookup shows a question on part of the verse (note c39a)', await page.locator('.pane-place:visible .question-card', { hasText: 'Why these words here?' }).waitFor({ timeout: 10000 }).then(() => true, () => false));
+    await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'place')) d.close(p); });
+
+    // 797d: the command field keeps the lines run, failed ones too; ↑ ↓ go through them, newest first
+    await page.locator('#reader').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Backquote');
+    await page.keyboard.type('go Num 25:20');
+    await page.keyboard.press('Enter');
+    await sleep(500);
+    await page.keyboard.press('Backquote');
+    await page.keyboard.type('go Nowhere 99');
+    await page.keyboard.press('Enter');
+    await sleep(500);
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Backquote');
+    await sleep(200);
+    const recent = (await page.locator('.suggest-group').allTextContents()).some(t => t.startsWith('Recent'));
+    const steps = [];
+    for (const k of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown']) { await page.keyboard.press(k); steps.push(await page.locator('#cmd').inputValue()); }
+    check('the empty command field lists recent lines; ↑ ↓ go through them, the failed one too (note 797d)', recent && steps.join(' | ') === 'go Nowhere 99 | go Num 25:20 | go Nowhere 99 | ', steps.join(' | '));
+    await page.keyboard.press('Escape');
+
+    // 50c1: Ctrl+Shift+J writes a finding about the app, apart from the study, with what was on screen
+    await page.locator('#reader').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Control+Shift+KeyJ');
+    check('Ctrl+Shift+J opens a box for a finding (note 50c1)', await page.waitForFunction(() => document.activeElement?.classList.contains('finding-field'), null, { timeout: 5000 }).then(() => true, () => false));
+    await page.keyboard.type('The verse bar could say which verse it is on');
+    await page.keyboard.press('Enter');
+    const fdir = path.join(study, 'findings');
+    for (let i = 0; i < 30 && !(existsSync(fdir) && readdirSync(fdir).length); i++) await sleep(100);
+    const ftext = existsSync(fdir) && readdirSync(fdir).length ? readFileSync(path.join(fdir, readdirSync(fdir)[0]), 'utf8') : '';
+    const inNotebook = JSON.stringify(JSON.parse(execFileSync(wbExe, ['notebook', '--group', 'none'], { env }).toString())).includes('The verse bar could say');
+    check('the finding is a file in findings/, with the size, panes and place, and not in the Notebook', /kind: "finding"/.test(ftext) && /"size": "large"/.test(ftext) && /"panes": \[/.test(ftext) && /"place": "Numbers 25/.test(ftext) && !inNotebook, ftext.split('\n').find(l => l.startsWith('context')) || 'no file');
+    await page.evaluate(() => window.__wb.run('findings'));
+    const fcard = page.locator('.pane-findings .note-card.finding', { hasText: 'The verse bar could say' });
+    check('Findings lists it', await fcard.waitFor({ timeout: 10000 }).then(() => true, () => false));
+    await page.screenshot({ path: shots + '1440-findings.png' });
+    await fcard.getByRole('button', { name: '✓ Handled' }).click();
+    await page.waitForFunction(() => !document.querySelector('.pane-findings .note-card.finding'), null, { timeout: 10000 }).catch(() => {});
+    check('✓ Handled marks it handled (wb findings --all)', JSON.parse(execFileSync(wbExe, ['findings', '--all'], { env }).toString()).counts.handled === 1);
+    await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'findings')) d.close(p); });
+
+    // 28d3: on touch (a laptop flipped to a tablet), writing a note keeps the cursor, so the on-screen keyboard stays
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+    const tap = async (x, y) => { await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] }); await sleep(60); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); };
+    const watchBlur = () => page.evaluate(() => { window.__blurs = []; if (!window.__blurWatch) { window.__blurWatch = true; document.addEventListener('focusout', e => { if (e.target.matches?.('.nb-input, .capture-field')) window.__blurs.push(e.relatedTarget?.className || 'nothing'); }, true); } });
+    const keptWriting = async () => {
+      const got = await page.waitForFunction(() => document.activeElement?.classList.contains('nb-input'), null, { timeout: 8000 }).then(() => true, () => false);
+      await cdp.send('Input.insertText', { text: 'typed on a touch screen' });
+      await sleep(2500);   // past the save after typing, and the Notebook drawn again
+      return { got, ...(await page.evaluate(() => ({ focus: !!document.activeElement?.classList.contains('nb-input'), blurs: window.__blurs }))) };
+    };
+    await page.evaluate(() => window.__wb.run('notebook'));
+    await nbBack();
+    await watchBlur();
+    const pen = await page.locator('.pane-notebook .nb-new').boundingBox();
+    await tap(pen.x + pen.width / 2, pen.y + pen.height / 2);
+    const s1 = await keptWriting();
+    check('on touch, the Notebook’s pen keeps the cursor in the new note through typing and saving (note 28d3)', s1.got && s1.focus && !s1.blurs.length, JSON.stringify(s1));
+    await page.keyboard.press('Escape');
+    await sleep(900);
+    await nbBack();
+    await page.locator('#reader .vn[data-v="16"]').scrollIntoViewIfNeeded();
+    const vt = await page.locator('#reader .vn[data-v="16"]').boundingBox();
+    await tap(vt.x + vt.width / 2, vt.y + vt.height / 2);
+    await page.waitForSelector('.colorbar', { timeout: 5000 }).catch(() => {});
+    const nb = await page.locator('.colorbar .act', { hasText: /^Note$/ }).boundingBox();
+    await watchBlur();
+    if (nb) await tap(nb.x + nb.width / 2, nb.y + nb.height / 2);
+    const s2 = await keptWriting();
+    check('on touch, Note on a verse keeps the cursor in the new note through typing and saving', !!nb && s2.got && s2.focus && !s2.blurs.length, JSON.stringify(s2));
+    await page.keyboard.press('Escape');
+    await sleep(900);
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+    await nbBack();
+  }
+
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();
-  await page.waitForSelector('.pane-passage .passage-verse', { timeout: 10000 });
+  await page.waitForSelector('.pane-reader2 .vn-asked', { timeout: 10000 });
   const john = JSON.parse(execFileSync(wbExe, ['text', 'John 3:16-18', '--json'], { env }).toString());
-  const shown = await page.locator('.pane-passage .passage-verse').allTextContents();
-  check('wb do opens the passage in the window, verbatim', shown.length === 3 && shown[0].includes(john.verses[0].text), said);
+  const shown = await page.evaluate(() => { const r = [...document.querySelectorAll('.pane-reader2 .reader2')].find(x => x.offsetWidth); return { asked: [...r.querySelectorAll('.vn-asked')].map(v => +v.dataset.v), text: r.textContent.replace(/\s+/g, ' ') }; });
+  check('wb do opens the passage in a second reader, verbatim, its verses marked', shown.asked.join() === '16,17,18' && john.verses.every(v => shown.text.includes(v.text.replace(/\s+/g, ' '))), said);
 
   // size classes; the verse at the top stays at the top through each
   await page.evaluate(() => window.__wb.open('PSA', 119, 50));
@@ -766,6 +995,7 @@ try {
     const got = await page.evaluate(() => document.documentElement.dataset.size);
     const left = await page.locator('.dock-left.open').count();
     check(`window ${preset}: ${cls}${cls === 'compact' ? ', no columns' : ', one column'}`, got === cls && left === 0, got);
+    check(`window ${preset}: the pen ${cls === 'compact' ? 'is there on the phone' : 'is not over the reader'} (note e3fe)`, (await page.locator('#pen').isVisible()) === (cls === 'compact'));
     await page.screenshot({ path: shots + `${preset}-${cls}.png` });
   }
   await page.evaluate(() => window.__wb.run('window laptop-large'));

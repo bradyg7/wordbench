@@ -840,3 +840,72 @@ fn the_capture_box_language_and_its_manual() {
     assert!(wb.ok(&["manual", "uses"]).starts_with("uses <word> [scope]"));
     assert_eq!(wb.js(&["refs", "see 1 Cor 10:8 and Num 25:9"]).as_array().unwrap().len(), 2);
 }
+
+#[test]
+fn a_question_on_words_of_a_verse_is_listed_at_the_verse_and_around_it() {
+    // note c39a: Notes & lookup asks `trail list --at`; a question on part of a verse shows at the verse
+    let Some(wb) = Wb::new() else { return };
+    let part = wb.js(&["trail", "add", "NUM.25:13.3-25:13.6", "Why these words here?"])["id"].as_str().unwrap().to_string();
+    let whole = wb.js(&["trail", "add", "Num 25:13", "And the whole verse?"])["id"].as_str().unwrap().to_string();
+    let at = |place: &str| -> Vec<(String, bool)> {
+        wb.js(&["trail", "list", "--status", "all", "--at", place])["trails"].as_array().unwrap().iter()
+            .filter(|t| t["id"] == part.as_str() || t["id"] == whole.as_str())
+            .map(|t| (t["id"].as_str().unwrap().to_string(), t["here"].as_bool().unwrap())).collect()
+    };
+    let mut verse = at("Num 25:13");
+    verse.sort();
+    let mut want = vec![(part.clone(), false), (whole.clone(), true)];
+    want.sort();
+    assert_eq!(verse, want);
+    assert_eq!(at("NUM.25:13.4").len(), 2);
+    assert_eq!(at("Num 25:12-14").len(), 2);
+    assert!(at("Num 25:14").is_empty());
+    wb.js(&["trail", "done", &part]);
+    assert_eq!(at("Num 25:13").len(), 2, "--status all keeps answered ones");
+    let open = wb.js(&["trail", "list", "--at", "Num 25:13"])["trails"].as_array().unwrap().iter().filter(|t| t["id"] == part.as_str()).count();
+    assert_eq!(open, 0, "the open ones only by default");
+}
+
+#[test]
+fn a_chapter_counts_its_readings_and_mark_unread_takes_the_latest_off() {
+    // note c419: how many times read, and Mark unread (the line kept in .trash, nothing erased)
+    let Some(wb) = Wb::new() else { return };
+    assert_eq!(wb.js(&["read", "times", "Num 25"]), json!({}));
+    wb.js(&["read", "mark", "Num 25"]);
+    wb.js(&["read", "mark", "Num 24-25"]);
+    let t = wb.js(&["read", "times", "Num 24-25"]);
+    assert_eq!((t["NUM.25"]["times"].clone(), t["NUM.24"]["times"].clone()), (json!(2), json!(1)));
+    let off = wb.js(&["read", "unmark", "Num 25"]);
+    assert_eq!(off["unmarked"].as_array().unwrap().len(), 1);
+    assert_eq!(off["now"]["NUM.25"]["times"], json!(1));
+    let kept = std::fs::read_to_string(wb.dir.join(".trash").join("reading-unmarked.jsonl")).unwrap();
+    assert!(kept.contains("\"ch\": \"NUM.25\""));
+    assert_eq!(wb.js(&["read", "times", "Num 24"])["NUM.24"]["times"], json!(1), "another chapter is untouched");
+    wb.js(&["read", "unmark", "Num 25"]);
+    assert_eq!(wb.js(&["read", "times", "Num 25"]), json!({}));
+    assert_eq!(wb.js(&["read", "unmark", "Num 25"])["unmarked"], json!([]), "a chapter not in the log is passed over");
+    assert_eq!(std::fs::read_to_string(wb.dir.join(".trash").join("reading-unmarked.jsonl")).unwrap().lines().count(), 2);
+}
+
+#[test]
+fn findings_are_kept_apart_from_the_study() {
+    // note 50c1: findings/<id>.md, not in the Notebook; handled, edited, deleted to .trash
+    let Some(wb) = Wb::new() else { return };
+    let f = wb.js(&["finding", "add", "Ctrl+F finds only in the reader", "--context", "{\"size\": \"large\", \"panes\": [\"Notebook (right)\"]}"]);
+    let id = f["id"].as_str().unwrap().to_string();
+    assert!(id.starts_with("f_"));
+    let text = std::fs::read_to_string(wb.dir.join("findings").join(format!("{id}.md"))).unwrap();
+    assert!(text.contains("kind: \"finding\"") && text.contains("status: \"open\"") && text.contains("\"size\": \"large\""));
+    assert!(!wb.js(&["notebook", "--group", "none"]).to_string().contains("Ctrl+F finds only"), "not in the Notebook");
+    assert!(wb.fails(&["finding", "add", "x", "--context", "[1]"]).contains("JSON object"));
+    let short = &id[id.len() - 4..];
+    assert_eq!(wb.js(&["finding", "handled", short])["status"], json!("handled"));
+    assert_eq!(wb.js(&["findings"])["findings"], json!([]));
+    assert_eq!(wb.js(&["findings", "--all"])["counts"], json!({"open": 0, "handled": 1}));
+    assert_eq!(wb.js(&["finding", "handled", &id, "--open"])["status"], json!("open"));
+    assert_eq!(wb.js(&["finding", "edit", &id, "Ctrl+F should find in the pane"])["title"], json!("Ctrl+F should find in the pane"));
+    wb.js(&["finding", "rm", &id]);
+    assert!(!wb.dir.join("findings").join(format!("{id}.md")).exists());
+    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().any(|e| e.unwrap().file_name().to_string_lossy().ends_with(&format!("finding-{id}.md"))));
+    assert!(wb.fails(&["finding", "handled", &id]).contains("No such finding"));
+}

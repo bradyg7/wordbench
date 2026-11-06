@@ -6,6 +6,7 @@
 pub mod anchors;
 pub mod bible;
 pub mod cache;
+pub mod findings;
 pub mod commands;
 pub mod lookup;
 pub mod marks;

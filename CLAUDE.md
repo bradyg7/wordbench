@@ -20,8 +20,10 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
   front matter for notes and threads, JSON for highlights), so both apps can open it. Deletes go to `.trash/`. A deleted
   note or question is erased after 7 days there, unless put back (the person's decision, 2026-11-03; the window does it
   when it opens, `wb trash empty` from a terminal), or at once with Erase now in the Trash, asked to confirm (the
-  person's decision, 2026-11-04; `wb trash erase <name>`). Nothing else is erased. New fields (`also`, `threads`) and the
-  `notes/_threads/` folder are ones the Python app keeps or passes over.
+  person's decision, 2026-11-04; `wb trash erase <name>`). Nothing else is erased. New fields (`also`, `threads`), the
+  `notes/_threads/` and `notes/_days/` folders (today's page: no anchor), `settings/notebook.json`, `findings/` (the
+  person's findings about the app, beside `notes/` so the Notebook never lists them) and `.trash/reading-unmarked.jsonl`
+  (a mark taken off the reading log) are ones the Python app keeps or passes over.
 - **The Bible database is read-only.** `WB_BIBLE_DB` (default: the Python repo's `datasets/workbench.db`) is opened with
   SQLite's read-only flag. Never modify it.
 - **Never lose the reader's place.** Anything opened from the text returns to the verse it came from.

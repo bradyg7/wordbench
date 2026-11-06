@@ -481,6 +481,51 @@ pub fn last_read(root: &Path, chapters: &[String]) -> Value {
     Value::Object(out)
 }
 
+/// How many times each chapter was read, and when last: `{"NUM.25": {"times": 3, "last": "2026-11-03T21:53:49Z"}}`; a
+/// chapter never read is left out.
+pub fn read_times(root: &Path, chapters: &[String]) -> Value {
+    let mut out = serde_json::Map::new();
+    for l in log(root) {
+        if let (Some(ch), Some(t)) = (l["ch"].as_str(), l["t"].as_str()) {
+            if chapters.iter().any(|c| c == ch) {
+                let n = out.get(ch).and_then(|v| v["times"].as_i64()).unwrap_or(0);
+                out.insert(ch.to_string(), json!({"times": n + 1, "last": t}));
+            }
+        }
+    }
+    Value::Object(out)
+}
+
+/// Mark unread: the latest mark of each chapter comes off the log (the person's choice on the chapter's end, note c419).
+/// Nothing is erased: each line taken off is kept in `.trash/reading-unmarked.jsonl`, as it was. A chapter not in the log
+/// is passed over. Returns the lines taken off and what the log says now.
+pub fn unmark(root: &Path, chapters: &[String]) -> Result<Value> {
+    crate::store::guard(root)?;
+    let path = folder(root).join("log.jsonl");
+    let text = fs::read_to_string(&path).unwrap_or_default();
+    let mut lines: Vec<&str> = text.lines().collect();
+    let mut off: Vec<String> = vec![];
+    for ch in chapters {
+        let at = lines.iter().rposition(|l| serde_json::from_str::<Value>(l).ok().is_some_and(|v| v["ch"].as_str() == Some(ch.as_str())));
+        if let Some(i) = at {
+            off.push(lines.remove(i).to_string());
+        }
+    }
+    if !off.is_empty() {
+        let trash = root.join(".trash").join("reading-unmarked.jsonl");
+        fs::create_dir_all(trash.parent().unwrap())?;
+        use std::io::Write;
+        let mut f = fs::OpenOptions::new().create(true).append(true).open(&trash)?;
+        for l in &off {
+            f.write_all((l.to_string() + "\n").as_bytes())?;
+        }
+        let body: String = lines.iter().map(|l| format!("{l}\n")).collect();
+        write_atomic(&path, &body)?;
+    }
+    let taken: Vec<Value> = off.iter().filter_map(|l| serde_json::from_str(l).ok()).collect();
+    Ok(json!({"unmarked": taken, "now": read_times(root, chapters)}))
+}
+
 /// A place as typed → the chapters it covers (whole chapters; a verse range counts its chapters).
 pub fn chapters_of(bible: &Bible, place: &str) -> Result<Vec<String>> {
     let mut out = vec![];

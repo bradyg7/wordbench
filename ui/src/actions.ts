@@ -11,6 +11,7 @@ import {
   openMarked, openNear, openPlace, openPassage, openPlans, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
 } from './panes';
 import { setHover } from './ui';
+import { addFinding, openFindings } from './findings';
 
 // The last write, so `undo` can take it back.
 type Undo = { kind: 'note'; id: string } | { kind: 'hl'; record: unknown } | { kind: 'trail'; id: string } | { kind: 'thread'; name: string; anchor: string } | { kind: 'jot'; id: string };
@@ -202,6 +203,8 @@ export async function perform(a: any, line: string): Promise<string> {
       return `${a.size}: ${r.got[0]}×${r.got[1]}`;
     }
     case 'plans': openPlans(); return 'Reading plans';
+    case 'findings': openFindings(); return 'Your findings about the app';
+    case 'finding': return addFinding(a.text);
     case 'version': return a.version ? app.setVersion(a.version) : `The reader is in the ${app.version()}`;
     case 'listen': return later('Read aloud', 6);
     case 'pdf': case 'pdfs': case 'packet': case 'docs': case 'theme': case 'make': return later('Documents and PDFs', 5);
@@ -361,7 +364,7 @@ async function reopen(key: string) {
     thread: () => openThread(x[0]), threads: () => openThreads(), notebook: () => openNotebook(), help: () => openHelp(), keys: () => openKeys(),
     shelf: () => openShelf(), find: () => openFind(x[0]), interlinear: () => openInterlinear(x[0], x[0]),
     place: () => openPlace(x[0], x[0]),
-    passage: () => openPassage(x[0].split(';'), x[1], x[0]), today: () => openToday(x[0]), lesson: () => openLesson(x[0]),
+    passage: () => openPassage(x[0].split(';'), x[1], x[0]), reader2: () => app.secondReader(x[0], x[1]), today: () => openToday(x[0]), lesson: () => openLesson(x[0]), findings: () => openFindings(),
   };
   f[kind]?.();
 }

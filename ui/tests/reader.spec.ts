@@ -226,3 +226,50 @@ test('phone: the tabs and the pen, no desktop toolbar', async ({ page }, info) =
   await expect(page.locator('#pen')).toBeVisible();
   for (const id of ['#cmd', '#tb-notebook']) await expect(page.locator(id)).toBeHidden();
 });
+
+// The findings of 2026-11-04 and 11-05 (docs/phase2-results.md section 16), the parts that need no Rust.
+test('desktop: a click on a verse number selects the verse with the color bar; a click away clears it', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'desktop');
+  await ready(page);
+  const vn = page.locator('#reader .vn[data-v="7"]');
+  await vn.scrollIntoViewIfNeeded();
+  await vn.click();
+  await expect(page.locator('.colorbar.verse-bar')).toBeVisible();
+  const words = await page.evaluate(() => (window as any).__wb.drawn.v.filter((v: number) => v === 7).length);
+  await expect(page.locator('#reader .w.sel')).toHaveCount(words);
+  await expect(page.locator('#reader .vn.vsel')).toHaveCount(1);
+  await page.locator('.ch-title').click();
+  await expect(page.locator('.colorbar')).toHaveCount(0);
+  await expect(page.locator('#reader .w.sel, #reader .vn.vsel')).toHaveCount(0);
+});
+
+test('the pen: on the phone only', async ({ page }, info) => {
+  await ready(page);
+  if (info.project.name === 'webkit-phone') await expect(page.locator('#pen')).toBeVisible();
+  else await expect(page.locator('#pen')).toBeHidden();
+});
+
+test('desktop: one part of a split column minimizes alone; the tab list closes a tab', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'desktop');
+  await ready(page);
+  await openPane(page, 'One', 'left');
+  await openPane(page, 'Two', 'left');
+  await openPane(page, 'Three', 'right');
+  await page.evaluate(() => { const d = (window as any).__wb.dock(); d.move(d.find('Three'), 'right'); });   // a pane of the same kind opens beside the others
+  // Two split below One, as a drop on One's lower half does
+  await page.evaluate(() => { const d = (window as any).__wb.dock(); d.drop(d.find('Two'), { to: 'split', group: d.groupOf(d.find('One')), after: true }); });
+  await expect(page.locator('.dock-left .dock-group')).toHaveCount(2);
+  await page.locator('.dock-left .dock-group').nth(1).locator('.strip-btn[aria-label="Minimize"]').click();
+  await expect(page.locator('.dock-left.open .dock-group')).toHaveCount(1);
+  await expect(page.locator('.dock-left .dock-restore-bar')).toContainText('Two');
+  await expect(page.locator('.dock-right.open')).toHaveCount(1);
+  await page.locator('.dock-left .dock-restore-bar').click();
+  await expect(page.locator('.dock-left .dock-group')).toHaveCount(2);
+  await openPane(page, 'Four', 'right');
+  await page.evaluate(() => { const d = (window as any).__wb.dock(); d.move(d.find('Four'), 'right'); });
+  await page.locator('.dock-right .tab-list').click();
+  await expect(page.locator('.menu .tab-list-close')).toHaveCount(2);
+  await page.locator('.menu .tab-list-row', { hasText: 'Three' }).locator('.tab-list-close').click();
+  await expect(page.locator('.menu .tab-list-row')).toHaveCount(0);   // one tab left: the list closes
+  expect(await page.evaluate(() => (window as any).__wb.dock().panes.map((p: any) => p.title).sort().join())).toBe('Four,One,Two');
+});
