@@ -433,17 +433,66 @@ button.question-pill:hover { text-decoration: line-through; }
 .thread-notes { margin: 0 0 8px; display: flex; flex-direction: column; gap: 10px; }
 .thread-notes > .label { margin-bottom: -2px; }
 
-/* reading plans */
-.plan-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; }
-.plan-title { font: var(--type-heading); margin: 0 0 2px; }
+/* reading plans (plans.ts): the plan in its pane, the form, past plans */
+.plan-bar-row { margin: 0 0 12px; }
+.plan-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; background: var(--surface); }
+.plan-title { font: var(--type-heading); margin: 0 0 6px; }
+.plan-bar { height: 5px; border-radius: 3px; background: var(--sunken); overflow: hidden; margin: 0 0 6px; }
+.plan-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
 .plan-where { margin: 0 0 8px; }
-.plan-day { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
-.plan-day .ref-link { flex: 1; text-align: left; }
-.plan-days { margin-top: 8px; max-height: 320px; overflow: auto; }
-.plan-row { display: grid; grid-template-columns: 72px 1fr 18px; gap: 8px; align-items: baseline; padding: 2px 0; }
-.plan-row.done .ref-link { color: var(--muted); }
-.plan-tick { color: var(--accent); }
-.plan-form { display: grid; gap: 6px; margin: 16px 0; }
+.plan-today { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin: 8px 0 10px; }
+.plan-today-label { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--accent); }
+.plan-today-title { font: var(--type-heading); margin: 4px 0 8px; }
+.plan-missed { margin: 6px 0 8px; }
+.plan-missed-line { display: flex; align-items: center; gap: 10px; justify-content: space-between; font: var(--type-small); }
+.plan-choices { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-top: 8px; display: grid; gap: 8px; }
+.plan-choices-title { font: var(--type-small-strong); }
+.plan-choice { display: grid; grid-template-columns: 18px 1fr; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.plan-choice.on { background: var(--accent-soft); border-color: var(--accent); }
+.plan-choice.off { opacity: .5; cursor: default; }
+.plan-choice-name { font: var(--type-small-strong); }
+.plan-choices-acts { justify-content: flex-end; align-items: center; }
+.plan-days { margin-top: 8px; max-height: 340px; overflow: auto; display: grid; gap: 4px; }
+.plan-row { display: grid; grid-template-columns: 18px 26px 1fr auto; gap: 6px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; cursor: grab; }
+.plan-row .ref-link { text-align: left; }
+.plan-row.done .ref-link, .plan-row.skipped .ref-link { color: var(--muted); }
+.plan-row.dragging { opacity: .4; }
+.plan-row.drop { border-color: var(--accent); box-shadow: 0 -3px 0 var(--accent); }
+.plan-tag { font: var(--type-small); color: var(--muted); }
+.plan-tag.late { color: var(--accent); }
+.plan-tag.tick { color: var(--accent); }
+.plan-acts { margin-top: 8px; }
+.plan-past { margin: 14px 0; }
+.plan-past-list { display: grid; gap: 8px; margin-top: 8px; }
+.plan-past-row { display: flex; gap: 10px; justify-content: space-between; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.plan-past-name { font: var(--type-small-strong); }
+/* the form: a sheet over the window (R1, A2) */
+.plan-modal-wrap { position: fixed; inset: 0; z-index: 60; display: grid; place-items: start center; padding: 56px 16px 16px; background: rgba(0, 0, 0, .28); overflow: auto; }
+.plan-modal { width: min(720px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 50px rgba(0, 0, 0, .28); padding: 18px 22px 20px; }
+.plan-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.plan-modal-title { font: var(--type-heading); margin: 0 0 2px; }
+.plan-modal-body { display: grid; gap: 8px; margin-top: 12px; }
+.plan-presets { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.plan-field-label { font: var(--type-small-strong); margin-top: 6px; }
+.plan-field-label .req, .plan-off .req { color: var(--accent); font-weight: 400; }
+.plan-field-label .opt, .plan-off .opt { color: var(--muted); font-weight: 400; font-size: 12px; }
+.plan-what { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--sunken); border-radius: 10px; padding: 10px; min-height: 48px; }
+.plan-chip { background: var(--surface); border: 1px solid var(--line); color: var(--fg); padding-right: 6px; }
+.chip-x { width: 18px; height: 18px; display: inline-grid; place-items: center; border-radius: 9px; color: var(--muted); }
+.chip-x:hover { background: var(--accent-soft); color: var(--accent); }
+.plan-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.plan-three > div { display: grid; gap: 6px; align-content: start; }
+.plan-off { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.plan-off-days { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.chip.link.on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.plan-summary { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; margin-top: 6px; }
+.plan-summary-line { font: var(--type-small-strong); }
+.plan-summary .bad { color: var(--jesus); }
+.plan-modal-foot { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 6px; }
+.plan-modal-foot > span:empty { flex: 1; }
+.plan-groups { display: flex; gap: 8px; flex-wrap: wrap; }
+.plan-books { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 640px) { .plan-three { grid-template-columns: 1fr; } .plan-modal-wrap { padding-top: 16px; } }
 .ask { display: grid; gap: 6px; padding: 10px; }
 .ask-input, .ask-area { font: var(--type-body); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
 .ask-area { min-height: 160px; resize: vertical; font-family: var(--font-ui, inherit); }

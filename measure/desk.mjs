@@ -605,59 +605,113 @@ try {
   await sleep(300);
   await nbBack();
 
-  // reading plans: start one in the pane, mark a day read, spread the rest, rename, edit as text, stop
+  // reading plans (tier 3): the form with presets and the books grid, the plan in its pane (today's card, days, a day moved),
+  // days that were missed and what each choice does, stopped plans in Past plans, used again, deleted
   await page.evaluate(() => window.__wb.run('plans'));
-  await page.waitForSelector('.pane-plans .plan-form', { timeout: 10000 });
+  await page.waitForSelector('.pane-plans .plan-bar-row', { timeout: 10000 });
   check('plans opens the Reading plans pane', true);
-  const form = page.locator('.pane-plans .plan-form').first();
-  const words = await page.locator('.pane-plans').innerText() + (await form.locator('input, textarea').evaluateAll(fs => fs.map(f => f.placeholder).join(' ')));
-  check('no terminal words in the plans pane', !/--\w/.test(words));
-  await form.locator('input').first().fill('Gospels in a month');
-  await form.locator('select').selectOption('books');
-  check('the form says “The books you choose”', (await form.locator('select option[value="books"]').textContent()).startsWith('The books you choose') && await form.locator('input[aria-label="The books you choose"]').isVisible());
-  await form.locator('input[aria-label="The books you choose"]').fill('gospels, rom');
-  await form.locator('input[type=number]').fill('30');
-  await form.locator('input[type=number]').dispatchEvent('change');
-  await page.waitForFunction(() => /^30 days: Matthew/.test(document.querySelector('.pane-plans .plan-form .muted.small')?.textContent || ''), null, { timeout: 10000 });
-  check('the form previews the days before starting', true);
-  await form.getByRole('button', { name: 'Start' }).click();
-  const card = page.locator('.pane-plans .plan-card[data-plan="gospels-in-a-month"]');
+  check('no terminal words in the plans pane', !/--\w/.test(await page.locator('.pane-plans').innerText()));
+  await page.locator('.pane-plans').getByRole('button', { name: 'New plan' }).click();
+  const dlg = page.locator('.plan-modal');
+  await dlg.waitFor({ timeout: 5000 });
+  check('the form says only a name and what to read are needed', (await dlg.innerText()).includes('Only a name and what to read are needed.') && !/--\w/.test(await dlg.innerText()));
+  check('Start the plan waits for a name and what to read', await dlg.getByRole('button', { name: 'Start the plan' }).isDisabled());
+  await page.screenshot({ path: shots + '1440-plan-form-blank.png' });
+  // a preset fills the boxes, and the summary says what it is before it starts
+  await dlg.getByRole('button', { name: 'New Testament in 90 days' }).click();
+  await page.waitForFunction(() => /27 books/.test(document.querySelector('.plan-summary-line')?.textContent || ''), null, { timeout: 10000 });
+  check('a preset fills the name, what to read and the pace', await dlg.getByLabel('Name').inputValue() === 'New Testament in 90 days' && (await dlg.locator('.plan-what').innerText()).includes('New Testament · 27 books') && await dlg.getByLabel('Number').inputValue() === '90');
+  check('the summary says books, readings and days', /27 books · 260 readings · 90 days/.test(await dlg.locator('.plan-summary-line').innerText()), await dlg.locator('.plan-summary').innerText());
+  await page.screenshot({ path: shots + '1440-plan-form-preset.png' });
+  // Blank, then the books grid: Gospels and Romans, ticked together
+  await dlg.getByRole('button', { name: 'Blank' }).click();
+  await dlg.getByLabel('Name').fill('Gospels and Romans');
+  await dlg.getByRole('button', { name: '+ Books…' }).click();
+  await dlg.getByRole('button', { name: 'Gospels', exact: true }).click();
+  await dlg.locator('button[data-code="ROM"]').click();
+  check('the grid counts what is ticked', (await dlg.locator('.plan-modal-head').innerText()).includes('5 ticked · 105 chapters'), await dlg.locator('.plan-modal-head').innerText());
+  await page.screenshot({ path: shots + '1440-plan-books-grid.png' });
+  await dlg.getByRole('button', { name: 'Done' }).click();
+  check('Done puts the books in the form as a chip', (await dlg.locator('.plan-what').innerText()).includes('5 books') || (await dlg.locator('.plan-what').innerText()).includes('Matthew'), await dlg.locator('.plan-what').innerText());
+  await dlg.getByLabel('Number').fill('30');
+  await dlg.getByRole('button', { name: 'Sun', exact: true }).click();
+  await page.waitForFunction(() => /30 days/.test(document.querySelector('.plan-summary-line')?.textContent || ''), null, { timeout: 10000 });
+  check('the summary follows the form: 5 books, 105 readings, 30 days', /5 books · 105 readings · 30 days/.test(await dlg.locator('.plan-summary-line').innerText()), await dlg.locator('.plan-summary-line').innerText());
+  await dlg.getByLabel('Pace').selectOption('own');
+  await page.waitForFunction(() => /no dates/.test(document.querySelector('.plan-summary-line')?.textContent || ''), null, { timeout: 10000 });
+  check('my own pace has no dates', !(await dlg.getByLabel('Number').count()) && /no dates/.test(await dlg.locator('.plan-summary-line').innerText()));
+  await dlg.getByLabel('Pace').selectOption('days');
+  await dlg.getByLabel('Number').fill('30');
+  await page.waitForFunction(() => /30 days/.test(document.querySelector('.plan-summary-line')?.textContent || ''), null, { timeout: 10000 });
+  await dlg.getByRole('button', { name: 'Start the plan' }).click();
+  const card = page.locator('.pane-plans .plan-card[data-plan="gospels-and-romans"]');
   await card.waitFor({ timeout: 10000 });
-  const planFile = path.join(study, 'reading', 'plans', 'gospels-in-a-month.json');
-  const planDays = JSON.parse(readFileSync(planFile, 'utf8')).days;
-  check('Start writes the plan to reading/plans; several books work', existsSync(planFile) && planDays.length === 30 && JSON.stringify(planDays).includes('"ROM.16"'));
-  // a pane keeps what is open when it is drawn again, and a write elsewhere does not draw it again (note 5a5a)
-  await card.getByRole('button', { name: 'Days' }).click();
-  await card.locator('.plan-days .plan-row').first().waitFor({ timeout: 10000 });
+  const planFile = path.join(study, 'reading', 'plans', 'gospels-and-romans.json');
+  const planJson = JSON.parse(readFileSync(planFile, 'utf8'));
+  check('Start writes the plan: 30 days, Romans in it, Sunday off', existsSync(planFile) && planJson.days.length === 30 && JSON.stringify(planJson.days).includes('"ROM.16"') && JSON.stringify(planJson.days_off) === '["sun"]', `${planJson.days.length} days, off ${planJson.days_off}`);
+  check('the form is closed', await page.locator('.plan-modal').count() === 0);
+  // the plan in its pane: a progress bar, today's reading with Read and Mark read, the days with a grip
+  check('the card has a progress bar and today’s reading', await card.locator('.plan-bar').isVisible() && (await card.locator('.plan-today-label').innerText()).toLowerCase() === 'today' && await card.getByRole('button', { name: 'Read', exact: true }).isVisible());
+  check('the days are listed, 30 of them, each with a grip', await card.locator('.plan-days .plan-row').count() === 30 && await card.locator('.plan-days .plan-row .grip').count() === 30);
+  await page.screenshot({ path: shots + '1440-plan-in-its-pane.png' });
   await card.getByRole('button', { name: 'Mark read' }).first().click();
-  await page.waitForFunction(() => /1 done/.test(document.querySelector('.pane-plans .plan-card[data-plan="gospels-in-a-month"] .plan-where')?.textContent || ''), null, { timeout: 10000 });
-  check('a change to the plan keeps its Days open', await card.locator('.plan-days .plan-row').first().waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.waitForFunction(() => /1 read|ahead/.test(document.querySelector('.pane-plans .plan-card[data-plan="gospels-and-romans"] .plan-where')?.textContent || ''), null, { timeout: 10000 });
+  const logged = readFileSync(path.join(study, 'reading', 'log.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l)).filter(l => l.plan === 'gospels-and-romans');
+  check('Mark read writes the day to the reading log', logged.length > 0 && logged[0].ch === 'MAT.1', logged.map(l => l.ch).join(' '));
+  check('a change keeps the days open', await card.locator('.plan-days .plan-row').first().waitFor({ timeout: 5000 }).then(() => true, () => false));
   await page.evaluate(() => { document.querySelector('.pane-plans .plan-card').dataset.drawn = 'before'; });
   await page.evaluate(() => window.__wb.run('note Days stay open @Num 25:1'));
   await sleep(800);
-  check('writing a note leaves the plans pane as it was, Days open', await page.evaluate(() => document.querySelector('.pane-plans .plan-card')?.dataset.drawn === 'before') && await card.locator('.plan-days .plan-row').first().isVisible());
-  const logged = readFileSync(path.join(study, 'reading', 'log.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l)).filter(l => l.plan === 'gospels-in-a-month');
-  check('Mark read writes the day to the reading log', logged.length > 0 && logged[0].ch === 'MAT.1', logged.map(l => l.ch).join(' '));
-  await card.getByRole('button', { name: 'Spread the rest…' }).click();
-  await page.locator('.menu .ask input').fill('10');
+  check('writing a note leaves the plans pane as it was', await page.evaluate(() => document.querySelector('.pane-plans .plan-card')?.dataset.drawn === 'before') && await card.locator('.plan-days .plan-row').first().isVisible());
+  // a day is dragged to another place: its readings go with it, the dates stay
+  const first = (n) => card.locator(`.plan-row[data-day="${n}"] .ref-link`).innerText();
+  const [d4, d6] = [await first(4), await first(6)];
+  const dates = await card.locator('.plan-row .plan-tag').allInnerTexts();
+  await card.locator('.plan-row[data-day="4"]').dragTo(card.locator('.plan-row[data-day="6"]'));
+  await page.waitForFunction(old => document.querySelector('.pane-plans .plan-card[data-plan="gospels-and-romans"] .plan-row[data-day="6"] .ref-link')?.textContent === old, d4, { timeout: 10000 });
+  check('dragging a day moves its readings to the new place', await first(6) === d4 && await first(4) !== d4, `${d4} → day 6; day 4 is now ${await first(4)}`);
+  const movedFile = JSON.parse(readFileSync(planFile, 'utf8'));
+  check('the plan file keeps the days in the new order and the old file is in .trash', movedFile.days.length === 30 && readdirSync(path.join(study, '.trash')).some(f => f.includes('-plan-gospels-and-romans')));
+  void d6; void dates;
+  // days that were missed: start another plan on a day long past and ask
+  execFileSync(wbExe, ['plan', 'start', 'Late', '--books', 'gospels', '--days', '10', '--start', new Date(Date.now() - 4 * 86400000).toLocaleDateString('en-CA')], { env });
+  await page.evaluate(() => window.__wb.dock().panes.filter(p => p.kind === 'plans').forEach(p => p.refresh?.()));
+  const late = page.locator('.pane-plans .plan-card[data-plan="late"]');
+  await late.waitFor({ timeout: 10000 });
+  check('days not read are said, with a way to choose', (await late.locator('.plan-missed').innerText()).includes('4 days were not read'), await late.locator('.plan-missed').innerText());
+  await late.getByRole('button', { name: 'What should happen?' }).click();
+  await late.locator('.plan-choices').waitFor({ timeout: 10000 });
+  const choices = await late.locator('.plan-choice').allInnerTexts();
+  check('four choices, each saying what it does to the dates', choices.length === 4 && choices.every(c => /\b20\d\d\b/.test(c) || /No date moves/.test(c)) && /Pick up where I left off/.test(choices[0]) && /Skip them/.test(choices[3]), choices.map(c => c.replace(/\n/g, ' ').slice(0, 90)).join(' | '));
+  check('asking changes nothing', JSON.parse(readFileSync(path.join(study, 'reading', 'plans', 'late.json'), 'utf8')).days.length === 10 && !JSON.parse(readFileSync(path.join(study, 'reading', 'plans', 'late.json'), 'utf8')).skipped);
+  await page.screenshot({ path: shots + '1440-plan-days-missed.png' });
+  await late.locator('.plan-choice').nth(3).click(); // skip them
+  await late.getByRole('button', { name: 'Do it' }).click();
+  await page.waitForFunction(() => !document.querySelector('.pane-plans .plan-card[data-plan="late"] .plan-missed'), null, { timeout: 10000 });
+  check('Skip: marked skipped, not read; nothing is missed now', JSON.parse(readFileSync(path.join(study, 'reading', 'plans', 'late.json'), 'utf8')).skipped?.length === 4 && await late.locator('.plan-row.skipped').count() === 4);
+  // stop: it leaves the list and waits in Past plans, to use again or delete
+  await late.getByRole('button', { name: 'Stop' }).click();
+  await page.waitForFunction(() => !document.querySelector('.pane-plans .plan-card[data-plan="late"]'), null, { timeout: 10000 });
+  check('Stop keeps the plan’s file, stopped, and nothing goes to .trash', JSON.parse(readFileSync(path.join(study, 'reading', 'plans', 'late.json'), 'utf8')).stopped?.length === 10);
+  await page.locator('.pane-plans [data-act="past"]').click();
+  const pastRow = page.locator('.pane-plans .plan-past-row[data-plan="late"]');
+  await pastRow.waitFor({ timeout: 5000 });
+  check('Past plans lists it, stopped, with how far it got', (await pastRow.innerText()).includes('Stopped'), await pastRow.innerText());
+  await page.screenshot({ path: shots + '1440-plan-past-plans.png' });
+  await pastRow.getByRole('button', { name: 'Use again…' }).click();
   await page.locator('.menu .ask').getByRole('button', { name: 'OK' }).click();
-  await page.waitForFunction(() => /of 11/.test(document.querySelector('.pane-plans .plan-card[data-plan="gospels-in-a-month"] .plan-where')?.textContent || ''), null, { timeout: 10000 });
-  check('Spread the rest: the day read stays, the rest over 10 days', JSON.parse(readFileSync(planFile, 'utf8')).days.length === 11);
-  await card.getByRole('button', { name: 'Rename…' }).click();
-  await page.locator('.menu .ask input').fill('The four gospels');
-  await page.locator('.menu .ask').getByRole('button', { name: 'OK' }).click();
-  await page.waitForFunction(() => document.querySelector('.pane-plans .plan-card[data-plan="gospels-in-a-month"] .plan-title')?.textContent === 'The four gospels', null, { timeout: 10000 });
-  const kept = readdirSync(path.join(study, '.trash')).filter(f => f.includes('-plan-gospels-in-a-month')).length;
-  check('Rename changes the name; each change keeps the plan as it was in .trash', JSON.parse(readFileSync(planFile, 'utf8')).name === 'The four gospels' && kept === 2, `${kept} in .trash`);
+  await page.locator('.pane-plans .plan-card[data-plan="late-again"]').waitFor({ timeout: 10000 });
+  check('Use again makes a new plan from it, nothing read', JSON.parse(readFileSync(path.join(study, 'reading', 'plans', 'late-again.json'), 'utf8')).days.length === 10 && !JSON.parse(readFileSync(path.join(study, 'reading', 'plans', 'late-again.json'), 'utf8')).skipped);
+  await pastRow.getByRole('button', { name: 'Delete' }).click();
+  await page.locator('.menu .ask').getByRole('button', { name: 'Delete' }).click();
+  await page.waitForFunction(() => !document.querySelector('.pane-plans .plan-past-row[data-plan="late"]'), null, { timeout: 10000 });
+  check('Delete sends the plan to .trash; what was read stays in the log', !existsSync(path.join(study, 'reading', 'plans', 'late.json')) && readdirSync(path.join(study, '.trash')).some(f => f.endsWith('-plan-late.json')));
+  // edit as text still works
   await card.getByRole('button', { name: 'Edit as text…' }).click();
   await page.locator('.menu .ask textarea').waitFor({ timeout: 5000 });
-  const asText = execFileSync(wbExe, ['plan', 'text', 'four gospels'], { env }).toString().trim();
+  const asText = execFileSync(wbExe, ['plan', 'text', 'gospels and romans'], { env }).toString().trim();
   check('Edit as text shows the plan one day to a line', (await page.locator('.menu .ask textarea').inputValue()).trim() === asText, asText.split('\n')[0]);
   await page.keyboard.press('Escape');
-  page.once('dialog', d => d.accept());
-  await card.getByRole('button', { name: 'Stop' }).click();
-  await page.waitForFunction(() => !document.querySelector('.pane-plans .plan-card[data-plan="gospels-in-a-month"]'), null, { timeout: 10000 });
-  check('Stop puts the plan in .trash; what was read stays in the log', !existsSync(planFile) && readFileSync(path.join(study, 'reading', 'log.jsonl'), 'utf8').includes('gospels-in-a-month'));
   await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'plans')) d.close(p); });
 
   const top = () => page.evaluate(() => {

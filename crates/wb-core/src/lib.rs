@@ -12,6 +12,7 @@ pub mod lookup;
 pub mod marks;
 pub mod notebook;
 pub mod places;
+pub mod plans;
 pub mod reading;
 pub mod relay;
 pub mod scripture;

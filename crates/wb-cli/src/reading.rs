@@ -3,6 +3,7 @@
 use crate::args::{Flag, Opt, Pos, N};
 use crate::{cmd, Command, Out, Res};
 use serde_json::{json, Value};
+use wb_core::plans as pl;
 use wb_core::reading as rd;
 
 fn e(x: wb_core::Error) -> String {
@@ -31,22 +32,45 @@ pub fn commands() -> Vec<Command> {
     vec![
         cmd("plan kinds", "The built-in reading plans: the Bible's own order, spread over a number of days. (A chronological or other plan is imported: wb plan import.)",
             vec![], |_, _| j(json!(rd::KINDS.iter().map(|(k, what, days)| json!({"kind": k, "reads": what, "days": days})).collect::<Vec<_>>()))),
-        cmd("plan start", "Start a reading plan: wb plan start \"Bible in a year\" --kind canonical [--days 365] [--start 2026-11-03]  |  --kind books --books gospels --days 30.\n\
-                           Each day is whole chapters, about the same number of words. --dry-run shows the days without starting it.",
-            vec![Pos("name", N::One), Opt("kind", Some("canonical")), Opt("days", None), Opt("books", None), Opt("start", None), Flag("dry_run")], |c, a| {
-                let kind = a.opt_or("kind", "canonical");
-                let usual = rd::KINDS.iter().find(|k| k.0 == kind).map(|k| k.2).unwrap_or(365);
-                let days: u32 = match a.opt("days") {
-                    Some(d) => d.parse().map_err(|_| format!("argument --days: invalid int value: '{d}'"))?,
-                    None => usual,
+        cmd("plan start", "Start a reading plan: wb plan start \"Bible in a year\" --kind canonical [--days 365] [--start 2026-11-03]  |  --books gospels,rom --days 30.\n\
+                           What to read: --kind (a preset: canonical, ot-nt, nt, psalms-proverbs) or --books (gospels, rom, MAT,MRK, Gen-Deut) and --passages \"Ps 23; Isa 53\".\n\
+                           --order bible (default) | listed (the books as you list them) | side-by-side (Old and New together).\n\
+                           --pace own (no dates) | days:90 | by:2027-01-01 | chapters:3  (--days 90 is days:90).  --days-off sun,sat.\n\
+                           Each day is whole chapters, about the same number of words. --dry-run shows the plan without starting it.",
+            vec![Pos("name", N::One), Opt("kind", None), Opt("days", None), Opt("books", None), Opt("passages", None), Opt("order", None), Opt("pace", None),
+                 Opt("days_off", None), Opt("start", None), Flag("dry_run")], |c, a| {
+                let named = a.opt("books").is_some() || a.opt("passages").is_some();
+                let kind = a.opt("kind").unwrap_or_else(|| (if named { "custom" } else { "canonical" }).to_string());
+                let usual = rd::KINDS.iter().find(|k| k.0 == kind).map(|k| k.2).unwrap_or(30);
+                if a.opt("pace").is_some() && a.opt("days").is_some() {
+                    return Err("Give --pace or --days, not both.".into());
+                }
+                let pace = match (a.opt("pace"), a.opt("days")) {
+                    (Some(p), _) => pl::Pace::parse(&p).map_err(e)?,
+                    (None, Some(d)) => pl::Pace::Days(d.parse().map_err(|_| format!("argument --days: invalid int value: '{d}'"))?),
+                    (None, None) => pl::Pace::Days(usual),
+                };
+                if !rd::KINDS.iter().any(|k| k.0 == kind) && kind != "custom" {
+                    return Err(format!("No plan kind “{kind}”. Kinds: {}.", rd::KINDS.iter().map(|k| k.0).collect::<Vec<_>>().join(", ")));
+                }
+                let spec = pl::PlanSpec {
+                    kind: kind.clone(),
+                    books: a.opt("books"),
+                    passages: a.opt("passages"),
+                    order: a.opt("order").map(|o| pl::Order::parse(&o)).transpose().map_err(e)?,
+                    pace,
+                    days_off: pl::parse_days_off(&a.opt("days_off").unwrap_or_default()).map_err(e)?,
                 };
                 let b = c.bible()?;
-                let sched = rd::schedule(b, &kind, days, a.opt("books").as_deref()).map_err(e)?;
                 if a.flag("dry_run") {
-                    return j(json!({"name": a.s("name"), "kind": kind, "days": sched.len(), "first": sched.iter().take(7).map(|d| rd::label(b, d)).collect::<Vec<_>>(),
-                        "last": rd::label(b, sched.last().unwrap())}));
+                    let start = match a.opt("start") {
+                        Some(s) => chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d").map_err(|_| "A day looks like 2026-11-03.".to_string())?,
+                        None => rd::today(),
+                    };
+                    let built = pl::build(b, &spec, start).map_err(e)?;
+                    return j(pl::summary(b, &a.s("name"), &kind, start, &built));
                 }
-                let p = rd::start_plan(&c.root()?, &a.s("name"), &kind, a.opt("start").as_deref(), sched).map_err(e)?;
+                let p = pl::start_from_spec(b, &c.root()?, &a.s("name"), &spec, a.opt("start").as_deref()).map_err(e)?;
                 j(summary(&rd::progress(b, &c.root()?, &p, rd::today()).map_err(e)?))
             }),
         cmd("plan import", "Start a plan you chose (a chronological one, say) from a text file: one day to a line, places joined by ';' (Job 1-5; Ps 1). # starts a comment.",
@@ -62,7 +86,7 @@ pub fn commands() -> Vec<Command> {
             }),
         cmd("plan list", "Your reading plans and how far along each is.", vec![Opt("on", None)], |c, a| {
             let (b, r, on) = (c.bible()?, c.root()?, day(a)?);
-            j(json!(rd::plans(&r).iter().map(|p| rd::progress(b, &r, p, on).map(|x| summary(&x))).collect::<Result<Vec<_>, _>>().map_err(e)?))
+            j(json!(pl::active_plans(&r).iter().map(|p| rd::progress(b, &r, p, on).map(|x| summary(&x))).collect::<Result<Vec<_>, _>>().map_err(e)?))
         }),
         cmd("plan show", "One plan, every day with what it reads and whether it is done.", vec![Pos("name", N::Many), Opt("on", None)], |c, a| {
             let r = c.root()?;
@@ -125,11 +149,54 @@ pub fn commands() -> Vec<Command> {
                 let p = rd::edit_plan(b, &r, p["id"].as_str().unwrap(), ch).map_err(e)?;
                 j(summary(&rd::progress(b, &r, &p, rd::today()).map_err(e)?))
             }),
-        cmd("plan rm", "Stop a plan (its file goes to .trash; what you read stays in the log).", vec![Pos("name", N::Many)], |c, a| {
+        cmd("plan rm", "Delete a plan (its file goes to .trash; what you read stays in the log). To keep it to use again, plan stop it instead.", vec![Pos("name", N::Many)], |c, a| {
             let r = c.root()?;
             let p = rd::find_plan(&r, &a.s("name")).map_err(e)?;
             rd::remove_plan(&r, p["id"].as_str().unwrap()).map_err(e)?;
             j(json!({"ok": true, "id": p["id"]}))
+        }),
+        cmd("plan stop", "Stop a plan: it leaves Today and the list and waits in Past plans (wb plan past); what you read stays in the log.", vec![Pos("name", N::Many)], |c, a| {
+            let r = c.root()?;
+            let p = rd::find_plan(&r, &a.s("name")).map_err(e)?;
+            let p = pl::stop_plan(&r, p["id"].as_str().unwrap()).map_err(e)?;
+            j(json!({"ok": true, "id": p["id"], "stopped": p["stopped"]}))
+        }),
+        cmd("plan past", "Past plans: plans stopped or finished, with how far each got.", vec![Opt("on", None)], |c, a| {
+            j(json!(pl::past_plans(c.bible()?, &c.root()?, day(a)?).map_err(e)?))
+        }),
+        cmd("plan reuse", "A new plan from a past one: the same days and settings, nothing read. wb plan reuse \"Name\" [--start 2026-12-01] [--as \"New name\"].",
+            vec![Pos("name", N::Many), Opt("start", None), Opt("as", None)], |c, a| {
+            let (r, b) = (c.root()?, c.bible()?);
+            let old = rd::find_plan(&r, &a.s("name")).map_err(e)?;
+            let p = pl::reuse_plan(&r, old["id"].as_str().unwrap(), a.opt("start").as_deref(), a.opt("as").as_deref()).map_err(e)?;
+            j(summary(&rd::progress(b, &r, &p, rd::today()).map_err(e)?))
+        }),
+        cmd("plan missed", "Days that came and were not read. With no choice, says what each choice would do to the dates. --shift (pick up where you left off), --fit (fit what is left into the days left), --later (read them after the last day), --skip (mark them skipped). The plan as it was goes to .trash.",
+            vec![Pos("name", N::Many), Flag("shift"), Flag("fit"), Flag("later"), Flag("skip"), Opt("on", None)], |c, a| {
+            let (r, b) = (c.root()?, c.bible()?);
+            let p = rd::find_plan(&r, &a.s("name")).map_err(e)?;
+            let id = p["id"].as_str().unwrap();
+            let chosen: Vec<pl::Missed> = [("shift", pl::Missed::Shift), ("fit", pl::Missed::Fit), ("later", pl::Missed::Later), ("skip", pl::Missed::Skip)]
+                .into_iter().filter(|(f, _)| a.flag(f)).map(|x| x.1).collect();
+            match chosen.as_slice() {
+                [] => j(pl::missed_options(b, &r, id, day(a)?).map_err(e)?),
+                [one] => {
+                    let p = pl::change_missed(b, &r, id, *one, day(a)?).map_err(e)?;
+                    j(summary(&rd::progress(b, &r, &p, day(a)?).map_err(e)?))
+                }
+                _ => Err("Choose one: --shift, --fit, --later or --skip.".into()),
+            }
+        }),
+        cmd("plan move-day", "Move a day's readings to another day of the plan: wb plan move-day \"Name\" --day 3 --to 5. The dates stay; the days between move over.",
+            vec![Pos("name", N::Many), Opt("day", None), Opt("to", None)], |c, a| {
+            let (r, b) = (c.root()?, c.bible()?);
+            let p = rd::find_plan(&r, &a.s("name")).map_err(e)?;
+            let n = |k: &str| -> Result<usize, String> {
+                let v = a.opt(k).ok_or(format!("Say --day and --to: wb plan move-day \"{}\" --day 3 --to 5.", p["name"].as_str().unwrap_or("")))?;
+                v.parse().map_err(|_| format!("argument --{k}: invalid int value: '{v}'"))
+            };
+            let p = pl::move_day(&r, p["id"].as_str().unwrap(), n("day")?, n("to")?).map_err(e)?;
+            j(summary(&rd::progress(b, &r, &p, rd::today()).map_err(e)?))
         }),
         cmd("read mark", "Record that you read chapters: wb read mark \"Num 25\"  |  \"Num 24-26\" [--plan \"Bible in a year\"].", vec![Pos("place", N::Many), Opt("plan", None)], |c, a| {
             let r = c.root()?;

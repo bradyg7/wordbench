@@ -16,7 +16,7 @@ export interface Note { id: string; anchor: string; kind: string; quote: string;
 export interface WordView { reference: string; anchor: string; text: string; strong?: string; lexicon?: Lexicon; count?: Count; notes: Note[] }
 export interface VerseView { reference: string; anchor: string; text: string; color?: string; notes: Note[]; threads: { id: string; name: string; color: string }[] }
 export interface Book { id: number; code: string; name: string; chapters: number; testament?: string }
-export interface PlanDay { day: number; date: string; label: string; entries: string[]; done: boolean }
+export interface PlanDay { day: number; date: string | null; label: string; entries: string[]; done: boolean; skipped?: boolean }
 export interface Today { date: string; plans: { plan: string; id: string; day: number | null; of: number; behind: number; ahead: number; finished: boolean; to_read: PlanDay[]; next: PlanDay | null }[] }
 
 export const inApp = '__TAURI_INTERNALS__' in window;

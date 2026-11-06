@@ -7,8 +7,8 @@ and when it is done. Read first: [CLAUDE.md](../CLAUDE.md) (the rules), [PLAN-ph
 sections 10–12 (what the person's notes asked for, by id).
 
 **Built so far in phase 2b:** step 1 (cards open on a click, hover off by default; 2ccf300), step 2 (KJV/YLT; f9c521d),
-step 3 (a first reading plans pane, `wb plan edit`, `wb plan text`; 0c73afb); tiers 0, 1 and 2 (below), and the
-findings of 2026-11-04 and 11-05 (below tier 2). The step 3 pane is replaced by tier 3 below.
+step 3 (a first reading plans pane, `wb plan edit`, `wb plan text`; 0c73afb); tiers 0, 1 and 2 (below), the
+findings of 2026-11-04 and 11-05 (below tier 2), and tier 3 items 1, 2 and 5 (the pane is `ui/src/plans.ts`).
 
 ## For every item
 
@@ -110,14 +110,17 @@ Moved to later tiers: `2885` (tier 3, item 5), `93b2` (tier 5, item 1).
 
 Designs: R1, A2, P1, P2, R2. Replaces the step 3 pane.
 
-1. **The form** (R1, A2): Start from presets (Blank, Bible in a year, Old and New together, NT in 90 days, Psalms and
+**Built 2026-11-06: items 1, 2 and 5 (✓ below);** what each does and how it was checked: [phase2-results.md](phase2-results.md)
+section 17. Not yet: item 3 (the builder) and item 4 (published plans).
+
+1. ✓ **The form** (R1, A2): Start from presets (Blank, Bible in a year, Old and New together, NT in 90 days, Psalms and
    Proverbs, A published plan…) fill its boxes; name and what to read required; books as chips with the Choose books
    grid (several at once, groups); Add a passage; order (Bible order, as listed, Old and New side by side), pace (my
    own pace with no dates, finish in N days or by a date, N chapters a day), start, days off; a summary before
    starting. `crates/wb-core/src/reading.rs`: kinds become options; new: no-date plans, days off, order as listed.
    `wb plan start` gains `--books MAT,MRK,…`, `--order`, `--pace`, `--days-off sun`. Plan files keep their fields; new
    fields are added, never renamed.
-2. **The plan** (P1, P2): today's card (Read, Mark read); Days with ✓ and drag a day; when days are missed, four choices
+2. ✓ **The plan** (P1, P2): today's card (Read, Mark read); Days with ✓ and drag a day; when days are missed, four choices
    that each say what they do to the dates first: pick up where I left off (shift), fit them into the days left,
    leave them for later (to the end), skip them (marked skipped, not read). `wb plan missed <name> --shift|--fit|--later|--skip`;
    `wb plan move-day`. Each change keeps the old file in `.trash/` (as `plan edit` does).
@@ -131,7 +134,7 @@ Designs: R1, A2, P1, P2, R2. Replaces the step 3 pane.
    lists** as a new kind: ten lists of books, one chapter from each list a day, each list starting again when done, no
    end date. Tyndale's day list is not on bible.com's page; it needs the person's own text. The plan file keeps the
    source's name.
-5. **Past plans** (note `2885`, 2026-11-04): Stop does not send a plan to the trash; it goes to **Past plans**, a page of
+5. ✓ **Past plans** (note `2885`, 2026-11-04): Stop does not send a plan to the trash; it goes to **Past plans**, a page of
    stopped and finished plans, each with **Use again** (a new plan from it, starting on a day chosen) and **Delete**
    (then to `.trash/`, as now). The plan file stays in `reading/plans/` with `stopped: <day>` (a new field; what was
    read stays in the log). `wb plan stop <name>`, `wb plan past`, `wb plan reuse <name> [--start]`; `wb plan rm` deletes.

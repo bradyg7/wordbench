@@ -509,3 +509,36 @@ Python app. So `scripts/backup-study.ps1` is run before this build reaches the r
 To try it: click a verse number and press 1; right-click a verse → Open in a new tab, then turn that pane's chapter
 with ›; click a row in a search and choose; Ctrl+F after a click in the Notebook; ↑ in the empty command field;
 Ctrl+Shift+J and write what you notice; More ⋯ → Findings.
+
+
+## 17. Phase 2b, tier 3: reading plans, the form and the plan (2026-11-06)
+
+Items 1, 2 and 5 of tier 3 in [PLAN-phase2b-build.md](PLAN-phase2b-build.md); the builder (3) and the published-plan
+importers (4) are not built yet. The plans pane is rewritten in its own file, `ui/src/plans.ts`. Designs R1, A2, P1, P2.
+
+| Item | Built | Checked |
+|---|---|---|
+| **The form** (R1, A2) | A sheet: **Start from** (Blank, Bible in a year, Old and New together, New Testament in 90 days, Psalms and Proverbs, A published plan…) fills its boxes; **Name** and **What to read** required; books as chips, **+ Books…** opens the grid (groups Law, History, Poetry, Prophets, Gospels, Letters of Paul, Other letters; every book; "5 ticked · 105 chapters"; Clear, Back, Done), **+ A passage…**; **Order** (Bible order, As listed, Old and New side by side); **Pace** (finish in N days, by a day, N chapters a day, my own pace with no dates); **Start** (today or a day); **Days off** (Mon to Sun); a **summary** before starting ("27 books · 260 readings · 90 days", "About 3 a day, Nov 6 to Feb 3"). Core: `wb plan start` gains `--books` (names, groups or codes), `--passages`, `--order`, `--pace own\|days:N\|by:DATE\|chapters:N`, `--days-off sun,sat`; `--dry-run` says what it would make. The kinds are presets now; `--kind` still works | CLI `a_plan_has_an_order_a_pace_and_days_off`; desk: preset fills the boxes, the grid counts, the summary follows the form, my own pace has no dates, Start writes the plan |
+| **The plan** (P1, P2) | A progress bar; **Today** (or **Next**, on a day off or with no dates) with Read and Mark read; **Days** with a grip, ✓, "missed", "today", "skipped" or the date, **dragged to move**; when days were not read, **four choices that each say what they do to the dates first**: pick up where I left off (shift), fit them into the days left, leave them for later (to the end), skip them. `wb plan missed <name> [--shift\|--fit\|--later\|--skip]` (with none: says each choice's effect), `wb plan move-day <name> --day N --to M`. Each change keeps the old file in `.trash/`. "Spread the rest…" and "Catch up" are gone (the choices replace them; `plan edit --days` and `--catch-up` stay in the CLI) | CLI `days_missed_have_four_choices_…`, `a_day_is_moved_…`; desk: four choices with their dates, asking changes nothing, Skip marks four days skipped, a day dragged to place 6 takes its readings with it |
+| **Past plans** (note `2885`) | **Stop** no longer sends a plan to the trash: its file stays in `reading/plans/` with `stopped: <day>`; it leaves Today and the list and waits in **Past plans** (stopped or finished), each with **Use again…** (a new plan from it, on a day chosen) and **Delete** (to `.trash/`, asked to confirm). `wb plan stop`, `wb plan past`, `wb plan reuse <name> [--start D] [--as NAME]`; `wb plan rm` deletes | CLI `a_stopped_plan_waits_in_past_plans_…`; desk: Stop keeps the file stopped, Past plans lists it, Use again, Delete |
+
+**Days off** (a new plan-file field `days_off`) skip their weekdays in every date; a day off shows "A day off · next …" and
+Today still lists the days before it that were not read. **My own pace** (`dated: false`) has no dates: each reading waits as a
+day, and the plan shows its next. **Skipped** days (`skipped: [3, 4]`) are neither read nor behind. Plan files keep every
+field they had; the new ones are `days_off`, `dated`, `skipped`, `stopped`, `pace`, `order`, `books`, `passages`, `reused_from`,
+all optional, so an older plan reads as before. The Python app has no reading plans, so nothing it reads changes.
+
+**Not built yet in tier 3:** the builder (**Arrange the days myself…**, R2: chapters dragged between days, a per-day `kept`
+flag) and the importers for Guthrie's, Blue Letter Bible's and Horner's forms (item 4). The form's link to the builder
+waits for the builder; "A published plan…" opens the plain importer (one day to a line).
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **201 of 201** (the plans checks rewritten for the new pane) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped (the plans pane is not in the WebKit fixtures) |
+| Rust tests | `cargo test`: **134** (4 new CLI tests, 2 unit tests; the `every_action` list gained `plans.rs`) |
+| Golden suite | `python scripts/golden.py`: **99 of 99** (`plan start` is Rust only; the Python `wb` has no plans) |
+
+To try it: Reading plans → New plan; pick "New Testament in 90 days" and see the summary; Blank → + Books… → Gospels and
+Romans; set Sun as a day off; start it; drag a day; start a plan with a start day a few days ago and press
+"What should happen?".

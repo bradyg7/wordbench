@@ -456,6 +456,173 @@ fn a_plan_is_changed_without_losing_what_was_read() {
     assert!(wb.fails(&["plan", "edit", "other", "--rename", "The four gospels"]).contains("already a plan"));
 }
 
+// ---- reading plans, tier 3: the form, the plan, past plans ----
+
+fn day_entries(p: &Value) -> Vec<Vec<String>> {
+    p["schedule"].as_array().unwrap().iter().map(|d| d["entries"].as_array().unwrap().iter().map(|e| e.as_str().unwrap().to_string()).collect()).collect()
+}
+
+fn dates(p: &Value) -> Vec<String> {
+    p["schedule"].as_array().unwrap().iter().map(|d| d["date"].as_str().unwrap_or("").to_string()).collect()
+}
+
+#[test]
+fn a_plan_has_an_order_a_pace_and_days_off() {
+    let Some(wb) = Wb::new() else { return };
+    // days off: 10 days from a Friday, Sundays off: no date is a Sunday and the last is the Tuesday after next
+    let p = wb.js(&["plan", "start", "Gospels", "--books", "gospels", "--days", "10", "--days-off", "sun", "--start", "2026-11-06"]);
+    assert_eq!((p["kind"].clone(), p["days"].clone(), p["finish"].clone()), (json!("custom"), json!(10), json!("2026-11-17")));
+    let shown = wb.js(&["plan", "show", "gospels", "--on", "2026-11-06"]);
+    assert!(!dates(&shown).contains(&"2026-11-08".to_string()) && !dates(&shown).contains(&"2026-11-15".to_string()));
+    assert_eq!(dates(&shown)[..3], ["2026-11-06", "2026-11-07", "2026-11-09"]);
+    // a day off has no reading; what came before it is still to read
+    let t = wb.js(&["plan", "today", "gospels", "--on", "2026-11-08"]);
+    assert_eq!((t["plans"][0]["day"].clone(), t["plans"][0]["to_read"].as_array().unwrap().len()), (json!(null), 2));
+    // the books as listed, the Bible's own order, and codes (what the window's chips send)
+    let dry = |extra: &[&str]| -> Value { wb.js(&[&["plan", "start", "X", "--dry-run"][..], extra].concat()) };
+    assert_eq!(dry(&["--books", "rom, gospels", "--order", "listed", "--pace", "chapters:4"])["first"][0], "Romans 1–4");
+    assert!(dry(&["--books", "rom, gospels", "--days", "5"])["first"][0].as_str().unwrap().starts_with("Matthew"));
+    assert_eq!(dry(&["--books", "MAT,MRK", "--days", "5"])["readings"], 44);
+    // the Old and the New side by side: a chapter of each kind every day
+    wb.js(&["plan", "start", "Both", "--books", "gen, mat", "--order", "side-by-side", "--days", "20", "--start", "2026-01-01"]);
+    for day in day_entries(&wb.js(&["plan", "show", "both"])).iter().take(5) {
+        assert!(day.iter().any(|e| e.starts_with("GEN")) && day.iter().any(|e| e.starts_with("MAT")), "{day:?}");
+    }
+    // a pace: N chapters a day; until a day (days off not counted); my own pace has no dates
+    let c = wb.js(&["plan", "start", "Three", "--books", "gospels", "--pace", "chapters:3", "--start", "2026-01-01"]);
+    assert_eq!(c["days"], 30); // 89 chapters, 3 a day
+    assert!(day_entries(&wb.js(&["plan", "show", "three"])).iter().all(|d| d.len() <= 3));
+    let b = wb.js(&["plan", "start", "Until", "--books", "gospels", "--pace", "by:2026-11-20", "--days-off", "sat,sun", "--start", "2026-11-06"]);
+    assert_eq!(b["days"], 11); // Friday the 6th, then two weeks of weekdays up to Friday the 20th
+    let o = wb.js(&["plan", "start", "Mine", "--books", "MAT,MRK", "--pace", "own", "--start", "2026-11-06"]);
+    assert_eq!((o["days"].clone(), o["dated"].clone(), o["today"].clone(), o["behind"].clone(), o["finish"].clone()), (json!(44), json!(false), json!(null), json!(0), json!(null)));
+    let t = wb.js(&["plan", "today", "mine", "--on", "2026-12-25"]);
+    assert_eq!(t["plans"][0]["to_read"].as_array().unwrap().len(), 1); // its next day, whatever the date
+    assert_eq!(wb.js(&["plan", "done", "mine"])["day"], 1);
+    // passages after the books
+    wb.js(&["plan", "start", "Some", "--passages", "Ps 23; Isa 53:1-12", "--days", "2", "--start", "2026-01-01"]);
+    let labels: Vec<String> = wb.js(&["plan", "show", "some"])["schedule"].as_array().unwrap().iter().map(|d| d["label"].as_str().unwrap().to_string()).collect();
+    assert_eq!(labels, ["Psalms 23", "Isaiah 53:1–12"]);
+    // what is wrong says so
+    assert!(wb.fails(&["plan", "start", "A", "--books", "gospels", "--pace", "fast"]).contains("A pace looks like"));
+    assert!(wb.fails(&["plan", "start", "A", "--books", "gospels", "--pace", "own", "--days", "9"]).contains("not both"));
+    assert!(wb.fails(&["plan", "start", "A", "--books", "gospels", "--order", "backwards"]).contains("No order"));
+    assert!(wb.fails(&["plan", "start", "A", "--books", "gospels", "--days-off", "mon,tue,wed,thu,fri,sat,sun"]).contains("Not every day"));
+    assert!(wb.fails(&["plan", "start", "A", "--kind", "books"]).contains("Name what to read"));
+    assert!(wb.fails(&["plan", "start", "A", "--books", "gospels", "--pace", "by:2020-01-01", "--start", "2026-01-01"]).contains("before the plan"));
+}
+
+#[test]
+fn days_missed_have_four_choices_that_each_say_what_they_do_to_the_dates() {
+    let Some(wb) = Wb::new() else { return };
+    for n in ["Skip", "Shift", "Fit", "Later", "Choices"] {
+        wb.js(&["plan", "start", n, "--books", "gospels", "--days", "10", "--start", "2026-11-01"]);
+    }
+    let on = "2026-11-04"; // day 4 is today; days 1 to 3 came and were not read
+    let o = wb.js(&["plan", "missed", "choices", "--on", on]);
+    assert_eq!((o["missed"].clone(), o["days"].clone(), o["finish"].clone()), (json!(3), json!([1, 2, 3]), json!("2026-11-10")));
+    let opts = o["options"].as_array().unwrap();
+    assert_eq!(opts.iter().map(|x| x["choice"].as_str().unwrap()).collect::<Vec<_>>(), ["shift", "fit", "later", "skip"]);
+    // each says its dates before anything is done
+    let text = |k: usize| opts[k]["text"].as_str().unwrap().to_string();
+    assert!(text(0).contains("Fri Nov 13, 2026") && text(0).contains("not Tue Nov 10, 2026"), "{}", text(0));
+    assert!(text(1).contains("ends Tue Nov 10, 2026"), "{}", text(1));
+    assert!(text(2).contains("keep their dates") && text(2).contains("Fri Nov 13, 2026"), "{}", text(2));
+    assert!(text(3).contains("No date moves"), "{}", text(3));
+    assert_eq!(wb.js(&["plan", "show", "choices", "--on", on])["days"], 10); // asking changed nothing
+    let all = |p: &Value| day_entries(p).concat();
+    let before = all(&wb.js(&["plan", "show", "skip"]));
+    // skip: marked skipped, not read; no date moves; only today is behind
+    let s = wb.js(&["plan", "missed", "skip", "--skip", "--on", on]);
+    assert_eq!((s["skipped"].clone(), s["behind"].clone(), s["done"].clone(), s["finish"].clone()), (json!(3), json!(1), json!(0), json!("2026-11-10")));
+    let sh = wb.js(&["plan", "show", "skip", "--on", on]);
+    assert_eq!((sh["schedule"][0]["skipped"].clone(), sh["schedule"][0]["done"].clone(), sh["next"]["day"].clone()), (json!(true), json!(false), json!(4)));
+    assert!(wb.fails(&["plan", "missed", "skip", "--skip", "--on", on]).contains("No day is missed"));
+    // shift: today reads the first day not read; the rest move with it
+    let s = wb.js(&["plan", "missed", "shift", "--shift", "--on", on]);
+    assert_eq!((s["start"].clone(), s["finish"].clone(), s["behind"].clone()), (json!("2026-11-04"), json!("2026-11-13"), json!(1)));
+    assert_eq!(all(&wb.js(&["plan", "show", "shift"])), before);
+    // fit: the same chapters in the days left, ending on the same day
+    let s = wb.js(&["plan", "missed", "fit", "--fit", "--on", on]);
+    assert_eq!((s["start"].clone(), s["days"].clone(), s["finish"].clone()), (json!("2026-11-04"), json!(7), json!("2026-11-10")));
+    assert_eq!(all(&wb.js(&["plan", "show", "fit"])), before);
+    // later: the days from today keep their dates; the missed ones are read after the last
+    let old = day_entries(&wb.js(&["plan", "show", "later"]));
+    let s = wb.js(&["plan", "missed", "later", "--later", "--on", on]);
+    assert_eq!((s["days"].clone(), s["finish"].clone(), s["behind"].clone()), (json!(10), json!("2026-11-13"), json!(1)));
+    let new = wb.js(&["plan", "show", "later", "--on", on]);
+    assert_eq!(day_entries(&new)[0], old[3]); // what was read on the 4th is still read on the 4th
+    assert_eq!(dates(&new)[0], "2026-11-04");
+    assert_eq!(day_entries(&new)[7..], old[..3]);
+    // a day already read is not missed
+    wb.js(&["plan", "start", "Two", "--books", "gospels", "--days", "10", "--start", "2026-11-01"]);
+    wb.js(&["plan", "done", "two", "--day", "2"]);
+    assert_eq!(wb.js(&["plan", "missed", "two", "--on", on])["days"], json!([1, 3]));
+    // each change keeps the file as it was
+    let trashed = std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().contains("-plan-")).count();
+    assert_eq!(trashed, 4);
+    assert!(wb.fails(&["plan", "missed", "two", "--shift", "--fit"]).contains("Choose one"));
+    assert!(wb.fails(&["plan", "missed", "mine"]).contains("No reading plan"));
+}
+
+#[test]
+fn a_day_is_moved_and_its_readings_go_with_it() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["plan", "start", "Gospels", "--books", "gospels", "--days", "10", "--start", "2026-11-01"]);
+    let before = wb.js(&["plan", "show", "gospels"]);
+    let (e, d) = (day_entries(&before), dates(&before));
+    let after = wb.js(&["plan", "move-day", "gospels", "--day", "1", "--to", "3"]);
+    assert_eq!(after["days"], 10);
+    let moved = wb.js(&["plan", "show", "gospels"]);
+    assert_eq!(dates(&moved), d); // the dates stay where they were
+    let m = day_entries(&moved);
+    assert_eq!((m[0].clone(), m[1].clone(), m[2].clone()), (e[1].clone(), e[2].clone(), e[0].clone()));
+    assert!(wb.fails(&["plan", "move-day", "gospels", "--day", "11", "--to", "3"]).contains("no day 11"));
+    assert!(wb.fails(&["plan", "move-day", "gospels", "--day", "1"]).contains("Say --day and --to"));
+    // a skipped mark goes with its day
+    wb.js(&["plan", "missed", "gospels", "--skip", "--on", "2026-11-03"]); // days 1 and 2 skipped
+    wb.js(&["plan", "move-day", "gospels", "--day", "1", "--to", "5"]);
+    let s = wb.js(&["plan", "show", "gospels", "--on", "2026-11-03"]);
+    let skipped: Vec<u64> = s["schedule"].as_array().unwrap().iter().filter(|d| d["skipped"] == true).map(|d| d["day"].as_u64().unwrap()).collect();
+    assert_eq!(skipped, [1, 5]);
+}
+
+#[test]
+fn a_stopped_plan_waits_in_past_plans_to_be_used_again_or_deleted() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["plan", "start", "Gospels", "--books", "gospels", "--days", "10", "--days-off", "sun", "--start", "2026-11-01"]);
+    wb.js(&["plan", "start", "Other", "--kind", "nt", "--days", "90", "--start", "2026-11-01"]);
+    wb.js(&["plan", "done", "gospels"]);
+    let s = wb.js(&["plan", "stop", "gospels"]);
+    assert_eq!(s["ok"], true);
+    assert_eq!(s["stopped"].as_str().unwrap().len(), 10);
+    // it leaves the list and Today; the file stays where it was, with the day it was stopped
+    let list = wb.js(&["plan", "list"]);
+    assert_eq!(list.as_array().unwrap().iter().map(|p| p["id"].as_str().unwrap()).collect::<Vec<_>>(), ["other"]);
+    assert_eq!(wb.js(&["plan", "today"])["plans"].as_array().unwrap().len(), 1);
+    assert!(wb.dir.join("reading/plans/gospels.json").exists());
+    let past = wb.js(&["plan", "past"]);
+    assert_eq!((past.as_array().unwrap().len(), past[0]["id"].clone(), past[0]["done"].clone()), (1, json!("gospels"), json!(1)));
+    assert!(wb.fails(&["plan", "stop", "gospels"]).contains("already stopped"));
+    // use again: the same days and settings, nothing read, on a day chosen
+    let n = wb.js(&["plan", "reuse", "gospels", "--start", "2026-12-01"]);
+    assert_eq!((n["name"].clone(), n["start"].clone(), n["days"].clone(), n["done"].clone(), n["days_off"].clone()), (json!("Gospels again"), json!("2026-12-01"), json!(10), json!(0), json!(["sun"])));
+    assert_eq!(wb.js(&["plan", "reuse", "gospels", "--start", "2026-12-01"])["name"], "Gospels again (2)");
+    assert_eq!(wb.js(&["plan", "reuse", "gospels", "--as", "Winter gospels"])["id"], "winter-gospels");
+    assert!(wb.fails(&["plan", "reuse", "gospels", "--as", "Winter gospels"]).contains("already a plan"));
+    assert_eq!(wb.js(&["plan", "list"]).as_array().unwrap().len(), 4);
+    // delete: to .trash; what was read stays in the log
+    let chapters = wb.js(&["read", "progress"])["chapters"].clone();
+    wb.js(&["plan", "rm", "gospels"]);
+    assert_eq!(wb.js(&["plan", "past"]), json!([]));
+    assert_eq!(wb.js(&["read", "progress"])["chapters"], chapters);
+    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().ends_with("-plan-gospels.json")));
+    // a plan that is finished is a past plan too
+    wb.js(&["plan", "start", "Short", "--passages", "Ps 23", "--days", "1", "--start", "2026-11-01"]);
+    wb.js(&["plan", "done", "short"]);
+    assert_eq!(wb.js(&["plan", "past"])[0]["id"], "short");
+}
+
 // ---- the Notebook (new in the Rust app) ----
 
 #[test]
