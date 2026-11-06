@@ -8,6 +8,11 @@
 //! skipped    [3, 4]            day numbers marked skipped (not read, not behind)
 //! stopped    "2026-11-06"      the day the plan was stopped: it leaves Today and the list, and waits in Past plans
 //! pace, order, books, passages, reused_from    what the form held (information; the days are written out in full)
+//! kept       [2, 5]            day numbers the person set by hand in the builder: a new pace lays the other days out again
+//!                              and leaves these as they are
+//! source     "Guthrie"         the published plan a plan was imported from (`published`)
+//! lists, cycle                 a plan with no end (Horner's ten lists): the lists of chapters, and each day takes the next
+//!                              chapter of each, starting a list again when it is done; the days written are the first pass
 //! ```
 //!
 //! Nothing here reminds, nags or counts streaks. A change that moves dates says so before it is made (`missed_options`).
@@ -184,7 +189,7 @@ fn preset(kind: &str) -> Option<(&'static str, Order)> {
 }
 
 /// The books in the order they were listed, each name or group (gospels, rom, Gen-Deut) keeping the Bible's order inside it.
-fn books_listed(bible: &Bible, named: &str) -> Result<Vec<u32>> {
+pub(crate) fn books_listed(bible: &Bible, named: &str) -> Result<Vec<u32>> {
     let mut out: Vec<u32> = vec![];
     for part in named.split([',', ';']).map(str::trim).filter(|p| !p.is_empty()) {
         for id in books_named(bible, part)? {
@@ -201,24 +206,43 @@ pub struct Built {
     pub days: Vec<Vec<String>>,
     pub readings: usize,
     pub extra: Value,
+    /// Day numbers (from 1) of the days set by hand and kept as they are.
+    pub kept: Vec<usize>,
 }
 
-fn chunks(units: &[(String, u32)], per_day: usize) -> Vec<Vec<String>> {
-    units.chunks(per_day.max(1)).map(|c| c.iter().map(|u| u.0.clone()).collect()).collect()
+/// The days as the builder holds them: what each day reads, and which days were set by hand.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Arranged {
+    pub days: Vec<Vec<String>>,
+    /// Day numbers (from 1).
+    pub kept: Vec<usize>,
 }
 
-/// Cut a list into `n` days: balanced by words when there is at least a reading a day, else readings placed where their
-/// words fall.
-fn fit(units: &[(String, u32)], n: usize) -> Vec<Vec<String>> {
-    if units.len() < n {
-        sparse(units, n)
-    } else {
-        spread(units, n)
+impl Arranged {
+    /// `{"days": [["MAT.1", "MAT.2"], …], "kept": [2]}`; every entry must be a place the Bible has.
+    pub fn from_json(bible: &Bible, v: &Value) -> Result<Arranged> {
+        let days: Vec<Vec<String>> = v["days"].as_array().ok_or_else(|| bad("An arrangement is {\"days\": [[\"MAT.1\"], …], \"kept\": [2]}."))?.iter().map(entries_of).collect();
+        for d in &days {
+            for e in d {
+                entry_words(bible, e).map_err(|_| bad(format!("“{}” is not a place: an entry looks like MAT.1 or PSA.119:1-119:88.", cut(e, 40))))?;
+            }
+        }
+        let mut kept: Vec<usize> = v["kept"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64()).map(|x| x as usize).filter(|k| *k >= 1 && *k <= days.len()).collect()).unwrap_or_default();
+        kept.sort_unstable();
+        kept.dedup();
+        Ok(Arranged { days, kept })
     }
 }
 
-/// The days a spec asks for, from the day it starts.
-pub fn build(bible: &Bible, spec: &PlanSpec, start: NaiveDate) -> Result<Built> {
+/// What a spec reads, before the pace cuts it into days.
+struct Prepared {
+    units: Vec<(String, u32)>,
+    order: Order,
+    books: Option<String>,
+    passages: Option<String>,
+}
+
+fn prepare(bible: &Bible, spec: &PlanSpec) -> Result<Prepared> {
     let preset = preset(&spec.kind);
     let books = spec.books.as_deref().map(str::trim).filter(|b| !b.is_empty()).or(preset.map(|p| p.0));
     let passages = spec.passages.as_deref().map(str::trim).filter(|p| !p.is_empty());
@@ -243,13 +267,48 @@ pub fn build(bible: &Bible, spec: &PlanSpec, start: NaiveDate) -> Result<Built> 
     if units.is_empty() {
         return Err(bad("There is nothing to read in that."));
     }
+    Ok(Prepared { units, order, books: books.map(String::from), passages: passages.map(String::from) })
+}
+
+fn chunks(units: &[(String, u32)], per_day: usize) -> Vec<Vec<String>> {
+    units.chunks(per_day.max(1)).map(|c| c.iter().map(|u| u.0.clone()).collect()).collect()
+}
+
+/// Cut a list into `n` days: balanced by words when there is at least a reading a day, else readings placed where their
+/// words fall.
+fn fit(units: &[(String, u32)], n: usize) -> Vec<Vec<String>> {
+    if units.len() < n {
+        sparse(units, n)
+    } else {
+        spread(units, n)
+    }
+}
+
+fn is_old(bible: &Bible, entry: &str) -> bool {
+    entry.split('.').next().and_then(|c| bible.book(c).ok()).is_some_and(|b| b.id < 40)
+}
+
+/// The days a spec asks for, from the day it starts.
+pub fn build(bible: &Bible, spec: &PlanSpec, start: NaiveDate) -> Result<Built> {
+    lay_out(bible, spec, start, None)
+}
+
+/// The days a spec asks for, with the days the person set by hand held where they are: those days keep what they read, and
+/// every other chapter is laid out again by the pace in the days between them (the builder's "a new pace keeps the days I
+/// moved").
+pub fn lay_out(bible: &Bible, spec: &PlanSpec, start: NaiveDate, hold: Option<&Arranged>) -> Result<Built> {
+    let prep = prepare(bible, spec)?;
+    let held: Vec<(usize, Vec<String>)> = hold.map(|h| h.kept.iter().filter_map(|k| h.days.get(k - 1).filter(|d| !d.is_empty()).map(|d| (k - 1, d.clone()))).collect()).unwrap_or_default();
+    let taken: std::collections::HashSet<&str> = held.iter().flat_map(|(_, d)| d.iter().map(String::as_str)).collect();
+    let units: Vec<(String, u32)> = prep.units.iter().filter(|u| !taken.contains(u.0.as_str())).cloned().collect();
+    let h = held.len();
     // Old Testament and New side by side, when both are there
-    let (ot, nt): (Vec<_>, Vec<_>) = units.iter().cloned().partition(|u| u.0.split('.').next().and_then(|c| bible.book(c).ok()).is_some_and(|b| b.id < 40));
-    let both = order == Order::SideBySide && !ot.is_empty() && !nt.is_empty();
+    let (ot, nt): (Vec<_>, Vec<_>) = units.iter().cloned().partition(|u| is_old(bible, &u.0));
+    let both = prep.order == Order::SideBySide && !ot.is_empty() && !nt.is_empty();
     let longest = if both { ot.len().max(nt.len()) } else { units.len() };
-    let n = match &spec.pace {
-        Pace::Own => longest,
-        Pace::Chapters(k) => units.len().div_ceil(*k as usize),
+    let total = match &spec.pace {
+        Pace::Own => longest + h,
+        Pace::Chapters(k) => units.len().div_ceil(*k as usize) + h,
         Pace::Days(k) => *k as usize,
         Pace::By(d) => {
             let n = reading_days_between(start, *d, &spec.days_off);
@@ -259,34 +318,95 @@ pub fn build(bible: &Bible, spec: &PlanSpec, start: NaiveDate) -> Result<Built> 
             n
         }
     };
-    if n == 0 || n > 3650 {
+    if total == 0 || total > 3650 {
         return Err(bad("A plan is 1 to 3650 days."));
     }
-    let days = if both {
-        ot_nt(&ot, &nt, n)
+    // the days that are not held: as many as the pace leaves room for
+    let free = if units.is_empty() { 0 } else { total.saturating_sub(h).max(1) };
+    let laid: Vec<Vec<String>> = if units.is_empty() {
+        vec![]
+    } else if both {
+        ot_nt(&ot, &nt, free)
     } else if matches!(spec.pace, Pace::Own | Pace::Chapters(_)) {
         let k = if let Pace::Chapters(k) = spec.pace { k as usize } else { 1 };
         chunks(&units, k)
-    } else {
-        if units.len() < n {
-            return Err(bad(format!("That is {} chapters; a plan of {n} days needs at least one a day.", units.len())));
+    } else if h == 0 {
+        if units.len() < free {
+            return Err(bad(format!("That is {} chapters; a plan of {free} days needs at least one a day.", units.len())));
         }
-        spread(&units, n)
+        spread(&units, free)
+    } else {
+        fit(&units, free)
     };
-    let mut extra = json!({"order": order.name(), "pace": spec.pace.text()});
+    // the held days go back where they were, the laid days fill the places between them
+    let mut days: Vec<Vec<String>> = vec![];
+    let mut kept: Vec<usize> = vec![];
+    let mut held = held;
+    held.sort_by_key(|x| x.0);
+    let mut laid = laid.into_iter().filter(|d| !d.is_empty());
+    loop {
+        if held.first().is_some_and(|x| x.0 <= days.len()) {
+            days.push(held.remove(0).1);
+            kept.push(days.len());
+        } else if let Some(d) = laid.next() {
+            days.push(d);
+        } else if let Some(x) = (!held.is_empty()).then(|| held.remove(0)) {
+            days.push(x.1);
+            kept.push(days.len());
+        } else {
+            break;
+        }
+    }
+    let readings = days.iter().map(|d| d.len()).sum();
+    Ok(Built { readings, extra: extra_of(spec, &prep, &kept), days, kept })
+}
+
+/// The fields a spec writes into its plan file.
+fn extra_of(spec: &PlanSpec, prep: &Prepared, kept: &[usize]) -> Value {
+    let mut extra = json!({"order": prep.order.name(), "pace": spec.pace.text()});
     if !spec.days_off.is_empty() {
         extra["days_off"] = json!(spec.days_off);
     }
     if spec.pace == Pace::Own {
         extra["dated"] = json!(false);
     }
-    if let Some(b) = books {
+    if let Some(b) = &prep.books {
         extra["books"] = json!(b);
     }
-    if let Some(p) = passages {
+    if let Some(p) = &prep.passages {
         extra["passages"] = json!(p);
     }
-    Ok(Built { readings: units.len(), days, extra })
+    if !kept.is_empty() {
+        extra["kept"] = json!(kept);
+    }
+    extra
+}
+
+/// A plan with exactly these days (the builder's), whatever the pace would have made; the spec still gives the plan its
+/// order, pace and days off.
+pub fn exact(bible: &Bible, spec: &PlanSpec, arr: &Arranged) -> Result<Built> {
+    let prep = prepare(bible, spec)?;
+    let days: Vec<Vec<String>> = arr.days.iter().filter(|d| !d.is_empty()).cloned().collect();
+    if days.is_empty() {
+        return Err(bad("The plan has no days: put some chapters in a day."));
+    }
+    if days.len() > 3650 {
+        return Err(bad("A plan is 1 to 3650 days."));
+    }
+    // empty days are dropped, so the numbers of the kept days move up with the days before them
+    let mut kept = vec![];
+    let mut n = 0;
+    for (k, d) in arr.days.iter().enumerate() {
+        if d.is_empty() {
+            continue;
+        }
+        n += 1;
+        if arr.kept.contains(&(k + 1)) {
+            kept.push(n);
+        }
+    }
+    let readings = days.iter().map(|d| d.len()).sum();
+    Ok(Built { readings, extra: extra_of(spec, &prep, &kept), days, kept })
 }
 
 fn ot_nt(ot: &[(String, u32)], nt: &[(String, u32)], n: usize) -> Vec<Vec<String>> {
@@ -294,6 +414,17 @@ fn ot_nt(ot: &[(String, u32)], nt: &[(String, u32)], n: usize) -> Vec<Vec<String
         a.extend(b);
         a
     }).collect()
+}
+
+/// Places typed ("Psalm 23; Isa 53:1-12") as plan entries, each with its label, for a day to hold.
+pub fn entries_of_text(bible: &Bible, text: &str) -> Result<Vec<Value>> {
+    let mut out = vec![];
+    for day in parse_plan_text(bible, &text.replace(';', "\n"))? {
+        for e in day {
+            out.push(json!({"entry": e, "label": crate::reading::label(bible, std::slice::from_ref(&e))}));
+        }
+    }
+    Ok(out)
 }
 
 /// What the person sees before a plan starts: the days, the readings, the first days and the last, and when it ends.
@@ -306,14 +437,81 @@ pub fn summary(bible: &Bible, name: &str, kind: &str, start: NaiveDate, built: &
         "last": built.days.last().map(|d| crate::reading::label(bible, d)), "dated": dated, "days_off": off})
 }
 
-/// Start a plan from a spec (the window's form; `wb plan start`).
-pub fn start_from_spec(bible: &Bible, root: &std::path::Path, name: &str, spec: &PlanSpec, start: Option<&str>) -> Result<Value> {
+/// The builder's view of a laid-out plan: the summary, and every day with each chapter as a chip and whether it was set by hand.
+pub fn layout(bible: &Bible, name: &str, kind: &str, start: NaiveDate, built: &Built) -> Value {
+    let mut v = summary(bible, name, kind, start, built);
+    let label = |e: &String| json!({"entry": e, "label": crate::reading::label(bible, std::slice::from_ref(e))});
+    v["rows"] = json!(built.days.iter().enumerate().map(|(k, d)| json!({"day": k + 1, "chips": d.iter().map(label).collect::<Vec<_>>(), "label": crate::reading::label(bible, d), "kept": built.kept.contains(&(k + 1))})).collect::<Vec<_>>());
+    v["kept"] = json!(built.kept);
+    v
+}
+
+/// Start a plan from a spec (the window's form; `wb plan start`). With an arrangement, the plan has exactly its days.
+pub fn start_from_spec(bible: &Bible, root: &std::path::Path, name: &str, spec: &PlanSpec, start: Option<&str>, arranged: Option<&Arranged>) -> Result<Value> {
     let start_day = match start {
         Some(s) => parse_day(s)?,
         None => today(),
     };
-    let built = build(bible, spec, start_day)?;
+    let built = match arranged {
+        Some(a) => exact(bible, spec, a)?,
+        None => build(bible, spec, start_day)?,
+    };
     crate::reading::start_plan_with(root, name, &spec.kind, start, built.days, built.extra)
+}
+
+/// A plan that is going, with these days (the builder, opened on a plan): the plan as it was goes to .trash, and what was
+/// read stays in the log, so a day counts as done by its readings wherever they now are. Days marked skipped past the new
+/// end are dropped.
+pub fn arrange_plan(root: &std::path::Path, id: &str, arr: &Arranged) -> Result<Value> {
+    crate::store::guard(root)?;
+    let mut plan = read_plan(root, id)?;
+    let mut kept = vec![];
+    let mut days: Vec<Vec<String>> = vec![];
+    let mut renumber = std::collections::HashMap::new();
+    for (k, d) in arr.days.iter().enumerate() {
+        if d.is_empty() {
+            continue;
+        }
+        days.push(d.clone());
+        renumber.insert(k as u64 + 1, days.len() as u64);
+        if arr.kept.contains(&(k + 1)) {
+            kept.push(days.len());
+        }
+    }
+    if days.is_empty() {
+        return Err(bad("The plan has no days: put some chapters in a day."));
+    }
+    plan["days"] = json!(days);
+    plan["skipped"] = remap_numbers(&plan, "skipped", |old| renumber.get(&old).copied());
+    set_numbers(&mut plan, "skipped", None);
+    if kept.is_empty() {
+        plan.as_object_mut().unwrap().shift_remove("kept");
+    } else {
+        plan["kept"] = json!(kept);
+    }
+    save_plan(root, id, &plan, true)
+}
+
+/// A plan with no end (`cycle`, Horner's ten lists): its days written out far enough to cover today and the next two months.
+/// Each day takes the next chapter of each list, and a list starts again when it is done. A plan with an end is returned as it is.
+pub fn extended(plan: &Value, on: NaiveDate) -> Value {
+    if plan["cycle"] != true {
+        return plan.clone();
+    }
+    let lists: Vec<Vec<String>> = plan["lists"].as_array().map(|a| a.iter().map(entries_of).filter(|l| !l.is_empty()).collect()).unwrap_or_default();
+    let Ok(start) = parse_day(plan["start"].as_str().unwrap_or("")) else { return plan.clone() };
+    if lists.is_empty() {
+        return plan.clone();
+    }
+    let want = (reading_days_between(start, on, &days_off_of(plan)) + 60).min(36500);
+    let mut days: Vec<Value> = plan["days"].as_array().cloned().unwrap_or_default();
+    while days.len() < want {
+        let k = days.len();
+        days.push(json!(lists.iter().map(|l| l[k % l.len()].clone()).collect::<Vec<_>>()));
+    }
+    let mut out = plan.clone();
+    out["days"] = json!(days);
+    out
 }
 
 // ---- days missed (P2) ----------------------------------------------------------------------------------------------------
@@ -353,6 +551,12 @@ pub fn apply_missed(bible: &Bible, root: &std::path::Path, plan: &Value, choice:
     if plan["dated"] == false {
         return Err(bad("A plan with no dates has no days missed."));
     }
+    let ext = extended(plan, on); // a plan with no end has its days written as far as today needs
+    let plan = &ext;
+    let cycle = plan["cycle"] == true;
+    if cycle && matches!(choice, Missed::Fit | Missed::Later) {
+        return Err(bad("This plan has no end date, so it has no last day to fit the days into or to read them after."));
+    }
     let pr = progress(bible, root, plan, on)?;
     let rows = pr["schedule"].as_array().cloned().unwrap_or_default();
     let day = |r: &Value| r["date"].as_str().and_then(|d| parse_day(d).ok());
@@ -389,7 +593,8 @@ pub fn apply_missed(bible: &Bible, root: &std::path::Path, plan: &Value, choice:
             new.extend(spread(&weighed, n).into_iter().map(|d| json!(d)));
             out["days"] = json!(new);
             out["start"] = json!(start_for(first, on, &off).format("%Y-%m-%d").to_string());
-            out["skipped"] = remap_skipped(plan, |old| (old <= first as u64).then_some(old));
+            out["skipped"] = remap_numbers(plan, "skipped", |old| (old <= first as u64).then_some(old));
+            out["kept"] = remap_numbers(plan, "kept", |old| (old <= first as u64).then_some(old));
         }
         Missed::Later => {
             let keep: Vec<Value> = (0..days.len()).filter(|k| !missed.contains(k)).map(|k| days[k].clone()).collect();
@@ -402,19 +607,33 @@ pub fn apply_missed(bible: &Bible, root: &std::path::Path, plan: &Value, choice:
             out["days"] = json!(keep.into_iter().chain(after).collect::<Vec<_>>());
             out["start"] = json!(start_for(anchor_index, anchor, &off).format("%Y-%m-%d").to_string());
             // a skipped day keeps its number minus the missed days before it
-            out["skipped"] = remap_skipped(plan, |old| Some(old - missed.iter().filter(|k| (**k as u64) + 1 < old).count() as u64));
+            let later = |old: u64| (!missed.contains(&(old as usize - 1))).then(|| old - missed.iter().filter(|k| (**k as u64) + 1 < old).count() as u64);
+            out["skipped"] = remap_numbers(plan, "skipped", |old| Some(old - missed.iter().filter(|k| (**k as u64) + 1 < old).count() as u64));
+            out["kept"] = remap_numbers(plan, "kept", later);
         }
     }
-    if out["skipped"].as_array().is_some_and(|a| a.is_empty()) {
-        out.as_object_mut().unwrap().shift_remove("skipped");
-    }
+    set_numbers(&mut out, "skipped", None);
+    set_numbers(&mut out, "kept", None);
     Ok(out)
 }
 
-/// The skipped day numbers of a plan, each mapped to its new number (or dropped).
-fn remap_skipped(plan: &Value, f: impl Fn(u64) -> Option<u64>) -> Value {
-    let old: Vec<u64> = plan["skipped"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64()).collect()).unwrap_or_default();
-    json!(old.into_iter().filter_map(f).collect::<Vec<_>>())
+/// A plan's list of day numbers (`skipped`, `kept`), each mapped to its new number (or dropped).
+fn remap_numbers(plan: &Value, field: &str, f: impl Fn(u64) -> Option<u64>) -> Value {
+    let old: Vec<u64> = plan[field].as_array().map(|a| a.iter().filter_map(|x| x.as_u64()).collect()).unwrap_or_default();
+    let mut new: Vec<u64> = old.into_iter().filter_map(f).collect();
+    new.sort_unstable();
+    new.dedup();
+    json!(new)
+}
+
+/// Put a list of day numbers back in the plan, or take the field out when it is empty.
+fn set_numbers(plan: &mut Value, field: &str, value: Option<Value>) {
+    if let Some(v) = value {
+        plan[field] = v;
+    }
+    if plan[field].as_array().is_some_and(|a| a.is_empty()) {
+        plan.as_object_mut().unwrap().shift_remove(field);
+    }
 }
 
 /// The four choices, each with what it does to the dates, said before anything is done.
@@ -435,7 +654,10 @@ pub fn missed_options(bible: &Bible, root: &std::path::Path, id: &str, on: Naive
                 let np = progress(bible, root, &np, on)?;
                 let finish = np["finish"].as_str().unwrap_or("").to_string();
                 let first = np["next"]["label"].as_str().unwrap_or("").to_string();
+                let cycle = plan["cycle"] == true;
                 let t = match c {
+                    Missed::Shift if cycle => format!("Today reads {first}, and every day after it moves later to follow."),
+                    Missed::Skip if cycle => format!("No date moves. The {m} missed {} are marked skipped, not read.", plural(m)),
                     Missed::Shift => format!("Today reads {first}, and every day after it moves later to follow. The plan ends {}, not {}.", show_day(&finish), show_day(&was)),
                     Missed::Fit => format!("What is left is read in the {left} {} left, a little more each day. Today reads {first}. The plan ends {}.", plural(left), show_day(&finish)),
                     Missed::Later => format!("The days from today keep their dates. The {m} missed {} are read after the last day. The plan ends {}, not {}.", plural(m), show_day(&finish), show_day(&was)),
@@ -473,7 +695,6 @@ pub fn move_day(root: &std::path::Path, id: &str, from: usize, to: usize) -> Res
     }
     let one = days.remove(from - 1);
     days.insert(to - 1, one);
-    // a skipped mark goes with its day
     let renumber = |old: u64| -> u64 {
         let old = old as usize;
         (if old == from {
@@ -486,10 +707,11 @@ pub fn move_day(root: &std::path::Path, id: &str, from: usize, to: usize) -> Res
             old
         }) as u64
     };
-    if let Some(sk) = plan["skipped"].as_array() {
-        let mut new: Vec<u64> = sk.iter().filter_map(|x| x.as_u64()).map(renumber).collect();
-        new.sort();
-        plan["skipped"] = json!(new);
+    // a skipped mark and a kept mark go with their day
+    for field in ["skipped", "kept"] {
+        if plan[field].as_array().is_some() {
+            plan[field] = remap_numbers(&plan, field, |old| Some(renumber(old)));
+        }
     }
     plan["days"] = json!(days);
     save_plan(root, id, &plan, true)
@@ -545,7 +767,7 @@ pub fn reuse_plan(root: &std::path::Path, id: &str, start: Option<&str>, name: O
         new_name = format!("{base} ({k})");
     }
     let mut extra = serde_json::Map::new();
-    for k in ["days_off", "dated", "pace", "order", "books", "passages", "source"] {
+    for k in ["days_off", "dated", "pace", "order", "books", "passages", "source", "lists", "cycle"] {
         if let Some(v) = old.get(k) {
             extra.insert(k.into(), v.clone());
         }

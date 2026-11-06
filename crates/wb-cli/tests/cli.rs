@@ -623,6 +623,171 @@ fn a_stopped_plan_waits_in_past_plans_to_be_used_again_or_deleted() {
     assert_eq!(wb.js(&["plan", "past"])[0]["id"], "short");
 }
 
+/// A plan's file as JSON.
+fn plan_file(wb: &Wb, id: &str) -> Value {
+    serde_json::from_str(&std::fs::read_to_string(wb.dir.join("reading/plans").join(format!("{id}.json"))).unwrap()).unwrap()
+}
+
+#[test]
+fn the_builder_keeps_the_days_set_by_hand_when_the_pace_changes() {
+    let Some(wb) = Wb::new() else { return };
+    let laid = |extra: &[&str], held: Option<&str>| -> Value {
+        let books: &[&str] = if extra.contains(&"--books") { &[] } else { &["--books", "gospels"] };
+        let args = [&["plan", "layout", "--start", "2026-11-06"][..], books, extra, if held.is_some() { &["--arranged", "-"][..] } else { &[][..] }].concat();
+        let (code, out, err) = wb.run(&args, held);
+        assert_eq!(code, 0, "{err}");
+        serde_json::from_str(&out).unwrap()
+    };
+    let chips = |l: &Value, day: usize| -> Vec<String> { l["rows"][day - 1]["chips"].as_array().unwrap().iter().map(|c| c["entry"].as_str().unwrap().to_string()).collect() };
+    // laid out by the pace: 89 chapters, 3 a day, each chapter a chip with its label
+    let l = laid(&["--pace", "chapters:3"], None);
+    assert_eq!((l["days"].clone(), l["readings"].clone(), l["kept"].clone()), (json!(30), json!(89), json!([])));
+    assert_eq!(chips(&l, 1), ["MAT.1", "MAT.2", "MAT.3"]);
+    assert_eq!(l["rows"][0]["chips"][0]["label"], "Matthew 1");
+    // the person sets day 2 by hand: a chapter of Mark moved in, Matthew 5 moved out to the first day
+    let by_hand = json!({"days": [["MAT.1", "MAT.2", "MAT.3", "MAT.5"], ["MRK.1", "MAT.4"], ["MAT.6", "MAT.7", "MAT.8"]], "kept": [2]}).to_string();
+    // a new pace: day 2 stays exactly as set; every other chapter is laid out again around it, none twice and none lost
+    let again = laid(&["--pace", "chapters:5"], Some(&by_hand));
+    assert_eq!(again["kept"], json!([2]));
+    assert_eq!(chips(&again, 2), ["MRK.1", "MAT.4"]);
+    assert_eq!(again["rows"][1]["kept"], true);
+    assert_eq!(chips(&again, 1), ["MAT.1", "MAT.2", "MAT.3", "MAT.5", "MAT.6"]);
+    assert_eq!(again["days"], json!(19)); // 87 chapters left, 5 a day, and the day set by hand
+    let all: Vec<String> = (1..=19).flat_map(|d| chips(&again, d)).collect();
+    assert_eq!(all.len(), 89);
+    assert_eq!(all.iter().collect::<std::collections::HashSet<_>>().len(), 89);
+    // a number of days: the held day counts as one of them
+    let by_days = laid(&["--days", "10"], Some(&by_hand));
+    assert_eq!((by_days["days"].clone(), chips(&by_days, 2)), (json!(10), vec!["MRK.1".to_string(), "MAT.4".to_string()]));
+    // my own pace: a chapter a day, the held day still where it was
+    let own = laid(&["--pace", "own"], Some(&by_hand));
+    assert_eq!((own["days"].clone(), own["dated"].clone(), own["finish"].clone()), (json!(88), json!(false), json!(null)));
+    // a kept day is as the person set it, even with a chapter the plan no longer reads (a book taken out)
+    let m = laid(&["--books", "mark", "--pace", "chapters:8"], Some(&by_hand));
+    assert_eq!((m["kept"].clone(), chips(&m, 2)), (json!([2]), vec!["MRK.1".to_string(), "MAT.4".to_string()]));
+
+    // starting with exactly those days: the plan file keeps them, and which were set by hand
+    let all_days = json!({"days": [["MAT.1", "MAT.2"], ["MRK.1", "MAT.3"], [], ["LUK.1"]], "kept": [2, 4]}).to_string();
+    let (code, out, err) = wb.run(&["plan", "start", "Mine", "--books", "gospels", "--pace", "chapters:2", "--start", "2026-11-06", "--arranged", "-"], Some(&all_days));
+    assert_eq!(code, 0, "{err}");
+    let p: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(p["days"], 3); // the empty day is dropped, and the kept day after it moves up
+    let file = plan_file(&wb, "mine");
+    assert_eq!((file["days"].clone(), file["kept"].clone()), (json!([["MAT.1", "MAT.2"], ["MRK.1", "MAT.3"], ["LUK.1"]]), json!([2, 3])));
+    assert_eq!(file["pace"], "chapters:2");
+    let shown = wb.js(&["plan", "show", "mine"]);
+    assert_eq!(shown["schedule"].as_array().unwrap().iter().map(|d| d["kept"].clone()).collect::<Vec<_>>(), [json!(false), json!(true), json!(true)]);
+    // a day moved takes its mark with it
+    wb.js(&["plan", "move-day", "mine", "--day", "2", "--to", "1"]);
+    assert_eq!(plan_file(&wb, "mine")["kept"], json!([1, 3]));
+    // the plan as it was is in .trash when the days are arranged again; what was read stays by reading
+    wb.js(&["read", "mark", "Matt 1", "--plan", "mine"]);
+    let (code, out, err) = wb.run(&["plan", "arrange", "mine", "--arranged", "-"], Some(&json!({"days": [["MAT.2"], ["MAT.1", "MRK.1"]], "kept": [1]}).to_string()));
+    assert_eq!(code, 0, "{err}");
+    let p: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!((p["days"].clone(), p["done"].clone()), (json!(2), json!(0))); // Matthew 1 is read, but day 2 has Mark 1 as well
+    assert_eq!(wb.js(&["read", "progress"])["chapters"], 1); // what was read stays in the log
+    assert_eq!(plan_file(&wb, "mine")["kept"], json!([1]));
+    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().contains("-plan-mine")));
+    // a place typed becomes the entries a day holds
+    let e = wb.js(&["plan", "entries", "Ps 23; Isa 53:1-12"]);
+    assert_eq!(e, json!([{"entry": "PSA.23", "label": "Psalms 23"}, {"entry": "ISA.53:1-53:12", "label": "Isaiah 53:1–12"}]));
+    // what is wrong says so
+    let (code, _, err) = wb.run(&["plan", "arrange", "mine", "--arranged", "-"], Some(&json!({"days": [["XYZ.1"]]}).to_string()));
+    assert_eq!(code, 1);
+    assert!(err.contains("is not a place"), "{err}");
+    let (code, _, err) = wb.run(&["plan", "arrange", "mine", "--arranged", "-"], Some(&json!({"days": [[], []]}).to_string()));
+    assert_eq!(code, 1);
+    assert!(err.contains("no days"), "{err}");
+    assert!(wb.fails(&["plan", "arrange", "mine"]).contains("Say the days"));
+}
+
+#[test]
+fn a_published_plan_is_read_from_the_copy_the_person_has() {
+    let Some(wb) = Wb::new() else { return };
+    let run = |name: &str, text: &str, extra: &[&str]| -> Value {
+        let (code, out, err) = wb.run(&[&["plan", "import", name, "--start", "2026-11-06"][..], extra].concat(), Some(text));
+        assert_eq!(code, 0, "{err}");
+        serde_json::from_str(&out).unwrap()
+    };
+    let labels = |p: &Value| -> Vec<String> { wb.js(&["plan", "show", p["id"].as_str().unwrap()])["schedule"].as_array().unwrap().iter().map(|d| d["label"].as_str().unwrap().to_string()).collect() };
+
+    // one day to a line, with the name of where it came from kept in the file
+    let plain = run("Chronological", "Gen 1-3\nJob 1-5; Ps 1 # a comment\n", &["--source", "Tyndale One Year Chronological"]);
+    assert_eq!((plain["kind"].clone(), plain["days"].clone(), plain["source"].clone()), (json!("imported"), json!(2), json!("Tyndale One Year Chronological")));
+    assert_eq!(plan_file(&wb, "chronological")["source"], "Tyndale One Year Chronological");
+    assert_eq!(labels(&plain), ["Genesis 1–3", "Job 1–5; Psalms 1"]);
+
+    // Guthrie's: Week N / Day N; six days a week, the seventh a day off, whatever it says
+    let guthrie = "Week 1\nDay 1: Genesis 1-2; Matthew 1\nDay 2: Genesis 3\nDay 3\nExodus 1\nDay 4: Ps 1\nDay 5: Ps 2\nDay 6: Ps 3\nDay 7: Rest\n\nWeek 2\nDay 1: Gen 4\nDay 2: Gen 5\n";
+    let dry = run("G", guthrie, &["--dry-run"]);
+    assert_eq!((dry["format"].clone(), dry["weeks"].clone(), dry["days"].clone(), dry["days_off"].clone(), dry["source"].clone()), (json!("guthrie"), json!(2), json!(8), json!(["sun"]), json!("Guthrie")));
+    assert_eq!(wb.js(&["plan", "list"]).as_array().unwrap().len(), 1, "a dry run starts nothing"); // only the plain one above
+    let g = run("Guthrie", guthrie, &[]);
+    assert_eq!(labels(&g)[..4], ["Genesis 1–2; Matthew 1", "Genesis 3", "Exodus 1", "Psalms 1"]);
+    // Friday the 6th, Saturday the 7th, then no Sunday: the 9th is the third day
+    assert_eq!(dates(&wb.js(&["plan", "show", "guthrie"]))[..3], ["2026-11-06", "2026-11-07", "2026-11-09"]);
+    assert_eq!(plan_file(&wb, "guthrie")["source"], "Guthrie");
+    // the day off is the person's to move
+    assert_eq!(run("G2", guthrie, &["--days-off", "sat"])["days_off"], json!(["sat"]));
+    // a day that cannot be read says which line
+    let (code, _, err) = wb.run(&["plan", "import", "Bad", "--format", "guthrie"], Some("Week 1\nDay 1: Genesis 1\nDay 2: Nowhere 4\n"));
+    assert_eq!(code, 1);
+    assert!(err.contains("Line 3") && err.contains("Day 2"), "{err}");
+
+    // Blue Letter Bible's: places joined by "/", its short names, a label in front or not
+    let blb = run("Blb", "Day 1: Gen 1 / Mat 1 / Phl 2\n2. Jhn 3 / 1Co 13 / Jde 1\nPsa 119:1-32 / Rev 22\n", &["--dry-run"]);
+    assert_eq!((blb["format"].clone(), blb["days"].clone(), blb["source"].clone()), (json!("blue-letter"), json!(3), json!("Blue Letter Bible")));
+    assert_eq!(blb["first"], json!(["Genesis 1; Matthew 1; Philippians 2", "John 3; 1 Corinthians 13; Jude 1", "Psalms 119:1–32; Revelation 22"]));
+    // every short name is the book it says, in the Bible's order
+    let short = ["gen", "exo", "lev", "num", "deu", "jos", "jdg", "rth", "1sa", "2sa", "1ki", "2ki", "1ch", "2ch", "ezr", "neh", "est", "job", "psa", "pro", "ecc", "sol", "isa", "jer", "lam", "eze", "dan",
+        "hos", "joe", "amo", "oba", "jon", "mic", "nah", "hab", "zep", "hag", "zec", "mal", "mat", "mar", "luk", "jhn", "act", "rom", "1co", "2co", "gal", "eph", "phl", "col", "1th", "2th", "1ti", "2ti", "tit",
+        "phm", "heb", "jas", "1pe", "2pe", "1jo", "2jo", "3jo", "jde", "rev"];
+    let books = wb.js(&["books"])["books"].as_array().unwrap().clone();
+    assert_eq!((short.len(), books.len()), (66, 66));
+    let text: String = short.iter().map(|s| format!("{s} 1")).collect::<Vec<_>>().join("\n");
+    let all = run("Names", &text, &["--format", "blue-letter"]);
+    let file = plan_file(&wb, all["id"].as_str().unwrap());
+    for (k, b) in books.iter().enumerate() {
+        assert_eq!(file["days"][k][0], format!("{}.1", b["code"].as_str().unwrap()), "{}", short[k]);
+    }
+
+    // Horner's lists: one chapter from each list a day, each starting again when it is done, no end date
+    let horner = "Horner's lists\nList 1: Matthew, Mark\nList 2 (Law): Genesis to Exodus\nList 3: Jude, 3 John\n";
+    let h = run("Horner", horner, &["--dry-run"]);
+    assert_eq!((h["format"].clone(), h["lists"].clone(), h["days"].clone(), h["finish"].clone(), h["cycle"].clone()), (json!("horner"), json!(3), json!(90), json!(null), json!(true)));
+    let h = run("Horner", horner, &[]);
+    assert_eq!((h["kind"].clone(), h["finish"].clone(), h["finished"].clone()), (json!("horner"), json!(null), json!(false)));
+    let file = plan_file(&wb, "horner");
+    assert_eq!((file["cycle"].clone(), file["source"].clone(), file["days"].as_array().unwrap().len()), (json!(true), json!("Horner"), 90)); // one pass of the longest list
+    assert_eq!(file["days"][0], json!(["MAT.1", "GEN.1", "JUD.1"]));
+    assert_eq!(file["days"][1], json!(["MAT.2", "GEN.2", "3JN.1"]));
+    assert_eq!(file["days"][2], json!(["MAT.3", "GEN.3", "JUD.1"])); // the short list starts again
+    // a day a long way on is there to read: the lists keep going
+    let far = wb.js(&["plan", "show", "horner", "--on", "2027-05-01"]);
+    assert!(far["days"].as_u64().unwrap() > 90 && far["today"].as_u64().unwrap() > 90 && far["finish"].is_null() && far["finished"] == false);
+    // reading all of the first pass does not finish it
+    let every: Vec<String> = file["days"].as_array().unwrap().iter().flat_map(|d| d.as_array().unwrap().iter().map(|e| e.as_str().unwrap().replace('.', " "))).collect();
+    wb.run(&["read", "mark", &every.join("; "), "--plan", "horner"], None);
+    assert_eq!(wb.js(&["plan", "show", "horner", "--on", "2026-11-06"])["finished"], false);
+    // with no end there is no last day to fit the missed days into
+    run("Horner two", horner, &[]);
+    let o = wb.js(&["plan", "missed", "horner-two", "--on", "2026-12-01"]);
+    let avail: Vec<bool> = o["options"].as_array().unwrap().iter().map(|x| x["available"].as_bool().unwrap()).collect();
+    assert_eq!(avail, [true, false, false, true]);
+    // used again, it is still a plan with no end
+    let again = wb.js(&["plan", "reuse", "horner", "--start", "2027-01-01"]);
+    assert_eq!((again["cycle"].clone(), again["source"].clone()), (json!(true), json!("Horner")));
+    assert!(plan_file(&wb, "horner-again")["lists"].is_array());
+    // what is wrong says so
+    let (code, _, err) = wb.run(&["plan", "import", "Bad", "--format", "horner"], Some("List 1: Matthew\n"));
+    assert_eq!(code, 1);
+    assert!(err.contains("No lists found"), "{err}");
+    let (code, _, err) = wb.run(&["plan", "import", "Bad", "--format", "sunday"], Some("Gen 1"));
+    assert_eq!(code, 1);
+    assert!(err.contains("No format"), "{err}");
+}
+
 // ---- the Notebook (new in the Rust app) ----
 
 #[test]

@@ -399,6 +399,7 @@ pub fn edit_plan(bible: &Bible, root: &Path, id: &str, ch: PlanChange) -> Result
     }
     if let Some(days) = ch.days {
         plan["days"] = json!(days);
+        plan.as_object_mut().unwrap().shift_remove("kept"); // the days were written again: none is "as you set it" now
     }
     if let Some(s) = &ch.start {
         plan["start"] = json!(parse_day(s)?.format("%Y-%m-%d").to_string());
@@ -421,6 +422,7 @@ pub fn edit_plan(bible: &Bible, root: &Path, id: &str, ch: PlanChange) -> Result
             let mut days: Vec<Value> = plan["days"].as_array().unwrap()[..first].to_vec();
             days.extend(spread(&weighed, n as usize).into_iter().map(|d| json!(d)));
             plan["days"] = json!(days);
+            plan.as_object_mut().unwrap().shift_remove("kept");
         }
         plan["start"] = json!(crate::plans::start_for(first, today(), &crate::plans::days_off_of(&plan)).format("%Y-%m-%d").to_string());
     }
@@ -561,6 +563,14 @@ fn local_day(t: &str) -> Option<NaiveDate> {
 /// What is done of a plan: each day's entries are done when the log has each of them, marked for this plan, or marked
 /// with no plan on or after the plan's first day.
 pub fn progress(bible: &Bible, root: &Path, plan: &Value, on: NaiveDate) -> Result<Value> {
+    // a plan with no end has its days written out as far as they are needed
+    let ext;
+    let plan = if plan["cycle"] == true {
+        ext = crate::plans::extended(plan, on);
+        &ext
+    } else {
+        plan
+    };
     let start = parse_day(plan["start"].as_str().unwrap_or(""))?;
     let id = plan["id"].as_str().unwrap_or("");
     let read: std::collections::HashSet<String> = log(root)
@@ -577,6 +587,8 @@ pub fn progress(bible: &Bible, root: &Path, plan: &Value, on: NaiveDate) -> Resu
     let off = crate::plans::days_off_of(plan);
     let dated = plan["dated"] != false;
     let skipped: std::collections::HashSet<u64> = plan["skipped"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64()).collect()).unwrap_or_default();
+    let kept: std::collections::HashSet<u64> = plan["kept"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64()).collect()).unwrap_or_default();
+    let cycle = plan["cycle"] == true;
     let dates = if dated { crate::plans::plan_dates(start, &off, days.len()) } else { vec![] };
     let mut rows = vec![];
     let (mut done_days, mut settled_days) = (0, 0);
@@ -588,7 +600,7 @@ pub fn progress(bible: &Bible, root: &Path, plan: &Value, on: NaiveDate) -> Resu
         done_days += all as usize;
         settled_days += (all || skip) as usize;
         let date = dates.get(k).map(|d| json!(d.format("%Y-%m-%d").to_string())).unwrap_or(json!(null));
-        rows.push(json!({"day": k + 1, "date": date, "label": label(bible, &es), "entries": es, "read": done, "done": all, "skipped": skip}));
+        rows.push(json!({"day": k + 1, "date": date, "label": label(bible, &es), "entries": es, "read": done, "done": all, "skipped": skip, "kept": kept.contains(&(k as u64 + 1))}));
     }
     let due = dates.iter().filter(|d| **d <= on).count(); // the days whose date has come
     let today_n = dates.iter().position(|d| *d == on).map(|i| i + 1); // which day of the plan it is (none on a day off)
@@ -596,9 +608,10 @@ pub fn progress(bible: &Bible, root: &Path, plan: &Value, on: NaiveDate) -> Resu
     let behind = rows.iter().take(due).filter(|r| !settled(r)).count();
     let next = rows.iter().find(|r| !settled(r)).cloned();
     Ok(json!({"id": id, "name": plan["name"], "kind": plan["kind"], "start": plan["start"], "days": days.len(), "done": done_days,
-        "today": today_n, "due": due, "dated": dated, "days_off": off, "finish": dates.last().map(|d| d.format("%Y-%m-%d").to_string()),
+        "today": today_n, "due": due, "dated": dated, "days_off": off, "finish": if cycle { None } else { dates.last().map(|d| d.format("%Y-%m-%d").to_string()) },
+        "cycle": cycle, "source": plan.get("source").cloned().unwrap_or(json!(null)),
         "skipped": rows.iter().filter(|r| r["skipped"] == true).count(), "stopped": plan.get("stopped").cloned().unwrap_or(json!(null)),
-        "behind": behind, "ahead": settled_days.saturating_sub(due), "finished": settled_days == days.len(),
+        "behind": behind, "ahead": settled_days.saturating_sub(due), "finished": !cycle && settled_days == days.len(),
         "next": next, "schedule": rows, "weekday": on.weekday().to_string()}))
 }
 

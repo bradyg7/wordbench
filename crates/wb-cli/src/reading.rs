@@ -28,6 +28,47 @@ fn summary(p: &Value) -> Value {
     p
 }
 
+/// What the form holds, from the options `plan start` and `plan layout` share.
+fn spec_of(a: &crate::args::Args) -> Result<(pl::PlanSpec, String), String> {
+    let named = a.opt("books").is_some() || a.opt("passages").is_some();
+    let kind = a.opt("kind").unwrap_or_else(|| (if named { "custom" } else { "canonical" }).to_string());
+    let usual = rd::KINDS.iter().find(|k| k.0 == kind).map(|k| k.2).unwrap_or(30);
+    if a.opt("pace").is_some() && a.opt("days").is_some() {
+        return Err("Give --pace or --days, not both.".into());
+    }
+    let pace = match (a.opt("pace"), a.opt("days")) {
+        (Some(p), _) => pl::Pace::parse(&p).map_err(e)?,
+        (None, Some(d)) => pl::Pace::Days(d.parse().map_err(|_| format!("argument --days: invalid int value: '{d}'"))?),
+        (None, None) => pl::Pace::Days(usual),
+    };
+    if !rd::KINDS.iter().any(|k| k.0 == kind) && kind != "custom" {
+        return Err(format!("No plan kind “{kind}”. Kinds: {}.", rd::KINDS.iter().map(|k| k.0).collect::<Vec<_>>().join(", ")));
+    }
+    let spec = pl::PlanSpec {
+        kind: kind.clone(),
+        books: a.opt("books"),
+        passages: a.opt("passages"),
+        order: a.opt("order").map(|o| pl::Order::parse(&o)).transpose().map_err(e)?,
+        pace,
+        days_off: pl::parse_days_off(&a.opt("days_off").unwrap_or_default()).map_err(e)?,
+    };
+    Ok((spec, kind))
+}
+
+fn start_day(a: &crate::args::Args) -> Result<chrono::NaiveDate, String> {
+    match a.opt("start") {
+        Some(s) => chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d").map_err(|_| "A day looks like 2026-11-03.".to_string()),
+        None => Ok(rd::today()),
+    }
+}
+
+/// An arrangement from a file, or from the input with `-`: {"days": [["MAT.1", "MAT.2"], …], "kept": [2]}.
+fn arranged(c: &crate::Ctx<'_>, from: &str) -> Result<pl::Arranged, String> {
+    let text = if from == "-" { c.stdin()? } else { std::fs::read_to_string(from).map_err(|x| format!("{from}: {x}"))? };
+    let v: Value = serde_json::from_str(&text).map_err(|x| format!("The arrangement is not JSON: {x}"))?;
+    pl::Arranged::from_json(c.bible()?, &v).map_err(e)
+}
+
 pub fn commands() -> Vec<Command> {
     vec![
         cmd("plan kinds", "The built-in reading plans: the Bible's own order, spread over a number of days. (A chronological or other plan is imported: wb plan import.)",
@@ -36,52 +77,69 @@ pub fn commands() -> Vec<Command> {
                            What to read: --kind (a preset: canonical, ot-nt, nt, psalms-proverbs) or --books (gospels, rom, MAT,MRK, Gen-Deut) and --passages \"Ps 23; Isa 53\".\n\
                            --order bible (default) | listed (the books as you list them) | side-by-side (Old and New together).\n\
                            --pace own (no dates) | days:90 | by:2027-01-01 | chapters:3  (--days 90 is days:90).  --days-off sun,sat.\n\
-                           Each day is whole chapters, about the same number of words. --dry-run shows the plan without starting it.",
+                           Each day is whole chapters, about the same number of words. --dry-run shows the plan without starting it.\n\
+                           --arranged FILE or - : the days exactly as a file gives them ({\"days\": [[\"MAT.1\",\"MAT.2\"], …], \"kept\": [2]}), as the builder makes them.",
             vec![Pos("name", N::One), Opt("kind", None), Opt("days", None), Opt("books", None), Opt("passages", None), Opt("order", None), Opt("pace", None),
-                 Opt("days_off", None), Opt("start", None), Flag("dry_run")], |c, a| {
-                let named = a.opt("books").is_some() || a.opt("passages").is_some();
-                let kind = a.opt("kind").unwrap_or_else(|| (if named { "custom" } else { "canonical" }).to_string());
-                let usual = rd::KINDS.iter().find(|k| k.0 == kind).map(|k| k.2).unwrap_or(30);
-                if a.opt("pace").is_some() && a.opt("days").is_some() {
-                    return Err("Give --pace or --days, not both.".into());
-                }
-                let pace = match (a.opt("pace"), a.opt("days")) {
-                    (Some(p), _) => pl::Pace::parse(&p).map_err(e)?,
-                    (None, Some(d)) => pl::Pace::Days(d.parse().map_err(|_| format!("argument --days: invalid int value: '{d}'"))?),
-                    (None, None) => pl::Pace::Days(usual),
-                };
-                if !rd::KINDS.iter().any(|k| k.0 == kind) && kind != "custom" {
-                    return Err(format!("No plan kind “{kind}”. Kinds: {}.", rd::KINDS.iter().map(|k| k.0).collect::<Vec<_>>().join(", ")));
-                }
-                let spec = pl::PlanSpec {
-                    kind: kind.clone(),
-                    books: a.opt("books"),
-                    passages: a.opt("passages"),
-                    order: a.opt("order").map(|o| pl::Order::parse(&o)).transpose().map_err(e)?,
-                    pace,
-                    days_off: pl::parse_days_off(&a.opt("days_off").unwrap_or_default()).map_err(e)?,
-                };
+                 Opt("days_off", None), Opt("start", None), Opt("arranged", None), Flag("dry_run")], |c, a| {
+                let (spec, kind) = spec_of(a)?;
                 let b = c.bible()?;
+                let by_hand = a.opt("arranged").map(|f| arranged(c, &f)).transpose()?;
                 if a.flag("dry_run") {
-                    let start = match a.opt("start") {
-                        Some(s) => chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d").map_err(|_| "A day looks like 2026-11-03.".to_string())?,
-                        None => rd::today(),
-                    };
-                    let built = pl::build(b, &spec, start).map_err(e)?;
+                    let start = start_day(a)?;
+                    let built = match &by_hand {
+                        Some(x) => pl::exact(b, &spec, x),
+                        None => pl::build(b, &spec, start),
+                    }.map_err(e)?;
                     return j(pl::summary(b, &a.s("name"), &kind, start, &built));
                 }
-                let p = pl::start_from_spec(b, &c.root()?, &a.s("name"), &spec, a.opt("start").as_deref()).map_err(e)?;
+                let p = pl::start_from_spec(b, &c.root()?, &a.s("name"), &spec, a.opt("start").as_deref(), by_hand.as_ref()).map_err(e)?;
                 j(summary(&rd::progress(b, &c.root()?, &p, rd::today()).map_err(e)?))
             }),
-        cmd("plan import", "Start a plan you chose (a chronological one, say) from a text file: one day to a line, places joined by ';' (Job 1-5; Ps 1). # starts a comment.",
-            vec![Pos("name", N::One), Opt("file", None), Opt("start", None)], |c, a| {
+        cmd("plan layout", "The days a plan would have, each chapter on its own, for arranging them: the options of plan start, and --arranged FILE or - for days you set by hand (their \"kept\" day numbers stay as they are; every other chapter is laid out again by the pace). Nothing is started.",
+            vec![Opt("kind", None), Opt("days", None), Opt("books", None), Opt("passages", None), Opt("order", None), Opt("pace", None),
+                 Opt("days_off", None), Opt("start", None), Opt("arranged", None), Opt("name", None)], |c, a| {
+                let (spec, kind) = spec_of(a)?;
+                let b = c.bible()?;
+                let held = a.opt("arranged").map(|f| arranged(c, &f)).transpose()?;
+                let start = start_day(a)?;
+                let built = pl::lay_out(b, &spec, start, held.as_ref()).map_err(e)?;
+                j(pl::layout(b, &a.opt("name").unwrap_or_default(), &kind, start, &built))
+            }),
+        cmd("plan arrange", "Give a plan these days (what the builder saves): wb plan arrange \"Name\" --arranged FILE or - ({\"days\": [[\"MAT.1\"], …], \"kept\": [2]}). The plan as it was goes to .trash; what you read stays in the log.",
+            vec![Pos("name", N::Many), Opt("arranged", None)], |c, a| {
+                let (r, b) = (c.root()?, c.bible()?);
+                let p = rd::find_plan(&r, &a.s("name")).map_err(e)?;
+                let from = a.opt("arranged").ok_or("Say the days: --arranged FILE or - ({\"days\": [[\"MAT.1\"], …], \"kept\": [2]}).")?;
+                let p = pl::arrange_plan(&r, p["id"].as_str().unwrap(), &arranged(c, &from)?).map_err(e)?;
+                j(summary(&rd::progress(b, &r, &p, rd::today()).map_err(e)?))
+            }),
+        cmd("plan entries", "Places as the entries a day holds, each with its label: wb plan entries \"Psalm 23; Isa 53:1-12\".", vec![Pos("places", N::Many)], |c, a| {
+            j(json!(pl::entries_of_text(c.bible()?, &a.s("places")).map_err(e)?))
+        }),
+        cmd("plan import", "Start a plan from a text file, or from input: one day to a line, places joined by ';' (Job 1-5; Ps 1). # starts a comment.\n\
+                            --format auto (the default: found from the text) | plain | guthrie (Week N / Day N, six days a week) | blue-letter (places joined by /, its short names) | horner (ten lists of books: List 1: Matthew, Mark, Luke, John).\n\
+                            --source \"Tyndale One Year Chronological\" names where the list came from. --days-off sun,sat (Guthrie's plan has Sunday off unless you say). --dry-run says what it found. No published plan comes with the app: you give the copy you have.",
+            vec![Pos("name", N::One), Opt("file", None), Opt("start", None), Opt("format", None), Opt("source", None), Opt("days_off", None), Flag("dry_run")], |c, a| {
                 let text = match a.opt("file") {
                     Some(f) => std::fs::read_to_string(&f).map_err(|x| format!("{f}: {x}"))?,
                     None => c.stdin()?,
                 };
                 let b = c.bible()?;
-                let days = rd::parse_plan_text(b, &text).map_err(e)?;
-                let p = rd::start_plan(&c.root()?, &a.s("name"), "imported", a.opt("start").as_deref(), days).map_err(e)?;
+                let format = wb_core::published::Format::parse(&a.opt("format").unwrap_or_default()).map_err(e)?;
+                let mut imp = wb_core::published::import(b, &text, format, a.opt("source").as_deref()).map_err(e)?;
+                if let Some(off) = a.opt("days_off") {
+                    let off = pl::parse_days_off(&off).map_err(e)?;
+                    if off.is_empty() {
+                        imp.extra.as_object_mut().unwrap().shift_remove("days_off");
+                    } else {
+                        imp.extra["days_off"] = json!(off);
+                    }
+                }
+                let start = start_day(a)?;
+                if a.flag("dry_run") {
+                    return j(wb_core::published::summarize(b, &a.s("name"), start, &imp));
+                }
+                let p = rd::start_plan_with(&c.root()?, &a.s("name"), imp.kind, a.opt("start").as_deref(), imp.days, imp.extra).map_err(e)?;
                 j(summary(&rd::progress(b, &c.root()?, &p, rd::today()).map_err(e)?))
             }),
         cmd("plan list", "Your reading plans and how far along each is.", vec![Opt("on", None)], |c, a| {
