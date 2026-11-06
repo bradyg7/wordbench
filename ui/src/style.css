@@ -99,6 +99,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 .vn { position: relative; font: var(--type-verse-num); line-height: 1; color: var(--accent); margin: 0 4px 0 2px; vertical-align: baseline; font-size: 12px; }   /* line-height 1: a small number must not make its line taller */
 .vn::before { content: ''; position: absolute; inset: -14px -10px; }   /* a finger-sized target around a small number */
+.ch-title.wide-note::after { content: ''; display: inline-block; vertical-align: super; margin-left: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .vn.vnote::after { content: ''; position: absolute; top: -2px; right: -6px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 
 .handle { position: absolute; width: 2px; margin-left: -1px; background: var(--accent); z-index: 3; touch-action: none; }

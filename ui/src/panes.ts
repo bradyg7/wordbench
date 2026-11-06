@@ -1206,8 +1206,8 @@ export function openKeys() {
       ['Ctrl+= / Ctrl+-', 'Text size'],
       ['Esc', 'Close a card, a menu or the field'],
       ['Alt+click a word', 'The interlinear for its verse'],
-      ['Ctrl+J', 'Write in the Notebook, from anywhere'],
-      ['Enter in the Notebook', 'Add the entry (Shift+Enter: a new line)'],
+      ['Ctrl+J', 'Quick capture: a small box at the verse you clicked, from anywhere (Enter saves, Ctrl+Enter keeps writing in the Notebook; the key is in Notebook settings)'],
+      ['In a note', 'Ctrl+B bold, Ctrl+I italics, [[ a link to another note; Esc or Ctrl+Enter: done'],
     ];
     for (const [k, what] of rows) {
       const r = h('div', 'key-row');

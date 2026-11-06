@@ -300,6 +300,13 @@ impl Bible {
         Ok(rows)
     }
 
+    /// The number of a chapter's last verse (0 for a chapter the book does not have).
+    pub fn last_verse(&self, code: &str, chapter: u32) -> Result<u32> {
+        let book = self.book(code)?;
+        let mut stmt = self.conn.prepare_cached("SELECT COALESCE(MAX(verse), 0) FROM verses WHERE book = ?1 AND chapter = ?2")?;
+        Ok(stmt.query_row(params![book.id, chapter], |r| r.get(0))?)
+    }
+
     /// A typed place ("Num 25:11", "Numbers 25", "Num 25:10-13", "Num 25:10-26:4") as verbatim verses with its label.
     pub fn passage(&self, place: &str) -> Result<Passage> {
         let place = place.trim();

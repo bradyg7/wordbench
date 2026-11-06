@@ -97,7 +97,7 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
   const part = (want: number): string => {
     const out: string[] = [];
     if (next === 0) {
-      out.push(`<h1 class="ch-title">${esc(chapter.name)} ${chapter.chapter}</h1>`);
+      out.push(`<h1 class="ch-title${now.c.wide ? ' wide-note' : ''}" title="${now.c.wide ? 'A note on this chapter or its book (the Notebook, grouped by chapter)' : ''}">${esc(chapter.name)} ${chapter.chapter}</h1>`);
       if (chapter.title) out.push(`<p class="ch-sub">${esc(chapter.title)}</p>`);
       if (chapter.version) out.push(`<p class="ch-version">${esc(chapter.version)} · marks on whole verses are shown here; words are selected in the KJV</p>`);
     }
@@ -173,6 +173,7 @@ export function paint(root: HTMLElement, d: Drawn) {
     }
     if (ge) apply(ge, g);
   }
+  root.querySelector('.ch-title')?.classList.toggle('wide-note', d.c.wide > 0);
   root.querySelectorAll<HTMLElement>('.vn').forEach(e => {
     e.classList.toggle('vnote', d.c.verses.has(+e.dataset.v!));
     e.classList.toggle('vq', d.questions.has(+e.dataset.v!));

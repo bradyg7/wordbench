@@ -24,6 +24,7 @@ export interface Computed {
   threads: (Mark[] | undefined)[];     // shown threads over each word, a thread once
   noted: Uint8Array;                   // 1 when a note on words covers it
   verses: Set<number>;                 // verses a whole-verse note touches (a dot after the verse number)
+  wide: number;                        // notes on the whole chapter or its book (a dot by the chapter's title, not on every verse)
 }
 
 // keys: the key of each drawn word, in reading order.
@@ -44,14 +45,18 @@ export function computeMarks(keys: number[], m: Marks, ch: number, shown: (id: s
   };
   const hl: (string | undefined)[] = new Array(n), threads: (Mark[] | undefined)[] = new Array(n);
   const noted = new Uint8Array(n), verses = new Set<number>();
+  const lastV = n ? Math.floor(keys[n - 1] / WIDE) : 0;
+  let wide = 0;
   for (const h of m.highlights) each(h, k => { hl[k] = h.color; });
   for (const t of m.threads) {
     if (!shown(t.id)) continue;
     each(t, k => { threads[k] = [...(threads[k] || []).filter(x => x.id !== t.id), t]; });
   }
   for (const nt of m.notes) {
+    const s = nt.kind === 'verses' ? span(nt, ch) : null;
+    if (s && s[0] <= key(1, 0) && s[1] >= key(lastV, WIDE - 1)) { wide++; continue; }
     const onWords = nt.kind === 'word' || nt.kind === 'phrase';
     each(nt, k => { if (onWords) noted[k] = 1; else verses.add(Math.floor(keys[k] / WIDE)); });
   }
-  return { hl, threads, noted, verses };
+  return { hl, threads, noted, verses, wide };
 }

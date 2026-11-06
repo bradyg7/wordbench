@@ -15,9 +15,14 @@ fn j(v: Value) -> Res {
     Ok(Out::Json(v))
 }
 
-/// A place as typed → an anchor (the same forms `wb note add` takes).
+/// A place as typed → an anchor: the forms `wb note add` takes, and a whole chapter or book ("Numbers 25", "Numbers").
 fn anchor(c: &Ctx<'_>, text: &str) -> Result<String, String> {
-    crate::study::anchor(c, text)
+    nb::place_anchor(c.bible()?, text).map_err(e)
+}
+
+fn day_of(a: &crate::args::Args) -> Option<String> {
+    let d = a.s("day");
+    (!d.is_empty()).then_some(d)
 }
 
 fn text_of(c: &Ctx<'_>, words: &str) -> Result<String, String> {
@@ -26,6 +31,69 @@ fn text_of(c: &Ctx<'_>, words: &str) -> Result<String, String> {
 
 pub fn commands() -> Vec<Command> {
     vec![
+        cmd("notebook", "The Notebook's list, grouped: --group day (today's page first), chapter (--at \"Num 25\": that chapter, as following the reader), thread or none; --search words; --questions; --inbox-apart.
+                   With no --group, the group it opens with (wb settings notebook).",
+            vec![Opt("group", None), Opt("search", None), Opt("at", None), Flag("questions"), Flag("inbox_apart"), Flag("no_days")], |c, a| {
+                let st = c.study()?;
+                let set = nb::settings(&st);
+                let at = match a.opt("at") {
+                    Some(t) => {
+                        let sp = c.span(&t)?;
+                        Some((sp.book.code.clone(), sp.c1))
+                    }
+                    None => None,
+                };
+                let o = nb::Listing {
+                    group: a.opt("group").unwrap_or_else(|| set["group"].as_str().unwrap_or("day").to_string()),
+                    search: a.opt("search").unwrap_or_default(),
+                    at,
+                    inbox_apart: a.flag("inbox_apart") || set["inbox"] == true,
+                    questions: a.flag("questions"),
+                    days: !a.flag("no_days") && set["today"] != false,
+                };
+                j(nb::list(c.bible()?, &st, &o).map_err(e)?)
+            }),
+        cmd("note show", "Any note, question or day's page whole, by its id (or a day, 2026-11-04): its text, places, threads, [[links]], headings and Linked from.",
+            vec![Pos("id", N::One)], |c, a| j(nb::show(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("note new", "Write a note: wb note new \"text\" --at \"Num 25:11\" (a verse, words, a run, a chapter: \"Numbers 25\", a book: \"Numbers\", or H7065); with no --at it waits in the Inbox. --question asks it. (- reads standard input)",
+            vec![Pos("text", N::Many), Opt("at", None), Flag("question")], |c, a| {
+                let text = text_of(c, &a.s("text"))?;
+                j(nb::new_note(c.bible()?, &mut *c.study()?, a.opt("at").as_deref(), &text, a.flag("question")).map_err(e)?)
+            }),
+        cmd("note links", "The [[links]] in a note: what each names and the note it opens (to: null when no note has that title).",
+            vec![Pos("id", N::One)], |c, a| j(nb::links(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("note backlinks", "The notes that link to a note with [[its title]] (Linked from), newest first.",
+            vec![Pos("id", N::One)], |c, a| j(nb::backlinks(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("note relink", "After a note's title changed: the [[links]] to its old title, in every other note, take the new one: wb note relink <id> \"old title\".",
+            vec![Pos("id", N::One), Pos("old", N::Many)], |c, a| j(nb::relink(c.bible()?, &mut *c.study()?, &a.s("id"), &a.s("old")).map_err(e)?)),
+        cmd("day", "A day's page (today's, or wb day 2026-11-03): one note per day, made the first time something is written in it (notes/_days/).",
+            vec![Pos("day", N::Opt)], |c, a| j(nb::day_page(c.bible()?, &*c.study()?, day_of(a).as_deref()).map_err(e)?)),
+        cmd("day add", "Add a paragraph to today's page (or --day 2026-11-03): wb day add \"Read Numbers 25 twice\" (- reads standard input).",
+            vec![Pos("text", N::Many), Opt("day", None)], |c, a| {
+                let text = text_of(c, &a.s("text"))?;
+                j(nb::write_day(c.bible()?, &mut *c.study()?, a.opt("day").as_deref(), &text, true).map_err(e)?)
+            }),
+        cmd("day text", "Replace the whole of today's page (or --day 2026-11-03) with the text given (- reads standard input); empty, the page goes to .trash.",
+            vec![Pos("text", N::Any), Opt("day", None)], |c, a| {
+                let text = text_of(c, &a.s("text"))?;
+                j(nb::write_day(c.bible()?, &mut *c.study()?, a.opt("day").as_deref(), &text, false).map_err(e)?)
+            }),
+        cmd("day rm", "Delete a day's page (today's, or wb day rm 2026-11-03); it waits in .trash 7 days.",
+            vec![Pos("day", N::Opt)], |c, a| j(nb::delete_day(&mut *c.study()?, day_of(a).as_deref()).map_err(e)?)),
+        cmd("settings", "The window's settings for a part (notebook): wb settings notebook; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
+            vec![Pos("part", N::One), Pos("key", N::Opt), Pos("value", N::Any), Flag("about")], |c, a| {
+                if a.s("part") != "notebook" {
+                    return Err("The parts with settings so far: notebook.".into());
+                }
+                let mut st = c.study()?;
+                if a.s("key").is_empty() {
+                    return j(if a.flag("about") { nb::settings_about(&st) } else { nb::settings(&st) });
+                }
+                if a.s("value").is_empty() {
+                    return Err(format!("Give a value: wb settings notebook {} on", a.s("key")));
+                }
+                j(nb::set_setting(&mut st, &a.s("key"), &a.s("value")).map_err(e)?)
+            }),
         cmd("note jot", "Write a thought with no place yet, into the Notebook's Inbox: wb note jot \"check where else this is used\" [--question]. (text - reads standard input)",
             vec![Pos("text", N::Many), Flag("question")], |c, a| {
                 let text = text_of(c, &a.s("text"))?;

@@ -689,6 +689,141 @@ fn erase_now_erases_one_deleted_note_and_nothing_else() {
 }
 
 #[test]
+fn a_note_is_placed_on_a_chapter_or_a_book_as_the_run_of_its_verses() {
+    let Some(wb) = Wb::new() else { return };
+    let c = wb.js(&["note", "new", "Numbers 25, read again\nonce in each version", "--at", "Numbers 25"]);
+    assert_eq!((c["anchor"].clone(), c["label"].clone(), c["whole"].clone(), c["title"].clone()), (json!("NUM.25:1-25:18"), json!("Numbers 25"), json!("chapter"), json!("Numbers 25, read again")));
+    let b = wb.js(&["note", "new", "Numbers: an outline", "--at", "Numbers"]);
+    assert_eq!((b["anchor"].clone(), b["label"].clone(), b["whole"].clone()), (json!("NUM.1:1-36:13"), json!("Numbers"), json!("book")));
+    // the file keeps no copy of the chapter's text, in the Python app's format, so its note lists show it
+    let text = std::fs::read_to_string(wb.dir.join("notes").join("NUM").join(format!("{}.md", c["id"].as_str().unwrap()))).unwrap();
+    assert!(text.contains("anchor: \"NUM.25:1-25:18\"") && text.contains("kind: \"verses\"") && text.contains("quote: \"\""), "{text}");
+    assert_eq!(wb.js(&["note", "list", "Numbers 25"]).as_array().unwrap().len(), 2);
+    // a note on a verse is put on its chapter too, and taken off it again
+    let v = wb.js(&["note", "new", "the plague stayed", "--at", "Num 25:8"])["id"].as_str().unwrap().to_string();
+    assert_eq!(wb.js(&["note", "also", &v, "Numbers 25"])["also"], json!([{"anchor": "NUM.25:1-25:18", "label": "Numbers 25"}]));
+    assert_eq!(wb.js(&["note", "unplace", &v, "Numbers 25"])["also"], json!([]));
+    // an Inbox note placed on a book; a question on a chapter
+    let j = wb.js(&["note", "jot", "about the whole book"])["id"].as_str().unwrap().to_string();
+    assert_eq!(wb.js(&["note", "place", &j, "Jude"])["label"], json!("Jude"));
+    assert_eq!(wb.js(&["note", "new", "why here?", "--at", "Num 25", "--question"])["kind"], json!("question"));
+    // with no place, a new note waits in the Inbox; note add keeps the Python app's verses-only rule
+    assert_eq!(wb.js(&["note", "new", "a thought"])["placed"], json!(false));
+    assert!(wb.fails(&["note", "add", "John 3", "x"]).contains("Name a verse"));
+}
+
+#[test]
+fn the_notebook_lists_by_day_chapter_thread_or_none() {
+    let Some(wb) = Wb::new() else { return };
+    let book = wb.js(&["note", "new", "Numbers: an outline", "--at", "Numbers"])["id"].as_str().unwrap().to_string();
+    let v9 = wb.js(&["note", "new", "24,000 or 23,000?", "--at", "Num 25:9", "--question"])["id"].as_str().unwrap().to_string();
+    let v8 = wb.js(&["note", "new", "tent and belly", "--at", "Num 25:8"])["id"].as_str().unwrap().to_string();
+    let ch = wb.js(&["note", "new", "Numbers 25, read again", "--at", "Numbers 25"])["id"].as_str().unwrap().to_string();
+    let other = wb.js(&["note", "new", "not this chapter", "--at", "Num 26:1"])["id"].as_str().unwrap().to_string();
+    let jot = wb.js(&["note", "jot", "no place yet"])["id"].as_str().unwrap().to_string();
+    let ids = |g: &Value| g["entries"].as_array().unwrap().iter().map(|e| e["id"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+    // following the reader: the book's note, the chapter's, then by verse
+    let l = wb.js(&["notebook", "--group", "chapter", "--at", "Num 25"]);
+    assert_eq!(l["groups"].as_array().unwrap().len(), 1);
+    assert_eq!((l["groups"][0]["label"].clone(), l["groups"][0]["following"].clone()), (json!("Numbers 25"), json!(true)));
+    assert_eq!(ids(&l["groups"][0]), vec![book.clone(), ch.clone(), v8.clone(), v9.clone()]);
+    // every chapter: the book first, then chapter by chapter
+    let all = wb.js(&["notebook", "--group", "chapter"]);
+    let labels: Vec<&str> = all["groups"].as_array().unwrap().iter().map(|g| g["label"].as_str().unwrap()).collect();
+    assert_eq!(labels, vec!["Numbers", "Numbers 25", "Numbers 26"]);
+    assert_eq!(ids(&all["groups"][2]), vec![other.clone()]);
+    // by day: today, with today's page first (blank until written in), the Inbox note among the rest
+    let d = wb.js(&["notebook", "--group", "day"]);
+    let first = &d["groups"][0];
+    assert_eq!((first["today"].clone(), first["entries"][0]["kind"].clone(), first["entries"][0]["exists"].clone()), (json!(true), json!("day"), json!(false)));
+    assert!(ids(first).contains(&jot));
+    // the Inbox apart, then by thread
+    let a = wb.js(&["notebook", "--group", "day", "--inbox-apart"]);
+    assert_eq!((a["groups"][0]["label"].clone(), ids(&a["groups"][0])), (json!("Inbox"), vec![jot.clone()]));
+    wb.js(&["thread", "new", "Phinehas"]);
+    wb.js(&["note", "thread", &v8, "Phinehas"]);
+    let t = wb.js(&["notebook", "--group", "thread"]);
+    assert_eq!((t["groups"][0]["label"].clone(), ids(&t["groups"][0])), (json!("Phinehas"), vec![v8.clone()]));
+    assert_eq!(t["groups"][1]["label"], json!("On no thread"));
+    // a search and the questions, across every group; none: newest changed first
+    assert_eq!(ids(&wb.js(&["notebook", "--group", "none", "--search", "belly"])["groups"][0]), vec![v8.clone()]);
+    assert_eq!(ids(&wb.js(&["notebook", "--group", "none", "--questions"])["groups"][0]), vec![v9.clone()]);
+    assert!(wb.fails(&["notebook", "--group", "verse"]).contains("Group by day, chapter, thread or none"));
+    // the group it opens with is a setting
+    wb.js(&["settings", "notebook", "group", "thread"]);
+    assert_eq!(wb.js(&["notebook"])["group"], json!("thread"));
+}
+
+#[test]
+fn today_s_page_is_one_note_a_day_made_when_first_written_in() {
+    let Some(wb) = Wb::new() else { return };
+    let blank = wb.js(&["day"]);
+    assert_eq!((blank["exists"].clone(), blank["kind"].clone(), blank["today"].clone()), (json!(false), json!("day"), json!(true)));
+    let day = blank["day"].as_str().unwrap().to_string();
+    let file = wb.dir.join("notes").join("_days").join(format!("{day}.md"));
+    assert!(!file.exists());
+    wb.js(&["day", "add", "Read Numbers 25 twice."]);
+    let p = wb.js(&["day", "add", "Then the YLT."]);
+    assert_eq!((p["text"].clone(), p["id"].clone()), (json!("Read Numbers 25 twice.\n\nThen the YLT."), json!(format!("d_{day}"))));
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert!(text.starts_with("---\nid: ") && !text.contains("anchor"), "{text}");
+    // the Python app skips a file with no anchor: no note lists, no Inbox
+    assert_eq!(wb.js(&["note", "list", "Numbers 25"]), json!([]));
+    assert_eq!(wb.js(&["inbox"])["notes"], json!([]));
+    // written over by its id, as any note is; a page for another day
+    assert_eq!(wb.js(&["note", "text", &format!("d_{day}"), "only this"])["text"], json!("only this"));
+    assert_eq!(wb.js(&["day", "add", "earlier", "--day", "2026-11-02"])["title"], json!("Monday 2 November"));
+    assert!(wb.fails(&["day", "add", "x", "--day", "tomorrow"]).contains("A day looks like"));
+    // emptied or deleted, a page goes to the Trash and comes back
+    wb.js(&["day", "text", "", "--day", "2026-11-02"]);
+    wb.js(&["day", "rm"]);
+    assert!(!file.exists());
+    let t = wb.js(&["trash"]);
+    assert_eq!(t["notes"].as_array().unwrap().len(), 2);
+    let name = t["notes"].as_array().unwrap().iter().find(|n| n["id"] == format!("d_{day}").as_str()).unwrap()["name"].as_str().unwrap().to_string();
+    wb.js(&["trash", "restore", &name]);
+    assert_eq!(wb.js(&["day"])["text"], json!("only this"));
+}
+
+#[test]
+fn links_between_notes_with_linked_from_and_a_new_title() {
+    let Some(wb) = Wb::new() else { return };
+    let q = wb.js(&["note", "new", "24,000 or 23,000?\n# Sources\nNum 25:9", "--at", "Num 25:9", "--question"])["id"].as_str().unwrap().to_string();
+    let n = wb.js(&["note", "new", "Numbers 25, read again\nsee [[24,000 or 23,000?#Sources]] and [[24,000 or 23,000?|the numbers]] and [[Nothing yet]]", "--at", "Numbers 25"])["id"].as_str().unwrap().to_string();
+    wb.js(&["day", "add", "Wrote up [[Numbers 25, read again]]."]);
+    let l = wb.js(&["note", "links", &n])["links"].clone();
+    let got: Vec<(Value, Value, Value)> = l.as_array().unwrap().iter().map(|x| (x["title"].clone(), x["to"].clone(), x["heading_ok"].clone())).collect();
+    assert_eq!(got, vec![(json!("24,000 or 23,000?"), json!(q), json!(true)), (json!("24,000 or 23,000?"), json!(q), json!(true)), (json!("Nothing yet"), Value::Null, json!(true))]);
+    let from = wb.js(&["note", "backlinks", &q])["linked_from"].clone();
+    assert_eq!((from.as_array().unwrap().len(), from[0]["id"].clone()), (1, json!(n)));
+    let day_from = wb.js(&["note", "backlinks", &n])["linked_from"].clone();
+    assert_eq!(day_from[0]["kind"], json!("day"));
+    // a new title: the links to the old one follow it, keeping their heading and what they show
+    wb.js(&["note", "text", &q, "Twenty-four thousand?\n# Sources\nNum 25:9"]);
+    assert_eq!(wb.js(&["note", "relink", &q, "24,000 or 23,000?"])["changed"], json!([n]));
+    let t = wb.js(&["note", "show", &n])["text"].clone();
+    assert_eq!(t, json!("Numbers 25, read again\nsee [[Twenty-four thousand?#Sources]] and [[Twenty-four thousand?|the numbers]] and [[Nothing yet]]"));
+    assert_eq!(wb.js(&["note", "show", &q])["headings"], json!(["Sources"]));
+}
+
+#[test]
+fn the_notebook_s_settings_are_kept_per_key() {
+    let Some(wb) = Wb::new() else { return };
+    assert_eq!(wb.js(&["settings", "notebook"])["group"], json!("day"));
+    wb.js(&["settings", "notebook", "follow", "off"]);
+    let s = wb.js(&["settings", "notebook", "capture", "alt+n"]);
+    assert_eq!((s["follow"].clone(), s["capture"].clone(), s["today"].clone()), (json!(false), json!("Alt+N"), json!(true)));
+    let file = std::fs::read_to_string(wb.dir.join("settings").join("notebook.json")).unwrap();
+    let saved: Value = serde_json::from_str(&file).unwrap();
+    assert_eq!(saved, json!({"follow": false, "capture": "Alt+N"}));
+    assert_eq!(wb.js(&["settings", "notebook", "follow", "default"])["follow"], json!(true));
+    assert!(wb.fails(&["settings", "notebook", "group", "verse"]).contains("Group by"));
+    assert!(wb.fails(&["settings", "notebook", "capture", "J"]).contains("Ctrl or Alt"));
+    assert!(wb.fails(&["settings", "reader"]).contains("notebook"));
+    assert_eq!(wb.js(&["settings", "notebook", "--about"]).as_array().unwrap().len(), 7);
+}
+
+#[test]
 fn reading_a_chapter_is_remembered_and_asked_for_by_place() {
     let Some(wb) = Wb::new() else { return };
     assert_eq!(wb.js(&["read", "when", "Num 25"]), json!({}));

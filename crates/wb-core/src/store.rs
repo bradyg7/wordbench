@@ -4,11 +4,12 @@
 //! notes/<CODE>/<id>.md      one note per file (notes about an original word live in notes/_words/)
 //! notes/_inbox/<id>.md      the Notebook's notes with no place yet (new in the Rust app; the Python app skips them,
 //!                           as it skips any note without an anchor)
+//! notes/_days/<day>.md      today's page: one note per day, no anchor (new in the Rust app; skipped the same way)
 //! highlights/<CODE>.json    colored anchors, one file per book
 //! threads/<slug>.md         a named set of anchors with the person's note
 //! trails/<id>.md            questions waiting to be followed up
 //! sets/<slug>.md            a named group of threads, places, notes, lessons, PDFs and panes
-//! settings/palette.json     saved custom colors
+//! settings/palette.json     saved custom colors; settings/<part>.json the window's settings, per key (new)
 //! sessions/<day>.jsonl      what was typed into the capture box, by day; sessions/layouts/*.json pane layouts
 //! .trash/                   anything deleted is moved here; only notes and questions are erased, after TRASH_DAYS
 //!                           or at once with Erase now
@@ -172,6 +173,8 @@ enum Kind {
     Inbox,
     /// A note in notes/_threads/: on one or more threads, with no place in the text.
     OnThread,
+    /// A day's page in notes/_days/<day>.md: one note per day, with no place.
+    Day,
 }
 
 /// Inbox notes live in notes/_inbox/, inside the notes folder the Python app reads (it skips them: no anchor).
@@ -188,12 +191,26 @@ fn on_threads(p: &Path) -> bool {
     p.parent().and_then(|d| d.file_name()).is_some_and(|n| n == ON_THREADS)
 }
 
+/// Today's page and the days before it live in notes/_days/<YYYY-MM-DD>.md (the Python app skips them: no anchor).
+pub const DAYS: &str = "_days";
+
+fn in_days(p: &Path) -> bool {
+    p.parent().and_then(|d| d.file_name()).is_some_and(|n| n == DAYS)
+}
+
+/// A day as its file names it: 2026-11-04.
+pub fn is_day(text: &str) -> bool {
+    text.len() == 10 && chrono::NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok()
+}
+
 /// The kind a file in notes/ is, by its folder.
 fn note_kind(p: &Path) -> Kind {
     if in_inbox(p) {
         Kind::Inbox
     } else if on_threads(p) {
         Kind::OnThread
+    } else if in_days(p) {
+        Kind::Day
     } else {
         Kind::Note
     }
@@ -242,6 +259,7 @@ pub struct Store {
     sets: Vec<Rec>,
     inbox: Vec<Rec>,
     on_thread: Vec<Rec>,
+    days: Vec<Rec>,
     sigs: HashMap<PathBuf, Sig>,
     paths: HashMap<PathBuf, (Kind, String)>,
     pub recheck: Duration,
@@ -311,6 +329,7 @@ impl Store {
             sets: vec![],
             inbox: vec![],
             on_thread: vec![],
+            days: vec![],
             sigs: HashMap::new(),
             paths: HashMap::new(),
             recheck: Duration::ZERO,
@@ -374,6 +393,7 @@ impl Store {
                 Kind::Set => self.sets.retain(|n| s(n, "id") != key),
                 Kind::Inbox => self.inbox.retain(|n| s(n, "id") != key),
                 Kind::OnThread => self.on_thread.retain(|n| s(n, "id") != key),
+                Kind::Day => self.days.retain(|n| s(n, "id") != key),
                 Kind::Hl => self.hl.retain(|(c, _)| *c != key),
             }
         }
@@ -405,14 +425,27 @@ impl Store {
                 }
                 key
             }
-            Kind::Inbox | Kind::OnThread => {
+            Kind::Inbox | Kind::OnThread | Kind::Day => {
                 let (mut meta, body) = parse_md(&text);
+                if kind == Kind::Day {
+                    // the file's name is its day, whatever its header says (a page made by hand has none)
+                    if !is_day(&stem(path)) {
+                        return;
+                    }
+                    meta.insert("id".into(), json!(format!("d_{}", stem(path))));
+                    meta.insert("day".into(), json!(stem(path)));
+                    meta.insert("kind".into(), json!("day"));
+                }
                 if s(&meta, "id").is_empty() {
                     return;
                 }
                 meta.insert("text".into(), json!(body.trim()));
                 let key = s(&meta, "id");
-                let list = if kind == Kind::Inbox { &mut self.inbox } else { &mut self.on_thread };
+                let list = match kind {
+                    Kind::Inbox => &mut self.inbox,
+                    Kind::OnThread => &mut self.on_thread,
+                    _ => &mut self.days,
+                };
                 list.retain(|n| s(n, "id") != key);
                 list.push(meta);
                 key
@@ -869,6 +902,94 @@ impl Store {
         Ok(meta)
     }
 
+    // ---- today's page: one note per day (notes/_days/<day>.md) ----
+
+    fn day_path(&self, day: &str) -> PathBuf {
+        self.root.join("notes").join(DAYS).join(format!("{day}.md"))
+    }
+
+    /// Every day's page, oldest first.
+    pub fn days(&self) -> Vec<&Rec> {
+        let mut v: Vec<&Rec> = self.days.iter().collect();
+        v.sort_by_key(|n| s(n, "day"));
+        v
+    }
+
+    /// One day's page, if it has been written in.
+    pub fn day(&self, day: &str) -> Option<&Rec> {
+        self.days.iter().find(|n| s(n, "day") == day)
+    }
+
+    /// Write a day's page: the whole text (`append` false), or a paragraph added after what is there. The page is made
+    /// the first time something is written in it; its header is an id, the day, its kind and the times (no anchor, so
+    /// the Python app passes over it). Emptying a page sends it to .trash. → the page, or None once emptied.
+    pub fn write_day(&mut self, day: &str, text: &str, append: bool) -> Result<Option<Rec>> {
+        if !is_day(day) {
+            return Err(bad("A day looks like 2026-11-04."));
+        }
+        let old = self.day(day).cloned();
+        let text = text.trim();
+        if append && text.is_empty() {
+            return Err(bad("Write something to add to the page."));
+        }
+        let body = match (&old, append) {
+            (Some(o), true) if !s(o, "text").is_empty() => format!("{}\n\n{text}", s(o, "text")),
+            _ => text.to_string(),
+        };
+        if body.trim().is_empty() {
+            if old.is_some() {
+                self.trash(&self.day_path(day))?;
+            }
+            return Ok(None);
+        }
+        let mut meta = match old {
+            Some(mut o) => {
+                o.shift_remove("text");
+                o.insert("updated".into(), json!(now()));
+                o
+            }
+            None => json!({"id": format!("d_{day}"), "day": day, "kind": "day", "created": now(), "updated": now()}).as_object().unwrap().clone(),
+        };
+        self.put(&self.day_path(day), &dump_md(&meta, &body))?;
+        meta.insert("text".into(), json!(body));
+        Ok(Some(meta))
+    }
+
+    /// Delete a day's page (moved to .trash, as any note is).
+    pub fn delete_day(&mut self, day: &str) -> Result<()> {
+        self.day(day).ok_or_else(|| missing("That day has no page."))?;
+        self.trash(&self.day_path(day))
+    }
+
+    // ---- settings: settings/<part>.json, one value per key (the window's settings; new in the Rust app) ----
+
+    fn settings_path(&self, part: &str) -> PathBuf {
+        self.root.join("settings").join(format!("{part}.json"))
+    }
+
+    /// What is saved for a part of the window (an empty object when nothing is).
+    pub fn settings(&self, part: &str) -> Rec {
+        read(&self.settings_path(part)).and_then(|t| serde_json::from_str::<Value>(&t).ok()).and_then(|v| v.as_object().cloned()).unwrap_or_default()
+    }
+
+    /// Save one setting; the others in the file are kept as they are. `None` forgets it (the default stands again).
+    pub fn set_setting(&mut self, part: &str, key: &str, value: Option<Value>) -> Result<Rec> {
+        if part.is_empty() || !part.bytes().all(|b| b.is_ascii_lowercase() || b == b'-') {
+            return Err(bad("A settings part is a plain name, like notebook."));
+        }
+        let mut all = self.settings(part);
+        match value {
+            Some(v) => {
+                all.insert(key.into(), v);
+            }
+            None => {
+                all.shift_remove(key);
+            }
+        }
+        write_atomic(&self.settings_path(part), &(py_dumps_indent1(&Value::Object(all.clone())) + "\n"))?;
+        Ok(all)
+    }
+
     // ---- more places, threads, and notes on a thread with no place ----
 
     /// Every note on a thread with no place in the text, oldest first.
@@ -910,6 +1031,9 @@ impl Store {
         }
         if let Some(n) = self.inbox.iter().find(|n| s(n, "id") == id) {
             return Ok((n.clone(), self.inbox_path(id)));
+        }
+        if let Some(n) = self.days.iter().find(|n| s(n, "id") == id) {
+            return Ok((n.clone(), self.day_path(&s(n, "day"))));
         }
         Err(missing("No note or question with that id."))
     }
@@ -1089,10 +1213,11 @@ impl Store {
         chrono::NaiveDateTime::parse_from_str(name.get(..15)?, "%Y%m%d-%H%M%S").ok()
     }
 
-    /// A deleted note or question (not a thread, a highlight file or a plan, which stay in .trash).
+    /// A deleted note, question or day's page (not a thread, a highlight file or a plan, which stay in .trash).
     fn is_note_file(name: &str) -> bool {
         let rest = name.get(16..).unwrap_or("");
-        Self::trashed_at(name).is_some() && (rest.starts_with("n_") || rest.starts_with("q_")) && rest.ends_with(".md")
+        let day = rest.strip_suffix(".md").is_some_and(is_day);
+        Self::trashed_at(name).is_some() && (rest.starts_with("n_") || rest.starts_with("q_") || day) && rest.ends_with(".md")
     }
 
     /// The notes and questions in .trash, newest first: {name, id, anchor, kind, question, text, deleted, days_left}.
@@ -1129,7 +1254,10 @@ impl Store {
         let (mut meta, body) = parse_md(&text);
         let id = s(&meta, "id");
         let anchor = s(&meta, "anchor");
-        let to = if meta.contains_key("status") && !anchor.is_empty() {
+        let day = name.get(16..).unwrap_or("").trim_end_matches(".md").to_string();
+        let to = if is_day(&day) {
+            self.day_path(&day)
+        } else if meta.contains_key("status") && !anchor.is_empty() {
             self.root.join("trails").join(format!("{id}.md"))
         } else if anchor.is_empty() && s(&meta, "kind") == "thread" {
             self.on_thread_path(&id)

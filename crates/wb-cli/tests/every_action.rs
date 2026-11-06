@@ -21,6 +21,8 @@ const INTERNAL: &[&str] = &[
     // the reader draws the questions)
     "place_jot", "replace_placed", "set_jot_status", "named_place",
     // more places, threads and the trash: the store's pieces of wb note also, note thread, thread write, note text and wb trash
+    // the Notebook of phase 2b: pieces of wb notebook, note show and wb day (a chapter or a book as a place, titles, days)
+    "whole_place", "title_of", "is_day", "days", "day",
     "places_of", "threads_of", "add_thread_note", "update_thread_note", "set_note_thread", "set_note_also", "trashed", "chapter_questions", "command_names", "split_at", "anchor_ref",
     // wb do: the app's side of the socket (wb do is the other side)
     "address_file", "listen", "read_request", "answer",

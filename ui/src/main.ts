@@ -18,7 +18,7 @@ import { app, here, type At } from './app';
 import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
 import { dock, initPanes, openPassage, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
-import { countInbox, notebookBadge, openNotebook, writeInNotebook, writeInNotebookNow } from './notebook';
+import { countInbox, isCaptureKey, notebookBadge, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
 import type { Change } from './dock';
 import { attachCommandField, loadThreads } from './command';
 import { parse, runLine, written } from './actions';
@@ -97,6 +97,7 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
     if (vn) scroller.scrollTop = reader.offsetTop + vn.offsetTop - 12 + offset;
   }
   placeButton(`${data.chapter.name} ${chapter}`);
+  readerMoved();
   $('tb-version').textContent = data.chapter.version || 'KJV';
   const t2 = performance.now();
   await afterPaint();
@@ -834,8 +835,8 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
-  // Ctrl+J: write in the Notebook, from anywhere (a field being typed in too)
-  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); void writeInNotebookNow(); return; }
+  // quick capture (Ctrl+J unless set otherwise in the Notebook's settings): a small box at the verse, from anywhere
+  if (isCaptureKey(e)) { e.preventDefault(); quickCapture(); return; }
   if (typing) return;
   // a selection with its bar: 1–5 color it, 0 removes the highlight
   if (bar && selector.sel && barPick && /^[0-5]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
@@ -903,6 +904,7 @@ async function start() {
   onDo(runLine);
   if (inApp) {
     countInbox();
+    void readSettings();
     loadPalette();
     if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') openNotebook();
   }

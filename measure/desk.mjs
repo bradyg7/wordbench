@@ -42,7 +42,7 @@ try {
   await page.waitForLoadState('load');
   await page.goto(page.url().replace(/\?.*$/, '') + '?at=NUM.25');
   await page.waitForFunction(() => window.__wbReady, null, { timeout: 30000 });
-  await page.waitForSelector('.pane-notebook .nb-seg', { timeout: 15000 });
+  await page.waitForSelector('.pane-notebook .nb-group', { timeout: 15000 });
   const size = await page.evaluate(() => [innerWidth, innerHeight, document.documentElement.dataset.size]);
   check('the laptop-large window is the Large size class', size[2] === 'large', size.join('×'));
   check('the Notebook is docked on the right', await page.locator('.dock-right.open .pane-notebook').count() === 1);
@@ -74,23 +74,31 @@ try {
   check('panes never move the reader', (await page.locator('#place .place-label').textContent()) === placeBefore);
   await page.screenshot({ path: shots + '1440-word-study-and-interlinear.png' });
 
-  // the Notebook: a jot, the Inbox, Place it
-  const ta = page.locator('.nb-write textarea');
-  await ta.click();
-  await ta.fill('Check where else this phrase is used; compare 1 Cor 10:8');
-  await ta.press('Enter');
+  // the Notebook (design B): a new note with no place, the list, the editor, + Place
+  const nbItem = t => page.locator('.pane-notebook .nb-item', { hasText: t }).first();
+  const ed = page.locator('.pane-notebook .nb-editor');
+  const nbBack = async () => { if (await page.locator('.pane-notebook .nb.editing:not(.two) .nb-back').count()) await page.locator('.pane-notebook .nb-back').first().click(); };
+  const typing = () => page.waitForFunction(() => document.activeElement?.classList.contains('nb-input') && !!document.activeElement.closest('.pane-notebook'), null, { timeout: 10000 }).then(() => true, () => false);
+  const done = async () => { await page.keyboard.press('Escape'); await sleep(900); };
+  await page.locator('.pane-notebook .nb-new').click();
+  check('the pen in the Notebook starts a note, ready to type', await typing());
+  await page.keyboard.type('Check where else this phrase is used; compare 1 Cor 10:8');
+  await done();
   await page.waitForFunction(() => document.querySelector('#tb-notebook .badge')?.textContent === '1', null, { timeout: 10000 });
   const inbox = readdirSync(path.join(study, 'notes', '_inbox'));
-  check('a jot is a file in notes/_inbox', inbox.length === 1, inbox[0]);
-  check('the jot shows in the Journal with no place', await page.locator('.nb-entry .unplaced').first().waitFor({ timeout: 5000 }).then(() => true, () => false));
-  await page.locator('.nb-seg button', { hasText: 'Inbox' }).click();
+  check('a note with no place is a file in notes/_inbox', inbox.length === 1, inbox[0]);
+  check('the editor shows it as a page, its first line its title', (await ed.locator('.nb-title').textContent()).startsWith('Check where else'));
+  await page.screenshot({ path: shots + '1440-notebook-a-new-note.png' });
+  await nbBack();
+  check('the list shows it with no place yet', await nbItem('Check where else').locator('.unplaced', { hasText: 'No place yet' }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await nbItem('Check where else').click();
   // a reference in a note: hover cards are off by default; a click shows its verse, verbatim, and opens it as a tab
   const cor = JSON.parse(execFileSync(wbExe, ['text', '1 Cor 10:8', '--json'], { env }).toString()).verses[0].text;
-  await page.locator('.nb-entry a.ref').first().hover();
+  await ed.locator('.nb-page a.ref').first().hover();
   await sleep(700);
   check('hover cards are off by default', await page.locator('.hovercard').count() === 0 && await page.evaluate(() => document.documentElement.dataset.hover) === 'off');
   const placeAtRef = await page.locator('#place .place-label').textContent();
-  await page.locator('.nb-entry a.ref').first().click();
+  await ed.locator('.nb-page a.ref').first().click();
   check('clicking a reference in a note shows the verse', await page.locator('.popover', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
   check('the click does not move the reader', (await page.locator('#place .place-label').textContent()) === placeAtRef);
   await page.locator('.popover .act', { hasText: 'Open as a tab' }).click();
@@ -98,28 +106,29 @@ try {
   check('a verse opened from a note opens in the Notebook’s column', await page.locator('.dock-right .pane-passage', { hasText: cor }).count() === 1);
   await page.evaluate(() => window.__wb.run('notebook'));
   await page.evaluate(() => window.__wb.run('hover on'));
-  await page.locator('.nb-entry a.ref').first().hover();
+  await ed.locator('.nb-page a.ref').first().hover();
   check('with hover on, hovering a reference shows the verse', await page.locator('.hovercard', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
   await page.mouse.move(700, 300);
   await page.evaluate(() => window.__wb.run('hover off'));
-  await page.locator('.nb-entry .btn', { hasText: 'Place it' }).first().click();
+  await ed.locator('.nb-add', { hasText: '+ Place' }).click();
   await page.waitForSelector('.place-menu .place-opt');
   const offered = await page.locator('.place-menu .place-opt-label').allTextContents();
-  check('Place it offers the place the note names', offered.includes('1 Corinthians 10:8'), offered.join(', '));
+  check('+ Place offers the place the note names, and the chapter and book being read', offered.includes('1 Corinthians 10:8') && offered.includes('Numbers 25') && offered.includes('Numbers'), offered.join(', '));
   await page.screenshot({ path: shots + '1440-placing-a-note.png' });
   await page.locator('.place-menu .place-opt', { hasText: '1 Corinthians 10:8' }).click();
   await page.waitForFunction(() => !document.querySelector('#tb-notebook .badge') || document.querySelector('#tb-notebook .badge').hidden, null, { timeout: 10000 });
   check('placing moves the file to notes/1CO', existsSync(path.join(study, 'notes', '1CO', inbox[0])) && !existsSync(path.join(study, 'notes', '_inbox', inbox[0])));
+  await nbBack();
 
   // an Inbox note dragged onto a verse in the reader is placed there
-  await page.locator('.nb-seg button', { hasText: 'Journal' }).click();
-  await ta.click();
-  await ta.fill('Dragged onto its verse');
-  await ta.press('Enter');
+  await page.locator('.pane-notebook .nb-new').click();
+  await typing();
+  await page.keyboard.type('Dragged onto its verse');
+  await done();
   await page.waitForFunction(() => document.querySelector('#tb-notebook .badge')?.textContent === '1', null, { timeout: 10000 });
-  await page.locator('.nb-seg button', { hasText: 'Inbox' }).click();
+  await nbBack();
   const dragged = readdirSync(path.join(study, 'notes', '_inbox'))[0];
-  await page.locator('.nb-entry[draggable="true"]').first().dragTo(page.locator('.vn[data-v="3"]'));
+  await page.locator('.pane-notebook .nb-item[draggable="true"]').first().dragTo(page.locator('.vn[data-v="3"]'));
   for (let i = 0; i < 50 && !existsSync(path.join(study, 'notes', 'NUM', dragged)); i++) await sleep(100);
   check('an Inbox note dropped on a verse is placed there', existsSync(path.join(study, 'notes', 'NUM', dragged)) && /anchor: "NUM.25:3"/.test(readFileSync(path.join(study, 'notes', 'NUM', dragged), 'utf8')));
 
@@ -142,17 +151,18 @@ try {
   await page.keyboard.press('Escape');
   await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'passage' || p.kind === 'strong')) d.close(p); });
 
-  // a question from the verse popover: written in the Notebook's box (one writing box), with the place chosen
+  // a question from the verse popover: a new question in the Notebook's editor (one writing box), with the place chosen
   await page.locator('.vn[data-v="9"]').click();
   await page.locator('.popover .act', { hasText: 'Question' }).click();
   await page.waitForFunction(() => document.activeElement?.classList.contains('nb-input'), null, { timeout: 10000 });
   const boxes = await page.evaluate(() => [...document.querySelectorAll('textarea')].filter(t => t.offsetWidth).map(t => t.placeholder));
-  check('Question on a verse writes in the Notebook’s box, the only one shown', boxes.length === 1 && boxes[0] === 'Your question on Numbers 25:9…', boxes.join(' | '));
+  check('Question on a verse writes in the Notebook’s editor, the only box shown', boxes.length === 1 && boxes[0] === 'Your question on Numbers 25:9…', boxes.join(' | '));
   await page.keyboard.type('How do the two numbers relate?');
-  await page.keyboard.press('Enter');
+  await done();
   await page.waitForSelector('.vn[data-v="9"].vq', { timeout: 10000 });
   check('a question puts a ? on its verse number', true);
-  check('the Notebook has one writing box after the write', await page.locator('.pane-notebook .nb-write').count() === 1);
+  check('the Notebook has no second writing box', await page.locator('.pane-notebook textarea').count() <= 1);
+  await nbBack();
 
   // the color bar: select words with the mouse, 2 colors them green, the recent threads are chips, 0 removes the color
   const anchorOf = () => page.evaluate(() => {
@@ -318,17 +328,42 @@ try {
   await page.keyboard.press('Control+=');
   check('Ctrl+= makes the text larger', (await px()) > f0);
   await page.keyboard.press('Control+0');
-  // Ctrl+J: the Notebook's writing from anywhere, listed in Keys (note e998)
-  const inNotebookBox = () => page.waitForFunction(() => document.activeElement?.classList.contains('nb-input') && !!document.activeElement.closest('.pane-notebook'), null, { timeout: 5000 }).then(() => true, () => false);
+  // quick capture (B2): Ctrl+J from anywhere opens a small box at the verse last clicked; Enter saves a note there,
+  // Ctrl+Enter saves it and opens it in the Notebook; listed in Keys (notes e998, 09ef)
+  const notesOn = (place, at) => JSON.parse(execFileSync(wbExe, ['note', 'list', place], { env }).toString()).filter(n => !at || n.anchor === at);
+  const capturing = () => page.waitForFunction(() => document.activeElement?.classList.contains('capture-field'), null, { timeout: 5000 }).then(() => true, () => false);
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('Control+j');
-  check('Ctrl+J from the reader puts the cursor in the Notebook’s box', await inNotebookBox());
+  check('Ctrl+J from the reader opens quick capture, ready to type', await capturing());
+  await page.keyboard.press('Escape');
+  check('Esc closes it', await page.locator('.capture').count() === 0);
   await page.locator('#cmd').focus();
   await page.keyboard.press('Control+j');
-  check('Ctrl+J from the command field does too', await inNotebookBox());
+  check('Ctrl+J from the command field does too', await capturing());
+  await page.keyboard.press('Escape');
+  await page.locator('.vn[data-v="7"]').click();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Control+j');
+  await capturing();
+  check('quick capture is on the verse last clicked', (await page.locator('.capture .place-pill').textContent()).includes('Numbers 25:7'));
+  await page.screenshot({ path: shots + '1440-quick-capture.png' });
+  await page.keyboard.type('a captured thought');
+  await page.keyboard.press('Enter');
+  for (let i = 0; i < 30 && !notesOn('Num 25', 'NUM.25:7').some(n => n.text === 'a captured thought'); i++) await sleep(100);
+  check('Enter saves it as a note on that verse', notesOn('Num 25', 'NUM.25:7').some(n => n.text === 'a captured thought') && await page.locator('.capture').count() === 0);
+  await page.keyboard.press('Control+j');
+  await capturing();
+  await page.locator('.capture .place-off .member-x').click();
+  await page.locator('.capture-field').fill('captured, then more');
+  await page.keyboard.press('Control+Enter');
+  check('Ctrl+Enter opens it in the Notebook to keep writing', await typing() && (await ed.locator('textarea.nb-input').inputValue()) === 'captured, then more');
+  await done();
+  check('with its place taken off, it waits in the Inbox', JSON.parse(execFileSync(wbExe, ['inbox'], { env }).toString()).notes.some(n => n.text === 'captured, then more'));
+  await nbBack();
   await page.evaluate(() => window.__wb.run('keys'));
   check('Keys lists Ctrl+J', await page.locator('.pane-keys kbd', { hasText: 'Ctrl+J' }).first().waitFor({ timeout: 5000 }).then(() => true, () => false));
   await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'keys')) d.close(p); });
+  await page.locator('#reader').click({ position: { x: 5, y: 5 } });
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });
 
   // the phase 2 check's first findings (docs/phase2-results.md section 10)
@@ -344,19 +379,21 @@ try {
   for (let i = 0; i < 30 && (await usesRows()) !== zealous.verses; i++) await sleep(100);
   check('a rendering in word study opens only the verses rendered that way', (await usesRows()) === zealous.verses, `${zealous.verses} verses`);
   await page.evaluate(() => window.__wb.run('notebook'));
-  const q9 = page.locator('.pane-notebook .nb-entry', { hasText: 'two numbers relate' }).first();
-  await q9.getByRole('button', { name: '✓ Answered' }).click();
-  await page.waitForFunction(() => [...document.querySelectorAll('.pane-notebook .nb-entry.done')].some(e => e.textContent.includes('two numbers relate')), null, { timeout: 10000 });
-  await page.locator('.pane-notebook .nb-entry', { hasText: 'two numbers relate' }).first().locator('.question-pill').click();
-  await page.waitForFunction(() => { const e = [...document.querySelectorAll('.pane-notebook .nb-entry')].find(e => e.textContent.includes('two numbers relate')); return e && !e.querySelector('.question-pill'); }, null, { timeout: 10000 });
+  await nbBack();
+  await nbItem('two numbers relate').click();
+  await ed.getByRole('button', { name: '✓ Answered' }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll('.pane-notebook .nb-item.done')].some(e => e.textContent.includes('two numbers relate')), null, { timeout: 10000 });
+  await ed.locator('.nb-chips .question-pill').click();
+  await page.waitForFunction(() => { const e = document.querySelector('.pane-notebook .nb-editor'); return e && e.textContent.includes('two numbers relate') && !e.querySelector('.nb-chips .question-pill'); }, null, { timeout: 10000 });
   check('a question is answered, then made a plain note by clicking its tag', true);
-  const plain = page.locator('.pane-notebook .nb-entry', { hasText: 'two numbers relate' }).first();
-  check('a placed note shows Move… and Delete', await plain.getByRole('button', { name: 'Move…' }).isVisible() && await plain.getByRole('button', { name: 'Delete' }).isVisible());
-  await plain.getByRole('button', { name: 'Move…' }).click();
+  await ed.locator('.nb-ed-head .icon-btn').click();
+  check('a placed note’s menu has Move and Delete', await page.locator('.menu .menu-item', { hasText: 'Move to another place' }).isVisible() && await page.locator('.menu .menu-item', { hasText: 'Delete' }).isVisible());
+  await page.locator('.menu .menu-item', { hasText: 'Move to another place' }).click();
   await page.locator('.place-other input').fill('Num 25:18');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => [...document.querySelectorAll('.pane-notebook .nb-entry')].some(e => e.textContent.includes('two numbers relate') && e.textContent.includes('25:18')), null, { timeout: 10000 });
-  check('Move… gives a placed note another verse', JSON.parse(execFileSync(wbExe, ['note', 'list', 'Num 25:18'], { env }).toString()).some(n => n.text.includes('two numbers relate')));
+  await page.waitForFunction(() => document.querySelector('.pane-notebook .nb-editor .nb-chips')?.textContent.includes('25:18'), null, { timeout: 10000 });
+  check('Move gives a placed note another verse', JSON.parse(execFileSync(wbExe, ['note', 'list', 'Num 25:18'], { env }).toString()).some(n => n.text.includes('two numbers relate')));
+  await nbBack();
   await page.evaluate(() => window.__wb.open('NUM', 25, 18));
   await page.locator('.chapter-end button').click();
   await page.waitForFunction(() => /read /.test(document.querySelector('.chapter-read')?.textContent || ''), null, { timeout: 10000 });
@@ -378,21 +415,20 @@ try {
   await page.locator('#pen').click();
   await page.waitForFunction(() => document.activeElement?.classList.contains('nb-input'), null, { timeout: 10000 });
   await page.keyboard.type('zeal in more than one place');
-  await page.keyboard.press('Enter');
-  const many = page.locator('.pane-notebook .nb-entry', { hasText: 'zeal in more than one place' }).first();
-  await many.waitFor({ timeout: 10000 });
-  const penAt = await many.locator('.pill').first().textContent();
+  await done();
+  await ed.locator('.nb-title', { hasText: 'zeal in more than one place' }).waitFor({ timeout: 10000 });
+  const penAt = await ed.locator('.nb-chips .place-pill').first().textContent();
   check('the pen writes a note on the place picked or the verse at the top', /Numbers 25/.test(penAt), penAt);
-  await many.getByRole('button', { name: '+ Place' }).click();
+  await ed.locator('.nb-add', { hasText: '+ Place' }).click();
   await page.locator('.place-other input').fill('Ps 106:30');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => [...document.querySelectorAll('.pane-notebook .nb-entry')].some(e => e.textContent.includes('zeal in more than one place') && e.textContent.includes('Psalms 106:30')), null, { timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector('.pane-notebook .nb-editor .nb-chips')?.textContent.includes('Psalms 106:30'), null, { timeout: 10000 });
   const ps106 = JSON.parse(execFileSync(wbExe, ['note', 'list', 'Psalms 106'], { env }).toString());
   check('+ Place puts a note on a far place too', ps106.some(n => n.text === 'zeal in more than one place'));
-  await page.locator('.pane-notebook .nb-entry', { hasText: 'zeal in more than one place' }).first().getByRole('button', { name: '+ Thread' }).click();
+  await ed.locator('.nb-add', { hasText: '+ Thread' }).click();
   await page.locator('.chooser input').fill('Zeal notes');
   await page.keyboard.press('Enter');
-  await page.waitForSelector('.pane-notebook .nb-thread-chip', { timeout: 10000 });
+  await page.waitForSelector('.pane-notebook .nb-editor .nb-thread-chip', { timeout: 10000 });
   await page.evaluate(() => window.__wb.run('thread Zeal notes'));
   await page.waitForSelector('.pane-thread:visible .thread-notes .note-card', { timeout: 10000 });
   await page.locator('.pane-thread:visible .thread-notes textarea').fill('a note on the thread itself');
@@ -405,35 +441,41 @@ try {
   await page.locator('.pane-thread:visible .thread-notes .note-card', { hasText: 'a note on the thread itself' }).getByRole('button', { name: 'Delete' }).click();
   await page.waitForFunction(() => ![...document.querySelectorAll('.pane-thread .thread-notes .note-card')].some(e => e.offsetWidth && e.textContent.includes('a note on the thread itself')), null, { timeout: 10000 });
   await page.evaluate(() => window.__wb.run('notebook'));
-  await page.locator('.nb-seg button', { hasText: 'Trash' }).click();
+  const openTrash = async () => { await page.locator('.pane-notebook .nb-more').click(); await page.locator('.menu .menu-item', { hasText: 'Trash' }).click(); };
+  await nbBack();
+  await openTrash();
   const gone = page.locator('.pane-notebook .nb-entry.trashed', { hasText: 'a note on the thread itself' }).first();
   await gone.waitFor({ timeout: 10000 });
   check('a deleted note is in the Trash with its days left', /erased in 7 days/.test(await gone.textContent()));
   await gone.getByRole('button', { name: 'Put it back' }).click();
   await page.waitForFunction(() => ![...document.querySelectorAll('.pane-notebook .nb-entry.trashed')].some(e => e.textContent.includes('a note on the thread itself')), null, { timeout: 10000 });
   check('Put it back restores it to its thread', JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes.length === 2);
-  await page.locator('.nb-seg button', { hasText: 'Journal' }).click();
+  await page.locator('.pane-notebook .nb-back.shown').click();
 
   // Take off a note's place, its first too (note c8dc): the next of its places becomes its place; the last, the Inbox
-  const entryWith = t => page.locator('.pane-notebook .nb-entry', { hasText: t }).first();
   const notesAt = place => JSON.parse(execFileSync(wbExe, ['note', 'list', place], { env }).toString());
-  await entryWith('zeal in more than one place').waitFor({ timeout: 10000 });
-  const firstAt = await entryWith('zeal in more than one place').locator('.place-off .place-pill').first().textContent();
-  await entryWith('zeal in more than one place').locator('.place-off .member-x').first().click();
-  await page.waitForFunction(() => { const e = [...document.querySelectorAll('.pane-notebook .nb-entry')].find(e => e.textContent.includes('zeal in more than one place')); return e && e.querySelectorAll('.place-off').length === 1 && e.querySelector('.place-off').textContent.includes('Psalms 106:30'); }, null, { timeout: 10000 });
+  await nbItem('zeal in more than one place').click();
+  const firstAt = await ed.locator('.nb-chips .place-off .place-pill').first().textContent();
+  await ed.locator('.nb-chips .place-off .member-x').first().click();
+  await page.waitForFunction(() => { const e = document.querySelector('.pane-notebook .nb-editor .nb-chips'); return e && e.querySelectorAll('.place-off').length === 1 && e.querySelector('.place-off').textContent.includes('Psalms 106:30'); }, null, { timeout: 10000 });
   const nowAt = notesAt('Psalms 106').find(n => n.text === 'zeal in more than one place');
   check('Take off on a note’s first place: the next becomes its place', nowAt?.anchor === 'PSA.106:30' && !notesAt('Numbers 25').some(n => n.text === 'zeal in more than one place'), `${firstAt} → ${nowAt?.anchor}`);
+  await nbBack();
   await page.evaluate(() => window.__wb.run('note a place to take off @Num 25:2'));
-  await entryWith('a place to take off').locator('.place-off .member-x').click();
-  await page.waitForFunction(() => [...document.querySelectorAll('.pane-notebook .nb-entry')].some(e => e.textContent.includes('a place to take off') && e.textContent.includes('No place yet')), null, { timeout: 10000 });
+  await nbItem('a place to take off').click();
+  await ed.locator('.nb-chips .place-off .member-x').click();
+  await page.waitForFunction(() => document.querySelector('.pane-notebook .nb-editor .nb-chips')?.textContent.includes('No place yet'), null, { timeout: 10000 });
   const inInbox = JSON.parse(execFileSync(wbExe, ['inbox'], { env }).toString()).notes.find(n => n.text === 'a place to take off');
   check('Take off on a note’s last place sends it to the Inbox', !!inInbox && existsSync(path.join(study, 'notes', '_inbox', `${inInbox.id}.md`)));
   await page.screenshot({ path: shots + '1440-take-off-a-place.png' });
 
   // Erase now in the Trash, asked first (note e48c, the person's decision of 2026-11-04)
   page.once('dialog', d => d.accept());
-  await entryWith('a place to take off').getByRole('button', { name: 'Delete' }).click();
-  await page.locator('.nb-seg button', { hasText: 'Trash' }).click();
+  await ed.locator('.nb-ed-head .icon-btn').click();
+  await page.locator('.menu .menu-item', { hasText: 'Delete' }).click();
+  await sleep(500);
+  await nbBack();
+  await openTrash();
   const doomed = page.locator('.pane-notebook .nb-entry.trashed', { hasText: 'a place to take off' }).first();
   await doomed.waitFor({ timeout: 10000 });
   const inTrash = () => JSON.parse(execFileSync(wbExe, ['trash'], { env }).toString()).notes.filter(n => n.text === 'a place to take off');
@@ -447,7 +489,77 @@ try {
   await doomed.getByRole('button', { name: 'Erase now' }).click();
   await page.waitForFunction(() => ![...document.querySelectorAll('.pane-notebook .nb-entry.trashed')].some(e => e.textContent.includes('a place to take off')), null, { timeout: 10000 });
   check('Erase now, confirmed, erases it from .trash', inTrash().length === 0 && !!trashName && !existsSync(path.join(study, '.trash', trashName)), asked);
-  await page.locator('.nb-seg button', { hasText: 'Journal' }).click();
+  await page.locator('.pane-notebook .nb-back.shown').click();
+
+  // phase 2b tier 2: the Notebook grouped (N2, N3), places on chapters and books (N1), links (N1), today's page (N2),
+  // the format bar (B1), its settings (N4), the list and the editor side by side
+  const group = async g => { await page.locator('.pane-notebook .nb-group button', { hasText: g }).click(); await sleep(500); };
+  await page.evaluate(() => window.__wb.open('NUM', 25, 1));
+  await sleep(400);
+  await group('Chapter');
+  const ghead = () => page.locator('.pane-notebook .nb-ghead').first().textContent();
+  check('grouped by chapter, the list shows the chapter being read', /Numbers 25 · following the reader/i.test(await ghead()), await ghead());
+  await page.evaluate(() => window.__wb.open('NUM', 26, 1));
+  await page.waitForFunction(() => /Numbers 26/i.test(document.querySelector('.pane-notebook .nb-ghead')?.textContent || ''), null, { timeout: 10000 }).catch(() => {});
+  check('it turns with the reader', /Numbers 26/i.test(await ghead()), await ghead());
+  await page.evaluate(() => window.__wb.open('NUM', 25, 1));
+  await page.waitForFunction(() => /Numbers 25/i.test(document.querySelector('.pane-notebook .nb-ghead')?.textContent || ''), null, { timeout: 10000 });
+  await page.locator('.pane-notebook .nb-new').click();
+  await typing();
+  await page.keyboard.type('Numbers 25, read again\nRead the chapter twice. See [[zeal in more than one place]] and [[No such note]].');
+  await done();
+  await ed.locator('.nb-add', { hasText: '+ Place' }).click();
+  await page.locator('.place-menu .place-opt', { hasText: 'the whole chapter' }).click();
+  await page.waitForFunction(() => document.querySelector('.pane-notebook .nb-editor .nb-chips')?.textContent.includes('Numbers 25'), null, { timeout: 10000 });
+  const chNote = notesAt('Numbers 25').find(n => n.text.startsWith('Numbers 25, read again'));
+  check('+ Place puts a note on the whole chapter: the run of its verses', chNote?.anchor === 'NUM.25:1-25:18', chNote?.anchor);
+  check('the reader marks a chapter’s note by its title, not on every verse', await page.locator('#reader .ch-title.wide-note').count() === 1 && await page.locator('#reader .vn.vnote[data-v="5"]').count() === 0);
+  await nbBack();
+  const firstItem = await page.locator('.pane-notebook .nb-scroll .nb-item').first().textContent();
+  check('a chapter’s note comes first under its chapter', firstItem.startsWith('Numbers 25, read again'), firstItem);
+  await nbItem('Numbers 25, read again').click();
+  check('a [[link]] to a note with no such title is shown as missing', await ed.locator('.nb-page a.nb-link.missing', { hasText: 'No such note' }).count() === 1);
+  await ed.locator('.nb-page a.nb-link', { hasText: 'zeal in more than one place' }).click();
+  await ed.locator('.nb-title', { hasText: 'zeal in more than one place' }).waitFor({ timeout: 10000 });
+  check('a [[link]] opens the note it names', true);
+  check('the note shows Linked from', (await ed.locator('.nb-linked').textContent()).includes('Numbers 25, read again'));
+  await page.screenshot({ path: shots + '1440-notebook-linked-from.png' });
+  // today's page: first under Day, made when first written in
+  await nbBack();
+  await group('Day');
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const dayFile = path.join(study, 'notes', '_days', `${today}.md`);
+  check('grouped by day, today’s page is first, not written yet', (await page.locator('.pane-notebook .nb-scroll .nb-item').first().textContent()).includes('Not written in yet') && !existsSync(dayFile));
+  await page.locator('.pane-notebook .nb-scroll .nb-item').first().click();
+  await typing();
+  await page.keyboard.type('Read Numbers 25 twice. Wrote up [[Numbers 25, read again]].');
+  await page.keyboard.press('Control+a');
+  await page.locator('.pane-notebook .nb-fmt', { hasText: '•' }).click();
+  await done();
+  check('writing in today’s page makes notes/_days/<today>.md, with no place', existsSync(dayFile) && !/anchor/.test(readFileSync(dayFile, 'utf8')));
+  check('the format bar writes Markdown as plain text', /\n\n- Read Numbers 25 twice/.test(readFileSync(dayFile, 'utf8')) && await ed.locator('.nb-page li').count() === 1, readFileSync(dayFile, 'utf8').split('---').pop().trim());
+  check('the Python app passes over it: no anchor, so no note list or Inbox shows it', !notesAt('Numbers 25').some(n => n.text.includes('Wrote up')) && !JSON.parse(execFileSync(wbExe, ['inbox'], { env }).toString()).notes.some(n => n.text.includes('Wrote up')));
+  await page.screenshot({ path: shots + '1440-notebook-today-s-page.png' });
+  // settings: the Inbox as its own group, kept in settings/notebook.json
+  await nbBack();
+  await page.locator('.pane-notebook .nb-more').click();
+  await page.locator('.menu .menu-item', { hasText: 'Notebook settings' }).click();
+  await page.locator('.nb-set-row', { hasText: 'Show the Inbox as its own group' }).locator('input.switch').click();
+  await sleep(700);
+  check('Settings → the Inbox as its own group', (await ghead()).startsWith('Inbox') && JSON.parse(readFileSync(path.join(study, 'settings', 'notebook.json'), 'utf8')).inbox === true, await ghead());
+  await page.screenshot({ path: shots + '1440-notebook-settings.png' });
+  await page.locator('.nb-set-row', { hasText: 'Show the Inbox as its own group' }).locator('input.switch').click();
+  await page.keyboard.press('Escape');
+  await sleep(500);
+  // the column expanded to half the window: the list and the editor side by side (B1)
+  await nbItem('Numbers 25, read again').click();
+  await page.evaluate(() => { const d = window.__wb.dock(); d.wide.right = true; d.layout(); });
+  await sleep(600);
+  check('a wide Notebook shows the list and the editor side by side', await page.locator('.pane-notebook .nb.two').count() === 1 && await page.locator('.pane-notebook .nb-list').isVisible() && await ed.isVisible());
+  await page.screenshot({ path: shots + '1440-notebook-list-and-editor.png' });
+  await page.evaluate(() => { const d = window.__wb.dock(); d.wide.right = false; d.layout(); });
+  await sleep(300);
+  await nbBack();
 
   // reading plans: start one in the pane, mark a day read, spread the rest, rename, edit as text, stop
   await page.evaluate(() => window.__wb.run('plans'));
