@@ -42,7 +42,7 @@ try {
   await page.waitForLoadState('load');
   await page.goto(page.url().replace(/\?.*$/, '') + '?at=NUM.25');
   await page.waitForFunction(() => window.__wbReady, null, { timeout: 30000 });
-  await page.waitForSelector('.pane-notebook .nb-group', { timeout: 15000 });
+  await page.waitForSelector('.pane-notebook .nb-sections', { timeout: 15000 });
   const size = await page.evaluate(() => [innerWidth, innerHeight, document.documentElement.dataset.size]);
   check('the laptop-large window is the Large size class', size[2] === 'large', size.join('×'));
   check('the Notebook is docked on the right', await page.locator('.dock-right.open .pane-notebook').count() === 1);
@@ -84,9 +84,12 @@ try {
   check('the pen in the Notebook starts a note, ready to type', await typing());
   await page.keyboard.type('Check where else this phrase is used; compare 1 Cor 10:8');
   await done();
-  await page.waitForFunction(() => document.querySelector('#tb-notebook .badge')?.textContent === '1', null, { timeout: 10000 });
-  const inbox = readdirSync(path.join(study, 'notes', '_inbox'));
+  const unplacedFiles = () => existsSync(path.join(study, 'notes', '_inbox')) ? readdirSync(path.join(study, 'notes', '_inbox')) : [];
+  const waitUnplaced = async n => { for (let i = 0; i < 100 && unplacedFiles().length !== n; i++) await sleep(100); };
+  await waitUnplaced(1);
+  const inbox = unplacedFiles();
   check('a note with no place is a file in notes/_inbox', inbox.length === 1, inbox[0]);
+  check('no count on the Notebook’s button: a note with no place is a page, nothing waits to be sorted (finding c7ab)', await page.evaluate(() => { const b = document.querySelector('#tb-notebook .badge'); return !b || b.hidden; }));
   check('the editor shows it as a page, its first line its title', (await ed.locator('.nb-title').textContent()).startsWith('Check where else'));
   await page.screenshot({ path: shots + '1440-notebook-a-new-note.png' });
   await nbBack();
@@ -116,21 +119,21 @@ try {
   check('+ Place offers the place the note names, and the chapter and book being read', offered.includes('1 Corinthians 10:8') && offered.includes('Numbers 25') && offered.includes('Numbers'), offered.join(', '));
   await page.screenshot({ path: shots + '1440-placing-a-note.png' });
   await page.locator('.place-menu .place-opt', { hasText: '1 Corinthians 10:8' }).click();
-  await page.waitForFunction(() => !document.querySelector('#tb-notebook .badge') || document.querySelector('#tb-notebook .badge').hidden, null, { timeout: 10000 });
+  await waitUnplaced(0);
   check('placing moves the file to notes/1CO', existsSync(path.join(study, 'notes', '1CO', inbox[0])) && !existsSync(path.join(study, 'notes', '_inbox', inbox[0])));
   await nbBack();
 
-  // an Inbox note dragged onto a verse in the reader is placed there
+  // a page (a note with no place) dragged onto a verse in the reader is placed there
   await page.locator('.pane-notebook .nb-new').click();
   await typing();
   await page.keyboard.type('Dragged onto its verse');
   await done();
-  await page.waitForFunction(() => document.querySelector('#tb-notebook .badge')?.textContent === '1', null, { timeout: 10000 });
+  await waitUnplaced(1);
   await nbBack();
   const dragged = readdirSync(path.join(study, 'notes', '_inbox'))[0];
   await page.locator('.pane-notebook .nb-item[draggable="true"]').first().dragTo(page.locator('#reader .vn[data-v="3"]'));
   for (let i = 0; i < 50 && !existsSync(path.join(study, 'notes', 'NUM', dragged)); i++) await sleep(100);
-  check('an Inbox note dropped on a verse is placed there', existsSync(path.join(study, 'notes', 'NUM', dragged)) && /anchor: "NUM.25:3"/.test(readFileSync(path.join(study, 'notes', 'NUM', dragged), 'utf8')));
+  check('a page dropped on a verse is placed there', existsSync(path.join(study, 'notes', 'NUM', dragged)) && /anchor: "NUM.25:3"/.test(readFileSync(path.join(study, 'notes', 'NUM', dragged), 'utf8')));
 
   // a verse picked by its number can be a tab (a second reader); so can a word
   await page.locator('#reader .vn[data-v="6"]').click();
@@ -485,7 +488,7 @@ try {
   await page.locator('.pane-thread:visible .thread-notes .note-card', { hasText: 'a note on the thread itself' }).getByRole('button', { name: 'Delete' }).click();
   await page.waitForFunction(() => ![...document.querySelectorAll('.pane-thread .thread-notes .note-card')].some(e => e.offsetWidth && e.textContent.includes('a note on the thread itself')), null, { timeout: 10000 });
   await page.evaluate(() => window.__wb.run('notebook'));
-  const openTrash = async () => { await page.locator('.pane-notebook .nb-more').click(); await page.locator('.menu .menu-item', { hasText: 'Trash' }).click(); };
+  const openTrash = async () => { await page.locator('.pane-notebook .nb-trash-btn').click(); };
   await nbBack();
   await openTrash();
   const gone = page.locator('.pane-notebook .nb-entry.trashed', { hasText: 'a note on the thread itself' }).first();
@@ -537,7 +540,7 @@ try {
 
   // phase 2b tier 2: the Notebook grouped (N2, N3), places on chapters and books (N1), links (N1), today's page (N2),
   // the format bar (B1), its settings (N4), the list and the editor side by side
-  const group = async g => { await page.locator('.pane-notebook .nb-group button', { hasText: g }).click(); await sleep(500); };
+  const group = async g => { await page.locator(`.pane-notebook .nb-section[data-section="${{ Day: 'day', Chapter: 'chapter', Thread: 'thread', None: 'none', Pages: 'pages', Questions: 'questions' }[g]}"]`).click(); await sleep(500); };
   await page.evaluate(() => window.__wb.open('NUM', 25, 1));
   await sleep(400);
   await group('Chapter');
@@ -625,14 +628,36 @@ try {
   await page.locator('.pane-notebook .nb-ghead').first().click();
   await sleep(500);
   check('a heading folds its notes away and stays folded; a click opens them again (finding 929e)', shutN < openN && stillShut && await nbListed() === openN, `${openN} → ${shutN} → ${await nbListed()}`);
-  // settings: the Inbox as its own group, kept in settings/notebook.json
+  // W1: the sections replace Group and the ⋯ filters; Pages are the notes with no place (once the Inbox); Places has
+  // its own Follow switch; ⋯ is the settings, cut down to what acts on the whole Notebook (findings c7ab, e09e)
+  const sections = await page.locator('.pane-notebook .nb-sections .nb-section').allTextContents();
+  check('the Notebook’s sections: Days, Pages, Places, Threads, Questions, All, on one line; the Trash a bin beside the pen', sections.join(', ') === 'Days, Pages, Places, Threads, Questions, All' && await page.locator('.pane-notebook .nb-sections').evaluate(r => r.clientHeight < 40) && await page.locator('.pane-notebook .nb-head .nb-trash-btn').count() === 1, sections.join(', '));
+  check('no Group control and no Inbox in the Notebook', await page.locator('.pane-notebook .nb-group').count() === 0 && !(await page.locator('.pane-notebook').textContent()).includes('Inbox'));
+  await group('Pages');
+  const pageIds = JSON.parse(execFileSync(wbExe, ['notebook', '--group', 'pages'], { env }).toString()).groups.flatMap(g => g.entries).map(e => e.id);
+  const shownIds = await page.locator('.pane-notebook .nb-scroll .nb-item').evaluateAll(els => els.map(e => e.dataset.id));
+  check('Pages lists the notes with no place, as wb notebook --group pages does', pageIds.length > 0 && shownIds.join() === pageIds.join() && await page.locator('.pane-notebook .nb-scroll .nb-item .unplaced', { hasText: 'No place yet' }).count() === pageIds.length, `${shownIds.length} of ${pageIds.length}`);
+  await page.screenshot({ path: shots + '1440-notebook-pages.png' });
+  await group('Questions');
+  const qIds = JSON.parse(execFileSync(wbExe, ['notebook', '--group', 'questions'], { env }).toString()).groups.flatMap(g => g.entries).map(e => e.id);
+  check('Questions lists every question', qIds.length > 0 && await page.locator('.pane-notebook .nb-scroll .nb-item.is-question').count() === qIds.length && await page.locator('.pane-notebook .nb-scroll .nb-item:not(.is-question)').count() === 0, `${qIds.length}`);
+  await group('Chapter');
+  const follow = page.locator('.pane-notebook .nb-follow input.switch');
+  check('Places has its own Follow the reader switch, on', await follow.isChecked() && /following the reader/i.test(await ghead()));
+  await follow.click();
+  await page.waitForFunction(() => !/following the reader/i.test(document.querySelector('.pane-notebook .nb-ghead')?.textContent || 'following the reader'), null, { timeout: 10000 }).catch(() => {});
+  check('Follow off lists every chapter, and is kept in settings/notebook.json', !/following the reader/i.test(await ghead()) && JSON.parse(readFileSync(path.join(study, 'settings', 'notebook.json'), 'utf8')).follow === false, await ghead());
+  await page.locator('.pane-notebook .nb-follow input.switch').click();
+  await sleep(600);
   await page.locator('.pane-notebook .nb-more').click();
-  await page.locator('.menu .menu-item', { hasText: 'Notebook settings' }).click();
-  await page.locator('.nb-set-row', { hasText: 'Show the Inbox as its own group' }).locator('input.switch').click();
-  await sleep(700);
-  check('Settings → the Inbox as its own group', (await ghead()).startsWith('Inbox') && JSON.parse(readFileSync(path.join(study, 'settings', 'notebook.json'), 'utf8')).inbox === true, await ghead());
+  const setRows = await page.locator('.nb-settings .nb-set-label').allTextContents();
+  check('⋯ is the Notebook’s settings: Today’s page, Links, Opens with, Quick capture (finding e09e)', setRows.join(', ') === 'Today’s page, Links between notes, Opens with, Quick capture', setRows.join(', '));
+  await page.locator('.nb-settings select.nb-set-group').selectOption('pages');
+  await sleep(600);
+  check('Opens with: Pages, kept in settings/notebook.json', JSON.parse(readFileSync(path.join(study, 'settings', 'notebook.json'), 'utf8')).group === 'pages');
   await page.screenshot({ path: shots + '1440-notebook-settings.png' });
-  await page.locator('.nb-set-row', { hasText: 'Show the Inbox as its own group' }).locator('input.switch').click();
+  await page.locator('.nb-settings select.nb-set-group').selectOption('day');
+  await sleep(400);
   await page.keyboard.press('Escape');
   await sleep(500);
   // the column expanded to half the window: the list and the editor side by side (B1)

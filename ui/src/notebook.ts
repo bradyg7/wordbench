@@ -1,6 +1,8 @@
 // The Notebook (phase 2b, design B: docs/phase2b-design.md section 7): a list and an editor, as in Apple Notes or
-// Obsidian. The list has a search and a Group control: Day (today's page first: one note per day, made the first time
-// it is written in), Chapter (the chapter being read, following the reader), Thread, None. The open note is an editor:
+// Obsidian. The list has a search and its sections (W1 of "The Notebook as a workspace", 2026-11-07: they replace the
+// Group control and the ⋯ menu's filters): Days (today's page first: one note per day, made the first time it is
+// written in), Pages (the notes with no place yet: once the Inbox), Places (the chapter being read, following the
+// reader), Threads, Questions, All, and the Trash. The open note is an editor:
 // its title is its first line, places and threads are chips (+ Place, + Thread), and the format bar writes Markdown as
 // plain text in the file. A place can be a verse, words, a run, a chapter or a book. `[[title]]` and `[[title#heading]]`
 // link to another note; Linked from is under the note. Deleted notes wait in the Trash 7 days (or Erase now). Writing
@@ -12,8 +14,17 @@ import type { Change, Pane } from './dock';
 import { toast } from './sheets';
 import { button, h, icon, placeGo, placePill, popMenu, type Found } from './ui';
 
-type Group = 'day' | 'chapter' | 'thread' | 'none';
-type Only = 'inbox' | 'questions' | null;
+/** What the list shows: a grouping (day, chapter, thread, none) or a section that is a filter (pages, questions). */
+type Group = 'day' | 'chapter' | 'thread' | 'none' | 'pages' | 'questions';
+/** The sections, in order: what each is called and the grouping it shows (the Trash is apart). */
+const SECTIONS: [Group, string, string][] = [
+  ['day', 'Days', 'Today’s page and every note by the day it was written'],
+  ['pages', 'Pages', 'Notes with no place yet: pages of their own'],
+  ['chapter', 'Places', 'Notes by place: the chapter you are reading, or every chapter'],
+  ['thread', 'Threads', 'Notes by thread'],
+  ['questions', 'Questions', 'Your questions, open and answered'],
+  ['none', 'All', 'Every note, the most recently changed first'],
+];
 
 interface Link { start: number; end: number; title: string; heading: string; shown: string; to: string | null; kind: string | null; heading_ok: boolean }
 interface Entry {
@@ -25,16 +36,14 @@ interface Entry {
 }
 interface GroupOf { key: string; label: string; count: number; today?: boolean; following?: boolean; entries: Entry[] }
 
-export interface NotebookSettings { today: boolean; follow: boolean; links: boolean; chapters: boolean; inbox: boolean; group: Group; capture: string }
-export const nbSettings: NotebookSettings = { today: true, follow: true, links: true, chapters: true, inbox: false, group: 'day', capture: 'Ctrl+J' };
+export interface NotebookSettings { today: boolean; follow: boolean; links: boolean; chapters: boolean; group: Group; capture: string }
+export const nbSettings: NotebookSettings = { today: true, follow: true, links: true, chapters: true, group: 'day', capture: 'Ctrl+J' };
 let settingsRead = false;
 
 let group: Group | null = null;
-let only: Only = null;
 let search = '';
 let showTrash = false;
 let pane: Pane | null = null;
-let inboxCount = 0;
 export const notebookBadge = { set: (_n: number) => {} };
 
 /** The list's groups folded away (finding 929e), by group kind and key ("day:2026-11-07"); kept in the window's
@@ -61,15 +70,16 @@ export async function readSettings() {
   return nbSettings;
 }
 
-/** Opens the Notebook. A view of the old Notebook still opens what it was: the Journal is by day, the Inbox and the
- * questions are filters over the list. */
+/** Opens the Notebook. The old names still open what they were: the Journal is Days, the Inbox is Pages (the notes
+ * with no place yet), All notes is Places; questions open Questions. */
 export function openNotebook(v?: 'journal' | 'inbox' | 'all' | 'trash' | Group, opts: { questions?: boolean } = {}) {
-  if (v === 'journal') { group = 'day'; only = null; }
-  else if (v === 'inbox') only = 'inbox';
-  else if (v === 'all') { group = 'chapter'; only = null; }
+  if (v === 'journal') group = 'day';
+  else if (v === 'inbox') group = 'pages';
+  else if (v === 'all') group = 'chapter';
   else if (v === 'trash') showTrash = true;
   else if (v) group = v;
-  if (opts.questions !== undefined) only = opts.questions ? 'questions' : null;
+  if (opts.questions) group = 'questions';
+  else if (opts.questions === false && group === 'questions') group = 'day';
   if (v && v !== 'trash') showTrash = false;
   const was = dock.find('notebook');
   pane = dock.open('notebook', 'Notebook', 'notebook', 'right', el => draw(el));
@@ -78,10 +88,10 @@ export function openNotebook(v?: 'journal' | 'inbox' | 'all' | 'trash' | Group, 
   return pane;
 }
 
+/** How many notes have no place yet (the Pages section). No longer a count on the Notebook's button: nothing waits to
+ * be sorted (finding c7ab). */
 export async function countInbox() {
-  try { inboxCount = (await wb(['inbox'])).notes.length; } catch { inboxCount = 0; }
-  notebookBadge.set(inboxCount);
-  return inboxCount;
+  try { return (await wb(['inbox'])).notes.length as number; } catch { return 0; }
 }
 
 // ---- drawing: the list and the editor -------------------------------------------------------------------------------
@@ -127,8 +137,6 @@ export function readerMoved() {
 function listArgs(): string[] {
   const a = ['notebook', '--group', group || 'day'];
   if (search.trim()) a.push('--search', search.trim());
-  if (only === 'questions') a.push('--questions');
-  if (nbSettings.inbox && only !== 'inbox') a.push('--inbox-apart');
   if (!nbSettings.today) a.push('--no-days');
   const d = app.drawn;
   if (group === 'chapter' && nbSettings.follow && d) a.push('--at', `${d.chapter.code} ${d.chapter.chapter}`);
@@ -137,8 +145,6 @@ function listArgs(): string[] {
 
 async function drawList(): Promise<HTMLElement[]> {
   const d = await wb(listArgs());
-  inboxCount = d.inbox;
-  notebookBadge.set(inboxCount);
   const top = h('div', 'nb-head');
   const f = h('div', 'nb-search');
   f.append(icon('search'));
@@ -152,37 +158,37 @@ async function drawList(): Promise<HTMLElement[]> {
   const add = button('icon-btn nb-new', '', () => newNote(), 'pen');
   add.title = 'A new note';
   add.setAttribute('aria-label', 'A new note');
-  const more = button('icon-btn nb-more', '', () => listMenu(more), 'more');
-  more.setAttribute('aria-label', 'The Notebook: questions, the Trash, settings');
-  top.append(f, add, more);
-  const seg = h('div', 'seg nb-group');
-  seg.append(h('span', 'nb-group-label', 'Group'));
-  for (const [g, label] of [['day', 'Day'], ['chapter', 'Chapter'], ['thread', 'Thread'], ['none', 'None']] as [Group, string][]) {
-    const b = h('button', group === g ? 'on' : '', label);
-    b.onclick = () => { group = g; void pane?.refresh?.(); };
-    seg.append(b);
-  }
-  const out: HTMLElement[] = [top, seg];
-  if (only) {
-    const chip = h('div', 'nb-only');
-    const c = h('span', 'chip on', only === 'inbox' ? `Inbox · ${inboxCount}` : '? Questions');
-    const x = button('member-x shown', '', () => { only = null; void pane?.refresh?.(); }, 'x');
-    x.setAttribute('aria-label', 'Show every note');
-    c.append(x);
-    chip.append(c);
-    out.push(chip);
+  const bin = button('icon-btn nb-trash-btn', '', () => { showTrash = true; editorShown = false; void pane?.refresh?.(); }, 'trash');
+  bin.dataset.section = 'trash';
+  bin.title = 'Trash: deleted notes wait here 7 days';
+  bin.setAttribute('aria-label', 'Trash');
+  const more = button('icon-btn nb-more', '', () => settingsMenu(more), 'more');
+  more.title = 'Notebook settings';
+  more.setAttribute('aria-label', 'Notebook settings');
+  top.append(f, add, bin, more);
+  const out: HTMLElement[] = [top, sectionsRow()];
+  if (group === 'chapter') {
+    // Places follows the reader unless this is off (it was a setting; now it is where it acts)
+    const row = h('label', 'nb-follow');
+    const cb = h('input') as HTMLInputElement;
+    cb.type = 'checkbox';
+    cb.className = 'switch';
+    cb.checked = nbSettings.follow;
+    cb.onchange = () => void saveSetting('follow', cb.checked ? 'on' : 'off');
+    row.append(h('span', '', 'Follow the reader'), h('span', 'muted small', cb.checked ? 'the chapter you are reading' : 'every chapter, in Bible order'), cb);
+    out.push(row);
   }
   const scroll = h('div', 'nb-scroll');
   let any = false;
   for (const g of d.groups as GroupOf[]) {
-    const entries = only === 'inbox' ? g.entries.filter(e => !e.placed && e.kind !== 'day') : g.entries;
+    const entries = g.entries;
     if (!entries.length && !(g.following)) continue;
     any = true;
     // A group's heading folds it (finding 929e); the count sits beside the name, not at the line's end, where it read
     // as the day's date (finding 7bc8).
     const fkey = `${group}:${g.key}`;
     const shut = folded.has(fkey);
-    const label = g.today ? `Today · ${g.label}` : g.following ? `${g.label} · following the reader` : g.label;
+    const label = g.today ? `Today · ${g.label}` : g.following ? `${g.label} · following the reader` : group === 'pages' || group === 'questions' ? SECTIONS.find(x => x[0] === group)![1] : g.label;
     const gh = button(`nb-ghead${shut ? ' shut' : ''}`, '', () => { fold(fkey, !folded.has(fkey)); void pane?.refresh?.(); }, 'down');
     gh.setAttribute('aria-expanded', String(!shut));
     gh.title = shut ? 'Show these notes' : 'Fold these notes away';
@@ -192,7 +198,7 @@ async function drawList(): Promise<HTMLElement[]> {
     scroll.append(...entries.map(item));
     if (g.following && !entries.length) scroll.append(h('p', 'muted small nb-empty', `No notes on ${g.label} yet. Write one with + on a verse, or a new note with + Place.`));
   }
-  if (!any) scroll.append(h('p', 'muted nb-empty', search ? 'No note has all of these words.' : only === 'questions' ? 'No questions yet. Mark a note with ? to ask it.' : only === 'inbox' ? 'Every note has its place.' : 'Nothing written yet. Ctrl+J writes a thought at the verse you clicked; the pen starts a note.'));
+  if (!any) scroll.append(h('p', 'muted nb-empty', search ? 'No note has all of these words.' : group === 'questions' ? 'No questions yet. Mark a note with ? to ask it.' : group === 'pages' ? 'No pages yet. The pen starts one; a note with no place is a page of its own.' : 'Nothing written yet. Ctrl+J writes a thought at the verse you clicked; the pen starts a note.'));
   out.push(scroll);
   return out;
 }
@@ -255,14 +261,21 @@ function newNote(d: Draft = { at: null, question: false }) {
   void pane?.refresh?.();
 }
 
-function listMenu(from: HTMLElement) {
-  const box = h('div', 'menu-list');
-  const item = (label: string, fn: () => void, on = false) => box.append(button(`menu-item${on ? ' on' : ''}`, label, () => { close(); fn(); }));
-  item(only === 'questions' ? '✓ Questions only' : 'Questions only', () => { only = only === 'questions' ? null : 'questions'; showTrash = false; void pane?.refresh?.(); });
-  item(only === 'inbox' ? `✓ The Inbox only (${inboxCount})` : `The Inbox only (${inboxCount})`, () => { only = only === 'inbox' ? null : 'inbox'; showTrash = false; void pane?.refresh?.(); });
-  item('Trash', () => { showTrash = true; editorShown = false; void pane?.refresh?.(); });
-  item('Notebook settings…', () => settingsMenu(from));
-  const close = popMenu(from, box, { align: 'right', width: 230 });
+/** The Notebook's sections, one click each (W1: they replace Group and the ⋯ menu's Questions only and Inbox only; the
+ * Trash is the bin beside the pen). The Trash's list draws the same row, so every section is one click from it. */
+function sectionsRow(): HTMLElement {
+  const row = h('nav', 'nb-sections');
+  row.setAttribute('aria-label', 'Notebook sections');
+  for (const [g, label, what] of SECTIONS) {
+    const on = !showTrash && group === g;
+    const b = h('button', `nb-section${on ? ' on' : ''}`, label);
+    b.dataset.section = g;
+    b.title = what;
+    if (on) b.setAttribute('aria-current', 'true');
+    b.onclick = () => { group = g; showTrash = false; void pane?.refresh?.(); };
+    row.append(b);
+  }
+  return row;
 }
 
 // ---- the editor ---------------------------------------------------------------------------------------------------------
@@ -333,7 +346,7 @@ function chipsRow(e: Entry): HTMLElement {
   else if (!e.id && draft?.at) {
     const chip = h('span', 'place-off');
     const x = button('member-x shown', '', () => { draft!.at = null; void pane?.refresh?.(); }, 'x');
-    x.title = 'No place: it waits in the Inbox';
+    x.title = 'No place: a page of its own';
     chip.append(placeGo(draft.at.label, draft.at.anchor), x);
     row.append(chip);
   } else if (onThreadOnly) row.append(h('span', 'pill unplaced', e.label));
@@ -802,7 +815,7 @@ function editorMenu(from: HTMLElement, e: Entry) {
 }
 
 /** A note's place as a pill (a click goes there) with × to take it off: its first place too, the next then being its
- * place; its last place taken off sends it to the Inbox. */
+ * place; its last place taken off makes it a page of its own (no place). */
 function placeOff(e: Pick<Entry, 'id'>, at: At): HTMLElement {
   const chip = h('span', 'place-off');
   const x = button('member-x shown', '', () => takeOff(e.id, at), 'x');
@@ -815,7 +828,7 @@ function placeOff(e: Pick<Entry, 'id'>, at: At): HTMLElement {
 export async function takeOff(id: string, at: At) {
   try {
     const r = await wb(['note', 'unplace', id, at.anchor]);
-    toast(!r.placed ? `Taken off ${at.label}: it waits in the Inbox` : r.anchor ? `Taken off ${at.label}: now on ${r.label}` : `Taken off ${at.label}: ${r.label}`);
+    toast(!r.placed ? `Taken off ${at.label}: a page of its own now` : r.anchor ? `Taken off ${at.label}: now on ${r.label}` : `Taken off ${at.label}: ${r.label}`);
     changed();
   } catch (x) { toast(String(x)); }
 }
@@ -925,7 +938,7 @@ async function trashList(): Promise<HTMLElement[]> {
     scroll.append(c);
   }
   if (!d.notes.length) scroll.append(h('p', 'muted nb-empty', 'Nothing deleted.'));
-  return [top, scroll];
+  return [top, sectionsRow(), scroll];
 }
 
 // Settings → Notebook (N4). Until the Settings window (tier 5), in the Notebook's ⋯ menu; kept in settings/notebook.json.
@@ -944,24 +957,23 @@ function settingsMenu(from: HTMLElement) {
     row.append(t, cb);
     box.append(row);
   };
-  const save = async (key: string, value: string) => {
-    try { Object.assign(nbSettings, await wb(['settings', 'notebook', key, value])); void pane?.refresh?.(); }
-    catch (x) { toast(String(x)); }
-  };
+  const save = saveSetting;
+  // W1 (finding e09e): what is left is what acts on the whole Notebook. Follow the reader moved to Places itself; notes
+  // on chapters and books are always offered; the Inbox is gone (a note with no place is a page). `wb settings notebook`
+  // still sets every key.
   toggle('today', 'Today’s page', 'A note for each day, made when you first write in it');
-  toggle('follow', 'Follow the reader', 'Grouped by chapter, the list shows the chapter you are reading');
   toggle('links', 'Links between notes', '[[title]] and [[title#heading]], as in Obsidian');
-  toggle('chapters', 'Notes on chapters and books', '+ Place offers the chapter and the book, not only verses');
-  toggle('inbox', 'Show the Inbox as its own group', 'Notes with no place yet, apart from the rest');
-  const g = h('div', 'nb-set-row');
-  g.append(h('div', 'nb-set-label', 'Group when it opens'));
-  const seg = h('div', 'seg small');
-  for (const v of ['day', 'chapter', 'thread', 'none'] as Group[]) {
-    const b = h('button', nbSettings.group === v ? 'on' : '', v[0].toUpperCase() + v.slice(1));
-    b.onclick = () => { seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); void save('group', v); };
-    seg.append(b);
+  const g = h('div', 'nb-set-row nb-set-opens');
+  g.append(h('div', 'nb-set-label', 'Opens with'));
+  const sel = h('select', 'field nb-set-group') as HTMLSelectElement;
+  for (const [v, label] of SECTIONS) {
+    const o = h('option', '', label) as HTMLOptionElement;
+    o.value = v;
+    o.selected = nbSettings.group === v;
+    sel.append(o);
   }
-  g.append(seg);
+  sel.onchange = () => void save('group', sel.value);
+  g.append(sel);
   box.append(g);
   const k = h('form', 'nb-set-row');
   k.append(h('div', 'nb-set-label', 'Quick capture'));
@@ -971,7 +983,12 @@ function settingsMenu(from: HTMLElement) {
   k.onsubmit = ev => { ev.preventDefault(); void save('capture', key.value); };
   k.append(key);
   box.append(k);
-  popMenu(from, box, { align: 'right', width: 360 });
+  popMenu(from, box, { align: 'right', width: 340 });
+}
+
+async function saveSetting(key: string, value: string) {
+  try { Object.assign(nbSettings, await wb(['settings', 'notebook', key, value])); void pane?.refresh?.(); }
+  catch (x) { toast(String(x)); }
 }
 
 // ---- writing on a place, and quick capture -----------------------------------------------------------------------------
@@ -997,7 +1014,7 @@ export function isCaptureKey(e: KeyboardEvent) {
 let captureEl: HTMLElement | null = null;
 
 /** Quick capture (B2): a small box at the verse last clicked (or at the top of the reader). Enter saves a short note
- * there; Ctrl+Enter saves it and opens it in the Notebook to keep writing. The place can be taken off (the Inbox), and ?
+ * there; Ctrl+Enter saves it and opens it in the Notebook to keep writing. The place can be taken off (a page of its own), and ?
  * asks it as a question. */
 export function quickCapture() {
   captureEl?.remove();
@@ -1019,7 +1036,7 @@ export function quickCapture() {
     if (at) {
       const chip = h('span', 'place-off');
       const x = button('member-x shown', '', () => { at = null; drawPlace(); input.focus(); }, 'x');
-      x.title = 'No place: it waits in the Inbox';
+      x.title = 'No place: a page of its own';
       chip.append(placePill(at.label), x);
       place.append(chip);
     } else place.append(button('chip nb-add', '+ Place', () => { at = app.picked ?? here(); drawPlace(); input.focus(); }));
@@ -1055,7 +1072,7 @@ export function quickCapture() {
       close();
       changed();
       if (keep) await openNote(r.id).then(() => { focusEditor = 'end'; const w2 = pane?.el.querySelector<HTMLElement>('.nb-editor .nb-body'); if (w2 && shown) startEditing(w2, shown); });
-      else toast(at ? `Written on ${at.label}` : 'In the Inbox');
+      else toast(at ? `Written on ${at.label}` : 'Written as a page of its own (no place yet)');
     } catch (x) { toast(String(x)); }
   };
   input.focus();

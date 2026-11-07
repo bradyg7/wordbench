@@ -62,9 +62,9 @@ fn findings() -> Vec<Command> {
 
 fn notebook_commands() -> Vec<Command> {
     vec![
-        cmd("notebook", "The Notebook's list, grouped: --group day (today's page first), chapter (--at \"Num 25\": that chapter, as following the reader), thread or none; --search words; --questions; --inbox-apart.
+        cmd("notebook", "The Notebook's list, grouped: --group day (today's page first), chapter (--at \"Num 25\": that chapter, as following the reader), thread or none; or a section: --group pages (notes with no place yet) or questions; --search words; --questions; --pages; --inbox-apart.
                    With no --group, the group it opens with (wb settings notebook).",
-            vec![Opt("group", None), Opt("search", None), Opt("at", None), Flag("questions"), Flag("inbox_apart"), Flag("no_days")], |c, a| {
+            vec![Opt("group", None), Opt("search", None), Opt("at", None), Flag("questions"), Flag("pages"), Flag("inbox_apart"), Flag("no_days")], |c, a| {
                 let st = c.study()?;
                 let set = nb::settings(&st);
                 let at = match a.opt("at") {
@@ -78,8 +78,9 @@ fn notebook_commands() -> Vec<Command> {
                     group: a.opt("group").unwrap_or_else(|| set["group"].as_str().unwrap_or("day").to_string()),
                     search: a.opt("search").unwrap_or_default(),
                     at,
-                    inbox_apart: a.flag("inbox_apart") || set["inbox"] == true,
+                    inbox_apart: a.flag("inbox_apart"),
                     questions: a.flag("questions"),
+                    pages: a.flag("pages"),
                     days: !a.flag("no_days") && set["today"] != false,
                 };
                 j(nb::list(c.bible()?, &st, &o).map_err(e)?)

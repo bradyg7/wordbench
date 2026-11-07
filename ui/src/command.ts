@@ -63,8 +63,8 @@ function describe(a: any): string {
     case 'ask': return `a question at ${a.at?.label ?? here().label}`;
     case 'thread': return `add ${a.at?.label ?? here().label} to ${a.name}`;
     case 'hl': return `color ${a.at?.label ?? here().label}`;
-    case 'jot': return a.question ? 'a question with no place yet, into the Inbox' : 'a thought with no place yet, into the Inbox';
-    case 'place': return `give that Inbox note its place: ${a.at.label}`;
+    case 'jot': return a.question ? 'a question with no place yet, in Pages' : 'a thought with no place yet: a page of its own';
+    case 'place': return `give that note its place: ${a.at.label}`;
     case 'interlinear': return 'the original, word by word';
     case 'find': return 'your notes, threads and questions';
     case 'openthread': return 'open the thread';

@@ -596,3 +596,25 @@ No new kind of file in the study folder (the folds and the box's place are the w
 | Golden suite | `python scripts/golden.py`: **99 of 99** (the day names are Rust only) |
 
 Screenshots: `docs/phase2/1440-notebook-folded.png`, `1440-notebook-link-picker.png`.
+
+## 20. W1: the Notebook's sections, and the Inbox retired (2026-11-07)
+
+Step 2 of "The Notebook as a workspace", with the person's decisions of 2026-11-07: **a note with no place is a page**
+(the Inbox is retired, finding `c7ab`); pages are edited **block by block** (W3); the design round's sheets are
+**reviewed before W3 to W6** are built; **documents from a thread** (tier 4) come right after the sheets.
+
+| Finding | Built | Checked |
+|---|---|---|
+| `c7ab`, `e09e` | **The sections** replace the Group control and the ⋯ menu's filters, one click each: **Days**, **Pages** (the notes with no place yet: once the Inbox), **Places** (by chapter, with its own **Follow the reader** switch, which was a setting), **Threads**, **Questions**, **All**; the **Trash** is a bin beside the pen, and its list shows the sections too. **⋯ is the Notebook's settings**, cut to what acts on the whole Notebook: Today's page, Links between notes, **Opens with** (any section), Quick capture. Gone from the window: "Notes on chapters and books" (always offered) and "Show the Inbox as its own group". **No count on the Notebook's button**: nothing waits to be sorted. The window's words: "a page of its own (no place yet)" for what was "in the Inbox". `journal`, `inbox` and `notebook` in the command field still open Days, Pages and the Notebook. Core: `wb notebook --group pages\|questions` (and `--pages`); `wb settings notebook group pages\|questions`; the `inbox` setting is gone (a saved one is passed over). **The files do not change:** a page with no place is still `notes/_inbox/<id>.md`, which the Python app passes over, and `wb inbox` keeps its name | CLI `notes_with_no_place_are_pages_and_questions_a_section` and the settings test; desk: the six sections on one line and the bin, no Group and no "Inbox" in the Notebook, Pages = `wb notebook --group pages`, Questions only questions, Follow off lists every chapter (kept in `settings/notebook.json`), the settings' four rows, Opens with: Pages kept |
+
+The person's own settings (read only): `today` and `links` were off, `group` was `chapter`; each still applies, and a
+saved `inbox` is passed over.
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **247 of 247** (8 new; the badge waits became waits on the files) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped |
+| Rust tests | `cargo test`: **137** (1 new) |
+| Golden suite | `python scripts/golden.py`: **99 of 99** |
+
+Screenshots: `docs/phase2/1440-notebook-pages.png`, `1440-notebook-settings.png`.

@@ -37,10 +37,9 @@ function spanLabel(s: { book: string; c1: number; v1: number; c2: number; v2: nu
 }
 
 /** After a write: the panes that show what it changed are drawn again (all of them when it is not said), the reader's
- * marks when notes, threads or highlights changed, and the Inbox count when notes did. */
+ * marks when notes, threads or highlights changed. */
 export function written(...what: Change[]) {
   const w = what.length ? what : CHANGES;
-  if (w.includes('notes')) void countInbox();
   if (w.some(c => c === 'notes' || c === 'threads' || c === 'highlights')) void app.refreshMarks();
   dock.refresh(w);
 }
@@ -126,15 +125,15 @@ export async function perform(a: any, line: string): Promise<string> {
       const n = await wb(a.question ? ['note', 'jot', '-', '--question'] : ['note', 'jot', '-'], a.text);
       last = { kind: 'jot', id: n.id };
       written('notes');
-      return a.question ? 'A question in the Inbox' : 'In the Inbox';
+      return a.question ? 'A question with no place yet: in Pages' : 'A page of its own (no place yet): in Pages';
     }
     case 'place': {
       const r = await wb(['note', 'place', a.part, a.at.anchor]);
       written('notes');
       return `Placed on ${r.label}`;
     }
-    case 'journal': openNotebook('journal'); return 'The Journal';
-    case 'inbox': openNotebook('inbox'); return `The Inbox (${await countInbox()})`;
+    case 'journal': openNotebook('journal'); return 'The Notebook: Days';
+    case 'inbox': openNotebook('inbox'); return `The Notebook: Pages, the notes with no place yet (${await countInbox()})`;
     case 'notebook': openNotebook(); return 'The Notebook';
     case 'thread': {
       const p = at(a);

@@ -1069,9 +1069,9 @@ fn the_notebook_lists_by_day_chapter_thread_or_none() {
     let first = &d["groups"][0];
     assert_eq!((first["today"].clone(), first["entries"][0]["kind"].clone(), first["entries"][0]["exists"].clone()), (json!(true), json!("day"), json!(false)));
     assert!(ids(first).contains(&jot));
-    // the Inbox apart, then by thread
+    // the pages (once the Inbox) apart, then by thread
     let a = wb.js(&["notebook", "--group", "day", "--inbox-apart"]);
-    assert_eq!((a["groups"][0]["label"].clone(), ids(&a["groups"][0])), (json!("Inbox"), vec![jot.clone()]));
+    assert_eq!((a["groups"][0]["label"].clone(), ids(&a["groups"][0])), (json!("Pages"), vec![jot.clone()]));
     wb.js(&["thread", "new", "Phinehas"]);
     wb.js(&["note", "thread", &v8, "Phinehas"]);
     let t = wb.js(&["notebook", "--group", "thread"]);
@@ -1158,7 +1158,24 @@ fn the_notebook_s_settings_are_kept_per_key() {
     assert!(wb.fails(&["settings", "notebook", "group", "verse"]).contains("Group by"));
     assert!(wb.fails(&["settings", "notebook", "capture", "J"]).contains("Ctrl or Alt"));
     assert!(wb.fails(&["settings", "reader"]).contains("notebook"));
-    assert_eq!(wb.js(&["settings", "notebook", "--about"]).as_array().unwrap().len(), 7);
+    assert_eq!(wb.js(&["settings", "notebook", "--about"]).as_array().unwrap().len(), 6);
+    // W1: the Inbox is gone from the settings; the Notebook can open with Pages or Questions
+    assert!(wb.fails(&["settings", "notebook", "inbox", "on"]).contains("settings are"));
+    assert_eq!(wb.js(&["settings", "notebook", "group", "pages"])["group"], json!("pages"));
+}
+
+#[test]
+fn notes_with_no_place_are_pages_and_questions_a_section() {
+    let Some(wb) = Wb::new() else { return };
+    let page = wb.js(&["note", "new", "A page of my own"]);
+    let placed = wb.js(&["note", "new", "on a verse", "--at", "Num 25:11"]);
+    let asked = wb.js(&["note", "new", "asked here", "--at", "Num 25:12", "--question"]);
+    let ids = |v: Value| -> Vec<Value> { v["groups"].as_array().unwrap().iter().flat_map(|g| g["entries"].as_array().unwrap().clone()).map(|e| e["id"].clone()).collect() };
+    let pages = ids(wb.js(&["notebook", "--group", "pages"]));
+    assert!(pages.contains(&page["id"]) && !pages.contains(&placed["id"]) && !pages.iter().any(|i| i.as_str().unwrap().starts_with("d_")), "{pages:?}");
+    assert_eq!(ids(wb.js(&["notebook", "--group", "none", "--pages"])), pages);
+    let qs = ids(wb.js(&["notebook", "--group", "questions"]));
+    assert!(qs.contains(&asked["id"]) && !qs.contains(&page["id"]), "{qs:?}");
 }
 
 #[test]

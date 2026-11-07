@@ -3,7 +3,7 @@
 **In this repository (2026-11-04):** copied from the Python repository's branch `claude/design-layouts-e1b1df` (commit
 321443b), without its `inventory/` screenshots of the Python app. FigCraft is found in `%LOCALAPPDATA%\Programs\ArtCraft`
 or `%ProgramFiles%\ArtCraft`. The phase 2b design round is `phase2b.py` → `phase2b.figcraft` and `exports/phase2b/`
-(review: [../docs/phase2b-design.md](../docs/phase2b-design.md)). `content.py` still runs the Python `wb`; the content it
+(review: [../docs/phase2b-design.md](../docs/phase2b-design.md)). The workspace round (W2 of "The Notebook as a workspace", 2026-11-07) is `workspace.py` → `workspace.figcraft` and `exports/workspace/` (review: [../docs/workspace-design.md](../docs/workspace-design.md)). `content.py` still runs the Python `wb`; the content it
 wrote is in `content.json`.
 
 Layouts and the design system for Bible Workbench on a phone, a desktop or laptop, and (later) a dedicated e-ink reader.

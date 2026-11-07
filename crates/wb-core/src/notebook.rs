@@ -494,7 +494,8 @@ pub fn delete_day(store: &mut Store, day: Option<&str>) -> Result<Value> {
 /// How the Notebook's list is asked for.
 #[derive(Default)]
 pub struct Listing {
-    /// day, chapter, thread or none.
+    /// day, chapter, thread or none; or one of the Notebook's sections that is a filter over none: pages (the notes with
+    /// no place yet, which are pages since 2026-11-07, W1) or questions.
     pub group: String,
     /// Every word must be in the note's text, title, places or threads.
     pub search: String,
@@ -504,6 +505,8 @@ pub struct Listing {
     pub inbox_apart: bool,
     /// Only questions.
     pub questions: bool,
+    /// Only the pages: notes and questions with no place (once the Inbox), not the days' pages.
+    pub pages: bool,
     /// Today's page (and the days' pages).
     pub days: bool,
 }
@@ -567,8 +570,14 @@ fn places_in(e: &Value) -> Vec<String> {
 pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
     let words: Vec<String> = o.search.to_lowercase().split_whitespace().map(String::from).collect();
     let mut all: Vec<Value> = all_lines(bible, store, o.days).into_iter().filter(|e| words_in(e, &words)).collect();
-    if o.questions {
+    // the sections Pages and Questions are filters over the list by None (the most recently changed first)
+    let (pages, questions) = (o.pages || o.group == "pages", o.questions || o.group == "questions");
+    let grouped = if pages || o.group == "questions" { "none" } else { o.group.as_str() };
+    if questions {
         all.retain(|e| e["kind"] == "question");
+    }
+    if pages {
+        all.retain(|e| e["placed"] == false && e["kind"] != "day");
     }
     let mut groups: Vec<Value> = vec![];
     if o.inbox_apart {
@@ -576,11 +585,11 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
         all = rest;
         newest_first(&mut inbox, "created");
         if !inbox.is_empty() {
-            groups.push(group("_inbox", "Inbox", inbox));
+            groups.push(group("_inbox", "Pages", inbox));
         }
     }
     let today = Local::now().date_naive();
-    match o.group.as_str() {
+    match grouped {
         "day" | "" => {
             let mut by: Vec<(NaiveDate, Value)> = all
                 .into_iter()
@@ -589,7 +598,7 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
                     Some((d, e))
                 })
                 .collect();
-            let blank = o.days && words.is_empty() && !o.questions && !by.iter().any(|(d, e)| *d == today && e["kind"] == "day");
+            let blank = o.days && words.is_empty() && !questions && !by.iter().any(|(d, e)| *d == today && e["kind"] == "day");
             if blank {
                 by.push((today, day_blank(today)));
             }
@@ -891,8 +900,7 @@ pub const SETTINGS: &[(&str, &str, &str)] = &[
     ("follow", "true", "Follow the reader: grouped by chapter, the list shows the chapter you are reading"),
     ("links", "true", "Links between notes: [[title]] and [[title#heading]], as in Obsidian"),
     ("chapters", "true", "Notes on chapters and books: + Place offers the chapter and the book, not only verses"),
-    ("inbox", "false", "Show the Inbox as its own group: notes with no place yet, apart from the rest"),
-    ("group", "\"day\"", "Group when it opens: day, chapter, thread or none"),
+    ("group", "\"day\"", "What it opens with: day, chapter (places), thread, none (all), pages or questions"),
     ("capture", "\"Ctrl+J\"", "Quick capture: the key that opens a small box at the verse"),
 ];
 
@@ -930,8 +938,8 @@ pub fn set_setting(store: &mut Store, key: &str, value: &str) -> Result<Value> {
             _ => return Err(bad(format!("{key} is on or off."))),
         }))
     } else if key == "group" {
-        if !["day", "chapter", "thread", "none"].contains(&v) {
-            return Err(bad("Group by day, chapter, thread or none."));
+        if !["day", "chapter", "thread", "none", "pages", "questions"].contains(&v) {
+            return Err(bad("Group by day, chapter, thread or none; or open with pages or questions."));
         }
         Some(json!(v))
     } else {
