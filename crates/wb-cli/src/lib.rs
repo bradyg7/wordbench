@@ -9,6 +9,7 @@ mod args;
 mod notebook;
 mod read;
 mod reading;
+mod setup;
 mod study;
 
 use args::{Args, Spec};
@@ -132,6 +133,7 @@ fn commands() -> Vec<Command> {
     all.extend(study::commands());
     all.extend(reading::commands());
     all.extend(notebook::commands());
+    all.extend(setup::commands());
     all
 }
 

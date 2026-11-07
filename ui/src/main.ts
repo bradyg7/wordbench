@@ -22,6 +22,7 @@ import { countInbox, isCaptureKey, notebookBadge, openNotebook, quickCapture, re
 import type { Change } from './dock';
 import { attachCommandField, loadThreads } from './command';
 import { parse, runLine, written } from './actions';
+import { setupIfNeeded } from './setup';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const reader = $('reader'), scroller = $('scroller');
@@ -879,6 +880,8 @@ Object.assign(app, {
 
 // ---- start ------------------------------------------------------------------------------------------------------------
 async function start() {
+  // A first run (or a moved folder) opens the setup screen, and the reader starts after it.
+  if (await setupIfNeeded()) return;
   document.documentElement.dataset.size = sizeClass();
   try {
     const t = localStorage.getItem('wb.theme');
