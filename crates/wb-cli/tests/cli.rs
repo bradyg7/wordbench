@@ -1104,7 +1104,7 @@ fn today_s_page_is_one_note_a_day_made_when_first_written_in() {
     assert_eq!(wb.js(&["inbox"])["notes"], json!([]));
     // written over by its id, as any note is; a page for another day
     assert_eq!(wb.js(&["note", "text", &format!("d_{day}"), "only this"])["text"], json!("only this"));
-    assert_eq!(wb.js(&["day", "add", "earlier", "--day", "2026-11-02"])["title"], json!("Monday 2 November"));
+    assert_eq!(wb.js(&["day", "add", "earlier", "--day", "2026-11-02"])["title"], json!("Monday, November 2"));
     assert!(wb.fails(&["day", "add", "x", "--day", "tomorrow"]).contains("A day looks like"));
     // emptied or deleted, a page goes to the Trash and comes back
     wb.js(&["day", "text", "", "--day", "2026-11-02"]);
@@ -1115,6 +1115,12 @@ fn today_s_page_is_one_note_a_day_made_when_first_written_in() {
     let name = t["notes"].as_array().unwrap().iter().find(|n| n["id"] == format!("d_{day}").as_str()).unwrap()["name"].as_str().unwrap().to_string();
     wb.js(&["trash", "restore", &name]);
     assert_eq!(wb.js(&["day"])["text"], json!("only this"));
+    // the name days had before (finding 7bc8) still links to the page, as do the new name and the day
+    let d = chrono::NaiveDate::parse_from_str(&day, "%Y-%m-%d").unwrap();
+    let names = [d.format("%A %-d %B").to_string(), d.format("%A, %B %-d").to_string(), day.clone()];
+    let linker = wb.js(&["note", "new", &format!("See [[{}]], [[{}]] and [[{}]].", names[0], names[1], names[2])]);
+    let to: Vec<Value> = wb.js(&["note", "links", linker["id"].as_str().unwrap()])["links"].as_array().unwrap().iter().map(|l| l["to"].clone()).collect();
+    assert_eq!(to, vec![json!(format!("d_{day}")); 3]);
 }
 
 #[test]

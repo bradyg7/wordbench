@@ -37,6 +37,15 @@ let pane: Pane | null = null;
 let inboxCount = 0;
 export const notebookBadge = { set: (_n: number) => {} };
 
+/** The list's groups folded away (finding 929e), by group kind and key ("day:2026-11-07"); kept in the window's
+ *  storage, as the command history is: it is how this window is set, not part of the study. */
+const FOLDED = 'wb.notebook.folded';
+const folded = new Set<string>((() => { try { return JSON.parse(localStorage.getItem(FOLDED) || '[]') as string[]; } catch { return []; } })());
+function fold(key: string, shut: boolean) {
+  if (shut) folded.add(key); else folded.delete(key);
+  try { localStorage.setItem(FOLDED, JSON.stringify([...folded].slice(-300))); } catch { /* not kept: it still folds now */ }
+}
+
 /** The note open in the editor: its id, or a draft not saved yet (a place, a question, a day's page). */
 let openId: string | null = null;
 interface Draft { at: At | null; question: boolean; day?: string; text?: string; hint?: string }
@@ -169,10 +178,18 @@ async function drawList(): Promise<HTMLElement[]> {
     const entries = only === 'inbox' ? g.entries.filter(e => !e.placed && e.kind !== 'day') : g.entries;
     if (!entries.length && !(g.following)) continue;
     any = true;
-    const gh = h('div', 'nb-ghead');
+    // A group's heading folds it (finding 929e); the count sits beside the name, not at the line's end, where it read
+    // as the day's date (finding 7bc8).
+    const fkey = `${group}:${g.key}`;
+    const shut = folded.has(fkey);
     const label = g.today ? `Today · ${g.label}` : g.following ? `${g.label} · following the reader` : g.label;
-    gh.append(h('span', '', label), h('span', 'nb-count', String(entries.length)));
-    scroll.append(gh, ...entries.map(item));
+    const gh = button(`nb-ghead${shut ? ' shut' : ''}`, '', () => { fold(fkey, !folded.has(fkey)); void pane?.refresh?.(); }, 'down');
+    gh.setAttribute('aria-expanded', String(!shut));
+    gh.title = shut ? 'Show these notes' : 'Fold these notes away';
+    gh.append(h('span', 'nb-glabel', label), h('span', 'nb-count', String(entries.length)));
+    scroll.append(gh);
+    if (shut) continue;
+    scroll.append(...entries.map(item));
     if (g.following && !entries.length) scroll.append(h('p', 'muted small nb-empty', `No notes on ${g.label} yet. Write one with + on a verse, or a new note with + Place.`));
   }
   if (!any) scroll.append(h('p', 'muted nb-empty', search ? 'No note has all of these words.' : only === 'questions' ? 'No questions yet. Mark a note with ? to ask it.' : only === 'inbox' ? 'Every note has its place.' : 'Nothing written yet. Ctrl+J writes a thought at the verse you clicked; the pen starts a note.'));
@@ -453,6 +470,7 @@ function startEditing(wrapEl: HTMLElement, e: Entry) {
     if (nbSettings.links) maybeSuggest(ta);
   };
   ta.onkeydown = ev => {
+    if (suggestKey?.(ev)) return;
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'b') { ev.preventDefault(); wrap(ta, '**'); ta.dispatchEvent(new Event('input')); }
     else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'i') { ev.preventDefault(); wrap(ta, '*'); ta.dispatchEvent(new Event('input')); }
     else if (ev.key === 'Escape' || ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter')) { ev.preventDefault(); ev.stopPropagation(); ta.blur(); }
@@ -635,17 +653,128 @@ function insert(ta: HTMLTextAreaElement, text: string) {
   ta.focus();
 }
 
-// Typing [[ offers the notes' titles; a pick writes the title and ]].
-let titlesCache: { at: number; list: { title: string; kind: string; label: string }[] } | null = null;
+// Typing [[ offers the notes' titles; a pick writes the title and ]] (finding ad58: every note, not 8; a list that
+// scrolls, grouped, recent first; the arrow keys and Enter; beside the cursor, not under the whole page).
+type Titled = { id: string; title: string; insert: string; kind: string; label: string; placed: boolean; updated: string };
+let titlesCache: { at: number; list: Titled[] } | null = null;
 let suggestClose: (() => void) | null = null;
+/** While the list is open, the editor's keys go here first; true when the key was the list's. */
+let suggestKey: ((ev: KeyboardEvent) => boolean) | null = null;
 
-type Titled = { title: string; kind: string; label: string };
 async function allTitles(): Promise<Titled[]> {
   if (titlesCache && performance.now() - titlesCache.at < 5000) return titlesCache.list;
   const d = await wb(['notebook', '--group', 'none']);
-  const list = (d.groups[0]?.entries || []).filter((e: Entry) => e.title).map((e: Entry) => ({ title: e.kind === 'day' ? e.day! : e.title, kind: e.kind, label: e.kind === 'day' ? e.title : e.label }));
+  const list: Titled[] = (d.groups as GroupOf[]).flatMap(g => g.entries).filter(e => e.title && (e.kind !== 'day' || e.exists !== false)).map(e => ({
+    id: e.id, title: e.title, insert: e.kind === 'day' ? e.day! : e.title, kind: e.kind, placed: e.placed, updated: e.updated || e.created,
+    label: e.kind === 'day' ? (e.today ? 'Today' : 'Day') : e.placed ? e.label : e.kind === 'question' ? 'Question' : '',
+  }));
+  list.sort((a, b) => b.updated.localeCompare(a.updated));
   titlesCache = { at: performance.now(), list };
   return list;
+}
+
+/** Where the cursor of a text box is on the screen, measured on a copy of the box laid out the same way. */
+function caretRect(ta: HTMLTextAreaElement): DOMRect {
+  const cs = getComputedStyle(ta);
+  const m = document.createElement('div');
+  for (const p of ['boxSizing', 'width', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderLeftWidth', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'tabSize'] as const) m.style[p] = cs[p];
+  Object.assign(m.style, { position: 'fixed', visibility: 'hidden', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', left: '0', top: '0' });
+  m.textContent = ta.value.slice(0, ta.selectionStart);
+  const mark = document.createElement('span');
+  mark.textContent = '​';
+  m.append(mark);
+  document.body.append(m);
+  const r = ta.getBoundingClientRect(), k = mark.getBoundingClientRect();
+  m.remove();
+  return new DOMRect(r.left + k.left - ta.scrollLeft, r.top + k.top - ta.scrollTop, 1, k.height || parseFloat(cs.lineHeight) || 20);
+}
+
+function linkSuggest(ta: HTMLTextAreaElement) {
+  void allTitles().then(all => {
+    const before = ta.value.slice(0, ta.selectionStart);
+    const open = before.lastIndexOf('[[');
+    if (open < 0) return;
+    const raw = before.slice(open + 2).trim();
+    const typed = raw.toLowerCase();
+    const list = all.filter(t => t.id !== shown?.id);
+    const hits = typed ? list.filter(t => t.title.toLowerCase().includes(typed) || t.insert.toLowerCase().includes(typed)) : list;
+    if (typed) hits.sort((a, b) => Number(!a.title.toLowerCase().startsWith(typed)) - Number(!b.title.toLowerCase().startsWith(typed)));
+    suggestClose?.();
+    const pick = (insert: string) => {
+      close();
+      const v = ta.value, end = ta.selectionStart;
+      const after = v.slice(end).startsWith(']]') ? v.slice(end + 2) : v.slice(end);
+      ta.value = v.slice(0, open) + `[[${insert}]]` + after;
+      const at = open + insert.length + 4;
+      ta.setSelectionRange(at, at);
+      ta.focus();
+      ta.dispatchEvent(new Event('input'));
+    };
+    const box = h('div', 'nb-suggest');
+    box.append(h('div', 'nb-suggest-head', typed ? `Link to a note · ${hits.length} found` : 'Link to a note'));
+    const scroll = h('div', 'nb-suggest-list');
+    scroll.setAttribute('role', 'listbox');
+    const rows: HTMLButtonElement[] = [];
+    let on = -1;
+    const mark = (i: number) => {
+      rows[on]?.classList.remove('on');
+      rows[on]?.removeAttribute('aria-selected');
+      on = Math.max(0, Math.min(rows.length - 1, i));
+      rows[on]?.classList.add('on');
+      rows[on]?.setAttribute('aria-selected', 'true');
+    };
+    const row = (t: { title: string; label: string; insert: string }, cls = '') => {
+      const b = button(`nb-suggest-row${cls}`, '', () => pick(t.insert));
+      b.setAttribute('role', 'option');
+      b.onmousedown = ev => ev.preventDefault();
+      b.onmousemove = () => { if (rows[on] !== b) mark(rows.indexOf(b)); };
+      b.append(h('span', 'nb-suggest-title', t.title));
+      if (t.label) b.append(h('span', 'nb-suggest-label', t.label));
+      rows.push(b);
+      return b;
+    };
+    const section = (name: string, items: Titled[]) => {
+      if (items.length) scroll.append(h('div', 'nb-suggest-group', name), ...items.map(t => row(t)));
+    };
+    if (typed) section('Notes', hits);
+    else {
+      const rest = hits.slice(5);
+      section('Recent', hits.slice(0, 5));
+      section('Days', rest.filter(t => t.kind === 'day'));
+      section('At places', rest.filter(t => t.kind !== 'day' && t.placed));
+      section('Not placed yet', rest.filter(t => t.kind !== 'day' && !t.placed));
+    }
+    if (raw && !all.some(t => t.title.toLowerCase() === typed || t.insert.toLowerCase() === typed)) {
+      scroll.append(row({ title: `Link to “${raw}”`, label: 'no note yet', insert: raw }, ' new'));
+    }
+    if (!rows.length) box.append(h('p', 'muted small nb-suggest-empty', 'No notes yet to link to.'));
+    box.append(scroll);
+    if (rows.length) mark(0);
+    // the list opens at the cursor: a 1-pixel mark there for the menu to sit beside
+    const c = caretRect(ta);
+    const at = h('div', 'nb-suggest-anchor');
+    Object.assign(at.style, { position: 'fixed', left: `${c.left}px`, top: `${c.top}px`, width: '1px', height: `${c.height}px`, pointerEvents: 'none' });
+    document.body.append(at);
+    const closeMenu = popMenu(at, box, { width: 340 });
+    at.remove(); // the menu is placed; the mark is not needed after
+    const close = () => { closeMenu(); suggestKey = null; if (suggestClose === close) suggestClose = null; };
+    suggestClose = close;
+    suggestKey = ev => {
+      if (!rows.length || !box.isConnected) return false;
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        mark(on + (ev.key === 'ArrowDown' ? 1 : -1));
+        rows[on].scrollIntoView({ block: 'nearest' });
+        return true;
+      }
+      if ((ev.key === 'Enter' && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey) || ev.key === 'Tab') {
+        ev.preventDefault();
+        rows[on]?.click();
+        return true;
+      }
+      return false;
+    };
+  });
 }
 
 function maybeSuggest(ta: HTMLTextAreaElement) {
@@ -653,36 +782,6 @@ function maybeSuggest(ta: HTMLTextAreaElement) {
   const open = before.lastIndexOf('[[');
   if (open < 0 || before.slice(open).includes(']]') || before.slice(open).includes('\n')) { suggestClose?.(); return; }
   linkSuggest(ta);
-}
-
-function linkSuggest(ta: HTMLTextAreaElement) {
-  void allTitles().then(list => {
-    const before = ta.value.slice(0, ta.selectionStart);
-    const open = before.lastIndexOf('[[');
-    if (open < 0) return;
-    const typed = before.slice(open + 2).toLowerCase();
-    const hits = list.filter(t => t.title.toLowerCase().includes(typed)).slice(0, 8);
-    suggestClose?.();
-    if (!hits.length) return;
-    const box = h('div', 'menu-list nb-suggest');
-    for (const t of hits) {
-      const b = button('menu-item', '', () => {
-        close();
-        const v = ta.value, end = ta.selectionStart;
-        const after = v.slice(end).startsWith(']]') ? v.slice(end + 2) : v.slice(end);
-        ta.value = v.slice(0, open) + `[[${t.title}]]` + after;
-        const at = open + t.title.length + 4;
-        ta.setSelectionRange(at, at);
-        ta.focus();
-        ta.dispatchEvent(new Event('input'));
-      });
-      b.onmousedown = ev => ev.preventDefault();
-      b.append(h('span', '', t.title), h('span', 'muted small', t.label ? `  ${t.label}` : ''));
-      box.append(b);
-    }
-    const close = popMenu(ta, box, { width: 300 });
-    suggestClose = () => { close(); suggestClose = null; };
-  });
 }
 
 // ---- the menus: a note's, the place picker, the Trash, settings ------------------------------------------------------

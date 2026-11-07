@@ -6,7 +6,7 @@ import { wb } from './api';
 import { app, here } from './app';
 import { dock } from './panes';
 import { toast } from './sheets';
-import { button, h, sizeClass } from './ui';
+import { button, h, movable, sizeClass } from './ui';
 
 declare const __WB_BUILD__: string;
 export const BUILD = typeof __WB_BUILD__ === 'string' ? __WB_BUILD__ : 'dev';
@@ -36,7 +36,9 @@ export function findingBox() {
   boxEl = box;
   const ctx = screenContext();
   const head = h('div', 'capture-head');
-  head.append(h('span', 'capture-title', 'A finding about the app'), h('kbd', '', 'Ctrl+Shift+J'));
+  const shut = button('icon-btn finding-close', '', () => close(), 'x');
+  shut.setAttribute('aria-label', 'Close without keeping it');
+  head.append(h('span', 'capture-title', 'A finding about the app'), h('span', 'grow'), h('kbd', '', 'Ctrl+Shift+J'), shut);
   const input = h('textarea', 'capture-field finding-field') as HTMLTextAreaElement;
   input.rows = 2;
   input.placeholder = 'What did you notice? (kept apart from your study)';
@@ -46,8 +48,11 @@ export function findingBox() {
   document.getElementById('overlay')!.append(box);
   const w = Math.min(520, innerWidth - 24);
   Object.assign(box.style, { width: `${w}px`, left: `${Math.round((innerWidth - w) / 2)}px`, top: '90px' });
+  // moved by its head, and opens where it was last left (finding 707d)
+  movable(box, head, 'wb.findingBox.at');
   const close = () => { box.remove(); if (boxEl === box) boxEl = null; document.removeEventListener('pointerdown', outside, true); };
-  const outside = (e: PointerEvent) => { if (!box.contains(e.target as Node)) close(); };
+  // a click elsewhere closes it only while nothing is written, so what was written is never lost to a stray click
+  const outside = (e: PointerEvent) => { if (!box.contains(e.target as Node) && !input.value.trim()) close(); };
   setTimeout(() => document.addEventListener('pointerdown', outside, true));
   input.onkeydown = async e => {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }

@@ -567,3 +567,32 @@ days from a terminal (`wb plan arrange`), but the window has no button for that 
 
 Screenshots: `docs/phase2/1440-plan-builder.png`, `1440-plan-builder-pace.png`, `1440-plan-form-arranged.png`, `1440-plan-published.png`,
 `1440-plan-no-end.png`.
+
+## 19. W0: the bug round from the findings of 2026-11-06 (2026-11-07)
+
+The first step of the plan "The Notebook as a workspace" (2026-11-07, a Claude doc; its order of work: W0 the bug round,
+W1 the cleanup, W2 the design round, tier 4, then W3 to W6). The person's findings of 2026-11-06 were read from
+`findings/` in the real folder (read only; none was marked handled from here: that is the person's to do in Findings).
+
+| Finding | Built | Checked |
+|---|---|---|
+| `7bc8` (the person wrote it, then deleted it) | A day's heading read "SATURDAY 7 NOVEMBER … 3": the count at the line's far end looked like the date, the 7 like a stray number. Days are now named **"Saturday, November 7"** (`day_label` in `notebook.rs`), the count is a small badge right beside the name. A day's page has the same new title; **a link written with the old name (`[[Saturday 7 November]]`) still finds its page**, as do the new name and the day (`2026-11-07`) | CLI `today_s_page_is_one_note_a_day_made_when_first_written_in` (the new title; links by all three names); desk: the heading reads "Today · Saturday, November 7", its count 6 px from the name |
+| `929e` | **A group's heading folds it**: a click hides its notes (the arrow turns), another shows them. Kept in the window's storage by group and key, so a folded day stays folded when the list is drawn again or the app opens again | desk: 42 notes listed → 32 with today folded, still 32 after switching Group away and back, 42 when opened |
+| `ad58` | **The `[[` list, rebuilt**: every note that can be linked to (it stopped at 8), recent first; with nothing typed, grouped as Recent, Days, At places, Not placed yet; typed, the titles that start with it first and a count; a list that scrolls inside a box of at most 340 px; opened **at the cursor**, not under the whole page; ↑ ↓ move, Enter or Tab writes the link, Esc closes the list and keeps on writing; "Link to “…”" at the end when no note has that title yet (the link is shown dotted, as before). The note being written is left out | desk: 41 of 41 notes listed, Recent first, the list scrolls, ↓ moves the pick and leaves the text, Esc keeps the cursor, `[[Numbers 25, read` + Enter writes `[[Numbers 25, read again]]` |
+| `707d` | **The findings box moves by its head** (drag the title), stays inside the window, and opens where it was last left (the window's storage). A click elsewhere no longer closes it while something is written in it, so a finding is never lost to a stray click; × closes it | desk: dragged 120, 200 px and it moved exactly so; a click in the reader keeps the box and its text; Enter keeps the finding |
+| `2dcf` | **Not built here:** `listen` is read aloud, which is phase 6 in the Rust app (it answers "comes in phase 6"); the person heard the chapter in the Python app. Kept as a requirement for read aloud: at a chapter's end, offer Mark read | — |
+
+Left for W1 and W2 (they need the person's decisions in the plan): `c7ab` (the Inbox's name), `e09e` (the ⋯ menu and
+Notebook settings), `94a1` (a verse opened from a note, drawn from a few angles). `28d3` still waits for the person to try
+writing in tablet mode on the real keyboard.
+
+No new kind of file in the study folder (the folds and the box's place are the window's own storage).
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **239 of 239** (9 new) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped |
+| Rust tests | `cargo test`: **136** (the day-page test gained the new name and the links by all three names) |
+| Golden suite | `python scripts/golden.py`: **99 of 99** (the day names are Rust only) |
+
+Screenshots: `docs/phase2/1440-notebook-folded.png`, `1440-notebook-link-picker.png`.

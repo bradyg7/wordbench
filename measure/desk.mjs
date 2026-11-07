@@ -576,7 +576,27 @@ try {
   check('grouped by day, today’s page is first, not written yet', (await page.locator('.pane-notebook .nb-scroll .nb-item').first().textContent()).includes('Not written in yet') && !existsSync(dayFile));
   await page.locator('.pane-notebook .nb-scroll .nb-item').first().click();
   await typing();
-  await page.keyboard.type('Read Numbers 25 twice. Wrote up [[Numbers 25, read again]].');
+  // W0, finding ad58: [[ lists every note (not 8), grouped and recent first, in a list that scrolls, beside the cursor;
+  // the arrow keys move in it, Esc closes it and leaves the writing, Enter writes the link
+  await page.keyboard.type('Read Numbers 25 twice. Wrote up [[');
+  await page.locator('.nb-suggest .nb-suggest-row').first().waitFor({ timeout: 5000 });
+  const linkable = JSON.parse(execFileSync(wbExe, ['notebook', '--group', 'none'], { env }).toString()).groups.flatMap(g => g.entries).filter(e => e.title && !(e.kind === 'day' && e.exists === false)).length;
+  const pick = await page.evaluate(() => {
+    const l = document.querySelector('.nb-suggest-list'), caret = document.querySelector('.pane-notebook textarea.nb-input').getBoundingClientRect(), m = document.querySelector('.menu:has(.nb-suggest)').getBoundingClientRect();
+    return { rows: l.querySelectorAll('.nb-suggest-row').length, groups: [...l.querySelectorAll('.nb-suggest-group')].map(g => g.textContent), scrolls: l.scrollHeight > l.clientHeight, on: [...l.querySelectorAll('.nb-suggest-row')].findIndex(r => r.classList.contains('on')), inside: m.top >= caret.top - m.height - 12 };
+  });
+  check('[[ lists every note to link to, not 8, grouped with Recent first (finding ad58)', pick.rows === linkable && linkable > 8 && pick.groups[0] === 'Recent', `${pick.rows} of ${linkable}; ${pick.groups.join(', ')}`);
+  check('the list scrolls, and its first row is picked', pick.scrolls && pick.on === 0, JSON.stringify(pick));
+  await page.screenshot({ path: shots + '1440-notebook-link-picker.png' });
+  await page.keyboard.press('ArrowDown');
+  check('↓ picks the next row and leaves the writing alone', await page.evaluate(() => [...document.querySelectorAll('.nb-suggest-row')].findIndex(r => r.classList.contains('on'))) === 1 && (await page.locator('.pane-notebook textarea.nb-input').inputValue()).endsWith('[['));
+  await page.keyboard.press('Escape');
+  check('Esc closes the list and keeps on writing', await page.locator('.nb-suggest').count() === 0 && await typing());
+  await page.keyboard.type('Numbers 25, read');
+  await page.locator('.nb-suggest .nb-suggest-row.on', { hasText: 'Numbers 25, read again' }).waitFor({ timeout: 5000 });
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('.');
+  check('Enter writes the picked note’s whole title and closes the link', (await page.locator('.pane-notebook textarea.nb-input').inputValue()).endsWith('Wrote up [[Numbers 25, read again]].'), await page.locator('.pane-notebook textarea.nb-input').inputValue());
   await page.keyboard.press('Control+a');
   await page.locator('.pane-notebook .nb-fmt', { hasText: '•' }).click();
   await done();
@@ -584,8 +604,28 @@ try {
   check('the format bar writes Markdown as plain text', /\n\n- Read Numbers 25 twice/.test(readFileSync(dayFile, 'utf8')) && await ed.locator('.nb-page li').count() === 1, readFileSync(dayFile, 'utf8').split('---').pop().trim());
   check('the Python app passes over it: no anchor, so no note list or Inbox shows it', !notesAt('Numbers 25').some(n => n.text.includes('Wrote up')) && !JSON.parse(execFileSync(wbExe, ['inbox'], { env }).toString()).notes.some(n => n.text.includes('Wrote up')));
   await page.screenshot({ path: shots + '1440-notebook-today-s-page.png' });
-  // settings: the Inbox as its own group, kept in settings/notebook.json
   await nbBack();
+  // W0, findings 7bc8 and 929e: a day's heading says its date plainly with its count beside it; a heading folds its
+  // notes away, and stays folded when the list is drawn again
+  const dayHead = page.locator('.pane-notebook .nb-ghead').first();
+  await dayHead.locator('.nb-count').waitFor({ state: 'visible', timeout: 10000 });
+  await sleep(400);
+  const dh = await dayHead.locator('.nb-glabel').textContent();
+  const dayBox = await dayHead.locator('.nb-glabel').boundingBox(), countBox = await dayHead.locator('.nb-count').boundingBox();
+  check('a day’s heading reads “Today · Saturday, November 7”, its count right beside it (finding 7bc8)', /^Today · [A-Z][a-z]+day, [A-Z][a-z]+ \d{1,2}$/.test(dh) && countBox.x - (dayBox.x + dayBox.width) < 16, `${dh}; gap ${Math.round(countBox.x - (dayBox.x + dayBox.width))}px`);
+  const nbListed = () => page.locator('.pane-notebook .nb-scroll .nb-item').count();
+  const openN = await nbListed();
+  await dayHead.click();
+  await sleep(500);
+  const shutN = await nbListed();
+  await group('Chapter');
+  await group('Day');
+  const stillShut = await nbListed() === shutN && await page.locator('.pane-notebook .nb-ghead').first().getAttribute('aria-expanded') === 'false';
+  await page.screenshot({ path: shots + '1440-notebook-folded.png' });
+  await page.locator('.pane-notebook .nb-ghead').first().click();
+  await sleep(500);
+  check('a heading folds its notes away and stays folded; a click opens them again (finding 929e)', shutN < openN && stillShut && await nbListed() === openN, `${openN} → ${shutN} → ${await nbListed()}`);
+  // settings: the Inbox as its own group, kept in settings/notebook.json
   await page.locator('.pane-notebook .nb-more').click();
   await page.locator('.menu .menu-item', { hasText: 'Notebook settings' }).click();
   await page.locator('.nb-set-row', { hasText: 'Show the Inbox as its own group' }).locator('input.switch').click();
@@ -1101,7 +1141,20 @@ try {
     await page.locator('#reader').click({ position: { x: 5, y: 5 } });
     await page.keyboard.press('Control+Shift+KeyJ');
     check('Ctrl+Shift+J opens a box for a finding (note 50c1)', await page.waitForFunction(() => document.activeElement?.classList.contains('finding-field'), null, { timeout: 5000 }).then(() => true, () => false));
+    // W0, finding 707d: the box is moved by its head, and a click elsewhere does not lose what was written
+    const fbox = page.locator('.finding-box');
+    const b0 = await fbox.boundingBox(), hb = await fbox.locator('.capture-head .capture-title').boundingBox();
+    await page.mouse.move(hb.x + 10, hb.y + hb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(hb.x + 130, hb.y + hb.height / 2 + 200, { steps: 8 });
+    await page.mouse.up();
+    const b1 = await fbox.boundingBox();
+    check('the findings box moves by its head (finding 707d)', Math.abs(b1.x - b0.x - 120) < 3 && Math.abs(b1.y - b0.y - 200) < 3, `${Math.round(b1.x - b0.x)}, ${Math.round(b1.y - b0.y)}`);
     await page.keyboard.type('The verse bar could say which verse it is on');
+    await page.locator('#reader').click({ position: { x: 5, y: 5 } });
+    await sleep(200);
+    check('a click elsewhere keeps the box and what was written in it', await fbox.count() === 1 && (await page.locator('.finding-field').inputValue()).startsWith('The verse bar'));
+    await page.locator('.finding-field').click();
     await page.keyboard.press('Enter');
     const fdir = path.join(study, 'findings');
     for (let i = 0; i < 30 && !(existsSync(fdir) && readdirSync(fdir).length); i++) await sleep(100);

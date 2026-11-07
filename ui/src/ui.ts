@@ -151,3 +151,35 @@ export function popMenu(from: Element, body: HTMLElement, opts: { align?: 'left'
   return close;
 }
 export const closeMenu = () => menuOpen?.();
+
+/** A floating box moved by dragging its head (finding 707d: the findings box hid what the finding was about). Where it
+ *  was left is kept in the window's storage under `key`, kept inside the window, and used the next time it opens. */
+export function movable(box: HTMLElement, handle: HTMLElement, key: string) {
+  const fit = (x: number, y: number) => ({
+    x: Math.max(8, Math.min(x, innerWidth - box.offsetWidth - 8)),
+    y: Math.max(8, Math.min(y, innerHeight - box.offsetHeight - 8)),
+  });
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || 'null') as { x: number; y: number } | null;
+    if (saved) { const p = fit(saved.x, saved.y); box.style.left = `${p.x}px`; box.style.top = `${p.y}px`; }
+  } catch { /* where it opens by default */ }
+  handle.classList.add('movable-handle');
+  handle.title = 'Drag to move';
+  handle.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest('button, input, textarea')) return;
+    e.preventDefault();
+    const r = box.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+    handle.setPointerCapture(e.pointerId);
+    box.classList.add('moving');
+    const move = (m: PointerEvent) => { const p = fit(m.clientX - dx, m.clientY - dy); box.style.left = `${p.x}px`; box.style.top = `${p.y}px`; };
+    const up = () => {
+      handle.removeEventListener('pointermove', move);
+      box.classList.remove('moving');
+      try { localStorage.setItem(key, JSON.stringify({ x: parseFloat(box.style.left), y: parseFloat(box.style.top) })); } catch { /* not kept */ }
+      box.querySelector<HTMLElement>('textarea, input')?.focus();
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up, { once: true });
+    handle.addEventListener('pointercancel', up, { once: true });
+  });
+}

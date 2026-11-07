@@ -162,7 +162,14 @@ pub fn named_place(bible: &Bible, text: &str) -> Option<Value> {
     })
 }
 
+/// A day as the Notebook names it: "Saturday, November 7" (finding 7bc8: "Saturday 7 November" with the count at the
+/// line's end read as if the count were the date).
 fn day_label(d: NaiveDate) -> String {
+    d.format("%A, %B %-d").to_string()
+}
+
+/// The name days had before 2026-11-07 ("Saturday 7 November"), so a link written with it still finds its page.
+fn old_day_label(d: NaiveDate) -> String {
     d.format("%A %-d %B").to_string()
 }
 
@@ -734,7 +741,11 @@ fn titles(all: &[Value]) -> Vec<(String, Value)> {
     for e in all {
         let mut keys = vec![e["title"].as_str().unwrap_or("").to_lowercase()];
         if e["kind"] == "day" {
-            keys.push(e["day"].as_str().unwrap_or("").to_string());
+            let day = e["day"].as_str().unwrap_or("");
+            keys.push(day.to_string());
+            if let Ok(d) = NaiveDate::parse_from_str(day, "%Y-%m-%d") {
+                keys.push(old_day_label(d).to_lowercase());
+            }
         }
         for k in keys.into_iter().filter(|k| !k.is_empty()) {
             if !out.iter().any(|(t, _)| *t == k) {
