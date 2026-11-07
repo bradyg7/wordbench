@@ -24,6 +24,7 @@ import type { Change } from './dock';
 import { attachCommandField, loadThreads } from './command';
 import { findInPane, paneForFind } from './panefind';
 import { findingBox, openFindings } from './findings';
+import { openDocuments } from './documents';
 import { parse, runLine, written } from './actions';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -941,6 +942,7 @@ function settings(from: HTMLElement) {
   item('Today’s log', () => openToday(''));
   item('Shelf', () => openShelf());
   item('Findings', () => openFindings());
+  item('Documents', () => openDocuments());
   b.append(quick);
   b.append(h('div', 'label', 'Text size'));
   const sz = h('div', 'size-row');
@@ -972,7 +974,7 @@ function settings(from: HTMLElement) {
   b.append(h('div', 'label', 'Input'));
   b.append(segmented(['auto', 'touch', 'pointer'], selector.mode, m => { selector.mode = m as InputMode; document.documentElement.dataset.input = m; }));
   b.append(h('div', 'label', 'Later phases'));
-  b.append(h('p', 'muted small', 'Documents (Word, slides, PDFs) and lessons: phase 5. Read aloud and recordings: phase 6. The Python app still does them.'));
+  b.append(h('p', 'muted small', 'Documents: the Speaker Script and Verse by Verse from a thread are made here (Documents); PowerPoint, lessons and the other structures in phase 5. Read aloud and recordings: phase 6. The Python app still does them.'));
   b.append(h('div', 'label', 'Go to'));
   const go = h('form', 'go') as HTMLFormElement;
   const input = h('input') as HTMLInputElement;

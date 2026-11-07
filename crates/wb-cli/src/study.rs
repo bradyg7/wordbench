@@ -30,7 +30,7 @@ pub(crate) fn anchor(c: &Ctx<'_>, text: &str) -> Result<String, String> {
 }
 
 /// A thread by exact name, else a unique start of it, else a unique part of it.
-fn thread(st: &Store, name: &str) -> Result<Value, String> {
+pub(crate) fn thread(st: &Store, name: &str) -> Result<Value, String> {
     let every = sa::thread_list(st, None).map_err(e)?;
     let every = every.as_array().unwrap();
     let n = name.trim().to_lowercase();

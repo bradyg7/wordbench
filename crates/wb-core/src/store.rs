@@ -483,6 +483,12 @@ impl Store {
         Ok(())
     }
 
+    /// A file of the study folder to .trash, as every delete is (documents' records use it).
+    pub fn trash_file(&mut self, path: &Path) -> Result<()> {
+        guard(&self.root)?;
+        self.trash(path)
+    }
+
     fn trash(&mut self, path: &Path) -> Result<()> {
         let dest = self.root.join(".trash").join(format!("{}-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S"), path.file_name().unwrap().to_string_lossy()));
         fs::create_dir_all(dest.parent().unwrap())?;

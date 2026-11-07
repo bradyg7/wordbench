@@ -1231,6 +1231,41 @@ try {
     await nbBack();
   }
 
+  // tier 4: documents from a thread. The Documents pane makes the Speaker Script (Word); the command field makes Verse by
+  // Verse (PDF pages); each is checked verse by verse before it is kept, listed with how it stands, and in its thread's pane
+  const docsDir = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
+  await page.evaluate(() => window.__wb.run('docs'));
+  await page.waitForSelector('.pane-documents .doc-make', { timeout: 15000 });
+  check('docs opens the Documents pane, with Make and the list', await page.locator('.pane-documents .doc-make select.doc-kind option').count() === 2);
+  await page.locator('.pane-documents select.doc-thread').selectOption({ label: 'Phinehas' });
+  await page.locator('.pane-documents select.doc-theme').selectOption('olivet');
+  await page.locator('.pane-documents .doc-make button', { hasText: 'Make' }).click();
+  const scriptRow = page.locator('.pane-documents .doc-row', { hasText: 'Speaker Script - Phinehas.docx' });
+  await scriptRow.waitFor({ timeout: 20000 });
+  const scriptRec = JSON.parse(execFileSync(wbExe, ['docs', 'show', 'thread-phinehas-script'], { env }).toString());
+  check('Make writes the Speaker Script, checked, beside the scratch folder', existsSync(path.join(docsDir, 'Speaker Script - Phinehas.docx')) && scriptRec.state === 'current' && scriptRec.theme === 'olivet', scriptRec.state);
+  check('the Speaker Script is listed Up to date', (await scriptRow.locator('.doc-state').innerText()) === 'Up to date');
+  const deckSaid = await page.evaluate(() => window.__wb.run('deck thread phinehas verse'));
+  const deckFile = path.join(docsDir, 'Verse by Verse - Phinehas.pdf');
+  for (let i = 0; i < 50 && !existsSync(deckFile); i++) await sleep(100);
+  check('deck thread phinehas verse makes the slides as PDF pages, every verse checked', existsSync(deckFile) && readFileSync(deckFile).subarray(0, 5).toString() === '%PDF-' && /every verse checked/.test(JSON.stringify(deckSaid)), JSON.stringify(deckSaid));
+  await page.locator('.pane-documents .doc-row', { hasText: 'Verse by Verse - Phinehas.pdf' }).waitFor({ timeout: 10000 });
+  await page.screenshot({ path: shots + '1440-documents.png' });
+  const pyRow = page.locator('.pane-documents .doc-row', { hasText: 'Pulpit - Phinehas' });
+  check('a document the Python app makes (a lesson’s PowerPoint) offers no Update here, and says who makes it', await pyRow.count() === 1 && await pyRow.locator('.doc-update').count() === 0 && /Python app until phase 5/.test(await pyRow.innerText()));
+  // a new note at a verse in the thread puts both behind; Update brings one up to date in the same file
+  execFileSync(wbExe, ['note', 'add', 'Num 25:11', 'checked from the desk'], { env });
+  await sleep(1200); // the window reads the folder again at most once a second
+  await page.evaluate(() => window.__wb.run('docs'));
+  await page.waitForFunction(() => /Out of date/.test(document.querySelector('.pane-documents .doc-row[data-id="thread-phinehas-script"]')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
+  check('a new note in the thread marks the document Out of date', /Out of date/.test(await scriptRow.innerText()), await scriptRow.locator('.doc-state').innerText());
+  await scriptRow.locator('.doc-update').click();
+  await page.waitForFunction(() => /Up to date/.test(document.querySelector('.pane-documents .doc-row[data-id="thread-phinehas-script"]')?.textContent || ''), null, { timeout: 20000 }).catch(() => {});
+  check('Update brings it up to date in the same file', /Up to date/.test(await scriptRow.innerText()) && JSON.parse(execFileSync(wbExe, ['docs', 'show', 'thread-phinehas-script'], { env }).toString()).name === 'Speaker Script - Phinehas.docx');
+  await page.evaluate(() => window.__wb.run('thread Phinehas'));
+  await page.waitForSelector('.pane-thread .thread-docs .doc-row', { timeout: 15000 }).catch(() => {});
+  check('the thread’s pane lists its documents, with Make for it', await page.locator('.pane-thread .thread-docs .doc-row').count() >= 2 && await page.locator('.pane-thread .thread-docs .doc-make').count() === 1, String(await page.locator('.pane-thread .thread-docs .doc-row').count()));
+
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();
   await page.waitForSelector('.pane-reader2 .vn-asked', { timeout: 10000 });

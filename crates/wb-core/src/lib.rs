@@ -8,6 +8,7 @@ pub mod bible;
 pub mod cache;
 pub mod findings;
 pub mod commands;
+pub mod docs;
 pub mod lookup;
 pub mod marks;
 pub mod notebook;

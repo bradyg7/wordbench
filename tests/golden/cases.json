@@ -2134,5 +2134,50 @@
  {
   "name": "known difference: records changed in the same second are ordered by file name (a fresh Python server does the same; a long-running one orders them by when it wrote them)",
   "steps": []
+ },
+ {
+  "name": "docs list",
+  "steps": [
+   [
+    "docs",
+    "list",
+    "--thread",
+    "phinehas"
+   ],
+   [
+    "docs",
+    "list",
+    "--thread",
+    "romans"
+   ]
+  ]
+ },
+ {
+  "name": "docs show and find",
+  "steps": [
+   [
+    "docs",
+    "show",
+    "zzz-none"
+   ],
+   [
+    "docs",
+    "show",
+    "phinehas"
+   ]
+  ]
+ },
+ {
+  "name": "known difference: a document made from a lesson is not planned here until phase 5, so docs list says it is not behind where the Python app (which plans lessons) may; its file is missing in both, and the Python app updates it",
+  "steps": []
+ },
+ {
+  "name": "craft theme",
+  "steps": [
+   [
+    "craft",
+    "theme"
+   ]
+  ]
  }
 ]

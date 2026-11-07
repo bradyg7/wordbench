@@ -41,8 +41,11 @@ CLOCK = re.compile(r'"t": "\d{2}:\d{2}:\d{2}"')              # the local time of
 class Side:
     def __init__(self, name, folder):
         self.name, self.folder, self.ids, self.keys = name, folder, [], []
+        self.docs = folder.with_name(folder.name + "-documents")    # where its documents go: empty, never the person's
 
     def norm(self, text):
+        for path in {str(self.docs), str(self.docs).replace("\\", "\\\\"), self.docs.as_posix()}:
+            text = text.replace(path, "<documents>")
         for path in {str(self.folder), str(self.folder).replace("\\", "\\\\"), self.folder.as_posix()}:
             text = text.replace(path, "<study>")
 
@@ -108,8 +111,10 @@ def main():
     for s in (py, rs):
         shutil.copytree(SOURCE, s.folder)
 
-    env_py = dict(os.environ, BIBLE_STUDY_DATA=str(py.folder), BIBLE_WORKBENCH_PORT=str(PORT), PYTHONIOENCODING="utf-8")
-    env_rs = dict(os.environ, WB_STUDY_DIR=str(rs.folder))
+    # each side's documents folder is its own empty scratch folder: the Python app's default is the person's Documents
+    env_py = dict(os.environ, BIBLE_STUDY_DATA=str(py.folder), BIBLE_WORKBENCH_PORT=str(PORT), PYTHONIOENCODING="utf-8",
+                  BIBLE_WORKBENCH_PDF_DIR=str(py.docs))
+    env_rs = dict(os.environ, WB_STUDY_DIR=str(rs.folder), WB_DOCS_DIR=str(rs.docs))
     server = subprocess.Popen([sys.executable, "-m", "workbench.server"], cwd=str(OLD), env=env_py,
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:

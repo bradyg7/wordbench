@@ -12,6 +12,7 @@ import {
 } from './panes';
 import { setHover } from './ui';
 import { addFinding, openFindings } from './findings';
+import { KINDS, makeDoc, openDocuments } from './documents';
 
 // The last write, so `undo` can take it back.
 type Undo = { kind: 'note'; id: string } | { kind: 'hl'; record: unknown } | { kind: 'trail'; id: string } | { kind: 'thread'; name: string; anchor: string } | { kind: 'jot'; id: string };
@@ -206,9 +207,52 @@ export async function perform(a: any, line: string): Promise<string> {
     case 'finding': return addFinding(a.text);
     case 'version': return a.version ? app.setVersion(a.version) : `The reader is in the ${app.version()}`;
     case 'listen': return later('Read aloud', 6);
-    case 'pdf': case 'pdfs': case 'packet': case 'docs': case 'theme': case 'make': return later('Documents and PDFs', 5);
+    case 'make': return makeFrom(a);
+    case 'docs': return docs(a);
+    case 'theme': {
+      if (!a.theme) return `New documents are made in ${(await wb(['craft', 'theme'])).theme}`;
+      await wb(['craft', 'theme', a.theme]);
+      app.changed('documents');
+      return `New documents are made in ${a.theme}`;
+    }
+    case 'pdf': case 'pdfs': case 'packet': return later('Saved PDFs and packets', 5);
     default: return `“${line}” is understood, but the window does not do it yet.`;
   }
+}
+
+// ---- documents from a thread (tier 4) ----
+
+async function makeFrom(a: any): Promise<string> {
+  if (!a.thread) return 'Documents from a passage come in phase 5 (the Python app still makes them); here, from a thread: doc thread Phinehas';
+  // the window starts on what it makes (a thread's default in the Python app is its Dossier or Map, made there until phase 5)
+  const structure = a.structure || KINDS.find(k => k[0] === a.kind)?.[1];
+  const said = await makeDoc(a.thread, a.kind === 'deck' ? 'deck' : 'word', structure, a.theme);
+  openDocuments();
+  return said;
+}
+
+async function docs(a: any): Promise<string> {
+  const name = (a.name || '').trim();
+  if (a.action === 'list' || (a.action === 'open' && !name)) { openDocuments(); return 'Your documents'; }
+  if (a.action === 'open') { const r = await wb(['docs', 'open', name]); return `Opened ${r.name}`; }
+  if (a.action === 'update') {
+    const argv = ['docs', 'update', ...(name ? [name] : []), ...(name && a.theme ? ['--theme', a.theme] : []), ...(name && a.force ? ['--force'] : [])];
+    const r = await wb(argv);
+    app.changed('documents');
+    if (!name) return r.updated.length || r.failed.length ? `Updated ${r.updated.length}${r.failed.length ? `; ${r.failed.length} could not be: ${r.failed[0].error}` : ''}` : 'Every document is up to date';
+    return r.changed ? `Updated ${r.name}` : `${r.name} is up to date`;
+  }
+  if (a.action === 'forget') { const r = await wb(['docs', 'forget', name]); app.changed('documents'); return `${r.name} is left as it is from now on`; }
+  if (a.action === 'remember') { const r = await wb(['docs', 'remember', name]); app.changed('documents'); return `${r.name} is kept up to date again`; }
+  if (a.action === 'delete') {
+    const d = await wb(['docs', 'show', name]);
+    if (!confirm(`Delete ${d.name}? The file is erased from the computer; its record goes to the study folder's .trash.`)) return 'Nothing was deleted';
+    const r = await wb(['docs', 'delete', d.id]);
+    app.changed('documents');
+    return `Deleted ${r.deleted.join(', ') || r.name}`;
+  }
+  openDocuments();
+  return 'Your documents';
 }
 
 async function undo(): Promise<string> {
@@ -364,6 +408,7 @@ async function reopen(key: string) {
     shelf: () => openShelf(), find: () => openFind(x[0]), interlinear: () => openInterlinear(x[0], x[0]),
     place: () => openPlace(x[0], x[0]),
     passage: () => openPassage(x[0].split(';'), x[1], x[0]), reader2: () => app.secondReader(x[0], x[1]), today: () => openToday(x[0]), lesson: () => openLesson(x[0]), findings: () => openFindings(),
+    documents: () => openDocuments(),
   };
   f[kind]?.();
 }

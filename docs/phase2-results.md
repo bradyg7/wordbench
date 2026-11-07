@@ -618,3 +618,44 @@ saved `inbox` is passed over.
 | Golden suite | `python scripts/golden.py`: **99 of 99** |
 
 Screenshots: `docs/phase2/1440-notebook-pages.png`, `1440-notebook-settings.png`.
+
+## 21. Phase 2b, tier 4: documents from a thread (2026-11-07)
+
+Started after the person accepted the second pass of the workspace sheets ("the review is good, begin tier 4";
+[workspace-design.md](workspace-design.md)). The two documents the person built from the Phinehas thread with the
+Python app on 2026-11-03 are now made here: the **Speaker Script** as Word and **Verse by Verse** as slides. This was
+what still sent the person back to the Python app.
+
+| What | Built | Checked |
+|---|---|---|
+| The plan | `wb-core::docs::plan`: the parts of the Python app's `craft_plan.py` the two need, value for value: the themes, the structures (with their own descriptions), the margin of notes and highlights by verse (highlights as character ranges in KJV words), a thread as places and words (a word or phrase inside a verse already in the thread is picked out there), a thread read as blocks, the Pulpit numbering the script's cues follow, the Speaker Script and Verse by Verse plans. **The fingerprint is the Python app's** (`json.dumps(plan, sort_keys=True)`'s SHA-256), so both apps agree whether a document is up to date | `python scripts/doc-plans.py`: every thread in the scratch copy, both plans, **6 of 6 the same** fingerprint as the Python app's own code |
+| The Speaker Script (`.docx`) | `wb-core::docs::docx`: Office Open XML written directly (the `zip` crate), with WordCraft's named styles (Title, Subtitle, Heading 1 and 2, Scripture Reference, Scripture End, Study Note, Slide Cue, Delivery Note …) in the theme's colors and fonts, verse numbers in superscript, "Page x of y" | Converted by WordCraft and looked at: the same layout as the Python app's of 2026-11-03, and its text line for line the same as far as the scratch thread goes (`docs/phase2/tier4-speaker-script-page1.png`). Not yet opened in real Word (the plan asks for that: the person's check) |
+| Verse by Verse (PDF pages) | `wb-core::docs::deck`: Typst as a library (phase 0's spike moved in), one 960 × 540 page a slide with DeckCraft's boxes and fit sizes, the theme's colors and shapes, your highlights; the fonts are the window's own (Literata, Inter; `crates/wb-core/fonts`, OFL), since the themes' Word fonts are not on every computer. Speaker notes have no place in a PDF and are left out | Looked at page by page (`docs/phase2/tier4-verse-by-verse-slide4.png`); a highlight first covered the line above, fixed |
+| The check | After a file is made, the text of the finished file (the .docx read back from the file; the PDF's laid-out pages) must hold every verse the thread holds, word for word, else the file is not kept | `a_file_missing_a_verse_is_not_kept` (wb-core): Word and PDF both refused, nothing left behind |
+| `documents/` | The Python app's records and rules: one file per document, brought up to date in place; behind when its thread, notes or highlights change; a file changed by hand is kept as a copy ("… (your edits …)") before a rebuild; a file open in Word stops it; forget, remember, delete. The Speaker Script shares the Python app's record (`thread-phinehas-script`); **the PDF deck has a record of its own** (`thread-phinehas-verse-pdf`, `to: pdf`), which the Python app passes over, so neither app overwrites the other's file | The Python app reads a record made here as *current*; CLI `a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file` |
+| Where files go | `WB_DOCS_DIR`; with the real study folder, the Python app's folder (Documents\Bible Workbench, or `BIBLE_WORKBENCH_PDF_DIR`), where its documents already are; with any other folder, `<study>-documents` beside it, so no test or scratch run writes the person's documents | Every test and the desk run write beside their scratch copy; the golden suite gives both apps empty scratch documents folders |
+| `wb` | `wb craft word|deck --thread …`, `wb docs list|show|update|open|forget|remember|delete`, `wb docs plan` (what a document would hold, and its fingerprint), `wb craft designs|theme` | Golden: `docs list`, `docs show and find`, `craft theme` the same as the Python `wb` |
+| The window | **Documents** (⋯ → Documents, or `docs`): Make one from a thread (thread, Speaker Script or Verse by Verse, theme), every document with how it stands (Up to date, Out of date, Changed by hand, File missing …), Update, Open, and ⋯ for Make again, Stop keeping it up to date, Delete. A thread's pane lists its own documents with Make. The command field: `doc thread Phinehas`, `deck thread Phinehas verse`, `docs update`, `theme vigil`. The pane is drawn again when asked for and when the window comes back into focus (from Word), since a document's state changes outside the window | Desk: the pane, Make, the deck from the command field, Out of date after a note written from a terminal, Update, the thread's documents, and a lesson's PowerPoint (the Python app's) offering no Update |
+
+**Deliberate differences** from the Python app: the slides are PDF pages, not PowerPoint (phase 5, if PowerPoint itself
+is still needed); the other structures (Reading Sheet, Share Copy, Study Sheet, Thread Dossier; Reader, Pulpit, Study
+Table, Thread Map), documents from a passage or a lesson, presets and packets stay with the Python app until phase 5,
+and say so (`wb craft word --thread x` without `--structure` names the Dossier and offers `--structure script`; the
+window starts on what it makes). A document this app does not plan (a lesson's) is never said to be *behind*, and reads *elsewhere* when its file is there (*missing*
+when not, as the Python app says). `docs delete` erases the files as the Python app does, but its record goes to the
+study folder's `.trash` (CLAUDE.md's rule). The command language's manual still describes WordCraft (it is generated
+from the Python app's `commands.js`).
+
+| | Result |
+|---|---|
+| Plans against the Python app | `python scripts/doc-plans.py`: **6 of 6** fingerprints the same |
+| Desktop in the real app | `node measure/desk.mjs --release`: **255 of 255** (8 new) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped |
+| Rust tests | `cargo test`: **140** (3 new; the rule that every core action has a command now covers `docs`) |
+| Golden suite | `python scripts/golden.py`: **103 of 103** (3 new; a known difference recorded: a lesson's document is not planned here, so it is not said to be behind) |
+
+Screenshots: `docs/phase2/1440-documents.png`; samples: `tier4-speaker-script-page1.png`,
+`tier4-verse-by-verse-slide4.png`.
+
+**For the person:** open a Speaker Script made here in real Word, and a Verse by Verse PDF, before trusting them (the
+plan's rule: the Craft previews hid bugs before). The real folder is untouched until the app is installed and used.

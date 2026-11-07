@@ -34,7 +34,7 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
 
 | Path | What |
 |---|---|
-| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `relay` (`wb do`) |
+| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `relay` (`wb do`), `docs` (documents from a thread: the plans, the Word writer, the PDF deck through Typst, `documents/` records; its fonts in `crates/wb-core/fonts`) |
 | `crates/wb-cli` | The `wb` command table (a library the app runs in-process) and the `wb` binary |
 | `app/src-tauri` | The Tauri 2 shell: commands that call wb-core |
 | `ui/` | The UI: TypeScript, CSS, fonts (Literata for scripture, Inter for the interface), `tokens.css` from the design tokens |
@@ -49,6 +49,7 @@ cargo run -p wb-cli -- text "Num 25:11"      # verbatim scripture
 npm install && npm run tauri dev             # the app (from the repo root)
 npm run test:webkit                          # the UI in Playwright's WebKit at phone size
 python scripts/golden.py                     # the Rust wb against the Python wb on the same inputs (scratch folders)
+python scripts/doc-plans.py                  # documents' plans: the Rust fingerprints against the Python app's (scratch folder)
 node scripts/commands-cases.mjs              # the command language's cases and manual, from the Python app's commands.js
 node measure/desk.mjs                        # the desktop checked in the real app (its own instance and scratch copy)
 npm run measure                              # the speed budgets (after npx tauri build --no-bundle)
@@ -59,5 +60,10 @@ powershell -File scripts\install-app.ps1    # the release build into %LOCALAPPDA
 The Rust `wb` must give the same output as the Python `wb`: when changing a command, add or update its case in
 `tests/golden/cases.json` and run the golden tests. Known, deliberate differences are listed in docs/phase1-results.md. Rust tests: `cargo test` (the Python app's
 own tests carried over, plus the reading plans).
+
+Documents (Word files, PDF slides) go to `WB_DOCS_DIR`; with the person's real study folder, to the Python app's folder
+(Documents\Bible Workbench), where its documents already are; with any other study folder, to a folder beside it
+(`<study>-documents`), so tests and scratch copies never write the person's documents. After a document is made, every
+verse the source holds is checked in the finished file; one that fails is not kept.
 
 No remote yet: do not push anywhere without the person's go-ahead.

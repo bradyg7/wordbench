@@ -8,6 +8,10 @@ first after the review, as decided.
 **Second pass, the same day,** after the person's review of the first sheets (their words are quoted under
 [The review](#the-review-and-what-changed)). W5c is chosen for the verse from a note; W5a and W5b are gone from the board.
 
+**Accepted, 2026-11-07:** "the review is good, begin tier 4". The second pass stands as drawn. Where a sheet names a
+choice (a row per open reader, put-away words kept per verse, the four blanks, to-dos left out of a document), the drawn
+one is built unless the person says otherwise. W3 to W6 are built from it after tier 4.
+
 **How they are made:** `python design/workspace.py` → `design/workspace.figcraft` (one page, *Workspace*) and
 `design/exports/workspace/`, in about 10 seconds (the export folder is emptied first, so a dropped window leaves no
 picture behind). It reuses `design/phase2b.py`'s and `design/build.py`'s helpers, so the sheets look like the phase 2b

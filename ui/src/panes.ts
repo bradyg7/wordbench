@@ -7,6 +7,7 @@ import { layers } from './layers';
 import { closeSheet, compact, hideCard, openSheet, sheetOpen, showCard, toast } from './sheets';
 import { button, h, hoverMode, icon, linkedText, placeGo, placePill, popMenu, refChoice } from './ui';
 import { placeMenu, remove as removeNote, takeOff } from './notebook';
+import { threadDocuments } from './documents';
 
 export let dock: Dock;
 
@@ -625,6 +626,10 @@ export function openThread(name: string) {
     });
     el.append(list);
     if (!t.members.length) el.append(h('p', 'muted', 'No places yet: type +' + t.name + ' in the command field to add the place you are at.'));
+    // its documents (tier 4): each with how it stands, and Make for this thread
+    const docs = h('div', 'thread-docs');
+    el.append(docs);
+    void threadDocuments(t, docs);
   });
 }
 

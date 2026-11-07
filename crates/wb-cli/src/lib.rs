@@ -6,6 +6,7 @@
 //! and `wb` are one set of actions.
 
 mod args;
+mod docs;
 mod notebook;
 mod read;
 mod reading;
@@ -132,6 +133,7 @@ fn commands() -> Vec<Command> {
     all.extend(study::commands());
     all.extend(reading::commands());
     all.extend(notebook::commands());
+    all.extend(docs::commands());
     all
 }
 

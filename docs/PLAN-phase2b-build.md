@@ -149,6 +149,12 @@ The Speaker Script (`.docx`, `docx-rs`) and the verse deck (PDF pages through Ty
 person built on 2026-11-03 with the Python app; every verse checked against the database after rendering; `documents/`
 keeps the Python app's format. This is what still sends the person back to the Python app, so it comes before the rest.
 
+**Built 2026-11-07** ([phase2-results.md](phase2-results.md) section 21): `wb-core::docs`. The Word file is written as
+Office Open XML directly (with the `zip` crate) rather than through `docx-rs`, for full control of the named styles the
+Python app's documents use. The plans are the Python app's value for value (`scripts/doc-plans.py` compares their
+fingerprints), so both apps agree whether a document is up to date. The verse deck's record is its own (`to: pdf`), which
+the Python app passes over; its PowerPoint decks stay its own until phase 5.
+
 ## Tier 5: views, the toolbar and My commands (Settings)
 
 Designs: V1, D3, D2, TB1, TB2, S2.

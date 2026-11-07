@@ -573,3 +573,23 @@ button.question-pill:hover { text-decoration: line-through; }
 .plan-bchip.hit { background: var(--accent-soft); border-color: var(--accent); }
 .plan-bkept { display: flex; gap: 10px; align-items: center; color: var(--accent); font: var(--type-small); white-space: nowrap; }
 @media (max-width: 760px) { .plan-build { grid-template-columns: 1fr; } .plan-build-side { position: static; } .plan-bday { grid-template-columns: 18px 1fr; } .plan-bday .plan-bchips, .plan-bday .plan-bkept { grid-column: 1 / -1; } }
+
+/* ---- documents from a thread (tier 4): the Documents pane and a thread's documents ---- */
+.doc-make-wrap { margin: 0 0 14px; }
+.doc-make { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.doc-make .field { min-width: 0; flex: 1 1 140px; }
+.doc-make .doc-theme { flex: 0 1 120px; }
+.doc-about { margin: 6px 0 0; }
+.doc-list { display: flex; flex-direction: column; gap: 8px; }
+.doc-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.thread-docs { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.doc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.doc-name { text-align: left; color: var(--accent); font: var(--type-body-strong, 600 14px/1.4 Inter, sans-serif); overflow-wrap: anywhere; }
+.doc-name:hover { text-decoration: underline; }
+.doc-acts { display: flex; gap: 4px; align-items: center; flex: none; }
+.doc-state { font-weight: 600; }
+.doc-state.tone-ok { color: var(--ok, #3B7A3B); }
+.doc-state.tone-warn { color: var(--warn, #A15C12); }
+.doc-state.tone-muted { color: var(--muted); }
+.doc-row.state-gone .doc-name, .doc-row.state-forgotten .doc-name, .doc-row.state-elsewhere .doc-name { color: var(--fg); }
+.doc-folder { margin-top: 12px; overflow-wrap: anywhere; }

@@ -28,6 +28,8 @@ const INTERNAL: &[&str] = &[
     "places_of", "threads_of", "add_thread_note", "update_thread_note", "set_note_thread", "set_note_also", "trashed", "chapter_questions", "command_names", "split_at", "anchor_ref",
     // wb do: the app's side of the socket (wb do is the other side)
     "address_file", "listen", "read_request", "answer",
+    // documents (tier 4): the store's trash for a record (wb docs delete), and the pieces of wb docs and wb craft
+    "trash_file", "squash", "records", "source_name",
 ];
 
 fn public_fns(src: &str) -> Vec<String> {
@@ -41,9 +43,9 @@ fn public_fns(src: &str) -> Vec<String> {
 fn every_action_has_a_command() {
     let core = env!("CARGO_MANIFEST_DIR").to_string() + "/../wb-core/src/";
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
-    let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
+    let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "commands.rs", "relay.rs"] {
+    for file in ["findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "commands.rs", "relay.rs", "docs/mod.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;

@@ -4,6 +4,7 @@
 
 use serde_json::{json, Value};
 use std::path::PathBuf;
+use std::io::Write;
 use std::process::{Command, Stdio};
 
 struct Wb {
@@ -61,6 +62,14 @@ impl Wb {
 impl Drop for Wb {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.dir);
+        let _ = std::fs::remove_dir_all(self.docs()); // the documents made from this scratch folder, beside it
+    }
+}
+
+impl Wb {
+    /// Where documents from this scratch folder go: beside it, never the person's Documents folder.
+    fn docs(&self) -> PathBuf {
+        self.dir.with_file_name(format!("{}-documents", self.dir.file_name().unwrap().to_string_lossy()))
     }
 }
 
@@ -1263,4 +1272,86 @@ fn findings_are_kept_apart_from_the_study() {
     assert!(!wb.dir.join("findings").join(format!("{id}.md")).exists());
     assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().any(|e| e.unwrap().file_name().to_string_lossy().ends_with(&format!("finding-{id}.md"))));
     assert!(wb.fails(&["finding", "handled", &id]).contains("No such finding"));
+}
+
+// ---- documents from a thread (tier 4) ----
+
+/// The text of a .docx, paragraph by paragraph (the check reads it the same way).
+fn docx_text(path: &std::path::Path) -> String {
+    use std::io::Read;
+    let mut z = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
+    let mut xml = String::new();
+    z.by_name("word/document.xml").unwrap().read_to_string(&mut xml).unwrap();
+    let t = regex::Regex::new(r"<w:t(?:\s[^>]*)?>([^<]*)</w:t>").unwrap();
+    xml.split("</w:p>").map(|p| t.captures_iter(p).map(|c| c[1].to_string()).collect::<String>()).collect::<Vec<_>>().join("\n")
+}
+
+#[test]
+fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Phinehas", "--note", "Where he is named.", "--at", "Num 25:10-13"]);
+    wb.js(&["thread", "add", "Phinehas", "Psalms 106:30"]);
+    wb.js(&["note", "add", "Num 25:11", "the same zeal"]);
+    wb.ok(&["hl", "set", "Num 25:11", "green"]);
+    let verses: Vec<String> = [verse_texts(&wb, "Num 25:10-13"), verse_texts(&wb, "Psalms 106:30")].concat();
+
+    // the Speaker Script: made once, every verse in it word for word, its record in the Python app's format
+    let made = wb.js(&["craft", "word", "--thread", "phinehas", "--structure", "script", "--theme", "olivet"]);
+    assert_eq!((made["id"].as_str(), made["name"].as_str(), made["changed"].as_bool()), (Some("thread-phinehas-script"), Some("Speaker Script - Phinehas.docx"), Some(true)));
+    assert_eq!(made["checked"]["verses"], 5);
+    let file = wb.docs().join("Speaker Script - Phinehas.docx");
+    let text = docx_text(&file);
+    for v in &verses {
+        assert!(text.contains(v.as_str()), "the script lacks {v}");
+    }
+    assert!(text.contains("Speaker's script") && text.contains("Study: the same zeal") && text.contains("Where he is named."));
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("documents").join("thread-phinehas-script.json")).unwrap()).unwrap();
+    let plan = wb.js(&["docs", "plan", "--thread", "phinehas", "--to", "word", "--structure", "script"]);
+    assert_eq!(rec["plan"], plan["fingerprint"]);
+    assert_eq!((rec["source"].clone(), rec["to"].clone(), rec["theme"].clone()), (json!({"kind": "thread", "id": "phinehas"}), json!("word"), json!("olivet")));
+    assert!(rec["file"].as_str().unwrap().len() == 64 && rec["sig"].as_array().unwrap().len() == 2);
+
+    // asked again (in the same theme: without --theme it is the saved one, as in the Python app): the same file, nothing to do
+    let again = wb.js(&["craft", "word", "--thread", "phinehas", "--structure", "script", "--theme", "olivet"]);
+    assert_eq!((again["changed"].as_bool(), again["name"].as_str()), (Some(false), Some("Speaker Script - Phinehas.docx")));
+
+    // a new note puts it behind; docs update brings it up to date in the same file
+    wb.js(&["note", "add", "Psalms 106:30", "stood up"]);
+    let row = |id: &str| wb.js(&["docs", "list"]).as_array().unwrap().iter().find(|d| d["id"] == id).cloned().unwrap();
+    assert_eq!((row("thread-phinehas-script")["state"].as_str(), row("thread-phinehas-script")["behind"].as_bool()), (Some("behind"), Some(true)));
+    assert_eq!(wb.js(&["docs", "update"])["updated"].as_array().unwrap().len(), 1);
+    assert_eq!(row("thread-phinehas-script")["state"], "current");
+    assert!(docx_text(&file).contains("Study: stood up"));
+
+    // a file changed by hand is noticed, and kept as a copy before a rebuild replaces it
+    std::fs::OpenOptions::new().append(true).open(&file).unwrap().write_all(b" ").unwrap();
+    assert_eq!(row("thread-phinehas-script")["state"], "edited");
+    let forced = wb.js(&["docs", "update", "speaker script", "--force"]);
+    let kept = forced["kept_now"].as_str().unwrap();
+    assert!(kept.starts_with("Speaker Script - Phinehas (your edits ") && wb.docs().join(kept).is_file());
+    assert_eq!(row("thread-phinehas-script")["state"], "current");
+
+    // Verse by Verse as PDF pages: a title slide and one slide a verse, every verse on them; a record of its own
+    let deck = wb.js(&["craft", "deck", "--thread", "phinehas", "--structure", "verse"]);
+    assert_eq!((deck["id"].as_str(), deck["name"].as_str(), deck["to"].as_str()), (Some("thread-phinehas-verse-pdf"), Some("Verse by Verse - Phinehas.pdf"), Some("pdf")));
+    assert_eq!((deck["checked"]["verses"].as_i64(), deck["checked"]["pages"].as_i64()), (Some(5), Some(6)));
+    assert!(std::fs::read(wb.docs().join("Verse by Verse - Phinehas.pdf")).unwrap().starts_with(b"%PDF-"));
+    assert_eq!(deck["theme"], "vellum"); // the saved theme, as none is saved: Vellum
+    wb.js(&["craft", "theme", "vigil"]);
+    assert_eq!(wb.js(&["craft", "theme"])["theme"], "vigil");
+
+    // what the Python app still makes says so
+    assert!(wb.fails(&["craft", "word", "--thread", "phinehas"]).contains("Thread Dossier is still made by the Python app"));
+    assert!(wb.fails(&["craft", "deck", "--thread", "phinehas", "--structure", "pulpit"]).contains("--structure verse"));
+    assert!(wb.fails(&["craft", "word", "--passage", "John 3:16"]).contains("from a thread"));
+
+    // forget, remember, delete (the files erased, the record to .trash)
+    assert_eq!(wb.js(&["docs", "forget", "verse by verse"])["ok"], true);
+    assert_eq!(row("thread-phinehas-verse-pdf")["state"], "forgotten");
+    assert_eq!(wb.js(&["docs", "remember", "verse by verse"])["state"], "current");
+    let gone = wb.js(&["docs", "delete", "speaker script"]);
+    assert_eq!(gone["deleted"].as_array().unwrap().len(), 2); // the file and the kept copy
+    assert!(!file.exists() && !wb.dir.join("documents").join("thread-phinehas-script.json").exists());
+    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().ends_with("thread-phinehas-script.json")));
+    assert!(wb.fails(&["docs", "show", "speaker script"]).contains("No document called"));
 }
