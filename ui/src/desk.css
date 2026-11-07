@@ -467,7 +467,7 @@ button.question-pill:hover { text-decoration: line-through; }
 .plan-past-row { display: flex; gap: 10px; justify-content: space-between; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
 .plan-past-name { font: var(--type-small-strong); }
 /* the form: a sheet over the window (R1, A2) */
-.plan-modal-wrap { position: fixed; inset: 0; z-index: 60; display: grid; place-items: start center; padding: 56px 16px 16px; background: rgba(0, 0, 0, .28); overflow: auto; }
+.plan-modal-wrap { position: fixed; inset: 0; z-index: 20; display: grid; place-items: start center; padding: 56px 16px 16px; background: rgba(0, 0, 0, .28); overflow: auto; }
 .plan-modal { width: min(720px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 50px rgba(0, 0, 0, .28); padding: 18px 22px 20px; }
 .plan-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .plan-modal-title { font: var(--type-heading); margin: 0 0 2px; }
@@ -522,3 +522,31 @@ button.question-pill:hover { text-decoration: line-through; }
 .finding-ctx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
 .note-card.finding .finding-ctx { white-space: normal; max-width: none; margin-top: 6px; }
 .findings-acts { margin: 4px 0 8px; }
+/* the builder (R2) and the published-plan form */
+.plan-modal.wide { width: min(1080px, 100%); }
+.plan-arrange { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.plan-paste { min-height: 160px; font: 13px/1.4 ui-monospace, Consolas, monospace; }
+.plan-build-head { display: flex; gap: 12px; align-items: center; }
+.plan-build-title { flex: 1; min-width: 0; font: var(--type-heading); border: 0; border-bottom: 1px solid transparent; background: transparent; color: var(--fg); padding: 4px 2px; }
+.plan-build-title:hover, .plan-build-title:focus { border-bottom-color: var(--line); outline: none; }
+.plan-build-stat { white-space: nowrap; }
+.plan-build-pace { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0 4px; }
+.plan-build-pace .ask-input { width: auto; min-width: 150px; }
+.plan-build { display: grid; grid-template-columns: 230px 1fr; gap: 14px; margin-top: 10px; align-items: start; }
+.plan-build-side { display: grid; gap: 8px; align-content: start; position: sticky; top: 0; }
+.plan-build-books { display: grid; gap: 4px; max-height: 420px; overflow: auto; }
+.plan-build-book { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); text-align: left; cursor: pointer; }
+.plan-build-book:hover { border-color: var(--accent); }
+.plan-build-days { display: grid; gap: 8px; max-height: 480px; overflow: auto; padding: 2px; }
+.plan-bday { display: grid; grid-template-columns: 18px 54px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.plan-bday.dragging { opacity: .4; }
+.plan-bday.drop { border-color: var(--accent); box-shadow: 0 -3px 0 var(--accent); }
+.plan-bday .grip { cursor: grab; }
+.plan-bn { font: var(--type-small-strong); color: var(--muted); }
+.plan-bchips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 30px; }
+.plan-bchip { cursor: grab; background: var(--surface); border: 1px solid var(--line); color: var(--fg); padding-right: 6px; }
+.plan-bchip.dragging { opacity: .4; }
+.plan-bchip.drop { border-color: var(--accent); box-shadow: -3px 0 0 var(--accent); }
+.plan-bchip.hit { background: var(--accent-soft); border-color: var(--accent); }
+.plan-bkept { display: flex; gap: 10px; align-items: center; color: var(--accent); font: var(--type-small); white-space: nowrap; }
+@media (max-width: 760px) { .plan-build { grid-template-columns: 1fr; } .plan-build-side { position: static; } .plan-bday { grid-template-columns: 18px 1fr; } .plan-bday .plan-bchips, .plan-bday .plan-bkept { grid-column: 1 / -1; } }

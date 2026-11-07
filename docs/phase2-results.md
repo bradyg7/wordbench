@@ -514,7 +514,7 @@ Ctrl+Shift+J and write what you notice; More ⋯ → Findings.
 ## 17. Phase 2b, tier 3: reading plans, the form and the plan (2026-11-06)
 
 Items 1, 2 and 5 of tier 3 in [PLAN-phase2b-build.md](PLAN-phase2b-build.md); the builder (3) and the published-plan
-importers (4) are not built yet. The plans pane is rewritten in its own file, `ui/src/plans.ts`. Designs R1, A2, P1, P2.
+importers (4) are in section 18. The plans pane is rewritten in its own file, `ui/src/plans.ts`. Designs R1, A2, P1, P2.
 
 | Item | Built | Checked |
 |---|---|---|
@@ -528,9 +528,8 @@ day, and the plan shows its next. **Skipped** days (`skipped: [3, 4]`) are neith
 field they had; the new ones are `days_off`, `dated`, `skipped`, `stopped`, `pace`, `order`, `books`, `passages`, `reused_from`,
 all optional, so an older plan reads as before. The Python app has no reading plans, so nothing it reads changes.
 
-**Not built yet in tier 3:** the builder (**Arrange the days myself…**, R2: chapters dragged between days, a per-day `kept`
-flag) and the importers for Guthrie's, Blue Letter Bible's and Horner's forms (item 4). The form's link to the builder
-waits for the builder; "A published plan…" opens the plain importer (one day to a line).
+**Built after, in section 18:** the builder (**Arrange the days myself…**, R2) and the importers for Guthrie's, Blue Letter Bible's
+and Horner's forms (item 4).
 
 | | Result |
 |---|---|
@@ -542,3 +541,29 @@ waits for the builder; "A published plan…" opens the plain importer (one day t
 To try it: Reading plans → New plan; pick "New Testament in 90 days" and see the summary; Blank → + Books… → Gospels and
 Romans; set Sun as a day off; start it; drag a day; start a plan with a start day a few days ago and press
 "What should happen?".
+
+## 18. Phase 2b, tier 3: the builder and published plans (2026-11-07)
+
+Items 3 and 4 of tier 3 in [PLAN-phase2b-build.md](PLAN-phase2b-build.md), which finishes tier 3. Core: `plans.rs` (the builder)
+and the new `published.rs` (the importers); the window: `ui/src/plans.ts`. Designs R2 and C1.
+
+| Item | Built | Checked |
+|---|---|---|
+| **The builder** (R2) | From the form, **Arrange the days myself…** opens the days as rows of chapters (each chapter a chip, a day a row). A chapter is dragged to another day (before a chip, or to the end of a row); a day is dragged up or down by its grip; **+** adds a place typed (Psalm 23) to a day; **×** takes a chapter out; **Add a day**; **Remove** on an empty day. A day touched by hand says **kept as you set it** (click it to let it go). The **pace** at the top (N days, by a day, N chapters a day, my own pace) lays the other days out again and leaves the kept ones where they were. **Find a book or chapter** marks chips; the books in the plan are listed with their chapters. **Back to the form** keeps everything: the form says "The days are arranged by hand · 2 kept", and **Edit the days…** comes back to them. Changing what to read or the order in the form drops the arrangement (the days would no longer match). Core: `lay_out` (the pace, with held days), `exact`, `Arranged`; the plan file gains `kept: [day numbers]`, carried by moving a day, a missed-day choice and Use again. `wb plan layout` (the days with chips, nothing started), `wb plan start --arranged FILE\|-`, `wb plan arrange <name> --arranged FILE\|-` (a plan going: new days, old file to `.trash`; what was read stays in the log), `wb plan entries "Psalm 23; Isa 53:1-12"` | CLI `the_builder_keeps_the_days_set_by_hand_when_the_pace_changes` (each pace with a held day, none lost or twice, empty days dropped, kept numbers move up, move-day carries `kept`, arrange keeps the log, errors). Desk: the builder shows 20 days and 89 chips; the form's name and pace come along; a chapter dragged; a day dragged; a place typed; a day let go; a new pace keeps the kept days and every chapter is in one day; back to the form and in again; Start writes the days exactly, with `kept` |
+| **Published plans** (item 4) | **A published plan…** in the form: paste the copy you have, say which it is or let the window find out, see what was found before starting. **Guthrie's** `Week N` / `Day N` (readings may go on in the next line; the seventh day of a week is a day off, Sunday unless changed; a Day 7 that is "Rest" is not an error). **Blue Letter Bible's** list (places joined by `/`, a day label in front or not, its short names Jhn, Phl, 1Co, Jde, Rth, Sol, Eze, Joe). **Horner's lists** (`List 1: Matthew, Mark, Luke, John`, any number from 2 to 12): a new kind, **horner**; one chapter from each list a day, each starting again when done, **no end date** (`cycle: true` and the `lists` in the plan file; the days written are one pass of the longest list, and more are made as the dates need them). **One day to a line** as before, with **Where it came from** (Tyndale's One Year Chronological, say: its list is not on the web page and needs the person's own text). The plan file keeps `source`. A plan with no end shows "no end date", never finishes, and offers only "pick up where I left off" and "skip them" for days missed. None is shipped: each belongs to its publisher. `wb plan import --format auto\|plain\|guthrie\|blue-letter\|horner --source NAME --days-off … --dry-run` | CLI `a_published_plan_is_read_from_the_copy_the_person_has` (small samples written for the test, not the publishers' lists; all 66 short names are checked against the Bible's own order; Horner's wrap, a far day, never finished, missed choices, Use again keeps the lists). Desk: Guthrie found from the text with Sunday off, Blue Letter Bible's short names, Horner's no end date, a line that cannot be read named and nothing started |
+
+**Notes.** Where the person's own copies differ from the layouts above (a publisher's list laid out another way), the importer
+says which line it could not read; the forms it knows are the ones in the plan file's note `032f`, so a copy that differs can be
+told to us as a sample and the reader widened. The builder works on the form's draft; a plan already going can be given new
+days from a terminal (`wb plan arrange`), but the window has no button for that yet. The popups of the form now open over it
+(the form sits under them).
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **230 of 230** |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped |
+| Rust tests | `cargo test`: **136** (2 new CLI tests; the `every_action` list gained `published.rs`) |
+| Golden suite | `python scripts/golden.py`: **99 of 99** (`plan` is Rust only) |
+
+Screenshots: `docs/phase2/1440-plan-builder.png`, `1440-plan-builder-pace.png`, `1440-plan-form-arranged.png`, `1440-plan-published.png`,
+`1440-plan-no-end.png`.

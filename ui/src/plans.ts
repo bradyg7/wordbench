@@ -1,6 +1,7 @@
 // Reading plans (wb plan …, wb read …), phase 2b tier 3: the plan in its pane (P1: today's card, the days, days that were
 // missed and the four things to do about them, P2), the form that makes one (R1, A2: what to read, order, pace, days off,
-// a summary before starting) and Past plans (a stopped plan waits there to be used again or deleted, note 2885).
+// a summary before starting), the builder for arranging the days by hand (R2), the importers for published plans, and Past
+// plans (a stopped plan waits there to be used again or deleted, note 2885).
 // Nothing here reminds, nags or counts streaks: it says where the person is, and what each choice does to the dates.
 import { wb } from './api';
 import { app, goTo } from './app';
@@ -102,12 +103,13 @@ function planCard(p: any, t: any, redraw: () => void): HTMLElement {
 
   // the days before today not read (today's own day is not missed yet)
   const missed: any[] = p.dated ? (t?.to_read || []).filter((d: any) => d.day !== p.today) : [];
-  const rest = p.days_off?.length ? ` · rests ${p.days_off.map((d: string) => d[0].toUpperCase() + d.slice(1)).join(', ')}` : '';
+  const rest = (p.days_off?.length ? ` · rests ${p.days_off.map((d: string) => d[0].toUpperCase() + d.slice(1)).join(', ')}` : '') + (p.source ? ` · from ${p.source}` : '');
+  const of = p.cycle ? '' : ` of ${p.days}`;
   const where = p.finished ? `Finished · ${plural(p.days, 'day')}`
     : !p.dated ? `${p.done} of ${p.days} read · no dates`
-    : p.today == null && p.start > todayStr() ? `Starts ${dayName(p.start)} · ${plural(p.days, 'day')}`
+    : p.today == null && p.start > todayStr() ? `Starts ${dayName(p.start)}${p.cycle ? ' · no end date' : ` · ${plural(p.days, 'day')}`}`
     : p.today == null ? `A day off${p.next ? ` · next ${dayName(p.next.date)}` : ''}`
-    : `Day ${p.today} of ${p.days} · ${p.done} read` + (missed.length ? ` · ${missed.length} not read` : '') + (p.ahead ? ` · ${p.ahead} ahead` : '');
+    : `Day ${p.today}${of} · ${p.done} read` + (missed.length ? ` · ${missed.length} not read` : '') + (p.ahead ? ` · ${p.ahead} ahead` : '') + (p.cycle ? ' · no end date' : '');
   card.append(h('div', 'muted small plan-where', where + rest));
 
   // days that were not read: what to do, each choice saying what it does to the dates (P2)
@@ -253,13 +255,19 @@ function pastRow(p: any, redraw: () => void): HTMLElement {
 // ---- the form (R1, A2) ----------------------------------------------------------------------------------------------------
 
 interface Chip { label: string; codes: string[] }
+// One day in the builder: each chapter a chip, and whether the person set the day by hand (a new pace leaves it alone).
+interface BChip { entry: string; label: string }
+interface BRow { chips: BChip[]; kept: boolean }
 interface Draft {
   name: string; chips: Chip[]; passages: string[];
   order: 'bible' | 'listed' | 'side-by-side';
   pace: 'days' | 'by' | 'chapters' | 'own'; n: string; by: string;
   start: 'today' | 'day'; day: string; off: Set<string>;
+  arr: BRow[] | null; // the days as the builder holds them, when the person has arranged them
 }
-const freshDraft = (): Draft => ({ name: '', chips: [], passages: [], order: 'bible', pace: 'days', n: '30', by: '', start: 'today', day: todayStr(), off: new Set() });
+const freshDraft = (): Draft => ({ name: '', chips: [], passages: [], order: 'bible', pace: 'days', n: '30', by: '', start: 'today', day: todayStr(), off: new Set(), arr: null });
+const payload = (rows: BRow[]) => JSON.stringify({ days: rows.map(r => r.chips.map(c => c.entry)), kept: rows.flatMap((r, k) => (r.kept ? [k + 1] : [])) });
+const rowsOf = (l: any): BRow[] => l.rows.map((r: any) => ({ chips: r.chips, kept: !!r.kept }));
 let draft = freshDraft();
 
 const WEEK = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -279,16 +287,20 @@ const PRESETS: { label: string; name: string; codes: () => Chip[]; order?: Draft
   { label: 'Psalms and Proverbs', name: 'Psalms and Proverbs', codes: () => [{ label: 'Psalms and Proverbs', codes: ['PSA', 'PRO'] }], n: '31' },
 ];
 
-const argv = (d: Draft, dry: boolean) => {
-  const a = ['plan', 'start', d.name.trim() || 'My plan'];
+// What `wb` is asked for the form: 'start' (or 'dry' for what it would make), 'layout' (the days, each chapter apart). With
+// days arranged by hand, 'start' and 'dry' take exactly those days, and 'layout' lays the rest out around the kept ones.
+const argv = (d: Draft, mode: 'start' | 'dry' | 'layout'): { args: string[]; input?: string } => {
+  const a = ['plan', mode === 'layout' ? 'layout' : 'start'];
+  if (mode !== 'layout') a.push(d.name.trim() || 'My plan');
   if (d.chips.length) a.push('--books', d.chips.flatMap(c => c.codes).join(','));
   if (d.passages.length) a.push('--passages', d.passages.join('; '));
   a.push('--order', d.order);
   a.push('--pace', d.pace === 'own' ? 'own' : d.pace === 'by' ? `by:${d.by}` : `${d.pace}:${d.n}`);
   if (d.off.size) a.push('--days-off', [...d.off].join(','));
   a.push('--start', d.start === 'day' ? d.day : todayStr());
-  if (dry) a.push('--dry-run');
-  return a;
+  if (mode === 'dry') a.push('--dry-run');
+  if (d.arr) a.push('--arranged', '-');
+  return { args: a, input: d.arr ? payload(d.arr) : undefined };
 };
 
 export function openPlanForm(done: () => void) {
@@ -303,6 +315,12 @@ export function openPlanForm(done: () => void) {
   const close = () => { wrap.remove(); document.removeEventListener('keydown', key, true); };
   const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
   document.addEventListener('keydown', key, true);
+  // A new pace lays the days out again; the days the person set by hand stay as they are.
+  const relay = async () => {
+    if (!draft.arr) return;
+    const q = argv(draft, 'layout');
+    try { draft.arr = rowsOf(await wb(q.args, q.input)); } catch { /* the summary says what is wrong */ }
+  };
   const x = (title: string, sub: string) => {
     const top = h('header', 'plan-modal-head');
     const t = h('div');
@@ -315,6 +333,7 @@ export function openPlanForm(done: () => void) {
     return top;
   };
   const form = () => {
+    box.className = 'plan-modal';
     box.replaceChildren(x('New reading plan', 'Only a name and what to read are needed.'));
     const body = h('div', 'plan-modal-body');
     const label = (t: string, req?: boolean) => { const l = h('div', 'plan-field-label', t); l.append(h('span', req ? 'req' : 'opt', req ? ' required' : ' optional')); return l; };
@@ -339,7 +358,7 @@ export function openPlanForm(done: () => void) {
       const rm = h('button', 'chip-x');
       rm.setAttribute('aria-label', `Take out ${c.label}`);
       rm.append(icon('x', 10));
-      rm.onclick = () => { draft.chips.splice(k, 1); form(); };
+      rm.onclick = () => { draft.chips.splice(k, 1); draft.arr = null; form(); };
       chip.append(rm);
       what.append(chip);
     });
@@ -348,7 +367,7 @@ export function openPlanForm(done: () => void) {
       const rm = h('button', 'chip-x');
       rm.setAttribute('aria-label', `Take out ${p}`);
       rm.append(icon('x', 10));
-      rm.onclick = () => { draft.passages.splice(k, 1); form(); };
+      rm.onclick = () => { draft.passages.splice(k, 1); draft.arr = null; form(); };
       chip.append(rm);
       what.append(chip);
     });
@@ -357,7 +376,7 @@ export function openPlanForm(done: () => void) {
         const t = v.trim();
         if (!t) return;
         await wb(['plan', 'start', 'X', '--passages', t, '--days', '1', '--dry-run']); // says what is wrong with it
-        draft.passages.push(t); form();
+        draft.passages.push(t); draft.arr = null; form();
       })));
     body.append(what);
 
@@ -370,12 +389,12 @@ export function openPlanForm(done: () => void) {
       s.value = value; s.onchange = () => on(s.value);
       return s;
     };
-    const o = h('div'); o.append(label('Order'), sel([['bible', 'Bible order'], ['listed', 'As listed'], ['side-by-side', 'Old and New side by side']], draft.order, v => { draft.order = v as Draft['order']; refresh(); }, 'Order'));
-    const pace = h('div'); pace.append(label('Pace'), sel([['days', 'Finish in N days'], ['by', 'Finish by a day'], ['chapters', 'N chapters a day'], ['own', 'My own pace, no dates']], draft.pace, v => { draft.pace = v as Draft['pace']; form(); }, 'Pace'));
+    const o = h('div'); o.append(label('Order'), sel([['bible', 'Bible order'], ['listed', 'As listed'], ['side-by-side', 'Old and New side by side']], draft.order, v => { draft.order = v as Draft['order']; draft.arr = null; refresh(); }, 'Order'));
+    const pace = h('div'); pace.append(label('Pace'), sel([['days', 'Finish in N days'], ['by', 'Finish by a day'], ['chapters', 'N chapters a day'], ['own', 'My own pace, no dates']], draft.pace, async v => { draft.pace = v as Draft['pace']; await relay(); form(); }, 'Pace'));
     const num = h('input', 'ask-input') as HTMLInputElement;
     num.setAttribute('aria-label', 'Number');
-    if (draft.pace === 'by') { num.type = 'date'; num.value = draft.by; num.oninput = () => { draft.by = num.value; refresh(); }; }
-    else { num.type = 'number'; num.min = '1'; num.value = draft.n; num.oninput = () => { draft.n = num.value; refresh(); }; }
+    if (draft.pace === 'by') { num.type = 'date'; num.value = draft.by; num.oninput = async () => { draft.by = num.value; await relay(); refresh(); }; }
+    else { num.type = 'number'; num.min = '1'; num.value = draft.n; num.oninput = async () => { draft.n = num.value; await relay(); refresh(); }; }
     if (draft.pace !== 'own') pace.append(num);
     const st = h('div'); st.append(label('Start'), sel([['today', 'Today'], ['day', 'On a day…']], draft.start, v => { draft.start = v as Draft['start']; form(); }, 'Start'));
     if (draft.start === 'day') {
@@ -400,6 +419,18 @@ export function openPlanForm(done: () => void) {
     off.append(days);
     body.append(off);
 
+    // The days by hand (R2): opens the builder with what the form holds; coming back keeps it
+    const arrange = h('div', 'plan-arrange');
+    const arrangeBtn = button('btn', draft.arr ? 'Edit the days…' : 'Arrange the days myself…', () => void builderView()) as HTMLButtonElement;
+    if (draft.arr) {
+      const kept = draft.arr.filter(r => r.kept).length;
+      arrange.append(h('span', 'small', `The days are arranged by hand${kept ? ` · ${kept} kept as you set ${kept === 1 ? 'it' : 'them'}` : ''}. A new pace lays out the rest again.`),
+        arrangeBtn, button('link-btn', 'Start over', () => { draft.arr = null; form(); }));
+    } else {
+      arrange.append(arrangeBtn, h('span', 'muted small', 'Move chapters between days, and days up or down.'));
+    }
+    body.append(arrange);
+
     // The summary, and Start
     const summary = h('div', 'plan-summary');
     const l1 = h('div', 'plan-summary-line'), l2 = h('div', 'muted small');
@@ -416,9 +447,10 @@ export function openPlanForm(done: () => void) {
       const my = ++seq;
       const ready = !!draft.name.trim() && (draft.chips.length > 0 || draft.passages.length > 0);
       go.disabled = !ready;
+      arrangeBtn.disabled = !(draft.chips.length > 0 || draft.passages.length > 0);
       if (!draft.chips.length && !draft.passages.length) { l1.textContent = 'Choose what to read.'; l2.textContent = ''; return; }
       try {
-        const d = await wb(argv(draft, true));
+        const q = argv(draft, 'dry'); const d = await wb(q.args, q.input);
         if (my !== seq) return;
         const books = new Set(draft.chips.flatMap(c => c.codes)).size;
         l1.textContent = [books ? plural(books, 'book') : '', `${d.readings} readings`, d.dated ? plural(d.days, 'day') : 'no dates'].filter(Boolean).join(' · ');
@@ -431,7 +463,7 @@ export function openPlanForm(done: () => void) {
     go.onclick = async () => {
       go.disabled = true;
       try {
-        const p = await wb(argv(draft, false));
+        const q = argv(draft, 'start'); const p = await wb(q.args, q.input);
         draft = freshDraft();
         close();
         seen.add(p.id); daysOpen.add(p.id);
@@ -445,6 +477,7 @@ export function openPlanForm(done: () => void) {
 
   // A2: choose books, several at once
   const booksView = () => {
+    box.className = 'plan-modal';
     const ticked = new Set<string>();
     box.replaceChildren();
     const sub = h('div', 'muted small');
@@ -486,6 +519,7 @@ export function openPlanForm(done: () => void) {
             : GROUPS.find(([, a, b]) => all(a, b))?.[0] ? `${GROUPS.find(([, a, b]) => all(a, b))![0]} · ${plural(codes.length, 'book')}`
             : codes.length <= 3 ? codes.map(c => app.books.find(k => k.code === c)!.name).join(', ') : plural(codes.length, 'book');
           draft.chips.push({ label: named, codes });
+          draft.arr = null;
         }
         form();
       }));
@@ -494,26 +528,289 @@ export function openPlanForm(done: () => void) {
     count();
   };
 
-  // A published plan, or one of your own: one day to a line
+  // R2: the builder. The days as rows of chapters: a chapter dragged to another day, a day dragged up or down. A day set by
+  // hand is kept: a new pace lays out the others again and leaves it. What the form holds comes along, and goes back.
+  const builderView = async () => {
+    if (!draft.arr) {
+      try { const q = argv(draft, 'layout'); draft.arr = rowsOf(await wb(q.args, q.input)); } catch (e) { toast(String(e)); return; }
+    }
+    let rows = draft.arr!;
+    let query = '';
+    let drag: { day: number; i?: number } | null = null;
+    const bookName = (code: string) => app.books.find(b => b.code === code)?.name || code;
+    const hit = (c: BChip) => !!query && (c.label.toLowerCase().includes(query.toLowerCase()) || bookName(c.entry.split('.')[0]).toLowerCase() === query.toLowerCase());
+    const touch = (...days: number[]) => days.forEach(d => { if (rows[d]) rows[d].kept = true; });
+    const moveChip = (from: { day: number; i?: number }, toDay: number, toIdx: number) => {
+      if (from.i === undefined) return;
+      if (from.day === toDay && (toIdx === from.i || toIdx === from.i + 1)) return;
+      const [c] = rows[from.day].chips.splice(from.i, 1);
+      if (from.day === toDay && toIdx > from.i) toIdx -= 1;
+      rows[toDay].chips.splice(toIdx, 0, c);
+      touch(from.day, toDay);
+      draw(); void total();
+    };
+    const moveDay = (from: number, to: number) => {
+      if (from === to) return;
+      const [r] = rows.splice(from, 1);
+      rows.splice(to, 0, r);
+      r.kept = true;
+      draw(); void total();
+    };
+
+    let stat: HTMLElement, err: HTMLElement, go: HTMLButtonElement;
+    // how many days, and when it ends, for what the rows hold now
+    const total = async () => {
+      go.disabled = !draft.name.trim();
+      try {
+        const q = argv(draft, 'dry');
+        const d = await wb(q.args, q.input);
+        stat.textContent = `${plural(d.days, 'day')} · ${d.readings} readings${d.dated ? ` · ends ${dayName(d.finish)}` : ' · no dates'}`;
+        err.textContent = '';
+      } catch (e) { stat.textContent = ''; err.textContent = String(e); go.disabled = true; }
+    };
+    const relayed = async () => { await relay(); rows = draft.arr || rows; draw(); void total(); };
+
+    const draw = () => {
+      box.className = 'plan-modal wide';
+      box.replaceChildren();
+      const top = h('header', 'plan-build-head');
+      const title = h('input', 'plan-build-title') as HTMLInputElement;
+      title.value = draft.name; title.placeholder = 'Name the plan'; title.setAttribute('aria-label', 'Name');
+      title.oninput = () => { draft.name = title.value; go.disabled = !title.value.trim(); };
+      stat = h('div', 'muted small plan-build-stat');
+      const closeBtn = h('button', 'icon-btn');
+      closeBtn.setAttribute('aria-label', 'Close');
+      closeBtn.append(icon('x', 14));
+      closeBtn.onclick = close;
+      top.append(button('btn', 'Back to the form', () => form()), title, stat, closeBtn);
+      box.append(top);
+
+      // the pace: a new one lays out the days that are not kept
+      const pace = h('div', 'plan-build-pace');
+      const sel = h('select', 'ask-input') as HTMLSelectElement;
+      sel.setAttribute('aria-label', 'Pace');
+      for (const [v, t] of [['days', 'Finish in N days'], ['by', 'Finish by a day'], ['chapters', 'N chapters a day'], ['own', 'My own pace, no dates']]) { const o = h('option', '', t) as HTMLOptionElement; o.value = v; sel.append(o); }
+      sel.value = draft.pace;
+      sel.onchange = () => { draft.pace = sel.value as Draft['pace']; void relayed(); };
+      pace.append(sel);
+      if (draft.pace !== 'own') {
+        const num = h('input', 'ask-input') as HTMLInputElement;
+        num.setAttribute('aria-label', 'Number');
+        if (draft.pace === 'by') { num.type = 'date'; num.value = draft.by; num.onchange = () => { draft.by = num.value; void relayed(); }; }
+        else { num.type = 'number'; num.min = '1'; num.value = draft.n; num.onchange = () => { draft.n = num.value; void relayed(); }; }
+        pace.append(num);
+      }
+      pace.append(h('span', 'muted small', 'Days you set by hand stay as they are when the pace changes.'));
+      box.append(pace);
+
+      const grid = h('div', 'plan-build');
+      // the books in the plan, with a way to find a chapter
+      const side = h('aside', 'plan-build-side');
+      const find = h('input', 'ask-input') as HTMLInputElement;
+      find.placeholder = 'Find a book or chapter'; find.value = query; find.setAttribute('aria-label', 'Find a book or chapter');
+      side.append(find, h('div', 'label', 'In this plan'));
+      const list = h('div', 'plan-build-books');
+      const counts = new Map<string, number>();
+      for (const r of rows) for (const c of r.chips) { const b = c.entry.split('.')[0]; counts.set(b, (counts.get(b) || 0) + 1); }
+      for (const [code, n] of counts) {
+        const b = button('plan-build-book', '', () => { find.value = bookName(code); find.dispatchEvent(new Event('input')); });
+        b.dataset.code = code;
+        b.append(h('span', '', bookName(code)), h('span', 'muted small', `${n} ch`));
+        list.append(b);
+      }
+      side.append(list);
+      const paint = () => {
+        query = find.value.trim();
+        main.querySelectorAll<HTMLElement>('.plan-bchip').forEach(el => el.classList.toggle('hit', !!query && el.dataset.hit === '1' && (el.dataset.label!.toLowerCase().includes(query.toLowerCase()) || el.dataset.book!.toLowerCase() === query.toLowerCase())));
+        list.querySelectorAll<HTMLElement>('.plan-build-book').forEach(el => { el.hidden = !!query && !el.textContent!.toLowerCase().includes(query.toLowerCase()) && !bookName(el.dataset.code!).toLowerCase().includes(query.toLowerCase()); });
+        main.querySelector('.plan-bchip.hit')?.scrollIntoView?.({ block: 'nearest' });
+      };
+      find.addEventListener('input', paint);
+
+      // the days
+      const main = h('div', 'plan-build-days');
+      rows.forEach((r, k) => {
+        const row = h('div', `plan-bday${r.kept ? ' kept' : ''}`);
+        row.dataset.day = String(k + 1);
+        const grip = h('span', 'grip');
+        grip.append(icon('grip', 14));
+        grip.draggable = true;
+        grip.setAttribute('aria-label', `Move day ${k + 1}`);
+        grip.ondragstart = e => { drag = { day: k }; e.dataTransfer!.setData('text/plain', `day ${k + 1}`); e.dataTransfer!.effectAllowed = 'move'; row.classList.add('dragging'); };
+        grip.ondragend = () => { drag = null; row.classList.remove('dragging'); };
+        const chips = h('div', 'plan-bchips');
+        r.chips.forEach((c, i) => {
+          const chip = h('span', 'chip plan-bchip', c.label);
+          chip.draggable = true;
+          chip.dataset.entry = c.entry; chip.dataset.label = c.label; chip.dataset.book = bookName(c.entry.split('.')[0]); chip.dataset.hit = '1';
+          chip.ondragstart = e => { e.stopPropagation(); drag = { day: k, i }; e.dataTransfer!.setData('text/plain', c.label); e.dataTransfer!.effectAllowed = 'move'; chip.classList.add('dragging'); };
+          chip.ondragend = () => { drag = null; chip.classList.remove('dragging'); };
+          chip.ondragover = e => { if (drag?.i !== undefined) { e.preventDefault(); e.stopPropagation(); chip.classList.add('drop'); } };
+          chip.ondragleave = () => chip.classList.remove('drop');
+          chip.ondrop = e => { if (drag?.i === undefined) return; /* a day dropped here goes to the row */ e.preventDefault(); e.stopPropagation(); chip.classList.remove('drop'); moveChip(drag, k, i); };
+          const x = h('button', 'chip-x');
+          x.setAttribute('aria-label', `Take out ${c.label}`);
+          x.append(icon('x', 10));
+          x.onclick = () => { r.chips.splice(i, 1); touch(k); draw(); void total(); };
+          chip.append(x);
+          chips.append(chip);
+        });
+        if (!r.chips.length) chips.append(h('span', 'muted small', 'Drop chapters here'));
+        chips.append(button('chip nb-add', '+', e => ask(e.currentTarget as HTMLElement, `Add to day ${k + 1}: a place, like Psalm 23`, '', async v => {
+          const found: BChip[] = await wb(['plan', 'entries', v]);
+          for (const c of found) rows.forEach((o, j) => { if (o.chips.some(z => z.entry === c.entry)) { o.chips = o.chips.filter(z => z.entry !== c.entry); touch(j); } });
+          r.chips.push(...found);
+          touch(k);
+          draw(); void total();
+        })));
+        (chips.lastElementChild as HTMLElement).setAttribute('aria-label', `Add a place to day ${k + 1}`);
+        const tail = h('div', 'plan-bkept');
+        if (r.kept) tail.append(button('link-btn small', 'kept as you set it', () => { r.kept = false; draw(); }));
+        if (!r.chips.length) tail.append(button('link-btn small', 'Remove', () => { rows.splice(k, 1); draw(); void total(); }));
+        row.append(grip, h('span', 'plan-bn', `Day ${k + 1}`), chips, tail);
+        row.ondragover = e => { if (drag) { e.preventDefault(); row.classList.add('drop'); } };
+        row.ondragleave = e => { if (e.target === row) row.classList.remove('drop'); };
+        row.ondrop = e => {
+          e.preventDefault();
+          row.classList.remove('drop');
+          if (!drag) return;
+          if (drag.i !== undefined) moveChip(drag, k, r.chips.length); else moveDay(drag.day, k);
+        };
+        main.append(row);
+      });
+      main.append(button('btn', 'Add a day', () => { rows.push({ chips: [], kept: true }); draw(); }));
+      grid.append(side, main);
+      box.append(grid);
+
+      err = h('p', 'muted small bad');
+      go = h('button', 'btn primary', 'Start the plan') as HTMLButtonElement;
+      go.onclick = async () => {
+        go.disabled = true;
+        try {
+          const q = argv(draft, 'start');
+          const p = await wb(q.args, q.input);
+          draft = freshDraft();
+          close();
+          seen.add(p.id); daysOpen.add(p.id);
+          toast(`“${p.name}” started`);
+          done();
+        } catch (e) { err.textContent = String(e); go.disabled = false; }
+      };
+      const foot = h('div', 'plan-modal-foot');
+      foot.append(err, h('span'), button('btn', 'Cancel', close), go);
+      box.append(foot);
+      paint();
+    };
+    draw();
+    void total();
+  };
+
+  // A published plan: Guthrie's, Blue Letter Bible's, Horner's ten lists, or any list one day to a line. None comes with the app;
+  // the copy the person has is pasted, and what was found is said before the plan starts.
   const importView = () => {
-    box.replaceChildren(x('A plan from a list', 'One day to a line, places joined by ; (Gen 1-3; Ps 1). # starts a comment.'));
+    box.className = 'plan-modal';
+    const FORMS: { id: string; label: string; hint: string; sample: string }[] = [
+      { id: 'auto', label: 'Find out from what I paste', hint: 'Week and Day lines are Guthrie’s; a / between places is Blue Letter Bible’s; List 1, List 2 are Horner’s; anything else is one day to a line.', sample: '' },
+      { id: 'guthrie', label: 'Guthrie’s: Week N, Day N', hint: 'Lines like “Week 1” and “Day 1: Genesis 1-2; Matthew 1”. Six days a week; the seventh is a day off.', sample: 'Week 1\nDay 1: Genesis 1-2; Matthew 1\nDay 2: …' },
+      { id: 'blue-letter', label: 'Blue Letter Bible’s list', hint: 'One day to a line, places joined by /, like “Gen 1 / Mat 1 / Phl 2”. Its short names (Jhn, 1Co, Jde) are read.', sample: 'Gen 1 / Mat 1 / Phl 2\nGen 2 / Mat 2 / Phl 3' },
+      { id: 'horner', label: 'Horner’s ten lists', hint: 'One list to a line: “List 1: Matthew, Mark, Luke, John”. A chapter from each list is read each day, each list starting again when it is done. No end date.', sample: 'List 1: Matthew, Mark, Luke, John\nList 2: Genesis, Exodus, Leviticus, Numbers, Deuteronomy\n…' },
+      { id: 'plain', label: 'One day to a line', hint: 'Places joined by ;, like “Job 1-5; Ps 1”. # starts a comment. Any list will do: Tyndale’s One Year Chronological, say.', sample: 'Gen 1-3\nJob 1-5; Ps 1' },
+    ];
+    box.replaceChildren(x('A published plan', 'None comes with the app: paste the copy you have.'));
     const body = h('div', 'plan-modal-body');
     const name = h('input', 'ask-input') as HTMLInputElement;
     name.placeholder = 'Name'; name.value = draft.name; name.setAttribute('aria-label', 'Name');
-    const text = h('textarea', 'ask-area') as HTMLTextAreaElement;
-    text.placeholder = 'Gen 1-3\nJob 1-5; Ps 1'; text.setAttribute('aria-label', 'The plan, one day to a line');
-    const err = h('p', 'muted small');
+    const which = h('select', 'ask-input') as HTMLSelectElement;
+    which.setAttribute('aria-label', 'Which plan is it');
+    for (const f of FORMS) { const o = h('option', '', f.label) as HTMLOptionElement; o.value = f.id; which.append(o); }
+    which.value = imp.format;
+    const hint = h('p', 'muted small');
+    const source = h('input', 'ask-input') as HTMLInputElement;
+    source.placeholder = 'Where it came from, like Tyndale One Year Chronological'; source.value = imp.source; source.setAttribute('aria-label', 'Where it came from');
+    const text = h('textarea', 'ask-area plan-paste') as HTMLTextAreaElement;
+    text.value = imp.text; text.setAttribute('aria-label', 'The plan, as you have it');
+    const dayRow = h('div', 'plan-off');
+    dayRow.append(h('span', 'plan-field-label', 'Days off'), h('span', 'opt', ' optional'));
+    const dayChips = h('span', 'plan-off-days');
+    const offButtons = new Map<string, HTMLButtonElement>();
+    for (const d of WEEK) {
+      const b = h('button', 'chip link', d[0].toUpperCase() + d.slice(1)) as HTMLButtonElement;
+      b.type = 'button';
+      b.onclick = () => {
+        const cur = new Set(imp.off ?? [...offButtons].filter(([, v]) => v.classList.contains('on')).map(([k]) => k));
+        if (cur.has(d)) cur.delete(d); else cur.add(d);
+        imp.off = cur;
+        paintOff([...cur]);
+        void check();
+      };
+      offButtons.set(d, b);
+      dayChips.append(b);
+    }
+    dayRow.append(dayChips);
+    const paintOff = (on: string[]) => offButtons.forEach((b, d) => { b.classList.toggle('on', on.includes(d)); b.setAttribute('aria-pressed', String(on.includes(d))); });
+    const summary = h('div', 'plan-summary');
+    const l1 = h('div', 'plan-summary-line'), l2 = h('div', 'muted small'), l3 = h('div', 'muted small');
+    summary.append(l1, l2, l3);
+    const st = h('div'); // the start day, as in the form
+    const stSel = h('select', 'ask-input') as HTMLSelectElement;
+    stSel.setAttribute('aria-label', 'Start');
+    for (const [v, t] of [['today', 'Starts today'], ['day', 'Starts on a day…']]) { const o = h('option', '', t) as HTMLOptionElement; o.value = v; stSel.append(o); }
+    stSel.value = draft.start;
+    const stDay = h('input', 'ask-input') as HTMLInputElement;
+    stDay.type = 'date'; stDay.value = draft.day; stDay.setAttribute('aria-label', 'First day'); stDay.hidden = draft.start !== 'day';
+    stSel.onchange = () => { draft.start = stSel.value as Draft['start']; stDay.hidden = draft.start !== 'day'; void check(); };
+    stDay.oninput = () => { draft.day = stDay.value; void check(); };
+    st.append(stSel, stDay);
+
+    const go = h('button', 'btn primary', 'Start the plan') as HTMLButtonElement;
+    const args = (dry: boolean) => ['plan', 'import', name.value.trim() || 'My plan', '--start', draft.start === 'day' ? draft.day : todayStr(), '--format', imp.format,
+      ...(imp.source.trim() ? ['--source', imp.source.trim()] : []), ...(imp.off ? ['--days-off', [...imp.off].join(',') || 'none'] : []), ...(dry ? ['--dry-run'] : [])];
+    let seq = 0;
+    const check = async () => {
+      const my = ++seq;
+      hint.textContent = FORMS.find(f => f.id === imp.format)!.hint;
+      text.placeholder = FORMS.find(f => f.id === imp.format)!.sample;
+      go.disabled = true;
+      if (!text.value.trim()) { l1.textContent = 'Paste the plan.'; l2.textContent = ''; l3.textContent = ''; l2.classList.remove('bad'); return; }
+      try {
+        const d = await wb(args(true), text.value);
+        if (my !== seq) return;
+        const found = d.format === 'guthrie' ? `Guthrie’s plan · ${plural(d.weeks, 'week')}` : d.format === 'horner' ? `Horner’s lists · ${plural(d.lists, 'list')}`
+          : d.format === 'blue-letter' ? 'Blue Letter Bible’s list' : 'One day to a line';
+        l1.textContent = `${found} · ${d.cycle ? `${plural(d.days, 'day')} in a round` : plural(d.days, 'day')} · ${plural(d.readings, 'reading')}`;
+        l2.textContent = d.cycle ? `No end date. Each list starts again when it is done. Starts ${shortDay(d.start)}.` : `${shortDay(d.start)} to ${shortDay(d.finish)}`;
+        l2.classList.remove('bad');
+        l3.textContent = `Starts with ${d.first.slice(0, 2).join(' · ')}`;
+        if (imp.off === null) paintOff(d.days_off || []);
+        go.disabled = !name.value.trim();
+      } catch (e) { if (my === seq) { l1.textContent = ''; l3.textContent = ''; l2.textContent = String(e); l2.classList.add('bad'); } }
+    };
+    which.onchange = () => { imp.format = which.value; void check(); };
+    source.oninput = () => { imp.source = source.value; void check(); };
+    text.oninput = () => { imp.text = text.value; void check(); };
+    name.oninput = () => { draft.name = name.value; go.disabled = !name.value.trim() || !text.value.trim(); };
+    go.onclick = async () => {
+      go.disabled = true;
+      try {
+        const p = await wb(args(false), text.value);
+        imp = freshImport();
+        close(); seen.add(p.id); daysOpen.add(p.id); toast(`“${p.name}” started`); done();
+      } catch (e) { l2.textContent = String(e); l2.classList.add('bad'); go.disabled = false; }
+    };
     const foot = h('div', 'plan-modal-foot');
-    foot.append(button('link-btn', 'Back to the form', () => { draft.name = name.value; form(); }), h('span'), button('btn', 'Cancel', close),
-      button('btn primary', 'Start the plan', async () => {
-        try {
-          const p = await wb(['plan', 'import', name.value.trim() || 'My plan', '--start', draft.start === 'day' ? draft.day : todayStr()], text.value);
-          close(); seen.add(p.id); daysOpen.add(p.id); toast(`“${p.name}” started`); done();
-        } catch (e) { err.textContent = String(e); }
-      }));
-    body.append(h('div', 'plan-field-label', 'Name'), name, h('div', 'plan-field-label', 'The plan'), text, err, foot);
+    foot.append(button('link-btn', 'Back to the form', () => { draft.name = name.value; form(); }), h('span'), button('btn', 'Cancel', close), go);
+    body.append(h('div', 'plan-field-label', 'Name'), name, h('div', 'plan-field-label', 'Which plan is it'), which, hint, h('div', 'plan-field-label', 'The plan, as you have it'), text,
+      h('div', 'plan-field-label', 'Where it came from'), source, dayRow, st, summary, foot);
     box.append(body);
+    paintOff(imp.off ? [...imp.off] : []);
+    void check();
+    text.focus();
   };
 
   form();
 }
+
+// What the published-plan view holds, kept when the person goes back to the form and returns.
+interface Import { format: string; source: string; text: string; off: Set<string> | null }
+const freshImport = (): Import => ({ format: 'auto', source: '', text: '', off: null });
+let imp = freshImport();

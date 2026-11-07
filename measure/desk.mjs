@@ -688,6 +688,7 @@ try {
   await late.locator('.plan-choice').nth(3).click(); // skip them
   await late.getByRole('button', { name: 'Do it' }).click();
   await page.waitForFunction(() => !document.querySelector('.pane-plans .plan-card[data-plan="late"] .plan-missed'), null, { timeout: 10000 });
+  await page.waitForFunction(() => document.querySelectorAll('.pane-plans .plan-card[data-plan="late"] .plan-row.skipped').length === 4, null, { timeout: 10000 }); // the days are drawn after the card
   check('Skip: marked skipped, not read; nothing is missed now', JSON.parse(readFileSync(path.join(study, 'reading', 'plans', 'late.json'), 'utf8')).skipped?.length === 4 && await late.locator('.plan-row.skipped').count() === 4);
   // stop: it leaves the list and waits in Past plans, to use again or delete
   await late.getByRole('button', { name: 'Stop' }).click();
@@ -711,6 +712,129 @@ try {
   await page.locator('.menu .ask textarea').waitFor({ timeout: 5000 });
   const asText = execFileSync(wbExe, ['plan', 'text', 'gospels and romans'], { env }).toString().trim();
   check('Edit as text shows the plan one day to a line', (await page.locator('.menu .ask textarea').inputValue()).trim() === asText, asText.split('\n')[0]);
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'plans')) d.close(p); });
+
+  // the builder (R2): from the form, the days as rows of chapters; a chapter and a day dragged; a new pace keeps the days set by hand;
+  // back to the form keeps what it holds. Then the published plans: Guthrie's, Blue Letter Bible's, Horner's lists.
+  await page.evaluate(() => window.__wb.run('plans'));
+  await page.waitForSelector('.pane-plans .plan-bar-row', { timeout: 10000 });
+  await page.locator('.pane-plans').getByRole('button', { name: 'New plan' }).click();
+  const f2 = page.locator('.plan-modal');
+  await f2.waitFor({ timeout: 5000 });
+  check('Arrange the days myself… waits for something to read', await f2.getByRole('button', { name: 'Arrange the days myself…' }).isDisabled());
+  await f2.getByLabel('Name').fill('By hand');
+  await f2.getByRole('button', { name: '+ Books…' }).click();
+  await f2.getByRole('button', { name: 'Gospels', exact: true }).click();
+  await f2.getByRole('button', { name: 'Done' }).click();
+  await f2.getByLabel('Number').fill('20');
+  await page.waitForFunction(() => /20 days/.test(document.querySelector('.plan-summary-line')?.textContent || ''), null, { timeout: 10000 });
+  await f2.getByRole('button', { name: 'Arrange the days myself…' }).click();
+  await page.waitForSelector('.plan-bday', { timeout: 10000 });
+  check('the builder shows 20 days of chapters, each chapter a chip', await page.locator('.plan-bday').count() === 20 && await page.locator('.plan-bday .plan-bchip').count() === 89, `${await page.locator('.plan-bday').count()} days`);
+  check('the builder carries the form’s name and pace', await f2.getByLabel('Name').inputValue() === 'By hand' && await f2.getByLabel('Pace').inputValue() === 'days' && await f2.getByLabel('Number').inputValue() === '20');
+  check('the books in the plan are listed with their chapters', (await f2.locator('.plan-build-books').innerText()).includes('Matthew') && (await f2.locator('.plan-build-books').innerText()).includes('28 ch'));
+  check('no day is kept yet', await f2.locator('.plan-bday.kept').count() === 0);
+  await page.screenshot({ path: shots + '1440-plan-builder.png' });
+  const chipTexts = (n) => page.locator(`.plan-bday[data-day="${n}"] .plan-bchip`).allInnerTexts();
+  const d1 = await chipTexts(1), d2 = await chipTexts(2), d5 = await chipTexts(5);
+  // a chapter dragged to another day: it leaves the first and joins the second; both are kept as set
+  const moved = d1[d1.length - 1];
+  await page.locator('.plan-bday[data-day="1"] .plan-bchip').last().dragTo(page.locator('.plan-bday[data-day="2"]'));
+  await page.waitForFunction(n => document.querySelectorAll('.plan-bday.kept').length === n, 2, { timeout: 5000 });
+  const n1 = await chipTexts(1), n2 = await chipTexts(2);
+  check('a chapter dragged to another day moves there', n1.length === d1.length - 1 && n2.length === d2.length + 1 && n2[n2.length - 1] === moved, `${moved} → day 2`);
+  check('both days are kept as set', (await page.locator('.plan-bday[data-day="1"] .plan-bkept').innerText()).includes('kept as you set it') && (await page.locator('.plan-bday[data-day="2"] .plan-bkept').innerText()).includes('kept as you set it'));
+  // a day dragged up
+  await page.locator('.plan-bday[data-day="5"] .grip').dragTo(page.locator('.plan-bday[data-day="3"]'));
+  await page.waitForFunction(n => document.querySelectorAll('.plan-bday.kept').length === n, 3, { timeout: 5000 });
+  check('a day dragged up takes the place of the one it is dropped on', (await chipTexts(3)).join() === d5.join(), `${d5[0]} is day 3`);
+  check('the total is still 89 chapters', await page.locator('.plan-bday .plan-bchip').count() === 89);
+  // a place added to a day
+  await page.locator('.plan-bday[data-day="2"] .nb-add').click();
+  await page.locator('.menu .ask input').fill('Psalm 23');
+  await page.locator('.menu .ask').getByRole('button', { name: 'OK' }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll('.plan-bday[data-day="2"] .plan-bchip')].some(c => c.textContent.includes('Psalms 23')), null, { timeout: 5000 });
+  check('a place typed joins the day', await page.locator('.plan-bday .plan-bchip').count() === 90);
+  // the first day is let go: it is laid out again with the rest by the next pace; the kept days are not
+  await page.locator('.plan-bday[data-day="1"] .plan-bkept').getByRole('button', { name: 'kept as you set it' }).click();
+  check('a day can be let go of', await page.locator('.plan-bday.kept').count() === 2);
+  const keptBefore = [(await chipTexts(2)).join(), (await chipTexts(3)).join()];
+  await f2.getByLabel('Pace').selectOption('chapters');
+  await page.waitForFunction(() => document.querySelectorAll('.plan-bday').length !== 20, null, { timeout: 10000 });
+  await f2.getByLabel('Number').fill('10');
+  await f2.getByLabel('Number').press('Tab');
+  await page.waitForFunction(() => document.querySelectorAll('.plan-bday').length > 7 && document.querySelectorAll('.plan-bday').length < 12, null, { timeout: 10000 });
+  const rowsNow = await page.locator('.plan-bday').count();
+  check('a new pace lays out the days again', rowsNow >= 8 && rowsNow <= 11, `${rowsNow} days at 10 a day`);
+  const keptNow = await page.locator('.plan-bday.kept').evaluateAll(els => els.map(e => [e.dataset.day, [...e.querySelectorAll('.plan-bchip')].map(c => c.textContent).join()]));
+  check('the days set by hand stay as they were', keptNow.length === 2 && keptBefore.every(t => keptNow.some(k => k[1] === t)), JSON.stringify(keptNow.map(k => k[0])));
+  const every = await page.locator('.plan-bday .plan-bchip').evaluateAll(els => els.map(e => e.dataset.entry));
+  check('every chapter is in exactly one day', every.length === 90 && new Set(every).size === 90);
+  await page.screenshot({ path: shots + '1440-plan-builder-pace.png' });
+  // back to the form: it still holds the name, the books and the pace, and says the days are arranged
+  await f2.getByRole('button', { name: 'Back to the form' }).click();
+  await f2.getByLabel('Name').waitFor({ timeout: 5000 });
+  check('back to the form keeps what it holds', await f2.getByLabel('Name').inputValue() === 'By hand' && await f2.getByLabel('Pace').inputValue() === 'chapters' && await f2.getByLabel('Number').inputValue() === '10' && (await f2.locator('.plan-what').innerText()).includes('Gospels'));
+  check('the form says the days are arranged by hand', (await f2.locator('.plan-arrange').innerText()).includes('arranged by hand') && (await f2.locator('.plan-arrange').innerText()).includes('2 kept'), await f2.locator('.plan-arrange').innerText());
+  await page.screenshot({ path: shots + '1440-plan-form-arranged.png' });
+  await f2.getByRole('button', { name: 'Edit the days…' }).click();
+  await page.waitForSelector('.plan-bday', { timeout: 10000 });
+  check('the builder comes back with the days as they were', await page.locator('.plan-bday').count() === rowsNow && await page.locator('.plan-bday.kept').count() === 2);
+  await f2.getByRole('button', { name: 'Start the plan' }).click();
+  const byHand = path.join(study, 'reading', 'plans', 'by-hand.json');
+  await page.locator('.pane-plans .plan-card[data-plan="by-hand"]').waitFor({ timeout: 10000 });
+  const bh = JSON.parse(readFileSync(byHand, 'utf8'));
+  check('Start writes the days exactly as arranged, with which were kept', bh.days.length === rowsNow && bh.days.flat().length === 90 && bh.kept?.length === 2 && bh.pace === 'chapters:10', `${bh.days.length} days, kept ${bh.kept}`);
+  check('the plan shows a place that was added', JSON.stringify(bh.days).includes('PSA.23'));
+
+  // Guthrie's: Week N / Day N, pasted; what was found is said first, Sunday is the day off
+  const publish = async (name, format, text) => {
+    await page.locator('.pane-plans').getByRole('button', { name: 'New plan' }).click();
+    const f = page.locator('.plan-modal');
+    await f.waitFor({ timeout: 5000 });
+    await f.getByRole('button', { name: 'A published plan…' }).click();
+    await f.getByLabel('Name').fill(name);
+    if (format) await f.getByLabel('Which plan is it').selectOption(format);
+    await f.getByLabel('The plan, as you have it').fill(text);
+    return f;
+  };
+  const found = (re) => page.waitForFunction(r => new RegExp(r).test(document.querySelector('.plan-modal .plan-summary-line')?.textContent || ''), re.source, { timeout: 10000 });
+  const fg = await publish('Guthrie sample', '', 'Week 1\nDay 1: Genesis 1-2; Matthew 1\nDay 2: Genesis 3\nDay 3\nExodus 1\nDay 7: Rest\n\nWeek 2\nDay 1: Genesis 4\n');
+  check('a published plan says none comes with the app', (await fg.innerText()).includes('None comes with the app'));
+  await found(/Guthrie’s plan · 2 weeks · 4 days/);
+  check('Guthrie’s is found from the text; Sunday is its day off', await fg.getByRole('button', { name: 'Sun', exact: true }).getAttribute('aria-pressed') === 'true', await fg.locator('.plan-summary').innerText());
+  await page.screenshot({ path: shots + '1440-plan-published.png' });
+  await fg.getByRole('button', { name: 'Start the plan' }).click();
+  const gcard = page.locator('.pane-plans .plan-card[data-plan="guthrie-sample"]');
+  await gcard.waitFor({ timeout: 10000 });
+  const gf = JSON.parse(readFileSync(path.join(study, 'reading', 'plans', 'guthrie-sample.json'), 'utf8'));
+  check('the plan file keeps the source’s name and the day off', gf.source === 'Guthrie' && JSON.stringify(gf.days_off) === '["sun"]' && gf.days.length === 4 && gf.kind === 'imported');
+  check('the card says where it came from', (await gcard.locator('.plan-where').innerText()).includes('from Guthrie'), await gcard.locator('.plan-where').innerText());
+
+  // Blue Letter Bible's: places joined by /, its short names
+  const fb = await publish('Blb sample', 'blue-letter', 'Day 1: Gen 1 / Mat 1 / Phl 2\nJhn 3 / 1Co 13 / Jde 1\n');
+  await found(/Blue Letter Bible’s list · 2 days/);
+  check('Blue Letter Bible’s short names are read', (await fb.locator('.plan-summary').innerText()).includes('Genesis 1; Matthew 1; Philippians 2'), await fb.locator('.plan-summary').innerText());
+  await fb.getByRole('button', { name: 'Back to the form' }).click();
+  check('back from a published plan returns to the form', await f2.getByLabel('Pace').count() === 1);
+  await page.keyboard.press('Escape');
+
+  // Horner's lists: a plan with no end date
+  const fh = await publish('Horner sample', 'auto', 'List 1: Matthew, Mark\nList 2: Genesis, Exodus\nList 3: Jude, 3 John\n');
+  await found(/Horner’s lists · 3 lists/);
+  check('Horner’s lists say there is no end date', (await fh.locator('.plan-summary').innerText()).includes('No end date'), await fh.locator('.plan-summary').innerText());
+  await fh.getByRole('button', { name: 'Start the plan' }).click();
+  const hcard = page.locator('.pane-plans .plan-card[data-plan="horner-sample"]');
+  await hcard.waitFor({ timeout: 10000 });
+  const hf = JSON.parse(readFileSync(path.join(study, 'reading', 'plans', 'horner-sample.json'), 'utf8'));
+  check('the plan file keeps its lists, and that it has no end', hf.cycle === true && hf.lists.length === 3 && hf.source === 'Horner' && hf.kind === 'horner');
+  check('the card says it has no end date, and reads a chapter from each list', (await hcard.locator('.plan-where').innerText()).includes('no end date') && (await hcard.locator('.plan-today-title').innerText()).includes('Matthew 1; Genesis 1; Jude 1'), await hcard.locator('.plan-where').innerText());
+  await page.screenshot({ path: shots + '1440-plan-no-end.png' });
+  // a paste that cannot be read says so, and starts nothing
+  const fx = await publish('Broken', 'guthrie', 'Week 1\nDay 1: Genesis 1\nDay 2: Nowhere 4\n');
+  await page.waitForFunction(() => /Line 3/.test(document.querySelector('.plan-modal .plan-summary .bad')?.textContent || ''), null, { timeout: 10000 });
+  check('a line that cannot be read is named', (await fx.locator('.plan-summary').innerText()).includes('Day 2') && await fx.getByRole('button', { name: 'Start the plan' }).isDisabled());
   await page.keyboard.press('Escape');
   await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'plans')) d.close(p); });
 

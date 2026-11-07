@@ -8,7 +8,7 @@ sections 10–12 (what the person's notes asked for, by id).
 
 **Built so far in phase 2b:** step 1 (cards open on a click, hover off by default; 2ccf300), step 2 (KJV/YLT; f9c521d),
 step 3 (a first reading plans pane, `wb plan edit`, `wb plan text`; 0c73afb); tiers 0, 1 and 2 (below), the
-findings of 2026-11-04 and 11-05 (below tier 2), and tier 3 items 1, 2 and 5 (the pane is `ui/src/plans.ts`).
+findings of 2026-11-04 and 11-05 (below tier 2), and tier 3 (the pane is `ui/src/plans.ts`).
 
 ## For every item
 
@@ -110,8 +110,8 @@ Moved to later tiers: `2885` (tier 3, item 5), `93b2` (tier 5, item 1).
 
 Designs: R1, A2, P1, P2, R2. Replaces the step 3 pane.
 
-**Built 2026-11-06: items 1, 2 and 5 (✓ below);** what each does and how it was checked: [phase2-results.md](phase2-results.md)
-section 17. Not yet: item 3 (the builder) and item 4 (published plans).
+**Built 2026-11-06 and 11-07: all five items (✓ below);** what each does and how it was checked: [phase2-results.md](phase2-results.md)
+sections 17 and 18.
 
 1. ✓ **The form** (R1, A2): Start from presets (Blank, Bible in a year, Old and New together, NT in 90 days, Psalms and
    Proverbs, A published plan…) fill its boxes; name and what to read required; books as chips with the Choose books
@@ -124,9 +124,9 @@ section 17. Not yet: item 3 (the builder) and item 4 (published plans).
    that each say what they do to the dates first: pick up where I left off (shift), fit them into the days left,
    leave them for later (to the end), skip them (marked skipped, not read). `wb plan missed <name> --shift|--fit|--later|--skip`;
    `wb plan move-day`. Each change keeps the old file in `.trash/` (as `plan edit` does).
-3. **The builder** (R2), from the form's "Arrange the days myself…": chapters drag between days, days drag up or down,
+3. ✓ **The builder** (R2), from the form's "Arrange the days myself…": chapters drag between days, days drag up or down,
    days set by hand are kept when the pace changes (a per-day `kept` flag in the plan file); Back to the form.
-4. **Published plans** (note `032f`; the person's sources, 2026-11-04). None is shipped with the app (each is the
+4. ✓ **Published plans** (note `032f`; the person's sources, 2026-11-04). None is shipped with the app (each is the
    publisher's: Guthrie's is "© 2011 George H. Guthrie"; Tyndale's One Year Chronological says "All rights reserved";
    Blue Letter Bible's and Professor Horner's are theirs). The person imports a copy they have, so the importer reads
    their forms: one day to a line (as now); **Guthrie's** Week N / Day N layout (six days a week: the seventh is a day
