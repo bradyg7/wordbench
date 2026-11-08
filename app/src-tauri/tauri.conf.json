@@ -22,12 +22,41 @@
     }
   },
   "bundle": {
-    "active": false,
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true,
+    "resources": {
+      "../../datasets/workbench.db": "datasets/workbench.db",
+      "../../target/release/wb.exe": "wb.exe",
+      "../../README.md": "README.md",
+      "../../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
+      "../../CHANGELOG.md": "CHANGELOG.md",
+      "../../licenses/*": "licenses/"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "pubkey": "",
+      "endpoints": [
+        "https://github.com/bradyg7/wordbench/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

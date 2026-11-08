@@ -20,10 +20,10 @@ Version 0.1.0 · Windows 10 and 11 (64-bit)
 | `datasets/workbench.db` | The Bible database: KJV, YLT, Strong's, BDB, the interlinear and the search index. Read-only. |
 | `README.md` | This file. |
 | `THIRD_PARTY_NOTICES.md` | Where the scripture, lexicons, fonts and software come from and under what licenses. |
-| `DEPENDENCIES.md` | The generated list of every software package in the build. |
+| `DEPENDENCIES.md` | The generated list of every software package in the build (in the ZIP download). |
 | `CHANGELOG.md` | What changed in this version. |
 | `licenses/` | The full text of every third-party license. |
-| `source/` | The readable source code the app was built from. |
+| `source/` | The readable source code the app was built from (in the ZIP download). |
 
 Keep the folder together. The app finds the Bible at `datasets\workbench.db` beside the program.
 
@@ -32,25 +32,49 @@ Keep the folder together. The app finds the Bible at `datasets\workbench.db` bes
 - Windows 10 or Windows 11, 64-bit.
 - Microsoft Edge WebView2 Runtime. It is already installed on current Windows; if it is missing, Microsoft offers it
   free at <https://developer.microsoft.com/microsoft-edge/webview2/>.
-- About 250 MB of free disk space for the app, the database and the source; your notes take very little.
+- About 250 MB of free disk space for the installed app and the database, plus the download itself; your notes take
+  very little.
 - No internet connection, no account and no administrator rights.
 
 ## Install and first run
+
+### With the installer
+
+1. Download `Bible-Workbench-setup.exe` from the download link on the Bible Workbench page.
+2. Run it. It installs for your Windows account only, so it asks for no administrator password. Windows may show a
+   SmartScreen warning because the program is not code-signed; choose **More info → Run anyway**.
+3. Open **Bible Workbench** from the Start menu. The Bible is found automatically in `datasets\workbench.db` beside the
+   program; if you moved the database, choose **Browse** and pick it.
+4. Choose the folder for your notes. The suggested folder is `Documents\Bible Workbench`. Choose an empty folder for a
+   new study, or an existing Bible Workbench / `bible-study-data` folder to bring your old notes with you. Bible
+   Workbench makes the folders it needs; it does not delete anything that is already there.
+5. Choose **Start reading**.
+
+### From the ZIP
 
 1. Unzip the whole folder somewhere you can write, for example `C:\Bible Workbench`, or
    `Documents\Bible Workbench 0.1.0`. Do not run the program from inside the ZIP.
 2. Double-click `Bible Workbench.exe`. Windows may show a SmartScreen warning because the program is not code-signed;
    choose **More info → Run anyway**.
 3. The Bible is found automatically in `datasets\workbench.db`. If you moved the database, choose **Browse** and pick it.
-4. Choose the folder for your notes. The suggested folder is `Documents\Bible Workbench`. Choose an empty folder for a
-   new study, or an existing Bible Workbench / `bible-study-data` folder to bring your old notes with you. Bible
-   Workbench makes the folders it needs; it does not delete anything that is already there.
+4. Choose the folder for your notes, as above.
 5. Choose **Start reading**.
 
-There is no installer and no registry entry. To remove the app, close it and delete its folder. Your notes are separate
-(unless you chose a folder inside the app's folder), so deleting the app does not delete your study.
+To remove the installed app, close it and choose **Settings → Apps → Bible Workbench → Uninstall**; from a ZIP, close it
+and delete its folder. Your notes are separate (unless you chose a folder inside the app's folder), so removing the app
+does not delete your study.
 
 The Bible database is never written to. It is the same file for every copy of the app and can be replaced on its own.
+
+## Updates
+
+The installed app looks for a new version when it opens, and asks before installing it. **Install it** downloads and
+installs the new version and opens the app again where you were reading; **Not now** leaves everything as it is, and it
+asks again the next time it opens. Updates are signed with the publisher's key, and the app refuses one that is not.
+
+Your notes are not part of the app: an update replaces the program and its copy of the Bible, and never writes to your
+folder. Settings are kept too. A copy that came from the ZIP does not update itself; download the newer one when you
+want it.
 
 ## Reading and study
 

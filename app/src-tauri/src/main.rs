@@ -9,7 +9,8 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
 use tauri::{Emitter, LogicalSize, Manager, State, WebviewUrl, WebviewWindowBuilder};
-use tauri_plugin_dialog::{DialogExt, FilePath};
+use tauri_plugin_dialog::{DialogExt, FilePath, MessageDialogButtons};
+use tauri_plugin_updater::UpdaterExt;
 use wb_core::{bible::Bible, store::Store, studyapi, views};
 
 /// Said when the setup screen has not finished: the window still draws, and says what is missing rather than closing.
@@ -329,6 +330,42 @@ fn take_options() -> Result<(), String> {
     Ok(())
 }
 
+/// Looks at the update feed once, a little after the window opens, and asks before installing: an update is never
+/// something that happens to someone mid-chapter. On Windows the installer closes the app and opens it again where it
+/// was; the study folder and the settings are not part of it. A build without signing keys configured finds nothing it
+/// can install, and the app carries on as it is.
+fn check_for_update(app: tauri::AppHandle) {
+    if std::env::var("WB_NO_UPDATE_CHECK").is_ok() {
+        return;
+    }
+    std::thread::spawn(move || {
+        // The reader comes first: the first chapter is on screen before this asks anything of the network.
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        let found = tauri::async_runtime::block_on(async {
+            let updater = app.updater().ok()?;
+            updater.check().await.ok().flatten()
+        });
+        let Some(update) = found else { return };
+        let install = app
+            .dialog()
+            .message(format!(
+                "Bible Workbench {} is ready to install.\n\nYour notes stay where they are, and the window opens again where you left off.",
+                update.version
+            ))
+            .title("A new version of Bible Workbench")
+            .buttons(MessageDialogButtons::OkCancelCustom("Install it".into(), "Not now".into()))
+            .blocking_show();
+        if !install {
+            return;
+        }
+        // Windows runs the installer and exits this process; elsewhere the app restarts into the new version.
+        let installed = tauri::async_runtime::block_on(update.download_and_install(|_, _| {}, || {})).is_ok();
+        if installed {
+            app.restart();
+        }
+    });
+}
+
 /// Says why the app cannot start, in a window (the release app has no console), then stops.
 fn fail(msg: &str) -> ! {
     #[cfg(windows)]
@@ -368,6 +405,7 @@ fn main() {
     };
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
         .invoke_handler(tauri::generate_handler![
             wb, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready,
@@ -397,6 +435,7 @@ fn main() {
                 ));
             }
             b.build()?;
+            check_for_update(app.handle().clone());
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -2,6 +2,18 @@
 
 All notable changes to Bible Workbench are recorded here. The version matches the app, the package and the source.
 
+## Unreleased — the installer, and updates
+
+- **A Windows installer.** `npm run release` builds an NSIS installer that puts the app, `wb.exe`, the notices and the
+  Bible database in one folder under the account's `%LOCALAPPDATA%`, with no administrator rights and an uninstaller in
+  Settings → Apps. The ZIP package is unchanged and still the one the store sells.
+- **Automatic updates.** The app reads a signed update file when it opens, asks before installing, and opens again where
+  it was. The check runs ten seconds after the first chapter is on screen, never during a note; `WB_NO_UPDATE_CHECK=1`
+  turns it off. The update file is `latest.json`, a release asset, written by the release command.
+- **The landing page offers the download, and is published on GitHub Pages.** A download section and a header link point
+  at the release asset `Bible-Workbench-setup.exe`; `site/` is published by `.github/workflows/pages.yml`, and the
+  version, size and links on the page are filled in by the release command.
+
 ## 0.1.0 — 2026-11-07
 
 The first packaged release for Windows.
