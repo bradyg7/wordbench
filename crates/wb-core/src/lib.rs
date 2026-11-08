@@ -12,6 +12,7 @@ pub mod docs;
 pub mod lookup;
 pub mod marks;
 pub mod notebook;
+pub mod pages;
 pub mod places;
 pub mod plans;
 pub mod published;

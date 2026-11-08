@@ -138,6 +138,10 @@ fn entry(bible: &Bible, r: &Rec, kind: &str, placed: bool) -> Value {
     if kind == "question" {
         e["status"] = json!(if s(r, "status") == "done" { "done" } else { "open" });
     }
+    // its place in the tree of pages (W3): the page it is inside, its order there, its place in Pinned
+    for k in crate::store::PAGE_FIELDS {
+        e[*k] = r.get(*k).cloned().unwrap_or(Value::Null);
+    }
     e
 }
 
@@ -146,7 +150,7 @@ fn inbox_entries(bible: &Bible, store: &Store) -> Vec<Value> {
 }
 
 /// Every entry: placed notes, notes on threads, the Inbox, and questions (trails).
-fn every(bible: &Bible, store: &Store) -> Vec<Value> {
+pub(crate) fn every(bible: &Bible, store: &Store) -> Vec<Value> {
     let mut all: Vec<Value> = store.notes().into_iter().map(|n| entry_in(bible, store, n, "note", true)).collect();
     all.extend(store.on_thread().into_iter().map(|n| entry_in(bible, store, n, "note", true)));
     all.extend(inbox_entries(bible, store));
@@ -818,6 +822,9 @@ pub fn show(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
         e["offer"] = named_place(bible, e["text"].as_str().unwrap_or("")).unwrap_or(Value::Null);
     }
     add_links(bible, store, &mut e);
+    if e["kind"] != "day" {
+        crate::pages::add_place_in_tree(bible, store, &mut e);
+    }
     Ok(e)
 }
 

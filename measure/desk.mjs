@@ -97,11 +97,11 @@ try {
   await nbItem('Check where else').click();
   // a reference in a note: hover cards are off by default; a click shows its verse, verbatim, and opens it as a tab
   const cor = JSON.parse(execFileSync(wbExe, ['text', '1 Cor 10:8', '--json'], { env }).toString()).verses[0].text;
-  await ed.locator('.nb-page a.ref').first().hover();
+  await ed.locator('a.ref').first().hover();
   await sleep(700);
   check('hover cards are off by default', await page.locator('.hovercard').count() === 0 && await page.evaluate(() => document.documentElement.dataset.hover) === 'off');
   const placeAtRef = await page.locator('#place .place-label').textContent();
-  await ed.locator('.nb-page a.ref').first().click();
+  await ed.locator('a.ref').first().click();
   check('clicking a reference in a note shows the verse', await page.locator('.popover', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
   check('the click does not move the reader', (await page.locator('#place .place-label').textContent()) === placeAtRef);
   await page.locator('.popover .act', { hasText: 'Open as a tab' }).click();
@@ -109,7 +109,7 @@ try {
   check('a verse opened from a note opens in the Notebook’s column', await page.locator('.dock-right .pane-reader2', { hasText: cor }).count() === 1);
   await page.evaluate(() => window.__wb.run('notebook'));
   await page.evaluate(() => window.__wb.run('hover on'));
-  await ed.locator('.nb-page a.ref').first().hover();
+  await ed.locator('a.ref').first().hover();
   check('with hover on, hovering a reference shows the verse', await page.locator('.hovercard', { hasText: cor }).waitFor({ timeout: 5000 }).then(() => true, () => false));
   await page.mouse.move(700, 300);
   await page.evaluate(() => window.__wb.run('hover off'));
@@ -391,7 +391,8 @@ try {
   await page.locator('.capture .place-off .member-x').click();
   await page.locator('.capture-field').fill('captured, then more');
   await page.keyboard.press('Control+Enter');
-  check('Ctrl+Enter opens it in the Notebook to keep writing', await typing() && (await ed.locator('textarea.nb-input').inputValue()) === 'captured, then more');
+  // W3: it opens as a page, what was captured its title, writing on in a new block under it
+  check('Ctrl+Enter opens it in the Notebook to keep writing, in a new block under it', await typing() && (await ed.locator('.nb-title').textContent()) === 'captured, then more' && await ed.locator('.nb-blocks textarea.nb-block-input').count() === 1, await ed.locator('.nb-title').textContent());
   await done();
   check('nothing is left open over the window after quick capture', await page.locator('#overlay .scrim').count() === 0, await page.evaluate(() => [...document.getElementById('overlay').children].map(c => c.className).join(', ')));
   check('with its place taken off, it waits in the Inbox', JSON.parse(execFileSync(wbExe, ['inbox'], { env }).toString()).notes.some(n => n.text === 'captured, then more'));
@@ -634,9 +635,13 @@ try {
   check('the Notebook’s sections: Days, Pages, Places, Threads, Questions, All, on one line; the Trash a bin beside the pen', sections.join(', ') === 'Days, Pages, Places, Threads, Questions, All' && await page.locator('.pane-notebook .nb-sections').evaluate(r => r.clientHeight < 40) && await page.locator('.pane-notebook .nb-head .nb-trash-btn').count() === 1, sections.join(', '));
   check('no Group control and no Inbox in the Notebook', await page.locator('.pane-notebook .nb-group').count() === 0 && !(await page.locator('.pane-notebook').textContent()).includes('Inbox'));
   await group('Pages');
+  // W3: Pages is the tree of pages, in wb page tree's order (every note with no place is in it)
   const pageIds = JSON.parse(execFileSync(wbExe, ['notebook', '--group', 'pages'], { env }).toString()).groups.flatMap(g => g.entries).map(e => e.id);
-  const shownIds = await page.locator('.pane-notebook .nb-scroll .nb-item').evaluateAll(els => els.map(e => e.dataset.id));
-  check('Pages lists the notes with no place, as wb notebook --group pages does', pageIds.length > 0 && shownIds.join() === pageIds.join() && await page.locator('.pane-notebook .nb-scroll .nb-item .unplaced', { hasText: 'No place yet' }).count() === pageIds.length, `${shownIds.length} of ${pageIds.length}`);
+  const treeIds = rows => rows.flatMap(r => [r.id, ...treeIds(r.children || [])]);
+  const treeNow = () => JSON.parse(execFileSync(wbExe, ['page', 'tree'], { env }).toString());
+  const inTree = treeIds(treeNow().pages);
+  const shownIds = await page.locator('.pane-notebook .nb-tree .nb-tree-row').evaluateAll(els => els.map(e => e.dataset.id));
+  check('Pages draws the tree, as wb page tree does, with every note that has no place', pageIds.length > 0 && shownIds.join() === inTree.join() && pageIds.every(id => inTree.includes(id)), `${shownIds.length} of ${inTree.length}`);
   await page.screenshot({ path: shots + '1440-notebook-pages.png' });
   await group('Questions');
   const qIds = JSON.parse(execFileSync(wbExe, ['notebook', '--group', 'questions'], { env }).toString()).groups.flatMap(g => g.entries).map(e => e.id);
@@ -666,9 +671,119 @@ try {
   await sleep(600);
   check('a wide Notebook shows the list and the editor side by side', await page.locator('.pane-notebook .nb.two').count() === 1 && await page.locator('.pane-notebook .nb-list').isVisible() && await ed.isVisible());
   await page.screenshot({ path: shots + '1440-notebook-list-and-editor.png' });
+
+  // W3, pages and blocks (sheets W1.1 and W2): wide, the sidebar replaces the row of sections
+  const sideParts = await page.locator('.pane-notebook .nb-side .nb-side-head .nb-glabel').allTextContents();
+  check('wide, the sidebar replaces the sections: Today, Pinned, Pages, At the reader, Threads, Questions; the Trash at its foot', sideParts.join(', ') === 'Today, Pinned, Pages, At the reader, Threads, Questions' && await page.locator('.pane-notebook .nb-sections').count() === 0 && await page.locator('.pane-notebook .nb-side-foot .nb-side-trash').count() === 1, sideParts.join(', '));
+  const fileOf = id => { for (const d of readdirSync(path.join(study, 'notes'))) { const f = path.join(study, 'notes', d, `${id}.md`); if (existsSync(f)) return f; } return null; };
+  const bodyOf = id => readFileSync(fileOf(id), 'utf8').replace(/\r\n/g, '\n').replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+  const waitFile = async (id, test) => { for (let i = 0; i < 60; i++) { const f = fileOf(id); if (f && test(readFileSync(f, 'utf8').replace(/\r\n/g, '\n'))) return true; await sleep(100); } return false; };
+  const sideAdd = page.locator('.pane-notebook .nb-side-head[data-part="pages"] .nb-side-add');
+  await sideAdd.click();
+  await typing();
+  await page.keyboard.type('W3 parent page\nThe aim: read the chapter.\n\n- [ ] first to-do\n- [ ] second to-do');
+  await done();
+  await ed.locator('.nb-blocks .nb-block').nth(2).waitFor({ timeout: 10000 });
+  const parentId = treeNow().pages.find(r => r.title === 'W3 parent page')?.id;
+  const kinds = () => ed.locator('.nb-blocks .nb-block').evaluateAll(els => els.map(e => /nb-b-(\w+)/.exec(e.className)[1]).join());
+  check('a page written in is drawn block by block: its title apart, each to-do its own block', !!parentId && (await ed.locator('.nb-title').textContent()) === 'W3 parent page' && (await kinds()) === 'paragraph,todo,todo', await kinds());
+  await sideAdd.click();
+  await typing();
+  await page.keyboard.type('W3 child page');
+  await done();
+  await page.locator('.pane-notebook .nb-tree-row', { hasText: 'W3 child page' }).waitFor({ timeout: 10000 });
+  const childId = treeNow().pages.find(r => r.title === 'W3 child page')?.id;
+  const rowOf = id => page.locator(`.pane-notebook .nb-tree .nb-tree-row[data-id="${id}"]`);
+  const pb = await rowOf(parentId).boundingBox();
+  await rowOf(childId).dragTo(rowOf(parentId), { targetPosition: { x: pb.width / 2, y: pb.height / 2 } });
+  await waitFile(childId, t => t.includes(parentId));
+  const depthOf = id => rowOf(id).evaluate(e => e.style.getPropertyValue('--depth')).catch(() => '');
+  await page.waitForFunction(id => document.querySelector(`.pane-notebook .nb-tree .nb-tree-row[data-id="${id}"]`)?.style.getPropertyValue('--depth') === '1', childId, { timeout: 10000 }).catch(() => {});
+  const childFm = readFileSync(fileOf(childId), 'utf8').split('---')[1] || '';
+  check('a page dragged onto the middle of another goes inside it: parent and order in its file, one level in in the tree', new RegExp(`parent: "?${parentId}"?`).test(childFm) && /order: 1\b/.test(childFm) && treeNow().pages.find(r => r.id === parentId)?.children.some(c => c.id === childId) && await depthOf(childId) === '1', childFm.trim().replace(/\n/g, ' · '));
+  await rowOf(parentId).locator('.nb-tree-open').click();
+  await ed.locator('.nb-inside').waitFor({ timeout: 10000 });
+  check('a page shows the pages inside it at its foot: Pages inside · 1', (await ed.locator('.nb-inside .nb-linked-head').textContent()) === 'Pages inside · 1');
+  await ed.locator('.nb-inside .nb-linked-row', { hasText: 'W3 child page' }).click();
+  await ed.locator('.nb-crumbs', { hasText: 'W3 child page' }).waitFor({ timeout: 10000 });
+  const crumbs = await ed.locator('.nb-crumbs').evaluate(n => [...n.children].map(c => c.textContent).join(' '));
+  check('a page inside a page shows the path above it', crumbs === 'Pages / W3 parent page / W3 child page', crumbs);
+  await ed.locator('.nb-crumbs .nb-crumb', { hasText: 'W3 parent page' }).click();
+  await ed.locator('.nb-title', { hasText: 'W3 parent page' }).waitFor({ timeout: 10000 });
+  await ed.locator('.nb-blocks .nb-block').nth(2).waitFor({ timeout: 10000 });
+  await sleep(600);
+  // a block moved by its grip: the second to-do dropped on the upper half of the first
+  const blockAt = i => ed.locator('.nb-blocks .nb-block').nth(i);
+  await blockAt(2).hover();
+  await blockAt(2).locator('.nb-grip').dragTo(blockAt(1), { targetPosition: { x: 80, y: 3 } });
+  const blockMoved = await waitFile(parentId, t => t.includes('- [ ] second to-do\n- [ ] first to-do'));
+  check('a block dragged by its grip onto the top of another moves there in the file, the rest as they were', blockMoved && bodyOf(parentId) === 'W3 parent page\nThe aim: read the chapter.\n\n- [ ] second to-do\n- [ ] first to-do', JSON.stringify(bodyOf(parentId)));
+  await page.waitForFunction(() => /second to-do/.test(document.querySelectorAll('.pane-notebook .nb-blocks .nb-block')[1]?.textContent || ''), null, { timeout: 10000 }).catch(() => {});
+  // one block written at a time, as its Markdown
+  await blockAt(0).locator('.nb-block-body').click();
+  await typing();
+  check('a click writes in that block alone, as its Markdown', (await ed.locator('textarea.nb-block-input').inputValue()) === 'The aim: read the chapter.' && await ed.locator('textarea').count() === 1);
+  await page.keyboard.type(' Then the psalm.');
+  await done();
+  check('what is written in a block is saved in its place in the file', await waitFile(parentId, t => t.includes('W3 parent page\nThe aim: read the chapter. Then the psalm.\n\n- [ ] second to-do')), JSON.stringify(bodyOf(parentId)));
+  // Enter at a to-do's end: the next to-do, its own block; its box ticks it in the file
+  await blockAt(2).locator('.nb-todo-text').click();
+  await typing();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('.pane-notebook textarea.nb-block-input')?.value === '- [ ] ', null, { timeout: 10000 }).catch(() => {});
+  const goesOn = await ed.locator('textarea.nb-block-input').inputValue().catch(() => '');
+  await page.keyboard.type('third to-do');
+  await done();
+  check('Enter at a to-do’s end starts the next to-do, a block of its own', goesOn === '- [ ] ' && await waitFile(parentId, t => t.includes('- [ ] first to-do\n- [ ] third to-do')), JSON.stringify(goesOn));
+  await page.waitForFunction(() => document.querySelectorAll('.pane-notebook .nb-blocks .nb-block').length === 4, null, { timeout: 10000 }).catch(() => {});
+  await blockAt(3).locator('.nb-todo input').click();
+  check('a to-do’s box ticks it in the file', await waitFile(parentId, t => t.includes('- [x] third to-do')));
+  // the / menu: the ten blocks of sheet W2; Page inside this one makes the page and writes [[its title]] there
+  await sleep(500);
+  await ed.locator('.nb-block-add').click();
+  await typing();
+  await page.keyboard.type('/');
+  await page.locator('.nb-blockmenu .nb-blockmenu-row').first().waitFor({ timeout: 5000 });
+  const menuRows = await page.locator('.nb-blockmenu .nb-blockmenu-label').allTextContents();
+  check('/ in an empty block opens the block menu, as on sheet W2', menuRows.join(', ') === 'Scripture, Heading, List, To-do, Quote, Divider, Table, Link to a page, Page inside this one, View', menuRows.join(', '));
+  await page.screenshot({ path: shots + '1440-notebook-block-menu.png' });
+  await page.keyboard.type('inside');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('.pane-notebook textarea.nb-block-input.asking'), null, { timeout: 5000 }).catch(() => {});
+  await page.keyboard.type('W3 inside by slash');
+  await page.keyboard.press('Enter');
+  const linked = await waitFile(parentId, t => t.includes('[[W3 inside by slash]]'));
+  const slashId = treeNow().pages.find(r => r.id === parentId)?.children.find(c => c.title === 'W3 inside by slash')?.id;
+  check('Page inside this one makes the page inside, and writes [[its title]] where the menu was opened', linked && !!slashId, JSON.stringify(bodyOf(parentId)));
+  // the files read back: the page's text is what was written, block by block; the pages inside name it
+  const parentText = 'W3 parent page\nThe aim: read the chapter. Then the psalm.\n\n- [ ] second to-do\n- [ ] first to-do\n- [x] third to-do\n\n[[W3 inside by slash]]';
+  const pageBlocks = JSON.parse(execFileSync(wbExe, ['page', 'blocks', parentId], { env }).toString()).blocks.map(b => b.kind).join();
+  check('the page’s file reads back as written, and wb page blocks reads it as the window drew it', bodyOf(parentId) === parentText && pageBlocks === 'paragraph,todo,todo,todo,paragraph', `${JSON.stringify(bodyOf(parentId))}; ${pageBlocks}`);
+  // Pin from the page's ⋯: its place in Pinned, in the page itself
+  await page.waitForFunction(() => document.querySelectorAll('.pane-notebook .nb-blocks .nb-block').length === 5, null, { timeout: 10000 }).catch(() => {});
+  await ed.locator('.nb-ed-head .icon-btn').click();
+  await page.locator('.menu .menu-item', { hasText: /^Pin$/ }).click();
+  const pinnedNow = await waitFile(parentId, t => /\npinned: 1\n/.test(t));
+  await page.locator('.pane-notebook .nb-pinned .nb-tree-row', { hasText: 'W3 parent page' }).waitFor({ timeout: 10000 }).catch(() => {});
+  check('Pin in a page’s ⋯ puts it in Pinned: pinned: 1 in its file', pinnedNow && await page.locator('.pane-notebook .nb-pinned .nb-tree-row', { hasText: 'W3 parent page' }).count() === 1);
+  await page.screenshot({ path: shots + '1440-notebook-sidebar-pages.png' });
+  // the Python app: a page inside a page, given a place, is a note it reads; it keeps parent when it writes the note
+  execFileSync(wbExe, ['note', 'place', childId, 'Num 25:11'], { env });
+  const OLD = path.join(os.homedir(), 'github', 'bible-workbench');
+  const py = code => execFileSync('python', ['-c', `import json, sys\nfrom workbench.study import Study\ns = Study(sys.argv[1])\nn = ([x for x in s.notes() if x['id'] == sys.argv[2]] or [None])[0]\n${code}`, study, childId], { cwd: OLD, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } }).toString();
+  const pyNote = JSON.parse(py('print(json.dumps(n))'));
+  check('the Python app reads a placed page that carries parent: a note on its verse, parent and order with it', pyNote?.anchor === 'NUM.25:11' && pyNote?.parent === parentId && String(pyNote?.order) === '1', JSON.stringify(pyNote && { anchor: pyNote.anchor, parent: pyNote.parent, order: pyNote.order }));
+  py(`s.update_note(n['id'], n['text'] + '\\n\\nWritten by the Python app.')`);
+  const afterPy = readFileSync(fileOf(childId), 'utf8');
+  check('a page the Python app writes keeps its parent, and stays inside its page', afterPy.includes('Written by the Python app.') && afterPy.includes(parentId) && treeNow().pages.find(r => r.id === parentId)?.children.some(c => c.id === childId));
+
   await page.evaluate(() => { const d = window.__wb.dock(); d.wide.right = false; d.layout(); });
   await sleep(300);
   await nbBack();
+  await group('Pages');
+  check('narrow, the row of sections stays, and Pages draws the tree with the page inside one level in', await page.locator('.pane-notebook .nb-sections').count() === 1 && await depthOf(childId) === '1');
+  await page.screenshot({ path: shots + '1440-notebook-pages.png' });
 
   // reading plans (tier 3): the form with presets and the books grid, the plan in its pane (today's card, days, a day moved),
   // days that were missed and what each choice does, stopped plans in Past plans, used again, deleted

@@ -7,8 +7,14 @@
 // plain text in the file. A place can be a verse, words, a run, a chapter or a book. `[[title]]` and `[[title#heading]]`
 // link to another note; Linked from is under the note. Deleted notes wait in the Trash 7 days (or Erase now). Writing
 // here never moves the reader. Quick capture (Ctrl+J): a small box at the verse last clicked.
+//
+// W3 (pages and blocks, 2026-11-07): a note that is written in is drawn block by block (blocks.ts); its title is edited
+// in place; pages sit inside pages (the path above the title, "Pages inside" under it). A wide Notebook has the sidebar
+// (sheet W1.1): Today, Pinned, the Pages tree (drag a page before, after or inside another), At the reader, Threads,
+// Questions, and the Trash at its foot. A narrow one keeps its row of sections, and its Pages section is the tree.
 import { wb } from './api';
-import { app, book, goTo, here, type At } from './app';
+import { app, book, here, type At } from './app';
+import { afterDrawn, drawBlocks, startWritingAtEnd, type Blocks, type Host } from './blocks';
 import { dock, refCard, refHover, openThread, threadChooser } from './panes';
 import type { Change, Pane } from './dock';
 import { toast } from './sheets';
@@ -33,6 +39,14 @@ interface Entry {
   status?: string; refs?: Found[]; offer?: At | null;
   also?: At[]; threads?: { id: string; name: string }[];
   links?: Link[]; headings?: string[]; linked_from?: { id: string; title: string; kind: string; label: string; day: string; today: boolean }[];
+  pinned?: number | null; parent?: string | null; order?: number | null;
+  /** W3: the pages above it, from the top, and the pages inside it (`wb note show`). */
+  path?: { id: string; title: string }[]; inside?: Row[];
+}
+/** A page in the tree (`wb page tree`, `wb notebook sidebar`): any note with no place, inside a page or holding one. */
+interface Row {
+  id: string; title: string; kind: string; placed: boolean; anchor: string; label: string; status?: string | null;
+  pinned?: number | null; order?: number | null; parent?: string | null; children?: Row[];
 }
 interface GroupOf { key: string; label: string; count: number; today?: boolean; following?: boolean; entries: Entry[] }
 
@@ -57,8 +71,13 @@ function fold(key: string, shut: boolean) {
 
 /** The note open in the editor: its id, or a draft not saved yet (a place, a question, a day's page). */
 let openId: string | null = null;
-interface Draft { at: At | null; question: boolean; day?: string; text?: string; hint?: string }
+interface Draft { at: At | null; question: boolean; day?: string; text?: string; hint?: string; parent?: string }
 let draft: Draft | null = null;
+/** A wide Notebook's main column showing a list (At the reader, a thread) when no note is open. */
+let mainList: { kind: 'chapter' } | { kind: 'thread'; key: string; label: string } | null = null;
+/** The open page's blocks, when it is drawn block by block. */
+let blocksData: Blocks | null = null;
+let blockHostNow: Host | null = null;
 /** On a narrow pane the list and the editor take turns; true while the editor is shown. */
 let editorShown = false;
 /** Where to put the cursor once the editor is drawn: the end of the text, or a heading. */
@@ -101,7 +120,21 @@ export async function countInbox() {
 let drawing = 0;
 let sized: ResizeObserver | null = null;
 
+/** A draw asked for while a page or a block is being dragged waits for the drop (else what is dragged, or where it is
+ * going, would be drawn anew under the mouse and the drag lost). */
+let heldDraw: HTMLElement | null = null;
+let dragInNotebook = false, dragSince = 0;
+document.addEventListener('dragstart', ev => { dragInNotebook = !!(ev.target as Element | null)?.closest?.('.pane-notebook .nb'); dragSince = Date.now(); }, true);
+const dragOver = () => {
+  dragInNotebook = false;
+  setTimeout(() => { const el = heldDraw; heldDraw = null; if (el?.isConnected) void draw(el); });
+};
+document.addEventListener('drop', dragOver, true);
+document.addEventListener('dragend', dragOver, true);
+
 async function draw(el: HTMLElement) {
+  // (never longer than a drag can last, should a drag's end not be heard)
+  if (dragInNotebook && Date.now() - dragSince < 20000) { heldDraw = el; return; }
   const gen = ++drawing;
   if (!settingsRead) await readSettings();
   if (!group) group = nbSettings.group;
@@ -111,12 +144,20 @@ async function draw(el: HTMLElement) {
     root.append(h('div', 'nb-list'), h('div', 'nb-editor'));
     el.replaceChildren(root);
     sized?.disconnect();
-    sized = new ResizeObserver(() => root!.classList.toggle('two', root!.clientWidth >= 640));
+    // wide: the sidebar; narrow: the row of sections. The list is drawn again when the width crosses over.
+    sized = new ResizeObserver(() => {
+      const two = root!.clientWidth >= 640;
+      if (two === root!.classList.contains('two')) return;
+      root!.classList.toggle('two', two);
+      void pane?.refresh?.();
+    });
     sized.observe(root);
     root.classList.toggle('two', el.clientWidth >= 640);
   }
   const listEl = root.querySelector<HTMLElement>('.nb-list')!, edEl = root.querySelector<HTMLElement>('.nb-editor')!;
-  const [list, ed] = await Promise.all([showTrash ? trashList() : drawList(), drawEditor(edEl)]);
+  const two = root.classList.contains('two');
+  if (!two) mainList = null;
+  const [list, ed] = await Promise.all([showTrash ? trashList(two) : two ? drawSidebar() : drawList(), drawEditor(edEl)]);
   if (gen !== drawing) return;
   const keep = listEl.querySelector<HTMLElement>('.nb-scroll')?.scrollTop ?? 0;
   const typing = listEl.contains(document.activeElement) && document.activeElement?.classList.contains('nb-find');
@@ -131,8 +172,12 @@ async function draw(el: HTMLElement) {
 
 /** The reader turned to another chapter: the list follows it when grouped by chapter. */
 export function readerMoved() {
-  if (pane && group === 'chapter' && nbSettings.follow && !showTrash) void pane.refresh?.();
+  if (!pane || showTrash) return;
+  // the sidebar's At the reader (and its list in the main column) follows the reader too
+  if ((group === 'chapter' && nbSettings.follow) || wide()) void pane.refresh?.();
 }
+
+const wide = () => !!pane?.el.querySelector('.nb.two');
 
 function listArgs(): string[] {
   const a = ['notebook', '--group', group || 'day'];
@@ -143,8 +188,8 @@ function listArgs(): string[] {
   return a;
 }
 
-async function drawList(): Promise<HTMLElement[]> {
-  const d = await wb(listArgs());
+/** The search, the pen, the Trash (narrow: wide has it at the sidebar's foot) and the settings. */
+function listHead(two: boolean): HTMLElement {
   const top = h('div', 'nb-head');
   const f = h('div', 'nb-search');
   f.append(icon('search'));
@@ -165,8 +210,26 @@ async function drawList(): Promise<HTMLElement[]> {
   const more = button('icon-btn nb-more', '', () => settingsMenu(more), 'more');
   more.title = 'Notebook settings';
   more.setAttribute('aria-label', 'Notebook settings');
-  top.append(f, add, bin, more);
-  const out: HTMLElement[] = [top, sectionsRow()];
+  top.append(f, add);
+  if (!two) top.append(bin);
+  top.append(more);
+  return top;
+}
+
+async function drawList(): Promise<HTMLElement[]> {
+  const out: HTMLElement[] = [listHead(false), sectionsRow()];
+  // Pages (W3): the tree, Pinned first; a search lists the pages with its words, as before
+  if (group === 'pages' && !search.trim()) {
+    const t = await wb(['page', 'tree']);
+    const scroll = h('div', 'nb-scroll');
+    if (t.pinned.length) scroll.append(sideHead('pinned', 'Pinned', t.pinned.length, false), ...(isShut('pinned', false) ? [] : [pinnedRows(t.pinned)]));
+    scroll.append(sideHead('pages', 'Pages', countRows(t.pages), false, true));
+    if (!isShut('pages', false)) scroll.append(treeBox(t.pages));
+    if (!t.pages.length) scroll.append(h('p', 'muted nb-empty', 'No pages yet. The pen starts one; a note with no place is a page of its own.'));
+    out.push(scroll);
+    return out;
+  }
+  const d = await wb(listArgs());
   if (group === 'chapter') {
     // Places follows the reader unless this is off (it was a setting; now it is where it acts)
     const row = h('label', 'nb-follow');
@@ -242,18 +305,30 @@ function openEntry(e: Entry, at: typeof focusEditor = null) {
 }
 
 /** Open a note by its id (a link, Linked from, a search result elsewhere). */
-export async function openNote(id: string, heading?: string) {
+export async function openNote(id: string, heading?: string, end = false) {
   openId = id;
   draft = null;
   editorShown = true;
-  focusEditor = heading ? { heading } : null;
+  focusEditor = heading ? { heading } : end ? 'end' : null;
   showTrash = false;
   const p = openNotebook();
   await p.refresh?.();
 }
 
+/** Open a page from the sidebar or the tree (the main column's list, if any, is left). */
+function openPage(id: string) {
+  openId = id;
+  draft = null;
+  mainList = null;
+  editorShown = true;
+  focusEditor = null;
+  showTrash = false;
+  void pane?.refresh?.();
+}
+
 function newNote(d: Draft = { at: null, question: false }) {
   openId = null;
+  mainList = null;
   draft = d;
   editorShown = true;
   focusEditor = 'end';
@@ -278,30 +353,275 @@ function sectionsRow(): HTMLElement {
   return row;
 }
 
+// ---- the sidebar and the tree of pages (W3; sheet W1.1) ----------------------------------------------------------------
+
+/** Is a part of the sidebar (or a page's pages inside, in the tree) folded? `shut` is how it starts. */
+const isShut = (key: string, shut: boolean) => folded.has(`side:${key}`) !== shut;
+const flip = (key: string) => { fold(`side:${key}`, !folded.has(`side:${key}`)); void pane?.refresh?.(); };
+const countRows = (rows: Row[]): number => rows.reduce((n, r) => n + 1 + countRows(r.children || []), 0);
+
+/** A part's heading: a click folds it; Pages has + (a new page); Pages and Pinned take a page dropped on them. */
+function sideHead(key: string, label: string, count: number | null, shut: boolean, add = false): HTMLElement {
+  const head = h('div', 'nb-side-head');
+  head.dataset.part = key;
+  const s = isShut(key, shut);
+  const b = button(`nb-ghead${s ? ' shut' : ''}`, '', () => flip(key), 'down');
+  b.setAttribute('aria-expanded', String(!s));
+  b.append(h('span', 'nb-glabel', label));
+  if (count !== null) b.append(h('span', 'nb-count', String(count)));
+  head.append(b);
+  if (add) {
+    const plus = button('icon-btn nb-side-add', '', () => newNote(), 'plus');
+    plus.title = 'A new page';
+    plus.setAttribute('aria-label', 'A new page');
+    head.append(plus);
+  }
+  if (key === 'pages' || key === 'pinned') {
+    head.ondragover = ev => { if (!dragging) return; ev.preventDefault(); head.classList.add('drop-inside'); };
+    head.ondragleave = () => head.classList.remove('drop-inside');
+    head.ondrop = async ev => {
+      head.classList.remove('drop-inside');
+      const id = dragging;
+      if (!id) return;
+      ev.preventDefault();
+      try {
+        if (key === 'pinned') { await wb(['page', 'pin', id]); toast('Pinned'); }
+        else { await wb(['page', 'move', id, '--top', '--first']); toast('Moved to the top of Pages'); }
+        changed();
+      } catch (x) { toast(String(x)); }
+    };
+  }
+  return head;
+}
+
+/** The page being dragged in the tree or Pinned. */
+let dragging: string | null = null;
+type Zone = 'before' | 'after' | 'inside';
+const zones = ['drop-before', 'drop-after', 'drop-inside'];
+
+/** Where on a row a page is dropped: the top quarter puts it before, the bottom quarter after, the middle inside (in
+ * Pinned, which has no inside: the upper half before, the lower after). */
+function zoneOf(ev: DragEvent, el: HTMLElement, inside: boolean): Zone {
+  const r = el.getBoundingClientRect(), y = ev.clientY - r.top;
+  if (!inside) return y < r.height / 2 ? 'before' : 'after';
+  return y < r.height / 4 ? 'before' : y > (r.height * 3) / 4 ? 'after' : 'inside';
+}
+
+async function dropPage(id: string, onto: Row, zone: Zone, where: 'tree' | 'pinned', siblings: Row[]) {
+  const rest = siblings.filter(x => x.id !== id);
+  const after = zone === 'after' ? onto.id : rest[rest.findIndex(x => x.id === onto.id) - 1]?.id;
+  const at = after ? ['--after', after] : ['--first'];
+  try {
+    if (where === 'pinned') { await wb(['page', 'pin', id, ...at]); toast('Pinned'); }
+    else if (zone === 'inside') { await wb(['page', 'move', id, '--parent', onto.id]); toast(`Put inside “${onto.title}”`); }
+    else { await wb(['page', 'move', id, ...(onto.parent ? ['--parent', onto.parent] : ['--top']), ...at]); toast('Moved'); }
+    changed();
+  } catch (x) { toast(String(x)); }
+}
+
+/** A page's row: ▾ folds the pages inside it, a click opens it, + starts a page inside it; it is dragged to move it
+ * (and a page with no place onto a verse, to place it there). */
+function pageRow(r: Row, depth: number, where: 'tree' | 'pinned', siblings: Row[]): HTMLElement {
+  const row = h('div', `nb-tree-row${openId === r.id ? ' on' : ''}${r.status === 'done' ? ' done' : ''}`);
+  row.dataset.id = r.id;
+  row.style.setProperty('--depth', String(depth));
+  const kids = where === 'tree' ? r.children || [] : [];
+  if (kids.length) {
+    const s = isShut(`tree:${r.id}`, false);
+    const f = button(`nb-tree-fold${s ? ' shut' : ''}`, '', ev => { ev.stopPropagation(); flip(`tree:${r.id}`); }, 'down');
+    f.setAttribute('aria-expanded', String(!s));
+    f.setAttribute('aria-label', `${s ? 'Show' : 'Fold'} the pages inside ${r.title}`);
+    row.append(f);
+  } else row.append(h('span', 'nb-tree-fold none'));
+  const open = button('nb-tree-open', '', () => openPage(r.id), r.kind === 'question' ? undefined : r.placed ? 'pin' : 'notebook');
+  if (r.kind === 'question') open.append(h('span', 'nb-tree-q', '?'));
+  open.append(h('span', 'nb-tree-title', r.title || 'Untitled'));
+  open.title = r.placed && r.label ? `${r.title} · on ${r.label}` : r.title;
+  row.append(open);
+  if (where === 'tree') {
+    const add = button('icon-btn nb-tree-add', '', ev => { ev.stopPropagation(); newNote({ at: null, question: false, parent: r.id, hint: `A page inside “${r.title}”: the first line is its title…` }); }, 'plus');
+    add.title = `A page inside “${r.title}”`;
+    add.setAttribute('aria-label', add.title);
+    row.append(add);
+  }
+  row.draggable = true;
+  row.ondragstart = ev => {
+    dragging = r.id;
+    ev.dataTransfer!.setData('text/wb-page', r.id);
+    if (!r.placed && r.kind !== 'question') ev.dataTransfer!.setData('text/wb-jot', r.id);
+    ev.dataTransfer!.effectAllowed = 'move';
+    row.classList.add('dragging');
+  };
+  row.ondragend = () => { dragging = null; row.classList.remove('dragging'); pane?.el.querySelectorAll('.drop-before, .drop-after, .drop-inside').forEach(x => x.classList.remove(...zones)); };
+  row.ondragover = ev => {
+    if (!dragging || dragging === r.id) return;
+    ev.preventDefault();
+    const z = zoneOf(ev, row, where === 'tree');
+    row.classList.remove(...zones);
+    row.classList.add(`drop-${z}`);
+  };
+  row.ondragleave = () => row.classList.remove(...zones);
+  row.ondrop = ev => {
+    const id = dragging;
+    const z = zoneOf(ev, row, where === 'tree');
+    row.classList.remove(...zones);
+    if (!id || id === r.id) return;
+    ev.preventDefault();
+    void dropPage(id, r, z, where, siblings);
+  };
+  return row;
+}
+
+function treeRows(rows: Row[], depth: number, into: HTMLElement) {
+  for (const r of rows) {
+    into.append(pageRow(r, depth, 'tree', rows));
+    if (r.children?.length && !isShut(`tree:${r.id}`, false)) treeRows(r.children, depth + 1, into);
+  }
+}
+
+/** The tree of pages: each page, and the pages inside it under it. */
+function treeBox(rows: Row[]): HTMLElement {
+  const box = h('div', 'nb-tree');
+  box.setAttribute('role', 'tree');
+  treeRows(rows, 0, box);
+  return box;
+}
+
+function pinnedRows(rows: Row[]): HTMLElement {
+  const box = h('div', 'nb-pinned');
+  for (const r of rows) box.append(pageRow(r, 0, 'pinned', rows));
+  return box;
+}
+
+function sideRow(cls: string, ico: string | null, label: string, note: string, on: boolean, go: () => void): HTMLButtonElement {
+  const b = button(`nb-side-row ${cls}${on ? ' on' : ''}`, '', go, ico ?? undefined);
+  b.append(h('span', 'nb-tree-title', label));
+  if (note) b.append(h('span', 'nb-side-note', note));
+  return b;
+}
+
+/** A wide Notebook's sidebar (sheet W1.1): Today, Pinned, Pages, At the reader, Threads, Questions; the Trash at its
+ * foot. A search lists every note with its words instead. */
+async function drawSidebar(): Promise<HTMLElement[]> {
+  const top = listHead(true);
+  if (search.trim()) {
+    const d = await wb(['notebook', '--group', 'none', '--search', search.trim(), ...(nbSettings.today ? [] : ['--no-days'])]);
+    const entries = (d.groups as GroupOf[]).flatMap(g => g.entries);
+    const scroll = h('div', 'nb-scroll');
+    scroll.append(...entries.map(item));
+    if (!entries.length) scroll.append(h('p', 'muted nb-empty', 'No note has all of these words.'));
+    return [top, scroll];
+  }
+  const at = app.drawn;
+  const s = await wb(['notebook', 'sidebar', ...(at ? ['--at', `${at.chapter.code} ${at.chapter.chapter}`] : [])]);
+  const side = h('nav', 'nb-scroll nb-side');
+  side.setAttribute('aria-label', 'Notebook');
+  if (s.today.length) {
+    side.append(sideHead('today', 'Today', null, false));
+    if (!isShut('today', false)) for (const d of s.today) {
+      const on = d.exists ? openId === d.id : !openId && draft?.day === d.day;
+      side.append(sideRow('nb-day-row', 'pen', d.title, d.today ? 'today' : '', on, () => {
+        if (d.exists) return openPage(d.id);
+        openId = null; mainList = null; draft = { at: null, question: false, day: d.day }; editorShown = true; showTrash = false;
+        void pane?.refresh?.();
+      }));
+    }
+  }
+  side.append(sideHead('pinned', 'Pinned', s.pinned.length, false));
+  if (!isShut('pinned', false)) side.append(s.pinned.length ? pinnedRows(s.pinned) : h('p', 'muted small nb-side-hint', 'Drag a page here, or ⋯ → Pin on a page.'));
+  side.append(sideHead('pages', 'Pages', countRows(s.pages), false, true));
+  if (!isShut('pages', false)) side.append(s.pages.length ? treeBox(s.pages) : h('p', 'muted small nb-side-hint', 'No pages yet: + starts one.'));
+  if (s.at_reader) {
+    const r = s.at_reader;
+    side.append(sideHead('reader', 'At the reader', r.count, false));
+    if (!isShut('reader', false)) side.append(sideRow('nb-reader-row', 'pin', r.label, `the reader · ${r.count}`, mainList?.kind === 'chapter' && !openId, () => {
+      mainList = { kind: 'chapter' }; openId = null; draft = null; editorShown = true; showTrash = false;
+      void pane?.refresh?.();
+    }));
+  }
+  side.append(sideHead('threads', 'Threads', s.threads.length, true));
+  if (!isShut('threads', true)) for (const t of s.threads) {
+    side.append(sideRow('nb-thread-row', 'threads', t.name, String(t.count), mainList?.kind === 'thread' && mainList.key === t.id && !openId, () => {
+      mainList = { kind: 'thread', key: t.id, label: t.name }; openId = null; draft = null; editorShown = true; showTrash = false;
+      void pane?.refresh?.();
+    }));
+  }
+  side.append(sideHead('questions', 'Questions', s.questions.length, true));
+  if (!isShut('questions', true)) for (const q of s.questions as Row[]) {
+    const b = sideRow(`nb-question-row${q.status === 'done' ? ' done' : ''}`, null, q.title, q.status === 'done' ? 'answered' : '', openId === q.id, () => openPage(q.id));
+    b.prepend(h('span', 'nb-tree-q', '?'));
+    side.append(b);
+  }
+  const foot = h('div', 'nb-side-foot');
+  const bin = button('link-btn nb-trash-btn nb-side-trash', 'Trash', () => { showTrash = true; editorShown = false; void pane?.refresh?.(); }, 'trash');
+  bin.dataset.section = 'trash';
+  bin.title = 'Trash: deleted notes wait here 7 days';
+  foot.append(bin);
+  return [top, side, foot];
+}
+
+/** The main column's list, in a wide Notebook: the notes at the chapter the reader shows (it follows the reader), or a
+ * thread's notes. */
+async function mainListView(): Promise<HTMLElement[]> {
+  const out: HTMLElement[] = [];
+  let entries: Entry[] = [];
+  const head = h('div', 'nb-ed-head');
+  out.push(head);
+  if (mainList!.kind === 'chapter') {
+    const d = app.drawn;
+    if (!d) return [h('p', 'muted nb-empty nb-pick', 'Open a chapter in the reader.')];
+    const r = await wb(['notebook', '--group', 'chapter', '--at', `${d.chapter.code} ${d.chapter.chapter}`]);
+    const g = (r.groups as GroupOf[])[0];
+    entries = g?.entries || [];
+    out.push(h('h2', 'nb-title', g?.label || 'At the reader'), h('p', 'muted small nb-list-about', 'At the reader: the notes and pages placed in the chapter the reader shows. It follows the reader as it moves.'));
+  } else {
+    const m = mainList!;
+    const r = await wb(['notebook', '--group', 'thread']);
+    entries = (r.groups as GroupOf[]).find(g => g.key === m.key)?.entries || [];
+    out.push(h('h2', 'nb-title', m.label));
+    head.append(h('span', 'grow'), button('btn soft small', 'Open the thread', () => openThread(m.label), 'threads'));
+  }
+  const list = h('div', 'nb-main-list');
+  list.append(...entries.map(item));
+  if (!entries.length) list.append(h('p', 'muted nb-empty', mainList!.kind === 'chapter' ? 'No notes here yet. Write one with + on a verse.' : 'No notes on this thread yet.'));
+  out.push(list);
+  return out;
+}
+
 // ---- the editor ---------------------------------------------------------------------------------------------------------
 
 let shown: Entry | null = null;
 
 async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
   // while the person types, the editor is left as it is (the list still redraws beside it)
-  if (edEl.contains(document.activeElement) && document.activeElement?.classList.contains('nb-input')) return null;
+  const a = document.activeElement;
+  if (edEl.contains(a) && (a?.classList.contains('nb-input') || a?.classList.contains('nb-title-input'))) return null;
+  blocksData = null;
+  blockHostNow = null;
   if (!openId && !draft) {
     shown = null;
+    if (mainList) return mainListView();
     return [h('p', 'muted nb-empty nb-pick', 'Pick a note in the list, or start one with the pen.')];
   }
   let e: Entry;
+  let bd: Blocks | null = null;
   if (openId) {
-    try { e = await wb(['note', 'show', openId]); }
+    try { [e, bd] = await Promise.all([wb(['note', 'show', openId]), wb(['page', 'blocks', openId]).catch(() => null)]); }
     catch { openId = null; shown = null; return [h('p', 'muted nb-empty nb-pick', 'That note is gone (deleted, or moved by another app).')]; }
   } else if (draft!.day) {
     e = await wb(['day', draft!.day]);
-    if (e.exists) { openId = e.id; draft = null; }
+    if (e.exists) { openId = e.id; draft = null; bd = await wb(['page', 'blocks', e.id]).catch(() => null); }
   } else {
     e = { id: '', kind: draft!.question ? 'question' : 'note', placed: !!draft!.at, anchor: draft!.at?.anchor || '', label: draft!.at?.label || '', text: draft!.text || '', time: '', created: '', updated: '', title: '', preview: '', also: [], threads: [], links: [], headings: [], linked_from: [] };
   }
   shown = e;
+  // W3: a note written in is drawn block by block; a draft and a blank day's page keep the one box for the whole text
+  const byBlocks = !!(e.id && e.text.trim() && bd);
   const out: HTMLElement[] = [];
-  const back = button('link-btn nb-back', 'Notes', () => { editorShown = false; void pane?.refresh?.(); }, 'left');
+  const back = button(`link-btn nb-back${mainList ? ' shown' : ''}`, mainList ? (mainList.kind === 'thread' ? mainList.label : 'At the reader') : 'Notes', () => {
+    if (mainList) { openId = null; draft = null; } else editorShown = false;
+    void pane?.refresh?.();
+  }, 'left');
   const head = h('div', 'nb-ed-head');
   head.append(back, h('span', 'grow'));
   if (e.kind === 'day') head.append(h('span', 'muted small', e.today ? 'today’s page' : 'a day’s page'));
@@ -311,11 +631,27 @@ async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
     head.append(more);
   }
   out.push(head);
-  const title = h('h2', 'nb-title', e.kind === 'day' ? e.title : e.title || (draft?.question ? 'A new question' : 'A new note'));
+  const crumbs = pathOf(e);
+  if (crumbs) out.push(crumbs);
+  const title = h('h2', 'nb-title');
+  if (byBlocks && e.kind !== 'day' && bd!.title) editableTitle(title, e, bd!);
+  else title.textContent = e.kind === 'day' ? e.title : e.title || (draft?.parent ? 'A new page' : draft?.question ? 'A new question' : 'A new note');
   out.push(title);
   out.push(chipsRow(e));
   out.push(formatBar(e));
-  out.push(page(e));
+  if (byBlocks) {
+    blocksData = bd;
+    blockHostNow = blockHost(e);
+    const body = h('div', 'nb-body');
+    body.append(drawBlocks(bd!, blockHostNow));
+    out.push(body);
+  } else out.push(page(e));
+  if (e.inside?.length) {
+    const box = h('div', 'nb-inside');
+    box.append(h('div', 'nb-linked-head', `Pages inside · ${e.inside.length}`));
+    for (const r of e.inside) box.append(button('nb-linked-row', r.title || 'Untitled', () => openNote(r.id), r.placed ? 'pin' : 'notebook'));
+    out.push(box);
+  }
   if (nbSettings.links && e.linked_from?.length) {
     const lf = h('div', 'nb-linked');
     lf.append(h('div', 'nb-linked-head', `Linked from · ${e.linked_from.length}`));
@@ -435,11 +771,98 @@ function placeholderFor(e: Entry) {
   return 'The first line is its title…';
 }
 
+/** The box being written in; with none, one is started: a new block at the page's end, or the whole-text box. */
 const editText = () => pane?.el.querySelector<HTMLTextAreaElement>('.nb-editor textarea.nb-input') ?? (() => {
   const w = pane?.el.querySelector<HTMLElement>('.nb-editor .nb-body');
-  if (w && shown) startEditing(w, shown);
+  if (w && blocksData && blockHostNow) startWritingAtEnd(w, blocksData, blockHostNow);
+  else if (w && shown) startEditing(w, shown);
   return pane?.el.querySelector<HTMLTextAreaElement>('.nb-editor textarea.nb-input') ?? null;
 })();
+
+/** What the Notebook lends a page drawn block by block (blocks.ts). */
+function blockHost(e: Entry): Host {
+  return {
+    render: (text, refs, links) => render(text, refs, links as Link[]),
+    refs: e.refs || [],
+    links: nbSettings.links ? e.links || [] : [],
+    linkSuggest,
+    maybeSuggest: ta => { if (nbSettings.links) maybeSuggest(ta); },
+    suggestKey: ev => !!suggestKey?.(ev),
+    formatKey: (ev, ta) => {
+      if (!(ev.ctrlKey || ev.metaKey)) return false;
+      const k = ev.key.toLowerCase();
+      if (k !== 'b' && k !== 'i') return false;
+      ev.preventDefault();
+      wrap(ta, k === 'b' ? '**' : '*');
+      ta.dispatchEvent(new Event('input'));
+      return true;
+    },
+    changed: () => changed(),
+    redraw: () => void pane?.refresh?.(),
+    pageInside: async (title, after) => {
+      await wb(['page', 'new', title, '--parent', e.id, '--link', ...(after ? ['--after', String(after)] : ['--first'])]);
+      toast(`“${title}” is a page inside this one`);
+      changed();
+    },
+  };
+}
+
+/** The pages above this one, from Pages down (each opens it); none for a note on a place that is inside no page. */
+function pathOf(e: Entry): HTMLElement | null {
+  const inTree = !!e.path?.length || (!!e.id && !e.placed && e.kind !== 'day') || (!e.id && !!draft?.parent);
+  if (!inTree) return null;
+  const nav = h('nav', 'nb-crumbs');
+  nav.setAttribute('aria-label', 'The pages above this one');
+  const pages = button('link-btn nb-crumb', 'Pages', () => { group = 'pages'; editorShown = false; mainList = null; void pane?.refresh?.(); });
+  nav.append(pages);
+  const above = e.path?.length ? e.path : !e.id && draft?.parent ? [{ id: draft.parent, title: '…' }] : [];
+  for (const p of above) {
+    nav.append(h('span', 'nb-crumb-sep', '/'), button('link-btn nb-crumb', p.title || 'Untitled', () => openNote(p.id)));
+  }
+  nav.append(h('span', 'nb-crumb-sep', '/'), h('span', 'nb-crumb here', e.title || (e.id ? 'Untitled' : 'A new page')));
+  return nav;
+}
+
+/** The title, with its references and links working; a click elsewhere on it writes it anew (`wb page title`), and a
+ * changed title offers to update the links to it. */
+function editableTitle(el: HTMLElement, e: Entry, bd: Blocks) {
+  const t = bd.title!;
+  const raw = t.text.replace(/^\s*#+\s*/, '').trim();
+  const skip = [...t.text].length - [...t.text.replace(/^\s*#+\s*/, '')].length;
+  el.append(inlineOf([...e.text], t.start + skip, t.end, e.refs || [], nbSettings.links ? e.links || [] : []));
+  el.classList.add('editable');
+  el.title = 'Click to change the title';
+  el.onclick = ev => {
+    if ((ev.target as HTMLElement).closest('a')) return;
+    const i = h('input', 'nb-title-input') as HTMLInputElement;
+    i.value = raw;
+    i.setAttribute('aria-label', 'The page’s title');
+    el.replaceChildren(i);
+    el.onclick = null;
+    i.focus();
+    i.select();
+    let over = false;
+    const finish = async (keep: boolean) => {
+      if (over) return;
+      over = true;
+      const v = i.value.trim();
+      if (keep && v && v !== raw) {
+        try {
+          await wb(['page', 'title', e.id, v]);
+          if (nbSettings.links && (e.linked_from?.length ?? 0) > 0) offerRelink(e.id, raw, e.linked_from!.length);
+          changed();
+        } catch (x) { toast(String(x)); }
+      }
+      i.blur();
+      void pane?.refresh?.();
+    };
+    i.onkeydown = ev2 => {
+      if (ev2.key === 'Enter') { ev2.preventDefault(); void finish(true); }
+      else if (ev2.key === 'Escape') { ev2.preventDefault(); ev2.stopPropagation(); void finish(false); }
+    };
+    i.onblur = () => void finish(true);
+  };
+}
 
 let saving: Promise<void> = Promise.resolve();
 
@@ -467,6 +890,7 @@ function startEditing(wrapEl: HTMLElement, e: Entry) {
         let r: Entry;
         if (id) r = await wb(['note', 'text', id, '-'], text);
         else if (draft?.day) r = await wb(['day', 'text', '-', '--day', draft.day], text);
+        else if (draft?.parent) r = await wb(['page', 'new', '-', '--parent', draft.parent], text);
         else r = await wb(['note', 'new', '-', ...(draft?.at ? ['--at', draft.at.anchor] : []), ...(draft?.question ? ['--question'] : [])], text);
         last = text;
         if (!id) { id = r.id; openId = r.id; draft = null; e.id = r.id; }
@@ -531,8 +955,12 @@ function afterEditorDrawn(edEl: HTMLElement) {
     if (hd) { hd.scrollIntoView({ block: 'start' }); hd.classList.add('flash'); setTimeout(() => hd.classList.remove('flash'), 1600); }
   } else if (f === 'end') {
     const w = edEl.querySelector<HTMLElement>('.nb-body');
-    if (w && shown && !w.querySelector('textarea')) startEditing(w, shown);
+    if (w && blocksData && blockHostNow) startWritingAtEnd(w, blocksData, blockHostNow);
+    else if (w && shown && !w.querySelector('textarea')) startEditing(w, shown);
+    return;
   }
+  // a page drawn block by block: the writing Enter, Backspace or an arrow key asked for goes on in its block
+  afterDrawn(edEl, blockHostNow as Host, blockHostNow ? blocksData : null);
 }
 
 // ---- Markdown as a page ------------------------------------------------------------------------------------------------
@@ -809,9 +1237,44 @@ function editorMenu(from: HTMLElement, e: Entry) {
     if (e.placed && !onThreadOnly) for (const a of [{ anchor: e.anchor, label: e.label }, ...(e.also || [])]) item(`Take it off ${a.label}`, () => takeOff(e.id, a));
     if (e.kind === 'question') item(e.status === 'done' ? 'Open it again' : 'Answered: mark it done', async () => { await wb(['note', 'answered', e.id, ...(e.status === 'done' ? ['--open'] : [])]); changed(); });
     if (!onThreadOnly) item(e.kind === 'question' ? 'Make it a plain note' : 'Make it a question', async () => { await wb(['note', 'question', e.id, ...(e.kind === 'question' ? ['--plain'] : [])]); changed(); });
+    // W3: pages inside pages, and Pinned
+    box.append(h('div', 'menu-sep'));
+    const pinned = e.pinned !== null && e.pinned !== undefined;
+    item(pinned ? 'Unpin' : 'Pin', async () => {
+      try { await wb(['page', pinned ? 'unpin' : 'pin', e.id]); toast(pinned ? 'Taken out of Pinned' : 'Pinned'); changed(); } catch (x) { toast(String(x)); }
+    });
+    item('A page inside', () => newNote({ at: null, question: false, parent: e.id, hint: `A page inside “${e.title}”: the first line is its title…` }));
+    item('Move inside…', () => void moveInside(from, e));
   }
   item(e.kind === 'day' ? 'Delete this page (to the Trash)' : 'Delete (to the Trash)', () => remove(e));
   const close = popMenu(from, box, { align: 'right', width: 230 });
+}
+
+/** Move inside…: every page it can go inside (not itself, nor a page inside it), as the tree; or the top of Pages. */
+async function moveInside(from: HTMLElement, e: Entry) {
+  const t = await wb(['page', 'tree']);
+  const box = h('div', 'menu-list nb-move-menu');
+  box.append(h('div', 'muted small nb-menu-note', `Put “${e.title}” inside`));
+  const scroll = h('div', 'nb-move-list');
+  const go = async (argv: string[], said: string) => {
+    close();
+    try { await wb(['page', 'move', e.id, ...argv]); toast(said); changed(); } catch (x) { toast(String(x)); }
+  };
+  if (e.parent) scroll.append(button('menu-item', 'Pages (inside no page)', () => go(['--top'], 'Moved to the top of Pages'), 'notebook'));
+  const walk = (rows: Row[], depth: number) => {
+    for (const r of rows) {
+      if (r.id === e.id) continue; // itself, and the pages inside it, are not offered
+      const b = button(`menu-item nb-move-row${r.id === e.parent ? ' on' : ''}`, r.title || 'Untitled', () => go(['--parent', r.id], `Put inside “${r.title}”`), r.placed ? 'pin' : 'notebook');
+      b.style.paddingLeft = `${10 + depth * 16}px`;
+      if (r.id === e.parent) b.disabled = true;
+      scroll.append(b);
+      walk(r.children || [], depth + 1);
+    }
+  };
+  walk(t.pages, 0);
+  if (!scroll.childElementCount) scroll.append(h('p', 'muted small nb-menu-note', 'No other pages yet.'));
+  box.append(scroll);
+  const close = popMenu(from, box, { align: 'right', width: 300 });
 }
 
 /** A note's place as a pill (a click goes there) with × to take it off: its first place too, the next then being its
@@ -911,7 +1374,7 @@ export function placeMenu(from: HTMLElement, e: Pick<Entry, 'id' | 'placed' | 'l
 }
 
 // Deleted notes, questions and pages: each waits 7 days, then the window erases it when it opens (wb trash empty).
-async function trashList(): Promise<HTMLElement[]> {
+async function trashList(two: boolean): Promise<HTMLElement[]> {
   const d = await wb(['trash']);
   const top = h('div', 'nb-head');
   top.append(button('link-btn nb-back shown', 'Notes', () => { showTrash = false; void pane?.refresh?.(); }, 'left'), h('span', 'nb-trash-title', 'Trash'));
@@ -938,7 +1401,7 @@ async function trashList(): Promise<HTMLElement[]> {
     scroll.append(c);
   }
   if (!d.notes.length) scroll.append(h('p', 'muted nb-empty', 'Nothing deleted.'));
-  return [top, sectionsRow(), scroll];
+  return two ? [top, scroll] : [top, sectionsRow(), scroll];
 }
 
 // Settings → Notebook (N4). Until the Settings window (tier 5), in the Notebook's ⋯ menu; kept in settings/notebook.json.
@@ -1071,7 +1534,8 @@ export function quickCapture() {
       const r = await wb(['note', 'new', '-', ...(at ? ['--at', at.anchor] : []), ...(question ? ['--question'] : [])], text);
       close();
       changed();
-      if (keep) await openNote(r.id).then(() => { focusEditor = 'end'; const w2 = pane?.el.querySelector<HTMLElement>('.nb-editor .nb-body'); if (w2 && shown) startEditing(w2, shown); });
+      // to keep writing: a new block under what was captured
+      if (keep) await openNote(r.id, undefined, true);
       else toast(at ? `Written on ${at.label}` : 'Written as a page of its own (no place yet)');
     } catch (x) { toast(String(x)); }
   };

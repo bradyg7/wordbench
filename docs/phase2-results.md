@@ -202,7 +202,7 @@ $env:WB_STUDY_DIR = 'C:\Users\brady\github\bible-study-data'; $env:WB_ALLOW_REAL
 ```
 
 A newer build reaches this app with `scripts/install-app.ps1` (after `npx tauri build --no-bundle`), which copies it
-into `%LOCALAPPDATA%ible-workbench-rspp\` and refuses while the app is open.
+into `%LOCALAPPDATA%\bible-workbench-rs\app\` and refuses while the app is open.
 
 `wb` on the real folder, from that same terminal: `& "$env:LOCALAPPDATA\bible-workbench-rs\app\wb.exe" journal`.
 
@@ -659,3 +659,45 @@ Screenshots: `docs/phase2/1440-documents.png`; samples: `tier4-speaker-script-pa
 
 **For the person:** open a Speaker Script made here in real Word, and a Verse by Verse PDF, before trusting them (the
 plan's rule: the Craft previews hid bugs before). The real folder is untouched until the app is installed and used.
+
+## 22. W3: pages and blocks (2026-11-07)
+
+Step 4 of "The Notebook as a workspace", drawn on sheets W1.1 and W2 ([workspace-design.md](workspace-design.md)), with
+the person's decisions of 2026-11-07: **`pinned` holds a number** (the page's place in Pinned); **"Page inside this
+one" also writes `[[New page]]`** in the page, where the `/` menu was opened; **deleting a page moves the pages inside
+it up a level**, into its place; **each list item and each to-do is its own block**; **the sidebar replaces the row of
+sections when the Notebook is wide**, and the row stays when it is narrow.
+
+| What | Built | Checked |
+|---|---|---|
+| Pages inside pages | `wb-core::pages`: the tree (every note with no place, and any note inside a page or holding one); a page inside another names it in its front matter (`parent: "<id>"`) with its place there (`order: 1, 2, 3 …`; pages never moved come first, newest first). A parent that is gone, is a day, or would loop is read as none. Pinned is `pinned: <n>`. Moving or pinning a page writes only those fields, and not its time of change. The fields go with a note when it is placed, moved or taken off a place. Deleting a page (`note rm`, `inbox rm`, `trail rm`) first moves the pages inside it up a level | `cargo test`: the tree, loops, the delete rule; CLI `a_page_inside_a_page_and_a_moved_block_read_correctly_in_the_files` |
+| Blocks | A note's text read as blocks, each a run of its own Markdown: paragraph, heading, list item, numbered item, to-do, quote, divider, table, fenced block (with what follows its fence: `scripture`, `view`). The first line is the title, apart (a day's page has none). Changing, adding, removing or moving a block rewrites only the lines around it: list items one after another keep a single line break, anything else is apart by a blank line | `pages.rs` unit tests: a page read as blocks; a block changed, added (a blank line typed makes two), removed; moved; a to-do ticked; a title changed |
+| `wb` | `wb page tree\|new\|move\|pin\|unpin\|blocks\|title`, `wb block set\|add\|rm\|move\|check` (blocks counted from 1, as `wb page blocks` lists them), `wb notebook sidebar [--at "Num 25"]` | `every_action.rs` covers `pages.rs` |
+| The window: a page block by block (sheet W2) | A note that is written in is drawn block by block; **a click writes in that block alone, as its Markdown**, saved as it is typed. Enter at a block's end starts the next one (a list goes on as a list; Enter in an empty item ends it); Backspace in an empty block removes it; ↑ and ↓ at a block's edge go to the next; Esc ends the writing. **`/`** in an empty block opens the block menu, the sheet's ten: Scripture, Heading, List, To-do, Quote, Divider, Table, Link to a page, Page inside this one, View (the scripture and view blocks are written as their fenced blocks; they are drawn from the Bible and listed in W4 and W5). A to-do's box ticks it. **A grip** at a block's left drags it: dropped on the upper half of another it goes before it, on the lower half after. Before the first save of a block, the block is found again by its text, so a page changed meanwhile (another block's writing ending, a terminal) never has the wrong block written over. Drafts (a new note or question not saved yet) and a blank day's page keep the one box for the whole text | Desk: drawn block by block; a click writes in one block; what is written lands in its place in the file; Enter at a to-do's end; a to-do ticked in the file; the `/` menu's ten; Page inside this one; a block moved by its grip; **the file read back** as written, and `wb page blocks` reading it as the window drew it |
+| The title, the path, Pages inside | The title is edited in place (`wb page title`; a `#` it had stays), with the offer to update the links to the old title; its references and links still work. Above it, **the path** of the pages it is inside (Pages / … / the page), each a click away. Under it, **Pages inside · N**. The page's ⋯ has **Pin / Unpin**, **A page inside** and **Move inside…** (the tree, without the page itself and the pages inside it, or the top of Pages) | Desk: Pages inside · 1, the path, Pin from ⋯ writing `pinned: 1` |
+| The sidebar (sheet W1.1) | When the Notebook is wide (640 px or more): **Today** (today's page and the last days written in), **Pinned**, **Pages** (the tree; + starts a page; a row's + a page inside it; ▾ folds the pages inside), **At the reader** (the chapter the reader shows, with how many notes; a click lists them in the main column, and it follows the reader), **Threads** (a click lists a thread's notes in the main column, with Open the thread), **Questions**, and the **Trash** at its foot. Each part folds (kept in the window's storage, as before). **A page dragged** onto another row goes before it (the top quarter), after it (the bottom quarter) or inside it (the middle); onto Pinned's or Pages' heading, into Pinned or to the top of Pages; a page with no place still drags onto a verse to place it. A search lists every note with its words instead. The width crossing 640 px draws the list again. A draw asked for during a drag waits for the drop, so the drag is not lost under the mouse | Desk: the sidebar's parts and the Trash at its foot, no row of sections; a page dragged onto the middle of another goes inside it (parent and order in its file, one level in in the tree) |
+| Narrow | The row of sections stays (W1); **Pages draws the tree**, with Pinned above it | Desk: the W1 Pages check now compares with `wb page tree` (every note with no place is in it); narrow, the page inside one level in |
+| The Python app | `parent`, `order` and `pinned` are fields it passes over and keeps | Desk: a page inside a page, given a place, is read by the Python app's own `Study` as a note on its verse with `parent` and `order`; after the Python app rewrites it, `parent` is still in the file and the tree still has it inside its page |
+
+**Changed in the desk checks:** a note's first line is its title, drawn apart from its blocks, so the reference check
+looks for the reference anywhere in the editor (it was in the whole-text page); quick capture's Ctrl+Enter opens the
+captured note with a new block under its title (it was the whole-text box).
+
+**Left for later, as planned:** At the reader keeps one row (the reader); W1.2's row per open reader comes with W4's
+Open menu. Scripture blocks drawn from the Bible, Paragraph | Lines and the verse card are W4; views and templates W5.
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **272 of 272** (17 new; two changed, said above) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped |
+| Rust tests | `cargo test`: **144** (4 new) |
+| Golden suite | `python scripts/golden.py`: **103 of 103** |
+| Plans against the Python app | `python scripts/doc-plans.py`: **6 of 6** the same |
+
+Screenshots: `docs/phase2/1440-notebook-sidebar-pages.png`, `1440-notebook-block-menu.png`,
+`1440-notebook-pages.png` (narrow: the tree).
+
+**For the person:** before the installed app writes these new fields in the real folder, `scripts/backup-study.ps1`
+ran in the person's terminal: 220 files, each the same as the original
+(`%LOCALAPPDATA%\bible-workbench-rs\backups\bible-study-data-20261107-181938`). The install waits for the open window
+to be closed (`install-app.ps1` refuses while it is open). Open a page in the Python app afterwards to see it read as before.

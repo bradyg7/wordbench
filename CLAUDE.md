@@ -20,7 +20,7 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
   front matter for notes and threads, JSON for highlights), so both apps can open it. Deletes go to `.trash/`. A deleted
   note or question is erased after 7 days there, unless put back (the person's decision, 2026-11-03; the window does it
   when it opens, `wb trash empty` from a terminal), or at once with Erase now in the Trash, asked to confirm (the
-  person's decision, 2026-11-04; `wb trash erase <name>`). Nothing else is erased. New fields (`also`, `threads`), the
+  person's decision, 2026-11-04; `wb trash erase <name>`). Nothing else is erased. New fields (`also`, `threads`; a page's `parent`, `order`, `pinned`), the
   `notes/_threads/` and `notes/_days/` folders (today's page: no anchor), `settings/notebook.json`, `findings/` (the
   person's findings about the app, beside `notes/` so the Notebook never lists them) and `.trash/reading-unmarked.jsonl`
   (a mark taken off the reading log) are ones the Python app keeps or passes over.
@@ -34,7 +34,7 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
 
 | Path | What |
 |---|---|
-| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `relay` (`wb do`), `docs` (documents from a thread: the plans, the Word writer, the PDF deck through Typst, `documents/` records; its fonts in `crates/wb-core/fonts`) |
+| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `pages` (pages inside pages, Pinned, a page's blocks), `relay` (`wb do`), `docs` (documents from a thread: the plans, the Word writer, the PDF deck through Typst, `documents/` records; its fonts in `crates/wb-core/fonts`) |
 | `crates/wb-cli` | The `wb` command table (a library the app runs in-process) and the `wb` binary |
 | `app/src-tauri` | The Tauri 2 shell: commands that call wb-core |
 | `ui/` | The UI: TypeScript, CSS, fonts (Literata for scripture, Inter for the interface), `tokens.css` from the design tokens |

@@ -1355,3 +1355,71 @@ fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
     assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().ends_with("thread-phinehas-script.json")));
     assert!(wb.fails(&["docs", "show", "speaker script"]).contains("No document called"));
 }
+
+#[test]
+fn a_page_inside_a_page_and_a_moved_block_read_correctly_in_the_files() {
+    // W3: parent, order and pinned in the front matter; blocks are lines of the file
+    let Some(wb) = Wb::new() else { return };
+    let lesson = wb.js(&["page", "new", "Lesson: Phinehas"])["id"].as_str().unwrap().to_string();
+    let file = |id: &str| -> String {
+        ["notes/_inbox", "notes/NUM", "trails"].iter().map(|d| wb.dir.join(d).join(format!("{id}.md"))).find(|p| p.exists()).map(|p| std::fs::read_to_string(p).unwrap()).unwrap_or_default()
+    };
+    let outline = wb.js(&["page", "new", "Outline", "--parent", &lesson, "--link"]);
+    let outline = outline["id"].as_str().unwrap().to_string();
+    let group = wb.js(&["page", "new", "Questions for the group", "--parent", &lesson])["id"].as_str().unwrap().to_string();
+    assert!(file(&outline).contains(&format!("parent: \"{lesson}\"\norder: 1\n")), "{}", file(&outline));
+    assert!(file(&group).contains("order: 2\n"));
+    assert!(file(&lesson).ends_with("Lesson: Phinehas\n\n[[Outline]]\n"), "{}", file(&lesson));
+    let tree = wb.js(&["page", "tree"]);
+    let top = tree["pages"].as_array().unwrap().iter().find(|p| p["id"] == lesson.as_str()).unwrap().clone();
+    let kids: Vec<&str> = top["children"].as_array().unwrap().iter().map(|c| c["title"].as_str().unwrap()).collect();
+    assert_eq!(kids, ["Outline", "Questions for the group"]);
+    // moved first, then put at the top and back inside
+    wb.js(&["page", "move", &group, "--first"]);
+    let show = wb.js(&["note", "show", &group]);
+    assert_eq!(show["path"][0]["title"], "Lesson: Phinehas");
+    assert_eq!(wb.js(&["note", "show", &lesson])["inside"][0]["title"], "Questions for the group");
+    assert!(wb.fails(&["page", "move", &lesson, "--parent", &group]).contains("inside itself"));
+    wb.js(&["page", "move", &outline, "--top"]);
+    assert!(!file(&outline).contains("parent:"));
+    wb.js(&["page", "move", &outline, "--parent", &lesson, "--after", &group]);
+    assert!(file(&outline).contains(&format!("parent: \"{lesson}\"")) && file(&outline).contains("order: 2\n"));
+    // pinned: its place in Pinned, in the page itself
+    wb.js(&["page", "pin", &group]);
+    wb.js(&["page", "pin", &lesson, "--first"]);
+    assert!(file(&lesson).contains("pinned: 1\n") && file(&group).contains("pinned: 2\n"));
+    let pinned: Vec<Value> = wb.js(&["page", "tree"])["pinned"].as_array().unwrap().iter().map(|p| p["id"].clone()).collect();
+    assert_eq!(pinned, [json!(lesson), json!(group)]);
+    wb.js(&["page", "unpin", &lesson]);
+    assert!(!file(&lesson).contains("pinned"));
+    // blocks: written, added, moved, ticked; each a run of lines in the file
+    let o = &outline;
+    wb.js(&["block", "add", o, "# Aim"]);
+    wb.js(&["block", "add", o, "- [ ] Read it twice"]);
+    wb.js(&["block", "add", o, "- [ ] List every use of the word"]);
+    let r = wb.js(&["block", "add", o, "- [ ] Print the deck"]);
+    assert_eq!((r["n"].as_i64(), r["blocks"].as_array().unwrap().len()), (Some(4), 4));
+    wb.js(&["block", "move", o, "4", "--to", "2"]);
+    wb.js(&["block", "check", o, "3"]);
+    let body = file(o);
+    assert!(body.ends_with("Outline\n\n# Aim\n\n- [ ] Print the deck\n- [x] Read it twice\n- [ ] List every use of the word\n"), "{body}");
+    let r = wb.js(&["block", "set", o, "1", "# Aim\n\nRead the chapter with the group."]);
+    assert_eq!((r["n"].as_i64(), r["count"].as_i64()), (Some(1), Some(2)));
+    wb.js(&["block", "rm", o, "3"]);
+    let kinds: Vec<Value> = wb.js(&["page", "blocks", o])["blocks"].as_array().unwrap().iter().map(|b| b["kind"].clone()).collect();
+    assert_eq!(kinds, [json!("heading"), json!("paragraph"), json!("todo"), json!("todo")]);
+    wb.js(&["page", "title", o, "An outline"]);
+    assert!(file(o).contains("---\n\nAn outline\n\n# Aim"));
+    // a page placed on a verse keeps its place in the tree
+    wb.js(&["note", "place", &group, "Num 25:11"]);
+    assert!(file(&group).contains(&format!("parent: \"{lesson}\"")) && file(&group).contains("anchor: \"NUM.25:11\""), "{}", file(&group));
+    assert_eq!(wb.js(&["note", "show", &lesson])["inside"].as_array().unwrap().len(), 2);
+    // deleting a page: the pages inside it move up a level, into its place
+    let before = wb.js(&["page", "new", "Before"])["id"].as_str().unwrap().to_string();
+    wb.js(&["page", "move", &lesson, "--top", "--after", &before]);
+    wb.ok(&["inbox", "rm", &lesson]);
+    let tops: Vec<String> = wb.js(&["page", "tree"])["pages"].as_array().unwrap().iter().map(|p| p["title"].as_str().unwrap().to_string()).collect();
+    // (the page placed on a verse, at the top with nothing inside it, is a note at its place: Places lists it)
+    assert_eq!(tops, ["Before", "An outline"]);
+    assert!(!file(o).contains("parent:") && !file(&group).contains("parent:"));
+}

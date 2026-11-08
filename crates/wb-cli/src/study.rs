@@ -105,6 +105,8 @@ pub fn commands() -> Vec<Command> {
         cmd("note rm", "Delete a note (moved to .trash in the study folder).", vec![Pos("id", N::One)], |c, a| {
             let mut st = c.study()?;
             let id = a.s("id");
+            // the pages inside it move up a level (W3)
+            wb_core::pages::release(c.bible()?, &mut st, &id).map_err(e)?;
             // a note written on a thread (no place in the text) is deleted the same way
             if st.on_thread().iter().any(|n| n["id"] == id.as_str()) { st.delete_thread_note(&id) } else { st.delete_note(&id) }.map_err(e)?;
             j(json!({"ok": true}))
@@ -311,7 +313,9 @@ pub fn commands() -> Vec<Command> {
             j(json!({"ok": true}))
         }),
         cmd("trail rm", "Delete a question (moved to .trash).", vec![Pos("id", N::One)], |c, a| {
-            c.study()?.delete_trail(&a.s("id")).map_err(e)?;
+            let mut st = c.study()?;
+            wb_core::pages::release(c.bible()?, &mut st, &a.s("id")).map_err(e)?;
+            st.delete_trail(&a.s("id")).map_err(e)?;
             j(json!({"ok": true}))
         }),
         cmd("find", "Search your own notes, thread names and notes, and trails.", vec![Pos("words", N::Many)], |c, a| {

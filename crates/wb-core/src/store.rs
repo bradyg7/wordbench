@@ -232,6 +232,21 @@ pub fn threads_of(n: &Rec) -> Vec<String> {
     n.get("threads").and_then(|a| a.as_array()).into_iter().flatten().filter_map(|x| x.as_str()).map(String::from).collect()
 }
 
+/// A page's place in the Notebook's tree (W3 of "The Notebook as a workspace", 2026-11-07): the page it is inside
+/// (`parent`, its id), its place among the pages beside it (`order`) and its place in Pinned (`pinned`, a number, absent
+/// when not pinned; the person's choice). New front-matter fields: the Python app keeps them when it rewrites a note and
+/// passes over them otherwise. They go with a note wherever its file moves.
+pub const PAGE_FIELDS: &[&str] = &["parent", "order", "pinned"];
+
+/// A note's page fields, kept when its file is written anew (placed, moved, a place taken off).
+fn carry(old: &Rec, meta: &mut Rec) {
+    for k in PAGE_FIELDS {
+        if let Some(v) = old.get(*k) {
+            meta.insert((*k).into(), v.clone());
+        }
+    }
+}
+
 /// How long a deleted note or question waits in .trash before it is erased (the person's decision, 2026-11-03).
 pub const TRASH_DAYS: i64 = 7;
 
@@ -845,6 +860,7 @@ impl Store {
         .as_object()
         .unwrap()
         .clone();
+        carry(&old, &mut meta);
         let path = if question { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&meta) };
         self.put(&path, &dump_md(&meta, &text))?;
         // the note now lives at its place; the Inbox file is removed only after that is written
@@ -901,6 +917,7 @@ impl Store {
                 meta.insert(k.into(), v.clone());
             }
         }
+        carry(&old, &mut meta);
         let path = if to_q { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&meta) };
         self.put(&path, &dump_md(&meta, &text))?;
         self.moved(&from, &path)?;
@@ -1044,6 +1061,42 @@ impl Store {
         Err(missing("No note or question with that id."))
     }
 
+    /// Any note, question or day's page by its id, wherever its file is.
+    pub fn find_note(&self, id: &str) -> Result<Rec> {
+        self.any_note(id).map(|x| x.0)
+    }
+
+    /// Change front-matter fields of a note or question (a page's place in the tree: `parent`, `order`, `pinned`), `None`
+    /// taking a field away. Its text and its time of change stay as they are: moving a page is not writing in it.
+    pub fn set_fields(&mut self, id: &str, fields: &[(&str, Option<Value>)]) -> Result<Rec> {
+        if self.days.iter().any(|n| s(n, "id") == id) {
+            return Err(bad("A day's page stays under Today; it is not put inside another page."));
+        }
+        let (mut meta, path) = self.any_note(id)?;
+        let mut same = true;
+        for (k, v) in fields {
+            if meta.get(*k) != v.as_ref() {
+                same = false;
+            }
+            match v {
+                Some(v) => {
+                    meta.insert((*k).into(), v.clone());
+                }
+                None => {
+                    meta.shift_remove(*k);
+                }
+            }
+        }
+        if same {
+            return Ok(meta);
+        }
+        let text = s(&meta, "text");
+        meta.shift_remove("text");
+        self.put(&path, &dump_md(&meta, &text))?;
+        meta.insert("text".into(), json!(text));
+        Ok(meta)
+    }
+
     fn rewrite(&mut self, mut meta: Rec, path: &Path) -> Result<Rec> {
         let text = s(&meta, "text");
         meta.shift_remove("text");
@@ -1185,6 +1238,7 @@ impl Store {
         if !threads.is_empty() {
             meta.insert("threads".into(), json!(threads));
         }
+        carry(&old, &mut meta);
         let path = if next.is_some() {
             self.note_path(&meta)
         } else if !was_q && !threads.is_empty() {
