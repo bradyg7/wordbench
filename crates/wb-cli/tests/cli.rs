@@ -1493,3 +1493,85 @@ fn places_open_in_the_reader_or_a_new_reader_and_the_sidebar_has_a_row_per_reade
     assert_eq!((rows[1]["label"].as_str(), rows[1]["reader"].as_str(), rows[1]["count"].as_u64()), (Some("Psalms 106"), Some("new reader"), Some(1)));
     assert_eq!(s["at_reader"]["label"], "Numbers 25");
 }
+
+#[test]
+fn a_view_lists_what_its_line_finds_and_writes_nothing() {
+    // W5: one parser for a view's line; wb view run, a page's views (wb page views) and the command field (wb parse) agree
+    let Some(wb) = Wb::new() else { return };
+    let id_of = |v: Value| v["id"].as_str().unwrap().to_string();
+    let tent = id_of(wb.js(&["note", "new", "zeal at the tent", "--at", "Num 25:8"]));
+    let q = id_of(wb.js(&["note", "new", "How do the numbers relate?", "--at", "Num 25:9", "--question"]));
+    let ps = id_of(wb.js(&["note", "new", "the psalm remembers it", "--at", "Ps 106:30"]));
+    let whole = id_of(wb.js(&["note", "new", "on the whole chapter", "--at", "Numbers 25"]));
+    let ids = |v: &Value| v["rows"].as_array().unwrap().iter().map(|r| r["id"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+    // @place: every note on a verse of it, in Bible order (the whole chapter's from its first verse)
+    assert_eq!(ids(&wb.js(&["view", "run", "notebook @Num 25"])), [whole.clone(), tent.clone(), q.clone()]);
+    assert_eq!(ids(&wb.js(&["view", "run", "notebook @Num 25 questions"])), [q.clone()]);
+    assert_eq!(ids(&wb.js(&["view", "run", "notebook @Num 25:8-9 open"])), [q.clone()]);
+    assert_eq!(ids(&wb.js(&["view", "run", "notebook zeal"])), [tent.clone()]);
+    assert_eq!(ids(&wb.js(&["view", "run", "notebook @Psalms days 1"])), [ps.clone()]);
+    assert!(wb.fails(&["view", "run", "notebook thread nowhere"]).contains("No thread"));
+    assert!(wb.fails(&["view", "run", "notebook @Num 99"]).contains("chapters"));
+    // the command field reads the same line
+    assert_eq!(wb.js(&["parse", "notebook @Num 25 questions"]), serde_json::json!({"action": {"cmd": "notebook", "line": "@Num 25 questions"}}));
+    // in a page: its views with their rows; the line changed in place; a line that cannot be read is not written
+    let page = id_of(wb.js(&["page", "new", "Questions for the group"]));
+    let (code, _, err) = wb.run(&["block", "add", &page, "-"], Some("```view\nnotebook @Num 25 questions\n```"));
+    assert_eq!(code, 0, "{err}");
+    let file = || std::fs::read_to_string(wb.dir.join("notes/_inbox").join(format!("{page}.md"))).unwrap().replace("\r\n", "\n");
+    let before = file();
+    let v = wb.js(&["page", "views", &page]);
+    assert_eq!((v["blocks"][0]["n"].as_u64(), v["blocks"][0]["line"].as_str()), (Some(1), Some("notebook @Num 25 questions")));
+    assert_eq!(ids(&v["blocks"][0]), [q.clone()]);
+    assert_eq!(file(), before, "a view writes nothing");
+    wb.js(&["block", "view", &page, "1", "notebook @Ps 106"]);
+    assert!(file().contains("```view\nnotebook @Ps 106\n```"), "{}", file());
+    assert_eq!(ids(&wb.js(&["page", "views", &page])["blocks"][0]), [ps]);
+    wb.fails(&["block", "view", &page, "1", "notebook @Nowhere 9"]);
+    assert!(file().contains("```view\nnotebook @Ps 106\n```"));
+}
+
+#[test]
+fn a_page_made_from_a_template_has_its_blanks_filled() {
+    // W5: a template is a note with template: true, left out of Pages and search; a page made from it gets its blocks,
+    // the blanks filled, and from_template; Save as a template takes the places out
+    let Some(wb) = Wb::new() else { return };
+    assert_eq!(wb.js(&["template", "list"])["templates"], serde_json::json!([]));
+    let tpl = wb.js(&["template", "new", "Chapter study"])["id"].as_str().unwrap().to_string();
+    wb.js(&["template", "set", "chapter study", "--asks", "place", "--names", "Chapter study: {place}"]);
+    for b in ["# Read", "```scripture\n{place}\n```", "On {date} at {reader}: {title}"] {
+        let (code, _, err) = wb.run(&["block", "add", &tpl, "-"], Some(b));
+        assert_eq!(code, 0, "{err}");
+    }
+    let tfile = std::fs::read_to_string(wb.dir.join("notes/_inbox").join(format!("{tpl}.md"))).unwrap().replace("\r\n", "\n");
+    assert!(tfile.contains("\ntemplate: true\n") && tfile.contains("\nasks: \"place\"\n"), "{tfile}");
+    assert!(wb.fails(&["page", "new", "--template", "Chapter study"]).contains("asks for a place"));
+    let made = wb.js(&["page", "new", "--template", "chapter", "--place", "Num 25", "--reader", "Ps 106"]);
+    let text = made["text"].as_str().unwrap();
+    assert_eq!(made["title"], "Chapter study: Numbers 25");
+    assert_eq!(made["from_template"].as_str(), Some(tpl.as_str()));
+    assert!(text.starts_with("Chapter study: Numbers 25\n\n# Read\n\n```scripture\nNumbers 25\n```\n\nOn "), "{text}");
+    assert!(text.ends_with(" at Psalms 106: Chapter study: Numbers 25") && !text.contains('{'), "{text}");
+    let id = made["id"].as_str().unwrap().to_string();
+    // its scripture block reads Numbers 25 from the Bible
+    let s = wb.js(&["page", "scripture", &id]);
+    let got: Vec<String> = s["blocks"][0]["verses"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap().to_string()).collect();
+    assert_eq!(got, verse_texts(&wb, "Num 25"));
+    // the template is left out of the tree and search; listed with how often used
+    let tree = wb.ok(&["page", "tree"]);
+    assert!(tree.contains(&id) && !tree.contains(&tpl));
+    let found = wb.js(&["notebook", "--group", "none", "--search", "chapter study"]);
+    let found: Vec<&str> = found["groups"].as_array().unwrap().iter().flat_map(|g| g["entries"].as_array().unwrap().iter().map(|e| e["id"].as_str().unwrap())).collect();
+    assert!(found.contains(&id.as_str()) && !found.contains(&tpl.as_str()), "{found:?}");
+    let l = wb.js(&["template", "list"]);
+    assert_eq!((l["templates"][0]["used"].as_u64(), l["templates"][0]["summary"].as_str()), (Some(1), Some("a heading, a scripture block, a block of writing")));
+    // Save as a template: a copy with its places taken out
+    let again = wb.js(&["template", "save", &id, "--name", "Study again"]);
+    assert_eq!(again["asks"], "place");
+    let shown = wb.js(&["template", "show", "Study again"]);
+    assert!(shown["text"].as_str().unwrap().contains("```scripture\n{place}\n```"), "{}", shown["text"]);
+    assert!(wb.fails(&["template", "new", "chapter study"]).contains("already"));
+    wb.js(&["template", "rm", "Study again"]);
+    assert_eq!(wb.js(&["template", "list"])["templates"].as_array().unwrap().len(), 1);
+    assert!(wb.ok(&["guide", "templates"]).contains("{place} the place picked"));
+}

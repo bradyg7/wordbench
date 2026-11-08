@@ -1006,22 +1006,78 @@ export async function manual() {
   return manualCache;
 }
 
+/** The keys, as Keys and Help's Keys list them. */
+const KEYS: [string, string][] = [
+  ['`', 'Open the command field (search, go to a place, or a command)'],
+  ['← →', 'The previous and next chapter'],
+  ['Ctrl+F', 'Find: in the pane you last clicked or typed in, else in this chapter (Enter: the next, Shift+Enter: the one before)'],
+  ['↑ ↓ in the command field', 'The lines run before, newest first, the ones that did not work too (as PowerShell keeps them)'],
+  ['Right-click a verse', 'Open it in a new tab (a second reader), Notes & lookup, Copy'],
+  ['Ctrl+click a reference', 'Straight to the reader (a click asks: the reader, or a tab)'],
+  ['Ctrl+= / Ctrl+-', 'Text size'],
+  ['Esc', 'Close a card, a menu or the field'],
+  ['Alt+click a word', 'The interlinear for its verse'],
+  ['Ctrl+J', 'Quick capture: a small box at the verse you clicked, from anywhere (Enter saves, Ctrl+Enter keeps writing in the Notebook; the key is in Notebook settings)'],
+  ['Ctrl+Shift+J', 'A finding about the app: kept apart from your study, with what is on screen (Findings, under More)'],
+  ['In a note', 'Ctrl+B bold, Ctrl+I italics, [[ a link to another note; Esc or Ctrl+Enter: done'],
+];
+
+let guideCache: any = null;
+async function guideEntries(): Promise<any[]> {
+  guideCache ??= await wb(['guide', '--json']);
+  return guideCache.entries;
+}
+
+/** Help (W5, sheet W6.3): Guide (how the parts of the Notebook work: `wb guide`), Commands (everything the command
+ * field understands: the manual) and Keys. A topic that names a Guide entry opens the Guide at it. */
 export function openHelp(topic = '') {
   return dock.open('help', 'Help', 'help', MINE, async (el, pane) => {
     el.replaceChildren();
-    const m = await manual();
-    head(el, 'Help', 'Everything the command field understands. Backtick (`) opens it.');
-    const filter = h('input', 'field') as HTMLInputElement;
-    filter.placeholder = 'A command or a word';
+    const [m, guide] = await Promise.all([manual(), guideEntries().catch(() => [])]);
+    const t0 = topic.trim().toLowerCase();
+    let tab: 'guide' | 'commands' | 'keys' = t0 && guide.some((g: any) => g.name.startsWith(t0) || g.title.toLowerCase().startsWith(t0)) ? 'guide' : t0 ? 'commands' : 'guide';
+    const tabs = h('div', 'seg small help-tabs');
+    tabs.setAttribute('role', 'tablist');
+    const filter = h('input', 'field help-filter') as HTMLInputElement;
     filter.value = topic;
-    el.append(filter);
-    const body = h('div');
-    el.append(body);
+    const body = h('div', 'help-body');
+    el.append(tabs, filter, body);
+    const tabBtn = (k: typeof tab, label: string) => {
+      const b = button(`help-tab-${k}${tab === k ? ' on' : ''}`, label, () => { tab = k; for (const x of tabs.children) x.classList.toggle('on', x === b); draw(); });
+      b.setAttribute('role', 'tab');
+      tabs.append(b);
+    };
+    tabBtn('guide', 'Guide');
+    tabBtn('commands', 'Commands');
+    tabBtn('keys', 'Keys');
+    const has = (o: any, f: string) => JSON.stringify(o).toLowerCase().includes(f);
     const draw = () => {
       const f = filter.value.trim().toLowerCase();
+      filter.placeholder = tab === 'guide' ? 'A part of the Notebook, or a word' : tab === 'commands' ? 'A command or a word' : 'A key or a word';
       body.replaceChildren();
+      if (tab === 'guide') {
+        const hits = guide.filter((g: any) => !f || g.name.startsWith(f) || has(g, f));
+        for (const g of hits) {
+          const sec = h('section', 'guide-entry');
+          sec.dataset.name = g.name;
+          sec.append(h('h3', 'guide-title', g.title));
+          for (const p of g.parts) sec.append(h('div', 'guide-head', p.head), h('p', 'small guide-text', p.text));
+          body.append(sec);
+        }
+        if (!hits.length) body.append(h('p', 'muted', 'No part of the Guide has that word. Commands lists everything the command field understands.'));
+        return;
+      }
+      if (tab === 'keys') {
+        for (const [k, what] of KEYS.filter(([k, w]) => !f || (k + ' ' + w).toLowerCase().includes(f))) {
+          const r = h('div', 'key-row');
+          r.append(h('kbd', '', k), h('span', '', what));
+          body.append(r);
+        }
+        return;
+      }
+      body.append(h('p', 'muted small', 'Everything the command field understands. Backtick (`) opens it.'));
       for (const [sec, title] of m.sections) {
-        const docs = m.docs.filter((d: any) => d.section === sec && (!f || d.name.startsWith(f) || JSON.stringify(d).toLowerCase().includes(f)));
+        const docs = m.docs.filter((d: any) => d.section === sec && (!f || d.name.startsWith(f) || has(d, f)));
         if (!docs.length) continue;
         body.append(h('div', 'label', title));
         for (const d of docs) {
@@ -1051,21 +1107,7 @@ export function openKeys() {
   return dock.open('keys', 'Keys', 'keys', MINE, async el => {
     el.replaceChildren();
     head(el, 'Keys', 'The keyboard in this window');
-    const rows: [string, string][] = [
-      ['`', 'Open the command field (search, go to a place, or a command)'],
-      ['← →', 'The previous and next chapter'],
-      ['Ctrl+F', 'Find: in the pane you last clicked or typed in, else in this chapter (Enter: the next, Shift+Enter: the one before)'],
-      ['↑ ↓ in the command field', 'The lines run before, newest first, the ones that did not work too (as PowerShell keeps them)'],
-      ['Right-click a verse', 'Open it in a new tab (a second reader), Notes & lookup, Copy'],
-      ['Ctrl+click a reference', 'Straight to the reader (a click asks: the reader, or a tab)'],
-      ['Ctrl+= / Ctrl+-', 'Text size'],
-      ['Esc', 'Close a card, a menu or the field'],
-      ['Alt+click a word', 'The interlinear for its verse'],
-      ['Ctrl+J', 'Quick capture: a small box at the verse you clicked, from anywhere (Enter saves, Ctrl+Enter keeps writing in the Notebook; the key is in Notebook settings)'],
-      ['Ctrl+Shift+J', 'A finding about the app: kept apart from your study, with what is on screen (Findings, under More)'],
-      ['In a note', 'Ctrl+B bold, Ctrl+I italics, [[ a link to another note; Esc or Ctrl+Enter: done'],
-    ];
-    for (const [k, what] of rows) {
+    for (const [k, what] of KEYS) {
       const r = h('div', 'key-row');
       r.append(h('kbd', '', k), h('span', '', what));
       el.append(r);

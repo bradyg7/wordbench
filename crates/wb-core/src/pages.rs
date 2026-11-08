@@ -48,7 +48,8 @@ struct Tree {
 
 impl Tree {
     fn read(bible: &Bible, store: &Store) -> Tree {
-        let all = nb::every(bible, store);
+        // templates (W5) are listed under Templates, not in the tree
+        let all: Vec<Value> = nb::every(bible, store).into_iter().filter(|e| !nb::is_template(e)).collect();
         let ids: HashSet<String> = all.iter().map(|e| id_of(e).to_string()).collect();
         let mut parent: HashMap<String, String> = all
             .iter()
@@ -203,7 +204,8 @@ fn sidebar_one(bible: &Bible, store: &Store, at: Option<(String, u32)>, today: b
     let questions: Vec<Value> = qs.into_iter().map(|e| t.row(e)).collect();
     let pages: Vec<Value> = t.children(None).into_iter().map(|e| t.node(e)).collect();
     let pinned: Vec<Value> = t.pinned().into_iter().map(|e| t.row(e)).collect();
-    Ok(json!({"today": days, "pinned": pinned, "pages": pages, "at_reader": at_reader, "threads": threads, "questions": questions}))
+    let templates = crate::templates::rows(bible, store);
+    Ok(json!({"today": days, "pinned": pinned, "pages": pages, "at_reader": at_reader, "threads": threads, "questions": questions, "templates": templates}))
 }
 
 /// Add to a note's entry where it is in the tree: the pages above it (`path`) and the pages inside it (`inside`).
@@ -548,11 +550,11 @@ pub fn split(text: &str, titled: bool) -> (Option<(usize, usize)>, Vec<Block>) {
     (title, out)
 }
 
-fn chars(t: &str) -> Vec<char> {
+pub(crate) fn chars(t: &str) -> Vec<char> {
     t.chars().collect()
 }
 
-fn sub(c: &[char], a: usize, b: usize) -> String {
+pub(crate) fn sub(c: &[char], a: usize, b: usize) -> String {
     c[a.min(c.len())..b.min(c.len())].iter().collect()
 }
 
@@ -735,7 +737,7 @@ pub fn retitle(text: &str, title: &str) -> Result<String> {
 
 /// A note's text, and whether its first line is its title (a day's page has none). A day's page is named by its id or
 /// its day (2026-11-07).
-fn text_of(store: &Store, id: &str) -> Result<(String, String, bool)> {
+pub(crate) fn text_of(store: &Store, id: &str) -> Result<(String, String, bool)> {
     let id = if crate::store::is_day(id.trim()) { format!("d_{}", id.trim()) } else { id.trim().to_string() };
     let r = store.find_note(&id).map_err(|_| missing("No note, question or page with that id (a day's page not written in yet has no blocks)."))?;
     Ok((id.clone(), s(&r, "text"), !id.starts_with("d_")))

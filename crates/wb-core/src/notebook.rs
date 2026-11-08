@@ -30,7 +30,7 @@ fn local(created: &str) -> Option<(NaiveDate, String)> {
     Some((t.date_naive(), t.format("%H:%M").to_string()))
 }
 
-fn label(bible: &Bible, anchor: &str) -> String {
+pub(crate) fn label(bible: &Bible, anchor: &str) -> String {
     if let Some((name, _)) = whole_place(bible, anchor) {
         return name;
     }
@@ -139,14 +139,25 @@ fn entry(bible: &Bible, r: &Rec, kind: &str, placed: bool) -> Value {
         e["status"] = json!(if s(r, "status") == "done" { "done" } else { "open" });
     }
     // its place in the tree of pages (W3): the page it is inside, its order there, its place in Pinned
+    // (W5: a template's settings and from_template only where a note has them)
     for k in crate::store::PAGE_FIELDS {
-        e[*k] = r.get(*k).cloned().unwrap_or(Value::Null);
+        match r.get(*k) {
+            Some(v) => e[*k] = v.clone(),
+            None if ["parent", "order", "pinned"].contains(k) => e[*k] = Value::Null,
+            None => {}
+        }
     }
     e
 }
 
 fn inbox_entries(bible: &Bible, store: &Store) -> Vec<Value> {
     store.inbox().into_iter().map(|n| entry_in(bible, store, n, if s(n, "kind") == "question" { "question" } else { "note" }, false)).collect()
+}
+
+/// A template (W5: a note with `template: true`): the Notebook leaves it out of its lists, the tree and search; it is
+/// listed under Templates.
+pub(crate) fn is_template(e: &Value) -> bool {
+    e["template"] == true
 }
 
 /// Every entry: placed notes, notes on threads, the Inbox, and questions (trails).
@@ -168,7 +179,7 @@ pub fn named_place(bible: &Bible, text: &str) -> Option<Value> {
 
 /// A day as the Notebook names it: "Saturday, November 7" (finding 7bc8: "Saturday 7 November" with the count at the
 /// line's end read as if the count were the date).
-fn day_label(d: NaiveDate) -> String {
+pub(crate) fn day_label(d: NaiveDate) -> String {
     d.format("%A, %B %-d").to_string()
 }
 
@@ -180,7 +191,7 @@ fn old_day_label(d: NaiveDate) -> String {
 /// The Journal: days newest first, each with its entries newest first. `day` limits it to one day.
 pub fn journal(bible: &Bible, store: &Store, day: Option<NaiveDate>) -> Result<Value> {
     let today = Local::now().date_naive();
-    let mut all: Vec<(NaiveDate, Value)> = every(bible, store).into_iter().filter_map(|e| Some((local(e["created"].as_str()?)?.0, e))).collect();
+    let mut all: Vec<(NaiveDate, Value)> = every(bible, store).into_iter().filter(|e| !is_template(e)).filter_map(|e| Some((local(e["created"].as_str()?)?.0, e))).collect();
     if let Some(d) = day {
         all.retain(|(x, _)| *x == d);
     }
@@ -198,7 +209,7 @@ pub fn journal(bible: &Bible, store: &Store, day: Option<NaiveDate>) -> Result<V
 
 /// The Inbox: notes with no place yet, newest first, each with the place its text names (`offer`), if any.
 pub fn inbox(bible: &Bible, store: &Store) -> Result<Value> {
-    let mut notes = inbox_entries(bible, store);
+    let mut notes: Vec<Value> = inbox_entries(bible, store).into_iter().filter(|e| !is_template(e)).collect();
     notes.reverse();
     for n in &mut notes {
         n["offer"] = named_place(bible, n["text"].as_str().unwrap_or("")).unwrap_or(Value::Null);
@@ -253,7 +264,7 @@ pub fn questions(bible: &Bible, store: &Store, status: &str) -> Result<Value> {
     if !["open", "done", "all"].contains(&status) {
         return Err(bad("Status must be open, done or all."));
     }
-    let mut out: Vec<Value> = inbox_entries(bible, store).into_iter().filter(|e| e["kind"] == "question").collect();
+    let mut out: Vec<Value> = inbox_entries(bible, store).into_iter().filter(|e| e["kind"] == "question" && !is_template(e)).collect();
     out.extend(store.trails().into_iter().map(|t| entry_in(bible, store, t, "question", true)));
     out.retain(|e| status == "all" || e["status"] == status);
     out.sort_by(|a, b| b["created"].as_str().cmp(&a["created"].as_str()));
@@ -516,7 +527,7 @@ pub struct Listing {
 }
 
 /// Every line of the Notebook: notes, questions, the Inbox, and (`days`) the days' pages.
-fn all_lines(bible: &Bible, store: &Store, days: bool) -> Vec<Value> {
+pub(crate) fn all_lines(bible: &Bible, store: &Store, days: bool) -> Vec<Value> {
     let mut all = every(bible, store);
     if days {
         all.extend(store.days().into_iter().map(|r| day_entry(bible, r)));
@@ -524,7 +535,7 @@ fn all_lines(bible: &Bible, store: &Store, days: bool) -> Vec<Value> {
     all
 }
 
-fn words_in(e: &Value, words: &[String]) -> bool {
+pub(crate) fn words_in(e: &Value, words: &[String]) -> bool {
     if words.is_empty() {
         return true;
     }
@@ -573,7 +584,7 @@ fn places_in(e: &Value) -> Vec<String> {
 /// thread's notes, oldest first, then those on no thread. None: everything, the most recently changed first.
 pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
     let words: Vec<String> = o.search.to_lowercase().split_whitespace().map(String::from).collect();
-    let mut all: Vec<Value> = all_lines(bible, store, o.days).into_iter().filter(|e| words_in(e, &words)).collect();
+    let mut all: Vec<Value> = all_lines(bible, store, o.days).into_iter().filter(|e| !is_template(e) && words_in(e, &words)).collect();
     // the sections Pages and Questions are filters over the list by None (the most recently changed first)
     let (pages, questions) = (o.pages || o.group == "pages", o.questions || o.group == "questions");
     let grouped = if pages || o.group == "questions" { "none" } else { o.group.as_str() };

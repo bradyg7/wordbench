@@ -236,7 +236,12 @@ pub fn threads_of(n: &Rec) -> Vec<String> {
 /// (`parent`, its id), its place among the pages beside it (`order`) and its place in Pinned (`pinned`, a number, absent
 /// when not pinned; the person's choice). New front-matter fields: the Python app keeps them when it rewrites a note and
 /// passes over them otherwise. They go with a note wherever its file moves.
-pub const PAGE_FIELDS: &[&str] = &["parent", "order", "pinned"];
+///
+/// W5, templates (2026-11-07): a template is a note with `template: true`; its settings are `new_name` (the name new
+/// pages get, with blanks: `Chapter study: {place}`), `asks` (`place` when it asks for one) and `goes_in` (the id of the
+/// page new pages go inside; absent: Pages). A page made from one carries `from_template` (the template's id), which is
+/// how a template's "used N times" is counted.
+pub const PAGE_FIELDS: &[&str] = &["parent", "order", "pinned", "template", "new_name", "asks", "goes_in", "from_template"];
 
 /// A note's page fields, kept when its file is written anew (placed, moved, a place taken off).
 fn carry(old: &Rec, meta: &mut Rec) {

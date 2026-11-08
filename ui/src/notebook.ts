@@ -14,8 +14,8 @@
 // Questions, and the Trash at its foot. A narrow one keeps its row of sections, and its Pages section is the tree.
 import { wb } from './api';
 import { app, book, here, type At } from './app';
-import { afterDrawn, drawBlocks, startWritingAtEnd, type Blocks, type Host } from './blocks';
-import { dock, refHover, openThread, threadChooser } from './panes';
+import { afterDrawn, drawBlocks, startWritingAtEnd, viewRow, type Blocks, type Host } from './blocks';
+import { dock, refHover, openHelp, openThread, threadChooser } from './panes';
 import type { Change, Pane } from './dock';
 import { toast } from './sheets';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
@@ -43,6 +43,13 @@ interface Entry {
   pinned?: number | null; parent?: string | null; order?: number | null;
   /** W3: the pages above it, from the top, and the pages inside it (`wb note show`). */
   path?: { id: string; title: string }[]; inside?: Row[];
+  /** W5: a template (`template: true`), and the template a page was made from. */
+  template?: boolean; from_template?: string;
+}
+/** A template as Templates lists it (`wb template list`). */
+interface Tpl {
+  id: string; title: string; summary: string; headings: string[]; asks: string; new_name: string;
+  goes_in: string | null; goes_in_title: string | null; used: number;
 }
 /** A page in the tree (`wb page tree`, `wb notebook sidebar`): any note with no place, inside a page or holding one. */
 interface Row {
@@ -74,8 +81,9 @@ function fold(key: string, shut: boolean) {
 let openId: string | null = null;
 interface Draft { at: At | null; question: boolean; day?: string; text?: string; hint?: string; parent?: string }
 let draft: Draft | null = null;
-/** A wide Notebook's main column showing a list (At the reader, a thread) when no note is open. */
-let mainList: { kind: 'chapter'; reader?: string } | { kind: 'thread'; key: string; label: string } | null = null;
+/** A wide Notebook's main column showing a list (At the reader, a thread) when no note is open; W5: a view's line
+ * typed in the command field, or the Templates page (these two in a narrow Notebook too). */
+let mainList: { kind: 'chapter'; reader?: string } | { kind: 'thread'; key: string; label: string } | { kind: 'view'; line: string } | { kind: 'templates' } | null = null;
 /** The open page's blocks, when it is drawn block by block. */
 let blocksData: Blocks | null = null;
 let blockHostNow: Host | null = null;
@@ -158,7 +166,7 @@ async function draw(el: HTMLElement) {
   }
   const listEl = root.querySelector<HTMLElement>('.nb-list')!, edEl = root.querySelector<HTMLElement>('.nb-editor')!;
   const two = root.classList.contains('two');
-  if (!two) mainList = null;
+  if (!two && (mainList?.kind === 'chapter' || mainList?.kind === 'thread')) mainList = null;
   const [list, ed] = await Promise.all([showTrash ? trashList(two) : two ? drawSidebar() : drawList(), drawEditor(edEl)]);
   if (gen !== drawing) return;
   const keep = listEl.querySelector<HTMLElement>('.nb-scroll')?.scrollTop ?? 0;
@@ -168,7 +176,7 @@ async function draw(el: HTMLElement) {
   if (sc) sc.scrollTop = keep;
   if (typing) { const f = listEl.querySelector<HTMLInputElement>('.nb-find'); f?.focus(); f?.setSelectionRange(f.value.length, f.value.length); }
   if (ed) edEl.replaceChildren(...ed);
-  root.classList.toggle('editing', editorShown && (!!openId || !!draft));
+  root.classList.toggle('editing', editorShown && (!!openId || !!draft || !!mainList));
   if (ed) afterEditorDrawn(edEl);
 }
 
@@ -202,7 +210,7 @@ function listHead(two: boolean): HTMLElement {
   input.oninput = () => { clearTimeout(t); t = window.setTimeout(() => { search = input.value; void pane?.refresh?.(); }, 220); };
   input.onkeydown = e => { if (e.key === 'Escape' && input.value) { e.stopPropagation(); input.value = ''; search = ''; void pane?.refresh?.(); } };
   f.append(input);
-  const add = button('icon-btn nb-new', '', () => newNote(), 'pen');
+  const add = button('icon-btn nb-new', '', () => void newPage(), 'pen');
   add.title = 'A new note';
   add.setAttribute('aria-label', 'A new note');
   const bin = button('icon-btn nb-trash-btn', '', () => { showTrash = true; editorShown = false; void pane?.refresh?.(); }, 'trash');
@@ -363,7 +371,7 @@ const flip = (key: string) => { fold(`side:${key}`, !folded.has(`side:${key}`));
 const countRows = (rows: Row[]): number => rows.reduce((n, r) => n + 1 + countRows(r.children || []), 0);
 
 /** A part's heading: a click folds it; Pages has + (a new page); Pages and Pinned take a page dropped on them. */
-function sideHead(key: string, label: string, count: number | null, shut: boolean, add = false): HTMLElement {
+function sideHead(key: string, label: string, count: number | null, shut: boolean, add: boolean | (() => void) = false): HTMLElement {
   const head = h('div', 'nb-side-head');
   head.dataset.part = key;
   const s = isShut(key, shut);
@@ -373,9 +381,9 @@ function sideHead(key: string, label: string, count: number | null, shut: boolea
   if (count !== null) b.append(h('span', 'nb-count', String(count)));
   head.append(b);
   if (add) {
-    const plus = button('icon-btn nb-side-add', '', () => newNote(), 'plus');
-    plus.title = 'A new page';
-    plus.setAttribute('aria-label', 'A new page');
+    const plus = button('icon-btn nb-side-add', '', () => (typeof add === 'function' ? add() : void newPage()), 'plus');
+    plus.title = key === 'templates' ? 'A new template' : 'A new page';
+    plus.setAttribute('aria-label', plus.title);
     head.append(plus);
   }
   if (key === 'pages' || key === 'pinned') {
@@ -441,7 +449,7 @@ function pageRow(r: Row, depth: number, where: 'tree' | 'pinned', siblings: Row[
   open.title = r.placed && r.label ? `${r.title} · on ${r.label}` : r.title;
   row.append(open);
   if (where === 'tree') {
-    const add = button('icon-btn nb-tree-add', '', ev => { ev.stopPropagation(); newNote({ at: null, question: false, parent: r.id, hint: `A page inside “${r.title}”: the first line is its title…` }); }, 'plus');
+    const add = button('icon-btn nb-tree-add', '', ev => { ev.stopPropagation(); void newPage({ id: r.id, title: r.title }); }, 'plus');
     add.title = `A page inside “${r.title}”`;
     add.setAttribute('aria-label', add.title);
     row.append(add);
@@ -564,7 +572,16 @@ async function drawSidebar(): Promise<HTMLElement[]> {
     b.prepend(h('span', 'nb-tree-q', '?'));
     side.append(b);
   }
+  // W5 (sheet W6.2): Templates, with + for an empty one; the Templates page from the foot
+  const tps: Row[] = s.templates || [];
+  if (tps.length) {
+    side.append(sideHead('templates', 'Templates', tps.length, false, () => void newTemplate()));
+    if (!isShut('templates', false)) for (const t of tps) side.append(sideRow('nb-template-row', 'notebook', t.title, '', openId === t.id, () => openPage(t.id)));
+  }
   const foot = h('div', 'nb-side-foot');
+  const tbtn = button('link-btn nb-side-link nb-side-templates', 'Templates', () => showTemplates(), 'notebook');
+  tbtn.title = 'Your templates: pages that new pages start from';
+  foot.append(tbtn);
   const bin = button('link-btn nb-trash-btn nb-side-trash', 'Trash', () => { showTrash = true; editorShown = false; void pane?.refresh?.(); }, 'trash');
   bin.dataset.section = 'trash';
   bin.title = 'Trash: deleted notes wait here 7 days';
@@ -575,6 +592,8 @@ async function drawSidebar(): Promise<HTMLElement[]> {
 /** The main column's list, in a wide Notebook: the notes at the chapter the reader shows (it follows the reader), or a
  * thread's notes. */
 async function mainListView(): Promise<HTMLElement[]> {
+  if (mainList!.kind === 'view') return viewListView(mainList as { kind: 'view'; line: string });
+  if (mainList!.kind === 'templates') return templatesView();
   const out: HTMLElement[] = [];
   let entries: Entry[] = [];
   const head = h('div', 'nb-ed-head');
@@ -637,16 +656,20 @@ async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
     e = { id: '', kind: draft!.question ? 'question' : 'note', placed: !!draft!.at, anchor: draft!.at?.anchor || '', label: draft!.at?.label || '', text: draft!.text || '', time: '', created: '', updated: '', title: '', preview: '', also: [], threads: [], links: [], headings: [], linked_from: [] };
   }
   shown = e;
+  // W5: a template shows its settings above its blocks, and how often it was used
+  const tpl: Tpl | null = e.template && e.id ? await wb(['template', 'show', e.id]).catch(() => null) : null;
   // W3: a note written in is drawn block by block; a draft and a blank day's page keep the one box for the whole text
   const byBlocks = !!(e.id && e.text.trim() && bd);
   const out: HTMLElement[] = [];
-  const back = button(`link-btn nb-back${mainList ? ' shown' : ''}`, mainList ? (mainList.kind === 'thread' ? mainList.label : 'At the reader') : 'Notes', () => {
+  const backTo = !mainList ? 'Notes' : mainList.kind === 'thread' ? mainList.label : mainList.kind === 'view' ? 'The view' : mainList.kind === 'templates' ? 'Templates' : 'At the reader';
+  const back = button(`link-btn nb-back${mainList ? ' shown' : ''}`, backTo, () => {
     if (mainList) { openId = null; draft = null; } else editorShown = false;
     void pane?.refresh?.();
   }, 'left');
   const head = h('div', 'nb-ed-head');
   head.append(back, h('span', 'grow'));
   if (e.kind === 'day') head.append(h('span', 'muted small', e.today ? 'today’s page' : 'a day’s page'));
+  if (tpl) head.append(h('span', 'muted small nb-tpl-used', `a template · ${usedText(tpl.used)}`));
   if (e.id) {
     const more = button('icon-btn small', '', () => editorMenu(more, e), 'more');
     more.setAttribute('aria-label', 'Change this note');
@@ -659,7 +682,8 @@ async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
   if (byBlocks && e.kind !== 'day' && bd!.title) editableTitle(title, e, bd!);
   else title.textContent = e.kind === 'day' ? e.title : e.title || (draft?.parent ? 'A new page' : draft?.question ? 'A new question' : 'A new note');
   out.push(title);
-  out.push(chipsRow(e));
+  if (tpl) out.push(templateAbout(), templateSettings(tpl));
+  else if (!e.template) out.push(chipsRow(e));
   out.push(formatBar(e));
   if (byBlocks) {
     blocksData = bd;
@@ -755,7 +779,7 @@ function formatBar(e: Entry): HTMLElement {
   bar.append(h('span', 'nb-fmt-sep'));
   act('Place', 'Write the place picked in the reader into the text', ta => insert(ta, here().label));
   if (nbSettings.links) act('[[ ]]', 'A link to another note', ta => { insert(ta, '[['); linkSuggest(ta); });
-  if (e.kind !== 'day') {
+  if (e.kind !== 'day' && !e.template) {
     const q = h('button', `nb-fmt${e.kind === 'question' ? ' on' : ''}`, '? Question');
     q.title = e.kind === 'question' ? 'Make it a plain note' : 'Ask it as a question';
     q.onclick = async () => {
@@ -821,6 +845,8 @@ function blockHost(e: Entry): Host {
     },
     changed: () => changed(),
     redraw: () => void pane?.refresh?.(),
+    open: id => openFromList(id),
+    template: !!e.template,
     pageInside: async (title, after) => {
       await wb(['page', 'new', title, '--parent', e.id, '--link', ...(after ? ['--after', String(after)] : ['--first'])]);
       toast(`“${title}” is a page inside this one`);
@@ -831,6 +857,11 @@ function blockHost(e: Entry): Host {
 
 /** The pages above this one, from Pages down (each opens it); none for a note on a place that is inside no page. */
 function pathOf(e: Entry): HTMLElement | null {
+  if (e.template) {
+    const nav = h('nav', 'nb-crumbs');
+    nav.append(button('link-btn nb-crumb', 'Templates', () => showTemplates()), h('span', 'nb-crumb-sep', '/'), h('span', 'nb-crumb here', e.title || 'Untitled'));
+    return nav;
+  }
   const inTree = !!e.path?.length || (!!e.id && !e.placed && e.kind !== 'day') || (!e.id && !!draft?.parent);
   if (!inTree) return null;
   const nav = h('nav', 'nb-crumbs');
@@ -1252,7 +1283,16 @@ function maybeSuggest(ta: HTMLTextAreaElement) {
 
 function editorMenu(from: HTMLElement, e: Entry) {
   const box = h('div', 'menu-list');
+  let close = () => {};
   const item = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
+  // W5: a template's own: a page from it, or delete it
+  if (e.template) {
+    item('Make a page from it…', () => void newPage(undefined, e.id));
+    box.append(h('div', 'menu-sep'));
+    item('Delete this template (to the Trash)', () => remove(e));
+    close = popMenu(from, box, { align: 'right', width: 250 });
+    return;
+  }
   const onThreadOnly = e.placed && !e.anchor;
   if (e.kind !== 'day') {
     if (e.placed && !onThreadOnly) item('Move to another place…', () => placeMenu(from, e));
@@ -1268,9 +1308,17 @@ function editorMenu(from: HTMLElement, e: Entry) {
     });
     item('A page inside', () => newNote({ at: null, question: false, parent: e.id, hint: `A page inside “${e.title}”: the first line is its title…` }));
     item('Move inside…', () => void moveInside(from, e));
+    item('Save as a template', async () => {
+      try {
+        const t = await wb(['template', 'save', e.id]);
+        toast(`“${t.title}” is a template now, its places taken out`);
+        changed();
+        openPage(t.id);
+      } catch (x) { toast(String(x)); }
+    });
   }
   item(e.kind === 'day' ? 'Delete this page (to the Trash)' : 'Delete (to the Trash)', () => remove(e));
-  const close = popMenu(from, box, { align: 'right', width: 230 });
+  close = popMenu(from, box, { align: 'right', width: 230 });
 }
 
 /** Move inside…: every page it can go inside (not itself, nor a page inside it), as the tree; or the top of Pages. */
@@ -1331,7 +1379,7 @@ export async function putOnThread(id: string, name: string) {
 }
 
 export async function remove(e: Pick<Entry, 'id' | 'placed' | 'kind'> & { day?: string; anchor?: string }) {
-  const what = e.kind === 'day' ? 'this page' : 'this note';
+  const what = e.kind === 'day' ? 'this page' : (e as Entry).template ? 'this template' : 'this note';
   if (!confirm(`Delete ${what}? It waits in the Trash for 7 days, then is erased.`)) return;
   if (e.kind === 'day') await wb(['day', 'rm', e.day!]);
   else if (!e.placed) await wb(['inbox', 'rm', e.id]);
@@ -1483,12 +1531,333 @@ function settingsMenu(from: HTMLElement) {
   k.onsubmit = ev => { ev.preventDefault(); void save('capture', key.value); };
   k.append(key);
   box.append(k);
-  popMenu(from, box, { align: 'right', width: 340 });
+  const tp = button('link-btn nb-set-templates', 'Templates…', () => { closeSet(); showTemplates(); }, 'notebook');
+  tp.title = 'Your templates: pages that new pages start from';
+  box.append(tp);
+  const closeSet = popMenu(from, box, { align: 'right', width: 340 });
 }
 
 async function saveSetting(key: string, value: string) {
   try { Object.assign(nbSettings, await wb(['settings', 'notebook', key, value])); opens.where = nbSettings.places === 'new' ? 'new' : 'reader'; void pane?.refresh?.(); }
   catch (x) { toast(String(x)); }
+}
+
+// ---- views and templates (W5) ------------------------------------------------------------------------------------------
+
+/** A view's line typed in the command field (`notebook @Num 25 questions`): the notes it finds, in the main column, the
+ * same rows as a view block and `wb view run`. */
+export function openNotebookView(line: string) {
+  const l = line.trim();
+  mainList = { kind: 'view', line: /^notebook\b/i.test(l) ? l : `notebook ${l}` };
+  openId = null; draft = null; editorShown = true; showTrash = false;
+  const was = dock.find('notebook');
+  const p = openNotebook();
+  if (was) void p.refresh?.();
+  return p;
+}
+
+/** Open a note from a list in the main column (a view, Templates): Back returns to the list. */
+function openFromList(id: string) {
+  openId = id; draft = null; editorShown = true; focusEditor = null; showTrash = false;
+  if (!pane) { void openNote(id); return; }
+  void pane.refresh?.();
+}
+
+/** The Templates page (sheet W6.3), in the main column. */
+function showTemplates() {
+  mainList = { kind: 'templates' };
+  openId = null; draft = null; editorShown = true; showTrash = false;
+  const p = openNotebook();
+  void p.refresh?.();
+}
+
+const usedText = (n: number) => (n === 0 ? 'not used yet' : n === 1 ? 'used once' : `used ${n} times`);
+const readerChapter = () => { const d = app.drawn; return d ? `${d.chapter.name} ${d.chapter.chapter}` : ''; };
+
+async function viewListView(m: { kind: 'view'; line: string }): Promise<HTMLElement[]> {
+  const head = h('div', 'nb-ed-head');
+  if (!wide()) head.append(button('link-btn nb-back shown', 'Notes', () => { mainList = null; editorShown = false; void pane?.refresh?.(); }, 'left'));
+  const crumbs = h('nav', 'nb-crumbs');
+  crumbs.append(h('span', 'nb-crumb', 'A view'), h('span', 'nb-crumb-sep', '/'), h('span', 'nb-crumb here', m.line));
+  head.append(crumbs, h('span', 'grow'));
+  const box = h('div', 'nb-view nb-viewlist');
+  const top = h('div', 'nbv-head');
+  top.append(icon('filter', 14), h('span', 'nbv-line nbv-line-shown', m.line), h('span', 'grow'));
+  const rows = h('div', 'nbv-rows');
+  box.append(top, rows);
+  try {
+    const r = await wb(['view', 'run', m.line]);
+    top.append(h('span', 'nbv-count muted small', `${r.count} found`));
+    for (const x of r.rows) rows.append(viewRow(x, { open: openFromList }));
+    if (!r.rows.length) rows.append(h('p', 'muted small nbv-note', 'Nothing found yet.'));
+  } catch (x) { rows.append(h('p', 'small nbv-note nbv-error', String(x))); }
+  const about = h('p', 'muted small nb-list-about', 'A view: the notes this line finds, kept up to date. In a page, / → View keeps it there. It reads; it never writes.');
+  return [head, h('h2', 'nb-title', 'A view'), about, box];
+}
+
+async function templatesView(): Promise<HTMLElement[]> {
+  const ts: Tpl[] = (await wb(['template', 'list'])).templates;
+  const head = h('div', 'nb-ed-head');
+  if (!wide()) head.append(button('link-btn nb-back shown', 'Notes', () => { mainList = null; editorShown = false; void pane?.refresh?.(); }, 'left'));
+  head.append(h('span', 'grow'), h('span', 'muted small nb-tpl-count', `${ts.length} template${ts.length === 1 ? '' : 's'}`));
+  const plus = button('btn soft small nb-tpl-new', 'A new template', () => void newTemplate(), 'plus');
+  head.append(plus);
+  const how = button('link-btn nb-tpl-how', 'How templates work', () => openHelp('templates'));
+  how.prepend(h('span', 'nb-tpl-q', '?'));
+  const list = h('div', 'nb-tpl-list');
+  for (const t of ts) {
+    const card = h('div', 'tp-card');
+    card.dataset.id = t.id;
+    const open = h('button', 'tp-open') as HTMLButtonElement;
+    const txt = h('div', 'tp-text');
+    const holds = t.headings.length ? t.headings.join(', ') : t.summary;
+    txt.append(h('div', 'tp-name', t.title), h('div', 'muted small tp-holds', `${holds}${t.asks === 'place' ? ' · asks for a place' : ''}`));
+    open.append(icon('notebook'), txt);
+    open.onclick = () => openFromList(t.id);
+    const more = button('icon-btn small tp-more', '', () => {
+      const box = h('div', 'menu-list');
+      const it = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
+      it('Open it', () => openFromList(t.id));
+      it('Make a page from it…', () => void newPage(undefined, t.id));
+      it('Delete (to the Trash)', () => void remove({ id: t.id, placed: false, kind: 'note', template: true } as Entry));
+      const close = popMenu(more, box, { align: 'right', width: 220 });
+    }, 'more');
+    more.setAttribute('aria-label', `Change ${t.title}`);
+    card.append(open, h('span', 'muted small tp-used', usedText(t.used)), more);
+    list.append(card);
+  }
+  if (!ts.length) list.append(h('p', 'muted nb-empty', 'No templates yet. A new template starts an empty one; on any page, ⋯ → Save as a template copies it.'));
+  const note = h('div', 'nb-tpl-note muted small');
+  note.append(icon('notebook', 14), h('span', '', 'Templates are notes like any other (template: true), so the Python app and Obsidian open them; the Notebook leaves them out of Pages, Places and search unless asked.'));
+  return [head, h('h2', 'nb-title', 'Templates'), how, list, note];
+}
+
+/** + beside Templates: an empty template, opened to be written. */
+async function newTemplate() {
+  try {
+    const have: Tpl[] = (await wb(['template', 'list'])).templates;
+    let name = 'New template';
+    for (let i = 2; have.some(t => t.title.toLowerCase() === name.toLowerCase()); i++) name = `New template ${i}`;
+    const t = await wb(['template', 'new', name]);
+    toast('An empty template: click its title to name it, then write its blocks');
+    changed();
+    openFromList(t.id);
+  } catch (x) { toast(String(x)); }
+}
+
+function templateAbout(): HTMLElement {
+  const box = h('div', 'nb-tpl-about');
+  box.append(icon('notebook', 14), h('span', '', 'A template. New page → From a template copies these blocks into a new page and fills the blanks in braces then: {place}, {date}, {title}, {reader}. Type { to add one.'));
+  return box;
+}
+
+/** A template's settings (sheet W6.2): the name new pages get, what it asks for, where they go. */
+function templateSettings(t: Tpl): HTMLElement {
+  const box = h('div', 'nb-tpl-settings');
+  const set = async (argv: string[]) => {
+    try { await wb(['template', 'set', t.id, ...argv]); changed(); } catch (x) { toast(String(x)); void pane?.refresh?.(); }
+  };
+  const row = (label: string, value: HTMLElement) => { const r = h('div', 'nb-tpl-row'); r.append(h('span', 'muted', label), value); box.append(r); };
+  const names = h('button', 'nb-tpl-names', t.new_name) as HTMLButtonElement;
+  names.title = 'Click to change the name new pages get (blanks like {place} allowed)';
+  names.onclick = () => {
+    const i = h('input', 'field nb-tpl-names-input') as HTMLInputElement;
+    i.value = t.new_name;
+    i.setAttribute('aria-label', 'The name new pages get');
+    names.replaceWith(i);
+    i.focus();
+    i.select();
+    let over = false;
+    const end = (keep: boolean) => { if (over) return; over = true; const v = i.value.trim(); if (keep && v && v !== t.new_name) void set(['--names', v]); else void pane?.refresh?.(); };
+    i.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); end(true); } else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); end(false); } };
+    i.onblur = () => end(true);
+  };
+  row('Names new pages', names);
+  const asks = h('select', 'field small nb-tpl-asks') as HTMLSelectElement;
+  for (const [v, label] of [['place', 'A place'], ['nothing', 'Nothing']]) {
+    const o = h('option', '', label) as HTMLOptionElement;
+    o.value = v;
+    o.selected = (t.asks === 'place') === (v === 'place');
+    asks.append(o);
+  }
+  asks.onchange = () => void set(['--asks', asks.value]);
+  row('Asks for', asks);
+  const goes = h('select', 'field small nb-tpl-goes') as HTMLSelectElement;
+  const opt = (v: string, label: string) => { const o = h('option', '', label) as HTMLOptionElement; o.value = v; o.selected = (t.goes_in || '') === v; goes.append(o); };
+  opt('', 'Pages');
+  if (t.goes_in && t.goes_in_title) opt(t.goes_in, String(t.goes_in_title));
+  void wb(['page', 'tree']).then(tree => {
+    const walk = (rows: Row[], depth: number) => { for (const r of rows) { if (r.id !== t.goes_in) opt(r.id, `${'  '.repeat(depth)}${r.title || 'Untitled'}`); walk(r.children || [], depth + 1); } };
+    walk(tree.pages, 1);
+  }).catch(() => {});
+  goes.onchange = () => void set(['--goes-in', goes.value || 'pages']);
+  row('Puts them in', goes);
+  return box;
+}
+
+/** The pen, or + beside Pages (sheet W6.1): with templates, A new page asks Blank page or one of them; with none, a
+ * blank page at once. `pick`: the template to show first. */
+async function newPage(parent?: { id: string; title: string }, pick?: string) {
+  let ts: Tpl[] = [];
+  try { ts = (await wb(['template', 'list'])).templates; } catch { /* none */ }
+  const blank = () => newNote(parent ? { at: null, question: false, parent: parent.id, hint: `A page inside “${parent.title}”: the first line is its title…` } : undefined);
+  if (!ts.length) return blank();
+  const overlay = document.getElementById('overlay')!;
+  overlay.querySelectorAll('.np-wrap').forEach(x => x.remove());
+  const wrap = h('div', 'plan-modal-wrap np-wrap');
+  const box = h('section', 'plan-modal np-modal');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'A new page');
+  wrap.append(box);
+  overlay.append(wrap);
+  const close = () => { wrap.remove(); document.removeEventListener('keydown', key, true); };
+  const key = (ev: KeyboardEvent) => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); } };
+  document.addEventListener('keydown', key, true);
+  wrap.onmousedown = ev => { if (ev.target === wrap) close(); };
+  const top = h('header', 'plan-modal-head');
+  const tt = h('div');
+  tt.append(h('h2', 'plan-modal-title', 'A new page'), h('div', 'muted small', parent ? `Inside “${parent.title}”: blank, or from one of your templates` : 'Blank, or from one of your templates'));
+  const x = button('icon-btn np-close', '', close, 'x');
+  x.setAttribute('aria-label', 'Close');
+  top.append(tt, x);
+  const grid = h('div', 'np-grid');
+  const left = h('div', 'np-left'), right = h('div', 'np-right');
+  grid.append(left, right);
+  const foot = h('div', 'plan-modal-foot');
+  const make = button('btn primary np-make', 'Make the page', () => void go());
+  foot.append(h('span'), button('btn np-cancel', 'Cancel', close), make);
+  box.append(top, grid, foot);
+  let chosen = pick && ts.some(t => t.id === pick) ? pick : '';
+  // what the form holds for the template chosen
+  let forIn: HTMLInputElement | null = null, nameIn: HTMLInputElement | null = null, goesIn: HTMLSelectElement | null = null;
+  let nameTouched = false;
+  const opts: HTMLButtonElement[] = [];
+  const option = (id: string, label: string, sub: string) => {
+    const b = h('button', `np-opt${id === chosen ? ' on' : ''}`) as HTMLButtonElement;
+    b.dataset.id = id;
+    b.append(icon(id ? 'notebook' : 'pen'));
+    const t = h('div');
+    t.append(h('div', 'np-opt-name', label));
+    if (sub) t.append(h('div', 'muted small np-opt-sub', sub));
+    b.append(t);
+    b.onclick = () => { chosen = id; for (const o of opts) o.classList.toggle('on', o.dataset.id === id); nameTouched = false; drawRight(); };
+    opts.push(b);
+    left.append(b);
+  };
+  option('', 'Blank page', '');
+  left.append(h('div', 'muted small np-group', 'Your templates'));
+  for (const t of ts) option(t.id, t.title, t.headings.length ? t.headings.join(', ') : t.summary);
+  const edit = button('link-btn np-edit', 'Edit your templates', () => { close(); showTemplates(); }, 'pen');
+  left.append(edit);
+  let seq = 0;
+  const preview = h('div', 'np-preview');
+  const refresh = async () => {
+    const t = ts.find(x => x.id === chosen);
+    if (!t) return;
+    const n = ++seq;
+    const place = forIn?.value.trim() || '';
+    try {
+      const r = await wb(['template', 'show', t.id, ...(place ? ['--place', place] : []), ...(readerChapter() ? ['--reader', readerChapter()] : [])]);
+      if (n !== seq) return;
+      if (r.made) {
+        if (nameIn && !nameTouched) nameIn.value = r.made.title;
+        preview.replaceChildren(...previewOf(r.made.text));
+      } else preview.replaceChildren(h('p', 'muted small', 'Give the place it asks for to see the page.'));
+    } catch (x2) { if (n === seq) preview.replaceChildren(h('p', 'small nbv-error', String(x2))); }
+  };
+  let timer = 0;
+  const drawRight = () => {
+    right.replaceChildren();
+    const t = ts.find(x => x.id === chosen);
+    if (!t) {
+      forIn = nameIn = null; goesIn = null;
+      right.append(h('div', 'np-name-head', 'Blank page'), h('p', 'muted small', parent ? `A page inside “${parent.title}”, ready to write: its first line is its title.` : 'A page of its own, ready to write: its first line is its title.'));
+      return;
+    }
+    right.append(h('div', 'np-name-head', t.title));
+    const lab = (text: string, req?: boolean) => { const l = h('div', 'np-label', text); if (req !== undefined) l.append(h('span', req ? 'req' : 'opt muted', req ? ' required' : ' optional')); return l; };
+    right.append(lab('For', t.asks === 'place'));
+    forIn = h('input', 'field np-for') as HTMLInputElement;
+    forIn.value = readerChapter();
+    forIn.placeholder = 'A place: Num 25, Num 25:10-13, Numbers';
+    forIn.oninput = () => { clearTimeout(timer); timer = window.setTimeout(() => void refresh(), 250); };
+    forIn.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); void go(); } };
+    right.append(forIn, h('div', 'muted small np-fills', 'Fills {place} in the template'));
+    const r1 = h('div', 'np-row');
+    nameIn = h('input', 'field np-name') as HTMLInputElement;
+    nameIn.setAttribute('aria-label', 'The new page’s name');
+    nameIn.oninput = () => { nameTouched = true; };
+    nameIn.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); void go(); } };
+    r1.append(h('span', 'muted small', 'The new page’s name'), nameIn);
+    const r2 = h('div', 'np-row');
+    goesIn = h('select', 'field small np-goes') as HTMLSelectElement;
+    const want = parent?.id || t.goes_in || '';
+    const add = (v: string, label: string) => { const o = h('option', '', label) as HTMLOptionElement; o.value = v; o.selected = v === want; goesIn!.append(o); };
+    add('', 'Pages');
+    if (parent) add(parent.id, parent.title);
+    else if (t.goes_in && t.goes_in_title) add(t.goes_in, String(t.goes_in_title));
+    void wb(['page', 'tree']).then(tree => {
+      const walk = (rows: Row[], depth: number) => { for (const r of rows) { if (r.id !== want) add(r.id, `${'  '.repeat(depth)}${r.title || 'Untitled'}`); walk(r.children || [], depth + 1); } };
+      walk(tree.pages, 1);
+    }).catch(() => {});
+    r2.append(h('span', 'muted small', 'Goes in'), goesIn);
+    right.append(r1, r2, preview);
+    preview.replaceChildren(h('p', 'muted small', 'Reading the template…'));
+    void refresh();
+  };
+  const go = async () => {
+    const t = ts.find(x => x.id === chosen);
+    if (!t) { close(); blank(); return; }
+    const place = forIn?.value.trim() || '';
+    if (t.asks === 'place' && !place) { toast(`“${t.title}” asks for a place`); forIn?.focus(); return; }
+    const argv = ['page', 'new', '--template', t.id, ...(place ? ['--place', place] : []), ...(readerChapter() ? ['--reader', readerChapter()] : [])];
+    const name = nameIn?.value.trim();
+    if (name) argv.push('--title', name);
+    if (goesIn?.value) argv.push('--parent', goesIn.value);
+    make.disabled = true;
+    try {
+      const r = await wb(argv);
+      close();
+      toast(`“${r.title}” made from ${t.title}`);
+      changed();
+      openPage(r.id);
+    } catch (x2) { toast(String(x2)); make.disabled = false; }
+  };
+  drawRight();
+  (opts.find(o => o.dataset.id === chosen) || opts[0]).focus();
+}
+
+/** A page made from a template, as it will read (the preview in A new page): headings, its blocks in short, a
+ * scripture block or a view as what it will show. */
+function previewOf(text: string): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  const ls = text.split('\n').slice(1);
+  for (let i = 0; i < ls.length; i++) {
+    const l = ls[i];
+    const fm = /^\s*(```|~~~)\s*(\w*)/.exec(l);
+    if (fm) {
+      const inner: string[] = [];
+      for (i++; i < ls.length && !ls[i].trim().startsWith(fm[1]); i++) inner.push(ls[i]);
+      const lang = fm[2].toLowerCase();
+      const first = (inner.find(x => x.trim()) || '').trim();
+      const d = h('div', 'np-pv-fence');
+      if (lang === 'scripture') d.append(icon('book', 14), h('span', '', `Scripture: ${first || '…'}, from the Bible`));
+      else if (lang === 'view') d.append(icon('filter', 14), h('span', '', `View: ${first || '…'}`));
+      else d.append(h('span', '', inner.join(' ')));
+      out.push(d);
+      continue;
+    }
+    if (!l.trim()) continue;
+    const hm = /^#{1,6}\s+(.*)/.exec(l);
+    if (hm) { out.push(h('div', 'np-pv-h', hm[1])); continue; }
+    const td = /^\s*[-*+]\s+\[[ xX]\]\s?(.*)/.exec(l);
+    if (td) { out.push(h('div', 'np-pv-li', `☐ ${td[1]}`)); continue; }
+    const li = /^\s*(?:[-*+]|\d+[.)])\s+(.*)/.exec(l);
+    if (li) { out.push(h('div', 'np-pv-li', `• ${li[1]}`)); continue; }
+    out.push(h('div', 'np-pv-p', l.trim()));
+  }
+  if (!out.length) out.push(h('p', 'muted small', 'The template is empty: the page will have its name only.'));
+  return out;
 }
 
 // ---- writing on a place, and quick capture -----------------------------------------------------------------------------

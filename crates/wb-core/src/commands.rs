@@ -260,7 +260,12 @@ pub enum Action {
     Place { part: String, at: At },
     Journal { day: String },
     Inbox,
-    Notebook,
+    /// `notebook`: the Notebook; with filters (`notebook @Num 25 questions`), the notes they find, as a view lists them
+    /// (W5): `line` holds the filters, read by `view_line`.
+    Notebook {
+        #[serde(skip_serializing_if = "String::is_empty")]
+        line: String,
+    },
     /// `window phone`: the window at one of the test sizes.
     Window { size: String },
     /// `version ylt`: the reader in that version (`version` alone: which one it is in).
@@ -379,6 +384,140 @@ pub fn split_at(s: &str, books: &[Book]) -> Result<(String, Option<At>), String>
         return Err("A verse range runs upward, like @John 3:16-18".into());
     }
     Ok((text, Some(verse_at(&r))))
+}
+
+// ---- a view's line (W5 of "The Notebook as a workspace") -----------------------------------------------------------
+
+/// What a view's line asks for: `notebook` and its filters, any of them, in any order (`notebook @Num 25 questions`,
+/// `notebook thread phinehas`, `notebook days 7`). A view block, the command field and `wb view run` read a line with
+/// this one parser, so all three list the same notes. Views read; they never write.
+#[derive(Serialize, Debug, Clone, PartialEq, Default)]
+pub struct ViewQuery {
+    /// `@place`: the notes on it or on any verse in it (a verse, a run, a chapter, a book), or on a Strong's number
+    /// (`@H7065`). Kept as a reference that reads again ("Numbers 25", "Numbers 25:10-13").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub place: Option<String>,
+    /// `questions` (all), `open` (open questions) or `answered`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub questions: Option<String>,
+    /// `thread <name>`: one word, or a name in quotes (`thread "the zeal of God"`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thread: Option<String>,
+    /// `days N`: written in the last N days (today is one of them).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub days: Option<u32>,
+    /// `pages`: only the notes with no place (pages of their own).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub pages: bool,
+    /// Any other word: every one must be in the note (its text, title, places or threads).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub words: Vec<String>,
+}
+
+/// A line's words, a phrase in quotes ("…" or “…”) kept as one.
+fn quoted_words(s: &str) -> Result<Vec<String>, String> {
+    let mut out = vec![];
+    let mut cur = String::new();
+    let mut quote: Option<char> = None;
+    for c in s.chars() {
+        match quote {
+            Some(q) if c == q || (q == '“' && c == '”') => {
+                out.push(std::mem::take(&mut cur));
+                quote = None;
+            }
+            Some(_) => cur.push(c),
+            None if c == '"' || c == '“' => {
+                if !cur.is_empty() {
+                    out.push(std::mem::take(&mut cur));
+                }
+                quote = Some(c);
+            }
+            None if c.is_whitespace() => {
+                if !cur.is_empty() {
+                    out.push(std::mem::take(&mut cur));
+                }
+            }
+            None => cur.push(c),
+        }
+    }
+    if quote.is_some() {
+        return Err("A name in quotes needs its closing quote, like: notebook thread \"the zeal of God\"".into());
+    }
+    if !cur.is_empty() {
+        out.push(cur);
+    }
+    Ok(out.into_iter().filter(|w| !w.trim().is_empty()).collect())
+}
+
+/// A place as a reference that reads again: the label with a plain hyphen ("Numbers 25:10-13").
+pub fn span_ref(sp: &Span) -> String {
+    crate::places::span_label(sp).replace('–', "-")
+}
+
+/// Read a view's line (with or without its leading `notebook`): see `ViewQuery`.
+pub fn view_line(line: &str, books: &[Book]) -> Result<ViewQuery, String> {
+    let mut t = quoted_words(line)?;
+    if t.first().is_some_and(|w| w.eq_ignore_ascii_case("notebook")) {
+        t.remove(0);
+    }
+    let mut q = ViewQuery::default();
+    let mut i = 0;
+    while i < t.len() {
+        let w = t[i].clone();
+        let low = w.to_lowercase();
+        if let Some(first) = w.strip_prefix('@') {
+            // the longest run of words after @ that is a place: "@Num 25 questions" is Num 25, then questions
+            let mut rest: Vec<String> = if first.is_empty() { vec![] } else { vec![first.to_string()] };
+            rest.extend(t[i + 1..].iter().cloned());
+            let mut took = None;
+            for k in (1..=rest.len().min(5)).rev() {
+                let cand = rest[..k].join(" ");
+                if is_strong(&cand) {
+                    took = Some((k, cand.to_uppercase()));
+                    break;
+                }
+                if let Ok(sp) = parse_span(&cand, books) {
+                    // "@Num 99": a book, then a chapter it does not have, is that error (not Numbers and the word 99)
+                    if let Some(next) = rest.get(k).filter(|n| n.starts_with(|c: char| c.is_ascii_digit())) {
+                        return Err(parse_span(&format!("{cand} {next}"), books).err().map(|e| e.0).unwrap_or_else(|| "Give a place like @Num 25 or @Num 25:11".into()));
+                    }
+                    took = Some((k, span_ref(&sp)));
+                    break;
+                }
+            }
+            let Some((k, place)) = took else {
+                return Err(format!("“{}” is not a place: try @Num 25, @Num 25:11, @Numbers or @H7065", rest.first().map(String::as_str).unwrap_or("")));
+            };
+            if q.place.is_some() {
+                return Err("A view has one @place.".into());
+            }
+            q.place = Some(place);
+            i += k + usize::from(first.is_empty());
+            continue;
+        }
+        match low.as_str() {
+            "questions" | "question" => q.questions = Some(q.questions.take().unwrap_or_else(|| "all".into())),
+            "open" => q.questions = Some("open".into()),
+            "answered" => q.questions = Some("answered".into()),
+            "pages" => q.pages = true,
+            "days" => {
+                let n = t.get(i + 1).and_then(|x| x.parse::<u32>().ok()).filter(|n| (1..=3650).contains(n));
+                let Some(n) = n else { return Err("days takes a number: notebook days 7 (written in the last 7 days)".into()) };
+                q.days = Some(n);
+                i += 1;
+            }
+            "thread" => {
+                let Some(name) = t.get(i + 1).filter(|x| !x.starts_with('@')) else {
+                    return Err("thread takes a thread's name: notebook thread phinehas (a name of more words in quotes)".into());
+                };
+                q.thread = Some(name.clone());
+                i += 1;
+            }
+            _ => q.words.push(low),
+        }
+        i += 1;
+    }
+    Ok(q)
 }
 
 fn group_scope(token: &str) -> Option<String> {
@@ -1165,6 +1304,8 @@ pub fn parse(input: &str, books: &[Book]) -> Result<Action, String> {
             }
             match find_doc(a) {
                 Some(d) => Action::Help { topic: d["name"].as_str().unwrap_or_default().into() },
+                // W5: Help's Guide (templates, views) is new in the Rust app
+                None if crate::guide::guide_entry(a).is_some() => Action::Help { topic: crate::guide::guide_entry(a).unwrap()["name"].as_str().unwrap_or_default().into() },
                 None => return Err(format!("No command or topic called “{a}”. Type help for the list. (To search for the words, type: search help {a})")),
             }
         }
@@ -1357,7 +1498,10 @@ pub fn parse(input: &str, books: &[Book]) -> Result<Action, String> {
             Action::Journal { day: a.into() }
         }
         "inbox" => Action::Inbox,
-        "notebook" => Action::Notebook,
+        "notebook" => {
+            view_line(a, books)?;
+            Action::Notebook { line: a.trim().to_string() }
+        }
         "window" => {
             let w = a.to_lowercase();
             if !WINDOW_SIZES.contains(&w.as_str()) {
@@ -1566,6 +1710,26 @@ mod tests {
         assert!(parse("place rose up", &bs).unwrap_err().contains("@"));
         assert!(parse("journal yesterday", &bs).is_err());
         assert!(parse("window huge", &bs).is_err());
+        // W5: a view's line, the same parser for a view block, the command field and wb view run
+        assert_eq!(p("notebook"), serde_json::json!({"cmd": "notebook"}));
+        assert_eq!(p("notebook @Num 25 questions"), serde_json::json!({"cmd": "notebook", "line": "@Num 25 questions"}));
+        let v = |t: &str| serde_json::to_value(view_line(t, &bs).unwrap()).unwrap();
+        assert_eq!(v("notebook @Num 25 questions"), serde_json::json!({"place": "Numbers 25", "questions": "all"}));
+        assert_eq!(v("@ Num 25:10-13 open zeal"), serde_json::json!({"place": "Numbers 25:10-13", "questions": "open", "words": ["zeal"]}));
+        assert_eq!(v("notebook @Song of Solomon 2 pages"), serde_json::json!({"place": "Song of Solomon 2", "pages": true}));
+        assert_eq!(v("notebook thread phinehas"), serde_json::json!({"thread": "phinehas"}));
+        assert_eq!(v("notebook thread \"the zeal of God\" days 7"), serde_json::json!({"thread": "the zeal of God", "days": 7}));
+        assert_eq!(v("notebook @h7065"), serde_json::json!({"place": "H7065"}));
+        assert_eq!(v("notebook @Numbers answered"), serde_json::json!({"place": "Numbers", "questions": "answered"}));
+        assert_eq!(v("notebook"), serde_json::json!({}));
+        assert!(view_line("notebook days", &bs).is_err());
+        assert!(view_line("notebook days soon", &bs).is_err());
+        assert!(view_line("notebook thread", &bs).is_err());
+        assert!(view_line("notebook @Nowhere 3", &bs).is_err());
+        assert!(view_line("notebook thread \"open", &bs).is_err());
+        assert!(parse("notebook @Num 99", &bs).is_err());
+        assert_eq!(p("help templates"), serde_json::json!({"cmd": "help", "topic": "templates"}));
+        assert_eq!(p("help views"), serde_json::json!({"cmd": "help", "topic": "views"}));
     }
 
     #[test]

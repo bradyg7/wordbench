@@ -5,7 +5,7 @@ import { api, inApp, wb } from './api';
 import { app, book, goTo, here, type At } from './app';
 import { layers } from './layers';
 import { CHANGES, type Change } from './dock';
-import { countInbox, openNotebook } from './notebook';
+import { countInbox, openNotebook, openNotebookView } from './notebook';
 import {
   dock, frontResults, jumpTo, openBdb, openCount, openDefine, openFind, openForms, openHelp, openInterlinear, openKeys, openLesson, openLexiconc,
   openMarked, openNear, openPlace, openPassage, openPlans, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
@@ -135,7 +135,11 @@ export async function perform(a: any, line: string): Promise<string> {
     }
     case 'journal': openNotebook('journal'); return 'The Notebook: Days';
     case 'inbox': openNotebook('inbox'); return `The Notebook: Pages, the notes with no place yet (${await countInbox()})`;
-    case 'notebook': openNotebook(); return 'The Notebook';
+    case 'notebook': {
+      // W5: with filters, the notes the line finds (the same rows as a view block and wb view run)
+      if (a.line) { const r = await wb(['view', 'run', a.line]); openNotebookView(a.line); return `${r.count} found: notebook ${a.line}`; }
+      openNotebook(); return 'The Notebook';
+    }
     case 'thread': {
       const p = at(a);
       await wb(['thread', 'add', a.name, p.anchor]);

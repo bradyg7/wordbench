@@ -7,7 +7,7 @@
 import { wb } from './api';
 import { app, here } from './app';
 import { toast } from './sheets';
-import { button, h, icon, popMenu, type Found } from './ui';
+import { button, h, icon, placePill, popMenu, type Found } from './ui';
 import { drawVerses, openSplit, type MarkedVerse } from './verses';
 
 export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number }
@@ -30,6 +30,10 @@ export interface Host {
   redraw(): void;
   /** A page inside this one, its link written where the block was. */
   pageInside(title: string, after: number | null): Promise<void>;
+  /** Open a note (a view's row). */
+  open(id: string): void;
+  /** W5: the page is a template: `{` offers the blanks, and its blanks are shown as blanks. */
+  template?: boolean;
 }
 
 /** Which block to start writing in once the page is drawn again: its number (from 1) and where the cursor goes. */
@@ -57,6 +61,8 @@ export function drawBlocks(data: Blocks, host: Host): HTMLElement {
   wrap.dataset.id = data.id;
   scriptureNow = data.blocks.some(isScripture) ? { id: data.id, got: wb(['page', 'scripture', data.id]) } : null;
   scriptureNow?.got.catch(() => {});
+  viewsNow = data.blocks.some(isView) ? { id: data.id, got: wb(['page', 'views', data.id]) } : null;
+  viewsNow?.got.catch(() => {});
   for (const b of data.blocks) wrap.append(blockEl(data, b, host));
   const add = h('div', 'nb-block-add muted', data.blocks.length ? 'Write here, or type / for a block' : 'Write the page here, or type / for a block');
   add.onclick = () => startNew(data, host, add, data.blocks.length ? data.blocks[data.blocks.length - 1].n : 0, '');
@@ -138,6 +144,7 @@ function drawn(b: Blk, host: Host, id: string): Node {
   if (b.kind === 'divider') return h('hr', 'nb-hr');
   if (b.kind === 'table') return table(b.text);
   if (isScripture(b)) return scriptureBlock(b, id, host);
+  if (isView(b)) return viewBlock(b, id, host);
   if (b.kind === 'fence') return fence(b);
   const f = host.render(b.text, refs, links);
   if (b.kind === 'numbered') {
@@ -173,9 +180,15 @@ const isScripture = (b: Blk) => b.kind === 'fence' && (b.lang || '').split(/\s/)
  * drawn from the Bible, verbatim, with the person's highlights. Its head: the reference · version, Paragraph | Lines,
  * YLT, Open ▾. A choice is kept in the block's fence (`wb block scripture`). */
 function scriptureBlock(b: Blk, id: string, host: Host): HTMLElement {
-  const box = h('div', 'nb-scripture sv-block');
   const lines = b.text.split('\n').slice(1).map(l => l.trim().toLowerCase());
   const ref = (b.text.split('\n')[1] || '').trim().replace(/^`+$/, '');
+  // a template's scripture block holds a blank: the verses come when a page is made from it
+  if (/\{[a-z]+\}/.test(ref)) {
+    const ph = h('div', 'nb-scripture nb-blank-block');
+    ph.append(icon('book', 14), h('span', '', `Scripture: ${ref}, from the Bible`), h('span', 'muted small', ' · filled when a page is made'));
+    return ph;
+  }
+  const box = h('div', 'nb-scripture sv-block');
   const isLines = lines.includes('lines'), isYlt = lines.includes('ylt');
   const head = h('div', 'sv-head');
   const label = h('span', 'sv-ref', ref || 'Scripture');
@@ -213,6 +226,84 @@ function scriptureBlock(b: Blk, id: string, host: Host): HTMLElement {
   return box;
 }
 
+/** A page's views with what each finds (`wb page views`), asked for once each time the page is drawn. */
+let viewsNow: { id: string; got: Promise<any> } | null = null;
+const isView = (b: Blk) => b.kind === 'fence' && (b.lang || '').split(/\s/)[0].toLowerCase() === 'view';
+
+/** A view (W5, sheet W4): a list kept up to date. The file holds one line of the command language; the notes it finds
+ * are listed each time the page is drawn (`wb page views`, the same rows as `wb view run`). Its head: the line (a click
+ * writes it anew, `wb block view`) and how many it found; a row opens its note. A view reads; it never writes. */
+function viewBlock(b: Blk, id: string, host: Host): HTMLElement {
+  const box = h('div', 'nb-view');
+  const line = (b.text.split('\n').slice(1).find(l => l.trim() && !/^(```|~~~)/.test(l.trim())) || '').trim();
+  const head = h('div', 'nbv-head');
+  const lineBtn = h('button', 'nbv-line', line || 'notebook …') as HTMLButtonElement;
+  lineBtn.title = 'Click to change what this view lists';
+  const count = h('span', 'nbv-count muted small', '');
+  head.append(icon('filter', 14), lineBtn, h('span', 'grow'), count);
+  const body = h('div', 'nbv-rows');
+  body.append(h('p', 'muted small nbv-note', line ? 'Finding the notes…' : 'No line yet: click above and write one, like notebook @Num 25 questions.'));
+  box.append(head, body);
+  lineBtn.onclick = ev => {
+    ev.stopPropagation();
+    const i = h('input', 'field nbv-input') as HTMLInputElement;
+    i.value = line || 'notebook ';
+    i.setAttribute('aria-label', 'The view’s line');
+    lineBtn.replaceWith(i);
+    i.focus();
+    i.setSelectionRange(i.value.length, i.value.length);
+    let over = false;
+    const end = async (keep: boolean) => {
+      if (over) return;
+      over = true;
+      const v = i.value.trim();
+      if (keep && v && v !== line) {
+        try {
+          const n = await blockNow(id, b);
+          if (!n) { toast('The page changed; try again'); return host.redraw(); }
+          await wb(['block', 'view', id, String(n), v]);
+          host.changed();
+          return;
+        } catch (x) { toast(String(x)); }
+      }
+      host.redraw();
+    };
+    i.onkeydown = e2 => {
+      if (e2.key === 'Enter') { e2.preventDefault(); void end(true); }
+      else if (e2.key === 'Escape') { e2.preventDefault(); e2.stopPropagation(); void end(false); }
+    };
+    i.onblur = () => void end(true);
+  };
+  if (line && viewsNow?.id === id) {
+    void viewsNow.got.then(d => {
+      const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
+      if (!mine) return;
+      body.replaceChildren();
+      if (mine.error) { body.append(h('p', `small nbv-note${mine.blank ? ' muted' : ' nbv-error'}`, mine.error)); return; }
+      count.textContent = `${mine.count} found`;
+      const rows: any[] = mine.rows || [];
+      for (const r of rows.slice(0, 60)) body.append(viewRow(r, host));
+      if (rows.length > 60) body.append(h('p', 'muted small nbv-note', `and ${rows.length - 60} more: narrow the line to see them`));
+      if (!rows.length) body.append(h('p', 'muted small nbv-note', 'Nothing found yet. It fills as you write.'));
+    }).catch(x => { body.replaceChildren(h('p', 'small nbv-note nbv-error', String(x))); });
+  }
+  return box;
+}
+
+/** A view's row, as the Notebook's entries read: a question's ?, the title, its place. */
+export function viewRow(r: any, host: Pick<Host, 'open'>): HTMLElement {
+  const row = h('button', `nbv-row${r.kind === 'question' ? ' is-question' : ''}${r.status === 'done' ? ' done' : ''}`) as HTMLButtonElement;
+  row.dataset.id = r.id || '';
+  if (r.kind === 'question') row.append(h('span', 'nbv-q', '?'));
+  row.append(h('span', 'nbv-title', r.title || (r.kind === 'day' ? 'A day’s page' : 'Untitled')));
+  if (r.kind === 'day') row.append(h('span', 'pill unplaced', r.today ? 'Today’s page' : 'Day’s page'));
+  else if (r.placed && r.anchor) row.append(placePill(r.label));
+  else if (r.placed) row.append(h('span', 'pill unplaced', r.label));
+  else row.append(h('span', 'pill unplaced', 'A page'));
+  row.onclick = ev => { ev.stopPropagation(); if (r.id) host.open(r.id); };
+  return row;
+}
+
 /** A block's number now (the page may have changed since it was drawn): found again by its text, nearest where it was. */
 async function blockNow(id: string, b: Blk): Promise<number> {
   const now: Blk[] = (await wb(['page', 'blocks', id])).blocks;
@@ -245,7 +336,7 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
   { key: 'table', label: 'Table', what: 'Rows and columns', ico: 'filter', write: '| Column | Column |\n| --- | --- |\n|  |  |', caret: 2 },
   { key: 'link', label: 'Link to a page', what: '[[a page’s title]]', ico: 'notebook', write: '[[' },
   { key: 'inside', label: 'Page inside this one', what: 'A new page, with a link to it here', ico: 'notebook', write: '' },
-  { key: 'view', label: 'View', what: 'A list kept up to date (a line of the command language)', ico: 'filter', write: '```view\n\n```', caret: 8 },
+  { key: 'view', label: 'View', what: 'A list kept up to date (a line of the command language)', ico: 'filter', write: '```view\nnotebook \n```', caret: 17 },
 ];
 
 let menuKey: ((ev: KeyboardEvent) => boolean) | null = null;
@@ -331,6 +422,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   ta.oninput = () => {
     fit();
     slashMenu(ta, data, host, cur, finish);
+    if (host.template) blankMenu(ta);
     clearTimeout(timer);
     timer = window.setTimeout(save, 600);
     host.maybeSuggest(ta);
@@ -466,6 +558,61 @@ function slashMenu(ta: HTMLTextAreaElement, data: Blocks, host: Host, cur: { n: 
     if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); mark(on + (ev.key === 'ArrowDown' ? 1 : -1)); return true; }
     if (ev.key === 'Enter' || ev.key === 'Tab') { ev.preventDefault(); void choose(hits[on]); return true; }
     if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); return true; }
+    return false;
+  };
+}
+
+/** The blanks a template can hold (W5, sheet W6.2): `{` typed in a template's block offers them. */
+const BLANKS: { key: string; what: string; ico: string }[] = [
+  { key: '{place}', what: 'The place picked', ico: 'pin' },
+  { key: '{date}', what: 'The day it is made', ico: 'pen' },
+  { key: '{title}', what: 'The new page’s name', ico: 'prompt' },
+  { key: '{reader}', what: 'The chapter in the reader then', ico: 'book' },
+];
+
+function blankMenu(ta: HTMLTextAreaElement) {
+  const at = ta.selectionStart;
+  if (ta.selectionEnd !== at || ta.value[at - 1] !== '{' || ta.value.startsWith('/')) return;
+  menuClose?.();
+  const d = app.drawn;
+  const here = d ? `${d.chapter.name} ${d.chapter.chapter}` : '';
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const box = h('div', 'nb-blockmenu nb-blankmenu');
+  box.append(h('div', 'nb-blockmenu-head', 'A blank · filled when a page is made'));
+  const rows: HTMLButtonElement[] = [];
+  let on = 0;
+  const mark = (i: number) => { rows[on]?.classList.remove('on'); on = Math.max(0, Math.min(rows.length - 1, i)); rows[on]?.classList.add('on'); };
+  const choose = (k: string) => {
+    close();
+    const p = ta.selectionStart;
+    ta.setRangeText(k, p - 1, p, 'end');
+    ta.focus();
+    ta.dispatchEvent(new Event('input'));
+  };
+  for (const b of BLANKS) {
+    const r = h('button', 'nb-blockmenu-row') as HTMLButtonElement;
+    r.dataset.key = b.key;
+    r.append(icon(b.ico));
+    const t = h('div');
+    const eg = (b.key === '{place}' || b.key === '{reader}') && here ? `: ${here}` : b.key === '{date}' ? `: ${today}` : '';
+    t.append(h('div', 'nb-blockmenu-label', b.key), h('div', 'nb-blockmenu-what', b.what + eg));
+    r.append(t);
+    r.onmousedown = ev => ev.preventDefault();
+    r.onmousemove = () => { if (rows[on] !== r) mark(rows.indexOf(r)); };
+    r.onclick = () => choose(b.key);
+    rows.push(r);
+    box.append(r);
+  }
+  mark(0);
+  const closeMenu = popMenu(ta, box, { width: 300 });
+  const close = () => { closeMenu(); menuKey = null; if (menuClose === close) menuClose = null; };
+  menuClose = close;
+  menuKey = ev => {
+    if (!box.isConnected) return false;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); mark(on + (ev.key === 'ArrowDown' ? 1 : -1)); return true; }
+    if (ev.key === 'Enter' || ev.key === 'Tab') { ev.preventDefault(); choose(BLANKS[on].key); return true; }
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); return true; }
+    if (ev.key.length === 1) { close(); return false; }
     return false;
   };
 }

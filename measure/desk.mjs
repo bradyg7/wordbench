@@ -933,6 +933,199 @@ try {
   await page.evaluate(() => window.__wb.run('notebook'));
   await sleep(400);
 
+  // W5, views and templates (sheets W4, W6.1, W6.2, W6.3). A view's rows are wb view run's for the same line, in a page
+  // and in the command field; views never write. The Notebook starts with no templates (the person's choice,
+  // 2026-11-07). Verses expected here come from the database (wb text).
+  const ids = rows => rows.map(r => r.id).join();
+  const filesNow = () => { const out = {}; const walk = d => { for (const n of readdirSync(d, { withFileTypes: true })) { const p = path.join(d, n.name); if (n.isDirectory()) { if (n.name !== 'sessions') walk(p); } else out[p] = readFileSync(p, 'utf8'); } }; walk(study); return JSON.stringify(out); };
+  const viewRowsIn = sel => page.locator(`${sel} .nbv-row`).evaluateAll(els => els.map(e => e.dataset.id).join());
+  const waitRows = (sel, want) => page.waitForFunction(([sel, want]) => [...document.querySelectorAll(`${sel} .nbv-row`)].map(e => e.dataset.id).join() === want, [sel, want], { timeout: 20000 }).then(() => true, () => false);
+  await page.locator('.pane-notebook .nb-side-templates').waitFor({ timeout: 10000 }).catch(() => {});
+  check('the Notebook starts with no templates: wb template list is empty, and Pages has no Templates section', wbj('template', 'list').templates.length === 0 && await page.locator('.pane-notebook .nb-side-head[data-part="templates"]').count() === 0 && await page.locator('.pane-notebook .nb-side-templates').count() === 1);
+  // a view in a page: the same rows as wb view run, and nothing written by drawing it
+  const vLine = 'notebook @Num 25 questions';
+  const w5 = wbj('page', 'new', 'W5 questions for the group').id;
+  execFileSync(wbExe, ['block', 'add', w5, 'The group’s questions, then mine at Numbers 25:'], { env });
+  execFileSync(wbExe, ['block', 'add', w5, '-'], { env, input: '```view\n' + vLine + '\n```' });
+  execFileSync(wbExe, ['block', 'add', w5, '# From the group'], { env });
+  const vRun = wbj('view', 'run', vLine);
+  // (a page written from outside the window: the Notebook is drawn again until its row is in the tree)
+  for (let i = 0; i < 6 && !(await rowOf(w5).count()); i++) {
+    await page.evaluate(() => window.__wb.run('notebook'));
+    await page.evaluate(() => window.__wb.changed());
+    await rowOf(w5).waitFor({ timeout: 5000 }).catch(() => {});
+  }
+  if (!(await rowOf(w5).count())) await page.screenshot({ path: shots + 'debug-w5-tree.png' });
+  await rowOf(w5).locator('.nb-tree-open').click();
+  await ed.locator('.nb-title', { hasText: 'W5 questions for the group' }).waitFor({ timeout: 10000 });
+  const viewBefore = filesNow();
+  const inPage = await waitRows('.pane-notebook .nb-blocks .nb-view', ids(vRun.rows));
+  check('a view lists what its line finds: the same rows, in the same order, as wb view run', inPage && vRun.count > 0 && (await ed.locator('.nb-view .nbv-count').textContent()) === `${vRun.count} found` && (await ed.locator('.nb-view .nbv-line').textContent()) === vLine, `${vRun.count} rows`);
+  const qRows = await ed.locator('.nb-view .nbv-row.is-question .nbv-q').count();
+  const pills = await ed.locator('.nb-view .nbv-row .pill').allTextContents();
+  check('its rows read as the Notebook’s: a question’s ?, the title, its place', qRows === vRun.rows.filter(r => r.kind === 'question').length && JSON.stringify(pills) === JSON.stringify(vRun.rows.map(r => r.label)), pills.join(' · '));
+  await page.screenshot({ path: shots + '1440-notebook-a-view.png' });
+  await sleep(800);
+  check('a view writes nothing: the study folder is the same after it is drawn', filesNow() === viewBefore);
+  // the command field: the same line lists the same rows
+  await page.evaluate(l => window.__wb.run(l), vLine);
+  const inField = await waitRows('.pane-notebook .nb-viewlist', ids(vRun.rows));
+  check('the command field: notebook @Num 25 questions lists the same rows as the view and wb view run', inField && (await page.locator('.pane-notebook .nb-viewlist .nbv-count').textContent()) === `${vRun.count} found`);
+  await page.screenshot({ path: shots + '1440-notebook-a-view-from-the-command-field.png' });
+  // a row opens its note; Back returns to the list
+  const vFirst = vRun.rows[0];
+  await page.locator('.pane-notebook .nb-viewlist .nbv-row').first().click();
+  await ed.locator('.nb-title', { hasText: vFirst.title.slice(0, 20) }).waitFor({ timeout: 10000 }).catch(() => {});
+  const opened = (await ed.locator('.nb-title').textContent()).startsWith(vFirst.title.slice(0, 20));
+  await ed.locator('.nb-back', { hasText: 'The view' }).click();
+  check('a view’s row opens its note, and Back returns to the view', opened && await waitRows('.pane-notebook .nb-viewlist', ids(vRun.rows)));
+  // the line edited in place: the fence in the file and the rows change
+  await rowOf(w5).locator('.nb-tree-open').click();
+  await ed.locator('.nb-title', { hasText: 'W5 questions for the group' }).waitFor({ timeout: 10000 });
+  await waitRows('.pane-notebook .nb-blocks .nb-view', ids(vRun.rows));
+  await ed.locator('.nb-view .nbv-line').click();
+  await ed.locator('.nb-view .nbv-input').fill('notebook @Num 25:1-9 open');
+  await page.keyboard.press('Enter');
+  const lineKept = await waitLong(w5, t => t.includes('```view\nnotebook @Num 25:1-9 open\n```'));
+  const vOpen = wbj('view', 'run', 'notebook @Num 25:1-9 open');
+  check('the line edited in place is written in the fence, and the rows are what the new line finds', lineKept && await waitRows('.pane-notebook .nb-blocks .nb-view', ids(vOpen.rows)) && vOpen.rows.every(r => r.kind === 'question' && r.status !== 'done'), `${vOpen.count} rows`);
+  await sleep(800);
+  await ed.locator('.nb-view .nbv-line').click();
+  await ed.locator('.nb-view .nbv-input').fill('notebook @Nowhere 9');
+  await page.keyboard.press('Enter');
+  await sleep(1500);
+  check('a line that cannot be read is not written', bodyOf(w5).includes('```view\nnotebook @Num 25:1-9 open\n```') && !bodyOf(w5).includes('Nowhere'));
+  await page.evaluate(() => window.__wb.changed());
+  await sleep(600);
+
+  // templates: the Templates page (empty), a new template, its settings and blanks
+  await page.locator('.pane-notebook .nb-side-templates').click();
+  await ed.locator('.nb-title', { hasText: 'Templates' }).waitFor({ timeout: 10000 });
+  check('Templates (from the sidebar’s foot): none yet, and how to make one', (await ed.locator('.nb-tpl-count').textContent()) === '0 templates' && await ed.locator('.nb-tpl-new').count() === 1 && /Save as a template/.test(await ed.locator('.nb-tpl-list').textContent()));
+  await ed.locator('.nb-tpl-new').click();
+  await ed.locator('.nb-crumbs', { hasText: 'Templates' }).waitFor({ timeout: 10000 });
+  const tpl = wbj('template', 'list').templates[0]?.id;
+  const tplFile = () => readFileSync(fileOf(tpl), 'utf8').replace(/\r\n/g, '\n');
+  check('A new template makes an empty one, a note with template: true, and opens it with its settings', !!tpl && /\ntemplate: true\n/.test(tplFile()) && await ed.locator('.nb-tpl-settings').count() === 1 && await ed.locator('.nb-tpl-about').count() === 1 && (await ed.locator('.nb-crumbs > *').allTextContents()).join(' ') === 'Templates / New template', (await ed.locator('.nb-crumbs > *').allTextContents()).join(' '));
+  await ed.locator('.nb-title').click();
+  await ed.locator('.nb-title-input').fill('W5 Chapter study');
+  await page.keyboard.press('Enter');
+  await waitLong(tpl, t => /\n---\nW5 Chapter study/.test(t));
+  for (const b of ['# Read', '```scripture\n{place}\n```', '# What I noticed', '- …', '# Questions', '```view\nnotebook @{place} questions\n```', 'Made on {date}, the reader at {reader}: {title}']) execFileSync(wbExe, ['block', 'add', tpl, '-'], { env, input: b });
+  await page.evaluate(() => window.__wb.changed());
+  await ed.locator('.nb-blocks .nb-blank-block').waitFor({ timeout: 10000 }).catch(() => {});
+  check('a template’s scripture block and view hold {place}: shown as blanks, filled when a page is made', /Scripture: \{place\}, from the Bible/.test(await ed.locator('.nb-blocks .nb-blank-block').textContent().catch(() => '')) && /filled when a page is made/.test(await ed.locator('.nb-blocks .nb-view').textContent().catch(() => '')));
+  // { in a template's block offers the blanks
+  await sleep(800);
+  await ed.locator('.nb-blocks .nb-block-add').click();
+  await page.keyboard.type('Read again {');
+  await page.locator('.nb-blankmenu .nb-blockmenu-row').first().waitFor({ timeout: 5000 }).catch(() => {});
+  const blanks = await page.locator('.nb-blankmenu .nb-blockmenu-row').evaluateAll(els => els.map(e => e.dataset.key).join(' '));
+  await page.screenshot({ path: shots + '1440-notebook-a-template-blanks.png' });
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  check('{ in a template offers the blanks {place} {date} {title} {reader}; one picked is written', blanks === '{place} {date} {title} {reader}' && await waitLong(tpl, t => t.includes('\n\nRead again {place}')), blanks);
+  // its settings: asks for a place, the name new pages get
+  await sleep(900);
+  await ed.locator('.nb-tpl-asks').selectOption('place');
+  const asksKept = await waitLong(tpl, t => /\nasks: "?place"?\n/.test(t));
+  await ed.locator('.nb-tpl-settings .nb-tpl-names').waitFor({ timeout: 10000 });
+  await sleep(600);
+  await ed.locator('.nb-tpl-settings .nb-tpl-names').click();
+  await ed.locator('.nb-tpl-names-input').fill('W5 Chapter study: {place}');
+  await page.keyboard.press('Enter');
+  const nameKept = await waitLong(tpl, t => /\nnew_name: "?W5 Chapter study: \{place\}"?\n/.test(t));
+  check('its settings are front-matter fields: asks: place, and the name new pages get', asksKept && nameKept, tplFile().split('---')[1]);
+  await page.screenshot({ path: shots + '1440-notebook-editing-a-template.png' });
+  const flat = rows => rows.flatMap(r => [r.id, ...flat(r.children || [])]);
+  const searchHits = wbj('notebook', '--group', 'none', '--search', 'W5 Chapter study').groups.flatMap(g => g.entries).map(e => e.id);
+  await page.locator('.pane-notebook .nb-template-row').first().waitFor({ timeout: 10000 }).catch(() => {});
+  check('a template is left out of Pages, the lists and search, and listed under Templates', !flat(treeNow().pages).includes(tpl) && !searchHits.includes(tpl) && !wbj('notebook', '--group', 'pages').groups.flatMap(g => g.entries).some(e => e.id === tpl) && (await page.locator('.pane-notebook .nb-template-row .nb-tree-title').allTextContents()).join() === 'W5 Chapter study');
+  // A new page from the template (sheet W6.1): the pen asks Blank page or a template
+  await page.evaluate(() => window.__wb.run('go Num 25'));
+  await page.waitForFunction(() => document.querySelector('#place .place-label')?.textContent === 'Numbers 25', null, { timeout: 10000 }).catch(() => {});
+  await page.locator('.pane-notebook .nb-new').click();
+  await page.locator('.np-modal').waitFor({ timeout: 10000 });
+  const optsTxt = await page.locator('.np-modal .np-opt .np-opt-name').allTextContents();
+  await page.locator('.np-modal .np-opt', { hasText: 'W5 Chapter study' }).click();
+  await page.waitForFunction(() => document.querySelector('.np-modal .np-name')?.value === 'W5 Chapter study: Numbers 25', null, { timeout: 10000 }).catch(() => {});
+  const forVal = await page.locator('.np-modal .np-for').inputValue();
+  const nameVal = await page.locator('.np-modal .np-name').inputValue();
+  const pv = await page.locator('.np-modal .np-preview').textContent();
+  check('the pen offers Blank page or a template; the template’s form: For (the reader’s chapter), the new page’s name, a preview', optsTxt.join() === 'Blank page,W5 Chapter study' && forVal === 'Numbers 25' && nameVal === 'W5 Chapter study: Numbers 25' && pv.includes('Scripture: Numbers 25, from the Bible') && pv.includes('View: notebook @Numbers 25 questions'), `${optsTxt} · ${forVal} · ${nameVal}`);
+  await page.screenshot({ path: shots + '1440-notebook-a-new-page-from-a-template.png' });
+  await page.locator('.np-modal .np-make').click();
+  await ed.locator('.nb-title', { hasText: 'W5 Chapter study: Numbers 25' }).waitFor({ timeout: 20000 }).catch(() => {});
+  const made = treeNow().pages.find(r => r.title === 'W5 Chapter study: Numbers 25')?.id;
+  const madeDay = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const tBody = bodyOf(tpl);
+  const expected = 'W5 Chapter study: Numbers 25' + tBody.slice(tBody.indexOf('\n')).replaceAll('{place}', 'Numbers 25').replaceAll('{date}', madeDay).replaceAll('{reader}', 'Numbers 25').replaceAll('{title}', 'W5 Chapter study: Numbers 25');
+  const madeFile = made ? readFileSync(fileOf(made), 'utf8').replace(/\r\n/g, '\n') : '';
+  check('Make the page: the template’s blocks, the blanks filled ({place}, {date}, {title}, {reader}), from_template in it, in Pages', !!made && bodyOf(made) === expected && madeFile.includes(`\nfrom_template: "${tpl}"\n`) &&!/\ntemplate: true\n/.test(madeFile), JSON.stringify(made && bodyOf(made)).slice(0, 200));
+  const chapter = textOf('Num 25');
+  check('the new page’s scripture block draws Numbers 25 from the Bible, and its view lists what wb view run finds', await waitVerses(0, chapter) && await waitRows('.pane-notebook .nb-blocks .nb-view', ids(wbj('view', 'run', 'notebook @Numbers 25 questions').rows)));
+  await page.screenshot({ path: shots + '1440-notebook-a-page-made-from-a-template.png' });
+  // from a terminal: wb page new --template, its place askedPlace for, a page inside another, used N times
+  let askedPlace = '';
+  try { execFileSync(wbExe, ['page', 'new', '--template', 'W5 Chapter study'], { env, stdio: 'pipe' }); } catch (x) { askedPlace = String(x.stderr); }
+  const made2 = wbj('page', 'new', '--template', 'W5 Chapter study', '--place', 'Ps 106', '--parent', w5);
+  const tl = wbj('template', 'list').templates.find(t => t.id === tpl);
+  check('wb page new --template: it asks for the place, names the page from the template, goes where it is told; wb template list counts the uses', /asks for a place/.test(askedPlace) && made2.title === 'W5 Chapter study: Psalms 106' && made2.parent === w5 && tl?.used === 2 && tl?.asks === 'place' && wbj('template', 'show', 'w5 chapter').id === tpl, `${made2.title} · used ${tl?.used}`);
+  await rowOf(made).locator('.nb-tree-open').click().catch(() => {});
+  await page.locator('.pane-notebook .nb-template-row').first().click();
+  await ed.locator('.nb-tpl-used').waitFor({ timeout: 10000 }).catch(() => {});
+  check('the template’s head says how often it was used', (await ed.locator('.nb-tpl-used').textContent().catch(() => '')) === 'a template · used 2 times');
+  // Save as a template (any page's ⋯): a copy, its places taken out
+  const w4Before = readFileSync(fileOf(w4), 'utf8');
+  await rowOf(w4).locator('.nb-tree-open').click();
+  await ed.locator('.nb-title', { hasText: 'W4 the passage' }).waitFor({ timeout: 10000 });
+  await ed.locator('.nb-ed-head .icon-btn').click();
+  await page.locator('.menu .menu-item', { hasText: 'Save as a template' }).click();
+  await ed.locator('.nb-crumbs', { hasText: 'Templates' }).waitFor({ timeout: 10000 }).catch(() => {});
+  const saved = wbj('template', 'list').templates.find(t => t.title === 'W4 the passage');
+  const savedText = saved ? readFileSync(fileOf(saved.id), 'utf8').replace(/\r\n/g, '\n') : '';
+  check('Save as a template copies the page with its places taken out: {place} in its scripture blocks, no place of its own; the page as it was', !!saved && /\ntemplate: true\n/.test(savedText) && /\nasks: "?place"?\n/.test(savedText) && savedText.includes('```scripture\n{place}\n```') && savedText.includes('```scripture\n{place}\nlines\n```') && !savedText.includes('Num 25:10-13') && /\nanchor: ""\n|\nanchor: \n|\nanchor: ''\n/.test(savedText) && readFileSync(fileOf(w4), 'utf8') === w4Before, saved?.title);
+  // Help: the Guide's entry, its text from wb-core (wb guide templates), and the Templates page's link to it
+  await page.evaluate(() => window.__wb.run('help templates'));
+  await page.locator('.pane-help .guide-entry[data-name="templates"]').waitFor({ timeout: 10000 });
+  const guideEntry = wbj('guide', 'templates', '--json');
+  const heads = await page.locator('.pane-help .guide-entry[data-name="templates"] .guide-head').allTextContents();
+  const texts = await page.locator('.pane-help .guide-entry[data-name="templates"] .guide-text').allTextContents();
+  const tabs = await page.locator('.pane-help .help-tabs button').allTextContents();
+  check('Help has Guide, Commands and Keys; its Templates entry is wb guide templates, word for word', tabs.join() === 'Guide,Commands,Keys' && (await page.locator('.pane-help .help-tab-guide').getAttribute('class')).includes('on') && JSON.stringify(heads) === JSON.stringify(guideEntry.parts.map(p => p.head)) && JSON.stringify(texts) === JSON.stringify(guideEntry.parts.map(p => p.text)), heads.join(' · '));
+  await page.screenshot({ path: shots + '1440-help-guide-templates.png' });
+  const helpPane = await page.evaluate(() => window.__wb.dock().panes.find(p => p.kind === 'help')?.id);
+  if (helpPane) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, helpPane);
+  await page.evaluate(() => window.__wb.run('notebook'));
+  await sleep(400);
+  await page.locator('.pane-notebook .nb-side-templates').click();
+  await ed.locator('.tp-card').first().waitFor({ timeout: 10000 });
+  const cards = await ed.locator('.tp-card').evaluateAll(els => els.map(e => [e.querySelector('.tp-name').textContent, e.querySelector('.tp-used').textContent].join(': ')));
+  const tplListed = wbj('template', 'list').templates.map(t => `${t.title}: ${t.used === 0 ? 'not used yet' : t.used === 1 ? 'used once' : `used ${t.used} times`}`);
+  check('the Templates page lists each template with how often it was used, as wb template list', JSON.stringify(cards) === JSON.stringify(tplListed), cards.join(' · '));
+  await page.screenshot({ path: shots + '1440-notebook-templates.png' });
+  await ed.locator('.nb-tpl-how').click();
+  check('How templates work opens Help at its Guide entry', await page.locator('.pane-help .guide-entry[data-name="templates"]').waitFor({ timeout: 10000 }).then(() => true, () => false));
+  const helpPane2 = await page.evaluate(() => window.__wb.dock().panes.find(p => p.kind === 'help')?.id);
+  if (helpPane2) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, helpPane2);
+  // the Python app: it passes over a template (a page with no place, as every page), and reads a page made from one,
+  // once placed, keeping from_template when it writes it
+  execFileSync(wbExe, ['note', 'place', made, 'Num 25:11'], { env });
+  const OLD5 = path.join(os.homedir(), 'github', 'bible-workbench');
+  const py5 = (code, id) => execFileSync('python', ['-c', `import json, sys\nfrom workbench.study import Study\ns = Study(sys.argv[1])\nn = ([x for x in s.notes() if x['id'] == sys.argv[2]] or [None])[0]\n${code}`, study, id], { cwd: OLD5, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } }).toString();
+  const pyTpl = JSON.parse(py5('print(json.dumps(n))', tpl));
+  const pyMade = JSON.parse(py5('print(json.dumps(n))', made));
+  check('the Python app reads the study folder with templates in it: it passes over a template, and reads a page made from one with from_template', pyTpl === null && pyMade?.anchor === 'NUM.25:11' && pyMade?.from_template === tpl, JSON.stringify(pyMade && { anchor: pyMade.anchor, from_template: pyMade.from_template }));
+  py5(`s.update_note(n['id'], n['text'] + '\\n\\nWritten by the Python app.')`, made);
+  check('a page made from a template, written by the Python app, keeps from_template: still counted as used', readFileSync(fileOf(made), 'utf8').includes('Written by the Python app.') && wbj('template', 'list').templates.find(t => t.id === tpl)?.used === 2);
+  // the templates deleted (to .trash), so the checks after these see the pen as before: a blank page at once
+  for (const t of wbj('template', 'list').templates) execFileSync(wbExe, ['template', 'rm', t.id], { env });
+  await page.evaluate(() => window.__wb.changed());
+  await page.evaluate(() => window.__wb.run('notebook'));
+  await page.waitForFunction(() => !document.querySelector('.pane-notebook .nb-side-head[data-part="templates"]'), null, { timeout: 10000 }).catch(() => {});
+  check('wb template rm deletes a template (to .trash); the pages made from it stay, and with none left the Templates section goes', wbj('template', 'list').templates.length === 0 && !!fileOf(made) && await page.locator('.pane-notebook .nb-side-head[data-part="templates"]').count() === 0 && readdirSync(path.join(study, '.trash'), { recursive: true }).some(f => String(f).includes(tpl)));
+  await sleep(400);
+
   await page.evaluate(() => { const d = window.__wb.dock(); d.wide.right = false; d.layout(); });
   await sleep(300);
   await nbBack();
