@@ -22,7 +22,7 @@ export const CHANGES: Change[] = ['notes', 'threads', 'highlights', 'plans', 'se
  * the other kinds show the Bible database alone and are never drawn again by a write. */
 const SHOWS: Record<string, Change[]> = {
   notebook: ['notes', 'threads'], threads: ['threads'], thread: ['threads', 'notes', 'highlights', 'documents'], place: ['notes', 'highlights', 'threads'],
-  reader2: ['notes', 'highlights', 'threads'], find: ['notes', 'threads'], marked: ['highlights', 'threads'], plans: ['plans'], findings: ['findings'], shelf: ['sets', 'threads'],
+  reader2: ['notes', 'highlights', 'threads'], versecard: ['highlights'], find: ['notes', 'threads'], marked: ['highlights', 'threads'], plans: ['plans'], findings: ['findings'], shelf: ['sets', 'threads'],
   // a document's state follows its thread, the notes and highlights in it, and the documents themselves
   documents: ['documents', 'threads', 'notes', 'highlights'],
 };

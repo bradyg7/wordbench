@@ -26,6 +26,8 @@ export const app = {
   findInChapter: (_q: string) => {},
   /** Opens a place as a second reader in a pane (never moves the reader). */
   secondReader: (_ref: string, _version?: string) => {},
+  /** The second readers open, in the order they were opened: each one's pane and the chapter it shows. */
+  readers: (): { pane: string; code: string; chapter: number; label: string }[] => [],
   /** Runs a line as if typed into the command field. */
   run: async (_line: string): Promise<string> => '',
   /** Something changed in the study folder (what, or everything when not said): the panes that show it read it again. */

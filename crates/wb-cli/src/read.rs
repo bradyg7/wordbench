@@ -37,6 +37,11 @@ pub fn commands() -> Vec<Command> {
         }),
         cmd("text", "Scripture, verbatim, with its reference: wb text \"John 3:16-18\" [--version ylt]. Several places: \"John 3:16; Rom 5:8\".",
             vec![Pos("ref", N::Many), Opt("version", Some("KJV")), Flag("lines")], text),
+        // The app's own (not in the Python wb): what a scripture block and the verse card draw.
+        cmd("scripture", "Verses as a scripture block and the verse card show them (JSON): wb text's verses, each also as runs of its words with the highlights on them. wb scripture \"Num 25:10-13\" [--version ylt].",
+            vec![Pos("ref", N::Many), Opt("version", Some("KJV"))], |c, a| {
+                Ok(Out::Json(scripture::marked(c.bible()?, &*c.study()?, &a.s("ref"), &a.opt_or("version", "KJV")).map_err(e)?))
+            }),
         cmd("copy", "Put verses on the clipboard with their reference, and print them: wb copy \"John 3:16-18\" --format quote.\n\
                      Formats: lines (the default), block, para, quote.",
             vec![Pos("ref", N::Many), Opt("format", Some("lines")), Opt("version", Some("KJV")), Flag("short"), Flag("no_clip")], copy),

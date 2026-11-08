@@ -634,6 +634,9 @@ async function openSecondReader(ref: string, version = 'KJV') {
     while (v2.drawn.more()) { /* the whole chapter at once: a pane holds one */ }
     v2.selector.attach(v2.drawn);
     drawnAt = `${st.code}.${st.chapter}`;
+    // At the reader in the Notebook has a row for each second reader, following it as it turns (W4, sheet W1.2)
+    readers2.set(p.id, { pane: p.id, code: st.code, chapter: st.chapter, label: `${data.chapter.name} ${st.chapter}` });
+    readerMoved();
     // the verses asked for, unless that is the whole chapter
     const all = data.chapter.verses.every(x => asked.has(`${st.chapter}:${x.v}`));
     if (!all) v2.root.querySelectorAll<HTMLElement>('.vn').forEach(e => e.classList.toggle('vn-asked', asked.has(`${st.chapter}:${e.dataset.v}`)));
@@ -652,7 +655,7 @@ async function openSecondReader(ref: string, version = 'KJV') {
     clearSelection();
     await draw2(el, p, 1);
   };
-  dock.open('reader2', `${bk.name} ${st.chapter}`, `reader2|${clean}|${ver}`, 'left', async (el, p) => {
+  const pane2 = dock.open('reader2', `${bk.name} ${st.chapter}`, `reader2|${clean}|${ver}`, 'left', async (el, p) => {
     if (!vw) {
       el.replaceChildren();
       head = h('header', 'pane-head reader2-head');
@@ -686,7 +689,16 @@ async function openSecondReader(ref: string, version = 'KJV') {
     for (const q of data.questions || []) vw.drawn.questions.add(q.v);
     paint(vw.root, vw.drawn);
   });
+  if (!readers2Watched.has(pane2.id)) {
+    readers2Watched.add(pane2.id);
+    const was = pane2.onClose;
+    pane2.onClose = () => { was?.(); readers2.delete(pane2.id); readers2Watched.delete(pane2.id); readerMoved(); };
+  }
 }
+
+/** The second readers open, by pane: the chapter each shows (app.readers). */
+const readers2 = new Map<string, { pane: string; code: string; chapter: number; label: string }>();
+const readers2Watched = new Set<string>();
 
 // ---- an Inbox note dragged from the Notebook onto a verse: placed there (wb note place) -------------------------------
 let dropVerse = 0;
@@ -1079,6 +1091,7 @@ Object.assign(app, {
   setVersion,
   findInChapter,
   secondReader: (ref: string, version?: string) => void openSecondReader(ref, version),
+  readers: () => [...readers2.values()].filter(r => dock.panes.some(p => p.id === r.pane)),
   changed: (...what: Change[]) => { written(...what); if (!what.length || what.includes('threads')) loadThreads(); },
 });
 
@@ -1114,6 +1127,6 @@ async function start() {
   }
 }
 
-(window as any).__wb = { open, perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
+(window as any).__wb = { open, perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
 start().catch(e => { reader.innerHTML = `<p class="error">${String(e)}</p>`; });
 void here;

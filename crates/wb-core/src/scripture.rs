@@ -1,10 +1,14 @@
 //! Scripture text for the command line and documents: verbatim verses for a reference, never paraphrased (the Python
 //! app's `workbench/scripture.py`). The text always comes with its reference.
 
-use crate::bible::Bible;
+use crate::anchors::{Anchor, Kind};
+use crate::bible::{Bible, Chapter, Word};
+use crate::marks::{self, Mark};
 use crate::places::{parse_spans, span_label, Span};
+use crate::store::Store;
 use crate::{lookup, Error, Result};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 
 pub const PREVIEW_VERSES: usize = 6;
 pub const COPY_FORMATS: &[&str] = &["lines", "block", "para", "quote"];
@@ -132,6 +136,90 @@ pub fn copy(bible: &Bible, text: &str, version: &str, fmt: &str, short: bool) ->
     let psg = passage(bible, text, version)?;
     Ok(json!({"label": psg["label"], "version": psg["version"], "format": fmt, "short": short,
         "verses": psg["verses"].as_array().unwrap().len(), "text": copy_text(&psg, fmt, short)?}))
+}
+
+/// Does a highlight's anchor cover word `i` of verse `c:v`? (Whole-verse kinds cover every word of their verses.)
+fn covers(a: &Anchor, c: u32, v: u32, i: u32) -> bool {
+    let (c2, v2) = (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1));
+    match a.kind {
+        Kind::Word => (a.c1, a.v1, a.i1) == (c, v, Some(i)),
+        Kind::Verse => (a.c1, a.v1) == (c, v),
+        Kind::Verses => (a.c1, a.v1) <= (c, v) && (c, v) <= (c2, v2),
+        Kind::Phrase => (a.c1, a.v1, a.i1.unwrap_or(0)) <= (c, v, i) && (c, v, i) <= (c2, v2, a.i2.unwrap_or(u32::MAX)),
+        Kind::Lemma => false,
+    }
+}
+
+/// A verse's text as runs, each with the color of the highlight over it (the last one made wins, as in the reader).
+/// The runs joined are the text exactly as given: the words are only found in it, never rebuilt from the word list, so
+/// a word that cannot be found leaves its part of the text as it is, with no color.
+fn runs(text: &str, words: &[Word], c: u32, v: u32, marks: &[Mark]) -> Vec<Value> {
+    let color = |i: u32| marks.iter().rev().find(|m| covers(&m.at, c, v, i)).map(|m| m.color.clone());
+    // (start, end, color) of each word found, in order
+    let mut found: Vec<(usize, usize, Option<String>)> = vec![];
+    let mut at = 0;
+    for w in words {
+        let full = format!("{}{}{}", w.lead, w.text, w.trail.trim_end());
+        let bare = format!("{}{}", w.lead, w.text);
+        let hit = [full.as_str(), bare.as_str()].into_iter().filter(|t| !t.is_empty()).find_map(|t| text[at..].find(t).map(|p| (at + p, at + p + t.len())));
+        if let Some((a, b)) = hit {
+            found.push((a, b, color(w.i)));
+            at = b;
+        }
+    }
+    let mut out: Vec<(String, Option<String>)> = vec![];
+    let mut push = |t: &str, hl: Option<String>| {
+        if t.is_empty() {
+            return;
+        }
+        match out.last_mut() {
+            Some(last) if last.1 == hl => last.0.push_str(t),
+            _ => out.push((t.to_string(), hl)),
+        }
+    };
+    let mut at = 0;
+    for (k, (a, b, hl)) in found.iter().enumerate() {
+        // the space between two words keeps a color both have, so a highlight runs unbroken through a phrase
+        let between = if k > 0 && found[k - 1].2.is_some() && found[k - 1].2 == *hl { hl.clone() } else { None };
+        push(&text[at..*a], between);
+        push(&text[*a..*b], hl.clone());
+        at = *b;
+    }
+    if found.is_empty() {
+        // no word found: a highlight on the whole verse still shows
+        let whole = marks.iter().rev().find(|m| matches!(m.at.kind, Kind::Verse | Kind::Verses) && covers(&m.at, c, v, 0)).map(|m| m.color.clone());
+        push(text, whole);
+    } else {
+        push(&text[at..], None);
+    }
+    out.into_iter().map(|(t, hl)| if let Some(c) = hl { json!({"t": t, "hl": c}) } else { json!({"t": t}) }).collect()
+}
+
+/// Verses as a scripture block and the verse card draw them (`wb scripture`): the passage, each verse verbatim with its
+/// reference, and its text again as runs (`runs`: [{t, hl?}]) carrying the person's highlights. In a version other
+/// than the KJV, only highlights on whole verses show (`marks::verse_level`), as in the reader.
+pub fn marked(bible: &Bible, store: &Store, text: &str, version: &str) -> Result<Value> {
+    let mut psg = passage(bible, text, version)?;
+    let ver = psg["version"].as_str().unwrap_or("KJV").to_string();
+    let spans = parse_spans(text, bible.books())?;
+    let mut chapters: HashMap<(String, u32), (Chapter, Vec<Mark>)> = HashMap::new();
+    for v in psg["verses"].as_array_mut().unwrap() {
+        let span = &spans[v["span"].as_u64().unwrap_or(0) as usize];
+        let code = span.book.code.clone();
+        let (c, n) = (v["c"].as_u64().unwrap() as u32, v["v"].as_u64().unwrap() as u32);
+        if !chapters.contains_key(&(code.clone(), c)) {
+            let ch = bible.chapter_in(&code, c, &ver)?;
+            let m = marks::chapter_marks(store, &code, c)?;
+            let m = if ch.version.is_some() { marks::verse_level(m) } else { m };
+            chapters.insert((code.clone(), c), (ch, m.highlights));
+        }
+        let (ch, hls) = &chapters[&(code.clone(), c)];
+        let words = ch.verses.iter().find(|x| x.v == n).map(|x| x.words.as_slice()).unwrap_or(&[]);
+        let t = v["text"].as_str().unwrap_or("").to_string();
+        v["code"] = json!(code);
+        v["runs"] = json!(runs(&t, words, c, n, hls));
+    }
+    Ok(psg)
 }
 
 /// What a hover card shows: a verse reference (at most `most` verses, with the count of those left out) or a Strong's

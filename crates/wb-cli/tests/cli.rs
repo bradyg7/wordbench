@@ -1167,7 +1167,7 @@ fn the_notebook_s_settings_are_kept_per_key() {
     assert!(wb.fails(&["settings", "notebook", "group", "verse"]).contains("Group by"));
     assert!(wb.fails(&["settings", "notebook", "capture", "J"]).contains("Ctrl or Alt"));
     assert!(wb.fails(&["settings", "reader"]).contains("notebook"));
-    assert_eq!(wb.js(&["settings", "notebook", "--about"]).as_array().unwrap().len(), 6);
+    assert_eq!(wb.js(&["settings", "notebook", "--about"]).as_array().unwrap().len(), 7); // W4: places
     // W1: the Inbox is gone from the settings; the Notebook can open with Pages or Questions
     assert!(wb.fails(&["settings", "notebook", "inbox", "on"]).contains("settings are"));
     assert_eq!(wb.js(&["settings", "notebook", "group", "pages"])["group"], json!("pages"));
@@ -1422,4 +1422,74 @@ fn a_page_inside_a_page_and_a_moved_block_read_correctly_in_the_files() {
     // (the page placed on a verse, at the top with nothing inside it, is a note at its place: Places lists it)
     assert_eq!(tops, ["Before", "An outline"]);
     assert!(!file(o).contains("parent:") && !file(&group).contains("parent:"));
+}
+
+#[test]
+fn a_scripture_block_holds_only_its_reference_and_its_verses_come_from_the_bible() {
+    // W4: the file keeps ```scripture, the reference, and lines / ylt when chosen; wb page scripture gives the verses
+    // as wb text does, with the highlights on them as runs
+    let Some(wb) = Wb::new() else { return };
+    let id = wb.js(&["page", "new", "The passage"])["id"].as_str().unwrap().to_string();
+    let (code, _, err) = wb.run(&["block", "add", &id, "-"], Some("```scripture\nNum 25:10-13\n```"));
+    assert_eq!(code, 0, "{err}");
+    wb.js(&["block", "add", &id, "Then the psalm."]);
+    let (code, _, err) = wb.run(&["block", "add", &id, "-"], Some("```scripture\nPs 106:28-31\nlines\n```"));
+    assert_eq!(code, 0, "{err}");
+    wb.ok(&["hl", "set", "Num 25:11", "green"]);
+    let file = || std::fs::read_to_string(wb.dir.join("notes/_inbox").join(format!("{id}.md"))).unwrap().replace("\r\n", "\n");
+    let s = wb.js(&["page", "scripture", &id]);
+    let blocks = s["blocks"].as_array().unwrap();
+    assert_eq!(blocks.len(), 2);
+    assert_eq!((blocks[0]["n"].as_u64(), blocks[0]["lines"].as_bool(), blocks[0]["version"].as_str()), (Some(1), Some(false), Some("KJV")));
+    assert_eq!((blocks[1]["n"].as_u64(), blocks[1]["lines"].as_bool()), (Some(3), Some(true)));
+    for (b, r) in [(&blocks[0], "Num 25:10-13"), (&blocks[1], "Ps 106:28-31")] {
+        let want: Vec<String> = wb.js(&["text", r, "--json"])["verses"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap().to_string()).collect();
+        let got: Vec<String> = b["verses"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap().to_string()).collect();
+        assert_eq!(got, want);
+        // the runs joined are each verse's text, as it is
+        for v in b["verses"].as_array().unwrap() {
+            let joined: String = v["runs"].as_array().unwrap().iter().map(|r| r["t"].as_str().unwrap()).collect();
+            assert_eq!(joined, v["text"].as_str().unwrap());
+        }
+        // and no verse is in the file
+        assert!(want.iter().all(|t| !file().contains(t.as_str())));
+    }
+    // the highlight on Num 25:11 is on every word of the verse, and on no other
+    let runs = |v: usize| blocks[0]["verses"][v]["runs"].as_array().unwrap().clone();
+    assert!(runs(1).len() == 1 && runs(1)[0]["hl"] == "green", "{:?}", runs(1));
+    assert!(runs(0).iter().all(|r| r.get("hl").is_none()));
+    // the choices, kept in the fence
+    wb.js(&["block", "scripture", &id, "1", "--lines", "--ylt"]);
+    assert!(file().contains("```scripture\nNum 25:10-13\nlines\nylt\n```"), "{}", file());
+    let y = wb.js(&["page", "scripture", &id]);
+    assert_eq!(y["blocks"][0]["version"], "YLT");
+    let ylt: Vec<Value> = wb.js(&["text", "Num 25:10-13", "--version", "ylt", "--json"])["verses"].as_array().unwrap().iter().map(|v| v["text"].clone()).collect();
+    assert_eq!(y["blocks"][0]["verses"].as_array().unwrap().iter().map(|v| v["text"].clone()).collect::<Vec<_>>(), ylt);
+    wb.js(&["block", "scripture", &id, "1", "--paragraph", "--kjv"]);
+    assert!(file().contains("```scripture\nNum 25:10-13\n```\n\nThen the psalm."), "{}", file());
+    assert!(wb.fails(&["block", "scripture", &id, "2", "--lines"]).contains("not a scripture block"));
+    assert!(wb.fails(&["block", "scripture", &id, "1"]).contains("Say what to change"));
+    assert!(wb.fails(&["block", "scripture", &id, "1", "--ylt", "--kjv"]).contains("not both"));
+    // wb scripture: one reference, the same verses and runs
+    let one = wb.js(&["scripture", "Num 25:11"]);
+    assert_eq!(one["verses"][0]["runs"][0]["hl"], "green");
+    assert_eq!(one["label"], "Numbers 25:11");
+}
+
+#[test]
+fn places_open_in_the_reader_or_a_new_reader_and_the_sidebar_has_a_row_per_reader() {
+    let Some(wb) = Wb::new() else { return };
+    assert_eq!(wb.js(&["settings", "notebook"])["places"], "reader");
+    assert_eq!(wb.js(&["settings", "notebook", "places", "new"])["places"], "new");
+    let file = std::fs::read_to_string(wb.dir.join("settings").join("notebook.json")).unwrap();
+    assert!(file.contains("\"places\": \"new\""), "{file}");
+    assert!(wb.fails(&["settings", "notebook", "places", "elsewhere"]).contains("new reader"));
+    assert_eq!(wb.js(&["settings", "notebook", "places", "default"])["places"], "reader");
+    wb.js(&["note", "new", "On the psalm", "--at", "Ps 106:30"]);
+    let s = wb.js(&["notebook", "sidebar", "--at", "Num 25; Ps 106"]);
+    let rows = s["at_readers"].as_array().unwrap();
+    assert_eq!(rows.len(), 2);
+    assert_eq!((rows[0]["label"].as_str(), rows[0]["reader"].as_str()), (Some("Numbers 25"), Some("the reader")));
+    assert_eq!((rows[1]["label"].as_str(), rows[1]["reader"].as_str(), rows[1]["count"].as_u64()), (Some("Psalms 106"), Some("new reader"), Some(1)));
+    assert_eq!(s["at_reader"]["label"], "Numbers 25");
 }

@@ -909,6 +909,7 @@ pub const SETTINGS: &[(&str, &str, &str)] = &[
     ("chapters", "true", "Notes on chapters and books: + Place offers the chapter and the book, not only verses"),
     ("group", "\"day\"", "What it opens with: day, chapter (places), thread, none (all), pages or questions"),
     ("capture", "\"Ctrl+J\"", "Quick capture: the key that opens a small box at the verse"),
+    ("places", "\"reader\"", "Places open in: reader (the reader goes there; Back returns it) or new (a new reader in a pane; the reader stays). Ctrl+click does the other"),
 ];
 
 /// The Notebook's settings, each the saved one or its default.
@@ -949,6 +950,13 @@ pub fn set_setting(store: &mut Store, key: &str, value: &str) -> Result<Value> {
             return Err(bad("Group by day, chapter, thread or none; or open with pages or questions."));
         }
         Some(json!(v))
+    } else if key == "places" {
+        let w = match v.to_lowercase().as_str() {
+            "reader" | "the reader" => "reader",
+            "new" | "new reader" | "a new reader" => "new",
+            _ => return Err(bad("Places open in the reader (reader) or in a new reader (new).")),
+        };
+        Some(json!(w))
     } else {
         Some(json!(capture_key(v)?))
     };

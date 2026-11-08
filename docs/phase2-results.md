@@ -701,3 +701,41 @@ Screenshots: `docs/phase2/1440-notebook-sidebar-pages.png`, `1440-notebook-block
 ran in the person's terminal: 220 files, each the same as the original
 (`%LOCALAPPDATA%\bible-workbench-rs\backups\bible-study-data-20261107-181938`). The install waits for the open window
 to be closed (`install-app.ps1` refuses while it is open). Open a page in the Python app afterwards to see it read as before.
+
+## 23. W4: scripture blocks and the verse card (2026-11-07)
+
+Step 5 of "The Notebook as a workspace", drawn on sheets W3, W5.1, W5.2 and W1.2 ([workspace-design.md](workspace-design.md)).
+Where a sheet named a choice, the drawn one is built (the person's acceptance, 2026-11-07): **Open's plain click goes to
+the reader**; **the words put away are kept per verse**; **a row per open reader**.
+
+| What | Built | Checked |
+|---|---|---|
+| Scripture blocks (sheet W3) | In the file, only the reference, fenced: ` ```scripture `, `Num 25:10-13`, then `lines` and/or `ylt` on their own lines when chosen. **No scripture text is written into a file.** The window draws the verses from the Bible (`wb page scripture`, one call per page drawn): a head with the reference · version, **Paragraph \| Lines** (Lines: a verse to a line), **YLT**, **Open ▾**; the person's highlights on the words, as in the reader (none while the highlights layer is hidden; in the YLT only whole-verse highlights, as the YLT reader shows). A choice is kept in the block's fence (`wb block scripture ID N --lines --ylt`), the reference as it was. The Python app and Obsidian show the fenced reference as it is | Desk: each block's verses equal `wb text` (KJV as a paragraph, the psalm as lines); the highlights are the runs `wb scripture` gives; Lines and YLT kept in the fence and drawn again (the YLT equal to `wb text --version ylt`); back to Paragraph and KJV the fence is the reference alone; the file holds no verse text. CLI: `a_scripture_block_holds_only_its_reference_and_its_verses_come_from_the_bible`; unit: the fence read and written |
+| Verses with highlights | `wb scripture "Num 25:10-13" [--version ylt]`: `wb text`'s verses, each also as runs of its words with the highlight on them (the last made wins, as in the reader). The runs are cut out of the verse's text as the database has it, never rebuilt from the word list: joined, they are the verse exactly; a word that cannot be found leaves its part plain | CLI: the runs joined equal each verse; a highlight on a whole verse is one run |
+| One Open menu (sheets W3, W5.1, W1.2) | Everywhere a place opens from the Notebook (a scripture block's Open ▾, the place chips of a note, the card's Open the chapter ▾): **In the reader** (the reader goes there; Back returns it) or **In a new reader** (a second reader in a pane; the reader stays). The ticked one is what a plain click does, Ctrl+click the other; a chip's right-click shows the menu. New Notebook setting **Places open in…** (`places`: `reader`, the default, or `new`; in `settings/notebook.json`; `wb settings notebook places new`). On a phone a place opens in the reader | Desk: the menu's two rows, the reader ticked (Click, Ctrl+click); In the reader moves the reader and Alt+← (Back) returns it; Ctrl+click on Open opens a new reader and the reader stays; the setting chosen in ⋯ is in `settings/notebook.json`, and a plain click then opens a new reader. CLI: the setting kept, refused when it is neither |
+| The verse card (sheets W5.1, W5.2; finding 94a1) | A click on a reference in a note opens a card at the link: the verse(s) verbatim with the reference and version, the person's highlights, **Interlinear \| Strong's \| Definitions \| Open the chapter ▾**, a pin and ×. **Interlinear**: the verse word by word; **−** puts a word away; the words put away wait as a row of small names in their order ("Put away · a click brings one back"), "N of M words shown", **Show all**, **Put all away**. Which words are put away is kept per verse on this computer (the window's storage), never in the study folder. **Strong's**: the verse's entries in the order their words come, each opening its entry. **Definitions** says it waits for tier 7's dictionary. **The pin** keeps the card as a pane of its own (drawn again when highlights change). Opening the chapter closes the card. Ctrl+click on a reference opens the place at once, as the menu's Ctrl+click row | Desk: the card's verse equals `wb text`; Interlinear's words are `wb interlinear`'s; − twice, the put-away row in order, a click brings one back; still put away when the card opens again; Show all, Put all away; Strong's in order; Definitions; Open the chapter ▾ the same menu; the pin makes a pane with the verse |
+| At the reader, a row per reader (sheet W1.2) | The reader's row first, then a row for each second reader (the section is **At the readers** when more than one), each with how many notes are on its chapter; a row lists that chapter's notes in the main column (the reader's, or "in the new reader"), and follows its reader as it turns. It never opens or moves a reader. `wb notebook sidebar --at "Num 25; Ps 106"` gives a row each (`at_readers`) | Desk: rows for the reader and each second reader; the second reader's row lists its chapter's notes (as many as `wb notebook --group chapter --at`), the reader not moved. CLI: two rows with their counts |
+
+**Changed in the desk checks:** a reference in a note opens the verse card, not the old popover, so "Open as a tab" is now
+Ctrl+click on the card's Open the chapter (it still opens the verse in a second reader, marked); the sidebar's section is
+"At the readers" while a second reader is open; ⋯'s settings list Places open in…. Two waits that a debug build showed
+were too short: + Place on a new note now waits for the note to be saved, and the touch check of Note on a verse
+measures the color bar once its thread chips are in (it widens, and Note moves). **A fix found on the way:** the
+`[[` list could open after the link was already closed with `]]` (its titles arriving late) and stay open over the
+page; it now opens only while the link is still being typed.
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **297 of 297** (22 new; five changed, said above) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped |
+| Rust tests | `cargo test`: **147** (3 new) |
+| Golden suite | `python scripts/golden.py`: **103 of 103** |
+| Plans against the Python app | `python scripts/doc-plans.py`: **6 of 6** the same |
+
+Screenshots: `docs/phase2/1440-notebook-scripture-blocks.png`, `1440-notebook-open-menu.png`, `1440-verse-card.png`,
+`1440-verse-card-interlinear.png`, `1440-notebook-at-the-readers.png`.
+
+**For the person:** W4 writes new lines in notes (the scripture fences) and a new setting; `scripts/backup-study.ps1`
+ran in the person's terminal before the install: 229 files, each the same as the original
+(`%LOCALAPPDATA%\bible-workbench-rs\backups\bible-study-data-20261107-193752`). The install waits for the open window
+to be closed (`install-app.ps1` refuses while it is open).

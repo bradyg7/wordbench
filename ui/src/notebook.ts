@@ -15,10 +15,11 @@
 import { wb } from './api';
 import { app, book, here, type At } from './app';
 import { afterDrawn, drawBlocks, startWritingAtEnd, type Blocks, type Host } from './blocks';
-import { dock, refCard, refHover, openThread, threadChooser } from './panes';
+import { dock, refHover, openThread, threadChooser } from './panes';
 import type { Change, Pane } from './dock';
 import { toast } from './sheets';
-import { button, h, icon, placeGo, placePill, popMenu, type Found } from './ui';
+import { button, h, icon, placePill, popMenu, type Found } from './ui';
+import { opens, placeOpen, verseCard, type Where } from './verses';
 
 /** What the list shows: a grouping (day, chapter, thread, none) or a section that is a filter (pages, questions). */
 type Group = 'day' | 'chapter' | 'thread' | 'none' | 'pages' | 'questions';
@@ -50,8 +51,8 @@ interface Row {
 }
 interface GroupOf { key: string; label: string; count: number; today?: boolean; following?: boolean; entries: Entry[] }
 
-export interface NotebookSettings { today: boolean; follow: boolean; links: boolean; chapters: boolean; group: Group; capture: string }
-export const nbSettings: NotebookSettings = { today: true, follow: true, links: true, chapters: true, group: 'day', capture: 'Ctrl+J' };
+export interface NotebookSettings { today: boolean; follow: boolean; links: boolean; chapters: boolean; group: Group; capture: string; places: Where }
+export const nbSettings: NotebookSettings = { today: true, follow: true, links: true, chapters: true, group: 'day', capture: 'Ctrl+J', places: 'reader' };
 let settingsRead = false;
 
 let group: Group | null = null;
@@ -74,7 +75,7 @@ let openId: string | null = null;
 interface Draft { at: At | null; question: boolean; day?: string; text?: string; hint?: string; parent?: string }
 let draft: Draft | null = null;
 /** A wide Notebook's main column showing a list (At the reader, a thread) when no note is open. */
-let mainList: { kind: 'chapter' } | { kind: 'thread'; key: string; label: string } | null = null;
+let mainList: { kind: 'chapter'; reader?: string } | { kind: 'thread'; key: string; label: string } | null = null;
 /** The open page's blocks, when it is drawn block by block. */
 let blocksData: Blocks | null = null;
 let blockHostNow: Host | null = null;
@@ -85,6 +86,7 @@ let focusEditor: 'end' | { heading: string } | null = null;
 
 export async function readSettings() {
   try { Object.assign(nbSettings, await wb(['settings', 'notebook'])); } catch { /* the defaults */ }
+  opens.where = nbSettings.places === 'new' ? 'new' : 'reader';
   settingsRead = true;
   return nbSettings;
 }
@@ -512,8 +514,11 @@ async function drawSidebar(): Promise<HTMLElement[]> {
     if (!entries.length) scroll.append(h('p', 'muted nb-empty', 'No note has all of these words.'));
     return [top, scroll];
   }
+  // At the reader: the reader's chapter, then each second reader's (W4, sheet W1.2: a row per open reader)
   const at = app.drawn;
-  const s = await wb(['notebook', 'sidebar', ...(at ? ['--at', `${at.chapter.code} ${at.chapter.chapter}`] : [])]);
+  const seconds = at ? app.readers() : [];
+  const ats = at ? [`${at.chapter.code} ${at.chapter.chapter}`, ...seconds.map(r => `${r.code} ${r.chapter}`)] : [];
+  const s = await wb(['notebook', 'sidebar', ...(ats.length ? ['--at', ats.join('; ')] : [])]);
   const side = h('nav', 'nb-scroll nb-side');
   side.setAttribute('aria-label', 'Notebook');
   if (s.today.length) {
@@ -531,13 +536,20 @@ async function drawSidebar(): Promise<HTMLElement[]> {
   if (!isShut('pinned', false)) side.append(s.pinned.length ? pinnedRows(s.pinned) : h('p', 'muted small nb-side-hint', 'Drag a page here, or ⋯ → Pin on a page.'));
   side.append(sideHead('pages', 'Pages', countRows(s.pages), false, true));
   if (!isShut('pages', false)) side.append(s.pages.length ? treeBox(s.pages) : h('p', 'muted small nb-side-hint', 'No pages yet: + starts one.'));
-  if (s.at_reader) {
-    const r = s.at_reader;
-    side.append(sideHead('reader', 'At the reader', r.count, false));
-    if (!isShut('reader', false)) side.append(sideRow('nb-reader-row', 'pin', r.label, `the reader · ${r.count}`, mainList?.kind === 'chapter' && !openId, () => {
-      mainList = { kind: 'chapter' }; openId = null; draft = null; editorShown = true; showTrash = false;
-      void pane?.refresh?.();
-    }));
+  const rows: any[] = s.at_readers || [];
+  if (rows.length) {
+    const total = rows.reduce((n, r) => n + (r.count || 0), 0);
+    side.append(sideHead('reader', rows.length > 1 ? 'At the readers' : 'At the reader', total, false));
+    if (!isShut('reader', false)) rows.forEach((r, k) => {
+      const which = k === 0 ? undefined : seconds[k - 1]?.pane;
+      const on = mainList?.kind === 'chapter' && mainList.reader === which && !openId;
+      const row = sideRow(`nb-reader-row${k ? ' second' : ''}`, k ? 'book' : 'pin', r.label, `${k ? 'new reader' : 'the reader'} · ${r.count}`, on, () => {
+        mainList = { kind: 'chapter', reader: which }; openId = null; draft = null; editorShown = true; showTrash = false;
+        void pane?.refresh?.();
+      });
+      row.title = k ? `The notes on ${r.label}, the chapter a second reader shows` : `The notes on ${r.label}, the chapter the reader shows`;
+      side.append(row);
+    });
   }
   side.append(sideHead('threads', 'Threads', s.threads.length, true));
   if (!isShut('threads', true)) for (const t of s.threads) {
@@ -570,10 +582,20 @@ async function mainListView(): Promise<HTMLElement[]> {
   if (mainList!.kind === 'chapter') {
     const d = app.drawn;
     if (!d) return [h('p', 'muted nb-empty nb-pick', 'Open a chapter in the reader.')];
-    const r = await wb(['notebook', '--group', 'chapter', '--at', `${d.chapter.code} ${d.chapter.chapter}`]);
+    // the reader, or a second reader (gone: the reader)
+    const m = mainList as { kind: 'chapter'; reader?: string };
+    const second = m.reader ? app.readers().find(r => r.pane === m.reader) : undefined;
+    if (m.reader && !second) m.reader = undefined;
+    const at = second ? `${second.code} ${second.chapter}` : `${d.chapter.code} ${d.chapter.chapter}`;
+    const r = await wb(['notebook', '--group', 'chapter', '--at', at]);
     const g = (r.groups as GroupOf[])[0];
     entries = g?.entries || [];
-    out.push(h('h2', 'nb-title', g?.label || 'At the reader'), h('p', 'muted small nb-list-about', 'At the reader: the notes and pages placed in the chapter the reader shows. It follows the reader as it moves.'));
+    const crumbs = h('nav', 'nb-crumbs');
+    crumbs.append(h('span', 'nb-crumb', app.readers().length ? 'At the readers' : 'At the reader'), h('span', 'nb-crumb-sep', '/'), h('span', 'nb-crumb here', g?.label || ''));
+    head.append(crumbs, h('span', 'grow'), h('span', 'muted small nb-list-which', `${second ? 'in the new reader' : 'in the reader'} · ${entries.length} note${entries.length === 1 ? '' : 's'}`));
+    out.push(h('h2', 'nb-title', g?.label || 'At the reader'), h('p', 'muted small nb-list-about', second
+      ? 'The notes and pages placed in the chapter this second reader shows. It follows that reader as it turns; nothing here moves a reader.'
+      : 'At the reader: the notes and pages placed in the chapter the reader shows. It follows the reader as it moves.'));
   } else {
     const m = mainList!;
     const r = await wb(['notebook', '--group', 'thread']);
@@ -683,7 +705,7 @@ function chipsRow(e: Entry): HTMLElement {
     const chip = h('span', 'place-off');
     const x = button('member-x shown', '', () => { draft!.at = null; void pane?.refresh?.(); }, 'x');
     x.title = 'No place: a page of its own';
-    chip.append(placeGo(draft.at.label, draft.at.anchor), x);
+    chip.append(placeOpen(draft.at.label, draft.at.anchor), x);
     row.append(chip);
   } else if (onThreadOnly) row.append(h('span', 'pill unplaced', e.label));
   else row.append(h('span', 'pill unplaced', 'No place yet'));
@@ -1025,7 +1047,7 @@ function inlineOf(chars: string[], from: number, to: number, refs: Found[], link
     if (mk.kind === 'ref') {
       const a = h('a', 'ref', chars.slice(s, e).join(''));
       a.href = mk.r.hash;
-      a.onclick = ev => { ev.preventDefault(); void refCard(mk.r.ref, a, ev); };
+      a.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); void verseCard(mk.r.ref, a, ev); };
       refHover(a, mk.r.ref);
       f.append(a);
     } else {
@@ -1134,7 +1156,8 @@ function linkSuggest(ta: HTMLTextAreaElement) {
   void allTitles().then(all => {
     const before = ta.value.slice(0, ta.selectionStart);
     const open = before.lastIndexOf('[[');
-    if (open < 0) return;
+    // (the titles came after the typing went on: a link already closed, or the box gone, opens no list)
+    if (open < 0 || !ta.isConnected || before.slice(open).includes(']]') || before.slice(open).includes('\n')) return;
     const raw = before.slice(open + 2).trim();
     const typed = raw.toLowerCase();
     const list = all.filter(t => t.id !== shown?.id);
@@ -1284,7 +1307,7 @@ function placeOff(e: Pick<Entry, 'id'>, at: At): HTMLElement {
   const x = button('member-x shown', '', () => takeOff(e.id, at), 'x');
   x.title = `Take it off ${at.label}`;
   x.setAttribute('aria-label', x.title);
-  chip.append(placeGo(at.label, at.anchor), x);
+  chip.append(placeOpen(at.label, at.anchor), x);
   return chip;
 }
 
@@ -1438,6 +1461,20 @@ function settingsMenu(from: HTMLElement) {
   sel.onchange = () => void save('group', sel.value);
   g.append(sel);
   box.append(g);
+  // W4: what a plain click on a place does (Ctrl+click does the other)
+  const pl = h('div', 'nb-set-row nb-set-places');
+  const plt = h('div');
+  plt.append(h('div', 'nb-set-label', 'Places open in…'), h('div', 'muted small', 'What a click on a place does; Ctrl+click does the other'));
+  const ps = h('select', 'field nb-set-open') as HTMLSelectElement;
+  for (const [v, label] of [['reader', 'The reader'], ['new', 'A new reader']] as const) {
+    const o = h('option', '', label) as HTMLOptionElement;
+    o.value = v;
+    o.selected = nbSettings.places === v;
+    ps.append(o);
+  }
+  ps.onchange = () => void save('places', ps.value);
+  pl.append(plt, ps);
+  box.append(pl);
   const k = h('form', 'nb-set-row');
   k.append(h('div', 'nb-set-label', 'Quick capture'));
   const key = h('input', 'field nb-set-key') as HTMLInputElement;
@@ -1450,7 +1487,7 @@ function settingsMenu(from: HTMLElement) {
 }
 
 async function saveSetting(key: string, value: string) {
-  try { Object.assign(nbSettings, await wb(['settings', 'notebook', key, value])); void pane?.refresh?.(); }
+  try { Object.assign(nbSettings, await wb(['settings', 'notebook', key, value])); opens.where = nbSettings.places === 'new' ? 'new' : 'reader'; void pane?.refresh?.(); }
   catch (x) { toast(String(x)); }
 }
 

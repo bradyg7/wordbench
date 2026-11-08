@@ -32,6 +32,8 @@ const INTERNAL: &[&str] = &[
     "trash_file", "squash", "records", "source_name",
     // pages and blocks (W3): the text of a page as blocks, the pieces of wb page and wb block; the store's fields
     "split", "set", "insert", "move_block", "check", "retitle", "find_note", "set_fields",
+    // scripture blocks (W4): a fence read and written, pieces of wb page scripture and wb block scripture
+    "scripture_fence", "scripture_fence_text",
 ];
 
 fn public_fns(src: &str) -> Vec<String> {

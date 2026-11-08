@@ -153,7 +153,23 @@ pub fn tree(bible: &Bible, store: &Store) -> Result<Value> {
 /// The Notebook's sidebar (W1.1), in one answer: Today (today's page and the last few days written in), Pinned, Pages
 /// (the tree), At the reader (the chapter `at`, with how many notes are on it), Threads (each with its notes' count) and
 /// Questions (open first, then answered).
-pub fn sidebar(bible: &Bible, store: &Store, at: Option<(String, u32)>, today: bool) -> Result<Value> {
+///
+/// W4 (sheet W1.2), a row per open reader: `at` holds the reader's chapter first, then each second reader's.
+/// `at_reader` is the first (the reader), `at_readers` all of them, each with how many notes are on its chapter.
+pub fn sidebar_at(bible: &Bible, store: &Store, at: Vec<(String, u32)>, today: bool) -> Result<Value> {
+    let mut v = sidebar_one(bible, store, at.first().cloned(), today)?;
+    let mut rows = vec![];
+    for (k, (code, ch)) in at.into_iter().enumerate() {
+        let o = nb::Listing { group: "chapter".into(), at: Some((code.clone(), ch)), ..Default::default() };
+        let l = nb::list(bible, store, &o)?;
+        let g = &l["groups"][0];
+        rows.push(json!({"code": code, "chapter": ch, "label": g["label"], "count": g["count"], "reader": if k == 0 { "the reader" } else { "new reader" }}));
+    }
+    v["at_readers"] = json!(rows);
+    Ok(v)
+}
+
+fn sidebar_one(bible: &Bible, store: &Store, at: Option<(String, u32)>, today: bool) -> Result<Value> {
     let t = Tree::read(bible, store);
     let days = if today {
         let o = nb::Listing { group: "day".into(), days: true, ..Default::default() };
@@ -804,9 +820,106 @@ pub fn edit(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>) -> Resul
     written(bible, store, &id, &out, titled, n, count)
 }
 
+// ---- scripture blocks (W4) ----------------------------------------------------------------------------------------------
+
+/// A scripture block as its fence holds it: the reference, and the choices kept after it (`lines`: a verse to a line;
+/// `ylt`: the YLT). No scripture text is ever in the file; the verses are drawn from the Bible when shown.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScriptureFence {
+    pub reference: String,
+    pub lines: bool,
+    pub ylt: bool,
+}
+
+/// A block's Markdown → its scripture fence, when it is one (```` ```scripture ````, the reference on its first line).
+pub fn scripture_fence(block: &str) -> Option<ScriptureFence> {
+    let mut ls = block.lines();
+    let first = ls.next()?.trim_start();
+    let mark = ["```", "~~~"].into_iter().find(|m| first.starts_with(m))?;
+    if !first[3..].trim().split_whitespace().next().is_some_and(|w| w.eq_ignore_ascii_case("scripture")) {
+        return None;
+    }
+    let inner: Vec<&str> = ls.take_while(|l| !l.trim_start().starts_with(mark)).map(str::trim).filter(|l| !l.is_empty()).collect();
+    let (reference, opts) = inner.split_first().map(|(r, o)| (r.to_string(), o)).unwrap_or_default();
+    let has = |w: &str| opts.iter().any(|o| o.eq_ignore_ascii_case(w));
+    Some(ScriptureFence { reference, lines: has("lines"), ylt: has("ylt") })
+}
+
+/// The fence written back: the reference, then `lines` and `ylt` on their own lines when chosen.
+pub fn scripture_fence_text(f: &ScriptureFence) -> String {
+    let mut out = format!("```scripture\n{}\n", f.reference.trim());
+    if f.lines {
+        out += "lines\n";
+    }
+    if f.ylt {
+        out += "ylt\n";
+    }
+    out + "```"
+}
+
+/// A page's scripture blocks with their verses from the Bible (`wb page scripture`), as the window draws them: each
+/// block's number (from 1, as `wb page blocks` counts), its reference, Paragraph or Lines, its version, and the verses
+/// (`scripture::marked`: verbatim, with the person's highlights); a reference that cannot be read says why.
+pub fn scripture(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
+    let (id, text, titled) = text_of(store, id)?;
+    let c = chars(&text);
+    let mut out = vec![];
+    for (i, b) in split(&text, titled).1.iter().enumerate() {
+        if b.kind != "fence" {
+            continue;
+        }
+        let Some(f) = scripture_fence(&sub(&c, b.start, b.end)) else { continue };
+        let version = if f.ylt { "YLT" } else { "KJV" };
+        let mut v = json!({"n": i + 1, "reference": f.reference, "lines": f.lines, "version": version});
+        if f.reference.is_empty() {
+            v["error"] = json!("No reference yet: write one under ```scripture.");
+        } else {
+            match crate::scripture::marked(bible, store, &f.reference, version) {
+                Ok(p) => {
+                    v["label"] = p["label"].clone();
+                    v["verses"] = p["verses"].clone();
+                }
+                Err(e) => v["error"] = json!(e.0),
+            }
+        }
+        out.push(v);
+    }
+    Ok(json!({"id": id, "blocks": out}))
+}
+
+/// Change a scripture block's choices (Paragraph or Lines, KJV or YLT): its fence is written anew, the reference kept.
+/// None leaves a choice as it is. → the page's blocks, as `edit`.
+pub fn set_scripture(bible: &Bible, store: &mut Store, id: &str, n: usize, lines: Option<bool>, ylt: Option<bool>) -> Result<Value> {
+    let (_, text, titled) = text_of(store, id)?;
+    let c = chars(&text);
+    let bs = split(&text, titled).1;
+    let b = bs.get(n).ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
+    let mut f = scripture_fence(&sub(&c, b.start, b.end)).ok_or_else(|| bad(format!("Block {} is not a scripture block.", n + 1)))?;
+    if let Some(x) = lines {
+        f.lines = x;
+    }
+    if let Some(x) = ylt {
+        f.ylt = x;
+    }
+    edit(bible, store, id, Edit::Set { n, count: 1, text: &scripture_fence_text(&f) })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_scripture_fence_holds_a_reference_and_its_choices() {
+        let f = scripture_fence("```scripture\nNum 25:10-13\n```").unwrap();
+        assert_eq!(f, ScriptureFence { reference: "Num 25:10-13".into(), lines: false, ylt: false });
+        let g = scripture_fence("```scripture\n  Ps 106:28-31 \nylt\nLines\n```").unwrap();
+        assert_eq!((g.reference.as_str(), g.lines, g.ylt), ("Ps 106:28-31", true, true));
+        assert_eq!(scripture_fence_text(&g), "```scripture\nPs 106:28-31\nlines\nylt\n```");
+        assert_eq!(scripture_fence(&scripture_fence_text(&g)).unwrap(), g);
+        assert_eq!(scripture_fence("```scripture\n```").unwrap().reference, "");
+        assert!(scripture_fence("```view\nnotebook\n```").is_none());
+        assert!(scripture_fence("Num 25:11").is_none());
+    }
 
     fn kinds(t: &str, titled: bool) -> Vec<&'static str> {
         split(t, titled).1.iter().map(|b| b.kind).collect()

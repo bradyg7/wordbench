@@ -7,7 +7,8 @@
 import { wb } from './api';
 import { app, here } from './app';
 import { toast } from './sheets';
-import { button, h, icon, placeGo, popMenu, type Found } from './ui';
+import { button, h, icon, popMenu, type Found } from './ui';
+import { drawVerses, openSplit, type MarkedVerse } from './verses';
 
 export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number }
 export interface Blocks { id: string; title: { text: string; start: number; end: number } | null; blocks: Blk[] }
@@ -54,6 +55,8 @@ function goesOn(text: string): string {
 export function drawBlocks(data: Blocks, host: Host): HTMLElement {
   const wrap = h('div', 'nb-page nb-blocks');
   wrap.dataset.id = data.id;
+  scriptureNow = data.blocks.some(isScripture) ? { id: data.id, got: wb(['page', 'scripture', data.id]) } : null;
+  scriptureNow?.got.catch(() => {});
   for (const b of data.blocks) wrap.append(blockEl(data, b, host));
   const add = h('div', 'nb-block-add muted', data.blocks.length ? 'Write here, or type / for a block' : 'Write the page here, or type / for a block');
   add.onclick = () => startNew(data, host, add, data.blocks.length ? data.blocks[data.blocks.length - 1].n : 0, '');
@@ -76,7 +79,7 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
   grip.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-block', `${data.id} ${b.n}`); ev.dataTransfer!.effectAllowed = 'move'; el.classList.add('dragging'); };
   grip.ondragend = () => el.classList.remove('dragging');
   const body = h('div', 'nb-block-body');
-  body.append(drawn(b, host));
+  body.append(drawn(b, host, data.id));
   body.onclick = ev => {
     const t = ev.target as HTMLElement;
     if (t.closest('a, input, button')) return;
@@ -112,7 +115,7 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
 }
 
 /** A block as it reads: a to-do with its box, a numbered item with its number, a divider, a table, a fenced block. */
-function drawn(b: Blk, host: Host): Node {
+function drawn(b: Blk, host: Host, id: string): Node {
   const refs = shifted(host.refs, b.start, b.end), links = shifted(host.links, b.start, b.end);
   if (b.kind === 'todo') {
     const row = h('div', 'nb-todo');
@@ -134,6 +137,7 @@ function drawn(b: Blk, host: Host): Node {
   }
   if (b.kind === 'divider') return h('hr', 'nb-hr');
   if (b.kind === 'table') return table(b.text);
+  if (isScripture(b)) return scriptureBlock(b, id, host);
   if (b.kind === 'fence') return fence(b);
   const f = host.render(b.text, refs, links);
   if (b.kind === 'numbered') {
@@ -161,18 +165,67 @@ function table(text: string): HTMLElement {
   return t;
 }
 
-/** A fenced block: ```scripture holds only a reference (drawn from the Bible in W4); ```view a line of the command
+/** A page's scripture blocks with their verses (`wb page scripture`), asked for once each time the page is drawn. */
+let scriptureNow: { id: string; got: Promise<any> } | null = null;
+const isScripture = (b: Blk) => b.kind === 'fence' && (b.lang || '').split(/\s/)[0].toLowerCase() === 'scripture';
+
+/** A scripture block (W4, sheet W3): the file holds only the reference (and `lines`, `ylt` when chosen); the verses are
+ * drawn from the Bible, verbatim, with the person's highlights. Its head: the reference · version, Paragraph | Lines,
+ * YLT, Open ▾. A choice is kept in the block's fence (`wb block scripture`). */
+function scriptureBlock(b: Blk, id: string, host: Host): HTMLElement {
+  const box = h('div', 'nb-scripture sv-block');
+  const lines = b.text.split('\n').slice(1).map(l => l.trim().toLowerCase());
+  const ref = (b.text.split('\n')[1] || '').trim().replace(/^`+$/, '');
+  const isLines = lines.includes('lines'), isYlt = lines.includes('ylt');
+  const head = h('div', 'sv-head');
+  const label = h('span', 'sv-ref', ref || 'Scripture');
+  head.append(icon('book', 14), label, h('span', 'sv-ver muted', ` · ${isYlt ? 'YLT' : 'KJV'}`), h('span', 'grow'));
+  const choose = async (flag: string) => {
+    try {
+      const n = await blockNow(id, b);
+      if (!n) return toast('The page changed; try again');
+      await wb(['block', 'scripture', id, String(n), flag]);
+      host.changed();
+    } catch (x) { toast(String(x)); }
+  };
+  const seg = h('div', 'seg small sv-seg');
+  const para = button(isLines ? '' : 'on', 'Paragraph', () => { if (isLines) void choose('--paragraph'); });
+  const ln = button(isLines ? 'on' : '', 'Lines', () => { if (!isLines) void choose('--lines'); });
+  para.title = 'The verses one after another';
+  ln.title = 'A verse to a line';
+  seg.append(para, ln);
+  const ylt = button(`btn small sv-ylt${isYlt ? ' on' : ''}`, 'YLT', () => void choose(isYlt ? '--kjv' : '--ylt'));
+  ylt.title = isYlt ? 'Back to the KJV' : 'Young’s Literal Translation';
+  ylt.setAttribute('aria-pressed', String(isYlt));
+  head.append(seg, ylt);
+  if (ref) head.append(openSplit('Open', ref, () => label.textContent || ref, () => (isYlt ? 'YLT' : undefined), 'sv-open'));
+  const text = h('div', 'sv-body muted small', ref ? 'Reading the verses…' : 'No reference yet: click here and write one under ```scripture.');
+  box.append(head, text);
+  if (ref && scriptureNow?.id === id) {
+    void scriptureNow.got.then(d => {
+      const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
+      if (!mine) return;
+      if (mine.error) { text.textContent = mine.error; return; }
+      label.textContent = mine.label;
+      text.replaceWith(drawVerses(mine.verses as MarkedVerse[], !!mine.lines));
+    }).catch(x => { text.textContent = String(x); });
+  }
+  return box;
+}
+
+/** A block's number now (the page may have changed since it was drawn): found again by its text, nearest where it was. */
+async function blockNow(id: string, b: Blk): Promise<number> {
+  const now: Blk[] = (await wb(['page', 'blocks', id])).blocks;
+  const at = now.filter(x => x.text === b.text).sort((p, q) => Math.abs(p.n - b.n) - Math.abs(q.n - b.n))[0];
+  return at ? at.n : 0;
+}
+
+/** A fenced block: ```scripture holds only a reference (drawn from the Bible, above); ```view a line of the command
  * language (listed in W5); any other is shown as it is written. */
 function fence(b: Blk): HTMLElement {
   const lines = b.text.split('\n');
   const inner = lines.slice(1, lines[lines.length - 1].trim().startsWith(lines[0].trim().slice(0, 3)) && lines.length > 1 ? -1 : undefined);
   const lang = (b.lang || '').split(/\s/)[0].toLowerCase();
-  if (lang === 'scripture') {
-    const box = h('div', 'nb-scripture');
-    const ref = (inner[0] || '').trim();
-    box.append(h('span', 'nb-fence-label', 'Scripture'), ref ? placeGo(ref, ref) : h('span', 'muted', 'no reference yet'));
-    return box;
-  }
   const box = h('div', `nb-fence${lang ? ` nb-fence-${lang}` : ''}`);
   if (lang) box.append(h('span', 'nb-fence-label', lang === 'view' ? 'View' : lang));
   box.append(h('pre', '', inner.join('\n')));

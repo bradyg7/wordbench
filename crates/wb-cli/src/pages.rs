@@ -77,6 +77,23 @@ pub fn commands() -> Vec<Command> {
         cmd("page unpin", "Take a page out of Pinned.", vec![Pos("id", N::One)], |c, a| j(pg::unpin(c.bible()?, &mut *c.study()?, &a.s("id")).map_err(e)?)),
         cmd("page blocks", "A page's blocks, numbered from 1: each one's kind (paragraph, heading, item, numbered, todo, quote, divider, table, fence), its Markdown and where it is in the text; and its title. A day's page by its day (2026-11-07).",
             vec![Pos("id", N::One)], |c, a| j(pg::blocks(&*c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("page scripture", "A page's scripture blocks with their verses from the Bible: each block's number, reference, Paragraph or Lines (lines), version, and its verses verbatim with the highlights on them (as wb scripture). The file holds only the reference.",
+            vec![Pos("id", N::One)], |c, a| j(pg::scripture(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("block scripture", "A scripture block's choices, kept in its fence after the reference: --lines (a verse to a line) or --paragraph; --ylt or --kjv. wb block scripture ID 3 --lines --ylt.",
+            vec![Pos("id", N::One), Pos("n", N::One), Flag("lines"), Flag("paragraph"), Flag("ylt"), Flag("kjv")], |c, a| {
+                let n = nth(a, "n")?;
+                let pick = |on: &str, off: &str| match (a.flag(on), a.flag(off)) {
+                    (true, true) => Err(format!("--{on} or --{off}, not both.")),
+                    (true, false) => Ok(Some(true)),
+                    (false, true) => Ok(Some(false)),
+                    _ => Ok(None),
+                };
+                let (lines, ylt) = (pick("lines", "paragraph")?, pick("ylt", "kjv")?);
+                if lines.is_none() && ylt.is_none() {
+                    return Err("Say what to change: --lines or --paragraph, --ylt or --kjv.".into());
+                }
+                j(pg::set_scripture(c.bible()?, &mut *c.study()?, &a.s("id"), n, lines, ylt).map_err(e)?)
+            }),
         cmd("page title", "Change a page's title (its first line; a # it had stays): wb page title ID \"New title\". The links to its old title: wb note relink.",
             vec![Pos("id", N::One), Pos("title", N::Many)], |c, a| j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Title(&a.s("title"))).map_err(e)?)),
         cmd("block set", "Write a block anew: wb block set ID 3 \"- [ ] Print the verse deck\" (--count K: K blocks from it become this text; - reads standard input; a blank line in it makes two blocks).",
