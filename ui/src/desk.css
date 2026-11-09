@@ -308,7 +308,7 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-head .nb-search { flex: 1; margin: 0; }
 /* the sections (W1): one row of words that wraps in a narrow column; the one shown is filled */
 .nb-sections { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 12px 2px; }
-.nb-section { padding: 5px 10px; min-height: 30px; border: 1px solid transparent; border-radius: 15px; background: none; font: var(--type-small-strong); color: var(--muted); }
+.nb-section { padding: 5px 8px; min-height: 30px; border: 1px solid transparent; border-radius: 15px; background: none; font: var(--type-small-strong); color: var(--muted); }
 .nb-section:hover { color: var(--fg); background: var(--sunken); }
 .nb-section.on { color: var(--accent); background: var(--accent-soft); }
 .nb-follow { display: flex; align-items: center; gap: 8px; margin: 6px 16px 0; font: var(--type-small-strong); }

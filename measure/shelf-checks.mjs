@@ -1,8 +1,34 @@
 // The Shelf as a tree (R2, docs/redesign-R2.md), checked in the real app: run by measure/desk.mjs, or alone by
 // measure/shelf.mjs. Everything is compared with what `wb` says and with the files in the desk's own scratch copy.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+
+// The two sets the checks open ("phinehas study", "ruth") were once in the person's own folder, and the checks leaned on
+// them. A scratch copy of the person's folder cannot be trusted to hold any particular set (the person reorganizes it),
+// so the run's own copy gets them written here, before the app starts: the Python app's set-file format, items by
+// reference (no scripture text), panes in the shape the Python app keeps them.
+export function shelfFixtures(study) {
+  const dir = path.join(study, 'sets');
+  mkdirSync(dir, { recursive: true });
+  const at = '2026-11-01T12:00:00Z';
+  const pane = (type, id, title, params) => ({ kind: 'pane', type, id, title, params });
+  const write = (id, name, items) => writeFileSync(path.join(dir, `${id}.md`),
+    `---\nname: ${JSON.stringify(name)}\ncreated: "${at}"\nupdated: "${at}"\n---\n\n` +
+    items.map((it, i) => `- ${JSON.stringify({ key: `fx${id.replace(/\W/g, '').slice(0, 4)}${i}`, ...it })}\n`).join(''), 'utf8');
+  write('phinehas-study', 'phinehas study', [
+    { kind: 'thread', ref: 'phinehas' },
+    { kind: 'place', ref: 'NUM.25:1-25:18' },
+    pane('interlinear', 'interlinear', 'Interlinear', { book: 4, c1: 25, v1: 11, c2: 25, v2: 13 }),
+  ]);
+  write('ruth', 'ruth', [
+    pane('entry', 'word', 'H2617', { sid: 'H2617', english: '', paneId: 'word', word: '', anchor: '' }),
+    pane('entry', 'word', 'H2617', { sid: 'H2617', english: '', paneId: 'word', word: '', anchor: '' }), // the same pane twice opens once
+    pane('uses', 'uses', 'Every use', { strong: 'H2617', word: '', cat: 'all', scope: 'all' }),
+    pane('search', 'search', 'Search', { q: 'kindness', case: false, regex: false, scope: 'all' }),
+    pane('interlinear', 'interlinear', 'Interlinear', { book: 8, c1: 1, v1: 16, c2: 1, v2: 17 }),
+  ]);
+}
 
 export async function shelfChecks({ page, check, env, wbExe, study, shots, sleep }) {
   const wbj = (...a) => JSON.parse(execFileSync(wbExe, a, { env }).toString());
@@ -22,7 +48,7 @@ export async function shelfChecks({ page, check, env, wbExe, study, shots, sleep
   // Open all (a484): each item where its kind goes, the reader not moved, the tabs marked
   const placeBefore = await page.locator('#place .place-label').textContent();
   const plan = wbj('set', 'open', 'phinehas study');
-  const openable = new Set(plan.items.filter(i => i.open && !i.open.startsWith('note|')).map(i => i.open));
+  const openable = new Set(plan.items.filter(i => i.open && !i.open.startsWith('note|') && !i.open.startsWith('thread|')).map(i => i.open));
   await page.locator('.pane-shelf .shelf-folder[data-folder="phinehas-study"] .shelf-name').click();
   await page.locator('.pane-shelf .shelf-open-all').click();
   await page.waitForFunction(n => document.querySelectorAll('.tab.tab-marked').length >= n, openable.size, { timeout: 20000 }).catch(() => {});
@@ -109,7 +135,8 @@ export async function shelfChecks({ page, check, env, wbExe, study, shots, sleep
   const py = 'C:/Users/brady/github/bible-workbench';
   if (existsSync(py)) {
     const out = JSON.parse(execFileSync('python', ['-I', '-c', `import sys, json; sys.path.insert(0, r'${py}'); from pathlib import Path; from workbench.study import Study; st = Study(Path(r'${study}')); print(json.dumps(sorted([t['id'], len(t['items'])] for t in st.sets())))`]).toString());
-    const ours = wbj('set', 'list').map(t => [t.id, t.items.length]).sort();
+    // (a document kept in a set is this app's own kind: the Python app passes over it, so it is not counted)
+    const ours = wbj('set', 'list').map(t => [t.id, t.items.filter(i => i.kind !== 'document').length]).sort();
     check('the Python app reads every folder as a set with the same items', JSON.stringify(out) === JSON.stringify(ours), `${JSON.stringify(out)} | ${JSON.stringify(ours)}`);
   }
 }

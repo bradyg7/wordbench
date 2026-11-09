@@ -9,7 +9,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
-import { shelfChecks } from './shelf-checks.mjs';
+import { shelfChecks, shelfFixtures } from './shelf-checks.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
@@ -31,6 +31,8 @@ cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { r
 // without them; what the checks need they make.
 for (const d of ['notes/_inbox', 'notes/_threads', 'notes/_days', 'documents', 'findings', '.trash']) rmSync(path.join(study, d), { recursive: true, force: true });
 rmSync(path.join(study, 'settings', 'notebook.json'), { force: true });
+// the Shelf's checks open two sets by name; the person's folder is not trusted to hold them, so this copy gets its own
+shelfFixtures(study);
 mkdirSync(cache, { recursive: true });
 const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort, WB_NO_OPEN: '1' };
 const proc = spawn(exe, [], { env, stdio: 'ignore' });
@@ -74,11 +76,12 @@ async function settingsChecks(page) {
 
   // R4 step 3: the toolbar in place
   const ids = () => page.evaluate(() => [...document.querySelectorAll('nav.tools > .tb[data-item]')].map(b => b.dataset.item));
-  check('the standard toolbar is the five buttons it was', (await ids()).join() === 'version,notebook,threads,shelf,highlights', (await ids()).join());
+  // (four: R1 took the Threads button off the standard toolbar, a thread being a page)
+  check('the standard toolbar is the four buttons it has', (await ids()).join() === 'version,notebook,shelf,highlights', (await ids()).join());
   await page.locator('#more').click();
   await page.locator('.more-menu .more-item', { hasText: 'Customize toolbar' }).click();
   await page.waitForSelector('.tb-editing .tb-edit', { timeout: 5000 });
-  check('Customize turns the toolbar into its editor, with the catalog beside it', await page.locator('.tb-edit').count() === 5 && await page.locator('.tb-drawer .tb-entry').count() >= 10);
+  check('Customize turns the toolbar into its editor, with the catalog beside it', await page.locator('.tb-edit').count() === 4 && await page.locator('.tb-drawer .tb-entry').count() >= 10);
   await page.locator('.tb-edit[data-item="shelf"] .tb-x').click();
   await page.locator('.tb-drawer .tb-entry', { hasText: 'Reading plans' }).click();
   await page.locator('.tb-drawer .tb-entry', { hasText: 'Reading plans' }).waitFor();
@@ -86,7 +89,7 @@ async function settingsChecks(page) {
   await page.locator('.tb-done').click();
   await sleep(500);
   const tbs = JSON.parse(execFileSync(wbExe, ['settings', 'toolbar'], { env }).toString());
-  check('Done keeps the list in settings/toolbar.json and the bar shows it', tbs.buttons.join() === 'version,notebook,threads,highlights,plans' && (await ids()).join() === tbs.buttons.join(), JSON.stringify(tbs));
+  check('Done keeps the list in settings/toolbar.json and the bar shows it', tbs.buttons.join() === 'version,notebook,highlights,plans' && (await ids()).join() === tbs.buttons.join(), JSON.stringify(tbs));
   await page.locator('#more').click();
   const more2 = (await page.locator('.more-menu').innerText()).replace(/\s+/g, ' ');
   check('More lists what is not on the toolbar (the Shelf now) and not what is', /Not on your toolbar.*Shelf/i.test(more2) && !/Not on your toolbar.*Reading plans/i.test(more2), more2);

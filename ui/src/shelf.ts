@@ -87,7 +87,8 @@ export async function openAll(name: string, deep = false): Promise<string> {
   for (const s of sets) {
     for (const it of s.items as Item[]) {
       if (!it.open) { why.push(`${it.label}: ${it.why}`); continue; }
-      if (it.open.startsWith('note|')) { pages.push(it.open); continue; }
+      // a note and a thread are pages (R1): they open in the Notebook, which is one tab, so neither is marked
+      if (it.open.startsWith('note|') || it.open.startsWith('thread|')) { pages.push(it.open); continue; }
       if (shelf) dock.from(shelf);
       await reopen(it.open);
       const p = await waitFor(paneKey(it.open));

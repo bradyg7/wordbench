@@ -7,7 +7,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
-import { shelfChecks } from './shelf-checks.mjs';
+import { shelfChecks, shelfFixtures } from './shelf-checks.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
@@ -22,6 +22,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 rmSync(work, { recursive: true, force: true });
 cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { recursive: true });
+shelfFixtures(study);
 mkdirSync(cache, { recursive: true });
 const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: '9335' };
 const proc = spawn(exe, [], { env, stdio: 'ignore' });
