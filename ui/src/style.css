@@ -14,14 +14,16 @@
 :root[data-theme="light"], :root[data-theme="eink"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 
-/* thin scrollbars in the tokens' colors, everywhere (WebView2 reads the standard properties; WebKit the ::-webkit ones) */
-* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent; }
-@supports not (scrollbar-color: red transparent) {
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 45%, transparent); border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
-  ::-webkit-scrollbar-corner { background: transparent; }
-}
+/* Scrollbars (note cd59): thin, no arrows, and the thumb only shows while the box is hovered or being scrolled (main.ts sets
+   .scrolling for about 800 ms after a scroll). Only the ::-webkit forms: the standard scrollbar-width / scrollbar-color
+   would switch these off in Chromium and cannot remove the arrows or fade the bar. */
+::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: transparent; border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; transition: background-color .25s; }
+:hover::-webkit-scrollbar-thumb, .scrolling::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--muted) 45%, transparent); }
+::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--muted) 70%, transparent); }
+::-webkit-scrollbar-corner { background: transparent; }
 :root[data-size="compact"] { --tabs-h: 64px; --read: var(--type-read-phone); }
 :root[data-theme="eink"] { --read: var(--type-read-eink); }
 

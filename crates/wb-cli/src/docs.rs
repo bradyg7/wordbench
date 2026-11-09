@@ -2,7 +2,7 @@
 //! that is brought up to date (wb-core's docs module). The Python `wb`'s `docs` and `craft` commands, with the same names
 //! and output; the structures this app does not make yet say so.
 
-use crate::args::{Flag, Opt, Pos, N};
+use crate::args::{Append, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -26,10 +26,20 @@ fn thread_id(c: &Ctx<'_>, name: &str) -> Result<String, String> {
 }
 
 fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
+    if let Some(page) = a.opt("page") {
+        let out = out_dir(c)?;
+        let st = c.study()?;
+        let r = docs::make_page(c.bible()?, &st, &out, &page, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(), a.opt("version").as_deref(),
+            &a.list("on"), &a.list("off"), a.flag("force")).map_err(e)?;
+        if a.flag("open") {
+            docs::open_file(&out.join(r["name"].as_str().unwrap_or(""))).map_err(e)?;
+        }
+        return j(r);
+    }
     if a.opt("passage").is_some() {
         return Err("Documents from a passage are made by the Python app until phase 5; here, from a thread: --thread NAME.".into());
     }
-    let Some(t) = a.opt("thread") else { return Err("Give the thread: --thread NAME.".into()) };
+    let Some(t) = a.opt("thread") else { return Err("Give the thread (--thread NAME) or the page (--page ID).".into()) };
     let id = thread_id(c, &t)?;
     let out = out_dir(c)?;
     let st = c.study()?;
@@ -41,21 +51,22 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
 }
 
 fn make_args() -> Vec<crate::args::Spec> {
-    vec![Opt("thread", None), Opt("passage", None), Opt("version", Some("KJV")), Opt("structure", None), Opt("theme", None), Flag("open"), Flag("new"), Flag("force")]
+    vec![Opt("thread", None), Opt("page", None), Opt("passage", None), Opt("version", None), Opt("structure", None), Opt("theme", None), Append("on"), Append("off"), Flag("open"), Flag("new"), Flag("force")]
 }
 
 pub fn commands() -> Vec<Command> {
     vec![
         cmd("docs list", "Your Word documents and slide decks, and how each stands: current, behind (its source changed), edited (its file was changed by hand),\n\
-                          missing (the file is gone), gone (its thread is gone), unreadable, or forgotten. --thread for one thread's.",
-            vec![Opt("thread", None)], |c, a| {
-            let thread = match a.opt("thread") {
-                Some(t) => Some(thread_id(c, &t)?),
-                None => None,
+                          missing (the file is gone), gone (its thread or page is gone), unreadable, or forgotten. --thread for one thread's, --page ID for one page's.",
+            vec![Opt("thread", None), Opt("page", None)], |c, a| {
+            let of = match (a.opt("thread"), a.opt("page")) {
+                (Some(t), _) => Some(("thread", thread_id(c, &t)?)),
+                (None, Some(p)) => Some(("page", p.trim().to_string())),
+                _ => None,
             };
             let out = out_dir(c)?;
             let st = c.study()?;
-            j(docs::listing(c.bible()?, &st, &out, thread.as_deref()))
+            j(docs::listing(c.bible()?, &st, &out, of.as_ref().map(|(k, id)| (*k, id.as_str()))))
         }),
         cmd("docs show", "One document and how it stands.", vec![Pos("name", N::Many)], |c, a| {
             let out = out_dir(c)?;
@@ -102,9 +113,14 @@ pub fn commands() -> Vec<Command> {
             j(docs::delete(&mut *c.study()?, &out, &a.s("name")).map_err(e)?)
         }),
         cmd("docs plan", "What a document from a thread would hold if made now, and its plan's fingerprint (the same as the Python app's):\n\
-                          wb docs plan --thread phinehas --to word --structure script  |  --to deck --structure verse.",
-            vec![Opt("thread", None), Opt("to", Some("word")), Opt("structure", None)], |c, a| {
-            let Some(t) = a.opt("thread") else { return Err("Give the thread: --thread NAME.".into()) };
+                          wb docs plan --thread phinehas --to word --structure script  |  --to deck --structure verse.\n\
+                          From a page, with the switches it was last made with: wb docs plan --page ID --to word|pdf (and the verses it holds).",
+            vec![Opt("thread", None), Opt("page", None), Opt("to", Some("word")), Opt("structure", None)], |c, a| {
+            if let Some(p) = a.opt("page") {
+                let st = c.study()?;
+                return j(docs::plan_for_page(c.bible()?, &st, &p, &a.opt_or("to", "word")).map_err(e)?);
+            }
+            let Some(t) = a.opt("thread") else { return Err("Give the thread (--thread NAME) or the page (--page ID).".into()) };
             let id = thread_id(c, &t)?;
             let to = a.opt_or("to", "word");
             if !matches!(to.as_str(), "word" | "deck" | "pdf") {
@@ -115,12 +131,33 @@ pub fn commands() -> Vec<Command> {
         }),
         cmd("craft word", "A Word document from a thread: wb craft word --thread phinehas --structure script [--theme olivet].\n\
                            Here: script (the Speaker Script); the other structures are made by the Python app until phase 5. --theme: otherwise your saved theme.\n\
-                           Asking again for the same thread and structure updates the same file (see wb docs). Every verse in the file is checked against the Bible.",
+                           Asking again for the same thread and structure updates the same file (see wb docs). Every verse in the file is checked against the Bible.\n\
+                           From a page and the pages inside it: wb craft word --page ID [--on KEY] [--off KEY] [--version kjv|ylt|page]; the rows' keys are in\n\
+                           wb craft parts --page ID. To-dos are left out unless switched on; with no --on or --off, the switches it was last made with stay.",
             make_args(), |c, a| make(c, a, "word")),
         cmd("craft deck", "Slides from a thread, as PDF pages: wb craft deck --thread phinehas --structure verse [--theme vigil].\n\
                            Here: verse (Verse by Verse); PowerPoint and the other structures are made by the Python app until phase 5.\n\
-                           Asking again for the same thread and structure updates the same file (see wb docs). Every verse on the pages is checked against the Bible.",
+                           Asking again for the same thread and structure updates the same file (see wb docs). Every verse on the pages is checked against the Bible.\n\
+                           From a page: wb craft deck --page ID, with --on, --off and --version as wb craft word.",
             make_args(), |c, a| make(c, a, "pdf")),
+        cmd("craft parts", "What goes in a document from a page: each block of it (a run of to-dos or list items as one) and each page inside it, with its key,\n\
+                            its switch and what it becomes. The switches are the ones its documents were last made with, or those given: --on KEY, --off KEY.\n\
+                            --version kjv|ylt makes every scripture block that version; page (the default) keeps each block's own.",
+            vec![Opt("page", None), Opt("version", None), Append("on"), Append("off")], |c, a| {
+            let Some(p) = a.opt("page") else { return Err("Give the page: --page ID (wb page tree lists them).".into()) };
+            let st = c.study()?;
+            j(docs::page_parts(c.bible()?, &st, &p, &a.list("on"), &a.list("off"), a.opt("version").as_deref()).map_err(e)?)
+        }),
+        cmd("docs preview", "A document's file as the window previews it, read from the file: a Word document's paragraphs and their styles, or slides as PDF pages drawn in SVG (while the document is up to date).",
+            vec![Pos("name", N::Many)], |c, a| {
+            let out = out_dir(c)?;
+            let st = c.study()?;
+            j(docs::preview(c.bible()?, &st, &out, &a.s("name")).map_err(e)?)
+        }),
+        cmd("docs reveal", "Show a document's file in its folder (Explorer), picked out.", vec![Pos("name", N::Many)], |c, a| {
+            let out = out_dir(c)?;
+            j(docs::reveal(&*c.study()?, &out, &a.s("name")).map_err(e)?)
+        }),
         cmd("craft designs", "The color themes and the slide and Word structures (which this app makes), with your saved theme.", vec![], |c, _| {
             j(docs::designs(&*c.study()?))
         }),

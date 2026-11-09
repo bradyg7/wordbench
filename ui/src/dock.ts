@@ -21,7 +21,7 @@ export const CHANGES: Change[] = ['notes', 'threads', 'highlights', 'plans', 'se
 /** What each kind of pane shows from the study folder. A write draws again only the panes that show what it changed;
  * the other kinds show the Bible database alone and are never drawn again by a write. */
 const SHOWS: Record<string, Change[]> = {
-  notebook: ['notes', 'threads'], threads: ['threads'], thread: ['threads', 'notes', 'highlights', 'documents'], place: ['notes', 'highlights', 'threads'],
+  notebook: ['notes', 'threads', 'documents'], threads: ['threads'], thread: ['threads', 'notes', 'highlights', 'documents'], place: ['notes', 'highlights', 'threads'],
   reader2: ['notes', 'highlights', 'threads'], versecard: ['highlights'], find: ['notes', 'threads'], marked: ['highlights', 'threads'], plans: ['plans'], findings: ['findings'], shelf: ['sets', 'threads'],
   // a document's state follows its thread, the notes and highlights in it, and the documents themselves
   documents: ['documents', 'threads', 'notes', 'highlights'],
@@ -210,6 +210,12 @@ export class Dock {
 
   /** The pane last pressed in, if the last press was in one, and when. */
   private origin: { pane: string; at: number } | null = null;
+
+  /** The next pane opens where its kind goes, not beside the pane it was asked for from (W6: a document's preview opens
+   * beside the page, on the left, so the page stays in view). */
+  apart() {
+    this.origin = null;
+  }
 
   /**
    * Opens a pane, or brings forward the one already open with the same key. `fill` draws into the pane's element (it may

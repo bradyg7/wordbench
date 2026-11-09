@@ -34,7 +34,7 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
 
 | Path | What |
 |---|---|
-| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `pages` (pages inside pages, Pinned, a page's blocks), `relay` (`wb do`), `docs` (documents from a thread: the plans, the Word writer, the PDF deck through Typst, `documents/` records; its fonts in `crates/wb-core/fonts`) |
+| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `pages` (pages inside pages, Pinned, a page's blocks), `relay` (`wb do`), `docs` (documents from a thread or a page: the plans, the Word writer, the PDF deck through Typst, `documents/` records; its fonts in `crates/wb-core/fonts`) |
 | `crates/wb-cli` | The `wb` command table (a library the app runs in-process) and the `wb` binary |
 | `app/src-tauri` | The Tauri 2 shell: commands that call wb-core |
 | `ui/` | The UI: TypeScript, CSS, fonts (Literata for scripture, Inter for the interface), `tokens.css` from the design tokens |

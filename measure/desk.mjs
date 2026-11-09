@@ -5,7 +5,7 @@
 //   node measure/desk.mjs            the debug app (its UI comes from `npm run dev` on :1420, which must be running)
 //   node measure/desk.mjs --release  the release app (npx tauri build --no-bundle first)
 import { spawn, execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
@@ -48,6 +48,20 @@ try {
   check('the Notebook is docked on the right', await page.locator('.dock-right.open .pane-notebook').count() === 1);
   check('the toolbar has the command field and the pane buttons', await page.locator('#cmd').isVisible() && await page.locator('#tb-notebook').isVisible() && await page.locator('#hl-menu').isVisible());
   await page.screenshot({ path: shots + '1440-reader-with-the-notebook.png' });
+
+  // scrollbars (note cd59): no arrows; the thumb is clear at rest and shows while scrolling, then fades
+  await page.mouse.move(8, 8);
+  const thumb = () => page.evaluate(() => { const e = document.getElementById('scroller'); return getComputedStyle(e, '::-webkit-scrollbar-thumb').backgroundColor; });
+  const clear = c => c === 'rgba(0, 0, 0, 0)' || c === 'transparent';
+  const bar0 = await page.evaluate(() => { const cs = getComputedStyle(document.getElementById('scroller'), '::-webkit-scrollbar-button'); return cs.display; });
+  const thumbRest = await thumb();
+  await page.evaluate(() => { document.getElementById('scroller').scrollTop += 120; });
+  await sleep(450);
+  const thumbScrolling = await thumb();
+  await sleep(1500);
+  const thumbAfter = await thumb();
+  check('scrollbars have no arrows, are clear at rest, show while scrolling and fade after', bar0 === 'none' && clear(thumbRest) && !clear(thumbScrolling) && clear(thumbAfter), [bar0, thumbRest, thumbScrolling, thumbAfter].join(' | '));
+  await page.evaluate(() => { document.getElementById('scroller').scrollTop = 0; });
 
   // the command field: backtick, suggestions, Enter
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });
@@ -726,8 +740,12 @@ try {
   check('a block dragged by its grip onto the top of another moves there in the file, the rest as they were', blockMoved && bodyOf(parentId) === 'W3 parent page\nThe aim: read the chapter.\n\n- [ ] second to-do\n- [ ] first to-do', JSON.stringify(bodyOf(parentId)));
   await page.waitForFunction(() => /second to-do/.test(document.querySelectorAll('.pane-notebook .nb-blocks .nb-block')[1]?.textContent || ''), null, { timeout: 10000 }).catch(() => {});
   // one block written at a time, as its Markdown
+  const shiftBefore = await page.evaluate(() => { const bl = [...document.querySelectorAll('.pane-notebook .nb-blocks .nb-block')]; const r = e => e.getBoundingClientRect(); return { left: r(bl[0].querySelector('.nb-block-body > *')).left, top: r(bl[0].querySelector('.nb-block-body > *')).top, next: r(bl[1]).top }; });
   await blockAt(0).locator('.nb-block-body').click();
   await typing();
+  const shiftAfter = await page.evaluate(() => { const ta = document.querySelector('.pane-notebook textarea.nb-block-input'); const cs = getComputedStyle(ta); const r = ta.getBoundingClientRect(); const next = document.querySelectorAll('.pane-notebook .nb-blocks .nb-block')[1].getBoundingClientRect().top; return { left: r.left + parseFloat(cs.paddingLeft), top: r.top + parseFloat(cs.paddingTop), next, border: cs.borderTopWidth + ' ' + cs.borderLeftWidth, bg: cs.backgroundColor, shadow: cs.boxShadow }; });
+  check('a block being written has no border or box, and no text moves by a pixel (note 6ed1)', shiftAfter.border === '0px 0px' && shiftAfter.bg === 'rgba(0, 0, 0, 0)' && shiftAfter.shadow === 'none' && Math.abs(shiftAfter.left - shiftBefore.left) <= 1 && Math.abs(shiftAfter.top - shiftBefore.top) <= 1 && Math.abs(shiftAfter.next - shiftBefore.next) <= 1, JSON.stringify({ shiftBefore, shiftAfter }));
+  await page.screenshot({ path: shots + '1440-notebook-a-block-being-written.png' });
   check('a click writes in that block alone, as its Markdown', (await ed.locator('textarea.nb-block-input').inputValue()) === 'The aim: read the chapter.' && await ed.locator('textarea').count() === 1);
   await page.keyboard.type(' Then the psalm.');
   await done();
@@ -1104,6 +1122,18 @@ try {
   const tplListed = wbj('template', 'list').templates.map(t => `${t.title}: ${t.used === 0 ? 'not used yet' : t.used === 1 ? 'used once' : `used ${t.used} times`}`);
   check('the Templates page lists each template with how often it was used, as wb template list', JSON.stringify(cards) === JSON.stringify(tplListed), cards.join(' · '));
   await page.screenshot({ path: shots + '1440-notebook-templates.png' });
+  const tplFit = await page.evaluate(() => {
+    const list = document.querySelector('.pane-notebook .nb-tpl-list');
+    const out = {};
+    const scroller = (() => { let e = list.parentElement; while (e && !/(auto|scroll)/.test(getComputedStyle(e).overflowX)) e = e.parentElement; return e; })();
+    for (const w of [null, 320, 240]) {
+      list.style.width = w ? w + 'px' : ''; list.style.maxWidth = w ? w + 'px' : '';
+      out[w || 'pane'] = [...list.querySelectorAll('.tp-card')].every(c => c.scrollWidth <= c.clientWidth + 1) && list.scrollWidth <= list.clientWidth + 1 && (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1);
+    }
+    list.style.width = ''; list.style.maxWidth = '';
+    return out;
+  });
+  check('the Templates page wraps its cards: no sideways scroll at the pane’s width, 320 or 240 px (note bd54)', Object.values(tplFit).every(Boolean), JSON.stringify(tplFit));
   await ed.locator('.nb-tpl-how').click();
   check('How templates work opens Help at its Guide entry', await page.locator('.pane-help .guide-entry[data-name="templates"]').waitFor({ timeout: 10000 }).then(() => true, () => false));
   const helpPane2 = await page.evaluate(() => window.__wb.dock().panes.find(p => p.kind === 'help')?.id);
@@ -1124,6 +1154,136 @@ try {
   await page.evaluate(() => window.__wb.run('notebook'));
   await page.waitForFunction(() => !document.querySelector('.pane-notebook .nb-side-head[data-part="templates"]'), null, { timeout: 10000 }).catch(() => {});
   check('wb template rm deletes a template (to .trash); the pages made from it stay, and with none left the Templates section goes', wbj('template', 'list').templates.length === 0 && !!fileOf(made) && await page.locator('.pane-notebook .nb-side-head[data-part="templates"]').count() === 0 && readdirSync(path.join(study, '.trash'), { recursive: true }).some(f => String(f).includes(tpl)));
+  await sleep(400);
+
+  // W6, a document from a page (sheets W7.1–W7.4): a page with headings, scripture blocks, to-dos, and two pages inside
+  // it (one with scripture, one with a view) made into a Speaker Script and Verse by Verse. Every verse expected here
+  // comes from the database (wb text); the view's rows are wb view run's.
+  const w6Docs = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
+  const w6 = wbj('page', 'new', 'W6 Lesson: Phinehas').id;
+  for (const b of ['# Aim', 'Read Numbers 25 with the group, then Psalm 106 beside it.', '# Before Tuesday', '- [x] W6 read Numbers 25 twice\n- [ ] W6 print the verse deck', '```scripture\nNum 25:10-13\n```']) execFileSync(wbExe, ['block', 'add', w6, '-'], { env, input: b });
+  const w6a = wbj('page', 'new', 'W6 The passage', '--parent', w6).id;
+  for (const b of ['```scripture\nPs 106:28-31\n```', '- [ ] W6 a to-do inside']) execFileSync(wbExe, ['block', 'add', w6a, '-'], { env, input: b });
+  const w6Line = 'notebook @Num 25 questions';
+  const w6b = wbj('page', 'new', 'W6 Questions for the group', '--parent', w6).id;
+  execFileSync(wbExe, ['block', 'add', w6b, '-'], { env, input: '```view\n' + w6Line + '\n```' });
+  for (let i = 0; i < 6 && !(await rowOf(w6).count()); i++) {
+    await page.evaluate(() => window.__wb.run('notebook'));
+    await page.evaluate(() => window.__wb.changed());
+    await rowOf(w6).waitFor({ timeout: 5000 }).catch(() => {});
+  }
+  await rowOf(w6).locator('.nb-tree-open').click();
+  await ed.locator('.nb-title', { hasText: 'W6 Lesson: Phinehas' }).waitFor({ timeout: 10000 });
+  check('a page with no documents has no Documents box at its foot', await ed.locator('.nb-docs .pd-doc').count() === 0);
+  // W7.1: Make a document, from the page's ⋯
+  await ed.locator('.nb-ed-head .icon-btn').click();
+  await page.locator('.menu .menu-item', { hasText: 'Make a document…' }).click();
+  await page.locator('.pd-modal .pd-opt').first().waitFor({ timeout: 10000 });
+  const w6Sub = await page.locator('.pd-modal .pd-sub').textContent();
+  const w6Opts = await page.locator('.pd-modal .pd-opt').evaluateAll(els => els.map(e => [e.querySelector('.pd-opt-name').textContent, e.querySelector('input').checked, e.querySelector('input').disabled]));
+  const w6Made = w6Opts.filter(o => !o[2]).map(o => o[0]).join();
+  check('Make a document (a page’s ⋯): from the page and the pages inside it; the Speaker Script and Verse by Verse on, the rest greyed for phase 5', w6Sub === 'From the page W6 Lesson: Phinehas and the 2 pages inside it' && w6Made === 'Speaker Script,Verse by Verse' && w6Opts.filter(o => !o[2]).every(o => o[1]) && w6Opts.filter(o => o[2]).length === 6 && w6Opts.filter(o => o[2]).every(o => / · phase 5$/.test(o[0]) && !o[1]), `${w6Sub} · ${w6Opts.map(o => o[0]).join(', ')}`);
+  const designs6 = wbj('craft', 'designs');
+  const aboutShown = await page.locator('.pd-modal .pd-opt').evaluateAll(els => els.map(e => e.querySelector('.muted').textContent));
+  check('each structure with the Python app’s own description (wb craft designs)', aboutShown.includes(designs6.docs.script.about) && aboutShown.includes(`${designs6.decks.verse.about} As PDF pages.`) && aboutShown.includes(designs6.docs.share.about) && aboutShown.includes(designs6.decks.table.about));
+  await page.locator('.pd-modal .pd-theme').selectOption('olivet');
+  check('a theme, with what it is best for, and the version (each block’s own unless one is picked)', (await page.locator('.pd-modal .pd-best').textContent()) === designs6.themes.olivet.best_for && (await page.locator('.pd-modal .pd-version').inputValue()) === 'page');
+  await page.screenshot({ path: shots + '1440-w6-make-a-document.png' });
+  // W7.2: what goes in, a switch for each row, as wb craft parts gives them
+  await page.locator('.pd-modal .pd-next').click();
+  await page.locator('.pd-modal .pd-row').first().waitFor({ timeout: 10000 });
+  const parts6 = wbj('craft', 'parts', '--page', w6);
+  const rows6 = await page.locator('.pd-modal .pd-row').evaluateAll(els => els.map(e => ({ key: e.dataset.key, kind: e.dataset.kind, on: e.querySelector('input').checked, becomes: e.querySelector('.pd-becomes').textContent, text: e.querySelector('.pd-text').textContent })));
+  check('What goes in: each block and each page inside, in order, with its switch and what it becomes, as wb craft parts', JSON.stringify(rows6) === JSON.stringify(parts6.rows.map(r => ({ key: r.key, kind: r.kind, on: r.on, becomes: r.becomes, text: r.text }))) && rows6.map(r => r.kind).join() === 'heading,paragraph,heading,todo,scripture,page,page', rows6.map(r => `${r.kind}${r.on ? '' : ' (off)'}`).join(', '));
+  const todo6 = rows6.find(r => r.kind === 'todo');
+  check('to-dos are left out unless switched on; a page inside says what it holds', !!todo6 && !todo6.on && todo6.becomes === 'Left out: to-dos are for you' && todo6.text === '2 to-dos: W6 read Numbers 25 twice' && rows6[5].text === 'W6 The passage · 1 scripture block' && rows6[6].text === 'W6 Questions for the group · a view', `${todo6?.becomes} · ${rows6[5].text} · ${rows6[6].text}`);
+  // a switch moved: the row says what it becomes now, and back
+  await page.locator(`.pd-modal .pd-row[data-key="${todo6.key}"] input`).click();
+  await page.waitForFunction(k => document.querySelector(`.pd-modal .pd-row[data-key="${k}"] .pd-becomes`)?.textContent === 'Your words: each to-do as a line', todo6.key, { timeout: 10000 }).catch(() => {});
+  const todoOn = await page.locator(`.pd-modal .pd-row[data-key="${todo6.key}"] .pd-becomes`).textContent();
+  await page.locator(`.pd-modal .pd-row[data-key="${todo6.key}"] input`).click();
+  await page.waitForFunction(k => document.querySelector(`.pd-modal .pd-row[data-key="${k}"] .pd-becomes`)?.textContent === 'Left out: to-dos are for you', todo6.key, { timeout: 10000 }).catch(() => {});
+  check('switched on, the to-dos become your words; off again, left out', todoOn === 'Your words: each to-do as a line' && (await page.locator(`.pd-modal .pd-row[data-key="${todo6.key}"] .pd-becomes`).textContent()) === 'Left out: to-dos are for you');
+  check('the note: planned from the page each time, nothing copied in, scripture from the database only', /planned from the page each time it is made/.test(await page.locator('.pd-modal .pd-note').textContent()) && (await page.locator('.pd-modal .pd-sub').textContent()) === 'Speaker Script and Verse by Verse · Olivet · each block’s version');
+  await page.screenshot({ path: shots + '1440-w6-what-goes-in.png' });
+  // W7.3: made, and every verse checked
+  await page.locator('.pd-modal .pd-make').click();
+  await page.locator('.pd-modal.pd-made .pd-file').nth(1).waitFor({ timeout: 60000 }).catch(() => {});
+  const scriptPath = path.join(w6Docs, 'Speaker Script - W6 Lesson Phinehas.docx'), deckPath = path.join(w6Docs, 'Verse by Verse - W6 Lesson Phinehas.pdf');
+  const w6Verses = [...wbj('text', 'Num 25:10-13', '--json').verses, ...wbj('text', 'Ps 106:28-31', '--json').verses];
+  const madeRows = await page.locator('.pd-modal .pd-verse').evaluateAll(els => els.map(e => [e.querySelector('.pd-verse-ref').textContent, e.querySelector('.muted').textContent]));
+  const files6 = await page.locator('.pd-modal .pd-file').evaluateAll(els => els.map(e => [e.querySelector('.pd-file-name').textContent, e.querySelector('.pd-file-meta')?.textContent]));
+  const pdfPages = JSON.parse(execFileSync(wbExe, ['docs', 'show', `page-${w6}-verse`], { env }).toString()).pages;
+  check('Made: the two files, Word with its size and the PDF with its slides, each with Open', files6.length === 2 && files6[0][0] === 'Speaker Script - W6 Lesson Phinehas.docx' && /^Word · \d+ KB$/.test(files6[0][1]) && files6[1][0] === 'Verse by Verse - W6 Lesson Phinehas.pdf' && files6[1][1] === `PDF · ${pdfPages} slides` && await page.locator('.pd-modal .pd-file .pd-open').count() === 2 && existsSync(scriptPath) && existsSync(deckPath), files6.map(f => f.join(': ')).join(' · '));
+  check(`${w6Verses.length} of ${w6Verses.length} verses match the Bible (KJV), in both files, each listed with where it is`, (await page.locator('.pd-modal .pd-checked-head').textContent()) === `${w6Verses.length} of ${w6Verses.length} verses match the Bible (KJV), in both files` && JSON.stringify(madeRows) === JSON.stringify(w6Verses.map(v => [v.ref ?? `${v.book} ${v.c}:${v.v}`, 'Script and slides'])), madeRows.map(r => r[0]).join(', '));
+  check('kept in documents/ as page-<id>-script.json and page-<id>-verse.json, with the plan and file fingerprints', ['script', 'verse'].every(st => { const f = path.join(study, 'documents', `page-${w6}-${st}.json`); if (!existsSync(f)) return false; const r = JSON.parse(readFileSync(f, 'utf8')); return r.source.kind === 'page' && r.source.id === w6 && /^[0-9a-f]{64}$/.test(r.plan) && /^[0-9a-f]{64}$/.test(r.file) && r.theme === 'olivet'; }));
+  await page.screenshot({ path: shots + '1440-w6-made.png' });
+  // the files themselves: every verse word for word (Word read from the file; the PDF's text read by pypdf)
+  const squash6 = t => t.normalize('NFKC').replace(/\s+/g, '');
+  const docText = JSON.parse(execFileSync(wbExe, ['docs', 'preview', `page-${w6}-script`], { env }).toString()).paras.map(p => p.runs.map(r => r.t).join('')).join('\n');
+  const pdfText = execFileSync('python', ['-c', 'import pypdf, sys\nprint("".join(p.extract_text() for p in pypdf.PdfReader(sys.argv[1]).pages))', deckPath], { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } }).toString();
+  check('every verse in the Speaker Script and on the slides is wb text’s, word for word', w6Verses.every(v => squash6(docText).includes(squash6(v.text)) && squash6(pdfText).includes(squash6(v.text))), `${w6Verses.length} verses`);
+  const vRows6 = wbj('view', 'run', w6Line).rows;
+  check('the Speaker Script: the page’s headings and the pages inside as sections with their SLIDE cues, the to-dos left out, the view’s rows as wb view run gives them', /\nAim\nSLIDE 2\n/.test(docText) && /\nW6 The passage\nSLIDE \d+\n/.test(docText) && /\nW6 Questions for the group\nSLIDE \d+\n/.test(docText) && !docText.includes('W6 read Numbers 25 twice') && !docText.includes('W6 a to-do inside') && vRows6.length > 0 && docText.split('W6 Questions for the group\n')[1].split('\n').filter(l => l.startsWith('• ')).length === vRows6.length && vRows6.every(r => docText.includes(`• ${r.title}`)), `${vRows6.length} view rows`);
+  // the Python app reads the study folder with page records in it: it passes over them and breaks on none
+  const OLD6 = path.join(os.homedir(), 'github', 'bible-workbench');
+  const pyDocs = execFileSync('python', ['-c', 'import json, sys\nfrom workbench.study import Study\nfrom workbench import documents\ns = Study(sys.argv[1])\nr = documents.records(s)\ntry:\n  documents.find(s, sys.argv[2])\n  f = "found"\nexcept Exception as e:\n  f = type(e).__name__\nprint(json.dumps({"ids": [x["id"] for x in r], "find": f}))', study, `page-${w6}-script`], { cwd: OLD6, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } }).toString();
+  const py6 = JSON.parse(pyDocs);
+  check('the Python app reads the study folder with page records in it: it lists none of them and breaks on none', !py6.ids.some(i => i.startsWith('page-')) && py6.find === 'Missing', pyDocs.trim());
+  await page.locator('.pd-modal .pd-done').click();
+  // W7.4: the page keeps its documents
+  await page.waitForFunction(() => document.querySelectorAll('.pane-notebook .nb-docs .pd-doc').length === 2, null, { timeout: 15000 }).catch(() => {});
+  const foot6 = async () => page.locator('.pane-notebook .nb-docs .pd-doc').evaluateAll(els => els.map(e => [e.querySelector('.pd-doc-name').textContent, e.querySelector('.pd-doc-when').textContent, e.querySelector('.pd-doc-state')?.textContent || '', !!e.querySelector('.pd-again')]));
+  const footNow = await foot6();
+  check('the page keeps its documents at its foot: Documents · 2, each made today and Up to date', (await page.locator('.pane-notebook .nb-docs .nb-linked-head').textContent()) === 'Documents · 2' && footNow.length === 2 && footNow.every(f => /^today /.test(f[1]) && f[2] === 'Up to date' && !f[3]), JSON.stringify(footNow));
+  // the page changed since: Make again
+  execFileSync(wbExe, ['block', 'add', w6, '-'], { env, input: '```scripture\nNum 25:9\n```' });
+  await page.evaluate(() => window.__wb.changed());
+  await page.waitForFunction(() => [...document.querySelectorAll('.pane-notebook .nb-docs .pd-doc')].filter(e => e.querySelector('.pd-again')).length === 2, null, { timeout: 20000 }).catch(() => {});
+  const footBehind = await foot6();
+  check('the page changed since: each says so, with Make again', footBehind.length === 2 && footBehind.every(f => / · changed since$/.test(f[1]) && f[3]), JSON.stringify(footBehind));
+  await page.locator('.pane-notebook .nb-docs').scrollIntoViewIfNeeded().catch(() => {});
+  await page.screenshot({ path: shots + '1440-w6-the-page-keeps-its-documents.png' });
+  await page.locator('.pane-notebook .nb-docs .pd-doc', { hasText: 'Speaker Script' }).locator('.pd-again').click();
+  await page.waitForFunction(() => /Up to date/.test(document.querySelector('.pane-notebook .nb-docs .pd-doc')?.textContent || ''), null, { timeout: 30000 }).catch(() => {});
+  const again6 = JSON.parse(execFileSync(wbExe, ['docs', 'show', `page-${w6}-script`], { env }).toString());
+  const docText2 = JSON.parse(execFileSync(wbExe, ['docs', 'preview', `page-${w6}-script`], { env }).toString()).paras.map(p => p.runs.map(r => r.t).join('')).join('\n');
+  check('Make again brings it up to date in the same file, the new verse in it from the Bible, the to-dos still left out', again6.state === 'current' && again6.name === 'Speaker Script - W6 Lesson Phinehas.docx' && textOf('Num 25:9').every(t => squash6(docText2).includes(squash6(t))) && !docText2.includes('W6 print the verse deck'));
+  // from a terminal: the to-dos switched on, kept for Make again; wb docs list --page
+  execFileSync(wbExe, ['craft', 'word', '--page', w6, '--on', todo6.key], { env });
+  const docText3 = JSON.parse(execFileSync(wbExe, ['docs', 'preview', `page-${w6}-script`], { env }).toString()).paras.map(p => p.runs.map(r => r.t).join('')).join('\n');
+  const listed6 = wbj('docs', 'list', '--page', w6);
+  execFileSync(wbExe, ['docs', 'update', `page-${w6}-script`, '--force'], { env });
+  const docText4 = JSON.parse(execFileSync(wbExe, ['docs', 'preview', `page-${w6}-script`], { env }).toString()).paras.map(p => p.runs.map(r => r.t).join('')).join('\n');
+  check('wb craft word --page --on: the to-dos go in as your words, and the switch is kept for Make again (wb docs list --page)', docText3.includes('Done: W6 read Numbers 25 twice') && docText3.includes('To do: W6 print the verse deck') && !docText3.includes('W6 a to-do inside') && docText4.includes('To do: W6 print the verse deck') && listed6.length === 2 && listed6.find(d => d.structure === 'script')?.switched?.[todo6.key] === true);
+  execFileSync(wbExe, ['craft', 'word', '--page', w6, '--off', todo6.key], { env });
+  execFileSync(wbExe, ['docs', 'update', `page-${w6}-verse`], { env });
+  // a click on a document previews the file in a pane
+  await page.evaluate(() => window.__wb.changed());
+  await sleep(800);
+  await page.locator('.pane-notebook .nb-docs .pd-doc-name', { hasText: 'Speaker Script' }).click();
+  await page.locator('.pane-docpreview .pd-pv-sheet .pd-pv-p').first().waitFor({ timeout: 15000 }).catch(() => {});
+  const pvText = await page.locator('.pane-docpreview .pd-pv-sheet').textContent().catch(() => '');
+  check('a click on the Speaker Script previews the file in a pane: its paragraphs, read from the file', squash6(pvText).includes(squash6(w6Verses[1].text)) && await page.locator('.pane-docpreview .dp-SlideCue').count() > 0 && await page.locator('.pane-docpreview .dp-ScriptureReference').count() > 0 && !pvText.includes('W6 print the verse deck'));
+  await page.screenshot({ path: shots + '1440-w6-preview-the-speaker-script.png' });
+  await page.locator('.pane-notebook .nb-docs .pd-doc-name', { hasText: 'Verse by Verse' }).click();
+  await page.locator('.pane-docpreview .pd-pv-slide').first().waitFor({ timeout: 20000 }).catch(() => {});
+  await page.waitForFunction(() => [...document.querySelectorAll('.pane-docpreview .pd-pv-slide')].every(i => i.complete && i.naturalWidth > 0), null, { timeout: 15000 }).catch(() => {});
+  const deckNow = JSON.parse(execFileSync(wbExe, ['docs', 'show', `page-${w6}-verse`], { env }).toString());
+  const slidesShown = await page.locator('.pane-docpreview .pd-pv-slide').evaluateAll(els => els.map(i => i.naturalWidth > 0));
+  check('Verse by Verse previews as its slides, drawn by the layout that made the PDF: as many as the PDF has, each drawn', deckNow.state === 'current' && slidesShown.length === deckNow.pages && slidesShown.every(Boolean), `${slidesShown.length} of ${deckNow.pages}`);
+  await page.locator('.pane-docpreview .pd-pv-slide').first().scrollIntoViewIfNeeded().catch(() => {});
+  await sleep(1500);
+  await page.screenshot({ path: shots + '1440-w6-preview-the-verse-deck.png' });
+  for (const pid of await page.evaluate(() => window.__wb.dock().panes.filter(p => p.kind === 'docpreview').map(p => p.id))) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, pid);
+  // the Documents pane lists them made here, and makes one from a page too
+  await page.evaluate(() => window.__wb.run('docs'));
+  await page.waitForSelector('.pane-documents .doc-page-make select.doc-page', { timeout: 15000 }).catch(() => {});
+  const pageRow = page.locator(`.pane-documents .doc-row[data-id="page-${w6}-script"]`);
+  check('the Documents pane lists a page’s documents as made here, and has Make one from a page', await pageRow.count() === 1 && /Up to date/.test(await pageRow.innerText()) && !/Python app/.test(await pageRow.innerText()) && await page.locator('.pane-documents .doc-page-make select.doc-page option').evaluateAll((els, id) => els.some(e => e.value === id), w6));
+  const docsPane6 = await page.evaluate(() => window.__wb.dock().panes.find(p => p.kind === 'documents')?.id);
+  if (docsPane6) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, docsPane6);
+  await page.evaluate(() => window.__wb.run('notebook'));
   await sleep(400);
 
   await page.evaluate(() => { const d = window.__wb.dock(); d.wide.right = false; d.layout(); });
@@ -1162,7 +1322,9 @@ try {
   await dlg.getByRole('button', { name: 'Done' }).click();
   check('Done puts the books in the form as a chip', (await dlg.locator('.plan-what').innerText()).includes('5 books') || (await dlg.locator('.plan-what').innerText()).includes('Matthew'), await dlg.locator('.plan-what').innerText());
   await dlg.getByLabel('Number').fill('30');
-  await dlg.getByRole('button', { name: 'Sun', exact: true }).click();
+  // the day off is Sunday, unless today is Sunday: then Saturday, so there is a reading for today to check
+  const offDay = new Date().getDay() === 0 ? ['Sat', 'sat', 'Saturday'] : ['Sun', 'sun', 'Sunday'];
+  await dlg.getByRole('button', { name: offDay[0], exact: true }).click();
   await page.waitForFunction(() => /30 days/.test(document.querySelector('.plan-summary-line')?.textContent || ''), null, { timeout: 10000 });
   check('the summary follows the form: 5 books, 105 readings, 30 days', /5 books · 105 readings · 30 days/.test(await dlg.locator('.plan-summary-line').innerText()), await dlg.locator('.plan-summary-line').innerText());
   await dlg.getByLabel('Pace').selectOption('own');
@@ -1176,7 +1338,7 @@ try {
   await card.waitFor({ timeout: 10000 });
   const planFile = path.join(study, 'reading', 'plans', 'gospels-and-romans.json');
   const planJson = JSON.parse(readFileSync(planFile, 'utf8'));
-  check('Start writes the plan: 30 days, Romans in it, Sunday off', existsSync(planFile) && planJson.days.length === 30 && JSON.stringify(planJson.days).includes('"ROM.16"') && JSON.stringify(planJson.days_off) === '["sun"]', `${planJson.days.length} days, off ${planJson.days_off}`);
+  check(`Start writes the plan: 30 days, Romans in it, ${offDay[2]} off`, existsSync(planFile) && planJson.days.length === 30 && JSON.stringify(planJson.days).includes('"ROM.16"') && JSON.stringify(planJson.days_off) === `["${offDay[1]}"]`, `${planJson.days.length} days, off ${planJson.days_off}`);
   check('the form is closed', await page.locator('.plan-modal').count() === 0);
   // the plan in its pane: a progress bar, today's reading with Read and Mark read, the days with a grip
   check('the card has a progress bar and today’s reading', await card.locator('.plan-bar').isVisible() && (await card.locator('.plan-today-label').innerText()).toLowerCase() === 'today' && await card.getByRole('button', { name: 'Read', exact: true }).isVisible());
@@ -1564,6 +1726,30 @@ try {
     await r2.locator('.reader2-next').click();
     await page.waitForFunction(() => [...document.querySelectorAll('.pane-reader2 .reader2-title')].some(e => e.offsetWidth && e.textContent === 'Numbers 26'), null, { timeout: 10000 }).catch(() => {});
     check('› turns the second reader’s own chapter; the reader stays', (await r2.locator('.reader2-title').textContent()) === 'Numbers 26' && (await label()) === 'Numbers 25' && (await top()) === at0);
+    const head2 = await r2.locator('.reader2-head').evaluate(h => ({ sub: h.querySelectorAll('.pane-sub').length, text: h.textContent.trim(), go: h.querySelector('.reader2-go')?.getAttribute('aria-label'), goText: h.querySelector('.reader2-go')?.textContent.trim(), goIcon: !!h.querySelector('.reader2-go svg') }));
+    check('the second reader’s head is the title, ‹ ›, and an arrow “Send to the reader”: no label under it that goes stale (note b59b)', head2.sub === 0 && head2.text === 'Numbers 26' && head2.go === 'Send to the reader' && head2.goText === '' && head2.goIcon, JSON.stringify(head2));
+    // the keyboard works in it: a click in the text, then ↑ ↓ scroll that pane and ← → turn its chapter, never the reader's
+    const sc2 = () => page.evaluate(() => { const e = [...document.querySelectorAll('.reader2-pane')].find(x => x.offsetParent); return e.scrollTop; });
+    const mainScroll = () => page.evaluate(() => document.getElementById('scroller').scrollTop);
+    const sc2Before = await sc2(), mainBefore = await mainScroll();
+    await r2.locator('.vn[data-v="2"]').click();
+    await page.keyboard.press('Escape');
+    for (let k = 0; k < 4; k++) await page.keyboard.press('ArrowDown');
+    await sleep(500);
+    const sc2Down = await sc2();
+    await page.keyboard.press('PageDown');
+    await sleep(500);
+    const sc2Page = await sc2();
+    for (let k = 0; k < 2; k++) await page.keyboard.press('ArrowUp');
+    await sleep(400);
+    check('after a click in a second reader, ↓ PgDn ↑ scroll that pane and not the reader (note b59b)', sc2Down > sc2Before && sc2Page > sc2Down && (await sc2()) < sc2Page && (await mainScroll()) === mainBefore, [sc2Before, sc2Down, sc2Page, await sc2(), mainBefore, await mainScroll()].join(' → '));
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => [...document.querySelectorAll('.pane-reader2 .reader2-title')].some(e => e.offsetWidth && e.textContent === 'Numbers 27'), null, { timeout: 10000 }).catch(() => {});
+    const afterRight = [await r2.locator('.reader2-title').textContent(), await label()];
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(() => [...document.querySelectorAll('.pane-reader2 .reader2-title')].some(e => e.offsetWidth && e.textContent === 'Numbers 26'), null, { timeout: 10000 }).catch(() => {});
+    check('→ and ← pressed in a second reader turn its own chapter; the reader stays', afterRight[0] === 'Numbers 27' && afterRight[1] === 'Numbers 25' && (await r2.locator('.reader2-title').textContent()) === 'Numbers 26' && (await label()) === 'Numbers 25' && (await top()) === at0, afterRight.join(' / '));
+    await page.evaluate(() => { const e = [...document.querySelectorAll('.reader2-pane')].find(x => x.offsetParent); e.scrollTop = 0; });
     const v3 = await r2.locator('.vn[data-v="3"]').boundingBox();
     await page.mouse.click(v3.x + v3.width / 2, v3.y + v3.height / 2, { button: 'right' });
     await page.locator('.verse-menu .menu-item', { hasText: 'Go to in the reader' }).click();
@@ -1699,6 +1885,10 @@ try {
   // tier 4: documents from a thread. The Documents pane makes the Speaker Script (Word); the command field makes Verse by
   // Verse (PDF pages); each is checked verse by verse before it is kept, listed with how it stands, and in its thread's pane
   const docsDir = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
+  // a lesson's PowerPoint, as the Python app records one (its file not made here): written into this run's own copy, so the
+  // check below does not depend on what the scratch folder holds
+  mkdirSync(path.join(study, 'documents'), { recursive: true });
+  writeFileSync(path.join(study, 'documents', 'lesson-phinehas-pulpit.json'), JSON.stringify({ id: 'lesson-phinehas-pulpit', source: { kind: 'lesson', name: 'phinehas' }, to: 'deck', structure: 'pulpit', name: 'Pulpit - Phinehas.pptx', stem: 'Pulpit - Phinehas', title: 'Phinehas', theme: 'vellum', plan: '0'.repeat(64), file: '0'.repeat(64), built: '2026-11-02T12:00:00Z' }, null, 1) + '\n');
   await page.evaluate(() => window.__wb.run('docs'));
   await page.waitForSelector('.pane-documents .doc-make', { timeout: 15000 });
   check('docs opens the Documents pane, with Make and the list', await page.locator('.pane-documents .doc-make select.doc-kind option').count() === 2);

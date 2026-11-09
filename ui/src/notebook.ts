@@ -20,6 +20,7 @@ import type { Change, Pane } from './dock';
 import { toast } from './sheets';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
 import { opens, placeOpen, verseCard, type Where } from './verses';
+import { makeFromPage, pageDocuments } from './pagedocs';
 
 /** What the list shows: a grouping (day, chapter, thread, none) or a section that is a filter (pages, questions). */
 type Group = 'day' | 'chapter' | 'thread' | 'none' | 'pages' | 'questions';
@@ -698,6 +699,13 @@ async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
     for (const r of e.inside) box.append(button('nb-linked-row', r.title || 'Untitled', () => openNote(r.id), r.placed ? 'pin' : 'notebook'));
     out.push(box);
   }
+  // W6 (sheet W7.4): the documents made from this page, beside the pages inside it
+  if (e.id && e.kind !== 'day' && !e.template) {
+    const docsBox = h('div', 'nb-docs');
+    docsBox.hidden = true;
+    void pageDocuments(e.id, docsBox);
+    out.push(docsBox);
+  }
   if (nbSettings.links && e.linked_from?.length) {
     const lf = h('div', 'nb-linked');
     lf.append(h('div', 'nb-linked-head', `Linked from · ${e.linked_from.length}`));
@@ -1308,6 +1316,8 @@ function editorMenu(from: HTMLElement, e: Entry) {
     });
     item('A page inside', () => newNote({ at: null, question: false, parent: e.id, hint: `A page inside “${e.title}”: the first line is its title…` }));
     item('Move inside…', () => void moveInside(from, e));
+    // W6 (sheet W7.1): a Speaker Script and Verse by Verse from this page and the pages inside it
+    item('Make a document…', () => void makeFromPage(e.id));
     item('Save as a template', async () => {
       try {
         const t = await wb(['template', 'save', e.id]);

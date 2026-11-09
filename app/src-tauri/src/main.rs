@@ -238,7 +238,11 @@ fn main() {
             let mut b = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
                 .title("Bible Workbench")
                 .inner_size(w, h)
-                .min_inner_size(320.0, 320.0);
+                .min_inner_size(320.0, 320.0)
+                // Tauri's own handler for files dropped on the window takes the OS drag on Windows (WebView2), so the page's
+                // HTML5 dragstart/dragover/drop never run for a real mouse: blocks, sidebar pages, notes on verses and a
+                // plan's days could not be dragged (finding 64c7). Nothing here listens for file drops.
+                .disable_drag_drop_handler();
             // For measuring: lets Playwright attach to the web view over the DevTools protocol (WebView2 only).
             if let Ok(port) = std::env::var("WB_CDP_PORT") {
                 b = b.additional_browser_args(&format!(

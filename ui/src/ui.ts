@@ -25,6 +25,7 @@ const PATHS: Record<string, string> = {
   x: 'M4 4l8 8M12 4l-8 8',
   minus: 'M3 8h10',
   plus: 'M8 3v10M3 8h10',
+  sendto: 'M14 8H5M8.5 4.5L5 8l3.5 3.5M2 3v10',
   float: 'M5 5V2.5h8.5V11H11M2.5 5H11v8.5H2.5z',
   pin: 'M8 14s4.5-4 4.5-7.5a4.5 4.5 0 0 0-9 0C3.5 10 8 14 8 14zM8 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
   eye: 'M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8zM8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
@@ -37,6 +38,11 @@ const PATHS: Record<string, string> = {
   copy: 'M5.5 5.5h8v8h-8zM3 10.5V3h7.5',
   check: 'M3 8.5l3.5 3.5L13 4.5',
   trash: 'M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.5 6.5v4.5M9.5 6.5v4.5',
+  file: 'M4 1.5h5.5L12.5 4.5V14.5h-8.5zM9.5 1.5v3h3M6 8h4.5M6 10.5h4.5',
+  again: 'M13 3v3.5H9.5M12.6 6.5A5 5 0 1 0 13 9',
+  heading: 'M3.5 3h9M8 3v10.5',
+  lines: 'M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01',
+  quote: 'M3 4v8M6 5h7M6 8h7M6 11h5',
 };
 
 export function icon(name: string, size = 16): SVGSVGElement {

@@ -641,7 +641,10 @@ async function openSecondReader(ref: string, version = 'KJV') {
     const all = data.chapter.verses.every(x => asked.has(`${st.chapter}:${x.v}`));
     if (!all) v2.root.querySelectorAll<HTMLElement>('.vn').forEach(e => e.classList.toggle('vn-asked', asked.has(`${st.chapter}:${e.dataset.v}`)));
     const title = `${data.chapter.name} ${st.chapter}`;
+    // renaming draws the dock again, which takes the pane out of the page and so its keyboard focus: given back
+    const hadFocus = el.contains(document.activeElement);
     dock.rename(p, title);
+    if (hadFocus) el.focus({ preventScroll: true });
     head!.querySelector('.reader2-title')!.textContent = title;
     const vn = toVerse > 1 ? v2.root.querySelector<HTMLElement>(`.vn[data-v="${toVerse}"]`) : null;
     el.scrollTop = vn ? el.scrollTop + vn.getBoundingClientRect().top - el.getBoundingClientRect().top - head!.offsetHeight - 16 : 0;
@@ -659,22 +662,27 @@ async function openSecondReader(ref: string, version = 'KJV') {
     if (!vw) {
       el.replaceChildren();
       head = h('header', 'pane-head reader2-head');
-      const prev = h('button', 'icon-btn reader2-prev'), next = h('button', 'icon-btn reader2-next'), go = h('button', 'link-btn reader2-go', 'Go to in the reader');
-      prev.append(icon('left', 14)); next.append(icon('right', 14));
+      const prev = h('button', 'icon-btn reader2-prev'), next = h('button', 'icon-btn reader2-next'), go = h('button', 'icon-btn reader2-go');
+      prev.append(icon('left', 14)); next.append(icon('right', 14)); go.append(icon('sendto', 14));
       prev.title = 'The chapter before (this pane only)'; next.title = 'The next chapter (this pane only)';
       prev.onclick = () => turn(el, p, -1);
       next.onclick = () => turn(el, p, 1);
-      go.title = 'Move the reader to this place';
+      go.title = 'Send to the reader'; go.setAttribute('aria-label', 'Send to the reader');
       go.onclick = () => {
         const top = [...vw!.root.querySelectorAll<HTMLElement>('.vn')].find(e => e.getBoundingClientRect().top >= el.getBoundingClientRect().top + head!.offsetHeight);
         void jump(st.code, st.chapter, top ? +top.dataset.v! : 1);
       };
       const row = h('div', 'reader2-row');
       row.append(prev, h('h2', 'pane-title reader2-title', `${bk.name} ${st.chapter}`), next, h('span', 'grow'), go);
-      head.append(row, h('div', 'pane-sub', `${t.label} · ${ver} · a second reader: clicks here never move the reader`));
+      head.append(row);
       const root = h('div', 'reader reader2');
       el.append(head, root);
       el.classList.add('reader2-pane');
+      // The keyboard works in this pane (note b59b): it takes the focus when pressed in, so ↑ ↓ PgUp PgDn Home End scroll it
+      // (the browser's own keyboard scrolling) and ← → turn its chapter, never the reader's.
+      el.tabIndex = -1;
+      el.addEventListener('pointerdown', ev => { if (!(ev.target as HTMLElement).closest('input, textarea, [contenteditable]')) el.focus({ preventScroll: true }); });
+      turners.set(el, n => void turn(el, p, n));
       vw = { root, scroller: el, drawn: null, selector: null as unknown as Selector, main: false, pane: p };
       vw.selector = new Selector(root, el, handlersFor(vw));
       wireView(vw);
@@ -695,6 +703,9 @@ async function openSecondReader(ref: string, version = 'KJV') {
     pane2.onClose = () => { was?.(); readers2.delete(pane2.id); readers2Watched.delete(pane2.id); readerMoved(); };
   }
 }
+
+/** A second reader's own chapter turn, by its scroll element: ← → in a pane turn that pane (note b59b). */
+const turners = new WeakMap<HTMLElement, (n: number) => void>();
 
 /** The second readers open, by pane: the chapter each shows (app.readers). */
 const readers2 = new Map<string, { pane: string; code: string; chapter: number; label: string }>();
@@ -1041,6 +1052,16 @@ notebookBadge.set = n => {
   badge.textContent = String(n);
 };
 
+// A box that is being scrolled shows its scrollbar for a moment afterwards (style.css; note cd59). Scroll events do not
+// bubble, so this listens in the capture phase.
+const scrollTimers = new WeakMap<Element, number>();
+document.addEventListener('scroll', e => {
+  const el = e.target instanceof Element ? e.target : document.documentElement;
+  el.classList.add('scrolling');
+  clearTimeout(scrollTimers.get(el));
+  scrollTimers.set(el, window.setTimeout(() => el.classList.remove('scrolling'), 800));
+}, { capture: true, passive: true });
+
 document.addEventListener('keydown', e => {
   const typing = !!(e.target as HTMLElement).closest('input, textarea, [contenteditable]');
   if (e.key === 'Escape') { closeSheet(); clearSelection(); hideCard(); }
@@ -1060,8 +1081,11 @@ document.addEventListener('keydown', e => {
     barPick(e.key === '0' ? null : COLORS[+e.key - 1]);
     return;
   }
-  if (e.key === 'ArrowRight' && !e.altKey) step(1);
-  if (e.key === 'ArrowLeft' && !e.altKey) step(-1);
+  // ← → turn the chapter of the reader the key was pressed in: a second reader turns its own, never the main reader's
+  const in2 = (e.target as HTMLElement).closest<HTMLElement>('.reader2-pane');
+  const turn2 = in2 && turners.get(in2);
+  if (e.key === 'ArrowRight' && !e.altKey) { if (turn2) { e.preventDefault(); turn2(1); } else step(1); }
+  if (e.key === 'ArrowLeft' && !e.altKey) { if (turn2) { e.preventDefault(); turn2(-1); } else step(-1); }
   if (e.key === 'ArrowLeft' && e.altKey) back();
 });
 // Never lose the place when the text reflows (a narrower window, a dock column opening, a larger text size): the verse

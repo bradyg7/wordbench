@@ -37,6 +37,8 @@ const INTERNAL: &[&str] = &[
     // views and templates (W5): a view's fence and line read (pieces of wb page views, wb view run, wb template save), a
     // place as a reference again, the blanks filled, and the Templates rows of wb notebook sidebar
     "view_fence", "view_line", "span_ref", "fill", "rows",
+    // a document from a page (W6): its words without Markdown, its rows and its blocks, pieces of wb craft parts and wb craft word|deck --page
+    "plain_words", "parts", "source",
 ];
 
 fn public_fns(src: &str) -> Vec<String> {
@@ -52,7 +54,7 @@ fn every_action_has_a_command() {
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
     let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs"] {
+    for file in ["findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;

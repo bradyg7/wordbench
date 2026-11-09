@@ -8,6 +8,7 @@ import type { Side } from './dock';
 import { dock } from './panes';
 import { toast } from './sheets';
 import { button, h, popMenu } from './ui';
+import { makeFromPage, previewDoc } from './pagedocs';
 
 const MINE: Side = 'right';
 
@@ -22,7 +23,7 @@ const STATES: Record<string, [string, string]> = {
   behind: ['Out of date', 'warn'],
   edited: ['Changed by hand', 'warn'],
   missing: ['File missing', 'warn'],
-  gone: ['Thread gone', 'muted'],
+  gone: ['Its thread or page is gone', 'muted'],
   unreadable: ['Cannot read its source', 'warn'],
   forgotten: ['Not kept up to date', 'muted'],
   elsewhere: ['Kept by the Python app', 'muted'],
@@ -70,7 +71,7 @@ function docRow(d: any): HTMLElement {
   if (d.kept?.length) main.append(h('div', 'muted small', `Your edits kept as ${d.kept.join(', ')}`));
   const acts = h('div', 'doc-acts');
   // made here: a thread's Speaker Script, or Verse by Verse as PDF pages; the rest is the Python app's until phase 5
-  const here = d.source?.kind === 'thread' && ((d.to === 'word' && d.structure === 'script') || (d.to === 'pdf' && d.structure === 'verse'));
+  const here = ['thread', 'page'].includes(d.source?.kind) && ((d.to === 'word' && d.structure === 'script') || (d.to === 'pdf' && d.structure === 'verse'));
   if (!here && !d.problem) main.append(h('div', 'muted small', d.to === 'deck' ? 'PowerPoint: made and updated by the Python app until phase 5' : 'Made and updated by the Python app until phase 5'));
   if (here && ['behind', 'missing', 'edited'].includes(d.state)) {
     acts.append(button('btn small primary doc-update', 'Update', () => act(['docs', 'update', d.id], r => r.changed ? `Updated ${r.name}` : `${r.name} is up to date`)));
@@ -78,6 +79,7 @@ function docRow(d: any): HTMLElement {
   const more = button('icon-btn doc-more', '', () => {
     const box = h('div', 'menu-list');
     const item = (lbl: string, fn: () => void) => box.append(button('menu-item', lbl, () => { close(); fn(); }));
+    if (here && d.exists) item('Preview it here', () => previewDoc(d));
     if (here && d.state !== 'forgotten') item('Make again now', () => act(['docs', 'update', d.id, '--force'], r => `Made ${r.name} again`));
     if (d.state === 'forgotten') item('Keep it up to date again', () => act(['docs', 'remember', d.id], r => `${r.name}: ${STATES[r.state]?.[0] || r.state}`));
     else item('Stop keeping it up to date', () => act(['docs', 'forget', d.id], () => `${d.name} is left as it is from now on`));
@@ -130,6 +132,19 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
   return wrap;
 }
 
+/** The Make row for a page: which page, then Make a document… opens its steps. */
+function pageForm(tree: any): HTMLElement {
+  const f = h('form', 'doc-page-make');
+  const pick = h('select', 'field doc-page') as HTMLSelectElement;
+  const walk = (rows: any[], depth: number) => { for (const r of rows) { pick.append(new Option(`${'  '.repeat(depth)}${r.title || 'Untitled'}`, r.id)); walk(r.children || [], depth + 1); } };
+  walk(tree?.pages || [], 0);
+  const go = h('button', 'btn primary', 'Make a document…');
+  go.disabled = !pick.options.length;
+  f.append(pick, go);
+  f.onsubmit = e => { e.preventDefault(); if (pick.value) void makeFromPage(pick.value); };
+  return f;
+}
+
 /** The Documents pane. Asked for again, it is drawn again: a document's state also changes outside the window (a file
  * edited in Word, a note written from a terminal), which no write here announces. */
 export function openDocuments() {
@@ -140,14 +155,17 @@ export function openDocuments() {
     return open;
   }
   return dock.open('documents', 'Documents', 'documents', MINE, async (el, pane) => {
-    const [docs, threads, designs]: any[] = await Promise.all([wb(['docs', 'list']), wb(['thread', 'list']), wb(['craft', 'designs'])]);
+    const [docs, threads, designs, tree]: any[] = await Promise.all([wb(['docs', 'list']), wb(['thread', 'list']), wb(['craft', 'designs']), wb(['page', 'tree'])]);
     el.replaceChildren();
     const hd = h('header', 'pane-head');
     hd.append(h('h2', 'pane-title', 'Documents'),
-      h('div', 'pane-sub', 'Word documents and slides made from your threads, each kept as one file and brought up to date. Every verse in them is checked against the Bible before it is kept.'));
+      h('div', 'pane-sub', 'Word documents and slides made from your threads and pages, each kept as one file and brought up to date. Every verse in them is checked against the Bible before it is kept.'));
     el.append(hd);
     el.append(h('div', 'label', 'Make one from a thread'));
     el.append(makeForm(threads, null, designs.themes, designs.theme, () => { void pane.refresh?.(); }));
+    // W6 (sheet W7.1): from a page and the pages inside it, in the steps of Make a document
+    el.append(h('div', 'label', 'Make one from a page'));
+    el.append(pageForm(tree));
     el.append(h('div', 'label', `Your documents · ${docs.length}`));
     const list = h('div', 'doc-list');
     for (const d of docs) list.append(docRow(d));

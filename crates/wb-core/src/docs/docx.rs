@@ -273,6 +273,32 @@ fn unescape(s: &str) -> String {
     .into_owned()
 }
 
+/// A saved .docx's paragraphs, read from the file itself, for a preview (W6): each one's style (as its id: "Heading1",
+/// "SlideCue" …) and runs ({t, num: a verse number}).
+pub fn paragraphs(path: &Path) -> Result<Value> {
+    let f = std::fs::File::open(path)?;
+    let mut z = zip::ZipArchive::new(f).map_err(|e| Error(format!("Not a Word file ({e}).")))?;
+    let mut xml = String::new();
+    z.by_name("word/document.xml").map_err(|e| Error(format!("Not a Word file ({e}).")))?.read_to_string(&mut xml)?;
+    let style = regex::Regex::new(r#"<w:pStyle w:val="([^"]*)"/>"#).unwrap();
+    let run = regex::Regex::new(r"(?s)<w:r>(.*?)</w:r>").unwrap();
+    let t = regex::Regex::new(r"<w:t(?:\s[^>]*)?>([^<]*)</w:t>").unwrap();
+    let body = xml.split("<w:body>").nth(1).unwrap_or("");
+    let mut out = vec![];
+    for p in body.split("</w:p>").filter(|p| p.contains("<w:p>") || p.contains("<w:p ")) {
+        let st = style.captures(p).map(|c| c[1].to_string()).unwrap_or_else(|| "Normal".into());
+        let runs: Vec<Value> = run
+            .captures_iter(p)
+            .filter_map(|r| {
+                let text: String = t.captures_iter(&r[1]).map(|c| unescape(&c[1])).collect();
+                (!text.is_empty()).then(|| serde_json::json!({"t": text, "num": r[1].contains("superscript")}))
+            })
+            .collect();
+        out.push(serde_json::json!({"style": st, "runs": runs}));
+    }
+    Ok(Value::Array(out))
+}
+
 /// The text of a saved .docx, read from the file itself, a line per paragraph, however its runs are cut up
 /// (craft_render.file_text).
 pub fn file_text(path: &Path) -> Result<String> {

@@ -785,3 +785,75 @@ nothing is written until the person makes a view or a template. `scripts/backup-
 terminal before the install: 231 files, each the same as the original
 (`%LOCALAPPDATA%\bible-workbench-rs\backups\bible-study-data-20261107-210019`). Installed the same evening (the window
 was closed), built from the working tree on top of `d344b09`: W5 is not committed yet.
+
+## 25. W6: a document from a page (2026-11-08)
+
+Step 7 of "The Notebook as a workspace", drawn on sheets W7.1 to W7.4 ([workspace-design.md](workspace-design.md)), on
+tier 4's renderer (section 21). Where a sheet named a choice, the drawn one is built: to-dos left out unless switched on;
+a list is your words; a view is its list as it is when made. Two choices the sheets did not settle were asked first (the
+person's answers, 2026-11-08): **the Version picker keeps each scripture block's own version** unless KJV or YLT is
+picked, which then applies to every block in the documents only (the page is left as it is); and **the Word file shows
+its size** on the Made card (Word counts pages only when it lays the document out, so "9 pages" cannot be known here;
+the PDF shows its slides).
+
+| What | Built | Checked |
+|---|---|---|
+| A page as a source (`docs/page.rs`) | A page is read as the Python app reads a lesson: its title, then its blocks in order, then each page inside it (at any depth, in the Notebook's order), each page's title a section. A heading → a section (a SLIDE cue in the Speaker Script, a section slide in Verse by Verse); a paragraph, a quote, a table (a line to a row), a list (each item with its mark) → your words, Markdown's marks taken off (`[[a link\|shown]]` → shown); a to-do → left out, or switched on "To do: …" / "Done: …"; a scripture block → its verses from the database (`scripture::passage`), in its own version (or the one picked), with your notes on those verses as Study lines and your highlights on the slides, as from a thread; a view → its rows as `wb view run` gives them, a line each; a divider → nothing. A to-do inside a page inside is left out (the page inside is one row). The plan is made by tier 4's own `doc_script` and `deck_verse` (`plan::plan_of_blocks`, now shared with a thread's), so nothing new decides where a verse goes | Unit: Markdown's marks; CLI `a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out`: the rows, both files, every verse word for word in its own version, the page inside as a section, to-dos left out and switched on, the version for every block (the page keeps its own), behind after a change and current after `docs update`, gone after the page is deleted |
+| What to make (sheet W7.1) | **Make a document…** in a page's ⋯, and **Make one from a page** in the Documents pane. "From the page *title* and the N pages inside it"; Word: **Speaker Script** (on), Share Copy, Study Sheet, Reading Sheet greyed "· phase 5"; Slides: **Verse by Verse** (on, "As PDF pages."), Reader, Pulpit, Study Table greyed; each with the Python app's own description (`wb craft designs`); **Theme** (with what it is best for) and **Version** (As each block shows, KJV, YLT); **Next: what goes in** | Desk: the subtitle, the two on and the six greyed, the descriptions as `wb craft designs`, the theme's best-for and the version |
+| What goes in (sheet W7.2) | Each row with its switch, what it is, its words, and what it becomes: a run of to-dos (or of list items) is one row ("2 to-dos: …"); a page inside says what it holds ("· 1 scripture block", "· a view"); a scripture block that does not read, or a view whose line does not, says "Left out" with why. Moving a switch asks `wb craft parts` again, so what it becomes is the core's word. The switches moved from their defaults are kept in the records (`switched`, keyed by what the block says; a to-do's tick does not count), so Make again makes the same choice; a new record starts from the page's other document's. The note: planned from the page each time it is made; nothing copied into the page; scripture from the database only. **Back**, **Make them** | Desk: the rows equal `wb craft parts`'s in order, with their switches and what each becomes; the to-dos off and "Left out: to-dos are for you"; switched on and off again in the window |
+| Made, and every verse checked (sheet W7.3) | Each file with **Open**: "Word · 24 KB", "PDF · 9 slides". The check is tier 4's, made on each finished file (a file missing a verse is not kept); the card lists each verse once with where it is ("Script and slides"), and "N of N verses match the Bible (KJV), in both files". Kept in `documents/` as **`page-<id>-script.json`** and **`page-<id>-verse.json`** (source `{"kind": "page", "id": …}`, the plan's and the file's fingerprints, as a thread's; a PDF's slide count as `pages`). **Show in folder** (`wb docs reveal`), **Done** | Desk: both files beside the scratch folder; the verses listed equal `wb text`'s, each "Script and slides"; the records with their fingerprints; every verse in the Speaker Script (read from the file) and on the slides (the PDF's text read by pypdf) equal to `wb text`; the headings and pages inside as sections with SLIDE cues; to-dos left out; the view's rows as `wb view run` |
+| The page keeps its documents (sheet W7.4) | At the page's foot, beside Pages inside: **Documents · N**, each with when it was made ("today 14:20", "Thursday") and **Up to date**, or "· changed since" (or file missing, changed by hand) with **Make again** (`wb docs update`, the same file). A click on a document **previews the file in a pane** (on the left, so the page stays in view): a Word document's paragraphs in their styles, read from the file itself (`wb docs preview`); Verse by Verse as its slides, drawn in SVG by the same Typst layout that made the PDF (`typst-svg`), only while it is up to date, when its plan's fingerprint is the file's; one changed since says so, with Make again. Open and Show in folder in its head. (WebView2 does not draw a PDF from the page's own memory in a frame: tried first, it stayed blank.) The Notebook is drawn again when documents change | Desk: none before; Documents · 2, both made today and Up to date; a scripture block added from a terminal: both changed since, with Make again; Make again: Up to date, the same file, the new verse in it from the Bible; the Speaker Script's preview holds its verses, cues and references; Verse by Verse previews as its slides, as many as the PDF has, each drawn |
+| `wb` | `wb craft word\|deck --page ID [--on KEY] [--off KEY] [--version kjv\|ylt\|page] [--theme …]`; `wb craft parts --page ID`; `wb docs list --page ID`; `wb docs plan --page ID --to word\|pdf`; `wb docs preview NAME` (a Word file's paragraphs; a deck's slides in SVG while up to date); `wb docs reveal NAME`. A page document's record also works with every `wb docs` command (show, update, open, forget, remember, delete) | `every_action.rs` covers `docs/page.rs`; desk: `--on` puts the to-dos in and the switch is kept for `docs update --force`, then `--off` |
+| The Python app | Its `documents.records` lists only `to` word or deck from a passage, lesson or thread, so it passes over the page records (as it passes over the thread's PDF pages), and its ids never start with "page-" | Desk: the Python app's own `documents.records` reads the study folder with the page records in it, lists none of them, and `documents.find` on one says Missing (no error) |
+
+**Changed in the desk checks:** W6's block makes its own pages, and closes its preview panes and the Documents pane at its
+end, the Notebook opened again. Two earlier checks were made independent of the day and of the scratch folder: the reading
+plan's day off is Sunday unless today is Sunday (then Saturday), since a plan with today off has no reading for today to
+check (it failed on Sunday 2026-11-08); and tier 4's check of a lesson's PowerPoint (the Python app's) now writes that
+record, in the Python app's format, into the run's own copy, since the scratch folder on disk does not hold one (it had
+passed only on a copy an earlier session had changed). The desk runs on the scratch folder as it is on disk (copied from
+it through the person's terminal: a refresh from this session's shell had reached only its sandbox).
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **344 of 344** (21 new) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped |
+| Rust tests | `cargo test`: **153** (2 new) |
+| Golden suite | `python scripts/golden.py`: **103 of 103** |
+| Plans against the Python app | `python scripts/doc-plans.py`: **6 of 6** the same (a page's plans have nothing in the Python app to compare with; the thread's, now made through `plan_of_blocks`, are the same as before) |
+
+Screenshots: `docs/phase2/1440-w6-make-a-document.png`, `1440-w6-what-goes-in.png`, `1440-w6-made.png`,
+`1440-w6-the-page-keeps-its-documents.png`, `1440-w6-preview-the-speaker-script.png`,
+`1440-w6-preview-the-verse-deck.png`.
+
+**For the person:** W6 writes nothing in a page. Making a document writes its record in `documents/` (the study
+folder) and its file in the documents folder (with the real study folder, Documents\Bible Workbench, as tier 4's).
+`scripts/backup-study.ps1` ran in the person's terminal before the install: 242 files, each the same as the original
+(`%LOCALAPPDATA%\bible-workbench-rs\backups\bible-study-data-20261108-211135`). Installed the same evening (the window was
+closed), built from the working tree on top of `2e4cfa0`: W6 is not committed yet.
+
+## 26. The debug round's Must items, M1 to M6 (2026-11-08)
+
+From [debug-spec.md](debug-spec.md). Nothing written to the study folder changed: no new fields, no new commands.
+
+| Item | Finding | What was done |
+|---|---|---|
+| M1 | `64c7` | **Reproduced, then fixed.** `measure/real-drag.mjs` drags with the operating system's own mouse (`measure/real-mouse.ps1`: SetCursorPos and mouse_event), which Playwright's synthetic drags cannot. With Tauri's file-drop handler on (as before), a block's grip and a sidebar page both failed; with `.disable_drag_drop_handler()` on the window (`app/src-tauri/src/main.rs`), both work and the files read the new order and parent. Every HTML5 drag in the app was affected, not only blocks. The touch-only second suspect was not needed. |
+| M2 | `cd59` | Scrollbars: the standard `scrollbar-width` / `scrollbar-color` removed (they switched the `::-webkit-scrollbar` rules off in Chromium); 8 px, no arrows, a thumb that is clear until the box is hovered or has been scrolled (a capture-phase scroll listener in `main.ts` sets `.scrolling` for 800 ms). The tab row keeps its hidden bar. |
+| M3 | `bd54` | Templates: the card summary wraps (`overflow-wrap`), the list is `minmax(0, 1fr)`, the settings rows wrap. |
+| M4 | `6ed1` | A block being written is the block: no border, no fill, no padding, `display: block`, the height the text's own (the old `+ 2` for the border is gone). Checked: no text moves by a pixel when a block opens. The `/` menu's state is a hairline underline. |
+| M5 | `b59b` | The second reader's head is the title, ‹ › and an arrow icon "Send to the reader" (a new `sendto` icon); the stale line under it is gone; its text is one step (90%) smaller. **The size is the spec's proposal; the person has not chosen it.** The verse's right-click item keeps "Go to in the reader". |
+| M6 | `b59b` | A second reader takes the keyboard focus when pressed in (`tabindex=-1`, no ring), so ↑ ↓ PgUp PgDn scroll it natively; ← → turn its own chapter and no longer the reader's. The dock's redraw on a chapter turn takes the pane out of the page and with it the focus: it is given back. |
+
+**Changed in the desk checks:** 6 new checks in `measure/desk.mjs` (scrollbars, block box and shift, Templates wrap at the pane's width, 320 and 240 px, the second reader's head, its keys ↑ ↓ PgDn, its keys ← →); `measure/real-drag.mjs` is a separate script because it takes over the mouse. Two of the desk's first failures were the checks' own (a width wider than the pane; a 2 px height left from the border) and one was a real bug the check found (the focus lost on a chapter turn). A debug-build desk run stopped twice at the template name's `fill` (not investigated; the release build passes it); the numbers below are the release build's.
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **350 of 350** (6 new) |
+| Real mouse | `node measure/real-drag.mjs --release`: **2 of 2** (the same script fails 2 of 2 with the handler on) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped |
+| Rust tests | not run: no wb-core or wb-cli change (the one Rust change is the window's builder in `app/src-tauri`) |
+
+Screenshots refreshed in `docs/phase2/`; new: `1440-notebook-a-block-being-written.png`. Installed the same evening (`scripts/install-app.ps1`), built from the working tree on top of `2e4cfa0`: W6 and this round are not committed yet. No backup was needed (nothing new is written to the study folder).
+
+**For the person:** C1 (files attached to a finding) needs a decision now that the window's file-drop handler is off: a drop zone would need a Browse button, or the handler stays on for that box. S3, S1 and the others are unchanged and next.

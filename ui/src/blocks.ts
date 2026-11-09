@@ -360,7 +360,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   el.classList.add('editing');
   const body = el.querySelector('.nb-block-body') || el;
   body.replaceChildren(ta);
-  const fit = () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight + 2}px`; };
+  const fit = () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight}px`; };
   // where this writing is in the page: blocks n .. n+count-1 (from 1), or not written yet (after block `after`)
   const cur = { n: newAfter === undefined ? b.n : 0, count: 1, after: newAfter ?? 0 };
   let last = newAfter === undefined ? b.text : '';
@@ -636,7 +636,7 @@ function askInside(ta: HTMLTextAreaElement, host: Host, cur: { n: number; count:
     await finish();
     try { await host.pageInside(title, after); } catch (x) { toast(String(x)); }
   };
-  ta.oninput = () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight + 2}px`; };
+  ta.oninput = () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight}px`; };
 }
 
 /** The format bar writes into the block being written; with none, a new block at the page's end. */

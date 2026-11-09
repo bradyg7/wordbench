@@ -11,9 +11,16 @@
 //! Tier 4 (docs/PLAN-phase2b-build.md) makes two structures from a thread: the Speaker Script as Word (`to: word`, the
 //! same record as the Python app's) and Verse by Verse as PDF pages (`to: pdf`, a record of its own, which the Python app
 //! passes over; its PowerPoint decks, `to: deck`, are listed here and made there until phase 5).
+//!
+//! W6 (a document from a page, `page.rs`): the same two from a page and the pages inside it, as
+//! `documents/page-<id>-script.json` and `page-<id>-verse.json`, with the source `{"kind": "page", "id": …}` and the
+//! person's switches (`switched`) and version (`version`) kept beside it. The Python app lists only records of its own
+//! kinds of source and file (`documents.records`: `to` word or deck, source passage, lesson or thread), so it passes over
+//! these as it passes over the thread's PDF pages, and its ids never start with "page-".
 
 pub mod deck;
 pub mod docx;
+pub mod page;
 pub mod plan;
 
 use crate::bible::Bible;
@@ -76,7 +83,7 @@ pub fn records(store: &Store) -> Vec<Rec> {
             let stem = p.file_stem()?.to_string_lossy().to_string();
             let ok = s(&rec, "id") == stem
                 && ext(&s(&rec, "to")).is_some()
-                && matches!(rec.get("source").and_then(|x| x["kind"].as_str()), Some("thread" | "passage" | "lesson"));
+                && matches!(rec.get("source").and_then(|x| x["kind"].as_str()), Some("thread" | "passage" | "lesson" | "page"));
             ok.then_some(rec)
         })
         .collect()
@@ -89,7 +96,7 @@ fn save(store: &Store, rec: &Rec) -> Result<()> {
 
 pub fn source_name(source: &Value) -> String {
     match source["kind"].as_str() {
-        Some("thread") => source["id"].as_str().unwrap_or("").into(),
+        Some("thread" | "page") => source["id"].as_str().unwrap_or("").into(),
         Some("lesson") => source["name"].as_str().unwrap_or("").into(),
         _ => format!("{} {}", source["label"].as_str().unwrap_or(""), source["version"].as_str().unwrap_or("")),
     }
@@ -153,30 +160,57 @@ enum NoPlan {
     NotHere(String),
 }
 
-/// The source as a plan reads it, and its title.
-fn read_source(bible: &Bible, store: &Store, source: &Value, margin: &mut plan::Margin) -> std::result::Result<(Value, String), NoPlan> {
-    if s_(source, "kind") != "thread" {
-        return Err(NoPlan::NotHere(format!("Documents from a {} are made and kept up to date by the Python app until phase 5.", s_(source, "kind"))));
-    }
-    let id = s_(source, "id");
-    if !store.threads().iter().any(|t| s(t, "id") == id) {
-        return Err(NoPlan::Gone);
-    }
-    let view = studyapi::thread_view(bible, store, id).map_err(|e| NoPlan::Unreadable(e.0))?;
-    let thread = plan::thread_source(bible, &view, margin).map_err(|e| NoPlan::Unreadable(e.0))?;
-    let title = s_(&thread, "name").to_string();
-    Ok((thread, title))
+/// A page record's switches (W6): the rows of What goes in moved from their defaults.
+fn switched_of(rec: &Rec) -> serde_json::Map<String, Value> {
+    rec.get("switched").and_then(|x| x.as_object()).cloned().unwrap_or_default()
 }
 
-fn plan_now(bible: &Bible, store: &Store, rec: &Rec) -> std::result::Result<(Vec<Value>, Value, String), NoPlan> {
+/// A page record's version for every scripture block, when one was chosen (else each block's own).
+fn version_of(rec: &Rec) -> Option<String> {
+    rec.get("version").and_then(|x| x.as_str()).filter(|v| !v.is_empty()).map(String::from)
+}
+
+/// The source as a plan reads it (blocks, as the Python app's lesson blocks), and its title: a thread, or a page (W6).
+fn read_source(bible: &Bible, store: &Store, rec: &Rec, margin: &mut plan::Margin) -> std::result::Result<(Vec<plan::Block>, String), NoPlan> {
+    let source = &rec["source"];
+    let id = s_(source, "id");
+    match s_(source, "kind") {
+        "thread" => {
+            if !store.threads().iter().any(|t| s(t, "id") == id) {
+                return Err(NoPlan::Gone);
+            }
+            let view = studyapi::thread_view(bible, store, id).map_err(|e| NoPlan::Unreadable(e.0))?;
+            let thread = plan::thread_source(bible, &view, margin).map_err(|e| NoPlan::Unreadable(e.0))?;
+            let title = s_(&thread, "name").to_string();
+            Ok((plan::thread_blocks(&thread), title))
+        }
+        "page" => {
+            if store.find_note(id).is_err() {
+                return Err(NoPlan::Gone);
+            }
+            page::source(bible, store, id, &switched_of(rec), version_of(rec).as_deref()).map_err(|e| NoPlan::Unreadable(e.0))
+        }
+        k => Err(NoPlan::NotHere(format!("Documents from a {k} are made and kept up to date by the Python app until phase 5."))),
+    }
+}
+
+fn plan_now(bible: &Bible, store: &Store, rec: &Rec) -> std::result::Result<(Vec<Value>, Vec<plan::Block>, String), NoPlan> {
     let (to, structure) = (s(rec, "to"), s(rec, "structure"));
     if !matches!((to.as_str(), structure.as_str()), ("word", "script") | ("deck" | "pdf", "verse")) {
         return Err(NoPlan::NotHere(format!("{} is made and kept up to date by the Python app until phase 5.", plan::structure_label(&to, &structure))));
     }
     let mut margin = plan::Margin::new(bible, store).map_err(|e| NoPlan::Unreadable(e.0))?;
-    let (thread, title) = read_source(bible, store, &rec["source"], &mut margin)?;
-    let p = plan::plan_of(&to, &structure, &thread, &mut margin).map_err(|e| NoPlan::Unreadable(e.0))?;
-    Ok((p, thread, title))
+    let (blocks, title) = read_source(bible, store, rec, &mut margin)?;
+    let p = plan::plan_of_blocks(&to, &structure, &blocks, &mut margin).map_err(|e| NoPlan::Unreadable(e.0))?;
+    Ok((p, blocks, title))
+}
+
+fn gone(source: &Value) -> Error {
+    if s_(source, "kind") == "page" {
+        missing("Its page is gone (deleted, or in the Trash).")
+    } else {
+        missing(format!("The thread “{}” is gone.", source_name(source)))
+    }
 }
 
 fn sha_file(path: &Path) -> Result<String> {
@@ -200,10 +234,17 @@ fn public(rec: &Rec, out: &Path) -> Value {
     let path = out.join(s(rec, "name"));
     let there = path.is_file();
     let kept: Vec<Value> = rec.get("kept").and_then(|k| k.as_array()).map(|a| a.iter().filter(|k| out.join(k.as_str().unwrap_or("")).is_file()).cloned().collect()).unwrap_or_default();
-    json!({"id": rec["id"], "name": rec["name"], "path": path.to_string_lossy(), "exists": there,
+    let mut v = json!({"id": rec["id"], "name": rec["name"], "path": path.to_string_lossy(), "exists": there,
         "size": if there { fs::metadata(&path).map(|m| m.len()).unwrap_or(0) } else { 0 }, "title": s(rec, "title"),
         "source": rec["source"], "to": rec["to"], "structure": rec["structure"], "theme": rec["theme"], "built": rec["built"],
-        "pdf": rec.get("pdf").cloned().unwrap_or(Value::Null), "kept": kept})
+        "pdf": rec.get("pdf").cloned().unwrap_or(Value::Null), "kept": kept});
+    // made here (W6): a PDF's slide count, and a page's version and switches; the Python app's records have none
+    for k in ["pages", "version", "switched"] {
+        if let Some(x) = rec.get(k) {
+            v[k] = x.clone();
+        }
+    }
+    v
 }
 
 /// A record and how it stands: current, behind (its source has changed), edited (its file was changed by hand), missing
@@ -247,11 +288,11 @@ pub fn status(bible: &Bible, store: &Store, out: &Path, rec: &Rec) -> Value {
     v
 }
 
-/// Every document (or one thread's), newest first.
-pub fn listing(bible: &Bible, store: &Store, out: &Path, thread: Option<&str>) -> Value {
+/// Every document (or one source's: ("thread", id) or ("page", id)), newest first.
+pub fn listing(bible: &Bible, store: &Store, out: &Path, of: Option<(&str, &str)>) -> Value {
     let mut every: Vec<Value> = records(store)
         .iter()
-        .filter(|r| thread.is_none_or(|t| r["source"]["id"].as_str() == Some(t)))
+        .filter(|r| of.is_none_or(|(k, id)| r["source"]["kind"].as_str() == Some(k) && r["source"]["id"].as_str() == Some(id)))
         .map(|r| status(bible, store, out, r))
         .collect();
     every.sort_by(|a, b| s_(b, "built").cmp(s_(a, "built")));
@@ -300,8 +341,8 @@ fn missing_verses(have: &str, verses: &[String]) -> Vec<String> {
 }
 
 /// A plan as a checked file at `at`. → what the check found
-fn write_file(to: &str, structure: &str, p: &[Value], thread: &Value, title: &str, theme: &plan::Theme, at: &Path) -> Result<Value> {
-    let verses = plan::source_verses(&plan::thread_blocks(thread));
+fn write_file(to: &str, structure: &str, p: &[Value], blocks: &[plan::Block], title: &str, theme: &plan::Theme, at: &Path) -> Result<Value> {
+    let verses = plan::source_verses(blocks);
     let (text, pages) = match to {
         "word" => {
             let (size, spacing) = plan::doc_type(structure);
@@ -320,14 +361,14 @@ fn write_file(to: &str, structure: &str, p: &[Value], thread: &Value, title: &st
         let _ = fs::remove_file(at);
         return Err(bad(format!("The finished file was missing scripture, so it was not kept (“{}…”).", first.chars().take(50).collect::<String>())));
     }
-    Ok(json!({"verses": verses.len(), "pages": pages}))
+    Ok(json!({"verses": verses.len(), "pages": pages, "refs": plan::source_refs(blocks)}))
 }
 
 fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str, force: bool) -> Result<Value> {
     crate::store::guard(&store.root)?;
     let theme = plan::theme(theme_key)?;
-    let (p, thread, title) = plan_now(bible, store, &rec).map_err(|e| match e {
-        NoPlan::Gone => missing(format!("The thread “{}” is gone.", source_name(&rec["source"]))),
+    let (p, blocks, title) = plan_now(bible, store, &rec).map_err(|e| match e {
+        NoPlan::Gone => gone(&rec["source"]),
         NoPlan::Unreadable(why) | NoPlan::NotHere(why) => bad(why),
     })?;
     let finger = plan::fingerprint(&p);
@@ -354,7 +395,7 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
     let tmp_dir = out.join(format!(".building-{}", std::process::id()));
     fs::create_dir_all(&tmp_dir)?;
     let built = tmp_dir.join(format!("doc{ext}"));
-    let checked = write_file(&to, &structure, &p, &thread, &title, theme, &built);
+    let checked = write_file(&to, &structure, &p, &blocks, &title, theme, &built);
     let result = (|| -> Result<Value> {
         let checked = checked?;
         // a first build, or a thread renamed, takes a new name, and never that of a file that is not this document's
@@ -392,6 +433,9 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
             ("built", json!(now())),
         ] {
             rec.insert(k.into(), v);
+        }
+        if to == "pdf" {
+            rec.insert("pages".into(), checked["pages"].clone()); // slides as PDF pages: how many (the Python app passes these over)
         }
         if let Some(k) = &kept {
             let mut list = rec.get("kept").and_then(|x| x.as_array()).cloned().unwrap_or_default();
@@ -531,12 +575,186 @@ pub fn delete(store: &mut Store, out: &Path, name: &str) -> Result<Value> {
 pub fn plan_for(bible: &Bible, store: &Store, thread: &str, to: &str, structure: Option<&str>) -> Result<Value> {
     let st = plan::structure_of(if to == "deck" { "pdf" } else { to }, structure, "thread")?;
     let mut margin = plan::Margin::new(bible, store)?;
-    let (t, _) = read_source(bible, store, &json!({"kind": "thread", "id": thread}), &mut margin).map_err(|e| match e {
+    let rec = json!({"source": {"kind": "thread", "id": thread}}).as_object().unwrap().clone();
+    let (blocks, _) = read_source(bible, store, &rec, &mut margin).map_err(|e| match e {
         NoPlan::Gone => missing(format!("No thread “{thread}”.")),
         NoPlan::Unreadable(why) | NoPlan::NotHere(why) => Error(why),
     })?;
-    let p = plan::plan_of(to, st.key, &t, &mut margin)?;
+    let p = plan::plan_of_blocks(to, st.key, &blocks, &mut margin)?;
     Ok(json!({"to": to, "structure": st.key, "fingerprint": plan::fingerprint(&p), "plan": p}))
+}
+
+// ---- a document from a page (W6) ----------------------------------------------------------------------------------------
+
+/// What a page can be made into here: Word → the Speaker Script, slides as PDF pages → Verse by Verse (the rest of the
+/// structures come in phase 5).
+fn page_structure(to: &str, structure: Option<&str>) -> Result<&'static str> {
+    let key = match to {
+        "word" => "script",
+        "pdf" => "verse",
+        _ => return Err(bad("to: word, or pdf (slides as PDF pages).")),
+    };
+    match structure.filter(|x| !x.is_empty()) {
+        Some(x) if x != key => Err(bad(format!(
+            "From a page, here: {} ({key}); {} comes with the rest of the structures in phase 5.",
+            plan::structure_label(to, key),
+            plan::structure_label(to, x)
+        ))),
+        _ => Ok(key),
+    }
+}
+
+/// A page's id as its documents name it, refusing a day's page (it has no title to be a document's).
+fn page_id(store: &Store, page: &str) -> Result<String> {
+    let (id, _, titled) = crate::pages::text_of(store, page)?;
+    if !titled {
+        return Err(bad("A day's page is not made into a document; a page with a title is."));
+    }
+    Ok(id)
+}
+
+/// A page's record for a structure, as it is or new.
+fn page_record(store: &Store, id: &str, to: &str, structure: &str) -> Rec {
+    let rid = format!("page-{id}-{structure}");
+    records(store).into_iter().find(|r| s(r, "id") == rid).unwrap_or_else(|| {
+        // a new one starts from the choices the page's other document was made with
+        let mut r = json!({"id": rid, "source": {"kind": "page", "id": id}, "to": to, "structure": structure}).as_object().unwrap().clone();
+        let (sw, ver) = page_choices(store, id);
+        if !sw.is_empty() {
+            r.insert("switched".into(), Value::Object(sw));
+        }
+        if let Some(v) = ver {
+            r.insert("version".into(), json!(v));
+        }
+        r
+    })
+}
+
+/// The switches a page's documents were last made with: its Speaker Script's, else its Verse by Verse's.
+fn page_choices(store: &Store, id: &str) -> (serde_json::Map<String, Value>, Option<String>) {
+    for st in ["script", "verse"] {
+        if let Some(r) = records(store).into_iter().find(|r| s(r, "id") == format!("page-{id}-{st}")) {
+            return (switched_of(&r), version_of(&r));
+        }
+    }
+    (serde_json::Map::new(), None)
+}
+
+fn check_version(v: &str) -> Result<Option<String>> {
+    match v.to_uppercase().as_str() {
+        "" | "PAGE" => Ok(None),
+        x @ ("KJV" | "YLT") => Ok(Some(x.to_string())),
+        _ => Err(bad("version: kjv or ylt for every scripture block, or page (each block's own, the default).")),
+    }
+}
+
+/// What goes in (sheet W7.2): each row of a page with its switch and what it becomes. The switches are those given
+/// (`on`, `off`: rows' keys), else those its documents were last made with.
+pub fn page_parts(bible: &Bible, store: &Store, page: &str, on: &[String], off: &[String], version: Option<&str>) -> Result<Value> {
+    let id = page_id(store, page)?;
+    let (mut switched, mut ver) = page_choices(store, &id);
+    if !on.is_empty() || !off.is_empty() {
+        switched = page::keep_switched(bible, store, &id, on, off)?;
+    }
+    if let Some(v) = version {
+        ver = check_version(v)?;
+    }
+    let mut v = page::parts(bible, store, &id, &switched, ver.as_deref())?;
+    v["version"] = json!(ver.clone().unwrap_or_else(|| "page".into()));
+    let st = |key: &str| records(store).iter().any(|r| s(r, "id") == format!("page-{id}-{key}"));
+    v["made"] = json!({"script": st("script"), "verse": st("verse")});
+    Ok(v)
+}
+
+/// A document from a page (sheets W7.1–W7.3): `to` word makes its Speaker Script, pdf its Verse by Verse; made the first
+/// time, brought up to date after, in the same file. `on`/`off` (rows' keys) set the switches anew (a row not named
+/// takes its default); with neither, the switches it was last made with stay. `version`: kjv or ylt for every
+/// scripture block, page for each block's own; none keeps the last.
+#[allow(clippy::too_many_arguments)]
+pub fn make_page(bible: &Bible, store: &Store, out: &Path, page: &str, to: &str, structure: Option<&str>, theme: Option<&str>,
+    version: Option<&str>, on: &[String], off: &[String], force: bool) -> Result<Value> {
+    let key = page_structure(to, structure)?;
+    let id = page_id(store, page)?;
+    let mut rec = page_record(store, &id, to, key);
+    let before = rec.clone();
+    let theme = match theme.filter(|t| !t.is_empty()) {
+        Some(t) => plan::theme(t)?.key.to_string(),
+        None if rec.contains_key("theme") => s(&rec, "theme"),
+        None => saved_theme(store),
+    };
+    rec.shift_remove("forgotten"); // asked for by name: kept up to date again
+    if !on.is_empty() || !off.is_empty() {
+        let sw = page::keep_switched(bible, store, &id, on, off)?;
+        if sw.is_empty() { rec.shift_remove("switched") } else { rec.insert("switched".into(), Value::Object(sw)) };
+    }
+    if let Some(v) = version {
+        match check_version(v)? {
+            Some(v) => rec.insert("version".into(), json!(v)),
+            None => rec.shift_remove("version"),
+        };
+    }
+    // a choice that changes nothing in the file is still kept, for the next time
+    if rec.contains_key("name") && rec != before {
+        save(store, &rec)?;
+    }
+    build(bible, store, out, rec, &theme, force)
+}
+
+/// The plan a page's document would be made from now, with its last switches (`wb docs plan --page`).
+pub fn plan_for_page(bible: &Bible, store: &Store, page: &str, to: &str) -> Result<Value> {
+    let to = if to == "deck" { "pdf" } else { to };
+    let key = page_structure(to, None)?;
+    let id = page_id(store, page)?;
+    let rec = page_record(store, &id, to, key);
+    let (p, blocks, _) = plan_now(bible, store, &rec).map_err(|e| match e {
+        NoPlan::Gone => gone(&rec["source"]),
+        NoPlan::Unreadable(why) | NoPlan::NotHere(why) => Error(why),
+    })?;
+    Ok(json!({"to": to, "structure": key, "fingerprint": plan::fingerprint(&p), "verses": plan::source_refs(&blocks), "plan": p}))
+}
+
+/// A finished file as the window previews it (sheet W7.4). A Word document: its paragraphs with their styles, read from
+/// the file itself. Slides as PDF pages: each page drawn in SVG by the same layout that made the PDF, while the document
+/// is up to date (its plan's fingerprint is the file's, so the pages are the file's); one that has changed since says so
+/// (`stale`) rather than show pages the file does not have.
+pub fn preview(bible: &Bible, store: &Store, out: &Path, name: &str) -> Result<Value> {
+    let rec = find(store, name)?;
+    let path = out.join(s(&rec, "name"));
+    if !path.is_file() {
+        return Err(missing(format!("{} is not there; docs update makes it again.", s(&rec, "name"))));
+    }
+    let mut v = json!({"id": rec["id"], "name": rec["name"], "to": rec["to"], "path": path.to_string_lossy()});
+    match s(&rec, "to").as_str() {
+        "word" => v["paras"] = docx::paragraphs(&path)?,
+        "pdf" => {
+            let st = status(bible, store, out, &rec);
+            if st["state"] != "current" {
+                v["stale"] = json!("Its source has changed since this file was made, so it is not drawn here: Make again, or open the file as it is.");
+                return Ok(v);
+            }
+            let (p, _, title) = plan_now(bible, store, &rec).map_err(|_| bad("Its source cannot be read now; open the file as it is."))?;
+            v["slides"] = json!(deck::pages_svg(&p, plan::theme(&s(&rec, "theme"))?, &title)?);
+        }
+        _ => return Err(bad("A PowerPoint deck is previewed in PowerPoint (docs open).")),
+    }
+    Ok(v)
+}
+
+/// Show a document's file in its folder (Explorer, the Finder), picked out.
+pub fn reveal(store: &Store, out: &Path, name: &str) -> Result<Value> {
+    let rec = find(store, name)?;
+    let path = out.join(s(&rec, "name"));
+    let spawned = if !path.is_file() {
+        return Err(missing(format!("{} is not there; docs update makes it again.", s(&rec, "name"))));
+    } else if cfg!(windows) {
+        std::process::Command::new("explorer.exe").arg(format!("/select,{}", path.display())).spawn()
+    } else if cfg!(target_os = "macos") {
+        std::process::Command::new("open").arg("-R").arg(&path).spawn()
+    } else {
+        std::process::Command::new("xdg-open").arg(out).spawn()
+    };
+    spawned.map_err(|e| bad(format!("Could not show {} ({e}).", path.display())))?;
+    Ok(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}))
 }
 
 /// Open a finished file in the program the computer opens it with (Word, a PDF viewer).
@@ -582,17 +800,17 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let word = vec![json!(["para", "Title", [["T", null]], false])];
         let at = dir.join("doc.docx");
-        let e = write_file("word", "script", &word, &thread, "T", theme, &at).unwrap_err();
+        let e = write_file("word", "script", &word, &plan::thread_blocks(&thread), "T", theme, &at).unwrap_err();
         assert!(e.0.contains("missing scripture") && e.0.contains("words that must be in"), "{}", e.0);
         assert!(!at.exists());
         let slides = vec![json!({"kind": "title", "title": "T", "sub": ""})];
         let at = dir.join("deck.pdf");
-        assert!(write_file("pdf", "verse", &slides, &thread, "T", theme, &at).unwrap_err().0.contains("missing scripture"));
+        assert!(write_file("pdf", "verse", &slides, &plan::thread_blocks(&thread), "T", theme, &at).unwrap_err().0.contains("missing scripture"));
         assert!(!at.exists());
         // and with the verse on its slide, it is kept
         let v = &thread["places"][0]["verses"][0];
         let slides = vec![slides[0].clone(), json!({"kind": "verse", "ref": "A place (KJV)", "verse": v, "before": null, "after": null, "marks": [[6, 10]], "notes": ""})];
-        assert_eq!(write_file("pdf", "verse", &slides, &thread, "T", theme, &at).unwrap()["pages"], 2);
+        assert_eq!(write_file("pdf", "verse", &slides, &plan::thread_blocks(&thread), "T", theme, &at).unwrap()["pages"], 2);
         assert!(fs::read(&at).unwrap().starts_with(b"%PDF-"));
         let _ = fs::remove_dir_all(&dir);
     }

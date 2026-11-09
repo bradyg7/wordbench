@@ -263,6 +263,20 @@ fn page_text(doc: &PagedDocument) -> String {
 
 /// A deck's plan as PDF pages. → (the PDF's bytes, the text on its pages, the number of pages)
 pub fn render(plan: &[Value], t: &Theme, title: &str) -> Result<(Vec<u8>, String, usize)> {
+    let doc = lay_out(plan, t, title)?;
+    let msgs = |e: &[typst::diag::SourceDiagnostic]| e.iter().map(|d| d.message.to_string()).collect::<Vec<_>>().join("; ");
+    let pdf = typst_pdf::pdf(&doc, &typst_pdf::PdfOptions::default()).map_err(|e| Error(format!("The PDF could not be written ({}).", msgs(&e))))?;
+    Ok((pdf, page_text(&doc), doc.pages().len()))
+}
+
+/// A deck's plan as its pages drawn in SVG, for the window's preview (W6): the same layout as the PDF's, page for page.
+pub fn pages_svg(plan: &[Value], t: &Theme, title: &str) -> Result<Vec<String>> {
+    let doc = lay_out(plan, t, title)?;
+    let o = typst_svg::SvgOptions::default();
+    Ok(doc.pages().iter().map(|p| typst_svg::svg(p, &o)).collect())
+}
+
+fn lay_out(plan: &[Value], t: &Theme, title: &str) -> Result<PagedDocument> {
     let theme = json!({"paper": t.paper, "ink": t.ink, "muted": t.muted, "accent": t.accent, "accent2": t.accent2, "mark": t.mark,
         "mark_ink": t.mark_ink, "divider_bg": t.divider_bg, "divider_fg": t.divider_fg, "left": t.left,
         "chrome": t.chrome.iter().map(|(c, x, y, w, h)| json!({"color": c, "x": x, "y": y, "w": w, "h": h})).collect::<Vec<_>>()});
@@ -274,7 +288,5 @@ pub fn render(plan: &[Value], t: &Theme, title: &str) -> Result<(Vec<u8>, String
     files.insert(id("/data.json"), Bytes::new(serde_json::to_vec(&data).map_err(|e| Error(e.to_string()))?));
     let world = Deck { library: LazyHash::new(Library::default()), book: LazyHash::new(FontBook::from_fonts(&fonts)), fonts, files, main };
     let msgs = |e: &[typst::diag::SourceDiagnostic]| e.iter().map(|d| d.message.to_string()).collect::<Vec<_>>().join("; ");
-    let doc = typst::compile::<PagedDocument>(&world).output.map_err(|e| Error(format!("The slides could not be laid out ({}).", msgs(&e))))?;
-    let pdf = typst_pdf::pdf(&doc, &typst_pdf::PdfOptions::default()).map_err(|e| Error(format!("The PDF could not be written ({}).", msgs(&e))))?;
-    Ok((pdf, page_text(&doc), doc.pages().len()))
+    typst::compile::<PagedDocument>(&world).output.map_err(|e| Error(format!("The slides could not be laid out ({}).", msgs(&e))))
 }

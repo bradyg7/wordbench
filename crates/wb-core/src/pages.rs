@@ -216,6 +216,13 @@ pub(crate) fn add_place_in_tree(bible: &Bible, store: &Store, e: &mut Value) {
     e["inside"] = json!(t.children(Some(&id)).into_iter().map(|c| t.row(c)).collect::<Vec<_>>());
 }
 
+/// The pages inside a page, in the Notebook's order, each with the pages inside it (`children`), at any depth (W6: a
+/// document from a page reads them after it).
+pub(crate) fn inside_tree(bible: &Bible, store: &Store, id: &str) -> Vec<Value> {
+    let t = Tree::read(bible, store);
+    t.children(Some(id)).into_iter().map(|c| t.node(c)).collect()
+}
+
 /// A note that can be a page (not a day's page), by its id.
 fn page_entry<'a>(t: &'a Tree, id: &str) -> Result<&'a Value> {
     if crate::store::is_day(id) || id.starts_with("d_") {

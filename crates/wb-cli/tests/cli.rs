@@ -1287,6 +1287,83 @@ fn docx_text(path: &std::path::Path) -> String {
 }
 
 #[test]
+fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
+    // W6: a page and the pages inside it, planned from the page each time; to-dos left out unless switched on
+    let Some(wb) = Wb::new() else { return };
+    let add = |id: &str, b: &str| {
+        let (code, _, err) = wb.run(&["block", "add", id, "-"], Some(b));
+        assert_eq!(code, 0, "{err}");
+    };
+    let top = wb.js(&["page", "new", "Lesson: a page"])["id"].as_str().unwrap().to_string();
+    for b in ["# Aim", "Read it with the group.", "- [ ] print it\n- [x] read it twice", "```scripture\nNum 25:10-11\n```"] {
+        add(&top, b);
+    }
+    let inside = wb.js(&["page", "new", "The psalm", "--parent", &top])["id"].as_str().unwrap().to_string();
+    add(&inside, "```scripture\nPsalms 106:30\nylt\n```");
+    add(&inside, "- [ ] a to-do inside");
+    let parts = wb.js(&["craft", "parts", "--page", &top]);
+    let kinds: Vec<&str> = parts["rows"].as_array().unwrap().iter().map(|r| r["kind"].as_str().unwrap()).collect();
+    assert_eq!(kinds, ["heading", "paragraph", "todo", "scripture", "page"]);
+    let todo = parts["rows"][2].clone();
+    assert_eq!((todo["on"].as_bool(), todo["becomes"].as_str()), (Some(false), Some("Left out: to-dos are for you")));
+    assert_eq!(parts["inside"], 1);
+
+    // both made; each verse word for word, in the version its block shows (the psalm in the YLT)
+    let verses: Vec<String> = verse_texts(&wb, "Num 25:10-11");
+    let ylt: Vec<String> = wb.js(&["text", "Psalms 106:30", "--version", "YLT", "--json"])["verses"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap().to_string()).collect();
+    let word = wb.js(&["craft", "word", "--page", &top, "--theme", "print"]);
+    assert_eq!((word["id"].as_str().unwrap(), word["checked"]["verses"].as_i64()), (format!("page-{top}-script").as_str(), Some(3)));
+    assert_eq!(word["checked"]["refs"], json!(["Numbers 25:10 (KJV)", "Numbers 25:11 (KJV)", "Psalms 106:30 (YLT)"]));
+    let deck = wb.js(&["craft", "deck", "--page", &top]);
+    assert_eq!(deck["id"].as_str().unwrap(), format!("page-{top}-verse"));
+    assert!(deck["pages"].as_i64().unwrap() >= 5);
+    let file = wb.docs().join(word["name"].as_str().unwrap());
+    let text = docx_text(&file);
+    for v in verses.iter().chain(&ylt) {
+        assert!(text.contains(v.as_str()), "the script lacks {v}");
+    }
+    assert!(text.contains("\nThe psalm\n") && !text.contains("print it") && !text.contains("a to-do inside"));
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("documents").join(format!("page-{top}-script.json"))).unwrap()).unwrap();
+    assert_eq!(rec["source"], json!({"kind": "page", "id": top}));
+    assert_eq!(rec["plan"], wb.js(&["docs", "plan", "--page", &top, "--to", "word"])["fingerprint"]);
+
+    // switched on, the to-dos are your words (the page inside keeps its own left out), and the switch is kept
+    let key = todo["key"].as_str().unwrap();
+    wb.js(&["craft", "word", "--page", &top, "--on", key]);
+    let text = docx_text(&file);
+    assert!(text.contains("To do: print it") && text.contains("Done: read it twice") && !text.contains("a to-do inside"));
+    assert_eq!(wb.js(&["craft", "parts", "--page", &top])["rows"][2]["on"], true);
+    assert!(wb.fails(&["craft", "word", "--page", &top, "--on", "b:nothing"]).contains("no row"));
+
+    // one version for every block, in the documents only: the page keeps its own
+    let all_kjv = wb.js(&["craft", "word", "--page", &top, "--version", "kjv"]);
+    assert_eq!(all_kjv["checked"]["refs"][2], "Psalms 106:30 (KJV)");
+    assert_eq!(wb.js(&["page", "scripture", &inside])["blocks"][0]["version"], "YLT");
+
+    // the page changed: behind; docs update makes it again in the same file; the page deleted: gone
+    add(&top, "More of my words.");
+    let state = |id: String| wb.js(&["docs", "show", &id])["state"].as_str().unwrap().to_string();
+    assert_eq!(state(format!("page-{top}-script")), "behind");
+    assert_eq!(wb.js(&["docs", "update", &format!("page-{top}-script")])["name"], word["name"]);
+    assert_eq!(state(format!("page-{top}-script")), "current");
+    assert_eq!(wb.js(&["docs", "list", "--page", &top]).as_array().unwrap().len(), 2);
+    let pv = wb.js(&["docs", "preview", &format!("page-{top}-script")]);
+    assert!(pv["paras"].as_array().unwrap().iter().any(|p| p["style"] == "SlideCue"));
+    // the slides are drawn only while the deck is up to date (then they are the file's pages); words of yours do not
+    // change a deck of verses, a scripture block does
+    assert!(wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].is_array());
+    add(&top, "```scripture\nNum 25:9\n```");
+    assert!(wb.js(&["docs", "preview", &format!("page-{top}-verse")])["stale"].is_string());
+    let deck_now = wb.js(&["docs", "update", &format!("page-{top}-verse")]);
+    let slides = wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].clone();
+    assert_eq!(slides.as_array().unwrap().len() as i64, deck_now["pages"].as_i64().unwrap());
+    assert!(slides[0].as_str().unwrap().starts_with("<svg"));
+    assert!(wb.fails(&["craft", "word", "--page", &top, "--structure", "share"]).contains("phase 5"));
+    wb.ok(&["inbox", "rm", &top]);
+    assert_eq!(state(format!("page-{top}-verse")), "gone");
+}
+
+#[test]
 fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Phinehas", "--note", "Where he is named.", "--at", "Num 25:10-13"]);

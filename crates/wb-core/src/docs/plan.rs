@@ -512,6 +512,18 @@ pub fn source_verses(blocks: &[Block]) -> Vec<String> {
     out
 }
 
+/// Each verse the source holds, by its reference and version ("Numbers 25:11 (KJV)"), in order: the list the window shows
+/// as checked once the file is kept.
+pub fn source_refs(blocks: &[Block]) -> Vec<String> {
+    let mut out = vec![];
+    for (what, val) in blocks {
+        if what == "scripture" {
+            out.extend(val["verses"].as_array().unwrap().iter().map(|v| format!("{} ({})", s_(v, "ref"), s_(val, "version"))));
+        }
+    }
+    out
+}
+
 // ---- slides ----------------------------------------------------------------------------------------------------------
 
 const SLIDE_VERSES: usize = 3;
@@ -712,10 +724,14 @@ pub fn doc_type(structure: &str) -> (f64, f64) {
 
 /// The plan of a structure from a thread's places (`to`: word, deck or pdf; a deck's plan is the same in PDF pages).
 pub fn plan_of(to: &str, structure: &str, thread: &Value, margin: &mut Margin) -> Result<Vec<Value>> {
-    let blocks = thread_blocks(thread);
+    plan_of_blocks(to, structure, &thread_blocks(thread), margin)
+}
+
+/// The plan of a structure from a source read as blocks (a thread's, or a page's: docs/page.rs).
+pub fn plan_of_blocks(to: &str, structure: &str, blocks: &[Block], margin: &mut Margin) -> Result<Vec<Value>> {
     match (to == "word", structure) {
-        (true, "script") => Ok(doc_script(&blocks, margin)),
-        (false, "verse") => Ok(deck_verse(&blocks, margin)),
+        (true, "script") => Ok(doc_script(blocks, margin)),
+        (false, "verse") => Ok(deck_verse(blocks, margin)),
         _ => Err(Error(format!(
             "{} is still made by the Python app; its plan comes with the rest of the structures in phase 5.",
             structure_label(to, structure)
