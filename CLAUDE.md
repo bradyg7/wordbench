@@ -53,6 +53,7 @@ python scripts/doc-plans.py                  # documents' plans: the Rust finger
 node scripts/commands-cases.mjs              # the command language's cases and manual, from the Python app's commands.js
 node measure/desk.mjs                        # the desktop checked in the real app (its own instance and scratch copy)
 npm run measure                              # the speed budgets (after npx tauri build --no-bundle)
+python scripts/build-dictionary.py           # Webster's 1913 into dictionary.db (wb word-define, the card's Definitions); once per computer
 powershell -File scripts\backup-study.ps1   # a hashed copy of the real study folder (reads it only), before the app uses it
 powershell -File scripts\install-app.ps1    # the release build into %LOCALAPPDATA%\bible-workbench-rs\app (refuses while it is open)
 ```
