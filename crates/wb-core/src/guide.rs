@@ -18,6 +18,18 @@ const ENTRIES: &[(&str, &str, &[(&str, &str)])] = &[
         ],
     ),
     (
+        "shelf",
+        "The Shelf",
+        &[
+            ("What it is", "A tree of folders, like a file list. A folder holds anything you want to open together: tabs you kept (Strong's, every use, a search, the interlinear), places, pages, threads, lessons, documents, and other folders. An item is a pointer: taking it out of a folder (×, or Del) never deletes the thing, and one page can sit in several folders."),
+            ("Open all", "Select a folder, then Open all (or double-click it, or Enter): each item opens where its kind goes, as tabs beside the Shelf. A place opens as a second reader, so the reader stays where it is; a document opens in its preview; a page in the Notebook (with several pages, the first). The tabs carry the folder's coloured mark. Close all closes the tabs it opened; right-click a marked tab for the same."),
+            ("Arranging", "+ at the top makes a folder; … on a folder has New folder inside, Rename (F2), Move to… and Remove the folder. Drag a folder onto another to put it inside, or onto a folder's top edge to put it before. Drag an item onto a folder to move it there (hold Ctrl to keep it in both), or onto another item to put it before or after."),
+            ("Adding", "Add on a folder: a tab that is open, all open tabs, a new page, or a page, place, thread, lesson or document by name."),
+            ("Where it lives", "Each folder is a set in the study folder's sets/, in the Python app's format, so the Python app lists every folder as a set with the same items. Which folder is inside which is kept apart, in settings/shelf.json. A document kept in a folder is new to the Python app: it does not list it, and drops it if it changes that set."),
+            ("From a terminal", "wb shelf · wb shelf new \"Word study\" --in \"Phinehas study\" · wb shelf move \"Word study\" --in Romans · wb shelf item \"Phinehas study\" <key> --to \"Word study\" [--copy] · wb shelf rm \"Word study\" · wb set open \"Phinehas study\" (what Open all opens) · wb do \"set open Phinehas study\" (opens it in the window) · wb set add \"Word study\" --document \"Speaker Script\""),
+        ],
+    ),
+    (
         "views",
         "Views",
         &[

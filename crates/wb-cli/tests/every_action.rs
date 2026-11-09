@@ -46,6 +46,8 @@ const INTERNAL: &[&str] = &[
     // wb thread page|pin, wb page threads|words, wb block thread|word and wb question *
     "thread_fence", "word_fence", "value_fence_text", "thread_held", "slug_of", "pinned_of", "set_pinned", "question_of", "question_md",
     "with_marker", "found", "in_chapter", "entries", "split_id",
+    // the Shelf (R2): a kept pane as the window's key (a piece of wb set open), an item read out to move it (wb shelf item)
+    "pane_key", "set_item_of",
 ];
 
 fn public_fns(src: &str) -> Vec<String> {
@@ -61,7 +63,7 @@ fn every_action_has_a_command() {
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
     let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs"] {
+    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;

@@ -5,7 +5,9 @@ import { api, inApp, wb } from './api';
 import { app, book, goTo, here, type At } from './app';
 import { layers } from './layers';
 import { CHANGES, type Change } from './dock';
-import { countInbox, openNotebook, openNotebookView } from './notebook';
+import { countInbox, openNote, openNotebook, openNotebookView } from './notebook';
+import { previewDoc } from './pagedocs';
+import { closeAll, openAll } from './shelf';
 import {
   dock, frontResults, jumpTo, openBdb, openCount, openDefine, openFind, openForms, openHelp, openInterlinear, openKeys, openLesson, openLexiconc,
   openMarked, openNear, openPlace, openPassage, openPlans, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
@@ -382,7 +384,8 @@ async function changeSet(a: any): Promise<string> {
     case 'rm': await wb(['set', 'rm', a.name, ...a.parts]); break;
     case 'rename': await wb(['set', 'rename', a.name, a.to]); break;
     case 'delete': await wb(['set', 'delete', a.name]); break;
-    default: openShelf(); return `The Shelf (opening a set’s panes comes in phase 6)`;
+    case 'close': return closeAll(a.name);
+    default: return openAll(a.name);
   }
   dock.refresh(['sets']);
   return `Set ${a.name}: ${a.action}`;
@@ -402,19 +405,20 @@ async function layout(a: any): Promise<string> {
   return `Layout ${a.name}`;
 }
 
-/** A pane brought back from its key (layouts). */
-async function reopen(key: string) {
+/** A pane brought back from its key (layouts, and a Shelf folder's Open all, whose keys wb set open gives). */
+export async function reopen(key: string) {
   const [kind, ...x] = key.split('|');
   const f: Record<string, () => unknown> = {
-    search: () => openSearch(x[0], x[1]), uses: () => openUses(x[0], x[1], x[2]), def: () => openDefine(x[0]), strong: () => openStrong(x[0]),
+    search: () => openSearch(x[0], x[1]), uses: () => openUses(x[0], x[1], x[2], x[3] ? { rendering: x[3] } : {}), def: () => openDefine(x[0]), strong: () => openStrong(x[0]),
     bdb: () => openBdb(x[0]), count: () => openCount(x[0]), forms: () => openForms(x[0]), lexiconc: () => openLexiconc(x[0]),
     thread: () => openThread(x[0]), threads: () => openThreads(), notebook: () => openNotebook(), help: () => openHelp(), keys: () => openKeys(),
     shelf: () => openShelf(), find: () => openFind(x[0]), interlinear: () => openInterlinear(x[0], x[0]),
     place: () => openPlace(x[0], x[0]),
     passage: () => openPassage(x[0].split(';'), x[1], x[0]), reader2: () => app.secondReader(x[0], x[1]), today: () => openToday(x[0]), lesson: () => openLesson(x[0]), findings: () => openFindings(),
     documents: () => openDocuments(),
+    note: () => openNote(x[0]), doc: () => previewDoc({ id: x[0], name: x[1] || x[0] }),
   };
-  f[kind]?.();
+  await f[kind]?.();
 }
 
 function paneAction(a: any): string {

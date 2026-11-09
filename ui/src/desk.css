@@ -979,3 +979,56 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .nbq-text { flex: 1; min-width: 0; }
 .nbq-text p { margin: 0; }
 .nbq-answer { flex: none; }
+.nb-place-row { padding: 8px 0; }
+.nb-place-row.off .ref-link { color: var(--muted); }
+.nb-place-quote { margin: 2px 0 0; }
+
+/* ---- the Shelf as a tree (R2, sheets B1 to B5) ------------------------------------------------------------------------ */
+.pane-shelf { display: flex; flex-direction: column; gap: 8px; }
+.shelf-head { display: flex; align-items: center; gap: 8px; }
+.shelf-head .pane-title { flex: 1; }
+.shelf-find { width: 100%; }
+.shelf-tree { display: flex; flex-direction: column; gap: 1px; flex: 1; min-height: 120px; outline: none; padding-bottom: 24px; }
+.shelf-row { position: relative; display: flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 4px 0 calc(var(--depth, 0) * 18px + 2px);
+  border-radius: var(--radius-control); color: var(--fg); cursor: pointer; user-select: none; }
+.shelf-row:hover { background: var(--sunken); }
+.shelf-row.on { background: var(--accent-soft); color: var(--accent); }
+.shelf-row .ico { flex: none; color: var(--muted); }
+.shelf-row.on .ico { color: var(--accent); }
+.shelf-folder .shelf-name { font-weight: 600; }
+.shelf-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--type-small); }
+.shelf-folder .shelf-name { font-weight: 600; }
+.shelf-fold { flex: none; width: 18px; height: 18px; display: grid; place-items: center; color: var(--muted); border-radius: 4px; }
+.shelf-fold.shut .ico { transform: rotate(-90deg); }
+.shelf-fold.none { visibility: hidden; }
+.shelf-count { font: var(--type-caption); color: var(--muted); background: var(--sunken); border-radius: 999px; padding: 0 6px; }
+.shelf-mark, .shelf-live { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.shelf-live { background: var(--accent); }
+.shelf-tag { flex: none; }
+.shelf-item.cannot .shelf-name { color: var(--muted); }
+.shelf-more, .shelf-x { opacity: 0; }
+.shelf-row:hover .shelf-more, .shelf-row:hover .shelf-x, .shelf-row.on .shelf-more, .shelf-row.on .shelf-x { opacity: 1; }
+.shelf-rename { flex: 1; min-width: 0; height: 26px; padding: 0 6px; }
+.shelf-row.dragging { opacity: .45; }
+.shelf-row.drop-inside { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.shelf-row.drop-before::before, .shelf-row.drop-after::after { content: ''; position: absolute; left: calc(var(--depth, 0) * 18px + 24px); right: 4px; height: 2px;
+  border-radius: 1px; background: var(--accent); pointer-events: none; }
+.shelf-row.drop-before::before { top: -1px; }
+.shelf-row.drop-after::after { bottom: -1px; }
+.shelf-bar { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: var(--sunken); border-radius: var(--radius-card); }
+.shelf-bar-head { display: flex; align-items: center; gap: 8px; }
+.shelf-bar-head .ico { color: var(--accent); }
+.shelf-bar-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shelf-bar-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.shelf-empty { padding: 8px 4px; }
+.shelf-menu { display: flex; flex-direction: column; gap: 2px; padding: 6px; }
+.shelf-menu .label { margin: 4px 6px 6px; }
+.shelf-menu .menu-item { display: flex; flex-wrap: wrap; column-gap: 8px; }
+.shelf-mi-label { flex: 1; }
+.shelf-mi-sub { flex-basis: 100%; padding-left: 24px; }
+.shelf-choose-list { max-height: 320px; overflow: auto; display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.shelf-place { flex-direction: row; gap: 8px; align-items: center; }
+.shelf-place .field { flex: 1; }
+/* a tab a folder's Open all opened carries the folder's mark */
+.tab.tab-marked { box-shadow: inset 0 3px 0 var(--mark); }
+.tab.on.tab-marked { background: var(--bg); box-shadow: inset 0 3px 0 var(--mark); }

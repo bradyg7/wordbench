@@ -5,7 +5,7 @@ use crate::args::{Append, Args, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Value};
 use wb_core::store::{s, Store};
-use wb_core::{lookup, places, studyapi as sa};
+use wb_core::{lookup, places, shelf, studyapi as sa};
 
 fn e(x: wb_core::Error) -> String {
     x.0
@@ -70,7 +70,7 @@ fn j(v: Value) -> Res {
 }
 
 pub fn commands() -> Vec<Command> {
-    let set_items = || vec![Append("thread"), Append("place"), Append("note"), Append("lesson"), Append("pdf")];
+    let set_items = || vec![Append("thread"), Append("place"), Append("note"), Append("lesson"), Append("pdf"), Append("document"), Append("tab")];
     let result_args = |mut v: Vec<crate::args::Spec>| {
         v.extend([Opt("scope", Some("all")), Opt("only", None), Flag("dry_run")]);
         v
@@ -279,7 +279,7 @@ pub fn commands() -> Vec<Command> {
             let mut st = c.study()?;
             let items = items_of(c, &st, a)?;
             if items.is_empty() {
-                return Err("Name something to add: --thread, --place, --note, --lesson or --pdf.".into());
+                return Err("Name something to add: --thread, --place, --note, --lesson, --pdf or --document.".into());
             }
             let id = s(&st.find_set(&a.s("name")).map_err(e)?, "id");
             let t = st.add_to_set(&id, &items).map_err(e)?;
@@ -302,6 +302,45 @@ pub fn commands() -> Vec<Command> {
             let id = s(&st.find_set(&a.s("name")).map_err(e)?, "id");
             st.delete_set(&id).map_err(e)?;
             j(json!({"ok": true}))
+        }),
+        cmd("set open", "What Open all opens for a set, item by item: the window's pane for each (open), or why not (why). Run in the window with wb do \"set open NAME\".", vec![Pos("name", N::Many)], |c, a| {
+            let st = c.study()?;
+            j(shelf::open_plan(c.bible()?, &st, &st.find_set(&a.s("name")).map_err(e)?).map_err(e)?)
+        }),
+        cmd("set move", "Move an item (by key, set show lists them) before another item of its set (--before KEY), or to the end.", vec![Pos("name", N::One), Pos("key", N::One), Opt("before", None)], |c, a| {
+            let mut st = c.study()?;
+            let id = s(&st.find_set(&a.s("name")).map_err(e)?, "id");
+            let t = st.move_in_set(&id, &a.s("key"), a.opt("before").as_deref()).map_err(e)?;
+            j(sa::set_view(c.bible()?, &st, &t).map_err(e)?)
+        }),
+        cmd("shelf", "The Shelf as a tree: folders (each a set) with their items and the folders inside them.", vec![], |c, _| j(shelf::tree(c.bible()?, &*c.study()?).map_err(e)?)),
+        cmd("shelf new", "A new folder (an empty set), at the top or --in a folder.", vec![Pos("name", N::Many), Opt("in", None)], |c, a| {
+            let mut st = c.study()?;
+            let parent = match a.opt("in") { Some(p) => s(&st.find_set(&p).map_err(e)?, "id"), None => String::new() };
+            let t = shelf::new_folder(&mut st, &a.s("name"), &parent).map_err(e)?;
+            j(sa::set_view(c.bible()?, &st, &t).map_err(e)?)
+        }),
+        cmd("shelf move", "Put a folder inside another (--in NAME) or at the top (no --in), before a folder there (--before NAME) or at the end.",
+            vec![Pos("name", N::Many), Opt("in", None), Opt("before", None)], |c, a| {
+            let mut st = c.study()?;
+            let id = s(&st.find_set(&a.s("name")).map_err(e)?, "id");
+            let parent = match a.opt("in") { Some(p) => s(&st.find_set(&p).map_err(e)?, "id"), None => String::new() };
+            let before = match a.opt("before") { Some(b) => Some(s(&st.find_set(&b).map_err(e)?, "id")), None => None };
+            shelf::move_folder(&mut st, &id, &parent, before.as_deref()).map_err(e)?;
+            j(shelf::tree(c.bible()?, &st).map_err(e)?)
+        }),
+        cmd("shelf rm", "Remove a folder (its set goes to .trash; what it pointed at is not touched); the folders inside it move up a level.", vec![Pos("name", N::Many)], |c, a| {
+            let mut st = c.study()?;
+            let id = s(&st.find_set(&a.s("name")).map_err(e)?, "id");
+            shelf::remove_folder(&mut st, &id).map_err(e)?;
+            j(json!({"ok": true}))
+        }),
+        cmd("shelf item", "Move an item (by key) into another folder (--to NAME), before an item there (--before KEY); --copy keeps it in both.",
+            vec![Pos("name", N::One), Pos("key", N::One), Opt("to", None), Opt("before", None), Flag("copy")], |c, a| {
+            let mut st = c.study()?;
+            let from = s(&st.find_set(&a.s("name")).map_err(e)?, "id");
+            let to = match a.opt("to") { Some(t) => s(&st.find_set(&t).map_err(e)?, "id"), None => from.clone() };
+            j(shelf::move_item(&mut st, &from, &a.s("key"), &to, a.opt("before").as_deref(), a.flag("copy")).map_err(e)?)
         }),
         cmd("trail add", "Queue a question under a place.", vec![Pos("place", N::One), Pos("text", N::Many)], |c, a| {
             let an = anchor(c, &a.s("place"))?;
@@ -407,6 +446,20 @@ fn items_of(c: &Ctx<'_>, st: &Store, a: &Args) -> Result<Vec<Value>, String> {
     }
     for n in a.list("pdf") {
         items.push(json!({"kind": "pdf", "ref": n}));
+    }
+    for k in a.list("tab") {
+        // a tab of the window, as its pane key and title (its key, a tab, its title): wb set add NAME --tab "strong|H7065<TAB>H7065"
+        let (key, title) = k.split_once('\t').unwrap_or((k.as_str(), ""));
+        let mut item = shelf::item_from_key(c.bible()?, key, title).map_err(e)?;
+        if item["kind"] == "thread" {
+            item["ref"] = json!(tid(st, item["ref"].as_str().unwrap_or(""))?);
+        } else if item["kind"] == "lesson" {
+            item["ref"] = json!(sa::lesson_find(st, item["ref"].as_str().unwrap_or("")).map_err(e)?);
+        }
+        items.push(item);
+    }
+    for n in a.list("document") {
+        items.push(json!({"kind": "document", "ref": shelf::document_id(st, &n).map_err(e)?}));
     }
     Ok(items)
 }

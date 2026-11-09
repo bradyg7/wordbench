@@ -9,6 +9,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
+import { shelfChecks } from './shelf-checks.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
@@ -2216,6 +2217,9 @@ try {
   let pyOpens = '';
   try { pyOpens = execFileSync('python', ['-I', path.join(file('scripts/'), 'py-opens.py')], { env: { ...env, WB_STUDY_DIR: study }, cwd: file('') }).toString(); } catch (e) { pyOpens = String(e.stdout || e); }
   check('the Python app still opens the study folder: what it reads is what this app counts (scripts/py-opens.py)', /^ok .*notes/m.test(pyOpens) && !/^DIFF/m.test(pyOpens), pyOpens.replace(/\n/g, ' | '));
+
+  // the Shelf as a tree (R2)
+  await shelfChecks({ page, check, env, wbExe, study, shots, sleep });
 
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();

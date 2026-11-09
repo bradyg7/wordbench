@@ -31,7 +31,9 @@ pub type Rec = Map<String, Value>;
 pub const COLORS: &[&str] = &["yellow", "green", "blue", "pink", "orange"];
 pub const PALETTE_MAX: usize = 8;
 pub const ANCHORS_MARK: &str = "<!-- anchors -->";
-pub const SET_KINDS: &[&str] = &["pane", "thread", "place", "note", "lesson", "pdf"];
+/// What a set can hold. `document` (a record in documents/, R2) is new here: the Python app passes over it when it reads a
+/// set, and drops it if it rewrites that set (docs/redesign-R2.md section 4).
+pub const SET_KINDS: &[&str] = &["pane", "thread", "place", "note", "lesson", "pdf", "document"];
 
 /// A request the person can fix (the Python app's BadStudy, sent with status 400).
 pub fn bad(msg: impl Into<String>) -> Error {
@@ -1484,7 +1486,7 @@ impl Store {
     fn set_item(raw: &Value) -> Result<Rec> {
         let kind = raw.get("kind").and_then(|k| k.as_str()).unwrap_or("");
         if !SET_KINDS.contains(&kind) {
-            return Err(bad("A set holds panes, threads, places, notes, lessons and PDFs."));
+            return Err(bad("A set holds panes, threads, places, notes, lessons, PDFs and documents."));
         }
         if kind == "pane" {
             let params = raw.get("params").cloned().unwrap_or(json!({}));
@@ -1562,6 +1564,27 @@ impl Store {
         t["items"].as_array_mut().unwrap().retain(|i| !keys.iter().any(|k| i["key"] == *k));
         self.write_set(&mut t)?;
         Ok(t)
+    }
+
+    /// Move an item inside its set: before the item `before`, or to the end (R2: the Shelf's drag).
+    pub fn move_in_set(&mut self, id: &str, key: &str, before: Option<&str>) -> Result<Rec> {
+        let mut t = self.set(id)?;
+        let items = t["items"].as_array_mut().unwrap();
+        let Some(at) = items.iter().position(|i| i["key"] == key) else { return Err(missing("No such item in that set.")) };
+        let item = items.remove(at);
+        let to = match before {
+            Some(b) => items.iter().position(|i| i["key"] == b).ok_or_else(|| missing("No such item to put it before."))?,
+            None => items.len(),
+        };
+        items.insert(to, item);
+        self.write_set(&mut t)?;
+        Ok(t)
+    }
+
+    /// One item of a set as it is kept (with its key), for moving it into another set.
+    pub fn set_item_of(&self, id: &str, key: &str) -> Result<Rec> {
+        let t = self.set(id)?;
+        t["items"].as_array().unwrap().iter().find(|i| i["key"] == key).and_then(|i| i.as_object().cloned()).ok_or_else(|| missing("No such item in that set."))
     }
 
     pub fn rename_set(&mut self, id: &str, name: &str) -> Result<Rec> {
