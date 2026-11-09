@@ -7,6 +7,7 @@
 //! lays it out. After layout, the text on the pages is read back, so the check that every verse is there word for word
 //! is made on what the PDF holds.
 
+use super::look::Look;
 use super::plan::Theme;
 use crate::{Error, Result};
 use serde_json::{json, Value};
@@ -28,9 +29,10 @@ const TEMPLATE: &str = r##"
 #let c(h) = rgb("#" + h)
 #let tone(name) = if name == "accent1" { c(t.accent) } else if name == "accent2" { c(t.accent2) } else { rgb(name) }
 #set document(title: d.title)
-#set text(font: "Literata", fill: c(t.ink), hyphenate: false, ligatures: false, lang: "en")
+#let lk = d.look
+#set text(font: lk.serif, fill: c(t.ink), hyphenate: false, ligatures: false, lang: "en")
 #set par(justify: false)
-#let ui = "Inter"
+#let ui = lk.ui
 #let at(x, y, w, h, body, anchor: horizon) = place(top + left, dx: x * 1pt, dy: y * 1pt,
   block(width: w * 1pt, height: h * 1pt, align(anchor + left, body)))
 #let verse(v, num) = {
@@ -56,10 +58,15 @@ const TEMPLATE: &str = r##"
       place(top + left, dx: L * 1pt, dy: 196pt, rect(width: 56pt, height: 4pt, fill: c(t.accent), stroke: none))
       at(L, 214, W, 110, anchor: top, text(font: ui, size: s.size * 1pt, weight: 600, par(leading: 0.3em)[#s.title]))
     } else if s.kind == "verse" {
-      at(L, 38, W, 34, text(font: ui, size: 24pt, weight: 600, fill: c(t.accent))[#s.ref])
-      if s.before != none { at(L, 84, W, 78, text(size: 20pt, fill: c(t.muted), verse(s.before, c(t.muted)))) }
-      at(L, 170, W, 240, text(size: s.size * 1pt, par(leading: 0.6em, verse(s.verse, c(t.accent)))))
-      if s.after != none { at(L, 420, W, 84, text(size: 20pt, fill: c(t.muted), verse(s.after, c(t.muted)))) }
+      let refy = if lk.reference == "bottom" { 470 } else { 38 }
+      at(L, refy, W, 34, text(font: ui, size: 24pt, weight: 600, fill: c(t.accent))[#s.ref])
+      if lk.neighbours == "hidden" {
+        at(L, 90, W, 360, text(size: s.size * 1pt, par(leading: 0.6em, verse(s.verse, c(t.accent)))))
+      } else {
+        if s.before != none { at(L, 84, W, 78, text(size: 20pt, fill: c(t.muted), verse(s.before, c(t.muted)))) }
+        at(L, 170, W, 240, text(size: s.size * 1pt, par(leading: 0.6em, verse(s.verse, c(t.accent)))))
+        if s.after != none { at(L, 420, W, 84, text(size: 20pt, fill: c(t.muted), verse(s.after, c(t.muted)))) }
+      }
     }
   ]
 }
@@ -105,7 +112,9 @@ fn marks_of(s: &Value) -> Vec<(usize, usize)> {
 }
 
 /// The plan's slides as the template's data, with each box's size fitted as DeckCraft fitted it.
-fn slides_data(plan: &[Value], t: &Theme) -> Vec<Value> {
+fn slides_data(plan: &[Value], t: &Theme, look: &Look) -> Vec<Value> {
+    // the estimate is held a little under the box (360 pt when the neighbours are hidden), so a long verse never spills off the page
+    let (box_h, hi) = if look.neighbours == "hidden" { (330.0, 46) } else { (240.0, 40) };
     let w = 960.0 - 64.0 - 64.0;
     plan.iter()
         .filter_map(|s| match s["kind"].as_str()? {
@@ -120,7 +129,7 @@ fn slides_data(plan: &[Value], t: &Theme) -> Vec<Value> {
             "verse" => {
                 let v = &s["verse"];
                 let lead = if v["v"].is_null() { String::new() } else { format!("{} ", v["v"]) };
-                let size = fit_size(&[format!("{lead}{}", v["text"].as_str().unwrap_or(""))], w, 240.0, t.width, 24, 40);
+                let size = fit_size(&[format!("{lead}{}", v["text"].as_str().unwrap_or(""))], w, box_h, t.width, 24, hi);
                 let near = |o: &Value| if o.is_null() { Value::Null } else { verse_data(o, &[]) };
                 Some(json!({"kind": "verse", "ref": s["ref"], "before": near(&s["before"]), "after": near(&s["after"]),
                     "verse": verse_data(v, &marks_of(s)), "size": size}))
@@ -262,25 +271,28 @@ fn page_text(doc: &PagedDocument) -> String {
 }
 
 /// A deck's plan as PDF pages. → (the PDF's bytes, the text on its pages, the number of pages)
-pub fn render(plan: &[Value], t: &Theme, title: &str) -> Result<(Vec<u8>, String, usize)> {
-    let doc = lay_out(plan, t, title)?;
+pub fn render(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<(Vec<u8>, String, usize)> {
+    let doc = lay_out(plan, t, look, title)?;
     let msgs = |e: &[typst::diag::SourceDiagnostic]| e.iter().map(|d| d.message.to_string()).collect::<Vec<_>>().join("; ");
     let pdf = typst_pdf::pdf(&doc, &typst_pdf::PdfOptions::default()).map_err(|e| Error(format!("The PDF could not be written ({}).", msgs(&e))))?;
     Ok((pdf, page_text(&doc), doc.pages().len()))
 }
 
 /// A deck's plan as its pages drawn in SVG, for the window's preview (W6): the same layout as the PDF's, page for page.
-pub fn pages_svg(plan: &[Value], t: &Theme, title: &str) -> Result<Vec<String>> {
-    let doc = lay_out(plan, t, title)?;
+pub fn pages_svg(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<Vec<String>> {
+    let doc = lay_out(plan, t, look, title)?;
     let o = typst_svg::SvgOptions::default();
     Ok(doc.pages().iter().map(|p| typst_svg::svg(p, &o)).collect())
 }
 
-fn lay_out(plan: &[Value], t: &Theme, title: &str) -> Result<PagedDocument> {
-    let theme = json!({"paper": t.paper, "ink": t.ink, "muted": t.muted, "accent": t.accent, "accent2": t.accent2, "mark": t.mark,
+fn lay_out(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<PagedDocument> {
+    let accent = super::look::readable(if look.accent.is_empty() { t.accent } else { &look.accent }, t.paper);
+    let (ui, serif) = look.fonts();
+    let theme = json!({"paper": t.paper, "ink": t.ink, "muted": t.muted, "accent": accent, "accent2": t.accent2, "mark": t.mark,
         "mark_ink": t.mark_ink, "divider_bg": t.divider_bg, "divider_fg": t.divider_fg, "left": t.left,
         "chrome": t.chrome.iter().map(|(c, x, y, w, h)| json!({"color": c, "x": x, "y": y, "w": w, "h": h})).collect::<Vec<_>>()});
-    let data = json!({"title": title, "theme": theme, "slides": slides_data(plan, t)});
+    let data = json!({"title": title, "theme": theme, "slides": slides_data(plan, t, look),
+        "look": {"ui": ui, "serif": serif, "neighbours": look.neighbours, "reference": look.reference}});
     let fonts = fonts().clone();
     let main = id("/main.typ");
     let mut files = HashMap::new();

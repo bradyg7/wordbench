@@ -20,6 +20,7 @@
 
 pub mod deck;
 pub mod docx;
+pub mod look;
 pub mod page;
 pub mod plan;
 
@@ -339,21 +340,22 @@ fn unique(dir: &Path, stem: &str, ext: &str) -> PathBuf {
 
 /// The verses the source holds that are not in the finished file's text, word for word.
 fn missing_verses(have: &str, verses: &[String]) -> Vec<String> {
-    let have = squash(have);
-    verses.iter().filter(|v| !have.contains(&squash(v))).cloned().collect()
+    // a line broken after a hyphen (I-chabod at a large size) reads back as "I- chabod": the break is not a space
+    let have = squash(have).replace("- ", "-");
+    verses.iter().filter(|v| !have.contains(&squash(v).replace("- ", "-"))).cloned().collect()
 }
 
 /// A plan as a checked file at `at`. → what the check found
-fn write_file(to: &str, structure: &str, p: &[Value], blocks: &[plan::Block], title: &str, theme: &plan::Theme, at: &Path) -> Result<Value> {
+fn write_file(to: &str, structure: &str, p: &[Value], blocks: &[plan::Block], title: &str, theme: &plan::Theme, lk: &look::Look, at: &Path) -> Result<Value> {
     let verses = plan::source_verses(blocks);
     let (text, pages) = match to {
         "word" => {
             let (size, spacing) = plan::doc_type(structure);
-            docx::write(p, theme, title, size, spacing, at)?;
+            docx::write(p, theme, lk, title, size, spacing, at)?;
             (docx::file_text(at)?, None)
         }
         "pdf" => {
-            let (pdf, text, pages) = deck::render(p, theme, title)?;
+            let (pdf, text, pages) = deck::render(p, theme, lk, title)?;
             fs::write(at, pdf)?;
             (text, Some(pages))
         }
@@ -367,7 +369,30 @@ fn write_file(to: &str, structure: &str, p: &[Value], blocks: &[plan::Block], ti
     Ok(json!({"verses": verses.len(), "pages": pages, "refs": plan::source_refs(blocks)}))
 }
 
-fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str, force: bool) -> Result<Value> {
+/// The Look a record was made with (its kept values), or Preview for a record made before Looks.
+pub fn look_of_record(rec: &Rec) -> look::Look {
+    rec.get("look_values").and_then(|v| serde_json::from_value(v.clone()).ok()).unwrap_or_default()
+}
+
+/// The Look to make a document with: `name` (a Look's name) if given, else the record's own values, else the Look new
+/// documents use; then each dial given (`dial=value`) applied. → (the Look's key, its values)
+fn look_for(store: &Store, rec: &Rec, name: Option<&str>, dials: &[(String, String)]) -> Result<(String, look::Look)> {
+    let (key, base) = match name.filter(|n| !n.is_empty()) {
+        Some(n) => (look::key_of(n), look::get(store, n)?),
+        None if rec.contains_key("look_values") => (s(rec, "look"), look_of_record(rec)),
+        None => {
+            let k = look::saved(store);
+            let l = look::get(store, &k).unwrap_or_default();
+            (k, l)
+        }
+    };
+    Ok((key, look::apply(base, dials)?))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str, lk: (String, look::Look), force: bool) -> Result<Value> {
+    let (look_key, lk) = lk;
+    let look_values = serde_json::to_value(&lk).unwrap();
     crate::store::guard(&store.root)?;
     let theme = plan::theme(theme_key)?;
     let (p, blocks, title) = plan_now(bible, store, &rec).map_err(|e| match e {
@@ -378,7 +403,7 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
     let old = rec.get("name").and_then(|n| n.as_str()).map(|n| out.join(n));
     let there = old.as_ref().is_some_and(|o| o.is_file());
     fs::create_dir_all(out)?;
-    if there && !force && s(&rec, "plan") == finger && s(&rec, "theme") == theme_key && rec.get("design").and_then(|d| d.as_i64()) == Some(docx::DESIGN) {
+    if there && !force && s(&rec, "plan") == finger && s(&rec, "theme") == theme_key && rec.get("design").and_then(|d| d.as_i64()) == Some(docx::DESIGN) && rec.get("look_values") == Some(&look_values) {
         let mut v = public(&rec, out);
         v["changed"] = json!(false);
         v["kept_now"] = Value::Null;
@@ -398,7 +423,7 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
     let tmp_dir = out.join(format!(".building-{}", std::process::id()));
     fs::create_dir_all(&tmp_dir)?;
     let built = tmp_dir.join(format!("doc{ext}"));
-    let checked = write_file(&to, &structure, &p, &blocks, &title, theme, &built);
+    let checked = write_file(&to, &structure, &p, &blocks, &title, theme, &lk, &built);
     let result = (|| -> Result<Value> {
         let checked = checked?;
         // a first build, or a thread renamed, takes a new name, and never that of a file that is not this document's
@@ -432,6 +457,8 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
             ("theme", json!(theme_key)),
             ("plan", json!(finger)),
             ("design", json!(docx::DESIGN)),
+            ("look", json!(look_key)),
+            ("look_values", look_values.clone()),
             ("file", json!(sha_file(&target)?)),
             ("sig", sig(&target)?),
             ("built", json!(now())),
@@ -474,7 +501,9 @@ pub fn set_theme(store: &mut Store, key: &str) -> Result<Value> {
 
 /// The document for a thread and structure: made the first time, brought up to date after. `to`: word, or pdf (slides as
 /// PDF pages). new makes another alongside; force rebuilds even if nothing changed.
-pub fn make(bible: &Bible, store: &Store, out: &Path, thread: &str, to: &str, structure: Option<&str>, theme: Option<&str>, new: bool, force: bool) -> Result<Value> {
+#[allow(clippy::too_many_arguments)]
+pub fn make(bible: &Bible, store: &Store, out: &Path, thread: &str, to: &str, structure: Option<&str>, theme: Option<&str>, look_name: Option<&str>,
+    dials: &[(String, String)], new: bool, force: bool) -> Result<Value> {
     if !matches!(to, "word" | "pdf") {
         return Err(bad("to: word, or pdf (slides as PDF pages; PowerPoint is made by the Python app until phase 5)."));
     }
@@ -494,11 +523,12 @@ pub fn make(bible: &Bible, store: &Store, out: &Path, thread: &str, to: &str, st
         Some(r) if !new => r,
         _ => json!({"id": new_id(store, &source, st.key, to), "source": source, "to": to, "structure": st.key}).as_object().unwrap().clone(),
     };
-    build(bible, store, out, rec, &theme, force)
+    let lk = look_for(store, &rec, look_name, dials)?;
+    build(bible, store, out, rec, &theme, lk, force)
 }
 
 /// One document by name, on its own theme unless given another.
-pub fn update(bible: &Bible, store: &Store, out: &Path, name: &str, theme: Option<&str>, force: bool) -> Result<Value> {
+pub fn update(bible: &Bible, store: &Store, out: &Path, name: &str, theme: Option<&str>, look_name: Option<&str>, dials: &[(String, String)], force: bool) -> Result<Value> {
     let rec = find(store, name)?;
     if rec.get("forgotten") == Some(&json!(true)) {
         return Err(bad(format!("“{}” was forgotten, so it is left as it is. Remember it first (docs remember).", s(&rec, "name"))));
@@ -515,7 +545,8 @@ pub fn update(bible: &Bible, store: &Store, out: &Path, name: &str, theme: Optio
         Some(t) => plan::theme(t)?.key.to_string(),
         None => s(&rec, "theme"),
     };
-    build(bible, store, out, rec, &theme, force)
+    let lk = look_for(store, &rec, look_name, dials)?;
+    build(bible, store, out, rec, &theme, lk, force)
 }
 
 /// Every document whose source has changed and whose file is still there, that this app makes. One that cannot be updated
@@ -526,7 +557,7 @@ pub fn update_behind(bible: &Bible, store: &Store, out: &Path) -> Value {
         if d["state"] != "behind" || d["to"] == "deck" {
             continue;
         }
-        match update(bible, store, out, s_(d, "id"), None, false) {
+        match update(bible, store, out, s_(d, "id"), None, None, &[], false) {
             Ok(v) => done.push(v),
             Err(e) => failed.push(json!({"name": d["name"], "error": e.0})),
         }
@@ -676,7 +707,7 @@ pub fn page_parts(bible: &Bible, store: &Store, page: &str, on: &[String], off: 
 /// scripture block, page for each block's own; none keeps the last.
 #[allow(clippy::too_many_arguments)]
 pub fn make_page(bible: &Bible, store: &Store, out: &Path, page: &str, to: &str, structure: Option<&str>, theme: Option<&str>,
-    version: Option<&str>, on: &[String], off: &[String], force: bool) -> Result<Value> {
+    version: Option<&str>, on: &[String], off: &[String], look_name: Option<&str>, dials: &[(String, String)], force: bool) -> Result<Value> {
     let key = page_structure(to, structure)?;
     let id = page_id(store, page)?;
     let mut rec = page_record(store, &id, to, key);
@@ -701,7 +732,8 @@ pub fn make_page(bible: &Bible, store: &Store, out: &Path, page: &str, to: &str,
     if rec.contains_key("name") && rec != before {
         save(store, &rec)?;
     }
-    build(bible, store, out, rec, &theme, force)
+    let lk = look_for(store, &rec, look_name, dials)?;
+    build(bible, store, out, rec, &theme, lk, force)
 }
 
 /// The plan a page's document would be made from now, with its last switches (`wb docs plan --page`).
@@ -737,7 +769,7 @@ pub fn preview(bible: &Bible, store: &Store, out: &Path, name: &str) -> Result<V
                 return Ok(v);
             }
             let (p, _, title) = plan_now(bible, store, &rec).map_err(|_| bad("Its source cannot be read now; open the file as it is."))?;
-            v["slides"] = json!(deck::pages_svg(&p, plan::theme(&s(&rec, "theme"))?, &title)?);
+            v["slides"] = json!(deck::pages_svg(&p, plan::theme(&s(&rec, "theme"))?, &look_of_record(&rec), &title)?);
         }
         _ => return Err(bad("A PowerPoint deck is previewed in PowerPoint (docs open).")),
     }
@@ -804,17 +836,17 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let word = vec![json!(["para", "Title", [["T", null]], false])];
         let at = dir.join("doc.docx");
-        let e = write_file("word", "script", &word, &plan::thread_blocks(&thread), "T", theme, &at).unwrap_err();
+        let e = write_file("word", "script", &word, &plan::thread_blocks(&thread), "T", theme, &look::Look::default(), &at).unwrap_err();
         assert!(e.0.contains("missing scripture") && e.0.contains("words that must be in"), "{}", e.0);
         assert!(!at.exists());
         let slides = vec![json!({"kind": "title", "title": "T", "sub": ""})];
         let at = dir.join("deck.pdf");
-        assert!(write_file("pdf", "verse", &slides, &plan::thread_blocks(&thread), "T", theme, &at).unwrap_err().0.contains("missing scripture"));
+        assert!(write_file("pdf", "verse", &slides, &plan::thread_blocks(&thread), "T", theme, &look::Look::default(), &at).unwrap_err().0.contains("missing scripture"));
         assert!(!at.exists());
         // and with the verse on its slide, it is kept
         let v = &thread["places"][0]["verses"][0];
         let slides = vec![slides[0].clone(), json!({"kind": "verse", "ref": "A place (KJV)", "verse": v, "before": null, "after": null, "marks": [[6, 10]], "notes": ""})];
-        assert_eq!(write_file("pdf", "verse", &slides, &plan::thread_blocks(&thread), "T", theme, &at).unwrap()["pages"], 2);
+        assert_eq!(write_file("pdf", "verse", &slides, &plan::thread_blocks(&thread), "T", theme, &look::Look::default(), &at).unwrap()["pages"], 2);
         assert!(fs::read(&at).unwrap().starts_with(b"%PDF-"));
         let _ = fs::remove_dir_all(&dir);
     }

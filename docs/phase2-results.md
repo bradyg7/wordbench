@@ -900,3 +900,20 @@ builder (steps 3–7) are not built yet.
 | Old design | Records gain `"design": 2`; a planned document without it reads **Old design** (the Documents pane and a page's documents offer Update), and is never rebuilt unasked: `docs update` with no name still updates only *behind* ones. Update rebuilds an old-design file even when its plan is the same | `cargo test` |
 
 The plan, and so the fingerprint shared with the Python app, is unchanged: styles are not in it.
+
+## 29. R3, steps 3 and 4: Looks, dials and the page switches (2026-11-09)
+
+| What | Built | Checked |
+|---|---|---|
+| Looks (D9) | `docs/look.rs`: Preview, Classic, Ink saver, Large print, Modern ship with the app; your own in `settings/doc-looks/<key>.json` (dials only; a shipped name is refused; delete goes to `.trash`). The Look new documents use is `settings/export.json`'s `look` | `wb docs looks`; a test that every shipped Look is valid |
+| Dials (D10, D12) | typeface (pairs only), accent (hex or a swatch), size, spacing, title, verse numbers, under-title rule, paper (Letter, A4), ink (full, saver, black); for slides neighbours (faint, hidden) and reference (top, bottom). `--look NAME` and `--set DIAL=VALUE` on `wb craft word|deck` and `wb docs update`; `wb docs look NAME [--from L --set … --save] [--use] [--delete]` | Rendered: Ink saver (`docs/phase2/r3-look-ink-saver-page1.png`), Classic with the verse alone and the reference at the bottom (`r3-look-classic-verse-alone.png`) |
+| Highlights in print (D13) | In Word a highlight is the accent in full color, an underline in Saver and Black only. Slides keep the theme's highlight | |
+| Guardrails (D15) | Text in the accent is made readable (4.5 : 1) against the paper, Word or slide; rules keep the person's own color; ink modes override | test: a gold accent is darkened for text, kept for rules |
+| Page switches (D14) | cover page, running head (the title on every page after the first), page numbers (Page x of y, x, none), two columns (used only when the document is scripture only). Dials of a Look, so they are kept with it | |
+| Records | Each document keeps `look` and `look_values`; Make again uses the values it was made with unless another Look or dial is given; a changed Look value rebuilds | |
+| The window | The Make row (Documents pane, a thread's documents) and Make a document (from a page) gain Look and Ink | `tsc` clean; no desk check yet |
+| The text check | A line broken after a hyphen (“I-chabod” at a large slide size) read back as two words and refused a good deck; the check now treats “- ” as “-” | the Classic verse-alone deck of 55 slides kept |
+
+**Not built yet:** the dials panel with a live page (D10's full pane: the window offers Look and Ink only, the rest by
+`--set`), See it in grey, the ink measure (D11), templates and the new structures (Share Copy, Study Sheet, Reading
+Sheet, Reader), and the parts builder (D4). The Word file has still not been opened in real Word (W-5).
