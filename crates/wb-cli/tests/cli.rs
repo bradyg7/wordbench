@@ -1691,10 +1691,14 @@ fn a_thread_is_a_page_written_in_blocks_while_its_file_stays_the_python_apps() {
     let tree = wb.js(&["page", "tree"]);
     let me = tree["pages"].as_array().unwrap().iter().find(|r| r["id"] == "thread:zeal").unwrap();
     assert_eq!(me["children"][0]["id"], n["id"]);
+    // a page made "inside" a thread is a page written on it, with its link in the thread's note
+    let inside = wb.js(&["page", "new", "Inside the thread", "--parent", "thread:zeal", "--link"]);
+    assert_eq!(wb.js(&["thread", "notes", "Zeal"])["notes"].as_array().unwrap().iter().filter(|x| x["id"] == inside["id"]).count(), 1);
+    assert!(wb.js(&["thread", "show", "Zeal"])["note"].as_str().unwrap().contains("[[Inside the thread]]"));
     wb.js(&["thread", "unpin", "Zeal"]);
     assert!(wb.js(&["page", "tree"])["pinned"].as_array().unwrap().is_empty());
     // an empty note is a thread with no note, and the page can be written in again
-    wb.js(&["block", "rm", "thread:zeal", "1", "--count", "2"]);
+    wb.js(&["block", "rm", "thread:zeal", "1", "--count", "3"]);
     assert_eq!(wb.js(&["thread", "show", "Zeal"])["note"], "");
 }
 
@@ -1765,6 +1769,8 @@ fn a_question_written_in_a_page_is_one_with_the_questions_at_a_verse() {
     wb.js(&["note", "new", "A question at a verse", "--at", "Num 25:15", "--question"]);
     let all = wb.js(&["questions"]);
     assert_eq!(all["questions"].as_array().unwrap().len(), 2);
+    // a view that lists questions lists it too
+    assert!(wb.js(&["view", "run", "notebook questions open"])["rows"].as_array().unwrap().iter().any(|r| r["id"] == format!("{id}#1")));
     let here = wb.js(&["question", "list", "--at", "Num 25:9"]);
     let qs = here["questions"].as_array().unwrap();
     assert_eq!(qs.len(), 1);

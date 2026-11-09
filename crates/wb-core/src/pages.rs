@@ -388,6 +388,23 @@ pub fn new_page(bible: &Bible, store: &mut Store, parent: Option<&str>, text: &s
     if link && parent.is_none() {
         return Err(bad("A link is written in the page it goes inside: give --parent."));
     }
+    // a page "inside" a thread is a page written on it (R1): a note on the thread, listed under its page
+    if let Some(slug) = parent.as_deref().and_then(crate::threadpage::slug_of).map(String::from) {
+        let r = store.add_thread_note(&slug, text)?;
+        let id = s(&r, "id");
+        if link {
+            let p = parent.as_deref().unwrap_or_default();
+            let title = nb::title_of(text);
+            let pt = crate::threadpage::note_text(store, p)?;
+            let at = match after {
+                Some(n) => n,
+                None => split(&pt, false).1.len().checked_sub(1),
+            };
+            let (out, _, _) = insert(&pt, false, at, &format!("[[{title}]]"))?;
+            nb::edit_text(bible, store, p, &out)?;
+        }
+        return nb::show(bible, store, &id);
+    }
     let r = store.jot(text, false)?;
     let id = s(&r, "id");
     if let Some(p) = &parent {

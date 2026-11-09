@@ -24,6 +24,14 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
   `notes/_threads/` and `notes/_days/` folders (today's page: no anchor), `settings/notebook.json`, `findings/` (the
   person's findings about the app, beside `notes/` so the Notebook never lists them) and `.trash/reading-unmarked.jsonl`
   (a mark taken off the reading log) are ones the Python app keeps or passes over.
+- **Everything is a page, in the window; the files do not move** (the person's decision, 2026-11-09, `docs/redesign-R1.md`).
+  A note, a question, a day and a thread are shown as pages; "note" is the old word. The files stay where the Python app
+  has them. A thread is its `threads/<slug>.md` read as a page (`thread:<slug>`; its note is the page's text, so no field is
+  ever added to a thread file, which both apps rewrite from a fixed model); where it sits in Pinned is in
+  `settings/pages.json`. A question written in a page is a callout line (`> [!question]`, `> [!done]`); a thread or a word
+  put in a page is a ```` ```thread ```` or ```` ```word ```` fence holding only an id or a number, never the text. `wb page …`
+  is `wb note …` under the new name. `scripts/py-opens.py` and `wb study check` are the check that the Python app still
+  opens the folder.
 - **The Bible database is read-only.** `WB_BIBLE_DB` (default: the Python repo's `datasets/workbench.db`) is opened with
   SQLite's read-only flag. Never modify it.
 - **Never lose the reader's place.** Anything opened from the text returns to the verse it came from.
@@ -34,7 +42,7 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
 
 | Path | What |
 |---|---|
-| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `pages` (pages inside pages, Pinned, a page's blocks), `relay` (`wb do`), `docs` (documents from a thread or a page: the plans, the Word writer, the PDF deck through Typst, `documents/` records; its fonts in `crates/wb-core/fonts`) |
+| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `pages` (pages inside pages, Pinned, a page's blocks, thread and word blocks), `threadpage` (a thread as a page), `questions` (questions written in a page, and the one list of them), `check` (the read-only check of the folder), `relay` (`wb do`), `docs` (documents from a thread or a page: the plans, the Word writer, the PDF deck through Typst, `documents/` records; its fonts in `crates/wb-core/fonts`) |
 | `crates/wb-cli` | The `wb` command table (a library the app runs in-process) and the `wb` binary |
 | `app/src-tauri` | The Tauri 2 shell: commands that call wb-core |
 | `ui/` | The UI: TypeScript, CSS, fonts (Literata for scripture, Inter for the interface), `tokens.css` from the design tokens |
@@ -50,6 +58,7 @@ npm install && npm run tauri dev             # the app (from the repo root)
 npm run test:webkit                          # the UI in Playwright's WebKit at phone size
 python scripts/golden.py                     # the Rust wb against the Python wb on the same inputs (scratch folders)
 python scripts/doc-plans.py                  # documents' plans: the Rust fingerprints against the Python app's (scratch folder)
+python scripts/py-opens.py                   # the Python app opens the scratch folder and reads what this app reads (--save / --compare: before and after a change)
 node scripts/commands-cases.mjs              # the command language's cases and manual, from the Python app's commands.js
 node measure/desk.mjs                        # the desktop checked in the real app (its own instance and scratch copy)
 npm run measure                              # the speed budgets (after npx tauri build --no-bundle)

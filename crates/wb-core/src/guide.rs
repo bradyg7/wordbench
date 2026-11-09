@@ -28,6 +28,40 @@ const ENTRIES: &[(&str, &str, &[(&str, &str)])] = &[
             ("The same everywhere", "The command field lists the same notes for the same line (notebook @Num 25 questions), and so does wb view run \"notebook @Num 25 questions\" in a terminal."),
         ],
     ),
+    (
+        "threads",
+        "Threads",
+        &[
+            ("A thread is a page", "A thread opens as a page in the Notebook, in Pages with its color's dot. Its note is the page's text, written in blocks like any page. Under it are its places, in the thread's own order, and the pages written on it, and at its foot the documents made from it."),
+            ("Its places", "Drag a place by its grip to put it in order, × takes it out, + Place adds the place you are at, and the filter narrows a long list. Put it in Bible order sorts them. The color is the underline the reader draws for it; the eye hides it."),
+            ("Pages on a thread", "A page can be on several threads and shows under each. Write one under the thread's page, or drop a page onto a thread in Pages, or use + Thread on the page."),
+            ("A thread inside a page", "/ → Thread puts a thread's places inside another page, kept up to date, so a lesson can hold a thread without copying it. The file holds only the thread's id."),
+            ("Where it lives", "The thread file, threads/<name>.md, exactly as the Python app keeps it: name, color, note, places. Pinned is in settings/pages.json, which the Python app passes over."),
+            ("From a terminal", "wb thread page Phinehas · wb thread pin Phinehas · wb page threads <page id> · wb block thread <page id> 3 Phinehas · wb thread add|rm|order|sort as before."),
+        ],
+    ),
+    (
+        "questions",
+        "Questions",
+        &[
+            ("Two ways, one list", "A question at a verse (Ctrl+J, the pen's ?) is kept where it always was and the Python app's Trails shows it. A question written in a page (/ → Question, or /?) is a line of that page. Questions lists both, open first, and the reader's ? on a verse number and the verse's card read both."),
+            ("Answering", "Mark answered on a question block ticks it; Open it again takes the tick off."),
+            ("In the file", "A question in a page is a callout: > [!question] your words, and > [!done] your words when answered. Obsidian draws both as callouts."),
+            ("A question's place", "A question written in a page takes the page's places. A question in a page with no place has no verse, like a question in the Inbox."),
+            ("Moving one", "wb question fold <trail> <page> --also writes a question at a verse into a page; wb question unfold <page>#<block> gives it its own place again."),
+            ("From a terminal", "wb question list [--at \"Num 25:9\"] · wb question add <page id> \"text\" · wb question answer <page id>#<block>."),
+        ],
+    ),
+    (
+        "words",
+        "Word blocks",
+        &[
+            ("What a word block is", "/ → Word draws the lexicon's entry for a Strong's number inside a page: the word, its sound, Strong's own words, the KJV's renderings and how often. The file holds only the number, in a ```word block; the entry is never copied into it."),
+            ("A word study", "A word study is a page placed at the number (+ Place → H7065) with a word block at its top. Your own writing goes under it."),
+            ("The English definition", "Held for the source you choose; its slot is drawn empty."),
+            ("From a terminal", "wb page words <page id> · wb block word <page id> 2 H7065."),
+        ],
+    ),
 ];
 
 fn entry((name, title, parts): &(&str, &str, &[(&str, &str)])) -> Value {

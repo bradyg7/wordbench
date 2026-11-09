@@ -354,6 +354,8 @@ the questions the design round has to answer. Until the person accepts a sheet, 
 
 ### R1. Everything is a page (`38c2`, `7d00`, `d84d`)
 
+**Designed and built, 2026-11-09:** [redesign-R1.md](redesign-R1.md) (the sheets, the six answers, the nine decisions, all taken as recommended) and [phase2-results.md](phase2-results.md) §28. The text under this heading is what it was written as, before the design round.
+
 **Said:** "we need to get rid of 'notes'. everything needs to appear as a page, even notes in threads. this will require a
 relook at how threads are compiled and designed" (`38c2`); "if the notebook became just pages, then threads, questions,
 notes etc. were different block options within a page … `/?` for question and `/note` … `/~` for threads" (`7d00`); and
