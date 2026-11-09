@@ -1,0 +1,310 @@
+"""R3 of the debug round (docs/debug-spec.md, finding 868e): the documents' new design, drawn with FigCraft as the filter
+sheet was (it reuses phase2b.py's helpers). Nothing is built from these sheets until the person accepts them; the review
+is docs/redesign-R3.md.
+
+    python design/r3.py     # writes design/r3.figcraft and design/exports/r3/*.png
+
+The idea: the person prefers the in-app preview's look (ui/src/desk.css, .pd-pv-* and .dp-*), so the Word styles and the
+slide boxes are designed FROM it: Inter for everything that is not scripture, Literata for scripture, one accent, white
+paper. Every verse drawn comes from content.json (fetched from the database with wb text), never typed. Note lines on the
+sheets are placeholders that say what goes there, never commentary. FigCraft's built-in serif (Merriweather) stands in
+for Literata on the sheets, as on every other sheet (figlib.READ).
+"""
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+
+import build as B  # noqa: E402
+import figlib as F  # noqa: E402
+import parts as P  # noqa: E402
+import phase2b as Q  # noqa: E402
+from figlib import S, col, frame, para, rect, row, spacer, text  # noqa: E402
+
+BOARD = "Documents"
+PG = "Documents, redesigned"
+C = json.loads((HERE / "content.json").read_text(encoding="utf-8"))
+ACCENT = "#8E1B14"      # the preview's accent (.pd-pv-num, .dp-SlideCue)
+INK, MUTED, QUIET, RULE = "#222222", "#666666", "#777777", "#E4E0D8"
+
+# Word, at 96 px to the inch: a Letter page is 816 x 1056, 1 pt = 4/3 px. Sizes below are the proposed Word styles in pt.
+PX = 4 / 3
+PAGE_W, PAGE_H, MARGIN = 816, 1056, 72 * PX     # 1-inch margins
+
+STYLES = [  # name, family, weight, pt, line (x size), color, what for
+    ("Title", F.UI, "Semi Bold", 20, 1.25, INK, "the source's name"),
+    ("Subtitle", F.UI, "Regular", 10, 1.4, QUIET, "what it is, the date"),
+    ("Heading 1", F.UI, "Semi Bold", 15, 1.3, INK, "a section, a page inside"),
+    ("Heading 2", F.UI, "Semi Bold", 12, 1.3, INK, "a heading inside a section"),
+    ("Slide Cue", F.UI, "Bold", 8.5, 1.4, ACCENT, "SLIDE 3 (Speaker Script only)"),
+    ("Scripture Reference", F.UI, "Semi Bold", 10, 1.4, ACCENT, "Numbers 25:10-13"),
+    ("Scripture", F.READ, "Regular", 12, 1.5, INK, "the verses, numbers in the accent"),
+    ("Study Note", F.UI, "Regular", 10, 1.45, MUTED, "your note on a verse, indented"),
+    ("Delivery Note", F.UI, "Italic", 10, 1.45, ACCENT, "a note to yourself while speaking"),
+    ("Body", F.UI, "Regular", 11, 1.5, INK, "your paragraphs, lists, quotes"),
+]
+
+
+def st(parent, name, s, scale=1.0, color=None, **p):
+    """Text in one of the proposed Word styles, at page scale (`scale` for the Speaker Script's large print)."""
+    _, fam, weight, pt, lh, colr, _ = next(x for x in STYLES if x[0] == name)
+    size = round(pt * scale * PX, 1)
+    props = dict(fontFamily=fam, fontStyle=weight, fontSize=size, lineHeight=f"{round(size * lh)}px", fill=F.c(color or colr))
+    if name == "Slide Cue":
+        props.update(letterSpacing=0.8, textCase="upper")
+    props.update(F._props(dict(W="fill", **p)))
+    props.setdefault("textAutoResize", "height")
+    return S.do("text.create", {"text": s, "x": 0, "y": 0, "props": props, "name": f"{name}: {s[:30]}", "parent": parent})
+
+
+def verses_text(key, first, last):
+    vs = [v for v in C[key]["verses"] if first <= v["v"] <= last]
+    return vs
+
+
+def scripture(parent, key, first, last, scale=1.0, size_pt=12, fam=None, color=INK, num=ACCENT, lh=1.5):
+    """Verses as one wrapping paragraph each, the number in the accent (the preview's .pd-pv-num)."""
+    size = round(size_pt * scale * PX, 1)
+    box = col(parent, "Scripture", gap=round(size * 0.35))
+    for v in verses_text(key, first, last):
+        flow = frame(box, f"v{v['v']}", layout="horizontal", wrap=True, gap=0, crossGap=0, crossAlign="baseline",
+                     W="fill", H="hug")
+        S.do("text.create", {"text": f"{v['v']} ", "x": 0, "y": 0, "parent": flow, "name": "num",
+                             "props": dict(fontFamily=F.UI, fontStyle="Bold", fontSize=round(size * 0.62, 1),
+                                           lineHeight=f"{round(size * lh)}px", fill=F.c(num))})
+        S.do("text.create", {"text": v["text"], "x": 0, "y": 0, "parent": flow, "name": "verse",
+                             "props": dict(fontFamily=fam or F.READ, fontStyle="Regular", fontSize=size,
+                                           lineHeight=f"{round(size * lh)}px", fill=F.c(color), sizingH="fill",
+                                           textAutoResize="height")})
+    return box
+
+
+def ref(key, first, last):
+    book = C[key]["ref"].split(":")[0]
+    return f"{book}:{first}–{last}" if first != last else f"{book}:{first}"
+
+
+def page(parent, title, about):
+    f = Q.win(parent, PG, title, about, w=PAGE_W, h=PAGE_H)
+    S.do("node.set", {"ids": [f], "props": {"fill": "#FFFFFF", "cornerRadius": 2}}, ref=False)
+    body = frame(f, "page body", x=MARGIN, y=MARGIN, w=PAGE_W - 2 * MARGIN, h=PAGE_H - 2 * MARGIN, layout="vertical",
+                 gap=10, W="fixed", H="fixed", clip=True)
+    foot = frame(f, "footer", x=MARGIN, y=PAGE_H - MARGIN + 18, w=PAGE_W - 2 * MARGIN, h=20, layout="horizontal",
+                 W="fixed", H="hug")
+    S.do("text.create", {"text": "Page 1 of 3", "x": 0, "y": 0, "parent": foot, "name": "Footer",
+                         "props": dict(fontFamily=F.UI, fontStyle="Regular", fontSize=12, lineHeight="16px",
+                                       fill=F.c("#999999"))})
+    return body
+
+
+def rule(parent):
+    rect(parent, "rule", 10, 1, RULE, W="fill")
+
+
+def placeholder(parent, s, style="Study Note", scale=1.0):
+    st(parent, style, s, scale)
+
+
+# ---- slides -------------------------------------------------------------------------------------------------------------
+SW, SH = 960, 540
+THEMES = {  # paper, ink, accent, muted (from plan.rs's Vellum and Vigil; the white one is the preview's own)
+    "Paper": ("#FFFFFF", INK, ACCENT, "#9A948A"),
+    "Vigil": ("#0E1524", "#F4EFE3", "#D9B46A", "#7C8496"),
+}
+
+
+def slide(parent, title, about, theme="Paper"):
+    paper, ink, acc, mut = THEMES[theme]
+    f = Q.win(parent, PG, title, about, w=SW, h=SH)
+    S.do("node.set", {"ids": [f], "props": {"fill": paper, "cornerRadius": 2}}, ref=False)
+    return f, ink, acc, mut
+
+
+def at(f, name, x, y, w, h, **p):
+    return frame(f, name, x=x, y=y, w=w, h=h, layout="vertical", gap=6, W="fixed", H="fixed", clip=False, **p)
+
+
+def stext(parent, s, size, color, fam=F.UI, weight="Regular", lh=1.25, **p):
+    props = dict(fontFamily=fam, fontStyle=weight, fontSize=size, lineHeight=f"{round(size * lh)}px", fill=F.c(color),
+                 sizingH="fill", textAutoResize="height")
+    props.update(F._props(p))
+    return S.do("text.create", {"text": s, "x": 0, "y": 0, "parent": parent, "name": s[:30], "props": props})
+
+
+# ---- the sheets ---------------------------------------------------------------------------------------------------------
+def sheets(board):
+    cv = Q.section(board, PG, 0)
+    Q.sheet_title(cv, "Documents, redesigned", "R3 of the debug round (finding 868e): the person prefers the in-app "
+                  "preview's look, so the Word file and the PDF slides are drawn from it: Inter for every word that is "
+                  "not scripture, Literata for scripture, one accent, white paper, quiet notes. Word pages are Letter at "
+                  "1-inch margins; slides 960 x 540. Scripture from content.json (wb text); note lines are placeholders.")
+
+    # D1 the styles sheet -----------------------------------------------------------------------------------------------
+    r = row(cv, "row 1", gap=64, align="min")
+    body = page(r, "D1 · The Word styles", "Ten named styles, the same names as today (so Restyle in Word still works "
+                "in one place), each in the preview's font, size and color. Character formatting is only the verse "
+                "number (Inter Bold, the accent, superscript). The fonts are embedded in the file (see the review).")
+    for name, fam, weight, pt, lh, colr, what in STYLES:
+        line = row(body, f"style/{name}", gap=16, align="baseline", W="fill")
+        meta = col(line, "meta", gap=2, W="fixed")
+        S.do("node.set", {"ids": [meta], "props": {"width": 190}}, ref=False)
+        stext(meta, name, 12, INK, weight="Semi Bold", lh=1.3)
+        stext(meta, f"{'Literata' if fam == F.READ else 'Inter'} {weight} {pt} pt, {lh}", 10.5, QUIET, lh=1.3)
+        sample = col(line, "sample", gap=0)
+        if name == "Scripture":
+            scripture(sample, "num25", 11, 11)
+        else:
+            st(sample, name, what)
+        rule(body)
+
+    # D2 a Speaker Script page --------------------------------------------------------------------------------------------
+    body = page(r, "D2 · Speaker Script, page 1", "Large print (the styles at 14/12 = 1.17 x), the cue for each Pulpit "
+                "slide in the margin's color, scripture in Literata with its reference above it, your notes under the verse "
+                "they are on. This is the preview, as a Word page.")
+    k = 14 / 12
+    st(body, "Title", "Phinehas", k)
+    st(body, "Subtitle", "A thread · Speaker Script · 9 November 2026", k)
+    st(body, "Slide Cue", "Slide 2", k)
+    st(body, "Scripture Reference", ref("num25", 10, 13), k)
+    scripture(body, "num25", 10, 13, scale=k)
+    placeholder(body, "Your note on verse 11 appears here, in your words, under the verse it is on.", scale=k)
+    st(body, "Delivery Note", "A delivery note of yours, if the source has one.", k)
+    st(body, "Slide Cue", "Slide 3", k)
+    st(body, "Scripture Reference", ref("ps106", 30, 31), k)
+    scripture(body, "ps106", 30, 31, scale=k)
+
+    # D3 a Share Copy page (a page as the source) -------------------------------------------------------------------------
+    r = row(cv, "row 2", gap=64, align="min")
+    body = page(r, "D3 · Share Copy, from a page", "The same styles at 12 pt: what a page's blocks become. A heading is "
+                "Heading 1, your paragraph is Body, a scripture block is a reference and its verses, a page inside is "
+                "Heading 1 again. No cues, no notes: it is for someone else.")
+    st(body, "Title", "Tuesday study")
+    st(body, "Subtitle", "A page · Share Copy · 9 November 2026")
+    st(body, "Heading 1", "A heading block")
+    st(body, "Body", "A paragraph block: your own words, as you wrote them on the page. Lists, quotes and tables keep "
+       "their shape; a to-do is left out unless switched on.")
+    st(body, "Scripture Reference", ref("num25", 10, 13))
+    scripture(body, "num25", 10, 13)
+    st(body, "Heading 1", "A page inside this one")
+    st(body, "Scripture Reference", ref("ps106", 30, 31))
+    scripture(body, "ps106", 30, 31)
+
+    # D4 the template builder --------------------------------------------------------------------------------------------
+    f = Q.win(r, PG, "D4 · The template builder", "A template is a structure's choices, in a pane: the parts on the "
+              "left (the order and what is in), the look on the right (one style at a time: font from the two, size, "
+              "color from the theme), and the page drawn live from the source chosen at the top. Saved as one JSON file "
+              "in settings/doc-templates/. The structure's own template is the starting point and cannot be lost.",
+              w=PAGE_W + 480, h=PAGE_H)
+    Q.toolbar(f, active="Notebook", inbox=None)
+    left = frame(f, "builder", x=0, y=Q.TB, w=440, h=PAGE_H - Q.TB, fill="sunken", layout="vertical", gap=12,
+                 pad=[16, 16, 16, 16], W="fixed", H="fixed", clip=True)
+    P.pane_header(left, ["Documents", "Templates"], "Speaker Script, mine")
+    text(left, "Made from", "label", "muted")
+    P.field(left, "Thread: Phinehas", None, icon_name="threads", height=36)
+    text(left, "Parts, in order", "label", "muted")
+    for label, on in (("Title and subtitle", True), ("Slide cues", True), ("Scripture, with references", True),
+                      ("Your notes on a verse", True), ("Delivery notes", True), ("Highlights as shading", False),
+                      ("Room to write after each passage", False)):
+        it = row(left, f"part/{label}", gap=10, pad=[8, 10, 8, 10], fill="bg", radius=8, W="fill")
+        F.icon(it, "drag", 16, "muted")
+        text(it, label, "body", "fg" if on else "muted")
+        spacer(it)
+        P.toggle(it, on) if hasattr(P, "toggle") else text(it, "On" if on else "Off", "smallStrong",
+                                                           "accent" if on else "muted")
+    text(left, "Look", "label", "muted")
+    for label, val in (("Style", "Study Note"), ("Font", "Inter (interface)"), ("Size", "10 pt"),
+                       ("Color", "Muted, from the theme"), ("Print size", "Large (1.17 x)"), ("Page", "Letter, 1 inch")):
+        it = row(left, f"look/{label}", gap=10, W="fill")
+        text(it, label, "small", "muted")
+        spacer(it)
+        text(it, val, "smallStrong", "fg")
+    bar = row(left, "acts", gap=8, W="fill")
+    P.button(bar, "Save template", "primary", None, size="sm")
+    P.button(bar, "Back to the structure's own", "soft", None, size="sm")
+    pv = frame(f, "live page", x=440 + 40, y=Q.TB + 24, w=PAGE_W - 80, h=PAGE_H - Q.TB - 48, fill="#FFFFFF",
+               layout="vertical", gap=8, pad=[48, 56, 48, 56], W="fixed", H="fixed", clip=True, stroke="line", sw=1)
+    st(pv, "Title", "Phinehas", k)
+    st(pv, "Slide Cue", "Slide 2", k)
+    st(pv, "Scripture Reference", ref("num25", 10, 13), k)
+    scripture(pv, "num25", 10, 12, scale=k)
+    sel = col(pv, "selected style", gap=0, stroke=ACCENT, sw=1.5, radius=4, pad=[4, 6, 4, 6])
+    placeholder(sel, "Your note on verse 11 (the style being changed is outlined).", scale=k)
+
+    # D5-D7 slides ---------------------------------------------------------------------------------------------------------
+    r = row(cv, "row 3", gap=64, align="min")
+    f, ink, acc, mut = slide(r, "D5 · Title slide", "The deck in the preview's look: white, Inter, the accent for the "
+                             "subtitle. The boxes are DeckCraft's (so fit sizes carry over); only fonts, colors and "
+                             "weights change.")
+    b = at(f, "title", 64, 176, 832, 130, mainAlign="max")
+    stext(b, "Phinehas", 60, ink, weight="Semi Bold", lh=1.1)
+    b = at(f, "sub", 64, 318, 832, 60)
+    stext(b, "A thread · 9 November 2026", 24, acc)
+    f, ink, acc, mut = slide(r, "D6 · Verse by Verse", "One verse, large, in Literata; the verses either side faint "
+                             "above and below; the reference in the accent at the top; a highlight as a soft fill.")
+    b = at(f, "ref", 64, 38, 832, 34)
+    stext(b, ref("num25", 11, 11), 24, acc, weight="Semi Bold")
+    b = at(f, "before", 64, 84, 832, 78)
+    scripture(b, "num25", 10, 10, size_pt=20 / PX, color=mut, num=mut, lh=1.3)
+    b = at(f, "verse", 64, 170, 832, 240)
+    scripture(b, "num25", 11, 11, size_pt=30 / PX, color=ink, lh=1.35)
+    b = at(f, "after", 64, 420, 832, 84)
+    scripture(b, "num25", 12, 12, size_pt=20 / PX, color=mut, num=mut, lh=1.3)
+
+    r = row(cv, "row 4", gap=64, align="min")
+    f, ink, acc, mut = slide(r, "D7 · Section slide", "A heading block, or a page inside: the title alone, left, with "
+                             "a short accent rule. The section slide no longer fills with the theme's color.")
+    rect(f, "accent rule", 56, 4, acc, x=64, y=196)
+    b = at(f, "title", 64, 214, 832, 110)
+    stext(b, "A heading block", 48, ink, weight="Semi Bold", lh=1.1)
+    f, ink, acc, mut = slide(r, "D8 · Verse by Verse, a dark theme", "Themes stay as color sets over the same boxes "
+                             "(Vigil here, for a dim room). A theme changes paper, ink and accent only.", theme="Vigil")
+    b = at(f, "ref", 64, 38, 832, 34)
+    stext(b, ref("ps106", 30, 30), 24, acc, weight="Semi Bold")
+    b = at(f, "before", 64, 84, 832, 78)
+    scripture(b, "ps106", 29, 29, size_pt=20 / PX, color=mut, num=mut, lh=1.3)
+    b = at(f, "verse", 64, 170, 832, 240)
+    scripture(b, "ps106", 30, 30, size_pt=34 / PX, color=ink, num=acc, lh=1.35)
+    b = at(f, "after", 64, 420, 832, 84)
+    scripture(b, "ps106", 31, 31, size_pt=20 / PX, color=mut, num=mut, lh=1.3)
+
+    Q.files_note(cv, "Nothing here writes to the study folder. A saved template would be one new file, "
+                 "settings/doc-templates/<name>.json, which the Python app passes over; documents/ records keep their "
+                 "format and gain a \"design\": 2 field.")
+
+
+def main():
+    F.define_tokens()
+    S.do("page.rename", {"name": BOARD}, ref=False)
+    board = frame(None, BOARD, x=0, y=0, w=100, h=100, fill="sunken", layout="vertical", gap=96, pad=96, W="hug", H="hug")
+    sheets(board)
+    build = HERE / "build"
+    build.mkdir(exist_ok=True)
+    script = build / "r3.json"
+    script.write_text(json.dumps(S.steps, ensure_ascii=False), encoding="utf-8")
+    cli = B.find_cli()
+    target = HERE / "r3.figcraft"
+    out = subprocess.run([cli, "run", "--no-system-fonts", str(script), "--out", str(target)], capture_output=True,
+                         text=True, encoding="utf-8", errors="replace")
+    failed = [ln for ln in out.stdout.splitlines() if '"ok":false' in ln]
+    if out.returncode or failed:
+        sys.exit("FigCraft run failed:\n" + "\n".join(failed[-3:]) + out.stderr[-2000:])
+    print(f"{len(S.steps)} steps -> {target}")
+    dest = HERE / "exports" / "r3"
+    dest.mkdir(parents=True, exist_ok=True)
+    for old in dest.glob("*.png"):
+        old.unlink()
+    subprocess.run([cli, "render", "--no-system-fonts", str(target), "--page", BOARD, "--scale", "0.4", "--out",
+                    str(dest / "all.png")], check=True, capture_output=True)
+    for title in Q.TITLES.get(PG, []):
+        file = dest / (re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") + ".png")
+        subprocess.run([cli, "export", "--no-system-fonts", str(target), "--page", BOARD, "--node", "Window · " + title,
+                        "--scale", "1", "--out", str(file)], check=True, capture_output=True)
+    print("exported", sorted(p.name for p in dest.glob("*.png")))
+
+
+if __name__ == "__main__":
+    main()
