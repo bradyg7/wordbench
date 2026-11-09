@@ -15,7 +15,11 @@ const MINE: Side = 'right';
 /** What each made here is, as the Make menu offers it: [to (craft word|deck), structure, label, what it is]. */
 export const KINDS: [string, string, string, string][] = [
   ['word', 'script', 'Speaker Script', 'Word: everything in large print, with a cue where each slide comes up'],
+  ['word', 'share', 'Share Copy', 'Word: speech and scriptures, to send to a friend; no notes'],
+  ['word', 'study', 'Study Sheet', 'Word: each passage with your notes and lines to write on'],
+  ['word', 'reading', 'Reading Sheet', 'Word: only the scriptures, in two columns'],
   ['deck', 'verse', 'Verse by Verse', 'Slides as PDF pages: one verse to a slide, your highlights showing'],
+  ['deck', 'reader', 'Reader', 'Slides as PDF pages: scripture only, each verse alone'],
 ];
 
 const STATES: Record<string, [string, string]> = {
@@ -74,7 +78,8 @@ function docRow(d: any): HTMLElement {
   if (d.kept?.length) main.append(h('div', 'muted small', `Your edits kept as ${d.kept.join(', ')}`));
   const acts = h('div', 'doc-acts');
   // made here: a thread's Speaker Script, or Verse by Verse as PDF pages; the rest is the Python app's until phase 5
-  const here = ['thread', 'page'].includes(d.source?.kind) && ((d.to === 'word' && d.structure === 'script') || (d.to === 'pdf' && d.structure === 'verse'));
+  const here = ['thread', 'page'].includes(d.source?.kind) && ((d.to === 'word' && d.structure === 'script') || (d.to === 'pdf' && d.structure === 'verse')
+    || (d.design && ((d.to === 'word' && ['share', 'study', 'reading'].includes(d.structure)) || (d.to === 'pdf' && d.structure === 'reader'))));
   if (!here && !d.problem) main.append(h('div', 'muted small', d.to === 'deck' ? 'PowerPoint: made and updated by the Python app until phase 5' : 'Made and updated by the Python app until phase 5'));
   if (here && ['behind', 'missing', 'edited', 'old_design'].includes(d.state)) {
     acts.append(button('btn small primary doc-update', 'Update', () => act(['docs', 'update', d.id], r => r.changed ? `Updated ${r.name}` : `${r.name} is up to date`)));

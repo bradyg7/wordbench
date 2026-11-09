@@ -200,6 +200,8 @@ fn styles(t: &Theme, look: &Look, size: f64, spacing: f64) -> String {
         style("Study Note", Some("Normal"), &Chr { font: Some(UI_FONT), size: Some(pt(10.0)), color: Some(note), ..NO_CHR },
             &Para { before: Some(2.0), after: Some(6.0 * gap), indent_left: Some(9.0), line: Some(1.1), ..Default::default() }),
         style("Word Line", Some("Normal"), &NO_CHR, &Para { keep_next: true, ..Default::default() }),
+        // room to write (the Study Sheet): a ruled line, grey, or none in Black only's place of a light grey
+        style("Write Line", Some("Normal"), &NO_CHR, &Para { before: Some(14.0), after: Some(0.0), borders: vec![("bottom", if look.ink == "black" { "000000" } else { "BBBBBB" }, 1.0, 0.5)], ..Default::default() }),
         style("Header", Some("Normal"), &Chr { font: Some(UI_FONT), size: Some(8.5), color: Some(foot), ..NO_CHR }, &Para { after: Some(0.0), ..Default::default() }),
         style("Footer", Some("Normal"), &Chr { font: Some(UI_FONT), size: Some(9.0), color: Some(foot), ..NO_CHR }, &Para::default()),
     ];

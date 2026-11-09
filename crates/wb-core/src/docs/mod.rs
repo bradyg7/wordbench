@@ -197,7 +197,10 @@ fn read_source(bible: &Bible, store: &Store, rec: &Rec, margin: &mut plan::Margi
 
 fn plan_now(bible: &Bible, store: &Store, rec: &Rec) -> std::result::Result<(Vec<Value>, Vec<plan::Block>, String), NoPlan> {
     let (to, structure) = (s(rec, "to"), s(rec, "structure"));
-    if !matches!((to.as_str(), structure.as_str()), ("word", "script") | ("deck" | "pdf", "verse")) {
+    // R3's new templates are planned here only for documents made here (they carry "design"); the Python app's own
+    // Share Copies and Study Sheets stay the Python app's to keep up to date
+    let ours = (rec.contains_key("design") || !rec.contains_key("name")) && matches!((to.as_str(), structure.as_str()), ("word", "share" | "study" | "reading") | ("pdf", "reader"));
+    if !ours && !matches!((to.as_str(), structure.as_str()), ("word", "script") | ("deck" | "pdf", "verse")) {
         return Err(NoPlan::NotHere(format!("{} is made and kept up to date by the Python app until phase 5.", plan::structure_label(&to, &structure))));
     }
     let mut margin = plan::Margin::new(bible, store).map_err(|e| NoPlan::Unreadable(e.0))?;
@@ -240,7 +243,7 @@ fn public(rec: &Rec, out: &Path) -> Value {
         "source": rec["source"], "to": rec["to"], "structure": rec["structure"], "theme": rec["theme"], "built": rec["built"],
         "pdf": rec.get("pdf").cloned().unwrap_or(Value::Null), "kept": kept});
     // made here (W6): a PDF's slide count, and a page's version and switches; the Python app's records have none
-    for k in ["pages", "version", "switched"] {
+    for k in ["pages", "version", "switched", "design", "look"] {
         if let Some(x) = rec.get(k) {
             v[k] = x.clone();
         }
@@ -386,7 +389,12 @@ fn look_for(store: &Store, rec: &Rec, name: Option<&str>, dials: &[(String, Stri
             (k, l)
         }
     };
-    Ok((key, look::apply(base, dials)?))
+    let mut l = look::apply(base, dials)?;
+    // the Reading Sheet is scripture in two columns, unless its own Look (kept, or given) says otherwise
+    if s(rec, "structure") == "reading" && !rec.contains_key("look_values") && name.is_none() && !dials.iter().any(|(k, _)| k == "columns") {
+        l.columns = 2;
+    }
+    Ok((key, l))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -629,6 +637,11 @@ fn page_structure(to: &str, structure: Option<&str>) -> Result<&'static str> {
         "pdf" => "verse",
         _ => return Err(bad("to: word, or pdf (slides as PDF pages).")),
     };
+    if let Some(x) = structure.filter(|x| !x.is_empty()) {
+        if let Ok(st) = plan::structure_of(to, Some(x), "lesson") {
+            return Ok(st.key);
+        }
+    }
     match structure.filter(|x| !x.is_empty()) {
         Some(x) if x != key => Err(bad(format!(
             "From a page, here: {} ({key}); {} comes with the rest of the structures in phase 5.",

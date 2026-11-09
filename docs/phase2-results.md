@@ -917,3 +917,23 @@ The plan, and so the fingerprint shared with the Python app, is unchanged: style
 **Not built yet:** the dials panel with a live page (D10's full pane: the window offers Look and Ink only, the rest by
 `--set`), See it in grey, the ink measure (D11), templates and the new structures (Share Copy, Study Sheet, Reading
 Sheet, Reader), and the parts builder (D4). The Word file has still not been opened in real Word (W-5).
+
+## 30. R3, step 5: the shipped templates (2026-11-09)
+
+| What | Built | Checked |
+|---|---|---|
+| Share Copy (Word) | the Speaker Script's plan without cues, study notes and delivery notes; subtitle "Share copy" | made from the scratch Phinehas thread, every verse checked |
+| Study Sheet (Word) | without cues and delivery notes; after each passage and its notes, three ruled lines to write on (a new style, Write Line) | `docs/phase2/r3-study-sheet-page1.png` |
+| Reading Sheet (Word) | scripture only (title, headings, references, verses), in two columns unless its Look says otherwise | `docs/phase2/r3-reading-sheet-page1.png` |
+| Reader (PDF) | Verse by Verse without the neighbouring verses | made, 55 slides |
+| From a page | `wb craft word|deck --page ID --structure share|study|reading|reader` (any structure made here) | |
+| The window | the Make row offers all six; a page's Make a document lists them as made here | `tsc` clean |
+
+These four are planned here only, and only for documents made here (their records carry `design`); a Share Copy or
+Study Sheet the Python app made stays the Python app's to keep up to date. The Python app would plan a record made here
+its own way if asked to update it (it knows these structures), so one should be updated from this app.
+
+**Not built:** the parts builder (D4) as a pane (the parts of a page are switched as before, `--on/--off`; a thread's
+template is its structure); the ink measure (D11: pages are shown for PDFs; for Word the count needs Word's layout,
+which this app does not have); the dials panel with a live page and See it in grey (D10, D15); Pulpit, Study Table,
+Thread Map and Thread Dossier stay dropped, as decided.
