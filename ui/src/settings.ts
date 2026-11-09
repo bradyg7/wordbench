@@ -6,6 +6,7 @@ import { api, inApp, wb } from './api';
 import { dock } from './panes';
 import { toast } from './sheets';
 import { h, hoverMode, setHover } from './ui';
+import { form, kept, loadKept, remove as removeKept, run as runKept, save as saveKept, topUsed, type Kept } from './mycommands';
 import { perf } from './perf';
 
 /** What main.ts lends: the text size and the version live there. */
@@ -128,7 +129,7 @@ export async function loadWindowSettings() {
 }
 
 // ---- the pane -----------------------------------------------------------------------------------------------------------
-const SECTIONS = ['Reading', 'Notebook', 'Hover and cards', 'Theme', 'Keys', 'Advanced'] as const;
+const SECTIONS = ['Reading', 'Notebook', 'Hover and cards', 'Theme', 'Commands', 'Keys', 'Advanced'] as const;
 type Section = (typeof SECTIONS)[number];
 let current: Section = 'Reading';
 
@@ -240,6 +241,8 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
     out.push(reset('hover', ['mode']));
   } else if (name === 'Theme') {
     out.push(await themeSection(redraw));
+  } else if (name === 'Commands') {
+    out.push(...(await commandsSection(redraw)));
   } else if (name === 'Keys') {
     const b = h('button', 'btn', 'Open the list of keys (Help ▸ Keys)');
     b.onclick = () => bridge.openKeys();
@@ -384,4 +387,44 @@ function freeName(base: string): string {
   let n = base, i = 2;
   while (themeState.themes.some(t => t.name === n) || Object.values(BASE_NAMES).includes(n)) n = `${base} ${i++}`;
   return n;
+}
+
+async function commandsSection(redraw: () => void): Promise<HTMLElement[]> {
+  const out: HTMLElement[] = [];
+  await loadKept();
+  const slot = h('div', 'cmd-slot');
+  const edit = (c: Kept | null) => { slot.replaceChildren(form(c, () => { slot.replaceChildren(); redraw(); })); };
+  for (const c of kept) {
+    const t = h('div', 'set-text');
+    t.append(h('div', 'set-name', c.name), h('div', 'muted small', c.line + (c.key ? `   ${c.key}` : '')));
+    const ctl = h('div', 'wrap');
+    const go = h('button', 'btn', 'Run'); go.onclick = () => void runKept(c);
+    const ed = h('button', 'btn', 'Edit'); ed.onclick = () => edit(c);
+    const rm = h('button', 'link-btn danger', 'Remove'); rm.onclick = () => void removeKept(c).then(redraw);
+    ctl.append(go, ed, rm);
+    const r = h('div', 'set-row');
+    r.append(t, ctl);
+    r.dataset.find = `${c.name} ${c.line} commands`.toLowerCase();
+    out.push(r);
+  }
+  const add = h('button', 'btn soft', '+ A command of your own…');
+  add.onclick = () => edit(null);
+  out.push(add, slot);
+  const top = await topUsed();
+  if (top.length) {
+    const box = h('div', 'cmd-top');
+    box.append(h('div', 'label', 'Used most (from your log)'));
+    for (const t of top.slice(0, 8)) {
+      const r = h('div', 'set-row');
+      const x = h('div', 'set-text');
+      x.append(h('div', 'set-name', t.line), h('div', 'muted small', `${t.times} time${t.times === 1 ? '' : 's'}`));
+      const k = h('button', 'btn', 'Keep');
+      k.onclick = async () => { await saveKept({ name: t.line.slice(0, 40), line: t.line, icon: '', key: '' }); redraw(); };
+      r.append(x, k);
+      r.dataset.find = `${t.line} used most`.toLowerCase();
+      box.append(r);
+    }
+    out.push(box);
+  }
+  return out;
 }

@@ -984,3 +984,12 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .tb-entry.on { color: var(--muted); cursor: default; }
 .tb-entry.on .ico { color: var(--ok); }
 .more-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+
+/* ---- My commands (R4 step 4) ---- */
+.cmd-form { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; }
+.cmd-field { display: flex; flex-direction: column; gap: 4px; }
+.cmd-test { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--sunken); border-radius: 10px; }
+.cmd-test .warn { color: var(--warn); }
+.cmd-buttons { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+.cmd-slot { margin-top: 8px; }
+.cmd-top { margin-top: 16px; }

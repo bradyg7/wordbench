@@ -40,7 +40,7 @@ async function settingsChecks(page) {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Control+,');
   await page.waitForSelector('.pane-settings .set-body', { timeout: 10000 });
-  check('Ctrl+, opens Settings', await page.locator('.pane-settings .set-nav button').count() === 6);
+  check('Ctrl+, opens Settings', await page.locator('.pane-settings .set-nav button').count() === 7);
   await page.locator('.pane-settings .size-row button', { hasText: 'A+' }).click();
   await sleep(600);
   const rs = JSON.parse(execFileSync(wbExe, ['settings', 'reading'], { env }).toString());
@@ -92,6 +92,33 @@ async function settingsChecks(page) {
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.__wb.run('window laptop-large'));
   await sleep(900);
+  // R4 step 4: my commands
+  await page.keyboard.press('Control+,');
+  await page.waitForSelector('.pane-settings .set-nav', { timeout: 10000 });
+  await page.locator('.pane-settings .set-nav button', { hasText: 'Commands' }).click();
+  await page.locator('.pane-settings button', { hasText: 'A command of your own' }).click();
+  const inputs = page.locator('.pane-settings .cmd-form input');
+  await inputs.nth(0).fill('Uses of a word');
+  await inputs.nth(1).fill('uses {word}');
+  await inputs.nth(2).fill('ctrl+u');
+  check('the form tests the line with what is selected now, writing nothing', /Select a selected word first/.test(await page.locator('.pane-settings .cmd-test').innerText()));
+  await page.locator('.pane-settings .cmd-buttons button', { hasText: /^Keep$/ }).click();
+  await sleep(700);
+  const kept = JSON.parse(execFileSync(wbExe, ['commands'], { env }).toString());
+  check('a command of your own is kept in settings/commands.json, with its key', kept.length === 1 && kept[0].line === 'uses {word}' && kept[0].key === 'Ctrl+U', JSON.stringify(kept));
+  await page.locator('#more').click();
+  await page.locator('.more-menu .more-item', { hasText: 'Customize toolbar' }).click();
+  await page.waitForSelector('.tb-drawer', { timeout: 5000 });
+  await page.locator('.tb-drawer .tb-entry', { hasText: 'Uses of a word' }).first().click({ timeout: 3000 });
+  await page.screenshot({ path: shots + '1440-my-commands.png' });
+  await page.locator('.tb-done').click();
+  await sleep(500);
+  const withCmd = await page.evaluate(() => [...document.querySelectorAll('nav.tools > .tb[data-item]')].map(b => b.dataset.item));
+  check('a kept command can be a toolbar button', withCmd.includes('cmd:uses-of-a-word'), withCmd.join());
+  await page.locator('nav.tools > .tb[data-item="cmd:uses-of-a-word"]').click();
+  await sleep(300);
+  check('its button says what it needs when nothing is selected', /Select a selected word/.test(await page.locator('.toast').innerText().catch(() => '')));
+  execFileSync(wbExe, ['commands', 'rm', 'Uses of a word'], { env });
   execFileSync(wbExe, ['settings', 'toolbar', 'buttons', 'default'], { env });
 
 }

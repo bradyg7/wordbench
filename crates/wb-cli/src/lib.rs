@@ -7,6 +7,7 @@
 
 mod args;
 mod docs;
+mod mycommands;
 mod notebook;
 mod pages;
 mod read;
@@ -133,6 +134,7 @@ fn commands() -> Vec<Command> {
     all.extend(read::commands());
     all.extend(study::commands());
     all.extend(reading::commands());
+    all.extend(mycommands::commands());
     all.extend(notebook::commands());
     all.extend(pages::commands());
     all.extend(docs::commands());

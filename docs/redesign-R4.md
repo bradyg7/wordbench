@@ -117,8 +117,7 @@ beside them), and the phone's bottom tabs.
 
 `wb` gains: `wb toolbar [list|add|rm|move|reset]`, `wb commands [list|add|rm|run|top]`, `wb theme [list|set|new|color|reset]`,
 and `wb settings` learns the new parts. `wb do` carries the in-window ones (`customize`). *Most used* counts command lines in
-`sessions/<day>.jsonl`; that log holds what was typed into the capture box today, so the core must also log run command lines
-(a new `kind` field on the entry, ignored by the Python app) before this counts anything.
+`sessions/<day>.jsonl`; that log already holds every line the window runs (`wb log add` on each), so no new field is needed.
 
 ## 7. Recommendation and order
 
@@ -185,3 +184,16 @@ Steps 1 and 2 of §7, in a first form:
   list is reachable through `wb settings toolbar`).
 - Checks: `node measure/desk.mjs --release --settings` (10 of 10): the standard five, Customize, Done saves the file, More lists
   what is off the bar, a narrow window hides buttons into More.
+
+### Step 4 built (2026-11-09): my commands
+
+- `wb commands` (`crates/wb-core/src/mycommands.rs`): `wb commands`, `wb commands add <name> <line> [--key Ctrl+U] [--icon search]`
+  (the same name changes it; a key another command holds is refused), `wb commands rm`, `wb commands fill <name> --word … --place …`,
+  `wb commands --top` (the lines run most, from `sessions/*.jsonl`, without the ones kept). Kept in `settings/commands.json`.
+- **Settings ▸ Commands:** the kept list (Run, Edit, Remove), *A command of your own…* (name, line, icon, key, and **Test**, which
+  shows the line as it would run with what is selected now and writes nothing), and *Used most (from your log)* with Keep.
+- A kept command is in the toolbar catalog (Commands group, and *A command of your own…* inside the drawer, with Keep and add to toolbar),
+  and its key runs it from anywhere but a text field. `{word}` is the selected word, `{place}` the verse picked or at the top,
+  `{chapter}` the chapter being read; a button with no selection says what it needs.
+- Not as drawn: the button is not greyed when it needs a selection (it says so when pressed).
+- Checks: `node measure/desk.mjs --release --settings`; `cargo test -p wb-cli kept_commands`.

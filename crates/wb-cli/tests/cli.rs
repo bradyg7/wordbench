@@ -1667,3 +1667,29 @@ fn the_windows_other_settings_are_kept_per_key() {
     assert_eq!(wb.js(&["settings", "reading", "size", "default"]), json!({}));
     assert!(wb.fails(&["settings", "reader"]).contains("theme"));
 }
+
+#[test]
+fn kept_commands_have_fill_ins_keys_and_a_most_used_list() {
+    let Some(wb) = Wb::new() else { return };
+    assert_eq!(wb.js(&["commands"]), json!([]));
+    let r = wb.js(&["commands", "add", "Uses of a word", "uses {word}", "--key", "Ctrl+U", "--icon", "search"]);
+    assert_eq!((r["id"].clone(), r["key"].clone()), (json!("uses-of-a-word"), json!("Ctrl+U")));
+    wb.js(&["commands", "add", "Compare", "compare {place} ylt"]);
+    assert!(wb.fails(&["commands", "add", "Other", "go {place}", "--key", "ctrl+u"]).contains("already"));
+    assert!(wb.fails(&["commands", "add", "Bad", "go", "--key", "U"]).contains("Ctrl+"));
+    assert_eq!(wb.js(&["commands"]).as_array().unwrap().len(), 2);
+    assert_eq!(wb.js(&["commands", "fill", "Uses of a word", "--word", "zealous"])["line"], json!("uses zealous"));
+    assert!(wb.fails(&["commands", "fill", "Compare"]).contains("{place}"));
+    // the saved file is the kept list, in settings/commands.json
+    let file = std::fs::read_to_string(wb.dir.join("settings").join("commands.json")).unwrap();
+    assert_eq!(serde_json::from_str::<Value>(&file).unwrap()["items"].as_array().unwrap().len(), 2);
+    // most used: from the day's log
+    for _ in 0..3 { wb.js(&["log", "add", "def H7065"]); }
+    wb.js(&["log", "add", "thread Phinehas"]);
+    wb.js(&["log", "add", "uses zealous"]);
+    let top = wb.js(&["commands", "--top"]);
+    assert_eq!((top[0]["line"].clone(), top[0]["times"].clone()), (json!("def H7065"), json!(3)));
+    wb.js(&["commands", "rm", "Compare"]);
+    assert_eq!(wb.js(&["commands"]).as_array().unwrap().len(), 1);
+    assert!(wb.fails(&["commands", "rm", "Compare"]).contains("No kept command"));
+}

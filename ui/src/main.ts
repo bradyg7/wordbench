@@ -20,6 +20,8 @@ import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './u
 import type { Pane } from './dock';
 import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
 import { bridge, loadWindowSettings, openSettings } from './settings';
+import { loadKept } from './mycommands';
+import { fills as cmdFills, byKey as commandByKey, run as runKeptCommand } from './mycommands';
 import { absent, customize, hiddenToFit, hooks, initToolbar, loadToolbar, setBadge, setVersionLabel, fitToBar } from './toolbar';
 import { isCaptureKey, notebookBadge, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
 import type { Change } from './dock';
@@ -1034,6 +1036,12 @@ notebookBadge.set = n => setBadge(n);
 hooks.highlights = from => void highlightsMenu(from);
 hooks.toggleVersion = () => setVersion(version === 'KJV' ? 'YLT' : 'KJV');
 hooks.find = () => findInChapter(finding);
+cmdFills.get = () => {
+  const d = drawn, sel = selector.sel;
+  let word = '';
+  if (d && sel) word = Array.from({ length: sel.b - sel.a + 1 }, (_, i) => d.el[sel.a + i]?.textContent ?? '').join(' ').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').trim();
+  return { word, place: here().label, chapter: d ? `${d.chapter.name} ${d.chapter.chapter}` : '' };
+};
 initToolbar();
 
 // A box that is being scrolled shows its scrollbar for a moment afterwards (style.css; note cd59). Scroll events do not
@@ -1053,6 +1061,7 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
   if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
+  { const kc = commandByKey(e); if (kc) { e.preventDefault(); void runKeptCommand(kc); return; } }
   if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
   // a finding about the app, from anywhere (note 50c1)
@@ -1140,7 +1149,7 @@ async function start() {
   if (inApp) {
     void readSettings();
     void loadWindowSettings();
-    void loadToolbar().then(() => fitToBar());
+    void loadKept().then(() => loadToolbar()).then(() => fitToBar());
     loadPalette();
     if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') openNotebook();
   }

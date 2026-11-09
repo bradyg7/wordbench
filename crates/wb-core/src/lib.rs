@@ -12,6 +12,7 @@ pub mod commands;
 pub mod docs;
 pub mod lookup;
 pub mod marks;
+pub mod mycommands;
 pub mod notebook;
 pub mod pages;
 pub mod pageviews;

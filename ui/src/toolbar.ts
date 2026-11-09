@@ -10,6 +10,7 @@ import { openHelp, openPlans, openShelf, openThreads, openToday } from './panes'
 import { toast } from './sheets';
 import { applyTheme, bridge, openSettings, themeState } from './settings';
 import { h, icon, popMenu } from './ui';
+import { form, kept, onChange, run as runKept } from './mycommands';
 
 /** What main.ts lends: things that live there (the Highlights menu, the version, searching a chapter). */
 export const hooks = {
@@ -19,7 +20,7 @@ export const hooks = {
 };
 
 export interface Item {
-  id: string; label: string; icon: string; group: 'Panes' | 'Reading controls'; sub: string;
+  id: string; label: string; icon: string; group: 'Panes' | 'Reading controls' | 'Commands'; sub: string;
   run: (from: HTMLElement) => void;
   /** listed in More ⋯ when it is not on the toolbar */
   more?: boolean;
@@ -44,7 +45,9 @@ export const CATALOG: Item[] = [
   { id: 'theme', label: 'Theme', icon: 'eye', group: 'Reading controls', sub: 'Light ↔ dark in one click', run: () => flipTheme() },
 ];
 export const DEFAULT = ['version', 'notebook', 'threads', 'shelf', 'highlights'];
-const byId = (id: string) => CATALOG.find(c => c.id === id);
+/** The catalog and the commands the person keeps (R4 step 4). */
+export const all = (): Item[] => [...CATALOG, ...kept.map(k => ({ id: `cmd:${k.id}`, label: k.name, icon: k.icon, group: 'Commands' as const, sub: k.line, run: () => void runKept(k), more: true }))];
+const byId = (id: string) => all().find(c => c.id === id);
 const DOMID: Record<string, string> = { version: 'tb-version', notebook: 'tb-notebook', threads: 'tb-threads', shelf: 'tb-shelf', highlights: 'hl-menu' };
 
 function textSizeMenu(from: HTMLElement) {
@@ -78,7 +81,7 @@ const bar = () => document.getElementById('bar')!;
 
 export const onToolbar = () => ids.filter(i => byId(i));
 export const hiddenToFit = () => fit.map(byId).filter(Boolean) as Item[];
-export const absent = () => CATALOG.filter(c => c.more && !ids.includes(c.id));
+export const absent = () => all().filter(c => c.more && !ids.includes(c.id));
 
 export function setBadge(n: number) {
   badge = n;
@@ -206,8 +209,8 @@ function drawerRefresh() {
   q.value = query;
   q.oninput = () => { query = q.value; drawerRefresh(); const n = drawer!.querySelector<HTMLInputElement>('input'); n?.focus(); n?.setSelectionRange(query.length, query.length); };
   drawer.append(q);
-  for (const g of ['Panes', 'Reading controls'] as const) {
-    const items = CATALOG.filter(c => c.group === g && `${c.label} ${c.sub}`.toLowerCase().includes(query.toLowerCase()));
+  for (const g of ['Panes', 'Reading controls', 'Commands'] as const) {
+    const items = all().filter(c => c.group === g && `${c.label} ${c.sub}`.toLowerCase().includes(query.toLowerCase()));
     if (!items.length) continue;
     drawer.append(h('div', 'label', g));
     for (const it of items) {
@@ -222,6 +225,15 @@ function drawerRefresh() {
       drawer.append(r);
     }
   }
+  const own = h('button', 'tb-entry');
+  own.append(icon('plus', 14));
+  const ot = h('span', 'more-text');
+  ot.append(h('span', '', 'A command of your own…'), h('span', 'muted small', 'any line, like uses {word} or compare {place} ylt'));
+  own.append(ot);
+  own.onclick = () => {
+    drawer!.replaceChildren(h('h2', 'pane-title', 'A command of your own'), form(null, () => drawerRefresh(), { addToToolbar: k => { ids = [...ids, `cmd:${k.id}`]; render(); } }));
+  };
+  drawer.append(own);
   const reset = h('button', 'link-btn', 'Reset to the standard toolbar');
   reset.onclick = () => { ids = [...DEFAULT]; render(); drawerRefresh(); };
   drawer.append(reset);
@@ -229,6 +241,7 @@ function drawerRefresh() {
 
 // ---- start ----------------------------------------------------------------------------------------------------------------
 export async function loadToolbar() {
+  onChange.push(() => { render(); drawerRefresh(); });
   try {
     const t: any = await wb(['settings', 'toolbar']);
     if (Array.isArray(t.buttons)) ids = t.buttons.filter((i: unknown) => typeof i === 'string' && byId(i as string));
