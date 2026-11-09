@@ -22,6 +22,7 @@ const STATES: Record<string, [string, string]> = {
   current: ['Up to date', 'ok'],
   behind: ['Out of date', 'warn'],
   edited: ['Changed by hand', 'warn'],
+  old_design: ['Old design', 'muted'],
   missing: ['File missing', 'warn'],
   gone: ['Its thread or page is gone', 'muted'],
   unreadable: ['Cannot read its source', 'warn'],
@@ -73,7 +74,7 @@ function docRow(d: any): HTMLElement {
   // made here: a thread's Speaker Script, or Verse by Verse as PDF pages; the rest is the Python app's until phase 5
   const here = ['thread', 'page'].includes(d.source?.kind) && ((d.to === 'word' && d.structure === 'script') || (d.to === 'pdf' && d.structure === 'verse'));
   if (!here && !d.problem) main.append(h('div', 'muted small', d.to === 'deck' ? 'PowerPoint: made and updated by the Python app until phase 5' : 'Made and updated by the Python app until phase 5'));
-  if (here && ['behind', 'missing', 'edited'].includes(d.state)) {
+  if (here && ['behind', 'missing', 'edited', 'old_design'].includes(d.state)) {
     acts.append(button('btn small primary doc-update', 'Update', () => act(['docs', 'update', d.id], r => r.changed ? `Updated ${r.name}` : `${r.name} is up to date`)));
   }
   const more = button('icon-btn doc-more', '', () => {

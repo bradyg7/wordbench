@@ -885,3 +885,18 @@ window's own state, the folds, is kept in its storage as the section folds are).
 | Rust tests | not run: no wb-core, wb-cli or app change |
 
 Screenshots: new `docs/phase2/1440-notebook-places-by-book.png`, `1440-notebook-side-panel-folded.png`, `1440-notebook-a-threads-places.png`; the sheet's four windows in `design/exports/filter/`. Not committed. Not checked with a real mouse or touch (the right-click and long press were driven by Playwright's events; M1 showed what that can miss for drags, which these are not).
+
+## 28. R3, step 1 and 2: documents in the preview's look, fonts embedded (2026-11-09)
+
+The person accepted R3's design ([redesign-R3.md](redesign-R3.md), sheets D1–D15) and asked for it to be built. This is
+the first part of its build order: the restyle and the fonts. Looks, dials, page switches, templates and the parts
+builder (steps 3–7) are not built yet.
+
+| What | Built | Checked |
+|---|---|---|
+| Word styles (D1) | `docx.rs`: the ten named styles in the preview's look: Inter for all but scripture, Literata for scripture, ink headings, the accent only on references, cues, verse numbers and delivery notes; white paper, no band, no shading or bars; 1-inch margins; sizes scale with the structure's body size (the Speaker Script 1.17 ×) | WordCraft render, `docs/phase2/r3-speaker-script-page1.png`; the same layout as the in-app preview |
+| Fonts that travel | Literata (regular, bold, italic) and Inter (regular, bold = 600), Latin subsets, embedded and obfuscated (ECMA-376 §17.8.1) with `embedTrueTypeFonts`; fallbacks named in `fontTable.xml` (Georgia, Segoe UI). The file grows to about 160 KB | WordCraft opens and lays it out (7 pages). **Not yet opened in real Word on a computer without the fonts** (W-5) |
+| Slides (D5–D8) | `deck.rs`: the theme's paper and ink with no chrome; the section slide a 56 × 4 accent rule over a left title; titles and references Inter SemiBold; verse numbers in the accent, faint for the neighbours; DeckCraft's boxes and fit sizes unchanged | PdfCraft render, `docs/phase2/r3-verse-by-verse-slide4.png` |
+| Old design | Records gain `"design": 2`; a planned document without it reads **Old design** (the Documents pane and a page's documents offer Update), and is never rebuilt unasked: `docs update` with no name still updates only *behind* ones. Update rebuilds an old-design file even when its plan is the same | `cargo test` |
+
+The plan, and so the fingerprint shared with the Python app, is unchanged: styles are not in it.

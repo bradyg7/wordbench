@@ -281,7 +281,10 @@ pub fn status(bible: &Bible, store: &Store, out: &Path, rec: &Rec) -> Value {
         }
         Ok((p, _, _)) => {
             let behind = plan::fingerprint(&p) != s(rec, "plan");
-            v["state"] = json!(if !there { "missing" } else if behind { "behind" } else if edited { "edited" } else { "current" });
+            // a file made before R3's design (by the Python app, or here before it) reads Old design, and is only
+            // rebuilt when asked (docs/redesign-R3.md, decision 5)
+            let old_design = rec.get("design").and_then(|d| d.as_i64()).unwrap_or(1) < docx::DESIGN;
+            v["state"] = json!(if !there { "missing" } else if behind { "behind" } else if edited { "edited" } else if old_design { "old_design" } else { "current" });
             v["behind"] = json!(behind);
         }
     }
@@ -375,7 +378,7 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
     let old = rec.get("name").and_then(|n| n.as_str()).map(|n| out.join(n));
     let there = old.as_ref().is_some_and(|o| o.is_file());
     fs::create_dir_all(out)?;
-    if there && !force && s(&rec, "plan") == finger && s(&rec, "theme") == theme_key {
+    if there && !force && s(&rec, "plan") == finger && s(&rec, "theme") == theme_key && rec.get("design").and_then(|d| d.as_i64()) == Some(docx::DESIGN) {
         let mut v = public(&rec, out);
         v["changed"] = json!(false);
         v["kept_now"] = Value::Null;
@@ -428,6 +431,7 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
             ("title", json!(title)),
             ("theme", json!(theme_key)),
             ("plan", json!(finger)),
+            ("design", json!(docx::DESIGN)),
             ("file", json!(sha_file(&target)?)),
             ("sig", sig(&target)?),
             ("built", json!(now())),

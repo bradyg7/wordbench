@@ -133,61 +133,114 @@ fn style(name: &str, base: Option<&str>, c: &Chr, p: &Para) -> String {
     format!(r#"<w:style w:type="paragraph"{q} w:styleId="{id}"><w:name w:val="{shown}"/>{base}<w:qFormat/>{}{}</w:style>"#, ppr(p), rpr(c))
 }
 
-/// The styles, as craft_render.Doc._styles defines them for this theme, body size and line spacing.
+/// The design of the files this app writes (docs/redesign-R3.md): 1 was WordCraft's, 2 is the in-app preview's look.
+pub const DESIGN: i64 = 2;
+/// The two fonts that travel (embedded in the file: `fonts_part`): scripture, and everything else.
+pub const SCRIPTURE_FONT: &str = "Literata";
+pub const UI_FONT: &str = "Inter";
+const INK: &str = "222222";
+const QUIET: &str = "777777";
+const NOTE: &str = "666666";
+const FOOT: &str = "999999";
+
+/// The accent of a theme on white paper: the theme's own Word accent (themes only tint the accent, R3 decision 2).
+fn accent_of(t: &Theme) -> &'static str {
+    t.doc_accent
+}
+
+/// The styles of R3's sheet D1: the in-app preview's fonts, sizes and colors, on white paper, at this structure's body
+/// size (`size`: 12 is the base; the Speaker Script's 14 makes everything 1.17 × larger) and line spacing.
 fn styles(t: &Theme, size: f64, spacing: f64) -> String {
-    let (ink, accent, rule, tint) = (t.doc_ink, t.doc_accent, t.doc_rule, t.doc_tint);
-    let (body, h) = (t.body, t.heading);
-    let quiet = if t.dark { "666666" } else { t.muted };
-    let mut out = vec![
-        style("Normal", None, &Chr { font: Some(body), size: Some(size), color: Some(ink), ..NO_CHR }, &Para { after: Some(8.0), line: Some(spacing), ..Default::default() }),
-        style("Heading 1", Some("Normal"), &Chr { font: Some(h), size: Some(15.0), color: Some(accent), bold: Some(true), ..NO_CHR },
-            &Para { before: Some(20.0), after: Some(6.0), keep_next: true, ..Default::default() }),
-        style("Heading 2", Some("Normal"), &Chr { font: Some(h), size: Some(12.0), color: Some(accent), bold: Some(true), ..NO_CHR },
-            &Para { before: Some(14.0), after: Some(4.0), keep_next: true, ..Default::default() }),
+    let accent = accent_of(t);
+    let k = size / 12.0;
+    let pt = |p: f64| (p * k * 2.0).round() / 2.0;
+    let (serif, sans) = (SCRIPTURE_FONT, UI_FONT);
+    // Word's "multiple" spacing is of the font's own line height (Literata's is tall), so 1.15 here reads as the preview's 1.5
+    let line = if spacing > 1.3 { 1.15 } else { 1.08 };
+    let out = vec![
+        style("Normal", None, &Chr { font: Some(sans), size: Some(pt(11.0)), color: Some(INK), ..NO_CHR }, &Para { after: Some(8.0), line: Some(line), ..Default::default() }),
+        style("Title", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(20.0)), color: Some(INK), bold: Some(true), ..NO_CHR },
+            &Para { before: Some(0.0), after: Some(2.0), line: Some(1.15), ..Default::default() }),
+        style("Subtitle", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(10.0)), color: Some(QUIET), ..NO_CHR },
+            &Para { after: Some(14.0), ..Default::default() }),
+        style("Heading 1", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(15.0)), color: Some(INK), bold: Some(true), ..NO_CHR },
+            &Para { before: Some(16.0), after: Some(4.0), line: Some(1.2), keep_next: true, ..Default::default() }),
+        style("Heading 2", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(12.0)), color: Some(INK), bold: Some(true), ..NO_CHR },
+            &Para { before: Some(12.0), after: Some(3.0), line: Some(1.2), keep_next: true, ..Default::default() }),
+        style("Slide Cue", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(8.5)), color: Some(accent), bold: Some(true), ..NO_CHR },
+            &Para { before: Some(10.0), after: Some(2.0), keep_next: true, ..Default::default() }),
+        style("Scripture Reference", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(10.0)), color: Some(accent), bold: Some(true), ..NO_CHR },
+            &Para { before: Some(10.0), after: Some(2.0), keep_next: true, ..Default::default() }),
+        style("Scripture", Some("Normal"), &Chr { font: Some(serif), size: Some(pt(12.0)), color: Some(INK), ..NO_CHR },
+            &Para { after: Some(4.0), line: Some(line), keep_lines: true, ..Default::default() }),
+        style("Scripture End", Some("Scripture"), &NO_CHR, &Para { after: Some(12.0), ..Default::default() }),
+        style("Plain Reference", Some("Scripture Reference"), &NO_CHR, &Para::default()),
+        style("Plain Scripture", Some("Scripture"), &NO_CHR, &Para { after: Some(6.0), ..Default::default() }),
+        style("Delivery Note", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(10.0)), color: Some(accent), italic: Some(true), ..NO_CHR },
+            &Para { before: Some(2.0), after: Some(10.0), ..Default::default() }),
+        style("Study Note", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(10.0)), color: Some(NOTE), ..NO_CHR },
+            &Para { before: Some(2.0), after: Some(6.0), indent_left: Some(9.0), line: Some(1.1), ..Default::default() }),
+        style("Word Line", Some("Normal"), &NO_CHR, &Para { keep_next: true, ..Default::default() }),
+        style("Footer", Some("Normal"), &Chr { font: Some(sans), size: Some(9.0), color: Some(FOOT), ..NO_CHR }, &Para::default()),
     ];
-    if let Some(band) = t.band_bg {
-        let boxed = vec![("top", band, 10.0, 1.0), ("bottom", band, 10.0, 1.0), ("left", band, 10.0, 1.0), ("right", band, 10.0, 1.0)];
-        out.push(style("Title", Some("Normal"), &Chr { font: Some(h), size: Some(30.0), color: Some(t.band_ink), bold: Some(false), ..NO_CHR },
-            &Para { shading: Some(band), after: Some(0.0), before: Some(0.0), borders: boxed.clone(), indent_left: Some(12.0), indent_right: Some(12.0), ..Default::default() }));
-        out.push(style("Subtitle", Some("Normal"), &Chr { font: Some(h), size: Some(11.0), color: Some(t.accent), italic: Some(false), ..NO_CHR },
-            &Para { shading: Some(band), before: Some(0.0), after: Some(18.0), borders: boxed, indent_left: Some(12.0), indent_right: Some(12.0), ..Default::default() }));
-    } else {
-        out.push(style("Title", Some("Normal"), &Chr { font: Some(h), size: Some(30.0), color: Some(t.band_ink), bold: Some(false), ..NO_CHR },
-            &Para { after: Some(2.0), before: Some(0.0), borders: vec![("top", accent, 12.0, 3.0)], ..Default::default() }));
-        out.push(style("Subtitle", Some("Normal"), &Chr { font: Some(h), size: Some(11.0), color: Some(t.muted), italic: Some(false), ..NO_CHR },
-            &Para { after: Some(18.0), ..Default::default() }));
-    }
-    let bar = ("left", accent, 8.0, 2.25);
-    let edge = ("top", tint, 1.0, 0.5); // keeps two blocks apart: Word shades the gap between paragraphs with the same borders
-    out.push(style("Scripture Reference", Some("Normal"), &Chr { font: Some(h), size: Some(size - 2.0), color: Some(accent), bold: Some(true), ..NO_CHR },
-        &Para { before: Some(10.0), after: Some(0.0), keep_next: true, shading: Some(tint), borders: vec![bar, edge], indent_left: Some(12.0), ..Default::default() }));
-    out.push(style("Scripture", Some("Normal"), &Chr { font: Some(body), size: Some(size), color: Some(ink), ..NO_CHR },
-        &Para { after: Some(0.0), shading: Some(tint), borders: vec![bar], indent_left: Some(12.0), line: Some(spacing), keep_lines: true, ..Default::default() }));
-    out.push(style("Scripture End", Some("Scripture"), &NO_CHR, &Para { after: Some(12.0), ..Default::default() }));
-    out.push(style("Plain Reference", Some("Normal"), &Chr { font: Some(h), size: Some(size - 1.0), color: Some(accent), bold: Some(true), ..NO_CHR },
-        &Para { before: Some(10.0), after: Some(1.0), keep_next: true, ..Default::default() }));
-    out.push(style("Plain Scripture", Some("Normal"), &Chr { font: Some(body), size: Some(size), color: Some(ink), ..NO_CHR },
-        &Para { after: Some(6.0), line: Some(spacing), ..Default::default() }));
-    let note = |side| (side, rule, 6.0, 0.75);
-    out.push(style("Delivery Note", Some("Normal"), &Chr { font: Some(h), size: Some(size - 1.5), color: Some(accent), italic: Some(true), ..NO_CHR },
-        &Para { before: Some(2.0), after: Some(10.0), borders: vec![note("top"), note("bottom")], ..Default::default() }));
-    out.push(style("Study Note", Some("Normal"), &Chr { font: Some(body), size: Some(size - 1.5), color: Some(ink), ..NO_CHR },
-        &Para { before: Some(4.0), after: Some(6.0), indent_left: Some(12.0), ..Default::default() }));
-    out.push(style("Slide Cue", Some("Normal"), &Chr { font: Some(h), size: Some(size - 3.0), color: Some(accent), bold: Some(true), ..NO_CHR },
-        &Para { before: Some(10.0), after: Some(2.0), keep_next: true, right: true, ..Default::default() }));
-    out.push(style("Word Line", Some("Normal"), &NO_CHR, &Para { keep_next: true, ..Default::default() }));
-    out.push(style("Footer", Some("Normal"), &Chr { font: Some(h), size: Some(9.0), color: Some(quiet), ..NO_CHR }, &Para::default()));
     format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:lang w:val="en-US" w:bidi="he-IL"/></w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults>{}</w:styles>"#,
         out.join("")
     )
 }
 
+/// The fonts embedded in the file (ECMA-376 §17.8.1): (family, kind, the bundled WOFF, the key that obfuscates it, the
+/// fallback a reader without embedded fonts uses). Only the Latin subsets: the text is English, and Word falls back
+/// character by character for anything outside them.
+const EMBED: [(&str, &str, &[u8], &str); 5] = [
+    (SCRIPTURE_FONT, "Regular", include_bytes!("../../fonts/literata-latin-400-normal.woff"), "{5E1A7C21-3B0D-4F6A-9C11-2D7B8E4A0001}"),
+    (SCRIPTURE_FONT, "Bold", include_bytes!("../../fonts/literata-latin-700-normal.woff"), "{5E1A7C21-3B0D-4F6A-9C11-2D7B8E4A0002}"),
+    (SCRIPTURE_FONT, "Italic", include_bytes!("../../fonts/literata-latin-400-italic.woff"), "{5E1A7C21-3B0D-4F6A-9C11-2D7B8E4A0003}"),
+    (UI_FONT, "Regular", include_bytes!("../../fonts/inter-latin-400-normal.woff"), "{5E1A7C21-3B0D-4F6A-9C11-2D7B8E4A0004}"),
+    (UI_FONT, "Bold", include_bytes!("../../fonts/inter-latin-600-normal.woff"), "{5E1A7C21-3B0D-4F6A-9C11-2D7B8E4A0005}"),
+];
+
+/// A font obfuscated as ECMA-376 §17.8.1 says: the first 32 bytes XORed with the key's 16 bytes, read from the GUID's
+/// hex digits in reverse order.
+fn obfuscate(font: &[u8], guid: &str) -> Vec<u8> {
+    let hex: String = guid.chars().filter(|c| c.is_ascii_hexdigit()).collect();
+    let bytes: Vec<u8> = (0..16).map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap()).collect();
+    let key: Vec<u8> = bytes.iter().rev().copied().collect();
+    let mut out = font.to_vec();
+    for i in 0..32.min(out.len()) {
+        out[i] ^= key[i % 16];
+    }
+    out
+}
+
+/// fontTable.xml with each family's embedded files and its fallback, its relationships, and the font parts.
+fn fonts_part() -> (String, String, Vec<(String, Vec<u8>)>) {
+    let mut table = String::new();
+    let mut rels = String::new();
+    let mut files = vec![];
+    for (family, alt, generic) in [(SCRIPTURE_FONT, "Georgia", "roman"), (UI_FONT, "Segoe UI", "swiss")] {
+        let mut embeds = String::new();
+        for (i, (f, kind, woff, guid)) in EMBED.iter().enumerate() {
+            if *f != family {
+                continue;
+            }
+            let id = format!("rIdFont{}", i + 1);
+            embeds += &format!(r#"<w:embed{kind} r:id="{id}" w:fontKey="{guid}"/>"#);
+            rels += &format!(r#"<Relationship Id="{id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" Target="fonts/font{}.odttf"/>"#, i + 1);
+            files.push((format!("word/fonts/font{}.odttf", i + 1), obfuscate(&super::deck::woff_to_otf(woff), guid)));
+        }
+        table += &format!(r#"<w:font w:name="{family}"><w:altName w:val="{alt}"/><w:charset w:val="00"/><w:family w:val="{generic}"/><w:pitch w:val="variable"/>{embeds}</w:font>"#);
+    }
+    let table = format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:fonts xmlns:w="{W}" xmlns:r="{R}">{table}</w:fonts>"#);
+    let rels = format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{rels}</Relationships>"#);
+    (table, rels, files)
+}
+
 /// A run's character formatting (craft_render.Doc.runfmt).
 fn run_fmt(fmt: &str, t: &Theme) -> String {
     let a = t.doc_accent;
     match fmt {
-        "num" => format!(r#"<w:rPr><w:b/><w:bCs/><w:color w:val="{a}"/><w:vertAlign w:val="superscript"/></w:rPr>"#),
+        "num" => format!(r#"<w:rPr><w:rFonts w:ascii="{UI_FONT}" w:hAnsi="{UI_FONT}"/><w:b/><w:bCs/><w:color w:val="{a}"/><w:vertAlign w:val="superscript"/></w:rPr>"#),
         "mark" => format!(r#"<w:rPr><w:b/><w:bCs/><w:color w:val="{a}"/></w:rPr>"#),
         "lemma" => format!(r#"<w:rPr><w:b/><w:bCs/><w:color w:val="{a}"/><w:sz w:val="30"/><w:szCs w:val="30"/></w:rPr>"#),
         _ => String::new(),
@@ -214,7 +267,7 @@ pub fn write(plan: &[Value], t: &Theme, title: &str, size: f64, spacing: f64, ou
     let body: String = plan.iter().filter(|op| op[0] == "para").map(|op| paragraph(op, t)).collect();
     // margins as WordCraft's layout.margins: 64 pt top and bottom, 72 pt at the sides; US Letter
     let sect = format!(
-        r#"<w:sectPr><w:footerReference w:type="default" r:id="rIdFooter"/><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1280" w:right="1440" w:bottom="1280" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>"#
+        r#"<w:sectPr><w:footerReference w:type="default" r:id="rIdFooter"/><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>"#
     );
     let document = format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="{W}" xmlns:r="{R}"><w:body>{body}{sect}</w:body></w:document>"#);
     let field = |instr: &str| {
@@ -227,17 +280,18 @@ pub fn write(plan: &[Value], t: &Theme, title: &str, size: f64, spacing: f64, ou
         field("PAGE"),
         field("NUMPAGES")
     );
-    let content_types = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>"#;
+    let content_types = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="odttf" ContentType="application/vnd.openxmlformats-officedocument.obfuscatedFont"/><Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>"#;
     let rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>"#;
-    let doc_rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdSettings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/><Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>"#;
+    let doc_rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdSettings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/><Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/><Relationship Id="rIdFontTable" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/></Relationships>"#;
     // the page count in the footer is a field: Word fills it in when the document opens
-    let settings = format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="{W}"><w:updateFields w:val="true"/><w:defaultTabStop w:val="720"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>"#);
+    let settings = format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="{W}"><w:embedTrueTypeFonts/><w:updateFields w:val="true"/><w:defaultTabStop w:val="720"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>"#);
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
     let core = format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>{}</dc:title><dc:creator>Bible Workbench</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">{now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">{now}</dcterms:modified></cp:coreProperties>"#,
         esc(title)
     );
     let app = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Bible Workbench</Application></Properties>"#;
+    let (font_table, font_rels, font_files) = fonts_part();
     let file = std::fs::File::create(out)?;
     let mut z = zip::ZipWriter::new(file);
     let opt = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
@@ -251,9 +305,15 @@ pub fn write(plan: &[Value], t: &Theme, title: &str, size: f64, spacing: f64, ou
         ("word/_rels/document.xml.rels", doc_rels.to_string()),
         ("docProps/core.xml", core),
         ("docProps/app.xml", app.to_string()),
+        ("word/fontTable.xml", font_table),
+        ("word/_rels/fontTable.xml.rels", font_rels),
     ] {
         z.start_file(name, opt).map_err(|e| Error(format!("Could not write the Word file ({e}).")))?;
         z.write_all(text.as_bytes())?;
+    }
+    for (name, bytes) in font_files {
+        z.start_file(name, opt).map_err(|e| Error(format!("Could not write the Word file ({e}).")))?;
+        z.write_all(&bytes)?;
     }
     z.finish().map_err(|e| Error(format!("Could not write the Word file ({e}).")))?;
     Ok(())
