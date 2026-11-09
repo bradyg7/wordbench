@@ -10,6 +10,7 @@ import { openHelp, openPlans, openShelf, openThreads, openToday } from './panes'
 import { toast } from './sheets';
 import { applyTheme, bridge, openSettings, themeState } from './settings';
 import { h, icon, popMenu } from './ui';
+import { menu as layoutMenu } from './layouts';
 import { form, kept, onChange, run as runKept } from './mycommands';
 
 /** What main.ts lends: things that live there (the Highlights menu, the version, searching a chapter). */
@@ -40,6 +41,7 @@ export const CATALOG: Item[] = [
   { id: 'settings', label: 'Settings', icon: 'sliders', group: 'Panes', sub: 'Reading, theme, notebook…', run: () => void openSettings() },
   { id: 'version', label: 'KJV', icon: '', group: 'Reading controls', sub: 'KJV ↔ YLT in one click', run: () => void hooks.toggleVersion().then(toast) },
   { id: 'highlights', label: 'Highlights', icon: 'pen', group: 'Reading controls', sub: 'What is drawn in the reader', run: from => hooks.highlights(from), caret: true },
+  { id: 'layout', label: 'Layout', icon: 'sidebar', group: 'Reading controls', sub: 'Open or save an arrangement of panes', run: from => void layoutMenu(from, s => void openSettings(s)), caret: true },
   { id: 'find', label: 'Find in chapter', icon: 'search', group: 'Reading controls', sub: 'Ctrl+F', run: () => hooks.find() },
   { id: 'textsize', label: 'Text size', icon: 'heading', group: 'Reading controls', sub: 'A− 100% A+, one small menu', run: from => textSizeMenu(from), caret: true },
   { id: 'theme', label: 'Theme', icon: 'eye', group: 'Reading controls', sub: 'Light ↔ dark in one click', run: () => flipTheme() },

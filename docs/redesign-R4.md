@@ -197,3 +197,15 @@ Steps 1 and 2 of §7, in a first form:
   `{chapter}` the chapter being read; a button with no selection says what it needs.
 - Not as drawn: the button is not greyed when it needs a selection (it says so when pressed).
 - Checks: `node measure/desk.mjs --release --settings`; `cargo test -p wb-cli kept_commands`.
+
+### Step 5 built (2026-11-09): Layouts
+
+- Named **Layouts** (not views), on the existing `layout save|load|list` (`sessions/layouts/*.json`); new: `wb layout rm <name>`
+  (the file goes to `.trash`). **Settings ▸ Layouts:** the saved ones (Open, Remove) and *Save this layout*. A **Layout** button
+  (catalog ▸ Reading controls) opens a menu: the saved layouts, Save this layout, and Layouts in Settings.
+- Opening a layout brings back its panes **and closes the others** (Settings stays open so it can be applied from there).
+- **A bug found on the way:** `layout load` never worked in the window. `wb layout show` returns `{name, saved, layout}` and the
+  code read `app` from the top, so every layout was reported "from the Python app". Fixed (`ui/src/actions.ts`).
+- Not as drawn: a layout holds which panes are open (what `dock.describe` knows), not columns, bands or floats; no key per layout;
+  the Layout button is in the catalog but not on the standard toolbar.
+- Checks: `node measure/desk.mjs --release --settings` (17 of 17); `cargo test -p wb-cli a_layout_can`.

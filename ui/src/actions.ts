@@ -397,8 +397,12 @@ async function layout(a: any): Promise<string> {
     await wb(['layout', 'save', a.name], JSON.stringify({ app: 'bible-workbench-rs', panes }));
     return `Layout ${a.name}: ${panes.length} panes`;
   }
-  const l = await wb(['layout', 'show', a.name]);
+  const shown = await wb(['layout', 'show', a.name]);
+  const l = shown.layout ?? shown;   // the file holds {name, saved, layout}
   if (l.app !== 'bible-workbench-rs') return `${a.name} is a layout from the Python app; this window cannot read it yet.`;
+  // a layout is the whole arrangement: panes not in it close (Settings stays, so a layout can be applied from there)
+  const want = new Set<string>(l.panes.map((p: any) => p.key));
+  for (const p of [...dock.panes]) if (p.key !== 'settings' && !want.has(p.key)) dock.close(p);
   for (const p of l.panes) await reopen(p.key);
   return `Layout ${a.name}`;
 }

@@ -1693,3 +1693,14 @@ fn kept_commands_have_fill_ins_keys_and_a_most_used_list() {
     assert_eq!(wb.js(&["commands"]).as_array().unwrap().len(), 1);
     assert!(wb.fails(&["commands", "rm", "Compare"]).contains("No kept command"));
 }
+
+#[test]
+fn a_layout_can_be_deleted_into_the_trash() {
+    let Some(wb) = Wb::new() else { return };
+    let (code, _, err) = wb.run(&["layout", "save", "Word study"], Some(r#"{"app":"bible-workbench-rs","panes":[]}"#));
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(wb.js(&["layout", "list"]).as_array().unwrap().len(), 1);
+    assert_eq!(wb.js(&["layout", "rm", "word"])["deleted"], json!(true));
+    assert_eq!(wb.js(&["layout", "list"]), json!([]));
+    assert!(wb.fails(&["layout", "rm", "word study"]).contains("No saved layout"));
+}

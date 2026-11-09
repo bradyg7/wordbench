@@ -6,6 +6,7 @@ import { api, inApp, wb } from './api';
 import { dock } from './panes';
 import { toast } from './sheets';
 import { h, hoverMode, setHover } from './ui';
+import { section as layoutsSection } from './layouts';
 import { form, kept, loadKept, remove as removeKept, run as runKept, save as saveKept, topUsed, type Kept } from './mycommands';
 import { perf } from './perf';
 
@@ -129,7 +130,7 @@ export async function loadWindowSettings() {
 }
 
 // ---- the pane -----------------------------------------------------------------------------------------------------------
-const SECTIONS = ['Reading', 'Notebook', 'Hover and cards', 'Theme', 'Commands', 'Keys', 'Advanced'] as const;
+const SECTIONS = ['Reading', 'Notebook', 'Hover and cards', 'Theme', 'Layouts', 'Commands', 'Keys', 'Advanced'] as const;
 type Section = (typeof SECTIONS)[number];
 let current: Section = 'Reading';
 
@@ -241,6 +242,8 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
     out.push(reset('hover', ['mode']));
   } else if (name === 'Theme') {
     out.push(await themeSection(redraw));
+  } else if (name === 'Layouts') {
+    out.push(...(await layoutsSection(redraw)));
   } else if (name === 'Commands') {
     out.push(...(await commandsSection(redraw)));
   } else if (name === 'Keys') {

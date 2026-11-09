@@ -40,7 +40,7 @@ async function settingsChecks(page) {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Control+,');
   await page.waitForSelector('.pane-settings .set-body', { timeout: 10000 });
-  check('Ctrl+, opens Settings', await page.locator('.pane-settings .set-nav button').count() === 7);
+  check('Ctrl+, opens Settings', await page.locator('.pane-settings .set-nav button').count() === 8);
   await page.locator('.pane-settings .size-row button', { hasText: 'A+' }).click();
   await sleep(600);
   const rs = JSON.parse(execFileSync(wbExe, ['settings', 'reading'], { env }).toString());
@@ -119,6 +119,23 @@ async function settingsChecks(page) {
   await sleep(300);
   check('its button says what it needs when nothing is selected', /Select a selected word/.test(await page.locator('.toast').innerText().catch(() => '')));
   execFileSync(wbExe, ['commands', 'rm', 'Uses of a word'], { env });
+  // R4 step 5: layouts
+  await page.locator('.pane-settings .set-nav button', { hasText: 'Layouts' }).click();
+  await page.locator('.pane-settings .go input').fill('Desk check');
+  await page.locator('.pane-settings .go button', { hasText: 'Save this layout' }).click();
+  await sleep(700);
+  const lays = JSON.parse(execFileSync(wbExe, ['layout', 'list'], { env }).toString());
+  check('Save this layout keeps the panes open now under a name', lays.some(l => l.name === 'Desk check'), JSON.stringify(lays));
+  await page.evaluate(() => window.__wb.run('keys'));
+  await page.waitForSelector('.pane-keys', { timeout: 5000 });
+  const loaded = await page.evaluate(() => window.__wb.run('layout load Desk check'));
+  await sleep(800);
+  await page.evaluate(() => { const d = window.__wb.dock(); const p = d.panes.find(x => x.title === 'Settings'); if (p) d.open('settings', 'Settings', 'settings', 'right', () => {}); });
+  await page.waitForSelector('.pane-settings .set-row', { timeout: 5000 });
+  check('opening a layout brings back its panes and closes the others', await page.locator('.pane-keys').count() === 0 && await page.locator('.pane-notebook').count() === 1, `${JSON.stringify(loaded)} keys ${await page.locator('.pane-keys').count()}, notebook ${await page.locator('.pane-notebook').count()}, ${await page.evaluate(() => window.__wb.dock().panes.map(p => p.key).join(' '))}`);
+  await page.locator('.pane-settings .set-row', { hasText: 'Desk check' }).locator('button', { hasText: 'Remove' }).click();
+  await sleep(500);
+  check('Remove takes the layout away', JSON.parse(execFileSync(wbExe, ['layout', 'list'], { env }).toString()).length === 0);
   execFileSync(wbExe, ['settings', 'toolbar', 'buttons', 'default'], { env });
 
 }
