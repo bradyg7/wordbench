@@ -6,6 +6,7 @@
 //! `file_text` reads a finished file's text back from the file itself, a line per paragraph, for the check that every
 //! verse the source holds is in it word for word.
 
+use super::look::Look;
 use super::plan::Theme;
 use crate::{Error, Result};
 use serde_json::Value;
@@ -40,6 +41,7 @@ struct Para<'a> {
     indent_left: Option<f64>,
     indent_right: Option<f64>,
     right: bool,
+    center: bool,
 }
 
 fn rpr(c: &Chr) -> String {
@@ -112,6 +114,8 @@ fn ppr(p: &Para) -> String {
     }
     if p.right {
         x += r#"<w:jc w:val="right"/>"#;
+    } else if p.center {
+        x += r#"<w:jc w:val="center"/>"#;
     }
     if x.is_empty() { x } else { format!("<w:pPr>{x}</w:pPr>") }
 }
@@ -143,45 +147,63 @@ const QUIET: &str = "777777";
 const NOTE: &str = "666666";
 const FOOT: &str = "999999";
 
-/// The accent of a theme on white paper: the theme's own Word accent (themes only tint the accent, R3 decision 2).
-fn accent_of(t: &Theme) -> &'static str {
-    t.doc_accent
+/// Colors of the text that is not scripture or a heading, by ink mode: (quiet, note, footer).
+fn greys(look: &Look) -> (&'static str, &'static str, &'static str) {
+    match look.ink.as_str() {
+        "black" => ("000000", "000000", "000000"),
+        "saver" => ("666666", "555555", "777777"),
+        _ => (QUIET, NOTE, FOOT),
+    }
 }
 
-/// The styles of R3's sheet D1: the in-app preview's fonts, sizes and colors, on white paper, at this structure's body
-/// size (`size`: 12 is the base; the Speaker Script's 14 makes everything 1.17 × larger) and line spacing.
-fn styles(t: &Theme, size: f64, spacing: f64) -> String {
-    let accent = accent_of(t);
-    let k = size / 12.0;
+/// The styles of R3's sheet D1 with a Look's dials applied (D10): its typeface pair, accent (readable on white, D15),
+/// size, spacing, title, the rule under it, and ink. `size` is the structure's body size (12 is the base; the Speaker
+/// Script's 14 makes everything 1.17 x larger).
+fn styles(t: &Theme, look: &Look, size: f64, spacing: f64) -> String {
+    let accent = look.text_accent(t.doc_accent);
+    let accent = accent.as_str();
+    let rule = look.rule_accent(t.doc_accent);
+    let (quiet, note, foot) = greys(look);
+    let ink = if look.ink == "black" { "000000" } else { INK };
+    let k = size / 12.0 * look.scale();
     let pt = |p: f64| (p * k * 2.0).round() / 2.0;
-    let (serif, sans) = (SCRIPTURE_FONT, UI_FONT);
-    // Word's "multiple" spacing is of the font's own line height (Literata's is tall), so 1.15 here reads as the preview's 1.5
-    let line = if spacing > 1.3 { 1.15 } else { 1.08 };
+    let (sans, serif) = look.fonts();
+    // Word's "multiple" spacing is of the font's own line height (Literata's is tall), so 1.15 reads as the preview's 1.5
+    let line = (if spacing > 1.3 { 1.15 } else { 1.08 }) * look.spacing_factor();
+    let gap = look.spacing_factor();
+    let center = look.title == "center";
+    let under: Vec<(&'static str, &str, f64, f64)> = match (&rule, look.under_title.as_str()) {
+        (Some(c), "rule") => vec![("bottom", c.as_str(), 6.0, 0.75)],
+        _ => vec![],
+    };
     let out = vec![
-        style("Normal", None, &Chr { font: Some(sans), size: Some(pt(11.0)), color: Some(INK), ..NO_CHR }, &Para { after: Some(8.0), line: Some(line), ..Default::default() }),
-        style("Title", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(20.0)), color: Some(INK), bold: Some(true), ..NO_CHR },
-            &Para { before: Some(0.0), after: Some(2.0), line: Some(1.15), ..Default::default() }),
-        style("Subtitle", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(10.0)), color: Some(QUIET), ..NO_CHR },
-            &Para { after: Some(14.0), ..Default::default() }),
-        style("Heading 1", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(15.0)), color: Some(INK), bold: Some(true), ..NO_CHR },
-            &Para { before: Some(16.0), after: Some(4.0), line: Some(1.2), keep_next: true, ..Default::default() }),
-        style("Heading 2", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(12.0)), color: Some(INK), bold: Some(true), ..NO_CHR },
-            &Para { before: Some(12.0), after: Some(3.0), line: Some(1.2), keep_next: true, ..Default::default() }),
-        style("Slide Cue", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(8.5)), color: Some(accent), bold: Some(true), ..NO_CHR },
-            &Para { before: Some(10.0), after: Some(2.0), keep_next: true, ..Default::default() }),
-        style("Scripture Reference", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(10.0)), color: Some(accent), bold: Some(true), ..NO_CHR },
-            &Para { before: Some(10.0), after: Some(2.0), keep_next: true, ..Default::default() }),
-        style("Scripture", Some("Normal"), &Chr { font: Some(serif), size: Some(pt(12.0)), color: Some(INK), ..NO_CHR },
-            &Para { after: Some(4.0), line: Some(line), keep_lines: true, ..Default::default() }),
-        style("Scripture End", Some("Scripture"), &NO_CHR, &Para { after: Some(12.0), ..Default::default() }),
+        style("Normal", None, &Chr { font: Some(sans), size: Some(pt(11.0)), color: Some(ink), ..NO_CHR }, &Para { after: Some(8.0 * gap), line: Some(line), ..Default::default() }),
+        style("Title", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(20.0)), color: Some(ink), bold: Some(true), ..NO_CHR },
+            &Para { before: Some(0.0), after: Some(2.0), line: Some(1.15), center, ..Default::default() }),
+        style("Subtitle", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(10.0)), color: Some(quiet), ..NO_CHR },
+            &Para { after: Some(14.0 * gap), center, borders: under, ..Default::default() }),
+        style("Heading 1", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(15.0)), color: Some(ink), bold: Some(true), ..NO_CHR },
+            &Para { before: Some(16.0 * gap), after: Some(4.0), line: Some(1.2), keep_next: true, ..Default::default() }),
+        style("Heading 2", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(12.0)), color: Some(ink), bold: Some(true), ..NO_CHR },
+            &Para { before: Some(12.0 * gap), after: Some(3.0), line: Some(1.2), keep_next: true, ..Default::default() }),
+        style("Slide Cue", Some("Normal"), &Chr { font: Some(UI_FONT), size: Some(pt(8.5)), color: Some(accent), bold: Some(true), ..NO_CHR },
+            &Para { before: Some(10.0 * gap), after: Some(2.0), keep_next: true, ..Default::default() }),
+        style("Scripture Reference", Some("Normal"), &Chr { font: Some(UI_FONT), size: Some(pt(10.0)), color: Some(accent), bold: Some(true), ..NO_CHR },
+            &Para { before: Some(10.0 * gap), after: Some(2.0), keep_next: true, ..Default::default() }),
+        style("Scripture", Some("Normal"), &Chr { font: Some(serif), size: Some(pt(12.0)), color: Some(ink), ..NO_CHR },
+            &Para { after: Some(4.0 * gap), line: Some(line), keep_lines: true, ..Default::default() }),
+        style("Scripture End", Some("Scripture"), &NO_CHR, &Para { after: Some(12.0 * gap), ..Default::default() }),
         style("Plain Reference", Some("Scripture Reference"), &NO_CHR, &Para::default()),
-        style("Plain Scripture", Some("Scripture"), &NO_CHR, &Para { after: Some(6.0), ..Default::default() }),
-        style("Delivery Note", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(10.0)), color: Some(accent), italic: Some(true), ..NO_CHR },
-            &Para { before: Some(2.0), after: Some(10.0), ..Default::default() }),
-        style("Study Note", Some("Normal"), &Chr { font: Some(sans), size: Some(pt(10.0)), color: Some(NOTE), ..NO_CHR },
-            &Para { before: Some(2.0), after: Some(6.0), indent_left: Some(9.0), line: Some(1.1), ..Default::default() }),
+        style("Plain Scripture", Some("Scripture"), &NO_CHR, &Para { after: Some(6.0 * gap), ..Default::default() }),
+        style("Delivery Note", Some("Normal"), &Chr { font: Some(UI_FONT), size: Some(pt(10.0)), color: Some(accent), italic: Some(true), ..NO_CHR },
+            &Para { before: Some(2.0), after: Some(10.0 * gap), ..Default::default() }),
+        style("Study Note", Some("Normal"), &Chr { font: Some(UI_FONT), size: Some(pt(10.0)), color: Some(note), ..NO_CHR },
+            &Para { before: Some(2.0), after: Some(6.0 * gap), indent_left: Some(9.0), line: Some(1.1), ..Default::default() }),
         style("Word Line", Some("Normal"), &NO_CHR, &Para { keep_next: true, ..Default::default() }),
-        style("Footer", Some("Normal"), &Chr { font: Some(sans), size: Some(9.0), color: Some(FOOT), ..NO_CHR }, &Para::default()),
+        // room to write (the Study Sheet): a ruled line, grey, or none in Black only's place of a light grey
+        style("Write Line", Some("Normal"), &NO_CHR, &Para { before: Some(14.0), after: Some(0.0), borders: vec![("bottom", if look.ink == "black" { "000000" } else { "BBBBBB" }, 1.0, 0.5)], ..Default::default() }),
+        style("Header", Some("Normal"), &Chr { font: Some(UI_FONT), size: Some(8.5), color: Some(foot), ..NO_CHR }, &Para { after: Some(0.0), ..Default::default() }),
+        style("Footer", Some("Normal"), &Chr { font: Some(UI_FONT), size: Some(9.0), color: Some(foot), ..NO_CHR }, &Para::default()),
     ];
     format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:lang w:val="en-US" w:bidi="he-IL"/></w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults>{}</w:styles>"#,
@@ -236,24 +258,27 @@ fn fonts_part() -> (String, String, Vec<(String, Vec<u8>)>) {
     (table, rels, files)
 }
 
-/// A run's character formatting (craft_render.Doc.runfmt).
-fn run_fmt(fmt: &str, t: &Theme) -> String {
-    let a = t.doc_accent;
+/// A run's character formatting (craft_render.Doc.runfmt), with the Look's verse numbers and ink: a highlight ("mark")
+/// is the accent in full color, and an underline in the ink-saving modes (D13).
+fn run_fmt(fmt: &str, t: &Theme, look: &Look) -> String {
+    let a = look.text_accent(t.doc_accent);
+    let num = if look.numbers == "plain" { if look.ink == "black" { "000000".to_string() } else { "555555".to_string() } } else { a.clone() };
     match fmt {
-        "num" => format!(r#"<w:rPr><w:rFonts w:ascii="{UI_FONT}" w:hAnsi="{UI_FONT}"/><w:b/><w:bCs/><w:color w:val="{a}"/><w:vertAlign w:val="superscript"/></w:rPr>"#),
+        "num" => format!(r#"<w:rPr><w:rFonts w:ascii="{UI_FONT}" w:hAnsi="{UI_FONT}"/><w:b/><w:bCs/><w:color w:val="{num}"/><w:vertAlign w:val="superscript"/></w:rPr>"#),
+        "mark" if look.ink != "full" => format!(r#"<w:rPr><w:u w:val="single" w:color="{a}"/></w:rPr>"#),
         "mark" => format!(r#"<w:rPr><w:b/><w:bCs/><w:color w:val="{a}"/></w:rPr>"#),
         "lemma" => format!(r#"<w:rPr><w:b/><w:bCs/><w:color w:val="{a}"/><w:sz w:val="30"/><w:szCs w:val="30"/></w:rPr>"#),
         _ => String::new(),
     }
 }
 
-fn paragraph(op: &Value, t: &Theme) -> String {
+fn paragraph(op: &Value, t: &Theme, look: &Look, page_break: bool) -> String {
     let style = op[1].as_str().unwrap_or("Normal");
-    let page_break = op[3] == true;
+    let page_break = page_break || op[3] == true;
     let mut x = format!(r#"<w:p><w:pPr><w:pStyle w:val="{}"/>{}</w:pPr>"#, style_id(style), if page_break { "<w:pageBreakBefore/>" } else { "" });
     for r in op[2].as_array().unwrap() {
         let text = r[0].as_str().unwrap_or("");
-        let fmt = r[1].as_str().map(|f| run_fmt(f, t)).unwrap_or_default();
+        let fmt = r[1].as_str().map(|f| run_fmt(f, t, look)).unwrap_or_default();
         x += &format!(r#"<w:r>{fmt}<w:t xml:space="preserve">{}</w:t></w:r>"#, esc(text));
     }
     x + "</w:p>"
@@ -262,12 +287,32 @@ fn paragraph(op: &Value, t: &Theme) -> String {
 const W: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const R: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
-/// The plan's paragraphs as a .docx at `out`, in this theme, with this body size and line spacing.
-pub fn write(plan: &[Value], t: &Theme, title: &str, size: f64, spacing: f64, out: &Path) -> Result<()> {
-    let body: String = plan.iter().filter(|op| op[0] == "para").map(|op| paragraph(op, t)).collect();
-    // margins as WordCraft's layout.margins: 64 pt top and bottom, 72 pt at the sides; US Letter
+/// Whether a plan is scripture only (two columns are used only then, D14).
+pub fn scripture_only(plan: &[Value]) -> bool {
+    plan.iter().filter(|op| op[0] == "para").all(|op| {
+        matches!(op[1].as_str().unwrap_or(""), "Title" | "Subtitle" | "Heading 1" | "Heading 2" | "Scripture Reference" | "Scripture" | "Scripture End" | "Plain Reference" | "Plain Scripture")
+    })
+}
+
+/// The plan's paragraphs as a .docx at `out`, in this theme and Look, with this body size and line spacing.
+pub fn write(plan: &[Value], t: &Theme, look: &Look, title: &str, size: f64, spacing: f64, out: &Path) -> Result<()> {
+    let paras: Vec<&Value> = plan.iter().filter(|op| op[0] == "para").collect();
+    // a cover page: the title and subtitle alone on page 1 (D14); the first paragraph after them starts page 2
+    let after_cover = if look.cover { paras.iter().position(|op| !matches!(op[1].as_str(), Some("Title" | "Subtitle"))) } else { None };
+    let body: String = paras.iter().enumerate().map(|(i, op)| paragraph(op, t, look, Some(i) == after_cover && i > 0)).collect();
+    let (w, h) = if look.paper == "a4" { (11906, 16838) } else { (12240, 15840) };
+    let cols = if look.columns == 2 && scripture_only(plan) { r#"<w:cols w:num="2" w:space="567"/>"# } else { "" };
+    let footer_ref = if look.page_numbers == "none" { "" } else { r#"<w:footerReference w:type="default" r:id="rIdFooter"/>"# };
+    // the running head: the title, small, on every page after the first (titlePg gives page 1 its own, empty header)
+    let header_ref = if look.running_head {
+        r#"<w:headerReference w:type="default" r:id="rIdHeader"/><w:headerReference w:type="first" r:id="rIdHeaderFirst"/>"#
+    } else {
+        ""
+    };
+    let first_footer = if look.running_head && !footer_ref.is_empty() { r#"<w:footerReference w:type="first" r:id="rIdFooter"/>"# } else { "" };
+    let title_pg = if look.running_head { "<w:titlePg/>" } else { "" };
     let sect = format!(
-        r#"<w:sectPr><w:footerReference w:type="default" r:id="rIdFooter"/><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>"#
+        r#"<w:sectPr>{header_ref}{footer_ref}{first_footer}<w:pgSz w:w="{w}" w:h="{h}"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>{cols}{title_pg}</w:sectPr>"#
     );
     let document = format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="{W}" xmlns:r="{R}"><w:body>{body}{sect}</w:body></w:document>"#);
     let field = |instr: &str| {
@@ -275,14 +320,22 @@ pub fn write(plan: &[Value], t: &Theme, title: &str, size: f64, spacing: f64, ou
             r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> {instr} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>1</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
         )
     };
+    let numbers = if look.page_numbers == "plain" {
+        field("PAGE")
+    } else {
+        format!(r#"<w:r><w:t xml:space="preserve">Page </w:t></w:r>{}<w:r><w:t xml:space="preserve"> of </w:t></w:r>{}"#, field("PAGE"), field("NUMPAGES"))
+    };
     let footer = format!(
-        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="{W}" xmlns:r="{R}"><w:p><w:pPr><w:pStyle w:val="Footer"/><w:jc w:val="right"/></w:pPr><w:r><w:t xml:space="preserve">Page </w:t></w:r>{}<w:r><w:t xml:space="preserve"> of </w:t></w:r>{}</w:p></w:ftr>"#,
-        field("PAGE"),
-        field("NUMPAGES")
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="{W}" xmlns:r="{R}"><w:p><w:pPr><w:pStyle w:val="Footer"/><w:jc w:val="right"/></w:pPr>{numbers}</w:p></w:ftr>"#
     );
-    let content_types = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="odttf" ContentType="application/vnd.openxmlformats-officedocument.obfuscatedFont"/><Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>"#;
+    let header = format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="{W}" xmlns:r="{R}"><w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr><w:r><w:t xml:space="preserve">{}</w:t></w:r></w:p></w:hdr>"#,
+        esc(title)
+    );
+    let header_first = format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="{W}" xmlns:r="{R}"><w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr></w:p></w:hdr>"#);
+    let content_types = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="odttf" ContentType="application/vnd.openxmlformats-officedocument.obfuscatedFont"/><Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/><Override PartName="/word/header2.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>"#;
     let rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>"#;
-    let doc_rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdSettings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/><Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/><Relationship Id="rIdFontTable" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/></Relationships>"#;
+    let doc_rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdSettings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/><Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/><Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/><Relationship Id="rIdHeaderFirst" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header2.xml"/><Relationship Id="rIdFontTable" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/></Relationships>"#;
     // the page count in the footer is a field: Word fills it in when the document opens
     let settings = format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="{W}"><w:embedTrueTypeFonts/><w:updateFields w:val="true"/><w:defaultTabStop w:val="720"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>"#);
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ");
@@ -299,7 +352,9 @@ pub fn write(plan: &[Value], t: &Theme, title: &str, size: f64, spacing: f64, ou
         ("[Content_Types].xml", content_types.to_string()),
         ("_rels/.rels", rels.to_string()),
         ("word/document.xml", document),
-        ("word/styles.xml", styles(t, size, spacing)),
+        ("word/styles.xml", styles(t, look, size, spacing)),
+        ("word/header1.xml", header),
+        ("word/header2.xml", header_first),
         ("word/settings.xml", settings),
         ("word/footer1.xml", footer),
         ("word/_rels/document.xml.rels", doc_rels.to_string()),

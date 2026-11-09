@@ -102,17 +102,17 @@ pub struct Structure {
 
 const ALL: &[&str] = &["passage", "lesson", "thread"];
 pub const DECKS: &[Structure] = &[
-    Structure { key: "reader", label: "Reader", sources: ALL, about: "Scripture only. Nothing else, on screen or off.", made_here: false },
+    Structure { key: "reader", label: "Reader", sources: ALL, about: "Scripture only. Nothing else, on screen or off.", made_here: true },
     Structure { key: "pulpit", label: "Pulpit", sources: ALL, about: "The same screen as the Reader, with your speech and notes in the speaker notes.", made_here: false },
     Structure { key: "verse", label: "Verse by Verse", sources: ALL, about: "One verse to a slide, the verses either side faint, your highlights showing.", made_here: true },
     Structure { key: "table", label: "Study Table", sources: ALL, about: "The verse on the left and your notes beside it, on the slide.", made_here: false },
     Structure { key: "map", label: "Thread Map", sources: &["thread"], about: "A contents slide of the thread's places that jumps to each one, each whole verse with the words you marked picked out, then the marked words side by side.", made_here: false },
 ];
 pub const DOCS: &[Structure] = &[
-    Structure { key: "reading", label: "Reading Sheet", sources: ALL, about: "Only the scriptures, in two columns.", made_here: false },
-    Structure { key: "share", label: "Share Copy", sources: ALL, about: "Speech and scriptures, to send to a friend. No notes.", made_here: false },
+    Structure { key: "reading", label: "Reading Sheet", sources: ALL, about: "Only the scriptures, in two columns.", made_here: true },
+    Structure { key: "share", label: "Share Copy", sources: ALL, about: "Speech and scriptures, to send to a friend. No notes.", made_here: true },
     Structure { key: "script", label: "Speaker Script", sources: ALL, about: "Everything in large print, with a cue where each Pulpit slide comes up.", made_here: true },
-    Structure { key: "study", label: "Study Sheet", sources: ALL, about: "Each verse beside your notes, with room to write.", made_here: false },
+    Structure { key: "study", label: "Study Sheet", sources: ALL, about: "Each verse beside your notes, with room to write.", made_here: true },
     Structure { key: "dossier", label: "Thread Dossier", sources: &["thread"], about: "A reference file on the thread: a table of every place and the words you marked, each whole verse with its notes, then the original words you added.", made_here: false },
 ];
 
@@ -732,11 +732,51 @@ pub fn plan_of_blocks(to: &str, structure: &str, blocks: &[Block], margin: &mut 
     match (to == "word", structure) {
         (true, "script") => Ok(doc_script(blocks, margin)),
         (false, "verse") => Ok(deck_verse(blocks, margin)),
+        // R3's shipped templates over the same two layouts (docs/redesign-R3.md, decision 3): planned here only, so their
+        // fingerprints are this app's own
+        (true, "share") => Ok(from_script(blocks, margin, "Share copy", &["Slide Cue", "Study Note", "Delivery Note"], false)),
+        (true, "study") => Ok(from_script(blocks, margin, "Study sheet", &["Slide Cue", "Delivery Note"], true)),
+        (true, "reading") => Ok(from_script(blocks, margin, "Reading sheet", &["Slide Cue", "Study Note", "Delivery Note", "Normal", "Word Line"], false)),
+        (false, "reader") => Ok(deck_verse(blocks, margin).into_iter().map(|mut s| {
+            if s["kind"] == "verse" {
+                s["before"] = Value::Null;
+                s["after"] = Value::Null;
+            }
+            s
+        }).collect()),
         _ => Err(Error(format!(
             "{} is still made by the Python app; its plan comes with the rest of the structures in phase 5.",
             structure_label(to, structure)
         ))),
     }
+}
+
+/// A Word template made from the Speaker Script's plan: its own subtitle, some styles left out, and (`room`) three
+/// lines to write on after each passage.
+fn from_script(blocks: &[Block], margin: &mut Margin, subtitle: &str, leave_out: &[&str], room: bool) -> Vec<Value> {
+    let mut out = vec![];
+    let mut pending = false;
+    for op in doc_script(blocks, margin) {
+        let style = op[1].as_str().unwrap_or("").to_string();
+        if leave_out.contains(&style.as_str()) {
+            continue;
+        }
+        if style == "Subtitle" {
+            out.push(plain("Subtitle", subtitle));
+            continue;
+        }
+        // the lines to write on come after a passage and the notes on it
+        if room && pending && style != "Study Note" {
+            out.extend((0..3).map(|_| plain("Write Line", "")));
+            pending = false;
+        }
+        pending |= style == "Scripture End";
+        out.push(op);
+    }
+    if room && pending {
+        out.extend((0..3).map(|_| plain("Write Line", "")));
+    }
+    out
 }
 
 pub fn structure_label(to: &str, structure: &str) -> &'static str {

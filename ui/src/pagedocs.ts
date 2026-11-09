@@ -6,6 +6,8 @@
 // is a wb command: wb craft parts --page, wb craft word|deck --page, wb docs list --page, wb docs preview, wb docs reveal.
 import { wb } from './api';
 import { app } from './app';
+import { lookFields } from './documents';
+import { adjust, type Chosen } from './looks';
 import { dock } from './panes';
 import { toast } from './sheets';
 import { button, h, icon } from './ui';
@@ -30,7 +32,7 @@ export function madeWhen(iso: string): string {
 const size = (n: number) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 
 /** The modal the three steps are drawn in (the plan modal's frame). */
-function modal(label: string) {
+export function modal(label: string) {
   const overlay = document.getElementById('overlay')!;
   overlay.querySelectorAll('.pd-wrap').forEach(x => x.remove());
   const wrap = h('div', 'plan-modal-wrap pd-wrap');
@@ -57,12 +59,15 @@ function modal(label: string) {
 
 /** Make a document from a page (sheets W7.1–W7.3). */
 export async function makeFromPage(pageId: string) {
-  let parts: Parts, designs: any;
-  try { [parts, designs] = await Promise.all([wb(['craft', 'parts', '--page', pageId]), wb(['craft', 'designs'])]); }
+  let parts: Parts, designs: any, looks: any;
+  try { [parts, designs, looks] = await Promise.all([wb(['craft', 'parts', '--page', pageId]), wb(['craft', 'designs']), wb(['docs', 'looks'])]); }
   catch (x) { toast(String((x as Error).message || x)); return; }
   const m = modal('Make a document');
   const want = { word: true, pdf: true };
   let theme: string = designs.theme;
+  let lookKey: string = looks?.saved || 'preview';
+  let inkMode = '';
+  let extra: [string, string][] = [];
   let version = parts.version || 'page';
   const switches = new Map(parts.rows.map(r => [r.key, r.on]));
   const fromLine = () => `From the page ${parts.title}${parts.inside ? ` and the ${parts.inside === 1 ? 'page' : `${parts.inside} pages`} inside it` : ''}`;
@@ -107,7 +112,26 @@ export async function makeFromPage(pageId: string) {
     ver.onchange = () => { version = ver.value; };
     const lt = h('label', 'pd-field'); lt.append(h('span', 'pd-field-name', 'Theme'), th);
     const lv = h('label', 'pd-field'); lv.append(h('span', 'pd-field-name', 'Version'), ver);
-    opts.append(lt, best, h('span', 'grow'), lv);
+    const lf = lookFields(looks);
+    lf.look.value = lookKey;
+    lf.ink.value = inkMode;
+    lf.look.onchange = () => { lookKey = lf.look.value; };
+    lf.ink.onchange = () => { inkMode = lf.ink.value; };
+    const ll = h('label', 'pd-field'); ll.append(h('span', 'pd-field-name', 'Look'), lf.look);
+    const li = h('label', 'pd-field'); li.append(h('span', 'pd-field-name', 'Ink'), lf.ink);
+    const adj = button('btn small pd-adjust', extra.length ? `Adjust… (${extra.length})` : 'Adjust…', async () => {
+      const to = want.word ? 'word' : 'pdf';
+      const start: Chosen = { look: lookKey, dials: [...extra, ...(inkMode ? [['ink', inkMode] as [string, string]] : [])] };
+      const r = await adjust(to, ['--page', pageId, '--to', to], start, designs.themes[theme]?.doc_accent || '8E1B14');
+      if (!r) return;
+      lookKey = r.look;
+      inkMode = r.dials.find(d => d[0] === 'ink')?.[1] || '';
+      extra = r.dials.filter(d => d[0] !== 'ink');
+      lf.look.value = lookKey;
+      lf.ink.value = inkMode;
+      adj.textContent = extra.length ? `Adjust… (${extra.length})` : 'Adjust…';
+    });
+    opts.append(lt, best, h('span', 'grow'), lv, ll, li, adj);
     const foot = h('div', 'plan-modal-foot');
     const next = button('btn primary pd-next', 'Next: what goes in', () => void drawParts());
     foot.append(h('span'), button('btn pd-cancel', 'Cancel', m.close), next);
@@ -152,7 +176,7 @@ export async function makeFromPage(pageId: string) {
     go.textContent = 'Making…';
     const done: { to: string; r?: any; error?: string }[] = [];
     for (const to of (['word', 'pdf'] as const).filter(t => want[t])) {
-      try { done.push({ to, r: await wb(['craft', to === 'word' ? 'word' : 'deck', '--page', pageId, '--theme', theme, '--version', version, ...switchArgs()]) }); }
+      try { done.push({ to, r: await wb(['craft', to === 'word' ? 'word' : 'deck', '--page', pageId, '--theme', theme, '--version', version, '--look', lookKey, ...(inkMode ? ['--set', `ink=${inkMode}`] : []), ...extra.flatMap(([k, v]) => ['--set', `${k}=${v}`]), ...switchArgs()]) }); }
       catch (x) { done.push({ to, error: String((x as Error).message || x) }); }
     }
     app.changed('documents');

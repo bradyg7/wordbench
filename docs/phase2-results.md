@@ -1049,3 +1049,64 @@ builder (steps 3–7) are not built yet.
 | Old design | Records gain `"design": 2`; a planned document without it reads **Old design** (the Documents pane and a page's documents offer Update), and is never rebuilt unasked: `docs update` with no name still updates only *behind* ones. Update rebuilds an old-design file even when its plan is the same | `cargo test` |
 
 The plan, and so the fingerprint shared with the Python app, is unchanged: styles are not in it.
+
+## 29. R3, steps 3 and 4: Looks, dials and the page switches (2026-11-09)
+
+| What | Built | Checked |
+|---|---|---|
+| Looks (D9) | `docs/look.rs`: Preview, Classic, Ink saver, Large print, Modern ship with the app; your own in `settings/doc-looks/<key>.json` (dials only; a shipped name is refused; delete goes to `.trash`). The Look new documents use is `settings/export.json`'s `look` | `wb docs looks`; a test that every shipped Look is valid |
+| Dials (D10, D12) | typeface (pairs only), accent (hex or a swatch), size, spacing, title, verse numbers, under-title rule, paper (Letter, A4), ink (full, saver, black); for slides neighbours (faint, hidden) and reference (top, bottom). `--look NAME` and `--set DIAL=VALUE` on `wb craft word|deck` and `wb docs update`; `wb docs look NAME [--from L --set … --save] [--use] [--delete]` | Rendered: Ink saver (`docs/phase2/r3-look-ink-saver-page1.png`), Classic with the verse alone and the reference at the bottom (`r3-look-classic-verse-alone.png`) |
+| Highlights in print (D13) | In Word a highlight is the accent in full color, an underline in Saver and Black only. Slides keep the theme's highlight | |
+| Guardrails (D15) | Text in the accent is made readable (4.5 : 1) against the paper, Word or slide; rules keep the person's own color; ink modes override | test: a gold accent is darkened for text, kept for rules |
+| Page switches (D14) | cover page, running head (the title on every page after the first), page numbers (Page x of y, x, none), two columns (used only when the document is scripture only). Dials of a Look, so they are kept with it | |
+| Records | Each document keeps `look` and `look_values`; Make again uses the values it was made with unless another Look or dial is given; a changed Look value rebuilds | |
+| The window | The Make row (Documents pane, a thread's documents) and Make a document (from a page) gain Look and Ink | `tsc` clean; no desk check yet |
+| The text check | A line broken after a hyphen (“I-chabod” at a large slide size) read back as two words and refused a good deck; the check now treats “- ” as “-” | the Classic verse-alone deck of 55 slides kept |
+
+**Not built yet:** the dials panel with a live page (D10's full pane: the window offers Look and Ink only, the rest by
+`--set`), See it in grey, the ink measure (D11), templates and the new structures (Share Copy, Study Sheet, Reading
+Sheet, Reader), and the parts builder (D4). The Word file has still not been opened in real Word (W-5).
+
+## 30. R3, step 5: the shipped templates (2026-11-09)
+
+| What | Built | Checked |
+|---|---|---|
+| Share Copy (Word) | the Speaker Script's plan without cues, study notes and delivery notes; subtitle "Share copy" | made from the scratch Phinehas thread, every verse checked |
+| Study Sheet (Word) | without cues and delivery notes; after each passage and its notes, three ruled lines to write on (a new style, Write Line) | `docs/phase2/r3-study-sheet-page1.png` |
+| Reading Sheet (Word) | scripture only (title, headings, references, verses), in two columns unless its Look says otherwise | `docs/phase2/r3-reading-sheet-page1.png` |
+| Reader (PDF) | Verse by Verse without the neighbouring verses | made, 55 slides |
+| From a page | `wb craft word|deck --page ID --structure share|study|reading|reader` (any structure made here) | |
+| The window | the Make row offers all six; a page's Make a document lists them as made here | `tsc` clean |
+
+These four are planned here only, and only for documents made here (their records carry `design`); a Share Copy or
+Study Sheet the Python app made stays the Python app's to keep up to date. The Python app would plan a record made here
+its own way if asked to update it (it knows these structures), so one should be updated from this app.
+
+**Not built:** the parts builder (D4) as a pane (the parts of a page are switched as before, `--on/--off`; a thread's
+template is its structure); the ink measure (D11: pages are shown for PDFs; for Word the count needs Word's layout,
+which this app does not have); the dials panel with a live page and See it in grey (D10, D15); Pulpit, Study Table,
+Thread Map and Thread Dossier stay dropped, as decided.
+
+## 31. R3: the Adjust panel (2026-11-09)
+
+`ui/src/looks.ts`: **Adjust…** beside Look and Ink in the Make row (a thread) and in Make a document (a page) opens the
+dials of sheet D10 beside a live page. The page is drawn from the source's own plan (`wb docs plan`), the first page of a
+Word document or the first verse slide, in the styles the file will have, so the person sees their own verses change.
+The dials: Look, accent (the theme's, six swatches, or a color of one's own, with D15's note when it is too light for
+text), typeface, and for Word size, spacing, title, verse numbers, under the title, paper, cover page, running head, page
+numbers, columns and ink; for slides neighbours and reference. **See it in grey** greys the page. **Use these** carries
+the changed dials to Make as `--set`; **Save as a Look…** runs `wb docs look NAME --from … --set … --save`; Reset returns
+to the Look.
+
+Checked: `tsc` clean. **Not checked in the window**: the vite preview has no `wb` behind it and no desk check covers this
+yet, so the panel has not been seen running; the next desk run should open it from the Documents pane.
+
+**Desk check (later 2026-11-09).** `node measure/desk-r3.mjs --release`: **9 of 9** in the real app (its own instance and
+copy of the scratch folder): the six kinds, Look, Ink and Adjust on the Make row; Adjust shows the thread's own first page
+verbatim; Classic and Ink saver change it at once; See it in grey; Use these carries the dials back; Make keeps them in the
+record (Classic, Ink saver, Large); Study Sheet and Reader made from the row. It found two things, fixed: after Make the
+pane is drawn again and the row forgot its thread, Look, Ink and dials (the next Make went to the first thread, in
+Preview); and the live page set references, cues and notes in Literata where the file sets them in Inter.
+Screenshots: `docs/phase2/1440-adjust.png`, `1440-adjust-preview.png`, `1440-documents-r3.png`. The whole desk
+(`measure/desk.mjs`, its Documents checks updated for R3) stops earlier, in its Notebook checks, which count from an empty
+inbox the scratch folder no longer has: not R3's, left for its own fix.

@@ -1037,3 +1037,49 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 /* a tab a folder's Open all opened carries the folder's mark */
 .tab.tab-marked { box-shadow: inset 0 3px 0 var(--mark); }
 .tab.on.tab-marked { background: var(--bg); box-shadow: inset 0 3px 0 var(--mark); }
+/* R3: Adjust the look (sheets D10, D12, D14, D15): the dials beside a live page drawn from the source's plan */
+.lk-modal { width: min(1100px, 96vw); max-height: 92vh; display: flex; flex-direction: column; }
+.lk-body { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 20px; overflow: hidden; min-height: 0; flex: 1; }
+.lk-side { overflow-y: auto; padding-right: 6px; display: flex; flex-direction: column; gap: 14px; }
+.lk-stage { overflow: auto; background: var(--sunken); border-radius: 8px; padding: 20px; display: flex; justify-content: center; align-items: flex-start; }
+.lk-dial { display: flex; flex-direction: column; gap: 6px; }
+.lk-dial-name { font: var(--type-small); font-weight: 600; }
+.lk-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; background: var(--sunken); border-radius: 8px; align-self: flex-start; }
+.lk-opt { border: 0; background: none; padding: 4px 10px; border-radius: 6px; font: var(--type-small); color: var(--muted); cursor: pointer; }
+.lk-opt.on { background: var(--bg); color: var(--fg); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.lk-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lk-swatch { width: 24px; height: 24px; border-radius: 12px; border: 1px solid var(--line); cursor: pointer; padding: 0; }
+.lk-swatch.on { outline: 2px solid var(--fg); outline-offset: 2px; }
+.lk-swatch.lk-theme { width: auto; padding: 0 8px; font: var(--type-caption); background: var(--bg); }
+.lk-own { width: 30px; height: 26px; border: 0; padding: 0; background: none; cursor: pointer; }
+.lk-warn { background: var(--sunken); border-radius: 8px; padding: 8px 10px; }
+.lk-acts { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+.lk-grey-toggle { display: flex; align-items: center; gap: 6px; }
+.lk-page { background: #fff; color: #222; width: 100%; max-width: 560px; padding: 44px 48px; box-shadow: 0 2px 10px rgba(0, 0, 0, .1); border-radius: 2px;
+  font-size: calc(15px * var(--lk-scale)); line-height: var(--lk-line); }
+.lk-page.lk-grey { filter: grayscale(1); }
+.lk-page.two { column-count: 2; column-gap: 24px; }
+.lk-page.two .dp-Title, .lk-page.two .dp-Subtitle { column-span: all; }
+.lk-p { margin: 0 0 .5em; font-family: var(--lk-head), sans-serif; font-size: .73em; }
+.lk-page .dp-Title { font: 600 1.73em/1.2 var(--lk-head), sans-serif; margin: 0 0 2px; }
+.lk-page .dp-Subtitle { color: #777; font-size: .67em; margin-bottom: 1.2em; }
+.lk-page.center .dp-Title, .lk-page.center .dp-Subtitle { text-align: center; }
+.lk-page.rule .dp-Subtitle { border-bottom: 1px solid var(--lk-rule); padding-bottom: .6em; }
+.lk-page .dp-Heading1 { font-weight: 600; font-size: 1.25em; margin-top: 1em; }
+/* references, cues and notes are Inter in every Look, as in the file (docx.rs: UI_FONT) */
+.lk-page .dp-SlideCue, .lk-page .dp-ScriptureReference, .lk-page .dp-PlainReference, .lk-page .dp-StudyNote, .lk-page .dp-DeliveryNote { font-family: Inter, sans-serif; }
+.lk-page .dp-SlideCue { color: var(--lk-accent); font-weight: 700; font-size: .58em; letter-spacing: .06em; }
+.lk-page .dp-ScriptureReference, .lk-page .dp-PlainReference { color: var(--lk-accent); font-weight: 600; font-size: .67em; margin-top: .8em; margin-bottom: .15em; }
+.lk-page .dp-Scripture, .lk-page .dp-ScriptureEnd, .lk-page .dp-PlainScripture { font-family: var(--lk-scripture), serif; font-size: 1em; }
+.lk-page .dp-StudyNote { color: #666; font-size: .67em; padding-left: .8em; }
+.lk-page .dp-DeliveryNote { color: var(--lk-accent); font-style: italic; font-size: .67em; }
+.lk-page .dp-WriteLine { border-bottom: 1px solid #bbb; height: 1.4em; }
+.lk-num { color: var(--lk-num); font-family: Inter, sans-serif; font-weight: 700; font-size: .62em; }
+.lk-mark { color: var(--lk-accent); font-weight: 700; }
+.lk-under { text-decoration: underline; }
+.lk-page.lk-slide { aspect-ratio: 16 / 9; max-width: 720px; padding: 4% 6.6%; display: flex; flex-direction: column; justify-content: space-between; font-size: 15px; }
+.lk-sref { font: 600 1.1em/1.2 var(--lk-head), sans-serif; color: var(--lk-accent); }
+.lk-near { font-family: var(--lk-scripture), serif; color: #9a948a; font-size: .95em; margin: 0; }
+.lk-verse { font-family: var(--lk-scripture), serif; font-size: 1.45em; line-height: 1.35; margin: 0; }
+.lk-verse.alone { font-size: 1.7em; flex: 1; display: flex; align-items: center; }
+@media (max-width: 720px) { .lk-body { grid-template-columns: 1fr; overflow: auto; } .lk-side { overflow: visible; } }

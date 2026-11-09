@@ -1451,7 +1451,9 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     let slides = wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].clone();
     assert_eq!(slides.as_array().unwrap().len() as i64, deck_now["pages"].as_i64().unwrap());
     assert!(slides[0].as_str().unwrap().starts_with("<svg"));
-    assert!(wb.fails(&["craft", "word", "--page", &top, "--structure", "share"]).contains("phase 5"));
+    // R3: the shipped templates are made from a page too; what the Python app still makes says so
+    assert!(wb.js(&["craft", "word", "--page", &top, "--structure", "share"])["name"].as_str().unwrap().starts_with("Share Copy"));
+    assert!(wb.fails(&["craft", "deck", "--page", &top, "--structure", "pulpit"]).contains("phase 5"));
     wb.ok(&["inbox", "rm", &top]);
     assert_eq!(state(format!("page-{top}-verse")), "gone");
 }
@@ -1512,7 +1514,7 @@ fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
 
     // what the Python app still makes says so
     assert!(wb.fails(&["craft", "word", "--thread", "phinehas"]).contains("Thread Dossier is still made by the Python app"));
-    assert!(wb.fails(&["craft", "deck", "--thread", "phinehas", "--structure", "pulpit"]).contains("--structure verse"));
+    assert!(wb.fails(&["craft", "deck", "--thread", "phinehas", "--structure", "pulpit"]).contains("--structure reader or verse"));
     assert!(wb.fails(&["craft", "word", "--passage", "John 3:16"]).contains("from a thread"));
 
     // forget, remember, delete (the files erased, the record to .trash)

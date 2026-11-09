@@ -50,6 +50,8 @@ const INTERNAL: &[&str] = &[
     "pane_key", "set_item_of",
     // the dictionary (R5): the pieces of wb word-define
     "default_path", "entry", "words_of",
+    // Looks (R3): the shipped ones, a Look read, checked and changed by dials, and the contrast rule, pieces of wb docs look(s) and --look/--set
+    "shipped", "get", "apply", "contrast", "readable", "look_of_record", "fonts", "scale", "spacing_factor", "text_accent", "rule_accent",
 ];
 
 fn public_fns(src: &str) -> Vec<String> {
@@ -65,7 +67,7 @@ fn every_action_has_a_command() {
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
     let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "dictionary.rs"] {
+    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "dictionary.rs", "docs/look.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;

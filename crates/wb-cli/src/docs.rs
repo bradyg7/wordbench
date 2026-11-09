@@ -25,12 +25,21 @@ fn thread_id(c: &Ctx<'_>, name: &str) -> Result<String, String> {
     Ok(crate::study::thread(&st, name)?["id"].as_str().unwrap_or("").to_string())
 }
 
+/// The dials given as --set DIAL=VALUE (R3's Looks: wb docs looks lists them).
+fn dials(a: &crate::args::Args) -> Result<Vec<(String, String)>, String> {
+    a.list("set")
+        .iter()
+        .map(|d| d.split_once('=').map(|(k, v)| (k.trim().to_string(), v.trim().to_string())).ok_or_else(|| format!("--set DIAL=VALUE, such as --set ink=saver (not “{d}”).")))
+        .collect()
+}
+
 fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
+    let set = dials(a)?;
     if let Some(page) = a.opt("page") {
         let out = out_dir(c)?;
         let st = c.study()?;
         let r = docs::make_page(c.bible()?, &st, &out, &page, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(), a.opt("version").as_deref(),
-            &a.list("on"), &a.list("off"), a.flag("force")).map_err(e)?;
+            &a.list("on"), &a.list("off"), a.opt("look").as_deref(), &set, a.flag("force")).map_err(e)?;
         if a.flag("open") {
             docs::open_file(&out.join(r["name"].as_str().unwrap_or(""))).map_err(e)?;
         }
@@ -43,7 +52,7 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
     let id = thread_id(c, &t)?;
     let out = out_dir(c)?;
     let st = c.study()?;
-    let r = docs::make(c.bible()?, &st, &out, &id, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(), a.flag("new"), a.flag("force")).map_err(e)?;
+    let r = docs::make(c.bible()?, &st, &out, &id, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(), a.opt("look").as_deref(), &set, a.flag("new"), a.flag("force")).map_err(e)?;
     if a.flag("open") {
         docs::open_file(&out.join(r["name"].as_str().unwrap_or(""))).map_err(e)?;
     }
@@ -51,7 +60,7 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
 }
 
 fn make_args() -> Vec<crate::args::Spec> {
-    vec![Opt("thread", None), Opt("page", None), Opt("passage", None), Opt("version", None), Opt("structure", None), Opt("theme", None), Append("on"), Append("off"), Flag("open"), Flag("new"), Flag("force")]
+    vec![Opt("thread", None), Opt("page", None), Opt("passage", None), Opt("version", None), Opt("structure", None), Opt("theme", None), Append("on"), Append("off"), Opt("look", None), Append("set"), Flag("open"), Flag("new"), Flag("force")]
 }
 
 pub fn commands() -> Vec<Command> {
@@ -76,18 +85,20 @@ pub fn commands() -> Vec<Command> {
         }),
         cmd("docs update", "Bring a document up to date, in the same file: wb docs update phinehas. With no name, every document that is behind.\n\
                             A file changed by hand is first kept as a copy beside it. A file open in Word has to be closed first.\n\
-                            --theme changes its theme; --force rebuilds even if nothing changed.",
-            vec![Pos("name", N::Any), Opt("theme", None), Flag("force"), Flag("open")], |c, a| {
+                            --theme changes its theme, --look its Look and --set DIAL=VALUE one dial (wb docs looks); --force rebuilds even if nothing changed.\n\
+                            A document in the old design (made before R3) is brought into the new one only when named here.",
+            vec![Pos("name", N::Any), Opt("theme", None), Opt("look", None), Append("set"), Flag("force"), Flag("open")], |c, a| {
             let name = a.s("name");
-            if name.is_empty() && (a.opt("theme").is_some() || a.flag("force") || a.flag("open")) {
-                return Err("--theme, --force and --open need the name of one document.".into());
+            let set = dials(a)?;
+            if name.is_empty() && (a.opt("theme").is_some() || a.opt("look").is_some() || !set.is_empty() || a.flag("force") || a.flag("open")) {
+                return Err("--theme, --look, --set, --force and --open need the name of one document.".into());
             }
             let out = out_dir(c)?;
             let st = c.study()?;
             if name.is_empty() {
                 return j(docs::update_behind(c.bible()?, &st, &out));
             }
-            let r = docs::update(c.bible()?, &st, &out, &name, a.opt("theme").as_deref(), a.flag("force")).map_err(e)?;
+            let r = docs::update(c.bible()?, &st, &out, &name, a.opt("theme").as_deref(), a.opt("look").as_deref(), &set, a.flag("force")).map_err(e)?;
             if a.flag("open") {
                 docs::open_file(&out.join(r["name"].as_str().unwrap_or(""))).map_err(e)?;
             }
@@ -133,7 +144,8 @@ pub fn commands() -> Vec<Command> {
                            Here: script (the Speaker Script); the other structures are made by the Python app until phase 5. --theme: otherwise your saved theme.\n\
                            Asking again for the same thread and structure updates the same file (see wb docs). Every verse in the file is checked against the Bible.\n\
                            From a page and the pages inside it: wb craft word --page ID [--on KEY] [--off KEY] [--version kjv|ylt|page]; the rows' keys are in\n\
-                           wb craft parts --page ID. To-dos are left out unless switched on; with no --on or --off, the switches it was last made with stay.",
+                           wb craft parts --page ID. To-dos are left out unless switched on; with no --on or --off, the switches it was last made with stay.\n\
+                           --look NAME (wb docs looks) and --set DIAL=VALUE style it; otherwise the Look it was last made with, or the one new documents use.",
             make_args(), |c, a| make(c, a, "word")),
         cmd("craft deck", "Slides from a thread, as PDF pages: wb craft deck --thread phinehas --structure verse [--theme vigil].\n\
                            Here: verse (Verse by Verse); PowerPoint and the other structures are made by the Python app until phase 5.\n\
@@ -157,6 +169,39 @@ pub fn commands() -> Vec<Command> {
         cmd("docs reveal", "Show a document's file in its folder (Explorer), picked out.", vec![Pos("name", N::Many)], |c, a| {
             let out = out_dir(c)?;
             j(docs::reveal(&*c.study()?, &out, &a.s("name")).map_err(e)?)
+        }),
+        cmd("docs looks", "The Looks a document can be made in (Preview, Classic, Ink saver, Large print, Modern, and your own), each with its dials' values,\n\
+                           the Look new documents use, and the accent swatches. A Look is styling only: what goes in a document does not change.",
+            vec![], |c, _| j(docs::look::list(&*c.study()?))),
+        cmd("docs look", "Show a Look's dials: wb docs look classic. --use makes it the Look new documents use.\n\
+                          Save your own from another with dials changed: wb docs look \"My print\" --from ink-saver --set accent=blue --set title=center --save.\n\
+                          Dials: typeface (inter-literata|literata|inter), accent (hex or red|brown|blue|green|plum|graphite), size (small|regular|large|largest),\n\
+                          spacing (compact|comfortable|airy), title (left|center), numbers (accent|plain), under-title (none|rule), paper (letter|a4),\n\
+                          ink (full|saver|black), neighbours (faint|hidden), reference (top|bottom), cover (on|off), running-head (on|off),\n\
+                          page-numbers (of|plain|none), columns (1|2). --delete deletes one of your own (to .trash).",
+            vec![Pos("name", N::Many), Opt("from", None), Append("set"), Flag("save"), Flag("use"), Flag("delete")], |c, a| {
+            let name = a.s("name");
+            let set = dials(a)?;
+            if a.flag("delete") {
+                return j(docs::look::delete(&*c.study()?, &name).map_err(e)?);
+            }
+            if a.flag("save") {
+                let st = c.study()?;
+                let from = a.opt("from").unwrap_or_else(|| docs::look::saved(&st));
+                let l = docs::look::adjust(&st, &from, &set).map_err(e)?;
+                let r = docs::look::save(&st, &name, &l).map_err(e)?;
+                drop(st);
+                if a.flag("use") {
+                    docs::look::set_saved(&mut *c.study()?, &name).map_err(e)?;
+                }
+                return j(r);
+            }
+            if a.flag("use") {
+                return j(docs::look::set_saved(&mut *c.study()?, &name).map_err(e)?);
+            }
+            let st = c.study()?;
+            let l = docs::look::adjust(&st, &name, &set).map_err(e)?;
+            j(json!({"key": docs::look::key_of(&name), "values": l}))
         }),
         cmd("craft designs", "The color themes and the slide and Word structures (which this app makes), with your saved theme.", vec![], |c, _| {
             j(docs::designs(&*c.study()?))
