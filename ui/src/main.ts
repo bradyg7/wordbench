@@ -618,7 +618,8 @@ function verseMenu(vw: View, v: number, x: number, y: number) {
  */
 async function openSecondReader(ref: string, version = 'KJV') {
   const clean = ref.replace(/(:\d+)\.\d+/g, '$1');   // words of a verse: their verse
-  const ver = version === 'YLT' ? 'YLT' : 'KJV';
+  // (S6) the pane's own version: its KJV | YLT switch changes this and no other reader
+  let ver = version === 'YLT' ? 'YLT' : 'KJV';
   let t: any;
   try { t = await wb(['text', clean, '--version', ver, '--json']); } catch { return void goTo(ref); }
   const first = t?.verses?.[0];
@@ -668,12 +669,29 @@ async function openSecondReader(ref: string, version = 'KJV') {
       prev.onclick = () => turn(el, p, -1);
       next.onclick = () => turn(el, p, 1);
       go.title = 'Send to the reader'; go.setAttribute('aria-label', 'Send to the reader');
-      go.onclick = () => {
+      const topVerseOf = () => {
         const top = [...vw!.root.querySelectorAll<HTMLElement>('.vn')].find(e => e.getBoundingClientRect().top >= el.getBoundingClientRect().top + head!.offsetHeight);
-        void jump(st.code, st.chapter, top ? +top.dataset.v! : 1);
+        return top ? +top.dataset.v! : 1;
       };
+      go.onclick = () => void jump(st.code, st.chapter, topVerseOf());
+      // (S6) the book and chapter picker, scoped to this pane: a choice turns this pane and never the reader
+      const pickBtn = h('button', 'reader2-pick');
+      pickBtn.title = 'Another book or chapter (this pane only)';
+      pickBtn.append(icon('book', 14), h('span', 'reader2-title', `${bk.name} ${st.chapter}`), icon('down', 12));
+      pickBtn.onclick = () => picker(pickBtn, () => ({ code: st.code, chapter: st.chapter }), (b, c) => { st.code = b.code; st.chapter = c; clearSelection(); void draw2(el, p, 1); });
+      const title = h('h2', 'pane-title reader2-heading');
+      title.append(pickBtn);
+      const vers = segmented(VERSIONS, ver, v => {
+        if (v === ver) return;
+        const at = vw?.drawn ? topVerseOf() : 1;
+        ver = v;
+        clearSelection();
+        void draw2(el, p, at);
+      });
+      vers.classList.add('reader2-ver');
+      vers.title = 'KJV or YLT in this pane only';
       const row = h('div', 'reader2-row');
-      row.append(prev, h('h2', 'pane-title reader2-title', `${bk.name} ${st.chapter}`), next, h('span', 'grow'), go);
+      row.append(prev, title, next, h('span', 'grow'), vers, go);
       head.append(row);
       const root = h('div', 'reader reader2');
       el.append(head, root);
@@ -747,7 +765,7 @@ reader.addEventListener('drop', async e => {
 });
 
 // ---- the book and chapter picker --------------------------------------------------------------------------------------
-function picker(from: HTMLElement) {
+function picker(from: HTMLElement, cur: () => { code: string; chapter: number } | undefined = () => drawn ? { code: drawn.chapter.code, chapter: drawn.chapter.chapter } : undefined, pick: (b: Book, c: number) => void = (b, c) => void jump(b.code, c)) {
   const box = h('div', 'picker');
   const draw = (bk?: Book) => {
     box.replaceChildren();
@@ -756,7 +774,7 @@ function picker(from: HTMLElement) {
         box.append(h('div', 'label', name));
         const grid = h('div', 'book-grid');
         for (const b of books.filter(x => (x.testament || (x.id <= 39 ? 'OT' : 'NT')) === t)) {
-          const btn = h('button', `book-btn${drawn?.chapter.code === b.code ? ' on' : ''}`, b.name);
+          const btn = h('button', `book-btn${cur()?.code === b.code ? ' on' : ''}`, b.name);
           btn.onclick = () => (b.chapters === 1 ? go(b, 1) : draw(b));
           grid.append(btn);
         }
@@ -771,14 +789,14 @@ function picker(from: HTMLElement) {
     box.append(top);
     const grid = h('div', 'ch-grid');
     for (let c = 1; c <= bk.chapters; c++) {
-      const btn = h('button', `ch-btn${drawn?.chapter.code === bk.code && drawn.chapter.chapter === c ? ' on' : ''}`, String(c));
+      const btn = h('button', `ch-btn${cur()?.code === bk.code && cur()?.chapter === c ? ' on' : ''}`, String(c));
       btn.onclick = () => go(bk, c);
       grid.append(btn);
     }
     box.append(grid);
   };
-  const go = (b: Book, c: number) => { close(); jump(b.code, c); };
-  draw(drawn ? books.find(b => b.code === drawn!.chapter.code) : undefined);
+  const go = (b: Book, c: number) => { close(); pick(b, c); };
+  draw(cur() ? books.find(b => b.code === cur()!.code) : undefined);
   const close = popMenu(from, box, { width: compact() ? window.innerWidth - 16 : 520 });
 }
 

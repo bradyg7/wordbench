@@ -84,10 +84,12 @@ ONE_READER = (("Numbers 25", "the reader", 6),)
 TEMPLATES = ("Chapter study", "Word study", "Lesson outline")
 
 
-def sidebar(side, on=None, lesson_open=True, readers=ONE_READER, templates=False):
+def sidebar(side, on=None, lesson_open=True, readers=ONE_READER, templates=False, after_search=None):
     """readers: (chapter, which reader, notes there) for each reader open, the reader first (At the reader lists the
     notes and pages placed in each one's chapter). templates: Templates opened as a section, not only at the foot."""
     P.field(side, "Search every page", None, icon_name="search", height=34)
+    if after_search:                      # the filter row of the debug round's S8 (design/filter.py)
+        after_search(side)
     row(side, "gap", W="fill", pad=[2, 0, 2, 0])
     side_head(side, "Today")
     side_item(side, "Saturday, November 7", icon_name="pen", on=on == "Saturday, November 7")

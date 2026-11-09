@@ -290,6 +290,20 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb:not(.two).editing .nb-list { display: none; }
 .nb:not(.two).editing .nb-editor { display: block; }
 .nb.two .nb-back:not(.shown) { display: none; }
+/* S1: the side panel folded to a rail: the control that opens it, and the pen */
+.nb.two.side-folded .nb-list { width: 44px; }
+.nb-rail { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 0; }
+.nb-side-fold { color: var(--muted); flex: none; }
+.nb-side-fold:hover { color: var(--accent); }
+/* S2: Fold all / Open all above a grouped list, and in the Pages heading */
+.nb-foldbar { display: flex; justify-content: flex-end; margin: 4px 16px 0; }
+.nb-foldall { font: var(--type-small-strong); color: var(--muted); display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; }
+.nb-foldall:hover { color: var(--accent); }
+.nb-side-foldall { width: 26px; height: 26px; margin-top: 8px; color: var(--muted); }
+.nb-side-foldall:hover { color: var(--accent); }
+/* a book's heading over its chapters (Places, every chapter); a chapter's sits a step in */
+.nb-ghead.book { color: var(--fg); }
+.nb-ghead.chapter-head { margin-left: 16px; width: calc(100% - 20px); }
 .nb-head { display: flex; align-items: center; gap: 6px; margin: 12px 12px 4px; }
 .nb-head .nb-search { flex: 1; margin: 0; }
 /* the sections (W1): one row of words that wraps in a narrow column; the one shown is filled */
@@ -619,6 +633,13 @@ button.question-pill:hover { text-decoration: line-through; }
 .reader2-pane:focus { outline: 0; }
 .reader2-go { margin-left: auto; }
 .reader2-title { font-size: 16px; }
+/* S6: the title is the book and chapter picker of this pane; KJV | YLT beside it */
+.reader2-heading { min-width: 0; }
+.reader2-pick { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 8px; border-radius: var(--radius-control); color: inherit; background: none; border: 0; }
+.reader2-pick:hover { background: var(--sunken); }
+.reader2-pick .reader2-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--type-title); font-size: 16px; }
+.reader2-ver { flex: none; padding: 2px; }
+.reader2-ver button { padding: 2px 8px; min-height: 26px; font: var(--type-small); }
 .reader2 .ch-title { font-size: 26px; line-height: 34px; margin-top: 10px; }
 /* the verses asked for */
 .vn.vn-asked { background: var(--accent-soft); border-radius: 6px; padding: 1px 4px; }
@@ -755,6 +776,13 @@ button.question-pill:hover { text-decoration: line-through; }
 .pd-pv-slides { display: flex; flex-direction: column; gap: 10px; }
 .pd-pv-slide { display: block; width: 100%; max-width: 640px; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 4px; }
 .pd-pv-count { margin-bottom: 8px; }
+/* S4: a deck a slide at a time: ‹ 3 of 9 ›, and the switch to the column */
+.pd-pv-body[data-deck] { outline: none; }
+.pd-pv-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.pd-pv-bar .pd-pv-count { margin: 0; min-width: 5.5em; text-align: center; font-variant-numeric: tabular-nums; }
+.pd-pv-bar .icon-btn[hidden] { display: none; }
+.pd-pv-bar .icon-btn:disabled { opacity: .35; cursor: default; }
+.pd-pv-slides.one .pd-pv-slide { max-width: 100%; }
 .pd-pv-stale { margin: 0 0 10px; }
 @media (max-width: 640px) {
   .pd-cols { grid-template-columns: 1fr; }
@@ -899,3 +927,10 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .guide-title { font: var(--type-heading); margin: 6px 0 8px; }
 .guide-head { font: var(--type-small-strong); margin-top: 10px; }
 .guide-text { margin: 4px 0 0; color: var(--muted); }
+
+/* S5: a thread's places on its Notebook page, under its notes */
+.nb-thread-places { margin-top: 18px; padding-top: 4px; border-top: 1px solid var(--line); }
+.nb-places-head { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); margin: 10px 0 6px; }
+.nb-place-row { padding: 8px 0; }
+.nb-place-row.off .ref-link { color: var(--muted); }
+.nb-place-quote { margin: 2px 0 0; }

@@ -41,6 +41,7 @@ must be reproduced before it is changed. Sizes: **S** under 2 hours, **M** half 
 | R6 | After Listen finishes a chapter, offer Mark read | `2dcf` | S | **Won't now**: read aloud is phase 6 |
 
 **Status, 2026-11-08:** M1 to M6 are built and installed (docs/phase2-results.md §26). M5's text size (90%) is the proposal, not yet the person's choice.
+**Status, later 2026-11-08:** S1 to S7 are built (docs/phase2-results.md §27); S8's one-page sheet is drawn (`design/exports/filter/`) and waits for the person to accept it before anything is built. D1 and the redesigns are untouched.
 
 **Order:** commit what is built (W6 is not committed) → M2, M3, M4, M5, M6 in one session, since they are styling and small
 UI → M1, which needs real mouse input to reproduce → S1, S2, S4, S7, S3 → D1 (decided), S8's sheet, S5, S6 → the

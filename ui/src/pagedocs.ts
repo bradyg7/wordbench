@@ -268,14 +268,63 @@ export function previewDoc(d: { id: string; name: string }) {
       body.append(sheet);
     } else if (p.slides) {
       // the deck's pages, drawn by the same layout that made the PDF (it is up to date, so they are the file's pages)
-      const deck = h('div', 'pd-pv-slides');
-      p.slides.forEach((svg: string, i: number) => {
-        const img = h('img', 'pd-pv-slide') as HTMLImageElement;
-        img.alt = `Slide ${i + 1}`;
-        img.src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-        deck.append(img);
+      // (debug-spec S4, finding a148) a slide at a time with ‹ ›, the keys ← → Home End, and "3 of 9"; a switch to the
+      // column of every slide. A deck opens one at a time; the choice is kept in the window's storage.
+      const slides: string[] = p.slides;
+      const urls = slides.map(svg => URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })));
+      const n = slides.length;
+      const img = (i: number) => {
+        const e = h('img', 'pd-pv-slide') as HTMLImageElement;
+        e.alt = `Slide ${i + 1}`;
+        e.src = urls[i];
+        return e;
+      };
+      let single = true, cur = 0;
+      try { single = localStorage.getItem('wb.deck.preview') !== 'all'; } catch { /* one at a time */ }
+      const bar = h('div', 'pd-pv-bar');
+      const prev = button('icon-btn pd-pv-prev', '', () => go(cur - 1), 'left');
+      prev.title = 'The slide before (←)';
+      prev.setAttribute('aria-label', 'The slide before');
+      const count = h('span', 'muted small pd-pv-count');
+      count.setAttribute('aria-live', 'polite');
+      const next = button('icon-btn pd-pv-next', '', () => go(cur + 1), 'right');
+      next.title = 'The next slide (→)';
+      next.setAttribute('aria-label', 'The next slide');
+      const mode = button('link-btn pd-pv-mode', '', () => {
+        single = !single;
+        try { localStorage.setItem('wb.deck.preview', single ? 'one' : 'all'); } catch { /* not kept */ }
+        show();
       });
-      body.append(h('div', 'muted small pd-pv-count', `${p.slides.length} slides`), deck);
+      bar.append(prev, count, next, h('span', 'grow'), mode);
+      const stage = h('div', 'pd-pv-slides');
+      const go = (i: number) => { cur = Math.max(0, Math.min(n - 1, i)); show(); };
+      const show = () => {
+        prev.hidden = next.hidden = !single;
+        prev.disabled = cur === 0;
+        next.disabled = cur === n - 1;
+        count.textContent = single ? `${cur + 1} of ${n}` : `${n} slides`;
+        mode.textContent = single ? 'Show all' : 'One at a time';
+        mode.title = single ? 'Every slide in a column' : 'A slide at a time, with ← →';
+        body.dataset.mode = single ? 'one' : 'all';
+        stage.classList.toggle('one', single);
+        stage.replaceChildren(...(single ? [img(cur)] : slides.map((_, i) => img(i))));
+      };
+      // the keys act when the pane has the focus; they never turn the reader's chapter from here
+      body.tabIndex = -1;
+      body.dataset.deck = String(n);
+      body.addEventListener('pointerdown', ev => { if (!(ev.target as Element).closest('button')) body.focus({ preventScroll: true }); });
+      body.addEventListener('keydown', ev => {
+        if (ev.altKey || ev.ctrlKey || ev.metaKey) return;
+        if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+          ev.stopPropagation();
+          if (!single) return;
+          ev.preventDefault();
+          go(cur + (ev.key === 'ArrowRight' ? 1 : -1));
+        } else if (single && (ev.key === 'Home' || ev.key === 'End')) { ev.preventDefault(); go(ev.key === 'Home' ? 0 : n - 1); }
+      });
+      show();
+      body.append(bar, stage);
+      setTimeout(() => body.focus({ preventScroll: true }));
     } else if (p.stale) {
       body.append(h('p', 'muted pd-pv-stale', p.stale), button('btn small soft pd-again', 'Make again', async () => {
         try { await wb(['docs', 'update', d.id]); app.changed('documents'); void dock.find(`doc:${d.id}`)?.refresh?.(); }

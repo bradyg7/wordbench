@@ -25,7 +25,8 @@ const PATHS: Record<string, string> = {
   x: 'M4 4l8 8M12 4l-8 8',
   minus: 'M3 8h10',
   plus: 'M8 3v10M3 8h10',
-  sendto: 'M14 8H5M8.5 4.5L5 8l3.5 3.5M2 3v10',
+  sidebar: 'M2.5 3h11v10h-11zM6.5 3v10',
+  sendto:'M14 8H5M8.5 4.5L5 8l3.5 3.5M2 3v10',
   float: 'M5 5V2.5h8.5V11H11M2.5 5H11v8.5H2.5z',
   pin: 'M8 14s4.5-4 4.5-7.5a4.5 4.5 0 0 0-9 0C3.5 10 8 14 8 14zM8 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
   eye: 'M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8zM8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
@@ -132,19 +133,21 @@ export const sizeClass = () => {
 
 // A small menu or form beside an element; closes on Escape or a click outside. Returns a close function.
 let menuOpen: (() => void) | null = null;
-export function popMenu(from: Element, body: HTMLElement, opts: { align?: 'left' | 'right'; width?: number } = {}): () => void {
+export function popMenu(from: Element, body: HTMLElement, opts: { align?: 'left' | 'right'; width?: number; at?: { x: number; y: number } } = {}): () => void {
   menuOpen?.();
   const m = h('div', 'menu');
   if (opts.width) m.style.width = `${opts.width}px`;
   m.append(body);
   document.getElementById('overlay')!.append(m);
-  const r = from.getBoundingClientRect();
+  // `at`: a right-click's menu opens at the pointer; `from` is then only what the menu is about
+  const r = opts.at ? new DOMRect(opts.at.x, opts.at.y, 0, 0) : from.getBoundingClientRect();
   const w = m.offsetWidth;
   const left = opts.align === 'right' ? r.right - w : r.left;
   m.style.left = `${Math.max(8, Math.min(left, window.innerWidth - w - 8))}px`;
-  const top = r.bottom + 6;
-  m.style.top = `${top + m.offsetHeight > window.innerHeight - 8 ? Math.max(8, r.top - 6 - m.offsetHeight) : top}px`;
-  const outside = (e: PointerEvent) => { if (!m.contains(e.target as Node) && !from.contains(e.target as Node)) close(); };
+  const gap = opts.at ? 2 : 6;
+  const top = r.bottom + gap;
+  m.style.top = `${top + m.offsetHeight > window.innerHeight - 8 ? Math.max(8, r.top - gap - m.offsetHeight) : top}px`;
+  const outside = (e: PointerEvent) => { if (!m.contains(e.target as Node) && (opts.at || !from.contains(e.target as Node))) close(); };
   const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
   const close = () => {
     m.remove();

@@ -857,3 +857,31 @@ From [debug-spec.md](debug-spec.md). Nothing written to the study folder changed
 Screenshots refreshed in `docs/phase2/`; new: `1440-notebook-a-block-being-written.png`. Installed the same evening (`scripts/install-app.ps1`), built from the working tree on top of `2e4cfa0`: W6 and this round are not committed yet. No backup was needed (nothing new is written to the study folder).
 
 **For the person:** C1 (files attached to a finding) needs a decision now that the window's file-drop handler is off: a drop zone would need a Browse button, or the handler stays on for that box. S3, S1 and the others are unchanged and next.
+
+## 27. The debug round's Should items, S1 to S8 (2026-11-08)
+
+From [debug-spec.md](debug-spec.md). Nothing written to the study folder changed: no new fields, no new commands (the
+window's own state, the folds, is kept in its storage as the section folds are).
+
+| Item | Finding | What was done |
+|---|---|---|
+| S1 | `c301` | The wide Notebook's side panel folds to a 44 px rail (the opener and the pen) by the control at the head of its search row, or **Ctrl+\** while the Notebook has the focus; the editor takes the room. Kept in the window's storage; it is the width that picks wide or narrow, so a folded panel stays folded across 640 px and back. The narrow Notebook is unchanged. |
+| S2 | `4c02`, `23f1` | **Fold all / Open all** above Days, Places and Threads (one control, which says what a click does); an icon for the pages that hold pages in the Pages heading. **Places** with every chapter listed groups the chapters under their book (Bible order, the book's count of notes, each folds; "The whole book" for a book's own notes). Places following the reader is one chapter and is left as it was. |
+| S3 | `b737` | **Right-click** (and a long press on touch) on a page's row in the tree, Pinned, a list, a question, a template or a day opens the page's own menu at the pointer: the same builder as ⋯, not a second list. A deleted note in the Trash offers Put it back / Erase now. Not on a block. Delete there is ⋯'s Delete (D1, which is decided but not built, will change both). |
+| S4 | `a148` | A deck's preview shows a slide at a time: ‹ › buttons, ← → Home End while the pane has the focus (they never turn the reader's chapter), "3 of 14", a switch to **Show all** (the column). One at a time is the default for a deck, the column stays for a Word file; the choice is kept in the window's storage. |
+| S5 | `d84d` | A thread's page in the Notebook lists its places under its notes: the reference and the verse from the Bible (`wb thread show`, word for word, nothing typed), in the thread's order; a click opens the verse card (an original word opens its entry). Read-only. |
+| S6 | `b59b` | A second reader's head: its title is the book and chapter picker (this pane only), and **KJV \| YLT** switches this pane alone (redrawn in place, the verse at the top kept). The main reader and the other readers do not move. A pane keeps the key it was opened with, so opening the same place again in the other version focuses this pane. |
+| S7 | seen in `findings/` | A finding's `build` is the commit, **+dirty** with the day and time when the tree has uncommitted changes (`docs/` screenshots and `measure/out` do not count). Findings already written are left alone. |
+| S8 | `4463` | **The sheet only**, for the person to accept: `design/filter.py` → `design/exports/filter/` (F1 the row closed, F2 open with a chip's menu, F3 three filters on with the view line it writes, F4 the wide Notebook). Nothing is built from it. Open questions on the sheet's side: the Kind chip waits for R1; in the wide Notebook a set filter takes over the main column like At the reader. |
+
+**Found by the desk checks:** my own first right-click guard (for the long press) swallowed a second right-click made within 700 ms of the first; fixed, and the check that found it stays. The first desk run also stopped at two panes of the same kind; the checks were scoped.
+
+**Changed in the desk checks:** 21 new checks (Places by book and Fold all; Days; Pages fold all; right-click on a tree row, a question and a block; Esc; the folded side panel by control and by key; the deck a slide at a time; a thread's places; the second reader's picker and version; the build stamp). One earlier check changed: the deck preview now counts its slides under **Show all**, and the second reader's head check reads past the KJV | YLT switch.
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **371 of 371** (21 new) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped |
+| Rust tests | not run: no wb-core, wb-cli or app change |
+
+Screenshots: new `docs/phase2/1440-notebook-places-by-book.png`, `1440-notebook-side-panel-folded.png`, `1440-notebook-a-threads-places.png`; the sheet's four windows in `design/exports/filter/`. Not committed. Not checked with a real mouse or touch (the right-click and long press were driven by Playwright's events; M1 showed what that can miss for drags, which these are not).

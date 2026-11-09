@@ -670,6 +670,37 @@ try {
   await follow.click();
   await page.waitForFunction(() => !/following the reader/i.test(document.querySelector('.pane-notebook .nb-ghead')?.textContent || 'following the reader'), null, { timeout: 10000 }).catch(() => {});
   check('Follow off lists every chapter, and is kept in settings/notebook.json', !/following the reader/i.test(await ghead()) && JSON.parse(readFileSync(path.join(study, 'settings', 'notebook.json'), 'utf8')).follow === false, await ghead());
+  // debug-spec S2 (notes 23f1, 4c02): Places lists the chapters under a heading for their book (with its count), and one
+  // Fold all / Open all folds every group at once; kept the way each fold is
+  const allCh = JSON.parse(execFileSync(wbExe, ['notebook', '--group', 'chapter'], { env }).toString()).groups.filter(g => g.entries.length);
+  const chGroups = allCh.filter(g => /^\d+\.\d+$/.test(g.key)), looseN = allCh.length - chGroups.length;   // (Original words: a group with no book)
+  const bookIds = [...new Set(chGroups.map(g => g.key.split('.')[0]))];
+  const ghs = (cls = '') => page.locator(`.pane-notebook .nb-scroll .nb-ghead${cls}`);
+  const firstBook = chGroups.filter(g => g.key.startsWith(bookIds[0] + '.'));
+  const bookCount = new Set(firstBook.flatMap(g => g.entries.map(e => e.id))).size;
+  check(`Places with every chapter: ${bookIds.length} book headings in Bible order, each with its notes' count, ${chGroups.length} chapter headings under them`, bookIds.length > 1 && await ghs('.book').count() === bookIds.length && await ghs('.chapter-head').count() === chGroups.length && +(await ghs('.book').first().locator('.nb-count').textContent()) === bookCount, `${bookIds.length} books, ${chGroups.length} chapters`);
+  await page.screenshot({ path: shots + '1440-notebook-places-by-book.png' });
+  await page.locator('.pane-notebook .nb-foldall').click();
+  await page.waitForFunction(n => document.querySelectorAll('.pane-notebook .nb-scroll .nb-ghead').length === n && !document.querySelector('.pane-notebook .nb-scroll .nb-item'), bookIds.length + looseN, { timeout: 10000 }).catch(() => {});
+  const shutLines = await ghs().count(), foldLabel = (await page.locator('.pane-notebook .nb-foldall').textContent()).trim();
+  await group('Day');
+  await group('Chapter');
+  await page.locator('.pane-notebook .nb-follow input.switch').waitFor();
+  const keptShut = await ghs().count() === bookIds.length + looseN && (await page.locator('.pane-notebook .nb-foldall').textContent()).trim() === 'Open all';
+  await page.locator('.pane-notebook .nb-foldall').click();
+  await page.waitForFunction(n => document.querySelectorAll('.pane-notebook .nb-scroll .nb-ghead.chapter-head').length === n, chGroups.length, { timeout: 10000 }).catch(() => {});
+  check('Fold all leaves one line per book and becomes Open all; it is kept; Open all lists every chapter again', shutLines === bookIds.length + looseN && foldLabel === 'Open all' && keptShut && await ghs('.chapter-head').count() === chGroups.length && await page.locator('.pane-notebook .nb-scroll .nb-item').count() > 0, `${shutLines} lines folded; ${await ghs().count()} open`);
+  await group('Day');
+  const dayGroups = await ghs().count();
+  if (dayGroups > 1) {
+    await page.locator('.pane-notebook .nb-foldall').click();
+    await page.waitForFunction(() => !document.querySelector('.pane-notebook .nb-scroll .nb-item'), null, { timeout: 10000 }).catch(() => {});
+    const dayShut = await page.locator('.pane-notebook .nb-scroll .nb-item').count() === 0 && await ghs().count() === dayGroups;
+    await page.locator('.pane-notebook .nb-foldall').click();
+    await page.waitForFunction(() => document.querySelector('.pane-notebook .nb-scroll .nb-item'), null, { timeout: 10000 }).catch(() => {});
+    check('Days has Fold all / Open all too', dayShut && await page.locator('.pane-notebook .nb-scroll .nb-item').count() > 0, `${dayGroups} days`);
+  } else check('Days has Fold all / Open all too (one day: the control is not offered)', await page.locator('.pane-notebook .nb-foldall').count() === 0);
+  await group('Chapter');
   await page.locator('.pane-notebook .nb-follow input.switch').click();
   await sleep(600);
   await page.locator('.pane-notebook .nb-more').click();
@@ -732,6 +763,62 @@ try {
   await ed.locator('.nb-title', { hasText: 'W3 parent page' }).waitFor({ timeout: 10000 });
   await ed.locator('.nb-blocks .nb-block').nth(2).waitFor({ timeout: 10000 });
   await sleep(600);
+  // debug-spec S2: Fold all / Open all on the Pages heading folds every page that holds pages
+  const treeFold = page.locator('.pane-notebook .nb-side-head[data-part="pages"] .nb-side-foldall');
+  const treeRowsNow = () => page.locator('.pane-notebook .nb-tree .nb-tree-row').count();
+  const treeTotal = treeIds(treeNow().pages).length, treeTop = treeNow().pages.length;
+  check('the Pages heading has a Fold all while some page holds pages', treeTotal > treeTop && await treeFold.getAttribute('aria-label') === 'Fold all' && await treeRowsNow() === treeTotal, `${treeTotal} pages, ${treeTop} at the top`);
+  await treeFold.click();
+  await page.waitForFunction(n => document.querySelectorAll('.pane-notebook .nb-tree .nb-tree-row').length === n, treeTop, { timeout: 10000 }).catch(() => {});
+  const foldedRows = await treeRowsNow(), foldedLabel = await treeFold.getAttribute('aria-label');
+  await treeFold.click();
+  await page.waitForFunction(n => document.querySelectorAll('.pane-notebook .nb-tree .nb-tree-row').length === n, treeTotal, { timeout: 10000 }).catch(() => {});
+  check('Fold all leaves only the top pages and becomes Open all; Open all lists every page again', foldedRows === treeTop && foldedLabel === 'Open all' && await treeRowsNow() === treeTotal && await treeFold.getAttribute('aria-label') === 'Fold all', `${treeTotal} → ${foldedRows} → ${await treeRowsNow()}`);
+  // debug-spec S3 (note b737): a right-click on a page row opens that page's menu where the pointer is: the same list as its ⋯
+  const menuItems = () => page.locator('.menu .menu-item').allTextContents();
+  await ed.locator('.nb-ed-head .icon-btn').click();
+  const dotsItems = await menuItems();
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.menu'), null, { timeout: 5000 }).catch(() => {});
+  const parentRow = rowOf(parentId).locator('.nb-tree-open');
+  const prBox = await parentRow.boundingBox();
+  await parentRow.click({ button: 'right', position: { x: 30, y: 6 } });
+  await page.locator('.menu .menu-item').first().waitFor({ timeout: 5000 });
+  const ctxItems = await menuItems();
+  const ctxBox = await page.locator('.menu').boundingBox();
+  check('right-click on a page in the tree opens that page’s menu at the pointer: the same items as its ⋯', ctxItems.length > 3 && ctxItems.join('|') === dotsItems.join('|') && Math.abs(ctxBox.x - (prBox.x + 30)) < 40 && Math.abs(ctxBox.y - (prBox.y + 6)) < 40, `${ctxItems.join(', ')} at ${Math.round(ctxBox.x)},${Math.round(ctxBox.y)}`);
+  await page.keyboard.press('Escape');
+  check('Esc closes the right-click menu', await page.waitForFunction(() => !document.querySelector('.menu'), null, { timeout: 5000 }).then(() => true, () => false));
+  const qHead = page.locator('.pane-notebook .nb-side-head[data-part="questions"] .nb-ghead');
+  const qWasShut = await qHead.getAttribute('aria-expanded') === 'false';
+  if (qWasShut) await qHead.click();
+  await page.locator('.pane-notebook .nb-side .nb-question-row').first().waitFor({ timeout: 5000 }).catch(() => {});
+  await page.locator('.pane-notebook .nb-side .nb-question-row').first().click({ button: 'right', timeout: 5000 }).catch(() => {});
+  check('right-click on a question in the sidebar opens a menu too, with “Open it again” or “Answered”', await page.locator('.menu .menu-item', { hasText: /Answered|Open it again/ }).waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.keyboard.press('Escape');
+  if (qWasShut) await page.locator('.pane-notebook .nb-side-head[data-part="questions"] .nb-ghead').click();
+  await ed.locator('.nb-blocks .nb-block').first().locator('.nb-block-body').click({ button: 'right' }).catch(() => {});
+  check('right-click on a block opens no page menu', await page.locator('.menu .menu-item', { hasText: /Pin|Move inside/ }).count() === 0);
+  await page.keyboard.press('Escape');
+  // debug-spec S1 (note c301): the side panel folds to a rail, by its control and by Ctrl+\, and stays so
+  const listWidth = () => page.locator('.pane-notebook .nb-list').evaluate(e => e.getBoundingClientRect().width);
+  const edWidth = () => page.locator('.pane-notebook .nb-editor').evaluate(e => e.getBoundingClientRect().width);
+  const [listOpenW, edOpenW] = [await listWidth(), await edWidth()];
+  await page.locator('.pane-notebook .nb-side-fold').click();
+  await page.waitForSelector('.pane-notebook .nb.side-folded', { timeout: 10000 });
+  await sleep(300);
+  const [listRailW, edRailW] = [await listWidth(), await edWidth()];
+  check('the side panel folds to a thin rail: the editor takes the room, no page is listed, the opener and the pen remain', listRailW < 60 && listOpenW > 250 && edRailW > edOpenW + 150 && await page.locator('.pane-notebook .nb-side').count() === 0 && await page.locator('.pane-notebook .nb-rail .nb-side-fold').getAttribute('aria-label') === 'Show the side panel' && await page.locator('.pane-notebook .nb-rail .nb-new').count() === 1 && await page.evaluate(() => localStorage.getItem('wb.notebook.sideFolded')) === '1', `${Math.round(listOpenW)} → ${Math.round(listRailW)}; editor ${Math.round(edOpenW)} → ${Math.round(edRailW)}`);
+  await page.screenshot({ path: shots + '1440-notebook-side-panel-folded.png' });
+  await page.keyboard.press('Control+Backslash');
+  await page.waitForFunction(() => !document.querySelector('.pane-notebook .nb.side-folded') && document.querySelector('.pane-notebook .nb-side'), null, { timeout: 10000 }).catch(() => {});
+  check('Ctrl+\\ opens it again, the pages listed as before; the state is kept', await page.locator('.pane-notebook .nb-side').count() === 1 && Math.abs(await listWidth() - listOpenW) < 2 && await page.evaluate(() => localStorage.getItem('wb.notebook.sideFolded')) === '0' && await treeRowsNow() === treeTotal);
+  await page.keyboard.press('Control+Backslash');
+  await page.waitForSelector('.pane-notebook .nb.side-folded', { timeout: 10000 }).catch(() => {});
+  const keyFolded = await page.locator('.pane-notebook .nb.side-folded').count() === 1;
+  await page.locator('.pane-notebook .nb-rail .nb-side-fold').click();
+  await page.waitForFunction(() => !document.querySelector('.pane-notebook .nb.side-folded'), null, { timeout: 10000 }).catch(() => {});
+  check('Ctrl+\\ folds it too, and the opener opens it', keyFolded && await page.locator('.pane-notebook .nb-side').count() === 1);
   // a block moved by its grip: the second to-do dropped on the upper half of the first
   const blockAt = i => ed.locator('.nb-blocks .nb-block').nth(i);
   await blockAt(2).hover();
@@ -900,6 +987,29 @@ try {
   await ed.locator('.nb-title', { hasText: 'Psalms 106' }).waitFor({ timeout: 10000 }).catch(() => {});
   check('a second reader’s row lists that chapter’s notes in the main column, and moves no reader', (await ed.locator('.nb-list-which').textContent()).startsWith('in the new reader') && await ed.locator('.nb-main-list .nb-item').count() === notesFor('Ps 106') && (await page.locator('#place .place-label').textContent()) === 'Numbers 25');
   await page.screenshot({ path: shots + '1440-notebook-at-the-readers.png' });
+  // debug-spec S5 (note d84d): a thread's places are listed on its page in the Notebook, under its notes, read from the Bible
+  const s5Refs = ['Num 25:11', 'Rom 10:2', 'Psa 69:9'];
+  execFileSync(wbExe, ['thread', 'add-many', 'S5 trial', ...s5Refs], { env });
+  execFileSync(wbExe, ['thread', 'write', 'S5 trial', 'S5 a note on the trial thread'], { env });
+  await page.evaluate(() => window.__wb.changed());
+  const threadsHead = page.locator('.pane-notebook .nb-side-head[data-part="threads"] .nb-ghead');
+  await threadsHead.waitFor({ timeout: 10000 });
+  if (await threadsHead.getAttribute('aria-expanded') === 'false') await threadsHead.click();
+  await page.locator('.pane-notebook .nb-thread-row', { hasText: 'S5 trial' }).click();
+  await ed.locator('.nb-title', { hasText: 'S5 trial' }).waitFor({ timeout: 10000 });
+  await ed.locator('.nb-place-row').nth(2).waitFor({ timeout: 10000 }).catch(() => {});
+  const placeRows = await ed.locator('.nb-place-row').evaluateAll(els => els.map(e => ({ ref: e.querySelector('.ref-link')?.textContent, quote: e.querySelector('.nb-place-quote')?.textContent })));
+  const squash5 = s => s.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
+  const fromWb = s5Refs.map(r => wbj('text', r, '--json').verses[0]);
+  check('a thread with 3 places and 1 note lists 4 rows: the note, then the places in the thread’s order', await ed.locator('.nb-main-list .nb-item').count() === 1 && placeRows.length === 3 && await ed.locator('.nb-places-head').textContent() === 'Places · 3', JSON.stringify(placeRows.map(r => r.ref)));
+  check('each place is the Bible’s verse word for word with its reference (wb text); nothing is written', placeRows.every((r, i) => r.ref === fromWb[i].ref && squash5(r.quote) === squash5(fromWb[i].text)) && JSON.stringify(wbj('thread', 'show', 'S5 trial').members.map(m => m.anchor)) === JSON.stringify(['NUM.25:11', 'ROM.10:2', 'PSA.69:9']));
+  await page.screenshot({ path: shots + '1440-notebook-a-threads-places.png' });
+  await ed.locator('.nb-place-row .ref-link').first().click();
+  check('a click on a place opens the verse card', await page.locator('.verse-card').first().waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.keyboard.press('Escape');
+  execFileSync(wbExe, ['thread', 'delete', 'S5 trial'], { env });
+  await page.evaluate(() => window.__wb.changed());
+  await sleep(500);
   // the verse card: a reference in a note opens the verse at the link
   await rowOf(w4).locator('.nb-tree-open').click();
   await ed.locator('.nb-title', { hasText: 'W4 the passage' }).waitFor({ timeout: 10000 });
@@ -1270,8 +1380,33 @@ try {
   await page.locator('.pane-docpreview .pd-pv-slide').first().waitFor({ timeout: 20000 }).catch(() => {});
   await page.waitForFunction(() => [...document.querySelectorAll('.pane-docpreview .pd-pv-slide')].every(i => i.complete && i.naturalWidth > 0), null, { timeout: 15000 }).catch(() => {});
   const deckNow = JSON.parse(execFileSync(wbExe, ['docs', 'show', `page-${w6}-verse`], { env }).toString());
+  // S4: a deck opens a slide at a time: "1 of N" (N the PDF's slide count), ‹ › and the keys ← → step through all and stop
+  // at the ends, none of them turning the reader's chapter; Show all is the column of every slide
+  const pvCount = () => page.locator('.pane-docpreview .pd-pv-bar .pd-pv-count').textContent();
+  const readerAt = () => page.evaluate(() => { const d = window.__wb.drawn; return `${d.chapter.code} ${d.chapter.chapter}`; });
+  const readerBefore = await readerAt();
+  check('a deck opens a slide at a time: “1 of N”, N the PDF’s slide count, one slide drawn, ‹ unavailable at the start', deckNow.state === 'current' && deckNow.pages > 1 && await pvCount() === `1 of ${deckNow.pages}` && await page.locator('.pane-docpreview .pd-pv-slide').count() === 1 && await page.locator('.pane-docpreview .pd-pv-prev').isDisabled(), `${await pvCount()} / ${deckNow.pages}`);
+  await page.locator('.pane-docpreview .pd-pv-body[data-deck]').focus();
+  const seen = [await pvCount()];
+  for (let i = 1; i < deckNow.pages; i++) { await page.keyboard.press('ArrowRight'); seen.push(await pvCount()); }
+  await page.keyboard.press('ArrowRight');
+  const pastEnd = await pvCount();
+  const lastDrawn = await page.waitForFunction(() => { const i = document.querySelector('.pane-docpreview .pd-pv-slide'); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 }).then(() => true).catch(() => false);
+  check('→ steps through every slide and stops at the last; the slide is drawn; › is unavailable there', seen.join() === Array.from({ length: deckNow.pages }, (_, i) => `${i + 1} of ${deckNow.pages}`).join() && pastEnd === `${deckNow.pages} of ${deckNow.pages}` && lastDrawn && await page.locator('.pane-docpreview .pd-pv-next').isDisabled(), seen.join(', '));
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('Home');
+  const atHome = await pvCount();
+  await page.keyboard.press('ArrowLeft');
+  await page.locator('.pane-docpreview .pd-pv-next').click();
+  check('← and Home go back and stop at the first; the buttons step too; the reader’s chapter did not move', atHome === `1 of ${deckNow.pages}` && await pvCount() === `2 of ${deckNow.pages}` && await readerAt() === readerBefore, `${atHome}; reader ${readerBefore} → ${await readerAt()}`);
+  await page.locator('.pane-docpreview .pd-pv-mode').click();
+  await page.locator('.pane-docpreview .pd-pv-slide').nth(deckNow.pages - 1).waitFor({ timeout: 20000 }).catch(() => {});
+  await page.waitForFunction(() => [...document.querySelectorAll('.pane-docpreview .pd-pv-slide')].every(i => i.complete && i.naturalWidth > 0), null, { timeout: 15000 }).catch(() => {});
   const slidesShown = await page.locator('.pane-docpreview .pd-pv-slide').evaluateAll(els => els.map(i => i.naturalWidth > 0));
-  check('Verse by Verse previews as its slides, drawn by the layout that made the PDF: as many as the PDF has, each drawn', deckNow.state === 'current' && slidesShown.length === deckNow.pages && slidesShown.every(Boolean), `${slidesShown.length} of ${deckNow.pages}`);
+  check('Verse by Verse previews as its slides, drawn by the layout that made the PDF: Show all lists as many as the PDF has, each drawn', slidesShown.length === deckNow.pages && slidesShown.every(Boolean) && (await pvCount()) === `${deckNow.pages} slides`, `${slidesShown.length} of ${deckNow.pages}`);
+  await page.locator('.pane-docpreview .pd-pv-mode').click();
+  await page.waitForFunction(() => document.querySelectorAll('.pane-docpreview .pd-pv-slide').length === 1, null, { timeout: 5000 }).catch(() => {});
+  await page.evaluate(() => localStorage.removeItem('wb.deck.preview'));
   await page.locator('.pane-docpreview .pd-pv-slide').first().scrollIntoViewIfNeeded().catch(() => {});
   await sleep(1500);
   await page.screenshot({ path: shots + '1440-w6-preview-the-verse-deck.png' });
@@ -1726,8 +1861,26 @@ try {
     await r2.locator('.reader2-next').click();
     await page.waitForFunction(() => [...document.querySelectorAll('.pane-reader2 .reader2-title')].some(e => e.offsetWidth && e.textContent === 'Numbers 26'), null, { timeout: 10000 }).catch(() => {});
     check('› turns the second reader’s own chapter; the reader stays', (await r2.locator('.reader2-title').textContent()) === 'Numbers 26' && (await label()) === 'Numbers 25' && (await top()) === at0);
-    const head2 = await r2.locator('.reader2-head').evaluate(h => ({ sub: h.querySelectorAll('.pane-sub').length, text: h.textContent.trim(), go: h.querySelector('.reader2-go')?.getAttribute('aria-label'), goText: h.querySelector('.reader2-go')?.textContent.trim(), goIcon: !!h.querySelector('.reader2-go svg') }));
-    check('the second reader’s head is the title, ‹ ›, and an arrow “Send to the reader”: no label under it that goes stale (note b59b)', head2.sub === 0 && head2.text === 'Numbers 26' && head2.go === 'Send to the reader' && head2.goText === '' && head2.goIcon, JSON.stringify(head2));
+    const head2 = await r2.locator('.reader2-head').evaluate(h => ({ sub: h.querySelectorAll('.pane-sub').length, text: h.textContent.replace(/KJV|YLT/g, '').trim(), go: h.querySelector('.reader2-go')?.getAttribute('aria-label'), goText: h.querySelector('.reader2-go')?.textContent.trim(), goIcon: !!h.querySelector('.reader2-go svg') }));
+    check('the second reader’s head is the title (the picker), ‹ ›, KJV | YLT and an arrow “Send to the reader”: no label under it that goes stale (note b59b)', head2.sub === 0 && head2.text === 'Numbers 26' && head2.go === 'Send to the reader' && head2.goText === '' && head2.goIcon, JSON.stringify(head2));
+    // S6 (note b59b): the pane's own book and chapter picker and KJV | YLT; the reader and the other readers stay as they are
+    const norm2 = s => s.toLowerCase().replace(/[^\p{L}]/gu, '');
+    const verseText = (ref, v) => norm2(JSON.parse(execFileSync(wbExe, ['text', ref, '--version', v, '--json'], { env }).toString()).verses[0].text);
+    const paneText = async () => norm2(await r2.locator('.reader2').evaluate(e => e.textContent));
+    const mainText = () => page.evaluate(() => document.getElementById('reader').textContent.length);
+    const mainLen = await mainText();
+    await r2.locator('.reader2-pick').click();
+    await page.locator('.picker .ch-btn', { hasText: /^30$/ }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll('.pane-reader2 .reader2-title')].some(e => e.offsetWidth && e.textContent === 'Numbers 30'), null, { timeout: 10000 }).catch(() => {});
+    check('the second reader has the book and chapter picker: it goes to another chapter and the reader stays', (await r2.locator('.reader2-title').textContent()) === 'Numbers 30' && (await paneText()).includes(verseText('Num 30:3', 'KJV')) && (await label()) === 'Numbers 25' && (await top()) === at0 && await mainText() === mainLen);
+    await r2.locator('.reader2-ver button', { hasText: 'YLT' }).click();
+    const yltShown = await page.waitForFunction(t => { const e = document.querySelector('.pane-reader2 .reader2'); return !!e && e.textContent.toLowerCase().replace(/[^\p{L}]/gu, '').includes(t); }, verseText('Num 30:3', 'YLT'), { timeout: 10000 }).then(() => true, () => false);
+    check('its KJV | YLT switch redraws it in place: the pane’s words are the Bible’s YLT; the reader is still the KJV', yltShown && !(await paneText()).includes(verseText('Num 30:3', 'KJV')) && (await page.locator('#tb-version').textContent()) === 'KJV' && await mainText() === mainLen && (await r2.locator('.reader2-title').textContent()) === 'Numbers 30');
+    await r2.locator('.reader2-ver button', { hasText: 'KJV' }).click();
+    await page.waitForFunction(t => document.querySelector('.pane-reader2 .reader2').textContent.toLowerCase().replace(/[^\p{L}]/gu, '').includes(t), verseText('Num 30:3', 'KJV'), { timeout: 10000 }).catch(() => {});
+    await r2.locator('.reader2-pick').click();
+    await page.locator('.picker .ch-btn', { hasText: /^26$/ }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll('.pane-reader2 .reader2-title')].some(e => e.offsetWidth && e.textContent === 'Numbers 26'), null, { timeout: 10000 }).catch(() => {});
     // the keyboard works in it: a click in the text, then ↑ ↓ scroll that pane and ← → turn its chapter, never the reader's
     const sc2 = () => page.evaluate(() => { const e = [...document.querySelectorAll('.reader2-pane')].find(x => x.offsetParent); return e.scrollTop; });
     const mainScroll = () => page.evaluate(() => document.getElementById('scroller').scrollTop);
@@ -1835,6 +1988,10 @@ try {
     const ftext = existsSync(fdir) && readdirSync(fdir).length ? readFileSync(path.join(fdir, readdirSync(fdir)[0]), 'utf8') : '';
     const inNotebook = JSON.stringify(JSON.parse(execFileSync(wbExe, ['notebook', '--group', 'none'], { env }).toString())).includes('The verse bar could say');
     check('the finding is a file in findings/, with the size, panes and place, and not in the Notebook', /kind: "finding"/.test(ftext) && /"size": "large"/.test(ftext) && /"panes": \[/.test(ftext) && /"place": "Numbers 25/.test(ftext) && !inNotebook, ftext.split('\n').find(l => l.startsWith('context')) || 'no file');
+    // S7: the build in a finding says when the tree it was built from had uncommitted changes (and when it was built)
+    const builtAs = /"build": "([^"]*)"/.exec(ftext)?.[1] || '';
+    const treeDirty = execFileSync('git', ['status', '--porcelain', '--', '.', ':!docs', ':!measure/out'], { cwd: file('.') }).toString().trim() !== '';
+    check('a finding records the build: the commit, “+dirty” when the tree had changes, the day and (then) the time', /^[0-9a-f]{7,}(\+dirty \d{4}-\d{2}-\d{2} \d{2}:\d{2}| \d{4}-\d{2}-\d{2})$/.test(builtAs) && builtAs.includes('+dirty') === treeDirty, `${builtAs}; tree ${treeDirty ? 'dirty' : 'clean'}`);
     await page.evaluate(() => window.__wb.run('findings'));
     const fcard = page.locator('.pane-findings .note-card.finding', { hasText: 'The verse bar could say' });
     check('Findings lists it', await fcard.waitFor({ timeout: 10000 }).then(() => true, () => false));

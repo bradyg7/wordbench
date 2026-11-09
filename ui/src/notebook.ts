@@ -15,7 +15,7 @@
 import { wb } from './api';
 import { app, book, here, type At } from './app';
 import { afterDrawn, drawBlocks, startWritingAtEnd, viewRow, type Blocks, type Host } from './blocks';
-import { dock, refHover, openHelp, openThread, threadChooser } from './panes';
+import { dock, refHover, openHelp, openStrong, openThread, threadChooser } from './panes';
 import type { Change, Pane } from './dock';
 import { toast } from './sheets';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
@@ -73,10 +73,43 @@ export const notebookBadge = { set: (_n: number) => {} };
  *  storage, as the command history is: it is how this window is set, not part of the study. */
 const FOLDED = 'wb.notebook.folded';
 const folded = new Set<string>((() => { try { return JSON.parse(localStorage.getItem(FOLDED) || '[]') as string[]; } catch { return []; } })());
-function fold(key: string, shut: boolean) {
-  if (shut) folded.add(key); else folded.delete(key);
-  try { localStorage.setItem(FOLDED, JSON.stringify([...folded].slice(-300))); } catch { /* not kept: it still folds now */ }
+function fold(key: string, shut: boolean) { foldMany([key], shut); }
+function foldMany(keys: string[], shut: boolean) {
+  for (const key of keys) { if (shut) folded.add(key); else folded.delete(key); }
+  try { localStorage.setItem(FOLDED, JSON.stringify([...folded].slice(-2000))); } catch { /* not kept: it still folds now */ }
 }
+
+/** Fold all / Open all (debug-spec S2, findings 4c02 and 23f1): one control for a grouped list. It says what a click does:
+ *  Open all when every group is folded, else Fold all. Kept the way each fold is. */
+function foldAllBar(keys: string[]): HTMLElement | null {
+  if (keys.length < 2) return null;
+  const allShut = keys.every(k => folded.has(k));
+  const bar = h('div', 'nb-foldbar');
+  const b = button('link-btn nb-foldall', allShut ? 'Open all' : 'Fold all', () => { foldMany(keys, !allShut); void pane?.refresh?.(); }, allShut ? 'expand' : 'collapse');
+  b.title = allShut ? 'Show every group’s notes' : 'Fold every group away';
+  bar.append(b);
+  return bar;
+}
+
+/** The wide Notebook's side panel folded to a rail (debug-spec S1, finding c301). Kept in the window's storage, like the
+ *  section folds. It is the window's width that picks narrow or wide; this only says whether the wide one shows its panel. */
+const SIDE_FOLDED = 'wb.notebook.sideFolded';
+let sideFolded = (() => { try { return localStorage.getItem(SIDE_FOLDED) === '1'; } catch { return false; } })();
+async function foldSide(shut: boolean) {
+  sideFolded = shut;
+  try { localStorage.setItem(SIDE_FOLDED, shut ? '1' : '0'); } catch { /* not kept: it still folds now */ }
+  // the control that was pressed is drawn again, so the focus (and with it the key) is given back to its other self
+  const had = !!pane?.el.contains(document.activeElement) && document.activeElement?.closest('.nb-list') !== null;
+  await pane?.refresh?.();
+  if (had) pane?.el.querySelector<HTMLElement>('.nb-side-fold')?.focus();
+}
+/** Ctrl+\ folds and opens the side panel while the Notebook has the focus. */
+document.addEventListener('keydown', ev => {
+  if (!(ev.ctrlKey || ev.metaKey) || ev.altKey || ev.shiftKey || ev.key !== '\\') return;
+  if (!pane?.el.contains(document.activeElement) || !wide()) return;
+  ev.preventDefault();
+  foldSide(!sideFolded);
+});
 
 /** The note open in the editor: its id, or a draft not saved yet (a place, a question, a day's page). */
 let openId: string | null = null;
@@ -178,6 +211,7 @@ async function draw(el: HTMLElement) {
   if (typing) { const f = listEl.querySelector<HTMLInputElement>('.nb-find'); f?.focus(); f?.setSelectionRange(f.value.length, f.value.length); }
   if (ed) edEl.replaceChildren(...ed);
   root.classList.toggle('editing', editorShown && (!!openId || !!draft || !!mainList));
+  root.classList.toggle('side-folded', two && sideFolded && !showTrash);
   if (ed) afterEditorDrawn(edEl);
 }
 
@@ -221,10 +255,21 @@ function listHead(two: boolean): HTMLElement {
   const more = button('icon-btn nb-more', '', () => settingsMenu(more), 'more');
   more.title = 'Notebook settings';
   more.setAttribute('aria-label', 'Notebook settings');
+  if (two) top.append(sideFoldButton(true));
   top.append(f, add);
   if (!two) top.append(bin);
   top.append(more);
   return top;
+}
+
+/** The control that folds the side panel (in its head) and opens it again (on the rail). */
+function sideFoldButton(shut: boolean): HTMLButtonElement {
+  const b = button('icon-btn nb-side-fold', '', () => foldSide(shut), 'sidebar');
+  const what = shut ? 'Fold the side panel' : 'Show the side panel';
+  b.title = `${what} (Ctrl+\\)`;
+  b.setAttribute('aria-label', what);
+  b.setAttribute('aria-expanded', String(shut));
+  return b;
 }
 
 async function drawList(): Promise<HTMLElement[]> {
@@ -234,7 +279,7 @@ async function drawList(): Promise<HTMLElement[]> {
     const t = await wb(['page', 'tree']);
     const scroll = h('div', 'nb-scroll');
     if (t.pinned.length) scroll.append(sideHead('pinned', 'Pinned', t.pinned.length, false), ...(isShut('pinned', false) ? [] : [pinnedRows(t.pinned)]));
-    scroll.append(sideHead('pages', 'Pages', countRows(t.pages), false, true));
+    scroll.append(sideHead('pages', 'Pages', countRows(t.pages), false, true, treeFoldKeys(t.pages)));
     if (!isShut('pages', false)) scroll.append(treeBox(t.pages));
     if (!t.pages.length) scroll.append(h('p', 'muted nb-empty', 'No pages yet. The pen starts one; a note with no place is a page of its own.'));
     out.push(scroll);
@@ -254,10 +299,20 @@ async function drawList(): Promise<HTMLElement[]> {
   }
   const scroll = h('div', 'nb-scroll');
   let any = false;
-  for (const g of d.groups as GroupOf[]) {
-    const entries = g.entries;
-    if (!entries.length && !(g.following)) continue;
+  const groups = (d.groups as GroupOf[]).filter(g => g.entries.length || g.following);
+  // Places with every chapter listed: the chapters sit under their book (debug-spec S2, finding 23f1)
+  const byBook = group === 'chapter' && !groups.some(g => g.following);
+  const fkeys: string[] = [];
+  if (byBook && groups.length) {
+    const b = bookRows(groups);
+    fkeys.push(...b.keys);
+    scroll.append(...b.els);
     any = true;
+  }
+  for (const g of byBook ? [] : groups) {
+    const entries = g.entries;
+    any = true;
+    fkeys.push(`${group}:${g.key}`);
     // A group's heading folds it (finding 929e); the count sits beside the name, not at the line's end, where it read
     // as the day's date (finding 7bc8).
     const fkey = `${group}:${g.key}`;
@@ -273,8 +328,56 @@ async function drawList(): Promise<HTMLElement[]> {
     if (g.following && !entries.length) scroll.append(h('p', 'muted small nb-empty', `No notes on ${g.label} yet. Write one with + on a verse, or a new note with + Place.`));
   }
   if (!any) scroll.append(h('p', 'muted nb-empty', search ? 'No note has all of these words.' : group === 'questions' ? 'No questions yet. Mark a note with ? to ask it.' : group === 'pages' ? 'No pages yet. The pen starts one; a note with no place is a page of its own.' : 'Nothing written yet. Ctrl+J writes a thought at the verse you clicked; the pen starts a note.'));
+  const bar = group === 'day' || group === 'thread' || group === 'chapter' ? foldAllBar(fkeys) : null;
+  if (bar) out.push(bar);
   out.push(scroll);
   return out;
+}
+
+/** Places with every chapter listed, by book (debug-spec S2, finding 23f1): a heading for each book, in the order the core
+ *  gives (Bible order), with how many notes it holds; under it each chapter's own heading and its notes. Both fold; the
+ *  keys are the ones Fold all uses. A note on two chapters of a book counts once in the book's heading. */
+function bookRows(groups: GroupOf[]): { keys: string[]; els: HTMLElement[] } {
+  const keys: string[] = [], els: HTMLElement[] = [];
+  const books: { id: string; name: string; groups: GroupOf[] }[] = [];
+  const loose: GroupOf[] = [];
+  for (const g of groups) {
+    const m = /^(\d+)\.(\d+)$/.exec(g.key);
+    if (!m) { loose.push(g); continue; }
+    // the label is "Book N" (the chapter) or "Book" (the book's whole)
+    const name = m[2] === '0' ? g.label : g.label.slice(0, g.label.length - m[2].length - 1);
+    let b = books[books.length - 1];
+    if (!b || b.id !== m[1]) books.push(b = { id: m[1], name, groups: [] });
+    b.groups.push(g);
+  }
+  const heading = (cls: string, fkey: string, label: string, count: number, tip: string) => {
+    const shut = folded.has(fkey);
+    const gh = button(`nb-ghead ${cls}${shut ? ' shut' : ''}`, '', () => { fold(fkey, !folded.has(fkey)); void pane?.refresh?.(); }, 'down');
+    gh.setAttribute('aria-expanded', String(!shut));
+    gh.title = shut ? `Show ${tip}` : `Fold ${tip} away`;
+    gh.dataset.fold = fkey;
+    gh.append(h('span', 'nb-glabel', label), h('span', 'nb-count', String(count)));
+    els.push(gh);
+    return shut;
+  };
+  for (const b of books) {
+    const fkey = `chapter:book:${b.id}`;
+    keys.push(fkey);
+    const ids = new Set(b.groups.flatMap(g => g.entries.map(e => e.id || e.day || '')));
+    if (heading('book', fkey, b.name, ids.size, `the notes in ${b.name}`)) { for (const g of b.groups) keys.push(`chapter:${g.key}`); continue; }
+    for (const g of b.groups) {
+      const ck = `chapter:${g.key}`;
+      keys.push(ck);
+      const ch = g.key.split('.')[1];
+      if (!heading('chapter-head', ck, ch === '0' ? 'The whole book' : `Chapter ${ch}`, g.entries.length, `these notes`)) els.push(...g.entries.map(item));
+    }
+  }
+  for (const g of loose) {
+    const ck = `chapter:${g.key}`;
+    keys.push(ck);
+    if (!heading('', ck, g.label, g.entries.length, 'these notes')) els.push(...g.entries.map(item));
+  }
+  return { keys, els };
 }
 
 function item(e: Entry): HTMLElement {
@@ -293,6 +396,7 @@ function item(e: Entry): HTMLElement {
   for (const t of e.threads || []) chips.append(h('span', 'nb-item-thread', t.name));
   it.append(chips);
   it.onclick = () => openEntry(e);
+  if (e.id) pageContext(it, e.id);
   if (!e.placed && e.kind !== 'day') {
     // drag it onto a verse in the reader to give it that place
     it.draggable = true;
@@ -370,9 +474,11 @@ function sectionsRow(): HTMLElement {
 const isShut = (key: string, shut: boolean) => folded.has(`side:${key}`) !== shut;
 const flip = (key: string) => { fold(`side:${key}`, !folded.has(`side:${key}`)); void pane?.refresh?.(); };
 const countRows = (rows: Row[]): number => rows.reduce((n, r) => n + 1 + countRows(r.children || []), 0);
+/** The fold keys of every page in the tree that has pages inside it. */
+const treeFoldKeys = (rows: Row[]): string[] => rows.flatMap(r => r.children?.length ? [`side:tree:${r.id}`, ...treeFoldKeys(r.children)] : []);
 
 /** A part's heading: a click folds it; Pages has + (a new page); Pages and Pinned take a page dropped on them. */
-function sideHead(key: string, label: string, count: number | null, shut: boolean, add: boolean | (() => void) = false): HTMLElement {
+function sideHead(key: string, label: string, count: number | null, shut: boolean, add: boolean | (() => void) = false, foldKeys: string[] = []): HTMLElement {
   const head = h('div', 'nb-side-head');
   head.dataset.part = key;
   const s = isShut(key, shut);
@@ -381,6 +487,14 @@ function sideHead(key: string, label: string, count: number | null, shut: boolea
   b.append(h('span', 'nb-glabel', label));
   if (count !== null) b.append(h('span', 'nb-count', String(count)));
   head.append(b);
+  // Fold all / Open all for the pages that hold pages (debug-spec S2)
+  if (foldKeys.length) {
+    const allShut = foldKeys.every(k => folded.has(k));
+    const fa = button('icon-btn nb-side-foldall', '', () => { foldMany(foldKeys, !allShut); void pane?.refresh?.(); }, allShut ? 'expand' : 'collapse');
+    fa.title = allShut ? 'Open all the pages inside pages' : 'Fold all the pages inside pages';
+    fa.setAttribute('aria-label', allShut ? 'Open all' : 'Fold all');
+    head.append(fa);
+  }
   if (add) {
     const plus = button('icon-btn nb-side-add', '', () => (typeof add === 'function' ? add() : void newPage()), 'plus');
     plus.title = key === 'templates' ? 'A new template' : 'A new page';
@@ -455,6 +569,7 @@ function pageRow(r: Row, depth: number, where: 'tree' | 'pinned', siblings: Row[
     add.setAttribute('aria-label', add.title);
     row.append(add);
   }
+  pageContext(row, r.id);
   row.draggable = true;
   row.ondragstart = ev => {
     dragging = r.id;
@@ -514,6 +629,15 @@ function sideRow(cls: string, ico: string | null, label: string, note: string, o
 /** A wide Notebook's sidebar (sheet W1.1): Today, Pinned, Pages, At the reader, Threads, Questions; the Trash at its
  * foot. A search lists every note with its words instead. */
 async function drawSidebar(): Promise<HTMLElement[]> {
+  if (sideFolded) {
+    // the rail: the control that opens the panel again, and the pen
+    const rail = h('div', 'nb-rail');
+    const pen = button('icon-btn nb-new', '', () => void newPage(), 'pen');
+    pen.title = 'A new note';
+    pen.setAttribute('aria-label', 'A new note');
+    rail.append(sideFoldButton(false), pen);
+    return [rail];
+  }
   const top = listHead(true);
   if (search.trim()) {
     const d = await wb(['notebook', '--group', 'none', '--search', search.trim(), ...(nbSettings.today ? [] : ['--no-days'])]);
@@ -534,16 +658,18 @@ async function drawSidebar(): Promise<HTMLElement[]> {
     side.append(sideHead('today', 'Today', null, false));
     if (!isShut('today', false)) for (const d of s.today) {
       const on = d.exists ? openId === d.id : !openId && draft?.day === d.day;
-      side.append(sideRow('nb-day-row', 'pen', d.title, d.today ? 'today' : '', on, () => {
+      const dayRow = sideRow('nb-day-row', 'pen', d.title, d.today ? 'today' : '', on, () => {
         if (d.exists) return openPage(d.id);
         openId = null; mainList = null; draft = { at: null, question: false, day: d.day }; editorShown = true; showTrash = false;
         void pane?.refresh?.();
-      }));
+      });
+      if (d.exists) pageContext(dayRow, d.id);
+      side.append(dayRow);
     }
   }
   side.append(sideHead('pinned', 'Pinned', s.pinned.length, false));
   if (!isShut('pinned', false)) side.append(s.pinned.length ? pinnedRows(s.pinned) : h('p', 'muted small nb-side-hint', 'Drag a page here, or ⋯ → Pin on a page.'));
-  side.append(sideHead('pages', 'Pages', countRows(s.pages), false, true));
+  side.append(sideHead('pages', 'Pages', countRows(s.pages), false, true, treeFoldKeys(s.pages)));
   if (!isShut('pages', false)) side.append(s.pages.length ? treeBox(s.pages) : h('p', 'muted small nb-side-hint', 'No pages yet: + starts one.'));
   const rows: any[] = s.at_readers || [];
   if (rows.length) {
@@ -571,13 +697,18 @@ async function drawSidebar(): Promise<HTMLElement[]> {
   if (!isShut('questions', true)) for (const q of s.questions as Row[]) {
     const b = sideRow(`nb-question-row${q.status === 'done' ? ' done' : ''}`, null, q.title, q.status === 'done' ? 'answered' : '', openId === q.id, () => openPage(q.id));
     b.prepend(h('span', 'nb-tree-q', '?'));
+    pageContext(b, q.id);
     side.append(b);
   }
   // W5 (sheet W6.2): Templates, with + for an empty one; the Templates page from the foot
   const tps: Row[] = s.templates || [];
   if (tps.length) {
     side.append(sideHead('templates', 'Templates', tps.length, false, () => void newTemplate()));
-    if (!isShut('templates', false)) for (const t of tps) side.append(sideRow('nb-template-row', 'notebook', t.title, '', openId === t.id, () => openPage(t.id)));
+    if (!isShut('templates', false)) for (const t of tps) {
+      const tr = sideRow('nb-template-row', 'notebook', t.title, '', openId === t.id, () => openPage(t.id));
+      pageContext(tr, t.id);
+      side.append(tr);
+    }
   }
   const foot = h('div', 'nb-side-foot');
   const tbtn = button('link-btn nb-side-link nb-side-templates', 'Templates', () => showTemplates(), 'notebook');
@@ -627,6 +758,26 @@ async function mainListView(): Promise<HTMLElement[]> {
   list.append(...entries.map(item));
   if (!entries.length) list.append(h('p', 'muted nb-empty', mainList!.kind === 'chapter' ? 'No notes here yet. Write one with + on a verse.' : 'No notes on this thread yet.'));
   out.push(list);
+  // S5 (finding d84d): the thread's own places, read-only, in the thread's order under its notes: the words are the
+  // database's, as `wb thread show` gives them, with their reference
+  if (mainList!.kind === 'thread') {
+    const t = await wb(['thread', 'show', (mainList as { key: string }).key]).catch(() => null);
+    const members: any[] = t?.members || [];
+    if (members.length) {
+      const box = h('section', 'nb-thread-places');
+      box.append(h('h3', 'nb-places-head', `Places · ${members.length}`));
+      for (const m of members) {
+        const row = h('div', `nb-place-row${m.ok === false ? ' off' : ''}`);
+        row.dataset.anchor = m.anchor;
+        const word = /^[HG]\d+$/i.test(m.anchor);
+        const lab = button('ref-link', m.label, ev => (word ? openStrong(m.anchor.toUpperCase()) : void verseCard(m.anchor, lab, ev)));
+        row.append(lab);
+        if (m.quote) row.append(h('p', 'scripture-row nb-place-quote', m.quote));
+        box.append(row);
+      }
+      out.push(box);
+    }
+  }
   return out;
 }
 
@@ -1289,7 +1440,7 @@ function maybeSuggest(ta: HTMLTextAreaElement) {
 
 // ---- the menus: a note's, the place picker, the Trash, settings ------------------------------------------------------
 
-function editorMenu(from: HTMLElement, e: Entry) {
+function editorMenu(from: HTMLElement, e: Entry, at?: { x: number; y: number }) {
   const box = h('div', 'menu-list');
   let close = () => {};
   const item = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
@@ -1298,7 +1449,7 @@ function editorMenu(from: HTMLElement, e: Entry) {
     item('Make a page from it…', () => void newPage(undefined, e.id));
     box.append(h('div', 'menu-sep'));
     item('Delete this template (to the Trash)', () => remove(e));
-    close = popMenu(from, box, { align: 'right', width: 250 });
+    close = popMenu(from, box, { align: at ? 'left' : 'right', width: 250, at });
     return;
   }
   const onThreadOnly = e.placed && !e.anchor;
@@ -1328,8 +1479,43 @@ function editorMenu(from: HTMLElement, e: Entry) {
     });
   }
   item(e.kind === 'day' ? 'Delete this page (to the Trash)' : 'Delete (to the Trash)', () => remove(e));
-  close = popMenu(from, box, { align: 'right', width: 230 });
+  close = popMenu(from, box, { align: at ? 'left' : 'right', width: 230, at });
 }
+
+// ---- right-click (debug-spec S3, finding b737): a page's menu at the pointer ------------------------------------------------
+
+/** Opens the page's own menu (the one ⋯ opens: one builder, two ways to it) where the pointer is. `row` is what the
+ *  menu is about, so Move inside… and Place it… open from it. A long press does the same on touch. */
+function pageMenuAt(x: number, y: number, row: HTMLElement, id: string) {
+  void (async () => {
+    let e: Entry;
+    try { e = await wb(['note', 'show', id]); } catch { return; }
+    editorMenu(row, e, { x, y });
+  })();
+}
+
+/** Makes a row open `menu` on a right-click, and on a long press (the touch devices that send no contextmenu). */
+function onContext(row: HTMLElement, menu: (x: number, y: number) => void) {
+  row.addEventListener('contextmenu', ev => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (Date.now() - longAt < 700) return; // the long press opened it already
+    menu(ev.clientX, ev.clientY);
+  });
+  let timer = 0, sx = 0, sy = 0, longAt = 0;
+  const cancel = () => { clearTimeout(timer); timer = 0; };
+  row.addEventListener('pointerdown', ev => {
+    if (ev.pointerType !== 'touch') return;
+    sx = ev.clientX; sy = ev.clientY;
+    cancel();
+    timer = window.setTimeout(() => { timer = 0; longAt = Date.now(); menu(sx, sy); }, 550);
+  });
+  row.addEventListener('pointermove', ev => { if (timer && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 10) cancel(); });
+  for (const t of ['pointerup', 'pointercancel', 'dragstart'] as const) row.addEventListener(t, cancel);
+}
+
+/** A page's row (tree, Pinned, a list, a question, a template, a day) opens that page's menu on a right-click. */
+const pageContext = (row: HTMLElement, id: string) => onContext(row, (x, y) => pageMenuAt(x, y, row, id));
 
 /** Move inside…: every page it can go inside (not itself, nor a page inside it), as the tree; or the top of Pages. */
 async function moveInside(from: HTMLElement, e: Entry) {
@@ -1469,16 +1655,23 @@ async function trashList(two: boolean): Promise<HTMLElement[]> {
     const left = t.days_left === 0 ? 'erased next time the app opens' : `erased in ${t.days_left} day${t.days_left === 1 ? '' : 's'}`;
     top2.append(h('span', 'nb-time', left));
     c.append(top2, h('p', 'nb-text', t.text));
-    const acts = h('div', 'nb-acts');
-    acts.append(button('btn soft small', 'Put it back', async () => {
-      try { await wb(['trash', 'restore', t.name]); toast('Put back'); changed(); } catch (x) { toast(String(x)); }
-    }));
+    const putBack = async () => { try { await wb(['trash', 'restore', t.name]); toast('Put back'); changed(); } catch (x) { toast(String(x)); } };
     // the only erase besides the 7 days (the person's decision, 2026-11-04), asked first
-    acts.append(h('span', 'grow'), button('link-btn danger', 'Erase now', async () => {
+    const eraseNow = async () => {
       if (!confirm(`Erase this ${t.question ? 'question' : t.kind === 'day' ? 'page' : 'note'} now? It cannot be put back.`)) return;
       try { await wb(['trash', 'erase', t.name]); toast('Erased'); changed(); } catch (x) { toast(String(x)); }
-    }, 'trash'));
+    };
+    const acts = h('div', 'nb-acts');
+    acts.append(button('btn soft small', 'Put it back', putBack));
+    acts.append(h('span', 'grow'), button('link-btn danger', 'Erase now', eraseNow, 'trash'));
     c.append(acts);
+    // S3: a right-click on a deleted note offers the same two
+    onContext(c, (x, y) => {
+      const box = h('div', 'menu-list');
+      let close = () => {};
+      box.append(button('menu-item', 'Put it back', () => { close(); void putBack(); }), button('menu-item', 'Erase now', () => { close(); void eraseNow(); }));
+      close = popMenu(c, box, { width: 190, at: { x, y } });
+    });
     scroll.append(c);
   }
   if (!d.notes.length) scroll.append(h('p', 'muted nb-empty', 'Nothing deleted.'));
