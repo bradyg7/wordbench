@@ -134,3 +134,23 @@ Which source should the Definitions tab use?
    decision that the rule would need to allow.
 
 Which, and if 1828, do you have a copy you trust?
+
+## Decision (2026-11-09)
+
+The person chose Webster's ("lets go with webster's"), taken as **Webster's 1913**, the only edition with a confirmed open
+file (Gutenberg #29765 via `matthewreagan/WebstersEnglishDictionary`); if the 1828 was meant, a trusted copy is needed
+first.
+
+## Built (2026-11-09)
+
+- `scripts/build-dictionary.py` makes the read-only `dictionary.db` (102,217 entries, headword and text verbatim, the
+  source and licence in `meta`). Default place: `%LOCALAPPDATA%ible-workbench-rs\dictionary.db`, or `WB_DICT_DB`.
+  It is not in the repository (22 MB); run the script once on a new computer (it downloads the JSON to a temp file).
+- `wb-core::dictionary`: opens it read-only; `entry` (the word, else with an ending taken off: ies, ed, ing, eth, s...),
+  `words_of` (a place's words, each once, with its entry).
+- `wb word-define <word>`, `--verse <place>`, `--source`. Not in the Python `wb`, so no golden case.
+- The verse card's Definitions tab: the verse's words that have an entry as buttons; a click shows the entry with the
+  dictionary's name, year and licence under it. No dictionary built: the tab says so and how.
+- Differences from the sketch above: an entry is shown whole, as stored. Cutting it to its numbered senses would mean
+  rewriting the source's text. Some entries begin with a cross-reference line ("See 1st Frith.") as the source has it.
+- Tests: `crates/wb-cli/tests/dictionary.rs` (a small dictionary made in the test; no dictionary text typed).

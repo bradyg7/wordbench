@@ -62,7 +62,7 @@ about the Phinehas demo. The app uses Literata for scripture; the sheets use Mer
 | [W7.3 · Made, and every verse checked](../design/exports/workspace/w7-3-made-and-every-verse-checked.png) | The files, and each verse checked against the Bible | — |
 | [W7.4 · The page keeps its documents](../design/exports/workspace/w7-4-the-page-keeps-its-documents.png) | Documents at the page's foot; Make again when the page changed since; a preview | — |
 
-Definitions (W5) stay blank until tier 7's dictionary is chosen.
+Definitions (W5) show Webster's 1913 (R5, chosen 2026-11-09): the verse's words that have an entry, an entry verbatim with its source and licence.
 
 ## What it would change in the study folder
 

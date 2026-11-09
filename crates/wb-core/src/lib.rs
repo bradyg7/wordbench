@@ -10,6 +10,7 @@ pub mod check;
 pub mod findings;
 pub mod guide;
 pub mod commands;
+pub mod dictionary;
 pub mod docs;
 pub mod lookup;
 pub mod marks;

@@ -90,6 +90,10 @@ pub fn commands() -> Vec<Command> {
                 let c2 = if s.c2 != s.c1 { Some(s.c2) } else { None };
                 Ok(Out::Json(lookup::interlinear(c.bible()?, s.book.id, s.c1, s.v1 as i64, c2, s.v2 as i64, a.int("offset")?, lookup::INTERLINEAR_VERSES).map_err(e)?))
             }),
+        // The app's own (not in the Python wb): an English word's definition, Webster's 1913, verbatim (docs/redesign-R5.md).
+        cmd("word-define", "A word's English definition from Webster's 1913 (public domain), verbatim with its source: wb word-define envious.
+                     --verse \"Prov 14:30\": the words of a place that have an entry. --source: which dictionary, its licence and where it came from.",
+            vec![Pos("word", N::Any), Opt("verse", None), Flag("source")], word_define),
         // The app's own views (not in the Python wb): what the reader, the word sheet and the verse sheet show.
         cmd("reader", "What the reader draws for a chapter: its words and the marks on them (JSON): wb reader NUM 25 [--version ylt]. Another version than the KJV shows the marks on whole verses only.",
             vec![Pos("book", N::One), Pos("ch", N::One), Opt("version", Some("KJV"))], |c, a| {
@@ -223,4 +227,34 @@ fn fixture(c: &Ctx<'_>, a: &Args) -> Res {
         }
     }
     Ok(Out::Text(json!({"reader": reader, "words": words, "verses": verses}).to_string()))
+}
+
+/// `wb word-define`: the dictionary's entries (never a pick of one sense for a verse).
+fn word_define(c: &Ctx<'_>, a: &Args) -> Res {
+    let d = wb_core::dictionary::Dictionary::open(&wb_core::dictionary::default_path()).map_err(e)?;
+    let source = d.source().map_err(e)?;
+    if a.flag("source") {
+        return Ok(Out::Json(json!({ "source": source })));
+    }
+    if let Some(place) = a.opt("verse") {
+        let span = c.span(&place)?;
+        let words: Vec<Value> = d
+            .words_of(c.bible()?, &span)
+            .map_err(e)?
+            .into_iter()
+            .map(|(w, en)| match en {
+                Some(en) => json!({"word": w, "headword": en.headword, "text": en.text}),
+                None => json!({"word": w}),
+            })
+            .collect();
+        return Ok(Out::Json(json!({ "place": place, "source": source, "words": words })));
+    }
+    let word = a.s("word");
+    if word.is_empty() {
+        return Err("Give a word, like: wb word-define envious".into());
+    }
+    Ok(Out::Json(match d.entry(&word).map_err(e)? {
+        Some(en) => json!({"word": en.word, "found": true, "headword": en.headword, "text": en.text, "source": source}),
+        None => json!({"word": word, "found": false, "source": source}),
+    }))
 }
