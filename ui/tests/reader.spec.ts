@@ -243,6 +243,29 @@ test('desktop: a click on a verse number selects the verse with the color bar; a
   await expect(page.locator('#reader .w.sel, #reader .vn.vsel')).toHaveCount(0);
 });
 
+test('the findings box takes a pasted picture and says no to a file over 10 MB; it fits the width (C1)', async ({ page }, info) => {
+  await ready(page);
+  await page.locator('#reader').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Control+Shift+KeyJ');
+  const box = page.locator('.finding-box');
+  await expect(box.locator('.finding-browse')).toBeVisible();
+  await expect(box.locator('.finding-attach')).toContainText('10 MB');
+  await page.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.items.add(new File([new Uint8Array(64)], 'image.png', { type: 'image/png' }));
+    document.querySelector('.finding-field')!.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt }));
+  });
+  await expect(box.locator('.file-chip-name')).toHaveText([/^pasted \d{4}-\d\d-\d\d \d{6}\.png$/]);
+  await box.locator('.file-pick').setInputFiles({ name: 'big.bin', mimeType: 'application/octet-stream', buffer: Buffer.alloc(10 * 1024 * 1024 + 1) });
+  await expect(page.locator('.toast')).toContainText('10 MB at most');
+  await expect(box.locator('.file-chip')).toHaveCount(1);
+  const fits = await box.evaluate(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && [...b.querySelectorAll('.file-chip, .finding-attach')].every(e => e.getBoundingClientRect().right <= r.right + 0.5); });
+  expect(fits).toBe(true);
+  await page.screenshot({ path: `${shots}/${info.project.name}-finding-files.png` });
+  await box.locator('.file-chip-x').click();
+  await expect(box.locator('.file-chip')).toHaveCount(0);
+});
+
 test('the pen: on the phone only', async ({ page }, info) => {
   await ready(page);
   if (info.project.name === 'webkit-phone') await expect(page.locator('#pen')).toBeVisible();

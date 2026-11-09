@@ -24,7 +24,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 rmSync(work, { recursive: true, force: true });
 cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { recursive: true });
 mkdirSync(cache, { recursive: true });
-const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: '9334' };
+const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: '9334', WB_NO_OPEN: '1' };
 const proc = spawn(exe, [], { env, stdio: 'ignore' });
 const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
 
@@ -2013,6 +2013,80 @@ try {
     await fcard.getByRole('button', { name: '✓ Handled' }).click();
     await page.waitForFunction(() => !document.querySelector('.pane-findings .note-card.finding'), null, { timeout: 10000 }).catch(() => {});
     check('✓ Handled marks it handled (wb findings --all)', JSON.parse(execFileSync(wbExe, ['findings', '--all'], { env }).toString()).counts.handled === 1);
+    await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'findings')) d.close(p); });
+
+    // C1 (finding b737): files attached to a finding: dropped on the box, a picture pasted, one picked with Browse;
+    // copied into findings/<id>/ and nowhere else. (Synthetic events here; measure/real-drag.mjs drops a file with the
+    // operating system's own drag.)
+    const srcDir = path.join(work, 'attach-src');
+    mkdirSync(srcDir, { recursive: true });
+    const pngBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    const pdfBytes = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
+    writeFileSync(path.join(srcDir, 'example.pdf'), pdfBytes);
+    writeFileSync(path.join(srcDir, 'too big.bin'), Buffer.alloc(10 * 1024 * 1024 + 1));
+    const snapshot = dir => { const out = new Map(); const walk = d => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else out.set(path.relative(dir, p).replace(/\\/g, '/'), readFileSync(p).toString('base64')); } }; walk(dir); return out; };
+    const studyBefore = snapshot(study);
+    await page.locator('#reader').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press('Control+Shift+KeyJ');
+    await page.waitForFunction(() => document.activeElement?.classList.contains('finding-field'), null, { timeout: 5000 }).catch(() => {});
+    await page.keyboard.type('The box could take a screenshot and an example');
+    // a PNG dropped on the box
+    await page.evaluate(b64 => {
+      const box = document.querySelector('.finding-box');
+      const dt = new DataTransfer();
+      dt.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'dropped.png', { type: 'image/png' }));
+      for (const type of ['dragenter', 'dragover', 'drop']) box.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt }));
+    }, pngBytes.toString('base64'));
+    // a picture pasted into the words (the clipboard calls it image.png)
+    await page.evaluate(b64 => {
+      const dt = new DataTransfer();
+      dt.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'image.png', { type: 'image/png' }));
+      document.querySelector('.finding-field').dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt }));
+    }, pngBytes.toString('base64'));
+    // a PDF picked with Browse…, and one over the cap, which is refused with a word
+    await page.locator('.finding-box .file-pick').setInputFiles([path.join(srcDir, 'example.pdf')]);
+    await page.locator('.finding-box .file-pick').setInputFiles([path.join(srcDir, 'too big.bin')]);
+    const capSaid = await page.locator('.toast', { hasText: '10 MB at most' }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+    const boxChips = await page.locator('.finding-box .file-chip-name').allTextContents();
+    check('the findings box takes a dropped PNG, a pasted picture and a PDF from Browse…, and says no to one over 10 MB', boxChips.length === 3 && boxChips[0] === 'dropped.png' && /^pasted \d{4}-\d\d-\d\d \d{6}\.png$/.test(boxChips[1]) && boxChips[2] === 'example.pdf' && capSaid, boxChips.join(', '));
+    await page.screenshot({ path: shots + '1440-finding-files.png' });
+    // a file let go outside a drop zone is not opened by the web view in place of the app
+    const strayKept = await page.evaluate(() => { const dt = new DataTransfer(); dt.items.add(new File(['x'], 'stray.txt')); const e = new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }); document.querySelector('#reader').dispatchEvent(e); return e.defaultPrevented; });
+    check('a file dropped on the reader is not opened in place of the app', strayKept);
+    await page.locator('.finding-field').press('Enter');
+    let attached = null;
+    for (let i = 0; i < 40 && !attached; i++) {
+      const all = JSON.parse(execFileSync(wbExe, ['findings'], { env }).toString()).findings;
+      attached = all.find(f => f.text.startsWith('The box could take') && f.files.length === 3) || null;
+      if (!attached) await sleep(150);
+    }
+    const studyAfter = snapshot(study);
+    const written = [...studyAfter.keys()].filter(k => studyBefore.get(k) !== studyAfter.get(k));
+    const fid = attached?.id || '';
+    const onlyFindings = written.length === 4 && written.every(k => k === `findings/${fid}.md` || k.startsWith(`findings/${fid}/`)) && [...studyBefore.keys()].every(k => studyAfter.has(k));
+    const filesDir = path.join(study, 'findings', fid);
+    const sameBytes = !!fid && readFileSync(path.join(filesDir, 'dropped.png')).equals(pngBytes) && readFileSync(path.join(filesDir, 'example.pdf')).equals(pdfBytes) && readFileSync(path.join(srcDir, 'example.pdf')).equals(pdfBytes);
+    check('Enter keeps it with its 3 files in findings/<id>/, byte for byte; nothing else in the study folder is written', !!attached && onlyFindings && sameBytes, written.join(', '));
+    const fmd = fid ? readFileSync(path.join(study, 'findings', `${fid}.md`), 'utf8') : '';
+    const mdKeys = fmd.split('---')[1]?.trim().split('\n').filter(l => /^[a-z]+:/.test(l)).map(l => l.split(':')[0]).join(',');
+    check('a finding’s .md is the same with files as without: they are listed from the folder, not in the file', mdKeys === 'id,kind,status,created,updated,context', mdKeys);
+    const shown = fid ? JSON.parse(execFileSync(wbExe, ['finding', 'show', fid.slice(-4)], { env }).toString()) : {};
+    check('wb finding show lists them with their paths', (shown.files || []).map(f => f.name).join(', ') === `dropped.png, example.pdf, ${boxChips[1]}` && shown.files.every(f => existsSync(f.path)), (shown.files || []).map(f => f.name).join(', '));
+    // the Findings pane lists them on the card; a click opens one (WB_NO_OPEN: nothing is put on the screen)
+    await page.evaluate(() => window.__wb.run('findings'));
+    const acard = page.locator(`.pane-findings .note-card.finding[data-id="${fid}"]`);
+    await acard.waitFor({ timeout: 10000 }).catch(() => {});
+    const cardChips = await acard.locator('.file-chip-name').allTextContents();
+    await acard.locator('.file-chip-open', { hasText: 'example.pdf' }).click();
+    const opened = await page.locator('.toast', { hasText: 'Opening example.pdf' }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+    check('the Findings pane shows the files on the card, and a click opens one (wb finding open answers for it)', cardChips.length === 3 && opened, cardChips.join(', '));
+    await page.screenshot({ path: shots + '1440-findings-files.png' });
+    // × takes one off, to .trash
+    page.once('dialog', d => void d.accept());
+    await acard.locator('.file-chip', { hasText: 'dropped.png' }).locator('.file-chip-x').click();
+    await page.waitForFunction(id => document.querySelectorAll(`.pane-findings .note-card.finding[data-id="${id}"] .file-chip`).length === 2, fid, { timeout: 5000 }).catch(() => {});
+    const offToTrash = readdirSync(path.join(study, '.trash')).some(n => n.endsWith(`finding-${fid}-dropped.png`)) && !existsSync(path.join(filesDir, 'dropped.png'));
+    check('× takes a file off the finding: it goes to .trash', offToTrash && await acard.locator('.file-chip').count() === 2);
     await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'findings')) d.close(p); });
 
     // 28d3: on touch (a laptop flipped to a tablet), writing a note keeps the cursor, so the on-screen keyboard stays

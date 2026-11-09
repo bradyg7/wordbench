@@ -30,7 +30,7 @@ must be reproduced before it is changed. Sizes: **S** under 2 hours, **M** half 
 | S6 | Second reader parity: book and chapter picker, KJV/YLT switch | `b59b` (part) | M | **Should** |
 | S7 | A finding records the build that is running, not the last commit | seen in `findings/` | S | **Should** |
 | S8 | A clean filter for the Notebook (one-page design first) | `4463` | M | **Should, design sheet first** |
-| C1 | Files attached to a finding | `b737` (part) | M | **Could** |
+| C1 | Files attached to a finding | `b737` (part) | M | **Could**, built (§29): drop, paste and Browse; the handler stays off |
 | C2 | Empty blocks left behind as stray Markdown (`>`) | seen in `notes/_inbox/…3fa7` | S | **Done 2026-11-08** (phase2-results §28) |
 | D1 | Deletes destroyed with an undo (10 s; 30 s for a batch), and a delete-all-pages button: **decided 2026-11-08** | `cf09`, `0ade` | M | **Decided: build** |
 | R1 | Everything is a page; threads, notes, questions become blocks or pages; the Threads tab goes | `38c2`, `7d00`, `d84d` (part) | L+ | **REDESIGN** |
@@ -42,6 +42,7 @@ must be reproduced before it is changed. Sizes: **S** under 2 hours, **M** half 
 
 **Status, 2026-11-08:** M1 to M6 are built and installed (docs/phase2-results.md §26). M5's text size (90%) is the proposal, not yet the person's choice.
 **Status, later 2026-11-08:** S1 to S7 are built (docs/phase2-results.md §27); S8's one-page sheet is drawn (`design/exports/filter/`) and waits for the person to accept it before anything is built. D1 and the redesigns are untouched.
+**Status, late 2026-11-08:** C1 is built (docs/phase2-results.md §28): a drop, a paste and Browse… on the findings box, checked with a real OS file drop; Tauri's handler stays off. Not installed.
 
 **Order:** commit what is built (W6 is not committed) → M2, M3, M4, M5, M6 in one session, since they are styling and small
 UI → M1, which needs real mouse input to reproduce → S1, S2, S4, S7, S3 → D1 (decided), S8's sheet, S5, S6 → the
@@ -293,6 +294,10 @@ finding and in the Findings pane, and in `wb finding show`. Needs M1's drop-hand
 exactly what `disable_drag_drop_handler` would give up; the box would need a Browse button instead, or the handler stays
 on and drops are read with Tauri's own file-drop event). Cap the size and say so. **Done when:** a PNG and a PDF attach,
 open from the finding, and the `findings/` folder is the only place written.
+**Built 2026-11-08 (phase2-results §28).** The decision answered itself: with Tauri's handler off, WebView2 gives the
+page an ordinary HTML5 drop with the files in it, checked with the operating system's own file drag
+(`measure/real-drag.mjs`, checks 3 to 5), so the box takes a drop, a pasted picture and Browse…, and the handler stays
+off. 10 MB a file. `wb finding show | attach | detach | open`.
 
 ### C2. Empty blocks leave stray Markdown
 `notes/_inbox/n_20261103204012_3fa7.md` holds a lone `>` line between its text and its scripture block: an empty quote

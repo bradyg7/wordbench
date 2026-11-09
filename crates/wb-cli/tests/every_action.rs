@@ -39,6 +39,9 @@ const INTERNAL: &[&str] = &[
     "view_fence", "view_line", "span_ref", "fill", "rows",
     // a document from a page (W6): its words without Markdown, its rows and its blocks, pieces of wb craft parts and wb craft word|deck --page
     "plain_words", "parts", "source",
+    // files attached to a finding (C1): the window's form of wb finding attach, for a dropped or pasted file, which has
+    // bytes but no path in the page (app/src-tauri's finding_attach; a terminal attaches by path)
+    "attach_bytes",
 ];
 
 fn public_fns(src: &str) -> Vec<String> {

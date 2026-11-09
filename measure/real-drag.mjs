@@ -6,7 +6,7 @@
 //   node measure/real-drag.mjs           the debug app (its UI comes from `npm run dev` on :1420)
 //   node measure/real-drag.mjs --release the release app
 import { spawn, execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
@@ -89,6 +89,55 @@ try {
   const rowA = page.locator(`.pane-notebook .nb-tree .nb-tree-row[data-id="${idA}"]`), rowB = page.locator(`.pane-notebook .nb-tree .nb-tree-row[data-id="${idB}"]`);
   await realDrag(await centre(rowB), await centre(rowA));
   check('a real mouse drags a sidebar page onto another: it goes inside it', await waitFile(idB, t => new RegExp(`parent: "?${idA}"?`).test(t)), textOf(idB).split('---')[1]?.trim().replace(/\n/g, ' · '));
+
+  // 3. C1: a file dragged from another program (the operating system's own file drag, as from Explorer) and let go on the
+  // findings box; Tauri's drop handler is off (M1), so WebView2 gives the page an HTML5 drop with the files in it
+  const src = path.join(work, 'src');
+  mkdirSync(src, { recursive: true });
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const pdf = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
+  writeFileSync(path.join(src, 'real-drop.png'), png);
+  writeFileSync(path.join(src, 'real-drop.pdf'), pdf);
+  writeFileSync(path.join(src, 'real-browse.pdf'), pdf);
+  await page.locator('#reader').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Control+Shift+KeyJ');
+  await page.locator('.finding-field').waitFor({ timeout: 5000 });
+  await page.keyboard.type('A real file drop on the findings box');
+  const [fromX, fromY] = toScreen(60, (await page.evaluate(() => innerHeight)) - 160);
+  const source = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', file('measure/file-drag-source.ps1'), String(fromX), String(fromY), `${path.join(src, 'real-drop.png')}|${path.join(src, 'real-drop.pdf')}`]);
+  let said = '';
+  source.stdout.on('data', d => { said += d; });
+  for (let i = 0; i < 100 && !said.includes('ready'); i++) await sleep(100);
+  if (!said.includes('ready')) throw new Error('the drag source window did not show');
+  await sleep(300);
+  const field = await centre(page.locator('.finding-field'));
+  const [toX, toY] = toScreen(...field);
+  ps('drag', fromX + 70, fromY + 45, toX, toY, 30);
+  for (let i = 0; i < 30 && !said.includes('dropped'); i++) await sleep(100);
+  await sleep(300);
+  const dropped = await page.locator('.finding-box .file-chip-name').allTextContents();
+  check('a real file drop (the OS drag from another program) puts a PNG and a PDF on the findings box', dropped.join(', ') === 'real-drop.png, real-drop.pdf', `${dropped.join(', ') || 'none'}; the source said “${said.trim().replace(/\s+/g, ' ')}”`);
+
+  // 4. Browse… clicked with the real mouse opens the system's file dialog; the path is typed into it with the real keyboard
+  const [bx, by] = toScreen(...await centre(page.locator('.finding-box .finding-browse')));
+  ps('click', bx, by);
+  let picked = true;
+  try { ps('pick', proc.pid, path.join(src, 'real-browse.pdf')); } catch (x) { picked = false; console.log(`     (${String(x.stderr || x).split('\n')[0]})`); }
+  await page.waitForFunction(() => document.querySelectorAll('.finding-box .file-chip').length === 3, null, { timeout: 5000 }).catch(() => {});
+  const all = await page.locator('.finding-box .file-chip-name').allTextContents();
+  check('Browse… opens the file dialog and the file picked there is added', picked && all.includes('real-browse.pdf'), all.join(', '));
+  await page.locator('.finding-field').focus();
+  await page.keyboard.press('Enter');
+  const fdir = path.join(study, 'findings');
+  let fid = '';
+  for (let i = 0; i < 40 && !fid; i++) {
+    const md = existsSync(fdir) ? readdirSync(fdir).find(n => n.endsWith('.md') && readFileSync(path.join(fdir, n), 'utf8').includes('A real file drop')) : null;
+    if (md && existsSync(path.join(fdir, md.slice(0, -3))) && readdirSync(path.join(fdir, md.slice(0, -3))).length === 3) fid = md.slice(0, -3);
+    else await sleep(150);
+  }
+  const kept = fid ? readdirSync(path.join(fdir, fid)).sort() : [];
+  const same = kept.length === 3 && readFileSync(path.join(fdir, fid, 'real-drop.png')).equals(png) && readFileSync(path.join(fdir, fid, 'real-drop.pdf')).equals(pdf) && readFileSync(path.join(src, 'real-drop.png')).equals(png);
+  check('kept: the three files are in findings/<id>/, byte for byte, and the dropped ones are still where they were', same, kept.join(', '));
 } catch (e) {
   console.log(`FAIL real-drag.mjs — ${e}`);
   await page?.screenshot({ path: path.join(work, 'failed.png') }).catch(() => {});
@@ -97,6 +146,6 @@ try {
   await browser?.close().catch(() => {});
   kill();
 }
-const ok = results.length >= 2 && results.every(Boolean);
+const ok = results.length >= 5 && results.every(Boolean);
 console.log(ok ? 'all passed' : 'FAILED');
 process.exit(ok ? 0 : 1);

@@ -22,7 +22,8 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
   when it opens, `wb trash empty` from a terminal), or at once with Erase now in the Trash, asked to confirm (the
   person's decision, 2026-11-04; `wb trash erase <name>`). Nothing else is erased. New fields (`also`, `threads`; a page's `parent`, `order`, `pinned`), the
   `notes/_threads/` and `notes/_days/` folders (today's page: no anchor), `settings/notebook.json`, `findings/` (the
-  person's findings about the app, beside `notes/` so the Notebook never lists them) and `.trash/reading-unmarked.jsonl`
+  person's findings about the app, beside `notes/` so the Notebook never lists them; `findings/<id>/` holds the files
+  attached to a finding, copied in, 10 MB each at most) and `.trash/reading-unmarked.jsonl`
   (a mark taken off the reading log) are ones the Python app keeps or passes over.
 - **The Bible database is read-only.** `WB_BIBLE_DB` (default: the Python repo's `datasets/workbench.db`) is opened with
   SQLite's read-only flag. Never modify it.
