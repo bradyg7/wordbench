@@ -217,3 +217,81 @@ chasing.
 6. **The builder.** Is D4 the kind of tool you meant ("similar to the notes")? Is limiting fonts to the two and colors to
    the theme's roles acceptable?
 7. **PowerPoint.** Any reason you still need a .pptx (someone else's projector computer, editing slides by hand)?
+
+---
+
+## Second pass: made yours, without designing (2026-11-09)
+
+The person liked D1–D8 and asked to build on them: *"a bit more customizable (not a full Microsoft-Word feature
+integration, but a streamlined customizability that is user-friendly to highly aesthetic folk and folk who want to
+minimize printer ink consumption, or those who don't care for designing, but would still want something that looks
+nice)."* Sheets D9–D11 (second section of the board, `design/exports/r3/d9…d11`).
+
+### Three depths, each optional
+
+| Who | What they touch | Sheet |
+|---|---|---|
+| Doesn't care to design | **A Look**: one click on a small page of their own source. Preview is the default. | D9 |
+| Cares about how it looks | **Six dials** under the Looks, changing the live page at once | D10 |
+| Wants to choose what goes in | **The parts** (the builder, D4) | D4 |
+| Wants to save ink | the **Ink** dial, or the *Ink saver* Look; and a line saying pages and ink before printing | D10, D11 |
+
+A **Look is only a named set of the dials' values**. So nothing a Look does is out of reach of the dials, a person's own
+Look is just "Save as a Look", and there is one engine, not two.
+
+### The five Looks (D9)
+
+| Look | Headings / scripture | Accent | Size, spacing | Details |
+|---|---|---|---|---|
+| **Preview** (default) | Inter / Literata | red `#8E1B14` | Regular, Comfortable | title left |
+| **Classic** | Literata / Literata | brown `#5A3E1B` | Regular, Comfortable+ | title centered, a thin rule under it |
+| **Ink saver** | Inter Medium / Literata | grey `#444` | Small, Compact | no rules or fills; verse numbers plain |
+| **Large print** | Inter Bold / Literata | deep red | Largest (1.33 ×), Airy | strong contrast |
+| **Modern** | Inter / Inter | blue `#1F4E79` | Regular, Comfortable | |
+
+Every Look uses only the two fonts that travel (embedded, §2), so no Look depends on what is installed.
+
+### The six dials (D10)
+
+1. **Typeface**: pairs only (Inter / Literata, Literata / Literata, Inter / Inter), so headings and scripture always agree.
+2. **Accent**: six curated swatches (red, brown, blue, green, plum, graphite) or *Your own…* (a color picker). Used only
+   where the preview uses it: references, verse numbers, cues, delivery notes, the rule.
+3. **Size**: Small, Regular, Large, Largest (0.92, 1, 1.17, 1.33 × the structure's body size). Words, not points.
+4. **Spacing**: Compact, Comfortable, Airy (line height 1.35 / 1.5 / 1.6, and the space around a passage).
+5. **Details**: four small menus. Title left or centered; verse numbers in the accent, plain, or in the margin; under the
+   title nothing, a thin rule, or space; paper Letter or A4.
+6. **Ink**: Full color, Saver, Black only. It is last because it **overrides** the others for printing without changing
+   them: Saver turns the accent to grey, drops rules and fills and tightens spacing; Black only also sets verse numbers and
+   references in black. Turning it back restores the person's choices.
+
+For slides the same dials apply, minus Size and Spacing (the boxes fit the text) and with **Paper** (the theme's colors:
+white, Vellum, Vigil …) in place of Ink. A dark slide theme never reaches a printer.
+
+### Ink, measured (D11)
+
+Under the live page: *"2 pages · ink: light"*. Pages come from laying the document out (Typst already lays out the PDF;
+for Word, the preview's paged layout, S4). Ink is the share of the page area covered, weighted by darkness, computed from
+the laid-out page, so it is measured, not promised; shown in three words (light, moderate, heavy), not a percentage that
+looks more exact than it is. The figures on the sheet are illustrative. Ink saver can be shown beside the current Look.
+
+### What is saved
+
+- A person's own Look: `settings/doc-looks/<name>.json`, the dials' values only. The shipped five are in the app and
+  cannot be lost or overwritten (editing one and saving asks for a new name).
+- The Look last used for each kind of document is remembered (`settings/export.json`, beside the theme it already keeps).
+- A document's record names its Look **and keeps the values it was made with**, so Make again makes the same document
+  even if the Look is changed later. Changing a Look does not mark documents out of date; changing a document's own
+  choices in Make again does.
+- Still nothing in the plan: Looks and dials are styling, so the fingerprint agreement (§6) is unaffected by them.
+
+### Not in it, on purpose
+
+Free fonts, per-paragraph formatting, margins in inches, slide boxes moved by hand, and anything that writes words into
+the document. Each would be a step toward Word, and the person asked for the opposite.
+
+### Further questions for the person
+
+8. **Looks.** Are these five the right starting set? One to drop, or one missing (for example a *Two columns* reading Look)?
+9. **Accent swatches.** Six curated colors plus your own: enough, or would you rather pick only from the curated six?
+10. **Ink.** Is "light / moderate / heavy" with a page count what you want to see, or an actual percentage?
+11. **Where it lives.** Looks and dials inside Make (D10), with the parts (D4) one step deeper under *What goes in*: right?
