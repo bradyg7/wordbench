@@ -335,7 +335,7 @@ Four switches, never a layout editor:
 
 | Switch | Values | Default |
 |---|---|---|
-| Cover page | off / on (title, subtitle, date alone on page 1) | off (on for a Speaker Script longer than 4 pages: no, keep it off; the person turns it on) |
+| Cover page | off / on (title, subtitle, date alone on page 1) | off |
 | Running head | off / on (the title, small, on every page after the first) | on |
 | Page numbers | Page x of y / x / none | Page x of y |
 | Columns | one / two (scripture-only documents: the Reading Sheet) | one |
