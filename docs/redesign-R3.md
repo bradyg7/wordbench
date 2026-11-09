@@ -1,7 +1,49 @@
 # R3 design round: documents in the preview's look, and a template builder
 
-Finding `868e`, item R3 of [debug-spec.md](debug-spec.md). **A design round only: nothing here is built**, and nothing is
-built until the person accepts a design. The sheets are `design/r3.py` → `design/r3.figcraft` and
+> **Accepted, 2026-11-09.** After three passes the person said *"Finalize it."* The design to build is the whole of
+> this document, sheets D1–D15. The fifteen questions below were not answered one by one, so **each is settled at the
+> proposal the sheets draw** (listed in *The decisions, as accepted*, next). Any of them can still be changed by the
+> person before or while it is built; nothing is built yet.
+
+## The decisions, as accepted
+
+| # | Question | Settled as |
+|---|---|---|
+| 1 | The look | D1–D8: the preview's fonts, sizes and colors as the Word styles; headings in ink, the accent only on references, verse numbers, cues, delivery notes |
+| 2 | Paper | Letter by default, A4 a Detail; white paper for every Word document |
+| 3 | Structures | Shipped templates: Speaker Script, Share Copy, Study Sheet, Reading Sheet (Word); Verse by Verse, Reader (PDF). Pulpit, Study Table, Thread Map, Thread Dossier dropped for now |
+| 4 | Slides' default | Paper (white); the dark themes for dim rooms |
+| 5 | Old documents | Read *Old design*, with Update; never rebuilt unasked |
+| 6 | The builder | D4 as drawn; fonts limited to Literata and Inter, colors to the theme's roles |
+| 7 | PowerPoint | Replaced by the PDF deck; the Python app's .pptx files stay listed |
+| 8 | Looks | Preview (default), Classic, Ink saver, Large print, Modern |
+| 9 | Accent | Six curated swatches plus *Your own…* |
+| 10 | Ink shown as | Page count and light / moderate / heavy |
+| 11 | Where it lives | Looks and dials in Make (D10); parts one step deeper (D4) |
+| 12 | Highlights in Saver / Black only | Underlines, a style per color |
+| 13 | Page switches | Cover off, running head on, Page x of y, one column |
+| 14 | Slide neighbours | Faint by default, hidden as the option |
+| 15 | A too-light accent | Darkened for text automatically, with Undo; rules keep the color |
+
+## The build, in order
+
+Each step ends as every item in debug-spec.md does (desk check, `cargo test`, WebKit where it is layout, a screenshot,
+a line in phase2-results.md), and each new core action gets a `wb` command.
+
+1. **Restyle** `docx.rs` and `deck.rs` to D1–D8, and the record's `"design": 2` with *Old design* in the Documents
+   pane. `scripts/doc-plans.py` must still give 6 of 6 (styles are not in the plan).
+2. **Embed the fonts** in the .docx, after a half-day spike (TrueType-flavoured WOFFs; Word on a computer without them;
+   fallbacks named in `fontTable.xml`). The person opens one in real Word (W-5).
+3. **Looks and dials** (D9, D10, D12, D13, D15): `settings/doc-looks/`, the record keeps the values used; `wb doc look
+   list|show|save|delete`.
+4. **Page switches** (D14).
+5. **Templates** and the shipped structures (Share Copy, Study Sheet, Reading Sheet, Reader); records for templates the
+   Python app does not know use a `to` it passes over.
+6. **The parts builder** (D4).
+7. **The ink measure** (D11), after S4's paged preview.
+
+Finding `868e`, item R3 of [debug-spec.md](debug-spec.md). **A design round: nothing here is built yet**; it was
+accepted on 2026-11-09 (above). The sheets are `design/r3.py` → `design/r3.figcraft` and
 [design/exports/r3/](../design/exports/r3/) (`all.png` is the whole board). Every verse on them comes from
 `design/content.json` (fetched with `wb text`); note lines on them are placeholders that say what goes there.
 
@@ -217,3 +259,165 @@ chasing.
 6. **The builder.** Is D4 the kind of tool you meant ("similar to the notes")? Is limiting fonts to the two and colors to
    the theme's roles acceptable?
 7. **PowerPoint.** Any reason you still need a .pptx (someone else's projector computer, editing slides by hand)?
+
+---
+
+## Second pass: made yours, without designing (2026-11-09)
+
+The person liked D1–D8 and asked to build on them: *"a bit more customizable (not a full Microsoft-Word feature
+integration, but a streamlined customizability that is user-friendly to highly aesthetic folk and folk who want to
+minimize printer ink consumption, or those who don't care for designing, but would still want something that looks
+nice)."* Sheets D9–D11 (second section of the board, `design/exports/r3/d9…d11`).
+
+### Three depths, each optional
+
+| Who | What they touch | Sheet |
+|---|---|---|
+| Doesn't care to design | **A Look**: one click on a small page of their own source. Preview is the default. | D9 |
+| Cares about how it looks | **Six dials** under the Looks, changing the live page at once | D10 |
+| Wants to choose what goes in | **The parts** (the builder, D4) | D4 |
+| Wants to save ink | the **Ink** dial, or the *Ink saver* Look; and a line saying pages and ink before printing | D10, D11 |
+
+A **Look is only a named set of the dials' values**. So nothing a Look does is out of reach of the dials, a person's own
+Look is just "Save as a Look", and there is one engine, not two.
+
+### The five Looks (D9)
+
+| Look | Headings / scripture | Accent | Size, spacing | Details |
+|---|---|---|---|---|
+| **Preview** (default) | Inter / Literata | red `#8E1B14` | Regular, Comfortable | title left |
+| **Classic** | Literata / Literata | brown `#5A3E1B` | Regular, Comfortable+ | title centered, a thin rule under it |
+| **Ink saver** | Inter Medium / Literata | grey `#444` | Small, Compact | no rules or fills; verse numbers plain |
+| **Large print** | Inter Bold / Literata | deep red | Largest (1.33 ×), Airy | strong contrast |
+| **Modern** | Inter / Inter | blue `#1F4E79` | Regular, Comfortable | |
+
+Every Look uses only the two fonts that travel (embedded, §2), so no Look depends on what is installed.
+
+### The six dials (D10)
+
+1. **Typeface**: pairs only (Inter / Literata, Literata / Literata, Inter / Inter), so headings and scripture always agree.
+2. **Accent**: six curated swatches (red, brown, blue, green, plum, graphite) or *Your own…* (a color picker). Used only
+   where the preview uses it: references, verse numbers, cues, delivery notes, the rule.
+3. **Size**: Small, Regular, Large, Largest (0.92, 1, 1.17, 1.33 × the structure's body size). Words, not points.
+4. **Spacing**: Compact, Comfortable, Airy (line height 1.35 / 1.5 / 1.6, and the space around a passage).
+5. **Details**: four small menus. Title left or centered; verse numbers in the accent, plain, or in the margin; under the
+   title nothing, a thin rule, or space; paper Letter or A4.
+6. **Ink**: Full color, Saver, Black only. It is last because it **overrides** the others for printing without changing
+   them: Saver turns the accent to grey, drops rules and fills and tightens spacing; Black only also sets verse numbers and
+   references in black. Turning it back restores the person's choices.
+
+For slides the same dials apply, minus Size and Spacing (the boxes fit the text) and with **Paper** (the theme's colors:
+white, Vellum, Vigil …) in place of Ink. A dark slide theme never reaches a printer.
+
+### Ink, measured (D11)
+
+Under the live page: *"2 pages · ink: light"*. Pages come from laying the document out (Typst already lays out the PDF;
+for Word, the preview's paged layout, S4). Ink is the share of the page area covered, weighted by darkness, computed from
+the laid-out page, so it is measured, not promised; shown in three words (light, moderate, heavy), not a percentage that
+looks more exact than it is. The figures on the sheet are illustrative. Ink saver can be shown beside the current Look.
+
+### What is saved
+
+- A person's own Look: `settings/doc-looks/<name>.json`, the dials' values only. The shipped five are in the app and
+  cannot be lost or overwritten (editing one and saving asks for a new name).
+- The Look last used for each kind of document is remembered (`settings/export.json`, beside the theme it already keeps).
+- A document's record names its Look **and keeps the values it was made with**, so Make again makes the same document
+  even if the Look is changed later. Changing a Look does not mark documents out of date; changing a document's own
+  choices in Make again does.
+- Still nothing in the plan: Looks and dials are styling, so the fingerprint agreement (§6) is unaffected by them.
+
+### Not in it, on purpose
+
+Free fonts, per-paragraph formatting, margins in inches, slide boxes moved by hand, and anything that writes words into
+the document. Each would be a step toward Word, and the person asked for the opposite.
+
+### Further questions for the person
+
+8. **Looks.** Are these five the right starting set? One to drop, or one missing (for example a *Two columns* reading Look)?
+9. **Accent swatches.** Six curated colors plus your own: enough, or would you rather pick only from the curated six?
+10. **Ink.** Is "light / moderate / heavy" with a page count what you want to see, or an actual percentage?
+11. **Where it lives.** Looks and dials inside Make (D10), with the parts (D4) one step deeper under *What goes in*: right?
+
+---
+
+## Third pass: deeper (2026-11-09)
+
+The person: *"Go deeper."* Sheets D12–D15 (third section of the board). Same rule as before: every option is a value in
+a Look, so the one-click path and the dials stay one engine.
+
+### Slides get the same Looks (D12)
+
+A deck takes the Look's typeface and accent. In place of Ink it has **Paper** (the theme's colors: Paper, Vellum, Vigil,
+Olivet, Veil, Daylight). Three dials are its own:
+
+- **Neighbours**: faint (the default: the verse before and after, small and muted), or hidden (the verse alone, larger).
+- **Reference**: top or bottom.
+- **Typeface**: as for Word.
+
+Size is never a dial for slides. The boxes fit the text (DeckCraft's fit), which is what keeps every verse whole on one
+slide and lets the finished file be checked verse by verse.
+
+### Your highlights in print (D13)
+
+A highlight is the person's own mark, so **no ink mode removes it**. Ink changes how it is drawn:
+
+| Ink | A highlight | A note | References, verse numbers |
+|---|---|---|---|
+| Full color | its own soft fill (yellow, green …) | grey `#666` | accent |
+| Saver | a grey underline, no fill | grey | dark grey |
+| Black only | a black underline | black | black |
+
+Different highlight colors become different underline styles in Saver and Black only (solid, dashed, dotted, double), so
+two colors stay distinct without color. Highlights can still be switched off as a part (D4). In Word a fill is run
+shading and an underline is a run underline, both ordinary Word formatting.
+
+### The page around the text (D14)
+
+Four switches, never a layout editor:
+
+| Switch | Values | Default |
+|---|---|---|
+| Cover page | off / on (title, subtitle, date alone on page 1) | off |
+| Running head | off / on (the title, small, on every page after the first) | on |
+| Page numbers | Page x of y / x / none | Page x of y |
+| Columns | one / two (scripture-only documents: the Reading Sheet) | one |
+
+Two columns only for documents with nothing but scripture, because notes and cues read badly across a column break.
+
+### Guardrails (D15)
+
+The dials should not let someone make something unreadable, and should not nag either:
+
+- **Contrast.** Your own accent is checked against the paper (WCAG 4.5 : 1 for text). Too light: rules and fills keep
+  your color, text in the accent is darkened just enough, one quiet line says so, with Undo. On a dark slide theme the
+  same rule runs the other way.
+- **See it in grey**: the live page shown as a black-and-white printer will print it.
+- **Ink and slides**: a dark slide theme is never offered for printing (a deck printed as handouts uses Paper).
+- **Size**: Small is not offered with Two columns (the scripture would fall under 9 pt).
+
+### The whole option list, for the record
+
+| Level | Options |
+|---|---|
+| Look (one click) | Preview, Classic, Ink saver, Large print, Modern; your own saved Looks |
+| Dials (Word) | Typeface, Accent, Size, Spacing, Details (title alignment, verse numbers, under the title, paper size), Ink |
+| Dials (slides) | Typeface, Accent, Paper, Neighbours, Reference |
+| Page (Word) | Cover page, Running head, Page numbers, Columns |
+| Parts (D4) | per structure: title, cues, scripture, notes, delivery notes, highlights, room to write … |
+
+About twenty choices in all, every one with a working default, against Word's hundreds.
+
+### Effects on the build order
+
+The recommendation's order (§ Recommendation) gains one step: (a) restyle and `design: 2`; (b) fonts embedded;
+**(c) Looks and dials (D9–D11, D13, D15), since they are styling only and need no new structures**; (d) page switches
+(D14); (e) templates and the shipped structures; (f) the parts builder (D4); (g) the ink measure (D11), which needs the
+paged preview (S4).
+
+### Further questions for the person
+
+12. **Highlights in Saver.** Underlines (different styles per color), as D13: right, or would you rather print them as
+    a light grey fill?
+13. **The page switches.** Cover page off and running head on by default: right?
+14. **Slides.** Neighbours faint by default, hidden as the option: right?
+15. **Guardrails.** Darkening a too-light accent for text automatically (with Undo), rather than refusing the color: right?

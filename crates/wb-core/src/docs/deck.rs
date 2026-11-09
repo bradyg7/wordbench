@@ -31,14 +31,11 @@ const TEMPLATE: &str = r##"
 #set text(font: "Literata", fill: c(t.ink), hyphenate: false, ligatures: false, lang: "en")
 #set par(justify: false)
 #let ui = "Inter"
-#let chrome = for s in t.chrome {
-  place(top + left, dx: s.x * 1pt, dy: s.y * 1pt, rect(width: s.w * 1pt, height: s.h * 1pt, fill: tone(s.color), stroke: none))
-}
 #let at(x, y, w, h, body, anchor: horizon) = place(top + left, dx: x * 1pt, dy: y * 1pt,
   block(width: w * 1pt, height: h * 1pt, align(anchor + left, body)))
-#let verse(v) = {
+#let verse(v, num) = {
   if v.num != none {
-    text(size: 0.62em, baseline: -0.42em, fill: c(t.accent), font: ui, weight: 600)[#v.num]
+    text(size: 0.62em, baseline: -0.42em, fill: num, font: ui, weight: 600)[#v.num]
     [ ]
   }
   for r in v.runs {
@@ -46,20 +43,23 @@ const TEMPLATE: &str = r##"
   }
 }
 #for s in d.slides {
-  page(width: 960pt, height: 540pt, margin: 0pt, fill: if s.kind == "section" { c(t.divider_bg) } else { c(t.paper) })[
-    #chrome
-    #let L = t.left
+  // R3's design (sheets D5-D8): the theme's paper and ink, no chrome, no filled section slide; Inter SemiBold for
+  // titles and references, Literata for scripture, the accent only on the reference, the subtitle, verse numbers and
+  // the section rule.
+  page(width: 960pt, height: 540pt, margin: 0pt, fill: c(t.paper))[
+    #let L = 64
     #let W = 960 - L - 64
     #if s.kind == "title" {
-      at(L, 176, W, 130, anchor: bottom, text(font: ui, size: s.size * 1pt, weight: 600)[#s.title])
+      at(L, 176, W, 130, anchor: bottom, text(font: ui, size: s.size * 1pt, weight: 600, par(leading: 0.3em)[#s.title]))
       if s.sub != "" { at(L, 318, W, 60, anchor: top, text(font: ui, size: 24pt, fill: c(t.accent))[#s.sub]) }
     } else if s.kind == "section" {
-      at(L, 200, W, 110, text(font: ui, size: s.size * 1pt, fill: c(t.divider_fg))[#s.title])
+      place(top + left, dx: L * 1pt, dy: 196pt, rect(width: 56pt, height: 4pt, fill: c(t.accent), stroke: none))
+      at(L, 214, W, 110, anchor: top, text(font: ui, size: s.size * 1pt, weight: 600, par(leading: 0.3em)[#s.title]))
     } else if s.kind == "verse" {
-      at(L, 38, W, 34, text(font: ui, size: 24pt, fill: c(t.accent))[#s.ref])
-      if s.before != none { at(L, 84, W, 78, text(size: 20pt, fill: c(t.muted), verse(s.before))) }
-      at(L, 170, W, 240, text(size: s.size * 1pt, par(leading: 0.6em, verse(s.verse))))
-      if s.after != none { at(L, 420, W, 84, text(size: 20pt, fill: c(t.muted), verse(s.after))) }
+      at(L, 38, W, 34, text(font: ui, size: 24pt, weight: 600, fill: c(t.accent))[#s.ref])
+      if s.before != none { at(L, 84, W, 78, text(size: 20pt, fill: c(t.muted), verse(s.before, c(t.muted)))) }
+      at(L, 170, W, 240, text(size: s.size * 1pt, par(leading: 0.6em, verse(s.verse, c(t.accent)))))
+      if s.after != none { at(L, 420, W, 84, text(size: 20pt, fill: c(t.muted), verse(s.after, c(t.muted)))) }
     }
   ]
 }
@@ -106,7 +106,7 @@ fn marks_of(s: &Value) -> Vec<(usize, usize)> {
 
 /// The plan's slides as the template's data, with each box's size fitted as DeckCraft fitted it.
 fn slides_data(plan: &[Value], t: &Theme) -> Vec<Value> {
-    let w = 960.0 - t.left - 64.0;
+    let w = 960.0 - 64.0 - 64.0;
     plan.iter()
         .filter_map(|s| match s["kind"].as_str()? {
             "title" => {
@@ -170,7 +170,7 @@ impl World for Deck {
 }
 
 /// WOFF 1.0 → an OpenType file (each table zlib-compressed or stored), so Typst can use the window's own fonts.
-fn woff_to_otf(woff: &[u8]) -> Vec<u8> {
+pub(super) fn woff_to_otf(woff: &[u8]) -> Vec<u8> {
     use std::io::Read;
     let u32_at = |o: usize| u32::from_be_bytes(woff[o..o + 4].try_into().unwrap());
     let u16_at = |o: usize| u16::from_be_bytes(woff[o..o + 2].try_into().unwrap());

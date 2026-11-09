@@ -236,8 +236,8 @@ export async function pageDocuments(pageId: string, into: HTMLElement) {
     } else if (d.state === 'behind') {
       when.textContent = `${madeWhen(d.built)} · changed since`;
       row.append(again());
-    } else if (d.state === 'missing' || d.state === 'edited') {
-      when.textContent = `${madeWhen(d.built)} · ${d.state === 'missing' ? 'file missing' : 'changed by hand'}`;
+    } else if (d.state === 'missing' || d.state === 'edited' || d.state === 'old_design') {
+      when.textContent = `${madeWhen(d.built)} · ${d.state === 'missing' ? 'file missing' : d.state === 'edited' ? 'changed by hand' : 'old design'}`;
       row.append(again());
     } else row.append(h('span', 'muted small pd-doc-state', d.state === 'forgotten' ? 'not kept up to date' : d.state));
     into.append(row);
