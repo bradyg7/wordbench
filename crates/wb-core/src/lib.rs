@@ -21,6 +21,7 @@ pub mod published;
 pub mod reading;
 pub mod relay;
 pub mod scripture;
+pub mod shelf;
 pub mod store;
 pub mod studyapi;
 pub mod templates;

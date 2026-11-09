@@ -885,3 +885,34 @@ window's own state, the folds, is kept in its storage as the section folds are).
 | Rust tests | not run: no wb-core, wb-cli or app change |
 
 Screenshots: new `docs/phase2/1440-notebook-places-by-book.png`, `1440-notebook-side-panel-folded.png`, `1440-notebook-a-threads-places.png`; the sheet's four windows in `design/exports/filter/`. Not committed. Not checked with a real mouse or touch (the right-click and long press were driven by Playwright's events; M1 showed what that can miss for drags, which these are not).
+
+## 28. R2: the Shelf as a tree (2026-11-09)
+
+Built from [redesign-R2.md](redesign-R2.md) (sheets B1 to B5; the person chose the tree, 2026-11-09, and said to build
+it with the recommended answers to the other questions). Steps 1 to 3 of that plan in one go.
+
+| What | Built | Checked |
+|---|---|---|
+| A folder is a set | `wb-core::shelf`: each folder is an ordinary `sets/<slug>.md` in the Python app's format; where it sits (parent, order) is in **`settings/shelf.json`**, never in the set file (both apps drop extra front matter when they rewrite a set). A set not placed is at the top, in name order; a parent that is gone or a loop is read as the top. A folder moved into itself or one inside it is refused; a folder removed goes to `.trash` and the folders inside it move up into its place | CLI `the_shelf_is_a_tree_of_sets_kept_beside_them_and_open_all_says_what_each_item_opens`: the tree, the file format, the placing file, a loop written by hand |
+| Open all (`a484`) | `wb set open` gives, item by item, the window's pane key or why not. Kept panes in the Python app's shape are translated: passage → a second reader, interlinear, entry → Strong's, uses (with its rendering), search, help. A place opens as a second reader (the reader never moves); a document in its preview; the first page in the Notebook (a page is not a tab until R1 says so); a PDF says it opens from the Python app. The tabs carry the folder's mark (a coloured bar); Close all closes them; a marked tab's right-click offers the same and Show it in the Shelf. `set open NAME` / `set close NAME` in the command field and through `wb do` | Desk: the Phinehas folder's 7 openable items as 7 marked tabs, the reader not moved, the interlinear from the Python shape; Close all; the person's "ruth read" set (11 kept word panes, one twice) as 10 tabs from the command field; `wb do "set close ruth"` |
+| The tree (sheets B1, B2, B4) | `ui/src/shelf.ts`: the Notebook sidebar's rows; folders fold (kept in the window's storage); a dot for an open item, the folder's mark when its tabs are open; the selected folder's bar (Open all, Close all, Add); ⋯ and right-click menus (Open all, with the folders inside, Close all, Add, New folder inside, Rename, Move to…, Remove); drag a folder onto another (inside) or its top edge (before); drag an item onto a folder (move; Ctrl keeps it in both) or onto another item (before or after); F2, Del, Enter; Find | Desk: every row `wb shelf` has; a folder made (named first: its file takes the name), dragged inside another; an item dragged into a folder and out of its old one; F2; Find; a folder removed, the one inside it moved up |
+| + Add (step 3) | A tab… (any open tab, kept in the Python app's shape: `wb set add --tab "<key><TAB><title>"`), all open tabs, a new page in the folder, a page, place, thread, lesson or document by name, a folder inside. New item kind **`document`** (`--document`) | Desk: a Strong's tab added is `{type: entry, params: {sid}}` |
+| `wb` | `wb shelf`, `wb shelf new\|move\|rm\|item`, `wb set open`, `wb set move`, `--tab` and `--document` on `set new\|add`; `wb guide shelf` (Help's Guide) | `every_action.rs` covers `shelf.rs` |
+| The Python app | Reads every folder as a set with the same items | Desk: the Python app's own `Study` lists the same sets with the same item counts after the run |
+
+**Not built:** dragging a tab from a tab strip onto the Shelf (+ Add → A tab… does it); pages as tabs (R1); the phone's
+Move to… instead of drag is there (the menu), but the phone was not checked.
+
+**For the person:** this writes `settings/shelf.json` (new) and, when you make folders, new set files. Run
+`scripts/backup-study.ps1` before the installed app is used on the real folder. A `document` kept in a folder is hidden by
+the Python app, and dropped if the Python app changes that set.
+
+| | Result |
+|---|---|
+| The Shelf in the real app | `node measure/shelf.mjs --release`: **15 of 15** (the same checks run inside `desk.mjs`) |
+| Desktop in the real app | `node measure/desk.mjs --release`: **stopped at check 11 of the old run**, before the Shelf: the shared scratch copy (`%TEMP%ible-workbench-rs\study-scratch`) is now a fresh copy of the real folder, with 52 pages and a template in `notes/_inbox`, and the desk run's Notebook checks expect it empty (the pen opens the template chooser). Not caused by this change (nothing in the Notebook changed), but the rest of the 371 were **not re-run** |
+| Rust tests | `cargo test`: **154** passed (1 new) |
+| Golden suite | `python scripts/golden.py`: **103 of 103** |
+
+Screenshots: `docs/phase2/1440-shelf-tree.png`, `1440-shelf-open-all.png`.
+

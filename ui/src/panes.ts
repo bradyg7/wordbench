@@ -968,26 +968,8 @@ export function openToday(day: string) {
 // Reading plans live in plans.ts (the plan, its form, Past plans).
 export { openPlans } from './plans';
 
-export function openShelf() {
-  return dock.open('shelf', 'Shelf', 'shelf', MINE, async el => {
-    el.replaceChildren();
-    const sets: any[] = await wb(['set', 'list']);
-    head(el, 'Shelf', 'Your sets: named groups of threads, places, notes, lessons and panes');
-    for (const s of sets) {
-      el.append(h('div', 'label', s.name));
-      for (const it of s.items) {
-        const row = h('button', 'entry-row', `${it.kind}: ${it.label}`);
-        row.onclick = () => {
-          if (it.kind === 'thread') openThread(it.label);
-          else if (it.kind === 'place') goTo(it.ref);
-          else if (it.kind === 'lesson') openLesson(it.label);
-          else toast(`${it.kind} items open in a later phase`);
-        };
-        el.append(row);
-      }
-    }
-  });
-}
+// The Shelf (R2) lives in shelf.ts.
+export { openShelf } from './shelf';
 
 export function openLesson(name: string) {
   return dock.open('lesson', name, `lesson|${name}`, MINE, async el => {

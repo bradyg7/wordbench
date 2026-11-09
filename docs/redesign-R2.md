@@ -1,7 +1,7 @@
 # R2 · The Shelf: the design round, for review
 
 2026-11-09. The design round for R2 of [debug-spec.md](debug-spec.md) (findings `1d0e`, `3fa7`, `a484`; the person marked it
-urgent). **Chosen 2026-11-09: the tree (B)**, question 1 of §7; questions 2 to 9 stand on their recommended answers unless the person says otherwise. **Nothing is built from this yet.** No production code changed; the sheets are `design/r2.py` →
+urgent). **Chosen 2026-11-09: the tree (B)**, question 1 of §7; questions 2 to 9 stand on their recommended answers unless the person says otherwise. **Built 2026-11-09** (steps 1 to 3, the recommended answers): [phase2-results.md](phase2-results.md) section 28. No production code changed; the sheets are `design/r2.py` →
 `design/r2.figcraft` and `design/exports/r2/` (all on one board: [all.png](../design/exports/r2/all.png)).
 
 **In one paragraph.** The sheets the person accepted on 2026-11-04 (S1, SH1, SH2) still say what they want, with four

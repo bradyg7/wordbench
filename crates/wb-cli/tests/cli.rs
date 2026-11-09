@@ -1652,3 +1652,70 @@ fn a_page_made_from_a_template_has_its_blanks_filled() {
     assert_eq!(wb.js(&["template", "list"])["templates"].as_array().unwrap().len(), 1);
     assert!(wb.ok(&["guide", "templates"]).contains("{place} the place picked"));
 }
+
+#[test]
+fn the_shelf_is_a_tree_of_sets_kept_beside_them_and_open_all_says_what_each_item_opens() {
+    let Some(wb) = Wb::new() else { return };
+    // a set as the Python app keeps it: kept panes in its own shape
+    std::fs::create_dir_all(wb.dir.join("sets")).unwrap();
+    std::fs::write(wb.dir.join("sets").join("ruth.md"), "---
+name: \"Ruth\"
+created: \"2026-11-02T20:29:10Z\"
+updated: \"2026-11-02T20:29:10Z\"
+---
+
+- {\"key\": \"i1\", \"kind\": \"pane\", \"type\": \"entry\", \"id\": \"word\", \"title\": \"H6653\", \"params\": {\"sid\": \"H6653\"}}
+- {\"key\": \"i2\", \"kind\": \"pane\", \"type\": \"interlinear\", \"id\": \"interlinear\", \"title\": \"I\", \"params\": {\"book\": 4, \"c1\": 25, \"v1\": 7, \"c2\": 25, \"v2\": 13}}
+- {\"key\": \"i3\", \"kind\": \"pane\", \"type\": \"uses\", \"id\": \"uses\", \"title\": \"U\", \"params\": {\"strong\": \"H5234\", \"word\": \"\", \"rendering\": \"know\", \"scope\": \"all\"}}
+- {\"key\": \"i4\", \"kind\": \"pane\", \"type\": \"passage\", \"id\": \"passage\", \"title\": \"P\", \"params\": {\"book\": 45, \"ch\": 14, \"v\": 22, \"version\": \"KJV\"}}
+- {\"key\": \"i5\", \"kind\": \"pane\", \"type\": \"search\", \"id\": \"search\", \"title\": \"S\", \"params\": {\"q\": \"laying on of hands\", \"scope\": \"all\"}}
+- {\"key\": \"i6\", \"kind\": \"pane\", \"type\": \"mystery\", \"id\": \"m\", \"title\": \"M\", \"params\": {}}
+- {\"key\": \"i7\", \"kind\": \"place\", \"ref\": \"NUM.25:1-25:18\"}
+").unwrap();
+    let plan = wb.js(&["set", "open", "ruth"]);
+    let opens: Vec<Value> = plan["items"].as_array().unwrap().iter().map(|i| i.get("open").cloned().unwrap_or(Value::Null)).collect();
+    assert_eq!(opens, vec![json!("strong|H6653"), json!("interlinear|Numbers 25:7-13"), json!("uses|H5234||all|know"), json!("reader2|Romans 14|KJV"),
+        json!("search|laying on of hands|all"), Value::Null, json!("reader2|NUM.25:1-25:18|KJV")]);
+    assert!(plan["items"][5]["why"].as_str().unwrap().contains("mystery"));
+
+    // folders: each a set; where it sits is in settings/shelf.json, and the set files keep the Python app's format
+    wb.ok(&["shelf", "new", "Phinehas study"]);
+    wb.ok(&["shelf", "new", "Word study", "--in", "Phinehas study"]);
+    wb.ok(&["shelf", "new", "Covenant", "--in", "Phinehas study"]);
+    wb.ok(&["shelf", "move", "Covenant", "--in", "Phinehas study", "--before", "Word study"]);
+    wb.ok(&["shelf", "move", "Ruth", "--in", "Word study"]);
+    assert!(wb.fails(&["shelf", "move", "Phinehas study", "--in", "Ruth"]).contains("cannot go inside itself"));
+    let t = wb.js(&["shelf"]);
+    let top: Vec<&str> = t["folders"].as_array().unwrap().iter().map(|f| f["name"].as_str().unwrap()).collect();
+    assert_eq!(top, vec!["Phinehas study"]);
+    let inside: Vec<&str> = t["folders"][0]["folders"].as_array().unwrap().iter().map(|f| f["name"].as_str().unwrap()).collect();
+    assert_eq!(inside, vec!["Covenant", "Word study"]);
+    assert_eq!(t["folders"][0]["folders"][1]["folders"][0]["name"], "Ruth");
+    let file = std::fs::read_to_string(wb.dir.join("sets").join("word-study.md")).unwrap();
+    assert!(file.starts_with("---
+name: \"Word study\"
+created:") && !file.contains("parent"), "{file}");
+    let placing: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("settings").join("shelf.json")).unwrap()).unwrap();
+    assert_eq!(placing["folders"]["ruth"]["parent"], "word-study");
+
+    // an item moved into another folder, then copied; a reorder inside a folder
+    let moved = wb.js(&["shelf", "item", "Ruth", "i7", "--to", "Covenant"]);
+    assert_eq!(moved["set"], "covenant");
+    assert!(!wb.ok(&["set", "show", "Ruth"]).contains("NUM.25:1-25:18"));
+    wb.ok(&["shelf", "item", "Ruth", "i1", "--to", "Covenant", "--copy"]);
+    assert!(wb.ok(&["set", "show", "Ruth"]).contains("H6653"));
+    wb.ok(&["set", "move", "Ruth", "i5", "--before", "i1"]);
+    assert_eq!(wb.js(&["set", "show", "Ruth"])["items"][0]["key"], "i5");
+
+    // a folder removed: to .trash, the folders inside it move up into its place
+    wb.ok(&["shelf", "rm", "Word study"]);
+    let t = wb.js(&["shelf"]);
+    let inside: Vec<&str> = t["folders"][0]["folders"].as_array().unwrap().iter().map(|f| f["name"].as_str().unwrap()).collect();
+    assert_eq!(inside, vec!["Covenant", "Ruth"]);
+    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().contains("word-study")));
+
+    // a set whose placing is written by hand into a loop is read as the top, not lost
+    std::fs::write(wb.dir.join("settings").join("shelf.json"), r#"{"folders": {"covenant": {"parent": "ruth"}, "ruth": {"parent": "covenant"}}}"#).unwrap();
+    let t = wb.js(&["shelf"]);
+    assert_eq!(t["folders"].as_array().unwrap().len(), 3);
+}

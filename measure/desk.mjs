@@ -9,6 +9,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
+import { shelfChecks } from './shelf-checks.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
@@ -2077,6 +2078,9 @@ try {
   await page.evaluate(() => window.__wb.run('thread Phinehas'));
   await page.waitForSelector('.pane-thread .thread-docs .doc-row', { timeout: 15000 }).catch(() => {});
   check('the thread’s pane lists its documents, with Make for it', await page.locator('.pane-thread .thread-docs .doc-row').count() >= 2 && await page.locator('.pane-thread .thread-docs .doc-make').count() === 1, String(await page.locator('.pane-thread .thread-docs .doc-row').count()));
+
+  // the Shelf as a tree (R2)
+  await shelfChecks({ page, check, env, wbExe, study, shots, sleep });
 
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();

@@ -22,7 +22,7 @@ export const CHANGES: Change[] = ['notes', 'threads', 'highlights', 'plans', 'se
  * the other kinds show the Bible database alone and are never drawn again by a write. */
 const SHOWS: Record<string, Change[]> = {
   notebook: ['notes', 'threads', 'documents'], threads: ['threads'], thread: ['threads', 'notes', 'highlights', 'documents'], place: ['notes', 'highlights', 'threads'],
-  reader2: ['notes', 'highlights', 'threads'], versecard: ['highlights'], find: ['notes', 'threads'], marked: ['highlights', 'threads'], plans: ['plans'], findings: ['findings'], shelf: ['sets', 'threads'],
+  reader2: ['notes', 'highlights', 'threads'], versecard: ['highlights'], find: ['notes', 'threads'], marked: ['highlights', 'threads'], plans: ['plans'], findings: ['findings'], shelf: ['sets', 'threads', 'notes', 'documents'],
   // a document's state follows its thread, the notes and highlights in it, and the documents themselves
   documents: ['documents', 'threads', 'notes', 'highlights'],
 };
@@ -41,6 +41,8 @@ export interface Pane {
   /** Draw again from the study folder (after a change). */
   refresh?: () => void | Promise<void>;
   onClose?: () => void;
+  /** Opened by a Shelf folder's Open all (R2): its tab carries the folder's mark, and Close all closes it. */
+  mark?: { set: string; name: string; color: string };
 }
 
 /** One tab strip and its panes: a column (or a part of one, when split), a band, or a floating window. */
@@ -206,6 +208,15 @@ export class Dock {
     const keys = Object.keys(this.spots);
     for (const k of keys.slice(0, Math.max(0, keys.length - SPOTS_MAX))) delete this.spots[k];
     this.save();
+  }
+
+  /** A marked tab's right-click (the Shelf's menu for the folder that opened it). */
+  onMark?: (p: Pane, e: MouseEvent) => void;
+
+  /** The next pane opens beside this one (D4), as if it had just been pressed in: a folder's Open all puts its tabs
+   * beside the Shelf. */
+  from(p: Pane) {
+    this.origin = { pane: p.id, at: performance.now() };
   }
 
   /** The pane last pressed in, if the last press was in one, and when. */
@@ -723,6 +734,12 @@ export class Dock {
       x.setAttribute('aria-label', `Close ${p.title}`);
       x.onclick = () => this.close(p);
       t.append(name, x);
+      if (p.mark) {
+        t.classList.add('tab-marked');
+        t.style.setProperty('--mark', p.mark.color);
+        t.title = `${p.title} · opened from ${p.mark.name} (Shelf)`;
+        t.addEventListener('contextmenu', e => { if (this.onMark) { e.preventDefault(); this.onMark(p, e); } });
+      }
       tabs.append(t);
     }
     tabs.scrollLeft = this.stripScroll[g.id] ?? 0;
