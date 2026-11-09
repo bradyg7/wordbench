@@ -937,3 +937,17 @@ its own way if asked to update it (it knows these structures), so one should be 
 template is its structure); the ink measure (D11: pages are shown for PDFs; for Word the count needs Word's layout,
 which this app does not have); the dials panel with a live page and See it in grey (D10, D15); Pulpit, Study Table,
 Thread Map and Thread Dossier stay dropped, as decided.
+
+## 31. R3: the Adjust panel (2026-11-09)
+
+`ui/src/looks.ts`: **Adjust…** beside Look and Ink in the Make row (a thread) and in Make a document (a page) opens the
+dials of sheet D10 beside a live page. The page is drawn from the source's own plan (`wb docs plan`), the first page of a
+Word document or the first verse slide, in the styles the file will have, so the person sees their own verses change.
+The dials: Look, accent (the theme's, six swatches, or a color of one's own, with D15's note when it is too light for
+text), typeface, and for Word size, spacing, title, verse numbers, under the title, paper, cover page, running head, page
+numbers, columns and ink; for slides neighbours and reference. **See it in grey** greys the page. **Use these** carries
+the changed dials to Make as `--set`; **Save as a Look…** runs `wb docs look NAME --from … --set … --save`; Reset returns
+to the Look.
+
+Checked: `tsc` clean. **Not checked in the window**: the vite preview has no `wb` behind it and no desk check covers this
+yet, so the panel has not been seen running; the next desk run should open it from the Documents pane.

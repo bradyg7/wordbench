@@ -8,6 +8,7 @@ import type { Side } from './dock';
 import { dock } from './panes';
 import { toast } from './sheets';
 import { button, h, popMenu } from './ui';
+import { adjust, type Chosen } from './looks';
 import { makeFromPage, previewDoc } from './pagedocs';
 
 const MINE: Side = 'right';
@@ -40,12 +41,13 @@ const when = (iso: string) => {
 };
 
 /** Make (or bring up to date) a document from a thread. → what to say */
-export async function makeDoc(thread: string, to: string, structure?: string, theme?: string, look?: string, ink?: string): Promise<string> {
+export async function makeDoc(thread: string, to: string, structure?: string, theme?: string, look?: string, ink?: string, dials: [string, string][] = []): Promise<string> {
   const argv = ['craft', to, '--thread', thread];
   if (structure) argv.push('--structure', structure);
   if (theme) argv.push('--theme', theme);
   if (look) argv.push('--look', look);
   if (ink) argv.push('--set', `ink=${ink}`);
+  for (const [k, v] of dials) argv.push('--set', `${k}=${v}`);
   const r = await wb(argv);
   app.changed('documents');
   if (!r.changed) return `${r.name} is already up to date`;
@@ -132,7 +134,22 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
   theme.title = 'The theme: colors and fonts';
   const go = h('button', 'btn primary', 'Make');
   const { look, ink } = lookFields(looks);
-  f.append(what, theme, look, ink, go);
+  let extra: [string, string][] = [];
+  const adj = button('btn doc-adjust', 'Adjust…', async () => {
+    const thread = fixed || pick?.value;
+    if (!thread) { toast('Start a thread first: documents are made from a thread'); return; }
+    const [to, st] = what.value.split('|');
+    const kind = to === 'word' ? 'word' : 'pdf';
+    const start: Chosen = { look: look.value, dials: [...extra, ...(ink.value ? [['ink', ink.value] as [string, string]] : [])] };
+    const r = await adjust(kind, ['--thread', thread, '--to', to, '--structure', st], start, themes[theme.value]?.doc_accent || '8E1B14');
+    if (!r) return;
+    look.value = r.look;
+    ink.value = r.dials.find(d => d[0] === 'ink')?.[1] || '';
+    extra = r.dials.filter(d => d[0] !== 'ink');
+    adj.textContent = extra.length ? `Adjust… (${extra.length})` : 'Adjust…';
+  });
+  adj.type = 'button';
+  f.append(what, theme, look, ink, adj, go);
   const about = h('p', 'muted small doc-about');
   const say = () => { const k = KINDS.find(x => `${x[0]}|${x[1]}` === what.value); about.textContent = `${k?.[3] || ''}. ${themes[theme.value]?.best_for || ''}.`; };
   what.onchange = theme.onchange = say;
@@ -144,7 +161,7 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
     const [to, st] = what.value.split('|');
     go.disabled = true;
     go.textContent = 'Making…';
-    try { toast(await makeDoc(thread, to, st, theme.value, look.value, ink.value)); done(); }
+    try { toast(await makeDoc(thread, to, st, theme.value, look.value, ink.value, extra)); done(); }
     catch (x) { toast(String((x as Error).message || x)); }
     finally { go.disabled = false; go.textContent = 'Make'; }
   };
