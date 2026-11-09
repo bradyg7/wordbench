@@ -56,7 +56,7 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
 cargo build                                  # the workspace
 cargo run -p wb-cli -- text "Num 25:11"      # verbatim scripture
 npm install && npm run tauri dev             # the app (from the repo root)
-npm run test:webkit                          # the UI in Playwright's WebKit at phone size
+npm run test:webkit                          # the UI in Playwright's WebKit at phone size (this checkout's own vite, on its own port)
 python scripts/golden.py                     # the Rust wb against the Python wb on the same inputs (scratch folders)
 python scripts/doc-plans.py                  # documents' plans: the Rust fingerprints against the Python app's (scratch folder)
 python scripts/py-opens.py                   # the Python app opens the scratch folder and reads what this app reads (--save / --compare: before and after a change)
@@ -71,6 +71,12 @@ powershell -File scripts\install-app.ps1    # the release build into %LOCALAPPDA
 The Rust `wb` must give the same output as the Python `wb`: when changing a command, add or update its case in
 `tests/golden/cases.json` and run the golden tests. Known, deliberate differences are listed in docs/phase1-results.md. Rust tests: `cargo test` (the Python app's
 own tests carried over, plus the reading plans).
+
+`npm run dev` (and `npm run tauri dev`) serve the UI on 1420, which Tauri's `devUrl` expects. `npm run test:webkit` never
+uses that server: Playwright starts this checkout's own vite on a port picked from the checkout's path (1430-1929;
+`WB_UI_PORT` sets it by hand) and never reuses a running one, so a worktree's tests always test that worktree's UI. If the
+port is taken, the run stops with "is already used" instead of testing another checkout. A new worktree needs
+`npm install` and `npm run fixtures` before the tests.
 
 Documents (Word files, PDF slides) go to `WB_DOCS_DIR`; with the person's real study folder, to the Python app's folder
 (Documents\Bible Workbench), where its documents already are; with any other study folder, to a folder beside it
