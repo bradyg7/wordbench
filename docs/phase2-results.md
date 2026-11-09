@@ -961,3 +961,11 @@ Preview); and the live page set references, cues and notes in Literata where the
 Screenshots: `docs/phase2/1440-adjust.png`, `1440-adjust-preview.png`, `1440-documents-r3.png`. The whole desk
 (`measure/desk.mjs`, its Documents checks updated for R3) stops earlier, in its Notebook checks, which count from an empty
 inbox the scratch folder no longer has: not R3's, left for its own fix.
+
+**The whole desk again (later 2026-11-09).** `node measure/desk.mjs --release`: **375 of 375**. It had stopped in its
+first Notebook checks because the scratch folder now holds the person's own inbox notes, findings, documents and
+Notebook settings (`"inbox": false` hides notes with no place), and the checks find what they make by its being the only
+one. Each run's own copy now starts without `notes/_inbox`, `findings/`, `documents/` and `settings/notebook.json` (the
+scratch folder itself is not touched). The finding check also read a finding while it was still a `.tmp` (it now reads
+`.md` files only). The window-size checks failed in two runs and passed in the third and in a probe on their own; they
+now say what `window` answered and the window's size, should they fail again.

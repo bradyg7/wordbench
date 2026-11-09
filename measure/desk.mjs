@@ -23,6 +23,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 rmSync(work, { recursive: true, force: true });
 cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { recursive: true });
+// the Notebook checks below count notes with no place from none; the scratch folder now holds the person's own inbox, so
+// this run's copy starts with it empty (only this run's copy: the scratch folder itself is not touched)
+rmSync(path.join(study, 'notes', '_inbox'), { recursive: true, force: true });
+// and with the Notebook's default settings: the person's own (settings/notebook.json) may hide notes with no place
+rmSync(path.join(study, 'settings', 'notebook.json'), { force: true });
+// and with no findings or documents of the person's own: the checks find the one they make by being the only one
+rmSync(path.join(study, 'findings'), { recursive: true, force: true });
+rmSync(path.join(study, 'documents'), { recursive: true, force: true });
 mkdirSync(cache, { recursive: true });
 const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: '9334' };
 const proc = spawn(exe, [], { env, stdio: 'ignore' });
@@ -1984,8 +1992,10 @@ try {
     await page.locator('.finding-field').click();
     await page.keyboard.press('Enter');
     const fdir = path.join(study, 'findings');
-    for (let i = 0; i < 30 && !(existsSync(fdir) && readdirSync(fdir).length); i++) await sleep(100);
-    const ftext = existsSync(fdir) && readdirSync(fdir).length ? readFileSync(path.join(fdir, readdirSync(fdir)[0]), 'utf8') : '';
+    // the finding as written: a .tmp is the file still being written (it is renamed into place)
+    const written = () => existsSync(fdir) ? readdirSync(fdir).filter(f => f.endsWith('.md')) : [];
+    for (let i = 0; i < 30 && !written().length; i++) await sleep(100);
+    const ftext = written().length ? readFileSync(path.join(fdir, written()[0]), 'utf8') : '';
     const inNotebook = JSON.stringify(JSON.parse(execFileSync(wbExe, ['notebook', '--group', 'none'], { env }).toString())).includes('The verse bar could say');
     check('the finding is a file in findings/, with the size, panes and place, and not in the Notebook', /kind: "finding"/.test(ftext) && /"size": "large"/.test(ftext) && /"panes": \[/.test(ftext) && /"place": "Numbers 25/.test(ftext) && !inNotebook, ftext.split('\n').find(l => l.startsWith('context')) || 'no file');
     // S7: the build in a finding says when the tree it was built from had uncommitted changes (and when it was built)
@@ -2111,12 +2121,13 @@ try {
   await sleep(500);
   check('opening a dock column keeps the verse at the top', (await top()) === 50, `verse ${await top()}`);
   for (const [preset, cls] of [['laptop', 'expanded'], ['ipad', 'medium'], ['phone', 'compact']]) {
-    await page.evaluate(p => window.__wb.run(`window ${p}`), preset);
+    const resized = await page.evaluate(p => window.__wb.run(`window ${p}`), preset);
     await sleep(900);
+    const inner = await page.evaluate(() => `${innerWidth}×${innerHeight}`);
     check(`window ${preset}: still at verse 50`, (await top()) === 50, `verse ${await top()}`);
     const got = await page.evaluate(() => document.documentElement.dataset.size);
     const left = await page.locator('.dock-left.open').count();
-    check(`window ${preset}: ${cls}${cls === 'compact' ? ', no columns' : ', one column'}`, got === cls && left === 0, got);
+    check(`window ${preset}: ${cls}${cls === 'compact' ? ', no columns' : ', one column'}`, got === cls && left === 0, `${got}; ${JSON.stringify(resized)}; ${inner}; left ${left}`);
     check(`window ${preset}: the pen ${cls === 'compact' ? 'is there on the phone' : 'is not over the reader'} (note e3fe)`, (await page.locator('#pen').isVisible()) === (cls === 'compact'));
     await page.screenshot({ path: shots + `${preset}-${cls}.png` });
   }
