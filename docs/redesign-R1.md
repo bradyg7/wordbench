@@ -1,8 +1,11 @@
 # R1, Everything is a page: the design round, for review
 
-2026-11-09. The design round for R1 of [debug-spec.md](debug-spec.md) (findings `38c2`, `7d00`, `d84d`). **Nothing here is
-built.** No production code was changed to write it; the person accepts or changes each answer, and R1 is built from what
-is accepted. Read from the real study folder, read only: the three findings, the notes they cite (`05f3`, `f4ac`, `6572`,
+2026-11-09. The design round for R1 of [debug-spec.md](debug-spec.md) (findings `38c2`, `7d00`, `d84d`).
+
+**Accepted and built, 2026-11-09:** the person's answer to the questions at the end was "run your recommendations, and
+implement these designs", so every decision below is the recommended one (decision 9, the order, is moved: R1 was built
+now). What was built, and how it was checked, is [phase2-results.md](phase2-results.md) section 28. The text below is the
+design as it was written for review. Read from the real study folder, read only: the three findings, the notes they cite (`05f3`, `f4ac`, `6572`,
 `4ad9`, `c39a`), the files' shapes and counts. The Python app's `Study` was run over a scratch copy only.
 
 **The sheets:** `python design/r1.py` → `design/r1.figcraft` and `design/exports/r1/` (about 5 seconds; it reuses the

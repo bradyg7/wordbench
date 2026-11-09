@@ -347,7 +347,7 @@ fn clean_definition(text: &str) -> String {
 }
 
 /// A word card's facts, all from the lexicon. None if there is no such number.
-fn word_entry(bible: &Bible, strong: &str) -> Result<Option<Value>> {
+pub(crate) fn word_entry(bible: &Bible, strong: &str) -> Result<Option<Value>> {
     let Some(e) = lookup::strong(bible, strong)? else { return Ok(None) };
     let rows = e["renderings"].as_array().cloned().unwrap_or_default();
     let occ: i64 = rows.iter().map(|r| r["n"].as_i64().unwrap_or(0)).sum();

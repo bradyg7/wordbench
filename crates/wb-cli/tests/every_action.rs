@@ -42,6 +42,10 @@ const INTERNAL: &[&str] = &[
     // files attached to a finding (C1): the window's form of wb finding attach, for a dropped or pasted file, which has
     // bytes but no path in the page (app/src-tauri's finding_attach; a terminal attaches by path)
     "attach_bytes",
+    // a thread as a page and questions in pages (R1): fences and ids read and written, the tree and the reader's pieces of
+    // wb thread page|pin, wb page threads|words, wb block thread|word and wb question *
+    "thread_fence", "word_fence", "value_fence_text", "thread_held", "slug_of", "pinned_of", "set_pinned", "question_of", "question_md",
+    "with_marker", "found", "in_chapter", "entries", "split_id",
 ];
 
 fn public_fns(src: &str) -> Vec<String> {
@@ -57,7 +61,7 @@ fn every_action_has_a_command() {
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
     let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs"] {
+    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;

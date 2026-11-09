@@ -270,6 +270,34 @@ fn notebook_commands() -> Vec<Command> {
         cmd("questions", "Your questions: those in the Inbox and those at a place (trails), newest first.", vec![Opt("status", Some("open"))], |c, a| {
             j(nb::questions(c.bible()?, &*c.study()?, &a.opt_or("status", "open")).map_err(e)?)
         }),
+        cmd("question list", "Every question as one list: those at a place (trails), in the Inbox, and written in a page (/?, a callout block); --at a place: those on it and on any part of it (\"here\": on this very place); each says its form (trail or block). Answered ones with --status all or done.",
+            vec![Opt("status", Some("open")), Opt("at", None)], |c, a| {
+                let st = a.opt_or("status", "open");
+                if let Some(at) = a.opt("at") {
+                    let at = crate::study::anchor(c, &at)?;
+                    return j(wb_core::questions::at(c.bible()?, &*c.study()?, &at, &st).map_err(e)?);
+                }
+                j(wb_core::questions::list(c.bible()?, &*c.study()?, &st).map_err(e)?)
+            }),
+        cmd("question add", "Write a question in a page, as its last block (or after block N): wb question add <page id> \"text\" [--after N]. It is a callout line: > [!question] text. A question at a verse is wb note new --question.",
+            vec![Pos("page", N::One), Pos("text", N::Many), Opt("after", None)], |c, a| {
+                let after = match a.opt("after") {
+                    Some(n) => Some(n.trim().parse::<usize>().map_err(|_| format!("--after takes a block's number, from 1, not “{n}”."))?),
+                    None => None,
+                };
+                let text = text_of(c, &a.s("text"))?;
+                j(wb_core::questions::add(c.bible()?, &mut *c.study()?, &a.s("page"), &text, after).map_err(e)?)
+            }),
+        cmd("question answer", "Answer a question written in a page, or open it again (--open): wb question answer <page id>#<block number>. (A trail or an Inbox question: wb note answered.)",
+            vec![Pos("id", N::One), Flag("open")], |c, a| {
+                j(wb_core::questions::set_done(c.bible()?, &mut *c.study()?, &a.s("id"), Some(!a.flag("open"))).map_err(e)?)
+            }),
+        cmd("question fold", "Fold a question at a place (a trail) into a page: it becomes a question block at the page's end, and the trail goes to .trash. The page must be at the question's place, or --also gives it that place. wb question fold <trail id> <page id> [--also]. Undo: wb question unfold.",
+            vec![Pos("trail", N::One), Pos("page", N::One), Flag("also")], |c, a| {
+                j(wb_core::questions::fold(c.bible()?, &mut *c.study()?, &a.s("trail"), &a.s("page"), a.flag("also")).map_err(e)?)
+            }),
+        cmd("question unfold", "Give a question written in a page its own place again: a trail at the page's place, and the block taken out of the page. wb question unfold <page id>#<block number>.",
+            vec![Pos("id", N::One)], |c, a| j(wb_core::questions::unfold(c.bible()?, &mut *c.study()?, &a.s("id")).map_err(e)?)),
         cmd("parse", "What a line of the capture box means, as the window reads it: wb parse \"uses zeal gospels\" (an action, or the error).",
             vec![Pos("line", N::Any)], |c, a| {
                 Ok(Out::Json(match lang::parse(&a.s("line"), c.bible()?.books()) {

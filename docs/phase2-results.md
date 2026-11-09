@@ -960,3 +960,46 @@ Screenshots: new `docs/phase2/1440-finding-files.png` (the box with three files)
 `webkit-phone-finding-files.png` and `webkit-desktop-finding-files.png`; the others refreshed by the runs. Not installed
 (`install-app.ps1` not run). The installed app writes a new kind of thing to the real study folder once a file is
 attached, so `scripts/backup-study.ps1` comes first when it is installed.
+
+## 30. R1: everything is a page (2026-11-09)
+
+From [redesign-R1.md](redesign-R1.md) (findings `38c2`, `7d00`, `d84d`), built as the design round recommended and the person
+accepted ("run your recommendations, and implement these designs"). **No existing file in the study folder is rewritten by
+this change.** What can be new in the folder: `settings/pages.json` (a thread's place in Pinned, a file the Python app passes
+over), and, only when the person writes one, a question callout line, or a thread or word fence, inside a page's text.
+
+| Step | What was built |
+|---|---|
+| The checks first | `wb study check` (what the folder holds as this app reads it, and the files the next change would write: none) and `scripts/py-opens.py` (the Python app's own `Study` over a scratch copy, its counts against `wb study check`'s, or `--save` / `--compare` before and after). Before the change, on the scratch copy of the real folder: the Python app reads **41 notes, 7 threads, 146 thread places, 8 trails, 4 sets**; the same after. |
+| A thread as a page | `threadpage.rs`: the page id `thread:<slug>`; its note is the page's text, so `wb page blocks`, `wb block add|set|rm|move` and every block function take it and write the thread file's note; `wb thread page`, `wb thread pin|unpin`. A thread is a row of the tree with its color's dot, the notes written on it are its children (a note can be on several threads), `[[Phinehas]]` links to it and Linked from works. The thread file is only ever written as the Python app writes it (a test holds its header to `name`, `created`, `updated`, `color`). |
+| The window | The thread's page in the Notebook: the note as blocks, the places as blocks in the thread's own order (grip to drag, × to take out, + Place, a filter when there are more than six), the pages on it with a box to write one, the color, Put in Bible order, Drawn in the reader, Pin, Rename and Delete in ⋯, and its documents at its foot (`thread-…` records, as before). **The Threads button, the Threads pane and the phone's Threads tab are gone**; `threads` and every chip, set item and command that opened a thread open its page. A page dropped on a thread in Pages is put on it. |
+| Three blocks | `/?` a question (`> [!question] …`, `> [!done] …` when answered; *Mark answered* ticks it), `/~` a thread's places kept up to date (```` ```thread ```` and its id), `/word` the lexicon's entry for a number (```` ```word ```` and the number; its English definition held for R5). The menu finds them by `?`, `~`, `word`, and `note` finds *Page inside this one*. `wb page threads|words`, `wb block thread|word`. |
+| Questions as one list | `questions.rs`: the blocks of every page are one list with the trails and the Inbox's: `wb questions`, `wb question list [--at]`, the Questions section and view lines (`notebook questions open`), the reader's ? and the verse card's *Questions here* (a question on part of a verse shows at the verse). `wb question add|answer|fold|unfold`. A question in a page takes its page's places. |
+| Documents | A page's *What goes in* has a row for a question (your words, as a line), a thread block (its places go in as a thread's own document reads them, each verse from the Bible) and a word block (left out unless switched on). A thread's own documents are unchanged: the source stays the thread, the plan code is not touched. |
+| The words | "Notes" are "pages" in the window; `wb page show|text|rm …` is `wb note …`; the Help's Guide has Threads, Questions and Word blocks entries (`wb guide threads`). CLAUDE.md is edited (a rule, shown in the diff for the person's approval). |
+
+**Not done, on purpose:** thread pages are not nested inside other pages (the sidecar can hold it later); `/word` has no English
+definition (R5); no existing trail was folded into a page (`wb question fold` does one at a time, with `unfold` as the undo);
+the Python app does not see a question written in a page as a trail.
+
+**Found by the desk checks:** the person's real folder has grown since the checks were written (52 pages with no place, notes on
+threads, a template that makes the pen ask what to start from, documents, findings), so the desk's own copy now starts without
+them (`measure/desk.mjs` removes `notes/_inbox`, `_threads`, `_days`, `documents`, `findings`, `.trash` and
+`settings/notebook.json` from the copy, never from the person's folder). Two sessions checking at once had shared one folder
+and one DevTools port, so `WB_DESK_WORK` and `WB_DESK_PORT` now give each its own. The release app loads its UI from the dev
+server at `devUrl` (:1420), so a check of a worktree needs its own vite on a free port and the app built with
+`--config '{"build":{"devUrl":"http://localhost:1431"}}'`; **that build is for checking only and must not be installed**.
+
+| | Result |
+|---|---|
+| Rust tests | `cargo test --workspace`: all pass (new: a thread as a page and its file, a link naming a thread, thread and word blocks and their documents, questions in pages: one list, answered, folded and unfolded, `wb page` as `wb note`, plus unit tests of the callout, the fences and `with_marker`) |
+| Plans | `python scripts/doc-plans.py`: **14 of 14** the same as the Python app's (7 threads x Speaker Script and Verse by Verse) |
+| The Python app opens the folder | `python scripts/py-opens.py --compare`: the same as before on the scratch copy of the real folder (41 notes, 7 threads, 146 places, 8 trails, 4 sets); and it agrees with `wb study check` |
+| Golden | `python scripts/golden.py`: **103 of 103** |
+| Desktop in the real app | `node measure/desk.mjs --release`: **376 of 376** (the thread-pane checks rewritten for the page; 14 new) |
+| WebKit | `npm run test:webkit` (on its own port): **18 passed**, 10 skipped |
+
+Screenshots: new `docs/phase2/1440-a-thread-as-a-page.png`, `1440-three-new-blocks.png`; `1440-a-thread.png` and
+`1440-notes-on-a-thread.png` redrawn. Not checked with a real mouse: dragging a thread's places by the grip is written the way
+the pane's was (the same events); a real-input check of it is still owed (M1's lesson). Not committed to the person's app: nothing
+was installed.

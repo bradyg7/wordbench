@@ -227,6 +227,7 @@ mark.m-s { background: var(--hl-blue); } mark.m-e { background: var(--hl-pink); 
 .eye.off { color: var(--muted); }
 .dot { flex: none; }
 .dot.big { width: 14px; height: 14px; }
+.dot.c- { background: var(--line); }
 .dot.c-orange { background: var(--thread-orange); } .dot.c-green { background: var(--thread-green); } .dot.c-pink { background: var(--thread-pink); } .dot.c-yellow { background: var(--thread-yellow); }
 .thread-head { display: flex; align-items: center; gap: 8px; }
 .thread-head .pane-title { flex: 1; }
@@ -945,6 +946,36 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 /* S5: a thread's places on its Notebook page, under its notes */
 .nb-thread-places { margin-top: 18px; padding-top: 4px; border-top: 1px solid var(--line); }
 .nb-places-head { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); margin: 10px 0 6px; }
-.nb-place-row { padding: 8px 0; }
-.nb-place-row.off .ref-link { color: var(--muted); }
-.nb-place-quote { margin: 2px 0 0; }
+.nb-places-row { display: flex; align-items: center; gap: 8px; margin: 10px 0 8px; }
+.nb-places-row .label { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); }
+.nb-places-row .grow, .nbt-head .grow { flex: 1; }
+.nb-places-filter { width: 160px; padding: 4px 8px; font: var(--type-small); }
+.member.off .ref-link { color: var(--muted); }
+.nb-thread-controls { align-items: center; }
+.nb-thread-controls .grow { flex: 1; }
+.nb-thread-color .dot { margin-right: 6px; }
+.nb-on-thread-new { margin-top: 8px; }
+.nb-on-thread-new .field { width: 100%; }
+.nb-tree-open .dot { margin-right: 6px; }
+/* ---- R1: a thread block, a word block, a question block (sheets R1.3, R1.5) ---- */
+.nb-threadblock, .nb-wordblock { border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); padding: 10px 14px; margin: 4px 0; }
+.nbt-head, .nbw-head { display: flex; align-items: center; gap: 8px; }
+.nbt-name { font: var(--type-small-strong); }
+.nbt-refs { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+.nbt-ref { background: var(--accent-soft); color: var(--accent); }
+.nbw-mark { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font: 700 12px/1 var(--font-ui, inherit); }
+.nbw-num { font: var(--type-small-strong); color: var(--accent); }
+.nbw-body { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; }
+.nbw-top { display: flex; align-items: baseline; gap: 12px; }
+.nbw-lemma { font-size: 24px; line-height: 1.3; }
+.nbw-sound { font: var(--type-small-strong); }
+.nbw-def { margin: 4px 0 0; }
+.nbw-used, .nbw-slot { margin: 0; }
+.nbw-slot { padding: 6px 10px; border: 1px dashed var(--line); border-radius: 8px; margin-top: 6px; }
+.nb-questionblock { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; margin: 4px 0; border: 1px solid var(--question); border-radius: 10px; }
+.nb-questionblock.done { border-color: var(--line); background: var(--sunken); color: var(--muted); }
+.nbq-mark { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--question); color: var(--question); font: 700 12px/1 var(--font-ui, inherit); }
+.nb-questionblock.done .nbq-mark { border-color: var(--ok, #3b7a3b); color: var(--ok, #3b7a3b); }
+.nbq-text { flex: 1; min-width: 0; }
+.nbq-text p { margin: 0; }
+.nbq-answer { flex: none; }

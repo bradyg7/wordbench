@@ -49,7 +49,9 @@ struct Tree {
 impl Tree {
     fn read(bible: &Bible, store: &Store) -> Tree {
         // templates (W5) are listed under Templates, not in the tree
-        let all: Vec<Value> = nb::every(bible, store).into_iter().filter(|e| !nb::is_template(e)).collect();
+        let mut all: Vec<Value> = nb::every(bible, store).into_iter().filter(|e| !nb::is_template(e)).collect();
+        // a thread is a page in the tree (R1); the pages written on it are its children, kept in each note's `threads`
+        all.extend(crate::threadpage::lines(bible, store));
         let ids: HashSet<String> = all.iter().map(|e| id_of(e).to_string()).collect();
         let mut parent: HashMap<String, String> = all
             .iter()
@@ -92,6 +94,11 @@ impl Tree {
 
     /// The pages inside `parent` (None: the top of the tree), in order.
     fn children(&self, parent: Option<&str>) -> Vec<&Value> {
+        if let Some(slug) = parent.and_then(crate::threadpage::slug_of) {
+            let mut v: Vec<&Value> = self.all.iter().filter(|e| e["kind"] != "thread" && e["threads"].as_array().into_iter().flatten().any(|x| x["id"] == slug)).collect();
+            v.sort_by(|a, b| a["created"].as_str().cmp(&b["created"].as_str()));
+            return v;
+        }
         let mut v: Vec<&Value> = self.all.iter().filter(|e| self.in_tree(e) && self.parent_of(id_of(e)) == parent).collect();
         v.sort_by(|a, b| by_order(a, b));
         v
@@ -124,7 +131,7 @@ impl Tree {
     }
 
     fn row(&self, e: &Value) -> Value {
-        json!({"id": e["id"], "title": e["title"], "kind": e["kind"], "placed": e["placed"], "anchor": e["anchor"], "label": e["label"],
+        json!({"id": e["id"], "title": e["title"], "kind": e["kind"], "placed": e["placed"], "anchor": e["anchor"], "label": e["label"], "color": e.get("color").cloned().unwrap_or(Value::Null),
             "status": e.get("status").cloned().unwrap_or(Value::Null), "pinned": e["pinned"], "order": e["order"],
             "parent": self.parent_of(id_of(e)), "created": e["created"], "updated": e["updated"]})
     }
@@ -199,9 +206,10 @@ fn sidebar_one(bible: &Bible, store: &Store, at: Option<(String, u32)>, today: b
             json!({"id": id, "name": th["name"], "color": th.get("color").cloned().unwrap_or(Value::Null), "count": n})
         })
         .collect();
-    let mut qs: Vec<&Value> = t.all.iter().filter(|e| e["kind"] == "question").collect();
+    let blocks = crate::questions::entries(bible, store);
+    let mut qs: Vec<&Value> = t.all.iter().filter(|e| e["kind"] == "question").chain(blocks.iter()).collect();
     qs.sort_by(|a, b| (a["status"] == "done").cmp(&(b["status"] == "done")).then_with(|| b["created"].as_str().cmp(&a["created"].as_str())));
-    let questions: Vec<Value> = qs.into_iter().map(|e| t.row(e)).collect();
+    let questions: Vec<Value> = qs.into_iter().map(|e| if e["block"].is_null() { t.row(e) } else { e.clone() }).collect();
     let pages: Vec<Value> = t.children(None).into_iter().map(|e| t.node(e)).collect();
     let pinned: Vec<Value> = t.pinned().into_iter().map(|e| t.row(e)).collect();
     let templates = crate::templates::rows(bible, store);
@@ -236,6 +244,14 @@ fn renumber(store: &mut Store, list: &[String], field: &str) -> Result<Vec<Strin
     let mut written = vec![];
     for (i, id) in list.iter().enumerate() {
         let want = json!(i + 1);
+        if let Some(slug) = crate::threadpage::slug_of(id) {
+            // a thread page has a place in Pinned only (settings/pages.json); among the pages it is not ordered
+            if field == "pinned" && crate::threadpage::pinned_of(store, slug) != Some((i + 1) as f64) {
+                crate::threadpage::set_pinned(store, slug, Some((i + 1) as i64))?;
+                written.push(id.clone());
+            }
+            continue;
+        }
         if store.find_note(id)?.get(field) != Some(&want) {
             store.set_fields(id, &[(field, Some(want))])?;
             written.push(id.clone());
@@ -273,6 +289,14 @@ pub enum Under<'a> {
 pub fn move_page(bible: &Bible, store: &mut Store, id: &str, under: Under<'_>, at: Place<'_>) -> Result<Value> {
     let t = Tree::read(bible, store);
     page_entry(&t, id)?;
+    if crate::threadpage::slug_of(id).is_some() {
+        return Err(bad("A thread's page stays where it is among the pages (pin it, or put a page on it with wb note thread)."));
+    }
+    if let Under::In(p) = &under {
+        if crate::threadpage::slug_of(p).is_some() {
+            return Err(bad("A page is put on a thread with wb note thread, not inside it."));
+        }
+    }
     let parent: Option<String> = match under {
         Under::Keep => t.parent_of(id).map(String::from),
         Under::Top => None,
@@ -316,7 +340,11 @@ pub fn pin(bible: &Bible, store: &mut Store, id: &str, at: Place<'_>) -> Result<
 pub fn unpin(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
     let t = Tree::read(bible, store);
     page_entry(&t, id)?;
-    store.set_fields(id, &[("pinned", None)])?;
+    if let Some(slug) = crate::threadpage::slug_of(id) {
+        crate::threadpage::set_pinned(store, slug, None)?;
+    } else {
+        store.set_fields(id, &[("pinned", None)])?;
+    }
     let list: Vec<String> = t.pinned().into_iter().map(|e| id_of(e).to_string()).filter(|x| x != id).collect();
     Ok(json!({"id": id, "pinned": list}))
 }
@@ -359,6 +387,23 @@ pub fn new_page(bible: &Bible, store: &mut Store, parent: Option<&str>, text: &s
     };
     if link && parent.is_none() {
         return Err(bad("A link is written in the page it goes inside: give --parent."));
+    }
+    // a page "inside" a thread is a page written on it (R1): a note on the thread, listed under its page
+    if let Some(slug) = parent.as_deref().and_then(crate::threadpage::slug_of).map(String::from) {
+        let r = store.add_thread_note(&slug, text)?;
+        let id = s(&r, "id");
+        if link {
+            let p = parent.as_deref().unwrap_or_default();
+            let title = nb::title_of(text);
+            let pt = crate::threadpage::note_text(store, p)?;
+            let at = match after {
+                Some(n) => n,
+                None => split(&pt, false).1.len().checked_sub(1),
+            };
+            let (out, _, _) = insert(&pt, false, at, &format!("[[{title}]]"))?;
+            nb::edit_text(bible, store, p, &out)?;
+        }
+        return nb::show(bible, store, &id);
     }
     let r = store.jot(text, false)?;
     let id = s(&r, "id");
@@ -745,6 +790,10 @@ pub fn retitle(text: &str, title: &str) -> Result<String> {
 /// A note's text, and whether its first line is its title (a day's page has none). A day's page is named by its id or
 /// its day (2026-11-07).
 pub(crate) fn text_of(store: &Store, id: &str) -> Result<(String, String, bool)> {
+    if crate::threadpage::slug_of(id).is_some() {
+        // a thread's page: its note is the text, and its title is its name, not a first line
+        return Ok((id.trim().to_string(), crate::threadpage::note_text(store, id)?, false));
+    }
     let id = if crate::store::is_day(id.trim()) { format!("d_{}", id.trim()) } else { id.trim().to_string() };
     let r = store.find_note(&id).map_err(|_| missing("No note, question or page with that id (a day's page not written in yet has no blocks)."))?;
     Ok((id.clone(), s(&r, "text"), !id.starts_with("d_")))
@@ -767,6 +816,11 @@ fn block_values(text: &str, titled: bool) -> Value {
             if b.kind == "fence" {
                 v["lang"] = json!(b.lang);
             }
+            if b.kind == "quote" {
+                if let Some(q) = crate::questions::question_of(&sub(&c, b.start, b.end)) {
+                    v["question"] = json!({"done": q.done, "text": q.text});
+                }
+            }
             if listish(b.kind) {
                 v["indent"] = json!(b.indent);
             }
@@ -786,11 +840,12 @@ pub fn blocks(store: &Store, id: &str) -> Result<Value> {
 
 /// Write the changed text of a note and answer with its blocks, and which of them were just written (`n`, `count`).
 fn written(bible: &Bible, store: &mut Store, id: &str, text: &str, titled: bool, n: usize, count: usize) -> Result<Value> {
-    if text.trim().is_empty() {
+    let thread = crate::threadpage::slug_of(id).is_some();
+    if text.trim().is_empty() && !thread {
         return Err(bad("A page needs some text. To remove it, delete the page."));
     }
     nb::edit_text(bible, store, id, text)?;
-    let now = s(&store.find_note(id)?, "text");
+    let now = if thread { crate::threadpage::note_text(store, id)? } else { s(&store.find_note(id)?, "text") };
     let mut v = block_values(&now, titled);
     v["id"] = json!(id);
     v["n"] = json!(n + 1);
@@ -821,7 +876,7 @@ pub fn edit(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>) -> Resul
         Edit::Check { n, done } => (check(&text, titled, n, done)?, n, 1),
         Edit::Title(t) => {
             if !titled {
-                return Err(bad("A day's page is named by its day."));
+                return Err(bad("A day's page is named by its day, and a thread's by its name (wb thread edit --rename)."));
             }
             (retitle(&text, t)?, 0, 0)
         }
@@ -913,9 +968,151 @@ pub fn set_scripture(bible: &Bible, store: &mut Store, id: &str, n: usize, lines
     edit(bible, store, id, Edit::Set { n, count: 1, text: &scripture_fence_text(&f) })
 }
 
+// ---- thread and word blocks (R1) ----------------------------------------------------------------------------------------
+
+/// A fence with one value in it (```` ```thread ```` then a thread's id, ```` ```word ```` then H7065): the value, or an
+/// empty string when there is none yet.
+fn value_fence(block: &str, lang: &str) -> Option<String> {
+    let mut ls = block.lines();
+    let first = ls.next()?.trim_start();
+    let mark = ["```", "~~~"].into_iter().find(|m| first.starts_with(m))?;
+    if !first[3..].trim().split_whitespace().next().is_some_and(|w| w.eq_ignore_ascii_case(lang)) {
+        return None;
+    }
+    Some(ls.take_while(|l| !l.trim_start().starts_with(mark)).map(str::trim).find(|l| !l.is_empty()).unwrap_or("").to_string())
+}
+
+/// A block's Markdown → the thread it holds, when it is a thread block (```` ```thread ````, a thread's id or name).
+pub fn thread_fence(block: &str) -> Option<String> {
+    value_fence(block, "thread")
+}
+
+/// A block's Markdown → the Strong's number it holds, when it is a word block (```` ```word ````).
+pub fn word_fence(block: &str) -> Option<String> {
+    value_fence(block, "word")
+}
+
+/// A thread or word block as it is written.
+pub fn value_fence_text(lang: &str, value: &str) -> String {
+    format!("```{lang}\n{}\n```", value.trim())
+}
+
+/// A thread by the id or name a block holds: exact, else the one name that starts with it.
+fn thread_by(store: &Store, held: &str) -> Option<crate::store::Rec> {
+    let w = held.trim().to_lowercase();
+    if w.is_empty() {
+        return None;
+    }
+    let all = store.threads();
+    all.iter().find(|t| s(t, "id").to_lowercase() == w || s(t, "name").to_lowercase() == w).map(|t| (*t).clone())
+}
+
+/// The thread a thread block holds (a thread's id, or its name).
+pub fn thread_held(store: &Store, held: &str) -> Option<crate::store::Rec> {
+    thread_by(store, held)
+}
+
+/// A page's thread blocks with what each shows (`wb page threads`): the block's number, the thread (its id, name, color,
+/// how many places) and its first places' references. A thread that is gone says so.
+pub fn threads(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
+    let (id, text, titled) = text_of(store, id)?;
+    let c = chars(&text);
+    let mut out = vec![];
+    for (i, b) in split(&text, titled).1.iter().enumerate() {
+        if b.kind != "fence" {
+            continue;
+        }
+        let Some(held) = thread_fence(&sub(&c, b.start, b.end)) else { continue };
+        let mut v = json!({"n": i + 1, "held": held});
+        match thread_by(store, &held) {
+            None if held.is_empty() => v["error"] = json!("No thread yet: write its name under ```thread."),
+            None => v["error"] = json!(format!("No thread called “{held}”.")),
+            Some(t) => {
+                let members: Vec<Value> = t["members"].as_array().cloned().unwrap_or_default();
+                v["thread"] = t["id"].clone();
+                v["name"] = t["name"].clone();
+                v["color"] = json!(s(&t, "color"));
+                v["count"] = json!(members.len());
+                v["refs"] = json!(members.iter().take(4).map(|m| nb::label(bible, m["anchor"].as_str().unwrap_or(""))).collect::<Vec<_>>());
+            }
+        }
+        out.push(v);
+    }
+    Ok(json!({"id": id, "blocks": out}))
+}
+
+/// A page's word blocks with the lexicon's entry for each (`wb page words`): the block's number, the number, the word, its
+/// sound, Strong's own words, the KJV's renderings and how often. Nothing of it is in the file.
+pub fn words(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
+    let (id, text, titled) = text_of(store, id)?;
+    let c = chars(&text);
+    let mut out = vec![];
+    for (i, b) in split(&text, titled).1.iter().enumerate() {
+        if b.kind != "fence" {
+            continue;
+        }
+        let Some(held) = word_fence(&sub(&c, b.start, b.end)) else { continue };
+        let strong = held.trim().to_uppercase();
+        let mut v = json!({"n": i + 1, "held": held});
+        if strong.is_empty() {
+            v["error"] = json!("No number yet: write one under ```word, like H7065.");
+        } else if !crate::lookup::is_strong(&strong) {
+            v["error"] = json!(format!("“{held}” is not a Strong's number (H7065, G25)."));
+        } else {
+            match crate::lookup::strong(bible, &strong)? {
+                None => v["error"] = json!(format!("The lexicon has no {strong}.")),
+                Some(e) => {
+                    v["strong"] = json!(strong);
+                    for k in ["lemma", "translit", "pron", "definition", "usage", "occurrences"] {
+                        v[k] = e.get(k).cloned().unwrap_or(Value::Null);
+                    }
+                    v["renderings"] = json!(e["renderings"].as_array().map(|a| a.iter().take(6).cloned().collect::<Vec<_>>()).unwrap_or_default());
+                }
+            }
+        }
+        out.push(v);
+    }
+    Ok(json!({"id": id, "blocks": out}))
+}
+
+/// Write a thread or word block's value anew (checked first: a thread that exists, a Strong's number the lexicon has).
+/// → the page's blocks, as `edit`.
+pub fn set_value_block(bible: &Bible, store: &mut Store, id: &str, n: usize, lang: &str, value: &str) -> Result<Value> {
+    let (_, text, titled) = text_of(store, id)?;
+    let c = chars(&text);
+    let bs = split(&text, titled).1;
+    let b = bs.get(n).ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
+    let md = sub(&c, b.start, b.end);
+    if value_fence(&md, lang).is_none() {
+        return Err(bad(format!("Block {} is not a {lang} block.", n + 1)));
+    }
+    let value = value.trim();
+    let held = if lang == "thread" {
+        let t = thread_by(store, value).ok_or_else(|| missing(format!("No thread called “{value}”.")))?;
+        s(&t, "id")
+    } else {
+        let st = value.to_uppercase();
+        if !crate::lookup::is_strong(&st) || crate::lookup::strong(bible, &st)?.is_none() {
+            return Err(bad(format!("“{value}” is not a Strong's number the lexicon has (H7065, G25).")));
+        }
+        st
+    };
+    edit(bible, store, id, Edit::Set { n, count: 1, text: &value_fence_text(lang, &held) })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn thread_and_word_blocks_hold_one_value() {
+        assert_eq!(thread_fence("```thread\nphinehas\n```").as_deref(), Some("phinehas"));
+        assert_eq!(word_fence("```word\n  H7065 \n```").as_deref(), Some("H7065"));
+        assert_eq!(word_fence("```word\n```").as_deref(), Some(""));
+        assert_eq!(thread_fence("```scripture\nNum 25:11\n```"), None);
+        assert_eq!(word_fence("H7065"), None);
+        assert_eq!(value_fence_text("word", " H7065 "), "```word\nH7065\n```");
+    }
 
     #[test]
     fn a_scripture_fence_holds_a_reference_and_its_choices() {

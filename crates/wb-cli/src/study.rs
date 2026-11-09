@@ -151,12 +151,31 @@ pub fn commands() -> Vec<Command> {
         cmd("palette rm", "Forget a saved color (highlights already made in it stay).", vec![Pos("color", N::One)], |c, a| {
             j(json!({"colors": c.study()?.drop_palette_color(Some(&a.s("color"))).map_err(e)?}))
         }),
+        cmd("study check", "What the study folder holds, as this app reads it, and which files the next change would write (none). Reads only; scripts/py-opens.py is the Python app's side of the same check.",
+            vec![], |c, _| j(wb_core::check::study_check(&*c.study()?).map_err(e)?)),
         cmd("thread list", "Your threads, newest first; with words, only those whose name or note has them all.", vec![Pos("words", N::Any)], |c, a| {
             j(sa::thread_list(&*c.study()?, Some(&a.s("words"))).map_err(e)?)
         }),
         cmd("thread show", "A thread: its note, every place with its text, and its original words.", vec![Pos("name", N::Many)], |c, a| {
             let st = c.study()?;
             j(sa::thread_view(c.bible()?, &st, &tid(&st, &a.s("name"))?).map_err(e)?)
+        }),
+        cmd("thread page", "A thread as a page (R1): its note as blocks, its places (each with its text), the pages written on it, and where it is in Pinned. Its page id is thread:<slug>, which wb page, wb block and wb note show take like any page's.",
+            vec![Pos("name", N::Many)], |c, a| {
+                let st = c.study()?;
+                j(wb_core::threadpage::page(c.bible()?, &st, &tid(&st, &a.s("name"))?).map_err(e)?)
+            }),
+        cmd("thread pin", "Pin a thread's page (last in Pinned), or move it there: --after ID, --first. Its place is kept in settings/pages.json, not in the thread's file.",
+            vec![Pos("name", N::Many), Opt("after", None), Flag("first")], |c, a| {
+                let mut st = c.study()?;
+                let id = wb_core::threadpage::page_id(&tid(&st, &a.s("name"))?);
+                let after = a.opt("after");
+                j(wb_core::pages::pin(c.bible()?, &mut st, &id, wb_core::pages::Place { after: after.as_deref(), first: a.flag("first") }).map_err(e)?)
+            }),
+        cmd("thread unpin", "Take a thread's page out of Pinned.", vec![Pos("name", N::Many)], |c, a| {
+            let mut st = c.study()?;
+            let id = wb_core::threadpage::page_id(&tid(&st, &a.s("name"))?);
+            j(wb_core::pages::unpin(c.bible()?, &mut st, &id).map_err(e)?)
         }),
         cmd("thread new", "Start a thread, optionally with a note, a color and a first place.", vec![Pos("name", N::One), Opt("note", Some("")), Opt("color", None), Opt("at", None)], |c, a| {
             let at = match a.opt("at") {

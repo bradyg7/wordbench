@@ -9,8 +9,9 @@ import { app, here } from './app';
 import { toast } from './sheets';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
 import { drawVerses, openSplit, type MarkedVerse } from './verses';
+import { threadChooser } from './panes';
 
-export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number }
+export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string } }
 export interface Blocks { id: string; title: { text: string; start: number; end: number } | null; blocks: Blk[] }
 export interface LinkAt { start: number; end: number }
 
@@ -65,6 +66,10 @@ export function drawBlocks(data: Blocks, host: Host): HTMLElement {
   scriptureNow?.got.catch(() => {});
   viewsNow = data.blocks.some(isView) ? { id: data.id, got: wb(['page', 'views', data.id]) } : null;
   viewsNow?.got.catch(() => {});
+  threadsNow = data.blocks.some(isThread) ? { id: data.id, got: wb(['page', 'threads', data.id]) } : null;
+  threadsNow?.got.catch(() => {});
+  wordsNow = data.blocks.some(isWord) ? { id: data.id, got: wb(['page', 'words', data.id]) } : null;
+  wordsNow?.got.catch(() => {});
   for (const b of data.blocks) wrap.append(blockEl(data, b, host));
   const add = h('div', 'nb-block-add muted', data.blocks.length ? 'Write here, or type / for a block' : 'Write the page here, or type / for a block');
   add.onclick = () => startNew(data, host, add, data.blocks.length ? data.blocks[data.blocks.length - 1].n : 0, '');
@@ -147,6 +152,9 @@ function drawn(b: Blk, host: Host, id: string): Node {
   if (b.kind === 'table') return table(b.text);
   if (isScripture(b)) return scriptureBlock(b, id, host);
   if (isView(b)) return viewBlock(b, id, host);
+  if (isThread(b)) return threadBlock(b, id, host);
+  if (isWord(b)) return wordBlock(b, id);
+  if (b.kind === 'quote' && b.question) return questionBlock(b, id, host);
   if (b.kind === 'fence') return fence(b);
   const f = host.render(b.text, refs, links);
   if (b.kind === 'numbered') {
@@ -292,6 +300,100 @@ function viewBlock(b: Blk, id: string, host: Host): HTMLElement {
   return box;
 }
 
+/** A page's thread blocks (`wb page threads`) and word blocks (`wb page words`), asked for once each time it is drawn. */
+let threadsNow: { id: string; got: Promise<any> } | null = null;
+let wordsNow: { id: string; got: Promise<any> } | null = null;
+const fenceLang = (b: Blk) => (b.kind === 'fence' ? (b.lang || '').split(/\s/)[0].toLowerCase() : '');
+const isThread = (b: Blk) => fenceLang(b) === 'thread';
+const isWord = (b: Blk) => fenceLang(b) === 'word';
+/** What a thread or word block holds: the first line inside its fence. */
+const heldIn = (b: Blk) => (b.text.split('\n').slice(1).find(l => l.trim() && !/^(```|~~~)/.test(l.trim())) || '').trim();
+
+/** A thread block (R1, sheet R1.3): a thread's places kept up to date, as a view's list is. The file holds the thread's id.
+ * Its head: the thread's dot and name, how many places, Open the page; under it the first places' references. */
+function threadBlock(b: Blk, id: string, host: Host): HTMLElement {
+  const box = h('div', 'nb-threadblock');
+  const head = h('div', 'nbt-head');
+  const dot = h('i', 'dot nbt-dot');
+  const name = h('span', 'nbt-name', heldIn(b) || 'A thread');
+  const count = h('span', 'nbt-count muted small', '');
+  head.append(dot, name, count, h('span', 'grow'));
+  const refs = h('div', 'nbt-refs');
+  box.append(head, refs);
+  if (!heldIn(b)) refs.append(h('p', 'muted small nbv-note', 'No thread yet: click here and write its name under ```thread.'));
+  if (threadsNow?.id === id) {
+    void threadsNow.got.then(d => {
+      const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
+      if (!mine) return;
+      if (mine.error) { if (heldIn(b)) { refs.replaceChildren(h('p', 'small nbv-note nbv-error', mine.error)); } return; }
+      dot.className = `dot nbt-dot c-${mine.color}`;
+      name.textContent = mine.name;
+      count.textContent = `· ${mine.count} place${mine.count === 1 ? '' : 's'}`;
+      const open = button('btn small nbt-open', 'Open the page', ev => { ev.stopPropagation(); host.open(`thread:${mine.thread}`); }, 'notebook');
+      head.append(open);
+      refs.replaceChildren(...(mine.refs as string[]).map(r => h('span', 'pill nbt-ref', r)));
+      if (mine.count > mine.refs.length) refs.append(h('span', 'pill unplaced', `+ ${mine.count - mine.refs.length} more`));
+    }).catch(x => { refs.replaceChildren(h('p', 'small nbv-note nbv-error', String(x))); });
+  }
+  return box;
+}
+
+/** A word block (R1, sheet R1.5): the lexicon's entry for a Strong's number, drawn from the database each time; the file
+ * holds only the number. */
+function wordBlock(b: Blk, id: string): HTMLElement {
+  const box = h('div', 'nb-wordblock');
+  const head = h('div', 'nbw-head');
+  head.append(h('span', 'nbw-mark', 'A'), h('span', 'nbw-num', heldIn(b).toUpperCase() || 'A word'), h('span', 'muted small', '· Strong’s'));
+  const body = h('div', 'nbw-body');
+  box.append(head, body);
+  if (!heldIn(b)) body.append(h('p', 'muted small nbv-note', 'No number yet: click here and write one under ```word, like H7065.'));
+  if (wordsNow?.id === id) {
+    void wordsNow.got.then(d => {
+      const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
+      if (!mine) return;
+      if (mine.error) { if (heldIn(b)) body.replaceChildren(h('p', 'small nbv-note nbv-error', mine.error)); return; }
+      const top = h('div', 'nbw-top');
+      top.append(h('span', `nbw-lemma${/^H/.test(mine.strong) ? ' hebrew' : ' greek'}`, mine.lemma || ''), h('span', 'nbw-sound', mine.translit || ''));
+      body.replaceChildren(top);
+      if (mine.definition) body.append(h('p', 'nbw-def', mine.definition));
+      const used = (mine.renderings || []).map((r: any) => `${r.w} (${r.n})`).join(', ');
+      if (used) body.append(h('p', 'small muted nbw-used', `KJV: ${used}`));
+      body.append(h('p', 'small muted', `${mine.occurrences} time${mine.occurrences === 1 ? '' : 's'} in the Bible`));
+      // R5 holds this slot: the English definition waits for the source the person chooses
+      body.append(h('p', 'small muted nbw-slot', 'English definition: waits for the source you choose'));
+    }).catch(x => { body.replaceChildren(h('p', 'small nbv-note nbv-error', String(x))); });
+  }
+  return box;
+}
+
+/** A question block (R1, sheet R1.3): the question, open until it is answered (the tick a to-do has). In the file it is a
+ * callout line, > [!question] …, and > [!done] … when answered (`wb question answer`). */
+function questionBlock(b: Blk, id: string, host: Host): HTMLElement {
+  const done = !!b.question?.done;
+  const box = h('div', `nb-questionblock${done ? ' done' : ''}`);
+  box.append(h('span', 'nbq-mark', done ? '✓' : '?'));
+  const refs = shifted(host.refs, b.start, b.end), links = shifted(host.links, b.start, b.end);
+  const lines = b.text.split('\n');
+  const first = /^\s*>\s?\[![a-z]+\][+-]?\s*/i.exec(lines[0]);
+  const text = [lines[0].slice(first ? first[0].length : 0), ...lines.slice(1).map(l => l.replace(/^\s*>\s?/, ''))].join('\n');
+  const t = h('div', 'nbq-text');
+  t.append(host.render(text, [], []));
+  void refs; void links;
+  box.append(t);
+  const ans = button(`btn small nbq-answer${done ? ' on' : ''}`, done ? 'Answered' : 'Mark answered', async ev => {
+    ev.stopPropagation();
+    try {
+      const n = await blockNow(id, b);
+      if (!n) return toast('The page changed; try again');
+      await wb(['question', 'answer', `${id}#${n}`, ...(done ? ['--open'] : [])]);
+      host.changed();
+    } catch (x) { toast(String(x)); }
+  });
+  ans.title = done ? 'Open it again' : 'Mark it answered';
+  box.append(ans);
+  return box;
+}
+
 /** A view's row, as the Notebook's entries read: a question's ?, the title, its place. */
 export function viewRow(r: any, host: Pick<Host, 'open'>): HTMLElement {
   const row = h('button', `nbv-row${r.kind === 'question' ? ' is-question' : ''}${r.status === 'done' ? ' done' : ''}`) as HTMLButtonElement;
@@ -328,7 +430,10 @@ function fence(b: Blk): HTMLElement {
 // ---- writing in a block -------------------------------------------------------------------------------------------------
 
 /** The block menu (sheet W2), in its order: what each writes. */
-const MENU: { key: string; label: string; what: string; ico: string; write: string; caret?: number }[] = [
+const MENU: { key: string; label: string; what: string; ico: string; write: string; caret?: number; alias?: string[] }[] = [
+  { key: 'question', label: 'Question', what: 'Open until you answer it', ico: 'prompt', write: '> [!question] ', alias: ['?'] },
+  { key: 'thread', label: 'Thread', what: 'A thread’s places, kept up to date', ico: 'threads', write: '', alias: ['~'] },
+  { key: 'word', label: 'Word', what: 'A Strong’s entry from the lexicon', ico: 'search', write: '```word\nH\n```', caret: 11 },
   { key: 'scripture', label: 'Scripture', what: 'A passage, drawn from the Bible', ico: 'book', write: '' },
   { key: 'heading', label: 'Heading', what: '# A heading', ico: 'prompt', write: '# ' },
   { key: 'list', label: 'List', what: '- an item', ico: 'shelf', write: '- ' },
@@ -337,7 +442,7 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
   { key: 'divider', label: 'Divider', what: 'A line across the page', ico: 'minus', write: '---' },
   { key: 'table', label: 'Table', what: 'Rows and columns', ico: 'filter', write: '| Column | Column |\n| --- | --- |\n|  |  |', caret: 2 },
   { key: 'link', label: 'Link to a page', what: '[[a page’s title]]', ico: 'notebook', write: '[[' },
-  { key: 'inside', label: 'Page inside this one', what: 'A new page, with a link to it here', ico: 'notebook', write: '' },
+  { key: 'inside', label: 'Page inside this one', what: 'A new page, with a link to it here', ico: 'notebook', write: '', alias: ['note', 'page'] },
   { key: 'view', label: 'View', what: 'A list kept up to date (a line of the command language)', ico: 'filter', write: '```view\nnotebook \n```', caret: 17 },
 ];
 
@@ -508,7 +613,7 @@ function slashMenu(ta: HTMLTextAreaElement, data: Blocks, host: Host, cur: { n: 
   const v = ta.value;
   if (!v.startsWith('/') || v.includes('\n') || v.length > 30) { menuClose?.(); return; }
   const typed = v.slice(1).trim().toLowerCase();
-  const hits = MENU.filter(m => !typed || m.label.toLowerCase().includes(typed) || m.key.startsWith(typed));
+  const hits = MENU.filter(m => !typed || m.label.toLowerCase().includes(typed) || m.key.startsWith(typed) || (m.alias || []).some(a => a.startsWith(typed)));
   menuClose?.();
   if (!hits.length) return;
   const box = h('div', 'nb-blockmenu');
@@ -519,6 +624,25 @@ function slashMenu(ta: HTMLTextAreaElement, data: Blocks, host: Host, cur: { n: 
   const choose = async (m: typeof MENU[number]) => {
     close();
     if (m.key === 'inside') return askInside(ta, host, cur, finish);
+    if (m.key === 'thread') {
+      // the thread is picked, and its id is what the block holds
+      ta.value = '```thread\n\n```';
+      ta.setSelectionRange(11, 11);
+      ta.focus();
+      ta.dispatchEvent(new Event('input'));
+      threadChooser(ta, async name => {
+        let held = name;
+        try {
+          const ts: any[] = await wb(['thread', 'list']);
+          held = ts.find(t => t.name.toLowerCase() === name.toLowerCase())?.id || name;
+        } catch { /* the name as typed */ }
+        ta.value = `\`\`\`thread\n${held}\n\`\`\``;
+        ta.setSelectionRange(ta.value.length, ta.value.length);
+        ta.focus();
+        ta.dispatchEvent(new Event('input'));
+      });
+      return;
+    }
     if (m.key === 'scripture') {
       const at = app.picked ?? here();
       ta.value = `\`\`\`scripture\n${at.label}\n\`\`\``;

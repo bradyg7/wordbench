@@ -61,6 +61,10 @@ pub fn run(bible: &Bible, store: &Store, line: &str) -> Result<Value> {
 
 fn find(bible: &Bible, store: &Store, q: &ViewQuery) -> Result<Vec<Value>> {
     let mut all: Vec<Value> = nb::all_lines(bible, store, true).into_iter().filter(|e| !nb::is_template(e)).collect();
+    // a question written in a page (R1) is a question a view can list
+    if q.questions.is_some() {
+        all.extend(crate::questions::entries(bible, store));
+    }
     if !q.words.is_empty() {
         all.retain(|e| nb::words_in(e, &q.words));
     }

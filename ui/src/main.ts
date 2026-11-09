@@ -18,8 +18,8 @@ import { app, goTo, here, type At } from './app';
 import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
 import type { Pane } from './dock';
-import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
-import { isCaptureKey, notebookBadge, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
+import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openToday, openUses, threadChooser } from './panes';
+import { isCaptureKey, notebookBadge, openNote, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
 import type { Change } from './dock';
 import { attachCommandField, loadThreads } from './command';
 import { findInPane, paneForFind } from './panefind';
@@ -1052,16 +1052,14 @@ $('place').onclick = () => (compact() ? settings($('place')) : picker($('place')
 // the pen: at desktop sizes, write in the Notebook's box on the place picked in the reader (or the verse at the top);
 // on a phone it will open the palette (phase 3)
 $('pen').onclick = () => (compact() ? toast('Phase 3: the palette') : void writeInNotebook(here(), false));
-$('pen').title = 'Write a note (on the place you picked, or the verse at the top)';
+$('pen').title = 'Write a page (on the place you picked, or the verse at the top)';
 $('tb-notebook').onclick = () => openNotebook();
-$('tb-threads').onclick = () => openThreads();
 $('tb-version').onclick = async () => toast(await setVersion(version === 'KJV' ? 'YLT' : 'KJV'));
 $('tb-shelf').onclick = () => openShelf();
 $('hl-menu').onclick = () => highlightsMenu($('hl-menu'));
 $('tab-notebook').onclick = () => openNotebook();
-$('tab-threads').onclick = () => openThreads();
 $('tab-study').onclick = () => openHelp();
-for (const [id, ico] of [['tb-notebook', 'notebook'], ['tb-threads', 'threads'], ['tb-shelf', 'shelf'], ['hl-menu', 'pen']] as const) $(id).prepend(icon(ico));
+for (const [id, ico] of [['tb-notebook', 'notebook'], ['tb-shelf', 'shelf'], ['hl-menu', 'pen']] as const) $(id).prepend(icon(ico));
 $('hl-menu').append(icon('down', 14));
 $('cmdbox').prepend(icon('search'));
 notebookBadge.set = n => {
@@ -1169,6 +1167,6 @@ async function start() {
   }
 }
 
-(window as any).__wb = { open, perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
+(window as any).__wb = { open, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
 start().catch(e => { reader.innerHTML = `<p class="error">${String(e)}</p>`; });
 void here;
