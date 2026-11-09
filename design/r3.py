@@ -433,12 +433,161 @@ def customize(board):
                  "document even if the Look is changed later.")
 
 
+# ---- the third pass: slides, marks in print, page furniture, guardrails -------------------------------------------------
+def v11_marks(kind):
+    """Your highlight on Numbers 25:11 (four words from 'zealous'), drawn as each ink mode draws it."""
+    words = next(v for v in C["num25"]["verses"] if v["v"] == 11)["text"].split(" ")
+    i = words.index("zealous")
+    span = range(i, i + 4)
+    if kind == "Full color":
+        return {11: {"hl": {w: "yellow" for w in span}}}
+    if kind == "Saver":
+        return {11: {"threads": {w: ["#777777"] for w in span}}}
+    return {11: {"threads": {w: ["#000000"] for w in span}}}
+
+
+def card(parent, name, w, h, fill="#FFFFFF", **p):
+    return frame(parent, name, w=w, h=h, fill=fill, layout="vertical", gap=8, pad=[22, 24, 22, 24], W="fixed",
+                 H="fixed", clip=True, stroke="line", sw=1, radius=4, **p)
+
+
+def captioned(parent, title, about, w):
+    c_ = col(parent, f"c/{title}", gap=8, W="hug")
+
+    def label():
+        text(c_, title, "bodyStrong", "fg")
+        if about:
+            para(c_, about, "small", "muted", width=w)
+    return c_, label
+
+
+def mini_slide(parent, title, about, paper, ink, acc, mut, neighbours=True, ref_at="top", k=0.42):
+    c_, label = captioned(parent, title, about, SW * k)
+    f = frame(c_, f"slide/{title}", w=SW * k, h=SH * k, fill=paper, W="fixed", H="fixed", clip=True,
+              stroke="line", sw=1, radius=3)
+
+    def box(y, h):
+        return frame(f, "box", x=64 * k, y=y * k, w=832 * k, h=h * k, layout="vertical", W="fixed", H="fixed")
+    if ref_at == "top":
+        stext(box(38, 34), ref("num25", 11, 11), 24 * k, acc, weight="Semi Bold")
+    else:
+        stext(box(470, 34), ref("num25", 11, 11), 20 * k, acc, weight="Semi Bold")
+    if neighbours:
+        scripture(box(84, 78), "num25", 10, 10, size_pt=20 * k / PX, color=mut, num=mut, lh=1.3)
+        scripture(box(170, 240), "num25", 11, 11, size_pt=30 * k / PX, color=ink, num=acc, lh=1.35)
+        scripture(box(420, 84), "num25", 12, 12, size_pt=20 * k / PX, color=mut, num=mut, lh=1.3)
+    else:
+        scripture(box(110, 340), "num25", 11, 11, size_pt=36 * k / PX, color=ink, num=acc, lh=1.4)
+    label()
+    return f
+
+
+def deeper(board):
+    cv = Q.section(board, PG + ", deeper", 0)
+    Q.sheet_title(cv, "Deeper: slides, your marks in print, the page around the text, guardrails", "The third pass "
+                  "(the person, 2026-11-09: go deeper). The same Looks reach the slides; your highlights keep their "
+                  "meaning in every ink mode; a few page options (a cover, a running head, two columns) as switches, "
+                  "not layout; and the dials quietly stop a person from making something unreadable.")
+
+    # D12 slides
+    holder = col(cv, "D12", gap=14, W="hug")
+    Q.TITLES[PG].append("D12 · Slides")
+    text(holder, "D12 · Slides: the same Looks, three slide dials", "title", "fg")
+    para(holder, "A deck has Paper (the theme's colors) in place of Ink, and three dials of its own: Neighbours (the "
+         "verses either side faint, or hidden so the verse is larger), Reference (top or bottom), and Typeface (as for "
+         "Word). Size is never a dial: the boxes fit the text, which keeps every verse whole and checked.",
+         "small", "muted", width=3 * SW * 0.42 + 2 * 24)
+    r = row(holder, "Window · D12 · Slides", gap=24, align="min")
+    mini_slide(r, "Paper, neighbours faint", "The default.", "#FFFFFF", INK, ACCENT, "#9A948A")
+    mini_slide(r, "Vellum, no neighbours", "The verse alone, larger; the reference at the bottom.", "#F7F3E8",
+               "#231A12", "#5A3E1B", "#9A948A", neighbours=False, ref_at="bottom")
+    mini_slide(r, "Vigil, neighbours faint", "A dim room.", "#0E1524", "#F4EFE3", "#D9B46A", "#7C8496")
+
+    # D13 your marks in print
+    holder = col(cv, "D13", gap=14, W="hug")
+    Q.TITLES[PG].append("D13 · Your marks in print")
+    text(holder, "D13 · Your highlights in each ink mode", "title", "fg")
+    para(holder, "A highlight is your mark, so ink never removes it; ink changes how it is drawn. Full color: the "
+         "highlight's own soft fill. Saver: a grey underline (no fill, almost no toner). Black only: a black underline. "
+         "Highlights can still be switched off as a part (D4).", "small", "muted", width=3 * 360 + 2 * 24)
+    r = row(holder, "Window · D13 · Your marks in print", gap=24, align="min")
+    for kind in ("Full color", "Saver", "Black only"):
+        c_, label = captioned(r, kind, "", 360)
+        cd = card(c_, f"marks/{kind}", 360, 250)
+        refc = ACCENT if kind == "Full color" else ("#444444" if kind == "Saver" else "#000000")
+        stext(cd, ref("num25", 11, 11), 12, refc, weight="Semi Bold")
+        F.verses(cd, [v for v in C["num25"]["verses"] if v["v"] == 11], style="readSmall", marks=v11_marks(kind),
+                 number_color=refc)
+        stext(cd, "Your note on verse 11.", 12, "#666666" if kind != "Black only" else "#000000")
+        label()
+
+    # D14 the page around the text
+    holder = col(cv, "D14", gap=14, W="hug")
+    Q.TITLES[PG].append("D14 · The page around the text")
+    text(holder, "D14 · The page around the text: four switches", "title", "fg")
+    para(holder, "Cover page (title, subtitle, date, alone on page 1); Running head (the title, small, on every page "
+         "after the first); Page numbers (Page x of y, x, or none); Columns (one, or two for scripture-only documents: "
+         "the Reading Sheet). Switches, never a layout editor.", "small", "muted", width=3 * 300 + 2 * 24)
+    r = row(holder, "Window · D14 · The page around the text", gap=24, align="min")
+    pw, ph = 300, 388
+    c_, label = captioned(r, "Cover page", "", pw)
+    cd = card(c_, "cover", pw, ph, mainAlign="center")
+    stext(cd, "Phinehas", 26, INK, weight="Semi Bold", textAlignHorizontal="CENTER")
+    stext(cd, "A thread · Speaker Script", 11, QUIET, textAlignHorizontal="CENTER")
+    stext(cd, "9 November 2026", 11, QUIET, textAlignHorizontal="CENTER")
+    label()
+    c_, label = captioned(r, "Running head, page 2", "", pw)
+    cd = card(c_, "running head", pw, ph)
+    hd = row(cd, "head", gap=6, W="fill")
+    text(hd, "Phinehas", "caption", "muted")
+    spacer(hd)
+    text(hd, "2", "caption", "muted")
+    rect(cd, "rule", 10, 1, RULE, W="fill")
+    stext(cd, ref("num25", 12, 13), 9, ACCENT, weight="Semi Bold")
+    scripture(cd, "num25", 12, 13, size_pt=9 / PX)
+    label()
+    c_, label = captioned(r, "Two columns (Reading Sheet)", "", pw)
+    cd = card(c_, "two columns", pw, ph)
+    stext(cd, ref("num25", 10, 13), 9, ACCENT, weight="Semi Bold")
+    cols = row(cd, "cols", gap=14, align="min", W="fill")
+    scripture(col(cols, "a", gap=4), "num25", 10, 11, size_pt=7.5 / PX, lh=1.4)
+    scripture(col(cols, "b", gap=4), "num25", 12, 13, size_pt=7.5 / PX, lh=1.4)
+    label()
+
+    # D15 guardrails
+    f = Q.win(cv, PG, "D15 · Guardrails", "Your own accent is checked against the paper. Too light for text (under "
+              "4.5 : 1 on white): rules and fills keep your color, and text in the accent is darkened just enough, with "
+              "one quiet line saying so and an Undo. See it in grey shows the page as a black-and-white printer will.",
+              w=720, h=420)
+    pn = frame(f, "panel", x=0, y=0, w=720, h=420, layout="vertical", gap=14, pad=[24, 24, 24, 24], W="fixed", H="fixed")
+    d = dial(pn, "Accent", "Used for references, verse numbers, cues")
+    sw_row = row(d, "swatches", gap=10)
+    for c_, on in (("#8E1B14", False), ("#5A3E1B", False), ("#1F4E79", False), ("#2F5D3A", False), ("#5B3A6B", False),
+                   ("#444444", False), ("#F2C14E", True)):
+        swatch(sw_row, c_, on)
+    note = row(pn, "warn", gap=10, pad=[10, 12, 10, 12], fill="sunken", radius=8, W="fill")
+    F.icon(note, "eye", 18, "muted")
+    para(note, "This gold is hard to read as text on white, so references and verse numbers use a darker gold. "
+         "Rules keep your gold.", "small", "fg")
+    text(note, "Undo", "smallStrong", "accent")
+    sample = row(pn, "sample", gap=16, W="fill")
+    stext(sample, ref("num25", 11, 11), 14, "#9A6F00", weight="Semi Bold", W="hug")
+    rect(sample, "your gold rule", 80, 4, "#F2C14E")
+    gr = row(pn, "grey", gap=10, W="fill")
+    text(gr, "See it in grey", "smallStrong", "fg")
+    segmented(gr, ["Off", "On"], "Off")
+
+    Q.files_note(cv, "Nothing new in the study folder beyond the second pass: these are more values in a Look "
+                 "(settings/doc-looks/<name>.json) and in a document's record.")
+
+
 def main():
     F.define_tokens()
     S.do("page.rename", {"name": BOARD}, ref=False)
     board = frame(None, BOARD, x=0, y=0, w=100, h=100, fill="sunken", layout="vertical", gap=96, pad=96, W="hug", H="hug")
     sheets(board)
     customize(board)
+    deeper(board)
     build = HERE / "build"
     build.mkdir(exist_ok=True)
     script = build / "r3.json"

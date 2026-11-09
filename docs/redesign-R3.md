@@ -295,3 +295,87 @@ the document. Each would be a step toward Word, and the person asked for the opp
 9. **Accent swatches.** Six curated colors plus your own: enough, or would you rather pick only from the curated six?
 10. **Ink.** Is "light / moderate / heavy" with a page count what you want to see, or an actual percentage?
 11. **Where it lives.** Looks and dials inside Make (D10), with the parts (D4) one step deeper under *What goes in*: right?
+
+---
+
+## Third pass: deeper (2026-11-09)
+
+The person: *"Go deeper."* Sheets D12–D15 (third section of the board). Same rule as before: every option is a value in
+a Look, so the one-click path and the dials stay one engine.
+
+### Slides get the same Looks (D12)
+
+A deck takes the Look's typeface and accent. In place of Ink it has **Paper** (the theme's colors: Paper, Vellum, Vigil,
+Olivet, Veil, Daylight). Three dials are its own:
+
+- **Neighbours**: faint (the default: the verse before and after, small and muted), or hidden (the verse alone, larger).
+- **Reference**: top or bottom.
+- **Typeface**: as for Word.
+
+Size is never a dial for slides. The boxes fit the text (DeckCraft's fit), which is what keeps every verse whole on one
+slide and lets the finished file be checked verse by verse.
+
+### Your highlights in print (D13)
+
+A highlight is the person's own mark, so **no ink mode removes it**. Ink changes how it is drawn:
+
+| Ink | A highlight | A note | References, verse numbers |
+|---|---|---|---|
+| Full color | its own soft fill (yellow, green …) | grey `#666` | accent |
+| Saver | a grey underline, no fill | grey | dark grey |
+| Black only | a black underline | black | black |
+
+Different highlight colors become different underline styles in Saver and Black only (solid, dashed, dotted, double), so
+two colors stay distinct without color. Highlights can still be switched off as a part (D4). In Word a fill is run
+shading and an underline is a run underline, both ordinary Word formatting.
+
+### The page around the text (D14)
+
+Four switches, never a layout editor:
+
+| Switch | Values | Default |
+|---|---|---|
+| Cover page | off / on (title, subtitle, date alone on page 1) | off (on for a Speaker Script longer than 4 pages: no, keep it off; the person turns it on) |
+| Running head | off / on (the title, small, on every page after the first) | on |
+| Page numbers | Page x of y / x / none | Page x of y |
+| Columns | one / two (scripture-only documents: the Reading Sheet) | one |
+
+Two columns only for documents with nothing but scripture, because notes and cues read badly across a column break.
+
+### Guardrails (D15)
+
+The dials should not let someone make something unreadable, and should not nag either:
+
+- **Contrast.** Your own accent is checked against the paper (WCAG 4.5 : 1 for text). Too light: rules and fills keep
+  your color, text in the accent is darkened just enough, one quiet line says so, with Undo. On a dark slide theme the
+  same rule runs the other way.
+- **See it in grey**: the live page shown as a black-and-white printer will print it.
+- **Ink and slides**: a dark slide theme is never offered for printing (a deck printed as handouts uses Paper).
+- **Size**: Small is not offered with Two columns (the scripture would fall under 9 pt).
+
+### The whole option list, for the record
+
+| Level | Options |
+|---|---|
+| Look (one click) | Preview, Classic, Ink saver, Large print, Modern; your own saved Looks |
+| Dials (Word) | Typeface, Accent, Size, Spacing, Details (title alignment, verse numbers, under the title, paper size), Ink |
+| Dials (slides) | Typeface, Accent, Paper, Neighbours, Reference |
+| Page (Word) | Cover page, Running head, Page numbers, Columns |
+| Parts (D4) | per structure: title, cues, scripture, notes, delivery notes, highlights, room to write … |
+
+About twenty choices in all, every one with a working default, against Word's hundreds.
+
+### Effects on the build order
+
+The recommendation's order (§ Recommendation) gains one step: (a) restyle and `design: 2`; (b) fonts embedded;
+**(c) Looks and dials (D9–D11, D13, D15), since they are styling only and need no new structures**; (d) page switches
+(D14); (e) templates and the shipped structures; (f) the parts builder (D4); (g) the ink measure (D11), which needs the
+paged preview (S4).
+
+### Further questions for the person
+
+12. **Highlights in Saver.** Underlines (different styles per color), as D13: right, or would you rather print them as
+    a light grey fill?
+13. **The page switches.** Cover page off and running head on by default: right?
+14. **Slides.** Neighbours faint by default, hidden as the option: right?
+15. **Guardrails.** Darkening a too-light accent for text automatically (with Undo), rather than refusing the color: right?
