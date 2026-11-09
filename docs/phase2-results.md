@@ -885,3 +885,57 @@ window's own state, the folds, is kept in its storage as the section folds are).
 | Rust tests | not run: no wb-core, wb-cli or app change |
 
 Screenshots: new `docs/phase2/1440-notebook-places-by-book.png`, `1440-notebook-side-panel-folded.png`, `1440-notebook-a-threads-places.png`; the sheet's four windows in `design/exports/filter/`. Not committed. Not checked with a real mouse or touch (the right-click and long press were driven by Playwright's events; M1 showed what that can miss for drags, which these are not).
+
+## 28. The debug round's C1: files attached to a finding (2026-11-08)
+
+From [debug-spec.md](debug-spec.md), finding `b737` (second half): "the findings hot key could also allow for file
+attachments for inspiration/examples."
+
+**The open decision, answered by a real drop.** M1 turned Tauri's file-drop handler off, so Tauri's own file-drop event
+(which gives paths) is gone. With the handler off, WebView2 hands the page an ordinary HTML5 `drop` whose `File` objects
+the page can read. Checked with the operating system's own file drag, not Playwright's: `measure/file-drag-source.ps1` is
+a small window that starts an OLE file drag (`DoDragDrop` with a file list, as Explorer does) when the real mouse presses
+on it, and `measure/real-mouse.ps1` carries it onto the box and lets go. The PNG and the PDF arrived on the box and the
+source reported `Copy`. **So the handler stays off** and the box takes a drop, a paste and Browse…; M1's two real drags
+still pass in the same run.
+
+| Piece | What was done |
+|---|---|
+| Storage | `findings/<id>/` beside the finding's `.md`. Files are **copied in, never moved**; a name is made safe (no folders, no characters Windows refuses, no device names) and a second file of the same name becomes `name (2).ext`. Written through a `.tmp` file, so a half-written file is never listed. **10 MB a file** (`findings::MAX_ATTACH_BYTES`); over that is refused, and both the window and `wb` say so. Files are listed from the folder, so **a finding's `.md` is byte for byte the same with files or without**, and a finding with no files has no folder. |
+| Deletes | `wb finding detach` (× on the card) moves the file to `.trash/<time>-finding-<id>-<name>`; `wb finding rm` takes the finding's files there with it. The trash's 7-day erase is for notes and questions only, so these are never erased. |
+| The box (Ctrl+Shift+J) | A drop zone (the whole box, marked while a file is over it), a pasted picture (the clipboard's `image.png` is named `pasted <date> <time>.png`), and **Browse…**. Each shows as a chip with its size and ×. Enter writes the finding, then attaches each file (`finding_attach` in `app/src-tauri`: the bytes as a raw IPC body, the id and name in headers). A file that fails is named; the finding and the other files are kept. A click outside no longer closes a box that holds files. |
+| The Findings pane | Each card lists its files; a click opens one (`wb finding open`: the program the computer opens it with; **a program or a script is shown in its folder instead, never run**), × takes it off, and **Attach…** or a drop on the card adds more. |
+| `wb` | `wb finding show <id>` (the finding with its files, sizes and paths), `wb finding attach <id> <file>…` (by path; from a terminal), `wb finding detach <id> <name>`, `wb finding open <id> <name>` (the start of a name is enough). `wb findings` lists the files too. `findings::attach_bytes` is the window's form of `attach` (bytes, no path) and is listed in `every_action.rs`. |
+| A file let go elsewhere | With the handler off, a file dropped anywhere outside a drop zone would make the web view open it in place of the app, losing the reader's place. That was already true after M1; a document-level guard now refuses such a drop. |
+
+The Python app is unchanged: it passes over `findings/`, and the Notebook never lists it.
+
+**Changed in the checks:** `measure/real-drag.mjs` gains 3 real-input checks (a real OS file drop of a PNG and a PDF on
+the box; Browse… clicked with the real mouse, the path typed into the system's file dialog with the real keyboard, only
+once that dialog is found in front; the three files kept byte for byte). `real-mouse.ps1` gains `click` and `pick`.
+`measure/desk.mjs` gains 7 checks (drop, paste and Browse with the cap; a stray drop refused; only `findings/` written,
+compared file by file over the whole study folder; the `.md` unchanged; `wb finding show`; the card's files and a click
+that opens one; × to `.trash`); the desk app runs with `WB_NO_OPEN=1` so opening a file puts nothing on the screen. So
+the open is checked as far as `wb finding open` answering for the right file; the opening itself is `docs::open_file`,
+the same call `wb docs open` uses, and was not watched putting a viewer on the screen.
+WebKit: one new test at both sizes (the box fits, a paste, the cap). Rust: `files_attach_to_a_finding_in_its_own_folder`
+(only `findings/<id>/` written, compared over the whole folder) and the name rules.
+
+**Found while checking:** the first desk run's check on opening a file failed because of the check itself (it spied on
+Tauri's `invoke`, which cannot be patched that way); the card now says "Opening <name>…" and the check reads that. The
+first box screenshot showed Browse… with its icon above the word, and "10.0 MB … 10 MB at most" for a file a byte over;
+both fixed. Port 1420 was another checkout's dev server, and `playwright.config.ts` reuses a server it
+finds, so a first `npm run test:webkit` from this worktree passed against that checkout's UI. The numbers below are from
+this worktree's UI on its own port.
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **378 of 378** (7 new) |
+| Real mouse | `node measure/real-drag.mjs --release`: **5 of 5** (3 new) |
+| WebKit | `npm run test:webkit`: **20 passed**, 10 skipped (1 new test, at both sizes) |
+| Rust tests | `cargo test`: **155 passed**, 0 failed (2 new: the CLI test and the name rules) |
+
+Screenshots: new `docs/phase2/1440-finding-files.png` (the box with three files), `1440-findings-files.png` (the card),
+`webkit-phone-finding-files.png` and `webkit-desktop-finding-files.png`; the others refreshed by the runs. Not installed
+(`install-app.ps1` not run). The installed app writes a new kind of thing to the real study folder once a file is
+attached, so `scripts/backup-study.ps1` comes first when it is installed.

@@ -143,6 +143,35 @@ fn wb(app: State<App>, argv: Vec<String>, input: Option<String>) -> Result<Value
     Ok(json!({ "data": v, "rust_ms": t.elapsed().as_secs_f64() * 1000.0 }))
 }
 
+/// `%XX` in a header back to its characters (the page sends a file's name with encodeURIComponent).
+fn unpercent(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%' && i + 2 < b.len() {
+            if let Some(v) = std::str::from_utf8(&b[i + 1..i + 3]).ok().and_then(|h| u8::from_str_radix(h, 16).ok()) {
+                out.push(v);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// A file dropped, pasted or picked in the window, attached to a finding (the same as `wb finding attach`, which takes a
+/// path; the page has the file's bytes and no path). The body is the bytes; the headers say which finding and the name.
+#[tauri::command]
+fn finding_attach(app: State<App>, request: tauri::ipc::Request<'_>) -> Result<Value, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("The file's bytes did not arrive.".into()) };
+    let header = |k: &str| request.headers().get(k).and_then(|v| v.to_str().ok()).map(unpercent).unwrap_or_default();
+    let root = fresh(&app)?.root.clone();
+    timed(|| wb_core::findings::attach_bytes(&root, &header("wb-finding"), &header("wb-name"), bytes))
+}
+
 #[tauri::command]
 fn books(app: State<App>) -> Result<Value, String> {
     let bible = app.bible.lock().unwrap();
@@ -223,7 +252,7 @@ fn main() {
     }
     tauri::Builder::default()
         .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
-        .invoke_handler(tauri::generate_handler![wb, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready])
+        .invoke_handler(tauri::generate_handler![wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready])
         .setup(|app| {
             serve_do(app.handle().clone(), wb_core::default_study_dir());
             // The search index and the word offsets, built (or read from the cache) while the reader opens, so the first

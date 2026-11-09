@@ -664,6 +664,20 @@ button.question-pill:hover { text-decoration: line-through; }
 .finding-ctx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
 .note-card.finding .finding-ctx { white-space: normal; max-width: none; margin-top: 6px; }
 .findings-acts { margin: 4px 0 8px; }
+/* files attached to a finding (C1): chips in the box and on the card; a box or card with a file over it is marked */
+.finding-files { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.finding-box .finding-files:empty { display: none; }
+.finding-box .finding-files { padding: 4px 0; }
+.note-card.finding .finding-files { margin-top: 6px; }
+.file-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 2px 4px 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); font: var(--type-small); }
+.file-chip .ico { flex: none; color: var(--muted); }
+.file-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.file-chip-open { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 0; }
+.file-chip-x { width: 22px; height: 22px; min-height: 22px; padding: 0; }
+.finding-attach { display: flex; align-items: center; gap: 8px; padding: 4px 0 2px; border-top: 1px dashed var(--line); }
+.finding-attach .grow { flex: 1; }
+.finding-browse, .finding-attach-more { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex: none; }
+.file-drop.drop-on { outline: 2px dashed var(--accent); outline-offset: -4px; background: color-mix(in srgb, var(--accent-soft) 50%, var(--bg)); }
 /* the builder (R2) and the published-plan form */
 .plan-modal.wide { width: min(1080px, 100%); }
 .plan-arrange { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }

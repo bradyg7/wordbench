@@ -56,7 +56,22 @@ fn findings() -> Vec<Command> {
             let text = text_of(c, &a.s("text"))?;
             j(fd::edit(&c.root()?, &a.s("id"), &text).map_err(e)?)
         }),
-        cmd("finding rm", "Delete a finding (it goes to .trash).", vec![Pos("id", N::One)], |c, a| j(fd::remove(&c.root()?, &a.s("id")).map_err(e)?)),
+        cmd("finding rm", "Delete a finding (it goes to .trash, with its attached files).", vec![Pos("id", N::One)], |c, a| j(fd::remove(&c.root()?, &a.s("id")).map_err(e)?)),
+        cmd("finding show", "One finding: its words, what was on screen, and its attached files with their paths (findings/<id>/).",
+            vec![Pos("id", N::One)], |c, a| j(fd::show(&c.root()?, &a.s("id")).map_err(e)?)),
+        cmd("finding attach", "Attach files to a finding, copied into findings/<id>/ (the files stay where they are; 10 MB each at most): wb finding attach 1b2d shot.png notes.pdf",
+            vec![Pos("id", N::One), Pos("files", N::Many)], |c, a| {
+            let root = c.root()?;
+            let mut names = vec![];
+            for f in &a.list("files") {
+                names.push(fd::attach(&root, &a.s("id"), std::path::Path::new(f)).map_err(e)?["name"].clone());
+            }
+            j(json!({"ok": true, "attached": names, "finding": fd::show(&root, &a.s("id")).map_err(e)?}))
+        }),
+        cmd("finding detach", "Take an attached file off a finding (it goes to .trash): wb finding detach 1b2d shot.png (the start of its name is enough).",
+            vec![Pos("id", N::One), Pos("name", N::Many)], |c, a| j(fd::detach(&c.root()?, &a.s("id"), &a.s("name")).map_err(e)?)),
+        cmd("finding open", "Open a finding's attached file in the program the computer opens it with (a program or a script is shown in its folder instead).",
+            vec![Pos("id", N::One), Pos("name", N::Many)], |c, a| j(fd::open_attachment(&c.root()?, &a.s("id"), &a.s("name")).map_err(e)?)),
     ]
 }
 

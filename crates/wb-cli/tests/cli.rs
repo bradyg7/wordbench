@@ -1274,6 +1274,99 @@ fn findings_are_kept_apart_from_the_study() {
     assert!(wb.fails(&["finding", "handled", &id]).contains("No such finding"));
 }
 
+/// Every file under a folder, with its bytes, by its path from the folder (to see what a command wrote).
+fn tree_of(dir: &std::path::Path) -> std::collections::BTreeMap<String, Vec<u8>> {
+    let mut out = std::collections::BTreeMap::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                out.insert(p.strip_prefix(dir).unwrap().to_string_lossy().replace('\\', "/"), std::fs::read(&p).unwrap());
+            }
+        }
+    }
+    out
+}
+
+#[test]
+fn files_attach_to_a_finding_in_its_own_folder() {
+    // debug round C1 (finding b737): findings/<id>/, copied in, capped, listed, opened, taken off to .trash
+    let Some(wb) = Wb::new() else { return };
+    let f = wb.js(&["finding", "add", "The box could take a screenshot"]);
+    let id = f["id"].as_str().unwrap().to_string();
+    let short = &id[id.len() - 4..];
+    assert_eq!(f["files"], json!([]));
+    let md = wb.dir.join("findings").join(format!("{id}.md"));
+    let md_before = std::fs::read(&md).unwrap();
+    // the files to attach, outside the study folder: a PNG's and a PDF's first bytes, and one over the cap
+    let src = wb.dir.with_extension("src");
+    std::fs::create_dir_all(&src).unwrap();
+    let png: Vec<u8> = [&b"\x89PNG\r\n\x1a\n"[..], &[0u8; 64]].concat();
+    let pdf = b"%PDF-1.4\n%%EOF\n".to_vec();
+    std::fs::write(src.join("shot.png"), &png).unwrap();
+    std::fs::write(src.join("example.pdf"), &pdf).unwrap();
+    std::fs::write(src.join("big.bin"), vec![0u8; 10 * 1024 * 1024 + 1]).unwrap();
+    std::fs::write(src.join("tool.exe"), b"MZ").unwrap();
+    let before = tree_of(&wb.dir);
+    let a = wb.js(&["finding", "attach", short, src.join("shot.png").to_str().unwrap(), src.join("example.pdf").to_str().unwrap()]);
+    assert_eq!(a["attached"], json!(["shot.png", "example.pdf"]));
+    // only findings/<id>/ was written: everything else in the study folder is as it was, the finding's .md too
+    let after = tree_of(&wb.dir);
+    let changed: Vec<&String> = after.keys().filter(|k| before.get(*k) != after.get(*k)).collect();
+    assert_eq!(changed, vec![&format!("findings/{id}/example.pdf"), &format!("findings/{id}/shot.png")]);
+    assert!(before.keys().all(|k| after.contains_key(k)));
+    assert_eq!(std::fs::read(&md).unwrap(), md_before, "the .md is the same with files attached");
+    // copied, never moved, byte for byte
+    assert_eq!(std::fs::read(src.join("shot.png")).unwrap(), png);
+    assert_eq!(after[&format!("findings/{id}/shot.png")], png);
+    assert_eq!(after[&format!("findings/{id}/example.pdf")], pdf);
+    // listed in wb finding show (with paths) and in wb findings
+    let shown = wb.js(&["finding", "show", short]);
+    let names: Vec<&str> = shown["files"].as_array().unwrap().iter().map(|f| f["name"].as_str().unwrap()).collect();
+    assert_eq!(names, ["example.pdf", "shot.png"]);
+    assert_eq!(shown["files"][1]["size"], json!(png.len()));
+    assert!(std::path::Path::new(shown["files"][1]["path"].as_str().unwrap()).is_file());
+    assert_eq!(wb.js(&["findings"])["findings"][0]["files"].as_array().unwrap().len(), 2);
+    // the same name again is kept beside it, not over it
+    assert_eq!(wb.js(&["finding", "attach", short, src.join("shot.png").to_str().unwrap()])["attached"], json!(["shot (2).png"]));
+    // the cap, said; a folder; a file that is not there
+    assert!(wb.fails(&["finding", "attach", short, src.join("big.bin").to_str().unwrap()]).contains("10 MB at most"));
+    assert!(wb.fails(&["finding", "attach", short, src.to_str().unwrap()]).contains("is a folder"));
+    assert!(wb.fails(&["finding", "attach", short, src.join("nothing.png").to_str().unwrap()]).contains("No file at"));
+    assert!(!wb.dir.join("findings").join(&id).join("big.bin").exists());
+    // the short id still finds the finding with its folder beside it
+    assert_eq!(wb.js(&["finding", "handled", short])["status"], json!("handled"));
+    // opened (WB_NO_OPEN: the test opens nothing on the screen); a program is shown in its folder, never run
+    let (code, out, err) = {
+        let mut c = std::process::Command::new(env!("CARGO_BIN_EXE_wb"));
+        c.args(["finding", "open", short, "example"]).env("WB_STUDY_DIR", &wb.dir).env("WB_NO_OPEN", "1");
+        let o = c.output().unwrap();
+        (o.status.code().unwrap_or(-1), String::from_utf8_lossy(&o.stdout).to_string(), String::from_utf8_lossy(&o.stderr).to_string())
+    };
+    assert_eq!(code, 0, "{err}");
+    let opened: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!((opened["name"].clone(), opened["shown_in_folder"].clone()), (json!("example.pdf"), json!(false)));
+    assert!(wb.fails(&["finding", "open", short, "nothing"]).contains("No file called"));
+    assert!(wb.fails(&["finding", "open", short, "shot"]).contains("More than one"));
+    // taken off: to .trash, nothing erased
+    let d = wb.js(&["finding", "detach", short, "shot (2).png"]);
+    assert_eq!(d["removed"], json!("shot (2).png"));
+    assert_eq!(d["finding"]["files"].as_array().unwrap().len(), 2);
+    let trashed = |end: &str| std::fs::read_dir(wb.dir.join(".trash")).unwrap().any(|e| e.unwrap().file_name().to_string_lossy().ends_with(end));
+    assert!(trashed(&format!("finding-{id}-shot (2).png")));
+    // a finding deleted takes its files to .trash with it, and its folder goes
+    wb.js(&["finding", "rm", short]);
+    assert!(!wb.dir.join("findings").join(&id).exists());
+    assert!(trashed(&format!("finding-{id}-example.pdf")) && trashed(&format!("finding-{id}-shot.png")));
+    // a finding with no files writes no folder at all
+    let g = wb.js(&["finding", "add", "No files with this one"]);
+    assert!(!wb.dir.join("findings").join(g["id"].as_str().unwrap()).exists());
+    let _ = std::fs::remove_dir_all(&src);
+}
+
 // ---- documents from a thread (tier 4) ----
 
 /// The text of a .docx, paragraph by paragraph (the check reads it the same way).

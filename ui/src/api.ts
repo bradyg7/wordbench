@@ -70,6 +70,14 @@ export async function wb(argv: string[], input?: string): Promise<any> {
   return r.json();
 }
 
+/** A file dropped, pasted or picked, attached to a finding: its bytes go to Rust as they are (wb finding attach takes a
+ *  path; a page has the bytes and no path). Outside the app there is nowhere to keep it. */
+export async function attachToFinding(id: string, name: string, bytes: ArrayBuffer): Promise<any> {
+  if (!inApp) throw new Error('Files are attached in the app');
+  const r = await invoke<Answer<any>>('finding_attach', bytes, { headers: { 'wb-finding': encodeURIComponent(id), 'wb-name': encodeURIComponent(name) } });
+  return r.data;
+}
+
 // `wb do` from a terminal: each line arrives as an event; the answer goes back with do_done.
 export function onDo(run: (line: string) => Promise<{ ok: boolean; said?: string; error?: string }>) {
   if (!inApp) return;
