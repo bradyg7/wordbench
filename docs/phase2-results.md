@@ -1050,7 +1050,7 @@ builder (steps 3–7) are not built yet.
 
 The plan, and so the fingerprint shared with the Python app, is unchanged: styles are not in it.
 
-## 29. R3, steps 3 and 4: Looks, dials and the page switches (2026-11-09)
+## 33. R3, steps 3 and 4: Looks, dials and the page switches (2026-11-09)
 
 | What | Built | Checked |
 |---|---|---|
@@ -1067,7 +1067,7 @@ The plan, and so the fingerprint shared with the Python app, is unchanged: style
 `--set`), See it in grey, the ink measure (D11), templates and the new structures (Share Copy, Study Sheet, Reading
 Sheet, Reader), and the parts builder (D4). The Word file has still not been opened in real Word (W-5).
 
-## 30. R3, step 5: the shipped templates (2026-11-09)
+## 34. R3, step 5: the shipped templates (2026-11-09)
 
 | What | Built | Checked |
 |---|---|---|
@@ -1087,7 +1087,7 @@ template is its structure); the ink measure (D11: pages are shown for PDFs; for 
 which this app does not have); the dials panel with a live page and See it in grey (D10, D15); Pulpit, Study Table,
 Thread Map and Thread Dossier stay dropped, as decided.
 
-## 31. R3: the Adjust panel (2026-11-09)
+## 35. R3: the Adjust panel (2026-11-09)
 
 `ui/src/looks.ts`: **Adjust…** beside Look and Ink in the Make row (a thread) and in Make a document (a page) opens the
 dials of sheet D10 beside a live page. The page is drawn from the source's own plan (`wb docs plan`), the first page of a

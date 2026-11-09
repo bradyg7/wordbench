@@ -144,7 +144,7 @@ first.
 ## Built (2026-11-09)
 
 - `scripts/build-dictionary.py` makes the read-only `dictionary.db` (102,217 entries, headword and text verbatim, the
-  source and licence in `meta`). Default place: `%LOCALAPPDATA%ible-workbench-rs\dictionary.db`, or `WB_DICT_DB`.
+  source and licence in `meta`). Default place: `%LOCALAPPDATA%\bible-workbench-rs\dictionary.db`, or `WB_DICT_DB`.
   It is not in the repository (22 MB); run the script once on a new computer (it downloads the JSON to a temp file).
 - `wb-core::dictionary`: opens it read-only; `entry` (the word, else with an ending taken off: ies, ed, ing, eth, s...),
   `words_of` (a place's words, each once, with its entry).
