@@ -1903,6 +1903,8 @@ fn wb_page_is_wb_note_under_its_new_name() {
     assert_eq!(wb.js(&["note", "show", id])["title"], "A page, written again");
     // a command of wb page's own is not a note's
     assert!(wb.js(&["page", "tree"])["pages"].is_array());
+}
+
 #[test]
 fn the_shelf_is_a_tree_of_sets_kept_beside_them_and_open_all_says_what_each_item_opens() {
     let Some(wb) = Wb::new() else { return };
