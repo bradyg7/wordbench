@@ -123,6 +123,10 @@ fn entry_in(bible: &Bible, store: &Store, r: &Rec, kind: &str, placed: bool) -> 
     e
 }
 
+pub(crate) fn entry_of(bible: &Bible, r: &Rec, kind: &str, placed: bool) -> Value {
+    entry(bible, r, kind, placed)
+}
+
 fn entry(bible: &Bible, r: &Rec, kind: &str, placed: bool) -> Value {
     let anchor = s(r, "anchor");
     let time = local(&s(r, "created")).map(|x| x.1).unwrap_or_default();
@@ -266,6 +270,8 @@ pub fn questions(bible: &Bible, store: &Store, status: &str) -> Result<Value> {
     }
     let mut out: Vec<Value> = inbox_entries(bible, store).into_iter().filter(|e| e["kind"] == "question" && !is_template(e)).collect();
     out.extend(store.trails().into_iter().map(|t| entry_in(bible, store, t, "question", true)));
+    // a question written in a page (R1: `/?`) is a question too
+    out.extend(crate::questions::entries(bible, store));
     out.retain(|e| status == "all" || e["status"] == status);
     out.sort_by(|a, b| b["created"].as_str().cmp(&a["created"].as_str()));
     Ok(json!({"questions": out}))
@@ -346,6 +352,9 @@ pub fn unplace(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -> Resu
 
 /// Change the text of any note or question, wherever it is. → the entry.
 pub fn edit_text(bible: &Bible, store: &mut Store, id: &str, text: &str) -> Result<Value> {
+    if crate::threadpage::slug_of(id).is_some() {
+        return crate::threadpage::write_note(bible, store, id, text);
+    }
     if store.inbox().iter().any(|n| s(n, "id") == id) {
         let r = store.update_jot(id, Some(text), None)?;
         let q = s(&r, "kind") == "question";
@@ -418,6 +427,9 @@ pub fn set_question(bible: &Bible, store: &mut Store, id: &str, question: bool) 
 
 /// A question answered (`done`) or open again, in the Inbox or at its place. → the entry.
 pub fn answer(bible: &Bible, store: &mut Store, id: &str, done: bool) -> Result<Value> {
+    if crate::questions::split_id(id).is_some() {
+        return crate::questions::set_done(bible, store, id, Some(done));
+    }
     let status = if done { "done" } else { "open" };
     if store.inbox().iter().any(|n| s(n, "id") == id) {
         let r = store.set_jot_status(id, status)?;
@@ -437,6 +449,12 @@ pub fn jot(bible: &Bible, store: &mut Store, text: &str, question: bool) -> Resu
 
 /// The open questions in a chapter, by verse (the reader shows a ? on their verse numbers).
 pub fn chapter_questions(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
+    let mut out = trail_questions(store, code, chapter);
+    out.extend(crate::questions::in_chapter(store, code, chapter));
+    out
+}
+
+fn trail_questions(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
     store
         .trails()
         .into_iter()
@@ -590,6 +608,7 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
     let grouped = if pages || o.group == "questions" { "none" } else { o.group.as_str() };
     if questions {
         all.retain(|e| e["kind"] == "question");
+        all.extend(crate::questions::entries(bible, store).into_iter().filter(|e| words_in(e, &words)));
     }
     if pages {
         all.retain(|e| e["placed"] == false && e["kind"] != "day");
@@ -812,7 +831,9 @@ fn linked_from(index: &[(String, Value)], all: &[Value], id: &str) -> Vec<Value>
 
 /// Add a line's links, headings and Linked from to its entry.
 fn add_links(bible: &Bible, store: &Store, e: &mut Value) {
-    let all = all_lines(bible, store, true);
+    let mut all = all_lines(bible, store, true);
+    // a thread is a page a link can name (R1)
+    all.extend(crate::threadpage::lines(bible, store));
     let index = titles(&all);
     let text = e["text"].as_str().unwrap_or("").to_string();
     e["links"] = json!(link_values(&text, &index));
@@ -827,8 +848,11 @@ pub fn show(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
     if crate::store::is_day(id.trim()) {
         return day_page(bible, store, Some(id));
     }
-    let mut e = all_lines(bible, store, true).into_iter().find(|e| e["id"] == id).ok_or_else(|| missing("No note, question or page with that id."))?;
-    if e["placed"] == false && e["kind"] != "day" {
+    let mut e = match crate::threadpage::slug_of(id) {
+        Some(slug) => crate::threadpage::entry(bible, store, &store.thread(slug)?),
+        None => all_lines(bible, store, true).into_iter().find(|e| e["id"] == id).ok_or_else(|| missing("No note, question or page with that id."))?,
+    };
+    if e["placed"] == false && e["kind"] != "day" && e["kind"] != "thread" {
         // a note with no place yet: the place its text names, to offer first
         e["offer"] = named_place(bible, e["text"].as_str().unwrap_or("")).unwrap_or(Value::Null);
     }

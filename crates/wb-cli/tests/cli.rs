@@ -1652,3 +1652,156 @@ fn a_page_made_from_a_template_has_its_blanks_filled() {
     assert_eq!(wb.js(&["template", "list"])["templates"].as_array().unwrap().len(), 1);
     assert!(wb.ok(&["guide", "templates"]).contains("{place} the place picked"));
 }
+
+// ---- R1: a thread as a page ---------------------------------------------------------------------------------------
+
+#[test]
+fn a_thread_is_a_page_written_in_blocks_while_its_file_stays_the_python_apps() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "add-many", "Zeal", "Num 25:11", "Rom 10:2"]);
+    let file = wb.dir.join("threads").join("zeal.md");
+    let p = wb.js(&["thread", "page", "Zeal"]);
+    assert_eq!(p["id"], "thread:zeal");
+    assert_eq!(p["title"], "Zeal");
+    assert_eq!(p["places"].as_array().unwrap().len(), 2);
+    assert!(p["blocks"].as_array().unwrap().is_empty());
+    // its note is written block by block, as any page is
+    wb.js(&["block", "add", "thread:zeal", "# Where I start"]);
+    wb.js(&["block", "add", "thread:zeal", "The places I read first."]);
+    let text = std::fs::read_to_string(&file).unwrap().replace("\r\n", "\n");
+    assert!(text.contains("# Where I start\n\nThe places I read first.\n\n<!-- anchors -->\n- NUM.25:11 |"), "{text}");
+    assert!(text.contains("- ROM.10:2 |"));
+    assert_eq!(wb.js(&["thread", "show", "Zeal"])["note"], "# Where I start\n\nThe places I read first.");
+    // the thread's header holds only what both apps keep
+    let head: Vec<&str> = text.split("---").nth(1).unwrap().lines().filter(|l| !l.is_empty()).map(|l| l.split(':').next().unwrap()).collect();
+    assert_eq!(head, ["name", "created", "updated"]);
+    // pinned, which is kept in settings/pages.json and not in the thread's file
+    let before = std::fs::read_to_string(&file).unwrap();
+    wb.js(&["thread", "pin", "Zeal"]);
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), before);
+    let pages: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("settings").join("pages.json")).unwrap()).unwrap();
+    assert_eq!(pages["pinned"]["zeal"], 1);
+    let tree = wb.js(&["page", "tree"]);
+    assert_eq!(tree["pinned"][0]["id"], "thread:zeal");
+    assert!(tree["pages"].as_array().unwrap().iter().any(|r| r["id"] == "thread:zeal" && r["kind"] == "thread"));
+    // a thread's page is not moved among the pages
+    assert!(wb.fails(&["page", "move", "thread:zeal", "--top"]).contains("stays where it is"));
+    // a page written on it is under it in the tree
+    let n = wb.js(&["thread", "write", "Zeal", "A thought on it"]);
+    let tree = wb.js(&["page", "tree"]);
+    let me = tree["pages"].as_array().unwrap().iter().find(|r| r["id"] == "thread:zeal").unwrap();
+    assert_eq!(me["children"][0]["id"], n["id"]);
+    wb.js(&["thread", "unpin", "Zeal"]);
+    assert!(wb.js(&["page", "tree"])["pinned"].as_array().unwrap().is_empty());
+    // an empty note is a thread with no note, and the page can be written in again
+    wb.js(&["block", "rm", "thread:zeal", "1", "--count", "2"]);
+    assert_eq!(wb.js(&["thread", "show", "Zeal"])["note"], "");
+}
+
+#[test]
+fn a_link_can_name_a_thread() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Phinehas"]);
+    let n = wb.js(&["note", "new", "See [[Phinehas]] for the places."]);
+    let shown = wb.js(&["note", "show", n["id"].as_str().unwrap()]);
+    assert_eq!(shown["links"][0]["to"], "thread:phinehas");
+    assert_eq!(wb.js(&["note", "show", "thread:phinehas"])["linked_from"][0]["id"], n["id"]);
+}
+
+// ---- R1: thread and word blocks, and questions written in a page ------------------------------------------------------
+
+#[test]
+fn a_page_holds_a_thread_and_a_word_as_blocks_that_hold_only_an_id_and_a_number() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "add-many", "Zeal", "Num 25:11", "Rom 10:2"]);
+    let page = wb.js(&["page", "new", "Lesson"]);
+    let id = page["id"].as_str().unwrap();
+    wb.js(&["block", "add", id, "```thread\nZeal\n```"]);
+    wb.js(&["block", "add", id, "```word\nh7065\n```"]);
+    let t = wb.js(&["page", "threads", id]);
+    let b = &t["blocks"][0];
+    assert_eq!((b["thread"].as_str(), b["name"].as_str(), b["count"].as_u64()), (Some("zeal"), Some("Zeal"), Some(2)));
+    assert_eq!(b["refs"].as_array().unwrap().len(), 2);
+    // the word's entry is the lexicon's, and none of it is in the file
+    let w = wb.js(&["page", "words", id]);
+    assert_eq!(w["blocks"][0]["strong"], "H7065");
+    assert!(w["blocks"][0]["occurrences"].as_i64().unwrap() > 0);
+    assert!(!w["blocks"][0]["definition"].as_str().unwrap_or("").is_empty());
+    let file: String = std::fs::read_dir(wb.dir.join("notes").join("_inbox")).unwrap().flatten().map(|e| std::fs::read_to_string(e.path()).unwrap()).collect();
+    assert!(file.contains("```word\nh7065\n```") || file.contains("```word\r\nh7065\r\n```"));
+    assert!(!file.contains(w["blocks"][0]["definition"].as_str().unwrap()));
+    // the blocks are changed only to what exists
+    wb.js(&["block", "word", id, "2", "H7068"]);
+    assert_eq!(wb.js(&["page", "words", id])["blocks"][0]["strong"], "H7068");
+    assert!(wb.fails(&["block", "word", id, "2", "H9999999"]).contains("not a Strong's number the lexicon has"));
+    assert!(wb.fails(&["block", "thread", id, "1", "No such thread"]).contains("No thread called"));
+    wb.js(&["block", "thread", id, "1", "zeal"]);
+    // in a document: the thread's places go in as the thread's do; the word is left out unless switched on
+    let parts = wb.js(&["craft", "parts", "--page", id]);
+    let rows = parts["rows"].as_array().unwrap();
+    let th = rows.iter().find(|r| r["kind"] == "thread").unwrap();
+    assert_eq!((th["on"].as_bool(), th["text"].as_str()), (Some(true), Some("Zeal · 2 places")));
+    assert_eq!(rows.iter().find(|r| r["kind"] == "word").unwrap()["on"], false);
+    let plan = wb.js(&["docs", "plan", "--page", id, "--to", "word", "--structure", "script"]).to_string();
+    for place in ["Num 25:11", "Rom 10:2"] {
+        for v in verse_texts(&wb, place) {
+            assert!(plan.contains(&v), "{place} is in the page's plan");
+        }
+    }
+}
+
+#[test]
+fn a_question_written_in_a_page_is_one_with_the_questions_at_a_verse() {
+    let Some(wb) = Wb::new() else { return };
+    let n = wb.js(&["note", "new", "Notes on the chapter", "--at", "Num 25:9"]);
+    let id = n["id"].as_str().unwrap().to_string();
+    // written as a callout, in the page's own text, and answered by turning its mark
+    let q = wb.js(&["question", "add", &id, "How do the two numbers relate?"]);
+    assert_eq!(q["id"], format!("{id}#1"));
+    assert_eq!((q["status"].as_str(), q["page"].as_str()), (Some("open"), Some(id.as_str())));
+    let text = |wb: &Wb| wb.js(&["note", "show", &id])["text"].as_str().unwrap().to_string();
+    assert!(text(&wb).ends_with("> [!question] How do the two numbers relate?"), "{}", text(&wb));
+    // one list: it is with the trails; the reader's ? and the verse card find it by its page's place
+    wb.js(&["note", "new", "A question at a verse", "--at", "Num 25:15", "--question"]);
+    let all = wb.js(&["questions"]);
+    assert_eq!(all["questions"].as_array().unwrap().len(), 2);
+    let here = wb.js(&["question", "list", "--at", "Num 25:9"]);
+    let qs = here["questions"].as_array().unwrap();
+    assert_eq!(qs.len(), 1);
+    assert_eq!((qs[0]["form"].as_str(), qs[0]["here"].as_bool()), (Some("block"), Some(true)));
+    let near = wb.js(&["question", "list", "--at", "NUM.25:9.3"]);
+    assert_eq!(near["questions"].as_array().unwrap().len(), 1); // a word of the verse: the verse's question shows
+    assert!(wb.js(&["question", "list", "--at", "Num 25:15"])["questions"].as_array().unwrap().iter().all(|q| q["form"] == "trail"));
+    let marks = wb.js(&["reader", "NUM", "25"]);
+    assert!(marks["questions"].as_array().unwrap().iter().any(|q| q["v"] == 9), "{marks}");
+    // answered: its mark turns over, nothing else of the page changes
+    let before = text(&wb);
+    let a = wb.js(&["question", "answer", &format!("{id}#1")]);
+    assert_eq!(a["status"], "done");
+    assert_eq!(text(&wb), before.replace("[!question]", "[!done]"));
+    assert!(wb.js(&["questions"])["questions"].as_array().unwrap().iter().all(|q| q["id"] != format!("{id}#1")));
+    assert_eq!(wb.js(&["questions", "--status", "done"])["questions"].as_array().unwrap().len(), 1);
+    wb.js(&["question", "answer", &format!("{id}#1"), "--open"]);
+    // folded in and out: the trail becomes a block of a page at its place, and back
+    let t = wb.js(&["trail", "list"])["trails"][0]["id"].as_str().unwrap().to_string();
+    assert!(wb.fails(&["question", "fold", &t, &id]).contains("not at that question's place"));
+    let f = wb.js(&["question", "fold", &t, &id, "--also"]);
+    assert_eq!(f["page"], id);
+    assert!(wb.js(&["trail", "list"])["trails"].as_array().unwrap().is_empty());
+    let q3 = f["question"].as_str().unwrap().to_string();
+    let u = wb.js(&["question", "unfold", &q3]);
+    assert_eq!(u["page"], id);
+    assert_eq!(wb.js(&["trail", "list"])["trails"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn wb_page_is_wb_note_under_its_new_name() {
+    let Some(wb) = Wb::new() else { return };
+    let n = wb.js(&["page", "new", "A page"]);
+    let id = n["id"].as_str().unwrap();
+    assert_eq!(wb.js(&["page", "show", id]), wb.js(&["note", "show", id]));
+    wb.js(&["page", "text", id, "A page, written again"]);
+    assert_eq!(wb.js(&["note", "show", id])["title"], "A page, written again");
+    // a command of wb page's own is not a note's
+    assert!(wb.js(&["page", "tree"])["pages"].is_array());
+}

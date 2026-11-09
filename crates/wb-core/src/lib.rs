@@ -6,6 +6,7 @@
 pub mod anchors;
 pub mod bible;
 pub mod cache;
+pub mod check;
 pub mod findings;
 pub mod guide;
 pub mod commands;
@@ -18,12 +19,14 @@ pub mod pageviews;
 pub mod places;
 pub mod plans;
 pub mod published;
+pub mod questions;
 pub mod reading;
 pub mod relay;
 pub mod scripture;
 pub mod store;
 pub mod studyapi;
 pub mod templates;
+pub mod threadpage;
 pub mod views;
 
 use std::path::PathBuf;

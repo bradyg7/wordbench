@@ -15,7 +15,9 @@
 import { wb } from './api';
 import { app, book, here, type At } from './app';
 import { afterDrawn, drawBlocks, startWritingAtEnd, viewRow, type Blocks, type Host } from './blocks';
-import { dock, refHover, openHelp, openStrong, openThread, threadChooser } from './panes';
+import { dock, refHover, openHelp, openStrong, threadChooser } from './panes';
+import { layers } from './layers';
+import { threadDocuments } from './documents';
 import type { Change, Pane } from './dock';
 import { toast } from './sheets';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
@@ -26,17 +28,17 @@ import { makeFromPage, pageDocuments } from './pagedocs';
 type Group = 'day' | 'chapter' | 'thread' | 'none' | 'pages' | 'questions';
 /** The sections, in order: what each is called and the grouping it shows (the Trash is apart). */
 const SECTIONS: [Group, string, string][] = [
-  ['day', 'Days', 'Today’s page and every note by the day it was written'],
-  ['pages', 'Pages', 'Notes with no place yet: pages of their own'],
-  ['chapter', 'Places', 'Notes by place: the chapter you are reading, or every chapter'],
-  ['thread', 'Threads', 'Notes by thread'],
+  ['day', 'Days', 'Today’s page and every page by the day it was written'],
+  ['pages', 'Pages', 'Pages with no place yet'],
+  ['chapter', 'Places', 'Pages by place: the chapter you are reading, or every chapter'],
+  ['thread', 'Threads', 'Pages by thread'],
   ['questions', 'Questions', 'Your questions, open and answered'],
-  ['none', 'All', 'Every note, the most recently changed first'],
+  ['none', 'All', 'Every page, the most recently changed first'],
 ];
 
 interface Link { start: number; end: number; title: string; heading: string; shown: string; to: string | null; kind: string | null; heading_ok: boolean }
 interface Entry {
-  id: string; kind: 'note' | 'question' | 'day'; placed: boolean; anchor: string; label: string; text: string; time: string; created: string; updated: string;
+  id: string; kind: 'note' | 'question' | 'day' | 'thread'; placed: boolean; anchor: string; label: string; text: string; time: string; created: string; updated: string;
   title: string; preview: string; whole?: string; day?: string; today?: boolean; exists?: boolean;
   status?: string; refs?: Found[]; offer?: At | null;
   also?: At[]; threads?: { id: string; name: string }[];
@@ -46,6 +48,8 @@ interface Entry {
   path?: { id: string; title: string }[]; inside?: Row[];
   /** W5: a template (`template: true`), and the template a page was made from. */
   template?: boolean; from_template?: string;
+  /** R1: a thread's page (`thread:<slug>`): its slug, color and number of places; a question written in a page: the page and its block. */
+  slug?: string; color?: string; places?: number; page?: string; page_title?: string; block?: number;
 }
 /** A template as Templates lists it (`wb template list`). */
 interface Tpl {
@@ -56,6 +60,8 @@ interface Tpl {
 interface Row {
   id: string; title: string; kind: string; placed: boolean; anchor: string; label: string; status?: string | null;
   pinned?: number | null; order?: number | null; parent?: string | null; children?: Row[];
+  /** R1: a thread's color (a thread is a page in the tree); a question written in a page: where. */
+  color?: string | null; page?: string; block?: number;
 }
 interface GroupOf { key: string; label: string; count: number; today?: boolean; following?: boolean; entries: Entry[] }
 
@@ -117,7 +123,7 @@ interface Draft { at: At | null; question: boolean; day?: string; text?: string;
 let draft: Draft | null = null;
 /** A wide Notebook's main column showing a list (At the reader, a thread) when no note is open; W5: a view's line
  * typed in the command field, or the Templates page (these two in a narrow Notebook too). */
-let mainList: { kind: 'chapter'; reader?: string } | { kind: 'thread'; key: string; label: string } | { kind: 'view'; line: string } | { kind: 'templates' } | null = null;
+let mainList: { kind: 'chapter'; reader?: string } | { kind: 'view'; line: string } | { kind: 'templates' } | null = null;
 /** The open page's blocks, when it is drawn block by block. */
 let blocksData: Blocks | null = null;
 let blockHostNow: Host | null = null;
@@ -200,7 +206,7 @@ async function draw(el: HTMLElement) {
   }
   const listEl = root.querySelector<HTMLElement>('.nb-list')!, edEl = root.querySelector<HTMLElement>('.nb-editor')!;
   const two = root.classList.contains('two');
-  if (!two && (mainList?.kind === 'chapter' || mainList?.kind === 'thread')) mainList = null;
+  if (!two && mainList?.kind === 'chapter') mainList = null;
   const [list, ed] = await Promise.all([showTrash ? trashList(two) : two ? drawSidebar() : drawList(), drawEditor(edEl)]);
   if (gen !== drawing) return;
   const keep = listEl.querySelector<HTMLElement>('.nb-scroll')?.scrollTop ?? 0;
@@ -246,8 +252,8 @@ function listHead(two: boolean): HTMLElement {
   input.onkeydown = e => { if (e.key === 'Escape' && input.value) { e.stopPropagation(); input.value = ''; search = ''; void pane?.refresh?.(); } };
   f.append(input);
   const add = button('icon-btn nb-new', '', () => void newPage(), 'pen');
-  add.title = 'A new note';
-  add.setAttribute('aria-label', 'A new note');
+  add.title = 'A new page';
+  add.setAttribute('aria-label', 'A new page');
   const bin = button('icon-btn nb-trash-btn', '', () => { showTrash = true; editorShown = false; void pane?.refresh?.(); }, 'trash');
   bin.dataset.section = 'trash';
   bin.title = 'Trash: deleted notes wait here 7 days';
@@ -327,7 +333,7 @@ async function drawList(): Promise<HTMLElement[]> {
     scroll.append(...entries.map(item));
     if (g.following && !entries.length) scroll.append(h('p', 'muted small nb-empty', `No notes on ${g.label} yet. Write one with + on a verse, or a new note with + Place.`));
   }
-  if (!any) scroll.append(h('p', 'muted nb-empty', search ? 'No note has all of these words.' : group === 'questions' ? 'No questions yet. Mark a note with ? to ask it.' : group === 'pages' ? 'No pages yet. The pen starts one; a note with no place is a page of its own.' : 'Nothing written yet. Ctrl+J writes a thought at the verse you clicked; the pen starts a note.'));
+  if (!any) scroll.append(h('p', 'muted nb-empty', search ? 'No page has all of these words.' : group === 'questions' ? 'No questions yet. Write one with /? in a page, or mark a page with ?.' : group === 'pages' ? 'No pages yet. The pen starts one; a note with no place is a page of its own.' : 'Nothing written yet. Ctrl+J writes a thought at the verse you clicked; the pen starts a note.'));
   const bar = group === 'day' || group === 'thread' || group === 'chapter' ? foldAllBar(fkeys) : null;
   if (bar) out.push(bar);
   out.push(scroll);
@@ -394,9 +400,10 @@ function item(e: Entry): HTMLElement {
   else chips.append(h('span', 'pill unplaced', 'No place yet'));
   if (e.also?.length) chips.append(h('span', 'nb-more-places', `+${e.also.length}`));
   for (const t of e.threads || []) chips.append(h('span', 'nb-item-thread', t.name));
+  if (e.block) chips.append(h('span', 'pill unplaced', `in ${e.page_title || 'a page'}`));
   it.append(chips);
   it.onclick = () => openEntry(e);
-  if (e.id) pageContext(it, e.id);
+  if (e.id && !e.block) pageContext(it, e.id);
   if (!e.placed && e.kind !== 'day') {
     // drag it onto a verse in the reader to give it that place
     it.draggable = true;
@@ -407,12 +414,12 @@ function item(e: Entry): HTMLElement {
   return it;
 }
 
-const sameAsOpen = (e: Entry) => (openId ? e.id === openId : !!draft?.day && e.kind === 'day' && e.day === draft.day && !e.exists);
+const sameAsOpen = (e: Entry) => (openId ? (e.block ? e.page === openId : e.id === openId) : !!draft?.day && e.kind === 'day' && e.day === draft.day && !e.exists);
 
 /** Open a line of the list in the editor (today's page not written in yet opens as a blank page). */
 function openEntry(e: Entry, at: typeof focusEditor = null) {
   if (e.kind === 'day' && !e.exists) { openId = null; draft = { at: null, question: false, day: e.day }; }
-  else { openId = e.id; draft = null; }
+  else { openId = e.block ? e.page! : e.id; draft = null; }
   editorShown = true;
   focusEditor = at;
   showTrash = false;
@@ -432,7 +439,7 @@ export async function openNote(id: string, heading?: string, end = false) {
 
 /** Open a page from the sidebar or the tree (the main column's list, if any, is left). */
 function openPage(id: string) {
-  openId = id;
+  openId = id.includes('#') ? id.split('#')[0] : id;
   draft = null;
   mainList = null;
   editorShown = true;
@@ -533,6 +540,10 @@ function zoneOf(ev: DragEvent, el: HTMLElement, inside: boolean): Zone {
 }
 
 async function dropPage(id: string, onto: Row, zone: Zone, where: 'tree' | 'pinned', siblings: Row[]) {
+  if (onto.kind === 'thread' && zone === 'inside' && where === 'tree') {
+    try { await wb(['note', 'thread', id, onto.id.slice(7)]); toast(`Put on “${onto.title}”`); changed('notes', 'threads'); } catch (x) { toast(String(x)); }
+    return;
+  }
   const rest = siblings.filter(x => x.id !== id);
   const after = zone === 'after' ? onto.id : rest[rest.findIndex(x => x.id === onto.id) - 1]?.id;
   const at = after ? ['--after', after] : ['--first'];
@@ -558,19 +569,21 @@ function pageRow(r: Row, depth: number, where: 'tree' | 'pinned', siblings: Row[
     f.setAttribute('aria-label', `${s ? 'Show' : 'Fold'} the pages inside ${r.title}`);
     row.append(f);
   } else row.append(h('span', 'nb-tree-fold none'));
-  const open = button('nb-tree-open', '', () => openPage(r.id), r.kind === 'question' ? undefined : r.placed ? 'pin' : 'notebook');
+  const isThread = r.kind === 'thread';
+  const open = button('nb-tree-open', '', () => openPage(r.id), r.kind === 'question' || isThread ? undefined : r.placed ? 'pin' : 'notebook');
   if (r.kind === 'question') open.append(h('span', 'nb-tree-q', '?'));
+  if (isThread) open.append(h('i', `dot c-${r.color || ''}`));
   open.append(h('span', 'nb-tree-title', r.title || 'Untitled'));
   open.title = r.placed && r.label ? `${r.title} · on ${r.label}` : r.title;
   row.append(open);
-  if (where === 'tree') {
+  if (where === 'tree' && !isThread) {
     const add = button('icon-btn nb-tree-add', '', ev => { ev.stopPropagation(); void newPage({ id: r.id, title: r.title }); }, 'plus');
     add.title = `A page inside “${r.title}”`;
     add.setAttribute('aria-label', add.title);
     row.append(add);
   }
   pageContext(row, r.id);
-  row.draggable = true;
+  row.draggable = !isThread;
   row.ondragstart = ev => {
     dragging = r.id;
     ev.dataTransfer!.setData('text/wb-page', r.id);
@@ -633,8 +646,8 @@ async function drawSidebar(): Promise<HTMLElement[]> {
     // the rail: the control that opens the panel again, and the pen
     const rail = h('div', 'nb-rail');
     const pen = button('icon-btn nb-new', '', () => void newPage(), 'pen');
-    pen.title = 'A new note';
-    pen.setAttribute('aria-label', 'A new note');
+    pen.title = 'A new page';
+    pen.setAttribute('aria-label', 'A new page');
     rail.append(sideFoldButton(false), pen);
     return [rail];
   }
@@ -644,7 +657,7 @@ async function drawSidebar(): Promise<HTMLElement[]> {
     const entries = (d.groups as GroupOf[]).flatMap(g => g.entries);
     const scroll = h('div', 'nb-scroll');
     scroll.append(...entries.map(item));
-    if (!entries.length) scroll.append(h('p', 'muted nb-empty', 'No note has all of these words.'));
+    if (!entries.length) scroll.append(h('p', 'muted nb-empty', 'No page has all of these words.'));
     return [top, scroll];
   }
   // At the reader: the reader's chapter, then each second reader's (W4, sheet W1.2: a row per open reader)
@@ -686,18 +699,11 @@ async function drawSidebar(): Promise<HTMLElement[]> {
       side.append(row);
     });
   }
-  side.append(sideHead('threads', 'Threads', s.threads.length, true));
-  if (!isShut('threads', true)) for (const t of s.threads) {
-    side.append(sideRow('nb-thread-row', 'threads', t.name, String(t.count), mainList?.kind === 'thread' && mainList.key === t.id && !openId, () => {
-      mainList = { kind: 'thread', key: t.id, label: t.name }; openId = null; draft = null; editorShown = true; showTrash = false;
-      void pane?.refresh?.();
-    }));
-  }
   side.append(sideHead('questions', 'Questions', s.questions.length, true));
   if (!isShut('questions', true)) for (const q of s.questions as Row[]) {
-    const b = sideRow(`nb-question-row${q.status === 'done' ? ' done' : ''}`, null, q.title, q.status === 'done' ? 'answered' : '', openId === q.id, () => openPage(q.id));
+    const b = sideRow(`nb-question-row${q.status === 'done' ? ' done' : ''}`, null, q.title, q.status === 'done' ? 'answered' : '', openId === (q.block ? q.page : q.id), () => openPage(q.block ? q.page! : q.id));
     b.prepend(h('span', 'nb-tree-q', '?'));
-    pageContext(b, q.id);
+    if (q.block) b.title = `Written in ${(q as any).page_title || 'a page'}`; else pageContext(b, q.id);
     side.append(b);
   }
   // W5 (sheet W6.2): Templates, with + for an empty one; the Templates page from the foot
@@ -747,37 +753,11 @@ async function mainListView(): Promise<HTMLElement[]> {
     out.push(h('h2', 'nb-title', g?.label || 'At the reader'), h('p', 'muted small nb-list-about', second
       ? 'The notes and pages placed in the chapter this second reader shows. It follows that reader as it turns; nothing here moves a reader.'
       : 'At the reader: the notes and pages placed in the chapter the reader shows. It follows the reader as it moves.'));
-  } else {
-    const m = mainList!;
-    const r = await wb(['notebook', '--group', 'thread']);
-    entries = (r.groups as GroupOf[]).find(g => g.key === m.key)?.entries || [];
-    out.push(h('h2', 'nb-title', m.label));
-    head.append(h('span', 'grow'), button('btn soft small', 'Open the thread', () => openThread(m.label), 'threads'));
   }
   const list = h('div', 'nb-main-list');
   list.append(...entries.map(item));
-  if (!entries.length) list.append(h('p', 'muted nb-empty', mainList!.kind === 'chapter' ? 'No notes here yet. Write one with + on a verse.' : 'No notes on this thread yet.'));
+  if (!entries.length) list.append(h('p', 'muted nb-empty', 'No notes here yet. Write one with + on a verse.'));
   out.push(list);
-  // S5 (finding d84d): the thread's own places, read-only, in the thread's order under its notes: the words are the
-  // database's, as `wb thread show` gives them, with their reference
-  if (mainList!.kind === 'thread') {
-    const t = await wb(['thread', 'show', (mainList as { key: string }).key]).catch(() => null);
-    const members: any[] = t?.members || [];
-    if (members.length) {
-      const box = h('section', 'nb-thread-places');
-      box.append(h('h3', 'nb-places-head', `Places · ${members.length}`));
-      for (const m of members) {
-        const row = h('div', `nb-place-row${m.ok === false ? ' off' : ''}`);
-        row.dataset.anchor = m.anchor;
-        const word = /^[HG]\d+$/i.test(m.anchor);
-        const lab = button('ref-link', m.label, ev => (word ? openStrong(m.anchor.toUpperCase()) : void verseCard(m.anchor, lab, ev)));
-        row.append(lab);
-        if (m.quote) row.append(h('p', 'scripture-row nb-place-quote', m.quote));
-        box.append(row);
-      }
-      out.push(box);
-    }
-  }
   return out;
 }
 
@@ -794,13 +774,13 @@ async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
   if (!openId && !draft) {
     shown = null;
     if (mainList) return mainListView();
-    return [h('p', 'muted nb-empty nb-pick', 'Pick a note in the list, or start one with the pen.')];
+    return [h('p', 'muted nb-empty nb-pick', 'Pick a page in the list, or start one with the pen.')];
   }
   let e: Entry;
   let bd: Blocks | null = null;
   if (openId) {
     try { [e, bd] = await Promise.all([wb(['note', 'show', openId]), wb(['page', 'blocks', openId]).catch(() => null)]); }
-    catch { openId = null; shown = null; return [h('p', 'muted nb-empty nb-pick', 'That note is gone (deleted, or moved by another app).')]; }
+    catch { openId = null; shown = null; return [h('p', 'muted nb-empty nb-pick', 'That page is gone (deleted, or moved by another app).')]; }
   } else if (draft!.day) {
     e = await wb(['day', draft!.day]);
     if (e.exists) { openId = e.id; draft = null; bd = await wb(['page', 'blocks', e.id]).catch(() => null); }
@@ -811,9 +791,10 @@ async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
   // W5: a template shows its settings above its blocks, and how often it was used
   const tpl: Tpl | null = e.template && e.id ? await wb(['template', 'show', e.id]).catch(() => null) : null;
   // W3: a note written in is drawn block by block; a draft and a blank day's page keep the one box for the whole text
-  const byBlocks = !!(e.id && e.text.trim() && bd);
+  const isT = e.kind === 'thread';
+  const byBlocks = !!(e.id && bd && (e.text.trim() || isT));
   const out: HTMLElement[] = [];
-  const backTo = !mainList ? 'Notes' : mainList.kind === 'thread' ? mainList.label : mainList.kind === 'view' ? 'The view' : mainList.kind === 'templates' ? 'Templates' : 'At the reader';
+  const backTo = !mainList ? 'Pages' : mainList.kind === 'view' ? 'The view' : mainList.kind === 'templates' ? 'Templates' : 'At the reader';
   const back = button(`link-btn nb-back${mainList ? ' shown' : ''}`, backTo, () => {
     if (mainList) { openId = null; draft = null; } else editorShown = false;
     void pane?.refresh?.();
@@ -824,17 +805,19 @@ async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
   if (tpl) head.append(h('span', 'muted small nb-tpl-used', `a template · ${usedText(tpl.used)}`));
   if (e.id) {
     const more = button('icon-btn small', '', () => editorMenu(more, e), 'more');
-    more.setAttribute('aria-label', 'Change this note');
+    more.setAttribute('aria-label', 'Change this page');
     head.append(more);
   }
   out.push(head);
   const crumbs = pathOf(e);
   if (crumbs) out.push(crumbs);
   const title = h('h2', 'nb-title');
-  if (byBlocks && e.kind !== 'day' && bd!.title) editableTitle(title, e, bd!);
-  else title.textContent = e.kind === 'day' ? e.title : e.title || (draft?.parent ? 'A new page' : draft?.question ? 'A new question' : 'A new note');
+  if (isT) { title.append(h('i', `dot big c-${e.color || ''}`), document.createTextNode(` ${e.title}`)); title.title = 'A thread: rename it from ⋯'; }
+  else if (byBlocks && e.kind !== 'day' && bd!.title) editableTitle(title, e, bd!);
+  else title.textContent = e.kind === 'day' ? e.title : e.title || (draft?.parent ? 'A new page' : draft?.question ? 'A new question' : 'A new page');
   out.push(title);
   if (tpl) out.push(templateAbout(), templateSettings(tpl));
+  else if (isT) out.push(threadControls(e));
   else if (!e.template) out.push(chipsRow(e));
   out.push(formatBar(e));
   if (byBlocks) {
@@ -844,17 +827,19 @@ async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
     body.append(drawBlocks(bd!, blockHostNow));
     out.push(body);
   } else out.push(page(e));
-  if (e.inside?.length) {
+  if (isT) out.push(await threadPlaces(e));
+  if (e.inside?.length || isT) {
     const box = h('div', 'nb-inside');
-    box.append(h('div', 'nb-linked-head', `Pages inside · ${e.inside.length}`));
-    for (const r of e.inside) box.append(button('nb-linked-row', r.title || 'Untitled', () => openNote(r.id), r.placed ? 'pin' : 'notebook'));
+    box.append(h('div', 'nb-linked-head', `${isT ? 'Pages on this thread' : 'Pages inside'} · ${e.inside?.length || 0}`));
+    for (const r of e.inside || []) box.append(button('nb-linked-row', r.title || 'Untitled', () => openNote(r.id), r.kind === 'question' ? undefined : r.placed ? 'pin' : 'notebook'));
+    if (isT) box.append(pageOnThread(e));
     out.push(box);
   }
   // W6 (sheet W7.4): the documents made from this page, beside the pages inside it
   if (e.id && e.kind !== 'day' && !e.template) {
     const docsBox = h('div', 'nb-docs');
-    docsBox.hidden = true;
-    void pageDocuments(e.id, docsBox);
+    if (isT) void threadDocuments({ id: e.slug, name: e.title }, docsBox);
+    else { docsBox.hidden = true; void pageDocuments(e.id, docsBox); }
     out.push(docsBox);
   }
   if (nbSettings.links && e.linked_from?.length) {
@@ -895,7 +880,7 @@ function chipsRow(e: Entry): HTMLElement {
   for (const a of e.also || []) row.append(placeOff(e, a));
   for (const t of e.threads || []) {
     const chip = h('span', 'chip thread nb-thread-chip');
-    chip.append(icon('threads', 12), button('link-btn', t.name, () => openThread(t.name)));
+    chip.append(icon('threads', 12), button('link-btn', t.name, () => void openThreadPage(t.name)));
     const x = button('member-x shown', '', async () => { await wb(['note', 'thread', e.id, t.id, '--remove']); changed('notes', 'threads'); }, 'x');
     x.title = `Take it off ${t.name}`;
     chip.append(x);
@@ -938,7 +923,7 @@ function formatBar(e: Entry): HTMLElement {
   bar.append(h('span', 'nb-fmt-sep'));
   act('Place', 'Write the place picked in the reader into the text', ta => insert(ta, here().label));
   if (nbSettings.links) act('[[ ]]', 'A link to another note', ta => { insert(ta, '[['); linkSuggest(ta); });
-  if (e.kind !== 'day' && !e.template) {
+  if (e.kind !== 'day' && e.kind !== 'thread' && !e.template) {
     const q = h('button', `nb-fmt${e.kind === 'question' ? ' on' : ''}`, '? Question');
     q.title = e.kind === 'question' ? 'Make it a plain note' : 'Ask it as a question';
     q.onclick = async () => {
@@ -1113,7 +1098,7 @@ function startEditing(wrapEl: HTMLElement, e: Entry) {
   };
   ta.oninput = () => {
     fit();
-    if (titleEl && e.kind !== 'day') titleEl.textContent = titleOf(ta.value) || (e.kind === 'question' ? 'A new question' : 'A new note');
+    if (titleEl && e.kind !== 'day') titleEl.textContent = titleOf(ta.value) || (e.kind === 'question' ? 'A new question' : 'A new page');
     clearTimeout(timer);
     timer = window.setTimeout(save, 700);
     if (nbSettings.links) maybeSuggest(ta);
@@ -1441,6 +1426,7 @@ function maybeSuggest(ta: HTMLTextAreaElement) {
 // ---- the menus: a note's, the place picker, the Trash, settings ------------------------------------------------------
 
 function editorMenu(from: HTMLElement, e: Entry, at?: { x: number; y: number }) {
+  if (e.kind === 'thread') return threadMenu(from, e, at);
   const box = h('div', 'menu-list');
   let close = () => {};
   const item = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
@@ -1761,7 +1747,7 @@ export function openNotebookView(line: string) {
 
 /** Open a note from a list in the main column (a view, Templates): Back returns to the list. */
 function openFromList(id: string) {
-  openId = id; draft = null; editorShown = true; focusEditor = null; showTrash = false;
+  openId = id.includes('#') ? id.split('#')[0] : id; draft = null; editorShown = true; focusEditor = null; showTrash = false;
   if (!pane) { void openNote(id); return; }
   void pane.refresh?.();
 }
@@ -2153,3 +2139,175 @@ export function quickCapture() {
 
 /** Ctrl+J from before quick capture: kept for `wb do` and older callers. */
 export const writeInNotebookNow = () => quickCapture();
+
+// ---- a thread as a page (R1, sheets R1.1 and R1.2) -----------------------------------------------------------------------
+// A thread's page is the thread's file read as a page: its note is the page's text, written block by block (the page id is
+// thread:<slug>, so every `wb page` and `wb block` command takes it), its places are the thread's own list in its own order
+// (drag by the grip, × takes one out, + Place adds the place at the reader), and the pages written on it are under it.
+// Rename, color, Bible order, Pin and Delete are in ⋯; Drawn in the reader is the eye the Threads window had.
+
+/** Open a thread's page by its name or slug (a chip, a set's item, the command field's `thread`). */
+export async function openThreadPage(name: string) {
+  const t = await wb(['thread', 'show', name]);
+  mainList = null;
+  await openNote(`thread:${t.id}`);
+}
+
+const THREAD_COLORS = ['yellow', 'green', 'blue', 'pink', 'orange'];
+
+function askText(from: HTMLElement, label: string, value: string, done: (v: string) => void) {
+  const f = h('form', 'menu-form');
+  const i = h('input', 'field') as HTMLInputElement;
+  i.value = value;
+  f.append(h('div', 'label', label), i);
+  const close = popMenu(from, f, { align: 'right', width: 300 });
+  f.onsubmit = ev => { ev.preventDefault(); close(); done(i.value); };
+  i.focus();
+  i.select();
+}
+
+/** The head of a thread's page: its color, the order of its places, whether it is drawn in the reader, Make a document. */
+function threadControls(e: Entry): HTMLElement {
+  const row = h('div', 'nb-chips nb-thread-controls');
+  const color = button('chip nb-add nb-thread-color', e.color ? e.color[0].toUpperCase() + e.color.slice(1) : 'No color', ev => threadColorMenu(ev.currentTarget as HTMLElement, e));
+  color.prepend(h('i', `dot c-${e.color || ''}`));
+  color.title = 'The color of the underline this thread draws in the reader';
+  row.append(color);
+  row.append(button('chip nb-add', 'Put in Bible order', async () => { try { await wb(['thread', 'sort', e.slug!]); changed('threads'); } catch (x) { toast(String(x)); } }, 'lines'));
+  const shown = () => layers.shown(e.slug!);
+  const eye = button('chip nb-add nb-thread-eye', '', () => {
+    if (layers.hidden.has(e.slug!)) layers.hidden.delete(e.slug!); else layers.hidden.add(e.slug!);
+    layers.save();
+    void app.refreshMarks();
+    draw();
+  });
+  const draw = () => { eye.replaceChildren(icon(shown() ? 'eye' : 'eyeoff', 14), document.createTextNode(shown() ? ' Drawn in the reader' : ' Hidden in the reader')); };
+  draw();
+  row.append(eye, h('span', 'grow'));
+  row.append(button('btn soft small', 'Make a document', () => pane?.el.querySelector('.nb-docs')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 'file'));
+  return row;
+}
+
+function threadColorMenu(from: HTMLElement, e: Entry) {
+  const box = h('div', 'menu-list');
+  const colors = h('div', 'colors');
+  let close = () => {};
+  for (const c of [...THREAD_COLORS, 'none']) {
+    const s = h('button', `swatch c-${c}${(e.color || 'none') === c ? ' on' : ''}`);
+    s.setAttribute('aria-label', c);
+    s.title = c === 'none' ? 'No color: not drawn in the reader' : c;
+    s.onclick = async () => { close(); try { await wb(['thread', 'edit', e.slug!, '--color', c]); changed('threads'); } catch (x) { toast(String(x)); } };
+    colors.append(s);
+  }
+  box.append(h('div', 'label', 'Color'), colors);
+  close = popMenu(from, box, { width: 240 });
+}
+
+function threadMenu(from: HTMLElement, e: Entry, at?: { x: number; y: number }) {
+  const box = h('div', 'menu-list');
+  let close = () => {};
+  const item = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
+  const slug = e.slug!;
+  item('Add the place you are at', async () => { try { await wb(['thread', 'add', slug, here().anchor]); changed('threads'); toast(`${here().label} added`); } catch (x) { toast(String(x)); } });
+  item('Rename…', () => askText(from, 'New name', e.title, async v => { try { await wb(['thread', 'edit', slug, '--rename', v]); changed('threads', 'notes'); } catch (x) { toast(String(x)); } }));
+  item('Color…', () => threadColorMenu(from, e));
+  item('Put it in Bible order', async () => { try { await wb(['thread', 'sort', slug]); changed('threads'); } catch (x) { toast(String(x)); } });
+  box.append(h('div', 'menu-sep'));
+  const pinned = e.pinned !== null && e.pinned !== undefined;
+  item(pinned ? 'Unpin' : 'Pin', async () => { try { await wb(['thread', pinned ? 'unpin' : 'pin', slug]); toast(pinned ? 'Taken out of Pinned' : 'Pinned'); changed('threads'); } catch (x) { toast(String(x)); } });
+  item('Make a document…', () => pane?.el.querySelector('.nb-docs')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+  box.append(h('div', 'menu-sep'));
+  item('Delete the thread', async () => {
+    if (!confirm(`Delete the thread “${e.title}”? It goes to .trash in the study folder.`)) return;
+    try { await wb(['thread', 'delete', slug]); openId = null; changed('threads', 'notes'); } catch (x) { toast(String(x)); }
+  });
+  close = popMenu(from, box, { align: at ? 'left' : 'right', width: 240, at });
+}
+
+/** A thread's places, each a block: its reference and the text from the database, in the thread's own order. */
+async function threadPlaces(e: Entry): Promise<HTMLElement> {
+  const slug = e.slug!;
+  const t = await wb(['thread', 'show', slug]).catch(() => null);
+  const members: any[] = t?.members || [];
+  const box = h('section', 'nb-thread-places');
+  const head = h('div', 'nb-places-row');
+  head.append(h('span', 'label', `Places · ${members.length}`), h('span', 'grow'));
+  const filter = h('input', 'field nb-places-filter') as HTMLInputElement;
+  filter.placeholder = 'Filter places';
+  filter.setAttribute('aria-label', 'Filter this thread’s places');
+  if (members.length > 6) head.append(filter);
+  head.append(button('chip nb-add', '+ Place', async () => {
+    try { await wb(['thread', 'add', slug, here().anchor]); toast(`${here().label} added`); changed('threads'); } catch (x) { toast(String(x)); }
+  }));
+  box.append(head);
+  if (!members.length) box.append(h('p', 'muted small', `No places yet: + Place adds the place you are at, or type +${e.title} in the command field.`));
+  const list = h('div', 'members');
+  members.forEach((m: any, k: number) => {
+    const card = h('div', `member${m.ok === false ? ' off' : ''}`);
+    card.draggable = true;
+    card.dataset.k = String(k);
+    const grip = h('span', 'grip');
+    grip.append(icon('grip', 14));
+    const body = h('div', 'member-body');
+    const word = /^[HG]\d+$/i.test(m.anchor);
+    const lab = button('ref-link', m.label, ev => (word ? openStrong(m.anchor.toUpperCase()) : void verseCard(m.anchor, lab, ev)));
+    body.append(lab, h('p', 'scripture-row clamp', m.quote || ''));
+    // an original word everywhere: its renderings and Strong's definition, not only the original
+    if (m.kind === 'lemma') {
+      const gloss = h('p', 'small thread-gloss');
+      body.append(gloss);
+      wb(['strong', m.anchor]).then(d => {
+        const used = (d.renderings || []).map((r: any) => r.w).join(', ');
+        gloss.textContent = [used && `KJV: ${used}`, d.definition, d.occurrences && `${d.occurrences} times`].filter(Boolean).join(' · ');
+      }).catch(() => {});
+    }
+    const x = h('button', 'member-x');
+    x.append(icon('x', 12));
+    x.title = 'Take it out of the thread';
+    x.setAttribute('aria-label', `Take ${m.label} out of the thread`);
+    x.onclick = async () => { try { await wb(['thread', 'rm', slug, m.anchor]); changed('threads'); } catch (err) { toast(String(err)); } };
+    card.append(grip, body, x);
+    // drag to reorder: the whole order is written in one change, as wb thread order does
+    card.ondragstart = ev => { ev.dataTransfer!.setData('text/plain', String(k)); card.classList.add('dragging'); };
+    card.ondragend = () => card.classList.remove('dragging');
+    card.ondragover = ev => { ev.preventDefault(); card.classList.add('drop'); };
+    card.ondragleave = () => card.classList.remove('drop');
+    card.ondrop = async ev => {
+      ev.preventDefault();
+      card.classList.remove('drop');
+      const from = +ev.dataTransfer!.getData('text/plain');
+      if (Number.isNaN(from) || from === k) return;
+      const order = members.map((y: any) => y.anchor);
+      const [moved] = order.splice(from, 1);
+      order.splice(k, 0, moved);
+      try { await wb(['thread', 'order', slug, ...order]); changed('threads'); } catch (err) { toast(String(err)); }
+    };
+    list.append(card);
+  });
+  filter.oninput = () => {
+    const f = filter.value.trim().toLowerCase();
+    list.querySelectorAll<HTMLElement>('.member').forEach(m => { m.hidden = !!f && !(m.textContent || '').toLowerCase().includes(f); });
+  };
+  box.append(list);
+  return box;
+}
+
+/** A page written on this thread: its first line is its title (`wb thread write`). */
+function pageOnThread(e: Entry): HTMLElement {
+  const row = h('div', 'nb-on-thread-new');
+  const input = h('input', 'field') as HTMLInputElement;
+  input.placeholder = `A page on ${e.title}: its first line is its title…`;
+  input.setAttribute('aria-label', 'A new page on this thread');
+  input.onkeydown = async ev => {
+    if (ev.key !== 'Enter' || !input.value.trim()) return;
+    ev.preventDefault();
+    try {
+      const r = await wb(['thread', 'write', e.slug!, '-'], input.value.trim());
+      input.value = '';
+      changed('threads', 'notes');
+      await openNote(r.id, undefined, true);
+    } catch (x) { toast(String(x)); }
+  };
+  row.append(input);
+  return row;
+}

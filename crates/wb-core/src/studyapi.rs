@@ -79,7 +79,7 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: i64) -> Result<Value> {
 }
 
 /// Do two places share a verse? (Word and phrase anchors count by their verses.)
-fn overlaps(a: &Rec, b: &Rec) -> bool {
+pub(crate) fn overlaps(a: &Rec, b: &Rec) -> bool {
     let span = |p: &Rec| ((n(p, "c1"), n(p, "v1")), if p["c2"].is_null() { (n(p, "c1"), n(p, "v1")) } else { (n(p, "c2"), n(p, "v2")) });
     let ((s1, e1), (s2, e2)) = (span(a), span(b));
     a["code"] == b["code"] && s1 <= e2 && s2 <= e1

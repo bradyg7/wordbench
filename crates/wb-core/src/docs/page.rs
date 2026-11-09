@@ -119,6 +119,30 @@ fn view_lines(bible: &Bible, store: &Store, line: &str) -> std::result::Result<V
         .collect())
 }
 
+fn s_name(t: &crate::store::Rec) -> String {
+    crate::store::s(t, "name")
+}
+
+/// A thread block's places as the plan's blocks: the scripture of each place and the words, as a thread's own document
+/// reads them (the thread's note and name are the page's own words, not repeated here).
+fn thread_blocks_of(bible: &Bible, store: &Store, held: &str) -> Vec<Block> {
+    let Some(t) = pages::thread_held(store, held) else { return vec![] };
+    let Ok(view) = crate::studyapi::thread_view(bible, store, &crate::store::s(&t, "id")) else { return vec![] };
+    let Ok(mut margin) = super::plan::Margin::new(bible, store) else { return vec![] };
+    let Ok(thread) = super::plan::thread_source(bible, &view, &mut margin) else { return vec![] };
+    super::plan::thread_blocks(&thread).into_iter().filter(|(k, _)| k == "scripture" || k == "word").collect()
+}
+
+/// A word block as the plan's word block (the lexicon's entry, and your notes on the word).
+fn word_block_of(bible: &Bible, store: &Store, held: &str) -> Vec<Block> {
+    let strong = held.trim().to_uppercase();
+    let Ok(Some(mut e)) = super::plan::word_entry(bible, &strong) else { return vec![] };
+    if let Ok(margin) = super::plan::Margin::new(bible, store) {
+        e["notes"] = json!(margin.lemma_notes(&strong));
+    }
+    vec![("word".into(), e)]
+}
+
 /// One block as the plan's blocks. Scripture or a view that cannot be read gives nothing.
 fn convert(bible: &Bible, store: &Store, (kind, md): &Md, version: Option<&str>) -> Vec<Block> {
     let speech = |t: String| -> Vec<Block> { if t.is_empty() { vec![] } else { vec![("speech".into(), json!(t))] } };
@@ -131,6 +155,10 @@ fn convert(bible: &Bible, store: &Store, (kind, md): &Md, version: Option<&str>)
         "item" => speech(format!("• {}", item_words(md))),
         "numbered" => speech(format!("{} {}", numbered_mark(md).unwrap_or_default(), item_words(md))),
         "todo" => speech(format!("{} {}", if todo_done(md) { "Done:" } else { "To do:" }, item_words(md))),
+        "quote" if crate::questions::question_of(md).is_some() => {
+            let q = crate::questions::question_of(md).unwrap();
+            speech(format!("{} {}", if q.done { "Answered:" } else { "Question:" }, plain_words(&q.text)))
+        }
         "quote" => speech(plain_words(&md.lines().map(|l| l.trim_start().trim_start_matches('>')).collect::<Vec<_>>().join(" "))),
         "table" => md
             .lines()
@@ -140,6 +168,12 @@ fn convert(bible: &Bible, store: &Store, (kind, md): &Md, version: Option<&str>)
         "fence" => {
             if let Some(r) = scripture_block(bible, md, version) {
                 return r.map(|(b, _)| vec![b]).unwrap_or_default();
+            }
+            if let Some(held) = pages::thread_fence(md) {
+                return thread_blocks_of(bible, store, &held);
+            }
+            if let Some(held) = pages::word_fence(md) {
+                return word_block_of(bible, store, &held);
             }
             if let Some(line) = pageviews::view_fence(md) {
                 return view_lines(bible, store, &line).unwrap_or_default().into_iter().flat_map(speech).collect();
@@ -168,7 +202,7 @@ fn rows(bible: &Bible, store: &Store, id: &str) -> Result<(String, Vec<Row>)> {
     let mut i = 0;
     while i < mds.len() {
         let (kind, md) = &mds[i];
-        let row = |key: String, kind: &'static str, label: &'static str, text: String, md: Vec<Md>| Row { key, kind, label, text, default_on: kind != "todo", md, page: None };
+        let row = |key: String, kind: &'static str, label: &'static str, text: String, md: Vec<Md>| Row { key, kind, label, text, default_on: kind != "todo" && kind != "word", md, page: None };
         match *kind {
             "divider" => {}
             "todo" | "item" | "numbered" => {
@@ -192,6 +226,22 @@ fn rows(bible: &Bible, store: &Store, id: &str) -> Result<(String, Vec<Row>)> {
                 let f = pages::scripture_fence(md).unwrap();
                 let text = if f.reference.is_empty() { "(no reference yet)".to_string() } else { format!("{}{}", f.reference, if f.ylt { " · YLT" } else { "" }) };
                 out.push(row(key_of("b", &[md.trim().to_string()]), "scripture", "Scripture", text, vec![(kind, md.clone())]));
+            }
+            "fence" if pages::thread_fence(md).is_some() => {
+                let held = pages::thread_fence(md).unwrap();
+                let text = match pages::thread_held(store, &held) {
+                    Some(t) => format!("{} · {} place{}", s_name(&t), t["members"].as_array().map(|a| a.len()).unwrap_or(0), if t["members"].as_array().map(|a| a.len()) == Some(1) { "" } else { "s" }),
+                    None => format!("{} (no such thread)", if held.is_empty() { "No thread yet" } else { &held }),
+                };
+                out.push(row(key_of("b", &[md.trim().to_string()]), "thread", "Thread", text, vec![(kind, md.clone())]));
+            }
+            "fence" if pages::word_fence(md).is_some() => {
+                let held = pages::word_fence(md).unwrap();
+                out.push(row(key_of("b", &[md.trim().to_string()]), "word", "Word", if held.is_empty() { "No number yet".into() } else { held.to_uppercase() }, vec![(kind, md.clone())]));
+            }
+            "quote" if crate::questions::question_of(md).is_some() => {
+                let q = crate::questions::question_of(md).unwrap();
+                out.push(row(key_of("b", &[md.trim().to_string()]), "question", "Question", shorten(&q.text, 60), vec![(kind, md.clone())]));
             }
             "fence" if pageviews::view_fence(md).is_some() => {
                 let line = pageviews::view_fence(md).unwrap();
@@ -255,6 +305,12 @@ fn becomes(bible: &Bible, store: &Store, r: &Row, on: bool, first_heading: bool,
             Some(Err(why)) => ("Left out: the reference does not read".into(), Some(why)),
             _ => (study.into(), None),
         },
+        "question" => ("Your words, as a line".into(), None),
+        "thread" => match pages::thread_held(store, &pages::thread_fence(&r.md[0].1).unwrap_or_default()) {
+            Some(_) => (study.into(), None),
+            None => ("Left out: there is no such thread".into(), Some("No such thread".into())),
+        },
+        "word" => ("The word's entry, as a thread's words are".into(), None),
         "view" => match pageviews::view_fence(&r.md[0].1).map(|l| view_lines(bible, store, &l)) {
             Some(Ok(rows)) => (format!("The view's list as it is when made ({} now)", rows.len()), None),
             Some(Err(why)) => ("Left out: the view does not read".into(), Some(why)),

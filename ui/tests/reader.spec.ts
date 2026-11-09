@@ -161,7 +161,7 @@ test('desktop: the toolbar with the command field, opened by backtick', async ({
   test.skip(info.project.name === 'webkit-phone', 'desktop');
   await ready(page);
   expect(await page.evaluate(() => document.documentElement.dataset.size)).toBe('large');
-  for (const id of ['#cmd', '#tb-notebook', '#tb-threads', '#hl-menu']) await expect(page.locator(id)).toBeVisible();
+  for (const id of ['#cmd', '#tb-notebook', '#hl-menu']) await expect(page.locator(id)).toBeVisible();
   await expect(page.locator('#tabs')).toBeHidden();
   await page.locator('.ch-title').click();
   await page.keyboard.press('Backquote');

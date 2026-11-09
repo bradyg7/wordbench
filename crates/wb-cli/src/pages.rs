@@ -110,6 +110,20 @@ pub fn commands() -> Vec<Command> {
                 }
                 j(pg::set_scripture(c.bible()?, &mut *c.study()?, &a.s("id"), n, lines, ylt).map_err(e)?)
             }),
+        cmd("page threads", "A page's thread blocks (/~) with what each shows: the block's number, the thread, its color, how many places and its first places' references; a thread that is gone says so.",
+            vec![Pos("id", N::One)], |c, a| j(pg::threads(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("page words", "A page's word blocks (/word) with the lexicon's entry for each: the number, the word, its sound, Strong's own words, the KJV's renderings and how often. The file holds only the number.",
+            vec![Pos("id", N::One)], |c, a| j(pg::words(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("block thread", "Change a thread block's thread: wb block thread ID 3 Phinehas. A thread that exists is checked first; the file holds its id.",
+            vec![Pos("id", N::One), Pos("n", N::One), Pos("thread", N::Many)], |c, a| {
+                let n = nth(a, "n")?;
+                j(pg::set_value_block(c.bible()?, &mut *c.study()?, &a.s("id"), n, "thread", &a.s("thread")).map_err(e)?)
+            }),
+        cmd("block word", "Change a word block's Strong's number: wb block word ID 3 H7065. The lexicon is asked first.",
+            vec![Pos("id", N::One), Pos("n", N::One), Pos("strong", N::One)], |c, a| {
+                let n = nth(a, "n")?;
+                j(pg::set_value_block(c.bible()?, &mut *c.study()?, &a.s("id"), n, "word", &a.s("strong")).map_err(e)?)
+            }),
         cmd("page views", "A page's views (W5) with what each finds now: each block's number, its line, and its rows (as wb view run); a line that cannot be read, or holds a template's blank, says so.",
             vec![Pos("id", N::One)], |c, a| j(pv::page_views(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
         cmd("block view", "Change a view's line: wb block view ID 3 \"notebook @Num 25 questions\". The line is read first; one that cannot be read is not written.",

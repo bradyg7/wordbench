@@ -168,6 +168,15 @@ pub fn names() -> Vec<(&'static str, &'static str)> {
 pub fn run(ctx: &Ctx<'_>, argv: &[String]) -> Result<(Out, bool), Fail> {
     let argv: Vec<String> = if argv.is_empty() || argv[0] == "-h" || argv[0] == "--help" { vec!["help".into()] } else { argv.to_vec() };
     let all = commands();
+    // R1: a note is a page. `wb page show`, `wb page text` … are `wb note …` under the new name (`wb note` stays, as the Python
+    // `wb` has it); a `wb page` command of its own (tree, new, blocks …) is never taken for a note's.
+    let argv: Vec<String> = if argv.len() >= 2 && argv[0] == "page" && !all.iter().any(|c| c.name == format!("page {}", argv[1])) && all.iter().any(|c| c.name == format!("note {}", argv[1])) {
+        let mut v = argv.clone();
+        v[0] = "note".into();
+        v
+    } else {
+        argv
+    };
     // a group name alone ("wb thread") shows that group
     if argv.len() == 1 && !all.iter().any(|c| c.name == argv[0]) && all.iter().any(|c| c.name.split(' ').next() == Some(&argv[0]) && c.name.contains(' ')) {
         return run(ctx, &["help".to_string(), argv[0].clone()]);
