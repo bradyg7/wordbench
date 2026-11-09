@@ -227,6 +227,7 @@ mark.m-s { background: var(--hl-blue); } mark.m-e { background: var(--hl-pink); 
 .eye.off { color: var(--muted); }
 .dot { flex: none; }
 .dot.big { width: 14px; height: 14px; }
+.dot.c- { background: var(--line); }
 .dot.c-orange { background: var(--thread-orange); } .dot.c-green { background: var(--thread-green); } .dot.c-pink { background: var(--thread-pink); } .dot.c-yellow { background: var(--thread-yellow); }
 .thread-head { display: flex; align-items: center; gap: 8px; }
 .thread-head .pane-title { flex: 1; }

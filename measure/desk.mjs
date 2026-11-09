@@ -17,14 +17,21 @@ const exe = file(`target/${release ? 'release' : 'debug'}/bible-workbench.exe`);
 const wbExe = file(`target/${release ? 'release' : 'debug'}/wb.exe`);
 const shots = file('docs/phase2/');
 mkdirSync(shots, { recursive: true });
-const work = path.join(os.tmpdir(), 'bible-workbench-rs', 'desk-check');
+// (two sessions checking at once need a folder and a port each: WB_DESK_WORK and WB_DESK_PORT)
+const work = process.env.WB_DESK_WORK || path.join(os.tmpdir(), 'bible-workbench-rs', 'desk-check');
+const cdpPort = process.env.WB_DESK_PORT || '9334';
 const study = path.join(work, 'study'), cache = path.join(work, 'cache'), profile = path.join(work, 'webview');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 rmSync(work, { recursive: true, force: true });
 cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { recursive: true });
+// The checks were written against a folder with no pages of the Notebook's own: the person's real folder now has many
+// (52 with no place, notes on threads, a template that makes the pen ask what to start from, documents). The copy starts
+// without them; what the checks need they make.
+for (const d of ['notes/_inbox', 'notes/_threads', 'notes/_days', 'documents', 'findings', '.trash']) rmSync(path.join(study, d), { recursive: true, force: true });
+rmSync(path.join(study, 'settings', 'notebook.json'), { force: true });
 mkdirSync(cache, { recursive: true });
-const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: '9334' };
+const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort };
 const proc = spawn(exe, [], { env, stdio: 'ignore' });
 const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
 
@@ -34,7 +41,7 @@ const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); c
 let browser;
 try {
   for (let i = 0; i < 100 && !browser; i++) {
-    try { browser = await chromium.connectOverCDP('http://127.0.0.1:9334'); } catch { await sleep(300); }
+    try { browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`); } catch { await sleep(300); }
   }
   const page = browser.contexts()[0].pages()[0];
   page.on('pageerror', e => check('no page errors', false, String(e)));
@@ -246,6 +253,7 @@ try {
   check('+name adds the place to a new thread, whose page opens in the Notebook', await page.locator('.pane-notebook .nb-thread-places .member').count() === 1);
   // a thread with a color draws its underline; its eye hides it
   await page.evaluate(() => window.__wb.run('thread Phinehas'));
+  await page.locator('.pane-notebook .nb-editor .nb-title', { hasText: /^\s*Phinehas$/ }).waitFor({ timeout: 10000 });
   await page.waitForSelector('.pane-notebook .nb-thread-eye', { timeout: 10000 });
   const lines = () => page.locator('.w[style*="linear-gradient"]').count();
   const before = await lines();
@@ -275,9 +283,13 @@ try {
   await page.evaluate(() => window.__wb.run('threads'));
   await sleep(500);
   check('there is no Threads button or pane: threads opens the Notebook, where each is a page', await page.locator('#tb-threads').count() === 0 && await page.locator('.pane-threads').count() === 0 && await page.locator('.pane-notebook').count() >= 1);
+  await nbBack();
+  await page.locator('.pane-notebook .nb-section[data-section="day"]').click();
 
   // many tabs in one column: they keep their size and scroll; ‹ › and the ▾ list reach every one
-  for (let v = 1; v <= 8; v++) await page.evaluate(v => window.__wb.run(`notes @Num 25:${v}`), v);
+  // (the panes of the checks so far are closed: place panes open beside the pane last used, and that is on the left)
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.side === 'left')) d.close(p); });
+  for (let v = 1; v <= 10; v++) await page.evaluate(v => window.__wb.run(`notes @Num 25:${v}`), v);
   await page.waitForSelector('.dock-right .tabstrip.overflowing', { timeout: 10000 });
   const strip = await page.evaluate(() => {
     const t = document.querySelector('.dock-right .tab-row'), on = t.querySelector('.tab.on');
@@ -848,7 +860,7 @@ try {
   await page.keyboard.type('/');
   await page.locator('.nb-blockmenu .nb-blockmenu-row').first().waitFor({ timeout: 5000 });
   const menuRows = await page.locator('.nb-blockmenu .nb-blockmenu-label').allTextContents();
-  check('/ in an empty block opens the block menu, as on sheet W2', menuRows.join(', ') === 'Scripture, Heading, List, To-do, Quote, Divider, Table, Link to a page, Page inside this one, View', menuRows.join(', '));
+  check('/ in an empty block opens the block menu, as on sheet W2', menuRows.join(', ') === 'Question, Thread, Word, Scripture, Heading, List, To-do, Quote, Divider, Table, Link to a page, Page inside this one, View', menuRows.join(', '));
   await page.screenshot({ path: shots + '1440-notebook-block-menu.png' });
   await page.keyboard.type('inside');
   await page.keyboard.press('Enter');
@@ -983,6 +995,7 @@ try {
   execFileSync(wbExe, ['thread', 'add-many', 'S5 trial', ...s5Refs], { env });
   execFileSync(wbExe, ['thread', 'write', 'S5 trial', 'S5 a note on the trial thread'], { env });
   execFileSync(wbExe, ['block', 'add', 'thread:s5-trial', 'Where I start reading.'], { env });
+  await sleep(1300); // the window reads the folder again at most once a second
   await page.evaluate(() => window.__wb.changed());
   await page.locator('.pane-notebook .nb-tree-row', { hasText: 'S5 trial' }).first().locator('.nb-tree-open').click();
   await ed.locator('.nb-title', { hasText: 'S5 trial' }).waitFor({ timeout: 10000 });
@@ -1005,9 +1018,10 @@ try {
     await page.mouse.up();
   };
   execFileSync(wbExe, ['thread', 'pin', 'S5 trial'], { env });
+  await sleep(1300); // the window reads the folder again at most once a second
   await page.evaluate(() => window.__wb.changed());
   await page.locator('.pane-notebook .nb-pinned .nb-tree-row', { hasText: 'S5 trial' }).waitFor({ timeout: 10000 }).catch(() => {});
-  check('a thread can be pinned: it is in Pinned, kept in settings/pages.json and not in its file', await page.locator('.pane-notebook .nb-pinned .nb-tree-row', { hasText: 'S5 trial' }).count() === 1 && JSON.parse(readFileSync(path.join(study, 'settings', 'pages.json'), 'utf8')).pinned['s5-trial'] === 1);
+  check('a thread can be pinned: it is in Pinned, kept in settings/pages.json and not in its file', await page.locator('.pane-notebook .nb-pinned .nb-tree-row', { hasText: 'S5 trial' }).count() === 1 && JSON.parse(readFileSync(path.join(study, 'settings', 'pages.json'), 'utf8')).pinned['s5-trial'] >= 1, JSON.stringify({ row: await page.locator('.pane-notebook .nb-pinned .nb-tree-row').count(), file: readFileSync(path.join(study, 'settings', 'pages.json'), 'utf8') }));
   execFileSync(wbExe, ['thread', 'unpin', 'S5 trial'], { env });
 
   // R1: the three new blocks, a question answered, and the Questions list (sheets R1.3 to R1.5)
@@ -1018,6 +1032,7 @@ try {
   execFileSync(wbExe, ['block', 'add', r1.id, '```thread\nr1-zeal\n```'], { env });
   execFileSync(wbExe, ['block', 'add', r1.id, '```word\nH7065\n```'], { env });
   execFileSync(wbExe, ['question', 'add', r1.id, 'How do the two numbers relate?'], { env });
+  await sleep(1300);
   await page.evaluate(() => window.__wb.changed());
   await sleep(1200);
   await page.evaluate(id => window.__wb.note(id), r1.id);
@@ -1300,10 +1315,11 @@ try {
   check('a page made from a template, written by the Python app, keeps from_template: still counted as used', readFileSync(fileOf(made), 'utf8').includes('Written by the Python app.') && wbj('template', 'list').templates.find(t => t.id === tpl)?.used === 2);
   // the templates deleted (to .trash), so the checks after these see the pen as before: a blank page at once
   for (const t of wbj('template', 'list').templates) execFileSync(wbExe, ['template', 'rm', t.id], { env });
+  await sleep(1300); // the window reads the folder again at most once a second
   await page.evaluate(() => window.__wb.changed());
   await page.evaluate(() => window.__wb.run('notebook'));
   await page.waitForFunction(() => !document.querySelector('.pane-notebook .nb-side-head[data-part="templates"]'), null, { timeout: 10000 }).catch(() => {});
-  check('wb template rm deletes a template (to .trash); the pages made from it stay, and with none left the Templates section goes', wbj('template', 'list').templates.length === 0 && !!fileOf(made) && await page.locator('.pane-notebook .nb-side-head[data-part="templates"]').count() === 0 && readdirSync(path.join(study, '.trash'), { recursive: true }).some(f => String(f).includes(tpl)));
+  check('wb template rm deletes a template (to .trash); the pages made from it stay, and with none left the Templates section goes', wbj('template', 'list').templates.length === 0 && !!fileOf(made) && await page.locator('.pane-notebook .nb-side-head[data-part="templates"]').count() === 0 && readdirSync(path.join(study, '.trash'), { recursive: true }).some(f => String(f).includes(tpl)), JSON.stringify({ n: wbj('template', 'list').templates.length, made: !!fileOf(made), side: await page.locator('.pane-notebook .nb-side-head[data-part="templates"]').count(), trash: readdirSync(path.join(study, '.trash'), { recursive: true }).length }));
   await sleep(400);
 
   // W6, a document from a page (sheets W7.1–W7.4): a page with headings, scripture blocks, to-dos, and two pages inside
@@ -2014,8 +2030,9 @@ try {
     await page.locator('.finding-field').click();
     await page.keyboard.press('Enter');
     const fdir = path.join(study, 'findings');
-    for (let i = 0; i < 30 && !(existsSync(fdir) && readdirSync(fdir).length); i++) await sleep(100);
-    const ftext = existsSync(fdir) && readdirSync(fdir).length ? readFileSync(path.join(fdir, readdirSync(fdir)[0]), 'utf8') : '';
+    const fmd = () => (existsSync(fdir) ? readdirSync(fdir).filter(f => f.endsWith('.md')) : []);  // (not the .tmp it is written through)
+    for (let i = 0; i < 30 && !fmd().length; i++) await sleep(100);
+    const ftext = fmd().length ? readFileSync(path.join(fdir, fmd()[0]), 'utf8') : '';
     const inNotebook = JSON.stringify(JSON.parse(execFileSync(wbExe, ['notebook', '--group', 'none'], { env }).toString())).includes('The verse bar could say');
     check('the finding is a file in findings/, with the size, panes and place, and not in the Notebook', /kind: "finding"/.test(ftext) && /"size": "large"/.test(ftext) && /"panes": \[/.test(ftext) && /"place": "Numbers 25/.test(ftext) && !inNotebook, ftext.split('\n').find(l => l.startsWith('context')) || 'no file');
     // S7: the build in a finding says when the tree it was built from had uncommitted changes (and when it was built)
@@ -2138,6 +2155,7 @@ try {
   await page.evaluate(() => window.__wb.run('window laptop-large'));
 } catch (e) {
   check('the run finished', false, String(e?.stack || e));
+  try { await browser?.contexts()[0].pages()[0].screenshot({ path: path.join(work, 'failed.png') }); } catch { /* none */ }
 } finally {
   await browser?.close().catch(() => {});
   kill();
