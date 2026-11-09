@@ -20,4 +20,5 @@ chrono.workspace = true
 
 [dev-dependencies]
 regex.workspace = true
+rusqlite.workspace = true
 zip = { version = "9.4.1", default-features = false, features = ["deflate"] }

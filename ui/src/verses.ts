@@ -211,7 +211,7 @@ function fillCard(body: HTMLElement, ref: string, d: Marked, o: CardOpts) {
     panel.replaceChildren();
     if (t === 'interlinear') void interlinear(panel, interOf, o.changed);
     else if (t === 'strongs') void strongs(panel, interOf, o.changed);
-    else if (t === 'definitions') panel.append(h('p', 'muted small vc-defs', 'Definitions stay blank until tier 7’s dictionary is chosen.'));
+    else if (t === 'definitions') void definitions(panel, ref, o.changed);
     o.changed?.();
   };
   const first = d.verses[0];
@@ -226,6 +226,42 @@ function fillCard(body: HTMLElement, ref: string, d: Marked, o: CardOpts) {
   );
   body.append(tabs, panel);
   if (o.tab) show(o.tab);
+}
+
+/** The card's Definitions (R5): the verse's words that Webster's 1913 has an entry for, each a button; a click shows the
+ * entry, verbatim, with the dictionary's name and licence under it. Which sense fits the verse is the reader's to say. */
+async function definitions(panel: HTMLElement, ref: string, changed?: () => void) {
+  panel.append(h('p', 'muted small vc-defs', 'Looking the words up…'));
+  const d = await wb(['word-define', '--verse', ref]).catch((x: unknown) => String((x as Error)?.message ?? x));
+  panel.replaceChildren();
+  if (typeof d === 'string') { panel.append(h('p', 'muted small vc-defs', d)); changed?.(); return; }
+  const src = d.source;
+  const credit = `${src.name}, ${src.edition}. ${src.licence}.`;
+  const words: any[] = d.words.filter((w: any) => w.text);
+  const wrap = h('div', 'vc-defs');
+  if (!words.length) wrap.append(h('p', 'muted small', 'No word here has an entry.'));
+  const row = h('div', 'vc-def-row');
+  const entry = h('div', 'vc-def-entry');
+  let open = '';
+  for (const w of words) {
+    const b = button('vc-def-word', w.word, () => {
+      open = open === w.word ? '' : w.word;
+      row.querySelectorAll<HTMLElement>('.vc-def-word').forEach(x => x.classList.toggle('on', x.textContent === open));
+      entry.replaceChildren();
+      if (open) {
+        entry.append(
+          h('div', 'label', w.headword === w.word.toLowerCase() ? w.word : `${w.word} · ${w.headword}`),
+          h('p', 'vc-def-text', w.text),
+          h('p', 'muted small vc-def-credit', credit),
+        );
+      }
+      changed?.();
+    });
+    row.append(b);
+  }
+  if (words.length) wrap.append(h('p', 'muted small', `${words.length} words with an entry · ${credit}`), row, entry);
+  panel.append(wrap);
+  changed?.();
 }
 
 /** The card's interlinear: the words shown, each with − to put it away; the words put away as a row, in their order,

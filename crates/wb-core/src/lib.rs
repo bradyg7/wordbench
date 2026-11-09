@@ -9,6 +9,7 @@ pub mod cache;
 pub mod findings;
 pub mod guide;
 pub mod commands;
+pub mod dictionary;
 pub mod docs;
 pub mod lookup;
 pub mod marks;

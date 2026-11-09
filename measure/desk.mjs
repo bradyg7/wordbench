@@ -1047,7 +1047,7 @@ try {
   const shownStrongs = await page.locator('.verse-card .vc-strong').evaluateAll(els => els.map(e => e.dataset.strong));
   check('Strong’s lists the verse’s entries, in the order their words come', JSON.stringify(shownStrongs) === JSON.stringify(strongNums), shownStrongs.join(' '));
   await page.locator('.verse-card .vc-tab-definitions').click();
-  check('Definitions says it waits for tier 7’s dictionary', /tier 7/.test(await page.locator('.verse-card .vc-defs').textContent()));
+  check('Definitions no longer says it waits for tier 7', !/tier 7/.test(await page.locator('.verse-card .vc-defs').first().textContent()));
   await page.locator('.verse-card .vc-open .open-split-more').click();
   check('the card’s Open the chapter ▾ is the same menu', (await page.locator('.open-menu .open-row-label').allTextContents()).join() === 'In the reader,In a new reader' && /Numbers 25, at verse 11/.test(await page.locator('.open-menu-head').textContent()));
   await page.keyboard.press('Escape');

@@ -848,6 +848,11 @@ button.question-pill:hover { text-decoration: line-through; }
 .vc-back { font: var(--type-caption); padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunken); color: var(--fg); }
 .vc-back:hover { background: var(--accent-soft); }
 .vc-defs { margin: 4px 0; }
+.vc-def-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.vc-def-word { font: var(--type-caption); padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunken); color: var(--fg); }
+.vc-def-word:hover, .vc-def-word.on { background: var(--accent-soft); }
+.vc-def-entry { margin-top: 4px; }
+.vc-def-text { white-space: pre-line; margin: 4px 0; max-height: 40vh; overflow: auto; }
 .nb-reader-row.second .ico { color: var(--accent); }
 .nb-list-which { white-space: nowrap; }
 .nb-set-open { width: 150px; }
