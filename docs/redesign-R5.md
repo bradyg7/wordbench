@@ -134,3 +134,10 @@ Which source should the Definitions tab use?
    decision that the rule would need to allow.
 
 Which, and if 1828, do you have a copy you trust?
+
+## Decision (2026-11-09)
+
+The person chose Webster's ("lets go with webster's"). Read as **Webster's 1913**, the only edition with a confirmed open
+file (Gutenberg #29765 via `matthewreagan/WebstersEnglishDictionary`); if the 1828 was meant, a trusted copy is needed
+first. Shown as its numbered senses only, with source and licence under every entry. Not built yet: R5 is the build
+described under "Where it shows".
