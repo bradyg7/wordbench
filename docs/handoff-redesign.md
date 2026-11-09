@@ -1,8 +1,9 @@
 # Handoff: what is left of the redesigns (2026-11-09)
 
 Everything the five redesign sessions (R1–R5) finished and committed is merged into `main`, together with the debug
-round's C1 and C2 and the WebKit-port fix (`npm run test:webkit` serves each checkout's own UI). It is installed after a
-backup of the study folder. This sheet is what is **not** done, packaged as sessions to start later, each with the model
+round's C1 and C2 and the WebKit-port fix (`npm run test:webkit` serves each checkout's own UI). Its release build is
+made and the study folder backed up; the install waits for the app's window to be closed (`install-app.ps1` refuses
+while it is open). This sheet is what is **not** done, packaged as sessions to start later, each with the model
 and effort it needs and its brief. **None is started.** Each brief assumes CLAUDE.md and [debug-spec.md](debug-spec.md)
 are read first, and ends as every debug item does (desk check, `cargo test`, WebKit where it is layout, a screenshot, a
 line in `phase2-results.md`), committed on its own branch, not installed, not pushed.
