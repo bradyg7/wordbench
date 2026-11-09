@@ -118,23 +118,31 @@ export function lookFields(looks: any): { look: HTMLSelectElement; ink: HTMLSele
 }
 
 /** The Make row: what to make from a thread, and in which theme and Look. */
+/** The Make row's last choices: the pane is drawn again after Make, and the row keeps what was chosen (the desk check
+ * found the next Make going to the first thread, in Preview, after the redraw). */
+const lastMake: { thread?: string; kind?: string; theme?: string; look?: string; ink?: string; extra: [string, string][] } = { extra: [] };
+
 function makeForm(threads: any[], fixed: string | null, themes: Record<string, any>, saved: string, done: () => void, looks?: any): HTMLElement {
   const f = h('form', 'doc-make');
   let pick: HTMLSelectElement | null = null;
   if (!fixed) {
     pick = h('select', 'field doc-thread') as HTMLSelectElement;
     for (const t of threads) pick.append(new Option(t.name, t.name));
+    if (lastMake.thread && threads.some(t => t.name === lastMake.thread)) pick.value = lastMake.thread;
     f.append(pick);
   }
   const what = h('select', 'field doc-kind') as HTMLSelectElement;
   for (const [to, st, label] of KINDS) what.append(new Option(label, `${to}|${st}`));
   const theme = h('select', 'field doc-theme') as HTMLSelectElement;
   for (const [k, t] of Object.entries(themes)) theme.append(new Option(t.name, k));
-  theme.value = saved;
+  theme.value = lastMake.theme || saved;
   theme.title = 'The theme: colors and fonts';
+  if (lastMake.kind) what.value = lastMake.kind;
   const go = h('button', 'btn primary', 'Make');
   const { look, ink } = lookFields(looks);
-  let extra: [string, string][] = [];
+  if (lastMake.look) look.value = lastMake.look;
+  if (lastMake.ink !== undefined) ink.value = lastMake.ink;
+  let extra: [string, string][] = [...lastMake.extra];
   const adj = button('btn doc-adjust', 'Adjust…', async () => {
     const thread = fixed || pick?.value;
     if (!thread) { toast('Start a thread first: documents are made from a thread'); return; }
@@ -149,6 +157,7 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
     adj.textContent = extra.length ? `Adjust… (${extra.length})` : 'Adjust…';
   });
   adj.type = 'button';
+  if (extra.length) adj.textContent = `Adjust… (${extra.length})`;
   f.append(what, theme, look, ink, adj, go);
   const about = h('p', 'muted small doc-about');
   const say = () => { const k = KINDS.find(x => `${x[0]}|${x[1]}` === what.value); about.textContent = `${k?.[3] || ''}. ${themes[theme.value]?.best_for || ''}.`; };
@@ -161,6 +170,7 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
     const [to, st] = what.value.split('|');
     go.disabled = true;
     go.textContent = 'Making…';
+    if (!fixed) Object.assign(lastMake, { thread, kind: what.value, theme: theme.value, look: look.value, ink: ink.value, extra: [...extra] });
     try { toast(await makeDoc(thread, to, st, theme.value, look.value, ink.value, extra)); done(); }
     catch (x) { toast(String((x as Error).message || x)); }
     finally { go.disabled = false; go.textContent = 'Make'; }

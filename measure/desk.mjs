@@ -2048,7 +2048,7 @@ try {
   writeFileSync(path.join(study, 'documents', 'lesson-phinehas-pulpit.json'), JSON.stringify({ id: 'lesson-phinehas-pulpit', source: { kind: 'lesson', name: 'phinehas' }, to: 'deck', structure: 'pulpit', name: 'Pulpit - Phinehas.pptx', stem: 'Pulpit - Phinehas', title: 'Phinehas', theme: 'vellum', plan: '0'.repeat(64), file: '0'.repeat(64), built: '2026-11-02T12:00:00Z' }, null, 1) + '\n');
   await page.evaluate(() => window.__wb.run('docs'));
   await page.waitForSelector('.pane-documents .doc-make', { timeout: 15000 });
-  check('docs opens the Documents pane, with Make and the list', await page.locator('.pane-documents .doc-make select.doc-kind option').count() === 2);
+  check('docs opens the Documents pane, with Make and the list (six kinds: R3)', await page.locator('.pane-documents .doc-make select.doc-kind option').count() === 6);
   await page.locator('.pane-documents select.doc-thread').selectOption({ label: 'Phinehas' });
   await page.locator('.pane-documents select.doc-theme').selectOption('olivet');
   await page.locator('.pane-documents .doc-make button', { hasText: 'Make' }).click();
@@ -2057,6 +2057,25 @@ try {
   const scriptRec = JSON.parse(execFileSync(wbExe, ['docs', 'show', 'thread-phinehas-script'], { env }).toString());
   check('Make writes the Speaker Script, checked, beside the scratch folder', existsSync(path.join(docsDir, 'Speaker Script - Phinehas.docx')) && scriptRec.state === 'current' && scriptRec.theme === 'olivet', scriptRec.state);
   check('the Speaker Script is listed Up to date', (await scriptRow.locator('.doc-state').innerText()) === 'Up to date');
+  // R3: Adjust… opens the dials beside a live page drawn from the thread's own plan; a Look, Ink and See it in grey
+  // change the page at once; Use these carries the dials back to the Make row (nothing is made until Make)
+  await page.locator('.pane-documents .doc-make .doc-adjust').click();
+  await page.waitForSelector('.lk-modal .lk-page', { timeout: 15000 }).catch(() => {});
+  const plan = JSON.parse(execFileSync(wbExe, ['docs', 'plan', '--thread', 'phinehas', '--to', 'word', '--structure', 'script'], { env }).toString());
+  const firstVerse = plan.plan.find(op => op[1] === 'Scripture End' || op[1] === 'Scripture')[2].filter(r => r[1] !== 'num').map(r => r[0]).join('').trim().slice(0, 40);
+  const livePage = page.locator('.lk-modal .lk-page');
+  check('Adjust shows the thread’s own first page, its scripture verbatim from the plan', await livePage.count() === 1 && (await livePage.innerText()).replace(/\s+/g, ' ').includes(firstVerse.replace(/\s+/g, ' ')), firstVerse);
+  await page.locator('.lk-modal .lk-opt', { hasText: 'Classic' }).click();
+  await page.locator('.lk-modal .lk-opt[data-dial="ink"][data-value="saver"]').click();
+  const look = await livePage.evaluate(el => ({ center: el.classList.contains('center'), font: getComputedStyle(el.querySelector('.dp-Title')).fontFamily, ref: getComputedStyle(el.querySelector('.dp-ScriptureReference')).color }));
+  check('Classic centres a Literata title, and Ink saver turns the accent grey', look.center && /Literata/.test(look.font) && look.ref === 'rgb(68, 68, 68)', JSON.stringify(look));
+  await page.locator('.lk-modal .lk-grey-toggle input').check();
+  check('See it in grey greys the page', await page.locator('.lk-modal .lk-page.lk-grey').count() === 1);
+  await page.screenshot({ path: shots + '1440-adjust.png' });
+  await page.locator('.lk-modal .lk-use').click();
+  await page.waitForSelector('.lk-modal', { state: 'detached', timeout: 5000 }).catch(() => {});
+  check('Use these closes Adjust and sets Look and Ink on the Make row', await page.locator('.lk-modal').count() === 0
+    && await page.locator('.pane-documents .doc-make select.doc-look').inputValue() === 'classic' && await page.locator('.pane-documents .doc-make select.doc-ink').inputValue() === 'saver');
   const deckSaid = await page.evaluate(() => window.__wb.run('deck thread phinehas verse'));
   const deckFile = path.join(docsDir, 'Verse by Verse - Phinehas.pdf');
   for (let i = 0; i < 50 && !existsSync(deckFile); i++) await sleep(100);

@@ -964,6 +964,8 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .lk-page.center .dp-Title, .lk-page.center .dp-Subtitle { text-align: center; }
 .lk-page.rule .dp-Subtitle { border-bottom: 1px solid var(--lk-rule); padding-bottom: .6em; }
 .lk-page .dp-Heading1 { font-weight: 600; font-size: 1.25em; margin-top: 1em; }
+/* references, cues and notes are Inter in every Look, as in the file (docx.rs: UI_FONT) */
+.lk-page .dp-SlideCue, .lk-page .dp-ScriptureReference, .lk-page .dp-PlainReference, .lk-page .dp-StudyNote, .lk-page .dp-DeliveryNote { font-family: Inter, sans-serif; }
 .lk-page .dp-SlideCue { color: var(--lk-accent); font-weight: 700; font-size: .58em; letter-spacing: .06em; }
 .lk-page .dp-ScriptureReference, .lk-page .dp-PlainReference { color: var(--lk-accent); font-weight: 600; font-size: .67em; margin-top: .8em; margin-bottom: .15em; }
 .lk-page .dp-Scripture, .lk-page .dp-ScriptureEnd, .lk-page .dp-PlainScripture { font-family: var(--lk-scripture), serif; font-size: 1em; }

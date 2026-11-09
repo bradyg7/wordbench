@@ -951,3 +951,13 @@ to the Look.
 
 Checked: `tsc` clean. **Not checked in the window**: the vite preview has no `wb` behind it and no desk check covers this
 yet, so the panel has not been seen running; the next desk run should open it from the Documents pane.
+
+**Desk check (later 2026-11-09).** `node measure/desk-r3.mjs --release`: **9 of 9** in the real app (its own instance and
+copy of the scratch folder): the six kinds, Look, Ink and Adjust on the Make row; Adjust shows the thread's own first page
+verbatim; Classic and Ink saver change it at once; See it in grey; Use these carries the dials back; Make keeps them in the
+record (Classic, Ink saver, Large); Study Sheet and Reader made from the row. It found two things, fixed: after Make the
+pane is drawn again and the row forgot its thread, Look, Ink and dials (the next Make went to the first thread, in
+Preview); and the live page set references, cues and notes in Literata where the file sets them in Inter.
+Screenshots: `docs/phase2/1440-adjust.png`, `1440-adjust-preview.png`, `1440-documents-r3.png`. The whole desk
+(`measure/desk.mjs`, its Documents checks updated for R3) stops earlier, in its Notebook checks, which count from an empty
+inbox the scratch folder no longer has: not R3's, left for its own fix.
