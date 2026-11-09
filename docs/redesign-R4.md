@@ -117,8 +117,7 @@ beside them), and the phone's bottom tabs.
 
 `wb` gains: `wb toolbar [list|add|rm|move|reset]`, `wb commands [list|add|rm|run|top]`, `wb theme [list|set|new|color|reset]`,
 and `wb settings` learns the new parts. `wb do` carries the in-window ones (`customize`). *Most used* counts command lines in
-`sessions/<day>.jsonl`; that log holds what was typed into the capture box today, so the core must also log run command lines
-(a new `kind` field on the entry, ignored by the Python app) before this counts anything.
+`sessions/<day>.jsonl`; that log already holds every line the window runs (`wb log add` on each), so no new field is needed.
 
 ## 7. Recommendation and order
 
@@ -150,3 +149,63 @@ cap of four plus More, and More ⋯'s phone sheet is the same short list.
 8. **Keys:** may a person rebind keys (Settings ▸ Keys), or only set the keys of their own commands, layouts and the capture
    key? The first is more work and risks clashes with the OS.
 9. **Remove "Go to" and "Later phases"** from More with no replacement (the field and Help ▸ Guide do their jobs). Agreed?
+
+## 9. Built so far (2026-11-09, after the person accepted the recommendation)
+
+Steps 1 and 2 of §7, in a first form:
+
+- **Settings** pane (`ui/src/settings.ts`; Ctrl+, or More ▸ Settings…): sections Reading, Notebook, Hover and cards, Theme,
+  Keys, Advanced, and *Find a setting* across all of them. Saved per key at once. `wb settings <part> [key [value]]` now
+  also takes `reading`, `hover`, `theme`, `advanced`, `toolbar`, `commands` (a JSON or plain value; `default` forgets it).
+  The window's text size, version and hover mode move from the browser's storage into `settings/reading.json` and
+  `settings/hover.json` the first time it runs (the browser copy still starts it in the right theme).
+- **More ⋯ cut down:** Settings…, Help, and Reading plans, Today's log, Findings, Documents. Not yet: *Customize toolbar…*
+  and the automatic overflow (step 3), so the four panes are listed by name for now.
+- **Theme:** the four we ship, plus themes of your own (a base plus the colors changed, fonts, measured contrast), applied live
+  as CSS variables, kept in `settings/theme.json`.
+- Where this differs from the sheets: Settings opens as a docked pane (right column; float it like any pane) rather than
+  floating without dimming by default; the section list is a row above the content; *Later phases* is in Advanced rather than Help ▸ Guide.
+- **Not built yet:** steps 3 to 5 (toolbar in place and overflow, My commands, Layouts), the Toolbar/Layouts/Commands sections,
+  rebinding keys.
+- Checks: `cargo test -p wb-cli` (the new settings test); `node measure/desk.mjs --release --settings` (5 of 5 in the real
+  app). The full `desk.mjs` run stops at an earlier Notebook check ("the pen in the Notebook starts a note", before any
+  R4 code); not investigated here.
+
+### Step 3 built (2026-11-09): the toolbar in place
+
+- `ui/src/toolbar.ts`: the buttons are the list in `settings/toolbar.json` (`wb settings toolbar buttons '["version","notebook",…]'`;
+  `default` puts the standard five back), drawn from a catalog: Panes (Notebook, Threads, Shelf, Reading plans, Today's log,
+  Findings, Documents, Help, Keys, Settings) and Reading controls (KJV, Highlights, Find in chapter, Text size, Theme).
+- **More ▸ Customize toolbar…**: the bar becomes the editor (drag to reorder, × to put away, Add and Done); the catalog opens
+  in a drawer at the right; Esc undoes the visit; *Reset to the standard toolbar* is in the drawer.
+- **Overflow:** buttons that do not fit leave from the right end and wait in More ⋯ under *Hidden to fit* (this replaces the
+  Shelf's 1366 px rule). *Not on your toolbar* lists the panes not on it, so putting one away never loses it.
+- Not yet: Layouts and your own commands in the catalog (steps 4 and 5); icon-only buttons; the `wb toolbar` command (the
+  list is reachable through `wb settings toolbar`).
+- Checks: `node measure/desk.mjs --release --settings` (10 of 10): the standard five, Customize, Done saves the file, More lists
+  what is off the bar, a narrow window hides buttons into More.
+
+### Step 4 built (2026-11-09): my commands
+
+- `wb commands` (`crates/wb-core/src/mycommands.rs`): `wb commands`, `wb commands add <name> <line> [--key Ctrl+U] [--icon search]`
+  (the same name changes it; a key another command holds is refused), `wb commands rm`, `wb commands fill <name> --word … --place …`,
+  `wb commands --top` (the lines run most, from `sessions/*.jsonl`, without the ones kept). Kept in `settings/commands.json`.
+- **Settings ▸ Commands:** the kept list (Run, Edit, Remove), *A command of your own…* (name, line, icon, key, and **Test**, which
+  shows the line as it would run with what is selected now and writes nothing), and *Used most (from your log)* with Keep.
+- A kept command is in the toolbar catalog (Commands group, and *A command of your own…* inside the drawer, with Keep and add to toolbar),
+  and its key runs it from anywhere but a text field. `{word}` is the selected word, `{place}` the verse picked or at the top,
+  `{chapter}` the chapter being read; a button with no selection says what it needs.
+- Not as drawn: the button is not greyed when it needs a selection (it says so when pressed).
+- Checks: `node measure/desk.mjs --release --settings`; `cargo test -p wb-cli kept_commands`.
+
+### Step 5 built (2026-11-09): Layouts
+
+- Named **Layouts** (not views), on the existing `layout save|load|list` (`sessions/layouts/*.json`); new: `wb layout rm <name>`
+  (the file goes to `.trash`). **Settings ▸ Layouts:** the saved ones (Open, Remove) and *Save this layout*. A **Layout** button
+  (catalog ▸ Reading controls) opens a menu: the saved layouts, Save this layout, and Layouts in Settings.
+- Opening a layout brings back its panes **and closes the others** (Settings stays open so it can be applied from there).
+- **A bug found on the way:** `layout load` never worked in the window. `wb layout show` returns `{name, saved, layout}` and the
+  code read `app` from the top, so every layout was reported "from the Python app". Fixed (`ui/src/actions.ts`).
+- Not as drawn: a layout holds which panes are open (what `dock.describe` knows), not columns, bands or floats; no key per layout;
+  the Layout button is in the catalog but not on the standard toolbar.
+- Checks: `node measure/desk.mjs --release --settings` (17 of 17); `cargo test -p wb-cli a_layout_can`.

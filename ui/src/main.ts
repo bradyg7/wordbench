@@ -18,7 +18,11 @@ import { app, goTo, here, type At } from './app';
 import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
 import type { Pane } from './dock';
-import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openToday, openUses, threadChooser } from './panes';
+import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
+import { bridge, loadWindowSettings, openSettings } from './settings';
+import { loadKept } from './mycommands';
+import { fills as cmdFills, byKey as commandByKey, run as runKeptCommand } from './mycommands';
+import { absent, customize, hiddenToFit, hooks, initToolbar, loadToolbar, setBadge, setVersionLabel, fitToBar } from './toolbar';
 import { isCaptureKey, notebookBadge, openNote, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
 import type { Change } from './dock';
 import { attachCommandField, loadThreads } from './command';
@@ -108,7 +112,7 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   }
   placeButton(`${data.chapter.name} ${chapter}`);
   readerMoved();
-  $('tb-version').textContent = data.chapter.version || 'KJV';
+  setVersionLabel(data.chapter.version || 'KJV');
   const t2 = performance.now();
   await afterPaint();
   record('chapter', performance.now() - t0, { rust_ms, ipc_ms: t1 - t0 - rust_ms, ...drawTimes, frame_ms: performance.now() - t2, words: drawn.el.length, at: `${code} ${chapter}` });
@@ -969,69 +973,40 @@ async function todaySection(into: HTMLElement) {
 }
 
 function settings(from: HTMLElement) {
-  const b = h('div', 'settings');
-  b.append(h('h2', 'sheet-title', 'More'));
-  const reading = h('div');
-  b.append(reading);
-  todaySection(reading);
-  const quick = h('div', 'wrap');
-  const item = (label: string, fn: () => void) => { const x = h('button', 'btn', label); x.onclick = () => { closeSheet(); closeMenu(); fn(); }; quick.append(x); };
-  item('Find in chapter', () => findInChapter(finding));
-  item('Help', () => openHelp());
-  item('Keys', () => openKeys());
-  item('Reading plans', () => openPlans());
-  item('Today’s log', () => openToday(''));
-  item('Shelf', () => openShelf());
-  item('Findings', () => openFindings());
-  item('Documents', () => openDocuments());
-  b.append(quick);
-  b.append(h('div', 'label', 'Text size'));
-  const sz = h('div', 'size-row');
-  const pct = h('span', 'size-pct', `${sizePct}%`);
-  const step = (n: number) => { setSize(sizePct + n); pct.textContent = `${sizePct}%`; };
-  const minus = h('button', 'btn', 'A−'), plus = h('button', 'btn', 'A+'), reset = h('button', 'btn', '100%');
-  minus.onclick = () => step(-10); plus.onclick = () => step(10); reset.onclick = () => step(100 - sizePct);
-  sz.append(minus, pct, plus, reset);
-  b.append(sz);
-  b.append(h('div', 'label', 'Version'));
-  b.append(segmented(VERSIONS, version, v => { closeSheet(); closeMenu(); setVersion(v).then(toast); }));
-  b.append(h('div', 'label', 'Hover cards'));
-  b.append(segmented(['off', 'refs', 'on'], hoverMode(), setHover));
-  b.append(h('div', 'label', 'Theme'));
-  b.append(segmented(['system', 'light', 'dark', 'eink'], document.documentElement.dataset.theme || 'system', t => {
-    if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
-    try { localStorage.setItem('wb.theme', t); } catch { /* this run only */ }
-  }));
-  if (inApp) {
-    b.append(h('div', 'label', 'Window size'));
-    const row = h('div', 'wrap');
-    for (const [id, name] of PRESETS) {
-      const x = h('button', 'btn', name);
-      x.onclick = async () => { closeSheet(); closeMenu(); const r = await api.setWindow(id); toast(`${r.got[0]}×${r.got[1]}`); };
-      row.append(x);
-    }
-    b.append(row);
-  }
-  b.append(h('div', 'label', 'Input'));
-  b.append(segmented(['auto', 'touch', 'pointer'], selector.mode, m => { selector.mode = m as InputMode; document.documentElement.dataset.input = m; }));
-  b.append(h('div', 'label', 'Later phases'));
-  b.append(h('p', 'muted small', 'Documents: the Speaker Script and Verse by Verse from a thread are made here (Documents); PowerPoint, lessons and the other structures in phase 5. Read aloud and recordings: phase 6. The Python app still does them.'));
-  b.append(h('div', 'label', 'Go to'));
-  const go = h('form', 'go') as HTMLFormElement;
-  const input = h('input') as HTMLInputElement;
-  input.placeholder = 'Psalm 119';
-  go.append(input, h('button', 'btn', 'Open'));
-  go.onsubmit = async e => {
-    e.preventDefault();
-    closeSheet(); closeMenu();
-    const r = await runLine(`go ${input.value}`).catch(x => ({ ok: false, error: String(x) }));
-    if (!r.ok) toast(r.error || 'Not a place');
+  // R4 (docs/redesign-R4.md): More is Settings, Help, and the panes that are not on the toolbar. Everything that was a
+  // setting lives in Settings; a pane put away (or never added) waits here with a way back.
+  const b = h('div', 'settings more-menu');
+  const go = (label: string, ico: string, fn: () => void, sub = '', key = '') => {
+    const x = h('button', 'menu-item more-item');
+    x.append(icon(ico, 16));
+    const t = h('span', 'more-text');
+    t.append(h('span', '', label));
+    if (sub) t.append(h('span', 'muted small', sub));
+    x.append(t);
+    if (key) x.append(h('kbd', '', key));
+    x.onclick = () => { closeSheet(); closeMenu(); fn(); };
+    b.append(x);
   };
-  b.append(go);
-  b.append(h('div', 'label', 'Measured this run'));
-  b.append(h('pre', 'perf', perf.summary()));
+  if (compact() || !inApp) {
+    const reading = h('div');
+    b.append(h('h2', 'sheet-title', 'More'), reading);
+    todaySection(reading);
+  }
+  go('Settings…', 'settings', () => openSettings(), '', 'Ctrl+,');
+  go('Customize toolbar…', 'sliders', () => customize());
+  go('Help', 'help', () => openHelp(), 'Guide · Commands · Keys');
+  const fit = hiddenToFit();
+  if (fit.length) {
+    b.append(h('div', 'label', 'Hidden to fit'));
+    for (const it of fit) go(it.label, it.icon || 'book', () => it.run($('more')));
+  }
+  const rest = absent();
+  if (rest.length) {
+    b.append(h('div', 'label', 'Not on your toolbar'));
+    for (const it of rest) go(it.label, it.icon || 'book', () => it.run($('more')));
+  }
   if (compact() || !inApp) openSheet(b, from);
-  else popMenu(from, b, { align: 'right', width: 420 });
+  else popMenu(from, b, { align: 'right', width: 300 });
 }
 
 function segmented(opts: string[], cur: string, pick: (o: string) => void) {
@@ -1053,20 +1028,20 @@ $('place').onclick = () => (compact() ? settings($('place')) : picker($('place')
 // on a phone it will open the palette (phase 3)
 $('pen').onclick = () => (compact() ? toast('Phase 3: the palette') : void writeInNotebook(here(), false));
 $('pen').title = 'Write a page (on the place you picked, or the verse at the top)';
-$('tb-notebook').onclick = () => openNotebook();
-$('tb-version').onclick = async () => toast(await setVersion(version === 'KJV' ? 'YLT' : 'KJV'));
-$('tb-shelf').onclick = () => openShelf();
-$('hl-menu').onclick = () => highlightsMenu($('hl-menu'));
 $('tab-notebook').onclick = () => openNotebook();
 $('tab-study').onclick = () => openHelp();
-for (const [id, ico] of [['tb-notebook', 'notebook'], ['tb-shelf', 'shelf'], ['hl-menu', 'pen']] as const) $(id).prepend(icon(ico));
-$('hl-menu').append(icon('down', 14));
 $('cmdbox').prepend(icon('search'));
-notebookBadge.set = n => {
-  const badge = $('tb-notebook').querySelector<HTMLElement>('.badge')!;
-  badge.hidden = !n;
-  badge.textContent = String(n);
+notebookBadge.set = n => setBadge(n);
+hooks.highlights = from => void highlightsMenu(from);
+hooks.toggleVersion = () => setVersion(version === 'KJV' ? 'YLT' : 'KJV');
+hooks.find = () => findInChapter(finding);
+cmdFills.get = () => {
+  const d = drawn, sel = selector.sel;
+  let word = '';
+  if (d && sel) word = Array.from({ length: sel.b - sel.a + 1 }, (_, i) => d.el[sel.a + i]?.textContent ?? '').join(' ').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').trim();
+  return { word, place: here().label, chapter: d ? `${d.chapter.name} ${d.chapter.chapter}` : '' };
 };
+initToolbar();
 
 // A box that is being scrolled shows its scrollbar for a moment afterwards (style.css; note cd59). Scroll events do not
 // bubble, so this listens in the capture phase.
@@ -1085,6 +1060,8 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
   if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
+  { const kc = commandByKey(e); if (kc) { e.preventDefault(); void runKeptCommand(kc); return; } }
+  if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
   // a finding about the app, from anywhere (note 50c1)
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); findingBox(); return; }
@@ -1135,6 +1112,14 @@ Object.assign(app, {
   changed: (...what: Change[]) => { written(...what); if (!what.length || what.includes('threads')) loadThreads(); },
 });
 
+bridge.size = () => sizePct;
+bridge.setSize = setSize;
+bridge.version = () => version;
+bridge.setVersion = setVersion;
+bridge.openKeys = () => void openKeys();
+bridge.inputMode = () => selector.mode;
+bridge.setInputMode = m => { selector.mode = m as InputMode; document.documentElement.dataset.input = m; };
+
 // ---- start ------------------------------------------------------------------------------------------------------------
 async function start() {
   document.documentElement.dataset.size = sizeClass();
@@ -1162,6 +1147,8 @@ async function start() {
   onDo(runLine);
   if (inApp) {
     void readSettings();
+    void loadWindowSettings();
+    void loadKept().then(() => loadToolbar()).then(() => fitToBar());
     loadPalette();
     if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') openNotebook();
   }

@@ -13,6 +13,7 @@ import {
   openMarked, openNear, openPlace, openPassage, openPlans, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
 } from './panes';
 import { setHover } from './ui';
+import { hooks } from './toolbar';
 import { addFinding, openFindings } from './findings';
 import { KINDS, makeDoc, openDocuments } from './documents';
 
@@ -337,7 +338,7 @@ async function changeLayers(a: any): Promise<string> {
       app.refreshMarks();
       return `${a.action === 'show' ? 'Showing' : 'Hiding'} “${t.name}”`;
     }
-    case 'panel': document.getElementById('hl-menu')?.click(); return 'The layers';
+    case 'panel': { const b = document.getElementById('hl-menu') ?? document.getElementById('more'); if (document.getElementById('hl-menu')) b!.click(); else hooks.highlights(b!); return 'The layers'; }
     default: return `Drawn: ${layers.highlightsShown() ? 'your highlights' : 'no highlights'}; threads: ${ts.filter(t => layers.shown(t.id)).map(t => t.name).join(', ') || 'none'}`;
   }
   layers.save();
@@ -399,8 +400,12 @@ async function layout(a: any): Promise<string> {
     await wb(['layout', 'save', a.name], JSON.stringify({ app: 'bible-workbench-rs', panes }));
     return `Layout ${a.name}: ${panes.length} panes`;
   }
-  const l = await wb(['layout', 'show', a.name]);
+  const shown = await wb(['layout', 'show', a.name]);
+  const l = shown.layout ?? shown;   // the file holds {name, saved, layout}
   if (l.app !== 'bible-workbench-rs') return `${a.name} is a layout from the Python app; this window cannot read it yet.`;
+  // a layout is the whole arrangement: panes not in it close (Settings stays, so a layout can be applied from there)
+  const want = new Set<string>(l.panes.map((p: any) => p.key));
+  for (const p of [...dock.panes]) if (p.key !== 'settings' && !want.has(p.key)) dock.close(p);
   for (const p of l.panes) await reopen(p.key);
   return `Layout ${a.name}`;
 }

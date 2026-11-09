@@ -394,6 +394,7 @@ pub fn commands() -> Vec<Command> {
                 let layout: Value = serde_json::from_str(&text).map_err(|_| "The layout must be a JSON object.")?;
                 j(c.study()?.save_layout(&a.s("name"), &layout).map_err(e)?)
             }),
+        cmd("layout rm", "Delete a saved layout (its file waits in .trash): wb layout rm Study.", vec![Pos("name", N::Many)], |c, a| j(c.study()?.delete_layout(&a.s("name")).map_err(e)?)),
         cmd("lesson list", "Your lessons (study-folder/lessons/*.md).", vec![], |c, _| j(json!(sa::lesson_listing(&*c.study()?).map_err(e)?))),
         cmd("lesson show", "A lesson's file text.", vec![Pos("name", N::Many)], |c, a| {
             let r = sa::lesson_read(&*c.study()?, &a.s("name")).map_err(e)?;

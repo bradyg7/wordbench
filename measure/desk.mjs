@@ -39,6 +39,115 @@ const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`); };
 
+// R4 (More cut down, Settings, a person's own theme). `node measure/desk.mjs --release --settings` runs only this.
+async function settingsChecks(page) {
+  // R4: More is cut down; Settings holds the settings, saved per key; a theme of the person's own
+  await page.locator('#more').click();
+  const moreText = (await page.locator('.more-menu').innerText()).replace(/\s+/g, ' ');
+  check('More holds Settings, Help and the panes not on the toolbar, and none of the settings', /Settings/.test(moreText) && /Help/.test(moreText) && /Reading plans/.test(moreText) && /Documents/.test(moreText) && !/Text size|Hover cards|Window size|Go to/.test(moreText), moreText);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Control+,');
+  await page.waitForSelector('.pane-settings .set-body', { timeout: 10000 });
+  check('Ctrl+, opens Settings', await page.locator('.pane-settings .set-nav button').count() === 8);
+  await page.locator('.pane-settings .size-row button', { hasText: 'A+' }).click();
+  await sleep(600);
+  const rs = JSON.parse(execFileSync(wbExe, ['settings', 'reading'], { env }).toString());
+  check('a change in Settings is saved at once in settings/reading.json', rs.size === 110, JSON.stringify(rs));
+  await page.locator('.pane-settings .size-row button', { hasText: '100%' }).click();
+  await page.locator('.pane-settings .set-nav button', { hasText: 'Theme' }).click();
+  await page.locator('.pane-settings .theme-chips button', { hasText: 'New theme' }).click();
+  await page.waitForSelector('.pane-settings .theme-name', { timeout: 5000 });
+  const hex = page.locator('.pane-settings .color-row', { hasText: 'Page behind the text' }).locator('.hex');
+  await hex.fill('#102030');
+  await hex.press('Enter');
+  await sleep(600);
+  const bgNow = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().toLowerCase());
+  const th = JSON.parse(execFileSync(wbExe, ['settings', 'theme'], { env }).toString());
+  check('a theme of your own changes only the colors set, and is kept in settings/theme.json', bgNow === '#102030' && th.themes?.[0]?.colors?.bg === '#102030' && Object.keys(th.themes[0].colors).length === 1 && th.active === th.themes[0].name, JSON.stringify(th));
+  await page.screenshot({ path: shots + '1440-settings-theme.png' });
+  await page.locator('.pane-settings .theme-chips button', { hasText: /^System$/ }).click();
+  await sleep(300);
+  check('choosing System puts the base colors back', await page.evaluate(() => document.documentElement.style.getPropertyValue('--bg') === ''));
+  execFileSync(wbExe, ['settings', 'theme', 'themes', 'default'], { env });
+  execFileSync(wbExe, ['settings', 'theme', 'active', 'default'], { env });
+  await page.evaluate(() => { const d = window.__wb.dock(); d.panes.filter(p => p.title === 'Settings').forEach(p => d.close(p)); });
+
+  // R4 step 3: the toolbar in place
+  const ids = () => page.evaluate(() => [...document.querySelectorAll('nav.tools > .tb[data-item]')].map(b => b.dataset.item));
+  check('the standard toolbar is the five buttons it was', (await ids()).join() === 'version,notebook,threads,shelf,highlights', (await ids()).join());
+  await page.locator('#more').click();
+  await page.locator('.more-menu .more-item', { hasText: 'Customize toolbar' }).click();
+  await page.waitForSelector('.tb-editing .tb-edit', { timeout: 5000 });
+  check('Customize turns the toolbar into its editor, with the catalog beside it', await page.locator('.tb-edit').count() === 5 && await page.locator('.tb-drawer .tb-entry').count() >= 10);
+  await page.locator('.tb-edit[data-item="shelf"] .tb-x').click();
+  await page.locator('.tb-drawer .tb-entry', { hasText: 'Reading plans' }).click();
+  await page.locator('.tb-drawer .tb-entry', { hasText: 'Reading plans' }).waitFor();
+  await page.screenshot({ path: shots + '1440-toolbar-editing.png' });
+  await page.locator('.tb-done').click();
+  await sleep(500);
+  const tbs = JSON.parse(execFileSync(wbExe, ['settings', 'toolbar'], { env }).toString());
+  check('Done keeps the list in settings/toolbar.json and the bar shows it', tbs.buttons.join() === 'version,notebook,threads,highlights,plans' && (await ids()).join() === tbs.buttons.join(), JSON.stringify(tbs));
+  await page.locator('#more').click();
+  const more2 = (await page.locator('.more-menu').innerText()).replace(/\s+/g, ' ');
+  check('More lists what is not on the toolbar (the Shelf now) and not what is', /Not on your toolbar.*Shelf/i.test(more2) && !/Not on your toolbar.*Reading plans/i.test(more2), more2);
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.__wb.run('window ipad'));
+  await sleep(900);
+  await page.locator('#more').click();
+  const narrow = (await page.locator('.more-menu').innerText()).replace(/\s+/g, ' ');
+  const shown = await page.evaluate(() => [...document.querySelectorAll('nav.tools > .tb[data-item]')].filter(b => !b.hidden).length);
+  check('a window too narrow for the buttons puts them in More under Hidden to fit, from the right', shown < 5 && /Hidden to fit/i.test(narrow), `${shown} shown`);
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.__wb.run('window laptop-large'));
+  await sleep(900);
+  // R4 step 4: my commands
+  await page.keyboard.press('Control+,');
+  await page.waitForSelector('.pane-settings .set-nav', { timeout: 10000 });
+  await page.locator('.pane-settings .set-nav button', { hasText: 'Commands' }).click();
+  await page.locator('.pane-settings button', { hasText: 'A command of your own' }).click();
+  const inputs = page.locator('.pane-settings .cmd-form input');
+  await inputs.nth(0).fill('Uses of a word');
+  await inputs.nth(1).fill('uses {word}');
+  await inputs.nth(2).fill('ctrl+u');
+  check('the form tests the line with what is selected now, writing nothing', /Select a selected word first/.test(await page.locator('.pane-settings .cmd-test').innerText()));
+  await page.locator('.pane-settings .cmd-buttons button', { hasText: /^Keep$/ }).click();
+  await sleep(700);
+  const kept = JSON.parse(execFileSync(wbExe, ['commands'], { env }).toString());
+  check('a command of your own is kept in settings/commands.json, with its key', kept.length === 1 && kept[0].line === 'uses {word}' && kept[0].key === 'Ctrl+U', JSON.stringify(kept));
+  await page.locator('#more').click();
+  await page.locator('.more-menu .more-item', { hasText: 'Customize toolbar' }).click();
+  await page.waitForSelector('.tb-drawer', { timeout: 5000 });
+  await page.locator('.tb-drawer .tb-entry', { hasText: 'Uses of a word' }).first().click({ timeout: 3000 });
+  await page.screenshot({ path: shots + '1440-my-commands.png' });
+  await page.locator('.tb-done').click();
+  await sleep(500);
+  const withCmd = await page.evaluate(() => [...document.querySelectorAll('nav.tools > .tb[data-item]')].map(b => b.dataset.item));
+  check('a kept command can be a toolbar button', withCmd.includes('cmd:uses-of-a-word'), withCmd.join());
+  await page.locator('nav.tools > .tb[data-item="cmd:uses-of-a-word"]').click();
+  await sleep(300);
+  check('its button says what it needs when nothing is selected', /Select a selected word/.test(await page.locator('.toast').innerText().catch(() => '')));
+  execFileSync(wbExe, ['commands', 'rm', 'Uses of a word'], { env });
+  // R4 step 5: layouts
+  await page.locator('.pane-settings .set-nav button', { hasText: 'Layouts' }).click();
+  await page.locator('.pane-settings .go input').fill('Desk check');
+  await page.locator('.pane-settings .go button', { hasText: 'Save this layout' }).click();
+  await sleep(700);
+  const lays = JSON.parse(execFileSync(wbExe, ['layout', 'list'], { env }).toString());
+  check('Save this layout keeps the panes open now under a name', lays.some(l => l.name === 'Desk check'), JSON.stringify(lays));
+  await page.evaluate(() => window.__wb.run('keys'));
+  await page.waitForSelector('.pane-keys', { timeout: 5000 });
+  const loaded = await page.evaluate(() => window.__wb.run('layout load Desk check'));
+  await sleep(800);
+  await page.evaluate(() => { const d = window.__wb.dock(); const p = d.panes.find(x => x.title === 'Settings'); if (p) d.open('settings', 'Settings', 'settings', 'right', () => {}); });
+  await page.waitForSelector('.pane-settings .set-row', { timeout: 5000 });
+  check('opening a layout brings back its panes and closes the others', await page.locator('.pane-keys').count() === 0 && await page.locator('.pane-notebook').count() === 1, `${JSON.stringify(loaded)} keys ${await page.locator('.pane-keys').count()}, notebook ${await page.locator('.pane-notebook').count()}, ${await page.evaluate(() => window.__wb.dock().panes.map(p => p.key).join(' '))}`);
+  await page.locator('.pane-settings .set-row', { hasText: 'Desk check' }).locator('button', { hasText: 'Remove' }).click();
+  await sleep(500);
+  check('Remove takes the layout away', JSON.parse(execFileSync(wbExe, ['layout', 'list'], { env }).toString()).length === 0);
+  execFileSync(wbExe, ['settings', 'toolbar', 'buttons', 'default'], { env });
+
+}
+
 let browser;
 try {
   for (let i = 0; i < 100 && !browser; i++) {
@@ -52,6 +161,15 @@ try {
   await page.waitForFunction(() => window.__wbReady, null, { timeout: 30000 });
   await page.waitForSelector('.pane-notebook .nb-sections', { timeout: 15000 });
   const size = await page.evaluate(() => [innerWidth, innerHeight, document.documentElement.dataset.size]);
+  if (process.argv.includes('--settings')) {
+    await settingsChecks(page);
+    await browser.close().catch(() => {});
+    kill();
+    const bad = results.filter(r => !r.ok);
+    console.log(`
+${results.length - bad.length} of ${results.length} checks passed`);
+    process.exit(bad.length ? 1 : 0);
+  }
   check('the laptop-large window is the Large size class', size[2] === 'large', size.join('×'));
   check('the Notebook is docked on the right', await page.locator('.dock-right.open .pane-notebook').count() === 1);
   check('the toolbar has the command field and the pane buttons', await page.locator('#cmd').isVisible() && await page.locator('#tb-notebook').isVisible() && await page.locator('#hl-menu').isVisible());
@@ -2239,6 +2357,8 @@ try {
 
   // the Shelf as a tree (R2)
   await shelfChecks({ page, check, env, wbExe, study, shots, sleep });
+
+  await settingsChecks(page);
 
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();

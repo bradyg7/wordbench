@@ -1694,6 +1694,16 @@ impl Store {
         let p = self.root.join("sessions").join("layouts").join(format!("{}.json", hit[0]["id"].as_str().unwrap()));
         serde_json::from_str(&read(&p).unwrap_or_default()).map_err(|_| bad("bad request"))
     }
+
+    /// Delete a saved layout (its file goes to .trash).
+    pub fn delete_layout(&mut self, name: &str) -> Result<Value> {
+        let found = self.layout(name)?;
+        let n = found["name"].as_str().unwrap_or(name).to_string();
+        let id = self.layouts().into_iter().find(|x| x["name"].as_str() == Some(n.as_str())).and_then(|x| x["id"].as_str().map(String::from)).ok_or_else(|| missing("No saved layout by that name."))?;
+        let p = self.root.join("sessions").join("layouts").join(format!("{id}.json"));
+        self.trash(&p)?;
+        Ok(json!({"name": n, "deleted": true}))
+    }
 }
 
 pub fn parse_thread(stem: &str, text: &str) -> Option<Rec> {
