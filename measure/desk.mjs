@@ -64,6 +64,36 @@ async function settingsChecks(page) {
   execFileSync(wbExe, ['settings', 'theme', 'active', 'default'], { env });
   await page.evaluate(() => { const d = window.__wb.dock(); d.panes.filter(p => p.title === 'Settings').forEach(p => d.close(p)); });
 
+  // R4 step 3: the toolbar in place
+  const ids = () => page.evaluate(() => [...document.querySelectorAll('nav.tools > .tb[data-item]')].map(b => b.dataset.item));
+  check('the standard toolbar is the five buttons it was', (await ids()).join() === 'version,notebook,threads,shelf,highlights', (await ids()).join());
+  await page.locator('#more').click();
+  await page.locator('.more-menu .more-item', { hasText: 'Customize toolbar' }).click();
+  await page.waitForSelector('.tb-editing .tb-edit', { timeout: 5000 });
+  check('Customize turns the toolbar into its editor, with the catalog beside it', await page.locator('.tb-edit').count() === 5 && await page.locator('.tb-drawer .tb-entry').count() >= 10);
+  await page.locator('.tb-edit[data-item="shelf"] .tb-x').click();
+  await page.locator('.tb-drawer .tb-entry', { hasText: 'Reading plans' }).click();
+  await page.locator('.tb-drawer .tb-entry', { hasText: 'Reading plans' }).waitFor();
+  await page.screenshot({ path: shots + '1440-toolbar-editing.png' });
+  await page.locator('.tb-done').click();
+  await sleep(500);
+  const tbs = JSON.parse(execFileSync(wbExe, ['settings', 'toolbar'], { env }).toString());
+  check('Done keeps the list in settings/toolbar.json and the bar shows it', tbs.buttons.join() === 'version,notebook,threads,highlights,plans' && (await ids()).join() === tbs.buttons.join(), JSON.stringify(tbs));
+  await page.locator('#more').click();
+  const more2 = (await page.locator('.more-menu').innerText()).replace(/\s+/g, ' ');
+  check('More lists what is not on the toolbar (the Shelf now) and not what is', /Not on your toolbar.*Shelf/i.test(more2) && !/Not on your toolbar.*Reading plans/i.test(more2), more2);
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.__wb.run('window ipad'));
+  await sleep(900);
+  await page.locator('#more').click();
+  const narrow = (await page.locator('.more-menu').innerText()).replace(/\s+/g, ' ');
+  const shown = await page.evaluate(() => [...document.querySelectorAll('nav.tools > .tb[data-item]')].filter(b => !b.hidden).length);
+  check('a window too narrow for the buttons puts them in More under Hidden to fit, from the right', shown < 5 && /Hidden to fit/i.test(narrow), `${shown} shown`);
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => window.__wb.run('window laptop-large'));
+  await sleep(900);
+  execFileSync(wbExe, ['settings', 'toolbar', 'buttons', 'default'], { env });
+
 }
 
 let browser;

@@ -171,3 +171,17 @@ Steps 1 and 2 of §7, in a first form:
 - Checks: `cargo test -p wb-cli` (the new settings test); `node measure/desk.mjs --release --settings` (5 of 5 in the real
   app). The full `desk.mjs` run stops at an earlier Notebook check ("the pen in the Notebook starts a note", before any
   R4 code); not investigated here.
+
+### Step 3 built (2026-11-09): the toolbar in place
+
+- `ui/src/toolbar.ts`: the buttons are the list in `settings/toolbar.json` (`wb settings toolbar buttons '["version","notebook",…]'`;
+  `default` puts the standard five back), drawn from a catalog: Panes (Notebook, Threads, Shelf, Reading plans, Today's log,
+  Findings, Documents, Help, Keys, Settings) and Reading controls (KJV, Highlights, Find in chapter, Text size, Theme).
+- **More ▸ Customize toolbar…**: the bar becomes the editor (drag to reorder, × to put away, Add and Done); the catalog opens
+  in a drawer at the right; Esc undoes the visit; *Reset to the standard toolbar* is in the drawer.
+- **Overflow:** buttons that do not fit leave from the right end and wait in More ⋯ under *Hidden to fit* (this replaces the
+  Shelf's 1366 px rule). *Not on your toolbar* lists the panes not on it, so putting one away never loses it.
+- Not yet: Layouts and your own commands in the catalog (steps 4 and 5); icon-only buttons; the `wb toolbar` command (the
+  list is reachable through `wb settings toolbar`).
+- Checks: `node measure/desk.mjs --release --settings` (10 of 10): the standard five, Customize, Done saves the file, More lists
+  what is off the bar, a narrow window hides buttons into More.

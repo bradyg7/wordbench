@@ -11,6 +11,7 @@ import {
   openMarked, openNear, openPlace, openPassage, openPlans, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
 } from './panes';
 import { setHover } from './ui';
+import { hooks } from './toolbar';
 import { addFinding, openFindings } from './findings';
 import { KINDS, makeDoc, openDocuments } from './documents';
 
@@ -335,7 +336,7 @@ async function changeLayers(a: any): Promise<string> {
       app.refreshMarks();
       return `${a.action === 'show' ? 'Showing' : 'Hiding'} “${t.name}”`;
     }
-    case 'panel': document.getElementById('hl-menu')?.click(); return 'The layers';
+    case 'panel': { const b = document.getElementById('hl-menu') ?? document.getElementById('more'); if (document.getElementById('hl-menu')) b!.click(); else hooks.highlights(b!); return 'The layers'; }
     default: return `Drawn: ${layers.highlightsShown() ? 'your highlights' : 'no highlights'}; threads: ${ts.filter(t => layers.shown(t.id)).map(t => t.name).join(', ') || 'none'}`;
   }
   layers.save();

@@ -20,6 +20,7 @@ import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './u
 import type { Pane } from './dock';
 import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
 import { bridge, loadWindowSettings, openSettings } from './settings';
+import { absent, customize, hiddenToFit, hooks, initToolbar, loadToolbar, setBadge, setVersionLabel, fitToBar } from './toolbar';
 import { isCaptureKey, notebookBadge, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
 import type { Change } from './dock';
 import { attachCommandField, loadThreads } from './command';
@@ -109,7 +110,7 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   }
   placeButton(`${data.chapter.name} ${chapter}`);
   readerMoved();
-  $('tb-version').textContent = data.chapter.version || 'KJV';
+  setVersionLabel(data.chapter.version || 'KJV');
   const t2 = performance.now();
   await afterPaint();
   record('chapter', performance.now() - t0, { rust_ms, ipc_ms: t1 - t0 - rust_ms, ...drawTimes, frame_ms: performance.now() - t2, words: drawn.el.length, at: `${code} ${chapter}` });
@@ -990,12 +991,18 @@ function settings(from: HTMLElement) {
     todaySection(reading);
   }
   go('Settings…', 'settings', () => openSettings(), '', 'Ctrl+,');
+  go('Customize toolbar…', 'sliders', () => customize());
   go('Help', 'help', () => openHelp(), 'Guide · Commands · Keys');
-  b.append(h('div', 'label', 'Not on your toolbar'));
-  go('Reading plans', 'lines', () => openPlans());
-  go('Today’s log', 'file', () => openToday(''));
-  go('Findings', 'pen', () => openFindings());
-  go('Documents', 'file', () => openDocuments());
+  const fit = hiddenToFit();
+  if (fit.length) {
+    b.append(h('div', 'label', 'Hidden to fit'));
+    for (const it of fit) go(it.label, it.icon || 'book', () => it.run($('more')));
+  }
+  const rest = absent();
+  if (rest.length) {
+    b.append(h('div', 'label', 'Not on your toolbar'));
+    for (const it of rest) go(it.label, it.icon || 'book', () => it.run($('more')));
+  }
   if (compact() || !inApp) openSheet(b, from);
   else popMenu(from, b, { align: 'right', width: 300 });
 }
@@ -1019,22 +1026,15 @@ $('place').onclick = () => (compact() ? settings($('place')) : picker($('place')
 // on a phone it will open the palette (phase 3)
 $('pen').onclick = () => (compact() ? toast('Phase 3: the palette') : void writeInNotebook(here(), false));
 $('pen').title = 'Write a note (on the place you picked, or the verse at the top)';
-$('tb-notebook').onclick = () => openNotebook();
-$('tb-threads').onclick = () => openThreads();
-$('tb-version').onclick = async () => toast(await setVersion(version === 'KJV' ? 'YLT' : 'KJV'));
-$('tb-shelf').onclick = () => openShelf();
-$('hl-menu').onclick = () => highlightsMenu($('hl-menu'));
 $('tab-notebook').onclick = () => openNotebook();
 $('tab-threads').onclick = () => openThreads();
 $('tab-study').onclick = () => openHelp();
-for (const [id, ico] of [['tb-notebook', 'notebook'], ['tb-threads', 'threads'], ['tb-shelf', 'shelf'], ['hl-menu', 'pen']] as const) $(id).prepend(icon(ico));
-$('hl-menu').append(icon('down', 14));
 $('cmdbox').prepend(icon('search'));
-notebookBadge.set = n => {
-  const badge = $('tb-notebook').querySelector<HTMLElement>('.badge')!;
-  badge.hidden = !n;
-  badge.textContent = String(n);
-};
+notebookBadge.set = n => setBadge(n);
+hooks.highlights = from => void highlightsMenu(from);
+hooks.toggleVersion = () => setVersion(version === 'KJV' ? 'YLT' : 'KJV');
+hooks.find = () => findInChapter(finding);
+initToolbar();
 
 // A box that is being scrolled shows its scrollbar for a moment afterwards (style.css; note cd59). Scroll events do not
 // bubble, so this listens in the capture phase.
@@ -1140,6 +1140,7 @@ async function start() {
   if (inApp) {
     void readSettings();
     void loadWindowSettings();
+    void loadToolbar().then(() => fitToBar());
     loadPalette();
     if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') openNotebook();
   }
