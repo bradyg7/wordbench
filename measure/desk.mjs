@@ -867,6 +867,20 @@ try {
   const linked = await waitFile(parentId, t => t.includes('[[W3 inside by slash]]'));
   const slashId = treeNow().pages.find(r => r.id === parentId)?.children.find(c => c.title === 'W3 inside by slash')?.id;
   check('Page inside this one makes the page inside, and writes [[its title]] where the menu was opened', linked && !!slashId, JSON.stringify(bodyOf(parentId)));
+  // C2: a Quote added from / and left empty is not written; clicking away leaves the file as it was
+  const beforeQuote = bodyOf(parentId);
+  await page.waitForFunction(() => document.querySelectorAll('.pane-notebook .nb-blocks .nb-block').length === 5, null, { timeout: 10000 }).catch(() => {});
+  await ed.locator('.nb-block-add').click();
+  await typing();
+  await page.keyboard.type('/quote');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('.pane-notebook textarea.nb-block-input')?.value === '> ', null, { timeout: 5000 }).catch(() => {});
+  const quoteBox = await ed.locator('textarea.nb-block-input').inputValue().catch(() => '');
+  await sleep(900); // past the autosave
+  await ed.locator('.nb-ed-head').click({ position: { x: 4, y: 4 } });
+  await page.waitForFunction(() => !document.querySelector('.pane-notebook textarea.nb-block-input'), null, { timeout: 5000 }).catch(() => {});
+  await sleep(500);
+  check('a Quote added from / and left empty writes nothing: clicking away leaves the file as it was', quoteBox === '> ' && bodyOf(parentId) === beforeQuote, `${JSON.stringify(quoteBox)}; ${JSON.stringify(bodyOf(parentId))}`);
   // the files read back: the page's text is what was written, block by block; the pages inside name it
   const parentText = 'W3 parent page\nThe aim: read the chapter. Then the psalm.\n\n- [ ] second to-do\n- [ ] first to-do\n- [x] third to-do\n\n[[W3 inside by slash]]';
   const pageBlocks = JSON.parse(execFileSync(wbExe, ['page', 'blocks', parentId], { env }).toString()).blocks.map(b => b.kind).join();

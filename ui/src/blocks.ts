@@ -41,7 +41,9 @@ export let focusBlock: { n: number; at: 'start' | 'end' } | { after: number; tex
 export const setFocusBlock = (f: typeof focusBlock) => { focusBlock = f; };
 
 /** Is this block's writing nothing but a list's mark ("- ", "- [ ] ", "2. ")? */
-const blank = (t: string) => !t.replace(/^\s*([-*+]|\d+[.)])(\s+\[[ xX]\])?\s*/, '').trim();
+// A block with only its marker is empty: a list item or to-do, a quote (`>`), a heading (`#`). A divider (`---`) and a
+// table are never empty; a lone `-` is an empty item, `---` is not.
+const blank = (t: string) => !t.replace(/^\s*(([-*+]|\d+[.)])(\s+\[[ xX]\])?|(>\s*)+|#{1,6})(\s+|$)/, '').trim();
 
 /** What a new block after this one starts with: a list goes on as a list. */
 function goesOn(text: string): string {

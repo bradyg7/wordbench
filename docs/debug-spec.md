@@ -31,7 +31,7 @@ must be reproduced before it is changed. Sizes: **S** under 2 hours, **M** half 
 | S7 | A finding records the build that is running, not the last commit | seen in `findings/` | S | **Should** |
 | S8 | A clean filter for the Notebook (one-page design first) | `4463` | M | **Should, design sheet first** |
 | C1 | Files attached to a finding | `b737` (part) | M | **Could** |
-| C2 | Empty blocks left behind as stray Markdown (`>`) | seen in `notes/_inbox/…3fa7` | S | **Could** |
+| C2 | Empty blocks left behind as stray Markdown (`>`) | seen in `notes/_inbox/…3fa7` | S | **Done 2026-11-08** (phase2-results §28) |
 | D1 | Deletes destroyed with an undo (10 s; 30 s for a batch), and a delete-all-pages button: **decided 2026-11-08** | `cf09`, `0ade` | M | **Decided: build** |
 | R1 | Everything is a page; threads, notes, questions become blocks or pages; the Threads tab goes | `38c2`, `7d00`, `d84d` (part) | L+ | **REDESIGN** |
 | R2 | Shelf | `1d0e`, `3fa7`, `a484` | L | **REDESIGN (take up first)** |

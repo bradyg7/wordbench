@@ -885,3 +885,24 @@ window's own state, the folds, is kept in its storage as the section folds are).
 | Rust tests | not run: no wb-core, wb-cli or app change |
 
 Screenshots: new `docs/phase2/1440-notebook-places-by-book.png`, `1440-notebook-side-panel-folded.png`, `1440-notebook-a-threads-places.png`; the sheet's four windows in `design/exports/filter/`. Not committed. Not checked with a real mouse or touch (the right-click and long press were driven by Playwright's events; M1 showed what that can miss for drags, which these are not).
+
+## 28. The debug round's Could item C2: empty blocks (2026-11-08)
+
+From [debug-spec.md](debug-spec.md). Nothing written to the study folder changed: no new fields, no new commands. The
+person's note `n_20261103204012_3fa7` (its lone `>`) was read only and is not rewritten.
+
+| Item | Finding | What was done |
+|---|---|---|
+| C2 | seen in `notes/_inbox/…3fa7` | The block editor's "empty" test (`blank` in `ui/src/blocks.ts`) knew only list markers, so a Quote added from `/` and left as `> ` was saved as a lone `>`. A block holding only its marker is now empty when its editing ends: a **quote** (`>`), a **heading** (`#`…`######`), as an item or to-do already was. A new one writes nothing; an existing block emptied is removed (`wb block rm`). The **divider** (`---`) and the **table** are never empty. |
+
+**Core left as it is:** `wb block add - <<< "> "` still writes what it is given. A terminal writes the text it is told to,
+and a quote written on purpose is the person's; the window is what leaves empty blocks behind by autosave, so the rule is
+there. No Rust change, so the Python app opens the files as before.
+
+**Changed in the desk checks:** 1 new check (a Quote from `/`, left empty, clicking away: the page's file is unchanged).
+
+| | Result |
+|---|---|
+| Desktop in the real app | `node measure/desk.mjs --release`: **372 of 372** (1 new) |
+| WebKit | `npm run test:webkit`: **18 passed**, 10 skipped |
+| Rust tests | not run: no wb-core, wb-cli or app change |
