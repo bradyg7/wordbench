@@ -1,7 +1,49 @@
 # R3 design round: documents in the preview's look, and a template builder
 
-Finding `868e`, item R3 of [debug-spec.md](debug-spec.md). **A design round only: nothing here is built**, and nothing is
-built until the person accepts a design. The sheets are `design/r3.py` → `design/r3.figcraft` and
+> **Accepted, 2026-11-09.** After three passes the person said *"Finalize it."* The design to build is the whole of
+> this document, sheets D1–D15. The fifteen questions below were not answered one by one, so **each is settled at the
+> proposal the sheets draw** (listed in *The decisions, as accepted*, next). Any of them can still be changed by the
+> person before or while it is built; nothing is built yet.
+
+## The decisions, as accepted
+
+| # | Question | Settled as |
+|---|---|---|
+| 1 | The look | D1–D8: the preview's fonts, sizes and colors as the Word styles; headings in ink, the accent only on references, verse numbers, cues, delivery notes |
+| 2 | Paper | Letter by default, A4 a Detail; white paper for every Word document |
+| 3 | Structures | Shipped templates: Speaker Script, Share Copy, Study Sheet, Reading Sheet (Word); Verse by Verse, Reader (PDF). Pulpit, Study Table, Thread Map, Thread Dossier dropped for now |
+| 4 | Slides' default | Paper (white); the dark themes for dim rooms |
+| 5 | Old documents | Read *Old design*, with Update; never rebuilt unasked |
+| 6 | The builder | D4 as drawn; fonts limited to Literata and Inter, colors to the theme's roles |
+| 7 | PowerPoint | Replaced by the PDF deck; the Python app's .pptx files stay listed |
+| 8 | Looks | Preview (default), Classic, Ink saver, Large print, Modern |
+| 9 | Accent | Six curated swatches plus *Your own…* |
+| 10 | Ink shown as | Page count and light / moderate / heavy |
+| 11 | Where it lives | Looks and dials in Make (D10); parts one step deeper (D4) |
+| 12 | Highlights in Saver / Black only | Underlines, a style per color |
+| 13 | Page switches | Cover off, running head on, Page x of y, one column |
+| 14 | Slide neighbours | Faint by default, hidden as the option |
+| 15 | A too-light accent | Darkened for text automatically, with Undo; rules keep the color |
+
+## The build, in order
+
+Each step ends as every item in debug-spec.md does (desk check, `cargo test`, WebKit where it is layout, a screenshot,
+a line in phase2-results.md), and each new core action gets a `wb` command.
+
+1. **Restyle** `docx.rs` and `deck.rs` to D1–D8, and the record's `"design": 2` with *Old design* in the Documents
+   pane. `scripts/doc-plans.py` must still give 6 of 6 (styles are not in the plan).
+2. **Embed the fonts** in the .docx, after a half-day spike (TrueType-flavoured WOFFs; Word on a computer without them;
+   fallbacks named in `fontTable.xml`). The person opens one in real Word (W-5).
+3. **Looks and dials** (D9, D10, D12, D13, D15): `settings/doc-looks/`, the record keeps the values used; `wb doc look
+   list|show|save|delete`.
+4. **Page switches** (D14).
+5. **Templates** and the shipped structures (Share Copy, Study Sheet, Reading Sheet, Reader); records for templates the
+   Python app does not know use a `to` it passes over.
+6. **The parts builder** (D4).
+7. **The ink measure** (D11), after S4's paged preview.
+
+Finding `868e`, item R3 of [debug-spec.md](debug-spec.md). **A design round: nothing here is built yet**; it was
+accepted on 2026-11-09 (above). The sheets are `design/r3.py` → `design/r3.figcraft` and
 [design/exports/r3/](../design/exports/r3/) (`all.png` is the whole board). Every verse on them comes from
 `design/content.json` (fetched with `wb text`); note lines on them are placeholders that say what goes there.
 
