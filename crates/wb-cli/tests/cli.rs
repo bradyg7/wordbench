@@ -1652,3 +1652,18 @@ fn a_page_made_from_a_template_has_its_blanks_filled() {
     assert_eq!(wb.js(&["template", "list"])["templates"].as_array().unwrap().len(), 1);
     assert!(wb.ok(&["guide", "templates"]).contains("{place} the place picked"));
 }
+
+#[test]
+fn the_windows_other_settings_are_kept_per_key() {
+    let Some(wb) = Wb::new() else { return };
+    assert_eq!(wb.js(&["settings", "reading"]), json!({}));
+    assert_eq!(wb.js(&["settings", "reading", "size", "120"])["size"], json!(120));
+    let s = wb.js(&["settings", "theme", "active", "Evening"]);
+    assert_eq!(s["active"], json!("Evening"));
+    let s = wb.js(&["settings", "theme", "themes", r##"[{"name":"Evening","base":"dark","colors":{"bg":"#14110D"}}]"##]);
+    assert_eq!(s["themes"][0]["colors"]["bg"], json!("#14110D"));
+    let file = std::fs::read_to_string(wb.dir.join("settings").join("reading.json")).unwrap();
+    assert_eq!(serde_json::from_str::<Value>(&file).unwrap(), json!({"size": 120}));
+    assert_eq!(wb.js(&["settings", "reading", "size", "default"]), json!({}));
+    assert!(wb.fails(&["settings", "reader"]).contains("theme"));
+}

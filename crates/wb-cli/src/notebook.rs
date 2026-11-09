@@ -125,8 +125,23 @@ fn notebook_commands() -> Vec<Command> {
             vec![Pos("day", N::Opt)], |c, a| j(nb::delete_day(&mut *c.study()?, day_of(a).as_deref()).map_err(e)?)),
         cmd("settings", "The window's settings for a part (notebook): wb settings notebook; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
             vec![Pos("part", N::One), Pos("key", N::Opt), Pos("value", N::Any), Flag("about")], |c, a| {
+                const FREE: [&str; 6] = ["reading", "hover", "theme", "advanced", "toolbar", "commands"];
+                if FREE.contains(&a.s("part").as_str()) {
+                    // the window's other settings (R4): any key, a value that is JSON or plain text; "default" forgets it
+                    let part = a.s("part");
+                    let mut st = c.study()?;
+                    if a.s("key").is_empty() {
+                        return j(serde_json::Value::Object(st.settings(&part)));
+                    }
+                    let raw = a.s("value");
+                    if raw.is_empty() {
+                        return Err(format!("Give a value: wb settings {part} {} <value> (default puts it back)", a.s("key")));
+                    }
+                    let v = if raw == "default" { None } else { Some(serde_json::from_str(&raw).unwrap_or(serde_json::Value::String(raw))) };
+                    return j(serde_json::Value::Object(st.set_setting(&part, &a.s("key"), v).map_err(e)?));
+                }
                 if a.s("part") != "notebook" {
-                    return Err("The parts with settings so far: notebook.".into());
+                    return Err("The parts with settings: notebook, reading, hover, theme, advanced, toolbar, commands.".into());
                 }
                 let mut st = c.study()?;
                 if a.s("key").is_empty() {

@@ -934,3 +934,35 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .nb-place-row { padding: 8px 0; }
 .nb-place-row.off .ref-link { color: var(--muted); }
 .nb-place-quote { margin: 2px 0 0; }
+
+/* ---- Settings (R4) and the cut-down More menu ---- */
+.more-menu { display: flex; flex-direction: column; gap: 2px; padding: 8px; }
+.more-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: 8px; text-align: left; }
+.more-item .more-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.more-item kbd { font: var(--type-caption); color: var(--muted); background: var(--sunken); border-radius: 4px; padding: 1px 6px; }
+.set-find { margin-top: 8px; width: 100%; }
+.set-wrap { display: flex; flex-direction: column; gap: 12px; padding: 8px 0; }
+.set-nav { display: flex; flex-wrap: wrap; gap: 4px; }
+.set-nav button { text-align: left; padding: 7px 10px; border-radius: 8px; font: var(--type-small-strong); color: var(--fg); }
+.set-nav button.on { background: var(--accent-soft); color: var(--accent); }
+.set-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.set-row .set-text { flex: 1; min-width: 0; }
+.set-name { font: var(--type-body-strong); }
+.set-key { width: 110px; }
+.theme-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.theme-chip { padding: 7px 12px; border-radius: 10px; background: var(--sunken); font: var(--type-small-strong); }
+.theme-chip.on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.theme-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.theme-name { width: 180px; }
+.theme-cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.theme-group { display: flex; flex-direction: column; gap: 4px; min-width: 220px; flex: 1; }
+.color-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.color-row input[type=color] { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
+.color-row .color-name { flex: 1; font: var(--type-small); }
+.color-row .hex { width: 84px; font: var(--type-caption); }
+.changed-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.changed-dot.on { background: var(--accent); cursor: pointer; }
+.contrast-row { display: flex; justify-content: space-between; font: var(--type-small); padding: 2px 0; }
+.contrast-row .warn { color: var(--warn); }
+.link-btn.danger { color: var(--jesus); margin-top: 16px; }

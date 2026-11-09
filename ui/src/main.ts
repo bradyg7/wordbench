@@ -19,6 +19,7 @@ import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
 import type { Pane } from './dock';
 import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
+import { bridge, loadWindowSettings, openSettings } from './settings';
 import { isCaptureKey, notebookBadge, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
 import type { Change } from './dock';
 import { attachCommandField, loadThreads } from './command';
@@ -969,69 +970,34 @@ async function todaySection(into: HTMLElement) {
 }
 
 function settings(from: HTMLElement) {
-  const b = h('div', 'settings');
-  b.append(h('h2', 'sheet-title', 'More'));
-  const reading = h('div');
-  b.append(reading);
-  todaySection(reading);
-  const quick = h('div', 'wrap');
-  const item = (label: string, fn: () => void) => { const x = h('button', 'btn', label); x.onclick = () => { closeSheet(); closeMenu(); fn(); }; quick.append(x); };
-  item('Find in chapter', () => findInChapter(finding));
-  item('Help', () => openHelp());
-  item('Keys', () => openKeys());
-  item('Reading plans', () => openPlans());
-  item('Today’s log', () => openToday(''));
-  item('Shelf', () => openShelf());
-  item('Findings', () => openFindings());
-  item('Documents', () => openDocuments());
-  b.append(quick);
-  b.append(h('div', 'label', 'Text size'));
-  const sz = h('div', 'size-row');
-  const pct = h('span', 'size-pct', `${sizePct}%`);
-  const step = (n: number) => { setSize(sizePct + n); pct.textContent = `${sizePct}%`; };
-  const minus = h('button', 'btn', 'A−'), plus = h('button', 'btn', 'A+'), reset = h('button', 'btn', '100%');
-  minus.onclick = () => step(-10); plus.onclick = () => step(10); reset.onclick = () => step(100 - sizePct);
-  sz.append(minus, pct, plus, reset);
-  b.append(sz);
-  b.append(h('div', 'label', 'Version'));
-  b.append(segmented(VERSIONS, version, v => { closeSheet(); closeMenu(); setVersion(v).then(toast); }));
-  b.append(h('div', 'label', 'Hover cards'));
-  b.append(segmented(['off', 'refs', 'on'], hoverMode(), setHover));
-  b.append(h('div', 'label', 'Theme'));
-  b.append(segmented(['system', 'light', 'dark', 'eink'], document.documentElement.dataset.theme || 'system', t => {
-    if (t === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
-    try { localStorage.setItem('wb.theme', t); } catch { /* this run only */ }
-  }));
-  if (inApp) {
-    b.append(h('div', 'label', 'Window size'));
-    const row = h('div', 'wrap');
-    for (const [id, name] of PRESETS) {
-      const x = h('button', 'btn', name);
-      x.onclick = async () => { closeSheet(); closeMenu(); const r = await api.setWindow(id); toast(`${r.got[0]}×${r.got[1]}`); };
-      row.append(x);
-    }
-    b.append(row);
-  }
-  b.append(h('div', 'label', 'Input'));
-  b.append(segmented(['auto', 'touch', 'pointer'], selector.mode, m => { selector.mode = m as InputMode; document.documentElement.dataset.input = m; }));
-  b.append(h('div', 'label', 'Later phases'));
-  b.append(h('p', 'muted small', 'Documents: the Speaker Script and Verse by Verse from a thread are made here (Documents); PowerPoint, lessons and the other structures in phase 5. Read aloud and recordings: phase 6. The Python app still does them.'));
-  b.append(h('div', 'label', 'Go to'));
-  const go = h('form', 'go') as HTMLFormElement;
-  const input = h('input') as HTMLInputElement;
-  input.placeholder = 'Psalm 119';
-  go.append(input, h('button', 'btn', 'Open'));
-  go.onsubmit = async e => {
-    e.preventDefault();
-    closeSheet(); closeMenu();
-    const r = await runLine(`go ${input.value}`).catch(x => ({ ok: false, error: String(x) }));
-    if (!r.ok) toast(r.error || 'Not a place');
+  // R4 (docs/redesign-R4.md): More is Settings, Help, and the panes that are not on the toolbar. Everything that was a
+  // setting lives in Settings; a pane put away (or never added) waits here with a way back.
+  const b = h('div', 'settings more-menu');
+  const go = (label: string, ico: string, fn: () => void, sub = '', key = '') => {
+    const x = h('button', 'menu-item more-item');
+    x.append(icon(ico, 16));
+    const t = h('span', 'more-text');
+    t.append(h('span', '', label));
+    if (sub) t.append(h('span', 'muted small', sub));
+    x.append(t);
+    if (key) x.append(h('kbd', '', key));
+    x.onclick = () => { closeSheet(); closeMenu(); fn(); };
+    b.append(x);
   };
-  b.append(go);
-  b.append(h('div', 'label', 'Measured this run'));
-  b.append(h('pre', 'perf', perf.summary()));
+  if (compact() || !inApp) {
+    const reading = h('div');
+    b.append(h('h2', 'sheet-title', 'More'), reading);
+    todaySection(reading);
+  }
+  go('Settings…', 'settings', () => openSettings(), '', 'Ctrl+,');
+  go('Help', 'help', () => openHelp(), 'Guide · Commands · Keys');
+  b.append(h('div', 'label', 'Not on your toolbar'));
+  go('Reading plans', 'lines', () => openPlans());
+  go('Today’s log', 'file', () => openToday(''));
+  go('Findings', 'pen', () => openFindings());
+  go('Documents', 'file', () => openDocuments());
   if (compact() || !inApp) openSheet(b, from);
-  else popMenu(from, b, { align: 'right', width: 420 });
+  else popMenu(from, b, { align: 'right', width: 300 });
 }
 
 function segmented(opts: string[], cur: string, pick: (o: string) => void) {
@@ -1087,6 +1053,7 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
   if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); return; }
   if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
   // a finding about the app, from anywhere (note 50c1)
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); findingBox(); return; }
@@ -1137,6 +1104,14 @@ Object.assign(app, {
   changed: (...what: Change[]) => { written(...what); if (!what.length || what.includes('threads')) loadThreads(); },
 });
 
+bridge.size = () => sizePct;
+bridge.setSize = setSize;
+bridge.version = () => version;
+bridge.setVersion = setVersion;
+bridge.openKeys = () => void openKeys();
+bridge.inputMode = () => selector.mode;
+bridge.setInputMode = m => { selector.mode = m as InputMode; document.documentElement.dataset.input = m; };
+
 // ---- start ------------------------------------------------------------------------------------------------------------
 async function start() {
   document.documentElement.dataset.size = sizeClass();
@@ -1164,6 +1139,7 @@ async function start() {
   onDo(runLine);
   if (inApp) {
     void readSettings();
+    void loadWindowSettings();
     loadPalette();
     if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') openNotebook();
   }

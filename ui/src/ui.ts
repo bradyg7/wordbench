@@ -44,6 +44,8 @@ const PATHS: Record<string, string> = {
   heading: 'M3.5 3h9M8 3v10.5',
   lines: 'M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01',
   quote: 'M3 4v8M6 5h7M6 8h7M6 11h5',
+  sliders: 'M2.5 5h7M12 5h1.5M2.5 11h1.5M7 11h6.5M10 3.5v3M5 9.5v3',
+  help: 'M6.2 6.2a1.9 1.9 0 1 1 2.7 1.7c-.5.3-.9.7-.9 1.3v.3M8 12.3v.2',
 };
 
 export function icon(name: string, size = 16): SVGSVGElement {

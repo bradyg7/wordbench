@@ -31,6 +31,41 @@ const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`); };
 
+// R4 (More cut down, Settings, a person's own theme). `node measure/desk.mjs --release --settings` runs only this.
+async function settingsChecks(page) {
+  // R4: More is cut down; Settings holds the settings, saved per key; a theme of the person's own
+  await page.locator('#more').click();
+  const moreText = (await page.locator('.more-menu').innerText()).replace(/\s+/g, ' ');
+  check('More holds Settings, Help and the panes not on the toolbar, and none of the settings', /Settings/.test(moreText) && /Help/.test(moreText) && /Reading plans/.test(moreText) && /Documents/.test(moreText) && !/Text size|Hover cards|Window size|Go to/.test(moreText), moreText);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Control+,');
+  await page.waitForSelector('.pane-settings .set-body', { timeout: 10000 });
+  check('Ctrl+, opens Settings', await page.locator('.pane-settings .set-nav button').count() === 6);
+  await page.locator('.pane-settings .size-row button', { hasText: 'A+' }).click();
+  await sleep(600);
+  const rs = JSON.parse(execFileSync(wbExe, ['settings', 'reading'], { env }).toString());
+  check('a change in Settings is saved at once in settings/reading.json', rs.size === 110, JSON.stringify(rs));
+  await page.locator('.pane-settings .size-row button', { hasText: '100%' }).click();
+  await page.locator('.pane-settings .set-nav button', { hasText: 'Theme' }).click();
+  await page.locator('.pane-settings .theme-chips button', { hasText: 'New theme' }).click();
+  await page.waitForSelector('.pane-settings .theme-name', { timeout: 5000 });
+  const hex = page.locator('.pane-settings .color-row', { hasText: 'Page behind the text' }).locator('.hex');
+  await hex.fill('#102030');
+  await hex.press('Enter');
+  await sleep(600);
+  const bgNow = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().toLowerCase());
+  const th = JSON.parse(execFileSync(wbExe, ['settings', 'theme'], { env }).toString());
+  check('a theme of your own changes only the colors set, and is kept in settings/theme.json', bgNow === '#102030' && th.themes?.[0]?.colors?.bg === '#102030' && Object.keys(th.themes[0].colors).length === 1 && th.active === th.themes[0].name, JSON.stringify(th));
+  await page.screenshot({ path: shots + '1440-settings-theme.png' });
+  await page.locator('.pane-settings .theme-chips button', { hasText: /^System$/ }).click();
+  await sleep(300);
+  check('choosing System puts the base colors back', await page.evaluate(() => document.documentElement.style.getPropertyValue('--bg') === ''));
+  execFileSync(wbExe, ['settings', 'theme', 'themes', 'default'], { env });
+  execFileSync(wbExe, ['settings', 'theme', 'active', 'default'], { env });
+  await page.evaluate(() => { const d = window.__wb.dock(); d.panes.filter(p => p.title === 'Settings').forEach(p => d.close(p)); });
+
+}
+
 let browser;
 try {
   for (let i = 0; i < 100 && !browser; i++) {
@@ -44,6 +79,15 @@ try {
   await page.waitForFunction(() => window.__wbReady, null, { timeout: 30000 });
   await page.waitForSelector('.pane-notebook .nb-sections', { timeout: 15000 });
   const size = await page.evaluate(() => [innerWidth, innerHeight, document.documentElement.dataset.size]);
+  if (process.argv.includes('--settings')) {
+    await settingsChecks(page);
+    await browser.close().catch(() => {});
+    kill();
+    const bad = results.filter(r => !r.ok);
+    console.log(`
+${results.length - bad.length} of ${results.length} checks passed`);
+    process.exit(bad.length ? 1 : 0);
+  }
   check('the laptop-large window is the Large size class', size[2] === 'large', size.join('×'));
   check('the Notebook is docked on the right', await page.locator('.dock-right.open .pane-notebook').count() === 1);
   check('the toolbar has the command field and the pane buttons', await page.locator('#cmd').isVisible() && await page.locator('#tb-notebook').isVisible() && await page.locator('#hl-menu').isVisible());
@@ -2077,6 +2121,8 @@ try {
   await page.evaluate(() => window.__wb.run('thread Phinehas'));
   await page.waitForSelector('.pane-thread .thread-docs .doc-row', { timeout: 15000 }).catch(() => {});
   check('the thread’s pane lists its documents, with Make for it', await page.locator('.pane-thread .thread-docs .doc-row').count() >= 2 && await page.locator('.pane-thread .thread-docs .doc-make').count() === 1, String(await page.locator('.pane-thread .thread-docs .doc-row').count()));
+
+  await settingsChecks(page);
 
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();

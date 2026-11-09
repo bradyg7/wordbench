@@ -150,3 +150,24 @@ cap of four plus More, and More ⋯'s phone sheet is the same short list.
 8. **Keys:** may a person rebind keys (Settings ▸ Keys), or only set the keys of their own commands, layouts and the capture
    key? The first is more work and risks clashes with the OS.
 9. **Remove "Go to" and "Later phases"** from More with no replacement (the field and Help ▸ Guide do their jobs). Agreed?
+
+## 9. Built so far (2026-11-09, after the person accepted the recommendation)
+
+Steps 1 and 2 of §7, in a first form:
+
+- **Settings** pane (`ui/src/settings.ts`; Ctrl+, or More ▸ Settings…): sections Reading, Notebook, Hover and cards, Theme,
+  Keys, Advanced, and *Find a setting* across all of them. Saved per key at once. `wb settings <part> [key [value]]` now
+  also takes `reading`, `hover`, `theme`, `advanced`, `toolbar`, `commands` (a JSON or plain value; `default` forgets it).
+  The window's text size, version and hover mode move from the browser's storage into `settings/reading.json` and
+  `settings/hover.json` the first time it runs (the browser copy still starts it in the right theme).
+- **More ⋯ cut down:** Settings…, Help, and Reading plans, Today's log, Findings, Documents. Not yet: *Customize toolbar…*
+  and the automatic overflow (step 3), so the four panes are listed by name for now.
+- **Theme:** the four we ship, plus themes of your own (a base plus the colors changed, fonts, measured contrast), applied live
+  as CSS variables, kept in `settings/theme.json`.
+- Where this differs from the sheets: Settings opens as a docked pane (right column; float it like any pane) rather than
+  floating without dimming by default; the section list is a row above the content; *Later phases* is in Advanced rather than Help ▸ Guide.
+- **Not built yet:** steps 3 to 5 (toolbar in place and overflow, My commands, Layouts), the Toolbar/Layouts/Commands sections,
+  rebinding keys.
+- Checks: `cargo test -p wb-cli` (the new settings test); `node measure/desk.mjs --release --settings` (5 of 5 in the real
+  app). The full `desk.mjs` run stops at an earlier Notebook check ("the pen in the Notebook starts a note", before any
+  R4 code); not investigated here.
