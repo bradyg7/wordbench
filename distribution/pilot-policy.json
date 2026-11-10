@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "productId": "app.bibleworkbench.desktop",
+  "channel": "pilot",
+  "issuance": "manual",
+  "offlineUse": "permanent-after-activation",
+  "leaseExpires": false,
+  "deviceLimit": null,
+  "updateEntitlement": null,
+  "pricing": null
+}

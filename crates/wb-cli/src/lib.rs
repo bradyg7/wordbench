@@ -168,6 +168,7 @@ pub fn names() -> Vec<(&'static str, &'static str)> {
 
 /// Runs one command line (without the leading `wb`). → its output, and whether `--json` was given.
 pub fn run(ctx: &Ctx<'_>, argv: &[String]) -> Result<(Out, bool), Fail> {
+    wb_core::runtime::require_license().map_err(|e| Fail::Error(e.to_string()))?;
     let argv: Vec<String> = if argv.is_empty() || argv[0] == "-h" || argv[0] == "--help" { vec!["help".into()] } else { argv.to_vec() };
     let all = commands();
     // R1: a note is a page. `wb page show`, `wb page text` … are `wb note …` under the new name (`wb note` stays, as the Python
@@ -201,6 +202,14 @@ pub fn run(ctx: &Ctx<'_>, argv: &[String]) -> Result<(Out, bool), Fail> {
     let a = args::parse(&c.args, rest).map_err(|msg| Fail::Usage(format!("{}
 wb {}: error: {msg}", args::usage(c.name, &c.args), c.name)))?;
     Ok(((c.run)(ctx, &a).map_err(Fail::Error)?, a.flag("json")))
+}
+
+#[cfg(all(test, feature = "distribution"))]
+#[test]
+fn license_gate_blocks_dispatch_without_initialized_activation() {
+    // Direct library callers must not bypass the standalone CLI's bootstrap gate.
+    let result = run(&Ctx::new(), &["help".into()]);
+    assert!(matches!(result, Err(Fail::Error(message)) if message.contains("initialized")));
 }
 
 /// One command line run for the window: `{"json": ...}` or `{"text": "..."}`, or the error's message.

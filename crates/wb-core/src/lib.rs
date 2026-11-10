@@ -24,6 +24,7 @@ pub mod published;
 pub mod questions;
 pub mod reading;
 pub mod relay;
+pub mod runtime;
 pub mod scripture;
 pub mod shelf;
 pub mod store;
@@ -36,18 +37,28 @@ use std::path::PathBuf;
 
 /// The Bible database: `WB_BIBLE_DB`, or the Python repository's built database.
 pub fn default_db_path() -> PathBuf {
+    #[cfg(feature = "distribution")]
+    { return runtime::resource_path("workbench.db"); }
+    #[cfg(not(feature = "distribution"))]
+    {
     if let Ok(p) = std::env::var("WB_BIBLE_DB") {
         return PathBuf::from(p);
     }
     home().join("github").join("bible-workbench").join("datasets").join("workbench.db")
+    }
 }
 
 /// The study folder: `WB_STUDY_DIR`, or the scratch copy made by `scripts/scratch-study.ps1`.
 pub fn default_study_dir() -> PathBuf {
+    #[cfg(feature = "distribution")]
+    { return runtime::study_path(); }
+    #[cfg(not(feature = "distribution"))]
+    {
     if let Ok(p) = std::env::var("WB_STUDY_DIR") {
         return PathBuf::from(p);
     }
     std::env::temp_dir().join("bible-workbench-rs").join("study-scratch")
+    }
 }
 
 /// The person's real study folder, which wb-core refuses to open unless `WB_ALLOW_REAL_STUDY=1`.

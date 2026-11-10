@@ -5,7 +5,11 @@ edition.workspace = true
 version.workspace = true
 publish.workspace = true
 
+[features]
+distribution = ["dep:wb-license"]
+
 [dependencies]
+wb-license = { path = "../wb-license", optional = true }
 rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true

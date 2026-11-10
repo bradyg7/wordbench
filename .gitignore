@@ -1,6 +1,10 @@
 /target/
 node_modules/
 /ui/dist/
+/site/dist/
+/release-staging/
+/license-secrets/
+*.issuer-private.pem
 /ui/public/fixtures/
 /test-results/
 /playwright-report/

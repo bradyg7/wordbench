@@ -8,7 +8,14 @@
     "tauri": "tauri",
     "fixtures": "node scripts/fixtures.mjs",
     "test:webkit": "playwright test",
-    "measure": "node measure/measure.mjs"
+    "measure": "node measure/measure.mjs",
+    "site:dev": "vite --config site/vite.config.ts",
+    "site:build": "tsc -p site && vite build --config site/vite.config.ts",
+    "release:check": "node scripts/release/check.mjs",
+    "release:prepare": "node scripts/release/prepare.mjs",
+    "test:distribution": "node --test scripts/release/tests/*.test.mjs",
+    "test:setup": "playwright test --config ui/setup.playwright.config.ts",
+    "test:site": "playwright test --config site/playwright.config.ts"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

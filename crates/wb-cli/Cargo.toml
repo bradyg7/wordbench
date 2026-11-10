@@ -5,6 +5,9 @@ edition.workspace = true
 version.workspace = true
 publish.workspace = true
 
+[features]
+distribution = ["wb-core/distribution"]
+
 [lib]
 name = "wb_cli"
 path = "src/lib.rs"
