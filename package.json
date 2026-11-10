@@ -8,7 +8,9 @@
     "tauri": "tauri",
     "fixtures": "node scripts/fixtures.mjs",
     "test:webkit": "playwright test",
-    "measure": "node measure/measure.mjs"
+    "measure": "node measure/measure.mjs",
+    "package": "node scripts/package.mjs",
+    "check:package": "node scripts/check-package.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
@@ -21,5 +23,6 @@
     "@tauri-apps/cli": "^2.12.4",
     "typescript": "^7.0.2",
     "vite": "^8.3.5"
-  }
+  },
+  "version": "0.1.0"
 }

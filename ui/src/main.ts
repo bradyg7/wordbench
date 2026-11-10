@@ -30,6 +30,7 @@ import { findInPane, paneForFind } from './panefind';
 import { findingBox, openFindings } from './findings';
 import { openDocuments } from './documents';
 import { parse, runLine, written } from './actions';
+import { setupIfNeeded } from './setup';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const reader = $('reader'), scroller = $('scroller');
@@ -1155,6 +1156,8 @@ bridge.setInputMode = m => { selector.mode = m as InputMode; document.documentEl
 
 // ---- start ------------------------------------------------------------------------------------------------------------
 async function start() {
+  // A first run (or a moved folder) opens the setup screen, and the reader starts after it.
+  if (await setupIfNeeded()) return;
   document.documentElement.dataset.size = sizeClass();
   try {
     const t = localStorage.getItem('wb.theme');

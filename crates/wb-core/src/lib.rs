@@ -27,6 +27,7 @@ pub mod reading;
 pub mod relay;
 pub mod scripture;
 pub mod shelf;
+pub mod setup;
 pub mod store;
 pub mod studyapi;
 pub mod templates;
@@ -35,17 +36,22 @@ pub mod views;
 
 use std::path::PathBuf;
 
-/// The Bible database: `WB_BIBLE_DB`, or the Python repository's built database.
+/// The Bible database: `WB_BIBLE_DB`, the choice saved by the app or `wb setup`, `datasets/workbench.db` beside the
+/// program (the package), the application-data folder, or the Python repository's built database (a development
+/// checkout). `setup::db_candidates` gives every place looked in.
 pub fn default_db_path() -> PathBuf {
-    if let Ok(p) = std::env::var("WB_BIBLE_DB") {
-        return PathBuf::from(p);
-    }
-    home().join("github").join("bible-workbench").join("datasets").join("workbench.db")
+    setup::existing_db().unwrap_or_else(|| setup::db_candidates().into_iter().next().unwrap_or_default())
 }
 
-/// The study folder: `WB_STUDY_DIR`, or the scratch copy made by `scripts/scratch-study.ps1`.
+/// The study folder: `WB_STUDY_DIR`, the choice saved by the app or `wb setup`, or the scratch copy made by
+/// `scripts/scratch-study.ps1` (a development checkout; the window asks the person to choose on first run).
 pub fn default_study_dir() -> PathBuf {
     if let Ok(p) = std::env::var("WB_STUDY_DIR") {
+        if !p.trim().is_empty() {
+            return PathBuf::from(p);
+        }
+    }
+    if let Some(p) = setup::setting("study_dir") {
         return PathBuf::from(p);
     }
     std::env::temp_dir().join("bible-workbench-rs").join("study-scratch")
@@ -56,7 +62,7 @@ pub fn real_study_dir() -> PathBuf {
     home().join("github").join("bible-study-data")
 }
 
-fn home() -> PathBuf {
+pub(crate) fn home() -> PathBuf {
     std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from).unwrap_or_default()
 }
 
