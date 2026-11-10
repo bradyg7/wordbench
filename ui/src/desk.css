@@ -259,6 +259,7 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
   padding: 10px; max-height: calc(100vh - 24px); overflow-y: auto; }
 .menu .settings .sheet-title { margin-top: 0; }
 .menu-list { display: flex; flex-direction: column; }
+.layers-hint { margin: 2px 8px 8px; color: var(--muted); font: var(--type-caption); }
 .menu-item { display: flex; align-items: center; gap: 6px; text-align: left; padding: 8px 10px; border-radius: var(--radius-control); font: var(--type-small); }
 .menu-item:hover { background: var(--accent-soft); }
 .menu-item.check { color: var(--muted); }

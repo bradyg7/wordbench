@@ -16,6 +16,8 @@ export const app = {
   back: () => false as boolean,
   /** Reads the chapter's marks again (after a note, highlight or thread change) and draws them. */
   refreshMarks: async () => {},
+  /** Applies visibility preferences to the marks already loaded in every reader. */
+  repaintLayers: () => {},
   topVerse: () => 1,
   /** The reader's version (KJV, YLT); setting it redraws the chapter with the same verse at the top. */
   version: () => 'KJV',

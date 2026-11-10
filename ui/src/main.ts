@@ -155,6 +155,14 @@ function step(n: number) {
   open(books[i]?.code ?? c.code, ch);
 }
 
+// Visibility changes use the marks already loaded in each reader.
+function repaintLayers() {
+  if (drawn) paint(reader, drawn);
+  for (const { view } of readers2.values()) {
+    if (view.drawn) paint(view.root, view.drawn);
+  }
+}
+
 /** The chapter's marks read again from the study folder and drawn, without moving the text. */
 async function refreshMarks() {
   const d = drawn;
@@ -173,7 +181,20 @@ function lexiconBody(w: WordView, card = false): HTMLElement {
   if (card) b.append(h('div', 'card-head', `${w.text} · ${w.reference}`));
   else { b.append(h('h2', 'sheet-title', w.text), h('div', 'sheet-sub', w.reference)); }
   const lx = w.lexicon;
-  if (!lx) { b.append(h('p', 'muted', 'No Strong’s number on this word.')); return b; }
+  const verseInterlinear = () => {
+    closeSheet();
+    const [code, cv] = w.anchor.split('.');
+    openInterlinear(`${code} ${cv}`, w.reference);
+  };
+  if (!lx) {
+    b.append(h('p', 'muted', w.strong ? `No lexicon entry for ${w.strong}.` : 'No direct Strong’s tag on this word.'));
+    if (!card) {
+      const inter = h('button', 'btn', 'Verse interlinear');
+      inter.onclick = verseInterlinear;
+      b.append(inter);
+    }
+    return b;
+  }
   const row = h('div', 'lemma-row');
   const lemma = h('span', 'lemma', lx.lemma);
   lemma.lang = lx.lang === 'grk' ? 'grc' : 'he';
@@ -194,7 +215,7 @@ function lexiconBody(w: WordView, card = false): HTMLElement {
     const uses = h('button', 'btn primary', 'Every use');
     uses.onclick = () => { closeSheet(); openUses(lx.strong, ''); };
     const inter = h('button', 'btn', 'Interlinear');
-    inter.onclick = () => { closeSheet(); const [, cv] = w.anchor.split('.'); openInterlinear(`${w.anchor.slice(0, 3)} ${cv}`, w.reference); };
+    inter.onclick = verseInterlinear;
     acts.append(uses, inter);
     b.append(acts);
     if (!compact()) b.append(actions(['Open as a tab'], () => { closeSheet(); openStrong(lx.strong); }));
@@ -634,13 +655,14 @@ async function openSecondReader(ref: string, version = 'KJV') {
   let vw: View | null = null, drawnAt = '', head: HTMLElement | null = null;
   const draw2 = async (el: HTMLElement, p: Pane, toVerse: number) => {
     const { data } = await api.reader(st.code, st.chapter, ver);
+    if (!dock.panes.includes(p)) return;
     const v2 = vw!;
     v2.drawn = draw(v2.root, data.chapter, data.marks, 999, new Set((data.questions || []).map(q => q.v)));
     while (v2.drawn.more()) { /* the whole chapter at once: a pane holds one */ }
     v2.selector.attach(v2.drawn);
     drawnAt = `${st.code}.${st.chapter}`;
     // At the reader in the Notebook has a row for each second reader, following it as it turns (W4, sheet W1.2)
-    readers2.set(p.id, { pane: p.id, code: st.code, chapter: st.chapter, label: `${data.chapter.name} ${st.chapter}` });
+    readers2.set(p.id, { pane: p.id, code: st.code, chapter: st.chapter, label: `${data.chapter.name} ${st.chapter}`, view: v2 });
     readerMoved();
     // the verses asked for, unless that is the whole chapter
     const all = data.chapter.verses.every(x => asked.has(`${st.chapter}:${x.v}`));
@@ -730,7 +752,7 @@ async function openSecondReader(ref: string, version = 'KJV') {
 const turners = new WeakMap<HTMLElement, (n: number) => void>();
 
 /** The second readers open, by pane: the chapter each shows (app.readers). */
-const readers2 = new Map<string, { pane: string; code: string; chapter: number; label: string }>();
+const readers2 = new Map<string, { pane: string; code: string; chapter: number; label: string; view: View }>();
 const readers2Watched = new Set<string>();
 
 // ---- an Inbox note dragged from the Notebook onto a verse: placed there (wb note place) -------------------------------
@@ -886,13 +908,15 @@ async function highlightsMenu(from: HTMLElement) {
   const box = h('div', 'menu-list layers-menu');
   const toggle = (label: string, on: boolean, flip: () => void, dot?: HTMLElement) => {
     const b = h('button', `menu-item check${on ? ' on' : ''}`);
+    b.setAttribute('aria-pressed', String(on));
     b.append(icon(on ? 'eye' : 'eyeoff', 14));
     if (dot) b.append(dot);
     b.append(document.createTextNode(` ${label}`));
-    b.onclick = () => { flip(); layers.save(); refreshMarks(); close(); highlightsMenu(from); };
+    b.onclick = () => { flip(); layers.save(); repaintLayers(); close(); highlightsMenu(from); };
     box.append(b);
   };
-  box.append(h('div', 'label', 'Drawn in the reader'));
+  box.append(h('div', 'label', 'In all readers'));
+  box.append(h('p', 'layers-hint', 'Controls highlight fills and thread underlines. Notes, questions and verse markers stay visible.'));
   toggle('All highlights and threads', layers.all, () => { layers.all = !layers.all; });
   toggle('Your highlights', layers.mine, () => { layers.mine = !layers.mine; });
   let ts: any[] = [];
@@ -1101,6 +1125,7 @@ Object.assign(app, {
   step,
   back,
   refreshMarks,
+  repaintLayers,
   topVerse: () => topVerse().verse,
   setSize,
   size: () => sizePct,
@@ -1108,7 +1133,8 @@ Object.assign(app, {
   setVersion,
   findInChapter,
   secondReader: (ref: string, version?: string) => void openSecondReader(ref, version),
-  readers: () => [...readers2.values()].filter(r => dock.panes.some(p => p.id === r.pane)),
+  readers: () => [...readers2.values()].filter(r => dock.panes.some(p => p.id === r.pane))
+    .map(({ pane, code, chapter, label }) => ({ pane, code, chapter, label })),
   changed: (...what: Change[]) => { written(...what); if (!what.length || what.includes('threads')) loadThreads(); },
 });
 

@@ -36,7 +36,10 @@ function fixture(code: string, chapter: number): Promise<any> {
 async function call<T>(cmd: string, args: Record<string, unknown>): Promise<Answer<T>> {
   if (inApp) return invoke<Answer<T>>(cmd, args);
   const a = args as any;
-  if (cmd === 'books') return { data: (await fetch('fixtures/books.json').then(r => r.json())) as T, rust_ms: 0 };
+  if (cmd === 'books') {
+    const fixture = await fetch('fixtures/books.json').then(r => r.json());
+    return { data: fixture.books as T, rust_ms: 0 };
+  }
   const f = await fixture(a.code, a.chapter);
   const data = cmd === 'reader' ? f.reader : cmd === 'word' ? f.words[`${a.verse}.${a.word}`] : f.verses[String(a.verse)];
   if (!data) throw new Error(`Not in the fixture: ${cmd} ${JSON.stringify(args)}`);

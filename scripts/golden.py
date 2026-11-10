@@ -7,7 +7,7 @@ sides get a fresh copy of the scratch study folder (scripts/scratch-study.ps1); 
 The Python side is a private workbench server on its own port, so the running app is never reached. Ids, times and the
 folders' paths are replaced by placeholders before comparing; a step can name an id an earlier step printed as $id1,
 $id2 ... (in the order that side printed them). After the steps of a case that writes, the two study folders are compared
-file by file.
+file by file. Pre-existing Rust-only document items are omitted from both scratch set copies for Python parity.
 """
 import difflib
 import json
@@ -90,6 +90,27 @@ def tree(folder):
     return out
 
 
+def omit_document_set_items(folder):
+    count = 0
+    for path in sorted((folder / "sets").glob("*.md")):
+        lines = path.read_bytes().splitlines(keepends=True)
+        kept = []
+        for line in lines:
+            if line.startswith(b"- {"):
+                try:
+                    item = json.loads(line[2:])
+                except ValueError:
+                    pass
+                else:
+                    if isinstance(item, dict) and item.get("kind") == "document" and item.get("key"):
+                        count += 1
+                        continue
+            kept.append(line)
+        if len(kept) != len(lines):
+            path.write_bytes(b"".join(kept))
+    return count
+
+
 def main():
     want = [a for a in sys.argv[1:] if not a.startswith("--")]
     cases = json.loads((REPO / "tests" / "golden" / "cases.json").read_text(encoding="utf-8"))
@@ -110,6 +131,9 @@ def main():
     py, rs = Side("python", WORK / "py"), Side("rust", WORK / "rs")
     for s in (py, rs):
         shutil.copytree(SOURCE, s.folder)
+        omitted = omit_document_set_items(s.folder)
+        if omitted:
+            print(f"{s.name} scratch: omitted {omitted} Rust-only document set item(s)")
 
     # each side's documents folder is its own empty scratch folder: the Python app's default is the person's Documents
     env_py = dict(os.environ, BIBLE_STUDY_DATA=str(py.folder), BIBLE_WORKBENCH_PORT=str(PORT), PYTHONIOENCODING="utf-8",

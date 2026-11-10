@@ -89,7 +89,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .w, .g { background-size: 100% 2px; background-repeat: no-repeat; }
 .w { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 /* the KJV's italics (words the translators supplied): a heavier italic in a slightly different ink, so they read clearly */
-.w.it { font-style: italic; font-weight: 500; color: color-mix(in srgb, var(--fg) 78%, var(--accent)); }
+.w.it { font-style: italic; font-weight: 500; color: color-mix(in srgb, var(--fg) 60%, var(--accent)); }
 .w.nd { font-variant-caps: small-caps; }
 .w.wj { color: var(--jesus); }
 .w.noted { text-decoration: underline dotted var(--muted) 1.5px; text-underline-offset: 6px; }

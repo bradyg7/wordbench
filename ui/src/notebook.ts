@@ -2178,7 +2178,7 @@ function threadControls(e: Entry): HTMLElement {
   const eye = button('chip nb-add nb-thread-eye', '', () => {
     if (layers.hidden.has(e.slug!)) layers.hidden.delete(e.slug!); else layers.hidden.add(e.slug!);
     layers.save();
-    void app.refreshMarks();
+    app.repaintLayers();
     draw();
   });
   const draw = () => { eye.replaceChildren(icon(shown() ? 'eye' : 'eyeoff', 14), document.createTextNode(shown() ? ' Drawn in the reader' : ' Hidden in the reader')); };
