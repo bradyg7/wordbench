@@ -10,6 +10,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
 use tauri::{Emitter, Manager, LogicalSize, State, WebviewUrl, WebviewWindowBuilder};
 use wb_core::{bible::Bible, store::Store, studyapi, views};
+#[cfg(feature = "updater")]
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
+#[cfg(feature = "updater")]
+use tauri_plugin_updater::UpdaterExt;
 
 struct App {
     bible: Mutex<Bible>,
@@ -283,6 +287,43 @@ fn pilot_license(action: String, certificate: Option<String>) -> Result<Value, S
     { let _ = (action, certificate); Err("Pilot licensing is available in distribution builds only.".into()) }
 }
 
+/// Looks at the update feed once, a little after the reader opens, and asks before installing: an update is never
+/// something that happens to someone mid-chapter. The installer closes the app and opens it again where it was; the
+/// study folder and the settings are not part of it. `WB_NO_UPDATE_CHECK=1` turns the check off.
+#[cfg(feature = "updater")]
+fn check_for_update(app: tauri::AppHandle) {
+    // Without the updater's configuration its plugin is not registered (see main), and there is nothing to check.
+    if std::env::var("WB_NO_UPDATE_CHECK").is_ok() || !app.config().plugins.0.contains_key("updater") {
+        return;
+    }
+    std::thread::spawn(move || {
+        // The reader comes first: the first chapter is on screen before this asks anything of the network.
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        let found = tauri::async_runtime::block_on(async {
+            let updater = app.updater().ok()?;
+            updater.check().await.ok().flatten()
+        });
+        let Some(update) = found else { return };
+        let install = app
+            .dialog()
+            .message(format!(
+                "Bible Workbench {} is ready to install.\n\nYour notes stay where they are, and the window opens again where you left off.",
+                update.version
+            ))
+            .title("A new version of Bible Workbench")
+            .buttons(MessageDialogButtons::OkCancelCustom("Install it".into(), "Not now".into()))
+            .blocking_show();
+        if !install {
+            return;
+        }
+        // Windows runs the installer and exits this process; elsewhere the app restarts into the new version.
+        let installed = tauri::async_runtime::block_on(update.download_and_install(|_, _| {}, || {})).is_ok();
+        if installed {
+            app.restart();
+        }
+    });
+}
+
 fn main() {
     let started = Instant::now();
     let started_wall_ms = wall_ms();
@@ -290,7 +331,20 @@ fn main() {
     if let Err(e) = take_options() {
         fail(&e);
     }
-    tauri::Builder::default()
+    let context = tauri::generate_context!();
+    let builder = tauri::Builder::default();
+    // The updater starts only when the build supplies its configuration (plugins.updater: public key and endpoint). Without
+    // it the plugin refuses to start and the app does not open, so an updater build without that configuration just has no update check.
+    #[cfg(feature = "updater")]
+    let builder = {
+        let builder = builder.plugin(tauri_plugin_dialog::init());
+        if context.config().plugins.0.contains_key("updater") {
+            builder.plugin(tauri_plugin_updater::Builder::new().build())
+        } else {
+            builder
+        }
+    };
+    builder
         .invoke_handler(tauri::generate_handler![pilot_license, installation_status, installation_configure, installation_restart, wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready])
         .setup(move |app| {
             #[cfg(feature = "distribution")]
@@ -336,8 +390,10 @@ fn main() {
                 ))
             } else { b };
             b.build()?;
+            #[cfg(feature = "updater")]
+            check_for_update(app.handle().clone());
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running Bible Workbench");
 }
