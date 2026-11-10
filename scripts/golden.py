@@ -163,6 +163,12 @@ def main():
                 a = run([sys.executable, str(OLD / "wb.py")] + py.args(step), env_py, cwd=str(OLD))
                 fresh()
                 b = run([str(RUST)] + rs.args(step), env_rs)
+                if step[:2] in (["note", "rm"], ["trail", "rm"]) and a[0] == b[0] == 0:
+                    # Rust reports timed Undo details. Compare the shared success result
+                    # here and still compare the live study files below.
+                    result = json.loads(b[1])
+                    if result.get("ok") is True and result.get("state") == "pending":
+                        b = (b[0], json.dumps({"ok": True}, indent=2) + "\n", b[2])
                 got_a = "exit %d\n%s%s" % (a[0], py.norm(a[1]), py.norm(a[2]))
                 got_b = "exit %d\n%s%s" % (b[0], rs.norm(b[1]), rs.norm(b[2]))
                 if got_a != got_b:

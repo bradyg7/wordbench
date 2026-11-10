@@ -17,10 +17,13 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
   copies it to `%TEMP%\bible-workbench-rs\study-scratch`, and `WB_STUDY_DIR` points the app and `wb` there. wb-core
   refuses to open the real folder unless `WB_ALLOW_REAL_STUDY=1` is set, and nothing in this repo sets it.
 - **Same files, same formats.** The study folder keeps the layout and file formats the Python app uses (Markdown with
-  front matter for notes and threads, JSON for highlights), so both apps can open it. Deletes go to `.trash/`. A deleted
-  note or question is erased after 7 days there, unless put back (the person's decision, 2026-11-03; the window does it
-  when it opens, `wb trash empty` from a terminal), or at once with Erase now in the Trash, asked to confirm (the
-  person's decision, 2026-11-04; `wb trash erase <name>`). Nothing else is erased. New fields (`also`, `threads`; a page's `parent`, `order`, `pinned`), the
+  front matter for notes and threads, JSON for highlights), so both apps can open it. Rust page deletion records Undo
+  under `.trash/page-operations/` for 10 seconds, or 30 seconds for a batch or child promotion. The original deadline
+  survives restart. Use `wb page undo OPERATION` before the deadline, and `wb page sweep` to recover interrupted
+  operations and erase expired snapshots. Delete All previews the ordinary Pages tree and excludes Pinned pages,
+  templates and days unless selected. Thread records are excluded. Existing legacy Trash keeps the seven-day
+  note/question policy and the `wb trash restore`, `wb trash empty` and `wb trash erase` commands.
+  New fields (`also`, `threads`; a page's `parent`, `order`, `pinned`), the
   `notes/_threads/` and `notes/_days/` folders (today's page: no anchor), `settings/notebook.json`, `findings/` (the
   person's findings about the app, beside `notes/` so the Notebook never lists them; `findings/<id>/` holds the files
   attached to a finding, copied in, 10 MB each at most) and `.trash/reading-unmarked.jsonl`
@@ -78,9 +81,12 @@ uses that server: Playwright starts this checkout's own vite on a port picked fr
 port is taken, the run stops with "is already used" instead of testing another checkout. A new worktree needs
 `npm install` and `npm run fixtures` before the tests.
 
-Documents (Word files, PDF slides) go to `WB_DOCS_DIR`; with the person's real study folder, to the Python app's folder
-(Documents\Bible Workbench), where its documents already are; with any other study folder, to a folder beside it
-(`<study>-documents`), so tests and scratch copies never write the person's documents. After a document is made, every
-verse the source holds is checked in the finished file; one that fails is not kept.
+New Word and PDF exports go to `<study>/exports/` unless `WB_DOCS_DIR` explicitly selects another directory.
+Records stay in `<study>/documents/`. Earlier real-study records can resolve files from `BIBLE_WORKBENCH_PDF_DIR`
+or its historical default (`Documents/Bible Workbench`). Earlier scratch records can resolve files from the sibling
+`<study>-documents` directory. Existing files update in place. To keep both apps using one output directory during
+the Python transition, set Rust's `WB_DOCS_DIR` to the same absolute directory as Python's `BIBLE_WORKBENCH_PDF_DIR`
+(or to Python's default). Keep these overrides unset for scratch runs unless they explicitly point at that run's fixtures.
+Every verse the selected source holds is checked during export, and a file that fails the check is discarded.
 
 No remote yet: do not push anywhere without the person's go-ahead.

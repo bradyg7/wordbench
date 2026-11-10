@@ -200,7 +200,34 @@ pub fn run(ctx: &Ctx<'_>, argv: &[String]) -> Result<(Out, bool), Fail> {
     };
     let a = args::parse(&c.args, rest).map_err(|msg| Fail::Usage(format!("{}
 wb {}: error: {msg}", args::usage(c.name, &c.args), c.name)))?;
+    // Serialize page writes, including read-before-write decisions. Unrelated commands
+    // keep working on read-only studies and without a configured study folder.
+    let _writer = if changes_page_files(c.name) {
+        let root = ctx.root().map_err(Fail::Error)?;
+        let lock = wb_core::deletion::writer_lock(&root).map_err(|e| Fail::Error(e.to_string()))?;
+        let mut store = ctx.study().map_err(Fail::Error)?;
+        store.look_again();
+        store.refresh().map_err(|e| Fail::Error(e.to_string()))?;
+        Some(lock)
+    } else {
+        None
+    };
     Ok(((c.run)(ctx, &a).map_err(Fail::Error)?, a.flag("json")))
+}
+
+fn changes_page_files(command: &str) -> bool {
+    matches!(command,
+        "note add" | "note new" | "note edit" | "note text" | "note rm" | "note jot" |
+        "note place" | "note move" | "note question" | "note answered" | "note also" |
+        "note unplace" | "note thread" | "note relink" | "thread write" | "thread delete" |
+        "inbox edit" | "inbox rm" | "trail add" | "trail edit" | "trail done" | "trail reopen" |
+        "trail rm" | "question add" | "question answer" | "question fold" | "question unfold" |
+        "day add" | "day text" | "day rm" | "page new" | "page move" | "page pin" |
+        "page unpin" | "page title" |
+        "block scripture" | "block thread" | "block word" | "block view" | "block set" |
+        "block add" | "block rm" | "block undo" | "block move" | "template new" |
+        "template save" | "template set" | "template rm" | "trash restore"
+    )
 }
 
 /// One command line run for the window: `{"json": ...}` or `{"text": "..."}`, or the error's message.

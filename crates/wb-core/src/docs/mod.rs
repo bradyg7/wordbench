@@ -47,23 +47,104 @@ fn ext(to: &str) -> Option<&'static str> {
 
 // ---- where the files go -----------------------------------------------------------------------------------------------
 
-/// The documents folder: `WB_DOCS_DIR`; else, for the person's real study folder, the Python app's (`BIBLE_WORKBENCH_PDF_DIR`,
-/// or Documents\Bible Workbench), where its documents already are; else a folder beside the study folder, so a scratch copy
-/// never writes into the person's real documents.
-pub fn folder_for(study: &Path) -> PathBuf {
-    if let Ok(p) = std::env::var("WB_DOCS_DIR") {
-        return PathBuf::from(p);
+/// Where new exports go and where records created before study-local exports may still point.
+pub struct ExportFolders {
+    local: PathBuf,
+    override_dir: Option<PathBuf>,
+    legacy: PathBuf,
+}
+
+impl ExportFolders {
+    pub fn for_study(study: &Path) -> Result<Self> {
+        let override_dir = std::env::var_os("WB_DOCS_DIR").filter(|p| !p.is_empty()).map(std::path::absolute).transpose()?;
+        let real = matches!((fs::canonicalize(study), fs::canonicalize(crate::real_study_dir())), (Ok(a), Ok(b)) if a == b);
+        let legacy = if real {
+            std::env::var_os("BIBLE_WORKBENCH_PDF_DIR").filter(|p| !p.is_empty()).map(PathBuf::from).unwrap_or_else(|| {
+                let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from).unwrap_or_default();
+                home.join("Documents").join("Bible Workbench")
+            })
+        } else {
+            let name = study.file_name().map(|n| n.to_string_lossy()).unwrap_or_else(|| "study".into());
+            study.with_file_name(format!("{name}-documents"))
+        };
+        Ok(Self { local: study.join("exports"), override_dir, legacy })
     }
-    let real = matches!((fs::canonicalize(study), fs::canonicalize(crate::real_study_dir())), (Ok(a), Ok(b)) if a == b);
-    if real {
-        if let Ok(p) = std::env::var("BIBLE_WORKBENCH_PDF_DIR") {
-            return PathBuf::from(p);
+
+    fn preferred(&self) -> &Path {
+        self.override_dir.as_deref().unwrap_or(&self.local)
+    }
+
+    // Bind a record to an override without storing the machine's absolute path in shared study data.
+    fn override_key(path: &Path) -> String {
+        let identity = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        format!("override:{}", plan::sha256_hex(identity.to_string_lossy().as_bytes()))
+    }
+
+    fn remember(&self, rec: &mut Rec, out: &Path) {
+        let key = if out == self.local {
+            "study".to_string()
+        } else if self.override_dir.as_deref() == Some(out) {
+            Self::override_key(out)
+        } else {
+            return;
+        };
+        rec.insert("export_location".into(), json!(key));
+    }
+
+    /// A known destination, or no safe destination for a missing unmarked legacy record.
+    fn resolve(&self, rec: &Rec) -> Result<Option<&Path>> {
+        let name = s(rec, "name");
+        if name.is_empty() && !rec.contains_key("name") {
+            return Ok(Some(self.preferred()));
         }
-        let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from).unwrap_or_default();
-        return home.join("Documents").join("Bible Workbench");
+        checked_name(&name)?;
+        match rec.get("export_location") {
+            Some(v) if v == "study" => return Ok(Some(&self.local)),
+            Some(v) => {
+                return self.override_dir.as_deref().filter(|p| v == &Self::override_key(p)).map(Some)
+                    .ok_or_else(|| missing("This export needs its original WB_DOCS_DIR. Restore that folder setting and try again."));
+            }
+            None => {}
+        }
+        let mut seen = Vec::new();
+        let mut candidates = Vec::new();
+        for dir in [Some(self.local.as_path()), self.override_dir.as_deref(), Some(self.legacy.as_path())].into_iter().flatten() {
+            let path = dir.join(&name);
+            if path.is_file() {
+                let identity = fs::canonicalize(&path)?;
+                if !seen.contains(&identity) {
+                    seen.push(identity);
+                    candidates.push(dir);
+                }
+            }
+        }
+        match candidates.as_slice() {
+            [] => Ok(None),
+            [one] => Ok(Some(one)),
+            _ => {
+                let file = s(rec, "file");
+                let matches: Vec<_> = candidates.iter().filter(|dir| sha_file(&dir.join(&name)).ok().as_deref() == Some(file.as_str())).collect();
+                if let [one] = matches.as_slice() {
+                    return Ok(Some(**one));
+                }
+                Err(bad(format!("More than one export named “{name}” was found. Resolve the duplicate before continuing.")))
+            }
+        }
     }
-    let name = study.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "study".into());
-    study.with_file_name(format!("{name}-documents"))
+
+    fn build_in(&self, rec: &Rec) -> Result<&Path> {
+        self.resolve(rec)?.or(self.override_dir.as_deref()).ok_or_else(|| {
+            missing("The existing export could not be found. Restore the file or set WB_DOCS_DIR explicitly to choose where to rebuild it.")
+        })
+    }
+}
+
+fn checked_name(name: &str) -> Result<&str> {
+    use std::path::Component;
+    if !name.contains(['/', '\\', ':']) && matches!(Path::new(name).components().collect::<Vec<_>>().as_slice(), [Component::Normal(_)]) {
+        return Ok(name);
+    }
+    Err(bad("The export record needs a file name without a path."))
 }
 
 // ---- the records -------------------------------------------------------------------------------------------------------
@@ -234,12 +315,14 @@ fn changed_by_hand(rec: &Rec, path: &Path) -> bool {
     sha_file(path).ok().as_deref() != Some(s(rec, "file").as_str())
 }
 
-fn public(rec: &Rec, out: &Path) -> Value {
-    let path = out.join(s(rec, "name"));
-    let there = path.is_file();
-    let kept: Vec<Value> = rec.get("kept").and_then(|k| k.as_array()).map(|a| a.iter().filter(|k| out.join(k.as_str().unwrap_or("")).is_file()).cloned().collect()).unwrap_or_default();
-    let mut v = json!({"id": rec["id"], "name": rec["name"], "path": path.to_string_lossy(), "exists": there,
-        "size": if there { fs::metadata(&path).map(|m| m.len()).unwrap_or(0) } else { 0 }, "title": s(rec, "title"),
+fn public(rec: &Rec, out: Option<&Path>) -> Value {
+    let path = out.map(|dir| dir.join(s(rec, "name")));
+    let there = path.as_ref().is_some_and(|p| p.is_file());
+    let kept: Vec<Value> = rec.get("kept").and_then(|k| k.as_array()).map(|a| a.iter().filter(|k| {
+        out.zip(k.as_str().and_then(|name| checked_name(name).ok())).is_some_and(|(dir, name)| dir.join(name).is_file())
+    }).cloned().collect()).unwrap_or_default();
+    let mut v = json!({"id": rec["id"], "name": rec["name"], "path": path.as_ref().map(|p| p.to_string_lossy()), "exists": there,
+        "size": path.as_ref().and_then(|p| fs::metadata(p).ok()).filter(|m| m.is_file()).map(|m| m.len()).unwrap_or(0), "title": s(rec, "title"),
         "source": rec["source"], "to": rec["to"], "structure": rec["structure"], "theme": rec["theme"], "built": rec["built"],
         "pdf": rec.get("pdf").cloned().unwrap_or(Value::Null), "kept": kept});
     // made here (W6): a PDF's slide count, and a page's version and switches; the Python app's records have none
@@ -254,10 +337,24 @@ fn public(rec: &Rec, out: &Path) -> Value {
 /// A record and how it stands: current, behind (its source has changed), edited (its file was changed by hand), missing
 /// (the file is gone), gone (the source), unreadable (the source has an error), forgotten, or elsewhere (a document the
 /// Python app keeps up to date until phase 5: a lesson's, or a structure not made here; `problem` says which).
-pub fn status(bible: &Bible, store: &Store, out: &Path, rec: &Rec) -> Value {
-    let path = out.join(s(rec, "name"));
-    let there = path.is_file();
-    let edited = there && changed_by_hand(rec, &path);
+pub fn status(bible: &Bible, store: &Store, folders: &ExportFolders, rec: &Rec) -> Value {
+    match folders.resolve(rec) {
+        Ok(out) => status_at(bible, store, out.or(folders.override_dir.as_deref()), rec),
+        Err(err) => {
+            let mut v = public(rec, None);
+            v["state"] = json!("unreadable");
+            v["problem"] = json!(err.0);
+            v["edited"] = json!(false);
+            v["behind"] = json!(false);
+            v
+        }
+    }
+}
+
+fn status_at(bible: &Bible, store: &Store, out: Option<&Path>, rec: &Rec) -> Value {
+    let path = out.map(|dir| dir.join(s(rec, "name"))).filter(|p| p.is_file());
+    let there = path.is_some();
+    let edited = path.as_ref().is_some_and(|p| changed_by_hand(rec, p));
     let mut v = public(rec, out);
     v["edited"] = json!(edited);
     if rec.get("forgotten") == Some(&json!(true)) {
@@ -296,11 +393,11 @@ pub fn status(bible: &Bible, store: &Store, out: &Path, rec: &Rec) -> Value {
 }
 
 /// Every document (or one source's: ("thread", id) or ("page", id)), newest first.
-pub fn listing(bible: &Bible, store: &Store, out: &Path, of: Option<(&str, &str)>) -> Value {
+pub fn listing(bible: &Bible, store: &Store, folders: &ExportFolders, of: Option<(&str, &str)>) -> Value {
     let mut every: Vec<Value> = records(store)
         .iter()
         .filter(|r| of.is_none_or(|(k, id)| r["source"]["kind"].as_str() == Some(k) && r["source"]["id"].as_str() == Some(id)))
-        .map(|r| status(bible, store, out, r))
+        .map(|r| status(bible, store, folders, r))
         .collect();
     every.sort_by(|a, b| s_(b, "built").cmp(s_(a, "built")));
     json!(every)
@@ -332,13 +429,17 @@ fn safe_stem(text: &str) -> String {
 }
 
 fn unique(dir: &Path, stem: &str, ext: &str) -> PathBuf {
-    let mut out = dir.join(format!("{stem}{ext}"));
+    unique_reserved(dir, stem, ext, &[])
+}
+
+fn unique_reserved(dir: &Path, stem: &str, ext: &str, reserved: &[String]) -> PathBuf {
+    let mut name = format!("{stem}{ext}");
     let mut n = 2;
-    while out.exists() {
-        out = dir.join(format!("{stem} ({n}){ext}"));
+    while dir.join(&name).exists() || reserved.iter().any(|other| other.eq_ignore_ascii_case(&name)) {
+        name = format!("{stem} ({n}){ext}");
         n += 1;
     }
-    out
+    dir.join(name)
 }
 
 /// The verses the source holds that are not in the finished file's text, word for word.
@@ -398,7 +499,8 @@ fn look_for(store: &Store, rec: &Rec, name: Option<&str>, dials: &[(String, Stri
 }
 
 #[allow(clippy::too_many_arguments)]
-fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str, lk: (String, look::Look), force: bool) -> Result<Value> {
+fn build(bible: &Bible, store: &Store, folders: &ExportFolders, mut rec: Rec, theme_key: &str, lk: (String, look::Look), force: bool) -> Result<Value> {
+    let out = folders.build_in(&rec)?;
     let (look_key, lk) = lk;
     let look_values = serde_json::to_value(&lk).unwrap();
     crate::store::guard(&store.root)?;
@@ -412,7 +514,7 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
     let there = old.as_ref().is_some_and(|o| o.is_file());
     fs::create_dir_all(out)?;
     if there && !force && s(&rec, "plan") == finger && s(&rec, "theme") == theme_key && rec.get("design").and_then(|d| d.as_i64()) == Some(docx::DESIGN) && rec.get("look_values") == Some(&look_values) {
-        let mut v = public(&rec, out);
+        let mut v = public(&rec, Some(out));
         v["changed"] = json!(false);
         v["kept_now"] = Value::Null;
         return Ok(v);
@@ -437,7 +539,11 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
         // a first build, or a thread renamed, takes a new name, and never that of a file that is not this document's
         let target = match &old {
             Some(o) if s(&rec, "stem") == stem => o.clone(),
-            _ => unique(out, &stem, ext),
+            _ => {
+                // A fresh file must not be mistaken for another record's missing legacy export.
+                let reserved = records(store).iter().filter(|r| r["id"] != rec["id"]).map(|r| s(r, "name")).collect::<Vec<_>>();
+                unique_reserved(out, &stem, ext, &reserved)
+            }
         };
         let mut kept = None;
         if let (true, Some(o)) = (there, old.as_ref()) {
@@ -481,8 +587,9 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
             list.push(json!(k.file_name().unwrap().to_string_lossy()));
             rec.insert("kept".into(), json!(list));
         }
+        folders.remember(&mut rec, out);
         save(store, &rec)?;
-        let mut v = public(&rec, out);
+        let mut v = public(&rec, Some(out));
         v["changed"] = json!(true);
         v["kept_now"] = kept.map(|k| json!(k.file_name().unwrap().to_string_lossy())).unwrap_or(Value::Null);
         v["checked"] = checked;
@@ -510,7 +617,7 @@ pub fn set_theme(store: &mut Store, key: &str) -> Result<Value> {
 /// The document for a thread and structure: made the first time, brought up to date after. `to`: word, or pdf (slides as
 /// PDF pages). new makes another alongside; force rebuilds even if nothing changed.
 #[allow(clippy::too_many_arguments)]
-pub fn make(bible: &Bible, store: &Store, out: &Path, thread: &str, to: &str, structure: Option<&str>, theme: Option<&str>, look_name: Option<&str>,
+pub fn make(bible: &Bible, store: &Store, folders: &ExportFolders, thread: &str, to: &str, structure: Option<&str>, theme: Option<&str>, look_name: Option<&str>,
     dials: &[(String, String)], new: bool, force: bool) -> Result<Value> {
     if !matches!(to, "word" | "pdf") {
         return Err(bad("to: word, or pdf (slides as PDF pages; PowerPoint is made by the Python app until phase 5)."));
@@ -532,11 +639,11 @@ pub fn make(bible: &Bible, store: &Store, out: &Path, thread: &str, to: &str, st
         _ => json!({"id": new_id(store, &source, st.key, to), "source": source, "to": to, "structure": st.key}).as_object().unwrap().clone(),
     };
     let lk = look_for(store, &rec, look_name, dials)?;
-    build(bible, store, out, rec, &theme, lk, force)
+    build(bible, store, folders, rec, &theme, lk, force)
 }
 
 /// One document by name, on its own theme unless given another.
-pub fn update(bible: &Bible, store: &Store, out: &Path, name: &str, theme: Option<&str>, look_name: Option<&str>, dials: &[(String, String)], force: bool) -> Result<Value> {
+pub fn update(bible: &Bible, store: &Store, folders: &ExportFolders, name: &str, theme: Option<&str>, look_name: Option<&str>, dials: &[(String, String)], force: bool) -> Result<Value> {
     let rec = find(store, name)?;
     if rec.get("forgotten") == Some(&json!(true)) {
         return Err(bad(format!("“{}” was forgotten, so it is left as it is. Remember it first (docs remember).", s(&rec, "name"))));
@@ -554,18 +661,18 @@ pub fn update(bible: &Bible, store: &Store, out: &Path, name: &str, theme: Optio
         None => s(&rec, "theme"),
     };
     let lk = look_for(store, &rec, look_name, dials)?;
-    build(bible, store, out, rec, &theme, lk, force)
+    build(bible, store, folders, rec, &theme, lk, force)
 }
 
 /// Every document whose source has changed and whose file is still there, that this app makes. One that cannot be updated
 /// does not stop the rest.
-pub fn update_behind(bible: &Bible, store: &Store, out: &Path) -> Value {
+pub fn update_behind(bible: &Bible, store: &Store, folders: &ExportFolders) -> Value {
     let (mut done, mut failed) = (vec![], vec![]);
-    for d in listing(bible, store, out, None).as_array().unwrap() {
+    for d in listing(bible, store, folders, None).as_array().unwrap() {
         if d["state"] != "behind" || d["to"] == "deck" {
             continue;
         }
-        match update(bible, store, out, s_(d, "id"), None, None, &[], false) {
+        match update(bible, store, folders, s_(d, "id"), None, None, &[], false) {
             Ok(v) => done.push(v),
             Err(e) => failed.push(json!({"name": d["name"], "error": e.0})),
         }
@@ -582,17 +689,17 @@ pub fn forget(store: &Store, name: &str) -> Result<Value> {
 }
 
 /// Keep a forgotten document up to date again. → how it stands now.
-pub fn remember(bible: &Bible, store: &Store, out: &Path, name: &str) -> Result<Value> {
+pub fn remember(bible: &Bible, store: &Store, folders: &ExportFolders, name: &str) -> Result<Value> {
     let mut rec = find(store, name)?;
     rec.shift_remove("forgotten");
     save(store, &rec)?;
-    Ok(status(bible, store, out, &rec))
+    Ok(status(bible, store, folders, &rec))
 }
 
 /// Take a document away: its file, its PDF and any kept versions are deleted from the disk (as the Python app does; they
 /// are made files, not study work), and its record goes to the study folder's .trash (the rule for the study folder). A
 /// file open in another program stops it before anything is deleted.
-pub fn delete(store: &mut Store, out: &Path, name: &str) -> Result<Value> {
+pub fn delete(store: &mut Store, folders: &ExportFolders, name: &str) -> Result<Value> {
     crate::store::guard(&store.root)?;
     let rec = find(store, name)?;
     let mut names = vec![s(&rec, "name")];
@@ -600,7 +707,12 @@ pub fn delete(store: &mut Store, out: &Path, name: &str) -> Result<Value> {
         names.push(p.into());
     }
     names.extend(rec.get("kept").and_then(|k| k.as_array()).map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect::<Vec<_>>()).unwrap_or_default());
-    let files: Vec<PathBuf> = names.iter().filter(|n| !n.is_empty()).map(|n| out.join(n)).filter(|p| p.is_file()).collect();
+    let names = names.iter().filter(|n| !n.is_empty()).map(|n| checked_name(n)).collect::<Result<Vec<_>>>()?;
+    let files: Vec<PathBuf> = match folders.resolve(&rec)? {
+        Some(out) => names.iter().map(|n| out.join(n)).filter(|p| p.is_file()).collect(),
+        None if names.len() == 1 => Vec::new(), // there is only a missing primary, so remove just its record
+        None => return Err(missing("Restore the main export before deleting it so its PDF and kept copies can be located.")),
+    };
     if let Some(f) = files.iter().find(|f| open_elsewhere(f)) {
         return Err(busy(f, "delete it"));
     }
@@ -615,16 +727,39 @@ pub fn delete(store: &mut Store, out: &Path, name: &str) -> Result<Value> {
 
 /// The plan a document would be made from now, for a thread: what goes where, and its fingerprint (for a person or an AI
 /// checking a document, and for comparing with the Python app's).
-pub fn plan_for(bible: &Bible, store: &Store, thread: &str, to: &str, structure: Option<&str>) -> Result<Value> {
+pub fn plan_for(bible: &Bible, store: &Store, thread: &str, to: &str, structure: Option<&str>, layout: Option<PdfLayout<'_>>) -> Result<Value> {
     let st = plan::structure_of(if to == "deck" { "pdf" } else { to }, structure, "thread")?;
     let mut margin = plan::Margin::new(bible, store)?;
     let rec = json!({"source": {"kind": "thread", "id": thread}}).as_object().unwrap().clone();
-    let (blocks, _) = read_source(bible, store, &rec, &mut margin).map_err(|e| match e {
+    let (blocks, title) = read_source(bible, store, &rec, &mut margin).map_err(|e| match e {
         NoPlan::Gone => missing(format!("No thread “{thread}”.")),
         NoPlan::Unreadable(why) | NoPlan::NotHere(why) => Error(why),
     })?;
     let p = plan::plan_of_blocks(to, st.key, &blocks, &mut margin)?;
-    Ok(json!({"to": to, "structure": st.key, "fingerprint": plan::fingerprint(&p), "plan": p}))
+    let pages = layout.map(|options| pdf_plan_pages(store, &rec, to, &p, &title, options)).transpose()?;
+    let mut result = json!({"to": to, "structure": st.key, "fingerprint": plan::fingerprint(&p), "plan": p});
+    if let Some(pages) = pages {
+        result["pages"] = json!(pages);
+    }
+    Ok(result)
+}
+
+/// Settings for the read-only PDF layout used by Adjust.
+pub struct PdfLayout<'a> {
+    pub theme: Option<&'a str>,
+    pub look: Option<&'a str>,
+    pub dials: &'a [(String, String)],
+}
+
+fn pdf_plan_pages(store: &Store, rec: &Rec, to: &str, p: &[Value], title: &str, options: PdfLayout<'_>) -> Result<usize> {
+    if !matches!(to, "pdf" | "deck") {
+        return Err(bad("Page counts are available for PDF slides."));
+    }
+    let theme = options.theme.filter(|key| !key.is_empty()).map(String::from).unwrap_or_else(|| {
+        rec.get("theme").and_then(Value::as_str).map(String::from).unwrap_or_else(|| saved_theme(store))
+    });
+    let (_, lk) = look_for(store, rec, options.look, options.dials)?;
+    deck::page_count(p, plan::theme(&theme)?, &lk, title)
 }
 
 // ---- a document from a page (W6) ----------------------------------------------------------------------------------------
@@ -714,12 +849,26 @@ pub fn page_parts(bible: &Bible, store: &Store, page: &str, on: &[String], off: 
     Ok(v)
 }
 
+fn choose_page_parts(bible: &Bible, store: &Store, id: &str, rec: &mut Rec, version: Option<&str>, on: &[String], off: &[String]) -> Result<()> {
+    if !on.is_empty() || !off.is_empty() {
+        let sw = page::keep_switched(bible, store, id, on, off)?;
+        if sw.is_empty() { rec.shift_remove("switched") } else { rec.insert("switched".into(), Value::Object(sw)) };
+    }
+    if let Some(v) = version {
+        match check_version(v)? {
+            Some(v) => rec.insert("version".into(), json!(v)),
+            None => rec.shift_remove("version"),
+        };
+    }
+    Ok(())
+}
+
 /// A document from a page (sheets W7.1–W7.3): `to` word makes its Speaker Script, pdf its Verse by Verse; made the first
 /// time, brought up to date after, in the same file. `on`/`off` (rows' keys) set the switches anew (a row not named
 /// takes its default); with neither, the switches it was last made with stay. `version`: kjv or ylt for every
 /// scripture block, page for each block's own; none keeps the last.
 #[allow(clippy::too_many_arguments)]
-pub fn make_page(bible: &Bible, store: &Store, out: &Path, page: &str, to: &str, structure: Option<&str>, theme: Option<&str>,
+pub fn make_page(bible: &Bible, store: &Store, folders: &ExportFolders, page: &str, to: &str, structure: Option<&str>, theme: Option<&str>,
     version: Option<&str>, on: &[String], off: &[String], look_name: Option<&str>, dials: &[(String, String)], force: bool) -> Result<Value> {
     let key = page_structure(to, structure)?;
     let id = page_id(store, page)?;
@@ -731,76 +880,91 @@ pub fn make_page(bible: &Bible, store: &Store, out: &Path, page: &str, to: &str,
         None => saved_theme(store),
     };
     rec.shift_remove("forgotten"); // asked for by name: kept up to date again
-    if !on.is_empty() || !off.is_empty() {
-        let sw = page::keep_switched(bible, store, &id, on, off)?;
-        if sw.is_empty() { rec.shift_remove("switched") } else { rec.insert("switched".into(), Value::Object(sw)) };
-    }
-    if let Some(v) = version {
-        match check_version(v)? {
-            Some(v) => rec.insert("version".into(), json!(v)),
-            None => rec.shift_remove("version"),
-        };
-    }
+    choose_page_parts(bible, store, &id, &mut rec, version, on, off)?;
+    // Resolve before saving changed switches, so a conflicting path cannot alter the record.
+    folders.build_in(&rec)?;
     // a choice that changes nothing in the file is still kept, for the next time
     if rec.contains_key("name") && rec != before {
         save(store, &rec)?;
     }
     let lk = look_for(store, &rec, look_name, dials)?;
-    build(bible, store, out, rec, &theme, lk, force)
+    build(bible, store, folders, rec, &theme, lk, force)
 }
 
-/// The plan a page's document would be made from now, with its last switches (`wb docs plan --page`).
-pub fn plan_for_page(bible: &Bible, store: &Store, page: &str, to: &str) -> Result<Value> {
+/// The plan a page's document would be made from now, optionally with pending Make choices.
+#[allow(clippy::too_many_arguments)]
+pub fn plan_for_page(bible: &Bible, store: &Store, page: &str, to: &str, structure: Option<&str>, version: Option<&str>,
+    on: &[String], off: &[String], layout: Option<PdfLayout<'_>>) -> Result<Value> {
     let to = if to == "deck" { "pdf" } else { to };
-    let key = page_structure(to, None)?;
+    let key = page_structure(to, structure)?;
     let id = page_id(store, page)?;
-    let rec = page_record(store, &id, to, key);
-    let (p, blocks, _) = plan_now(bible, store, &rec).map_err(|e| match e {
+    let mut rec = page_record(store, &id, to, key);
+    choose_page_parts(bible, store, &id, &mut rec, version, on, off)?;
+    let (p, blocks, title) = plan_now(bible, store, &rec).map_err(|e| match e {
         NoPlan::Gone => gone(&rec["source"]),
         NoPlan::Unreadable(why) | NoPlan::NotHere(why) => Error(why),
     })?;
-    Ok(json!({"to": to, "structure": key, "fingerprint": plan::fingerprint(&p), "verses": plan::source_refs(&blocks), "plan": p}))
+    let pages = layout.map(|options| pdf_plan_pages(store, &rec, to, &p, &title, options)).transpose()?;
+    let mut result = json!({"to": to, "structure": key, "fingerprint": plan::fingerprint(&p), "verses": plan::source_refs(&blocks), "plan": p});
+    if let Some(pages) = pages {
+        result["pages"] = json!(pages);
+    }
+    Ok(result)
 }
 
 /// A finished file as the window previews it (sheet W7.4). A Word document: its paragraphs with their styles, read from
 /// the file itself. Slides as PDF pages: each page drawn in SVG by the same layout that made the PDF, while the document
 /// is up to date (its plan's fingerprint is the file's, so the pages are the file's); one that has changed since says so
 /// (`stale`) rather than show pages the file does not have.
-pub fn preview(bible: &Bible, store: &Store, out: &Path, name: &str) -> Result<Value> {
+pub fn preview(bible: &Bible, store: &Store, folders: &ExportFolders, name: &str) -> Result<Value> {
     let rec = find(store, name)?;
-    let path = out.join(s(&rec, "name"));
-    if !path.is_file() {
-        return Err(missing(format!("{} is not there; docs update makes it again.", s(&rec, "name"))));
-    }
+    let path = existing_file(folders, &rec)?;
     let mut v = json!({"id": rec["id"], "name": rec["name"], "to": rec["to"], "path": path.to_string_lossy()});
     match s(&rec, "to").as_str() {
         "word" => v["paras"] = docx::paragraphs(&path)?,
         "pdf" => {
-            let st = status(bible, store, out, &rec);
+            let st = status_at(bible, store, path.parent(), &rec);
             if st["state"] != "current" {
+                v["last_built_pages"] = st["pages"].clone();
                 v["stale"] = json!("Its source has changed since this file was made, so it is not drawn here: Make again, or open the file as it is.");
                 return Ok(v);
             }
             let (p, _, title) = plan_now(bible, store, &rec).map_err(|_| bad("Its source cannot be read now; open the file as it is."))?;
-            v["slides"] = json!(deck::pages_svg(&p, plan::theme(&s(&rec, "theme"))?, &look_of_record(&rec), &title)?);
+            let slides = deck::pages_svg(&p, plan::theme(&s(&rec, "theme"))?, &look_of_record(&rec), &title)?;
+            v["pages"] = json!(slides.len());
+            v["slides"] = json!(slides);
         }
         _ => return Err(bad("A PowerPoint deck is previewed in PowerPoint (docs open).")),
     }
     Ok(v)
 }
 
-/// Show a document's file in its folder (Explorer, the Finder), picked out.
-pub fn reveal(store: &Store, out: &Path, name: &str) -> Result<Value> {
+fn existing_file(folders: &ExportFolders, rec: &Rec) -> Result<PathBuf> {
+    let name = s(rec, "name");
+    folders.resolve(rec)?.map(|dir| dir.join(&name)).filter(|path| path.is_file())
+        .ok_or_else(|| missing(format!("“{name}” is not there. Check its export folder or use docs update to rebuild it.")))
+}
+
+pub fn open(store: &Store, folders: &ExportFolders, name: &str) -> Result<Value> {
     let rec = find(store, name)?;
-    let path = out.join(s(&rec, "name"));
-    let spawned = if !path.is_file() {
-        return Err(missing(format!("{} is not there; docs update makes it again.", s(&rec, "name"))));
-    } else if cfg!(windows) {
+    let path = existing_file(folders, &rec)?;
+    open_file(&path)?;
+    Ok(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}))
+}
+
+/// Show a document's file in its folder (Explorer, the Finder), picked out.
+pub fn reveal(store: &Store, folders: &ExportFolders, name: &str) -> Result<Value> {
+    let rec = find(store, name)?;
+    let path = existing_file(folders, &rec)?;
+    if std::env::var("WB_NO_OPEN").as_deref() == Ok("1") {
+        return Ok(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}));
+    }
+    let spawned = if cfg!(windows) {
         std::process::Command::new("explorer.exe").arg(format!("/select,{}", path.display())).spawn()
     } else if cfg!(target_os = "macos") {
         std::process::Command::new("open").arg("-R").arg(&path).spawn()
     } else {
-        std::process::Command::new("xdg-open").arg(out).spawn()
+        std::process::Command::new("xdg-open").arg(path.parent().unwrap()).spawn()
     };
     spawned.map_err(|e| bad(format!("Could not show {} ({e}).", path.display())))?;
     Ok(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}))
@@ -810,6 +974,9 @@ pub fn reveal(store: &Store, out: &Path, name: &str) -> Result<Value> {
 pub fn open_file(path: &Path) -> Result<()> {
     if !path.is_file() {
         return Err(missing(format!("{} is not there; docs update makes it again.", path.file_name().unwrap_or_default().to_string_lossy())));
+    }
+    if std::env::var("WB_NO_OPEN").as_deref() == Ok("1") {
+        return Ok(());
     }
     let spawned = if cfg!(windows) {
         std::process::Command::new("explorer.exe").arg(path).spawn()
@@ -865,12 +1032,26 @@ mod tests {
     }
 
     #[test]
+    fn explicit_override_is_bound_to_the_original_directory() {
+        let root = std::env::temp_dir().join("h07-study");
+        let folders = ExportFolders { local: root.join("exports"), override_dir: Some(root.join("shared")), legacy: root.join("legacy") };
+        let mut rec = Rec::new();
+        assert_eq!(folders.build_in(&rec).unwrap(), root.join("shared"));
+        let shared = folders.preferred();
+        folders.remember(&mut rec, shared);
+        rec.insert("name".into(), json!("export.docx"));
+        assert_eq!(folders.build_in(&rec).unwrap(), shared);
+        let changed = ExportFolders { override_dir: Some(root.join("different")), ..folders };
+        assert!(changed.build_in(&rec).unwrap_err().0.contains("original WB_DOCS_DIR"));
+    }
+
+    #[test]
     fn names_and_folders() {
         assert_eq!(safe_stem("Lesson: Phinehas / 25:11"), "Lesson Phinehas 2511");
         assert_eq!(slug("thread Phinehas echoes script pdf"), "thread-phinehas-echoes-script-pdf");
         let scratch = std::env::temp_dir().join("x").join("study-scratch");
         if std::env::var("WB_DOCS_DIR").is_err() {
-            assert_eq!(folder_for(&scratch), std::env::temp_dir().join("x").join("study-scratch-documents"));
+            assert_eq!(ExportFolders::for_study(&scratch).unwrap().preferred(), scratch.join("exports"));
         }
     }
 }

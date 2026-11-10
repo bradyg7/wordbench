@@ -10,6 +10,7 @@
 // the place (keepPlace puts the verse at the top back after the reader's size changes).
 import { h, icon, popMenu, sizeClass } from './ui';
 import { toast } from './sheets';
+import { captureScroll, restoreScroll, canonicalKey, type LayoutState } from './layout-state';
 
 export type Side = 'left' | 'right' | 'top' | 'bottom' | 'float';
 type Docked = 'left' | 'right' | 'top' | 'bottom';
@@ -40,9 +41,14 @@ export interface Pane {
   el: HTMLElement;
   /** Draw again from the study folder (after a change). */
   refresh?: () => void | Promise<void>;
+  beforeClose?: () => Promise<void>;
   onClose?: () => void;
+  ready?: Promise<void>;
+  captureView?: () => unknown;
+  restoreView?: (state: any) => void | Promise<void>;
   /** Opened by a Shelf folder's Open all (R2): its tab carries the folder's mark, and Close all closes it. */
   mark?: { set: string; name: string; color: string };
+  owners?: { set: string; name: string; color: string }[];
 }
 
 /** One tab strip and its panes: a column (or a part of one, when split), a band, or a floating window. */
@@ -83,6 +89,12 @@ export class Dock {
   private chips: HTMLElement;
   private sheet: HTMLElement;
   private z = 0;
+  private active?: string;
+  private focused: { pane: Pane; returnTo: HTMLElement | null; scroll: ReturnType<typeof captureScroll> } | null = null;
+  private focusHost = h('section', 'dock-focus');
+  private focusInert = new Map<HTMLElement, boolean>();
+  /** External destinations (the Shelf) share the real pointer drag; they never move the pane. */
+  externalDrop?: (x: number, y: number, pane: Pane) => { label: string; box: Rect; drop: () => void } | null;
   backLabel = () => '';
   /** Called before the reader's size changes; the function it returns puts the reader back at the same verse. */
   keepPlace: () => () => void = () => () => {};
@@ -95,6 +107,8 @@ export class Dock {
     this.chips = h('div', 'dock-chips');
     this.sheet = h('section', 'pane-sheet');
     host.append(this.frames.left, this.frames.right, this.frames.top, this.frames.bottom, this.chips, this.sheet);
+    this.focusHost.hidden = true;
+    host.append(this.focusHost);
     try {
       const kept = JSON.parse(localStorage.getItem(STORE) || '{}');
       if (kept.floatAt?.w) this.floatAt = { w: kept.floatAt.w, h: kept.floatAt.h };
@@ -112,10 +126,19 @@ export class Dock {
       if (t.closest?.('.menu, .popover, .hovercard')) return;
       const g = t.closest?.('.dock-group') as HTMLElement | null;
       this.origin = g?.dataset.front ? { pane: g.dataset.front, at: performance.now() } : null;
+      if (g?.dataset.front) this.active = this.panes.find(p => p.id === g.dataset.front)?.key;
       const f = t.closest?.('.dock-float') as HTMLElement | null;
       if (f) this.raise(f.dataset.group!);
     }, true);
     document.addEventListener('keydown', e => { if (!(e.target as Element).closest?.('.dock-group')) this.origin = null; }, true);
+    document.addEventListener('keydown', e => {
+      if (this.focused && ['ArrowLeft', 'ArrowRight'].includes(e.key) && !(e.target as Element).closest?.('.reader2-pane')) {
+        // The hidden main reader must not turn from a focused note or lookup. PDF handles its arrows locally.
+        e.stopImmediatePropagation(); return;
+      }
+      if (e.key !== 'Escape' || !this.focused || e.defaultPrevented || document.querySelector('.menu, .popover, .sheet, .pd-modal, .nb-modal')) return;
+      e.preventDefault(); e.stopImmediatePropagation(); this.exitFocus();
+    });
   }
 
   private frame(tag: 'aside' | 'section', cls: string, side: Docked) {
@@ -241,7 +264,7 @@ export class Dock {
     }
     const el = h('div', `pane pane-${kind}`);
     const p: Pane = { id: `p${++seq}`, key, kind, title, side, group: '', el };
-    p.refresh = () => fill(el, p);
+    p.refresh = () => { p.ready = Promise.resolve(fill(el, p)); return p.ready; };
     const from = this.origin && performance.now() - this.origin.at < 3000 ? this.panes.find(x => x.id === this.origin!.pane) : undefined;
     const spot = this.spots[key];
     const kin = this.panes.find(x => x.kind === kind);
@@ -258,11 +281,14 @@ export class Dock {
     else if (kin) this.put(p, this.groupOf(kin));
     else this.put(p, this.groupOn(side));
     this.show(p);
-    Promise.resolve(fill(el, p)).catch(e => { el.replaceChildren(h('p', 'error', String(e))); });
+    p.ready = Promise.resolve(fill(el, p));
+    void p.ready.catch(e => { el.replaceChildren(h('p', 'error', String(e))); });
     return p;
   }
 
   show(p: Pane) {
+    if (this.focused && this.focused.pane !== p) this.exitFocus();
+    this.active = p.key;
     const g = this.groupOf(p);
     g.front = p.id;
     g.min = false;
@@ -289,13 +315,23 @@ export class Dock {
     this.layout();
   }
 
-  close(p: Pane) {
+  private closing = new Set<Pane>();
+  async close(p: Pane): Promise<boolean> {
+    if (this.closing.has(p) || !this.panes.includes(p)) return false;
+    if (p.beforeClose) {
+      this.closing.add(p);
+      try { await p.beforeClose(); }
+      catch (x) { toast(String(x)); return false; }
+      finally { this.closing.delete(p); }
+    }
+    if (this.focused?.pane === p) this.exitFocus();
     this.remember(p);
     this.panes = this.panes.filter(x => x !== p);
     p.el.remove();
     p.onClose?.();
     if (this.sheetFor === p.id) this.sheetFor = null;
     this.layout();
+    return true;
   }
 
   /** Moves a pane to a side: into the first group there, or a new floating window of its own. */
@@ -410,6 +446,8 @@ export class Dock {
 
   /** Puts every group in its column, band or window, draws the tab strips, and moves the reader over to make room. */
   layout() {
+    const focusedScroll = this.focused && captureScroll(this.focused.pane.el);
+    const focusEl = this.focused?.pane.el.contains(document.activeElement) ? document.activeElement as HTMLElement : null;
     const size = sizeClass();
     this.prune();
     const at: Record<string, Group[]> = { left: [], right: [], top: [], bottom: [], float: [], sheet: [] };
@@ -488,6 +526,15 @@ export class Dock {
     this.room(this.isOpen('left') ? lw : 0, this.isOpen('right') ? rw : 0, th, bh);
     restore();
     this.drawSheet(at.sheet.flatMap(g => this.inGroup(g)));
+    if (this.focused) {
+      const p = this.focused.pane;
+      this.focusHost.style.top = `${this.barBottom()}px`;
+      p.el.hidden = false;
+      this.focusHost.append(p.el);
+      this.hideFocusBackground();
+      if (focusedScroll) restoreScroll(p.el, focusedScroll);
+      focusEl?.focus({ preventScroll: true });
+    }
     requestAnimationFrame(() => this.fitStrips());
   }
 
@@ -763,7 +810,7 @@ export class Dock {
             x.title = `Close ${p.title}`;
             x.setAttribute('aria-label', `Close ${p.title}`);
             // with one tab left the strip has no list, so it closes
-            x.onclick = () => { this.close(p); if (left.length > 2) draw(); else close(); };
+            x.onclick = async () => { if (!await this.close(p)) return; if (left.length > 2) draw(); else close(); };
             row.append(b, x);
             return row;
           }));
@@ -792,9 +839,13 @@ export class Dock {
       });
     }
     tool('minus', 'Minimize', () => this.minimize(fp));
+    const focus = h('button', 'strip-btn dock-focus-button', 'Focus');
+    focus.title = 'Focus pane'; focus.setAttribute('aria-label', `Focus ${fp.title}`);
+    focus.onclick = () => this.focusPane(fp);
+    s.append(focus);
     if (where === 'float') tool('float', 'Dock it again', () => this.dockAgain(fp));
     else tool('float', 'Float it', () => this.move(fp, 'float'));
-    tool('x', 'Close these panes', () => list.forEach(p => this.close(p)));
+    tool('x', 'Close these panes', async () => { for (const p of list) await this.close(p); });
     if (where === 'float') this.dragBy(s, g);
     return s;
   }
@@ -809,6 +860,7 @@ export class Dock {
     const x0 = e.clientX, y0 = e.clientY;
     let ghost: HTMLElement | null = null, zone: HTMLElement | null = null, label: HTMLElement | null = null, hint: HTMLElement | null = null;
     let drop: Drop | null = null;
+    let external: ReturnType<NonNullable<Dock['externalDrop']>> = null;
     this.dragged = false;
     const move = (m: PointerEvent) => {
       if (!this.dragged && Math.hypot(m.clientX - x0, m.clientY - y0) < 8) return;
@@ -824,16 +876,17 @@ export class Dock {
       }
       ghost!.style.left = `${m.clientX + 12}px`;
       ghost!.style.top = `${m.clientY + 8}px`;
-      drop = this.dropAt(m.clientX, m.clientY, m.shiftKey, p);
-      zone!.hidden = !drop;
-      if (!drop) return;
-      const b = drop.box;
+      external = this.externalDrop?.(m.clientX, m.clientY, p) ?? null;
+      drop = external ? null : this.dropAt(m.clientX, m.clientY, m.shiftKey, p);
+      zone!.hidden = !drop && !external;
+      if (!drop && !external) return;
+      const b = (external ?? drop)!.box;
       Object.assign(zone!.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, height: `${b.h}px` });
-      zone!.dataset.to = drop.to;
-      label!.textContent = drop.label;
+      zone!.dataset.to = external ? 'shelf' : drop!.to;
+      label!.textContent = (external ?? drop)!.label;
     };
     // the whole document listens while the button is held, so a quick first move off the tab is not lost
-    const up = () => {
+    const up = (event: PointerEvent) => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', up);
@@ -841,7 +894,9 @@ export class Dock {
       zone?.remove();
       hint?.remove();
       document.body.classList.remove('tab-dragging');
-      if (this.dragged && drop) this.drop(p, drop);
+      if (event.type !== 'pointercancel' && this.dragged) {
+        if (external) external.drop(); else if (drop) this.drop(p, drop);
+      }
       setTimeout(() => { this.dragged = false; });
     };
     document.addEventListener('pointermove', move);
@@ -938,5 +993,97 @@ export class Dock {
       const g = this.groupOf(p);
       return { title: p.title, kind: p.kind, key: p.key, side: p.side, front: g?.front === p.id, ...(g?.rect ? { rect: { ...g.rect } } : {}) };
     });
+  }
+
+  snapshot(): LayoutState {
+    return {
+      app: 'bible-workbench-rs', version: 2,
+      panes: this.panes.map(p => ({ key: canonicalKey(p.key), title: p.title, kind: p.kind, home: p.home, view: { scroll: captureScroll(p.el), state: p.captureView?.() } })),
+      groups: this.groups.filter(g => this.inGroup(g).length).map(g => ({
+        side: g.side, keys: this.inGroup(g).map(p => canonicalKey(p.key)), front: canonicalKey(this.panes.find(p => p.id === g.front)?.key ?? this.inGroup(g)[0].key),
+        ...(g.rect ? { rect: { ...g.rect } } : {}), share: g.share, min: g.min, z: g.z, strip: this.stripScroll[g.id],
+      })),
+      widths: { ...this.widths }, wide: { ...this.wide }, bands: { ...this.bands }, active: this.panes.some(p => p.key === this.active) ? this.active : undefined,
+    };
+  }
+
+  focusPane(p: Pane) {
+    if (sizeClass() === 'compact') { this.show(p); return; }
+    if (this.focused?.pane === p) return;
+    if (this.focused) this.exitFocus();
+    const scroll = captureScroll(p.el);
+    const returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.focused = { pane: p, returnTo, scroll };
+    const bar = h('header', 'dock-focus-bar');
+    const back = h('button', 'btn dock-focus-return', 'Return to layout');
+    back.onclick = () => this.exitFocus();
+    const full = h('button', 'btn dock-fullscreen', document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen');
+    full.onclick = async () => {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+        else throw new Error('Fullscreen is not available in this window. Focus pane is still available.');
+        full.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen';
+      } catch (e) { toast(String(e)); }
+    };
+    bar.append(h('strong', '', p.title), h('span', 'grow'), full, back);
+    this.focusHost.replaceChildren(bar, p.el); this.focusHost.hidden = false; p.el.hidden = false;
+    this.focusHost.style.top = `${this.barBottom()}px`;
+    this.hideFocusBackground();
+    restoreScroll(p.el, scroll);
+    if (returnTo && p.el.contains(returnTo)) returnTo.focus({ preventScroll: true });
+    else { p.el.tabIndex = -1; p.el.focus({ preventScroll: true }); }
+  }
+
+  exitFocus() {
+    const focused = this.focused;
+    if (!focused) return;
+    const scroll = captureScroll(focused.pane.el);
+    this.focused = null; this.focusHost.hidden = true;
+    for (const [el, before] of this.focusInert) el.inert = before;
+    this.focusInert.clear();
+    this.layout(); this.focusHost.replaceChildren();
+    restoreScroll(focused.pane.el, scroll);
+    if (focused.returnTo?.isConnected) focused.returnTo.focus({ preventScroll: true });
+    else { focused.pane.el.tabIndex = -1; focused.pane.el.focus({ preventScroll: true }); }
+  }
+
+  private hideFocusBackground() {
+    const els = [...Object.values(this.frames), ...this.floats.values(), this.chips, this.sheet, document.getElementById('scroller')];
+    for (const el of els) if (el) { if (!this.focusInert.has(el)) this.focusInert.set(el, el.inert); el.inert = true; }
+  }
+
+  /** Content is ready before this runs. Keep the reader's place while replacing the arrangement. */
+  async restore(snapshot: LayoutState) {
+    this.exitFocus();
+    const keep = this.keepPlace();
+    const keepSettings = this.find('settings');
+    const wanted = new Set(snapshot.panes.map(p => p.key));
+    // Keep old panes alive until state adapters finish, so a failed read can roll back without losing panes.
+    const extras = this.panes.filter(p => !wanted.has(canonicalKey(p.key)));
+    const oldGroups = this.groups;
+    this.groups = []; this.colFront = {}; this.stripScroll = {};
+    this.widths = { ...snapshot.widths }; this.wide = { ...snapshot.wide }; this.bands = { ...snapshot.bands };
+    for (const saved of snapshot.groups) {
+      const members = saved.keys.map(k => this.find(k)).filter((p): p is Pane => !!p);
+      if (!members.length) continue;
+      const g = this.newGroup(saved.side, saved.rect);
+      g.share = saved.share; g.min = saved.min; g.z = saved.z ?? g.z;
+      this.z = Math.max(this.z, g.z);
+      for (const p of members) this.put(p, g);
+      g.front = members.find(p => p.key === saved.front)?.id ?? members[0].id;
+      this.stripScroll[g.id] = saved.strip ?? 0;
+    }
+    this.groups.push(...oldGroups.filter(g => extras.some(p => p.group === g.id)));
+    for (const s of snapshot.panes) { const p = this.find(s.key); if (p) { p.home = s.home; await p.restoreView?.(s.view?.state); } }
+    for (const p of extras) if (p !== keepSettings && !await this.close(p)) throw new Error(`Finish editing ${p.title} before opening a layout.`);
+    const active = snapshot.active && this.find(snapshot.active);
+    this.active = active ? active.key : undefined;
+    if (active) { this.colFront[this.drawn(active.side) as Docked] = active.id; this.sheetFor = active.id; }
+    this.layout();
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    for (const s of snapshot.panes) { const p = this.find(s.key); if (p && s.view) restoreScroll(p.el, s.view.scroll); }
+    if (active && !this.isMinimized(active)) { active.el.tabIndex = -1; active.el.focus({ preventScroll: true }); }
+    keep(); this.save();
   }
 }

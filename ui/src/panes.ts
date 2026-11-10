@@ -68,21 +68,21 @@ function fill(body: HTMLElement, rows: any[], row: (r: any) => HTMLElement, firs
 
 // ---- lists of verses that can be ticked and put into a thread (search, every use, near) ------------------------------
 
-export interface ResultList { pane: Pane; anchors: () => string[]; ticked: Set<string>; redraw: () => void; words?: () => string[]; shape: 'words' | 'verses' }
+export interface ResultList { pane: Pane; anchors: () => string[]; ticked: Set<string>; redraw: () => void; update?: () => void; words?: () => string[]; shape: 'words' | 'verses' }
 export let frontResults: ResultList | null = null;
 
 function tickable(list: ResultList, row: HTMLElement, anchor: string) {
   const t = h('input', 'tick') as HTMLInputElement;
   t.type = 'checkbox';
   t.checked = list.ticked.has(anchor);
-  t.setAttribute('aria-label', 'Tick to add to a thread');
-  t.onchange = () => { if (t.checked) list.ticked.add(anchor); else list.ticked.delete(anchor); frontResults = list; };
+  t.setAttribute('aria-label', `Tick ${anchor} to add to a thread`);
+  t.onchange = () => { if (t.checked) list.ticked.add(anchor); else list.ticked.delete(anchor); frontResults = list; list.update?.(); };
   row.prepend(t);
 }
 
 function resultsBar(el: HTMLElement, list: ResultList) {
   const bar = h('div', 'results-bar');
-  const all = button('btn small', 'Tick all', () => { list.anchors().forEach(a => list.ticked.add(a)); list.redraw(); frontResults = list; });
+  const all = button('btn small', 'Tick all loaded', () => { list.anchors().forEach(a => list.ticked.add(a)); list.redraw(); frontResults = list; });
   const none = button('btn small', 'None', () => { list.ticked.clear(); list.redraw(); });
   const add = button('btn small primary', 'Add to a thread…', e => threadChooser(e.currentTarget as HTMLElement, async name => {
     const places = list.ticked.size ? [...list.ticked] : list.anchors();
@@ -91,8 +91,31 @@ function resultsBar(el: HTMLElement, list: ResultList) {
     toast(`${r.added?.length ?? places.length} added to ${name}`);
     app.changed('threads');
   }));
+  const count = h('span', 'results-count muted small');
+  count.setAttribute('role', 'status');
+  const shape = h('select', 'field results-shape') as HTMLSelectElement;
+  shape.setAttribute('aria-label', 'What to add to the thread');
+  for (const [value, label] of [['words', 'Marked words'], ['verses', 'Whole verses']]) {
+    const option = h('option', '', label) as HTMLOptionElement;
+    option.value = value;
+    shape.append(option);
+  }
+  shape.onchange = () => { list.shape = shape.value as ResultList['shape']; list.update?.(); };
+  list.update = () => {
+    const loaded = list.anchors().length;
+    count.textContent = list.ticked.size ? `${list.ticked.size} ticked · ${loaded} loaded` : `None ticked · adds all ${loaded} loaded`;
+    shape.value = list.shape;
+  };
+  const redraw = list.redraw;
+  list.redraw = () => { redraw(); list.update?.(); };
+  // Typed results commands follow the last list touched by pointer or keyboard.
+  el.addEventListener('pointerdown', () => { frontResults = list; });
+  el.addEventListener('focusin', () => { frontResults = list; });
   bar.append(all, none, add);
+  if (list.words) bar.append(shape);
+  bar.append(count);
   el.append(bar);
+  list.update();
 }
 
 // Ticked verses as whole verses, or (for every use, shaped as words) the marked words in them.
@@ -102,23 +125,32 @@ function expand(list: ResultList, places: string[]) {
   return places.flatMap(p => words.filter(w => w.startsWith(p + '.') || w === p).length ? words.filter(w => w.startsWith(p + '.')) : [p]);
 }
 
-export function threadChooser(from: HTMLElement, pick: (name: string) => void) {
+export function threadChooser(from: HTMLElement, pick: (name: string, id?: string) => void, opts: { existing?: boolean; onClose?: () => void } = {}) {
   const box = h('div', 'chooser');
   const input = h('input', 'field') as HTMLInputElement;
-  input.placeholder = 'A thread, or a new name';
+  input.placeholder = opts.existing ? 'Find a thread' : 'A thread, or a new name';
+  input.setAttribute('aria-label', input.placeholder);
   box.append(input);
   const list = h('div', 'chooser-list');
   box.append(list);
-  const close = popMenu(from, box, { width: 280 });
-  const choose = (n: string) => { close(); pick(n); };
-  input.onkeydown = e => { if (e.key === 'Enter' && input.value.trim()) choose(input.value.trim()); };
-  wb(['thread', 'list']).then((ts: any[]) => {
+  const close = popMenu(from, box, { width: 280, onClose: opts.onClose });
+  const choose = (n: string, id?: string) => { close(); pick(n, id); };
+  let matches: { id: string; name: string; color: string; count: number }[] = [];
+  input.onkeydown = e => {
+    if (e.key !== 'Enter' || !input.value.trim()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (!opts.existing) choose(input.value.trim());
+    else if (matches.length === 1) choose(matches[0].name, matches[0].id);
+  };
+  wb(['thread', 'list']).then((ts: typeof matches) => {
     const draw = () => {
       const f = input.value.trim().toLowerCase();
-      list.replaceChildren(...ts.filter(t => t.name.toLowerCase().includes(f)).slice(0, 12).map(t => {
+      matches = ts.filter(t => t.name.toLowerCase().includes(f));
+      list.replaceChildren(...matches.slice(0, 12).map(t => {
         const b = h('button', 'chooser-row');
         b.append(h('i', `dot c-${t.color}`), document.createTextNode(` ${t.name}`), h('span', 'muted small', ` ${t.count}`));
-        b.onclick = () => choose(t.name);
+        b.onclick = () => choose(t.name, t.id);
         return b;
       }));
     };
@@ -187,7 +219,7 @@ export function openSearch(query: string, scope = 'all') {
       rows = offset ? rows.concat(d.rows) : d.rows;
       (hd.querySelector('.pane-sub') as HTMLElement).textContent = `${d.verses} verse${d.verses === 1 ? '' : 's'} in ${scopeLabel(scope)}`;
       more.hidden = !d.more;
-      draw();
+      list.redraw();
     };
     const draw = () => {
       fill(body, rows, r => {
@@ -261,7 +293,7 @@ export function openUses(strong: string, word: string, scope = 'all', o: UsesOpt
       }));
       if (strong && word && !o.rendering) chips.append(h('span', 'muted small', 'both: the verse’s word translates it'));
       more.hidden = !d.more;
-      draw();
+      list.redraw();
     };
     const draw = () => {
       fill(body, rows, r => {
@@ -363,6 +395,7 @@ export function openStrong(num: string) {
     }
     const acts = h('div', 'acts two');
     acts.append(button('btn primary', 'Every use', () => openUses(num, '')));
+    acts.append(button('btn', `Notes on ${num} everywhere`, () => openPlace(num, `${num} everywhere`)));
     if (num.startsWith('H')) acts.append(button('btn', 'BDB', () => openBdb(num)));
     else acts.append(button('btn', 'Count by book', () => openCount(num)));
     el.append(acts);
@@ -441,7 +474,7 @@ export function openNear(a: string, b: string, within: number, scope: string) {
       rows = offset ? rows.concat(d.rows) : d.rows;
       (hd.querySelector('.pane-sub') as HTMLElement).textContent = `${d.verses} verses where they come within ${within} words, ${scopeLabel(scope)}`;
       more.hidden = !d.more;
-      draw();
+      list.redraw();
     };
     const draw = () => {
       body.replaceChildren(...rows.map(r => {
@@ -641,6 +674,10 @@ export function openPlace(anchor: string, label: string) {
       el.append(h('div', 'label', `${ev.strong} everywhere`));
       for (const n of ev.word_notes) el.append(card(`${ev.strong} ${ev.translit || ''}`.trim(), n.text, () => openStrong(ev.strong)));
     }
+    if (ev?.occurrence_notes?.length) {
+      el.append(h('div', 'label', `Notes where ${ev.strong} appears`));
+      for (const n of ev.occurrence_notes) el.append(card(n.quote ? `${placeLabel(n)} · “${short(n.quote)}”` : placeLabel(n), n.text, () => openPlace(n.anchor, placeLabel(n))));
+    }
     if ((d.threads || []).length) {
       el.append(h('div', 'label', 'In threads'));
       const row = h('div', 'in-threads');
@@ -785,22 +822,62 @@ async function guideEntries(): Promise<any[]> {
   return guideCache.entries;
 }
 
-/** Help (W5, sheet W6.3): Guide (how the parts of the Notebook work: `wb guide`), Commands (everything the command
- * field understands: the manual) and Keys. A topic that names a Guide entry opens the Guide at it. */
+type HelpTab = 'guide' | 'commands' | 'keys';
+
+const HELP_TASKS: [string, [string, HelpTab, string][]][] = [
+  ['Find and open', [
+    ['Show a live list of Notebook pages', 'guide', 'views'],
+  ]],
+  ['Write and organize', [
+    ['Start a page from a template', 'guide', 'templates'],
+    ['Keep related places together', 'guide', 'threads'],
+    ['Write and track questions', 'guide', 'questions'],
+  ]],
+  ['Arrange the window', [
+    ['Save and restore pane layouts', 'commands', 'layout'],
+  ]],
+  ['Commands and keys', [
+    ['Find a command', 'commands', ''],
+    ['Find a keyboard shortcut', 'keys', ''],
+  ]],
+  ['More Guide topics', [
+    ['The Shelf', 'guide', 'shelf'],
+    ['Word blocks', 'guide', 'words'],
+  ]],
+];
+
+/** Typed Help arrives resolved by the parser, which checks the manual before the Guide. */
 export function openHelp(topic = '') {
-  return dock.open('help', 'Help', 'help', MINE, async (el, pane) => {
-    el.replaceChildren();
+  const existing = dock.find('help');
+  const fill = async (el: HTMLElement) => {
     const [m, guide] = await Promise.all([manual(), guideEntries().catch(() => [])]);
-    const t0 = topic.trim().toLowerCase();
-    let tab: 'guide' | 'commands' | 'keys' = t0 && guide.some((g: any) => g.name.startsWith(t0) || g.title.toLowerCase().startsWith(t0)) ? 'guide' : t0 ? 'commands' : 'guide';
+    if (dock.find('help')?.refresh !== refresh) return;
+    let selected = topic;
+    let tab: HelpTab = topic && m.docs.some((d: any) => d.name === topic) ? 'commands' : 'guide';
     const tabs = h('div', 'seg small help-tabs');
     tabs.setAttribute('role', 'tablist');
     const filter = h('input', 'field help-filter') as HTMLInputElement;
-    filter.value = topic;
+    filter.setAttribute('aria-label', 'Search Help');
+    filter.value = selected;
     const body = h('div', 'help-body');
-    el.append(tabs, filter, body);
-    const tabBtn = (k: typeof tab, label: string) => {
-      const b = button(`help-tab-${k}${tab === k ? ' on' : ''}`, label, () => { tab = k; for (const x of tabs.children) x.classList.toggle('on', x === b); draw(); });
+    body.tabIndex = -1;
+    el.replaceChildren(tabs, filter, body);
+    const selectTopic = (next: HelpTab, name: string) => {
+      tab = next;
+      selected = name;
+      filter.value = name;
+      draw();
+      body.focus();
+    };
+    const tabBtn = (k: HelpTab, label: string) => {
+      const b = button(`help-tab-${k}`, label, () => {
+        if (tab === k) return;
+        tab = k;
+        if (selected) filter.value = '';
+        selected = '';
+        draw();
+      });
+      b.dataset.tab = k;
       b.setAttribute('role', 'tab');
       tabs.append(b);
     };
@@ -809,11 +886,35 @@ export function openHelp(topic = '') {
     tabBtn('keys', 'Keys');
     const has = (o: any, f: string) => JSON.stringify(o).toLowerCase().includes(f);
     const draw = () => {
+      for (const b of tabs.children) {
+        const active = (b as HTMLElement).dataset.tab === tab;
+        b.classList.toggle('on', active);
+        b.setAttribute('aria-selected', String(active));
+      }
       const f = filter.value.trim().toLowerCase();
-      filter.placeholder = tab === 'guide' ? 'A part of the Notebook, or a word' : tab === 'commands' ? 'A command or a word' : 'A key or a word';
+      filter.placeholder = tab === 'guide' ? 'A task, topic, or word' : tab === 'commands' ? 'A command or a word' : 'A key or a word';
       body.replaceChildren();
+      if (selected || tab !== 'guide') {
+        body.append(button('link-btn', 'Browse Help tasks', () => selectTopic('guide', '')));
+      }
       if (tab === 'guide') {
-        const hits = guide.filter((g: any) => !f || g.name.startsWith(f) || has(g, f));
+        if (!f) {
+          const index = h('nav', 'help-index');
+          index.setAttribute('aria-label', 'Browse Help by task');
+          for (const [group, tasks] of HELP_TASKS) {
+            const links = h('div', 'wrap');
+            for (const [label, next, name] of tasks) {
+              if (next === 'guide' && !guide.some(g => g.name === name)) continue;
+              links.append(button('btn small', label, () => selectTopic(next, name)));
+            }
+            if (links.childElementCount) index.append(h('h3', 'label', group), links);
+          }
+          body.append(index);
+          return;
+        }
+        const hits = guide.filter(g => selected ? g.name === selected :
+          has(g, f) || HELP_TASKS.some(([, tasks]) => tasks.some(([label, next, name]) =>
+            next === 'guide' && name === g.name && label.toLowerCase().includes(f))));
         for (const g of hits) {
           const sec = h('section', 'guide-entry');
           sec.dataset.name = g.name;
@@ -821,21 +922,25 @@ export function openHelp(topic = '') {
           for (const p of g.parts) sec.append(h('div', 'guide-head', p.head), h('p', 'small guide-text', p.text));
           body.append(sec);
         }
-        if (!hits.length) body.append(h('p', 'muted', 'No part of the Guide has that word. Commands lists everything the command field understands.'));
+        if (!hits.length) body.append(h('p', 'muted', 'No Guide topics match your search.'));
         return;
       }
       if (tab === 'keys') {
-        for (const [k, what] of KEYS.filter(([k, w]) => !f || (k + ' ' + w).toLowerCase().includes(f))) {
+        const hits = KEYS.filter(([k, w]) => (k + ' ' + w).toLowerCase().includes(f));
+        for (const [k, what] of hits) {
           const r = h('div', 'key-row');
           r.append(h('kbd', '', k), h('span', '', what));
           body.append(r);
         }
+        if (!hits.length) body.append(h('p', 'muted', 'No keyboard shortcuts match your search.'));
         return;
       }
-      body.append(h('p', 'muted small', 'Everything the command field understands. Backtick (`) opens it.'));
+      body.append(h('p', 'muted small', 'Commands for the command field. Backtick (`) opens it. In a terminal, use wb help for the terminal command list.'));
+      let found = false;
       for (const [sec, title] of m.sections) {
-        const docs = m.docs.filter((d: any) => d.section === sec && (!f || d.name.startsWith(f) || has(d, f)));
+        const docs = m.docs.filter((d: any) => d.section === sec && (selected ? d.name === selected : !f || has(d, f)));
         if (!docs.length) continue;
+        found = true;
         body.append(h('div', 'label', title));
         for (const d of docs) {
           const det = h('details', 'doc');
@@ -853,11 +958,21 @@ export function openHelp(topic = '') {
           body.append(det);
         }
       }
+      if (!found) body.append(h('p', 'muted', 'No command topics match your search.'));
     };
-    filter.oninput = draw;
+    filter.oninput = () => { selected = ''; draw(); };
     draw();
-    void pane;
-  });
+  };
+  const refresh = (): Promise<void> | undefined => {
+    const pane = dock.find('help');
+    if (pane) return fill(pane.el).catch(e => {
+      if (pane.refresh === refresh) pane.el.replaceChildren(h('p', 'error', String(e)));
+    });
+  };
+  const pane = dock.open('help', 'Help', 'help', MINE, fill);
+  pane.refresh = refresh;
+  if (existing) void refresh();
+  return pane;
 }
 
 export function openKeys() {

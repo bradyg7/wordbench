@@ -61,5 +61,16 @@ const refs = [...texts].map(text => ({
 
 const core = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'crates', 'wb-core');
 writeFileSync(path.join(core, 'tests', 'commands-cases.json'), JSON.stringify({ made_by: "scripts/commands-cases.mjs from the Python app's web/commands.js", parse, refs }, null, 1) + '\n');
-writeFileSync(path.join(core, 'src', 'manual.json'), JSON.stringify({ made_by: "scripts/commands-cases.mjs from the Python app's web/help-docs.js and web/commands.js", commands: COMMANDS, sections: SECTIONS, docs: DOCS, shortcuts: SHORTCUTS }, null, 1) + '\n');
+// Add routes specific to the Rust window and its terminal before writing the shared manual.
+const docs = DOCS.map(doc => doc.name === 'layout' ? {
+  ...doc,
+  details: [
+    ...doc.details,
+    'Use Layout in the toolbar to save or restore an arrangement. Settings → Layouts also lets you remove saved layouts.',
+    'Use Focus pane and Return to layout for a temporary focused view. In the command field, use focus <pane> or unfocus. From a terminal, use wb do to relay those commands to the window.',
+    'In a terminal, use wb layout list to list arrangements, wb layout show <name> to inspect one, and wb layout rm <name> to remove one.',
+    'For a live list of Notebook pages or questions, use a View. Type help views in the command field or wb guide views in a terminal.',
+  ],
+} : doc);
+writeFileSync(path.join(core, 'src', 'manual.json'), JSON.stringify({ made_by: "scripts/commands-cases.mjs from the Python app's web/help-docs.js and web/commands.js", commands: COMMANDS, sections: SECTIONS, docs, shortcuts: SHORTCUTS }, null, 1) + '\n');
 console.log(`${parse.length} lines, ${refs.length} texts`);

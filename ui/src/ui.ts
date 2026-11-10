@@ -136,7 +136,7 @@ export const sizeClass = () => {
 
 // A small menu or form beside an element; closes on Escape or a click outside. Returns a close function.
 let menuOpen: (() => void) | null = null;
-export function popMenu(from: Element, body: HTMLElement, opts: { align?: 'left' | 'right'; width?: number; at?: { x: number; y: number } } = {}): () => void {
+export function popMenu(from: Element, body: HTMLElement, opts: { align?: 'left' | 'right'; width?: number; at?: { x: number; y: number }; onClose?: () => void } = {}): () => void {
   menuOpen?.();
   const m = h('div', 'menu');
   if (opts.width) m.style.width = `${opts.width}px`;
@@ -157,6 +157,7 @@ export function popMenu(from: Element, body: HTMLElement, opts: { align?: 'left'
     document.removeEventListener('pointerdown', outside, true);
     document.removeEventListener('keydown', key, true);
     if (menuOpen === close) menuOpen = null;
+    opts.onClose?.();
   };
   setTimeout(() => document.addEventListener('pointerdown', outside, true));
   document.addEventListener('keydown', key, true);

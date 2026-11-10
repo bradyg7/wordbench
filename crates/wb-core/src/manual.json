@@ -1467,7 +1467,11 @@
    "what": "Keeps an arrangement of panes and brings it back.",
    "details": [
     "Saves which panes are open, where (floating, docked, tabbed, minimized) and each pane’s own state (a query, a filter, a chapter). Saving a name again replaces it; load accepts the start of a name. layout alone is the same as layout list.",
-    "Files are kept in sessions/layouts/ in your study folder. The reader’s position is not part of a layout."
+    "Files are kept in sessions/layouts/ in your study folder. The reader’s position is not part of a layout.",
+    "Use Layout in the toolbar to save or restore an arrangement. Settings → Layouts also lets you remove saved layouts.",
+    "Use Focus pane and Return to layout for a temporary focused view. In the command field, use focus <pane> or unfocus. From a terminal, use wb do to relay those commands to the window.",
+    "In a terminal, use wb layout list to list arrangements, wb layout show <name> to inspect one, and wb layout rm <name> to remove one.",
+    "For a live list of Notebook pages or questions, use a View. Type help views in the command field or wb guide views in a terminal."
    ],
    "examples": [
     [

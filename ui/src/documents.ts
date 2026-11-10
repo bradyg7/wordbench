@@ -149,7 +149,7 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
     const [to, st] = what.value.split('|');
     const kind = to === 'word' ? 'word' : 'pdf';
     const start: Chosen = { look: look.value, dials: [...extra, ...(ink.value ? [['ink', ink.value] as [string, string]] : [])] };
-    const r = await adjust(kind, ['--thread', thread, '--to', to, '--structure', st], start, themes[theme.value]?.doc_accent || '8E1B14');
+    const r = await adjust(kind, ['--thread', thread, '--to', to, '--structure', st, '--theme', theme.value], start, themes[theme.value]?.doc_accent || '8E1B14');
     if (!r) return;
     look.value = r.look;
     ink.value = r.dials.find(d => d[0] === 'ink')?.[1] || '';

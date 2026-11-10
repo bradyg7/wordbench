@@ -247,6 +247,10 @@ fn main() {
     let mut store = Store::open(&wb_core::default_study_dir()).unwrap_or_else(|e| fail(&format!("The study folder could not be opened: {e}")));
     store.recheck = std::time::Duration::from_secs(1);
     // notes and questions deleted a week ago or more are erased (the person's decision; wb trash empty does the same)
+    match wb_core::deletion::sweep(&mut store, wb_core::deletion::now_ms()) {
+        Ok(result) => { if result["errors"].as_array().is_some_and(|v| !v.is_empty()) { eprintln!("Deletion recovery needs attention: {}", result["errors"]); } },
+        Err(e) => eprintln!("Deletion recovery needs attention: {e}"),
+    }
     if let Err(e) = store.empty_trash(wb_core::store::TRASH_DAYS) {
         eprintln!("The trash could not be emptied: {e}");
     }

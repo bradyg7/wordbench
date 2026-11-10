@@ -30,7 +30,7 @@ impl Wb {
     /// Runs wb; → (exit code, stdout, stderr).
     fn run(&self, args: &[&str], stdin: Option<&str>) -> (i32, String, String) {
         let mut c = Command::new(env!("CARGO_BIN_EXE_wb"));
-        c.args(args).env("WB_STUDY_DIR", &self.dir).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        c.args(args).env("WB_STUDY_DIR", &self.dir).env_remove("WB_DOCS_DIR").env("WB_NO_OPEN", "1").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
         let mut child = c.spawn().unwrap();
         if let Some(text) = stdin {
             use std::io::Write;
@@ -62,14 +62,12 @@ impl Wb {
 impl Drop for Wb {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.dir);
-        let _ = std::fs::remove_dir_all(self.docs()); // the documents made from this scratch folder, beside it
     }
 }
 
 impl Wb {
-    /// Where documents from this scratch folder go: beside it, never the person's Documents folder.
     fn docs(&self) -> PathBuf {
-        self.dir.with_file_name(format!("{}-documents", self.dir.file_name().unwrap().to_string_lossy()))
+        self.dir.join("exports")
     }
 }
 
@@ -264,7 +262,9 @@ fn notes_highlights_and_threads_round_trip() {
     assert_eq!(wb.js(&["thread", "list"]).as_array().unwrap().len(), 2);
     wb.js(&["thread", "delete", "A brand new"]);
     assert_eq!(wb.js(&["thread", "list"]).as_array().unwrap().len(), 1);
-    assert_eq!(wb.js(&["note", "rm", n["id"].as_str().unwrap()]), json!({"ok": true}));
+    let deleted = wb.js(&["note", "rm", n["id"].as_str().unwrap()]);
+    assert_eq!(deleted["state"], "pending");
+    assert_eq!(deleted["deleted"], json!([n["id"]]));
     assert!(wb.fails(&["thread", "show", "zzz-none"]).contains("No thread called"));
 }
 
@@ -845,15 +845,18 @@ fn a_question_with_no_place_becomes_a_trail_when_placed() {
 }
 
 #[test]
-fn an_inbox_note_is_changed_made_a_question_or_deleted_to_the_trash() {
+fn an_inbox_note_is_changed_made_a_question_or_deleted_with_undo() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["note", "jot", "first thought"]);
     assert_eq!(wb.js(&["inbox", "edit", "first", "a better thought"])["text"], json!("a better thought"));
     assert_eq!(wb.js(&["inbox", "edit", "better", "--question"])["kind"], json!("question"));
     assert!(wb.fails(&["inbox", "edit", "nothing like it", "x"]).contains("No note in the Inbox"));
-    wb.js(&["inbox", "rm", "better"]);
+    let deletion = wb.js(&["inbox", "rm", "better"]);
     assert_eq!(wb.js(&["inbox"])["notes"], json!([]));
-    assert_eq!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().count(), 1);
+    assert_eq!(deletion["deleted"][0], deletion["id"]);
+    assert_eq!(wb.js(&["page", "deletions"])["operations"][0]["operation"], deletion["operation"]);
+    wb.js(&["page", "undo", deletion["operation"].as_str().unwrap()]);
+    assert_eq!(wb.js(&["inbox"])["notes"][0]["text"], "a better thought");
 }
 
 #[test]
@@ -988,7 +991,7 @@ fn deleted_notes_wait_a_week_in_the_trash_and_can_be_put_back() {
     let Some(wb) = Wb::new() else { return };
     let n = wb.js(&["note", "add", "Num 25:11", "to delete"]);
     let id = n["id"].as_str().unwrap().to_string();
-    wb.js(&["note", "rm", &id]);
+    wb_core::store::Store::open(&wb.dir).unwrap().delete_note(&id).unwrap();
     let t = wb.js(&["trash"]);
     assert_eq!((t["days"].clone(), t["notes"][0]["id"].clone(), t["notes"][0]["days_left"].clone()), (json!(7), json!(id), json!(7)));
     let name = t["notes"][0]["name"].as_str().unwrap().to_string();
@@ -999,7 +1002,7 @@ fn deleted_notes_wait_a_week_in_the_trash_and_can_be_put_back() {
     let trash = wb.dir.join(".trash");
     std::fs::write(trash.join("20200101-000000-n_20200101000000_aaaa.md"), "---\nid: \"n_20200101000000_aaaa\"\nanchor: \"\"\nkind: \"jot\"\n---\n\nold\n").unwrap();
     std::fs::write(trash.join("20200101-000000-love.md"), "a thread").unwrap();
-    wb.js(&["note", "rm", &id]);
+    wb_core::store::Store::open(&wb.dir).unwrap().delete_note(&id).unwrap();
     assert_eq!(wb.js(&["trash", "empty"])["erased"], json!(["20200101-000000-n_20200101000000_aaaa.md"]));
     assert!(trash.join("20200101-000000-love.md").exists());
     assert_eq!(wb.js(&["trash"])["notes"].as_array().unwrap().len(), 1); // deleted today: it waits
@@ -1010,8 +1013,9 @@ fn erase_now_erases_one_deleted_note_and_nothing_else() {
     let Some(wb) = Wb::new() else { return };
     let a = wb.js(&["note", "add", "Num 25:11", "to erase now"])["id"].as_str().unwrap().to_string();
     let b = wb.js(&["note", "jot", "to keep in the trash"])["id"].as_str().unwrap().to_string();
-    wb.js(&["note", "rm", &a]);
-    wb.js(&["inbox", "rm", &b]);
+    let mut legacy = wb_core::store::Store::open(&wb.dir).unwrap();
+    legacy.delete_note(&a).unwrap();
+    legacy.delete_jot(&b).unwrap();
     let t = wb.js(&["trash"]);
     let name = |id: &str| t["notes"].as_array().unwrap().iter().find(|n| n["id"] == id).unwrap()["name"].as_str().unwrap().to_string();
     let (na, nb) = (name(&a), name(&b));
@@ -1115,14 +1119,16 @@ fn today_s_page_is_one_note_a_day_made_when_first_written_in() {
     assert_eq!(wb.js(&["note", "text", &format!("d_{day}"), "only this"])["text"], json!("only this"));
     assert_eq!(wb.js(&["day", "add", "earlier", "--day", "2026-11-02"])["title"], json!("Monday, November 2"));
     assert!(wb.fails(&["day", "add", "x", "--day", "tomorrow"]).contains("A day looks like"));
-    // emptied or deleted, a page goes to the Trash and comes back
+    // Explicit deletion has timed Undo. Emptying a day through day text retains legacy behavior.
     wb.js(&["day", "text", "", "--day", "2026-11-02"]);
-    wb.js(&["day", "rm"]);
+    let deletion = wb.js(&["day", "rm", "today"]);
     assert!(!file.exists());
     let t = wb.js(&["trash"]);
-    assert_eq!(t["notes"].as_array().unwrap().len(), 2);
-    let name = t["notes"].as_array().unwrap().iter().find(|n| n["id"] == format!("d_{day}").as_str()).unwrap()["name"].as_str().unwrap().to_string();
-    wb.js(&["trash", "restore", &name]);
+    assert_eq!(t["notes"].as_array().unwrap().len(), 1);
+    assert_eq!(deletion["deleted"], json!([format!("d_{day}")]));
+    assert_eq!(deletion["day"], day);
+    assert!(wb.fails(&["day", "rm", "tomorrow"]).contains("A day looks like"));
+    wb.js(&["page", "undo", deletion["operation"].as_str().unwrap()]);
     assert_eq!(wb.js(&["day"])["text"], json!("only this"));
     // the name days had before (finding 7bc8) still links to the page, as do the new name and the day
     let d = chrono::NaiveDate::parse_from_str(&day, "%Y-%m-%d").unwrap();
@@ -1410,6 +1416,8 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     let deck = wb.js(&["craft", "deck", "--page", &top]);
     assert_eq!(deck["id"].as_str().unwrap(), format!("page-{top}-verse"));
     assert!(deck["pages"].as_i64().unwrap() >= 5);
+    let planned = wb.js(&["docs", "plan", "--page", &top, "--to", "pdf", "--pages"]);
+    assert_eq!(planned["pages"], deck["pages"]);
     let file = wb.docs().join(word["name"].as_str().unwrap());
     let text = docx_text(&file);
     for v in verses.iter().chain(&ylt) {
@@ -1427,6 +1435,15 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     assert!(text.contains("To do: print it") && text.contains("Done: read it twice") && !text.contains("a to-do inside"));
     assert_eq!(wb.js(&["craft", "parts", "--page", &top])["rows"][2]["on"], true);
     assert!(wb.fails(&["craft", "word", "--page", &top, "--on", "b:nothing"]).contains("no row"));
+
+    // Pending switches and version are used by the preview without saving choices.
+    let scripture = parts["rows"][3]["key"].as_str().unwrap();
+    let pending = wb.js(&["docs", "plan", "--page", &top, "--to", "pdf", "--off", scripture, "--version", "kjv", "--pages", "--theme", "print"]);
+    assert_eq!(pending["verses"], json!(["Psalms 106:30 (KJV)"]));
+    assert_eq!(wb.js(&["docs", "plan", "--page", &top, "--to", "pdf"])["fingerprint"], planned["fingerprint"]);
+    let applied = wb.js(&["craft", "deck", "--page", &top, "--off", scripture, "--version", "kjv", "--theme", "print"]);
+    assert_eq!(applied["pages"], pending["pages"]);
+    assert_eq!(applied["checked"]["refs"], pending["verses"]);
 
     // one version for every block, in the documents only: the page keeps its own
     let all_kjv = wb.js(&["craft", "word", "--page", &top, "--version", "kjv"]);
@@ -1446,7 +1463,9 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     // change a deck of verses, a scripture block does
     assert!(wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].is_array());
     add(&top, "```scripture\nNum 25:9\n```");
-    assert!(wb.js(&["docs", "preview", &format!("page-{top}-verse")])["stale"].is_string());
+    let stale = wb.js(&["docs", "preview", &format!("page-{top}-verse")]);
+    assert!(stale["stale"].is_string());
+    assert_eq!(stale["last_built_pages"], applied["pages"]);
     let deck_now = wb.js(&["docs", "update", &format!("page-{top}-verse")]);
     let slides = wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].clone();
     assert_eq!(slides.as_array().unwrap().len() as i64, deck_now["pages"].as_i64().unwrap());
@@ -1456,6 +1475,55 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     assert!(wb.fails(&["craft", "deck", "--page", &top, "--structure", "pulpit"]).contains("phase 5"));
     wb.ok(&["inbox", "rm", &top]);
     assert_eq!(state(format!("page-{top}-verse")), "gone");
+}
+
+#[test]
+fn a_legacy_export_is_resolved_safely_for_open_preview_update_and_delete() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Export location", "--at", "Num 25:10"]);
+    let made = wb.js(&["craft", "word", "--thread", "Export location", "--structure", "script"]);
+    let id = made["id"].as_str().unwrap();
+    let name = made["name"].as_str().unwrap();
+    let record_file = wb.dir.join("documents").join(format!("{id}.json"));
+    let mut record: Value = serde_json::from_slice(&std::fs::read(&record_file).unwrap()).unwrap();
+    assert_eq!(record["export_location"], "study");
+    record.as_object_mut().unwrap().shift_remove("export_location");
+    record["pdf"] = json!("associated.pdf");
+    record["kept"] = json!(["kept.docx"]);
+    std::fs::write(&record_file, serde_json::to_vec(&record).unwrap()).unwrap();
+
+    let local_file = wb.docs().join(name);
+    let legacy = wb.dir.with_file_name(format!("{}-documents", wb.dir.file_name().unwrap().to_string_lossy()));
+    std::fs::create_dir_all(&legacy).unwrap();
+    let legacy_file = legacy.join(name);
+    std::fs::rename(&local_file, &legacy_file).unwrap();
+    std::fs::copy(&legacy_file, &local_file).unwrap();
+    for op in ["open", "preview", "reveal", "update", "delete"] {
+        assert!(wb.fails(&["docs", op, id]).contains("More than one export"));
+    }
+    assert!(record_file.is_file() && local_file.is_file() && legacy_file.is_file());
+    assert_eq!(wb.js(&["docs", "show", id])["state"], "unreadable");
+
+    std::fs::write(&local_file, "a different file with the same name").unwrap();
+    for op in ["show", "open", "preview", "reveal", "update"] {
+        assert_eq!(wb.js(&["docs", op, id])["path"], legacy_file.to_string_lossy().as_ref());
+    }
+    for dir in [&legacy, &wb.docs()] {
+        std::fs::write(dir.join("associated.pdf"), "test companion").unwrap();
+        std::fs::write(dir.join("kept.docx"), "test kept version").unwrap();
+    }
+    let deleted = wb.js(&["docs", "delete", id]);
+    assert_eq!(deleted["deleted"].as_array().unwrap().len(), 3);
+    assert!(local_file.is_file() && wb.docs().join("kept.docx").is_file() && wb.docs().join("associated.pdf").is_file());
+    assert!(!record_file.is_file());
+    std::fs::remove_dir(&legacy).unwrap();
+
+    std::fs::remove_file(local_file).unwrap();
+    std::fs::write(&record_file, serde_json::to_vec(&record).unwrap()).unwrap();
+    assert_eq!(wb.js(&["docs", "show", id])["state"], "missing");
+    assert!(wb.fails(&["docs", "update", id]).contains("set WB_DOCS_DIR"));
+    assert!(wb.fails(&["docs", "delete", id]).contains("Restore the main export"));
+    assert!(record_file.is_file() && wb.docs().join("associated.pdf").is_file());
 }
 
 #[test]
@@ -1743,7 +1811,10 @@ fn a_page_made_from_a_template_has_its_blanks_filled() {
     let shown = wb.js(&["template", "show", "Study again"]);
     assert!(shown["text"].as_str().unwrap().contains("```scripture\n{place}\n```"), "{}", shown["text"]);
     assert!(wb.fails(&["template", "new", "chapter study"]).contains("already"));
-    wb.js(&["template", "rm", "Study again"]);
+    let deletion = wb.js(&["template", "rm", "Study again"]);
+    assert_eq!(deletion["state"], "pending");
+    assert_eq!(deletion["id"], shown["id"]);
+    assert_eq!(deletion["title"], shown["title"]);
     assert_eq!(wb.js(&["template", "list"])["templates"].as_array().unwrap().len(), 1);
     assert!(wb.ok(&["guide", "templates"]).contains("{place} the place picked"));
 }
@@ -1850,6 +1921,23 @@ fn a_page_holds_a_thread_and_a_word_as_blocks_that_hold_only_an_id_and_a_number(
 }
 
 #[test]
+fn search_every_page_finds_thread_names_and_notes() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "add", "Orchard Trial", "Num 25:11"]);
+    wb.js(&["thread", "edit", "Orchard Trial", "--note", "A note about mulberries."]);
+    let search = |term: &str| wb.js(&["notebook", "--group", "none", "--search", term]);
+    for term in ["ORCHARD", "mulberries", "orchard mulberries"] {
+        let result = search(term);
+        let hit = &result["groups"][0]["entries"][0];
+        assert_eq!(hit["id"], "thread:orchard-trial");
+        assert_eq!(hit["kind"], "thread");
+        assert_eq!(hit["preview"], "A note about mulberries.");
+    }
+    assert!(search("orchard walnuts")["groups"][0]["entries"].as_array().unwrap().is_empty());
+    assert!(wb.js(&["notebook", "--group", "none"])["groups"][0]["entries"].as_array().unwrap().is_empty());
+}
+
+#[test]
 fn a_question_written_in_a_page_is_one_with_the_questions_at_a_verse() {
     let Some(wb) = Wb::new() else { return };
     let n = wb.js(&["note", "new", "Notes on the chapter", "--at", "Num 25:9"]);
@@ -1885,14 +1973,24 @@ fn a_question_written_in_a_page_is_one_with_the_questions_at_a_verse() {
     wb.js(&["question", "answer", &format!("{id}#1"), "--open"]);
     // folded in and out: the trail becomes a block of a page at its place, and back
     let t = wb.js(&["trail", "list"])["trails"][0]["id"].as_str().unwrap().to_string();
+    let multiline = "A question at a verse\n  with a second line\n\nand a new paragraph";
+    wb.js(&["trail", "edit", &t, multiline]);
+    wb.js(&["note", "answered", &t]);
     assert!(wb.fails(&["question", "fold", &t, &id]).contains("not at that question's place"));
     let f = wb.js(&["question", "fold", &t, &id, "--also"]);
     assert_eq!(f["page"], id);
     assert!(wb.js(&["trail", "list"])["trails"].as_array().unwrap().is_empty());
     let q3 = f["question"].as_str().unwrap().to_string();
-    let u = wb.js(&["question", "unfold", &q3]);
+    assert!(wb.fails(&["question", "unfold", &q3, "--at", "Num 25:11"]).contains("one of the page's places"));
+    let u = wb.js(&["question", "unfold", &q3, "--at", "Num 25:15"]);
     assert_eq!(u["page"], id);
-    assert_eq!(wb.js(&["trail", "list"])["trails"].as_array().unwrap().len(), 1);
+    let all = wb.js(&["trail", "list", "--status", "all"]);
+    let trails = all["trails"].as_array().unwrap();
+    assert_eq!(trails.len(), 1);
+    assert_eq!(trails[0]["anchor"], "NUM.25:15");
+    assert_eq!(trails[0]["status"], "done");
+    assert_eq!(trails[0]["text"], multiline);
+    assert_eq!(text(&wb), before);
 }
 
 #[test]
@@ -2024,4 +2122,18 @@ fn a_layout_can_be_deleted_into_the_trash() {
     assert_eq!(wb.js(&["layout", "rm", "word"])["deleted"], json!(true));
     assert_eq!(wb.js(&["layout", "list"]), json!([]));
     assert!(wb.fails(&["layout", "rm", "word study"]).contains("No saved layout"));
+}
+
+#[test]
+fn page_deletion_cli_preview_undo_and_aliases() {
+    let Some(wb)=Wb::new() else {return};
+    let page=wb.js(&["page","new","Scratch parent","--json"]);let id=page["id"].as_str().unwrap();
+    let child=wb.js(&["page","new","Scratch child","--parent",id,"--json"]);let cid=child["id"].as_str().unwrap();
+    wb.ok(&["page","pin",cid]);
+    let preview=wb.js(&["page","rm","--all","--json"]);assert_eq!(preview["state"],"preview");assert_eq!(preview["count"],1);assert_eq!(preview["moved"],1);
+    assert!(wb.fails(&["page","rm","--all","--yes","--expect","wrong"]).contains("preview changed"));
+    let removed=wb.js(&["page","rm","--all","--yes","--expect",preview["token"].as_str().unwrap(),"--json"]);let op=removed["operation"].as_str().unwrap();assert_eq!(removed["state"],"pending");
+    assert_eq!(wb.js(&["page","undo",op,"--json"])["state"],"restored");
+    let alias=wb.js(&["inbox","rm",cid,"--json"]);assert_eq!(alias["state"],"pending");wb.ok(&["page","undo",alias["operation"].as_str().unwrap()]);
+    let immediate=wb.js(&["page","rm",cid,"--now","--json"]);assert_eq!(immediate["state"],"erased");
 }

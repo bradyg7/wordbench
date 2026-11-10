@@ -3,7 +3,7 @@
 // A folder IS a set: each folder is a set file in sets/, holding its own items; where it sits in the tree is wb-core's
 // (settings/shelf.json, `wb shelf`). Every change here is a `wb` command, so a terminal can do the same. Open all (finding
 // a484) opens each item where its kind goes, from the keys `wb set open` gives: kept panes as their tabs, places as second
-// readers (the reader never moves), a document in its preview, the first page in the Notebook. The tabs it opened carry
+// readers (the reader never moves), a document in its preview, pages in their own editable tabs. The tabs it opened carry
 // the folder's mark, and Close all closes them.
 
 import { wb } from './api';
@@ -11,7 +11,8 @@ import { reopen, written } from './actions';
 import type { Pane } from './dock';
 import { dock } from './panes';
 import { toast } from './sheets';
-import { button, h, icon, popMenu } from './ui';
+import { button, h, icon, popMenu, sizeClass } from './ui';
+import { canonicalKey } from './layout-state';
 
 const FOLDED = 'wb.shelf.folded.v1';
 const MARKS = ['var(--thread-b)', 'var(--thread-a)', 'var(--question)', 'var(--accent)'];
@@ -55,10 +56,10 @@ function paneKey(open: string) {
   const [kind, a] = open.split('|');
   if (kind === 'doc') return `doc:${a}`;
   if (kind === 'thread') return `thread|${a.toLowerCase()}`;
-  return open;
+  return canonicalKey(open);
 }
 const isOpen = (it: Item) => !!it.open && !!dock.find(paneKey(it.open));
-const markedFor = (id: string) => dock.panes.filter(p => p.mark?.set === id);
+const markedFor = (id: string) => dock.panes.filter(p => p.owners?.some(m => m.set === id));
 
 async function waitFor(key: string, ms = 4000): Promise<Pane | undefined> {
   const end = performance.now() + ms;
@@ -77,29 +78,37 @@ async function load() {
 
 /** Open everything a folder holds (deep: the folders inside it too). → what it did, in a sentence. */
 export async function openAll(name: string, deep = false): Promise<string> {
+  if (sizeClass() === 'compact') return 'Open items individually on this screen. Open all is available in a wider window.';
   if (!tree.length) await load();
   const plan = await wb(['set', 'open', name]);
   const sets = [plan];
   if (deep) for (const f of every(folderById(plan.id)?.folders ?? [])) sets.push(await wb(['set', 'open', f.id]));
   const shelf = dock.find('shelf');
   let opened = 0;
-  const pages: string[] = [], why: string[] = [];
+  let already = 0;
+  const counted = new Set<string>();
+  const why: string[] = [];
   for (const s of sets) {
     for (const it of s.items as Item[]) {
       if (!it.open) { why.push(`${it.label}: ${it.why}`); continue; }
-      // a note and a thread are pages (R1): they open in the Notebook, which is one tab, so neither is marked
-      if (it.open.startsWith('note|') || it.open.startsWith('thread|')) { pages.push(it.open); continue; }
       if (shelf) dock.from(shelf);
-      await reopen(it.open);
-      const p = await waitFor(paneKey(it.open));
-      if (p) { p.mark = { set: s.id, name: s.name, color: markColor(s.id) }; opened++; }
+      const before = new Set(dock.panes);
+      let p: Pane | undefined;
+      try { p = await reopen(it.open) ?? await waitFor(paneKey(it.open)); }
+      catch (x) { why.push(`${it.label}: ${String(x)}`); continue; }
+      if (p) {
+        const mark = { set: s.id, name: s.name, color: markColor(s.id) };
+        if (!before.has(p)) p.owners = [mark];
+        else if (p.owners?.length && !p.owners.some(m => m.set === s.id)) p.owners.push(mark);
+        p.mark = p.owners?.[0];
+        if (!counted.has(p.key)) { counted.add(p.key); if (before.has(p)) already++; else opened++; }
+      }
     }
   }
-  if (pages.length) await reopen(pages[0]);
   dock.layout();
   void redraw();
   const said = [`${plan.name}: ${opened} opened`];
-  if (pages.length) said.push(pages.length > 1 ? `the Notebook shows the first of its ${pages.length} pages` : 'its page in the Notebook');
+  if (already) said.push(`${already} already open`);
   if (why.length) said.push(`${why.length} could not open (${why.slice(0, 2).join('; ')}${why.length > 2 ? '…' : ''})`);
   return said.join('; ');
 }
@@ -109,10 +118,22 @@ export async function closeAll(name: string, deep = false): Promise<string> {
   const s = await wb(['set', 'show', name]);
   if (!tree.length) await load();
   const ids = new Set([s.id, ...(deep ? every(folderById(s.id)?.folders ?? []).map(f => f.id) : [])]);
-  const ps = dock.panes.filter(p => p.mark && ids.has(p.mark.set));
-  for (const p of ps) dock.close(p);
+  const ps = dock.panes.filter(p => p.owners?.some(m => ids.has(m.set)));
+  let closed = 0, shared = 0, kept = 0;
+  for (const p of ps) {
+    const otherOwners = p.owners!.filter(m => !ids.has(m.set));
+    if (!otherOwners.length) {
+      if (await dock.close(p)) closed++;
+      else kept++;
+      continue;
+    }
+    p.owners = otherOwners;
+    p.mark = otherOwners[0];
+    shared++;
+  }
+  dock.layout();
   void redraw();
-  return `${s.name}: ${ps.length} closed`;
+  return `${s.name}: ${closed} closed${shared ? `; ${shared} still used by another folder` : ''}${kept ? `; ${kept} kept open to preserve edits` : ''}`;
 }
 
 const run = (p: Promise<string>) => void p.then(toast, e => toast(String((e as Error).message || e)));
@@ -120,6 +141,13 @@ const run = (p: Promise<string>) => void p.then(toast, e => toast(String((e as E
 // ---- the pane ----------------------------------------------------------------------------------------------------------
 
 export function openShelf() {
+  dock.externalDrop = (x, y, pane) => {
+    const row = document.elementsFromPoint(x, y).map(el => el.closest<HTMLElement>('.shelf-folder')).find(Boolean);
+    const folder = row?.dataset.folder && folderById(row.dataset.folder);
+    if (!row || !folder || pane.kind === 'shelf') return null;
+    const r = row.getBoundingClientRect();
+    return { label: `Keep in ${folder.name}`, box: { x: r.x, y: r.y, w: r.width, h: r.height }, drop: () => void addTabs(folder, [`${pane.key}\t${pane.title}`]) };
+  };
   const p = dock.open('shelf', 'Shelf', 'shelf', 'right', async el => {
     paneEl = el;
     await load();
@@ -241,7 +269,7 @@ function folderRow(f: Folder, shut: boolean) {
   r.append(h('span', 'shelf-count', String(f.items.length + f.folders.length)));
   r.append(button('icon-btn shelf-more', '', e => { e.stopPropagation(); folderMenu(e.currentTarget as Element, f); }, 'more'));
   r.onclick = () => { selected = { folder: f.id }; setFolded(f.id, !shut); keepKeys = true; draw(); };
-  r.ondblclick = e => { e.preventDefault(); run(openAll(f.id)); };
+  r.ondblclick = e => { e.preventDefault(); if (sizeClass() !== 'compact') run(openAll(f.id)); };
   r.oncontextmenu = e => { e.preventDefault(); selected = { folder: f.id }; folderMenu(r, f, { x: e.clientX, y: e.clientY }); };
   dragRow(r, { folder: f.id }, f);
   return r;
@@ -263,6 +291,12 @@ function itemRow(f: Folder, it: Item) {
   x.setAttribute('aria-label', `Take ${it.label} out of ${f.name}`);
   x.title = 'Take it out of the folder (it is not deleted)';
   r.append(x);
+  const more = button('icon-btn shelf-more', '', e => {
+    e.stopPropagation(); const box = more.getBoundingClientRect();
+    itemMenu(more, f, it, { x: box.left, y: box.bottom });
+  }, 'more');
+  more.setAttribute('aria-label', `More for ${it.label}`);
+  r.append(more);
   r.onclick = () => {
     selected = { folder: f.id, key: it.key };
     keepKeys = true;
@@ -297,8 +331,8 @@ function folderMenu(from: Element, f: Folder, at?: { x: number; y: number }) {
   const body = h('div', 'shelf-menu');
   const open = markedFor(f.id).length;
   body.append(h('div', 'label', f.name),
-    menuItem('Open all', 'sidebar', () => run(openAll(f.id)), `its ${f.items.length} items, as tabs`),
-    ...(f.folders.length ? [menuItem('Open all, folders inside too', 'sidebar', () => run(openAll(f.id, true)))] : []),
+    ...(sizeClass() !== 'compact' ? [menuItem('Open all', 'sidebar', () => run(openAll(f.id)), `its ${f.items.length} items, as tabs`)] : []),
+    ...(f.folders.length && sizeClass() !== 'compact' ? [menuItem('Open all, folders inside too', 'sidebar', () => run(openAll(f.id, true)))] : []),
     menuItem('Close all', 'x', () => run(closeAll(f.id, true)), open ? `the ${open} tabs it opened` : 'none open'),
     menuItem('Add…', 'plus', () => addMenu(from, f), 'a tab, a page, a place…'),
     menuItem('New folder inside', 'folder', () => newFolder(f.id, from)),

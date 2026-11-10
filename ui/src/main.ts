@@ -218,7 +218,7 @@ function lexiconBody(w: WordView, card = false): HTMLElement {
     inter.onclick = verseInterlinear;
     acts.append(uses, inter);
     b.append(acts);
-    if (!compact()) b.append(actions(['Open as a tab'], () => { closeSheet(); openStrong(lx.strong); }));
+    if (!compact()) b.append(actions(['Keep as pane'], () => { closeSheet(); openStrong(lx.strong); }));
     for (const n of w.notes) b.append(noteCard(n.anchor === w.anchor ? w.reference : `${lx.strong} everywhere`, n.text));
     const note = h('button', 'btn soft wide', `Note on ${lx.strong} everywhere`);
     note.onclick = () => writeNote(note, { anchor: lx.strong, label: `${lx.strong} everywhere` }, 'note');
@@ -742,6 +742,13 @@ async function openSecondReader(ref: string, version = 'KJV') {
     paint(vw.root, vw.drawn);
   });
   if (!readers2Watched.has(pane2.id)) {
+    pane2.captureView = () => ({ code: st.code, chapter: st.chapter, version: ver });
+    pane2.restoreView = async state => {
+      if (!state || !books.some(b => b.code === state.code && Number.isInteger(state.chapter) && state.chapter >= 1 && state.chapter <= b.chapters)) return;
+      st.code = state.code; st.chapter = state.chapter;
+      if (VERSIONS.includes(state.version)) ver = state.version;
+      await draw2(pane2.el, pane2, 1);
+    };
     readers2Watched.add(pane2.id);
     const was = pane2.onClose;
     pane2.onClose = () => { was?.(); readers2.delete(pane2.id); readers2Watched.delete(pane2.id); readerMoved(); };
@@ -1081,12 +1088,12 @@ document.addEventListener('keydown', e => {
   const typing = !!(e.target as HTMLElement).closest('input, textarea, [contenteditable]');
   if (e.key === 'Escape') { closeSheet(); clearSelection(); hideCard(); }
   // Ctrl+F finds in the pane last clicked or typed in, else in the chapter (note 5c4a)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
-  if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
   { const kc = commandByKey(e); if (kc) { e.preventDefault(); void runKeptCommand(kc); return; } }
-  if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === ',') { e.preventDefault(); openSettings(); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '0') { e.preventDefault(); setSize(100); return; }
   // a finding about the app, from anywhere (note 50c1)
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); findingBox(); return; }
   // quick capture (Ctrl+J unless set otherwise in the Notebook's settings): a small box at the verse, from anywhere

@@ -278,6 +278,11 @@ pub fn render(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<(Ve
     Ok((pdf, page_text(&doc), doc.pages().len()))
 }
 
+/// Count the pages from the same layout as render, without writing a file.
+pub fn page_count(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<usize> {
+    Ok(lay_out(plan, t, look, title)?.pages().len())
+}
+
 /// A deck's plan as its pages drawn in SVG, for the window's preview (W6): the same layout as the PDF's, page for page.
 pub fn pages_svg(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<Vec<String>> {
     let doc = lay_out(plan, t, look, title)?;

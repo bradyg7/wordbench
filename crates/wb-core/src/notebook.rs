@@ -522,6 +522,14 @@ pub fn delete_day(store: &mut Store, day: Option<&str>) -> Result<Value> {
     Ok(json!({"ok": true, "day": d.to_string()}))
 }
 
+pub fn delete_day_with_undo(bible: &Bible, store: &mut Store, day: Option<&str>) -> Result<Value> {
+    let day = parse_day(day)?.to_string();
+    let id = store.day(&day).map(|entry| s(entry, "id")).ok_or_else(|| missing("That day has no page."))?;
+    let mut result = crate::deletion::remove(bible, store, &id)?;
+    result["day"] = json!(day);
+    Ok(result)
+}
+
 // ---- the list: grouped by day, chapter, thread or not at all -------------------------------------------------------
 
 /// How the Notebook's list is asked for.
@@ -606,6 +614,9 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
     // the sections Pages and Questions are filters over the list by None (the most recently changed first)
     let (pages, questions) = (o.pages || o.group == "pages", o.questions || o.group == "questions");
     let grouped = if pages || o.group == "questions" { "none" } else { o.group.as_str() };
+    if !words.is_empty() && grouped == "none" && !pages && !questions {
+        all.extend(crate::threadpage::lines(bible, store).into_iter().filter(|e| words_in(e, &words)));
+    }
     if questions {
         all.retain(|e| e["kind"] == "question");
         all.extend(crate::questions::entries(bible, store).into_iter().filter(|e| words_in(e, &words)));
@@ -995,31 +1006,18 @@ pub fn set_setting(store: &mut Store, key: &str, value: &str) -> Result<Value> {
     } else {
         Some(json!(capture_key(v)?))
     };
+    if key == "capture" {
+        crate::mycommands::check_key(store, new.as_ref().and_then(Value::as_str).unwrap_or("Ctrl+J"), None, true)?;
+    }
     store.set_setting("notebook", key, new)?;
     Ok(settings(store))
 }
 
 /// A key as the window reads it: Ctrl or Alt (and Shift) with one letter or digit: "Ctrl+J", "Ctrl+Shift+K", "Alt+N".
 fn capture_key(v: &str) -> Result<String> {
-    let parts: Vec<&str> = v.split('+').map(str::trim).collect();
-    let (last, mods) = parts.split_last().ok_or_else(|| bad("Give a key like Ctrl+J."))?;
-    let mut have = vec![];
-    for m in mods {
-        let m = match m.to_lowercase().as_str() {
-            "ctrl" | "control" => "Ctrl",
-            "alt" => "Alt",
-            "shift" => "Shift",
-            _ => return Err(bad("A key's modifiers are Ctrl, Alt and Shift: Ctrl+J.")),
-        };
-        have.push(m);
-    }
-    let one = last.chars().count() == 1 && last.chars().all(|c| c.is_ascii_alphanumeric());
-    if !one || !have.iter().any(|m| *m == "Ctrl" || *m == "Alt") {
-        return Err(bad("Give a key with Ctrl or Alt and a letter or digit, like Ctrl+J."));
-    }
-    let mut out: Vec<String> = ["Ctrl", "Alt", "Shift"].iter().filter(|m| have.contains(m)).map(|m| m.to_string()).collect();
-    out.push(last.to_uppercase());
-    Ok(out.join("+"))
+    let normalized = crate::mycommands::normalize_key(v)?;
+    if normalized.is_empty() { return Err(bad("Give a key like Ctrl+J.")); }
+    Ok(normalized)
 }
 
 #[cfg(test)]

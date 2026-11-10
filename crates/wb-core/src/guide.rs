@@ -33,11 +33,12 @@ const ENTRIES: &[(&str, &str, &[(&str, &str)])] = &[
         "views",
         "Views",
         &[
-            ("What a view is", "A list kept up to date, inside a page: / → View. It holds one line of the command language, and lists the notes the line finds each time the page is drawn. A click on a row opens its note. Views read; they never write."),
+            ("What a view is", "A live list of Notebook pages and questions that match a query. On a page, use / → View to show the list as a block. Run the same query from the command field to open the list in the Notebook. Select a row to open its page. Running a View only reads study data."),
             ("The line", "notebook, then any of: @place (a verse, a chapter, a book, or H7065: the notes on any verse in it, in Bible order), questions (or open, or answered), thread <name> (a name of more words in quotes), days N (written in the last N days), pages (the notes with no place), and any other words, each of which must be in the note."),
-            ("Examples", "notebook @Num 25 questions · notebook thread phinehas · notebook days 7 · notebook pages zeal · notebook @Numbers answered"),
+            ("Command field examples", "notebook @Num 25 questions · notebook thread phinehas · notebook days 7 · notebook pages zeal · notebook @Numbers answered"),
             ("Changing the line", "Click the line above the list and write it anew; Enter keeps it. The file holds only the line, in a ```view block."),
-            ("The same everywhere", "The command field lists the same notes for the same line (notebook @Num 25 questions), and so does wb view run \"notebook @Num 25 questions\" in a terminal."),
+            ("From a terminal", "wb view run \"notebook @Num 25 questions\" returns the same rows."),
+            ("Views and Layouts", "A View lists the pages and questions that match a query. A Layout saves an arrangement of panes. For pane arrangements, see Layout in the toolbar or type help layout in the command field."),
         ],
     ),
     (

@@ -136,8 +136,8 @@ fn notebook_commands() -> Vec<Command> {
                 let text = text_of(c, &a.s("text"))?;
                 j(nb::write_day(c.bible()?, &mut *c.study()?, a.opt("day").as_deref(), &text, false).map_err(e)?)
             }),
-        cmd("day rm", "Delete a day's page (today's, or wb day rm 2026-11-03); it waits in .trash 7 days.",
-            vec![Pos("day", N::Opt)], |c, a| j(nb::delete_day(&mut *c.study()?, day_of(a).as_deref()).map_err(e)?)),
+        cmd("day rm", "Delete a day's page with timed Undo.",
+            vec![Pos("day", N::Opt)], |c, a| j(nb::delete_day_with_undo(c.bible()?, &mut *c.study()?, day_of(a).as_deref()).map_err(e)?)),
         cmd("settings", "The window's settings for a part (notebook): wb settings notebook; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
             vec![Pos("part", N::One), Pos("key", N::Opt), Pos("value", N::Any), Flag("about")], |c, a| {
                 const FREE: [&str; 6] = ["reading", "hover", "theme", "advanced", "toolbar", "commands"];
@@ -274,13 +274,12 @@ fn notebook_commands() -> Vec<Command> {
                 }
                 j(json!(st.update_jot(&id, text.as_deref(), q).map_err(e)?))
             }),
-        cmd("inbox rm", "Delete an Inbox note (moved to .trash in the study folder).", vec![Pos("note", N::Many)], |c, a| {
+        cmd("inbox rm", "Delete an Inbox page with timed Undo.", vec![Pos("note", N::Many)], |c, a| {
             let mut st = c.study()?;
             let id = nb::find_jot(&st, &a.s("note")).map_err(e)?;
-            // the pages inside it move up a level (W3)
-            wb_core::pages::release(c.bible()?, &mut st, &id).map_err(e)?;
-            st.delete_jot(&id).map_err(e)?;
-            j(json!({"ok": true, "id": id}))
+            let mut result = wb_core::deletion::remove(c.bible()?, &mut st, &id).map_err(e)?;
+            result["id"] = json!(id);
+            j(result)
         }),
         cmd("questions", "Your questions: those in the Inbox and those at a place (trails), newest first.", vec![Opt("status", Some("open"))], |c, a| {
             j(nb::questions(c.bible()?, &*c.study()?, &a.opt_or("status", "open")).map_err(e)?)
@@ -311,8 +310,11 @@ fn notebook_commands() -> Vec<Command> {
             vec![Pos("trail", N::One), Pos("page", N::One), Flag("also")], |c, a| {
                 j(wb_core::questions::fold(c.bible()?, &mut *c.study()?, &a.s("trail"), &a.s("page"), a.flag("also")).map_err(e)?)
             }),
-        cmd("question unfold", "Give a question written in a page its own place again: a trail at the page's place, and the block taken out of the page. wb question unfold <page id>#<block number>.",
-            vec![Pos("id", N::One)], |c, a| j(wb_core::questions::unfold(c.bible()?, &mut *c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("question unfold", "Give a question written in a page its own place again: a trail at the page's first place (or one of its places selected with --at), and the block taken out of the page. wb question unfold <page id>#<block number> [--at place].",
+            vec![Pos("id", N::One), Opt("at", None)], |c, a| {
+                let at = a.opt("at").map(|at| crate::study::anchor(c, &at)).transpose()?;
+                j(wb_core::questions::unfold(c.bible()?, &mut *c.study()?, &a.s("id"), at.as_deref()).map_err(e)?)
+            }),
         cmd("parse", "What a line of the capture box means, as the window reads it: wb parse \"uses zeal gospels\" (an action, or the error).",
             vec![Pos("line", N::Any)], |c, a| {
                 Ok(Out::Json(match lang::parse(&a.s("line"), c.bible()?.books()) {
