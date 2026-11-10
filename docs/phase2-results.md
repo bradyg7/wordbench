@@ -1118,3 +1118,9 @@ one. Each run's own copy now starts without `notes/_inbox`, `findings/`, `docume
 scratch folder itself is not touched). The finding check also read a finding while it was still a `.tmp` (it now reads
 `.md` files only). The window-size checks failed in two runs and passed in the third and in a probe on their own; they
 now say what `window` answered and the window's size, should they fail again.
+
+## 36. Merged desktop verification and debugging queue (2026-11-09)
+
+Commit `3078ede` records **420 of 420** desktop checks on the merged build. See the [current debugging queue](current/README.md) for remaining verification, redesign work and newly reported findings.
+
+**Fresh verification at the same revision (2026-11-09).** Rust **172/172**, WebKit **20 passed and 10 project skips**, document plans **16/16**, Python-open counts **5/5**, and real mouse **5/5**. Golden matched **93/103** on the full copied fixture and **103/103** on the control copy with one documented Rust-only set item omitted. The [verification and reader diagnostics record](current/verification-3078ede.md) has the commands, fixture details, reproduction matrix and review decisions.
