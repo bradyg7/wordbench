@@ -9,6 +9,7 @@
     "fixtures": "node scripts/fixtures.mjs",
     "tokens:check": "python scripts/tokens.py --check",
     "test:tokens": "node --test scripts/tokens.test.mjs",
+    "test:commands-cases": "node --test scripts/commands-cases.test.mjs",
     "test:webkit": "playwright test",
     "measure": "node measure/measure.mjs",
     "package": "node scripts/package.mjs",

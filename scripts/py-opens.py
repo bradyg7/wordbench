@@ -4,6 +4,8 @@
     python scripts/py-opens.py --save before.json # keep what the Python app reads
     python scripts/py-opens.py --compare before.json   # after a change: it must read the same
 
+Set WB_LEGACY_APP to an explicit path to the archived Python checkout for this optional comparison.
+
 Opens a scratch copy of the study folder (scripts/scratch-study.ps1; the person's real folder is refused) with the Python
 app's own `Study`, and reads what that app reads: notes (only those with a place), threads and their places, trails and
 sets, and each thread's note text. With no option it also asks the Rust `wb study check` and says if the two disagree.
@@ -18,7 +20,6 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
-OLD = Path.home() / "github" / "bible-workbench"
 REAL = Path.home() / "github" / "bible-study-data"
 SCRATCH = Path(os.environ.get("WB_STUDY_DIR") or Path(tempfile.gettempdir()) / "bible-workbench-rs" / "study-scratch")
 RUST = REPO / "target" / "release" / ("wb.exe" if os.name == "nt" else "wb")
@@ -26,8 +27,8 @@ if not RUST.exists():
     RUST = REPO / "target" / "debug" / ("wb.exe" if os.name == "nt" else "wb")
 
 
-def python_reads():
-    sys.path.insert(0, str(OLD))
+def python_reads(old):
+    sys.path.insert(0, str(old))
     from workbench import study  # noqa: E402
 
     st = study.Study(SCRATCH)
@@ -50,7 +51,13 @@ def main():
     a = ap.parse_args()
     if SCRATCH.resolve() == REAL.resolve():
         sys.exit("refusing the real study folder; use a scratch copy")
-    py = python_reads()
+    legacy = os.environ.get("WB_LEGACY_APP")
+    if not legacy:
+        ap.error("set WB_LEGACY_APP to the Python checkout for this optional comparison")
+    old = Path(legacy).resolve()
+    if not (old / "workbench" / "study.py").is_file():
+        ap.error(f"WB_LEGACY_APP is not a Python Workbench checkout: {old}")
+    py = python_reads(old)
     shown = {k: v for k, v in py.items() if not isinstance(v, dict)}
     print("the Python app reads:", json.dumps(shown))
     bad = 0

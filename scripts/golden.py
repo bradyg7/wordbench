@@ -2,6 +2,8 @@
 
     python scripts/golden.py [name-filter ...] [--list]
 
+Set WB_LEGACY_APP to an explicit path to the archived Python checkout for this optional comparison.
+
 Cases are in tests/golden/cases.json: each a name and a list of steps (the arguments of one `wb` command each). Both
 sides get a fresh copy of the scratch study folder (scripts/scratch-study.ps1); the person's real folder is never used.
 The Python side is a private workbench server on its own port, so the running app is never reached. Ids, times and the
@@ -23,7 +25,6 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
-OLD = Path.home() / "github" / "bible-workbench"
 REAL = Path.home() / "github" / "bible-study-data"
 SOURCE = Path(os.environ.get("WB_GOLDEN_SOURCE") or Path(tempfile.gettempdir()) / "bible-workbench-rs" / "study-scratch")
 WORK = Path(tempfile.gettempdir()) / "bible-workbench-rs" / "golden"
@@ -118,6 +119,12 @@ def main():
         for c in cases:
             print(c["name"])
         return 0
+    legacy = os.environ.get("WB_LEGACY_APP")
+    if not legacy:
+        sys.exit("Set WB_LEGACY_APP to the Python checkout for this optional comparison.")
+    old = Path(legacy).resolve()
+    if not (old / "workbench" / "server.py").is_file() or not (old / "wb.py").is_file():
+        sys.exit(f"WB_LEGACY_APP is not a Python Workbench checkout: {old}")
     if want:
         cases = [c for c in cases if any(w in c["name"] for w in want)]
     if SOURCE.resolve() == REAL.resolve():
@@ -139,7 +146,7 @@ def main():
     env_py = dict(os.environ, BIBLE_STUDY_DATA=str(py.folder), BIBLE_WORKBENCH_PORT=str(PORT), PYTHONIOENCODING="utf-8",
                   BIBLE_WORKBENCH_PDF_DIR=str(py.docs))
     env_rs = dict(os.environ, WB_STUDY_DIR=str(rs.folder), WB_DOCS_DIR=str(rs.docs))
-    server = subprocess.Popen([sys.executable, "-m", "workbench.server"], cwd=str(OLD), env=env_py,
+    server = subprocess.Popen([sys.executable, "-m", "workbench.server"], cwd=str(old), env=env_py,
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _ in range(100):
@@ -160,7 +167,7 @@ def main():
                 # second (which decide the order of ties) fall the same way for the slower Python side and the Rust one.
                 fresh = (lambda: time.sleep(1.02 - time.time() % 1)) if case.get("files") else (lambda: None)
                 fresh()
-                a = run([sys.executable, str(OLD / "wb.py")] + py.args(step), env_py, cwd=str(OLD))
+                a = run([sys.executable, str(old / "wb.py")] + py.args(step), env_py, cwd=str(old))
                 fresh()
                 b = run([str(RUST)] + rs.args(step), env_rs)
                 if step[:2] in (["note", "rm"], ["trail", "rm"]) and a[0] == b[0] == 0:

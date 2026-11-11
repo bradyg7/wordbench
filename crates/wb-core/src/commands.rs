@@ -3,8 +3,8 @@
 //! window (a pane on the desktop, a sheet on a phone).
 //!
 //! An action serializes as the Python parser's object did (`{"cmd": "uses", "strong": "", "word": "zeal", ...}`), with a
-//! book as its code. `tests/commands-cases.json` holds the Python parser's own answers for every line its tests and
-//! manual give it (made by `scripts/commands-cases.mjs`), and the tests here compare with them.
+//! book as its code. `tests/commands-cases.json` is the Rust-maintained compatibility baseline, including cases from
+//! the command manual. The tests compare this parser with those reviewed expected values.
 //!
 //! New in the Rust app: the Notebook's `jot`, `place`, `journal`, `inbox` and `notebook`, and `window` (the test sizes).
 

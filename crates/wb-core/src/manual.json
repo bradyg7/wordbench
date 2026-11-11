@@ -1,5 +1,5 @@
 {
- "made_by": "scripts/commands-cases.mjs from the Python app's web/help-docs.js and web/commands.js",
+ "source": "Rust-maintained command manual; originally ported from the legacy app. Edit this file as the canonical manual.",
  "commands": [
   {
    "name": "def",

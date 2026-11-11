@@ -58,12 +58,10 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
 ```
 cargo build                                  # the workspace
 cargo run -p wb-cli -- text "Num 25:11"      # verbatim scripture
+cargo test                                   # routine Rust regression suite, including checked-in command/manual compatibility cases
 npm install && npm run tauri dev             # the app (from the repo root)
 npm run test:webkit                          # the UI in Playwright's WebKit at phone size (this checkout's own vite, on its own port)
-python scripts/golden.py                     # the Rust wb against the Python wb on the same inputs (scratch folders)
-python scripts/doc-plans.py                  # documents' plans: the Rust fingerprints against the Python app's (scratch folder)
-python scripts/py-opens.py                   # the Python app opens the scratch folder and reads what this app reads (--save / --compare: before and after a change)
-node scripts/commands-cases.mjs              # the command language's cases and manual, from the Python app's commands.js
+npm run test:commands-cases                   # legacy export guard: opt-in and isolated output only
 node measure/desk.mjs                        # the desktop checked in the real app (its own instance and scratch copy)
 npm run measure                              # the speed budgets (after npx tauri build --no-bundle)
 python scripts/build-dictionary.py           # Webster's 1913 into dictionary.db (wb word-define, the card's Definitions); once per computer
@@ -71,9 +69,30 @@ powershell -File scripts\backup-study.ps1   # a hashed copy of the real study fo
 powershell -File scripts\install-app.ps1    # the release build into %LOCALAPPDATA%\bible-workbench-rs\app (refuses while it is open)
 ```
 
-The Rust `wb` must give the same output as the Python `wb`: when changing a command, add or update its case in
-`tests/golden/cases.json` and run the golden tests. Known, deliberate differences are listed in docs/phase1-results.md. Rust tests: `cargo test` (the Python app's
-own tests carried over, plus the reading plans).
+The checked-in `crates/wb-core/tests/commands-cases.json` and `crates/wb-core/src/manual.json` are the maintained Rust
+inputs; edit them directly when a reviewed command or manual change requires it, then run `cargo test`. The old Python
+generator is an optional export only. Set `WB_LEGACY_APP` to the explicit Python checkout and create a new empty
+directory for the export (an ignored directory under `target/` is suitable):
+
+```powershell
+$env:WB_LEGACY_APP = 'C:\path\to\bible-workbench'
+$exportDir = Join-Path (Get-Location) ('target/wb-command-export-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $exportDir | Out-Null
+node scripts/commands-cases.mjs --legacy-app $env:WB_LEGACY_APP --out-dir $exportDir
+```
+
+It writes under that directory and never changes the maintained Rust inputs. Legacy parity checks are also optional;
+they require the same explicit `WB_LEGACY_APP` and use only scratch study data:
+
+```powershell
+$env:WB_LEGACY_APP = 'C:\path\to\bible-workbench'
+python scripts/golden.py
+python scripts/doc-plans.py
+python scripts/py-opens.py
+```
+
+When changing a `wb` contract, add or update its case in `tests/golden/cases.json` and run the Rust tests. Known,
+deliberate differences are listed in docs/phase1-results.md.
 
 `npm run dev` (and `npm run tauri dev`) serve the UI on 1420, which Tauri's `devUrl` expects. `npm run test:webkit` never
 uses that server: Playwright starts this checkout's own vite on a port picked from the checkout's path (1430-1929;

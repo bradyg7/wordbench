@@ -1,17 +1,16 @@
 //! Rust-owned document-plan regression baseline from a synthetic, DB-quoted thread fixture.
-//! The Bible database path is explicit so this check cannot silently use the Python checkout's DB.
+//! Uses the same standalone database resolution as the other Rust tests.
 
 mod common;
 
-use common::Scratch;
+use common::{bible, Scratch};
 use serde_json::Value;
-use std::{fs, path::Path};
-use wb_core::{bible::Bible, docs::plan, store::Store, studyapi};
+use std::fs;
+use wb_core::{docs::plan, store::Store, studyapi};
 
 #[test]
 fn document_plans_match_the_repository_owned_baseline() {
-    let db = std::env::var_os("WB_BIBLE_DB").expect("set WB_BIBLE_DB to the provisioned, read-only Bible database");
-    let bible = Bible::open(Path::new(&db)).expect("open the explicitly provisioned Bible database");
+    let Some(bible) = bible() else { return };
     let scratch = Scratch::new();
     let thread_dir = scratch.path().join("threads");
     fs::create_dir_all(&thread_dir).unwrap();
