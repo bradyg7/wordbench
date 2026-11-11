@@ -79,3 +79,20 @@ test('direct built routes and manual activation guidance remain available withou
   await expect(page.getByText('Each invited participant may activate two computers.', { exact: false })).toBeVisible();
   await expect(page.getByText('Pilot updates are included', { exact: false })).toBeVisible();
 });
+
+test('public preview screenshots load and the recorded demo plays', async ({ page }) => {
+  await page.goto('/');
+  for (const image of await page.locator('img').all()) {
+    await image.scrollIntoViewIfNeeded();
+    await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  }
+  const video = page.locator('video');
+  await video.scrollIntoViewIfNeeded();
+  await video.evaluate(async (el: HTMLVideoElement) => { el.muted = true; await el.play(); });
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime)).toBeGreaterThan(0.1);
+  expect(await video.evaluate((el: HTMLVideoElement) => el.duration)).toBeGreaterThan(5);
+  await video.evaluate((el: HTMLVideoElement) => el.pause());
+  await expect(page.getByText('No personal notes are shown.', { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: `test-results/site/demo-${test.info().project.name}.png`, fullPage: true });
+});
