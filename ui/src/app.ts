@@ -32,6 +32,7 @@ export const app = {
   readers: (): { pane: string; code: string; chapter: number; label: string }[] => [],
   /** Runs a line as if typed into the command field. */
   run: async (_line: string): Promise<string> => '',
+  listen: async (_command: { action: string; span?: { book: string; c1: number; v1: number; c2: number; v2: number }; rate?: number; name?: string }): Promise<string> => '',
   /** Something changed in the study folder (what, or everything when not said): the panes that show it read it again. */
   changed: (..._what: Change[]) => {},
 };

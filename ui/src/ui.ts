@@ -23,6 +23,7 @@ const PATHS: Record<string, string> = {
   down: 'M4 6l4 4 4-4',
   left: 'M10 3L5 8l5 5',
   right: 'M6 3l5 5-5 5',
+  play: 'M4 2.5v11l9-5.5z',
   x: 'M4 4l8 8M12 4l-8 8',
   minus: 'M3 8h10',
   plus: 'M8 3v10M3 8h10',

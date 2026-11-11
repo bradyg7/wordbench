@@ -24,7 +24,6 @@ import { openSettings } from './settings';
 type Undo = { kind: 'note'; id: string } | { kind: 'hl'; record: unknown } | { kind: 'trail'; id: string } | { kind: 'thread'; name: string; anchor: string } | { kind: 'jot'; id: string };
 let last: Undo | null = null;
 
-const later = (what: string, phase: number) => `${what} comes in phase ${phase}; the Python app still does it for now.`;
 const at = (a: { at?: At }) => a.at ?? here();
 
 function spanPlace(s: { book: string; c1: number; v1: number; c2: number; v2: number }) {
@@ -224,7 +223,7 @@ export async function perform(a: any, line: string): Promise<string> {
     case 'findings': openFindings(); return 'Your findings about the app';
     case 'finding': return addFinding(a.text);
     case 'version': return a.version ? app.setVersion(a.version) : `The reader is in the ${app.version()}`;
-    case 'listen': return later('Read aloud', 6);
+    case 'listen': return app.listen(a);
     case 'make': return makeFrom(a);
     case 'docs': return docs(a);
     case 'theme': {

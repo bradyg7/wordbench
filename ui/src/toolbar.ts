@@ -18,6 +18,7 @@ export const hooks = {
   highlights: (_from: HTMLElement) => {},
   toggleVersion: async (): Promise<string> => '',
   find: () => {},
+  listen: () => {},
 };
 
 export interface Item {
@@ -43,6 +44,7 @@ export const CATALOG: Item[] = [
   { id: 'highlights', label: 'Highlights', icon: 'pen', group: 'Reading controls', sub: 'What is drawn in the reader', run: from => hooks.highlights(from), caret: true },
   { id: 'layout', label: 'Layout', icon: 'sidebar', group: 'Reading controls', sub: 'Open or save an arrangement of panes', run: from => void layoutMenu(from, s => void openSettings(s)), caret: true },
   { id: 'find', label: 'Find in chapter', icon: 'search', group: 'Reading controls', sub: 'Ctrl+F', run: () => hooks.find() },
+  { id: 'listen', label: 'Listen', icon: 'play', group: 'Reading controls', sub: 'Read this chapter aloud with a local English voice', run: () => hooks.listen(), more: true },
   { id: 'textsize', label: 'Text size', icon: 'heading', group: 'Reading controls', sub: 'A− 100% A+, one small menu', run: from => textSizeMenu(from), caret: true },
   { id: 'theme', label: 'Theme', icon: 'eye', group: 'Reading controls', sub: 'Light ↔ dark in one click', run: () => flipTheme() },
 ];

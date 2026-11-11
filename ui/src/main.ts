@@ -31,6 +31,7 @@ import { findingBox, openFindings } from './findings';
 import { openDocuments } from './documents';
 import { parse, runLine, written } from './actions';
 import { setupIfNeeded } from './setup';
+import { createReadAloud } from './listen';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const reader = $('reader'), scroller = $('scroller');
@@ -86,6 +87,7 @@ async function setVersion(v: string): Promise<string> {
   v = v.toUpperCase();
   if (!VERSIONS.includes(v)) return `No version ${v} here: ${VERSIONS.join(', ')}`;
   if (v !== version) {
+    readAloud.stopForNavigation();
     savePlace();
     version = v;
     try { localStorage.setItem('wb.version', v); } catch { /* this run only */ }
@@ -127,19 +129,35 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   savePlace();
 }
 
+const readAloud = createReadAloud({
+  books: () => books,
+  drawn: () => drawn,
+  topVerse: () => topVerse().verse,
+  rememberPlace,
+  show: async (code, chapter, verse) => { await open(code, chapter, verse); return drawn; },
+  root: reader,
+  scroller,
+});
+
 function placeButton(label: string) {
   const b = $('place');
   b.replaceChildren(icon('book'), h('span', 'place-label', label), icon('down', 14));
 }
 
+function rememberPlace() {
+  if (drawn) { savePlace(); backStack.push({ ...place }); if (backStack.length > 50) backStack.shift(); }
+}
+
 /** A jump elsewhere: the place left is kept for back. */
 async function jump(code: string, chapter: number, verse = 1) {
-  if (drawn) { savePlace(); backStack.push({ ...place }); if (backStack.length > 50) backStack.shift(); }
+  readAloud.stopForNavigation();
+  rememberPlace();
   app.picked = verse > 1 ? { anchor: `${code}.${chapter}:${verse}`, label: `${books.find(b => b.code === code)?.name ?? code} ${chapter}:${verse}` } : null;
   await open(code, chapter, verse);
 }
 
 function back(): boolean {
+  readAloud.stopForNavigation();
   const p = backStack.pop();
   if (!p) return false;
   open(p.code, p.chapter, p.verse, p.offset);
@@ -147,6 +165,7 @@ function back(): boolean {
 }
 
 function step(n: number) {
+  readAloud.stopForNavigation();
   if (!drawn) return;
   const c = drawn.chapter;
   let i = books.findIndex(b => b.code === c.code), ch = c.chapter + n;
@@ -1071,6 +1090,7 @@ notebookBadge.set = n => setBadge(n);
 hooks.highlights = from => void highlightsMenu(from);
 hooks.toggleVersion = () => setVersion(version === 'KJV' ? 'YLT' : 'KJV');
 hooks.find = () => findInChapter(finding);
+hooks.listen = () => { void readAloud.execute({ action: 'start' }).then(toast).catch(e => toast(String(e))); };
 cmdFills.get = () => {
   const d = drawn, sel = selector.sel;
   let word = '';
@@ -1144,6 +1164,7 @@ Object.assign(app, {
   version: () => version,
   setVersion,
   findInChapter,
+  listen: (command: Parameters<typeof readAloud.execute>[0]) => readAloud.execute(command),
   secondReader: (ref: string, version?: string) => void openSecondReader(ref, version),
   readers: () => [...readers2.values()].filter(r => dock.panes.some(p => p.id === r.pane))
     .map(({ pane, code, chapter, label }) => ({ pane, code, chapter, label })),
