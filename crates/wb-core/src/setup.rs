@@ -3,8 +3,7 @@
 //! The order is deliberate. The environment wins, so a terminal (and the tests) can point anywhere without touching the
 //! person's settings. Then the person's choice, saved in `settings.json` by the window's setup screen or by
 //! `wb setup`. Then the package: `datasets/workbench.db` beside the program, which is where a downloaded Bible
-//! Workbench finds its Bible. The path into the Python repository comes last, so a development checkout keeps working
-//! as it did before there was a package.
+//! Workbench finds its Bible. The application-data directory also has a `datasets/` fallback.
 
 use serde_json::{Map, Value};
 use std::env;
@@ -107,7 +106,7 @@ pub fn suggested_study_dir() -> PathBuf {
 }
 
 /// Where the Bible database may be, best first: `WB_BIBLE_DB`, the saved choice, beside the program, the application
-/// data folder, and last the Python repository's build (a development checkout).
+/// data folder.
 pub fn db_candidates() -> Vec<PathBuf> {
     let mut out: Vec<PathBuf> = Vec::new();
     let mut add = |p: PathBuf| {
@@ -128,15 +127,10 @@ pub fn db_candidates() -> Vec<PathBuf> {
         add(dir.join(DB_FILE));
     }
     add(app_dir().join("datasets").join(DB_FILE));
-    add(legacy_db_path());
     out
 }
 
-/// The first database that is there, else the best place to put one (so an error names where it looked).
+/// The first candidate that is a file.
 pub fn existing_db() -> Option<PathBuf> {
     db_candidates().into_iter().find(|p| p.is_file())
-}
-
-fn legacy_db_path() -> PathBuf {
-    crate::home().join("github").join("bible-workbench").join("datasets").join(DB_FILE)
 }

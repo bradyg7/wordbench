@@ -5,13 +5,13 @@
 //   npm run package -- --db "C:\path\to\workbench.db"
 //
 // The database is not in git (it is 118 MB and belongs to a separate build), so the package copies it from --db,
-// WB_BIBLE_DB, `datasets/workbench.db` in this checkout, or the Python repository beside it. Pass --skip-build to
-// package the binaries already in target/release (for testing), and --skip-deps to skip the dependency inventory.
+// WB_BIBLE_DB, or `datasets/workbench.db` in this checkout. See data/README.md for local provisioning.
+// Pass --skip-build to package existing binaries for testing, and --skip-deps to skip the dependency inventory.
 import { execFileSync } from 'node:child_process';
 import {
   cpSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, rmSync, statSync, writeFileSync, closeSync,
 } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeZip } from './zip.mjs';
 import { checkZip } from './check-package.mjs';
@@ -57,18 +57,14 @@ if (!version || pkg.version !== version || cargoVersion !== version) {
 say(`Bible Workbench ${version}`);
 
 // ---- the Bible database -------------------------------------------------------------------------------------------
-const db = [
+const dbCandidates = [
   value('db'),
   process.env.WB_BIBLE_DB,
   join(repo, 'datasets/workbench.db'),
-  resolve(repo, '..', 'bible-workbench/datasets/workbench.db'),
-  resolve(repo, '..', 'bible-workbench-rs/datasets/workbench.db'),
-].filter(Boolean).find(p => existsSync(p) && statSync(p).isFile());
+].filter(Boolean);
+const db = dbCandidates.find(p => existsSync(p) && statSync(p).isFile());
 if (!db) {
-  die(`No Bible database found. Point at one with --db, or set WB_BIBLE_DB.\nLooked in:\n  ${[
-    value('db'), process.env.WB_BIBLE_DB, join(repo, 'datasets/workbench.db'),
-    resolve(repo, '..', 'bible-workbench/datasets/workbench.db'),
-  ].filter(Boolean).join('\n  ')}`);
+  die(`No Bible database found. See data/README.md to provision one, or select one with --db or WB_BIBLE_DB.\nLooked in:\n  ${dbCandidates.join('\n  ')}`);
 }
 const fd = openSync(db, 'r');
 const magic = Buffer.alloc(16);
@@ -116,11 +112,15 @@ cpSync(join(repo, 'licenses'), join(stage, 'licenses'), { recursive: true });
 // the landing page, tool caches) or anything that would leak local paths.
 const skip = ['node_modules', 'target', 'dist', 'gen', 'fixtures', '.git', '.DS_Store', '.env', '.claude'];
 const sourceFilter = src => {
-  const parts = src.replaceAll('\\', '/').split('/');
+  const parts = relative(repo, src).replaceAll('\\', '/').split('/');
   return !parts.some(part => skip.includes(part));
 };
 for (const item of ['crates', 'ui', 'app', 'spikes', 'tests', 'scripts', 'Cargo.toml', 'Cargo.lock', 'package.json', 'package-lock.json', 'playwright.config.ts']) {
   cpSync(join(repo, item), join(stage, 'source', item), { recursive: true, filter: sourceFilter });
+}
+mkdirSync(join(stage, 'source', 'data'));
+for (const item of ['data/README.md', 'data/bible-sources.lock.json']) {
+  cpSync(join(repo, item), join(stage, 'source', item));
 }
 
 // ---- the dependency inventory --------------------------------------------------------------------------------------

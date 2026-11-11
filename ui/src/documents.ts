@@ -1,7 +1,4 @@
-// Documents from a thread (phase 2b tier 4): the Speaker Script as Word and Verse by Verse as PDF pages, each kept as one
-// file that is brought up to date (wb docs …, wb craft …). The Documents pane makes one and lists every document with how
-// it stands; a thread's pane lists that thread's. Every verse in a finished file is checked against the Bible before it
-// is kept. What the Python app still makes (the other structures, PowerPoint, lessons' documents) is listed, and says so.
+// Word and PDF exports, and the records that keep them up to date (wb docs …, wb craft …).
 import { wb } from './api';
 import { app } from './app';
 import type { Side } from './dock';
@@ -29,7 +26,7 @@ const STATES: Record<string, [string, string]> = {
   edited: ['Changed by hand', 'warn'],
   old_design: ['Old design', 'muted'],
   missing: ['File missing', 'warn'],
-  gone: ['Its thread or page is gone', 'muted'],
+  gone: ['Its source is gone', 'muted'],
   unreadable: ['Cannot read its source', 'warn'],
   forgotten: ['Not kept up to date', 'muted'],
   elsewhere: ['Kept by the Python app', 'muted'],
@@ -40,13 +37,21 @@ const when = (iso: string) => {
   return isNaN(+d) ? '' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 };
 
-/** Make (or bring up to date) a document from a thread. → what to say */
-export async function makeDoc(thread: string, to: string, structure?: string, theme?: string, look?: string, ink?: string, dials: [string, string][] = []): Promise<string> {
-  const argv = ['craft', to, '--thread', thread];
+type ExportSource = { kind: 'thread' | 'lesson' | 'passage'; name: string; version?: string };
+type ExportOptions = { structure?: string; theme?: string; look?: string; ink?: string; dials?: [string, string][]; newCopy?: boolean };
+
+function sourceArgs(source: ExportSource): string[] {
+  return [`--${source.kind}`, source.name, ...(source.version ? ['--version', source.version] : [])];
+}
+
+/** Make or bring up to date a document from the given source. */
+export async function makeDoc(source: ExportSource, to: string, { structure, theme, look, ink, dials = [], newCopy }: ExportOptions = {}): Promise<string> {
+  const argv = ['craft', to, ...sourceArgs(source)];
   if (structure) argv.push('--structure', structure);
   if (theme) argv.push('--theme', theme);
   if (look) argv.push('--look', look);
   if (ink) argv.push('--set', `ink=${ink}`);
+  if (newCopy) argv.push('--new');
   for (const [k, v] of dials) argv.push('--set', `${k}=${v}`);
   const r = await wb(argv);
   app.changed('documents');
@@ -79,8 +84,7 @@ function docRow(d: any): HTMLElement {
   if (d.problem) main.append(h('div', 'muted small', d.problem));
   if (d.kept?.length) main.append(h('div', 'muted small', `Your edits kept as ${d.kept.join(', ')}`));
   const acts = h('div', 'doc-acts');
-  // made here: a thread's Speaker Script, or Verse by Verse as PDF pages; the rest is the Python app's until phase 5
-  const here = ['thread', 'page'].includes(d.source?.kind) && ((d.to === 'word' && d.structure === 'script') || (d.to === 'pdf' && d.structure === 'verse')
+  const here = ['thread', 'page', 'passage', 'lesson'].includes(d.source?.kind) && ((d.to === 'word' && d.structure === 'script') || (d.to === 'pdf' && d.structure === 'verse')
     || (d.design && ((d.to === 'word' && ['share', 'study', 'reading'].includes(d.structure)) || (d.to === 'pdf' && d.structure === 'reader'))));
   if (!here && !d.problem) main.append(h('div', 'muted small', d.to === 'deck' ? 'PowerPoint: made and updated by the Python app until phase 5' : 'Made and updated by the Python app until phase 5'));
   if (here && ['behind', 'missing', 'edited', 'old_design'].includes(d.state)) {
@@ -117,20 +121,52 @@ export function lookFields(looks: any): { look: HTMLSelectElement; ink: HTMLSele
   return { look, ink };
 }
 
-/** The Make row: what to make from a thread, and in which theme and Look. */
 /** The Make row's last choices: the pane is drawn again after Make, and the row keeps what was chosen (the desk check
  * found the next Make going to the first thread, in Preview, after the redraw). */
-const lastMake: { thread?: string; kind?: string; theme?: string; look?: string; ink?: string; extra: [string, string][] } = { extra: [] };
+const lastMake: { source?: ExportSource; kind?: string; theme?: string; look?: string; ink?: string; extra: [string, string][] } = { extra: [] };
 
-function makeForm(threads: any[], fixed: string | null, themes: Record<string, any>, saved: string, done: () => void, looks?: any): HTMLElement {
+function makeForm(threads: any[], fixed: string | null, themes: Record<string, any>, saved: string, done: () => void, looks?: any, lessons: any[] = []): HTMLElement {
   const f = h('form', 'doc-make');
-  let pick: HTMLSelectElement | null = null;
+  const from = h('select', 'field doc-source');
+  from.setAttribute('aria-label', 'Export source');
+  from.append(new Option('Thread', 'thread'), new Option('Passage', 'passage'), new Option('Existing lesson', 'lesson'));
+  const thread = h('select', 'field doc-thread');
+  thread.setAttribute('aria-label', 'Thread');
+  const lesson = h('select', 'field doc-lesson');
+  lesson.setAttribute('aria-label', 'Existing lesson');
+  const passage = h('input', 'field doc-passage');
+  passage.setAttribute('aria-label', 'Passage reference');
+  passage.placeholder = 'Passage reference';
+  const version = h('select', 'field doc-version');
+  version.setAttribute('aria-label', 'Passage version');
+  version.append(new Option('KJV'), new Option('YLT'));
+  const copyLabel = h('label', 'doc-new');
+  const newCopy = h('input');
+  newCopy.type = 'checkbox';
+  copyLabel.append(newCopy, ' Make a new copy');
   if (!fixed) {
-    pick = h('select', 'field doc-thread') as HTMLSelectElement;
-    for (const t of threads) pick.append(new Option(t.name, t.name));
-    if (lastMake.thread && threads.some(t => t.name === lastMake.thread)) pick.value = lastMake.thread;
-    f.append(pick);
+    for (const t of threads) thread.append(new Option(t.name, t.name));
+    for (const l of lessons) lesson.append(new Option(l.title, l.id));
+    const previous = lastMake.source;
+    if (previous) {
+      from.value = previous.kind;
+      if (previous.kind === 'thread' && threads.some(t => t.name === previous.name)) thread.value = previous.name;
+      if (previous.kind === 'lesson' && lessons.some(l => l.id === previous.name)) lesson.value = previous.name;
+      if (previous.kind === 'passage') {
+        passage.value = previous.name;
+        version.value = previous.version || 'KJV';
+      }
+    }
+    f.append(from, thread, passage, version, lesson, copyLabel);
   }
+  const input = (): ExportSource => {
+    if (fixed) return { kind: 'thread', name: fixed };
+    if (from.value === 'lesson') return { kind: 'lesson', name: lesson.value };
+    if (from.value === 'passage') return { kind: 'passage', name: passage.value.trim(), version: version.value };
+    return { kind: 'thread', name: thread.value };
+  };
+  const missingSource = (source: ExportSource) =>
+    source.kind === 'passage' ? 'Enter a passage reference' : source.kind === 'lesson' ? 'Choose an existing lesson' : 'Choose a thread';
   const what = h('select', 'field doc-kind') as HTMLSelectElement;
   for (const [to, st, label] of KINDS) what.append(new Option(label, `${to}|${st}`));
   const theme = h('select', 'field doc-theme') as HTMLSelectElement;
@@ -144,12 +180,12 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
   if (lastMake.ink !== undefined) ink.value = lastMake.ink;
   let extra: [string, string][] = [...lastMake.extra];
   const adj = button('btn doc-adjust', 'Adjust…', async () => {
-    const thread = fixed || pick?.value;
-    if (!thread) { toast('Start a thread first: documents are made from a thread'); return; }
+    const source = input();
+    if (!source.name) { toast(missingSource(source)); return; }
     const [to, st] = what.value.split('|');
     const kind = to === 'word' ? 'word' : 'pdf';
     const start: Chosen = { look: look.value, dials: [...extra, ...(ink.value ? [['ink', ink.value] as [string, string]] : [])] };
-    const r = await adjust(kind, ['--thread', thread, '--to', to, '--structure', st, '--theme', theme.value], start, themes[theme.value]?.doc_accent || '8E1B14');
+    const r = await adjust(kind, [...sourceArgs(source), '--to', kind, '--structure', st, '--theme', theme.value], start, themes[theme.value]?.doc_accent || '8E1B14');
     if (!r) return;
     look.value = r.look;
     ink.value = r.dials.find(d => d[0] === 'ink')?.[1] || '';
@@ -161,17 +197,33 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
   f.append(what, theme, look, ink, adj, go);
   const about = h('p', 'muted small doc-about');
   const say = () => { const k = KINDS.find(x => `${x[0]}|${x[1]}` === what.value); about.textContent = `${k?.[3] || ''}. ${themes[theme.value]?.best_for || ''}.`; };
+  const showSource = () => {
+    thread.hidden = from.value !== 'thread';
+    lesson.hidden = from.value !== 'lesson';
+    passage.hidden = version.hidden = from.value !== 'passage';
+    copyLabel.hidden = from.value === 'thread';
+  };
+  from.onchange = () => {
+    showSource();
+    newCopy.checked = false;
+    what.value = from.value === 'passage' ? 'word|reading' : 'word|script';
+    say();
+  };
+  showSource();
   what.onchange = theme.onchange = say;
   say();
   f.onsubmit = async e => {
     e.preventDefault();
-    const thread = fixed || pick?.value;
-    if (!thread) { toast('Start a thread first: documents are made from a thread'); return; }
+    const source = input();
+    if (!source.name) { toast(missingSource(source)); return; }
     const [to, st] = what.value.split('|');
     go.disabled = true;
     go.textContent = 'Making…';
-    if (!fixed) Object.assign(lastMake, { thread, kind: what.value, theme: theme.value, look: look.value, ink: ink.value, extra: [...extra] });
-    try { toast(await makeDoc(thread, to, st, theme.value, look.value, ink.value, extra)); done(); }
+    if (!fixed) Object.assign(lastMake, { source, kind: what.value, theme: theme.value, look: look.value, ink: ink.value, extra: [...extra] });
+    try {
+      toast(await makeDoc(source, to, { structure: st, theme: theme.value, look: look.value, ink: ink.value, dials: extra, newCopy: newCopy.checked }));
+      done();
+    }
     catch (x) { toast(String((x as Error).message || x)); }
     finally { go.disabled = false; go.textContent = 'Make'; }
   };
@@ -203,14 +255,16 @@ export function openDocuments() {
     return open;
   }
   return dock.open('documents', 'Documents', 'documents', MINE, async (el, pane) => {
-    const [docs, threads, designs, tree, looks]: any[] = await Promise.all([wb(['docs', 'list']), wb(['thread', 'list']), wb(['craft', 'designs']), wb(['page', 'tree']), wb(['docs', 'looks'])]);
+    const [docs, threads, designs, tree, looks, lessons]: any[] = await Promise.all([
+      wb(['docs', 'list']), wb(['thread', 'list']), wb(['craft', 'designs']), wb(['page', 'tree']), wb(['docs', 'looks']), wb(['lesson', 'list']),
+    ]);
     el.replaceChildren();
     const hd = h('header', 'pane-head');
     hd.append(h('h2', 'pane-title', 'Documents'),
-      h('div', 'pane-sub', 'Word documents and slides made from your threads and pages, each kept as one file and brought up to date. Every verse in them is checked against the Bible before it is kept.'));
+      h('div', 'pane-sub', 'Word documents and PDF slides from your passages, threads, pages and existing lessons. Every verse is checked against the Bible before an export is kept.'));
     el.append(hd);
-    el.append(h('div', 'label', 'Make one from a thread'));
-    el.append(makeForm(threads, null, designs.themes, designs.theme, () => { void pane.refresh?.(); }, looks));
+    el.append(h('div', 'label', 'Make a document'));
+    el.append(makeForm(threads, null, designs.themes, designs.theme, () => { void pane.refresh?.(); }, looks, lessons));
     // W6 (sheet W7.1): from a page and the pages inside it, in the steps of Make a document
     el.append(h('div', 'label', 'Make one from a page'));
     el.append(pageForm(tree));
@@ -220,7 +274,7 @@ export function openDocuments() {
     if (!docs.length) list.append(h('p', 'muted', 'None yet. Make one above, or type doc thread Phinehas script in the command field.'));
     el.append(list);
     const folder = docs[0]?.path ? docs[0].path.replace(/[\\/][^\\/]*$/, '') : '';
-    el.append(h('p', 'muted small doc-folder', `${folder ? `Files are in ${folder}. ` : ''}PowerPoint, lessons' documents and the other structures are made by the Python app until phase 5.`));
+    if (folder) el.append(h('p', 'muted small doc-folder', `Files are in ${folder}.`));
   });
 }
 

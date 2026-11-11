@@ -3,8 +3,8 @@
 // A folder IS a set: each folder is a set file in sets/, holding its own items; where it sits in the tree is wb-core's
 // (settings/shelf.json, `wb shelf`). Every change here is a `wb` command, so a terminal can do the same. Open all (finding
 // a484) opens each item where its kind goes, from the keys `wb set open` gives: kept panes as their tabs, places as second
-// readers (the reader never moves), a document in its preview, pages in their own editable tabs. The tabs it opened carry
-// the folder's mark, and Close all closes them.
+// readers (the reader never moves), a document in its preview, pages in their own editable tabs, and standalone PDFs in the
+// system viewer. The tabs it opened carry the folder's mark, and Close all closes those tabs.
 
 import { wb } from './api';
 import { reopen, written } from './actions';
@@ -61,6 +61,21 @@ function paneKey(open: string) {
 const isOpen = (it: Item) => !!it.open && !!dock.find(paneKey(it.open));
 const markedFor = (id: string) => dock.panes.filter(p => p.owners?.some(m => m.set === id));
 
+async function openItem(it: Item): Promise<Pane | undefined> {
+  if (!it.open) throw new Error(it.why || 'This item cannot be opened here.');
+  if (it.kind === 'pdf') {
+    await wb(['pdfs', it.open.slice('pdf|'.length), '--exact']);
+    return;
+  }
+  return reopen(it.open);
+}
+
+function openPickedItem(it: Item) {
+  void openItem(it).then(() => {
+    if (it.kind !== 'pdf') setTimeout(() => void redraw(), 300);
+  }).catch(e => toast(String(e.message || e)));
+}
+
 async function waitFor(key: string, ms = 4000): Promise<Pane | undefined> {
   const end = performance.now() + ms;
   for (;;) {
@@ -86,11 +101,18 @@ export async function openAll(name: string, deep = false): Promise<string> {
   const shelf = dock.find('shelf');
   let opened = 0;
   let already = 0;
+  const external = new Set<string>();
   const counted = new Set<string>();
   const why: string[] = [];
   for (const s of sets) {
     for (const it of s.items as Item[]) {
       if (!it.open) { why.push(`${it.label}: ${it.why}`); continue; }
+      if (it.kind === 'pdf') {
+        if (external.has(it.open)) continue;
+        try { await openItem(it); external.add(it.open); }
+        catch (x) { why.push(`${it.label}: ${String(x)}`); }
+        continue;
+      }
       if (shelf) dock.from(shelf);
       const before = new Set(dock.panes);
       let p: Pane | undefined;
@@ -109,6 +131,7 @@ export async function openAll(name: string, deep = false): Promise<string> {
   void redraw();
   const said = [`${plan.name}: ${opened} opened`];
   if (already) said.push(`${already} already open`);
+  if (external.size) said.push(`${external.size} opened in the PDF viewer`);
   if (why.length) said.push(`${why.length} could not open (${why.slice(0, 2).join('; ')}${why.length > 2 ? '…' : ''})`);
   return said.join('; ');
 }
@@ -283,6 +306,7 @@ function itemRow(f: Folder, it: Item) {
   r.dataset.key = it.key;
   r.style.setProperty('--depth', String(f.depth + 1));
   r.append(h('span', 'shelf-fold none'), icon(KIND_ICON[it.kind] ?? 'file'), h('span', 'shelf-name', it.label));
+  if (it.kind === 'pdf') r.append(h('span', 'muted small shelf-tag', 'PDF'));
   if (it.kind === 'document') r.append(h('span', 'muted small shelf-tag', /\.pdf$/i.test(it.open?.split('|')[2] ?? '') ? 'PDF' : 'Word'));
   if (it.kind === 'note') r.append(h('span', 'muted small shelf-tag', 'page'));
   if (isOpen(it)) r.append(h('span', 'shelf-live'));
@@ -301,7 +325,7 @@ function itemRow(f: Folder, it: Item) {
     selected = { folder: f.id, key: it.key };
     keepKeys = true;
     if (!it.open) { toast(it.why || 'It cannot be opened here.'); draw(); return; }
-    void reopen(it.open).then(() => setTimeout(() => void redraw(), 300));
+    openPickedItem(it);
   };
   r.oncontextmenu = e => { e.preventDefault(); selected = { folder: f.id, key: it.key }; itemMenu(r, f, it, { x: e.clientX, y: e.clientY }); };
   dragRow(r, { folder: f.id, key: it.key }, f);
@@ -331,7 +355,7 @@ function folderMenu(from: Element, f: Folder, at?: { x: number; y: number }) {
   const body = h('div', 'shelf-menu');
   const open = markedFor(f.id).length;
   body.append(h('div', 'label', f.name),
-    ...(sizeClass() !== 'compact' ? [menuItem('Open all', 'sidebar', () => run(openAll(f.id)), `its ${f.items.length} items, as tabs`)] : []),
+    ...(sizeClass() !== 'compact' ? [menuItem('Open all', 'sidebar', () => run(openAll(f.id)), `its ${f.items.length} items`)] : []),
     ...(f.folders.length && sizeClass() !== 'compact' ? [menuItem('Open all, folders inside too', 'sidebar', () => run(openAll(f.id, true)))] : []),
     menuItem('Close all', 'x', () => run(closeAll(f.id, true)), open ? `the ${open} tabs it opened` : 'none open'),
     menuItem('Add…', 'plus', () => addMenu(from, f), 'a tab, a page, a place…'),
@@ -345,7 +369,7 @@ function folderMenu(from: Element, f: Folder, at?: { x: number; y: number }) {
 function itemMenu(from: Element, f: Folder, it: Item, at: { x: number; y: number }) {
   const body = h('div', 'shelf-menu');
   body.append(h('div', 'label', it.label));
-  if (it.open) body.append(menuItem('Open', 'sidebar', () => void reopen(it.open!)));
+  if (it.open) body.append(menuItem(it.kind === 'pdf' ? 'Open in PDF viewer' : 'Open', 'sidebar', () => openPickedItem(it)));
   if (it.kind === 'document') body.append(menuItem('Open in Word or the PDF viewer', 'file', () => void wb(['docs', 'open', it.ref!]).catch(e => toast(String(e.message || e)))));
   body.append(menuItem('Move to…', 'right', () => moveMenu(from, f, it)),
     menuItem('Also keep it in…', 'copy', () => moveMenu(from, f, it, true)),
@@ -490,7 +514,7 @@ function key(e: KeyboardEvent) {
   const it = selected.key ? f.items.find(i => i.key === selected!.key) : undefined;
   if (e.key === 'F2' && !it) { e.preventDefault(); renaming = f.id; draw(); }
   else if (e.key === 'Delete') { e.preventDefault(); if (it) void act(['set', 'rm', f.id, it.key]); else void removeFolder(f); }
-  else if (e.key === 'Enter') { e.preventDefault(); if (it?.open) void reopen(it.open); else if (!it) run(openAll(f.id)); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (it) openPickedItem(it); else run(openAll(f.id)); }
 }
 
 let dragging: { folder: string; key?: string } | null = null;

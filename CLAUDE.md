@@ -36,8 +36,8 @@ the design decisions are [docs/PLAN-design.md](docs/PLAN-design.md). The Python 
   put in a page is a ```` ```thread ```` or ```` ```word ```` fence holding only an id or a number, never the text. `wb page …`
   is `wb note …` under the new name. `scripts/py-opens.py` and `wb study check` are the check that the Python app still
   opens the folder.
-- **The Bible database is read-only.** `WB_BIBLE_DB` (default: the Python repo's `datasets/workbench.db`) is opened with
-  SQLite's read-only flag. Never modify it.
+- **The Bible database is read-only.** Follow [local provisioning](data/README.md) and select the database with
+  `WB_BIBLE_DB`, the setup screen or `wb setup database`. The app opens it with SQLite's read-only flag. Never modify it.
 - **Never lose the reader's place.** Anything opened from the text returns to the verse it came from.
 - **Every core action is reachable from a `wb` command.** When wb-core gains an action, `wb` gains a command for it, so the
   person (or an AI) can do from a terminal anything the window does.

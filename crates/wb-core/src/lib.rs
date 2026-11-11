@@ -37,8 +37,7 @@ pub mod views;
 use std::path::PathBuf;
 
 /// The Bible database: `WB_BIBLE_DB`, the choice saved by the app or `wb setup`, `datasets/workbench.db` beside the
-/// program (the package), the application-data folder, or the Python repository's built database (a development
-/// checkout). `setup::db_candidates` gives every place looked in.
+/// program (the package), or the application-data folder. `setup::db_candidates` gives every place looked in.
 pub fn default_db_path() -> PathBuf {
     setup::existing_db().unwrap_or_else(|| setup::db_candidates().into_iter().next().unwrap_or_default())
 }

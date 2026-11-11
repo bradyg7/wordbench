@@ -302,7 +302,7 @@ pub fn commands() -> Vec<Command> {
             st.delete_set(&id).map_err(e)?;
             j(json!({"ok": true}))
         }),
-        cmd("set open", "What Open all opens for a set, item by item: the window's pane for each (open), or why not (why). Run in the window with wb do \"set open NAME\".", vec![Pos("name", N::Many)], |c, a| {
+        cmd("set open", "What Open all opens for a set, item by item: its target (open), or why not (why). Run in the window with wb do \"set open NAME\".", vec![Pos("name", N::Many)], |c, a| {
             let st = c.study()?;
             j(shelf::open_plan(c.bible()?, &st, &st.find_set(&a.s("name")).map_err(e)?).map_err(e)?)
         }),

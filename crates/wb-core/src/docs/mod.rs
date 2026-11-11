@@ -22,6 +22,7 @@ pub mod deck;
 pub mod docx;
 pub mod look;
 pub mod page;
+pub mod pdfs;
 pub mod plan;
 
 use crate::bible::Bible;
@@ -74,6 +75,10 @@ impl ExportFolders {
         self.override_dir.as_deref().unwrap_or(&self.local)
     }
 
+    fn search_dirs(&self) -> impl Iterator<Item = &Path> {
+        [Some(self.local.as_path()), self.override_dir.as_deref(), Some(self.legacy.as_path())].into_iter().flatten()
+    }
+
     // Bind a record to an override without storing the machine's absolute path in shared study data.
     fn override_key(path: &Path) -> String {
         let identity = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
@@ -108,7 +113,7 @@ impl ExportFolders {
         }
         let mut seen = Vec::new();
         let mut candidates = Vec::new();
-        for dir in [Some(self.local.as_path()), self.override_dir.as_deref(), Some(self.legacy.as_path())].into_iter().flatten() {
+        for dir in self.search_dirs() {
             let path = dir.join(&name);
             if path.is_file() {
                 let identity = fs::canonicalize(&path)?;
@@ -242,6 +247,29 @@ enum NoPlan {
     NotHere(String),
 }
 
+/// Sources whose entire contents are planned without page-specific switches.
+pub enum Source {
+    Thread(String),
+    Passage { reference: String, version: String },
+    Lesson(String),
+}
+
+impl Source {
+    fn record(self, bible: &Bible, store: &Store) -> Result<Value> {
+        match self {
+            Self::Thread(id) => Ok(json!({"kind": "thread", "id": id})),
+            Self::Passage { reference, version } => {
+                let passage = crate::scripture::passage(bible, &reference, &version)?;
+                Ok(json!({"kind": "passage", "ref": reference, "label": passage["label"], "version": passage["version"]}))
+            }
+            Self::Lesson(name) => {
+                let id = studyapi::lesson_find(store, &name)?;
+                Ok(json!({"kind": "lesson", "name": id}))
+            }
+        }
+    }
+}
+
 /// A page record's switches (W6): the rows of What goes in moved from their defaults.
 fn switched_of(rec: &Rec) -> serde_json::Map<String, Value> {
     rec.get("switched").and_then(|x| x.as_object()).cloned().unwrap_or_default()
@@ -252,7 +280,7 @@ fn version_of(rec: &Rec) -> Option<String> {
     rec.get("version").and_then(|x| x.as_str()).filter(|v| !v.is_empty()).map(String::from)
 }
 
-/// The source as a plan reads it (blocks, as the Python app's lesson blocks), and its title: a thread, or a page (W6).
+/// Read a recorded source into blocks and its output filename title.
 fn read_source(bible: &Bible, store: &Store, rec: &Rec, margin: &mut plan::Margin) -> std::result::Result<(Vec<plan::Block>, String), NoPlan> {
     let source = &rec["source"];
     let id = s_(source, "id");
@@ -271,6 +299,35 @@ fn read_source(bible: &Bible, store: &Store, rec: &Rec, margin: &mut plan::Margi
                 return Err(NoPlan::Gone);
             }
             page::source(bible, store, id, &switched_of(rec), version_of(rec).as_deref()).map_err(|e| NoPlan::Unreadable(e.0))
+        }
+        "passage" => {
+            let passage = crate::scripture::passage(bible, s_(source, "ref"), s_(source, "version"))
+                .map_err(|e| NoPlan::Unreadable(e.0))?;
+            let label = s_(&passage, "label");
+            let title = format!("{label} ({})", s_(&passage, "version"));
+            let stem = label.replace(':', ".").replace('–', "-");
+            Ok((vec![("title".into(), json!(title)), ("scripture".into(), passage)], stem))
+        }
+        "lesson" => {
+            let name = s_(source, "name");
+            checked_name(name).map_err(|e| NoPlan::Unreadable(e.0))?;
+            // Records are bound to the exact file, even if the user's original search was a partial name.
+            let text = fs::read_to_string(store.root.join("lessons").join(format!("{name}.md"))).map_err(|e| {
+                if e.kind() == std::io::ErrorKind::NotFound { NoPlan::Gone } else { NoPlan::Unreadable(e.to_string()) }
+            })?;
+            let mut blocks = Vec::new();
+            for (kind, value) in studyapi::lesson_parse(bible, &text).map_err(|e| NoPlan::Unreadable(e.0))? {
+                let value = if kind == "word" {
+                    let strong = value.as_str().unwrap_or_default();
+                    plan::word_entry(bible, strong).map_err(|e| NoPlan::Unreadable(e.0))?
+                        .ok_or_else(|| NoPlan::Unreadable(format!("No such Strong's number: {strong}.")))?
+                } else {
+                    value
+                };
+                blocks.push((kind.to_string(), value));
+            }
+            let title = blocks.iter().find(|(kind, _)| kind == "title").and_then(|(_, title)| title.as_str()).unwrap_or(name).to_string();
+            Ok((blocks, title))
         }
         k => Err(NoPlan::NotHere(format!("Documents from a {k} are made and kept up to date by the Python app until phase 5."))),
     }
@@ -291,10 +348,10 @@ fn plan_now(bible: &Bible, store: &Store, rec: &Rec) -> std::result::Result<(Vec
 }
 
 fn gone(source: &Value) -> Error {
-    if s_(source, "kind") == "page" {
-        missing("Its page is gone (deleted, or in the Trash).")
-    } else {
-        missing(format!("The thread “{}” is gone.", source_name(source)))
+    match s_(source, "kind") {
+        "page" => missing("Its page is gone (deleted, or in the Trash)."),
+        "lesson" => missing(format!("The lesson “{}” is gone.", source_name(source))),
+        _ => missing(format!("The thread “{}” is gone.", source_name(source))),
     }
 }
 
@@ -392,11 +449,11 @@ fn status_at(bible: &Bible, store: &Store, out: Option<&Path>, rec: &Rec) -> Val
     v
 }
 
-/// Every document (or one source's: ("thread", id) or ("page", id)), newest first.
+/// Every document (or one source's documents), newest first.
 pub fn listing(bible: &Bible, store: &Store, folders: &ExportFolders, of: Option<(&str, &str)>) -> Value {
     let mut every: Vec<Value> = records(store)
         .iter()
-        .filter(|r| of.is_none_or(|(k, id)| r["source"]["kind"].as_str() == Some(k) && r["source"]["id"].as_str() == Some(id)))
+        .filter(|r| of.is_none_or(|(k, id)| r["source"]["kind"].as_str() == Some(k) && source_name(&r["source"]) == id))
         .map(|r| status(bible, store, folders, r))
         .collect();
     every.sort_by(|a, b| s_(b, "built").cmp(s_(a, "built")));
@@ -614,28 +671,39 @@ pub fn set_theme(store: &mut Store, key: &str) -> Result<Value> {
     Ok(json!({"theme": key}))
 }
 
-/// The document for a thread and structure: made the first time, brought up to date after. `to`: word, or pdf (slides as
+fn source_structure(to: &str, structure: Option<&str>, source: &Value) -> Result<&'static plan::Structure> {
+    let kind = s_(source, "kind");
+    let structure = structure.filter(|s| !s.is_empty()).or_else(|| (to == "pdf" && kind == "lesson").then_some("reader"));
+    plan::structure_of(if to == "deck" { "pdf" } else { to }, structure, kind)
+}
+
+/// The document for a source and structure: made the first time, brought up to date after. `to`: word, or pdf (slides as
 /// PDF pages). new makes another alongside; force rebuilds even if nothing changed.
 #[allow(clippy::too_many_arguments)]
-pub fn make(bible: &Bible, store: &Store, folders: &ExportFolders, thread: &str, to: &str, structure: Option<&str>, theme: Option<&str>, look_name: Option<&str>,
+pub fn make(bible: &Bible, store: &Store, folders: &ExportFolders, source: Source, to: &str, structure: Option<&str>, theme: Option<&str>, look_name: Option<&str>,
     dials: &[(String, String)], new: bool, force: bool) -> Result<Value> {
     if !matches!(to, "word" | "pdf") {
         return Err(bad("to: word, or pdf (slides as PDF pages; PowerPoint is made by the Python app until phase 5)."));
     }
-    let st = plan::structure_of(to, structure, "thread")?;
+    let source = source.record(bible, store)?;
+    let st = source_structure(to, structure, &source)?;
     let theme = match theme.filter(|t| !t.is_empty()) {
         Some(t) => plan::theme(t)?.key.to_string(),
         None => saved_theme(store),
     };
-    let source = json!({"kind": "thread", "id": thread});
     let same: Vec<Rec> = records(store)
         .into_iter()
         .filter(|r| s(r, "to") == to && s(r, "structure") == st.key && source_name(&r["source"]) == source_name(&source)
-            && r["source"]["kind"] == "thread" && r.get("forgotten") != Some(&json!(true)))
+            && r["source"]["kind"] == source["kind"] && r.get("forgotten") != Some(&json!(true)))
         .collect();
-    let first = same.into_iter().min_by(|a, b| (s(a, "id").len(), s(a, "id")).cmp(&(s(b, "id").len(), s(b, "id"))));
+    let alternate_design = matches!(s_(&source, "kind"), "passage" | "lesson")
+        && to == "word" && matches!(st.key, "reading" | "share" | "study");
+    let legacy = alternate_design && same.iter().any(|r| !r.contains_key("design"));
+    let first = same.into_iter().filter(|r| !alternate_design || r.contains_key("design"))
+        .min_by(|a, b| (s(a, "id").len(), s(a, "id")).cmp(&(s(b, "id").len(), s(b, "id"))));
     let rec = match first {
         Some(r) if !new => r,
+        None if legacy && !new => return Err(bad("The existing document uses a legacy design. Use --new to make a separate Rust export.")),
         _ => json!({"id": new_id(store, &source, st.key, to), "source": source, "to": to, "structure": st.key}).as_object().unwrap().clone(),
     };
     let lk = look_for(store, &rec, look_name, dials)?;
@@ -669,7 +737,8 @@ pub fn update(bible: &Bible, store: &Store, folders: &ExportFolders, name: &str,
 pub fn update_behind(bible: &Bible, store: &Store, folders: &ExportFolders) -> Value {
     let (mut done, mut failed) = (vec![], vec![]);
     for d in listing(bible, store, folders, None).as_array().unwrap() {
-        if d["state"] != "behind" || d["to"] == "deck" {
+        let legacy_source = matches!(s_(&d["source"], "kind"), "passage" | "lesson") && d.get("design").is_none();
+        if d["state"] != "behind" || d["to"] == "deck" || legacy_source {
             continue;
         }
         match update(bible, store, folders, s_(d, "id"), None, None, &[], false) {
@@ -725,14 +794,15 @@ pub fn delete(store: &mut Store, folders: &ExportFolders, name: &str) -> Result<
     Ok(json!({"ok": true, "name": rec["name"], "deleted": deleted}))
 }
 
-/// The plan a document would be made from now, for a thread: what goes where, and its fingerprint (for a person or an AI
+/// The plan a document would be made from now: what goes where, and its fingerprint (for a person or an AI
 /// checking a document, and for comparing with the Python app's).
-pub fn plan_for(bible: &Bible, store: &Store, thread: &str, to: &str, structure: Option<&str>, layout: Option<PdfLayout<'_>>) -> Result<Value> {
-    let st = plan::structure_of(if to == "deck" { "pdf" } else { to }, structure, "thread")?;
+pub fn plan_for(bible: &Bible, store: &Store, source: Source, to: &str, structure: Option<&str>, layout: Option<PdfLayout<'_>>) -> Result<Value> {
+    let source = source.record(bible, store)?;
+    let st = source_structure(to, structure, &source)?;
     let mut margin = plan::Margin::new(bible, store)?;
-    let rec = json!({"source": {"kind": "thread", "id": thread}}).as_object().unwrap().clone();
+    let rec = json!({"source": source}).as_object().unwrap().clone();
     let (blocks, title) = read_source(bible, store, &rec, &mut margin).map_err(|e| match e {
-        NoPlan::Gone => missing(format!("No thread “{thread}”.")),
+        NoPlan::Gone => gone(&rec["source"]),
         NoPlan::Unreadable(why) | NoPlan::NotHere(why) => Error(why),
     })?;
     let p = plan::plan_of_blocks(to, st.key, &blocks, &mut margin)?;

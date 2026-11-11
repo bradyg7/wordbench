@@ -9,15 +9,17 @@ The package is a Windows app, so build it on Windows. This checkout contains the
 - Node.js 20 or newer (`npm ci` uses the committed `package-lock.json`).
 - Rust stable with the MSVC toolchain (`rustup default stable-msvc`).
 - Visual Studio Build Tools with **Desktop development with C++**.
-- The Bible database. It is not committed; use the copy built by the Python repository, or pass any verified
-  `workbench.db`. The build refuses a file that is not SQLite or is smaller than 1 MB.
+- A verified Bible database. Follow the [local provisioning instructions](data/README.md) to build
+  `datasets/workbench.db` from the locked inputs. The package script requires SQLite and at least 1 MB.
 
 ## Build it
 
 ```bat
 npm ci
-npm run package -- --db "%USERPROFILE%\github\bible-workbench\datasets\workbench.db"
+npm run package
 ```
+
+The packager checks `--db <file>`, `WB_BIBLE_DB`, then this checkout’s `datasets/workbench.db` in that order.
 
 The script:
 

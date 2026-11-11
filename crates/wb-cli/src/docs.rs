@@ -1,6 +1,4 @@
-//! Documents from a thread (tier 4): the Speaker Script as Word and Verse by Verse as PDF pages, each kept as one file
-//! that is brought up to date (wb-core's docs module). The Python `wb`'s `docs` and `craft` commands, with the same names
-//! and output; the structures this app does not make yet say so.
+//! Word and PDF exports, previews and saved document records.
 
 use crate::args::{Append, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
@@ -25,6 +23,28 @@ fn thread_id(c: &Ctx<'_>, name: &str) -> Result<String, String> {
     Ok(crate::study::thread(&st, name)?["id"].as_str().unwrap_or("").to_string())
 }
 
+fn source_args() -> Vec<crate::args::Spec> {
+    vec![Opt("thread", None), Opt("page", None), Opt("passage", None), Opt("lesson", None), Opt("version", None)]
+}
+
+fn require_one_source(a: &crate::args::Args) -> Result<(), String> {
+    if ["thread", "page", "passage", "lesson"].iter().filter(|key| a.opt(key).is_some()).count() != 1 {
+        return Err("Give exactly one source: --thread NAME, --page ID, --passage REF or --lesson NAME.".into());
+    }
+    Ok(())
+}
+
+fn source(c: &Ctx<'_>, a: &crate::args::Args) -> Result<docs::Source, String> {
+    if let Some(reference) = a.opt("passage") {
+        return Ok(docs::Source::Passage { reference, version: a.opt_or("version", "KJV") });
+    }
+    if let Some(name) = a.opt("lesson") {
+        return Ok(docs::Source::Lesson(name));
+    }
+    let name = a.opt("thread").ok_or("Give a thread, passage or lesson.")?;
+    Ok(docs::Source::Thread(thread_id(c, &name)?))
+}
+
 /// The dials given as --set DIAL=VALUE (R3's Looks: wb docs looks lists them).
 fn dials(a: &crate::args::Args) -> Result<Vec<(String, String)>, String> {
     a.list("set")
@@ -34,25 +54,19 @@ fn dials(a: &crate::args::Args) -> Result<Vec<(String, String)>, String> {
 }
 
 fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
+    require_one_source(a)?;
     let set = dials(a)?;
-    if let Some(page) = a.opt("page") {
-        let out = out_dir(c)?;
-        let st = c.study()?;
-        let r = docs::make_page(c.bible()?, &st, &out, &page, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(), a.opt("version").as_deref(),
-            &a.list("on"), &a.list("off"), a.opt("look").as_deref(), &set, a.flag("force")).map_err(e)?;
-        if a.flag("open") {
-            docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
-        }
-        return j(r);
-    }
-    if a.opt("passage").is_some() {
-        return Err("Documents from a passage are made by the Python app until phase 5; here, from a thread: --thread NAME.".into());
-    }
-    let Some(t) = a.opt("thread") else { return Err("Give the thread (--thread NAME) or the page (--page ID).".into()) };
-    let id = thread_id(c, &t)?;
     let out = out_dir(c)?;
-    let st = c.study()?;
-    let r = docs::make(c.bible()?, &st, &out, &id, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(), a.opt("look").as_deref(), &set, a.flag("new"), a.flag("force")).map_err(e)?;
+    let r = if let Some(page) = a.opt("page") {
+        let st = c.study()?;
+        docs::make_page(c.bible()?, &st, &out, &page, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(),
+            a.opt("version").as_deref(), &a.list("on"), &a.list("off"), a.opt("look").as_deref(), &set, a.flag("force"))
+    } else {
+        let input = source(c, a)?;
+        let st = c.study()?;
+        docs::make(c.bible()?, &st, &out, input, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(),
+            a.opt("look").as_deref(), &set, a.flag("new"), a.flag("force"))
+    }.map_err(e)?;
     if a.flag("open") {
         docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
     }
@@ -60,19 +74,66 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
 }
 
 fn make_args() -> Vec<crate::args::Spec> {
-    vec![Opt("thread", None), Opt("page", None), Opt("passage", None), Opt("version", None), Opt("structure", None), Opt("theme", None), Append("on"), Append("off"), Opt("look", None), Append("set"), Flag("open"), Flag("new"), Flag("force")]
+    [source_args(), vec![Opt("structure", None), Opt("theme", None), Append("on"), Append("off"), Opt("look", None),
+        Append("set"), Flag("open"), Flag("new"), Flag("force")]].into_iter().flatten().collect()
+}
+
+fn build_lesson(c: &Ctx<'_>, a: &crate::args::Args) -> Res {
+    if a.flag("pdf") {
+        return Err("PDF companions for Office files are not available in Rust yet. Use --make reader or --make verse for slides as PDF pages.".into());
+    }
+    let requested = a.opt_or("make", "script,share");
+    let mut formats = Vec::new();
+    for structure in requested.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        let to = match structure {
+            "script" | "share" | "study" | "reading" => "word",
+            "reader" | "verse" => "pdf",
+            _ => return Err(format!("“{structure}” is unavailable for Rust lesson exports. Choose script, share, study, reading, reader or verse.")),
+        };
+        if !formats.contains(&(to, structure)) {
+            formats.push((to, structure));
+        }
+    }
+    if formats.is_empty() {
+        return Err("--make needs at least one structure.".into());
+    }
+    let out = out_dir(c)?;
+    let st = c.study()?;
+    let id = wb_core::studyapi::lesson_find(&st, &a.s("name")).map_err(e)?;
+    let mut files = Vec::new();
+    let mut title = id.clone();
+    for (to, structure) in formats {
+        let mut result = docs::make(c.bible()?, &st, &out, docs::Source::Lesson(id.clone()), to, Some(structure), a.opt("theme").as_deref(),
+            None, &[], a.flag("new"), false).map_err(e)?;
+        if let Some(s) = result["title"].as_str() {
+            title = s.to_string();
+        }
+        if a.flag("open") {
+            docs::open_file(Path::new(result["path"].as_str().unwrap_or(""))).map_err(e)?;
+        }
+        result["kind"] = json!(structure);
+        result["kept"] = result["kept_now"].clone();
+        files.push(result);
+    }
+    j(json!({"lesson": id, "title": title, "files": files}))
 }
 
 pub fn commands() -> Vec<Command> {
     vec![
-        cmd("docs list", "Your Word documents and slide decks, and how each stands: current, behind (its source changed), edited (its file was changed by hand),\n\
-                          missing (the file is gone), gone (its thread or page is gone), unreadable, or forgotten. --thread for one thread's, --page ID for one page's.",
-            vec![Opt("thread", None), Opt("page", None)], |c, a| {
-            let of = match (a.opt("thread"), a.opt("page")) {
-                (Some(t), _) => Some(("thread", thread_id(c, &t)?)),
-                (None, Some(p)) => Some(("page", p.trim().to_string())),
-                _ => None,
-            };
+        cmd("pdfs", "List saved PDFs or open one in the system PDF viewer by name. --exact selects a saved basename.",
+            vec![Pos("name", N::Any), Flag("exact")], |c, a| {
+            let out = out_dir(c)?;
+            let name = a.s("name");
+            if name.is_empty() {
+                return j(json!(docs::pdfs::list(&out).map_err(e)?));
+            }
+            j(docs::pdfs::open(&out, &name, a.flag("exact")).map_err(e)?)
+        }),
+        cmd("docs list", "Your Word documents and slide decks, and how each stands. --thread NAME, --page ID or --lesson ID filters by source.",
+            vec![Opt("thread", None), Opt("page", None), Opt("lesson", None)], |c, a| {
+            let of = if let Some(t) = a.opt("thread") { Some(("thread", thread_id(c, &t)?)) }
+                else if let Some(p) = a.opt("page") { Some(("page", p.trim().to_string())) }
+                else { a.opt("lesson").map(|l| ("lesson", wb_core::studyapi::lesson_slug(&l))) };
             let out = out_dir(c)?;
             let st = c.study()?;
             j(docs::listing(c.bible()?, &st, &out, of.as_ref().map(|(k, id)| (*k, id.as_str()))))
@@ -120,11 +181,12 @@ pub fn commands() -> Vec<Command> {
             let out = out_dir(c)?;
             j(docs::delete(&mut *c.study()?, &out, &a.s("name")).map_err(e)?)
         }),
-        cmd("docs plan", "What a document from a thread would hold if made now, and its plan's fingerprint (the same as the Python app's):\n\
-                          wb docs plan --thread phinehas --to word --structure script  |  --to deck --structure verse.\n\
+        cmd("docs plan", "What a document would hold if made now, and its plan's fingerprint.\n\
+                          Choose --thread NAME, --passage REF [--version V], --lesson NAME or --page ID.\n\
                           From a page: wb docs plan --page ID --to word|pdf [--version V] [--on KEY] [--off KEY]. For PDF, --pages lays out the selected plan with --theme, --look and --set.",
-            vec![Opt("thread", None), Opt("page", None), Opt("to", Some("word")), Opt("structure", None),
-                 Opt("version", None), Append("on"), Append("off"), Flag("pages"), Opt("theme", None), Opt("look", None), Append("set")], |c, a| {
+            [source_args(), vec![Opt("to", Some("word")), Opt("structure", None),
+                Append("on"), Append("off"), Flag("pages"), Opt("theme", None), Opt("look", None), Append("set")]].into_iter().flatten().collect(), |c, a| {
+            require_one_source(a)?;
             let theme = a.opt("theme");
             let look = a.opt("look");
             let set = dials(a)?;
@@ -134,27 +196,29 @@ pub fn commands() -> Vec<Command> {
                 return j(docs::plan_for_page(c.bible()?, &st, &p, &a.opt_or("to", "word"), a.opt("structure").as_deref(),
                     a.opt("version").as_deref(), &a.list("on"), &a.list("off"), layout).map_err(e)?);
             }
-            let Some(t) = a.opt("thread") else { return Err("Give the thread (--thread NAME) or the page (--page ID).".into()) };
-            let id = thread_id(c, &t)?;
+            let input = source(c, a)?;
             let to = a.opt_or("to", "word");
             if !matches!(to.as_str(), "word" | "deck" | "pdf") {
                 return Err("--to: word, deck or pdf.".into());
             }
             let st = c.study()?;
-            j(docs::plan_for(c.bible()?, &st, &id, &to, a.opt("structure").as_deref(), layout).map_err(e)?)
+            j(docs::plan_for(c.bible()?, &st, input, &to, a.opt("structure").as_deref(), layout).map_err(e)?)
         }),
-        cmd("craft word", "A Word document from a thread: wb craft word --thread phinehas --structure script [--theme olivet].\n\
-                           Here: script (the Speaker Script); the other structures are made by the Python app until phase 5. --theme: otherwise your saved theme.\n\
-                           Asking again for the same thread and structure updates the same file (see wb docs). Every verse in the file is checked against the Bible.\n\
+        cmd("craft word", "A Word document from --thread NAME, --passage REF [--version V], --lesson NAME or --page ID.\n\
+                           Structures: script, share, study and reading. --theme: otherwise your saved theme.\n\
+                           Asking again for the same source and structure updates the same file (see wb docs). Every verse in the file is checked against the Bible.\n\
                            From a page and the pages inside it: wb craft word --page ID [--on KEY] [--off KEY] [--version kjv|ylt|page]; the rows' keys are in\n\
                            wb craft parts --page ID. To-dos are left out unless switched on; with no --on or --off, the switches it was last made with stay.\n\
                            --look NAME (wb docs looks) and --set DIAL=VALUE style it; otherwise the Look it was last made with, or the one new documents use.",
             make_args(), |c, a| make(c, a, "word")),
-        cmd("craft deck", "Slides from a thread, as PDF pages: wb craft deck --thread phinehas --structure verse [--theme vigil].\n\
-                           Here: verse (Verse by Verse); PowerPoint and the other structures are made by the Python app until phase 5.\n\
-                           Asking again for the same thread and structure updates the same file (see wb docs). Every verse on the pages is checked against the Bible.\n\
+        cmd("craft deck", "Slides as PDF pages from --thread NAME, --passage REF [--version V], --lesson NAME or --page ID.\n\
+                           Structures: verse (Verse by Verse) and reader (Reader).\n\
+                           Asking again for the same source and structure updates the same file (see wb docs). Every verse on the pages is checked against the Bible.\n\
                            From a page: wb craft deck --page ID, with --on, --off and --version as wb craft word.",
             make_args(), |c, a| make(c, a, "pdf")),
+        cmd("lesson build", "Export an existing lesson file. --make selects structures, separated by commas. The default is script,share.\n\
+                             Word: script, share, study, reading. PDF slides: reader, verse. --new makes separate exports.",
+            vec![Pos("name", N::Many), Opt("make", None), Opt("theme", None), Flag("pdf"), Flag("new"), Flag("open")], build_lesson),
         cmd("craft parts", "What goes in a document from a page: each block of it (a run of to-dos or list items as one) and each page inside it, with its key,\n\
                             its switch and what it becomes. The switches are the ones its documents were last made with, or those given: --on KEY, --off KEY.\n\
                             --version kjv|ylt makes every scripture block that version; page (the default) keeps each block's own.",

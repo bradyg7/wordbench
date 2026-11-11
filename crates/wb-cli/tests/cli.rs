@@ -1527,6 +1527,44 @@ fn a_legacy_export_is_resolved_safely_for_open_preview_update_and_delete() {
 }
 
 #[test]
+fn standalone_legacy_pdfs_open_from_shelf_and_refuse_ambiguous_names() {
+    let Some(wb) = Wb::new() else { return };
+    let legacy = wb.dir.with_file_name(format!("{}-documents", wb.dir.file_name().unwrap().to_string_lossy()));
+    std::fs::create_dir(&legacy).unwrap();
+    let name = "Older study (1).PDF";
+    let original = wb.js(&["craft", "deck", "--passage", "John 3:16"]);
+    let path = legacy.join(name);
+    std::fs::rename(original["path"].as_str().unwrap(), &path).unwrap();
+    let bytes = std::fs::read(&path).unwrap();
+    std::fs::write(legacy.join("another format.docx"), b"fixture").unwrap();
+    std::fs::create_dir(legacy.join("not a file.pdf")).unwrap();
+    let files = wb.js(&["pdfs"]);
+    assert_eq!(files.as_array().unwrap().len(), 1);
+    assert_eq!(files[0]["name"], name);
+    assert_eq!(files[0]["size"], bytes.len());
+    let opened = wb.js(&["pdfs", "older study"]);
+    assert_eq!(opened["path"], path.to_str().unwrap());
+
+    wb.js(&["set", "new", "Saved", "--pdf", name, "--pdf", "Older study.PDF"]);
+    let plan = wb.js(&["set", "open", "saved"]);
+    assert_eq!(plan["items"][0]["open"], format!("pdf|{name}"));
+    assert!(plan["items"][1]["why"].as_str().unwrap().contains("No saved PDF"));
+    assert_eq!(wb.js(&["pdfs", name, "--exact"])["ok"], true);
+    assert!(wb.fails(&["pdfs", "Older study.PDF", "--exact"]).contains("No saved PDF"));
+    assert!(wb.fails(&["pdfs", "../Older study (1).PDF"]).contains("without a path"));
+
+    std::fs::write(wb.docs().join(name), b"another file").unwrap();
+    assert!(wb.fails(&["pdfs", name, "--exact"]).contains("More than one saved PDF"));
+    let plan = wb.js(&["set", "open", "saved"]);
+    assert!(plan["items"][0]["why"].as_str().unwrap().contains("More than one saved PDF"));
+    assert_eq!(std::fs::read(path).unwrap(), bytes);
+    std::fs::remove_file(legacy.join(name)).unwrap();
+    std::fs::remove_file(legacy.join("another format.docx")).unwrap();
+    std::fs::remove_dir(legacy.join("not a file.pdf")).unwrap();
+    std::fs::remove_dir(legacy).unwrap();
+}
+
+#[test]
 fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Phinehas", "--note", "Where he is named.", "--at", "Num 25:10-13"]);
@@ -1580,10 +1618,17 @@ fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
     wb.js(&["craft", "theme", "vigil"]);
     assert_eq!(wb.js(&["craft", "theme"])["theme"], "vigil");
 
-    // what the Python app still makes says so
+    // Legacy structures still report which formats Rust supports.
     assert!(wb.fails(&["craft", "word", "--thread", "phinehas"]).contains("Thread Dossier is still made by the Python app"));
     assert!(wb.fails(&["craft", "deck", "--thread", "phinehas", "--structure", "pulpit"]).contains("--structure reader or verse"));
-    assert!(wb.fails(&["craft", "word", "--passage", "John 3:16"]).contains("from a thread"));
+
+    // A passage can also be exported directly as a Reading Sheet.
+    let passage = wb.js(&["craft", "word", "--passage", "John 3:16"]);
+    assert_eq!(passage["source"]["kind"], "passage");
+    assert_eq!(passage["structure"], "reading");
+    assert_eq!(passage["checked"]["refs"], json!(["John 3:16 (KJV)"]));
+    let reading = docx_text(&wb.docs().join(passage["name"].as_str().unwrap()));
+    assert!(reading.contains(verse_texts(&wb, "John 3:16")[0].as_str()));
 
     // forget, remember, delete (the files erased, the record to .trash)
     assert_eq!(wb.js(&["docs", "forget", "verse by verse"])["ok"], true);

@@ -501,12 +501,20 @@ pub fn thread_blocks(thread: &Value) -> Vec<Block> {
     blocks
 }
 
+fn block_passages<'a>(kind: &str, value: &'a Value) -> &'a [Value] {
+    match kind {
+        "scripture" => std::slice::from_ref(value),
+        "parallel" => value.as_array().map(Vec::as_slice).unwrap_or_default(),
+        _ => &[],
+    }
+}
+
 /// Every verse's text a finished file must hold, taken from the source and never from a plan.
 pub fn source_verses(blocks: &[Block]) -> Vec<String> {
     let mut out = vec![];
     for (what, val) in blocks {
-        if what == "scripture" {
-            out.extend(val["verses"].as_array().unwrap().iter().map(|v| s_(v, "text").to_string()));
+        for passage in block_passages(what, val) {
+            out.extend(passage["verses"].as_array().unwrap().iter().map(|v| s_(v, "text").to_string()));
         }
     }
     out
@@ -517,8 +525,8 @@ pub fn source_verses(blocks: &[Block]) -> Vec<String> {
 pub fn source_refs(blocks: &[Block]) -> Vec<String> {
     let mut out = vec![];
     for (what, val) in blocks {
-        if what == "scripture" {
-            out.extend(val["verses"].as_array().unwrap().iter().map(|v| format!("{} ({})", s_(v, "ref"), s_(val, "version"))));
+        for passage in block_passages(what, val) {
+            out.extend(passage["verses"].as_array().unwrap().iter().map(|v| format!("{} ({})", s_(v, "ref"), s_(passage, "version"))));
         }
     }
     out
@@ -596,17 +604,19 @@ pub fn deck_verse(blocks: &[Block], margin: &mut Margin) -> Vec<Value> {
     for (what, val) in blocks {
         match what.as_str() {
             "section" => out.push(json!({"kind": "section", "title": val})),
-            "scripture" => {
-                let version = s_(val, "version").to_string();
-                let vs = val["verses"].as_array().unwrap();
-                for (i, v) in vs.iter().enumerate() {
-                    let near = |o: &Value| if o.get("span") == v.get("span") { o.clone() } else { Value::Null };
-                    let marks = margin.marks(v, &version);
-                    let notes = margin.notes(std::slice::from_ref(v)).join("\n\n");
-                    out.push(json!({"kind": "verse", "ref": format!("{} ({version})", s_(v, "ref")), "verse": v,
-                        "before": if i > 0 { near(&vs[i - 1]) } else { Value::Null },
-                        "after": if i + 1 < vs.len() { near(&vs[i + 1]) } else { Value::Null },
-                        "marks": spans_json(&marks), "notes": notes}));
+            "scripture" | "parallel" => {
+                for passage in block_passages(what, val) {
+                    let version = s_(passage, "version");
+                    let vs = passage["verses"].as_array().unwrap();
+                    for (i, v) in vs.iter().enumerate() {
+                        let near = |o: &Value| if o.get("span") == v.get("span") { o.clone() } else { Value::Null };
+                        let marks = margin.marks(v, version);
+                        let notes = margin.notes(std::slice::from_ref(v)).join("\n\n");
+                        out.push(json!({"kind": "verse", "ref": format!("{} ({version})", s_(v, "ref")), "verse": v,
+                            "before": if i > 0 { near(&vs[i - 1]) } else { Value::Null },
+                            "after": if i + 1 < vs.len() { near(&vs[i + 1]) } else { Value::Null },
+                            "marks": spans_json(&marks), "notes": notes}));
+                    }
                 }
             }
             _ => {}
@@ -703,6 +713,17 @@ pub fn doc_script(blocks: &[Block], margin: &mut Margin) -> Vec<Value> {
                     ops.extend(cue("scripture", &rf, ""));
                     ops.extend(scripture_block(&rf, &rows));
                     ops.extend(margin.notes(&rows).into_iter().map(|n| plain("Study Note", &format!("Study: {n}"))));
+                }
+            }
+            "parallel" => {
+                let passages = block_passages(what, val);
+                if let Some(first) = passages.first() {
+                    ops.extend(cue("parallel", s_(first, "label"), "both versions"));
+                    for passage in passages {
+                        let reference = format!("{} ({})", s_(passage, "label"), s_(passage, "version"));
+                        ops.extend(scripture_block(&reference, passage["verses"].as_array().unwrap()));
+                    }
+                    ops.extend(margin.notes(first["verses"].as_array().unwrap()).into_iter().map(|n| plain("Study Note", &format!("Study: {n}"))));
                 }
             }
             _ => {}

@@ -179,10 +179,18 @@ export async function perform(a: any, line: string): Promise<string> {
     case 'set': return changeSet(a);
     case 'layout': return layout(a);
     case 'lesson': {
-      if (a.action === 'list') { const ls = await wb(['lesson', 'list']); return `Lessons: ${ls.map((l: any) => l.name).join(', ')}`; }
+      if (a.action === 'list') {
+        const lessons = await wb(['lesson', 'list']);
+        return lessons.length ? `Lessons: ${lessons.map((l: any) => `${l.title} (${l.id})`).join(', ')}` : 'No existing lessons';
+      }
       if (a.action === 'show') { openLesson(a.name); return `The lesson ${a.name}`; }
       if (a.action === 'check') { const r = await wb(['lesson', 'check', a.name]); return r.ok === false ? r.error : `${a.name}: ${r.slides ?? '?'} slides, every scripture read`; }
-      return later('Building a lesson’s documents', 5);
+      const r = await wb(['lesson', 'build', a.name,
+        ...(a.make?.length ? ['--make', a.make.join(',')] : []),
+        ...(a.theme ? ['--theme', a.theme] : []), ...(a.pdf ? ['--pdf'] : [])]);
+      app.changed('documents');
+      openDocuments();
+      return `Exported ${r.files.map((f: any) => f.name).join(', ')}`;
     }
     // ---- the window ----
     case 'layers': return changeLayers(a);
@@ -225,18 +233,27 @@ export async function perform(a: any, line: string): Promise<string> {
       app.changed('documents');
       return `New documents are made in ${a.theme}`;
     }
-    case 'pdf': case 'pdfs': case 'packet': return later('Saved PDFs and packets', 5);
+    case 'pdfs': {
+      if (a.name) {
+        const file = await wb(['pdfs', a.name]);
+        return `Opened ${file.name}`;
+      }
+      const files: { name: string }[] = await wb(['pdfs']);
+      return files.length ? `Saved PDFs: ${files.map(file => file.name).join(', ')}` : 'No saved PDFs';
+    }
+    case 'pdf': case 'packet': return later('Saving chapter PDFs and packets', 5);
     default: return `“${line}” is understood, but the window does not do it yet.`;
   }
 }
 
-// ---- documents from a thread (tier 4) ----
+// ---- document exports ----
 
 async function makeFrom(a: any): Promise<string> {
-  if (!a.thread) return 'Documents from a passage come in phase 5 (the Python app still makes them); here, from a thread: doc thread Phinehas';
   // the window starts on what it makes (a thread's default in the Python app is its Dossier or Map, made there until phase 5)
-  const structure = a.structure || KINDS.find(k => k[0] === a.kind)?.[1];
-  const said = await makeDoc(a.thread, a.kind === 'deck' ? 'deck' : 'word', structure, a.theme);
+  const source = a.thread ? { kind: 'thread' as const, name: a.thread }
+    : { kind: 'passage' as const, name: a.ref, version: a.version };
+  const structure = a.structure || (a.thread ? KINDS.find(k => k[0] === a.kind)?.[1] : undefined);
+  const said = await makeDoc(source, a.kind === 'deck' ? 'deck' : 'word', { structure, theme: a.theme, newCopy: a.new });
   openDocuments();
   return said;
 }

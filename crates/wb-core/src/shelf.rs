@@ -264,11 +264,12 @@ pub fn pane_key(bible: &Bible, item: &Value) -> std::result::Result<String, Stri
     }
 }
 
-/// What Open all would open for a set: each item with `open` (the window's pane key) or `why` it is not opened.
-/// A place opens as a second reader, so the reader never moves; a document in its preview, never in Word.
+/// What Open all would open for a set: each item has an `open` target or a reason it cannot open.
+/// Places and tracked documents use tabs. Standalone PDFs use the system viewer.
 pub fn open_plan(bible: &Bible, store: &Store, t: &Rec) -> Result<Value> {
     let view = set_view(bible, store, t)?;
     let docs = crate::docs::records(store);
+    let mut pdfs = None;
     let mut items = vec![];
     for it in view["items"].as_array().cloned().unwrap_or_default() {
         let kind = it["kind"].as_str().unwrap_or("").to_string();
@@ -287,7 +288,11 @@ pub fn open_plan(bible: &Bible, store: &Store, t: &Rec) -> Result<Value> {
                     Some(d) => Ok(format!("doc|{r}|{}", s(d, "name"))),
                     None => Err("That document is gone.".into()),
                 },
-                _ => Err("PDFs open from the Python app for now.".into()),
+                "pdf" => match pdfs.get_or_insert_with(|| crate::docs::ExportFolders::for_study(&store.root).and_then(|out| crate::docs::pdfs::list(&out))) {
+                    Ok(files) => crate::docs::pdfs::find(files, &r, true).map(|pdf| format!("pdf|{}", pdf.name)).map_err(|e| e.0),
+                    Err(e) => Err(e.0.clone()),
+                },
+                _ => Err("This item cannot be opened here.".into()),
             }
         };
         let mut o = it.as_object().cloned().unwrap_or_default();
