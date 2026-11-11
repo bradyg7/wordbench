@@ -18,6 +18,7 @@
 //! kinds of source and file (`documents.records`: `to` word or deck, source passage, lesson or thread), so it passes over
 //! these as it passes over the thread's PDF pages, and its ids never start with "page-".
 
+pub mod chapter;
 pub mod deck;
 pub mod docx;
 pub mod look;

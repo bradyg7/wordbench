@@ -241,7 +241,16 @@ export async function perform(a: any, line: string): Promise<string> {
       const files: { name: string }[] = await wb(['pdfs']);
       return files.length ? `Saved PDFs: ${files.map(file => file.name).join(', ')}` : 'No saved PDFs';
     }
-    case 'pdf': case 'packet': return later('Saving chapter PDFs and packets', 5);
+    case 'pdf': {
+      const drawn = app.drawn;
+      if (!drawn) return 'Open a chapter before saving a PDF';
+      const chapter = `${drawn.chapter.name} ${drawn.chapter.chapter}`;
+      const threads = Object.keys(drawn.marks.thread_names).filter(id => layers.shown(id));
+      const flags = layers.all ? [...(layers.mine ? [] : ['--no-mine']), ...threads.flatMap(id => ['--thread', id])] : ['--no-highlights'];
+      const file = await wb(['pdf', chapter, ...flags, '--open']);
+      return `Saved ${file.name}`;
+    }
+    case 'packet': return later('Combining saved PDFs', 5);
     default: return `“${line}” is understood, but the window does not do it yet.`;
   }
 }

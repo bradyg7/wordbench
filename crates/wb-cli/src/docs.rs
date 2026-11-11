@@ -120,6 +120,19 @@ fn build_lesson(c: &Ctx<'_>, a: &crate::args::Args) -> Res {
 
 pub fn commands() -> Vec<Command> {
     vec![
+        cmd("pdf", "Save the first KJV chapter named by REF as a print PDF with its existing notes. --no-highlights hides all marks.\n\
+                    --no-mine hides personal highlights, --thread ID includes a thread's underlines, and --open opens the result.",
+            vec![Pos("ref", N::Many), Flag("no_highlights"), Flag("no_mine"), Append("thread"), Flag("open")], |c, a| {
+            let out = out_dir(c)?;
+            let st = c.study()?;
+            let show_marks = !a.flag("no_highlights");
+            let threads = if show_marks { a.list("thread") } else { vec![] };
+            let file = docs::chapter::save(c.bible()?, &st, &out, &a.s("ref"), show_marks && !a.flag("no_mine"), &threads).map_err(e)?;
+            if a.flag("open") {
+                docs::open_file(Path::new(file["path"].as_str().unwrap_or(""))).map_err(e)?;
+            }
+            j(file)
+        }),
         cmd("pdfs", "List saved PDFs or open one in the system PDF viewer by name. --exact selects a saved basename.",
             vec![Pos("name", N::Any), Flag("exact")], |c, a| {
             let out = out_dir(c)?;

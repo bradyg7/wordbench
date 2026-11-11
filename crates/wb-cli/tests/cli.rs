@@ -1565,6 +1565,32 @@ fn standalone_legacy_pdfs_open_from_shelf_and_refuse_ambiguous_names() {
 }
 
 #[test]
+fn chapter_pdf_preserves_kjv_references_and_creates_a_new_file() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["note", "add", "John 3:16", "Existing note in this chapter."]);
+    wb.js(&["note", "add", "John 4:1", "Note in the next chapter."]);
+    wb.ok(&["hl", "set", "John 3:16", "green"]);
+    let thread = wb.js(&["thread", "new", "Review", "--at", "John 3:17", "--color", "#654321"]);
+    let marked = wb.js(&["pdf", "John 3:16", "--thread", thread["id"].as_str().unwrap(), "--open"]);
+    let plain = wb.js(&["pdf", "John 3-4", "--no-highlights"]);
+    let refs = marked["checked"]["refs"].as_array().unwrap();
+    assert_eq!(refs.first().unwrap(), "John 3:1 (KJV)");
+    assert_eq!(refs.last().unwrap(), "John 3:36 (KJV)");
+    assert_eq!(marked["checked"]["verses"], verse_texts(&wb, "John 3").len());
+    assert_eq!(plain["checked"]["refs"], marked["checked"]["refs"]);
+    assert_eq!(marked["notes"], 1);
+    assert_eq!(plain["notes"], 1);
+    assert_ne!(plain["path"], marked["path"]);
+    for file in [plain, marked] {
+        let bytes = std::fs::read(file["path"].as_str().unwrap()).unwrap();
+        assert!(bytes.starts_with(b"%PDF-"));
+        assert_eq!(file["size"], bytes.len());
+    }
+    assert_eq!(wb.js(&["pdfs"]).as_array().unwrap().len(), 2);
+    assert_eq!(wb.js(&["docs", "list"]), json!([]));
+}
+
+#[test]
 fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Phinehas", "--note", "Where he is named.", "--at", "Num 25:10-13"]);

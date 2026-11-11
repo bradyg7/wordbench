@@ -240,7 +240,7 @@ impl<'a> Margin<'a> {
     }
 
     /// [(start, end)] of each KJV word in its verse's text (in characters), or None if the two do not line up.
-    fn word_offsets(&mut self, book_id: i64, c: i64, v: i64, text: &str) -> Option<Vec<(usize, usize)>> {
+    pub(super) fn word_offsets(&mut self, book_id: i64, c: i64, v: i64, text: &str) -> Option<Vec<(usize, usize)>> {
         let key = (book_id, c, v);
         if !self.offsets.contains_key(&key) {
             let low: Vec<char> = text.to_lowercase().chars().collect();

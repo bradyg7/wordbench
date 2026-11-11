@@ -1027,6 +1027,10 @@ function settings(from: HTMLElement) {
   go('Settings…', 'settings', () => openSettings(), '', 'Ctrl+,');
   go('Customize toolbar…', 'sliders', () => customize());
   go('Help', 'help', () => openHelp(), 'Guide · Commands · Keys');
+  go('Save chapter PDF', 'file', () => {
+    void runLine('pdf').then(result => toast(result.said || result.error || 'Could not save the chapter PDF'))
+      .catch(error => toast(String(error.message || error)));
+  });
   const fit = hiddenToFit();
   if (fit.length) {
     b.append(h('div', 'label', 'Hidden to fit'));

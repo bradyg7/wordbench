@@ -273,9 +273,18 @@ fn page_text(doc: &PagedDocument) -> String {
 /// A deck's plan as PDF pages. → (the PDF's bytes, the text on its pages, the number of pages)
 pub fn render(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<(Vec<u8>, String, usize)> {
     let doc = lay_out(plan, t, look, title)?;
+    export_pdf(&doc)
+}
+
+pub(super) fn render_template(template: &str, data: &Value, subject: &str) -> Result<(Vec<u8>, String, usize)> {
+    let doc = compile(template, data, subject)?;
+    export_pdf(&doc)
+}
+
+fn export_pdf(doc: &PagedDocument) -> Result<(Vec<u8>, String, usize)> {
     let msgs = |e: &[typst::diag::SourceDiagnostic]| e.iter().map(|d| d.message.to_string()).collect::<Vec<_>>().join("; ");
-    let pdf = typst_pdf::pdf(&doc, &typst_pdf::PdfOptions::default()).map_err(|e| Error(format!("The PDF could not be written ({}).", msgs(&e))))?;
-    Ok((pdf, page_text(&doc), doc.pages().len()))
+    let pdf = typst_pdf::pdf(doc, &typst_pdf::PdfOptions::default()).map_err(|e| Error(format!("The PDF could not be written ({}).", msgs(&e))))?;
+    Ok((pdf, page_text(doc), doc.pages().len()))
 }
 
 /// Count the pages from the same layout as render, without writing a file.
@@ -298,12 +307,16 @@ fn lay_out(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<PagedD
         "chrome": t.chrome.iter().map(|(c, x, y, w, h)| json!({"color": c, "x": x, "y": y, "w": w, "h": h})).collect::<Vec<_>>()});
     let data = json!({"title": title, "theme": theme, "slides": slides_data(plan, t, look),
         "look": {"ui": ui, "serif": serif, "neighbours": look.neighbours, "reference": look.reference}});
+    compile(TEMPLATE, &data, "slides")
+}
+
+fn compile(template: &str, data: &Value, subject: &str) -> Result<PagedDocument> {
     let fonts = fonts().clone();
     let main = id("/main.typ");
     let mut files = HashMap::new();
-    files.insert(main, Bytes::from_string(TEMPLATE.to_string()));
-    files.insert(id("/data.json"), Bytes::new(serde_json::to_vec(&data).map_err(|e| Error(e.to_string()))?));
+    files.insert(main, Bytes::from_string(template.to_string()));
+    files.insert(id("/data.json"), Bytes::new(serde_json::to_vec(data).map_err(|e| Error(e.to_string()))?));
     let world = Deck { library: LazyHash::new(Library::default()), book: LazyHash::new(FontBook::from_fonts(&fonts)), fonts, files, main };
     let msgs = |e: &[typst::diag::SourceDiagnostic]| e.iter().map(|d| d.message.to_string()).collect::<Vec<_>>().join("; ");
-    typst::compile::<PagedDocument>(&world).output.map_err(|e| Error(format!("The slides could not be laid out ({}).", msgs(&e))))
+    typst::compile::<PagedDocument>(&world).output.map_err(|e| Error(format!("The {subject} could not be laid out ({}).", msgs(&e))))
 }
