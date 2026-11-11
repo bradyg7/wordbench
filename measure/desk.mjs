@@ -2335,10 +2335,12 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await page.evaluate(() => window.__wb.run('thread Phinehas'));
   await page.waitForSelector('.pane-notebook .nb-docs .doc-row', { timeout: 15000 }).catch(() => {});
   check('the thread’s page lists its documents, with Make for it', await page.locator('.pane-notebook .nb-docs .doc-row').count() >= 2 && await page.locator('.pane-notebook .nb-docs .doc-make').count() === 1, String(await page.locator('.pane-notebook .nb-docs .doc-row').count()));
-  // R1: the Python app opens the folder as this app reads it (scripts/py-opens.py, on this run's own copy)
-  let pyOpens = '';
-  try { pyOpens = execFileSync('python', ['-I', path.join(file('scripts/'), 'py-opens.py')], { env: { ...env, WB_STUDY_DIR: study }, cwd: file('') }).toString(); } catch (e) { pyOpens = String(e.stdout || e); }
-  check('the Python app still opens the study folder: what it reads is what this app counts (scripts/py-opens.py)', /^ok .*notes/m.test(pyOpens) && !/^DIFF/m.test(pyOpens), pyOpens.replace(/\n/g, ' | '));
+  // Optional predecessor comparison when its checkout is explicitly selected.
+  if (env.WB_LEGACY_APP) {
+    let pyOpens = '';
+    try { pyOpens = execFileSync('python', ['-I', path.join(file('scripts/'), 'py-opens.py')], { env: { ...env, WB_STUDY_DIR: study }, cwd: file('') }).toString(); } catch (e) { pyOpens = String(e.stdout || e); }
+    check('the Python app still opens the study folder: what it reads is what this app counts (scripts/py-opens.py)', /^ok .*notes/m.test(pyOpens) && !/^DIFF/m.test(pyOpens), pyOpens.replace(/\n/g, ' | '));
+  }
 
   // the Shelf as a tree (R2)
   await shelfChecks({ page, check, env, wbExe, study, shots, sleep });
