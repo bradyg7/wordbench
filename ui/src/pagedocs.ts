@@ -77,6 +77,7 @@ export async function makeFromPage(pageId: string) {
   catch (x) { toast(String((x as Error).message || x)); return; }
   const m = modal('Make a document');
   const want = { word: true, pdf: true };
+  let slideFormat = 'pdf';
   let theme: string = designs.theme;
   let lookKey: string = looks?.saved || 'preview';
   let inkMode = '';
@@ -117,7 +118,7 @@ export async function makeFromPage(pageId: string) {
         cb.disabled = !made;
         cb.onchange = () => { want[to] = cb.checked; opt.classList.toggle('on', cb.checked); next.disabled = !want.word && !want.pdf; };
         const t = h('div');
-        t.append(h('div', 'pd-opt-name', made ? s.label : `${s.label} · phase 5`), h('div', 'muted small', made && to === 'pdf' ? `${s.about} As PDF pages.` : s.about));
+        t.append(h('div', 'pd-opt-name', made ? s.label : `${s.label} · phase 5`), h('div', 'muted small', s.about));
         opt.append(cb, t);
         c.append(opt);
       }
@@ -137,6 +138,11 @@ export async function makeFromPage(pageId: string) {
     ver.onchange = () => { version = ver.value; };
     const lt = h('label', 'pd-field'); lt.append(h('span', 'pd-field-name', 'Theme'), th);
     const lv = h('label', 'pd-field'); lv.append(h('span', 'pd-field-name', 'Version'), ver);
+    const format = h('select', 'field small pd-slide-format');
+    format.append(new Option('PDF', 'pdf'), new Option('PowerPoint with PDF preview', 'pptx'));
+    format.value = slideFormat;
+    format.onchange = () => { slideFormat = format.value; };
+    const ls = h('label', 'pd-field'); ls.append(h('span', 'pd-field-name', 'Slide format'), format);
     const lf = lookFields(looks);
     lf.look.value = lookKey;
     lf.ink.value = inkMode;
@@ -150,7 +156,7 @@ export async function makeFromPage(pageId: string) {
       lf.ink.value = inkMode;
       adj.textContent = extra.length ? `Adjust… (${extra.length})` : 'Adjust…';
     });
-    opts.append(lt, best, h('span', 'grow'), lv, ll, li, adj);
+    opts.append(lt, best, h('span', 'grow'), lv, ls, ll, li, adj);
     const foot = h('div', 'plan-modal-foot');
     const next = button('btn primary pd-next', 'Next: what goes in', () => void drawParts());
     foot.append(h('span'), button('btn pd-cancel', 'Cancel', m.close), next);
@@ -204,7 +210,8 @@ export async function makeFromPage(pageId: string) {
     go.textContent = 'Making…';
     const done: { to: string; r?: any; error?: string }[] = [];
     for (const to of (['word', 'pdf'] as const).filter(t => want[t])) {
-      try { done.push({ to, r: await wb(['craft', to === 'word' ? 'word' : 'deck', ...pageArgs(), '--look', lookKey, ...(inkMode ? ['--set', `ink=${inkMode}`] : []), ...extra.flatMap(([k, v]) => ['--set', `${k}=${v}`])]) }); }
+      const format = to === 'pdf' && slideFormat === 'pptx' ? ['--format', slideFormat] : [];
+      try { done.push({ to, r: await wb(['craft', to === 'word' ? 'word' : 'deck', ...format, ...pageArgs(), '--look', lookKey, ...(inkMode ? ['--set', `ink=${inkMode}`] : []), ...extra.flatMap(([k, v]) => ['--set', `${k}=${v}`])]) }); }
       catch (x) { done.push({ to, error: String((x as Error).message || x) }); }
     }
     app.changed('documents');
@@ -219,8 +226,9 @@ export async function makeFromPage(pageId: string) {
       card.dataset.to = d.to;
       const t = h('div', 'pd-file-main');
       if (d.r) {
-        t.append(h('div', 'pd-file-name', d.r.name), h('div', 'muted small pd-file-meta', d.to === 'word' ? `Word · ${size(d.r.size)}` : `PDF · ${d.r.pages ?? d.r.checked?.pages ?? '?'} slides`));
+        t.append(h('div', 'pd-file-name', d.r.name), h('div', 'muted small pd-file-meta', d.to === 'word' ? `Word · ${size(d.r.size)}` : `${d.r.to === 'deck' ? 'PowerPoint' : 'PDF'} · ${d.r.pages ?? d.r.checked?.pages ?? '?'} slides`));
         card.append(icon('file'), t, button('btn small pd-open', 'Open', () => void wb(['docs', 'open', d.r.id]).catch(x => toast(String(x)))));
+        if (d.r.to === 'deck' && d.r.pdf) card.append(button('btn small', 'PDF preview', () => void wb(['docs', 'open-preview', d.r.id]).catch(x => toast(String(x)))));
       } else {
         t.append(h('div', 'pd-file-name', WHAT[d.to]), h('div', 'small pd-file-error', d.error!));
         card.append(icon('file'), t);
@@ -310,7 +318,9 @@ export function previewDoc(d: { id: string; name: string }) {
     try { p = await wb(['docs', 'preview', d.id]); }
     catch (x) { el.replaceChildren(head, h('p', 'muted', String((x as Error).message || x))); return; }
     const body = h('div', 'pd-pv-body');
-    if (p.paras) {
+    if (p.to === 'deck' && p.pdf) {
+      body.append(button('btn small', 'Open saved PDF preview', () => void wb(['docs', 'open-preview', d.id]).catch(x => toast(String(x)))));
+    } else if (p.paras) {
       const sheet = h('div', 'pd-pv-sheet');
       for (const para of p.paras) {
         const e = h('p', `pd-pv-p dp-${para.style}`);

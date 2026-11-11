@@ -20,6 +20,8 @@ typst-pdf = "0.15"
 typst-layout = "0.15"
 typst-svg = "0.15"
 flate2 = "1.1.11"
+lopdf = { version = "0.47.0", default-features = false }
+tempfile = "3.27.0"
 
 [dev-dependencies]
 rusqlite.workspace = true

@@ -38,15 +38,15 @@ const when = (iso: string) => {
 };
 
 type ExportSource = { kind: 'thread' | 'lesson' | 'passage'; name: string; version?: string };
-type ExportOptions = { structure?: string; theme?: string; look?: string; ink?: string; dials?: [string, string][]; newCopy?: boolean };
+type ExportOptions = { structure?: string; theme?: string; look?: string; ink?: string; dials?: [string, string][]; newCopy?: boolean; format?: string };
 
 function sourceArgs(source: ExportSource): string[] {
   return [`--${source.kind}`, source.name, ...(source.version ? ['--version', source.version] : [])];
 }
 
 /** Make or bring up to date a document from the given source. */
-export async function makeDoc(source: ExportSource, to: string, { structure, theme, look, ink, dials = [], newCopy }: ExportOptions = {}): Promise<string> {
-  const argv = ['craft', to, ...sourceArgs(source)];
+export async function makeDoc(source: ExportSource, to: string, { structure, theme, look, ink, dials = [], newCopy, format }: ExportOptions = {}): Promise<string> {
+  const argv = ['craft', to, ...(format === 'pptx' && to === 'deck' ? ['--format', format] : []), ...sourceArgs(source)];
   if (structure) argv.push('--structure', structure);
   if (theme) argv.push('--theme', theme);
   if (look) argv.push('--look', look);
@@ -84,16 +84,19 @@ function docRow(d: any): HTMLElement {
   if (d.problem) main.append(h('div', 'muted small', d.problem));
   if (d.kept?.length) main.append(h('div', 'muted small', `Your edits kept as ${d.kept.join(', ')}`));
   const acts = h('div', 'doc-acts');
+  const pptx = d.to === 'deck';
   const here = ['thread', 'page', 'passage', 'lesson'].includes(d.source?.kind) && ((d.to === 'word' && d.structure === 'script') || (d.to === 'pdf' && d.structure === 'verse')
+    || (pptx && ['reader', 'verse'].includes(d.structure))
     || (d.design && ((d.to === 'word' && ['share', 'study', 'reading'].includes(d.structure)) || (d.to === 'pdf' && d.structure === 'reader'))));
-  if (!here && !d.problem) main.append(h('div', 'muted small', d.to === 'deck' ? 'PowerPoint: made and updated by the Python app until phase 5' : 'Made and updated by the Python app until phase 5'));
+  if (!here && !d.problem) main.append(h('div', 'muted small', 'This legacy structure is available as its existing file.'));
   if (here && ['behind', 'missing', 'edited', 'old_design'].includes(d.state)) {
     acts.append(button('btn small primary doc-update', 'Update', () => act(['docs', 'update', d.id], r => r.changed ? `Updated ${r.name}` : `${r.name} is up to date`)));
   }
   const more = button('icon-btn doc-more', '', () => {
     const box = h('div', 'menu-list');
     const item = (lbl: string, fn: () => void) => box.append(button('menu-item', lbl, () => { close(); fn(); }));
-    if (here && d.exists) item('Preview it here', () => previewDoc(d));
+    if (pptx && d.pdf) item('Open saved PDF preview', () => void wb(['docs', 'open-preview', d.id]).catch(e => toast(String(e.message || e))));
+    else if (here && d.exists && !pptx) item('Preview it here', () => previewDoc(d));
     if (here && d.state !== 'forgotten') item('Make again now', () => act(['docs', 'update', d.id, '--force'], r => `Made ${r.name} again`));
     if (d.state === 'forgotten') item('Keep it up to date again', () => act(['docs', 'remember', d.id], r => `${r.name}: ${STATES[r.state]?.[0] || r.state}`));
     else item('Stop keeping it up to date', () => act(['docs', 'forget', d.id], () => `${d.name} is left as it is from now on`));
@@ -123,7 +126,7 @@ export function lookFields(looks: any): { look: HTMLSelectElement; ink: HTMLSele
 
 /** The Make row's last choices: the pane is drawn again after Make, and the row keeps what was chosen (the desk check
  * found the next Make going to the first thread, in Preview, after the redraw). */
-const lastMake: { source?: ExportSource; kind?: string; theme?: string; look?: string; ink?: string; extra: [string, string][] } = { extra: [] };
+const lastMake: { source?: ExportSource; kind?: string; theme?: string; look?: string; ink?: string; format?: string; extra: [string, string][] } = { extra: [] };
 
 function makeForm(threads: any[], fixed: string | null, themes: Record<string, any>, saved: string, done: () => void, looks?: any, lessons: any[] = []): HTMLElement {
   const f = h('form', 'doc-make');
@@ -169,6 +172,10 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
     source.kind === 'passage' ? 'Enter a passage reference' : source.kind === 'lesson' ? 'Choose an existing lesson' : 'Choose a thread';
   const what = h('select', 'field doc-kind') as HTMLSelectElement;
   for (const [to, st, label] of KINDS) what.append(new Option(label, `${to}|${st}`));
+  const format = h('select', 'field doc-slide-format');
+  format.setAttribute('aria-label', 'Slide format');
+  format.append(new Option('PDF', 'pdf'), new Option('PowerPoint with PDF preview', 'pptx'));
+  format.value = lastMake.format || 'pdf';
   const theme = h('select', 'field doc-theme') as HTMLSelectElement;
   for (const [k, t] of Object.entries(themes)) theme.append(new Option(t.name, k));
   theme.value = lastMake.theme || saved;
@@ -194,9 +201,14 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
   });
   adj.type = 'button';
   if (extra.length) adj.textContent = `Adjust… (${extra.length})`;
-  f.append(what, theme, look, ink, adj, go);
+  f.append(what, format, theme, look, ink, adj, go);
   const about = h('p', 'muted small doc-about');
-  const say = () => { const k = KINDS.find(x => `${x[0]}|${x[1]}` === what.value); about.textContent = `${k?.[3] || ''}. ${themes[theme.value]?.best_for || ''}.`; };
+  const say = () => {
+    const k = KINDS.find(x => `${x[0]}|${x[1]}` === what.value);
+    format.hidden = k?.[0] !== 'deck';
+    const description = format.value === 'pptx' && !format.hidden ? k?.[3]?.replace('Slides as PDF pages:', 'Editable slides:') : k?.[3];
+    about.textContent = `${description || ''}. ${themes[theme.value]?.best_for || ''}.`;
+  };
   const showSource = () => {
     thread.hidden = from.value !== 'thread';
     lesson.hidden = from.value !== 'lesson';
@@ -210,7 +222,7 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
     say();
   };
   showSource();
-  what.onchange = theme.onchange = say;
+  what.onchange = theme.onchange = format.onchange = say;
   say();
   f.onsubmit = async e => {
     e.preventDefault();
@@ -219,9 +231,9 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
     const [to, st] = what.value.split('|');
     go.disabled = true;
     go.textContent = 'Making…';
-    if (!fixed) Object.assign(lastMake, { source, kind: what.value, theme: theme.value, look: look.value, ink: ink.value, extra: [...extra] });
+    if (!fixed) Object.assign(lastMake, { source, kind: what.value, theme: theme.value, look: look.value, ink: ink.value, format: format.value, extra: [...extra] });
     try {
-      toast(await makeDoc(source, to, { structure: st, theme: theme.value, look: look.value, ink: ink.value, dials: extra, newCopy: newCopy.checked }));
+      toast(await makeDoc(source, to, { structure: st, theme: theme.value, look: look.value, ink: ink.value, dials: extra, newCopy: newCopy.checked, format: format.value }));
       done();
     }
     catch (x) { toast(String((x as Error).message || x)); }
@@ -261,7 +273,7 @@ export function openDocuments() {
     el.replaceChildren();
     const hd = h('header', 'pane-head');
     hd.append(h('h2', 'pane-title', 'Documents'),
-      h('div', 'pane-sub', 'Word documents and PDF slides from your passages, threads, pages and existing lessons. Every verse is checked against the Bible before an export is kept.'));
+      h('div', 'pane-sub', 'Word documents and slides from your passages, threads, pages and existing lessons. Every verse is checked against the Bible before an export is kept.'));
     el.append(hd);
     el.append(h('div', 'label', 'Make a document'));
     el.append(makeForm(threads, null, designs.themes, designs.theme, () => { void pane.refresh?.(); }, looks, lessons));

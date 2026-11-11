@@ -1591,6 +1591,74 @@ fn chapter_pdf_preserves_kjv_references_and_creates_a_new_file() {
 }
 
 #[test]
+fn editable_powerpoint_keeps_its_pdf_preview_and_pdf_export_separate() {
+    let Some(wb) = Wb::new() else { return };
+    let source = ["--passage", "John 3:16-18"];
+    let create = |format: &str| wb.js(&["craft", "deck", source[0], source[1], "--format", format]);
+    let deck = create("pptx");
+    assert_eq!(deck["to"], "deck");
+    assert_eq!(deck["pages"], 4);
+    let id = deck["id"].as_str().unwrap();
+    let open = wb.js(&["docs", "open", id]);
+    let preview = wb.js(&["docs", "open-preview", id]);
+    assert_eq!(open["path"], deck["path"]);
+    assert_eq!(preview["name"], deck["pdf"]);
+    let preview_path = wb.docs().join(deck["pdf"].as_str().unwrap());
+    let pptx_path = wb.docs().join(deck["name"].as_str().unwrap());
+    let companion = std::fs::read(&preview_path).unwrap();
+    assert!(companion.starts_with(b"%PDF-"));
+    assert_eq!(wb.js(&["docs", "preview", id])["pdf"], preview["path"]);
+    let pptx = std::fs::read(&pptx_path).unwrap();
+    assert!(pptx.starts_with(b"PK"));
+    let separate = wb.js(&["craft", "deck", source[0], source[1]]);
+    assert_eq!(separate["to"], "pdf");
+    assert_ne!(separate["id"], deck["id"]);
+    assert_ne!(separate["path"], preview["path"]);
+    assert_eq!(create("pptx")["changed"], false);
+    let office = format!("document:{id}");
+    let inputs = ["packet", separate["name"].as_str().unwrap(), &office, "--out", "Mixed packet.pdf", "--open"];
+    let packet = wb.js(&inputs);
+    assert_eq!(packet["name"], "Mixed packet.pdf");
+    assert_eq!(packet["pages"], separate["pages"].as_u64().unwrap() + deck["pages"].as_u64().unwrap());
+    assert!(std::fs::read(packet["path"].as_str().unwrap()).unwrap().starts_with(b"%PDF-"));
+    assert!(wb.fails(&inputs).contains("already has that name"));
+    assert_eq!(std::fs::read(&preview_path).unwrap(), companion);
+    assert_eq!(std::fs::read(&pptx_path).unwrap(), pptx);
+
+    // An update that fails after publishing keeps both old files and the old record.
+    let record = wb.dir.join("documents").join(format!("{id}.json"));
+    let saved = std::fs::read(&record).unwrap();
+    let blocker = record.with_file_name(format!("{id}.json.tmp"));
+    std::fs::create_dir(&blocker).unwrap();
+    assert!(!wb.fails(&["docs", "update", id, "--theme", "vigil", "--force"]).is_empty());
+    std::fs::remove_dir(blocker).unwrap();
+    assert_eq!(std::fs::read(&record).unwrap(), saved);
+    assert_eq!(std::fs::read(&pptx_path).unwrap(), pptx);
+    assert_eq!(std::fs::read(&preview_path).unwrap(), companion);
+
+    let mut edited = pptx;
+    edited.extend(b"existing hand edits");
+    std::fs::write(&pptx_path, &edited).unwrap();
+    let updated = wb.js(&["docs", "update", id, "--theme", "vigil", "--force"]);
+    assert_eq!(updated["id"], id);
+    assert_eq!(updated["pdf"], deck["pdf"]);
+    let kept = wb.docs().join(updated["kept_now"].as_str().unwrap());
+    assert_eq!(std::fs::read(kept).unwrap(), edited);
+    assert!(std::fs::read(&preview_path).unwrap().starts_with(b"%PDF-"));
+
+    // A page's existing PDF record and the editable deck can also coexist.
+    let page = wb.js(&["page", "new", "Export source"]);
+    let page = page["id"].as_str().unwrap();
+    let (code, _, error) = wb.run(&["block", "add", page, "-"], Some("```scripture\nJohn 3:16\n```"));
+    assert_eq!(code, 0, "{error}");
+    let pdf = wb.js(&["craft", "deck", "--page", page]);
+    let pptx = wb.js(&["craft", "deck", "--page", page, "--format", "pptx"]);
+    assert_ne!(pdf["id"], pptx["id"]);
+    assert_eq!(pdf["to"], "pdf");
+    assert_eq!(pptx["to"], "deck");
+}
+
+#[test]
 fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Phinehas", "--note", "Where he is named.", "--at", "Num 25:10-13"]);

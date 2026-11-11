@@ -22,9 +22,11 @@ pub mod chapter;
 pub mod deck;
 pub mod docx;
 pub mod look;
+pub mod packet;
 pub mod page;
 pub mod pdfs;
 pub mod plan;
+mod pptx;
 
 use crate::bible::Bible;
 use crate::store::{bad, missing, now, py_dumps_indent1, s, write_atomic, Rec, Store};
@@ -339,7 +341,7 @@ fn plan_now(bible: &Bible, store: &Store, rec: &Rec) -> std::result::Result<(Vec
     // R3's new templates are planned here only for documents made here (they carry "design"); the Python app's own
     // Share Copies and Study Sheets stay the Python app's to keep up to date
     let ours = (rec.contains_key("design") || !rec.contains_key("name")) && matches!((to.as_str(), structure.as_str()), ("word", "share" | "study" | "reading") | ("pdf", "reader"));
-    if !ours && !matches!((to.as_str(), structure.as_str()), ("word", "script") | ("deck" | "pdf", "verse")) {
+    if !ours && !matches!((to.as_str(), structure.as_str()), ("word", "script") | ("deck", "reader" | "verse") | ("pdf", "verse")) {
         return Err(NoPlan::NotHere(format!("{} is made and kept up to date by the Python app until phase 5.", plan::structure_label(&to, &structure))));
     }
     let mut margin = plan::Margin::new(bible, store).map_err(|e| NoPlan::Unreadable(e.0))?;
@@ -521,7 +523,12 @@ fn write_file(to: &str, structure: &str, p: &[Value], blocks: &[plan::Block], ti
             fs::write(at, pdf)?;
             (text, Some(pages))
         }
-        _ => return Err(bad("PowerPoint decks are made by the Python app until phase 5; here a deck is made as PDF pages (--to pdf).")),
+        "deck" => {
+            let pages = pptx::write(p, theme, lk, at)?;
+            let text = pptx::file_text(at, pages)?;
+            (text, Some(pages))
+        }
+        _ => return Err(bad("Choose Word, PDF slides, or PowerPoint.")),
     };
     let gone = missing_verses(&text, &verses);
     if let Some(first) = gone.first() {
@@ -556,6 +563,56 @@ fn look_for(store: &Store, rec: &Rec, name: Option<&str>, dials: &[(String, Stri
     Ok((key, l))
 }
 
+/// Keep the previous bytes until both PowerPoint outputs and their record are installed.
+struct Replacement {
+    target: PathBuf,
+    backup: Option<PathBuf>,
+    committed: bool,
+}
+
+impl Replacement {
+    fn publish(staged: &Path, target: &Path, backup: PathBuf) -> Result<Self> {
+        let backup = if target.is_file() {
+            fs::copy(target, &backup)?;
+            Some(backup)
+        } else {
+            None
+        };
+        fs::rename(staged, target).map_err(|e| if open_elsewhere(target) { busy(target, "update again") } else { e.into() })?;
+        Ok(Self { target: target.to_path_buf(), backup, committed: false })
+    }
+}
+
+impl Drop for Replacement {
+    fn drop(&mut self) {
+        if self.committed {
+            return;
+        }
+        if let Some(backup) = &self.backup {
+            let _ = fs::rename(backup, &self.target);
+        } else {
+            let _ = fs::remove_file(&self.target);
+        }
+    }
+}
+
+fn preview_name(rec: &Rec) -> Result<Option<&str>> {
+    let name = rec.get("pdf").and_then(Value::as_str).filter(|s| !s.is_empty());
+    name.map(|name| {
+        checked_name(name)?;
+        if !Path::new(name).extension().is_some_and(|ext| ext.eq_ignore_ascii_case("pdf")) {
+            return Err(bad("The saved preview must be a PDF."));
+        }
+        Ok(name)
+    }).transpose()
+}
+
+fn matching_preview(out: &Path, rec: &Rec) -> Option<PathBuf> {
+    let path = out.join(preview_name(rec).ok()??);
+    let hash = rec.get("preview_file").and_then(Value::as_str)?;
+    (sha_file(&path).ok().as_deref() == Some(hash)).then_some(path)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn build(bible: &Bible, store: &Store, folders: &ExportFolders, mut rec: Rec, theme_key: &str, lk: (String, look::Look), force: bool) -> Result<Value> {
     let out = folders.build_in(&rec)?;
@@ -570,8 +627,11 @@ fn build(bible: &Bible, store: &Store, folders: &ExportFolders, mut rec: Rec, th
     let finger = plan::fingerprint(&p);
     let old = rec.get("name").and_then(|n| n.as_str()).map(|n| out.join(n));
     let there = old.as_ref().is_some_and(|o| o.is_file());
+    let powerpoint = rec["to"] == "deck";
+    let previous_preview = powerpoint.then(|| matching_preview(out, &rec)).flatten();
     fs::create_dir_all(out)?;
-    if there && !force && s(&rec, "plan") == finger && s(&rec, "theme") == theme_key && rec.get("design").and_then(|d| d.as_i64()) == Some(docx::DESIGN) && rec.get("look_values") == Some(&look_values) {
+    if there && !force && s(&rec, "plan") == finger && s(&rec, "theme") == theme_key && rec.get("design").and_then(|d| d.as_i64()) == Some(docx::DESIGN)
+        && rec.get("look_values") == Some(&look_values) && (!powerpoint || previous_preview.is_some()) {
         let mut v = public(&rec, Some(out));
         v["changed"] = json!(false);
         v["kept_now"] = Value::Null;
@@ -588,7 +648,9 @@ fn build(bible: &Bible, store: &Store, folders: &ExportFolders, mut rec: Rec, th
         }
     }
     // built on the side, in the documents folder, and swapped in only when it passes the check
-    let tmp_dir = out.join(format!(".building-{}", std::process::id()));
+    static BUILD: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let run = BUILD.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let tmp_dir = out.join(format!(".building-{}-{run}", std::process::id()));
     fs::create_dir_all(&tmp_dir)?;
     let built = tmp_dir.join(format!("doc{ext}"));
     let checked = write_file(&to, &structure, &p, &blocks, &title, theme, &lk, &built);
@@ -603,6 +665,29 @@ fn build(bible: &Bible, store: &Store, folders: &ExportFolders, mut rec: Rec, th
                 unique_reserved(out, &stem, ext, &reserved)
             }
         };
+        let preview = if powerpoint {
+            let staged = tmp_dir.join("preview.pdf");
+            let pdf = write_file("pdf", &structure, &p, &blocks, &title, theme, &lk, &staged)?;
+            if pdf["pages"] != checked["pages"] {
+                return Err(bad("The PowerPoint deck and its preview have different slide counts."));
+            }
+            let destination = previous_preview.clone().unwrap_or_else(|| unique(out, &format!("{stem} - Preview"), ".pdf"));
+            if destination.is_file() && open_elsewhere(&destination) {
+                return Err(busy(&destination, "update again"));
+            }
+            if previous_preview.is_none() {
+                if let Some(name) = preview_name(&rec)?.filter(|name| out.join(name).is_file()) {
+                    let mut kept = rec.get("kept").and_then(Value::as_array).cloned().unwrap_or_default();
+                    kept.push(json!(name));
+                    rec.insert("kept".into(), json!(kept));
+                }
+            }
+            rec.insert("pdf".into(), json!(destination.file_name().unwrap().to_string_lossy()));
+            rec.insert("preview_file".into(), json!(sha_file(&staged)?));
+            Some((staged, destination))
+        } else {
+            None
+        };
         let mut kept = None;
         if let (true, Some(o)) = (there, old.as_ref()) {
             if changed_by_hand(&rec, o) {
@@ -611,16 +696,21 @@ fn build(bible: &Bible, store: &Store, folders: &ExportFolders, mut rec: Rec, th
                 kept = Some(k);
             }
         }
-        if let Err(e) = fs::rename(&built, &target).or_else(|_| fs::copy(&built, &target).map(|_| ())) {
+        let mut installed = Vec::new();
+        let publish = if let Some((staged, destination)) = preview {
+            Replacement::publish(&staged, &destination, tmp_dir.join("original.pdf"))
+                .and_then(|pdf| {
+                    installed.push(pdf);
+                    Replacement::publish(&built, &target, tmp_dir.join("original.pptx")).map(|pptx| installed.push(pptx))
+                })
+        } else {
+            fs::rename(&built, &target).or_else(|_| fs::copy(&built, &target).map(|_| ())).map_err(Error::from)
+        };
+        if let Err(e) = publish {
             if let Some(k) = &kept {
                 let _ = fs::remove_file(k);
             }
-            return Err(if open_elsewhere(&target) { busy(&target, "update again") } else { e.into() });
-        }
-        if let (true, Some(o)) = (there, old.as_ref()) {
-            if *o != target {
-                let _ = fs::remove_file(o); // the thread was renamed; the file goes with it
-            }
+            return Err(if open_elsewhere(&target) { busy(&target, "update again") } else { e });
         }
         for (k, v) in [
             ("name", json!(target.file_name().unwrap().to_string_lossy())),
@@ -637,7 +727,7 @@ fn build(bible: &Bible, store: &Store, folders: &ExportFolders, mut rec: Rec, th
         ] {
             rec.insert(k.into(), v);
         }
-        if to == "pdf" {
+        if to == "pdf" || powerpoint {
             rec.insert("pages".into(), checked["pages"].clone()); // slides as PDF pages: how many (the Python app passes these over)
         }
         if let Some(k) = &kept {
@@ -646,7 +736,20 @@ fn build(bible: &Bible, store: &Store, folders: &ExportFolders, mut rec: Rec, th
             rec.insert("kept".into(), json!(list));
         }
         folders.remember(&mut rec, out);
-        save(store, &rec)?;
+        if let Err(e) = save(store, &rec) {
+            if powerpoint {
+                if let Some(k) = &kept { let _ = fs::remove_file(k); }
+            }
+            return Err(e);
+        }
+        for install in &mut installed {
+            install.committed = true;
+        }
+        if let (true, Some(o)) = (there, old.as_ref()) {
+            if *o != target {
+                let _ = fs::remove_file(o); // the source was renamed; the file goes with it
+            }
+        }
         let mut v = public(&rec, Some(out));
         v["changed"] = json!(true);
         v["kept_now"] = kept.map(|k| json!(k.file_name().unwrap().to_string_lossy())).unwrap_or(Value::Null);
@@ -674,7 +777,11 @@ pub fn set_theme(store: &mut Store, key: &str) -> Result<Value> {
 
 fn source_structure(to: &str, structure: Option<&str>, source: &Value) -> Result<&'static plan::Structure> {
     let kind = s_(source, "kind");
-    let structure = structure.filter(|s| !s.is_empty()).or_else(|| (to == "pdf" && kind == "lesson").then_some("reader"));
+    let structure = structure.filter(|s| !s.is_empty()).or(match (to, kind) {
+        ("deck", "thread") => Some("verse"),
+        ("deck", "lesson") | ("pdf", "lesson") => Some("reader"),
+        _ => None,
+    });
     plan::structure_of(if to == "deck" { "pdf" } else { to }, structure, kind)
 }
 
@@ -683,8 +790,8 @@ fn source_structure(to: &str, structure: Option<&str>, source: &Value) -> Result
 #[allow(clippy::too_many_arguments)]
 pub fn make(bible: &Bible, store: &Store, folders: &ExportFolders, source: Source, to: &str, structure: Option<&str>, theme: Option<&str>, look_name: Option<&str>,
     dials: &[(String, String)], new: bool, force: bool) -> Result<Value> {
-    if !matches!(to, "word" | "pdf") {
-        return Err(bad("to: word, or pdf (slides as PDF pages; PowerPoint is made by the Python app until phase 5)."));
+    if !matches!(to, "word" | "pdf" | "deck") {
+        return Err(bad("to: word, pdf (slides as PDF pages), or deck (PowerPoint)."));
     }
     let source = source.record(bible, store)?;
     let st = source_structure(to, structure, &source)?;
@@ -717,14 +824,6 @@ pub fn update(bible: &Bible, store: &Store, folders: &ExportFolders, name: &str,
     if rec.get("forgotten") == Some(&json!(true)) {
         return Err(bad(format!("“{}” was forgotten, so it is left as it is. Remember it first (docs remember).", s(&rec, "name"))));
     }
-    if s(&rec, "to") == "deck" {
-        return Err(bad(format!(
-            "“{}” is PowerPoint, made by the Python app; it is updated there until phase 5. Here: wb craft deck --thread {} --structure {} makes it as PDF pages.",
-            s(&rec, "name"),
-            source_name(&rec["source"]),
-            s(&rec, "structure")
-        )));
-    }
     let theme = match theme.filter(|t| !t.is_empty()) {
         Some(t) => plan::theme(t)?.key.to_string(),
         None => s(&rec, "theme"),
@@ -739,7 +838,7 @@ pub fn update_behind(bible: &Bible, store: &Store, folders: &ExportFolders) -> V
     let (mut done, mut failed) = (vec![], vec![]);
     for d in listing(bible, store, folders, None).as_array().unwrap() {
         let legacy_source = matches!(s_(&d["source"], "kind"), "passage" | "lesson") && d.get("design").is_none();
-        if d["state"] != "behind" || d["to"] == "deck" || legacy_source {
+        if d["state"] != "behind" || (d["to"] == "deck" && d.get("design").is_none()) || legacy_source {
             continue;
         }
         match update(bible, store, folders, s_(d, "id"), None, None, &[], false) {
@@ -835,13 +934,12 @@ fn pdf_plan_pages(store: &Store, rec: &Rec, to: &str, p: &[Value], title: &str, 
 
 // ---- a document from a page (W6) ----------------------------------------------------------------------------------------
 
-/// What a page can be made into here: Word → the Speaker Script, slides as PDF pages → Verse by Verse (the rest of the
-/// structures come in phase 5).
+/// A page uses Speaker Script for Word or Verse by Verse for slides by default.
 fn page_structure(to: &str, structure: Option<&str>) -> Result<&'static str> {
     let key = match to {
         "word" => "script",
-        "pdf" => "verse",
-        _ => return Err(bad("to: word, or pdf (slides as PDF pages).")),
+        "pdf" | "deck" => "verse",
+        _ => return Err(bad("to: word, pdf (slides as PDF pages), or deck (PowerPoint).")),
     };
     if let Some(x) = structure.filter(|x| !x.is_empty()) {
         if let Ok(st) = plan::structure_of(to, Some(x), "lesson") {
@@ -869,7 +967,8 @@ fn page_id(store: &Store, page: &str) -> Result<String> {
 
 /// A page's record for a structure, as it is or new.
 fn page_record(store: &Store, id: &str, to: &str, structure: &str) -> Rec {
-    let rid = format!("page-{id}-{structure}");
+    let suffix = if to == "deck" { "-pptx" } else { "" };
+    let rid = format!("page-{id}-{structure}{suffix}");
     records(store).into_iter().find(|r| s(r, "id") == rid).unwrap_or_else(|| {
         // a new one starts from the choices the page's other document was made with
         let mut r = json!({"id": rid, "source": {"kind": "page", "id": id}, "to": to, "structure": structure}).as_object().unwrap().clone();
@@ -989,6 +1088,10 @@ pub fn plan_for_page(bible: &Bible, store: &Store, page: &str, to: &str, structu
 /// (`stale`) rather than show pages the file does not have.
 pub fn preview(bible: &Bible, store: &Store, folders: &ExportFolders, name: &str) -> Result<Value> {
     let rec = find(store, name)?;
+    if rec["to"] == "deck" {
+        let pdf = preview_path(folders, &rec)?;
+        return Ok(json!({"id": rec["id"], "name": rec["name"], "to": rec["to"], "pdf": pdf, "pages": rec["pages"]}));
+    }
     let path = existing_file(folders, &rec)?;
     let mut v = json!({"id": rec["id"], "name": rec["name"], "to": rec["to"], "path": path.to_string_lossy()});
     match s(&rec, "to").as_str() {
@@ -1005,9 +1108,32 @@ pub fn preview(bible: &Bible, store: &Store, folders: &ExportFolders, name: &str
             v["pages"] = json!(slides.len());
             v["slides"] = json!(slides);
         }
-        _ => return Err(bad("A PowerPoint deck is previewed in PowerPoint (docs open).")),
+        _ => return Err(bad("There is no preview for this file.")),
     }
     Ok(v)
+}
+
+fn preview_path(folders: &ExportFolders, rec: &Rec) -> Result<PathBuf> {
+    let name = preview_name(rec)?.ok_or_else(|| missing("This PowerPoint file has no saved PDF preview."))?;
+    if let Some(out) = folders.resolve(rec)? {
+        let path = out.join(name);
+        if path.is_file() {
+            return Ok(path);
+        }
+        return Err(missing(format!("The saved PDF preview “{name}” is missing.")));
+    }
+    let files = pdfs::list(folders)?;
+    Ok(pdfs::find(&files, name, true)?.path.clone())
+}
+
+pub fn open_preview(store: &Store, folders: &ExportFolders, name: &str) -> Result<Value> {
+    let rec = find(store, name)?;
+    if rec["to"] != "deck" {
+        return Err(bad("Only PowerPoint files have a separate PDF preview."));
+    }
+    let path = preview_path(folders, &rec)?;
+    open_file(&path)?;
+    Ok(json!({"ok": true, "name": path.file_name().unwrap().to_string_lossy(), "path": path}))
 }
 
 fn existing_file(folders: &ExportFolders, rec: &Rec) -> Result<PathBuf> {

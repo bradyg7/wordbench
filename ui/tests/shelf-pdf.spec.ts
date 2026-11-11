@@ -1,6 +1,19 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
+test('packet sends saved PDF and Office companion in command order', async ({ page }) => {
+  let sent = false;
+  await page.route('**/fixtures/wb/packet-john-3-document-study-slides-open.json', route => {
+    sent = true;
+    return route.fulfill({ json: { name: 'Study packet.pdf', pages: 3 } });
+  });
+  await page.goto('/?at=NUM.25');
+  await page.waitForFunction(() => (window as any).__wbReady);
+  const result = await page.evaluate(() => (window as any).__wb.run('packet John 3 ; document:Study Slides'));
+  expect(result).toEqual({ ok: true, said: 'Saved Study packet.pdf · 3 pages' });
+  expect(sent).toBe(true);
+});
+
 test('Shelf opens a saved PDF individually and with its folder', async ({ page }, info) => {
   test.skip(info.project.name === 'webkit-phone', 'Open all is a desktop action');
   const file = { key: 'pdf-older-study', kind: 'pdf', label: 'Older study', ref: 'Older study.pdf', open: 'pdf|Older study.pdf' };

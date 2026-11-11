@@ -265,7 +265,7 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
     }
     const pre = h('pre', 'perf', perf.summary());
     out.push(row('Measured this run', 'Timings since the window opened', pre, 'speed performance'));
-    out.push(row('Later phases', 'PowerPoint, Office PDF companions and additional document structures are phase 5. Read aloud and recordings are phase 6.', h('span'), 'python'));
+    out.push(row('Later phases', 'Additional document structures are phase 5. Read aloud and recordings are phase 6.', h('span'), 'python'));
   }
   return out;
 }

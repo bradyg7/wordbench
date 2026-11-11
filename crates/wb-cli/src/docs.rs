@@ -120,6 +120,16 @@ fn build_lesson(c: &Ctx<'_>, a: &crate::args::Args) -> Res {
 
 pub fn commands() -> Vec<Command> {
     vec![
+        cmd("packet", "Join saved PDFs in the given order. Use document:NAME for a saved Office document's existing PDF companion. --out chooses a new PDF filename.",
+            vec![Pos("names", N::Many), Opt("out", None), Flag("open")], |c, a| {
+                let folders = out_dir(c)?;
+                let store = c.study()?;
+                let result = docs::packet::make(&store, &folders, &a.list("names"), a.opt("out").as_deref()).map_err(e)?;
+                if a.flag("open") {
+                    docs::open_file(Path::new(result["path"].as_str().unwrap_or(""))).map_err(e)?;
+                }
+                j(result)
+            }),
         cmd("pdf", "Save the first KJV chapter named by REF as a print PDF with its existing notes. --no-highlights hides all marks.\n\
                     --no-mine hides personal highlights, --thread ID includes a thread's underlines, and --open opens the result.",
             vec![Pos("ref", N::Many), Flag("no_highlights"), Flag("no_mine"), Append("thread"), Flag("open")], |c, a| {
@@ -178,9 +188,13 @@ pub fn commands() -> Vec<Command> {
             }
             j(r)
         }),
-        cmd("docs open", "Open a document in its app (Word, or the PDF viewer).", vec![Pos("name", N::Many)], |c, a| {
+        cmd("docs open", "Open the saved document in the system app for its format.", vec![Pos("name", N::Many)], |c, a| {
             let out = out_dir(c)?;
             j(docs::open(&*c.study()?, &out, &a.s("name")).map_err(e)?)
+        }),
+        cmd("docs open-preview", "Open a PowerPoint document's saved PDF preview in the system PDF viewer.", vec![Pos("name", N::Many)], |c, a| {
+            let out = out_dir(c)?;
+            j(docs::open_preview(&*c.study()?, &out, &a.s("name")).map_err(e)?)
         }),
         cmd("docs forget", "Stop keeping a document up to date. It stays listed and its file is left alone; docs remember takes it back.",
             vec![Pos("name", N::Many)], |c, a| j(docs::forget(&*c.study()?, &a.s("name")).map_err(e)?)),
@@ -224,11 +238,18 @@ pub fn commands() -> Vec<Command> {
                            wb craft parts --page ID. To-dos are left out unless switched on; with no --on or --off, the switches it was last made with stay.\n\
                            --look NAME (wb docs looks) and --set DIAL=VALUE style it; otherwise the Look it was last made with, or the one new documents use.",
             make_args(), |c, a| make(c, a, "word")),
-        cmd("craft deck", "Slides as PDF pages from --thread NAME, --passage REF [--version V], --lesson NAME or --page ID.\n\
+        cmd("craft deck", "Slides from --thread NAME, --passage REF [--version V], --lesson NAME or --page ID.\n\
                            Structures: verse (Verse by Verse) and reader (Reader).\n\
+                           --format pptx makes editable PowerPoint with a saved PDF preview. The default format is pdf.\n\
                            Asking again for the same source and structure updates the same file (see wb docs). Every verse on the pages is checked against the Bible.\n\
                            From a page: wb craft deck --page ID, with --on, --off and --version as wb craft word.",
-            make_args(), |c, a| make(c, a, "pdf")),
+            make_args().into_iter().chain([Opt("format", Some("pdf"))]).collect(), |c, a| {
+            match a.opt_or("format", "pdf").as_str() {
+                "pdf" => make(c, a, "pdf"),
+                "pptx" => make(c, a, "deck"),
+                _ => Err("--format: pdf or pptx.".into()),
+            }
+        }),
         cmd("lesson build", "Export an existing lesson file. --make selects structures, separated by commas. The default is script,share.\n\
                              Word: script, share, study, reading. PDF slides: reader, verse. --new makes separate exports.",
             vec![Pos("name", N::Many), Opt("make", None), Opt("theme", None), Flag("pdf"), Flag("new"), Flag("open")], build_lesson),

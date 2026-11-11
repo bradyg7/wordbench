@@ -112,7 +112,7 @@ fn marks_of(s: &Value) -> Vec<(usize, usize)> {
 }
 
 /// The plan's slides as the template's data, with each box's size fitted as DeckCraft fitted it.
-fn slides_data(plan: &[Value], t: &Theme, look: &Look) -> Vec<Value> {
+pub(super) fn slides_data(plan: &[Value], t: &Theme, look: &Look) -> Vec<Value> {
     // the estimate is held a little under the box (360 pt when the neighbours are hidden), so a long verse never spills off the page
     let (box_h, hi) = if look.neighbours == "hidden" { (330.0, 46) } else { (240.0, 40) };
     let w = 960.0 - 64.0 - 64.0;

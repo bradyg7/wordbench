@@ -250,7 +250,10 @@ export async function perform(a: any, line: string): Promise<string> {
       const file = await wb(['pdf', chapter, ...flags, '--open']);
       return `Saved ${file.name}`;
     }
-    case 'packet': return later('Combining saved PDFs', 5);
+    case 'packet': {
+      const file = await wb(['packet', ...a.names, '--open']);
+      return `Saved ${file.name} · ${file.pages} pages`;
+    }
     default: return `“${line}” is understood, but the window does not do it yet.`;
   }
 }

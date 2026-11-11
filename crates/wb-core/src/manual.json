@@ -1744,10 +1744,10 @@
    "usage": [
     "packet <pdf> ; <pdf> [; <pdf> ...]"
    ],
-   "what": "Joins saved PDFs, in the order you give them, into one packet with PdfCraft, and opens it.",
+   "what": "Joins saved PDFs and existing Office PDF companions in the order you give them, then opens the packet.",
    "details": [
-    "Each name is a saved PDF, or a unique part of one (pdfs lists them). Two or more. The packet is saved as Study packet - <date>.pdf.",
-    "The Packet… button in the PDF viewer does the same by choosing from a list."
+    "Name two to sixty saved PDFs. Use an exact PDF filename or a unique part of its name. Use document:NAME to select an Office document's saved PDF companion.",
+    "In a terminal, use wb packet with each name as a separate argument. Pass --out to choose a new PDF filename or --open to open the saved packet."
    ],
    "examples": [
     [

@@ -13,7 +13,7 @@ use serde_json::Value;
 use std::io::{Read, Write};
 use std::path::Path;
 
-fn esc(s: &str) -> String {
+pub(super) fn esc(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
 }
 
@@ -374,7 +374,7 @@ pub fn write(plan: &[Value], t: &Theme, look: &Look, title: &str, size: f64, spa
     Ok(())
 }
 
-fn unescape(s: &str) -> String {
+pub(super) fn unescape(s: &str) -> String {
     let re = regex::Regex::new(r"&(#x[0-9a-fA-F]+|#\d+|amp|lt|gt|quot|apos);").unwrap();
     re.replace_all(s, |c: &regex::Captures| match &c[1] {
         "amp" => "&".to_string(),
