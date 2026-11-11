@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "productId": "app.bibleworkbench.desktop",
+  "channel": "pilot",
+  "issuance": "manual",
+  "offlineUse": "permanent-after-activation",
+  "leaseExpires": false,
+  "deviceLimit": 2,
+  "updateEntitlement": "pilot-updates-included",
+  "pricing": null,
+  "replacement": "manual-owner-issued-on-computer-replacement",
+  "policyApprovedOn": "2026-11-11"
+}

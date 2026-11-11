@@ -13,7 +13,17 @@
     "test:webkit": "playwright test",
     "measure": "node measure/measure.mjs",
     "package": "node scripts/package.mjs",
-    "check:package": "node scripts/check-package.mjs"
+    "check:package": "node scripts/check-package.mjs",
+    "site:dev": "vite --config site/vite.config.ts",
+    "site:build": "tsc -p site && vite build --config site/vite.config.ts",
+    "release:check": "node scripts/release/check.mjs",
+    "release:prepare": "node scripts/release/prepare.mjs",
+    "test:distribution": "node --test scripts/release/tests/*.test.mjs",
+    "test:setup": "playwright test --config ui/setup.playwright.config.ts",
+    "test:site": "playwright test --config site/playwright.config.ts",
+    "release:verify": "node scripts/release/verify-candidate.mjs",
+    "test:downloads": "node --test services/distribution/server.test.mjs",
+    "release:notices": "python -B scripts/release/collect-notices.py"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

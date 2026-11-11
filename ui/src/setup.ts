@@ -81,7 +81,7 @@ function draw(initial: Status) {
   message.setAttribute('role', 'status');
   const start = el('button', 'btn primary wide', 'Start reading');
   start.type = 'button';
-  const foot = el('p', 'setup-foot', 'Nothing is uploaded and no account is needed. Your files stay in the folder above; deletes wait in its .trash for seven days.');
+  const foot = el('p', 'setup-foot', 'Nothing is uploaded and no account is needed. Your files stay in the folder above. Page deletion has a short Undo window; legacy deletions use Trash.');
 
   card.append(dbStep, studyStep, message, start, foot);
   root.append(card);

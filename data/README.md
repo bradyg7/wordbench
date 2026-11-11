@@ -18,13 +18,13 @@ For a rebuild, use a fresh output path. The builder publishes a completed databa
 
 The build-only importers were copied from the predecessor’s data pipeline. The generated database uses the same tables and column order with SQLite `user_version = 1`. Verification runs SQLite `quick_check` and compares the row count and SHA-256 digest of each of the 11 ordered tables to the reference. Each row is serialized as a compact UTF-8 JSON array followed by LF. The `words` digest covers the KJV word positions, text, punctuation, Strong’s links and formatting flags used by existing study anchors. The reference SQLite file’s SHA-256 identifies the file used to establish the baseline. Different SQLite versions can produce a different file hash with identical table content.
 
-For the separate Webster’s database, the builder downloads a pinned upstream JSON or accepts an exact local copy with `--json`. It verifies SHA-256 and checks the resulting SQLite database before replacing the output.
+For the separate Webster database, the builder downloads the hash-pinned original publisher text or accepts it with `--text`. It uses an independent parser, preserves full entry blocks and repeated senses, and verifies all 102,572 indexed entries against a parsed-data fingerprint. Existing outputs are never overwritten. The old third-party JSON input is no longer used because its repository licenses example output under GPL v2.
 
 ```powershell
 $wbDictionary = Join-Path (Get-Location) 'datasets\dictionary.db'
-python scripts/build-dictionary.py --json 'C:\path\to\dictionary_compact.json' --out $wbDictionary
+python scripts/build-dictionary.py --text 'C:\path\to\pg29765.txt' --out $wbDictionary
 $env:WB_DICT_DB = $wbDictionary
 cargo run -p wb-cli -- word-define --source
 ```
 
-The app opens both databases read-only. The Bible input lock and the dictionary pin establish reproducible local builds. Redistribution review for both databases is pending. [Pinned dictionary source](https://github.com/matthewreagan/WebstersEnglishDictionary/blob/6fb9c92420c3a323e74ffb9d577409f4431cc42a/dictionary_compact.json) · [Upstream license notice](https://github.com/matthewreagan/WebstersEnglishDictionary/blob/6fb9c92420c3a323e74ffb9d577409f4431cc42a/README.md#license)
+Both databases are opened read-only. Source hashes and table fingerprints establish reproducible content, not distribution approval. See the [exact source and redistribution record](../distribution/DATA-INVENTORY.md) for immutable upstream identities, source terms, the dictionary migration contract, notices, and the remaining territory and release checks. Run `python -B scripts/release/audit-data.py --help` for read-only artifact evidence collection.

@@ -25,6 +25,7 @@ pub mod published;
 pub mod questions;
 pub mod reading;
 pub mod relay;
+pub mod runtime;
 pub mod scripture;
 pub mod shelf;
 pub mod setup;
@@ -39,12 +40,21 @@ use std::path::PathBuf;
 /// The Bible database: `WB_BIBLE_DB`, the choice saved by the app or `wb setup`, `datasets/workbench.db` beside the
 /// program (the package), or the application-data folder. `setup::db_candidates` gives every place looked in.
 pub fn default_db_path() -> PathBuf {
+    #[cfg(feature = "distribution")]
+    { runtime::resource_path("workbench.db") }
+    #[cfg(not(feature = "distribution"))]
+    {
     setup::existing_db().unwrap_or_else(|| setup::db_candidates().into_iter().next().unwrap_or_default())
+    }
 }
 
 /// The study folder: `WB_STUDY_DIR`, the choice saved by the app or `wb setup`, or the scratch copy made by
 /// `scripts/scratch-study.ps1` (a development checkout; the window asks the person to choose on first run).
 pub fn default_study_dir() -> PathBuf {
+    #[cfg(feature = "distribution")]
+    { return runtime::study_path(); }
+    #[cfg(not(feature = "distribution"))]
+    {
     if let Ok(p) = std::env::var("WB_STUDY_DIR") {
         if !p.trim().is_empty() {
             return PathBuf::from(p);
@@ -54,6 +64,7 @@ pub fn default_study_dir() -> PathBuf {
         return PathBuf::from(p);
     }
     std::env::temp_dir().join("bible-workbench-rs").join("study-scratch")
+    }
 }
 
 /// The person's real study folder, which wb-core refuses to open unless `WB_ALLOW_REAL_STUDY=1`.

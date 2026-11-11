@@ -11,6 +11,10 @@ use std::sync::mpsc;
 use tauri::{Emitter, LogicalSize, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::{DialogExt, FilePath};
 use wb_core::{bible::Bible, store::Store, studyapi, views};
+#[cfg(feature = "updater")]
+use tauri_plugin_dialog::MessageDialogButtons;
+#[cfg(feature = "updater")]
+use tauri_plugin_updater::UpdaterExt;
 
 /// Said when the setup screen has not finished: the window still draws, and says what is missing rather than closing.
 const NOT_SET_UP: &str = "Bible Workbench is not set up yet. Choose the Bible database and the folder for your notes.";
@@ -86,12 +90,14 @@ fn timed<T: Serialize>(f: impl FnOnce() -> wb_core::Result<T>) -> Result<Value, 
 
 /// The store, brought up to date with the folder (hand edits, `wb` in a terminal, a git pull).
 fn fresh<'a>(app: &'a App) -> Result<std::sync::MutexGuard<'a, Option<Store>>, String> {
+    wb_core::runtime::require_license().map_err(|e| e.to_string())?;
     let mut st = app.store.lock().unwrap();
     st.as_mut().ok_or(NOT_SET_UP)?.refresh().map_err(|e| e.to_string())?;
     Ok(st)
 }
 
 fn bible_of<'a>(app: &'a App) -> Result<std::sync::MutexGuard<'a, Option<Bible>>, String> {
+    wb_core::runtime::require_license().map_err(|e| e.to_string())?;
     let bible = app.bible.lock().unwrap();
     if bible.is_none() {
         return Err(NOT_SET_UP.into());
@@ -202,6 +208,7 @@ fn finding_attach(app: State<App>, request: tauri::ipc::Request<'_>) -> Result<V
 
 #[tauri::command]
 fn books(app: State<App>) -> Result<Value, String> {
+    wb_core::runtime::require_license().map_err(|e| e.to_string())?;
     let bible = bible_of(&app)?;
     let bible = bible.as_ref().unwrap();
     timed(|| Ok(bible.books().to_vec()))
@@ -235,11 +242,15 @@ fn setup_value() -> Value {
 
 #[tauri::command]
 fn setup_status() -> Value {
-    setup_value()
+    #[cfg(feature = "distribution")]
+    { json!({"ok": true}) }
+    #[cfg(not(feature = "distribution"))]
+    { setup_value() }
 }
 
 /// Opens a study folder the way boot does, making the folder if the person chose a new one.
 fn open_study(path: &std::path::Path) -> Result<Store, String> {
+    if path.exists() { wb_core::store::guard(path).map_err(|e| e.to_string())?; }
     std::fs::create_dir_all(path).map_err(|e| format!("The folder could not be made ({}): {e}", path.display()))?;
     let mut store = Store::open(path).map_err(|e| e.to_string())?;
     store.recheck = std::time::Duration::from_secs(1);
@@ -256,7 +267,14 @@ fn open_study(path: &std::path::Path) -> Result<Store, String> {
     Ok(store)
 }
 
+fn reject_developer_setup_in_distribution() -> Result<(), String> {
+    if cfg!(feature = "distribution") {
+        Err("Use installation setup; customer resources cannot be replaced through developer setup.".into())
+    } else { Ok(()) }
+}
+
 fn use_study(app: &tauri::AppHandle, path: std::path::PathBuf) -> Result<Value, String> {
+    reject_developer_setup_in_distribution()?;
     let store = open_study(&path)?;
     wb_core::setup::set_setting("study_dir", &path.to_string_lossy()).map_err(|e| e.to_string())?;
     *app.state::<App>().store.lock().unwrap() = Some(store);
@@ -271,6 +289,7 @@ fn set_study_dir(app: tauri::AppHandle, path: String) -> Result<Value, String> {
 
 #[tauri::command]
 async fn choose_study_dir(app: tauri::AppHandle) -> Result<Value, String> {
+    reject_developer_setup_in_distribution()?;
     let handle = app.clone();
     let picked = tauri::async_runtime::spawn_blocking(move || {
         handle.dialog().file().set_title("Choose the folder for your notes").blocking_pick_folder()
@@ -285,6 +304,7 @@ async fn choose_study_dir(app: tauri::AppHandle) -> Result<Value, String> {
 }
 
 fn use_database(app: &tauri::AppHandle, path: std::path::PathBuf) -> Result<Value, String> {
+    reject_developer_setup_in_distribution()?;
     let bible = Bible::open(&path).map_err(|e| e.to_string())?;
     wb_core::setup::set_setting("bible_db", &path.to_string_lossy()).map_err(|e| e.to_string())?;
     *app.state::<App>().bible.lock().unwrap() = Some(bible);
@@ -304,6 +324,7 @@ fn set_bible_db(app: tauri::AppHandle, path: String) -> Result<Value, String> {
 
 #[tauri::command]
 async fn choose_bible_db(app: tauri::AppHandle) -> Result<Value, String> {
+    reject_developer_setup_in_distribution()?;
     let handle = app.clone();
     let picked = tauri::async_runtime::spawn_blocking(move || {
         handle
@@ -342,6 +363,7 @@ fn ui_ready(app: State<App>, report: Value) -> Result<Value, String> {
         "main_to_ready_ms": app.started.elapsed().as_secs_f64() * 1000.0,
         "ui": report,
     });
+    #[cfg(not(feature = "distribution"))]
     if let Ok(path) = std::env::var("WB_MEASURE_OUT") {
         std::fs::write(&path, serde_json::to_string_pretty(&out).unwrap()).map_err(|e| e.to_string())?;
     }
@@ -351,6 +373,7 @@ fn ui_ready(app: State<App>, report: Value) -> Result<Value, String> {
 /// Options for a shortcut (a Start menu or taskbar icon cannot carry the settings a terminal can):
 /// `--study <folder>` is WB_STUDY_DIR, `--allow-real-study` is WB_ALLOW_REAL_STUDY=1, `--window <size>` is WB_WINDOW.
 /// Nothing in this repository passes `--allow-real-study`; the person's own shortcut does.
+#[cfg(not(feature = "distribution"))]
 fn take_options() -> Result<(), String> {
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
@@ -366,6 +389,7 @@ fn take_options() -> Result<(), String> {
 }
 
 /// Says why the app cannot start, in a window (the release app has no console), then stops.
+#[cfg(not(feature = "distribution"))]
 fn fail(msg: &str) -> ! {
     #[cfg(windows)]
     {
@@ -382,38 +406,124 @@ fn fail(msg: &str) -> ! {
     std::process::exit(1)
 }
 
+#[tauri::command]
+fn installation_status() -> Result<wb_core::runtime::Status, String> {
+    #[cfg(feature = "distribution")]
+    { Ok(wb_core::runtime::roots().status()) }
+    #[cfg(not(feature = "distribution"))]
+    { Err("Installation setup is available in distribution builds only.".into()) }
+}
+
+#[tauri::command]
+fn installation_configure(app: tauri::AppHandle, path: String, create: bool) -> Result<(), String> {
+    if app.try_state::<App>().is_some() { return Err("Close the study workspace before changing installation settings.".into()); }
+    #[cfg(feature = "distribution")]
+    { wb_core::runtime::roots().configure(std::path::Path::new(&path), create).map_err(|e| e.to_string()) }
+    #[cfg(not(feature = "distribution"))]
+    { let _ = (path, create); Err("Installation setup is available in distribution builds only.".into()) }
+}
+
+#[tauri::command]
+fn installation_restart(app: tauri::AppHandle) -> Result<(), String> {
+    if app.try_state::<App>().is_some() { return Err("Restart from setup only; preserve your open workspace.".into()); }
+    #[cfg(feature = "distribution")]
+    { app.restart(); }
+    #[cfg(not(feature = "distribution"))]
+    { let _ = app; Err("Installation setup is available in distribution builds only.".into()) }
+}
+
+#[tauri::command]
+fn pilot_license(action: String, certificate: Option<String>) -> Result<Value, String> {
+    #[cfg(feature = "distribution")]
+    {
+        let license = wb_core::runtime::licensing();
+        match action.as_str() {
+            "status" => serde_json::to_value(license.status()).map_err(|e| e.to_string()),
+            "request" => Ok(json!({"request": license.request()?})),
+            "import" => { license.import(certificate.as_deref().ok_or("Choose a license file first.")?)?; Ok(json!({"active":true})) },
+            _ => Err("Unknown license action.".into()),
+        }
+    }
+    #[cfg(not(feature = "distribution"))]
+    { let _ = (action, certificate); Err("Pilot licensing is available in distribution builds only.".into()) }
+}
+
+/// Optional update discovery only. Installation remains manual until edit flushing, process coordination,
+/// authenticated delivery and failure recovery have passed the release acceptance checks.
+#[cfg(feature = "updater")]
+fn check_for_update(app: tauri::AppHandle) {
+    if std::env::var("WB_NO_UPDATE_CHECK").is_ok() || !app.config().plugins.0.contains_key("updater") {
+        return;
+    }
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        let found = tauri::async_runtime::block_on(async {
+            let updater = app.updater().ok()?;
+            updater.check().await.ok().flatten()
+        });
+        let Some(update) = found else { return };
+        app.dialog()
+            .message(format!("Bible Workbench {} is available. Save your work and close the app before installing the signed package supplied through your pilot invitation contact.", update.version))
+            .title("A new version of Bible Workbench")
+            .buttons(MessageDialogButtons::Ok)
+            .blocking_show();
+    });
+}
+
 fn main() {
     let started = Instant::now();
     let started_wall_ms = wall_ms();
+    #[cfg(not(feature = "distribution"))]
     if let Err(e) = take_options() {
         fail(&e);
     }
-    // A first run has no database or study folder yet: the window opens on its setup screen instead of closing. The
-    // package puts the Bible at `datasets/workbench.db` beside the program (wb_core::setup).
-    let bible = Bible::open(&wb_core::default_db_path()).ok();
-    let store = if wb_core::setup::study_configured() {
-        match open_study(&wb_core::default_study_dir()) {
-            Ok(store) => Some(store),
-            Err(e) => {
-                eprintln!("{e}");
-                None
-            }
-        }
-    } else {
-        None
-    };
-    tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
-        .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
+    let context = tauri::generate_context!();
+    let builder = tauri::Builder::default().plugin(tauri_plugin_dialog::init());
+    #[cfg(feature = "updater")]
+    let builder = if context.config().plugins.0.contains_key("updater") {
+        builder.plugin(tauri_plugin_updater::Builder::new().build())
+    } else { builder };
+    builder
         .invoke_handler(tauri::generate_handler![
+            pilot_license, installation_status, installation_configure, installation_restart,
             wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready,
             setup_status, set_study_dir, choose_study_dir, set_bible_db, choose_bible_db
         ])
-        .setup(|app| {
+        .setup(move |app| {
+            #[cfg(feature = "distribution")]
+            let (bible, store) = {
+                let roots = wb_core::runtime::initialize(app.path().resource_dir()?.join("resources"))?;
+                let opened = if roots.status().ready && wb_core::runtime::require_license().is_ok() {
+                    (|| -> Result<_, String> {
+                        let bible = Bible::open(&wb_core::default_db_path()).map_err(|e| e.to_string())?;
+                        let store = open_study(&wb_core::default_study_dir())?;
+                        Ok((Some(bible), Some(store)))
+                    })()
+                } else { Err("Installation setup is required.".into()) };
+                match opened {
+                    Ok(pair) => pair,
+                    Err(error) => {
+                        eprintln!("{error}");
+                        WebviewWindowBuilder::new(app, "main", WebviewUrl::App("setup.html".into()))
+                            .title("Set up Bible Workbench").inner_size(760.0, 660.0).min_inner_size(360.0, 500.0).build()?;
+                        return Ok(());
+                    }
+                }
+            };
+            #[cfg(not(feature = "distribution"))]
+            let (bible, store) = {
+                let bible = Bible::open(&wb_core::default_db_path()).ok();
+                let store = if wb_core::setup::study_configured() {
+                    match open_study(&wb_core::default_study_dir()) {
+                        Ok(store) => Some(store),
+                        Err(e) => { eprintln!("{e}"); None }
+                    }
+                } else { None };
+                (bible, store)
+            };
+            app.manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) });
             if app.state::<App>().store.lock().unwrap().is_some() {
                 serve_do(app.handle().clone(), wb_core::default_study_dir());
-                // The search index and the word offsets, built (or read from the cache) while the reader opens, so the
-                // first search does not wait for them.
                 std::thread::spawn(|| {
                     if let Ok(b) = Bible::open(&wb_core::default_db_path()) {
                         let _ = wb_core::lookup::warm(&b);
@@ -422,7 +532,7 @@ fn main() {
             }
             let preset = std::env::var("WB_WINDOW").unwrap_or_else(|_| "laptop".into());
             let &(_, w, h) = PRESETS.iter().find(|p| p.0 == preset).unwrap_or(&PRESETS[4]);
-            let mut b = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+            let b = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
                 .title("Bible Workbench")
                 .inner_size(w, h)
                 .min_inner_size(320.0, 320.0)
@@ -431,14 +541,17 @@ fn main() {
                 // plan's days could not be dragged (finding 64c7). Nothing here listens for file drops.
                 .disable_drag_drop_handler();
             // For measuring: lets Playwright attach to the web view over the DevTools protocol (WebView2 only).
-            if let Ok(port) = std::env::var("WB_CDP_PORT") {
-                b = b.additional_browser_args(&format!(
+            #[cfg(not(feature = "distribution"))]
+            let b = if let Ok(port) = std::env::var("WB_CDP_PORT") {
+                b.additional_browser_args(&format!(
                     "--remote-debugging-port={port} --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection"
-                ));
-            }
+                ))
+            } else { b };
             b.build()?;
+            #[cfg(feature = "updater")]
+            check_for_update(app.handle().clone());
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running Bible Workbench");
 }

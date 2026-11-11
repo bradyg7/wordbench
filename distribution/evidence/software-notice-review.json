@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "target": "x86_64-pc-windows-msvc",
+  "features": [
+    "distribution"
+  ],
+  "status": "collected-not-approved",
+  "cargoLockSha256": "f33fa0367fe57de42f5c2f1ffd6020c8042d9a5f4025c001f38d44e9d3c02cf2",
+  "npmLockSha256": "68ed6488f01fceb674377544745e2565a4aaf0dfd52d1b3d8576ce54da42fa83",
+  "openConditions": [
+    "Review missing evidence and package-specific obligations.",
+    "Review Microsoft WebView2 offline runtime redistribution terms separately.",
+    "Review static and export font attribution and reserved names.",
+    "Build dependencies are conservatively included; this inventory is not a binary composition proof."
+  ],
+  "packagesCollected": 497,
+  "missingLicenseEvidence": [
+    {
+      "kind": "rust",
+      "name": "alloc-stdlib",
+      "version": "0.2.4",
+      "license": "BSD-3-Clause",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "alloc-stdlib",
+      "version": "0.3.0",
+      "license": "BSD-3-Clause",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "comemo-macros",
+      "version": "0.5.1",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "glidesort",
+      "version": "0.1.2",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "krilla-svg",
+      "version": "0.8.1",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "krilla",
+      "version": "0.8.2",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "roman-numerals-rs",
+      "version": "3.1.0",
+      "license": "0BSD OR CC0-1.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "selectors",
+      "version": "0.38.0",
+      "license": "MPL-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "tauri-plugin",
+      "version": "2.7.2",
+      "license": "Apache-2.0 OR MIT",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-eval",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-html",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-layout",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-library",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-macros",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-pdf",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-realize",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-svg",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-syntax",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-timing",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst-utils",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "typst",
+      "version": "0.15.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "wasmi",
+      "version": "1.1.0",
+      "license": "MIT/Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "wasmi_collections",
+      "version": "1.1.0",
+      "license": "MIT/Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "wasmi_core",
+      "version": "1.1.0",
+      "license": "MIT/Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "wasmi_ir",
+      "version": "1.1.0",
+      "license": "MIT/Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "wasmparser",
+      "version": "0.239.0",
+      "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "webview2-com-macros",
+      "version": "0.8.1",
+      "license": "MIT",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "webview2-com-sys",
+      "version": "0.39.1",
+      "license": "MIT",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    },
+    {
+      "kind": "rust",
+      "name": "webview2-com",
+      "version": "0.39.1",
+      "license": "MIT",
+      "source": "registry+https://github.com/rust-lang/crates.io-index"
+    }
+  ]
+}

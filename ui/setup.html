@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Set up Bible Workbench</title></head>
+<body><main><p class="eyebrow">BIBLE WORKBENCH</p><h1>A home for your study.</h1><p>Your notes and highlights stay in a folder you choose, separate from the app.</p>
+<p id="status" role="status">Checking the installation…</p>
+<form id="setup" hidden><fieldset><legend>Choose how to begin</legend><label><input type="radio" name="mode" value="new" checked> Create a new study folder</label><label><input type="radio" name="mode" value="open"> Open an existing study folder</label></fieldset>
+<label for="folder">Full folder path</label><input id="folder" type="text" required spellcheck="false" aria-describedby="hint"><p id="hint">For a new folder, its parent must already exist. Existing study files are preserved.</p><button type="submit">Save study folder</button></form>
+<button id="retry" type="button" hidden>Check installation again</button><button id="restart" type="button" hidden>Open my workbench</button>
+<section id="licensing" hidden><h2>Activate your pilot license</h2><p>Send an activation request to the person who invited you. Import the license they return. Once activated, this copy works offline without renewal.</p><p id="license-status" aria-live="polite"></p><button id="request-license" type="button">Create activation request</button><label for="request-text">Activation request to send to the pilot issuer</label><textarea id="request-text" rows="4" readonly></textarea><label for="certificate">Import the returned license file</label><input id="certificate" type="file" accept=".json,application/json"></section>
+<p id="recovery" class="help" hidden></p>
+<p class="help">If the packaged data is missing or damaged, reinstall the matching app package, then check again. Reinstalling must not remove your study folder.</p></main><script type="module" src="/src/installation.ts"></script></body></html>

@@ -12,6 +12,7 @@ mod notebook;
 mod pages;
 mod read;
 mod reading;
+#[cfg(not(feature = "distribution"))]
 mod setup;
 mod study;
 
@@ -139,6 +140,7 @@ fn commands() -> Vec<Command> {
     all.extend(notebook::commands());
     all.extend(pages::commands());
     all.extend(docs::commands());
+    #[cfg(not(feature = "distribution"))]
     all.extend(setup::commands());
     all
 }
@@ -170,6 +172,7 @@ pub fn names() -> Vec<(&'static str, &'static str)> {
 
 /// Runs one command line (without the leading `wb`). → its output, and whether `--json` was given.
 pub fn run(ctx: &Ctx<'_>, argv: &[String]) -> Result<(Out, bool), Fail> {
+    wb_core::runtime::require_license().map_err(|e| Fail::Error(e.to_string()))?;
     let argv: Vec<String> = if argv.is_empty() || argv[0] == "-h" || argv[0] == "--help" { vec!["help".into()] } else { argv.to_vec() };
     let all = commands();
     // R1: a note is a page. `wb page show`, `wb page text` … are `wb note …` under the new name (`wb note` stays, as the Python
@@ -230,6 +233,15 @@ fn changes_page_files(command: &str) -> bool {
         "block add" | "block rm" | "block undo" | "block move" | "template new" |
         "template save" | "template set" | "template rm" | "trash restore"
     )
+}
+
+#[cfg(all(test, feature = "distribution"))]
+#[test]
+fn license_gate_blocks_dispatch_without_initialized_activation() {
+    // Direct library callers must not bypass the standalone CLI's bootstrap gate.
+    let result = run(&Ctx::new(), &["help".into()]);
+    assert!(matches!(result, Err(Fail::Error(message)) if message.contains("initialized")));
+    assert!(!names().iter().any(|(name, _)| name.starts_with("setup")), "distribution must not expose developer resource overrides");
 }
 
 /// One command line run for the window: `{"json": ...}` or `{"text": "..."}`, or the error's message.

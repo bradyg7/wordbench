@@ -33,6 +33,10 @@ pub struct Entry {
 
 /// Where the dictionary database is: `WB_DICT_DB`, or `bible-workbench-rs\dictionary.db` in the local app data.
 pub fn default_path() -> std::path::PathBuf {
+    #[cfg(feature = "distribution")]
+    { return crate::runtime::resource_path("dictionary.db"); }
+    #[cfg(not(feature = "distribution"))]
+    {
     if let Ok(p) = std::env::var("WB_DICT_DB") {
         return p.into();
     }
@@ -40,6 +44,7 @@ pub fn default_path() -> std::path::PathBuf {
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| crate::default_study_dir().parent().map(|p| p.to_path_buf()).unwrap_or_default());
     base.join("bible-workbench-rs").join("dictionary.db")
+    }
 }
 
 /// The letters of a word, lower-cased, without a possessive: "God’s" → "god".

@@ -1,0 +1,72 @@
+BIBLE WORKBENCH — DATA SOURCE NOTICES
+Prepared 2026-11-11. Include with the separate software/font/runtime notices.
+This file records source attribution and transformations; it is not release approval.
+
+KING JAMES VERSION
+King James Version, standardized 1769 text, eBible 2006 Strong's-tagged edition.
+Source courtesy of CrossWire Bible Society and eBible.org.
+https://ebible.org/eng-kjv2006/copyright.htm
+Publisher states public domain outside the UK and identifies UK printing/import restrictions.
+Transformation: USFM parsed into indexed verse, word, title and footnote tables;
+formatting and Strong's tags are represented as structured fields. Source words
+are not replaced with generated interpretations. Exact source hash is recorded
+in the accompanying data evidence.
+
+YOUNG'S LITERAL TRANSLATION (1898)
+Source: Scrollmapper bible_databases, revision 59b18c5af5845728c275d5b7178ad0d024172b1f.
+https://github.com/scrollmapper/bible_databases/tree/59b18c5af5845728c275d5b7178ad0d024172b1f/sources/en/YLT
+Translation notice: Public Domain. Repository software license is separate.
+Transformation: JSON verse text imported into a SQLite table indexed by reference.
+
+STRONG'S GREEK DICTIONARY IN XML WITH REAL GREEK
+Dr. Ulrik Sandborg-Petersen. Version 1.9; source revision dd6758b82f46b620804a8ea677d715844679eea1.
+https://github.com/morphgnt/strongs-dictionary-xml
+CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+Transformation: XML parsed into lemma, transliteration, pronunciation, derivation,
+definition and usage fields; cross-references normalized to application tokens.
+
+OPEN SCRIPTURES HEBREW LEXICON
+Credit: Open Scriptures Hebrew Bible Project.
+HebrewStrong.xml, BrownDriverBriggs.xml, LexicalIndex.xml.
+https://github.com/openscriptures/HebrewLexicon/tree/21c9add13bc727d3a951361778e97e3ff7afd1ce
+Creative Commons Attribution 4.0 International:
+https://creativecommons.org/licenses/by/4.0/
+The source identifies the underlying BDB and Strong's text as public domain.
+Transformation: XML fields imported into the lexicon and BDB tables, linked via
+the lexical index; markup and cross-references converted for plain-text display.
+Source completion/status labels are retained. TWOT reference numbers are not
+reproductions of Theological Wordbook text.
+
+STEP BIBLE
+Credit: STEP Bible (https://www.STEPBible.org), based on work at Tyndale House, Cambridge.
+TAGNT, TAHOT, TEGMC and TEHMC, source revision 95927044f33c540073246306cea5b13f5a16eb02.
+https://github.com/STEPBible/STEPBible-Data
+Creative Commons Attribution 4.0 International:
+https://creativecommons.org/licenses/by/4.0/
+Changes: tab-separated records imported into SQLite. Greek records are selected
+for the Textus Receptus designation, with readable TR meaning/spelling variants
+selected where supplied; unsupported variants are omitted. Source-position order
+is retained even where TR order differs. Hebrew L/Q/R records are retained;
+X/V records are omitted, prefixes are joined, and cantillation is removed.
+References follow the source's KJV mapping. Unicode and Strong's identifiers are
+normalized. Morphology codes are indexed for lookup. These are application
+transformations, not an unchanged mirror of the upstream datasets.
+
+WEBSTER'S UNABRIDGED DICTIONARY
+Original text source acknowledgment: Project Gutenberg ebook #29765, credited to
+Graham Lawrence, text revision July 6, 2025.
+https://www.gutenberg.org/ebooks/29765
+Publisher catalog identifies the original work as public domain in the USA.
+Other territories require separate review. This acknowledgment does not imply
+sponsorship, endorsement, or distribution by Project Gutenberg.
+Changes: independent Bible Workbench parser indexes full original entry blocks;
+headword aliases share entries and duplicate senses are retained in source order.
+Transport newlines are normalized. Publisher header/footer are excluded from the
+definitions. This build does not use the third-party GPL dictionary JSON/parser.
+
+THIRD-PARTY RIGHTS
+The application's license does not replace these sources' own licenses or limit
+rights they grant. No source owner is represented as endorsing Bible Workbench.
+CC BY and CC0 materials are supplied under their respective warranty disclaimers;
+follow the linked legal terms. Fonts and software/runtime components have separate
+notices that must accompany a distributable installer.

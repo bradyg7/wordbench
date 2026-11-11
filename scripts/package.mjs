@@ -19,6 +19,10 @@ import { checkZip } from './check-package.mjs';
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const flag = name => args.includes(`--${name}`);
+if (!flag('development-only')) {
+  console.error('Portable ZIP packaging is for internal development only. Use release:prepare for the licensed pilot. To make an internal ZIP, pass --development-only.');
+  process.exit(1);
+}
 const value = (name, fallback) => {
   const i = args.indexOf(`--${name}`);
   if (i < 0 || !args[i + 1] || args[i + 1].startsWith('--')) return fallback;

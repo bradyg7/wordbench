@@ -1141,3 +1141,8 @@ and the application's set behavior are unaffected by this comparison rule.
 
 The [H01 and H02 baseline report](current/verification-3078ede.md) records the checks at `3078ede` and the original
 reader reproduction before this integration.
+## 37. Merged desktop verification and debugging queue (2026-11-09)
+
+Commit `3078ede` records **420 of 420** desktop checks on the merged build. See the [current debugging queue](current/README.md) for remaining verification, redesign work and newly reported findings.
+
+**Fresh verification at the same revision (2026-11-09).** Rust **172/172**, WebKit **20 passed and 10 project skips**, document plans **16/16**, Python-open counts **5/5**, and real mouse **5/5**. Golden matched **93/103** on the full copied fixture and **103/103** on the control copy with one documented Rust-only set item omitted. The [verification and reader diagnostics record](current/verification-3078ede.md) has the commands, fixture details, reproduction matrix and review decisions.

@@ -1,56 +1,36 @@
 # Bible Workbench
 
-**Read the Bible closely, and keep what you find.**
+Bible Workbench is a Windows desktop app for reading source text, looking up words, and keeping your own notes in local Markdown and JSON files. The Rust core serves both the app and the `wb` command line.
 
-Bible Workbench is a desktop app for your own Bible study. It gives you the King James Version and Young's Literal
-Translation, the Hebrew and Greek words behind the English, the lexicons and the interlinear, and a quiet place for your
-notes, highlights and threads. Everything you write stays in ordinary files in a folder you choose, so you can read it,
-back it up, open it in another editor, or move it to another computer.
+## Release status
 
-It works offline, has no account, no ads and no telemetry, and never changes the Bible text.
+Version 0.1.0 is a development version, not an available signed pilot installer. The release integration combines the current desktop and standalone data provisioning with customer setup, manual activation, installer preparation, and the separate six-page website. Public release metadata remains unavailable.
 
-Version 0.1.0 · Windows 10 and 11 (64-bit)
+Start with [the current specification](docs/SPEC.md), [the pilot release checklist](docs/RELEASE.md), [distribution operations](distribution/README.md), and [repository instructions](AGENTS.md). Historical desktop results are in [docs/phase2-results.md](docs/phase2-results.md).
 
-## What you get
+## Private pilot
 
-| File | What it is |
-|---|---|
-| `Bible Workbench.exe` | The app. |
-| `wb.exe` | The same actions from a terminal, for scripts and for AI assistants. |
-| `datasets/workbench.db` | The Bible database: KJV, YLT, Strong's, BDB, the interlinear and the search index. Read-only. |
-| `README.md` | This file. |
-| `THIRD_PARTY_NOTICES.md` | Where the scripture, lexicons, fonts and software come from and under what licenses. |
-| `DEPENDENCIES.md` | The generated list of every software package in the build. |
-| `CHANGELOG.md` | What changed in this version. |
-| `licenses/` | The full text of every third-party license. |
-| `source/` | The readable source code the app was built from. |
+Each invited person may activate two computers. The owner can issue a replacement activation when a computer is replaced. Pilot updates are included. Once activated, that version works permanently offline without a renewal check. Pricing is not set. Activation uses a manually exchanged request and signed certificate; no online activation service is required.
 
-Keep the folder together. The app finds the Bible at `datasets\workbench.db` beside the program.
+The customer NSIS installer is prepared by `npm run release:prepare -- --staging <approved-folder>`. Customer builds include both executables, reviewed Bible and dictionary databases, application terms, and third-party notices. They validate bundled resources and use a separately chosen study folder. Missing or damaged resources require repair; they do not fall back to a developer checkout.
 
-## What you need
+The optional automatic updater is excluded from pilot packages until its own signed update and recovery checks pass. Pilot updates can be delivered through a new approved installer.
 
-- Windows 10 or Windows 11, 64-bit.
-- Microsoft Edge WebView2 Runtime. It is already installed on current Windows; if it is missing, Microsoft offers it
-  free at <https://developer.microsoft.com/microsoft-edge/webview2/>.
-- About 250 MB of free disk space for the app, the database and the source; your notes take very little.
-- No internet connection, no account and no administrator rights.
+## Development
 
-## Install and first run
+```text
+npm ci
+npm run build
+cargo test -p wb-core -p wb-cli -p wb-license
+npm run site:build
+npm run test:distribution
+npm run test:setup
+npm run test:site
+```
 
-1. Unzip the whole folder somewhere you can write, for example `C:\Bible Workbench`, or
-   `Documents\Bible Workbench 0.1.0`. Do not run the program from inside the ZIP.
-2. Double-click `Bible Workbench.exe`. Windows may show a SmartScreen warning because the program is not code-signed;
-   choose **More info → Run anyway**.
-3. The Bible is found automatically in `datasets\workbench.db`. If you moved the database, choose **Browse** and pick it.
-4. Choose the folder for your notes. The suggested folder is `Documents\Bible Workbench`. Choose an empty folder for a
-   new study, or an existing Bible Workbench / `bible-study-data` folder to bring your old notes with you. Bible
-   Workbench makes the folders it needs; it does not delete anything that is already there.
-5. Choose **Start reading**.
+Provision local data using [data/README.md](data/README.md). Use disposable study folders for tests. Never run tests against the owner's real study folder or alter the read-only Bible database.
 
-There is no installer and no registry entry. To remove the app, close it and delete its folder. Your notes are separate
-(unless you chose a folder inside the app's folder), so deleting the app does not delete your study.
-
-The Bible database is never written to. It is the same file for every copy of the app and can be replaced on its own.
+`npm run package -- --development-only` retains the older portable ZIP workflow for internal developer testing. It is not the licensed pilot release route. `scripts/install-app.ps1` is also a developer helper.
 
 ## Reading and study
 
@@ -74,73 +54,26 @@ The Bible database is never written to. It is the same file for every copy of th
 
 The reader shows scripture verbatim, with its reference. It adds no commentary, devotionals or doctrine.
 
-## Your files
+## Study files and recovery
 
-Your study folder is a normal folder of plain files:
+Study files remain outside the installation. Licensing does not encrypt or delete them. `wb license recovery` reports the configured folder without activation. Back up your study folder before changing versions. Verify upgrade and uninstall preservation with disposable data before any customer release.
 
-- notes are Markdown, one note per file, under `notes/`;
-- highlights are JSON, one file per book, under `highlights/`;
-- threads, questions, lessons, sets and reading plans are Markdown or JSON;
-- your day's log and reading history are append-only text files under `sessions/` and `reading/`;
-- deleted files go to `.trash/`, which is emptied after seven days.
+Legacy Trash and transactional page Undo have different retention behavior; use the app's current action descriptions. Existing Python-format study files remain readable. Rust now owns continued development and standalone provisioning.
 
-The same folder and the same formats are used by the earlier Python version of Bible Workbench, so the two can open the
-same study while you move from one to the other. Nothing is stored in a database you cannot read. To back up, copy the
-folder; to move computers, copy it and choose it on the first run. You can keep the folder in git if you like.
+## Pilot command line
 
-## From a terminal
-
-`wb.exe` runs the same actions as the window. Open a terminal in the app's folder and try:
-
-```
-wb.exe status
-wb.exe reader NUM 25
-wb.exe reader NUM 25 --version ylt
-wb.exe search "zeal"
-wb.exe uses H7065
-wb.exe near Phinehas zealous within 30
-wb.exe do "go John 3:16"
+```text
+wb setup
+wb setup new <absolute-folder>
+wb setup open <absolute-folder>
+wb license request
+wb license import <certificate-file>
+wb license status
+wb license recovery
 ```
 
-`wb.exe do` sends a line to the running window, so the window and the terminal stay on the same place. `wb.exe help`
-lists every command, and `wb.exe help <command>` explains one. `wb.exe setup` shows where the Bible and your notes are;
-`wb.exe setup study "<folder>"` and `wb.exe setup database "<file>"` change them, the same choices the first-run screen
-makes.
+`wb build-info --json` reports the public build identity without setup or activation. Study commands require activation in a customer build. Developer builds retain their separate setup and scratch workflows.
 
-## If something is wrong
+## Distribution and ownership
 
-- **The window does not open.** Install the WebView2 Runtime (link above), then try again.
-- **The Bible is not found.** Keep `datasets\workbench.db` beside `Bible Workbench.exe`, or choose the file on the
-  setup screen. `wb.exe setup` names every place the app looked.
-- **Your notes are not there.** Check the folder on the setup screen or in `wb.exe setup`; an existing study folder can
-  be chosen at any time with `wb.exe setup study`.
-- **A note or highlight looks wrong.** Close the app and look at the file in the study folder; it is plain text and can
-  be corrected by hand. The app rereads the folder while it runs.
-
-Questions and problems: use the contact link on the product's store page.
-
-## What this release does not do
-
-Bible Workbench 0.1.0 is the desktop release. It does not yet include:
-
-- iPhone, iPad or Android apps;
-- syncing between devices (git sync is planned);
-- Word, slide or PDF export;
-- translations other than the KJV and the YLT;
-- an English dictionary or any commentary.
-
-Your lesson and set files are kept as they are; document building is not part of this release.
-
-## Source and license
-
-`source/` contains the Rust crates (`wb-core`, `wb-cli`), the Tauri shell, the TypeScript interface, the tests and the
-build scripts. It is the code this build was made from, included so you can read it and check what the program does.
-
-Bible Workbench is copyright © 2026 its author. All rights reserved. The source is included for reading and personal
-study; it is not licensed for redistribution, resale or inclusion in another product. The app and its database are sold
-as one product. The third-party components keep their own licenses, listed with full texts in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and `licenses/`.
-
-Scripture is shown verbatim. The KJV is public domain in the United States; in the United Kingdom the KJV is subject to
-the Crown's letters patent. The YLT, Strong's dictionaries and BDB are public domain; the digitized Hebrew lexicon data
-and the STEP Bible interlinear are used under CC BY 4.0, with attribution in the notices.
+Application terms are separate from third-party licenses and must be reviewed before release. The [data inventory](distribution/DATA-INVENTORY.md) records exact source evidence and unresolved conditions. Existing third-party notices are not blanket clearance of every candidate database. No source, personal study files, issuer key, or operator audit ledger is implicitly included in a customer installer.
