@@ -96,3 +96,60 @@ test('public preview screenshots load and the recorded demo plays', async ({ pag
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `test-results/site/demo-${test.info().project.name}.png`, fullPage: true });
 });
+
+test('demo library filters, searches, and reports an empty result', async ({ page }) => {
+  await page.goto('/#demo');
+  const search = page.getByRole('searchbox', { name: 'Find a feature' });
+  await expect(page.locator('.demo-card')).toHaveCount(6);
+  await search.fill('Select and highlight');
+  await expect(page.locator('.demo-card')).toHaveCount(1);
+  await expect(page.locator('#library-count')).toContainText('1 walkthrough');
+  await search.fill('highlight');
+  await expect(page.locator('.demo-card')).toHaveCount(2);
+  await expect(page.locator('.feature-entry')).not.toHaveCount(0);
+  await search.fill('no-such-feature-xyzz');
+  await expect(page.locator('.library-empty')).toBeVisible();
+  await expect(page.locator('.demo-player')).toBeHidden();
+  await search.fill('');
+  const category = page.locator('[data-category]').nth(1);
+  await category.click();
+  await expect(category).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'All features', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button', { name: 'All features', exact: true }).click();
+  await expect(page.locator('.demo-card')).toHaveCount(6);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('walkthrough selection loads its media and preserves a shareable link', async ({ page }) => {
+  await page.goto('/#demo-pages');
+  await expect(page.locator('.demo-card[data-demo="pages"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('video source')).toHaveAttribute('src', '/demo/pages.webm');
+  const video = page.locator('video');
+  await video.evaluate(async (el: HTMLVideoElement) => { el.muted = true; await el.play(); });
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime)).toBeGreaterThan(0.1);
+  await video.evaluate((el: HTMLVideoElement) => el.pause());
+  await page.locator('.demo-card[data-demo="highlighting"]').click();
+  await expect(page).toHaveURL(/#demo-highlighting$/);
+  await expect(page.locator('video source')).toHaveAttribute('src', '/demo/highlighting.webm');
+  await expect(page.locator('#selected-demo-title')).toBeFocused();
+  await page.reload();
+  await expect(page.locator('.demo-card[data-demo="highlighting"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.demo-transcript li')).not.toHaveCount(0);
+});
+
+test('filtering out a playing recording pauses it and demo navigation supports Back', async ({ page }) => {
+  await page.goto('/#demo-pages');
+  const video = page.locator('video');
+  await video.evaluate(async (el: HTMLVideoElement) => { el.muted = true; await el.play(); });
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime)).toBeGreaterThan(0.1);
+  await page.getByRole('searchbox', { name: 'Find a feature' }).fill('no-such-feature-xyzz');
+  await expect(page.locator('.demo-player')).toBeHidden();
+  expect(await video.evaluate((el: HTMLVideoElement) => el.paused)).toBe(true);
+  await page.getByRole('searchbox', { name: 'Find a feature' }).fill('');
+  await page.locator('.demo-card[data-demo="highlighting"]').click();
+  await expect(page).toHaveURL(/#demo-highlighting$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#demo-pages$/);
+  await expect(page.locator('video source')).toHaveAttribute('src', '/demo/pages.webm');
+  await expect(page.getByRole('link', { name: /Open full-size screenshot: Create a page/ })).toHaveAttribute('href', '/demo/pages.png');
+});

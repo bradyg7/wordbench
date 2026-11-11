@@ -38,3 +38,13 @@ A standalone static copy is published through OpenAI Sites for anyone with the U
 - Website includes database-backed interface screenshots and a short screen recording from a disposable study folder. `scripts/capture-public-demo.mjs` captures the media from the local development interface; it requires prepared fixtures and the local UI server on port 4185.
 - `site/public/release.json` remains unavailable. Hosting this preview does not distribute the installer or databases, and does not enable activation, purchases, sign-ups or downloads.
 - Rebuild and test the site, copy only `site/dist` to the standalone Site's `dist`, then use the Sites source workflow to publish. Do not copy personal study files, source databases, signing keys, or the app source. Keep Site identity and the established public audience unchanged on updates.
+
+## Feature guide and guided recordings
+
+`src/demo-data.ts` is the searchable public catalog. Its 70 entries are grounded in [the source inventory](../docs/FEATURES.md). Only actions actually shown in a completed recording receive a walkthrough link. Other implemented features remain documented, and OS-dependent demonstrations are marked pending.
+
+`scripts/capture-feature-demos.mjs` records six focused workflows with eased pointer motion, visible click feedback, paced typing, drag selection, short action captions, and pauses to inspect results. These are scripted guided demonstrations, not footage of a customer. They drive the unchanged interface through pointer and keyboard events; they do not execute application commands to jump between views.
+
+The local-only `scripts/demo-backend.mjs` connects UI requests to the real default-development Rust CLI. A separate disposable folder under `release-staging` is created for each recording. The read-only Bible database supplies source text; page edits, highlights and settings use real saved files. Native clipboard, file launching, activation and audio integrations are not simulated. Never include this bridge, the database, the scratch folder or capture logs in the published static files.
+
+To reproduce: prepare `target/debug/wb.exe` and the audited database at `release-staging/source-audit/workbench.db`, serve the UI on local port 4187, then run `node scripts/capture-feature-demos.mjs` (optional arguments select demo IDs). Captures are 1280×800 WebM and PNG. Verify each clip and its saved result before publication. The library loads only the selected video's media on demand, includes written walkthrough steps, and supports direct `#demo-<id>` links.
