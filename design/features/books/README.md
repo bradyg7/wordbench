@@ -1,7 +1,7 @@
 # BDB and Webster's 1913 as books
 
 **State:** exploring · **Sheets:** `python design/features/books/books.py` writes `books.figcraft` and
-`exports/*.png` (it uses [kit.py](../kit.py)) · Nothing here is built yet.
+`books.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The two lexicons the rail already names (minimize round 5), opened as books you page through instead of a lookup in a tab. Touches the rail, the word card ([words](../words/README.md)) and the Concordance ([concordance](../concordance/README.md)).
 

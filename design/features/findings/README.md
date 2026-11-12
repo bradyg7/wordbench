@@ -1,7 +1,7 @@
 # Findings
 
 **State:** exploring · **Sheets:** `python design/features/findings/findings.py` writes `findings.figcraft` and
-`exports/*.png` (it uses [kit.py](../kit.py)) · Nothing here is built yet.
+`findings.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The person's notes about the app (`findings/`, apart from the study): the box that writes one and the pane that lists them.
 

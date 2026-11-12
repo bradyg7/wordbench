@@ -1,7 +1,7 @@
 # Threads
 
 **State:** exploring · **Sheets:** `python design/features/threads/threads.py` writes `threads.figcraft` and
-`exports/*.png` (all.png and t1 ... t6) · Nothing here is built yet.
+`threads.pdf` (the board, one vector page) · Nothing here is built yet.
 
 Threads "will likely become consumed by the folder feature" (the person, library round 1 review, 2026-11-11). This
 round decides whether a thread is a legacy idea that folders take over, or keeps a role of its own beside the four

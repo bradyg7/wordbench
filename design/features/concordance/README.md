@@ -1,7 +1,7 @@
 # The Concordance
 
 **State:** exploring · **Sheets:** `python design/features/concordance/concordance.py` writes `concordance.figcraft`
-and `exports/*.png` · Nothing here is built yet.
+and `concordance.pdf` (the board, one vector page) · Nothing here is built yet.
 
 A book on the rail, like the printed Strong's on a desk: "it would really show the whole concordance how it usually
 shows if you opened a Strong's concordance", with an easy navigator to find a word quickly and the interlinear for a

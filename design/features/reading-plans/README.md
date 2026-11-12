@@ -1,7 +1,7 @@
 # Reading plans
 
 **State:** exploring · **Sheets:** `python design/features/reading-plans/reading-plans.py` writes
-`reading-plans.figcraft` and `exports/*.png` · Nothing here is built yet.
+`reading-plans.figcraft` and `reading-plans.pdf` (the board, one vector page) · Nothing here is built yet.
 
 Reading plans and the reading log were built before `design/features/` existed. This folder designs them for the first
 time, inside the evolving app: the rail and trail come from [minimize](../minimize/README.md), and the reader and its right click come from

@@ -1,6 +1,6 @@
 # Marks
 
-**State:** exploring · **Sheets:** `python design/features/marks/marks.py` writes `marks.figcraft` and `exports/*.png`
+**State:** exploring · **Sheets:** `python design/features/marks/marks.py` writes `marks.figcraft` and `marks.pdf` (the board, one vector page)
 (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 What "a mark" is, how marks relate to pages, the reader's margin, the Library and the questions list. Asked by the
@@ -11,7 +11,7 @@ chapter"), and the reader's one panel for "every kind of mark" (reader R7, decid
 
 ## Leading design (2026-11-12)
 
-The board and `exports/` hold only these windows, grouped by part. Superseded windows are in git history (commit
+The board (and its PDF) holds only these windows, grouped by part. Superseded windows are in git history (commit
 `0d59600`, before the trim); their lines below say what replaced them.
 
 | Part | Leading | Superseded (and by what) |

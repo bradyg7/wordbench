@@ -1,7 +1,7 @@
 # Word sheet, verse sheet and hover card
 
 **State:** exploring · **Sheets:** `python design/features/words/words.py` writes `words.figcraft` and
-`exports/*.png` (it uses [kit.py](../kit.py)) · Nothing here is built yet.
+`words.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 What a word, a verse reference and hovering show. The card is bloated with notes (2bc9), fixed in place (dfce, 149b), and a reference in a page should open the verse with its lookups (94a1).
 

@@ -1,7 +1,7 @@
 # Search
 
 **State:** exploring · **Sheets:** `python design/features/search/search.py` writes `search.figcraft` and
-`exports/*.png` · Nothing here is built yet.
+`search.pdf` (the board, one vector page) · Nothing here is built yet.
 
 Search covers the KJV search, Every use, count, forms and near. All of them were built before `design/features/`
 existed, and this folder designs them for the first time. Every use of a Strong's number will also live in the

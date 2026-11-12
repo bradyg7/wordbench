@@ -1,7 +1,7 @@
 # The library: the Notebook, the Shelf, and keeping
 
 **State:** exploring · **Sheets:** `python design/features/library/library.py` writes `library.figcraft` and
-`exports/*.png` · Nothing here is built yet.
+`library.pdf` (the board, one vector page) · Nothing here is built yet.
 
 The Notebook and the Shelf "conceptually don't have to be separate": folders and pages working together, and a
 bookmark that is "almost second nature ... a one or at most two step process, especially to retrieve it" (the person,

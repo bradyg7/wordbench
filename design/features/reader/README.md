@@ -1,7 +1,7 @@
 # Reader
 
 **State:** exploring · **Sheets:** `python design/features/reader/reader.py` writes `reader.figcraft` and
-`exports/*.png` · Nothing here is built yet.
+`reader.pdf` (the board, one vector page) · Nothing here is built yet.
 
 The reader is the app's centre: a chapter in Literata, verse numbers, the person's highlights, thread underlines and
 page marks on the words, a selection, KJV/YLT, and a second reader in a pane. It was built before `design/features/`

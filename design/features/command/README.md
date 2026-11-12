@@ -1,7 +1,7 @@
 # Top bar and the command box
 
 **State:** exploring · **Sheets:** `python design/features/command/command.py` writes `command.figcraft` and
-`exports/*.png` (it uses [kit.py](../kit.py)) · Nothing here is built yet.
+`command.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The slim top bar (the place and the command field) and what the field shows while you type, so the command language is never required (8353); also where kept commands and the app's full screen live.
 

@@ -1,7 +1,7 @@
 # Help, the Guide and the manual
 
 **State:** exploring · **Sheets:** `python design/features/help/help.py` writes `help.figcraft` and
-`exports/*.png` (it uses [kit.py](../kit.py)) · Nothing here is built yet.
+`help.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The Help pane: Guide (`wb guide`), Commands (`wb manual`) and Keys. 0050: it is plain text.
 

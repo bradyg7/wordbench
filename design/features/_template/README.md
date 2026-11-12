@@ -1,13 +1,13 @@
 # <Feature name>
 
 **State:** exploring · **Sheets:** `python design/features/<feature>/<feature>.py` writes `<feature>.figcraft` and
-`exports/*.png` · Nothing here is built yet.
+`<feature>.pdf` (the board, one vector page) · Nothing here is built yet.
 
 One paragraph: what the feature is for, in the person's words, and which part of the app it touches.
 
 ## Leading design
 
-The windows the board and `exports/` hold, by part; superseded ones get a line saying what replaced them (see the
+The windows the board (and its PDF) holds, by part; superseded ones get a line saying what replaced them (see the
 [index](../README.md), Keeping folders small).
 
 | Part | Leading | Superseded (and by what) |
@@ -41,9 +41,9 @@ Scripture and lookups are fetched from the database, never typed.
 ## What the build must satisfy
 
 Written once the person accepts a direction; each line is checkable, so the build's tests and the desk check can
-follow it. Name the window (`exports/<tag>.png`) that shows it.
+follow it. Name the window (its tag, e.g. A1, on the board) that shows it.
 
-- [ ] Behaviour, in the app's words. (`exports/a1.png`)
+- [ ] Behaviour, in the app's words. (A1)
 - [ ] The `wb` command that reaches the same action (every core action has one).
 - [ ] What happens to the study files, if anything (same files, same formats; the Python app still opens them).
 - [ ] The reader's place is kept.

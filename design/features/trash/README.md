@@ -1,7 +1,7 @@
 # Trash
 
 **State:** exploring · **Sheets:** `python design/features/trash/trash.py` writes `trash.figcraft` and
-`exports/*.png` (it uses [kit.py](../kit.py)) · Nothing here is built yet.
+`trash.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 Deleting: today a timed Undo, then 7 days in .trash (the person's decisions, 2026-11-03 and 04). cf09 (2026-11-08) asks that deletes just be destroyed; 0ade asks for deleting many pages at once. This round lays the choices out; it reopens nothing unless the person picks A.
 

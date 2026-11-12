@@ -32,11 +32,11 @@ State is one of: *exploring* (rounds being drawn), *accepted* (the person accept
 
 ## Keeping folders small: the leading design (the person, 2026-11-12)
 
-A folder's board and `exports/` hold only its **leading** windows: the ones that still stand for a part of the
-feature. When a later window replaces an earlier one, the earlier one leaves the script, the board and `exports/`, and
+A folder's board, and the PDF made from it, hold only its **leading** windows: the ones that still stand for a part of the
+feature. When a later window replaces an earlier one, the earlier one leaves the script and the board, and
 gets one line in the README's **Leading design** table (what replaced it). Before a trim, the folder is committed, so
 every earlier window stays in git history and can be drawn again from there. The board is grouped by part, not by
-round, so it never needs deep zoom. There is no `all.png`; windows are read one by one at full size. Window numbers
+round, so it never needs deep zoom. The script exports the board as one vector PDF, `<feature>.pdf`, in the board's order: its text stays sharp at any zoom and can be searched, and there are no PNGs. Window numbers
 never change or get reused, so a window named in a decision is always the same one.
 
 ## A folder
@@ -46,7 +46,7 @@ design/features/<feature>/
   README.md          decisions (dated), open questions, rounds, what the build must satisfy
   <feature>.py       the FigCraft source script (imports figlib, parts, build, phase2b from design/)
   <feature>.figcraft written by the script; open it in FigCraft
-  exports/*.png      written by the script: one PNG per leading window, by its tag
+  <feature>.pdf      written by the script: the board as one vector PDF, in part order
   data/*.json        lookups the sheets show (scripture, concordance, lexicon), fetched from the database with wb,
                      never typed; say in the README which command made each one
 ```

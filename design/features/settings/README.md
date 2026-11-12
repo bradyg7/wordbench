@@ -1,7 +1,7 @@
 # Settings, layouts and views
 
 **State:** exploring · **Sheets:** `python design/features/settings/settings.py` writes `settings.figcraft` and
-`exports/*.png` (it uses [kit.py](../kit.py)) · Nothing here is built yet.
+`settings.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The Settings pane (Reading, Notebook, Hover and cards, Theme, Layouts, Commands, Keys, Advanced), saved layouts, and views.
 

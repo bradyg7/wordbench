@@ -1,7 +1,7 @@
 # Minimized panes, full screen and the side rail
 
 **State:** exploring · **Sheets:** `python design/features/minimize/minimize.py` writes `minimize.figcraft` and
-`exports/*.png` (all.png and one per window, b1 ... p1) · Nothing here is built yet.
+`minimize.pdf` (the board, one vector page) · Nothing here is built yet.
 
 ## Decisions so far (the person, 2026-11-11)
 
@@ -87,7 +87,7 @@ the rail menu's "keep on the Shelf" is the one-step bookmark c43b asks for.
 | 5 | M1-M5 | Every tab joins a trail; the drawer and the line under the top bar |
 | 6 | N1, O1, P1 | Keeping the trail from bloating |
 
-Window tags are the `exports/<tag>.png` names; each round's review is its dated section above. (The round-to-window
+Window tags are the names on the board (M1, H8…); each round's review is its dated section above. (The round-to-window
 mapping here is read from the script's function names; correct it if a window sits in another round.)
 
 ## Data the sheets show

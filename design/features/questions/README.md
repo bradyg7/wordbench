@@ -1,7 +1,7 @@
 # Questions
 
 **State:** exploring · **Sheets:** `python design/features/questions/questions.py` writes `questions.figcraft` and
-`exports/*.png` (it uses [kit.py](../kit.py)) · Nothing here is built yet.
+`questions.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 Questions are written three ways today: a trail at a place, an Inbox question, and a callout in a page; `wb question list` already joins them. This round asks how they are asked, seen and answered in the window.
 

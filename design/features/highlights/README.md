@@ -1,7 +1,7 @@
 # Highlights and the palette
 
 **State:** exploring · **Sheets:** `python design/features/highlights/highlights.py` writes `highlights.figcraft` and
-`exports/*.png` · Nothing here is built yet.
+`highlights.pdf` (the board, one vector page) · Nothing here is built yet.
 
 Highlights and the palette were built before `design/features/` existed. This folder designs them for the first time.
 It covers the colors, what a color can mean, layers, showing and hiding marks, and the light and dark forms of a color.
@@ -10,7 +10,7 @@ The click that opens the colors comes from [reader](../reader/README.md) (direct
 
 ## Leading design (2026-11-12)
 
-The board and `exports/` hold only these windows, grouped by part. Superseded windows are in git history (commit
+The board (and its PDF) holds only these windows, grouped by part. Superseded windows are in git history (commit
 `0d59600`, before the trim).
 
 | Part | Leading | Superseded (and by what) |

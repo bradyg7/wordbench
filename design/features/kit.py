@@ -8,6 +8,7 @@ is typed. Names of pages, questions, findings and documents on the sheets are a 
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -124,8 +125,7 @@ def note(f, s, x, y, w=420):
 
 
 def run_board(here, board_name, sheets):
-    """Build the board, run FigCraft, and export one PNG per window (by its tag: the letters and number
-    before the first ' · ')."""
+    """Build the board, run FigCraft, and export the board as one vector PDF (<folder>.pdf), in the board's order."""
     F.define_tokens()
     S.do("page.rename", {"name": board_name}, ref=False)
     board = frame(None, board_name, x=0, y=0, w=100, h=100, fill="sunken", layout="vertical", gap=96, pad=96,
@@ -144,16 +144,9 @@ def run_board(here, board_name, sheets):
     if out.returncode or failed:
         sys.exit("FigCraft run failed:\n" + "\n".join(failed[-3:]) + out.stderr[-2000:])
     print(f"{len(S.steps)} steps -> {target}")
-    dest = here / "exports"
-    dest.mkdir(parents=True, exist_ok=True)
-    for old in dest.glob("*.png"):
-        old.unlink()
-    # no all.png: the board is read window by window (the person, 2026-11-12)
-    tmp = build / f"{stem}-tree.json"
-    subprocess.run([cli, "convert", str(target), str(tmp)], check=True, capture_output=True)
-    names = sorted(set(re.findall(r'"name":\s*"(Window · [^"]*)"', tmp.read_text(encoding="utf-8"))))
-    for name in names:
-        tag = re.match(r"Window · ([A-Z]+\d+)", name).group(1).lower()
-        subprocess.run([cli, "export", "--no-system-fonts", str(target), "--page", board_name, "--node", name,
-                        "--scale", "1", "--out", str(dest / f"{tag}.png")], check=True, capture_output=True)
-    print("exported", sorted(p.name for p in dest.glob("*.png")))
+    # one vector PDF of the board, in the board's order (the person, 2026-11-12): sharp at any zoom, no PNGs
+    pdf = here / f"{here.name}.pdf"
+    subprocess.run([cli, "export", "--no-system-fonts", str(target), "--page", board_name, "--node", board_name, "--format",
+                    "pdf", "--out", str(pdf)], check=True, capture_output=True)
+    shutil.rmtree(here / "exports", ignore_errors=True)
+    print("exported", pdf.name)

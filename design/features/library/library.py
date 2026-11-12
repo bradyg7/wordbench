@@ -5,6 +5,7 @@ person accepts it. Scripture shown comes from design/content.json (generated fro
 """
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -903,19 +904,12 @@ def main():
     if out.returncode or failed:
         sys.exit("FigCraft run failed:\n" + "\n".join(failed[-3:]) + out.stderr[-2000:])
     print(f"{len(S.steps)} steps -> {target}")
-    dest = HERE / "exports"
-    dest.mkdir(parents=True, exist_ok=True)
-    for old in dest.glob("*.png"):
-        old.unlink()
-    # no all.png: the board is read window by window (the person, 2026-11-12)
-    tmp = build / "library-tree.json"
-    subprocess.run([cli, "convert", str(target), str(tmp)], check=True, capture_output=True)
-    names = sorted(set(re.findall(r'"name":\s*"(Window [^"]*)"', tmp.read_text(encoding="utf-8"))))
-    for name in names:
-        tag = re.match(r"Window\W+(S\d+)", name).group(1).lower()
-        subprocess.run([cli, "export", "--no-system-fonts", str(target), "--page", BOARD, "--node", name,
-                        "--scale", "1", "--out", str(dest / f"{tag}.png")], check=True, capture_output=True)
-    print("exported", sorted(p.name for p in dest.glob("*.png")))
+    # one vector PDF of the board, in the board's order (the person, 2026-11-12): sharp at any zoom, no PNGs
+    pdf = HERE / f"{HERE.name}.pdf"
+    subprocess.run([cli, "export", "--no-system-fonts", str(target), "--page", BOARD, "--node", BOARD, "--format",
+                    "pdf", "--out", str(pdf)], check=True, capture_output=True)
+    shutil.rmtree(HERE / "exports", ignore_errors=True)
+    print("exported", pdf.name)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 # Lessons and documents (Word, PDF, Present)
 
 **State:** exploring · **Sheets:** `python design/features/documents/documents.py` writes `documents.figcraft` and
-`exports/*.png` (it uses [kit.py](../kit.py)) · Nothing here is built yet.
+`documents.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 Documents made from a thread, a passage, a lesson or a page; 868e asks for an in-depth design and a builder like the page templates.
 
