@@ -1,0 +1,504 @@
+{
+ "H7068": {
+  "occurrences": 43,
+  "verses": 41,
+  "by_book": {
+   "4": 9,
+   "5": 1,
+   "12": 2,
+   "18": 1,
+   "19": 3,
+   "20": 3,
+   "21": 2,
+   "22": 1,
+   "23": 7,
+   "26": 10,
+   "36": 2,
+   "38": 2
+  },
+  "rows": [
+   {
+    "ref": "Numbers 5:14",
+    "word": "jealousy",
+    "before": "And the spirit of ",
+    "after": "come upon him, and he ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Numbers 5:15",
+    "word": "jealousy",
+    "before": "for it is an offering of ",
+    "after": "an offering of memorial, bringing ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Numbers 5:18",
+    "word": "jealousy",
+    "before": "in her hands, which is the ",
+    "after": "offering: and the priest shall ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Numbers 5:25",
+    "word": "jealousy",
+    "before": "Then the priest shall take the ",
+    "after": "offering out of the woman’s ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Numbers 5:29",
+    "word": "jealousies",
+    "before": "This is the law of ",
+    "after": "when a wife goeth aside ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Numbers 5:30",
+    "word": "jealousy",
+    "before": "Or when the spirit of ",
+    "after": "cometh upon him, and he ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Numbers 25:11",
+    "word": "sake",
+    "before": "while he was zealous for my ",
+    "after": "among them, that I consumed ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Deuteronomy 29:20",
+    "word": "jealousy",
+    "before": "anger of the LORD and his ",
+    "after": "shall smoke against that man, ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "2 Kings 10:16",
+    "word": "zeal",
+    "before": "Come with me, and see my ",
+    "after": "for the LORD. So they ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "2 Kings 19:31",
+    "word": "zeal",
+    "before": "escape out of mount Zion: the ",
+    "after": "of the LORD  of hosts ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Job 5:2",
+    "word": "envy",
+    "before": "wrath killeth the foolish man, and ",
+    "after": "slayeth the silly one. ",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Psalms 69:9",
+    "word": "zeal",
+    "before": "For the ",
+    "after": "of thine house hath eaten ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Psalms 79:5",
+    "word": "jealousy",
+    "before": "be angry for ever? shall thy ",
+    "after": "burn like fire? ",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Psalms 119:139",
+    "word": "zeal",
+    "before": "My ",
+    "after": "hath consumed me, because mine ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Proverbs 6:34",
+    "word": "jealousy",
+    "before": "For ",
+    "after": "is the rage of a ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Proverbs 14:30",
+    "word": "envy",
+    "before": "the life of the flesh: but ",
+    "after": "the rottenness of the bones. ",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Proverbs 27:4",
+    "word": "envy",
+    "before": "who is able to stand before ",
+    "after": "",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Ecclesiastes 4:4",
+    "word": "envied",
+    "before": "that for this a man is ",
+    "after": "of his neighbour. This is ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Ecclesiastes 9:6",
+    "word": "envy",
+    "before": "love, and their hatred, and their ",
+    "after": "is now perished; neither have ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Song of Solomon 8:6",
+    "word": "jealousy",
+    "before": "for love is strong as death; ",
+    "after": "is cruel as the grave: ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Isaiah 9:7",
+    "word": "zeal",
+    "before": "from henceforth even for ever. The ",
+    "after": "of the LORD of hosts ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Isaiah 11:13",
+    "word": "envy",
+    "before": "The ",
+    "after": "also of Ephraim shall depart, ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Isaiah 26:11",
+    "word": "envy",
+    "before": "see, and be ashamed for their ",
+    "after": "at the people; yea, the ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Isaiah 37:32",
+    "word": "zeal",
+    "before": "escape out of mount Zion: the ",
+    "after": "of the LORD of hosts ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Isaiah 42:13",
+    "word": "jealousy",
+    "before": "mighty man, he shall stir up ",
+    "after": "like a man of war: ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Isaiah 59:17",
+    "word": "zeal",
+    "before": "for clothing, and was clad with ",
+    "after": "as a cloke. ",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Isaiah 63:15",
+    "word": "zeal",
+    "before": "of thy glory: where is thy ",
+    "after": "and thy strength, the sounding ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Ezekiel 5:13",
+    "word": "zeal",
+    "before": "LORD have spoken it in my ",
+    "after": "when I have accomplished my ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Ezekiel 8:3",
+    "word": "jealousy",
+    "before": "the seat of the image of ",
+    "after": "which provoketh to jealousy. ",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Ezekiel 8:5",
+    "word": "jealousy",
+    "before": "of the altar this image of ",
+    "after": "in the entry. ",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Ezekiel 16:38",
+    "word": "jealousy",
+    "before": "give thee blood in fury and ",
+    "after": "",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Ezekiel 16:42",
+    "word": "jealousy",
+    "before": "toward thee to rest, and my ",
+    "after": "shall depart from thee, and ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Ezekiel 23:25",
+    "word": "jealousy",
+    "before": "And I will set my ",
+    "after": "against thee, and they shall ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Ezekiel 35:11",
+    "word": "envy",
+    "before": "thine anger, and according to thine ",
+    "after": "which thou hast used out ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Ezekiel 36:5",
+    "word": "jealousy",
+    "before": "Surely in the fire of my ",
+    "after": "have I spoken against the ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Ezekiel 36:6",
+    "word": "jealousy",
+    "before": "Behold, I have spoken in my ",
+    "after": "and in my fury, because ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Ezekiel 38:19",
+    "word": "jealousy",
+    "before": "For in my ",
+    "after": "and in the fire of ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Zephaniah 1:18",
+    "word": "jealousy",
+    "before": "devoured by the fire of his ",
+    "after": "for he shall make even ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Zephaniah 3:8",
+    "word": "jealousy",
+    "before": "devoured with the fire of my ",
+    "after": "",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Zechariah 1:14",
+    "word": "jealousy",
+    "before": "and for Zion with a great ",
+    "after": "",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Zechariah 8:2",
+    "word": "jealousy",
+    "before": "was jealous for Zion with great ",
+    "after": "and I was jealous for ",
+    "pre": true,
+    "post": true
+   }
+  ]
+ },
+ "G2205": {
+  "occurrences": 17,
+  "verses": 17,
+  "by_book": {
+   "43": 1,
+   "44": 2,
+   "45": 2,
+   "46": 1,
+   "47": 5,
+   "48": 1,
+   "50": 1,
+   "51": 1,
+   "58": 1,
+   "59": 2
+  },
+  "rows": [
+   {
+    "ref": "John 2:17",
+    "word": "zeal",
+    "before": "remembered that it was written, The ",
+    "after": "of thine house hath eaten ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Acts 5:17",
+    "word": "indignation",
+    "before": "the Sadducees,) and were filled with ",
+    "after": "",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "Acts 13:45",
+    "word": "envy",
+    "before": "the multitudes, they were filled with ",
+    "after": "and spake against those things ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Romans 10:2",
+    "word": "zeal",
+    "before": "them record that they have a ",
+    "after": "of God, but not according ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Romans 13:13",
+    "word": "envying",
+    "before": "and wantonness, not in strife and ",
+    "after": "",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "1 Corinthians 3:3",
+    "word": "envying",
+    "before": "for whereas there is among you ",
+    "after": "and strife, and divisions, are ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "2 Corinthians 7:7",
+    "word": "mind",
+    "before": "earnest desire, your mourning, your fervent ",
+    "after": "toward me; so that I ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "2 Corinthians 7:11",
+    "word": "zeal",
+    "before": "yea, what vehement desire, yea, what ",
+    "after": "yea, what revenge! In all ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "2 Corinthians 9:2",
+    "word": "zeal",
+    "before": "ready a year ago; and your ",
+    "after": "hath provoked very many. ",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "2 Corinthians 11:2",
+    "word": "jealousy",
+    "before": "am jealous over you with godly ",
+    "after": "for I have espoused you ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "2 Corinthians 12:20",
+    "word": "envyings",
+    "before": "would not: lest there be debates, ",
+    "after": "wraths, strifes, backbitings, whisperings, swellings, ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Galatians 5:20",
+    "word": "emulations",
+    "before": "Idolatry, witchcraft, hatred, variance, ",
+    "after": "wrath, strife, seditions, heresies, ",
+    "pre": false,
+    "post": false
+   },
+   {
+    "ref": "Philippians 3:6",
+    "word": "zeal",
+    "before": "Concerning ",
+    "after": "persecuting the church; touching the ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "Colossians 4:13",
+    "word": "zeal",
+    "before": "record, that he hath a great ",
+    "after": "for you, and them that ",
+    "pre": true,
+    "post": true
+   },
+   {
+    "ref": "Hebrews 10:27",
+    "word": "indignation",
+    "before": "looking for of judgment and fiery ",
+    "after": "which shall devour the adversaries. ",
+    "pre": true,
+    "post": false
+   },
+   {
+    "ref": "James 3:14",
+    "word": "envying",
+    "before": "But if ye have bitter ",
+    "after": "and strife in your hearts, ",
+    "pre": false,
+    "post": true
+   },
+   {
+    "ref": "James 3:16",
+    "word": "envying",
+    "before": "For where ",
+    "after": "and strife is, there is ",
+    "pre": false,
+    "post": true
+   }
+  ]
+ }
+}

@@ -1,0 +1,16 @@
+{
+  "command": "wb bdb H7065",
+  "output": {
+    "strong": "H7065",
+    "lemma": "קָנָא",
+    "translit": "qânâʼ",
+    "entries": [
+      {
+        "entry_id": "s.ca.ac",
+        "headword": "קָנָא",
+        "text": "[קָנָא] vb. denom.\n  Pi. be jealous, zealous\n    1. be jealous of\n    2. be envious of\n    3. be zealous for\n    4. excite to jealous anger\n  Hiph. provoke to jealous anger",
+        "status": "base"
+      }
+    ]
+  }
+}

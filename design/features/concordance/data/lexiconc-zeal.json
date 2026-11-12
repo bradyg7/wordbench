@@ -1,0 +1,46 @@
+{
+  "q": "zeal",
+  "total": 4,
+  "entries": [
+    {
+      "strong": "H2734",
+      "lang": "heb",
+      "lemma": "חָרָה",
+      "translit": "chârâh",
+      "definition": "to glow or grow warm; figuratively (usually) to blaze up, of anger, zeal, jealousy",
+      "in_def": true,
+      "in_usage": false,
+      "n": 90
+    },
+    {
+      "strong": "H7068",
+      "lang": "heb",
+      "lemma": "קִנְאָה",
+      "translit": "qinʼâh",
+      "definition": "jealousy or envy",
+      "in_def": false,
+      "in_usage": true,
+      "n": 43
+    },
+    {
+      "strong": "H7065",
+      "lang": "heb",
+      "lemma": "קָנָא",
+      "translit": "qânâʼ",
+      "definition": "to be (causatively, make) zealous, i.e. (in a bad sense) jealous or envious",
+      "in_def": false,
+      "in_usage": true,
+      "n": 33
+    },
+    {
+      "strong": "G2205",
+      "lang": "grk",
+      "lemma": "ζῆλος",
+      "translit": "zēlos",
+      "definition": "properly, heat, i.e. (figuratively) \"zeal\" (in a favorable sense, ardor; in an unfavorable one, jealousy, as of a husband (figuratively, of God), or an enemy, malice)",
+      "in_def": true,
+      "in_usage": true,
+      "n": 17
+    }
+  ]
+}

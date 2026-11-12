@@ -1,0 +1,54 @@
+{
+  "command": "wb strong H7065",
+  "output": {
+    "strong": "H7065",
+    "lang": "heb",
+    "lemma": "קָנָא",
+    "translit": "qânâʼ",
+    "pron": "kaw-naw'",
+    "pos": "v",
+    "derivation": "a primitive root;",
+    "definition": "to be (causatively, make) zealous, i.e. (in a bad sense) jealous or envious",
+    "usage": "(be) envy(-ious), be (move to, provoke to) jealous(-y), × very, (be) zeal(-ous).",
+    "extra": null,
+    "renderings": [
+      {
+        "w": "jealous",
+        "n": 10
+      },
+      {
+        "w": "envied",
+        "n": 5
+      },
+      {
+        "w": "jealousy",
+        "n": 5
+      },
+      {
+        "w": "envious",
+        "n": 4
+      },
+      {
+        "w": "envy",
+        "n": 3
+      },
+      {
+        "w": "very",
+        "n": 2
+      },
+      {
+        "w": "zealous",
+        "n": 2
+      },
+      {
+        "w": "enviest",
+        "n": 1
+      },
+      {
+        "w": "zeal",
+        "n": 1
+      }
+    ],
+    "occurrences": 33
+  }
+}

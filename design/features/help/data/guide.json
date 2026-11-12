@@ -1,0 +1,4 @@
+{
+  "command": "wb guide",
+  "output": "The Guide: wb guide <topic>\n  templates    Templates\n  shelf        The Shelf\n  views        Views\n  threads      Threads\n  questions    Questions\n  words        Word blocks\n"
+}

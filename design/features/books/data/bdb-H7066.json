@@ -1,0 +1,16 @@
+{
+  "command": "wb bdb H7066",
+  "output": {
+    "strong": "H7066",
+    "lemma": "קְנָא",
+    "translit": "qᵉnâʼ",
+    "entries": [
+      {
+        "entry_id": "xs.ag.aa",
+        "headword": "קְנָא",
+        "text": "[קְנָא] vb. acquire, buy;—Pe. Ezr 7:17",
+        "status": "ref"
+      }
+    ]
+  }
+}
