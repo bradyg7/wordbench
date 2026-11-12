@@ -7,6 +7,17 @@ Search covers the KJV search, Every use, count, forms and near. All of them were
 existed, and this folder designs them for the first time. Every use of a Strong's number will also live in the
 [Concordance](../concordance/README.md). This folder covers how any search is asked and narrowed.
 
+## Leading design (2026-11-12)
+
+The board and its PDF hold only these windows. Superseded ones are left off the board by the script's `DROP` list (see [lead.py](../lead.py)); their drawings are in git history (commit `0d59600`).
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | R1 |  |
+| One box | R7 (the command first, then suggestions) | R4 (by R7) |
+| Results: filters, counts, whole verses | R8, R9, R10 | R2, R3 (A) and R5 (C) (by R8) |
+| Near | R6 |  |
+
 ## What exists today (in code, 2026-11-11)
 
 - `ui/src/panes.ts`:

@@ -236,5 +236,10 @@ def sheets(board):
     direction_b(cv)
 
 
+# windows that no longer lead (see the README's Leading design table)
+DROP = ["Q2", "Q3", "Q7", "Q10", "Q11"]
+
 if __name__ == "__main__":
+    import lead  # noqa: E402
+    lead.drop(Q, DROP)
     K.run_board(HERE, "Questions", sheets)

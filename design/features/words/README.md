@@ -5,6 +5,16 @@
 
 What a word, a verse reference and hovering show. The card is bloated with notes (2bc9), fixed in place (dfce, 149b), and a reference in a page should open the verse with its lookups (94a1).
 
+## Leading design (2026-11-12)
+
+Round 1 has not been reviewed, so every window still leads its part.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | W1 | |
+| A: a smaller card that moves | W2, W3 | |
+| B: a verse alone; a quiet hover card | W4, W5 | |
+
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
 | Finding | In short |

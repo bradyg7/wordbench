@@ -5,6 +5,16 @@
 
 The Help pane: Guide (`wb guide`), Commands (`wb manual`) and Keys. 0050: it is plain text.
 
+## Leading design (2026-11-12)
+
+Round 1 has not been reviewed, so every window still leads its part.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | H1 | |
+| A: the Guide as cards; commands to try | H2, H3 | |
+| B: help beside the part; keys | H4, H5 | |
+
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
 | Finding | In short |

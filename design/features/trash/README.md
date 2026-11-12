@@ -5,6 +5,16 @@
 
 Deleting: today a timed Undo, then 7 days in .trash (the person's decisions, 2026-11-03 and 04). cf09 (2026-11-08) asks that deletes just be destroyed; 0ade asks for deleting many pages at once. This round lays the choices out; it reopens nothing unless the person picks A.
 
+## Leading design (2026-11-12)
+
+Round 1 has not been reviewed, so every window still leads its part.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | T1 | |
+| A: Undo only; deleting several pages | T2, T3 | |
+| B: the 7 days kept, in Settings | T4 | |
+
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
 | Finding | In short |

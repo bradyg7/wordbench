@@ -8,6 +8,17 @@ page marks on the words, a selection, KJV/YLT, and a second reader in a pane. It
 existed; this folder designs it for the first time, inside the evolving app (the left rail and trail from
 [minimize](../minimize/README.md), the Library from [library](../library/README.md)).
 
+## Leading design (2026-11-12)
+
+The board and its PDF hold only these windows. Superseded ones are left off the board by the script's `DROP` list (see [lead.py](../lead.py)); their drawings are in git history (commit `0d59600`).
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | R1 |  |
+| A click and a right click | R2, R3 (A, chosen) | R4, R5 (B, rejected) |
+| The margin and one switch | R6, R7 (C, chosen; extended by [marks](../marks/README.md) M25-M28) |  |
+| A second reader; a verse alone | R8, R9 (need more design; R9 overlaps [words](../words/README.md) W4) |  |
+
 ## What exists today (in code, 2026-11-11)
 
 - `ui/src/reader.ts` draws a chapter in parts (paragraphs, poetry lines, italics, words of Jesus), each word able to

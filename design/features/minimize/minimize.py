@@ -1154,7 +1154,14 @@ def round6(board):
     text(mk, "Start a trail here  ·  on any tab’s menu", "smallStrong", "bg")
 
 
+# windows that no longer lead (see the README's Leading design table)
+DROP = ['M1', 'M2', 'M3', 'M4', 'M5', 'B1', 'D1', 'D2', 'E1', 'F1', 'G1', 'G2', 'G3', 'H1', 'H2', 'I1', 'J1', 'J2', 'K1', 'L1', 'P1']
+
+
 def main():
+    sys.path.insert(0, str(HERE.parent))
+    import lead  # noqa: E402
+    lead.drop(Q, DROP)
     F.define_tokens()
     S.do("page.rename", {"name": BOARD}, ref=False)
     board = frame(None, BOARD, x=0, y=0, w=100, h=100, fill="sunken", layout="vertical", gap=96, pad=96, W="hug", H="hug")

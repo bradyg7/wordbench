@@ -5,6 +5,16 @@
 
 The slim top bar (the place and the command field) and what the field shows while you type, so the command language is never required (8353); also where kept commands and the app's full screen live.
 
+## Leading design (2026-11-12)
+
+Round 1 has not been reviewed, so every window still leads its part.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | C1 | |
+| A: suggestions and chips | C2, C3 | |
+| B: kept commands on the rail; the ⋯ menu | C4, C5 | |
+
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
 | Finding | In short |

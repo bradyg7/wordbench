@@ -5,6 +5,17 @@
 
 The two lexicons the rail already names (minimize round 5), opened as books you page through instead of a lookup in a tab. Touches the rail, the word card ([words](../words/README.md)) and the Concordance ([concordance](../concordance/README.md)).
 
+## Leading design (2026-11-12)
+
+Round 1 has not been reviewed, so every window still leads its part.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | K1 | |
+| A: each lexicon as a book | K2, K3 | |
+| B: one card with three sources | K4, K5 | |
+| Links between entries; Webster's as a book | K6, K7 | |
+
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
 | Finding | In short |

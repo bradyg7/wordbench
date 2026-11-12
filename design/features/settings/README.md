@@ -5,6 +5,16 @@
 
 The Settings pane (Reading, Notebook, Hover and cards, Theme, Layouts, Commands, Keys, Advanced), saved layouts, and views.
 
+## Leading design (2026-11-12)
+
+Round 1 has not been reviewed, so every window still leads its part.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | S1 | |
+| A: italic words; scroll bars and full screen | S2, S3 | |
+| B: layouts as pictures; a saved list | S4, S5 | |
+
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
 | Finding | In short |

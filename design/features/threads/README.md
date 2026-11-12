@@ -9,6 +9,16 @@ pieces the library rounds fixed (library S20: Page = something you write, Folder
 pointer in any number of folders, Library = one tree and one search). It touches the reader's thread underlines, the
 thread page (`thread:<slug>`, `crates/wb-core/src/threadpage.rs`), `wb thread …`, the Save picker and the rail.
 
+## Leading design (2026-11-12)
+
+Not yet reviewed far enough to supersede anything: every window still leads its part.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| A: folders take threads over (the person leans this way, 2026-11-12) | T1, T2 |  |
+| B: a page with a Places block | T3, T4 |  |
+| C: a layer on the text | T5, T6 |  |
+
 ## What a thread is today
 
 - A file, `threads/<slug>.md`, in the Python app's format: name, color, a note, and an ordered list of places

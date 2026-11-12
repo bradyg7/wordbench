@@ -7,6 +7,19 @@ Reading plans and the reading log were built before `design/features/` existed. 
 time, inside the evolving app: the rail and trail come from [minimize](../minimize/README.md), and the reader and its right click come from
 [reader](../reader/README.md).
 
+## Leading design (2026-11-12)
+
+The board and its PDF hold only these windows. Superseded ones are left off the board by the script's `DROP` list (see [lead.py](../lead.py)); their drawings are in git history (commit `0d59600`).
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | R1 |  |
+| The plan leading the reader, the day as a checklist | R8 (A and B together, C in them), R3 (the end of a reading) | R2, R4, R6 (by R8) |
+| A part of a chapter | R9, R10 (still to choose) | R7 (by R9, R10) |
+| Missed days | to be redrawn as a counter | R11 (its choices dropped in review) |
+| Starting and building a plan | R12, R14 | R5 (by R14) |
+| Reading in the Library | R13 (not clear yet; round 3 redraws the path) |  |
+
 ## What exists today (in code, 2026-11-11)
 
 - `crates/wb-core/src/reading.rs` keeps two kinds of file:

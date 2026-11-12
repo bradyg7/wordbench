@@ -33,7 +33,8 @@ State is one of: *exploring* (rounds being drawn), *accepted* (the person accept
 ## Keeping folders small: the leading design (the person, 2026-11-12)
 
 A folder's board, and the PDF made from it, hold only its **leading** windows: the ones that still stand for a part of the
-feature. When a later window replaces an earlier one, the earlier one leaves the script and the board, and
+feature. When a later window replaces an earlier one, the earlier one leaves the board (cut from the script, or listed in the script's `DROP`
+list for the older scripts whose rounds share helpers: [lead.py](lead.py)), and
 gets one line in the README's **Leading design** table (what replaced it). Before a trim, the folder is committed, so
 every earlier window stays in git history and can be drawn again from there. The board is grouped by part, not by
 round, so it never needs deep zoom. The script exports the board as one vector PDF, `<feature>.pdf`, in the board's order: its text stays sharp at any zoom and can be searched, and there are no PNGs. Window numbers

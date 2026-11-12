@@ -367,7 +367,14 @@ def sheets(board):
     direction_c(cv)
 
 
+# windows that no longer lead (see the README's Leading design table)
+DROP = ['R2', 'R3', 'R4', 'R5']
+
+
 def main():
+    sys.path.insert(0, str(HERE.parent))
+    import lead  # noqa: E402
+    lead.drop(Q, DROP)
     F.define_tokens()
     S.do("page.rename", {"name": BOARD}, ref=False)
     board = frame(None, BOARD, x=0, y=0, w=100, h=100, fill="sunken", layout="vertical", gap=96, pad=96, W="hug", H="hug")

@@ -3,6 +3,19 @@
 **State:** exploring · **Sheets:** `python design/features/minimize/minimize.py` writes `minimize.figcraft` and
 `minimize.pdf` (the board, one vector page) · Nothing here is built yet.
 
+## Leading design (2026-11-12)
+
+The board and its PDF hold only these windows. Superseded ones are left off the board by the script's `DROP` list (see [lead.py](../lead.py)); their drawings are in git history (commit `0d59600`).
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Floating windows as folders | B2 | B1 (rejected: tabs on the reader's edges) |
+| Full screen and Present | C1, C2, E2, F2 |  |
+| Minimized tabs | the trail (below) | M1-M5 (the tray, A: by the rail and the trail), D1, D2 (by the rail of round 5), E1 (by the trail) |
+| The trail | I2 (the line under the top bar), N1 + O1 (sittings with side trips folded; chosen) | I1 (by N1 + O1), P1 (rejected) |
+| The rail's books | [concordance](../concordance/README.md), [books](../books/README.md) | G1-G3, J1, J2 (by the concordance folder), K1 (by books) |
+| Notebook and Shelf | [library](../library/README.md) | F1, H1, H2, L1 (by library S20) |
+
 ## Decisions so far (the person, 2026-11-11)
 
 - **Direction.** D (one rail for everything) is the favorite. The minimal looks of C and D and the floating folder tabs of B2 are liked.

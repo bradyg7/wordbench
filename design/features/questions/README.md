@@ -5,6 +5,18 @@
 
 Questions are written three ways today: a trail at a place, an Inbox question, and a callout in a page; `wb question list` already joins them. This round asks how they are asked, seen and answered in the window.
 
+## Leading design (2026-11-12)
+
+The board and its PDF hold only these windows. Superseded ones are left off the board by the script's `DROP` list (see [lead.py](../lead.py)); their drawings are in git history (commit `0d59600`).
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | Q1 |  |
+| Questions as lines in pages | Q4, Q5 (B, chosen) | Q2, Q3 (A, rejected) |
+| The list | Q6 (a saved list in a page); the Library's search filter in [marks](../marks/README.md) M20-M21 | Q7 (a Library section, dropped) |
+| A question with no place | Q8, Q9 |  |
+| Asking from the reader | [marks](../marks/README.md) M27 (writing in the margin asks where) | Q10, Q11 (by the margin decision and M27) |
+
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
 | Finding | In short |

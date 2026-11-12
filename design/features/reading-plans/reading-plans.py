@@ -551,7 +551,14 @@ def sheets2(board):
     start2(cv)
 
 
+# windows that no longer lead (see the README's Leading design table)
+DROP = ['R2', 'R4', 'R5', 'R6', 'R7', 'R11']
+
+
 def main():
+    sys.path.insert(0, str(HERE.parent))
+    import lead  # noqa: E402
+    lead.drop(Q, DROP)
     F.ICONS.setdefault("bookmark", "M7 4h10v16l-5-4-5 4z")
     F.define_tokens()
     S.do("page.rename", {"name": BOARD}, ref=False)

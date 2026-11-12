@@ -8,6 +8,17 @@ bookmark that is "almost second nature ... a one or at most two step process, es
 findings f_20261111150806_c43b, f_20261111002622_9413, f_20261108005250_1d0e; review of 2026-11-11). It touches the
 Notebook drawer, the Shelf and its sets, every place something can be kept, and the minimize rounds' rail and trail.
 
+## Leading design (2026-11-12)
+
+The board and its PDF hold only these windows. Superseded ones are left off the board by the script's `DROP` list (see [lead.py](../lead.py)); their drawings are in git history (commit `0d59600`).
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Saving | S7 (the picker at once), S5 (the same mark everywhere), S11, S15 | S1, S2 (by S7) |
+| How saves show | S8, S17 | S16 (its right margin, by marks M25-M26) |
+| Folders and what is open | S6, S9, S10, S13, S18, S19, S22 | S4 (by S10, S19, S22) |
+| The Library | S20 (four pieces), S21 (one search), S23 (the page editor), S24 (narrow) | S3 (by S20, S24), S12, S14 (unclear in review; by S20) |
+
 ## Decisions so far (the person, 2026-11-11, from the minimize rounds)
 
 - **The Notebook is pages and the Shelf.** The Inbox goes (nothing is received; a page need not have a place). The

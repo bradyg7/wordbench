@@ -884,7 +884,14 @@ def round3(board):
         text(cd, s, "caption", "muted")
 
 
+# windows that no longer lead (see the README's Leading design table)
+DROP = ['S1', 'S2', 'S3', 'S4', 'S12', 'S14', 'S16']
+
+
 def main():
+    sys.path.insert(0, str(HERE.parent))
+    import lead  # noqa: E402
+    lead.drop(Q, DROP)
     F.ICONS.setdefault("bookmark", "M7 4h10v16l-5-4-5 4z")
     F.define_tokens()
     S.do("page.rename", {"name": BOARD}, ref=False)

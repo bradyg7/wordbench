@@ -272,7 +272,14 @@ def sheets(board):
     verse_alone(cv)
 
 
+# windows that no longer lead (see the README's Leading design table)
+DROP = ['R4', 'R5']
+
+
 def main():
+    sys.path.insert(0, str(HERE.parent))
+    import lead  # noqa: E402
+    lead.drop(Q, DROP)
     F.ICONS.setdefault("bookmark", "M7 4h10v16l-5-4-5 4z")
     F.ICONS.setdefault("eyeOff", "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM4 4l16 16")
     F.define_tokens()

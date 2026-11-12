@@ -5,6 +5,16 @@
 
 The person's notes about the app (`findings/`, apart from the study): the box that writes one and the pane that lists them.
 
+## Leading design (2026-11-12)
+
+Round 1 has not been reviewed, so every window still leads its part.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | F1 | |
+| A: a small movable box; the pane | F2, F3 | |
+| B: ! in the command field | F4 | |
+
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
 | Finding | In short |

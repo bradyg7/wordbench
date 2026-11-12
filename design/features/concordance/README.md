@@ -9,6 +9,17 @@ verse, passage or chapter (the person, 2026-11-11). It replaces today's word-stu
 as the place they live; a word study opened from it is minimized back into it (see
 [minimize](../minimize/README.md)). BDB and Webster's 1913 are separate books on the rail, not tabs here.
 
+## Leading design (2026-11-12)
+
+Not yet reviewed far enough to supersede anything: every window still leads its part.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| The English page and the box | C1, C2 |  |
+| The dictionaries | C3, C4 |  |
+| Interlinear; from the reader and back | C5, C6 |  |
+| An entry's every place; the word card's door | C7-C10 |  |
+
 ## Decisions (the person, 2026-11-11)
 
 - **The Concordance is a book on the rail**, its own button (the minimize rounds, H-L).

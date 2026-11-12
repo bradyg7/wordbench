@@ -5,6 +5,16 @@
 
 Documents made from a thread, a passage, a lesson or a page; 868e asks for an in-depth design and a builder like the page templates.
 
+## Leading design (2026-11-12)
+
+Round 1 has not been reviewed, so every window still leads its part.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Today | D1 | |
+| A: a builder from a page; the viewer | D2, D3 | |
+| B: Looks; where files go | D4, D5 | |
+
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
 | Finding | In short |
