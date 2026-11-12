@@ -30,6 +30,15 @@ which directions conflict. The round-1 folders of 2026-11-12 share [kit.py](kit.
 State is one of: *exploring* (rounds being drawn), *accepted* (the person accepted the design; ready to build),
 *building*, *built* (link the commit or spec section), *dropped*.
 
+## Keeping folders small: the leading design (the person, 2026-11-12)
+
+A folder's board and `exports/` hold only its **leading** windows: the ones that still stand for a part of the
+feature. When a later window replaces an earlier one, the earlier one leaves the script, the board and `exports/`, and
+gets one line in the README's **Leading design** table (what replaced it). Before a trim, the folder is committed, so
+every earlier window stays in git history and can be drawn again from there. The board is grouped by part, not by
+round, so it never needs deep zoom. There is no `all.png`; windows are read one by one at full size. Window numbers
+never change or get reused, so a window named in a decision is always the same one.
+
 ## A folder
 
 ```
@@ -37,7 +46,7 @@ design/features/<feature>/
   README.md          decisions (dated), open questions, rounds, what the build must satisfy
   <feature>.py       the FigCraft source script (imports figlib, parts, build, phase2b from design/)
   <feature>.figcraft written by the script; open it in FigCraft
-  exports/*.png      written by the script: all.png (the whole board) and one PNG per window, by its tag
+  exports/*.png      written by the script: one PNG per leading window, by its tag
   data/*.json        lookups the sheets show (scripture, concordance, lexicon), fetched from the database with wb,
                      never typed; say in the README which command made each one
 ```

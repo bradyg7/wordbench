@@ -26,26 +26,6 @@ FOLDERS = [("Phinehas", "threadA"), ("Covenant", "accent")]
 MINE = "Your own words, as you wrote them"
 
 
-def text_col(f, x, w, marks, width=600, title="Numbers 25"):
-    rd = frame(f, "text", x=x, y=TB, w=w, h=H - TB, layout="vertical", pad=[32, 24, 32, 24], W="fixed", H="fixed",
-               clip=True)
-    inner = col(rd, "reading column", gap=8, W="fixed")
-    S.do("node.set", {"ids": [inner], "props": {"width": width}}, ref=False)
-    text(inner, title, "chapter", fontSize=30, lineHeight="40px")
-    K.F.verses(inner, NUM25, "readDesk", marks)
-    return rd
-
-
-def left_saves(f, x):
-    """Saves in the left margin (library S8, liked): a ribbon in the folder's color, a number when several."""
-    for y, color, n in ((TB + 112, "threadA", 2), (TB + 300, "accent", 1)):
-        r_ = row(f, "save", gap=2)
-        Q.put(r_, x, y)
-        icon(r_, "bookmark", 16, color)
-        if n > 1:
-            text(r_, str(n), "caption", "muted")
-
-
 def margin_note(parent, verse, lines=2, refs=0, q=False, editing=False):
     box = col(parent, f"margin/{verse}", gap=4, pad=[8, 10, 8, 10], radius=8, W="fill",
               fill="surface" if editing else None, stroke="accent" if editing else "line", sw=1,
@@ -64,159 +44,6 @@ def margin_note(parent, verse, lines=2, refs=0, q=False, editing=False):
         icon(qr, "question", 12, "question")
         text(qr, "a question line", "caption", "question")
     return box
-
-
-def margin(f, x, w, editing=False):
-    mg = col(f, "margin", gap=14, pad=[150, 14, 16, 14], W="fixed", H="fixed", stroke="line", strokeLeftWeight=1,
-             strokeRightWeight=0, strokeTopWeight=0, strokeBottomWeight=0)
-    Q.put(mg, x, TB, w, H - TB)
-    margin_note(mg, "25:11", 3, refs=4, q=True, editing=editing)
-    frame(mg, "space", w=10, h=40, W="fixed", H="fixed")
-    margin_note(mg, "25:13", 1, refs=1)
-    return mg
-
-
-# ---- M1 the model --------------------------------------------------------------------------------------------------
-
-def box(parent, title, lines, fill="surface", stroke="line", w=300):
-    b = col(parent, title, gap=6, pad=[14, 16, 14, 16], radius=12, fill=fill, stroke=stroke, sw=1.5, W="fixed")
-    Q.put(b, 0, 0, w)
-    text(b, title, "heading")
-    for ln in lines:
-        para(b, ln, "small", "muted")
-    return b
-
-
-def model(cv):
-    r = row(cv, "model", gap=64, align="min")
-    f = Q.win(r, PG, "M1 · The model: two layers on the text, one page per verse",
-              "Everything you write is a page. A verse's own page holds its notes (what you would write in the margin) "
-              "and, under them, every reference to the verse or a word in it, found rather than stored. The margin "
-              "shows the verse's page; the words show color and pencil. Folders hold saves; a thread is a folder.")
-    body = col(f, "diagram", gap=28, pad=[48, 56, 48, 56], W="fixed", H="fixed")
-    Q.put(body, 0, 0, W, H)
-    top = row(body, "layers", gap=28, align="min")
-    box(top, "On the words", ["Highlight: a color, named if you like (Promises, Commands)",
-                              "Pencil underline: emphasis with no meaning, as in a printed Bible",
-                              "Dotted underline: something you wrote is on these words"], stroke="hlYellow")
-    box(top, "The left margin", ["Saves: a ribbon in the folder's color", "A thread is a folder of saves; its "
-                                 "color is the folder's"], stroke="threadA")
-    box(top, "The right margin", ["The verse's page: its notes, editable where they sit",
-                                  "A count of its references, a click lists them"], stroke="accent")
-    arrow = row(body, "arrow", gap=10)
-    icon(arrow, "down", 20, "muted")
-    text(arrow, "the right margin is a window onto the verse's page; nothing is kept in the margin itself", "small",
-         "muted")
-    bot = row(body, "pages", gap=28, align="min")
-    box(bot, "The verse's page (Numbers 25:11)", ["Notes: yours, written in the margin or in the page",
-                                                  "References, found each time it opens:",
-                                                  "· pages placed at the verse or a word in it",
-                                                  "· pages that mention it in their text",
-                                                  "· questions written at it",
-                                                  "· folders it is saved in"], fill="accentSoft", stroke="accent",
-        w=430)
-    box(bot, "Any other page", ["Placed at a verse: listed in that verse's references",
-                                "A scripture block: the passage, just the text or with your marks",
-                                "A saved list: e.g. open questions (the search's filter)"], w=380)
-    box(bot, "The Library", ["Pages, folders, saves: one tree, one search (library S20, S21)",
-                             "Questions: a filter of the search, not a section"], w=330)
-
-
-# ---- M2, M3 the reader -------------------------------------------------------------------------------------------
-
-def reader_windows(cv):
-    r = row(cv, "reader", gap=64, align="min")
-    f = Q.win(r, PG, "M2 · The reader: saves left, the verse's page right",
-              "The right margin shows each verse's page where it has one: the first lines of your notes as you wrote "
-              "them (reader R6 showed only names; library S16 the first line; this shows your words, short), a "
-              "question line if there is one, and a count of references. Saves stay on the left (S8).")
-    w = K.app(f)
-    left_saves(f, w + 300)
-    text_col(f, w + 320, 660, MARKS)
-    margin(f, W - 360, 360)
-
-    f = Q.win(r, PG, "M3 · Writing in the margin writes the verse's page",
-              "A click in the margin beside a verse with no page, or on its note, edits right there: it is the "
-              "verse's page, so it is connected, searchable and can grow. ⤢ opens the whole page; Enter twice "
-              "leaves. The page is made the first time you write, named by its place.")
-    w = K.app(f)
-    left_saves(f, w + 300)
-    text_col(f, w + 320, 660, MARKS)
-    mg = margin(f, W - 360, 360, editing=True)
-    tl = row(f, "tools", gap=6, pad=[4, 6, 4, 6], radius=8, fill="surface", stroke="line", sw=1)
-    Q.put(tl, W - 200, TB + 120)
-    P.icon_button(tl, "question", "question", size=26, icon_size=14)
-    P.icon_button(tl, "expand", "muted", size=26, icon_size=14)
-
-
-# ---- M4 the verse's page -------------------------------------------------------------------------------------------
-
-def ref_group(p, title, ic, items):
-    text(p, title.upper(), "label", "muted")
-    for name, sub in items:
-        K.line(p, name, sub, ic)
-
-
-def verse_page(cv):
-    r = row(cv, "verse page", gap=64, align="min")
-    f = Q.win(r, PG, "M4 · The verse's page: notes, then references",
-              "Opened from the margin (or the verse's right-click: Open this verse's page). The verse at the top, "
-              "verbatim; your notes; then References, found each time from the files and the cache: nothing is "
-              "copied in, so a new page placed at the verse simply appears here. A word's own pages (zealous, H7065) "
-              "show under the word.")
-    w = K.app(f, on="Notebook")
-    p = K.panel(f, w, TB, W - w, H - TB, "Numbers 25:11", "the verse's page · made when you first wrote", fill="bg")
-    vq = col(p, "verse", gap=4, pad=[12, 16, 12, 16], radius=10, fill="surface", stroke="line", sw=1, W="fill")
-    para(vq, V11, "readSmall")
-    text(vq, "Numbers 25:11 KJV", "caption", "muted")
-    text(p, "NOTES", "label", "muted")
-    para(p, MINE + " (as many paragraphs, questions, blocks as any page).", "body", "muted")
-    K.rule(p)
-    rh = row(p, "references head", gap=8, W="fill")
-    text(rh, "References", "heading", W="fill")
-    text(rh, "found when the page opens; nothing copied in", "caption", "muted")
-    cols = row(p, "references", gap=28, align="min", W="fill")
-    a = col(cols, "a", gap=6, W="fill")
-    ref_group(a, "Pages placed here", "page", [("Phinehas", "at Numbers 25:7–13"), ("Covenant", "at 25:11–13")])
-    ref_group(a, "Pages that mention it", "page", [("Tuesday study", "in a paragraph")])
-    b = col(cols, "b", gap=6, W="fill")
-    ref_group(b, "On words in this verse", "word", [("zealous · H7065", "1 page on the word")])
-    ref_group(b, "Questions", "question", [("a question line", "in Phinehas")])
-    ref_group(b, "Saved in", "bookmark", [("Phinehas", "a folder"), ("Covenant", "a folder")])
-
-
-# ---- M5 the underline ----------------------------------------------------------------------------------------------
-
-def mini(parent, title, about, marks, legend):
-    c = col(parent, title, gap=10, W="fixed")
-    Q.put(c, 0, 0, 420)
-    text(c, title, "heading")
-    para(c, about, "small", "muted")
-    v = col(c, "verse", gap=4, pad=[14, 16, 14, 16], radius=10, fill="surface", stroke="line", sw=1, W="fill")
-    K.F.verses(v, [x for x in NUM25 if x["v"] == 11], "readSmall", marks)
-    para(c, legend, "caption", "muted")
-
-
-def underline(cv):
-    r = row(cv, "underline", gap=64, align="min")
-    f = Q.win(r, PG, "M5 · What an underline means, once threads are folders",
-              "Today a colored underline means a thread. If a thread is a folder of saves, the underline is free. "
-              "Three meanings, each one a person's own habit can live with. The dotted underline (a page on these "
-              "words) stays in all three.")
-    body = row(f, "three", gap=36, pad=[48, 40, 48, 40], align="min", W="fixed", H="fixed")
-    Q.put(body, 0, 0, W, H)
-    mini(body, "U-A · A pencil line", "Emphasis with no meaning: the quick mark you make while reading, before you "
-         "know why. One style, one key (U), no menu. Color is for meaning; the pencil is for attention.",
-         {11: {"threads": {k: ["fg"] for k in range(0, 6)}}}, "Kept with the highlights, as a highlight with no "
-         "color (a style field the Python app passes over).")
-    mini(body, "U-B · A saved phrase", "The underline is how a save on words shows: a saved phrase is underlined in "
-         "its folder's color, a saved verse gets the ribbon. A thread's verses are underlined because they are "
-         "saved in it.", {11: {"threads": {k: ["threadA"] for k in range(0, 6)}}}, "Nothing new kept: it is the "
-         "save, drawn on the words.")
-    mini(body, "U-C · Your own styles", "Underline, box, circle, wavy: styles you name yourself, like colors "
-         "(finding 5a80, the analog Bible). Each is a mark with a meaning you give it, shown in the marks panel "
-         "with an eye.", {11: {"threads": {k: ["question"] for k in range(0, 6)}}}, "Kept with highlights: a style "
-         "and a name in the palette.")
 
 
 # ---- M6 a passage in a page, with its marks ------------------------------------------------------------------------
@@ -271,30 +98,6 @@ def passage(cv):
         it = row(c, name, gap=8)
         icon(it, ic, 14, "muted")
         text(it, name, "small")
-
-
-# ---- M8 questions as a filter ---------------------------------------------------------------------------------------
-
-def questions(cv):
-    r = row(cv, "questions", gap=64, align="min")
-    f = Q.win(r, PG, "M8 · Questions: a filter of the Library's search",
-              "The Library's one search (S21) has kind chips under it; Questions · Open lists every open question "
-              "line, by place, each opening its page at that line. The same line kept in a page is a saved list.")
-    w = K.app(f, on="Notebook")
-    p = K.panel(f, w, TB, W - w, H - TB, "Library", None, fill="sunken")
-    P.field(p, "Search pages, folders and saves")
-    ch = row(p, "kinds", gap=6, W="fill")
-    for c_, on in (("Pages", False), ("Folders", False), ("Saves", False), ("Questions", True), ("Highlights", False)):
-        P.chip(ch, c_, "selected" if on else "outline")
-    P.segmented(ch, ["Open", "Answered"], "Open", W="hug")
-    text(p, "NUMBERS", "label", "muted")
-    for place, where in (("Numbers 25:11", "in the page Numbers 25:11"), ("Numbers 25:13", "in Phinehas")):
-        K.line(p, "a question line", f"{place} · {where}", "question")
-    text(p, "NO PLACE", "label", "muted")
-    K.line(p, "a question line", "in Tuesday study", "question")
-    rr = row(p, "keep", gap=8)
-    text(rr, "notebook questions open", "caption", "muted")
-    P.button(rr, "Keep as a list in a page", "ghost", "plus", size="sm")
 
 
 # ==== Round 2 (2026-11-12) ===========================================================================================
@@ -354,76 +157,6 @@ def narrow_reader(f, x, w, title="Numbers 25"):
     Q.put(rd, x, TB + 36, w, H - TB - 36)
     text(rd, title, "chapter", fontSize=22, lineHeight="30px")
     return rd
-
-
-# ---- verse page: three designs, each narrow ----------------------------------------------------------------------
-
-def vp_head(p):
-    text(p, "Numbers 25:11", "title")
-    para(p, V11, "readSmall")
-
-
-def verse_pages(cv):
-    r = row(cv, "verse pages", gap=64, align="min")
-    f = Q.win(r, PG, "M9 · Verse page A: references as one line that opens",
-              "In a narrow pane (420 wide, beside a reader). Your notes first; the references are one quiet line of "
-              "counts at the foot (4 pages · 1 word · 1 question · saved in 2). A click on a count opens just that "
-              "list, in place. Nothing big unless asked.")
-    w = K.app(f)
-    K.reader(f, w, W - w - 420, NUM25, "Numbers 25")
-    p = K.M.pane(f, W - 420, TB, 420, H - TB, ["Numbers 25", "Numbers 25:11"], "Numbers 25:11")
-    vp_head(p)
-    text(p, "NOTES", "label", "muted")
-    para(p, MINE + ".", "small", "muted")
-    K.rule(p)
-    ln = row(p, "counts", gap=10, wrap=True, W="fill")
-    for c_, ic, on in (("3 pages", "page", True), ("1 word", "word", False), ("1 question", "question", False),
-                       ("saved in 2", "bookmark", False)):
-        it = row(ln, c_, gap=4)
-        icon(it, ic, 14, "accent" if on else "muted")
-        text(it, c_, "smallStrong" if on else "small", "accent" if on else "muted")
-    lst = col(p, "open list", gap=2, pad=[4, 0, 0, 8], W="fill", stroke="line", strokeLeftWeight=2,
-              strokeRightWeight=0, strokeTopWeight=0, strokeBottomWeight=0)
-    for n, s_ in (("Phinehas", "at 25:7–13"), ("Covenant", "at 25:11–13"), ("Tuesday study", "mentions it")):
-        it = row(lst, n, gap=8, pad=[3, 4, 3, 4], W="fill")
-        text(it, n, "small", W="fill")
-        text(it, s_, "caption", "muted")
-
-    f = Q.win(r, PG, "M10 · Verse page B: references in the margin of the page",
-              "The verse's page laid out like the reader: your notes in the column, the references as small names in "
-              "a right margin, beside the line they relate to (a word's page beside the word). When the pane is "
-              "narrow the margin folds into the line of counts of A.")
-    w = K.app(f)
-    p = K.panel(f, w, TB, W - w, H - TB, "Numbers 25:11", "the verse's page, wide", fill="bg")
-    body = row(p, "body", gap=24, align="min", W="fill")
-    main = col(body, "column", gap=10, W="fill")
-    para(main, V11, "readSmall")
-    text(main, "NOTES", "label", "muted")
-    for _ in range(3):
-        para(main, MINE + ".", "body", "muted")
-    mg = col(body, "margin", gap=8, pad=[0, 0, 0, 12], W="fixed", stroke="line", strokeLeftWeight=1,
-             strokeRightWeight=0, strokeTopWeight=0, strokeBottomWeight=0)
-    S.do("node.set", {"ids": [mg], "props": {"width": 240}}, ref=False)
-    for n, ic in (("zealous · H7065", "word"), ("Phinehas", "page"), ("Covenant", "page"), ("Tuesday study", "page"),
-                  ("a question line", "question"), ("Phinehas · Covenant", "bookmark")):
-        it = row(mg, n, gap=6)
-        icon(it, ic, 12, "muted")
-        text(it, n, "caption", "fg")
-
-    f = Q.win(r, PG, "M11 · Verse page C: no writing, only where it is referenced",
-              "Answer 6's other way: a verse has no page of its own to write in. Opening a verse shows the verse and "
-              "the list of everything that refers to it, grouped small; to write, you write a page placed there "
-              "(New page here), which then joins the list. Less to keep, one kind of writing; but no margin note.")
-    w = K.app(f)
-    K.reader(f, w, W - w - 420, NUM25, "Numbers 25")
-    p = K.M.pane(f, W - 420, TB, 420, H - TB, ["Numbers 25", "Numbers 25:11"], "Numbers 25:11")
-    vp_head(p)
-    P.button(p, "New page here", "secondary", "plus", size="sm")
-    for grp, items in (("Pages", ["Phinehas", "Covenant", "Tuesday study"]), ("On its words", ["zealous · H7065"]),
-                       ("Questions", ["a question line · in Phinehas"]), ("Saved in", ["Phinehas", "Covenant"])):
-        text(p, grp.upper(), "label", "muted")
-        for n in items:
-            text(p, n, "small")
 
 
 # ---- marks with many tabs open -------------------------------------------------------------------------------------
@@ -648,20 +381,6 @@ def filters(cv):
     K.line(mn, "Open only", None, "check", on=True)
 
 
-def round2(board):
-    cv = Q.section(board, "Round 2", 3200)
-    Q.sheet_title(cv, "Marks, round 2",
-                  "Three designs of a verse's page, narrow (M9-M11); marks with many tabs open (M12); one line under "
-                  "a run, and the pencil, saved phrases and your own styles at work (M13-M16); the dotted line (M17); "
-                  "the development of your thoughts (M18, M19); filters without chips (M20, M21).")
-    verse_pages(cv)
-    crowded(cv)
-    underlines(cv)
-    dotted(cv)
-    history(cv)
-    filters(cv)
-
-
 # ==== Round 3 (2026-11-12): a page's scripture overview; the margin as the verse's store ===============================
 
 PS106 = K.verses_of(K.fetch(HERE, "ps106-30-31", ["text", "Ps 106:30-31"], as_json=False))
@@ -706,13 +425,7 @@ def page_body(p):
     para(p, MINE + ", naming Numbers 25:11 in a sentence.", "body", "muted")
 
 
-def round3(board):
-    cv = Q.section(board, "Round 3", 3200)
-    Q.sheet_title(cv, "Marks, round 3",
-                  "No places (2026-11-12). A page's scripture overview at its top (M22-M24); the margin as the verse's "
-                  "page and store: opened beside the reader (M25), names first in the reader (M26), writing in it asks "
-                  "where (M27), a passage's and a chapter's notes (M28), and moving a note between the margin and a "
-                  "page (M29).")
+def overview_part(cv):
     r = row(cv, "overview", gap=64, align="min")
     f = Q.win(r, PG, "M22 · A page's scripture overview",
               "Every scripture the page names, in Bible order, at the top: what a scripture block shows, a "
@@ -743,6 +456,8 @@ def round3(board):
     p = K.panel(f, w, TB, W - w, H - TB, "Tuesday study", "a page (a drawn sample)", fill="bg")
     overview(p, passing_off=True)
 
+
+def margin_part(cv):
     r = row(cv, "margin", gap=64, align="min")
     f = Q.win(r, PG, "M25 · The verse opened in the margin",
               "Open in the margin (a click on a verse number's margin mark, or M) opens the verse's page beside the "
@@ -823,20 +538,6 @@ def round3(board):
     margin_note(inner, "25:10–13", 2)
     margin_note(inner, "25:11", 1)
 
-    f = Q.win(r, PG, "M29 · Moving a note between the margin and a page",
-              "A margin note's ⋯ has Move to a page (a new one, or a page you pick: it lands as a paragraph naming "
-              "the verse) and a page's paragraph has Move to the margin (it must name one place). Nothing is copied: "
-              "the note is in one place at a time, and the margin lists the page either way.")
-    w = K.app(f)
-    K.reader(f, w, W - w - 320, NUM25, "Numbers 25")
-    mg = col(f, "margin", gap=10, pad=[150, 14, 16, 14], W="fixed", H="fixed", stroke="line", strokeLeftWeight=1,
-             strokeRightWeight=0, strokeTopWeight=0, strokeBottomWeight=0)
-    Q.put(mg, W - 320, TB, 320, H - TB)
-    margin_note(mg, "25:11", 2)
-    mn = K.floating(f, "menu", W - 560, TB + 230, 260, gap=1)
-    for lbl, ic in (("Move to a new page", "page"), ("Move to a page…", "notebook"), ("Ask as a question", "question"),
-                    ("Delete", "trash")):
-        K.line(mn, lbl, None, ic)
 
 
 # ==== Round 4 (2026-11-12): jots and pages; Margin notes in the Library ============================================
@@ -880,8 +581,8 @@ def library_side(f, w, on="Margin notes", counts=("4", "38", "57", "6", "12")):
 
 
 def round4(board):
-    cv = Q.section(board, "Round 4", 3200)
-    Q.sheet_title(cv, "Marks, round 4",
+    cv = Q.section(board, "Jots and pages", 3200)
+    Q.sheet_title(cv, "Jots and pages; Margin notes in the Library (round 4)",
                   "The margin holds jots; the Notebook holds pages (proposed 2026-11-12). Margin notes in the Library, "
                   "in the Bible's order (M30, M31); a jot's menu and the offer when it grows long (M32); a jot grown "
                   "into a page, with its seed block (M33) and the line left in the margin (M34); adding a jot to a page "
@@ -1006,8 +707,8 @@ LOAD = {14: (3, 18, 2), 15: (2, 11, 1), 16: (41, 312, 9), 17: (6, 44, 2), 18: (2
 
 
 def round5(board):
-    cv = Q.section(board, "Round 5", 3200)
-    Q.sheet_title(cv, "Marks, round 5: a full vault, years on",
+    cv = Q.section(board, "A full vault", 3200)
+    Q.sheet_title(cv, "A full vault, fifteen years on (round 5)",
                   "A projection of a teacher's study after fifteen years (about 2,400 pages, 3,100 jots, 18,000 "
                   "highlights, 140 folders; today's folder holds about 121 pages). The busiest chapter in the reader "
                   "(M36); the margin of a verse with 41 jots and 312 pages (M37); the Library's Margin notes as a map "
@@ -1158,22 +859,34 @@ def round5(board):
     text(p, "25 more", "caption", "muted")
 
 
+def part(board, name, about):
+    cv = Q.section(board, name, 3200)
+    Q.sheet_title(cv, name, about)
+    return cv
+
+
 def sheets(board):
-    round5(board)
+    """The leading windows only, grouped by part (the person, 2026-11-12). Superseded windows (M1-M5, M8-M11, M29) are
+    in git history (commit 0d59600) and listed in the README's Leading table."""
+    margin_part(part(board, "The margin: the verse's page and store",
+                     "Opened beside the reader (M25), names first (M26), writing asks where (M27), a passage's and a "
+                     "chapter's notes (M28)."))
     round4(board)
-    round3(board)
-    round2(board)
-    cv = Q.section(board, "Round 1", 3200)
-    Q.sheet_title(cv, "Marks, round 1",
-                  "The model (M1); the reader with saves left and the verse's page right, written where it sits (M2, "
-                  "M3); the verse's page with its references (M4); three meanings for an underline (M5); a passage in "
-                  "a page with your marks (M6, M7); questions as a search filter (M8).")
-    model(cv)
-    reader_windows(cv)
-    verse_page(cv)
-    underline(cv)
+    overview_part(part(board, "A page's scripture overview",
+                       "Every scripture a page names, at its top (M22), narrow (M23), a reference in passing (M24)."))
+    cv = part(board, "Marks on the words",
+              "One line under a run (M13), the pencil (M14), a saved phrase (M15), your own styles (M16), the dotted "
+              "line (M17).")
+    underlines(cv)
+    dotted(cv)
+    cv = part(board, "A passage with its marks, and history",
+              "The photograph of an annotated Bible in a page (M6, M7), the development of your thoughts (M18) and the "
+              "photograph's date (M19).")
     passage(cv)
-    questions(cv)
+    history(cv)
+    crowded(part(board, "Many tabs open", "Marks in a narrow reader (M12)."))
+    round5(board)
+    filters(part(board, "Filters", "The Library's kinds as a side list (M20) or one menu in the field (M21)."))
 
 
 if __name__ == "__main__":

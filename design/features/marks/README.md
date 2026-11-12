@@ -9,6 +9,22 @@ clear whether marks replace notes, whether they only stick to scripture, whether
 its marks, or how a list of them fits the Library. "Mark" is already the word: `wb marks` ("what is drawn on a
 chapter"), and the reader's one panel for "every kind of mark" (reader R7, decided).
 
+## Leading design (2026-11-12)
+
+The board and `exports/` hold only these windows, grouped by part. Superseded windows are in git history (commit
+`0d59600`, before the trim); their lines below say what replaced them.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| The margin: the verse's page and store | M25 (opened), M26 (names first, lines on hover), M27 (writing asks where), M28 (passages and chapters) | M2, M3 (by M26, M27), M4 and M9-M11 (by the margin decision and M25), M29 (by M32) |
+| Jots and pages; Margin notes in the Library | M30-M35 | |
+| A page's scripture overview | M22-M24 | M1's model (by the no-places and margin decisions) |
+| Marks on the words | M13 (one line under a run), M14-M16 (pencil, saved phrase, your own styles), M17 (the dotted line) | M5 (by M13-M16) |
+| A passage with its marks, and history | M6, M7 (the photograph), M18, M19 (history) | |
+| Many tabs open | M12 | |
+| A full vault | M36-M41 | |
+| Filters | M20, M21 | M8 (chips; not liked) |
+
 ## What is already decided elsewhere (the frame this must fit)
 
 - **Everything you write is a page** (R1, 2026-11-09). A note at a verse is a page whose place is that verse; the

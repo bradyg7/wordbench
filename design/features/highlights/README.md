@@ -8,6 +8,17 @@ It covers the colors, what a color can mean, layers, showing and hiding marks, a
 The click that opens the colors comes from [reader](../reader/README.md) (direction A), and threads from
 [threads](../threads/README.md).
 
+## Leading design (2026-11-12)
+
+The board and `exports/` hold only these windows, grouped by part. Superseded windows are in git history (commit
+`0d59600`, before the trim).
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Colors: today, names, light and dark | R1 (today), R2, R3 (names, the Highlights pane), R6, R7 (light and dark forms) | |
+| Layers | H15-H19 (seeing the layers), R5 (which layer a new highlight goes in) | R4 (by H10 and H18) |
+| When everything is colored | H8-H14 | |
+
 ## What exists today (in code, 2026-11-11)
 
 - `crates/wb-core/src/store.rs`:

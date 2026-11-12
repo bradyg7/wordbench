@@ -213,14 +213,6 @@ def marks_panel(f, x, y, shown_2025):
 
 def direction_b(cv):
     r = row(cv, "direction B", gap=64, align="min")
-    f = Q.win(r, PG, "R4 · B: highlights in layers, each with an eye",
-              "Each highlight belongs to a layer, a year of reading by default (2026 reading). The Marks panel lists the "
-              "layers with an eye each, so one year can be read alone, as thread bars already can (ad4c). Under them, "
-              "one eye for every kind of mark, page marks and questions included (64f0, 0590): hidden means gone from "
-              "the text. Here 2025 is hidden, so only 2026's highlights show.")
-    w, rd, _ = base(f, MARKS_2026)
-    marks_panel(f, W - 330, TB + 16, False)
-
     f = Q.win(r, PG, "R5 · B: which layer a new highlight goes in",
               "The colors beside a selection say which layer they write to, and a click changes it for the rest of the "
               "session. A new year asks once, on the first highlight after 1 January: start 2027 reading, or keep "
@@ -339,8 +331,8 @@ def side(f, title, rows_, w=300):
 
 
 def round2(board):
-    cv = Q.section(board, "Round 2", 3200)
-    Q.sheet_title(cv, "Highlights, round 2: when everything is colored",
+    cv = Q.section(board, "When everything is colored", 3200)
+    Q.sheet_title(cv, "When everything is colored (round 2)",
                   "Marks round 5 found highlights turn into wallpaper after years (M36). Today, at 18,000 highlights "
                   "(H8); A, a lens: one meaning at a time (H9); B, this year's reading only (H10); C, older highlights "
                   "fade like ink (H11); D, a quiet reading mode with color in the gutter (H12); E, a verse marked in "
@@ -476,8 +468,8 @@ def slider(parent, years, on, w=None):
 
 
 def round3(board):
-    cv = Q.section(board, "Round 3", 3200)
-    Q.sheet_title(cv, "Highlights, round 3: seeing the layers",
+    cv = Q.section(board, "Layers", 3200)
+    Q.sheet_title(cv, "Seeing the layers (round 3)",
                   "How your highlights look layer by layer, which the app cannot show today. Two years side by side "
                   "(H15); a year slider under the chapter (H16, H17); a layers overview (H18); one layer opened alone "
                   "(H19). Drawn on John 3:14-21 with a sample of four years of reading.")
@@ -594,17 +586,20 @@ def round3(board):
 
 
 def sheets(board):
-    round3(board)
-    round2(board)
-    cv = Q.section(board, "Round 1", 3200)
-    Q.sheet_title(cv, "Highlights and the palette, round 1",
-                  "Today (R1); A, a color can carry a name and the Highlights pane lists verses by color (R2, R3); B, "
-                  "highlights in layers by year of reading, with one eye for every kind of mark (R4, R5); C, every "
-                  "color, custom ones too, has a light and a dark form (R6, R7). A, B and C can go together.")
+    """The leading windows only, grouped by part (the person, 2026-11-12). R4 (superseded by H10 and H18) is in git
+    history (commit 0d59600) and listed in the README's Leading table."""
+    cv = Q.section(board, "Colors", 3200)
+    Q.sheet_title(cv, "Colors: today, names, and a light and a dark form",
+                  "Today (R1); a color can carry a name and the Highlights pane lists verses by color (R2, R3); every "
+                  "color, custom ones too, has a light and a dark form (R6, R7).")
     today(cv)
     direction_a(cv)
-    direction_b(cv)
     direction_c(cv)
+    round3(board)
+    cv = Q.section(board, "A new highlight's layer", 3200)
+    Q.sheet_title(cv, "Which layer a new highlight goes in", "R5, beside the layers above.")
+    direction_b(cv)
+    round2(board)
 
 
 def main():
@@ -628,8 +623,7 @@ def main():
     dest.mkdir(parents=True, exist_ok=True)
     for old in dest.glob("*.png"):
         old.unlink()
-    subprocess.run([cli, "render", "--no-system-fonts", str(target), "--page", BOARD, "--scale", "0.4", "--out",
-                    str(dest / "all.png")], check=True, capture_output=True)
+    # no all.png: the board is read window by window (the person, 2026-11-12)
     tmp = build / "highlights-tree.json"
     subprocess.run([cli, "convert", str(target), str(tmp)], check=True, capture_output=True)
     names = sorted(set(re.findall(r'"name":\s*"(Window [^"]*)"', tmp.read_text(encoding="utf-8"))))

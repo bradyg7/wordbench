@@ -1179,8 +1179,7 @@ def main():
     dest.mkdir(parents=True, exist_ok=True)
     for old in dest.glob("*.png"):
         old.unlink()
-    subprocess.run([cli, "render", "--no-system-fonts", str(target), "--page", BOARD, "--scale", "0.4", "--out",
-                    str(dest / "all.png")], check=True, capture_output=True)
+    # no all.png: the board is read window by window (the person, 2026-11-12)
     tmp = LIB / "build" / "minimize-tree.json"
     subprocess.run([cli, "convert", str(target), str(tmp)], check=True, capture_output=True)
     names = sorted(set(re.findall(r'"name":\s*"(Window [^"]*)"', tmp.read_text(encoding="utf-8"))))

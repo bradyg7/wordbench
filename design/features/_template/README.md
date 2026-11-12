@@ -5,6 +5,15 @@
 
 One paragraph: what the feature is for, in the person's words, and which part of the app it touches.
 
+## Leading design
+
+The windows the board and `exports/` hold, by part; superseded ones get a line saying what replaced them (see the
+[index](../README.md), Keeping folders small).
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| Part | A1 | |
+
 ## Decisions (the person, YYYY-MM-DD)
 
 Dated, newest round last. Each says what was chosen and what was rejected, so the build does not reopen it.
