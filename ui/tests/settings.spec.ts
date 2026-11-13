@@ -57,4 +57,15 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
   await italics.getByRole('button', { name: 'Grey', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-italic', 'grey');
   await expect(pane.locator('.theme-marks input')).toHaveCount(5);
+
+  // no setting's words are squeezed by its control (a long voice or Look name goes under them instead)
+  for (const name of ['Reading', 'Documents']) {
+    await go(name);
+    await page.waitForTimeout(200);
+    const squeezed = await pane.locator('.set-row').evaluateAll(rows => rows.map(r => {
+      const t = r.querySelector('.set-text') as HTMLElement | null;
+      return t ? { name: t.textContent?.slice(0, 30), w: t.clientWidth, row: (r as HTMLElement).clientWidth } : null;
+    }).filter(x => x && x.w < Math.min(200, x.row - 1)));
+    expect(squeezed, name).toEqual([]);
+  }
 });

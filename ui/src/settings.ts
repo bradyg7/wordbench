@@ -332,7 +332,8 @@ function readAloudRows(): HTMLElement[] {
   const sel = h('select', 'field') as HTMLSelectElement;
   const dflt = h('option', '', 'The device’s') as HTMLOptionElement; dflt.value = ''; sel.append(dflt);
   for (const v of voices) { const o = h('option', '', v.name) as HTMLOptionElement; o.value = v.name; o.selected = v.name === ls('wb.listen.voice'); sel.append(o); }
-  sel.onchange = () => { lsSet('wb.listen.voice', sel.value); toast('Read aloud voice saved'); };
+  sel.title = sel.selectedOptions[0]?.text ?? '';
+  sel.onchange = () => { sel.title = sel.selectedOptions[0]?.text ?? ''; lsSet('wb.listen.voice', sel.value); toast('Read aloud voice saved'); };
   out.push(row('Read aloud: voice', 'The voice Listen reads with (a voice on this device)', sel, 'listen voice speech'));
   const rates = ['0.8', '1', '1.2', '1.5'];
   const cur = rates.find(r => Number(r) === Number(ls('wb.listen.rate') || 1)) ?? '1';
@@ -383,6 +384,7 @@ async function documentRows(redraw: () => void): Promise<HTMLElement[]> {
       const key = String(l.key ?? l.name), o = h('option', '', String(l.name ?? key)) as HTMLOptionElement;
       o.value = key; o.selected = key === d.saved; sel.append(o);
     }
+    sel.title = sel.selectedOptions[0]?.text ?? '';
     sel.onchange = async () => { try { await wb(['docs', 'look', sel.value, '--use']); toast('New documents use this Look'); redraw(); } catch (e) { toast(String(e)); } };
     out.push(row('Look', 'The layout new documents are made in; styling only, what goes in does not change', sel, 'docs word pdf slides look'));
   }
