@@ -1,17 +1,17 @@
 # Findings
 
-**State:** exploring · **Sheets:** `python design/features/findings/findings.py` writes `findings.figcraft` and
+**State:** accepted (2026-11-13) · **Sheets:** `python design/features/findings/findings.py` writes `findings.figcraft` and
 `findings.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The person's notes about the app (`findings/`, apart from the study): the box that writes one and the pane that lists them.
 
 ## Leading design (2026-11-12)
 
-Round 1 has not been reviewed, so every window still leads its part.
+Round 1 reviewed 2026-11-13: A with B is accepted.
 
 | Part | Leading | Superseded (and by what) |
 |---|---|---|
-| Today | F1 | |
+| Today | | F1 (by A) |
 | A: a small movable box; the pane | F2, F3 | |
 | B: ! in the command field | F4 | |
 
@@ -52,17 +52,20 @@ tables below each folder's "findings that touch it".
 
 ## Decisions
 
-None yet; round 1 waits for the person's review.
+- **2026-11-13 (the person):** A with B is accepted. The finding box is small, sits in a corner, can be dragged and
+  remembers where it was left (F2); the Findings pane lists findings with Open / Handled (F3); `!` followed by words in
+  the command field keeps a finding (F4). The box in the middle (F1) is retired.
+- **2026-11-13 (the person):** Ctrl+Shift+F opens the finding box.
 
 ## Open questions
 
-- The box's key (Ctrl+Shift+F proposed)?
+None.
 
 ## Rounds
 
 | Round | Date | Windows | What it tried | Review |
 |---|---|---|---|---|
-| 1 | 2026-11-12 | see Directions | the first drawing | waiting |
+| 1 | 2026-11-12 | see Directions | the first drawing | 2026-11-13: A + B accepted |
 
 ## Data the sheets show
 
@@ -74,10 +77,13 @@ Scripture and lookups are fetched from the database, never typed. Names of pages
 
 ## What the build must satisfy
 
-Written once the person accepts a direction. Known already:
-
+- [ ] The box opens small, in a corner, never over the verse being read; it moves by its head and reopens where it
+      was last left (F2; built for 707d, to be confirmed).
+- [ ] The Findings pane lists findings with Open / Handled, their tags as chips, and the tag filter (F3).
+- [ ] `!` followed by words in the command field keeps a finding without opening the box, and says it was kept (F4).
 - [ ] `wb finding add` reaches F4's action.
 - [ ] The reader's place is kept.
+- [ ] Ctrl+Shift+F opens the finding box, and is listed with the other keys in Settings and Help.
 
 ## Overlaps
 
