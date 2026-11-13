@@ -1,4 +1,4 @@
-//! A thread as a page (R1, `docs/redesign-R1.md` question 2; sheets R1.1, R1.2). The thread file (`threads/<slug>.md`)
+//! A thread as a page (R1, `docs/archive/2026-11-10/docs/redesign-R1.md` question 2; sheets R1.1, R1.2). The thread file (`threads/<slug>.md`)
 //! stays the file of record, in the Python app's format: its name, color, note and places. The window reads it as a page
 //! whose id is `thread:<slug>`: the thread's note is the page's text (written block by block through the same edit
 //! functions as any page), its places are the thread's own list, and the notes written on it are the pages under it.

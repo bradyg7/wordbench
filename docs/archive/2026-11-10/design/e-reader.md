@@ -2,7 +2,7 @@
 
 Status: **parked** (2026-11-02, the person: not the first priority; phone, tablet and desktop come first). Research only;
 nothing has been tried on a device, no device is chosen and no layout is designed. When it comes back: the app will be
-the Rust rebuild ([../PLAN-mobile.md](../PLAN-mobile.md)), which runs as a native Android app, so the Android route
+the Rust rebuild ([../PLAN-mobile.md](../docs/PLAN.md)), which runs as a native Android app, so the Android route
 below becomes "install the Android build and lock it with lock task mode", with no server or browser in between. The
 E-ink color mode in the design system stays, as it costs nothing to keep.
 

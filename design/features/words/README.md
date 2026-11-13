@@ -25,6 +25,9 @@ Round 1 has not been reviewed, so every window still leads its part.
 | 94a1 | A verse opened from a note opens that verse only, with lookups |
 | 2cd1 | Arrows through entries |
 | efc3 | The edit button inside the card |
+| f990 (2026-11-09) | Clicking a card edits its markdown; wants a friendlier way to change the card |
+| ebdf (2026-11-10) | Why is "things" tagged G2556 and not "evil" or the whole phrase? |
+| 5f45 (2026-11-11) | Clicking the place of a Strong's word page goes to the reader and opens nothing |
 
 ## Directions (round 1)
 

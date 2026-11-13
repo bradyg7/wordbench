@@ -8,7 +8,7 @@
 //! beside it as a copy). The file is built and checked on the side and swapped in only when every verse the source holds
 //! is in it word for word, so a failed build leaves the old one as it was.
 //!
-//! Tier 4 (docs/PLAN-phase2b-build.md) makes two structures from a thread: the Speaker Script as Word (`to: word`, the
+//! Tier 4 (docs/archive/2026-11-10/docs/PLAN-phase2b-build.md) makes two structures from a thread: the Speaker Script as Word (`to: word`, the
 //! same record as the Python app's) and Verse by Verse as PDF pages (`to: pdf`, a record of its own, which the Python app
 //! passes over; its PowerPoint decks, `to: deck`, are listed here and made there until phase 5).
 //!
@@ -286,7 +286,7 @@ pub fn status(bible: &Bible, store: &Store, out: &Path, rec: &Rec) -> Value {
         Ok((p, _, _)) => {
             let behind = plan::fingerprint(&p) != s(rec, "plan");
             // a file made before R3's design (by the Python app, or here before it) reads Old design, and is only
-            // rebuilt when asked (docs/redesign-R3.md, decision 5)
+            // rebuilt when asked (docs/archive/2026-11-10/docs/redesign-R3.md, decision 5)
             let old_design = rec.get("design").and_then(|d| d.as_i64()).unwrap_or(1) < docx::DESIGN;
             v["state"] = json!(if !there { "missing" } else if behind { "behind" } else if edited { "edited" } else if old_design { "old_design" } else { "current" });
             v["behind"] = json!(behind);

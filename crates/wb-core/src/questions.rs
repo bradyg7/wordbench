@@ -1,4 +1,4 @@
-//! Questions written in a page (R1, `docs/redesign-R1.md` question 4; sheets R1.3, R1.4). `/?` writes a callout in the
+//! Questions written in a page (R1, `docs/archive/2026-11-10/docs/redesign-R1.md` question 4; sheets R1.3, R1.4). `/?` writes a callout in the
 //! page's Markdown: `> [!question] How do the two numbers relate?`, and `> [!done] …` when it is answered (Obsidian draws
 //! both as callouts; the Python app shows a quote). It is a block of its page and nothing else: no file of its own.
 //!

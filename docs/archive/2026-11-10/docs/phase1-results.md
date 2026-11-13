@@ -130,7 +130,7 @@ errors (`crates/wb-cli/tests/cli.rs`).
 The person asked for an idea of social features, study coordination and a community feed. Three rules in the plan stand
 against an ordinary one: no notifications or feeds, no interpretation, and it works without a network.
 [PLAN-community.md](PLAN-community.md) proposes a small, invited and quiet form that keeps all three, with a clickable mock
-([ui/prototypes/community.html](../ui/prototypes/community.html)). **Decided (2026-11-02): the app stays personal.** None of it
+([ui/prototypes/community.html](../../../../ui/prototypes/community.html)). **Decided (2026-11-02): the app stays personal.** None of it
 is to be built; the proposal is kept for the record.
 
 ## What phase 2 starts from

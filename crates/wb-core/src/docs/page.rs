@@ -1,5 +1,5 @@
 //! A page as a document's source (W6 of "The Notebook as a workspace", 2026-11-08; sheets W7.1–W7.4 of
-//! docs/workspace-design.md). A page, and the pages inside it, is read as a lesson is: its title, then each block in
+//! docs/archive/2026-11-10/docs/workspace-design.md). A page, and the pages inside it, is read as a lesson is: its title, then each block in
 //! order, then the pages inside it, each after the page it is in. Nothing is copied into the page and nothing is kept
 //! of it but the record's choices: the document is planned from the page each time it is made or checked, the way a
 //! thread's is, and scripture comes from the database only.

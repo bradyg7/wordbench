@@ -1,4 +1,4 @@
-// The dock: panes in tabbed groups around the reader (docs/PLAN.md section 3; phase 2b tier 1, designs D1, D4, V2).
+// The dock: panes in tabbed groups around the reader (docs/archive/2026-11-10/docs/PLAN.md section 3; phase 2b tier 1, designs D1, D4, V2).
 //
 //   Large (≥ 1440)        a column on each side (a column can be split, one group above another), a band across the
 //                         top and the bottom of the reader, and floating windows, each with its own tabs.

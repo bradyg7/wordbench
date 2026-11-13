@@ -1,4 +1,4 @@
-// The toolbar (R4 step 3, docs/redesign-R4.md): the buttons are the person's list in settings/toolbar.json (`wb settings
+// The toolbar (R4 step 3, docs/archive/2026-11-10/docs/redesign-R4.md): the buttons are the person's list in settings/toolbar.json (`wb settings
 // toolbar buttons '["notebook",…]'`), drawn from a catalog of everything that can be a button. A button that does not fit
 // waits in More ⋯ under "Hidden to fit" (from the right end), so the bar never clips. "Customize toolbar…" turns the bar
 // into its own editor: a grip to drag, × to put away, Add opens the catalog beside the live window.

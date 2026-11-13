@@ -2,7 +2,7 @@
 
 2026-11-09. A design round only: nothing here is built, and no production code changed. It answers R4 in
 [debug-spec.md](debug-spec.md) (findings `bc42`, `8810`, `c551`, `93b2`). The sheets are `design/r4.py` →
-`design/r4.figcraft` → `design/exports/r4/` (the board: [all.png](../design/exports/r4/all.png)). The scripture on them is the
+`design/r4.figcraft` → `design/exports/r4/` (the board: [all.png](../../../../design/exports/r4/all.png)). The scripture on them is the
 reader behind the windows, from `content.json`; the rest is interface.
 
 ## 1. The old sheets against the window as it is now

@@ -1,4 +1,4 @@
-//! wb-core: everything in Bible Workbench that is not drawing (docs/PLAN.md, section 2.1).
+//! wb-core: everything in Bible Workbench that is not drawing (docs/archive/2026-11-10/docs/PLAN.md, section 2.1).
 //!
 //! Phase 0 holds only what the reader spike needs: the read-only Bible database, anchors, reading the study files and
 //! the marks of a chapter. Phase 1 brings the rest to parity with the Python app.

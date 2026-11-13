@@ -23,6 +23,11 @@ Round 1 has not been reviewed, so every window still leads its part.
 | 36d7 | The toolbar overloads; shortcuts go off screen |
 | bc42 | The More button and the bar's settings need a design |
 | 0e94 | Full screen for the whole app |
+| c9a2 (2026-11-12) | Panes and tabs like browser tabs in the top bar, with the search bar as the command box |
+| 3a9f (2026-11-12) | The command box keeps what was typed, to tweak and run again |
+| c567 (2026-11-12) | The command bar can be moved or popped off the top bar |
+| 252c (2026-11-12) | The command box suggests options and commands as a CLI does |
+| 1bad (2026-11-12) | The command box finishes the sentence |
 
 ## Directions (round 1)
 

@@ -1,6 +1,6 @@
 # Phase 2: the desktop — results
 
-2026-11-02. Phase 2 of [PLAN.md](PLAN.md), section 8: the Large and Expanded layouts around the phase 0 reader, the
+2026-11-02. Phase 2 of [PLAN.md](../../docs/PLAN.md), section 8: the Large and Expanded layouts around the phase 0 reader, the
 command field, the dock of panes, the Notebook, threads and layers, search and word study, lexicons and the interlinear,
 find, text size, the keyboard and `wb do`. Built against the scratch study folder. **The phase 2 check (a week of daily
 study without the Python app) started on 2026-11-02 on the real folder**, on the person's go-ahead (section 9).
@@ -14,10 +14,10 @@ study without the Python app) started on 2026-11-02 on the real folder**, on the
 | Golden suite (the Rust `wb` against the Python `wb`) | **99 of 99** the same (`python scripts/golden.py`) |
 | Speed budgets | **All met** at 4× CPU slowdown (section 7); Psalm 119 scrolling down to one long frame of 34 ms |
 
-Screenshots of the app itself are in [phase2/](phase2/): [the reader with the Notebook](phase2/1440-reader-with-the-notebook.png),
-[the command field](phase2/1440-command-field-open.png), [word study and the interlinear](phase2/1440-word-study-and-interlinear.png),
-[placing a note](phase2/1440-placing-a-note.png), [a thread](phase2/1440-a-thread.png), [a floating pane](phase2/1440-a-floating-pane.png), and the size classes
-([laptop](phase2/laptop-expanded.png), [iPad portrait](phase2/ipad-medium.png), [phone](phase2/phone-compact.png)).
+Screenshots of the app itself are in [phase2/](../../../../phase2): [the reader with the Notebook](../../../../phase2/1440-reader-with-the-notebook.png),
+[the command field](../../../../phase2/1440-command-field-open.png), [word study and the interlinear](../../../../phase2/1440-word-study-and-interlinear.png),
+[placing a note](../../../../phase2/1440-placing-a-note.png), [a thread](../../../../phase2/1440-a-thread.png), [a floating pane](../../../../phase2/1440-a-floating-pane.png), and the size classes
+([laptop](../../../../phase2/laptop-expanded.png), [iPad portrait](../../../../phase2/ipad-medium.png), [phone](../../../../phase2/phone-compact.png)).
 
 ## 1. One set of actions: `wb` in-process
 
@@ -133,7 +133,7 @@ A second app instance takes over `app.json` (the newest window answers).
 ## 7. Speed budgets
 
 Release build, phone window, the web view's CPU slowed 4× (as PLAN.md section 6 asks), on the touchscreen laptop with
-the watch window open beside it. Raw numbers: [phase2/measured.json](phase2/measured.json). `npm run measure`.
+the watch window open beside it. Raw numbers: [phase2/measured.json](../../../../phase2/measured.json). `npm run measure`.
 
 | Budget | Phase 0 | Phase 2 | |
 |---|---|---|---|
@@ -295,7 +295,7 @@ one of the tables.
 
 Two notes about the app after the list above, and one use of the Python app: at 18:16 it built a Speaker Script and a
 verse deck from the Phinehas thread (`documents/`), which the Rust app cannot do yet. That and the open items led to
-phase 2b, the desktop finished before the phone ([PLAN-phase2b.md](PLAN-phase2b.md)).
+phase 2b, the desktop finished before the phone ([PLAN-phase2b.md](../../docs/PLAN-phase2b.md)).
 
 | # | Note | What it says | Where it goes |
 |---|---|---|---|
@@ -340,7 +340,7 @@ much. Each is listed once.
 
 ## 13. Phase 2b, tier 0: the day-3 fixes (2026-11-04)
 
-Tier 0 of [PLAN-phase2b-build.md](PLAN-phase2b-build.md): the six "fix now" notes of section 12 and the person's decision
+Tier 0 of [PLAN-phase2b-build.md](../../docs/PLAN-phase2b-build.md): the six "fix now" notes of section 12 and the person's decision
 on `e48c`. No new kind of file: a note taken off its places is an Inbox note (`notes/_inbox/`) or a note on a thread
 (`notes/_threads/`), as before; a note whose first place comes off moves to the next place's book folder in the Python
 app's format (the Python `wb note list "Psalms 106"` lists it there, checked on a scratch folder).
@@ -375,14 +375,14 @@ Ctrl+= and Ctrl+-; make the window narrower; from a terminal, `wb do "open John 
 
 ## 14. Phase 2b, tier 1: the dock (2026-11-04)
 
-Tier 1 of [PLAN-phase2b-build.md](PLAN-phase2b-build.md), designs D1, D4 and V2 ([phase2b-design.md](phase2b-design.md)),
+Tier 1 of [PLAN-phase2b-build.md](../../docs/PLAN-phase2b-build.md), designs D1, D4 and V2 ([phase2b-design.md](../../docs/phase2b-design.md)),
 for notes `564e` (tabs dragged as in dockview), `2395` and `8c69` (its first step, from tier 0, replaced). UI only:
 `ui/src/dock.ts`, `ui/src/desk.css`, two lines of `ui/src/actions.ts`; no file in the study folder changes. Where panes
 were put is kept in the window's own storage (`wb.dock.v1`), as the column widths were.
 
 | # | Built | Checked |
 |---|---|---|
-| 1.1 | **The base: our dock, extended**, not dockview-core. The spike and the reasons: [PLAN-design.md](PLAN-design.md), section 5 ("The dock's base"). The dock is now made of groups: one tab strip and its panes, in a column, a band or a floating window | `spikes/dock/dockview-spike.mjs` in WebKit at both sizes |
+| 1.1 | **The base: our dock, extended**, not dockview-core. The spike and the reasons: [PLAN-design.md](../../docs/PLAN-design.md), section 5 ("The dock's base"). The dock is now made of groups: one tab strip and its panes, in a column, a band or a floating window | `spikes/dock/dockview-spike.mjs` in WebKit at both sizes |
 | 1.2 | **Drop zones (D1)** while a tab is dragged, each shown as a dashed box with its name: *Left column*, *Right column* (at the window's edges); *Top band*, *Bottom band* (the top or the foot of the reader: a band across the reader, between the columns, its height dragged at its edge); *Split beside …* (over a pane in a column: the column splits, the tab's own group above or below it); *Beside …* (over any strip: the tab joins those tabs, where it is dropped); *Float* (anywhere else over the reader). Shift over the reader: split beside the pane it came from. A hint says so while dragging | desk: each zone's name while dragging, then where the pane is after the drop |
 | 1.3 | **Each float on its own (V2)**: every floating pane is its own window with its own tabs, moved by its strip, sized by its corner, minimized on its own to a chip at the reader's foot (a band minimized waits there too), brought forward by a press. Two floats join only when a tab is dropped on the other's strip. Floating several panes at once (`float all`) makes a window each | desk: two floats, one moved, the other still; one minimized to a chip and shown again where it was; joined by strip |
 | 1.4 | **Where new tabs open (D4)**: beside the pane they were opened from, in its group (a column, a band or a float), with "Opened beside Threads, where you put it" when that pane was put somewhere by the person; else where the pane was when it was last closed (a float at the same place, joining the window there); else beside a pane of its kind; else its usual side. **Dock it again** goes back to the column it floated from | desk: a thread opened from Threads in a float opens in that float, and says so; a pane closed in the left column, and a float, each reopen where they were |
@@ -404,7 +404,7 @@ beside its column; float two panes, move one by its strip, minimize the other, t
 
 ## 15. Phase 2b, tier 2: the Notebook, design B (2026-11-06)
 
-Tier 2 of [PLAN-phase2b-build.md](PLAN-phase2b-build.md), designs N1–N4 and B1–B2 ([phase2b-design.md](phase2b-design.md)
+Tier 2 of [PLAN-phase2b-build.md](../../docs/PLAN-phase2b-build.md), designs N1–N4 and B1–B2 ([phase2b-design.md](../../docs/phase2b-design.md)
 section 7), for note `09ef` (the Notebook from the start) and `e998` (the key, now quick capture). Built in one session,
 all seven rows.
 
@@ -513,7 +513,7 @@ Ctrl+Shift+J and write what you notice; More ⋯ → Findings.
 
 ## 17. Phase 2b, tier 3: reading plans, the form and the plan (2026-11-06)
 
-Items 1, 2 and 5 of tier 3 in [PLAN-phase2b-build.md](PLAN-phase2b-build.md); the builder (3) and the published-plan
+Items 1, 2 and 5 of tier 3 in [PLAN-phase2b-build.md](../../docs/PLAN-phase2b-build.md); the builder (3) and the published-plan
 importers (4) are in section 18. The plans pane is rewritten in its own file, `ui/src/plans.ts`. Designs R1, A2, P1, P2.
 
 | Item | Built | Checked |
@@ -544,7 +544,7 @@ Romans; set Sun as a day off; start it; drag a day; start a plan with a start da
 
 ## 18. Phase 2b, tier 3: the builder and published plans (2026-11-07)
 
-Items 3 and 4 of tier 3 in [PLAN-phase2b-build.md](PLAN-phase2b-build.md), which finishes tier 3. Core: `plans.rs` (the builder)
+Items 3 and 4 of tier 3 in [PLAN-phase2b-build.md](../../docs/PLAN-phase2b-build.md), which finishes tier 3. Core: `plans.rs` (the builder)
 and the new `published.rs` (the importers); the window: `ui/src/plans.ts`. Designs R2 and C1.
 
 | Item | Built | Checked |
@@ -622,7 +622,7 @@ Screenshots: `docs/phase2/1440-notebook-pages.png`, `1440-notebook-settings.png`
 ## 21. Phase 2b, tier 4: documents from a thread (2026-11-07)
 
 Started after the person accepted the second pass of the workspace sheets ("the review is good, begin tier 4";
-[workspace-design.md](workspace-design.md)). The two documents the person built from the Phinehas thread with the
+[workspace-design.md](../../docs/workspace-design.md)). The two documents the person built from the Phinehas thread with the
 Python app on 2026-11-03 are now made here: the **Speaker Script** as Word and **Verse by Verse** as slides. This was
 what still sent the person back to the Python app.
 
@@ -662,7 +662,7 @@ plan's rule: the Craft previews hid bugs before). The real folder is untouched u
 
 ## 22. W3: pages and blocks (2026-11-07)
 
-Step 4 of "The Notebook as a workspace", drawn on sheets W1.1 and W2 ([workspace-design.md](workspace-design.md)), with
+Step 4 of "The Notebook as a workspace", drawn on sheets W1.1 and W2 ([workspace-design.md](../../docs/workspace-design.md)), with
 the person's decisions of 2026-11-07: **`pinned` holds a number** (the page's place in Pinned); **"Page inside this
 one" also writes `[[New page]]`** in the page, where the `/` menu was opened; **deleting a page moves the pages inside
 it up a level**, into its place; **each list item and each to-do is its own block**; **the sidebar replaces the row of
@@ -704,7 +704,7 @@ to be closed (`install-app.ps1` refuses while it is open). Open a page in the Py
 
 ## 23. W4: scripture blocks and the verse card (2026-11-07)
 
-Step 5 of "The Notebook as a workspace", drawn on sheets W3, W5.1, W5.2 and W1.2 ([workspace-design.md](workspace-design.md)).
+Step 5 of "The Notebook as a workspace", drawn on sheets W3, W5.1, W5.2 and W1.2 ([workspace-design.md](../../docs/workspace-design.md)).
 Where a sheet named a choice, the drawn one is built (the person's acceptance, 2026-11-07): **Open's plain click goes to
 the reader**; **the words put away are kept per verse**; **a row per open reader**.
 
@@ -742,7 +742,7 @@ to be closed (`install-app.ps1` refuses while it is open).
 
 ## 24. W5: views and templates (2026-11-07)
 
-Step 6 of "The Notebook as a workspace", drawn on sheets W4, W6.1, W6.2 and W6.3 ([workspace-design.md](workspace-design.md)).
+Step 6 of "The Notebook as a workspace", drawn on sheets W4, W6.1, W6.2 and W6.3 ([workspace-design.md](../../docs/workspace-design.md)).
 The one open choice was asked first: **the Notebook starts with no templates** (the person's choice, 2026-11-07; the
 design doc's proposal), so nothing is written in the study folder until the person makes one. Where a sheet named a
 choice, the drawn one is built: **the four blanks** `{place}`, `{date}`, `{title}`, `{reader}`.
@@ -788,7 +788,7 @@ was closed), built from the working tree on top of `d344b09`: W5 is not committe
 
 ## 25. W6: a document from a page (2026-11-08)
 
-Step 7 of "The Notebook as a workspace", drawn on sheets W7.1 to W7.4 ([workspace-design.md](workspace-design.md)), on
+Step 7 of "The Notebook as a workspace", drawn on sheets W7.1 to W7.4 ([workspace-design.md](../../docs/workspace-design.md)), on
 tier 4's renderer (section 21). Where a sheet named a choice, the drawn one is built: to-dos left out unless switched on;
 a list is your words; a view is its list as it is when made. Two choices the sheets did not settle were asked first (the
 person's answers, 2026-11-08): **the Version picker keeps each scripture block's own version** unless KJV or YLT is
@@ -834,7 +834,7 @@ closed), built from the working tree on top of `2e4cfa0`: W6 is not committed ye
 
 ## 26. The debug round's Must items, M1 to M6 (2026-11-08)
 
-From [debug-spec.md](debug-spec.md). Nothing written to the study folder changed: no new fields, no new commands.
+From [debug-spec.md](../../docs/debug-spec.md). Nothing written to the study folder changed: no new fields, no new commands.
 
 | Item | Finding | What was done |
 |---|---|---|
@@ -860,7 +860,7 @@ Screenshots refreshed in `docs/phase2/`; new: `1440-notebook-a-block-being-writt
 
 ## 27. The debug round's Should items, S1 to S8 (2026-11-08)
 
-From [debug-spec.md](debug-spec.md). Nothing written to the study folder changed: no new fields, no new commands (the
+From [debug-spec.md](../../docs/debug-spec.md). Nothing written to the study folder changed: no new fields, no new commands (the
 window's own state, the folds, is kept in its storage as the section folds are).
 
 | Item | Finding | What was done |
@@ -888,7 +888,7 @@ Screenshots: new `docs/phase2/1440-notebook-places-by-book.png`, `1440-notebook-
 
 ## 28. The debug round's Could item C2: empty blocks (2026-11-08)
 
-From [debug-spec.md](debug-spec.md). Nothing written to the study folder changed: no new fields, no new commands. The
+From [debug-spec.md](../../docs/debug-spec.md). Nothing written to the study folder changed: no new fields, no new commands. The
 person's note `n_20261103204012_3fa7` (its lone `>`) was read only and is not rewritten.
 
 | Item | Finding | What was done |
@@ -909,7 +909,7 @@ there. No Rust change, so the Python app opens the files as before.
 
 ## 29. The debug round's C1: files attached to a finding (2026-11-08)
 
-From [debug-spec.md](debug-spec.md), finding `b737` (second half): "the findings hot key could also allow for file
+From [debug-spec.md](../../docs/debug-spec.md), finding `b737` (second half): "the findings hot key could also allow for file
 attachments for inspiration/examples."
 
 **The open decision, answered by a real drop.** M1 turned Tauri's file-drop handler off, so Tauri's own file-drop event
@@ -963,7 +963,7 @@ attached, so `scripts/backup-study.ps1` comes first when it is installed.
 
 ## 30. R1: everything is a page (2026-11-09)
 
-From [redesign-R1.md](redesign-R1.md) (findings `38c2`, `7d00`, `d84d`), built as the design round recommended and the person
+From [redesign-R1.md](../../docs/redesign-R1.md) (findings `38c2`, `7d00`, `d84d`), built as the design round recommended and the person
 accepted ("run your recommendations, and implement these designs"). **No existing file in the study folder is rewritten by
 this change.** What can be new in the folder: `settings/pages.json` (a thread's place in Pinned, a file the Python app passes
 over), and, only when the person writes one, a question callout line, or a thread or word fence, inside a page's text.
@@ -1006,7 +1006,7 @@ was installed.
 
 ## 31. R2: the Shelf as a tree (2026-11-09)
 
-Built from [redesign-R2.md](redesign-R2.md) (sheets B1 to B5; the person chose the tree, 2026-11-09, and said to build
+Built from [redesign-R2.md](../../docs/redesign-R2.md) (sheets B1 to B5; the person chose the tree, 2026-11-09, and said to build
 it with the recommended answers to the other questions). Steps 1 to 3 of that plan in one go.
 
 | What | Built | Checked |
@@ -1037,7 +1037,7 @@ Screenshots: `docs/phase2/1440-shelf-tree.png`, `1440-shelf-open-all.png`.
 
 ## 32. R3, step 1 and 2: documents in the preview's look, fonts embedded (2026-11-09)
 
-The person accepted R3's design ([redesign-R3.md](redesign-R3.md), sheets D1–D15) and asked for it to be built. This is
+The person accepted R3's design ([redesign-R3.md](../../docs/redesign-R3.md), sheets D1–D15) and asked for it to be built. This is
 the first part of its build order: the restyle and the fonts. Looks, dials, page switches, templates and the parts
 builder (steps 3–7) are not built yet.
 
@@ -1119,8 +1119,25 @@ scratch folder itself is not touched). The finding check also read a finding whi
 `.md` files only). The window-size checks failed in two runs and passed in the third and in a probe on their own; they
 now say what `window` answered and the window's size, should they fail again.
 
-## 36. Merged desktop verification and debugging queue (2026-11-09)
+## 36. H02 reader integration (2026-11-09)
 
-Commit `3078ede` records **420 of 420** desktop checks on the merged build. See the [current debugging queue](current/README.md) for remaining verification, redesign work and newly reported findings.
+The Highlights menu, typed visibility commands and Notebook thread control repaint the main and all open secondary
+readers from the marks they already hold. The menu explains which marks it controls. Visibility preferences still
+live in window storage, and the repaint leaves the verse location, note dots and question badges in place.
 
-**Fresh verification at the same revision (2026-11-09).** Rust **172/172**, WebKit **20 passed and 10 project skips**, document plans **16/16**, Python-open counts **5/5**, and real mouse **5/5**. Golden matched **93/103** on the full copied fixture and **103/103** on the control copy with one documented Rust-only set item omitted. The [verification and reader diagnostics record](current/verification-3078ede.md) has the commands, fixture details, reproduction matrix and review decisions.
+An unlinked KJV word card identifies the missing direct Strong’s tag and offers the verse interlinear. Tagged words
+still show their stored entries. The built-in light and dark themes now mix 40% accent into italic scripture ink.
+Calculated italic contrast against the page is 11.35:1 in Light and 11.63:1 in Dark. The lowest ratios across the five
+standard highlight fills are 8.85:1 and 6.59:1, respectively.
+
+Verification against the merged base: production UI build passed. WebKit passed 23 tests with 11 project skips,
+including two-reader visibility, position and reload checks and the interlinear action on desktop and phone.
+The native WebView2 replay reproduced immediate hide and restore in both readers, unchanged study bytes during
+toggles, and a working verse interlinear from each reader. The Bible database hash matched the baseline.
+
+The updated golden runner starts from the full copied fixture and omits pre-existing Rust-only document set rows
+from both disposable copies. It reported one omission per side and matched **103/103** cases. The source fixture
+and the application's set behavior are unaffected by this comparison rule.
+
+The [H01 and H02 baseline report](current/verification-3078ede.md) records the checks at `3078ede` and the original
+reader reproduction before this integration.

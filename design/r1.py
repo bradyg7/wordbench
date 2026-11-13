@@ -1,7 +1,7 @@
-"""R1 of the redesign round (docs/debug-spec.md R1, findings 38c2, 7d00 and d84d, 2026-11-09): the sheets for "everything
+"""R1 of the redesign round (docs/archive/2026-11-10/docs/debug-spec.md R1, findings 38c2, 7d00 and d84d, 2026-11-09): the sheets for "everything
 is a page", drawn with FigCraft as the workspace and filter rounds were (it reuses workspace.py's, filter.py's and
 phase2b.py's helpers, so the sheets look alike). Nothing is built from these sheets until the person accepts them; the
-reasons and the other choices are in docs/redesign-R1.md.
+reasons and the other choices are in docs/archive/2026-11-10/docs/redesign-R1.md.
 
     python design/r1.py     # writes design/r1.figcraft and design/exports/r1/*.png
 
@@ -278,7 +278,7 @@ def sheets(board):
                   "like legacy stuff\". Eight windows. The idea they draw: the window says page for everything and no "
                   "file in the study folder moves. A thread is its thread file read as a page; a question and a word "
                   "become blocks you can write; the Threads button goes. The reasons and the other ways are in "
-                  "docs/redesign-R1.md; nothing is built until the person accepts a way.")
+                  "docs/archive/2026-11-10/docs/redesign-R1.md; nothing is built until the person accepts a way.")
     what_is_what(cv)
 
     # R1.1 the sidebar after ------------------------------------------------------------------------------------------------

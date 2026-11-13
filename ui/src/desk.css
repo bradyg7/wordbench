@@ -666,6 +666,10 @@ button.question-pill:hover { text-decoration: line-through; }
 .findings-acts { margin: 4px 0 8px; }
 /* files attached to a finding (C1): chips in the box and on the card; a box or card with a file over it is marked */
 .finding-files { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.finding-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.finding-tag { font-size: 11px; cursor: default; }
+.finding-tag-filter .finding-tag { cursor: pointer; }
+.finding-tag.on { background: var(--accent-soft); outline: 1px solid var(--accent); }
 .finding-box .finding-files:empty { display: none; }
 .finding-box .finding-files { padding: 4px 0; }
 .note-card.finding .finding-files { margin-top: 6px; }

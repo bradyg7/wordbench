@@ -16,6 +16,17 @@ The board and its PDF hold only these windows. Superseded ones are left off the 
 | The rail's books | [concordance](../concordance/README.md), [books](../books/README.md) | G1-G3, J1, J2 (by the concordance folder), K1 (by books) |
 | Notebook and Shelf | [library](../library/README.md) | F1, H1, H2, L1 (by library S20) |
 
+## The person's findings that touch it (read only, `bible-study-data/findings`)
+
+| Finding | In short |
+|---|---|
+| c301 (2026-11-09) | The Notebook's side panel can be minimized |
+| c43b (2026-11-11) | A verse goes into a thread quickly but not onto the Shelf; bookmarking in one or two steps |
+| 9413 (2026-11-11) | Removing a tab from a Shelf set does not close it; what the Shelf is for |
+| f54e (2026-11-09) | Full screen for any one tab (present slides, read notes, a Strong's entry), and back to the same view |
+| 7e04 (2026-11-10) | Tabs shaped like a folder tab; a floating pane shows only its tabs, perhaps curved |
+| c9a2 (2026-11-12) | Panes and tabs like browser tabs in the top bar, with the search bar as the command box |
+
 ## Decisions so far (the person, 2026-11-11)
 
 - **Direction.** D (one rail for everything) is the favorite. The minimal looks of C and D and the floating folder tabs of B2 are liked.

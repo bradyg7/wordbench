@@ -1,6 +1,6 @@
-"""R3 of the debug round (docs/debug-spec.md, finding 868e): the documents' new design, drawn with FigCraft as the filter
+"""R3 of the debug round (docs/archive/2026-11-10/docs/debug-spec.md, finding 868e): the documents' new design, drawn with FigCraft as the filter
 sheet was (it reuses phase2b.py's helpers). Nothing is built from these sheets until the person accepts them; the review
-is docs/redesign-R3.md.
+is docs/archive/2026-11-10/docs/redesign-R3.md.
 
     python design/r3.py     # writes design/r3.figcraft and design/exports/r3/*.png
 

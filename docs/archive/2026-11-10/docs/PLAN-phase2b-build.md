@@ -2,7 +2,7 @@
 
 2026-11-04. For the session that builds phase 2b. The person accepted the design round
 ([phase2b-design.md](phase2b-design.md), second pass, section 7). This is the order to build it in, where each part goes,
-and when it is done. Read first: [CLAUDE.md](../CLAUDE.md) (the rules), [PLAN-phase2b.md](PLAN-phase2b.md) (the phase),
+and when it is done. Read first: [CLAUDE.md](../../../../CLAUDE.md) (the rules), [PLAN-phase2b.md](PLAN-phase2b.md) (the phase),
 [phase2b-design.md](phase2b-design.md) (the designs and the person's choices), and [phase2-results.md](phase2-results.md)
 sections 10–12 (what the person's notes asked for, by id).
 

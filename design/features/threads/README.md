@@ -19,6 +19,17 @@ Not yet reviewed far enough to supersede anything: every window still leads its 
 | B: a page with a Places block | T3, T4 |  |
 | C: a layer on the text | T5, T6 |  |
 
+## The person's findings that touch it (read only, `bible-study-data/findings`)
+
+| Finding | In short |
+|---|---|
+| 4c02 (2026-11-08) | Collapse all threads in the Notebook |
+| d84d (2026-11-09) | A thread's verses do not show in its page; is the Threads tab still needed? |
+| 38c2 (2026-11-08) | Everything a page, even notes in threads |
+| 7d00 (2026-11-08) | Threads, questions and notes as block options in a page |
+| d0d0 (2026-11-12) | The tick can also add to a page, not only a thread |
+| c9c3 (2026-11-12) | The tick can also copy |
+
 ## What a thread is today
 
 - A file, `threads/<slug>.md`, in the Python app's format: name, color, a note, and an ordered list of places

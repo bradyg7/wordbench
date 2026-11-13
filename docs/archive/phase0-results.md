@@ -1,9 +1,9 @@
 # Phase 0 results: the three spikes
 
-2026-11-02. Phase 0 of [PLAN.md](../PLAN.md), section 8. All three spikes run. The numbers below come from the release
+2026-11-02. Phase 0 of [PLAN.md](2026-11-10/docs/PLAN.md), section 8. All three spikes run. The numbers below come from the release
 build on the touchscreen laptop, in the phone-size window, with the web view's CPU slowed 4× over the DevTools protocol
 (as section 6 asks). The raw numbers are in [phase0/measured.json](../phase0/measured.json), and the screenshots are in
-[phase0/](../phase0/). The person's own check of spike (a) passed; see the end.
+[phase0/](../phase0). The person's own check of spike (a) passed; see the end.
 
 | Spike | Runs | Result |
 |---|---|---|

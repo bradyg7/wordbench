@@ -44,7 +44,7 @@ a line in phase2-results.md), and each new core action gets a `wb` command.
 
 Finding `868e`, item R3 of [debug-spec.md](debug-spec.md). **A design round: nothing here is built yet**; it was
 accepted on 2026-11-09 (above). The sheets are `design/r3.py` → `design/r3.figcraft` and
-[design/exports/r3/](../design/exports/r3/) (`all.png` is the whole board). Every verse on them comes from
+[design/exports/r3/](../../../../design/exports/r3) (`all.png` is the whole board). Every verse on them comes from
 `design/content.json` (fetched with `wb text`); note lines on them are placeholders that say what goes there.
 
 The person said: *"i much prefer the in-app viewer and style of the docx over the original python app design … scrap

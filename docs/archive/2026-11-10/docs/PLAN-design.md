@@ -1,15 +1,15 @@
 # Plan: design layouts for phone, desktop and a distraction-free reading device
 
 Status: design round 1 done for review, 2026-11-02 (inventory, design system, phone and desktop/laptop layouts, e-reader
-recommendation, all in [design/](design/README.md); answers in section 5). Nothing in this plan is built in the app.
+recommendation, all in [design/](../design/README.md); answers in section 5). Nothing in this plan is built in the app.
 Since then (2026-11-02, the person): the e-reader is **parked**; the phone is an iPhone, but the app must serve iPhone, iPad,
 Android and desktop alike; and the app will be **rebuilt in Rust in a new repository**, leaving the Python/Windows build
-behind (this repository stays). The implementation plan for that is [PLAN-mobile.md](PLAN-mobile.md).
+behind (this repository stays). The implementation plan for that is [PLAN-mobile.md](PLAN.md).
 Originally a handoff. It gathers where the app stands, the ideas raised while building the
 Phinehas demo, and the Notebook proposal, so design work can start from one place. The first deliverable is design sheets, made
 with FigCraft; code follows only once a layout is agreed.
 
-Note the scope change: [SPEC.md](SPEC.md) section 2 lists "phone app and sync" as a non-goal for v1. This plan is the start of
+Note the scope change: [SPEC.md](../../../SPEC.md) section 2 lists "phone app and sync" as a non-goal for v1. This plan is the start of
 lifting that, so whatever is decided here should end up as a SPEC revision, as the person accepts it.
 
 ## 1. What to design
@@ -57,7 +57,7 @@ nothing was designed for a phone.
   ordered sets of places with a note); trails (questions queued under a place); sets (named groups of panes, threads, places,
   notes, lessons and PDFs); lessons (`lessons/<name>.md`).
 - **Listening**: read aloud in the browser's voice, and recorded-voice playback of the person's own recordings (phase 1 of
-  [PLAN-recording.md](PLAN-recording.md)).
+  [PLAN-recording.md](../../../../../bible-workbench/PLAN-recording.md)).
 - **Documents**: slide decks and Word files built with DeckCraft and WordCraft from a passage, a thread or a lesson. Purpose
   presets (Teach it, Hand it out, Study it, Send it, Thread overview) with the structure and theme pickers under Customize; six
   themes (vellum, vigil, olivet, veil, daylight, and print, which is black on white with no fills). Each document is one file
@@ -137,13 +137,13 @@ later), so design it into all three layouts from the start, not as an afterthoug
 
 ### Answers so far (design round 1, 2026-11-02)
 
-The sheets are in [design/](design/README.md). What they answer, and what is left for the person:
+The sheets are in [design/](../design/README.md). What they answer, and what is left for the person:
 
 1. **How a phone reaches the study data: answered by the move to Rust.** The phone is an iPhone, and the app must also
    run on iPad and Android. An iPhone cannot run the Python server, and a phone that needs the desktop switched on is not
    the experience wanted, so every device runs the app on its own: the Bible database bundled, the study folder kept on
    the device in the same plain files, and the folders kept in step by git with a private remote. Nothing needs the
-   desktop to be on. Details, and why git: [PLAN-mobile.md](PLAN-mobile.md), section 4. (The earlier two-stage answer,
+   desktop to be on. Details, and why git: [PLAN-mobile.md](PLAN.md), section 4. (The earlier two-stage answer,
    desktop server over Wi-Fi then Termux on Android, is dropped: it did not work for an iPhone.)
 2. **What the phone is for: designed on the default.** Read, highlight, select, note, journal and place notes, questions,
    threads, search, every use, the interlinear, the lexicon, the book picker, documents listed and opened as PDFs. With the
@@ -151,10 +151,10 @@ The sheets are in [design/](design/README.md). What they answer, and what is lef
    section 5); the Documents sheet's "Rebuild on the desktop" becomes "Make it here". Still not on a phone: more than one
    pane at a time, and long editing (lessons) is possible but designed for the iPad and desktop.
    Landscape gets the reader and one side panel.
-3. **Which e-reader: parked (2026-11-02).** The research stays in [design/e-reader.md](design/e-reader.md). Earlier answer, a recommendation, not a choice: An Android e-ink tablet with the Play Store (Boox Go 10.3 Gen II
+3. **Which e-reader: parked (2026-11-02).** The research stays in [design/e-reader.md](../design/e-reader.md). Earlier answer, a recommendation, not a choice: An Android e-ink tablet with the Play Store (Boox Go 10.3 Gen II
    for desk and lap, a 7-inch model for a pocket), tried first in its browser against the desktop server, then locked
    with Android's lock task mode. Kobo and Kindle need much more work; reMarkable is a later, pen-first project. Details,
-   steps and sources: [design/e-reader.md](design/e-reader.md). **The person chooses the device; its layout comes after.**
+   steps and sources: [design/e-reader.md](../design/e-reader.md). **The person chooses the device; its layout comes after.**
 4. **One design system: answered, one.** Every color is a FigCraft variable with Light, Dark and E-ink modes (E-ink starts
    from the Print theme: black text, black rules, grays for highlights, solid and dashed black underlines for threads,
    no dimming behind sheets). Type, spacing and components are shared; e-ink only raises sizes (scripture 21/38, tap

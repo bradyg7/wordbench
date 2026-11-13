@@ -1,4 +1,4 @@
-//! Views (W5 of "The Notebook as a workspace", 2026-11-07; sheet W4 of docs/workspace-design.md): a list kept up to
+//! Views (W5 of "The Notebook as a workspace", 2026-11-07; sheet W4 of docs/archive/2026-11-10/docs/workspace-design.md): a list kept up to
 //! date. In a page's file a view is a fenced block, ```` ```view ````, holding one line of the command language
 //! (`notebook @Num 25 questions`, `notebook thread phinehas`, `notebook days 7`); the window lists what the line finds
 //! each time the page is drawn. The line is read by `commands::view_line`, the one parser the command field and

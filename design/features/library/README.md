@@ -19,6 +19,37 @@ The board and its PDF hold only these windows. Superseded ones are left off the 
 | Folders and what is open | S6, S9, S10, S13, S18, S19, S22 | S4 (by S10, S19, S22) |
 | The Library | S20 (four pieces), S21 (one search), S23 (the page editor), S24 (narrow) | S3 (by S20, S24), S12, S14 (unclear in review; by S20) |
 
+## The person's findings that touch it (read only, `bible-study-data/findings`)
+
+| Finding | In short |
+|---|---|
+| ad58 (2026-11-06) | The `[[` pop-up of pages has no scroll bar or order; should look cleaner |
+| c43b (2026-11-11) | A verse goes into a thread quickly but not onto the Shelf; bookmarking in one or two steps |
+| 9413 (2026-11-11) | Removing a tab from a Shelf set does not close it; what the Shelf is for |
+| 4463 (2026-11-08) | A clear, clean filter for the Notebook |
+| 929e (2026-11-06) | Notebook groupings collapsible |
+| 6ed1 (2026-11-08) | A new block pops a border and white box; should be plain inline text, as in Notion |
+| b737 (2026-11-08) | Right-click a page in the Notebook for options, as in Notion |
+| 1d0e (2026-11-08) | The Shelf needs to be figured out |
+| 23f1 (2026-11-08) | Places viewer: chapters grouped by book, with collapse all |
+| bd54 (2026-11-08) | Templates do not wrap text well |
+| 64c7 (2026-11-08) | Dragging blocks does not work yet |
+| c301 (2026-11-09) | The Notebook's side panel can be minimized |
+| f990 (2026-11-09) | Clicking a card edits its markdown; wants a friendlier way to change the card |
+| 2c9c (2026-11-09) | The Notebook should work more like Notion than Obsidian |
+| c940 (2026-11-09) | No simple way to add a new line in a page |
+| 65b1 (2026-11-10) | Leaving a new scripture block scrolls the page back to the top |
+| 6e30 (2026-11-11) | No heading/bold/italic bar; the inside of a page as close to Notion as can be |
+| bd7b (2026-11-11) | No Ctrl+Z or the usual editor keys in a page (it opens the command box) |
+| f126 (2026-11-11) | The line break block looks clunky beside the rest |
+| b91a (2026-11-11) | Intuitive for anyone: the old preacher, the new reader, the busy mother, the missionary |
+| 5f45 (2026-11-11) | Clicking the place of a Strong's word page goes to the reader and opens nothing |
+| 0960 (2026-11-12) | Lag while writing in a page; check how pages are stored and loaded |
+| 9b88 (2026-11-12) | A clear title field and body instead of "the first line is the title" |
+| 95db (2026-11-12) | Find phrases quoted from scripture in a page and offer the card or a quiet tag; spell check that stays after leaving a block |
+| 6659 (2026-11-13) | In full screen, blocks side by side and the page centered (left-aligned), as in Notion; as now when shrunk |
+| d2a1 (2026-11-13) | The grab handle shows only on hovering that block |
+
 ## Decisions so far (the person, 2026-11-11, from the minimize rounds)
 
 - **The Notebook is pages and the Shelf.** The Inbox goes (nothing is received; a page need not have a place). The

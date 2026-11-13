@@ -43,7 +43,8 @@ The board and its PDF hold only these windows. Superseded ones are left off the 
 | 64f0 (2026-11-10) | Highlights and thread bars can be hidden, page and question marks cannot: design continuity |
 | b59b (2026-11-09) | A second reader should have the same arrows, place button and KJV/YLT, smaller type, no explaining text, a "send to reader" arrow |
 | 94a1 (2026-11-06) | A verse opened from a page should open that verse only, with interlinear, Strong's, definitions |
-| 905c | Phone/tablet: swipe sideways between chapters (deferred with the phone) |
+| 605c | Phone/tablet: swipe sideways between chapters (deferred with the phone) |
+| 2c00 (2026-11-12) | Opening a verse in another tab from right-click should select that verse |
 
 ## Directions (round 1)
 
@@ -100,6 +101,6 @@ Written once the person accepts a direction.
 
 ## Out of scope / later
 
-- Swiping between chapters on a phone (905c): with the phone.
+- Swiping between chapters on a phone (605c): with the phone.
 - Highlights by color as topics (b99f): [threads](../threads/README.md) direction C.
 - Listen → mark chapter read (2dcf), reading-plan reader (bad6, 540e): [reading-plans](../reading-plans/README.md).

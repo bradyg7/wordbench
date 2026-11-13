@@ -57,7 +57,73 @@ fn files_of(root: &Path, id: &str) -> Vec<Value> {
 fn public(root: &Path, meta: &Rec, body: &str) -> Value {
     json!({"id": meta.get("id").cloned().unwrap_or(Value::Null), "status": s(meta, "status"), "created": s(meta, "created"),
         "updated": s(meta, "updated"), "title": title_of(body), "text": body.trim_end_matches('\n'),
-        "context": meta.get("context").cloned().unwrap_or(Value::Null), "files": files_of(root, &s(meta, "id"))})
+        "context": meta.get("context").cloned().unwrap_or(Value::Null), "files": files_of(root, &s(meta, "id")), "tags": tags_of(meta)})
+}
+
+/// The design folders a finding touches (`tags`, a list of folder names; the findings design, 2026-11-12). A finding
+/// without `tags` is untagged.
+fn tags_of(meta: &Rec) -> Vec<String> {
+    meta.get("tags").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect()).unwrap_or_default()
+}
+
+/// The names a tag may take: the design folders `design/features/coverage.md` links to, read when the app is built.
+pub fn tag_names() -> Vec<String> {
+    let mut v: Vec<String> = include_str!("../../../design/features/coverage.md")
+        .split("](")
+        .skip(1)
+        .filter_map(|r| r.split_once("/README.md)").map(|(n, _)| n.to_string()))
+        .filter(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_lowercase() || c == '-'))
+        .collect();
+    v.sort();
+    v.dedup();
+    v
+}
+
+fn check_tags(tags: &[String]) -> Result<Vec<String>> {
+    let names = tag_names();
+    let mut out = vec![];
+    for t in tags {
+        let t = t.trim().to_lowercase();
+        if !names.contains(&t) {
+            return Err(bad(format!("{t} is not a design folder. Tags are one of: {}.", names.join(", "))));
+        }
+        if !out.contains(&t) {
+            out.push(t);
+        }
+    }
+    if out.is_empty() {
+        return Err(bad("Name one or more design folders."));
+    }
+    Ok(out)
+}
+
+/// Adds tags to a finding (or, with `remove`, takes them off). Only names of design folders are taken.
+pub fn tag(root: &Path, id: &str, tags: &[String], remove: bool) -> Result<Value> {
+    guard(root)?;
+    let tags = check_tags(tags)?;
+    let (p, mut meta, body) = find(root, id)?;
+    let mut have = tags_of(&meta);
+    let before = have.clone();
+    if remove {
+        have.retain(|t| !tags.contains(t));
+    } else {
+        for t in tags {
+            if !have.contains(&t) {
+                have.push(t);
+            }
+        }
+        have.sort();
+    }
+    if have != before {
+        if have.is_empty() {
+            meta.remove("tags");
+        } else {
+            meta.insert("tags".into(), json!(have));
+        }
+        meta.insert("updated".into(), json!(now()));
+        write_atomic(&p, &dump_md(&meta, &body))?;
+    }
+    Ok(public(root, &meta, &body))
 }
 
 fn read_one(p: &Path) -> Option<(Rec, String)> {
@@ -67,13 +133,22 @@ fn read_one(p: &Path) -> Option<(Rec, String)> {
 
 /// Every finding, newest first (only the open ones unless `all`), with how many are open and handled.
 pub fn list(root: &Path, all: bool) -> Result<Value> {
+    list_tagged(root, all, None)
+}
+
+/// As `list`, and with `tag` only the findings carrying that tag (the counts stay the folder's).
+pub fn list_tagged(root: &Path, all: bool, tag: Option<&str>) -> Result<Value> {
+    if let Some(t) = tag {
+        check_tags(&[t.to_string()])?;
+    }
     let mut items: Vec<(Rec, String)> = fs::read_dir(dir(root))
         .map(|rd| rd.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "md")).filter_map(|p| read_one(&p)).collect())
         .unwrap_or_default();
     items.sort_by(|a, b| s(&b.0, "created").cmp(&s(&a.0, "created")).then(s(&b.0, "id").cmp(&s(&a.0, "id"))));
     let open = items.iter().filter(|(m, _)| s(m, "status") != "handled").count();
     let handled = items.len() - open;
-    let out: Vec<Value> = items.iter().filter(|(m, _)| all || s(m, "status") != "handled").map(|(m, b)| public(root, m, b)).collect();
+    let out: Vec<Value> = items.iter().filter(|(m, _)| all || s(m, "status") != "handled")
+        .filter(|(m, _)| tag.is_none_or(|t| tags_of(m).iter().any(|x| x == &t.trim().to_lowercase()))).map(|(m, b)| public(root, m, b)).collect();
     Ok(json!({"findings": out, "counts": {"open": open, "handled": handled}}))
 }
 
@@ -332,6 +407,32 @@ pub fn open_attachment(root: &Path, id: &str, name: &str) -> Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tags_are_design_folders() {
+        let names = tag_names();
+        assert!(names.contains(&"library".to_string()) && names.contains(&"findings".to_string()) && names.contains(&"reading-plans".to_string()));
+        assert!(!names.iter().any(|n| n == "_template"));
+        let root = std::env::temp_dir().join("bible-workbench-rs").join(format!("tags-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let f = add(&root, "a finding", None).unwrap();
+        let id = f["id"].as_str().unwrap().to_string();
+        assert_eq!(f["tags"], json!([]));
+        let raw = fs::read_to_string(dir(&root).join(format!("{id}.md"))).unwrap();
+        assert!(!raw.contains("tags"), "an untagged finding has no tags line");
+        assert!(tag(&root, &id, &["nope".into()], false).is_err());
+        let t = tag(&root, &id, &["marks".into(), "Library".into(), "marks".into()], false).unwrap();
+        assert_eq!(t["tags"], json!(["library", "marks"]));
+        assert_eq!(list_tagged(&root, false, Some("marks")).unwrap()["findings"].as_array().unwrap().len(), 1);
+        assert_eq!(list_tagged(&root, false, Some("reader")).unwrap()["findings"].as_array().unwrap().len(), 0);
+        assert!(list_tagged(&root, false, Some("nope")).is_err());
+        let t = tag(&root, &id, &["library".into(), "marks".into()], true).unwrap();
+        assert_eq!(t["tags"], json!([]));
+        assert!(!fs::read_to_string(dir(&root).join(format!("{id}.md"))).unwrap().contains("tags"));
+        assert_eq!(show(&root, &id).unwrap()["text"], "a finding");
+        fs::remove_dir_all(&root).unwrap();
+    }
 
     #[test]
     fn names_are_safe_and_free() {

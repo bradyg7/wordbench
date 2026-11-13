@@ -1,4 +1,4 @@
-//! The Notebook (docs/PLAN-design.md section 3): one kind of note, seen three ways.
+//! The Notebook (docs/archive/2026-11-10/docs/PLAN-design.md section 3): one kind of note, seen three ways.
 //!
 //! - **Journal**: every note by the day it was written, newest day first: placed notes, notes with no place yet (the
 //!   Inbox, `notes/_inbox/`), and questions.

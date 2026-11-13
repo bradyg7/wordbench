@@ -25,6 +25,16 @@ The board (and its PDF) holds only these windows, grouped by part. Superseded wi
 | A full vault | M36-M41 | |
 | Filters | M20, M21 | M8 (chips; not liked) |
 
+## The person's findings that touch it (read only, `bible-study-data/findings`)
+
+| Finding | In short |
+|---|---|
+| 240e (2026-11-10) | The person's own cross-references, not from another source |
+| b91a (2026-11-11) | Intuitive for anyone: the old preacher, the new reader, the busy mother, the missionary |
+| 5a80 (2026-11-11) | Notes as a layer on the text, like writing in an analog Bible, not pop-ups |
+| ed73 (2026-11-11) | A page anchored to scripture could show those verses in a small, clean way |
+| 95db (2026-11-12) | Find phrases quoted from scripture in a page and offer the card or a quiet tag; spell check that stays after leaving a block |
+
 ## What is already decided elsewhere (the frame this must fit)
 
 - **Everything you write is a page** (R1, 2026-11-09). A note at a verse is a page whose place is that verse; the

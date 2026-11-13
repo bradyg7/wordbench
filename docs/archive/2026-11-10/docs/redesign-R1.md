@@ -9,7 +9,7 @@ design as it was written for review. Read from the real study folder, read only:
 `4ad9`, `c39a`), the files' shapes and counts. The Python app's `Study` was run over a scratch copy only.
 
 **The sheets:** `python design/r1.py` → `design/r1.figcraft` and `design/exports/r1/` (about 5 seconds; it reuses the
-workspace and filter rounds' helpers). Every window on one board: [all.png](../design/exports/r1/all.png). Scripture on
+workspace and filter rounds' helpers). Every window on one board: [all.png](../../../../design/exports/r1/all.png). Scripture on
 them is from `design/content.json` (fetched from the database); the rest is demo writing about the Phinehas demo.
 
 ## The short answer
@@ -269,14 +269,14 @@ blocks hold references and numbers, and the tests' verses come from the database
 
 | Window | What it answers |
 |---|---|
-| [R1.1 · One list](../design/exports/r1/r1-1-one-list-the-notebook-after-r1.png) | The Notebook after R1: no Threads button or section; threads and questions are pages in one tree |
-| [R1.2 · A thread as a page](../design/exports/r1/r1-2-a-thread-as-a-page.png) | The thread file read as a page: note, places as blocks, pages on it, color, sort, filter |
-| [R1.3 · Writing: three new blocks](../design/exports/r1/r1-3-writing-three-new-blocks.png) | `/?`, `/~`, `/word` in the `/` menu; a question open and answered; a thread block |
-| [R1.4 · Questions](../design/exports/r1/r1-4-questions-written-anywhere-found-at-the-verse.png) | One list for both forms; the reader's `?`; the verse card lists a question on part of a verse |
-| [R1.5 · A word study](../design/exports/r1/r1-5-a-word-study.png) | A page at H7065 with a word block; the definition slot held for R5 |
-| [R1.6 · Documents from a thread page](../design/exports/r1/r1-6-documents-from-a-thread-page.png) | The thread's own records, unchanged, at the page's foot |
-| [R1.7 · A page that holds a thread block](../design/exports/r1/r1-7-a-page-that-holds-a-thread-block-made-into-a-document.png) | What goes in, with a question row and a thread row |
-| [R1.8 · The check](../design/exports/r1/r1-8-the-check-nothing-is-rewritten.png) | The read-only check, with the real folder's counts |
+| [R1.1 · One list](../../../../design/exports/r1/r1-1-one-list-the-notebook-after-r1.png) | The Notebook after R1: no Threads button or section; threads and questions are pages in one tree |
+| [R1.2 · A thread as a page](../../../../design/exports/r1/r1-2-a-thread-as-a-page.png) | The thread file read as a page: note, places as blocks, pages on it, color, sort, filter |
+| [R1.3 · Writing: three new blocks](../../../../design/exports/r1/r1-3-writing-three-new-blocks.png) | `/?`, `/~`, `/word` in the `/` menu; a question open and answered; a thread block |
+| [R1.4 · Questions](../../../../design/exports/r1/r1-4-questions-written-anywhere-found-at-the-verse.png) | One list for both forms; the reader's `?`; the verse card lists a question on part of a verse |
+| [R1.5 · A word study](../../../../design/exports/r1/r1-5-a-word-study.png) | A page at H7065 with a word block; the definition slot held for R5 |
+| [R1.6 · Documents from a thread page](../../../../design/exports/r1/r1-6-documents-from-a-thread-page.png) | The thread's own records, unchanged, at the page's foot |
+| [R1.7 · A page that holds a thread block](../../../../design/exports/r1/r1-7-a-page-that-holds-a-thread-block-made-into-a-document.png) | What goes in, with a question row and a thread row |
+| [R1.8 · The check](../../../../design/exports/r1/r1-8-the-check-nothing-is-rewritten.png) | The read-only check, with the real folder's counts |
 
 The first sheet carries a table of every thing in the folder, its file, what the window calls it after R1, and what is new
 in a file.

@@ -2,7 +2,7 @@
 
 2026-11-09. The design round for R2 of [debug-spec.md](debug-spec.md) (findings `1d0e`, `3fa7`, `a484`; the person marked it
 urgent). **Chosen 2026-11-09: the tree (B)**, question 1 of §7; questions 2 to 9 stand on their recommended answers unless the person says otherwise. **Built 2026-11-09** (steps 1 to 3, the recommended answers): [phase2-results.md](phase2-results.md) section 28. No production code changed; the sheets are `design/r2.py` →
-`design/r2.figcraft` and `design/exports/r2/` (all on one board: [all.png](../design/exports/r2/all.png)).
+`design/r2.figcraft` and `design/exports/r2/` (all on one board: [all.png](../../../../design/exports/r2/all.png)).
 
 **In one paragraph.** The sheets the person accepted on 2026-11-04 (S1, SH1, SH2) still say what they want, with four
 corrections, and two of them are findings the plan did not have: **both apps drop the one field the plan adds to `sets/`**
@@ -13,9 +13,9 @@ today's list, so `a484` is met before any folder exists.
 
 ## 1. The check: do S1, SH1 and SH2 still fit after the Notebook's rework?
 
-The sheets: [S1](../design/exports/phase2b/s1-the-shelf-as-folders.png) ·
-[SH1](../design/exports/phase2b/sh1-a-set-close-add-open.png) ·
-[SH2](../design/exports/phase2b/sh2-a-set-s-tabs-kept-together.png) (accepted 2026-11-04, "good, plus closing a tab or a
+The sheets: [S1](../../../../design/exports/phase2b/s1-the-shelf-as-folders.png) ·
+[SH1](../../../../design/exports/phase2b/sh1-a-set-close-add-open.png) ·
+[SH2](../../../../design/exports/phase2b/sh2-a-set-s-tabs-kept-together.png) (accepted 2026-11-04, "good, plus closing a tab or a
 whole set, and adding a tab, document, note and so on"). Against what is built since (W0 to W6, the debug round):
 
 | Part of the sheets | Still fits? | What the rework or a check changed |
@@ -34,23 +34,23 @@ before Open all can work, a document needs a kind, and a page cannot be a tab un
 
 ## 2. The two designs
 
-Both are on [the board](../design/exports/r2/all.png). Scripture on them (the reader, Strong's) is from the database.
+Both are on [the board](../../../../design/exports/r2/all.png). Scripture on them (the reader, Strong's) is from the database.
 
 **A · Sets in folders, as accepted, corrected.**
-[A1](../design/exports/r2/a1-sets-in-folders-as-accepted-after-the-rework.png) is S1 and SH1 redrawn with the sidebar's
+[A1](../../../../design/exports/r2/a1-sets-in-folders-as-accepted-after-the-rework.png) is S1 and SH1 redrawn with the sidebar's
 rows and the corrected kinds. Folders hold sets; a set is a card of items with × each, Open all, Close all, + Add. Two
 levels of structure (folder → set → item), and a person has to learn which is which.
 
 **B · A file tree, as Obsidian's.** One tree; a folder holds anything: other folders, pages, places, threads, lessons,
 documents, kept panes. Folders are what sets were: **a folder is a set**, so "folder" and "set" are one idea and Open all
 works on any folder.
-[B1](../design/exports/r2/b1-the-shelf-as-a-tree.png) the tree ·
-[B2](../design/exports/r2/b2-a-folder-open-all-close-all-and-its-menu.png) a folder's bar and menu (Open all, Open all with
+[B1](../../../../design/exports/r2/b1-the-shelf-as-a-tree.png) the tree ·
+[B2](../../../../design/exports/r2/b2-a-folder-open-all-close-all-and-its-menu.png) a folder's bar and menu (Open all, Open all with
 the folders inside, Close all, Add, New folder, Rename F2, Move to…, Remove) ·
-[B3](../design/exports/r2/b3-open-all-the-folder-s-tabs-together.png) what Open all does (tabs with the folder's mark, the
+[B3](../../../../design/exports/r2/b3-open-all-the-folder-s-tabs-together.png) what Open all does (tabs with the folder's mark, the
 reader not moved) ·
-[B4](../design/exports/r2/b4-moving-things-and-adding-them.png) dragging onto a folder, + Add ·
-[B5](../design/exports/r2/b5-two-trees-two-jobs-the-shelf-and-the-notebook-s-pages.png) the Shelf beside the Notebook's
+[B4](../../../../design/exports/r2/b4-moving-things-and-adding-them.png) dragging onto a folder, + Add ·
+[B5](../../../../design/exports/r2/b5-two-trees-two-jobs-the-shelf-and-the-notebook-s-pages.png) the Shelf beside the Notebook's
 tree. Unlike a file in Obsidian, an item is a pointer, so one page can sit in two folders (Ctrl+drag) and removing it
 from a folder never deletes it.
 

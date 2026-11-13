@@ -20,7 +20,7 @@ pub const COPY_FORMATS: &[&str] = &["lines", "block", "para", "quote"];
 pub const DECK_STRUCTURES: &[&str] = &["reader", "pulpit", "verse", "table", "map"];
 pub const DOC_STRUCTURES: &[&str] = &["reading", "share", "script", "study", "dossier"];
 pub const EXPORT_THEMES: &[&str] = &["vellum", "vigil", "olivet", "veil", "daylight", "print"];
-/// The window sizes of docs/PLAN.md section 7.
+/// The window sizes of docs/archive/2026-11-10/docs/PLAN.md section 7.
 pub const WINDOW_SIZES: &[&str] = &["phone", "phone-landscape", "ipad", "ipad-landscape", "laptop", "laptop-large", "desktop"];
 
 /// A verse or a run of verses named with `@`: its anchor and how it reads.

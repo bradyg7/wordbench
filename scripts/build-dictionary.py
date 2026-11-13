@@ -1,4 +1,4 @@
-"""Builds the dictionary database the Definitions tab and `wb word-define` read (docs/redesign-R5.md).
+"""Builds the dictionary database the Definitions tab and `wb word-define` read (docs/archive/2026-11-10/docs/redesign-R5.md).
 
 The source is Webster's Revised Unabridged Dictionary (1913), public domain, from Project Gutenberg (#29765, the 2009
 text), parsed to JSON by matthewreagan/WebstersEnglishDictionary (headword -> entry text). Entries are kept verbatim.

@@ -12,7 +12,7 @@ far as each device allows, shaped for the device rather than shrunk onto it.
 sizes, and by touch on the person's touchscreen Windows laptop (section 7). iPhone builds come later, when a Mac or
 cloud builds are in place.
 
-The layouts this plan builds are in [design/](design/README.md) (phone and desktop/laptop sheets; iPad still to design).
+The layouts this plan builds are in [design/](../design/README.md) (phone and desktop/laptop sheets; iPad still to design).
 The questions they answered are in [PLAN-design.md](PLAN-design.md), section 5.
 
 ## 1. What does not change

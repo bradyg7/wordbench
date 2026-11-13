@@ -1,6 +1,6 @@
-"""R4 of the debug round (docs/debug-spec.md, 2026-11-09): the toolbar, the More menu, Settings and a person's own theme,
+"""R4 of the debug round (docs/archive/2026-11-10/docs/debug-spec.md, 2026-11-09): the toolbar, the More menu, Settings and a person's own theme,
 drawn with FigCraft as the earlier rounds were (it reuses phase2b.py's helpers, so the sheets look alike). Nothing is built
-from these sheets until the person accepts them. Review and the questions: docs/redesign-R4.md.
+from these sheets until the person accepts them. Review and the questions: docs/archive/2026-11-10/docs/redesign-R4.md.
 
     python design/r4.py     # writes design/r4.figcraft and design/exports/r4/*.png
 

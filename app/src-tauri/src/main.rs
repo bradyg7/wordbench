@@ -56,7 +56,7 @@ fn do_done(app: State<App>, id: u64, reply: Value) {
     }
 }
 
-/// The test sizes of docs/PLAN.md section 7 (logical pixels, the web view's own size).
+/// The test sizes of docs/archive/2026-11-10/docs/PLAN.md section 7 (logical pixels, the web view's own size).
 const PRESETS: &[(&str, f64, f64)] = &[
     ("phone", 390.0, 844.0),
     ("phone-landscape", 844.0, 390.0),

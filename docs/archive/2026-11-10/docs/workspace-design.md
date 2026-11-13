@@ -18,7 +18,7 @@ picture behind). It reuses `design/phase2b.py`'s and `design/build.py`'s helpers
 round. Scripture on them comes from `design/content.json` (fetched from the database); everything else is demo writing
 about the Phinehas demo. The app uses Literata for scripture; the sheets use Merriweather, FigCraft's built-in serif.
 
-**Every window on one board:** [all.png](../design/exports/workspace/all.png).
+**Every window on one board:** [all.png](../../../../design/exports/workspace/all.png).
 
 ## The decisions they are drawn with (the person's, 2026-11-07)
 
@@ -47,20 +47,20 @@ about the Phinehas demo. The app uses Literata for scripture; the sheets use Mer
 
 | Window | What it answers | For the person to decide |
 |---|---|---|
-| [W1.1 · The sidebar: pages inside pages](../design/exports/workspace/w1-1-the-sidebar-pages-inside-pages.png) | The Notebook expanded beside the reader: Today, Pinned, Pages as a tree, At the reader, Threads, Questions; Templates and the Trash at the foot | Whether the sidebar replaces W1's row of sections when the Notebook is wide, and the row stays when it is narrow (proposed) |
-| [W1.2 · At the reader, with a second reader open](../design/exports/workspace/w1-2-at-the-reader-with-a-second-reader-open.png) | What At the reader is for; a row per open reader; where a place in a note opens | A row per reader (drawn), or one row that follows the reader last used |
-| [W2 · Writing in blocks, and the / menu](../design/exports/workspace/w2-writing-in-blocks-and-the-menu.png) | One block edited at a time, as its Markdown; a grip to drag; `/` opens the block menu | Which blocks the menu offers |
-| [W3 · Scripture blocks: a paragraph, or a verse to a line](../design/exports/workspace/w3-scripture-blocks-a-paragraph-or-a-verse-to-a-line.png) | Paragraph \| Lines; YLT; Open ▾ (the reader or a new reader). The file holds only the reference | The fenced form (proposed: ` ```scripture ` then `Num 25:10-13`, then `lines` / `ylt` when chosen); what a plain click on Open does by default (drawn: the reader) |
-| [W4 · A view](../design/exports/workspace/w4-a-view-a-list-kept-up-to-date.png) | One line of the command language, listed live: `notebook @Num 25 questions` | The view language |
-| [W5.1 · A verse from a note: the card](../design/exports/workspace/w5-1-a-verse-from-a-note-the-card.png) | The chosen way (W5c): the verse at its link, Interlinear, Strong's, Definitions, Open the chapter ▾ | — |
-| [W5.2 · The card's interlinear: words put away, and brought back](../design/exports/workspace/w5-2-the-card-s-interlinear-words-put-away-and-brought-back.png) | − on each word; the put-away row; Show all, Put all away | Whether put-away words are kept per verse (drawn) or for that Strong's number everywhere |
-| [W6.1 · A new page from a template](../design/exports/workspace/w6-1-a-new-page-from-a-template.png) | From a template: the place, the new page's name, where it goes; Edit your templates | Whether to start with no templates at all (proposed), or with empty ones named Chapter study, Word study, Lesson outline |
-| [W6.2 · Editing a template](../design/exports/workspace/w6-2-editing-a-template.png) | Templates as a sidebar section; a template edited block by block; `{` offers the blanks; the template's settings | Which blanks (drawn: `{place}`, `{date}`, `{title}`, `{reader}`) |
-| [W6.3 · Templates in Help](../design/exports/workspace/w6-3-templates-in-help.png) | Help's entry (its text in wb-core, `wb guide templates`); the Templates page; `wb template list`, `wb page new --template` | — |
-| [W7.1 · What to make](../design/exports/workspace/w7-1-a-page-made-into-a-document-what-to-make.png) | A page as a document's source, as a thread is; the structures; the theme | — (tier 4's scope is the Speaker Script and the verse deck) |
-| [W7.2 · What goes in](../design/exports/workspace/w7-2-what-goes-in-and-what-each-block-becomes.png) | Each block and what it becomes; to-dos left out unless switched on; the pages inside, in order | What a to-do, a list and a view become (drawn: left out; your words; the view's list as made) |
-| [W7.3 · Made, and every verse checked](../design/exports/workspace/w7-3-made-and-every-verse-checked.png) | The files, and each verse checked against the Bible | — |
-| [W7.4 · The page keeps its documents](../design/exports/workspace/w7-4-the-page-keeps-its-documents.png) | Documents at the page's foot; Make again when the page changed since; a preview | — |
+| [W1.1 · The sidebar: pages inside pages](../../../../design/exports/workspace/w1-1-the-sidebar-pages-inside-pages.png) | The Notebook expanded beside the reader: Today, Pinned, Pages as a tree, At the reader, Threads, Questions; Templates and the Trash at the foot | Whether the sidebar replaces W1's row of sections when the Notebook is wide, and the row stays when it is narrow (proposed) |
+| [W1.2 · At the reader, with a second reader open](../../../../design/exports/workspace/w1-2-at-the-reader-with-a-second-reader-open.png) | What At the reader is for; a row per open reader; where a place in a note opens | A row per reader (drawn), or one row that follows the reader last used |
+| [W2 · Writing in blocks, and the / menu](../../../../design/exports/workspace/w2-writing-in-blocks-and-the-menu.png) | One block edited at a time, as its Markdown; a grip to drag; `/` opens the block menu | Which blocks the menu offers |
+| [W3 · Scripture blocks: a paragraph, or a verse to a line](../../../../design/exports/workspace/w3-scripture-blocks-a-paragraph-or-a-verse-to-a-line.png) | Paragraph \| Lines; YLT; Open ▾ (the reader or a new reader). The file holds only the reference | The fenced form (proposed: ` ```scripture ` then `Num 25:10-13`, then `lines` / `ylt` when chosen); what a plain click on Open does by default (drawn: the reader) |
+| [W4 · A view](../../../../design/exports/workspace/w4-a-view-a-list-kept-up-to-date.png) | One line of the command language, listed live: `notebook @Num 25 questions` | The view language |
+| [W5.1 · A verse from a note: the card](../../../../design/exports/workspace/w5-1-a-verse-from-a-note-the-card.png) | The chosen way (W5c): the verse at its link, Interlinear, Strong's, Definitions, Open the chapter ▾ | — |
+| [W5.2 · The card's interlinear: words put away, and brought back](../../../../design/exports/workspace/w5-2-the-card-s-interlinear-words-put-away-and-brought-back.png) | − on each word; the put-away row; Show all, Put all away | Whether put-away words are kept per verse (drawn) or for that Strong's number everywhere |
+| [W6.1 · A new page from a template](../../../../design/exports/workspace/w6-1-a-new-page-from-a-template.png) | From a template: the place, the new page's name, where it goes; Edit your templates | Whether to start with no templates at all (proposed), or with empty ones named Chapter study, Word study, Lesson outline |
+| [W6.2 · Editing a template](../../../../design/exports/workspace/w6-2-editing-a-template.png) | Templates as a sidebar section; a template edited block by block; `{` offers the blanks; the template's settings | Which blanks (drawn: `{place}`, `{date}`, `{title}`, `{reader}`) |
+| [W6.3 · Templates in Help](../../../../design/exports/workspace/w6-3-templates-in-help.png) | Help's entry (its text in wb-core, `wb guide templates`); the Templates page; `wb template list`, `wb page new --template` | — |
+| [W7.1 · What to make](../../../../design/exports/workspace/w7-1-a-page-made-into-a-document-what-to-make.png) | A page as a document's source, as a thread is; the structures; the theme | — (tier 4's scope is the Speaker Script and the verse deck) |
+| [W7.2 · What goes in](../../../../design/exports/workspace/w7-2-what-goes-in-and-what-each-block-becomes.png) | Each block and what it becomes; to-dos left out unless switched on; the pages inside, in order | What a to-do, a list and a view become (drawn: left out; your words; the view's list as made) |
+| [W7.3 · Made, and every verse checked](../../../../design/exports/workspace/w7-3-made-and-every-verse-checked.png) | The files, and each verse checked against the Bible | — |
+| [W7.4 · The page keeps its documents](../../../../design/exports/workspace/w7-4-the-page-keeps-its-documents.png) | Documents at the page's foot; Make again when the page changed since; a preview | — |
 
 Definitions (W5) show Webster's 1913 (R5, chosen 2026-11-09): the verse's words that have an entry, an entry verbatim with its source and licence.
 

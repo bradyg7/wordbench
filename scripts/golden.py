@@ -1,4 +1,4 @@
-"""Golden tests: the Python `wb` and the Rust `wb` run on the same inputs, and their answers compared (docs/PLAN.md phase 1).
+"""Golden tests: the Python `wb` and the Rust `wb` run on the same inputs, and their answers compared (docs/archive/2026-11-10/docs/PLAN.md phase 1).
 
     python scripts/golden.py [name-filter ...] [--list]
 

@@ -513,7 +513,7 @@ export function openPassage(places: string[], version: string, title: string) {
 }
 
 // ---- threads ----------------------------------------------------------------------------------------------------------
-// A thread is a page in the Notebook (R1, docs/redesign-R1.md): its note, its places, the pages written on it and its
+// A thread is a page in the Notebook (R1, docs/archive/2026-11-10/docs/redesign-R1.md): its note, its places, the pages written on it and its
 // documents are on its page there (notebook.ts). These two only open it, so every chip, set item and command that opened
 // the Threads window still lands on the thread.
 export function openThreads() {

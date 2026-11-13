@@ -7,16 +7,16 @@ or `%ProgramFiles%\ArtCraft`. The phase 2b design round is `phase2b.py` → `pha
 wrote is in `content.json`.
 
 Layouts and the design system for Bible Workbench on a phone, a desktop or laptop, and (later) a dedicated e-ink reader.
-For review, not built. The plan and the open questions are in [../PLAN-design.md](../PLAN-design.md).
+For review, not built. The plan and the open questions are in [../PLAN-design.md](../docs/PLAN-design.md).
 
 | What | Where |
 |---|---|
 | The design file (open in FigCraft) | `workbench.figcraft`: pages *Design system*, *Phone*, *Desktop and laptop* |
 | The sheets as images | `exports/design-system.png`, `exports/phone.png`, `exports/desktop.png` |
 | Each phone screen (2x) and desktop window | `exports/phone/*.png`, `exports/desktop/*.png` |
-| The app as it is today, at five sizes | `inventory/<size>/*.png`, findings in [inventory/INVENTORY.md](inventory/INVENTORY.md) |
+| The app as it is today, at five sizes | `inventory/<size>/*.png`, findings in `inventory/INVENTORY.md` (Python design inventory) |
 | E-reader research (parked) | [e-reader.md](e-reader.md) |
-| How this becomes an app on every device (Rust) | [../PLAN-mobile.md](../PLAN-mobile.md) |
+| How this becomes an app on every device (Rust) | [../PLAN-mobile.md](../docs/PLAN.md) |
 
 ## How the file is made
 

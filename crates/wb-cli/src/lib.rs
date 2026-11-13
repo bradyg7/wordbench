@@ -1,5 +1,5 @@
 //! `wb`: every Bible Workbench feature from a command line, so an AI (or the person, in a terminal) can do anything the
-//! window does. The same commands, arguments and output as the Python app's `wb` (docs/PLAN.md section 2.2): JSON unless a
+//! window does. The same commands, arguments and output as the Python app's `wb` (docs/archive/2026-11-10/docs/PLAN.md section 2.2): JSON unless a
 //! command prints text; `--json` forces JSON. Errors go to standard error as `error: ...`, with exit code 1.
 //!
 //! The command table is a library so that the window runs the same table in-process (`run` with `Ctx::lent`): the UI

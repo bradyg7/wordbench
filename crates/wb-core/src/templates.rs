@@ -1,4 +1,4 @@
-//! Templates (W5 of "The Notebook as a workspace", 2026-11-07; sheets W6.1 to W6.3 of docs/workspace-design.md).
+//! Templates (W5 of "The Notebook as a workspace", 2026-11-07; sheets W6.1 to W6.3 of docs/archive/2026-11-10/docs/workspace-design.md).
 //!
 //! A template is an ordinary note with `template: true` in its front matter: a page with no place (in `notes/_inbox/`,
 //! so the Python app passes over it as it does every page, and Obsidian opens it as a note). The Notebook leaves
