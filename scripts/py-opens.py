@@ -1,4 +1,4 @@
-"""Does the Python app still open the study folder as it did? (R1, docs/redesign-R1.md question 6)
+"""Does the Python app still open the study folder as it did? (R1, docs/archive/2026-11-10/docs/redesign-R1.md question 6)
 
     python scripts/py-opens.py                    # the Python app's counts against this app's (`wb study check`), on the scratch copy
     python scripts/py-opens.py --save before.json # keep what the Python app reads

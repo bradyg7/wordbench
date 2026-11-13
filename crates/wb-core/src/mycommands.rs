@@ -1,4 +1,4 @@
-//! My commands (R4 step 4, docs/redesign-R4.md): command lines the person keeps, each with a name, an optional icon and an
+//! My commands (R4 step 4, docs/archive/2026-11-10/docs/redesign-R4.md): command lines the person keeps, each with a name, an optional icon and an
 //! optional key, in settings/commands.json (key `items`; the Python app passes over it). A line is written as it would be
 //! typed in the command field, and may hold fill-ins the window takes from what is selected: `{word}`, `{place}`,
 //! `{chapter}`. "Most used" is counted from the day's logs (sessions/<day>.jsonl, which hold every line run).

@@ -1,4 +1,4 @@
-"""Builds the dictionary database the Definitions tab and `wb word-define` read (docs/redesign-R5.md).
+"""Builds the dictionary database the Definitions tab and `wb word-define` read (docs/archive/2026-11-10/docs/redesign-R5.md).
 
 The source is the 2009 Project Gutenberg #29765 text as parsed by matthewreagan/WebstersEnglishDictionary.
 Download the pinned JSON or provide an exact local copy. Entries are kept verbatim.

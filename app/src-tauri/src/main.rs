@@ -62,7 +62,7 @@ fn do_done(app: State<App>, id: u64, reply: Value) {
     }
 }
 
-/// The test sizes of docs/PLAN.md section 7 (logical pixels, the web view's own size).
+/// The test sizes of docs/archive/2026-11-10/docs/PLAN.md section 7 (logical pixels, the web view's own size).
 const PRESETS: &[(&str, f64, f64)] = &[
     ("phone", 390.0, 844.0),
     ("phone-landscape", 844.0, 390.0),
@@ -86,6 +86,8 @@ fn timed<T: Serialize>(f: impl FnOnce() -> wb_core::Result<T>) -> Result<Value, 
 
 /// The store, brought up to date with the folder (hand edits, `wb` in a terminal, a git pull).
 fn fresh<'a>(app: &'a App) -> Result<std::sync::MutexGuard<'a, Option<Store>>, String> {
+    #[cfg(feature = "distribution")]
+    wb_core::runtime::require_license().map_err(|e| e.to_string())?;
     let mut st = app.store.lock().unwrap();
     st.as_mut().ok_or(NOT_SET_UP)?.refresh().map_err(|e| e.to_string())?;
     Ok(st)
@@ -202,6 +204,8 @@ fn finding_attach(app: State<App>, request: tauri::ipc::Request<'_>) -> Result<V
 
 #[tauri::command]
 fn books(app: State<App>) -> Result<Value, String> {
+    #[cfg(feature = "distribution")]
+    wb_core::runtime::require_license().map_err(|e| e.to_string())?;
     let bible = bible_of(&app)?;
     let bible = bible.as_ref().unwrap();
     timed(|| Ok(bible.books().to_vec()))
@@ -351,6 +355,7 @@ fn ui_ready(app: State<App>, report: Value) -> Result<Value, String> {
 /// Options for a shortcut (a Start menu or taskbar icon cannot carry the settings a terminal can):
 /// `--study <folder>` is WB_STUDY_DIR, `--allow-real-study` is WB_ALLOW_REAL_STUDY=1, `--window <size>` is WB_WINDOW.
 /// Nothing in this repository passes `--allow-real-study`; the person's own shortcut does.
+#[cfg(not(feature = "distribution"))]
 fn take_options() -> Result<(), String> {
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
@@ -366,6 +371,7 @@ fn take_options() -> Result<(), String> {
 }
 
 /// Says why the app cannot start, in a window (the release app has no console), then stops.
+#[cfg(not(feature = "distribution"))]
 fn fail(msg: &str) -> ! {
     #[cfg(windows)]
     {
@@ -382,34 +388,92 @@ fn fail(msg: &str) -> ! {
     std::process::exit(1)
 }
 
+#[tauri::command]
+fn installation_status() -> Result<wb_core::runtime::Status, String> {
+    #[cfg(feature = "distribution")]
+    { Ok(wb_core::runtime::roots().status()) }
+    #[cfg(not(feature = "distribution"))]
+    { Err("Installation setup is available in distribution builds only.".into()) }
+}
+
+#[tauri::command]
+fn installation_configure(app: tauri::AppHandle, path: String, create: bool) -> Result<(), String> {
+    if app.try_state::<App>().is_some_and(|a| a.store.lock().unwrap().is_some()) { return Err("Close the study workspace before changing installation settings.".into()); }
+    #[cfg(feature = "distribution")]
+    { wb_core::runtime::roots().configure(std::path::Path::new(&path), create).map_err(|e| e.to_string()) }
+    #[cfg(not(feature = "distribution"))]
+    { let _ = (path, create); Err("Installation setup is available in distribution builds only.".into()) }
+}
+
+#[tauri::command]
+fn installation_restart(app: tauri::AppHandle) -> Result<(), String> {
+    if app.try_state::<App>().is_some_and(|a| a.store.lock().unwrap().is_some()) { return Err("Restart from setup only; preserve your open workspace.".into()); }
+    #[cfg(feature = "distribution")]
+    { app.restart(); }
+    #[cfg(not(feature = "distribution"))]
+    { let _ = app; Err("Installation setup is available in distribution builds only.".into()) }
+}
+
+#[tauri::command]
+fn pilot_license(action: String, certificate: Option<String>) -> Result<Value, String> {
+    #[cfg(feature = "distribution")]
+    {
+        let license = wb_core::runtime::licensing();
+        match action.as_str() {
+            "status" => serde_json::to_value(license.status()).map_err(|e| e.to_string()),
+            "request" => Ok(json!({"request": license.request()?})),
+            "import" => { license.import(certificate.as_deref().ok_or("Choose a license file first.")?)?; Ok(json!({"active":true})) },
+            _ => Err("Unknown license action.".into()),
+        }
+    }
+    #[cfg(not(feature = "distribution"))]
+    { let _ = (action, certificate); Err("Pilot licensing is available in distribution builds only.".into()) }
+}
+
+/// The study folder the person chose (a setting or WB_STUDY_DIR), opened; none on a first run.
+#[cfg(not(feature = "distribution"))]
+fn open_configured_study() -> Option<Store> {
+    if !wb_core::setup::study_configured() {
+        return None;
+    }
+    open_study(&wb_core::default_study_dir()).map_err(|e| eprintln!("{e}")).ok()
+}
+
 fn main() {
     let started = Instant::now();
     let started_wall_ms = wall_ms();
+    #[cfg(not(feature = "distribution"))]
     if let Err(e) = take_options() {
         fail(&e);
     }
     // A first run has no database or study folder yet: the window opens on its setup screen instead of closing. The
-    // package puts the Bible at `datasets/workbench.db` beside the program (wb_core::setup).
-    let bible = Bible::open(&wb_core::default_db_path()).ok();
-    let store = if wb_core::setup::study_configured() {
-        match open_study(&wb_core::default_study_dir()) {
-            Ok(store) => Some(store),
-            Err(e) => {
-                eprintln!("{e}");
-                None
-            }
-        }
-    } else {
-        None
-    };
+    // package puts the Bible at `datasets/workbench.db` beside the program (wb_core::setup). A distribution build opens
+    // them in `setup`, once its installation roots are known and its license is checked.
+    #[cfg(not(feature = "distribution"))]
+    let (bible, store) = (Bible::open(&wb_core::default_db_path()).ok(), open_configured_study());
+    #[cfg(feature = "distribution")]
+    let (bible, store): (Option<Bible>, Option<Store>) = (None, None);
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
         .invoke_handler(tauri::generate_handler![
+            pilot_license, installation_status, installation_configure, installation_restart,
             wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready,
             setup_status, set_study_dir, choose_study_dir, set_bible_db, choose_bible_db
         ])
         .setup(|app| {
+            #[cfg(feature = "distribution")]
+            {
+                let roots = wb_core::runtime::initialize(app.path().resource_dir()?.join("resources"))?;
+                if !roots.status().ready || wb_core::runtime::require_license().is_err() {
+                    WebviewWindowBuilder::new(app, "main", WebviewUrl::App("setup.html".into()))
+                        .title("Set up Bible Workbench").inner_size(760.0, 660.0).min_inner_size(360.0, 500.0).build()?;
+                    return Ok(());
+                }
+                let state = app.state::<App>();
+                *state.bible.lock().unwrap() = Some(Bible::open(&wb_core::default_db_path())?);
+                *state.store.lock().unwrap() = Some(open_study(&wb_core::default_study_dir())?);
+            }
             if app.state::<App>().store.lock().unwrap().is_some() {
                 serve_do(app.handle().clone(), wb_core::default_study_dir());
                 // The search index and the word offsets, built (or read from the cache) while the reader opens, so the
@@ -422,7 +486,7 @@ fn main() {
             }
             let preset = std::env::var("WB_WINDOW").unwrap_or_else(|_| "laptop".into());
             let &(_, w, h) = PRESETS.iter().find(|p| p.0 == preset).unwrap_or(&PRESETS[4]);
-            let mut b = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+            let b = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
                 .title("Bible Workbench")
                 .inner_size(w, h)
                 .min_inner_size(320.0, 320.0)
@@ -431,11 +495,12 @@ fn main() {
                 // plan's days could not be dragged (finding 64c7). Nothing here listens for file drops.
                 .disable_drag_drop_handler();
             // For measuring: lets Playwright attach to the web view over the DevTools protocol (WebView2 only).
-            if let Ok(port) = std::env::var("WB_CDP_PORT") {
-                b = b.additional_browser_args(&format!(
+            #[cfg(not(feature = "distribution"))]
+            let b = if let Ok(port) = std::env::var("WB_CDP_PORT") {
+                b.additional_browser_args(&format!(
                     "--remote-debugging-port={port} --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection"
-                ));
-            }
+                ))
+            } else { b };
             b.build()?;
             Ok(())
         })

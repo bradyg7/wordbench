@@ -1,4 +1,4 @@
-// Settings (R4, docs/redesign-R4.md): one pane for what the window can be set to, and the person's own theme. Each change
+// Settings (R4, docs/archive/2026-11-10/docs/redesign-R4.md): one pane for what the window can be set to, and the person's own theme. Each change
 // is saved the moment it is made, per key, in settings/<part>.json (`wb settings <part> <key> <value>` does the same from
 // a terminal); the browser's localStorage still keeps a copy so the window starts in the right theme before the files
 // are read. Nothing here interprets scripture: it is color, type and switches.

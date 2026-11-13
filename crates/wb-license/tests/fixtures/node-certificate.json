@@ -1,0 +1,8 @@
+{
+  "trusted_key": "ea4a6c63e29c520abef5507b132ec5f9954776aebebe7b92421eea691446d22c",
+  "device_key": "fd1724385aa0c75b64fb78cd602fa1d991fdebf76b13c58ed702eac835e9f618",
+  "envelope": {
+    "payload": "eyJzY2hlbWFfdmVyc2lvbiI6MSwicHJvZHVjdF9pZCI6ImFwcC5iaWJsZXdvcmtiZW5jaC5kZXNrdG9wIiwiaXNzdWVyX2tleV9pZCI6ImludGVyb3AtdGVzdCIsImxpY2Vuc2VfaWQiOiJpbnRlcm9wLXBpbG90IiwiYWN0aXZhdGlvbl9pZCI6ImludGVyb3AtZGV2aWNlIiwiZGV2aWNlX3B1YmxpY19rZXkiOiJmZDE3MjQzODVhYTBjNzViNjRmYjc4Y2Q2MDJmYTFkOTkxZmRlYmY3NmIxM2M1OGVkNzAyZWFjODM1ZTlmNjE4IiwiaXNzdWVkX2F0IjoiMjAyNi0xMS0xMFQwMTo0NzozNi40MjhaIiwib2ZmbGluZV91c2UiOiJwZXJtYW5lbnQiLCJmZWF0dXJlcyI6WyJwaWxvdCJdfQ==",
+    "signature": "NiMYZxPE3q+3QD6+tZ2kD0mKUk4tjwyPYim+MFXrNhDUdzDSDueE8CwbLE3X1N7G4y61Br4fpHJDaDlUNHGMAA=="
+  }
+}

@@ -1,4 +1,4 @@
-// The command field: search and the capture box merged into one (docs/PLAN-design.md, decided in review). Backtick
+// The command field: search and the capture box merged into one (docs/archive/2026-11-10/docs/PLAN-design.md, decided in review). Backtick
 // opens it from anywhere. As words are typed, suggestions come in groups: what the line means as a command, commands
 // that start with the first word, your threads (for +name), and a plain search of the KJV. Enter runs the one marked.
 import { wb } from './api';

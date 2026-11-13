@@ -1,6 +1,6 @@
 // Bible Workbench: the reader with its marks, tap cards, touch selection, hover cards and the color bar (phase 0), and
 // the desktop around it (phase 2): the toolbar with the command field, the dock of panes, the Notebook, threads and
-// layers, word study, find, text size and the keyboard. See docs/phase0-results.md and docs/phase2-results.md.
+// layers, word study, find, text size and the keyboard. See docs/phase0-results.md and docs/archive/2026-11-10/docs/phase2-results.md.
 import '@fontsource/literata/400.css';
 import '@fontsource/literata/400-italic.css';
 import '@fontsource/literata/500-italic.css';
@@ -1024,7 +1024,7 @@ async function todaySection(into: HTMLElement) {
 }
 
 function settings(from: HTMLElement) {
-  // R4 (docs/redesign-R4.md): More is Settings, Help, and the panes that are not on the toolbar. Everything that was a
+  // R4 (docs/archive/2026-11-10/docs/redesign-R4.md): More is Settings, Help, and the panes that are not on the toolbar. Everything that was a
   // setting lives in Settings; a pane put away (or never added) waits here with a way back.
   const b = h('div', 'settings more-menu');
   const go = (label: string, ico: string, fn: () => void, sub = '', key = '') => {

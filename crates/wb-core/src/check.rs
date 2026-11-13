@@ -1,4 +1,4 @@
-//! The check of the study folder (R1, `docs/redesign-R1.md` question 6; sheet R1.8): what the folder holds, as this app
+//! The check of the study folder (R1, `docs/archive/2026-11-10/docs/redesign-R1.md` question 6; sheet R1.8): what the folder holds, as this app
 //! reads it, and which files the next change would write. It reads and writes nothing. The Python app's side of the same
 //! check is `scripts/py-opens.py`, which opens a scratch copy with the Python app's own `Study` and compares the counts
 //! this gives for what that app reads (notes with a place, threads and their places, trails, sets).

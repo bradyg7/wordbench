@@ -1,10 +1,10 @@
-"""The phase 2b design round (docs/PLAN-phase2b.md, step 4), drawn with FigCraft from scripts like build.py.
+"""The phase 2b design round (docs/archive/2026-11-10/docs/PLAN-phase2b.md, step 4), drawn with FigCraft from scripts like build.py.
 
     python design/phase2b.py     # writes design/phase2b.figcraft and design/exports/phase2b/*.png
 
 One page, "All designs", holds every design as one board: the Notebook (three designs), reading plans (three builders
 and the plan's own view), the dock and views, threads / Help / words, and the Shelf and settings. What each answers is in the person's notes of 2026-11-03 and 11-04
-(docs/phase2-results.md, sections 11 and 12). Scripture comes only from content.json (fetched from the database); the
+(docs/archive/2026-11-10/docs/phase2-results.md, sections 11 and 12). Scripture comes only from content.json (fetched from the database); the
 notes shown are the Phinehas demo's, as on the phase 2 sheets. It reuses build.py's helpers and parts.py's pieces, so the
 two files look alike; build.py's own sheets are not changed.
 """

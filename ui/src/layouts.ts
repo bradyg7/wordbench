@@ -1,4 +1,4 @@
-// Layouts (R4 step 5, docs/redesign-R4.md): a layout is which panes are open, kept under a name (`wb layout save|show|list|rm`,
+// Layouts (R4 step 5, docs/archive/2026-11-10/docs/redesign-R4.md): a layout is which panes are open, kept under a name (`wb layout save|show|list|rm`,
 // sessions/layouts/*.json). Applying one opens its panes and closes the others. (Called "view" on the first sheets; "view" is
 // the Notebook's lists now, so these are Layouts.) Menu on the toolbar, and Settings ▸ Layouts.
 import { wb } from './api';

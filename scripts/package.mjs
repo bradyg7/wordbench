@@ -105,7 +105,9 @@ mkdirSync(join(stage, 'source'), { recursive: true });
 cpSync(exe, join(stage, 'Bible Workbench.exe'));
 cpSync(cli, join(stage, 'wb.exe'));
 cpSync(db, join(stage, 'datasets/workbench.db'));
-for (const file of ['README.md', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md']) cpSync(join(repo, file), join(stage, file));
+// The buyer's README is BUYER-README.md in the checkout (README.md there is for developers); it ships as README.md.
+cpSync(join(repo, 'BUYER-README.md'), join(stage, 'README.md'));
+for (const file of ['THIRD_PARTY_NOTICES.md', 'CHANGELOG.md']) cpSync(join(repo, file), join(stage, file));
 cpSync(join(repo, 'licenses'), join(stage, 'licenses'), { recursive: true });
 
 // Readable source, without development-only and personal material (design sheets, phase notes with study screenshots,

@@ -32,7 +32,7 @@ pub const COLORS: &[&str] = &["yellow", "green", "blue", "pink", "orange"];
 pub const PALETTE_MAX: usize = 8;
 pub const ANCHORS_MARK: &str = "<!-- anchors -->";
 /// What a set can hold. `document` (a record in documents/, R2) is new here: the Python app passes over it when it reads a
-/// set, and drops it if it rewrites that set (docs/redesign-R2.md section 4).
+/// set, and drops it if it rewrites that set (docs/archive/2026-11-10/docs/redesign-R2.md section 4).
 pub const SET_KINDS: &[&str] = &["pane", "thread", "place", "note", "lesson", "pdf", "document"];
 
 /// A request the person can fix (the Python app's BadStudy, sent with status 400).

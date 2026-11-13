@@ -1,4 +1,4 @@
-// The Shelf as a tree (R2, docs/redesign-R2.md, sheets B1 to B5; the person chose the tree on 2026-11-09).
+// The Shelf as a tree (R2, docs/archive/2026-11-10/docs/redesign-R2.md, sheets B1 to B5; the person chose the tree on 2026-11-09).
 //
 // A folder IS a set: each folder is a set file in sets/, holding its own items; where it sits in the tree is wb-core's
 // (settings/shelf.json, `wb shelf`). Every change here is a `wb` command, so a terminal can do the same. Open all (finding

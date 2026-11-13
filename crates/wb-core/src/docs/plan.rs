@@ -753,7 +753,7 @@ pub fn plan_of_blocks(to: &str, structure: &str, blocks: &[Block], margin: &mut 
     match (to == "word", structure) {
         (true, "script") => Ok(doc_script(blocks, margin)),
         (false, "verse") => Ok(deck_verse(blocks, margin)),
-        // R3's shipped templates over the same two layouts (docs/redesign-R3.md, decision 3): planned here only, so their
+        // R3's shipped templates over the same two layouts (docs/archive/2026-11-10/docs/redesign-R3.md, decision 3): planned here only, so their
         // fingerprints are this app's own
         (true, "share") => Ok(from_script(blocks, margin, "Share copy", &["Slide Cue", "Study Note", "Delivery Note"], false)),
         (true, "study") => Ok(from_script(blocks, margin, "Study sheet", &["Slide Cue", "Delivery Note"], true)),

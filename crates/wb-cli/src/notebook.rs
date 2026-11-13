@@ -38,8 +38,14 @@ pub fn commands() -> Vec<Command> {
 /// The person's findings about the app while it is built (findings/<id>.md, kept apart from the study; note 50c1).
 fn findings() -> Vec<Command> {
     vec![
-        cmd("findings", "Your findings about the app, newest first: the open ones (--all: the handled ones too), with what was on screen when each was written.",
-            vec![Flag("all")], |c, a| j(fd::list(&c.root()?, a.flag("all")).map_err(e)?)),
+        cmd("findings", "Your findings about the app, newest first: the open ones (--all: the handled ones too), with what was on screen when each was written and their tags (--tag library: one design folder's).",
+            vec![Flag("all"), Opt("tag", None)], |c, a| j(fd::list_tagged(&c.root()?, a.flag("all"), a.opt("tag").as_deref()).map_err(e)?)),
+        cmd("finding tag", "Tag a finding with the design folders it touches: wb finding tag 1b2d library marks (names from design/features/coverage.md).",
+            vec![Pos("id", N::One), Pos("tags", N::Many)], |c, a| j(fd::tag(&c.root()?, &a.s("id"), &a.list("tags"), false).map_err(e)?)),
+        cmd("finding tags", "The names a finding's tag can take: the design folders in design/features/coverage.md.",
+            vec![], |_c, _a| j(json!({"tags": fd::tag_names()}))),
+        cmd("finding untag", "Take tags off a finding: wb finding untag 1b2d marks.",
+            vec![Pos("id", N::One), Pos("tags", N::Many)], |c, a| j(fd::tag(&c.root()?, &a.s("id"), &a.list("tags"), true).map_err(e)?)),
         cmd("finding add", "Write a finding: wb finding add \"Ctrl+F finds only in the reader\" [--context '{\"size\": \"large\"}']  |  - for standard input.",
             vec![Pos("text", N::Many), Opt("context", None)], |c, a| {
             let text = text_of(c, &a.s("text"))?;

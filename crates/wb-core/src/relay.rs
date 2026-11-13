@@ -1,4 +1,4 @@
-//! `wb do`: lines for the capture box, sent from a terminal to the running desktop app over a local socket (docs/PLAN.md
+//! `wb do`: lines for the capture box, sent from a terminal to the running desktop app over a local socket (docs/archive/2026-11-10/docs/PLAN.md
 //! section 2.2; the Python app used an HTTP long-poll).
 //!
 //! The app listens on a loopback TCP port chosen by the system and writes `{port, token, pid, study}` to `app.json` in

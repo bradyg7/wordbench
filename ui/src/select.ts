@@ -1,4 +1,4 @@
-// The reader handles touch and the mouse itself instead of the web view's text selection (docs/PLAN.md section 6):
+// The reader handles touch and the mouse itself instead of the web view's text selection (docs/archive/2026-11-10/docs/PLAN.md section 6):
 //
 //   touch   tap a word → word sheet; tap a verse number → verse sheet; press and hold → a selection with two handles
 //           that snap to whole words, across verses; keep the finger down after the hold and drag to extend it

@@ -1,4 +1,4 @@
-//! The Shelf as a tree (R2, docs/redesign-R2.md; the person chose the tree on 2026-11-09).
+//! The Shelf as a tree (R2, docs/archive/2026-11-10/docs/redesign-R2.md; the person chose the tree on 2026-11-09).
 //!
 //! A folder IS a set: each folder is an ordinary `sets/<slug>.md` in the Python app's format, holding its own items. Where
 //! a folder sits (inside which folder, in what order) is kept apart, in `settings/shelf.json` as

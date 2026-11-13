@@ -1,4 +1,4 @@
-// Timings for the speed budgets (docs/PLAN.md section 6), read by the measuring script and shown under More.
+// Timings for the speed budgets (docs/archive/2026-11-10/docs/PLAN.md section 6), read by the measuring script and shown under More.
 
 export interface Entry { name: string; ms: number; [k: string]: unknown }
 

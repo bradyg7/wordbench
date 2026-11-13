@@ -1,4 +1,4 @@
-// My commands (R4 step 4, docs/redesign-R4.md): command lines the person keeps, in settings/commands.json (`wb commands`).
+// My commands (R4 step 4, docs/archive/2026-11-10/docs/redesign-R4.md): command lines the person keeps, in settings/commands.json (`wb commands`).
 // A line is written as typed in the command field; {word}, {place} and {chapter} take what is selected or being read.
 // A kept command can be a toolbar button (the catalog lists them) and have its own key.
 import { wb } from './api';

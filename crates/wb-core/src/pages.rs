@@ -1,5 +1,5 @@
 //! Pages and blocks (W3 of "The Notebook as a workspace", 2026-11-07; the sheets W1.1 and W2 of
-//! docs/workspace-design.md).
+//! docs/archive/2026-11-10/docs/workspace-design.md).
 //!
 //! **Pages inside pages.** Every note is one Markdown file where it always was; a page inside another names it in its
 //! front matter (`parent: "<id>"`), with its place among the pages beside it (`order`: 1, 2, 3 …). Pages with no
