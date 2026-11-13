@@ -801,7 +801,7 @@ export async function manual() {
 }
 
 /** The keys, as Keys and Help's Keys list them. */
-const KEYS: [string, string][] = [
+export const KEYS: [string, string][] = [
   ['`', 'Open the command field (search, go to a place, or a command)'],
   ['← →', 'The previous and next chapter'],
   ['Ctrl+F', 'Find: in the pane you last clicked or typed in, else in this chapter (Enter: the next, Shift+Enter: the one before)'],
@@ -810,6 +810,7 @@ const KEYS: [string, string][] = [
   ['Ctrl+click a reference', 'Straight to the reader (a click asks: the reader, or a tab)'],
   ['Ctrl+= / Ctrl+-', 'Text size'],
   ['Esc', 'Close a card, a menu or the field'],
+  ['F11', 'Full screen: the whole window (again to leave it)'],
   ['Alt+click a word', 'The interlinear for its verse'],
   ['Ctrl+J', 'Quick capture: a small box at the verse you clicked, from anywhere (Enter saves, Ctrl+Enter keeps writing in the Notebook; the key is in Notebook settings)'],
   ['Ctrl+Shift+J', 'A finding about the app: kept apart from your study, with what is on screen (Findings, under More)'],

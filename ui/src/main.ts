@@ -19,7 +19,7 @@ import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
 import type { Pane } from './dock';
 import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
-import { bridge, loadWindowSettings, openSettings } from './settings';
+import { bridge, loadWindowSettings, markName, openSettings } from './settings';
 import { loadKept } from './mycommands';
 import { fills as cmdFills, byKey as commandByKey, run as runKeptCommand } from './mycommands';
 import { absent, customize, hiddenToFit, hooks, initToolbar, loadToolbar, setBadge, setVersionLabel, fitToBar } from './toolbar';
@@ -301,7 +301,7 @@ function colorRow(current: string | undefined, pick: (c: string | null) => void,
   COLORS.forEach((c, n) => {
     const dot = h('button', `swatch c-${c}${c === current ? ' on' : ''}`);
     dot.setAttribute('aria-label', c);
-    dot.title = `${c[0].toUpperCase() + c.slice(1)} (${n + 1})`;
+    dot.title = `${markName(c)} (${n + 1})`;
     dot.onclick = () => pick(c);
     row.append(dot);
   });

@@ -439,6 +439,10 @@ async function applyLayout(a: any): Promise<string> {
   }
   const shown = await wb(['layout', 'show', a.name]);
   const l = readLayout(shown.layout ?? shown);
+  // Settings is a menu now, not a pane: an older layout that kept it opens without it
+  l.panes = l.panes.filter(p => p.key !== 'settings');
+  l.groups = l.groups.map(g => ({ ...g, keys: g.keys.filter(k => k !== 'settings') })).filter(g => g.keys.length);
+  for (const g of l.groups) if (g.front === 'settings') g.front = g.keys[0];
   if (dock.panes.some(p => p.kind === 'notebook' && p.el.querySelector('.nb-input, .nb-title-input, .nb-structured-editor'))) {
     throw new Error('Finish editing the open pages before opening a layout. Your arrangement is unchanged.');
   }

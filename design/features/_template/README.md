@@ -38,6 +38,18 @@ Dated, newest round last. Each says what was chosen and what was rejected, so th
 
 Scripture and lookups are fetched from the database, never typed.
 
+## The real conditions
+
+The board shows the part among other tabs, as a floating tab, narrow, and with years of study (see the
+[index](../README.md)). Name the windows that show each:
+
+| Condition | Window |
+|---|---|
+| Among other tabs | |
+| Floating | |
+| Narrow | |
+| Years of study | |
+
 ## What the build must satisfy
 
 Written once the person accepts a direction; each line is checkable, so the build's tests and the desk check can

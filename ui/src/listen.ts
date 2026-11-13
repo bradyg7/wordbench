@@ -1,6 +1,6 @@
 // Browser read-aloud for the text already drawn in the reader. Speech is local to this device; no audio or study data
 // is stored. The command language owns command names; this module owns speech state and its small reader control bar.
-import type { Book, Chapter } from './api';
+import { wb, type Book, type Chapter } from './api';
 import type { Drawn } from './reader';
 import { button, h } from './ui';
 
@@ -181,6 +181,7 @@ export function createReadAloud(host: Host) {
       list = getVoices();
     }
     voice = chooseVoice(list, stored(VOICE_KEY));
+    rate = clampRate(Number(stored(RATE_KEY)) || rate); // Settings ▸ Reading may have changed it since
     fillVoices();
     return voice;
   };
@@ -221,6 +222,7 @@ export function createReadAloud(host: Host) {
   };
   async function advance(token: number) {
     if (!now || token !== run) return;
+    void offerMarkRead(now.book, now.ch);
     const next = nextChapter();
     if (!next) { stop(); return; }
     const view = await host.show(next.book.code, next.chapter, 1);
@@ -303,4 +305,25 @@ export function createReadAloud(host: Host) {
   function state() { return now ? { place: `${now.book.name} ${now.ch}${now.units[now.at]?.v ? `:${now.units[now.at].v}` : ''}`, paused: now.paused, voice: voice?.name || '', rate } : null; }
   if (window.speechSynthesis) speech().addEventListener('voiceschanged', fillVoices);
   return { execute, stopForNavigation, state };
+}
+
+/** Listen read a chapter through that today's plan asks for: offer Mark read (2dcf; Settings ▸ Reading, on by default). */
+async function offerMarkRead(book: Book, ch: number) {
+  if (stored('wb.listen.markRead') === 'off') return;
+  let today: any;
+  try { today = await wb(['plan', 'today']); } catch { return; }
+  const key = `${book.code}.${ch}`;
+  const plan = (today?.plans || []).find((p: any) => (p.today?.entries || []).includes(key) && !p.today?.done);
+  if (!plan) return;
+  let rail = document.querySelector<HTMLElement>('.page-deletions');
+  if (!rail) { rail = h('div', 'page-deletions'); document.body.append(rail); }
+  const row = h('div', 'page-deletion');
+  row.setAttribute('role', 'status');
+  const place = `${book.name} ${ch}`;
+  row.append(h('span', '', `Listened to ${place}. `), button('btn small', 'Mark read', async () => {
+    try { await wb(['read', 'mark', place, '--plan', plan.plan]); row.replaceChildren(h('span', '', `${place} marked read`)); setTimeout(() => row.remove(), 2500); }
+    catch (x) { row.replaceChildren(h('span', '', String(x))); }
+  }), button('btn small ghost', 'Not now', () => row.remove()));
+  rail.append(row);
+  setTimeout(() => row.remove(), 30000);
 }

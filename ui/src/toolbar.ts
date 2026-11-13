@@ -46,6 +46,7 @@ export const CATALOG: Item[] = [
   { id: 'find', label: 'Find in chapter', icon: 'search', group: 'Reading controls', sub: 'Ctrl+F', run: () => hooks.find() },
   { id: 'listen', label: 'Listen', icon: 'play', group: 'Reading controls', sub: 'Read this chapter aloud with a local English voice', run: () => hooks.listen(), more: true },
   { id: 'textsize', label: 'Text size', icon: 'heading', group: 'Reading controls', sub: 'A− 100% A+, one small menu', run: from => textSizeMenu(from), caret: true },
+  { id: 'fullscreen', label: 'Full screen', icon: 'expand', group: 'Reading controls', sub: 'The whole window, F11', run: () => void toggleFullScreen(), more: true },
   { id: 'theme', label: 'Theme', icon: 'eye', group: 'Reading controls', sub: 'Light ↔ dark in one click', run: () => flipTheme() },
 ];
 export const DEFAULT = ['version', 'notebook', 'shelf', 'highlights'];  // no Threads: a thread is a page (R1)
@@ -256,3 +257,16 @@ export function initToolbar() {
   render();
   new ResizeObserver(() => { if (!editing) fitToBar(); }).observe(bar());
 }
+
+/** Full screen for the whole app (design/features/settings: an action in the ⋯ menu and F11, not a setting; 0e94). */
+export async function toggleFullScreen() {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  } catch { toast('Full screen is not available in this window'); }
+}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'F11' || e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+  e.preventDefault();
+  void toggleFullScreen();
+});
