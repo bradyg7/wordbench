@@ -181,6 +181,7 @@ export function createReadAloud(host: Host) {
       list = getVoices();
     }
     voice = chooseVoice(list, stored(VOICE_KEY));
+    rate = clampRate(Number(stored(RATE_KEY)) || rate); // Settings ▸ Reading may have changed it since
     fillVoices();
     return voice;
   };

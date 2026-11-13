@@ -2,8 +2,10 @@
 // is saved the moment it is made, per key, in settings/<part>.json (`wb settings <part> <key> <value>` does the same from
 // a terminal); the browser's localStorage still keeps a copy so the window starts in the right theme before the files
 // are read. Nothing here interprets scripture: it is color, type and switches.
+import { invoke } from '@tauri-apps/api/core';
 import { api, inApp, wb } from './api';
-import { dock } from './panes';
+import { customize as customizeToolbar } from './toolbar';
+import { dock, KEYS as KEY_LIST } from './panes';
 import { toast } from './sheets';
 import { h, hoverMode, setHover } from './ui';
 import { section as layoutsSection } from './layouts';
@@ -130,9 +132,13 @@ export async function loadWindowSettings() {
 }
 
 // ---- the pane -----------------------------------------------------------------------------------------------------------
-const SECTIONS = ['Reading', 'Notebook', 'Hover and cards', 'Theme', 'Layouts', 'Commands', 'Keys', 'Advanced'] as const;
+// design/features/settings (accepted 2026-11-13): eight tabs became these; Hover and cards joined Reading, Advanced
+// became Study folder (window size and timings only with the developer switch), Documents is new.
+const SECTIONS = ['Reading', 'Theme', 'Notebook', 'Layouts', 'Commands', 'Keys', 'Study folder', 'Documents'] as const;
 type Section = (typeof SECTIONS)[number];
 let current: Section = 'Reading';
+/** Older names still open the tab that holds them now (`settings advanced`, `settings hover`). */
+const OLD: Record<string, Section> = { advanced: 'Study folder', hover: 'Reading', study: 'Study folder', docs: 'Documents' };
 
 function row(name: string, what: string, ctl: HTMLElement, keywords = '') {
   const r = h('div', 'set-row');
@@ -161,7 +167,8 @@ function toggle(on: boolean, flip: (v: boolean) => void) {
 
 /** Open Settings (at a section: `settings theme`). */
 export function openSettings(section: string = '') {
-  const s = SECTIONS.find(x => x.toLowerCase().startsWith(section.trim().toLowerCase()));
+  const want = section.trim().toLowerCase();
+  const s = want ? (OLD[want.split(' ')[0]] ?? SECTIONS.find(x => x.toLowerCase().startsWith(want))) : undefined;
   if (s) current = s;
   return dock.open('settings', 'Settings', 'settings', 'right', el => draw(el));
 }
@@ -173,8 +180,21 @@ function draw(el: HTMLElement, query = '') {
   const find = h('input', 'field set-find') as HTMLInputElement;
   find.placeholder = 'Find a setting';
   find.value = query;
+  // narrow (C1′): the sections become a menu and Find a search icon that opens the field; rows stack (desk.css)
+  const finder = h('button', 'icon-btn set-find-toggle', '⌕');
+  finder.title = 'Find a setting'; finder.setAttribute('aria-label', finder.title);
+  finder.onclick = () => { head.classList.toggle('finding'); if (head.classList.contains('finding')) find.focus(); };
+  if (query) head.classList.add('finding');
   head.append(find);
+  el.classList.add('set-pane');
   el.append(head);
+  const menu = h('select', 'field set-nav-menu') as HTMLSelectElement;
+  menu.setAttribute('aria-label', 'Settings section');
+  for (const name of SECTIONS) { const o = h('option', '', name) as HTMLOptionElement; o.value = name; o.selected = name === current; menu.append(o); }
+  menu.onchange = () => { current = menu.value as Section; draw(el); };
+  const bar = h('div', 'set-narrow-bar');
+  bar.append(menu, finder);
+  el.append(bar);
   const wrap = h('div', 'set-wrap');
   const nav = h('nav', 'set-nav');
   const body = h('div', 'set-body');
@@ -219,11 +239,20 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
     ctl.append(minus, label, plus, r100);
     out.push(row('Text size', 'How large scripture is drawn; Ctrl+= and Ctrl+- do the same', ctl, 'font zoom'));
     out.push(row('Version', 'The reader’s version', seg(['KJV', 'YLT'], bridge.version(), v => { void bridge.setVersion(v).then(toast); void save('reading', 'version', v); }), 'translation kjv ylt'));
+    out.push(row('Cards on hover', 'Off: a click opens a card, as a tap does. References: only references in pages show a card on hover. Everything: every word and reference.',
+      seg(['Off', 'References', 'Everything'], { off: 'Off', refs: 'References', on: 'Everything' }[hoverMode()] ?? 'Off',
+        m => { const v = m === 'Off' ? 'off' : m === 'References' ? 'refs' : 'on'; setHover(v); void save('hover', 'mode', v); }), 'hover tooltip preview cards'));
+    out.push(...readAloudRows());
+    out.push(copyRow());
+    const tb = h('button', 'btn', 'Choose…');
+    tb.onclick = () => customizeToolbar();
+    out.push(row('Toolbar', 'Which buttons sit on the top bar, and in what order', tb, 'toolbar buttons bar customize'));
     out.push(reset('reading', ['size', 'version']));
   } else if (name === 'Notebook') {
     let about: any[] = [];
     try { about = await wb(['settings', 'notebook', '--about']); } catch { /* none */ }
-    for (const a of about) {
+    // Follow the reader is set where it acts (the Places list's own switch), not here (design, e09e)
+    for (const a of about.filter(x => x.key !== 'follow')) {
       let ctl: HTMLElement;
       if (typeof a.default === 'boolean') ctl = toggle(!!a.value, v => void wb(['settings', 'notebook', a.key, v ? 'on' : 'off']).catch(e => toast(String(e))));
       else if (a.key === 'group') ctl = seg(['day', 'chapter', 'thread', 'none', 'pages', 'questions'], a.value, v => void wb(['settings', 'notebook', 'group', v]).catch(e => toast(String(e))));
@@ -236,10 +265,6 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
       }
       out.push(row(String(a.what).split(':')[0], String(a.what), ctl, a.key));
     }
-  } else if (name === 'Hover and cards') {
-    out.push(row('Hover cards', 'Off: a click opens a card, as a tap does. Refs: only references in notes show a card on hover. On: every word and reference.',
-      seg(['off', 'refs', 'on'], hoverMode(), m => { setHover(m); void save('hover', 'mode', m); }), 'tooltip preview'));
-    out.push(reset('hover', ['mode']));
   } else if (name === 'Theme') {
     out.push(await themeSection(redraw));
   } else if (name === 'Layouts') {
@@ -247,13 +272,17 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
   } else if (name === 'Commands') {
     out.push(...(await commandsSection(redraw)));
   } else if (name === 'Keys') {
-    const b = h('button', 'btn', 'Open the list of keys (Help ▸ Keys)');
-    b.onclick = () => bridge.openKeys();
-    out.push(row('Keys', 'Every key the window understands. The quick-capture key is set under Notebook.', b, 'shortcut keyboard'));
-  } else if (name === 'Advanced') {
+    // the keys themselves, each a row Find reaches; the ones that can be set say where
+    for (const [k, what] of KEY_LIST) out.push(row(k, what, h('kbd', 'set-kbd', k), `key shortcut keyboard ${k}`));
+    out.push(row('Changing keys', 'Quick capture is set under Notebook; a layout’s key under Layouts; a kept command’s under Commands.', h('span'), 'change rebind'));
+  } else if (name === 'Study folder') {
+    out.push(...(await studyRows(redraw)));
     out.push(row('Input', 'Auto follows the device; touch or pointer forces the other (bigger targets, handles on selections)',
       seg(['auto', 'touch', 'pointer'], bridge.inputMode(), m => bridge.setInputMode(m)), 'touch mouse'));
-    if (inApp) {
+    // window size and timings are for building the app: shown only with `wb settings window developer true`
+    let dev = false;
+    try { dev = (await wb(['settings', 'window'])).developer === true; } catch { /* off */ }
+    if (dev && inApp) {
       const PRESETS = [['phone', 'Phone 390×844'], ['phone-landscape', 'Phone landscape'], ['ipad', 'iPad portrait'], ['ipad-landscape', 'iPad landscape'], ['laptop', 'Laptop 1280×800'], ['laptop-large', 'Laptop 1440×900'], ['desktop', 'Desktop 1920×1080']];
       const ctl = h('div', 'wrap');
       for (const [id, nm] of PRESETS) {
@@ -262,10 +291,76 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
         ctl.append(x);
       }
       out.push(row('Window size', 'For checking how the window looks at other sizes', ctl, 'resize preset'));
+      const pre = h('pre', 'perf', perf.summary());
+      out.push(row('Measured this run', 'Timings since the window opened', pre, 'speed performance'));
     }
-    const pre = h('pre', 'perf', perf.summary());
-    out.push(row('Measured this run', 'Timings since the window opened', pre, 'speed performance'));
-    out.push(row('Later phases', 'Additional document structures are phase 5. Read aloud and recordings are phase 6.', h('span'), 'python'));
+  } else if (name === 'Documents') {
+    out.push(...(await documentRows(redraw)));
+  }
+  return out;
+}
+
+// ---- Reading: read aloud and copying (kept in this window's storage, as Listen and copy keep them) -----------------
+const ls = (k: string) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
+const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* this run only */ } };
+
+function readAloudRows(): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  const voices = (() => { try { return speechSynthesis.getVoices().filter(v => v.localService && /^en\b/i.test((v.lang || '').replace('_', '-'))); } catch { return []; } })();
+  const sel = h('select', 'field') as HTMLSelectElement;
+  const dflt = h('option', '', 'The device’s') as HTMLOptionElement; dflt.value = ''; sel.append(dflt);
+  for (const v of voices) { const o = h('option', '', v.name) as HTMLOptionElement; o.value = v.name; o.selected = v.name === ls('wb.listen.voice'); sel.append(o); }
+  sel.onchange = () => { lsSet('wb.listen.voice', sel.value); toast('Read aloud voice saved'); };
+  out.push(row('Read aloud: voice', 'The voice Listen reads with (a voice on this device)', sel, 'listen voice speech'));
+  const rates = ['0.8', '1', '1.2', '1.5'];
+  const cur = rates.find(r => Number(r) === Number(ls('wb.listen.rate') || 1)) ?? '1';
+  out.push(row('Read aloud: speed', 'How fast Listen reads', seg(rates.map(r => `${r}×`), `${cur}×`, v => lsSet('wb.listen.rate', v.replace('×', ''))), 'listen rate speed'));
+  return out;
+}
+
+function copyRow(): HTMLElement {
+  const saved = (() => { try { return JSON.parse(ls('wb.copy') || '{}'); } catch { return {}; } })();
+  const names: Record<string, string> = { lines: 'Lines', block: 'Block', para: 'Paragraph', quote: 'Quote' };
+  const by = Object.fromEntries(Object.entries(names).map(([k, v]) => [v, k]));
+  const wrap = h('div', 'wrap');
+  wrap.append(seg(Object.values(names), names[saved.format || 'lines'], v => { saved.format = by[v]; lsSet('wb.copy', JSON.stringify(saved)); }));
+  const short = toggle(!!saved.short, v => { saved.short = v; lsSet('wb.copy', JSON.stringify(saved)); });
+  const lab = h('label', 'set-inline');
+  lab.append(short, h('span', 'small', 'Short reference'));
+  wrap.append(lab);
+  return row('Copying verses', 'How a copied verse is laid out (always with its reference)', wrap, 'copy clipboard format');
+}
+
+// ---- Study folder: where the study and the Bible are -------------------------------------------------------------
+async function studyRows(redraw: () => void): Promise<HTMLElement[]> {
+  const out: HTMLElement[] = [];
+  if (!inApp) return out;
+  let st: any = null;
+  try { st = await invoke('setup_status'); } catch { /* an older shell */ }
+  if (!st) return out;
+  const change = (cmd: string) => {
+    const b = h('button', 'btn', 'Change…');
+    b.onclick = async () => { try { await invoke(cmd); toast('Saved'); redraw(); } catch (e) { toast(String(e)); } };
+    return b;
+  };
+  out.push(row('Study folder', `${st.study.path} · ${st.study.detail}`, change('choose_study_dir'), 'study folder notes path'));
+  out.push(row('Bible database', `${st.db.path} · read-only · ${st.db.detail}`, change('choose_bible_db'), 'bible database db'));
+  return out;
+}
+
+// ---- Documents: what new Word files and slides start with -------------------------------------------------------
+async function documentRows(redraw: () => void): Promise<HTMLElement[]> {
+  const out: HTMLElement[] = [];
+  let d: any = null;
+  try { d = await wb(['docs', 'looks']); } catch { /* none */ }
+  if (d && Array.isArray(d.looks)) {
+    const sel = h('select', 'field') as HTMLSelectElement;
+    for (const l of d.looks) {
+      const key = String(l.key ?? l.name), o = h('option', '', String(l.name ?? key)) as HTMLOptionElement;
+      o.value = key; o.selected = key === d.saved; sel.append(o);
+    }
+    sel.onchange = async () => { try { await wb(['docs', 'look', sel.value, '--use']); toast('New documents use this Look'); redraw(); } catch (e) { toast(String(e)); } };
+    out.push(row('Look', 'The layout new documents are made in; styling only, what goes in does not change', sel, 'docs word pdf slides look'));
   }
   return out;
 }
