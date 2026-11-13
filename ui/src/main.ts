@@ -1045,7 +1045,7 @@ function settings(from: HTMLElement) {
   }
   go('Settings…', 'settings', () => openSettings(), '', 'Ctrl+,');
   go('Customize toolbar…', 'sliders', () => customize());
-  go('Help', 'help', () => openHelp(), 'Guide · Commands · Keys');
+  go('Help', 'help', () => openHelp(), 'Guide · Keys · Manual');
   go('Save chapter PDF', 'file', () => {
     void runLine('pdf').then(result => toast(result.said || result.error || 'Could not save the chapter PDF'))
       .catch(error => toast(String(error.message || error)));
@@ -1118,6 +1118,7 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
   { const kc = commandByKey(e); if (kc) { e.preventDefault(); void runKeptCommand(kc); return; } }
   if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === ',') { e.preventDefault(); openSettings(); return; }
+  if (e.key === 'F1' && !e.ctrlKey && !e.altKey && !e.metaKey) { e.preventDefault(); openSettings('guide'); return; }
   if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '0') { e.preventDefault(); setSize(100); return; }
   // a finding about the app, from anywhere (note 50c1)
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); findingBox(); return; }

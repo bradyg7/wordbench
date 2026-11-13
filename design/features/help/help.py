@@ -150,12 +150,12 @@ def gap(parent, h):
     frame(parent, "gap", w=10, h=h, W="fill", H="fixed")
 
 
-def menu(f, active, title, sub, at=None, sections=HELP_SECTIONS):
+def menu(f, active, title, sub, at=None, sections=HELP_SECTIONS, size=(1180, H - 120)):
     """The window behind, dimmed, and the one menu centred over it: Settings above, Help below."""
     K.app(f, on=at)
     frame(f, "scrim", x=0, y=0, w=W, h=H, fill="scrim", W="fixed", H="fixed")
-    mw, mh = 1180, H - 120
-    d = frame(f, "settings and help", x=(W - mw) // 2, y=60, w=mw, h=mh, fill="bg", layout="horizontal",
+    mw, mh = size
+    d = frame(f, "settings and help", x=(W - mw) // 2, y=(H - mh) // 2, w=mw, h=mh, fill="bg", layout="horizontal",
               radius=14, stroke="line", sw=1, W="fixed", H="fixed", clip=True)
     K.shadow(d, 12, 40, "#00000040")
     nav = col(d, "sections", gap=2, pad=[16, 10, 16, 10], fill="sunken", W="fixed", H="fill")
@@ -276,7 +276,65 @@ def sheets2(board):
     round2_beside(cv)
 
 
+def soon_card(parent, task, ic, w=200, focus=False):
+    c = col(parent, task, gap=6, pad=[12, 14, 12, 14], radius=12, stroke="accent" if focus else "line",
+            sw=2 if focus else 1, fill="surface", W="fixed")
+    Q.put(c, 0, 0, w)
+    hd = row(c, "head", gap=8, W="fill")
+    icon(hd, ic, 16, "accent")
+    text(hd, task, "smallStrong", W="fill")
+    text(c, "Coming soon", "caption", "muted")
+
+
+def soon_cards(p, groups, focus=None):
+    para(p, "Guides coming soon: each card will show its steps once the part it guides is finished.", "small", "muted")
+    for name, cards in groups:
+        text(p, name.upper(), "label", "muted")
+        g = row(p, name, gap=12, wrap=True, W="fill", align="min")
+        for t in cards:
+            soon_card(g, t[0], t[1], focus=(name == focus))
+
+
+SMALL = (1040, 760)
+
+
+def sheets3(board):
+    cv = Q.section(board, "Round 3", 3200)
+    Q.sheet_title(cv, "Help, round 3",
+                  "The menu smaller, in proportion over the window. Help comes last: the cards name what they will "
+                  "guide and say Coming soon; no pictures, no wb commands (H11, H12). Keys in the smaller menu (H13).")
+    r = row(cv, "round 3", gap=64, align="min")
+    f = Q.win(r, PG, "H11 · The Guide, cards to come",
+              "1040 × 760 at most, the window around it dimmed. Each card is an icon and the task; its steps are "
+              "written last, once the part it guides is finished, so they describe the window as it then is.")
+    soon_cards(menu(f, "Guide", "Guide", None, size=SMALL), GROUPS)
+    f = Q.win(r, PG, "H12 · The ? from the Notebook",
+              "The Notebook's ? opens the same menu with Keeping outlined.")
+    soon_cards(menu(f, "Guide", "Guide", None, at="Notebook", size=SMALL), GROUPS, focus="Keeping")
+    r = row(cv, "round 3 keys", gap=64, align="min")
+    f = Q.win(r, PG, "H13 · Keys in the smaller menu",
+              "As H8: the keyboard and the list; a row lights its keys (Ctrl+F here). Changing a key stays where "
+              "it is set today (Notebook, Layouts, Commands) until keys can be changed here.")
+    p = menu(f, "Keys", "Keys", "Every key the window understands", size=SMALL)
+    kb = col(p, "keyboard", gap=5, pad=[10, 10, 10, 10], radius=10, fill="sunken", W="hug")
+    for line_ in ("Esc F1 F11", "` 1 2 3 4 5 6 7 8 9 0 - =", "Q W E R T Y U I O P [ ]", "A S D F G H J K L ; '",
+                  "Z X C V B N M , . /", "Ctrl Shift Alt ← →"):
+        rr = row(kb, line_, gap=5)
+        for k in line_.split():
+            on = k in ("F", "Ctrl")
+            b = row(rr, k, pad=[4, 0, 4, 0], radius=6, fill="accent" if on else "surface", stroke="line", sw=1,
+                    W="fixed", mainAlign="center")
+            Q.put(b, 0, 0, 32 if len(k) == 1 else 52)
+            text(b, k, "caption", "bg" if on else "fg")
+    for k, what in (("`", "Open the command field"), ("Ctrl+F", "Find in the pane you last used"),
+                    ("F1", "Help: the Guide")):
+        it = row(p, k, gap=12, pad=[4, 8, 4, 8], radius=8, W="fill", fill="accentSoft" if k == "Ctrl+F" else None)
+        text(it, k, "smallStrong")
+        text(it, what, "small", "muted", W="fill")
+
+
 def both(board):
+    sheets3(board)
     sheets2(board)
     sheets(board)
 

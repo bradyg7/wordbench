@@ -1,68 +1,60 @@
 import { test, expect } from '@playwright/test';
 
-test('Help browses tasks, explains Layouts, and searches each tab', async ({ page }) => {
+// Help is the second half of the Settings menu (design/features/help, 2026-11-13): Guide cards, Keys, Manual.
+
+test('Help opens in the Settings menu: Guide cards, Keys, Manual, one search', async ({ page }, info) => {
+  const phone = info.project.name === 'webkit-phone';
   await page.goto('/?at=NUM.25');
   await page.waitForFunction(() => (window as any).__wbReady);
-  await page.locator('#more').click();
-  await page.getByRole('button', { name: 'Help Guide · Commands · Keys' }).click();
+  await page.keyboard.press('F1');
+  const menu = page.getByRole('dialog', { name: 'Settings and Help' });
+  await expect(menu.locator('.set-heading')).toHaveText('Guide');
+  await expect(menu.locator('.guide-group')).toHaveCount(4);
+  await expect(menu.locator('.guide-card')).toHaveCount(15);
+  // the steps come last: each card names what it will guide, and says so
+  await expect(menu.locator('.guide-card', { hasText: 'Read a chapter' })).toContainText('Coming soon');
+  await expect(menu.locator('.guide-steps')).toHaveCount(0);
 
-  const help = page.locator('.pane-help');
-  const filter = help.getByRole('textbox', { name: 'Search Help' });
-  const index = help.getByRole('navigation', { name: 'Browse Help by task' });
-  await index.getByRole('button', { name: 'Show a live list of Notebook pages' }).click();
-  await expect(help.locator('.guide-entry')).toHaveCount(1);
-  await expect(help.locator('.guide-entry')).toContainText('wb view run');
-  await expect(help.locator('.guide-entry')).toContainText('A Layout saves an arrangement of panes');
+  // Keys: the only keys section; a row lights its keys on the keyboard
+  // narrow (a phone) the sections are a menu; F1 was pressed, so a keyboard is known and Keys is listed
+  const go = (name: string) => phone ? menu.getByRole('combobox', { name: 'Settings section' }).selectOption(name) : menu.getByRole('button', { name }).click();
+  await go('Keys');
+  await expect(menu.locator('.kb')).toBeVisible();
+  await menu.locator('.key-line', { hasText: 'Ctrl+F' }).first().click();
+  await expect(menu.locator('.kb-key.lit')).toHaveText(['F', 'Ctrl']);
 
-  await filter.fill('LIVE LIST');
-  await expect(help.locator('.guide-entry')).toHaveAttribute('data-name', 'views');
-  await filter.fill('');
-  await index.getByRole('button', { name: 'Save and restore pane layouts' }).click();
-  await expect(help.getByRole('tab', { name: 'Commands' })).toHaveAttribute('aria-selected', 'true');
-  await expect(help.locator('details[open]')).toContainText('wb layout list');
-  await help.getByRole('button', { name: 'Browse Help tasks' }).click();
-  await index.getByRole('button', { name: 'Find a command' }).click();
-  await filter.fill('no matches for this');
-  await expect(help.getByText('No command topics match your search.')).toBeVisible();
+  // Manual: what the command field understands
+  await go('Manual');
+  await expect(menu.locator('details.doc summary code', { hasText: /^uses$/ })).toBeVisible();
 
-  await help.getByRole('tab', { name: 'Keys' }).click();
-  await expect(help.getByText('No keyboard shortcuts match your search.')).toBeVisible();
-  await filter.fill('CTRL+F');
-  await expect(help.locator('.key-row')).toContainText('Ctrl+F');
-  await help.getByRole('tab', { name: 'Guide' }).click();
-  await expect(help.getByText('No Guide topics match your search.')).toBeVisible();
+  // one search across settings and help
+  await menu.getByRole('searchbox', { name: phone ? 'Search settings (narrow)' : 'Search settings' }).fill('interlinear');
+  await expect(menu.locator('.guide-card', { hasText: 'The interlinear' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
 });
 
-test('typed Help uses the resolved topic even when Help is already open', async ({ page }) => {
+test('typed Help opens a command in Manual and a topic at its card', async ({ page }) => {
   await page.goto('/?at=NUM.25');
   await page.waitForFunction(() => (window as any).__wbReady);
-  const help = page.locator('.pane-help');
   const run = (line: string) => page.evaluate(command => (window as any).__wb.run(command), line);
-
-  const field = page.getByRole('textbox', { name: 'Command field' });
-  if (await field.isVisible()) {
-    await field.fill('help view');
-    await field.press('Enter');
-  } else {
-    expect(await run('help view')).toMatchObject({ ok: true });
-  }
-  await expect(help.locator('.guide-entry')).toHaveAttribute('data-name', 'views');
+  const menu = page.getByRole('dialog', { name: 'Settings and Help' });
 
   expect(await run('help threads')).toMatchObject({ ok: true });
-  await expect(help.getByRole('tab', { name: 'Commands' })).toHaveAttribute('aria-selected', 'true');
-  await expect(help.locator('details[open] summary code')).toHaveText('threads');
+  await expect(menu.locator('.set-heading')).toHaveText('Manual');
+  await expect(menu.locator('details.doc[open] summary code')).toHaveText('threads');
 
   expect(await run('help The Shelf')).toMatchObject({ ok: true });
-  await expect(help.getByRole('tab', { name: 'Guide' })).toHaveAttribute('aria-selected', 'true');
-  await expect(help.locator('.guide-entry')).toHaveAttribute('data-name', 'shelf');
+  await expect(menu.locator('.set-heading')).toHaveText('Guide');
+  await expect(menu.locator('.guide-card.focus')).toContainText('The Shelf');
+});
 
-  expect(await run('help vie')).toMatchObject({ ok: true });
-  await expect(help.locator('.guide-entry')).toHaveAttribute('data-name', 'views');
-  expect(await run('help t')).toMatchObject({ ok: false });
-  await expect(help.locator('.guide-entry')).toHaveAttribute('data-name', 'views');
-
-  expect(await run('help layout')).toMatchObject({ ok: true });
-  await expect(help.locator('details[open] summary code')).toHaveText('layout');
-  expect(await run('help')).toMatchObject({ ok: true });
-  await expect(help.getByRole('navigation', { name: 'Browse Help by task' })).toBeVisible();
+test('the ? in a pane head opens Help at that pane’s cards', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'a phone shows panes as sheets, without a tab strip');
+  await page.goto('/?at=NUM.25');
+  await page.waitForFunction(() => (window as any).__wbReady);
+  await page.getByRole('button', { name: 'Notebook', exact: true }).click();
+  await page.getByRole('button', { name: 'Help with this' }).first().click();
+  const menu = page.getByRole('dialog', { name: 'Settings and Help' });
+  await expect(menu.locator('.guide-card.focus').first()).toBeVisible();
 });

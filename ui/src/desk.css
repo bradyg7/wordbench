@@ -1145,20 +1145,46 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .set-close { position: absolute; top: 12px; right: 14px; z-index: 2; font-size: 22px; width: 36px; height: 36px; }
 /* The Settings menu, laid out as a settings panel (the person, 2026-11-13, after Claude's own): a title bar; the
    search and tabs down the left, in groups, still; the chosen tab on the right with its title, scrolling. */
-.set-modal { position: relative; width: min(1280px, calc(100vw - 48px)); height: min(960px, calc(100vh - 48px)); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 64px #0005; overflow: hidden; }
+/* smaller, so it sits in proportion over the window instead of filling it (the person, 2026-11-13) */
+.set-modal { position: relative; width: min(1040px, calc(100vw - 96px)); height: min(760px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 64px #0005; overflow: hidden; }
 .set-modal-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0; }
 .set-titlebar { flex: none; display: flex; align-items: center; padding: 16px 64px 15px 20px; border-bottom: 1px solid var(--line); }
 .set-title { margin: 0; font: var(--type-body-strong); font-size: 17px; }
 .set-modal .set-close { top: 9px; right: 12px; }
 .set-modal .set-wrap { flex: 1; min-height: 0; display: flex; flex-direction: row; align-items: stretch; gap: 0; padding: 0; }
-.set-modal .set-nav { width: 264px; flex: none; position: static; display: flex; flex-direction: column; flex-wrap: nowrap; gap: 2px; padding: 20px; border-right: 1px solid var(--line); overflow: hidden; }
+.set-modal .set-nav { width: 224px; flex: none; position: static; display: flex; flex-direction: column; flex-wrap: nowrap; gap: 1px; padding: 16px; overflow-y: auto; border-right: 1px solid var(--line); overflow: hidden; }
 .set-search { display: flex; align-items: center; gap: 8px; padding: 0 10px; margin-bottom: 12px; border-radius: 8px; background: var(--sunken); color: var(--muted); }
 .set-search .set-find { flex: 1; min-width: 0; height: 36px; margin: 0; border: 0; background: none; box-shadow: none; padding: 0; }
-.set-modal .set-tab { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; border-radius: 8px; font: var(--type-body); color: var(--fg); text-align: left; background: none; }
+.set-modal .set-tab { display: flex; align-items: center; gap: 12px; width: 100%; padding: 7px 12px; border-radius: 8px; font: var(--type-body); color: var(--fg); text-align: left; background: none; }
 .set-modal .set-tab:hover { background: var(--sunken); }
 .set-modal .set-tab.on { color: var(--fg);  background: color-mix(in srgb, var(--fg) 10%, transparent); }
 .set-sep { border: 0; border-top: 1px solid var(--line); margin: 10px 12px; }
-.set-modal .set-body { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; padding: 22px 28px 32px; display: block; }
+.set-modal .set-body { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; padding: 20px 24px 28px; display: block; }
+.set-group-label { margin: 14px 12px 4px; padding-top: 12px; border-top: 1px solid var(--line); font: var(--type-label); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+/* Help: the Guide as cards, one per thing done, in groups (design/features/help; steps come last) */
+.guide-group { margin: 6px 0 18px; }
+.guide-group-name { margin: 0 0 8px; font: var(--type-label); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.guide-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.guide-card { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.guide-card.focus { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.guide-card-head { display: flex; align-items: center; gap: 8px; color: var(--accent); }
+.guide-card-head h5 { margin: 0; font: var(--type-small-strong); color: var(--fg); }
+.guide-steps { margin: 0; padding-left: 18px; font: var(--type-small); display: grid; gap: 4px; }
+.guide-soon { font: var(--type-caption); }
+.guide-soon-note { margin: 0 0 14px; }
+/* Help: Keys, the keyboard and the list (H8) */
+.kb-wrap { padding: 4px 0 14px; overflow-x: auto; }
+.kb { display: inline-flex; flex-direction: column; gap: 5px; padding: 12px; border-radius: 10px; background: var(--sunken); }
+.kb-row { display: flex; gap: 5px; }
+.kb-key { min-width: 32px; height: 30px; padding: 0 6px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font: var(--type-caption); color: var(--fg); }
+.kb-key.wide { min-width: 52px; }
+.kb-key.used { background: var(--accent-soft); color: var(--accent); }
+.kb-key.lit { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.key-line { display: flex; align-items: center; gap: 14px; width: 100%; padding: 7px 8px; border-radius: 8px; text-align: left; background: none; }
+.key-line:hover { background: var(--sunken); }
+.key-line.on { background: var(--accent-soft); }
+.key-line .set-kbd { min-width: 110px; text-align: center; }
+.key-note { margin-top: 12px; }
 .set-heading { margin: 0 0 6px; font: var(--type-body-strong); font-size: 17px; }
 .set-heading:not(:first-child) { margin-top: 26px; }
 .set-modal .set-row { padding: 18px 0; }

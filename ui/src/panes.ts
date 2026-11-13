@@ -6,6 +6,7 @@ import { Dock, type Pane, type Side } from './dock';
 import { layers } from './layers';
 import { closeSheet, compact, hideCard, openSheet, sheetOpen, showCard, toast } from './sheets';
 import { button, h, hoverMode, icon, linkedText, placeGo, placePill, popMenu, refChoice } from './ui';
+import { openSettings } from './settings';
 import { openNotebook, openThreadPage, placeMenu, remove as removeNote, takeOff } from './notebook';
 
 export let dock: Dock;
@@ -20,6 +21,7 @@ function newest(el: HTMLElement): () => boolean {
 }
 export function initPanes(host: HTMLElement) {
   dock = new Dock(host);
+  dock.help = kind => openSettings('guide', HELP_GROUP[kind] ?? '');
   dock.backLabel = () => here().label;
 }
 
@@ -810,6 +812,8 @@ export const KEYS: [string, string][] = [
   ['Ctrl+click a reference', 'Straight to the reader (a click asks: the reader, or a tab)'],
   ['Ctrl+= / Ctrl+-', 'Text size'],
   ['Esc', 'Close a card, a menu or the field'],
+  ['F1', 'Help: the Guide (the ? in a pane’s head opens it at that pane’s cards)'],
+  ['Ctrl+,', 'Settings'],
   ['F11', 'Full screen: the whole window (again to leave it)'],
   ['Alt+click a word', 'The interlinear for its verse'],
   ['Ctrl+J', 'Quick capture: a small box at the verse you clicked, from anywhere (Enter saves, Ctrl+Enter keeps writing in the Notebook; the key is in Notebook settings)'],
@@ -817,173 +821,25 @@ export const KEYS: [string, string][] = [
   ['In a note', 'Ctrl+B bold, Ctrl+I italics, [[ a link to another note; Esc or Ctrl+Enter: done'],
 ];
 
-let guideCache: any = null;
-async function guideEntries(): Promise<any[]> {
-  guideCache ??= await wb(['guide', '--json']);
-  return guideCache.entries;
-}
-
-type HelpTab = 'guide' | 'commands' | 'keys';
-
-const HELP_TASKS: [string, [string, HelpTab, string][]][] = [
-  ['Find and open', [
-    ['Show a live list of Notebook pages', 'guide', 'views'],
-  ]],
-  ['Write and organize', [
-    ['Start a page from a template', 'guide', 'templates'],
-    ['Keep related places together', 'guide', 'threads'],
-    ['Write and track questions', 'guide', 'questions'],
-  ]],
-  ['Arrange the window', [
-    ['Save and restore pane layouts', 'commands', 'layout'],
-  ]],
-  ['Commands and keys', [
-    ['Find a command', 'commands', ''],
-    ['Find a keyboard shortcut', 'keys', ''],
-  ]],
-  ['More Guide topics', [
-    ['The Shelf', 'guide', 'shelf'],
-    ['Word blocks', 'guide', 'words'],
-  ]],
-];
-
-/** Typed Help arrives resolved by the parser, which checks the manual before the Guide. */
+/** Help is the second half of the Settings menu (design/features/help, 2026-11-13). Typed Help arrives resolved by
+ * the parser, which checks the manual before the Guide: a command opens in Manual, a Guide topic at its cards. */
 export function openHelp(topic = '') {
-  const existing = dock.find('help');
-  const fill = async (el: HTMLElement) => {
-    const [m, guide] = await Promise.all([manual(), guideEntries().catch(() => [])]);
-    if (dock.find('help')?.refresh !== refresh) return;
-    let selected = topic;
-    let tab: HelpTab = topic && m.docs.some((d: any) => d.name === topic) ? 'commands' : 'guide';
-    const tabs = h('div', 'seg small help-tabs');
-    tabs.setAttribute('role', 'tablist');
-    const filter = h('input', 'field help-filter') as HTMLInputElement;
-    filter.setAttribute('aria-label', 'Search Help');
-    filter.value = selected;
-    const body = h('div', 'help-body');
-    body.tabIndex = -1;
-    el.replaceChildren(tabs, filter, body);
-    const selectTopic = (next: HelpTab, name: string) => {
-      tab = next;
-      selected = name;
-      filter.value = name;
-      draw();
-      body.focus();
-    };
-    const tabBtn = (k: HelpTab, label: string) => {
-      const b = button(`help-tab-${k}`, label, () => {
-        if (tab === k) return;
-        tab = k;
-        if (selected) filter.value = '';
-        selected = '';
-        draw();
-      });
-      b.dataset.tab = k;
-      b.setAttribute('role', 'tab');
-      tabs.append(b);
-    };
-    tabBtn('guide', 'Guide');
-    tabBtn('commands', 'Commands');
-    tabBtn('keys', 'Keys');
-    const has = (o: any, f: string) => JSON.stringify(o).toLowerCase().includes(f);
-    const draw = () => {
-      for (const b of tabs.children) {
-        const active = (b as HTMLElement).dataset.tab === tab;
-        b.classList.toggle('on', active);
-        b.setAttribute('aria-selected', String(active));
-      }
-      const f = filter.value.trim().toLowerCase();
-      filter.placeholder = tab === 'guide' ? 'A task, topic, or word' : tab === 'commands' ? 'A command or a word' : 'A key or a word';
-      body.replaceChildren();
-      if (selected || tab !== 'guide') {
-        body.append(button('link-btn', 'Browse Help tasks', () => selectTopic('guide', '')));
-      }
-      if (tab === 'guide') {
-        if (!f) {
-          const index = h('nav', 'help-index');
-          index.setAttribute('aria-label', 'Browse Help by task');
-          for (const [group, tasks] of HELP_TASKS) {
-            const links = h('div', 'wrap');
-            for (const [label, next, name] of tasks) {
-              if (next === 'guide' && !guide.some(g => g.name === name)) continue;
-              links.append(button('btn small', label, () => selectTopic(next, name)));
-            }
-            if (links.childElementCount) index.append(h('h3', 'label', group), links);
-          }
-          body.append(index);
-          return;
-        }
-        const hits = guide.filter(g => selected ? g.name === selected :
-          has(g, f) || HELP_TASKS.some(([, tasks]) => tasks.some(([label, next, name]) =>
-            next === 'guide' && name === g.name && label.toLowerCase().includes(f))));
-        for (const g of hits) {
-          const sec = h('section', 'guide-entry');
-          sec.dataset.name = g.name;
-          sec.append(h('h3', 'guide-title', g.title));
-          for (const p of g.parts) sec.append(h('div', 'guide-head', p.head), h('p', 'small guide-text', p.text));
-          body.append(sec);
-        }
-        if (!hits.length) body.append(h('p', 'muted', 'No Guide topics match your search.'));
-        return;
-      }
-      if (tab === 'keys') {
-        const hits = KEYS.filter(([k, w]) => (k + ' ' + w).toLowerCase().includes(f));
-        for (const [k, what] of hits) {
-          const r = h('div', 'key-row');
-          r.append(h('kbd', '', k), h('span', '', what));
-          body.append(r);
-        }
-        if (!hits.length) body.append(h('p', 'muted', 'No keyboard shortcuts match your search.'));
-        return;
-      }
-      body.append(h('p', 'muted small', 'Commands for the command field. Backtick (`) opens it. In a terminal, use wb help for the terminal command list.'));
-      let found = false;
-      for (const [sec, title] of m.sections) {
-        const docs = m.docs.filter((d: any) => d.section === sec && (selected ? d.name === selected : !f || has(d, f)));
-        if (!docs.length) continue;
-        found = true;
-        body.append(h('div', 'label', title));
-        for (const d of docs) {
-          const det = h('details', 'doc');
-          det.open = !!f && (d.name === f || docs.length === 1);
-          const sum = h('summary');
-          sum.append(h('code', '', d.name), document.createTextNode(` ${d.what}`));
-          det.append(sum);
-          for (const u of d.usage) det.append(h('code', 'doc-usage', u));
-          for (const x of d.details) det.append(h('p', 'small', x));
-          for (const [typed, what] of d.examples || []) {
-            const ex = h('div', 'doc-example');
-            ex.append(button('btn small', typed, () => app.run(typed)), h('span', 'muted small', ` ${what}`));
-            det.append(ex);
-          }
-          body.append(det);
-        }
-      }
-      if (!found) body.append(h('p', 'muted', 'No command topics match your search.'));
-    };
-    filter.oninput = () => { selected = ''; draw(); };
-    draw();
-  };
-  const refresh = (): Promise<void> | undefined => {
-    const pane = dock.find('help');
-    if (pane) return fill(pane.el).catch(e => {
-      if (pane.refresh === refresh) pane.el.replaceChildren(h('p', 'error', String(e)));
-    });
-  };
-  const pane = dock.open('help', 'Help', 'help', MINE, fill);
-  pane.refresh = refresh;
-  if (existing) void refresh();
-  return pane;
+  void manual().then(m => {
+    const t = topic.trim();
+    if (t && m.docs.some((d: any) => d.name === t)) openSettings('manual', t);
+    else openSettings('guide', t);
+  }, () => openSettings('guide', topic));
 }
+
+/** Which Guide group a pane's ? opens at. */
+const HELP_GROUP: Record<string, string> = {
+  notebook: 'keeping', note: 'keeping', thread: 'keeping', threads: 'keeping', shelf: 'keeping', today: 'keeping', marked: 'keeping',
+  uses: 'looking up', search: 'looking up', find: 'looking up', interlinear: 'looking up', strong: 'looking up', bdb: 'looking up',
+  def: 'looking up', lexiconc: 'looking up', forms: 'looking up', count: 'looking up', near: 'looking up', versecard: 'looking up',
+  documents: 'making', doc: 'making', lesson: 'making',
+  passage: 'reading', reader2: 'reading', place: 'reading', plans: 'reading',
+};
 
 export function openKeys() {
-  return dock.open('keys', 'Keys', 'keys', MINE, async el => {
-    el.replaceChildren();
-    head(el, 'Keys', 'The keyboard in this window');
-    for (const [k, what] of KEYS) {
-      const r = h('div', 'key-row');
-      r.append(h('kbd', '', k), h('span', '', what));
-      el.append(r);
-    }
-  });
+  return openSettings('keys');
 }

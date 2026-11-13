@@ -1,6 +1,6 @@
 # Help, the Guide and the manual
 
-**State:** accepted (2026-11-13) · **Sheets:** `python design/features/help/help.py` writes `help.figcraft` and
+**State:** accepted (2026-11-13; steps come last) · **Sheets:** `python design/features/help/help.py` writes `help.figcraft` and
 `help.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The Help pane: Guide (`wb guide`), Commands (`wb manual`) and Keys. 0050: it is plain text.
@@ -45,6 +45,12 @@ Round 1 reviewed 2026-11-13: A's cards and B's ? and keys, inside the Settings m
   type. Today's topics (templates, shelf, views, threads, questions, words) become cards; the templates card says
   what a template asks for and what it fills in (76bf).
 - **The Try button is postponed.**
+- **2026-11-13 (the person, round 2 review): Help comes last.** The cards and Keys are liked and built now, but a
+  card's steps are written only once the part it guides is finished, so the Guide is friendly and correct about the
+  window as it then is. Until then each card names its task and says Coming soon. Cards carry no pictures and no `wb`
+  commands. The Settings menu is smaller (1040 × 760 at most) so it sits in proportion over the window.
+- **Changing a key** stays where it is set today (quick capture in Notebook, a layout's key in Layouts, a kept
+  command's in Commands) until keys can be changed in Keys; Keys says where.
 
 ## Round 2 (2026-11-13)
 
@@ -53,9 +59,15 @@ Round 1 reviewed 2026-11-13: A's cards and B's ? and keys, inside the Settings m
 - **H9** no keyboard: Help reads Guide · Manual, cards without keys.
 - **H10** the Notebook's ? opens the menu at Keeping.
 
+## Round 3 (2026-11-13)
+
+- **H11, H12** the smaller menu; cards with an icon, the task and Coming soon; the Notebook's ? outlines Keeping.
+- **H13** Keys in the smaller menu, a row lighting its keys.
+
 ## Open questions
 
-- Are these 15 cards the right ones, and are their steps right? (round 2 review)
+- The cards' steps, written last, checked against the finished window (the 15 tasks may change by then).
+- Change… in Keys: when keys can be changed in one place.
 - Today Ctrl+Shift+J keeps a finding (`ui/src/panes.ts` KEYS); findings decided Ctrl+Shift+F. Does Ctrl+Shift+J go,
   or stay as a second key?
 
@@ -64,7 +76,8 @@ Round 1 reviewed 2026-11-13: A's cards and B's ? and keys, inside the Settings m
 | Round | Date | Windows | What it tried | Review |
 |---|---|---|---|---|
 | 1 | 2026-11-12 | see Directions | the first drawing | 2026-11-13: cards and keys, in the Settings menu |
-| 2 | 2026-11-13 | H6-H10 | the one menu, 15 cards, Keys, no keyboard, ? | waiting |
+| 2 | 2026-11-13 | H6-H10 | the one menu, 15 cards, Keys, no keyboard, ? | 2026-11-13: cards and keys liked; steps last |
+| 3 | 2026-11-13 | H11-H13 | smaller menu, cards coming soon, Keys | built on feature/help |
 
 ## Data the sheets show
 
@@ -77,12 +90,15 @@ Scripture and lookups are fetched from the database, never typed. Names of pages
 
 ## What the build must satisfy
 
-- [ ] Help is a heading in the Settings menu's section list (Guide, Keys, Manual); no separate window; one Find.
-- [ ] Keys is the only keys section: a keyboard drawing, findable, changeable; hidden with no keyboard.
-- [ ] The ? in each pane's head and F1 open the menu at the right Guide cards.
-- [ ] Guide cards: task title, picture from the design sheet, steps, key and `wb` command; four groups.
-- [ ] No Try button yet.
-- [ ] The Guide's text stays in `wb guide`, so the window and the terminal say the same.
+- [x] Help is a heading in the Settings menu's section list (Guide, Keys, Manual); no separate window; one Find.
+- [x] The menu is at most 1040 × 760.
+- [x] Keys is the only keys section: a keyboard drawing and the list, findable; a row lights its keys; hidden with no
+      keyboard until a key is pressed.
+- [ ] Keys: Change… on each row (waits for keys changeable in one place).
+- [x] The ? in each pane's head and F1 open the menu at the right Guide cards.
+- [x] Guide cards: icon and task, Coming soon, four groups; no pictures, no `wb` commands, no Try.
+- [ ] Guide cards' steps, written last (Help comes last).
+- [ ] The Guide's text stays in `wb guide`, so the window and the terminal say the same (when the steps are written).
 - [ ] The reader's place is kept.
 
 ## Overlaps
