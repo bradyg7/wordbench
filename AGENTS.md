@@ -46,6 +46,10 @@ a change alters expected behavior, document the contract and verify it with Rust
   *accepted*. [`design/features/coverage.md`](design/features/coverage.md) lists every area of the app and the folder
   that designs it; a new button or command gets a row there, and its folder, first. Bug fixes that keep the accepted
   design need no new round.
+- **Each feature is built on its own branch** (the person, 2026-11-13). Building an accepted design folder starts a
+  branch from an up-to-date `main`, named `feature/<folder>` (`feature/trash`), and nothing else goes on it. It reaches
+  `main` by a pull request, after the tests, only with the person's go-ahead. Work found on the wrong branch moves to its
+  own before it is committed.
 - **Every core action is reachable from a `wb` command.** When wb-core gains an action, `wb` gains a command for it, so the
   person (or an AI) can do from a terminal anything the window does.
 

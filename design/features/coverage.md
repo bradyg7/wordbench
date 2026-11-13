@@ -30,7 +30,8 @@ A new button or command gets a row here, and its folder, before it is built.
 | Search, uses, count, near, forms | asking and narrowing a search | [search](search/README.md) | exploring |
 | Reading plans and the reading log | a plan's day, starting a plan, what was read | [reading-plans](reading-plans/README.md) | exploring |
 | Lessons and documents (Word, PDF, Present) | the builder, the viewer, Looks | [documents](documents/README.md) | exploring |
-| Trash | Undo, the 7 days, deleting several | [trash](trash/README.md) | exploring |
+| Trash | Undo, the 7 days, Empty trash, the way in, deleting a block | [trash](trash/README.md) | accepted |
+| Updates | the notice that a new version is ready, what changed, install and restart | [updates](updates/README.md) | exploring |
 | Findings | the box, the pane, `!` in the field | [findings](findings/README.md) | exploring |
 | Settings, layout, views | italic words, scroll bars, layouts, saved lists | [settings](settings/README.md) | exploring |
 | Help, guide, manual | Guide cards, commands to try, keys | [help](help/README.md) | exploring |

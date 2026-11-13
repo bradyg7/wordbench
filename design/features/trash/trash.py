@@ -94,5 +94,97 @@ def sheets(board):
     direction_b(cv)
 
 
+# ---- round 2 (2026-11-13): T1 kept; Empty trash; the way to the Trash; deleting a block (9ed7) ----------------------
+
+def empty_trash(cv):
+    r = row(cv, "empty", gap=64, align="min")
+    f = Q.win(r, PG, "T5 · Empty trash",
+              "The Trash as today (T1), with Empty trash at its head. It erases everything listed at once, after a "
+              "question that names how many and says it cannot be undone. A wb command does the same.")
+    w = K.app(f, on="Notebook")
+    notebook(f, w)
+    p = K.panel(f, w + 380, TB, W - w - 380, H - TB, "Trash", "Erased after 7 days · 3 waiting")
+    b = row(p, "head buttons", gap=8, W="fill")
+    spacer(b)
+    P.button(b, "Empty trash", "ghost", size="sm")
+    for i, (n, when, left) in enumerate(ITEMS):
+        it = K.line(p, n, when, "trash", right=left)
+        P.button(it, "Put back", "secondary", size="sm")
+        # each page's own erase: a trash button, red on hover (drawn hovered on the first row)
+        x = row(it, "erase", pad=[6, 6, 6, 6], radius=6, W="hug", fill="#FDE8E8" if i == 0 else None)
+        icon(x, "trash", 18, "#C62828" if i == 0 else "muted")
+    K.note(f, "Each row's trash button erases that one page (asks first). It is a real button: the pointer, and red "
+           "on hover or focus. Empty trash erases them all.", w + 420, H - 150)
+
+    f = Q.win(r, PG, "T5 · Empty trash, asked first",
+              "Empty trash and a row's trash button both ask first; the question names how many.")
+    w = K.app(f, on="Notebook")
+    notebook(f, w)
+    m = Q.modal(f, 440, title="Erase 3 items now?", sub="They are removed from the disk and cannot be put back.")
+    Q.buttons(m, ("Cancel", "secondary"), ("Erase 3", "primary"))
+
+
+def way_in(cv):
+    r = row(cv, "way in", gap=64, align="min")
+    f = Q.win(r, PG, "T6 · The Trash at the foot of the Notebook list",
+              "A quiet line under the Notebook groups: Trash and a count, muted, shown only when something is "
+              "waiting. Easy to find, never above the person's own pages.")
+    w = K.app(f, on="Notebook")
+    p = notebook(f, w)
+    spacer(p)
+    K.rule(p)
+    K.line(p, "Trash", None, "trash", right="3", muted=True)
+
+    f = Q.win(r, PG, "T7 · The Trash in the Notebook menu and the command field",
+              "Nothing in the list: Trash sits in the Notebook's … menu, and typing trash in the command field "
+              "opens it. The cleanest list; one more step to find it.")
+    w = K.app(f, on="Notebook")
+    notebook(f, w)
+    m = K.floating(f, "menu", w + 200, TB + 50, 220, gap=2, pad=(6, 6, 6, 6))
+    for n, ic in (("New page", "plus"), ("Templates", "docs"), ("Trash · 3", "trash")):
+        K.line(m, n, None, ic)
+
+    f = Q.win(r, PG, "T8 · The toast points to the Trash",
+              "The Undo toast says where the page went: Undo for 10 seconds, and Trash opens it there. A missed "
+              "toast is not the end: the page waits 7 days. Goes with T6 or T7.")
+    w = K.app(f, on="Notebook")
+    notebook(f, w)
+    t = toast(f, w + 400, H - 90, "Covenant of peace moved to the Trash", "Undo")
+    P.button(t, "Trash", "ghost", size="sm")
+
+
+def delete_block(cv):
+    r = row(cv, "block", gap=64, align="min")
+    f = Q.win(r, PG, "T9 · Deleting a block",
+              "9ed7: the block's grab handle (shown on hover) opens a small menu with Delete; Backspace in an empty "
+              "block removes it too. The same Undo toast as a page. A block is part of its page, so it does not go "
+              "to the Trash: Undo brings it back.")
+    w = K.app(f, on="Notebook")
+    notebook(f, w)
+    p = K.panel(f, w + 380, TB, W - w - 380, H - TB, "Covenant of peace", None)
+    para(p, "A paragraph block of the page.", "body")
+    K.line(p, "A scripture block · Numbers 25:12", None, "drag", on=True)
+    para(p, "Another paragraph block.", "body")
+    m = K.floating(f, "block menu", w + 420, TB + 170, 200, gap=2, pad=(6, 6, 6, 6))
+    for n, ic in (("Move up", "back"), ("Move down", "down"), ("Delete", "trash")):
+        K.line(m, n, None, ic)
+    toast(f, w + 420, H - 90, "Block deleted", "Undo")
+
+
+def sheets2(board):
+    cv = Q.section(board, "Round 2", 3200)
+    Q.sheet_title(cv, "Trash, round 2",
+                  "T1 kept (2026-11-13). Empty trash (T5); the way to the Trash: the foot of the list (T6), the menu "
+                  "and command field (T7), the toast (T8); deleting a block (T9).")
+    empty_trash(cv)
+    way_in(cv)
+    delete_block(cv)
+
+
+def both(board):
+    sheets2(board)
+    sheets(board)
+
+
 if __name__ == "__main__":
-    K.run_board(HERE, "Trash", sheets)
+    K.run_board(HERE, "Trash", both)
