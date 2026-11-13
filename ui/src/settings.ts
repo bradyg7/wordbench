@@ -5,7 +5,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { api, inApp, wb } from './api';
 import { customize as customizeToolbar } from './toolbar';
-import { dock, KEYS as KEY_LIST } from './panes';
+import { KEYS as KEY_LIST } from './panes';
 import { toast } from './sheets';
 import { h, hoverMode, setHover } from './ui';
 import { section as layoutsSection } from './layouts';
@@ -186,7 +186,41 @@ export function openSettings(section: string = '') {
   const want = section.trim().toLowerCase();
   const s = want ? (OLD[want.split(' ')[0]] ?? SECTIONS.find(x => x.toLowerCase().startsWith(want))) : undefined;
   if (s) current = s;
-  return dock.open('settings', 'Settings', 'settings', 'right', el => draw(el));
+  // Settings is its own menu, pulled to the front over the blurred app (the person, 2026-11-13): a customizer, not
+  // a pane of the study. One at a time; Esc, × or a click outside closes it.
+  let back = document.querySelector<HTMLElement>('.set-backdrop');
+  if (back) { const el = back.querySelector<HTMLElement>('.set-pane')!; draw(el); return el; }
+  const before = document.activeElement as HTMLElement | null;
+  back = h('div', 'set-backdrop');
+  const box = h('div', 'set-modal');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', 'Settings');
+  const x = h('button', 'icon-btn set-close', '×');
+  x.title = 'Close Settings (Esc)'; x.setAttribute('aria-label', 'Close Settings');
+  const el = h('div', 'set-modal-body');
+  box.append(x, el);
+  back.append(box);
+  const app = [...document.body.children].filter(c => c !== back) as HTMLElement[];
+  const close = () => {
+    document.removeEventListener('keydown', onKey, true);
+    for (const c of app) c.inert = false;
+    back!.remove();
+    before?.focus?.();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape') return;
+    if ((e.target as HTMLElement).closest?.('.menu-list, .popmenu')) return;
+    e.preventDefault(); e.stopPropagation(); close();
+  };
+  x.onclick = close;
+  back.onpointerdown = e => { if (e.target === back) close(); };
+  document.addEventListener('keydown', onKey, true);
+  document.body.append(back);
+  for (const c of app) c.inert = true;
+  draw(el);
+  x.focus();
+  return el;
 }
 
 function draw(el: HTMLElement, query = '') {

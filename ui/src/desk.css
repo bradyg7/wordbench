@@ -1140,6 +1140,13 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .lay-pic .lay-pane { background: var(--surface); }
 .lay-pic .lay-float { box-shadow: 0 2px 6px #0003; border-color: var(--line); }
 .lay-build-panes { display: flex; flex-direction: column; }
+/* Settings: its own menu in the centre, the app blurred behind (the person, 2026-11-13) */
+.set-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 45%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.set-modal { position: relative; width: min(1080px, calc(100vw - 48px)); height: min(780px, calc(100vh - 48px)); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 64px #0005; overflow: hidden; }
+.set-modal-body { flex: 1; min-height: 0; overflow: auto; padding: 20px 28px 28px; }
+.set-modal .pane-head { padding-right: 44px; }
+.set-close { position: absolute; top: 12px; right: 14px; z-index: 2; font-size: 22px; width: 36px; height: 36px; }
+@media (max-width: 600px) { .set-modal { width: 100vw; height: 100vh; border-radius: 0; border: 0; } .set-modal-body { padding: 16px; } }
 /* Settings reflows instead of squeezing (design/features/settings C1′): a container, so a narrow pane (split, floating)
    gets a menu for the sections, a search icon for Find, and rows that stack; text keeps its size. Wide: the sections
    are a column on the left. */

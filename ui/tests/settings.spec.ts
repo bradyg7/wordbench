@@ -9,6 +9,10 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
   await page.getByRole('button', { name: /^Settings/ }).click();
   const pane = page.locator('.set-pane');
   await expect(pane).toBeVisible();
+  // its own menu in the centre, over the app (not a pane in the dock)
+  await expect(page.locator('.set-backdrop')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+  if (info.project.name !== 'webkit-phone') expect((await pane.evaluate(el => el.clientWidth)) >= 720).toBe(true);
 
   const names = ['Reading', 'Theme', 'Notebook', 'Layouts', 'Commands', 'Keys', 'Study folder', 'Documents'];
   const menu = pane.getByRole('combobox', { name: 'Settings section' });
@@ -68,4 +72,8 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
     }).filter(x => x && x.w < Math.min(200, x.row - 1)));
     expect(squeezed, name).toEqual([]);
   }
+
+  // Esc closes it and the app is usable again
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.set-backdrop')).toHaveCount(0);
 });

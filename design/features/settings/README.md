@@ -19,7 +19,7 @@ Round 1 reviewed 2026-11-13; round 2 draws every tab, today and planned, and the
 | Settings found in the code | F1, F2 (Documents tab), F3 (candidates) | |
 | A saved list | S5 | |
 | Every tab | Reading, Theme, Notebook, Layouts, Commands, Keys, Study folder · planned | |
-| The real conditions | C1′ split, reflowed; C2 floating and narrow; C3 years of study | C1 (text squeezed when split) |
+| The real conditions | a centred menu over the blurred app (2026-11-13); C3 years of study | C1, C1′, C2 (Settings is no longer a pane) |
 
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
@@ -62,6 +62,11 @@ Round 1 reviewed 2026-11-13; round 2 draws every tab, today and planned, and the
 
 ## Decisions
 
+- **2026-11-13 (the person, after using the build):** Settings is not a pane or a tab like the study's. It is its own
+  menu, pulled to the front in the centre of the window, with the rest of the app blurred behind it. It is a
+  customizer, apart from the study tool, so it is fitted to the screen once instead of designed for every pane size.
+  Every feature already in Settings stays. Supersedes C1, C1′ and C2 (Settings among tabs, split, floating); the
+  reflow stays only for a phone-width screen.
 - **2026-11-13 (the person):** not every design is a setting. Scroll bars are a design choice for the whole app (thin,
   hidden until used, no arrows: cd59), not a toggle; S3 is declined. Full screen is an action (⋯ menu, F11), not a
   setting.
