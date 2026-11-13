@@ -7,7 +7,7 @@ import { api, inApp, wb } from './api';
 import { customize as customizeToolbar } from './toolbar';
 import { KEYS as KEY_LIST } from './panes';
 import { toast } from './sheets';
-import { h, hoverMode, setHover } from './ui';
+import { h, hoverMode, icon, setHover } from './ui';
 import { section as layoutsSection } from './layouts';
 import { form, kept, loadKept, remove as removeKept, run as runKept, save as saveKept, topUsed, type Kept } from './mycommands';
 import { perf } from './perf';
@@ -223,53 +223,95 @@ export function openSettings(section: string = '') {
   return el;
 }
 
+/** Each tab's icon and the groups the list is split into (as a settings panel: lines between groups). */
+const ICON_OF: Record<Section, string> = {
+  Reading: 'book', Theme: 'eye', Notebook: 'notebook', Layouts: 'sidebar', Commands: 'prompt', Keys: 'lines',
+  'Study folder': 'folder', Documents: 'file',
+};
+const GROUPS: Section[][] = [['Reading', 'Theme'], ['Notebook', 'Layouts', 'Commands', 'Keys'], ['Study folder', 'Documents']];
+
+/** The Settings menu: a title bar, the search and tabs down the left (still), the chosen tab on the right (scrolls).
+ *  Built once per opening; typing in the search only filters (the person, 2026-11-13: it froze on every letter, because
+ *  each letter rebuilt the menu and asked every tab for its rows again). */
 function draw(el: HTMLElement, query = '') {
   el.replaceChildren();
-  const head = h('header', 'pane-head');
-  head.append(h('h2', 'pane-title', 'Settings'), h('div', 'pane-sub', 'Saved as you make each change'));
-  const find = h('input', 'field set-find') as HTMLInputElement;
-  find.placeholder = 'Find a setting';
-  find.value = query;
-  // narrow (C1′): the sections become a menu and Find a search icon that opens the field; rows stack (desk.css)
-  const finder = h('button', 'icon-btn set-find-toggle', '⌕');
-  finder.title = 'Find a setting'; finder.setAttribute('aria-label', finder.title);
-  finder.onclick = () => { head.classList.toggle('finding'); if (head.classList.contains('finding')) find.focus(); };
-  if (query) head.classList.add('finding');
-  head.append(find);
   el.classList.add('set-pane');
-  el.append(head);
+  const bar = h('header', 'set-titlebar');
+  bar.append(h('h2', 'set-title', 'Settings'));
+  el.append(bar);
+
+  const find = h('input', 'field set-find') as HTMLInputElement;
+  find.type = 'search';
+  find.placeholder = 'Search';
+  find.setAttribute('aria-label', 'Search settings');
+  find.value = query;
+
+  // narrow (a phone): the tabs become a menu above the settings, with the same search
   const menu = h('select', 'field set-nav-menu') as HTMLSelectElement;
   menu.setAttribute('aria-label', 'Settings section');
   for (const name of SECTIONS) { const o = h('option', '', name) as HTMLOptionElement; o.value = name; o.selected = name === current; menu.append(o); }
-  menu.onchange = () => { current = menu.value as Section; draw(el); };
-  const bar = h('div', 'set-narrow-bar');
-  bar.append(menu, finder);
-  el.append(bar);
+  const narrow = h('div', 'set-narrow-bar');
+  const find2 = h('input', 'field') as HTMLInputElement;
+  find2.type = 'search'; find2.placeholder = 'Search'; find2.setAttribute('aria-label', 'Search settings (narrow)');
+  narrow.append(menu, find2);
+  el.append(narrow);
+
   const wrap = h('div', 'set-wrap');
   const nav = h('nav', 'set-nav');
+  nav.setAttribute('aria-label', 'Settings sections');
+  const searchBox = h('div', 'set-search');
+  searchBox.append(icon('search', 15), find);
+  nav.append(searchBox);
+  const buttons = new Map<Section, HTMLButtonElement>();
+  GROUPS.forEach((g, i) => {
+    if (i) nav.append(h('hr', 'set-sep'));
+    for (const name of g) {
+      const b = h('button', 'set-tab') as HTMLButtonElement;
+      b.append(icon(ICON_OF[name], 17), h('span', '', name));
+      b.onclick = () => { find.value = ''; find2.value = ''; current = name; menu.value = name; show(); };
+      buttons.set(name, b);
+      nav.append(b);
+    }
+  });
   const body = h('div', 'set-body');
   wrap.append(nav, body);
   el.append(wrap);
-  const rebuild = () => draw(el, find.value);
-  find.oninput = () => rebuild();
-  for (const name of SECTIONS) {
-    const b = h('button', name === current && !query ? 'on' : '', name);
-    b.onclick = () => { current = name; draw(el); };
-    nav.append(b);
-  }
-  void (async () => {
-    if (!query) { body.append(...(await section(current, rebuild))); return; }
-    // a search runs across every section and shows the rows that match
-    const q = query.toLowerCase();
-    let found = 0;
-    for (const name of SECTIONS) {
-      const rows = (await section(name, rebuild)).filter(x => (x as HTMLElement).dataset.find?.includes(q));
-      if (!rows.length) continue;
-      body.append(h('div', 'label', name), ...rows);
-      found += rows.length;
+
+  // rows are made once per tab and kept until something changes (redraw), so a search never asks again
+  const cache = new Map<Section, Promise<HTMLElement[]>>();
+  const rowsOf = (name: Section) => { if (!cache.has(name)) cache.set(name, section(name, redraw)); return cache.get(name)!; };
+  let token = 0;
+  const show = async () => {
+    const mine = ++token;
+    const q = find.value.trim().toLowerCase();
+    for (const [n, b] of buttons) b.classList.toggle('on', !q && n === current);
+    if (!q) {
+      const rows = await rowsOf(current);
+      if (mine !== token) return;
+      body.replaceChildren(h('h3', 'set-heading', current), ...rows);
+      return;
     }
-    if (!found) body.append(h('p', 'muted', `No setting matches “${query}”.`));
-  })();
+    const parts: HTMLElement[] = [];
+    for (const name of SECTIONS) {
+      const rows = (await rowsOf(name)).filter(x => x.dataset.find?.includes(q));
+      if (rows.length) parts.push(h('h3', 'set-heading', name), ...rows);
+    }
+    if (mine !== token) return;
+    body.replaceChildren(...(parts.length ? parts : [h('p', 'muted', `No setting matches “${find.value.trim()}”.`)]));
+  };
+  // something was changed in a tab: its rows are made again, the search and the tab stay as they were
+  function redraw() { cache.clear(); void show(); }
+  let wait = 0;
+  const typed = (from: HTMLInputElement, to: HTMLInputElement) => () => {
+    to.value = from.value;
+    clearTimeout(wait);
+    wait = window.setTimeout(() => void show(), 120);
+  };
+  find.oninput = typed(find, find2);
+  find2.oninput = typed(find2, find);
+  menu.onchange = () => { find.value = ''; find2.value = ''; current = menu.value as Section; void show(); };
+  void show();
+  setTimeout(() => find.focus());
 }
 
 async function section(name: Section, redraw: () => void): Promise<HTMLElement[]> {

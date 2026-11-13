@@ -84,6 +84,18 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
     expect(squeezed, name).toEqual([]);
   }
 
+  // typing in the search filters at once, keeps the box (and its focus), and never rebuilds the menu
+  const box = narrow ? pane.getByRole('searchbox', { name: 'Search settings (narrow)' }) : pane.getByRole('searchbox', { name: 'Search settings', exact: true });
+  await box.click();
+  const started = Date.now();
+  await box.pressSequentially('voice', { delay: 30 });
+  await expect(pane.locator('.set-row', { hasText: 'Read aloud: voice' })).toBeVisible();
+  expect(Date.now() - started).toBeLessThan(3000);
+  await expect(box).toBeFocused();
+  await expect(box).toHaveValue('voice');
+  await expect(pane.locator('.set-row', { hasText: 'Text size' })).toHaveCount(0);
+  await box.fill('');
+
   // Esc closes it and the app is usable again
   await page.keyboard.press('Escape');
   await expect(page.locator('.set-backdrop')).toHaveCount(0);
