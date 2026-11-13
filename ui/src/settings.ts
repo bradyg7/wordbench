@@ -53,7 +53,19 @@ const BASES = ['system', 'light', 'dark', 'eink'];
 const BASE_NAMES: Record<string, string> = { system: 'System', light: 'Light', dark: 'Dark', eink: 'E-ink' };
 
 export interface Theme { name: string; base: string; colors: Record<string, string>; fonts?: { read?: string; ui?: string } }
-export const themeState: { active: string; themes: Theme[] } = { active: 'System', themes: [] };
+export const themeState: { active: string; themes: Theme[]; italics: Record<string, string>; marks: Record<string, string> } =
+  { active: 'System', themes: [], italics: {}, marks: {} };
+
+/** How italic words (the translators' added words) are drawn, per theme (design/features/settings TH1; e31a, 6bb0). */
+export const ITALICS: [string, string][] = [['italic', 'Italic'], ['grey', 'Grey'], ['grey-italic', 'Grey italic'], ['underline', 'Underlined'], ['plain', 'Plain']];
+const darkNow = (base: string) => base === 'dark' || (base === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+export function italicStyle(name = themeState.active): string {
+  const saved = themeState.italics[name];
+  if (saved && ITALICS.some(([k]) => k === saved)) return saved;
+  return darkNow(baseOf(name).base) ? 'grey-italic' : 'italic';
+}
+/** A mark's name (b99f: a color can stand for a topic), else its color's. */
+export const markName = (c: string) => themeState.marks[c]?.trim() || c[0].toUpperCase() + c.slice(1);
 
 const READ_FACES = ['Literata', 'Iowan Old Style', 'Palatino', 'Georgia', 'serif'];
 const UI_FACES = ['Inter', 'system-ui', 'Segoe UI', 'Arial', 'sans-serif'];
@@ -70,6 +82,7 @@ const baseOf = (active: string): { base: string; theme?: Theme } => {
 export function applyTheme() {
   const { base, theme } = baseOf(themeState.active);
   if (base === 'system') delete root().dataset.theme; else root().dataset.theme = base;
+  root().dataset.italic = italicStyle();
   try { localStorage.setItem('wb.theme', base); } catch { /* this run only */ }
   for (const [, v] of TOKENS) root().style.removeProperty(v);
   root().style.removeProperty('--font-read');
@@ -116,6 +129,8 @@ export async function loadWindowSettings() {
   try {
     const t: any = await wb(['settings', 'theme']);
     if (Array.isArray(t.themes)) themeState.themes = t.themes;
+    if (t.italics && typeof t.italics === 'object') themeState.italics = t.italics;
+    if (t.marks && typeof t.marks === 'object') themeState.marks = t.marks;
     if (typeof t.active === 'string') themeState.active = t.active;
     else {
       const old = localStorage.getItem('wb.theme');
@@ -124,6 +139,7 @@ export async function loadWindowSettings() {
     applyTheme();
     const r: any = await wb(['settings', 'reading']);
     if (typeof r.size === 'number') bridge.setSize(r.size); else if (bridge.size() !== 100) await save('reading', 'size', bridge.size());
+    for (const [k, key] of Object.entries(MIRROR)) if (typeof r[key] === 'string') { try { localStorage.setItem(k, r[key]); } catch { /* this run only */ } }
     if (typeof r.version === 'string' && r.version.toUpperCase() !== bridge.version()) await bridge.setVersion(r.version);
     else if (typeof r.version !== 'string' && bridge.version() !== 'KJV') await save('reading', 'version', bridge.version());
     const hv: any = await wb(['settings', 'hover']);
@@ -302,7 +318,13 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
 
 // ---- Reading: read aloud and copying (kept in this window's storage, as Listen and copy keep them) -----------------
 const ls = (k: string) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
-const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* this run only */ } };
+/** Kept where Listen and copy read them (this window's storage) and in settings/reading.json, so `wb settings reading`
+ *  reaches them too; the files win when the window opens. */
+const MIRROR: Record<string, string> = { 'wb.listen.voice': 'listen_voice', 'wb.listen.rate': 'listen_rate', 'wb.listen.markRead': 'listen_mark_read', 'wb.copy': 'copy' };
+const lsSet = (k: string, v: string) => {
+  try { localStorage.setItem(k, v); } catch { /* this run only */ }
+  if (MIRROR[k]) void save('reading', MIRROR[k], v);
+};
 
 function readAloudRows(): HTMLElement[] {
   const out: HTMLElement[] = [];
@@ -314,6 +336,8 @@ function readAloudRows(): HTMLElement[] {
   out.push(row('Read aloud: voice', 'The voice Listen reads with (a voice on this device)', sel, 'listen voice speech'));
   const rates = ['0.8', '1', '1.2', '1.5'];
   const cur = rates.find(r => Number(r) === Number(ls('wb.listen.rate') || 1)) ?? '1';
+  out.push(row('Mark read after Listen', 'When Listen finishes a chapter today’s plan asks for, offer Mark read',
+    toggle(ls('wb.listen.markRead') !== 'off', v => lsSet('wb.listen.markRead', v ? 'on' : 'off')), 'listen plan mark read'));
   out.push(row('Read aloud: speed', 'How fast Listen reads', seg(rates.map(r => `${r}×`), `${cur}×`, v => lsSet('wb.listen.rate', v.replace('×', ''))), 'listen rate speed'));
   return out;
 }
@@ -376,7 +400,10 @@ async function themeSection(redraw: () => void): Promise<HTMLElement> {
   }
   const mk = h('button', 'btn soft', '+ New theme');
   mk.onclick = () => {
-    const name = freeName('My theme');
+    const asked = prompt('A name for the new theme', freeName('My theme'))?.trim();
+    if (!asked) return;
+    if (Object.values(BASE_NAMES).includes(asked) || themeState.themes.some(x => x.name === asked)) { toast('That name is taken'); return; }
+    const name = asked;
     const base = baseOf(themeState.active).base;
     themeState.themes.push({ name, base, colors: {} });
     themeState.active = name;
@@ -386,6 +413,7 @@ async function themeSection(redraw: () => void): Promise<HTMLElement> {
   };
   chips.append(mk);
   box.append(chips);
+  box.append(italicsRow(redraw), marksRow());
   const { theme } = baseOf(themeState.active);
   if (!theme) {
     box.append(h('p', 'muted', 'These four come with the app. Make a theme of your own to change colors and fonts: it starts from the one chosen here and keeps only what you change.'));
@@ -525,4 +553,47 @@ async function commandsSection(redraw: () => void): Promise<HTMLElement[]> {
     out.push(box);
   }
   return out;
+}
+
+// ---- Theme: italic words and the marks' names -----------------------------------------------------------------------
+function italicsRow(redraw: () => void): HTMLElement {
+  const wrap = h('div', 'theme-italics');
+  const cur = italicStyle();
+  const labels = Object.fromEntries(ITALICS);
+  const keyOf = Object.fromEntries(ITALICS.map(([k, v]) => [v, k]));
+  wrap.append(row('Italic words', `The words the translators added. Kept for ${themeState.active} only; each theme has its own.`,
+    seg(ITALICS.map(([, v]) => v), labels[cur], v => {
+      themeState.italics = { ...themeState.italics, [themeState.active]: keyOf[v] };
+      applyTheme(); void save('theme', 'italics', themeState.italics); redraw();
+    }), 'italic italics grey underline translators added words'));
+  // the preview is real text from the database: Genesis 1, its italic words marked as the reader marks them
+  const pv = h('div', 'theme-preview');
+  pv.append(h('div', 'label', 'Preview · Genesis 1'));
+  wrap.append(pv);
+  void api.reader('GEN', 1).then(r => {
+    for (const v of r.data.chapter.verses.slice(0, 3)) {
+      const p = h('p', 'theme-preview-verse');
+      p.append(h('sup', 'muted', String(v.v)), ' ');
+      for (const w of v.words) { p.append(w.lead ?? '', h('span', 'w' + (w.italic ? ' it' : ''), w.text), w.trail ?? '', ' '); }
+      pv.append(p);
+    }
+  }).catch(() => pv.append(h('p', 'muted small', 'The preview needs the Bible database.')));
+  return wrap;
+}
+
+function marksRow(): HTMLElement {
+  const wrap = h('div', 'theme-marks');
+  wrap.append(h('div', 'label', 'Highlight colors'), h('p', 'muted small', 'Name a color for what it stands for. Each color has a light and a dark form, so a highlight follows the theme.'));
+  for (const c of ['yellow', 'green', 'blue', 'pink', 'orange']) {
+    const r = h('div', 'color-row');
+    const i = h('input', 'field') as HTMLInputElement;
+    i.value = themeState.marks[c] ?? '';
+    i.placeholder = c[0].toUpperCase() + c.slice(1);
+    i.setAttribute('aria-label', `Name for ${c}`);
+    i.onchange = () => { themeState.marks = { ...themeState.marks, [c]: i.value.trim() }; void save('theme', 'marks', themeState.marks); };
+    r.append(h('span', `swatch c-${c}`), i);
+    r.dataset.find = `highlight color name ${c}`;
+    wrap.append(r);
+  }
+  return wrap;
 }

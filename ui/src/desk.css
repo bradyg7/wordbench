@@ -1122,6 +1122,21 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .set-row .set-text { flex: 1; min-width: 0; }
 .set-name { font: var(--type-body-strong); }
 .set-key { width: 110px; }
+/* Layouts (design/features/settings L3): a grid, three across when there is room; New layout first */
+.lay-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 14px; padding: 6px 0; }
+.lay-card { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); text-align: left; }
+.lay-card:hover { border-color: var(--accent); }
+.lay-open { padding: 0; background: none; border: 0; cursor: pointer; }
+.lay-new { align-items: center; justify-content: center; min-height: 150px; color: var(--accent); cursor: pointer; border-style: dashed; }
+.lay-plus { font-size: 28px; line-height: 1; }
+.lay-foot { display: flex; align-items: flex-start; gap: 6px; }
+.lay-words { flex: 1; min-width: 0; }
+.lay-pic { position: relative; max-width: 100%; border-radius: 6px; background: var(--sunken); border: 1px solid var(--line); overflow: hidden; }
+.lay-pic i { position: absolute; box-sizing: border-box; border: 2px solid var(--sunken); border-radius: 5px; }
+.lay-pic .lay-reader { background: var(--accent-soft); }
+.lay-pic .lay-pane { background: var(--surface); }
+.lay-pic .lay-float { box-shadow: 0 2px 6px #0003; border-color: var(--line); }
+.lay-build-panes { display: flex; flex-direction: column; }
 /* Settings reflows instead of squeezing (design/features/settings C1′): a container, so a narrow pane (split, floating)
    gets a menu for the sections, a search icon for Find, and rows that stack; text keeps its size. Wide: the sections
    are a column on the left. */

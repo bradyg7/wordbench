@@ -40,4 +40,21 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
     const r = pane.locator('.set-row', { hasText: 'Cards on hover' });
     expect(await r.evaluate(el => getComputedStyle(el).flexDirection)).toBe('column');
   }
+
+  // Layouts: one grid, New layout first, opening the builder from the window as it is (L3)
+  await go('Layouts');
+  const grid = pane.locator('.lay-grid');
+  await expect(grid.locator('.lay-card').first()).toHaveText(/New layout/);
+  expect(await grid.evaluate(el => getComputedStyle(el).display)).toBe('grid');
+  await grid.locator('.lay-new').click();
+  await expect(pane.getByRole('combobox', { name: 'Add a pane' })).toBeVisible();
+  await expect(pane.getByRole('textbox', { name: 'Layout name' })).toBeVisible();
+  await pane.getByRole('button', { name: 'Cancel' }).click();
+
+  // Theme: italic words, kept per theme, drawn through the root
+  await go('Theme');
+  const italics = pane.locator('.set-row', { hasText: 'Italic words' });
+  await italics.getByRole('button', { name: 'Grey', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-italic', 'grey');
+  await expect(pane.locator('.theme-marks input')).toHaveCount(5);
 });
