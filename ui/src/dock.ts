@@ -68,6 +68,11 @@ const SPOTS_MAX = 300;
 const NAMES: Record<Docked, string> = { left: 'Left column', right: 'Right column', top: 'Top band', bottom: 'Bottom band' };
 let seq = 0;
 
+/** The rail's width on the left (design/features/minimize): the dock's columns, bands and floats start right of it. */
+export function railWidth(): number {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rail-w')) || 0;
+}
+
 export class Dock {
   /** Opens Help at a pane kind's Guide cards (set by panes.ts). */
   help?: (kind: string) => void;
@@ -98,6 +103,11 @@ export class Dock {
   /** External destinations (the Shelf) share the real pointer drag; they never move the pane. */
   externalDrop?: (x: number, y: number, pane: Pane) => { label: string; box: Rect; drop: () => void } | null;
   backLabel = () => '';
+  /** Told of every pane opened (new: not already open), and after each layout: the trail and the rail listen. */
+  onOpen?: (p: Pane, isNew: boolean) => void;
+  onLayout?: () => void;
+  /** The key of the pane last pressed in or opened (the box shows its line). */
+  get frontKey() { return this.active; }
   /** Called before the reader's size changes; the function it returns puts the reader back at the same verse. */
   keepPlace: () => () => void = () => () => {};
 
@@ -198,7 +208,7 @@ export class Dock {
   private fit(r: Rect): Rect {
     const W = window.innerWidth, H = window.innerHeight;
     const w = Math.max(280, Math.min(r.w, W - 16)), hh = Math.max(200, Math.min(r.h, H - 56));
-    return { x: Math.round(Math.max(0, Math.min(r.x, W - 80))), y: Math.round(Math.max(48, Math.min(r.y, H - 40))), w: Math.round(w), h: Math.round(hh) };
+    return { x: Math.round(Math.max(railWidth(), Math.min(r.x, W - 80))), y: Math.round(Math.max(48, Math.min(r.y, H - 40))), w: Math.round(w), h: Math.round(hh) };
   }
 
   /** Puts a pane in a group: before `before`, or after the group's last tab. */
@@ -262,6 +272,7 @@ export class Dock {
     const have = this.find(key);
     if (have) {
       this.show(have);
+      this.onOpen?.(have, false);
       return have;
     }
     const el = h('div', `pane pane-${kind}`);
@@ -285,6 +296,7 @@ export class Dock {
     this.show(p);
     p.ready = Promise.resolve(fill(el, p));
     void p.ready.catch(e => { el.replaceChildren(h('p', 'error', String(e))); });
+    this.onOpen?.(p, true);
     return p;
   }
 
@@ -400,7 +412,7 @@ export class Dock {
    * the other.
    */
   private widthsNow(leftOpen: boolean, rightOpen: boolean): [number, number] {
-    const size = sizeClass(), W = window.innerWidth;
+    const size = sizeClass(), W = window.innerWidth - railWidth();
     const want = (side: 'left' | 'right') => {
       const base = WIDTH[size][side === 'left' ? 0 : 1];
       if (!base) return 0;
@@ -538,6 +550,7 @@ export class Dock {
       focusEl?.focus({ preventScroll: true });
     }
     requestAnimationFrame(() => this.fitStrips());
+    this.onLayout?.();
   }
 
   /** The floating windows in the order they were last brought forward. */
@@ -612,7 +625,7 @@ export class Dock {
       this.lastSized = side;
       const move = (m: PointerEvent) => {
         this.wide[side] = false;
-        this.widths[side] = side === 'left' ? m.clientX : window.innerWidth - m.clientX;
+        this.widths[side] = side === 'left' ? m.clientX - railWidth() : window.innerWidth - m.clientX;
         const [lw, rw] = this.widthsNow(this.isOpen('left'), this.isOpen('right'));
         const [th, bh] = this.heightsNow(this.isOpen('top'), this.isOpen('bottom'));
         this.room(this.isOpen('left') ? lw : 0, this.isOpen('right') ? rw : 0, th, bh);
@@ -943,9 +956,9 @@ export class Dock {
     const W = window.innerWidth, H = window.innerHeight, top = this.barBottom(), edge = Math.max(120, W * 0.18);
     const col = (side: 'left' | 'right'): Drop => {
       const w = Math.min(WIDTH.large[side === 'left' ? 0 : 1], W * 0.35);
-      return { to: 'side', side, label: NAMES[side], box: { x: side === 'left' ? 0 : W - w, y: top, w, h: H - top } };
+      return { to: 'side', side, label: NAMES[side], box: { x: side === 'left' ? railWidth() : W - w, y: top, w, h: H - top } };
     };
-    if (sizeClass() === 'large' && x < edge) return col('left');
+    if (sizeClass() === 'large' && x - railWidth() < edge) return col('left');
     if (x > W - edge) return col('right');
     const reader = document.getElementById('scroller')?.getBoundingClientRect() ?? new DOMRect(0, top, W, H - top);
     const band = Math.max(BAND_MIN, Math.round((H - top) * BAND));

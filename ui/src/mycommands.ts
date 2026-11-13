@@ -105,6 +105,7 @@ export function form(existing: Kept | null, done: (k: Kept | null) => void, extr
   const row = h('div', 'cmd-buttons');
   const keep = h('button', 'btn', 'Keep');
   const add = h('button', 'btn primary', 'Keep and add to toolbar');
+  add.hidden = !extra;   // no toolbar now (command round 2): offered only where a caller still has a place for it
   const cancel = h('button', 'link-btn', 'Cancel');
   const go = async (toolbar: boolean) => {
     if (existing && existing.name !== name.value.trim()) await remove(existing);

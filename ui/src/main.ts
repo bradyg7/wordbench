@@ -22,10 +22,13 @@ import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, ope
 import { bridge, loadWindowSettings, markName, openSettings } from './settings';
 import { loadKept } from './mycommands';
 import { fills as cmdFills, byKey as commandByKey, run as runKeptCommand } from './mycommands';
-import { absent, customize, hiddenToFit, hooks, initToolbar, loadToolbar, setBadge, setVersionLabel, fitToBar } from './toolbar';
+import { byId, CATALOG, flipTheme, hooks, initReaderTools, READER_TOOLS, setBadge, setVersionLabel, textSizeMenu, toggleFullScreen } from './toolbar';
+import { initRail, railOn } from './rail';
+import { frontStep, initTrail, onFront, paneStep, readerStep } from './trail';
+import { menu as layoutMenu } from './layouts';
 import { isCaptureKey, notebookBadge, openNote, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
 import type { Change } from './dock';
-import { attachCommandField, loadThreads } from './command';
+import { attachCommandField, box as cmdBox, initPopOff, loadThreads } from './command';
 import { findInPane, paneForFind } from './panefind';
 import { findingBox, openFindings } from './findings';
 import { openDocuments } from './documents';
@@ -114,6 +117,7 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
     if (vn) scroller.scrollTop = reader.offsetTop + vn.offsetTop - 12 + offset;
   }
   placeButton(`${data.chapter.name} ${chapter}`);
+  readerStep(`${data.chapter.name} ${chapter}`);
   readerMoved();
   setVersionLabel(data.chapter.version || 'KJV');
   const t2 = performance.now();
@@ -1024,10 +1028,10 @@ async function todaySection(into: HTMLElement) {
 }
 
 function settings(from: HTMLElement) {
-  // R4 (docs/archive/2026-11-10/docs/redesign-R4.md): More is Settings, Help, and the panes that are not on the toolbar. Everything that was a
-  // setting lives in Settings; a pane put away (or never added) waits here with a way back.
+  // More (design/features/command round 2, C5 and C13): what is about the window, not the study. The panes are on the
+  // rail; under 900 px the reader's tools that sit at the box's end fold in here too (C17).
   const b = h('div', 'settings more-menu');
-  const go = (label: string, ico: string, fn: () => void, sub = '', key = '') => {
+  const go = (label: string, ico: string, fn: (at: HTMLElement) => void, sub = '', key = '') => {
     const x = h('button', 'menu-item more-item');
     x.append(icon(ico, 16));
     const t = h('span', 'more-text');
@@ -1035,7 +1039,7 @@ function settings(from: HTMLElement) {
     if (sub) t.append(h('span', 'muted small', sub));
     x.append(t);
     if (key) x.append(h('kbd', '', key));
-    x.onclick = () => { closeSheet(); closeMenu(); fn(); };
+    x.onclick = () => { closeSheet(); closeMenu(); fn(from); };
     b.append(x);
   };
   if (compact() || !inApp) {
@@ -1043,23 +1047,27 @@ function settings(from: HTMLElement) {
     b.append(h('h2', 'sheet-title', 'More'), reading);
     todaySection(reading);
   }
+  if (!compact() && window.innerWidth < 900) {
+    b.append(h('div', 'label', 'The reader'));
+    for (const id of READER_TOOLS) { const it = byId(id)!; go(id === 'version' ? `Version: ${version}` : it.label, it.icon || 'book', at => it.run(at), it.sub); }
+    b.append(h('div', 'label', 'The window'));
+  }
+  // the phone has no rail: its panes stay in More, as they were
+  if (compact()) {
+    b.append(h('div', 'label', 'Panes'));
+    for (const it of CATALOG.filter(i => i.group === 'Panes' && i.more)) go(it.label, it.icon || 'book', at => it.run(at));
+    b.append(h('div', 'label', 'The window'));
+  }
+  go('Full screen', 'expand', () => void toggleFullScreen(), '', 'F11');
+  go('Layout', 'sidebar', at => void layoutMenu(at, s => void openSettings(s)), 'Open or save an arrangement of panes');
+  go('Theme', 'eye', () => flipTheme(), 'Light or dark');
+  go('Text size', 'heading', at => textSizeMenu(at), `${sizePct}%`, 'Ctrl+=');
   go('Settings…', 'settings', () => openSettings(), '', 'Ctrl+,');
-  go('Customize toolbar…', 'sliders', () => customize());
-  go('Help', 'help', () => openHelp(), 'Guide · Keys · Manual');
+  go('Help', 'help', () => openHelp(), 'Guide · Keys · Manual', 'F1');
   go('Save chapter PDF', 'file', () => {
     void runLine('pdf').then(result => toast(result.said || result.error || 'Could not save the chapter PDF'))
       .catch(error => toast(String(error.message || error)));
   });
-  const fit = hiddenToFit();
-  if (fit.length) {
-    b.append(h('div', 'label', 'Hidden to fit'));
-    for (const it of fit) go(it.label, it.icon || 'book', () => it.run($('more')));
-  }
-  const rest = absent();
-  if (rest.length) {
-    b.append(h('div', 'label', 'Not on your toolbar'));
-    for (const it of rest) go(it.label, it.icon || 'book', () => it.run($('more')));
-  }
   if (compact() || !inApp) openSheet(b, from);
   else popMenu(from, b, { align: 'right', width: 300 });
 }
@@ -1097,7 +1105,28 @@ cmdFills.get = () => {
   if (d && sel) word = Array.from({ length: sel.b - sel.a + 1 }, (_, i) => d.el[sel.a + i]?.textContent ?? '').join(' ').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').trim();
   return { word, place: here().label, chapter: d ? `${d.chapter.name} ${d.chapter.chapter}` : '' };
 };
-initToolbar();
+initReaderTools();
+initPopOff();
+initRail();
+initTrail($('trailline'));
+// The box shows the line of the tab in front (command C14): the reader's place, or the line that opened the pane.
+const cmdInput = $<HTMLInputElement>('cmd');
+cmdBox.shows = () => { const f = frontStep(); return f ? f.line || f.title : $('place').textContent?.trim() || ''; };
+onFront(() => {
+  const f = frontStep();
+  // the reader's tools stay while a reader is in front: the main one or a second reader (both are drawn by them)
+  $('cmdbox').classList.toggle('pane-front', !!f && !f.key.startsWith('reader|') && f.kind !== 'reader2');
+  if (document.activeElement !== cmdInput) cmdInput.value = cmdBox.shows();
+});
+cmdBox.before = () => frontStep()?.key ?? '';
+// Enter changes the tab in front (C14): when the line opened another pane of the same kind or in the same group, the old
+// one closes; Alt+Enter keeps it (a new tab).
+cmdBox.after = (was, newTab) => {
+  const f = frontStep();
+  if (newTab || !was || was.startsWith('reader|') || !f || f.key === was || f.key.startsWith('reader|')) return;
+  const old = dock.find(was), now = dock.find(f.key);
+  if (old && now && old !== now && (old.kind === now.kind || old.group === now.group)) void dock.close(old);
+};
 
 // A box that is being scrolled shows its scrollbar for a moment afterwards (style.css; note cd59). Scroll events do not
 // bubble, so this listens in the capture phase.
@@ -1192,6 +1221,8 @@ async function start() {
     setSize(+(localStorage.getItem(SIZE_STORE) || 100));
   } catch { /* defaults */ }
   initPanes($('dock'));
+  dock.onOpen = (p, isNew) => paneStep(p, isNew);
+  dock.onLayout = () => railOn();
   dock.keepPlace = () => {
     const at = drawn ? topVerse() : null;
     return () => { if (at) backTo(at); };
@@ -1210,7 +1241,7 @@ async function start() {
   if (inApp) {
     void readSettings();
     void loadWindowSettings();
-    void loadKept().then(() => loadToolbar()).then(() => fitToBar());
+    void loadKept();
     loadPalette();
     if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') openNotebook();
   }
