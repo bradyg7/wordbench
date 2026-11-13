@@ -32,6 +32,17 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
     await expect(pane.locator('.set-nav button')).toHaveText(names);
   }
   await go('Keys');
+  // only the settings on the right scroll; the section list on the left stays where it is
+  const body = pane.locator('.set-body');
+  await expect(pane.locator('.set-row').first()).toBeVisible();
+  expect(await body.evaluate(el => getComputedStyle(el).overflowY)).toBe('auto');
+  if (await body.evaluate(el => el.scrollHeight > el.clientHeight)) {
+    const navTop = narrow ? 0 : await pane.locator('.set-nav').evaluate(el => el.getBoundingClientRect().top);
+    await body.evaluate(el => { el.scrollTop = 400; });
+    expect(await body.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    expect(await pane.evaluate(el => el.scrollTop)).toBe(0);
+    if (!narrow) expect(await pane.locator('.set-nav').evaluate(el => el.getBoundingClientRect().top)).toBe(navTop);
+  }
   // Keys lists the keys themselves, F11 among them
   await expect(pane.locator('.set-row', { hasText: 'Full screen' })).toBeVisible();
 
