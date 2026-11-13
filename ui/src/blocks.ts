@@ -95,19 +95,34 @@ async function undoRemoval(wrap: HTMLElement, data: Blocks, host: Host) {
   finally { history.busy = false; }
 }
 
-async function removeBlock(wrap: HTMLElement, data: Blocks, host: Host, n: number, count = 1, expected?: string) {
+async function removeBlock(wrap: HTMLElement, data: Blocks, host: Host, n: number, count = 1, expected?: string): Promise<boolean> {
   const root = wrap.closest<HTMLElement>('.nb-editor');
-  if (!root) return;
+  if (!root) return false;
   const history = historyFor(root, data.id);
-  if (history.busy) return;
+  if (history.busy) return false;
   history.busy = true;
   try {
     const result = await wb(['block', 'rm', data.id, String(n), '--count', String(count), '--undo', ...(expected === undefined ? [] : ['--expect', expected])]);
     history.undo.push({ token: JSON.stringify(result.undo), n });
     history.focus = Math.min(n, result.blocks.length);
     host.changed();
-  } catch (x) { toast(String(x)); }
+    return true;
+  } catch (x) { toast(String(x)); return false; }
   finally { history.busy = false; }
+}
+
+/** The Undo toast after a block is deleted (trash T9): 10 seconds, in the same rail as a page's. A block is part of
+ *  its page, so it never goes to the Trash. */
+function blockUndoToast(wrap: HTMLElement, data: Blocks, host: Host) {
+  let rail = document.querySelector<HTMLElement>('.page-deletions');
+  if (!rail) { rail = h('div', 'page-deletions'); rail.setAttribute('aria-label', 'Page deletion Undo'); document.body.append(rail); }
+  rail.querySelectorAll('.block-deletion').forEach(x => x.remove());
+  const row = h('div', 'page-deletion block-deletion');
+  row.setAttribute('role', 'status');
+  const undo = button('btn small', 'Undo', () => { row.remove(); void undoRemoval(wrap, data, host); });
+  row.append(h('span', '', 'Block deleted. '), undo);
+  rail.append(row);
+  setTimeout(() => row.remove(), 10000);
 }
 
 /** Is this block's writing nothing but a list's mark ("- ", "- [ ] ", "2. ")? */
@@ -164,7 +179,12 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
     const item = (label: string, action: () => void) => menu.append(button('menu-item', label, () => { close(); action(); }));
     item('Edit block', () => editBlock(data, b, el, host));
     item('Add block below', () => startNew(data, host, el.nextElementSibling as HTMLElement, b.n, ''));
-    item('Delete block', () => void removeBlock(wrap, data, host, b.n, 1, host.text));
+    const move = (to: number | null) => async () => {
+      try { await wb(['block', 'move', data.id, String(b.n), ...(to === null ? ['--last'] : ['--to', String(to)])]); host.changed(); } catch (x) { toast(String(x)); }
+    };
+    if (b.n > 1) item('Move up', () => void move(b.n - 1)());
+    if (b.n < data.blocks.length) item('Move down', () => void move(b.n + 1 >= data.blocks.length ? null : b.n + 2)());
+    item('Delete block', () => void removeBlock(wrap, data, host, b.n, 1, host.text).then(ok => { if (ok) blockUndoToast(wrap, data, host); }));
     const close = popMenu(grip, menu);
     menu.querySelector('button')?.focus();
   };

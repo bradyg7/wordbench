@@ -252,7 +252,7 @@ fn notebook_commands() -> Vec<Command> {
                 c.study()?.erase(&a.s("name")).map_err(e)?;
                 j(json!({"erased": [a.s("name")]}))
             }),
-        cmd("trash empty","Erase the notes and questions deleted at least --days ago (default 7; the window does this when it opens). Other files in .trash stay.",
+        cmd("trash empty","Erase the notes and questions deleted at least --days ago (default 7; the window does this when it opens; --days 0 is Empty trash, everything listed). Other files in .trash stay.",
             vec![Opt("days", Some("7"))], |c, a| {
                 let days: i64 = a.opt_or("days", "7").parse().map_err(|_| "argument --days: invalid int value")?;
                 j(json!({"erased": c.study()?.empty_trash(days.max(0)).map_err(e)?}))

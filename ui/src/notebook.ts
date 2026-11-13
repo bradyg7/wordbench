@@ -477,6 +477,8 @@ function createNotebookSession(fixed?: PageTab) {
       scroll.append(sideHead('pages', 'Pages', countRows(t.pages), false, true, treeFoldKeys(t.pages)));
       if (!isShut('pages', false)) scroll.append(treeBox(t.pages));
       if (!t.pages.length) scroll.append(h('p', 'muted nb-empty', 'No pages yet. The pen starts one; a note with no place is a page of its own.'));
+      const tl = await trashLine();
+      if (tl) scroll.append(tl);
       out.push(scroll);
       return out;
     }
@@ -921,6 +923,8 @@ function createNotebookSession(fixed?: PageTab) {
     const tbtn = button('link-btn nb-side-link nb-side-templates', 'Templates', () => showTemplates(), 'notebook');
     tbtn.title = 'Your templates: pages that new pages start from';
     foot.append(tbtn);
+    const tl = await trashLine();
+    if (tl) foot.append(tl);
 
     return [top, side, foot];
   }
@@ -1829,7 +1833,7 @@ function createNotebookSession(fixed?: PageTab) {
     if (!rail) { rail = h('div', 'page-deletions'); rail.setAttribute('aria-label', 'Page deletion Undo'); document.body.append(rail); }
     const row = h('div', 'page-deletion');
     row.setAttribute('role', 'status');
-    row.append(h('span', '', `Deleted ${result.count} page${result.count === 1 ? '' : 's'}${result.moved ? `; ${result.moved} retained pages moved up` : ''}. `));
+    row.append(h('span', '', `Moved ${result.count} page${result.count === 1 ? '' : 's'} to the Trash${result.moved ? `; ${result.moved} retained pages moved up` : ''}. `));
     const undo = button('btn small', 'Undo', async () => {
       undo.disabled = true;
       try {
@@ -1840,7 +1844,10 @@ function createNotebookSession(fixed?: PageTab) {
       } catch (x) { toast(String(x)); undo.disabled = false; }
     });
     undo.setAttribute('aria-label', `Undo deletion of ${result.count} page${result.count === 1 ? '' : 's'}`);
-    row.append(undo); rail.append(row); deletionRows.set(result.operation, row);
+    // trash T8: the toast says where the page went, and opens it there (it waits 7 days after Undo ends)
+    const toTrash = button('btn small ghost', 'Trash', () => openNotebook('trash'));
+    toTrash.title = 'Deleted pages wait in the Trash 7 days';
+    row.append(undo, toTrash); rail.append(row); deletionRows.set(result.operation, row);
   }
   if (!fixed) window.addEventListener('wb-page-deletion', ev => {
     showDeletion((ev as CustomEvent<PageDeletion>).detail);
@@ -1955,11 +1962,33 @@ function createNotebookSession(fixed?: PageTab) {
     const close = popMenu(from, box, { width: 300 });
   }
 
+  /** The way to the Trash (trash T6, the person, 2026-11-13): a quiet line with its count at the foot of the list,
+   *  shown only when something waits. */
+  async function trashLine(): Promise<HTMLElement | null> {
+    let n = 0;
+    try { n = ((await wb(['trash'])).notes || []).length; } catch { return null; }
+    if (!n) return null;
+    const b = h('button', 'nb-trash-line') as HTMLButtonElement;
+    b.type = 'button';
+    b.title = 'Deleted pages wait here 7 days';
+    b.append(icon('trash'), h('span', 'grow', 'Trash'), h('span', 'nb-trash-count', String(n)));
+    b.onclick = () => openNotebook('trash');
+    return b;
+  }
+
   // Deleted notes, questions and pages: each waits 7 days, then the window erases it when it opens (wb trash empty).
   async function trashList(two: boolean): Promise<HTMLElement[]> {
     const d = await wb(['trash']);
     const top = h('div', 'nb-head');
     top.append(button('link-btn nb-back shown', 'Notes', () => { showTrash = false; void pane?.refresh?.(); }, 'left'), h('span', 'nb-trash-title', 'Trash'));
+    // Empty trash (trash T5, the person, 2026-11-13): everything listed, asked first with the count
+    if (d.notes.length) {
+      const n = d.notes.length;
+      top.append(h('span', 'grow'), button('link-btn danger nb-empty-trash', 'Empty trash', async () => {
+        if (!confirm(`Erase ${n} item${n === 1 ? '' : 's'} now? They are removed from the disk and cannot be put back.`)) return;
+        try { await wb(['trash', 'empty', '--days', '0']); toast(`Erased ${n}`); changed(); } catch (x) { toast(String(x)); }
+      }));
+    }
     const scroll = h('div', 'nb-scroll');
     scroll.append(h('p', 'muted small nb-trash-about', `Deleted notes wait here ${d.days} days, then are erased. Put one back to keep it, or erase it now.`));
     for (const t of d.notes) {
@@ -1978,7 +2007,10 @@ function createNotebookSession(fixed?: PageTab) {
       };
       const acts = h('div', 'nb-acts');
       acts.append(button('btn soft small', 'Put it back', putBack));
-      acts.append(h('span', 'grow'), button('link-btn danger', 'Erase now', eraseNow, 'trash'));
+      // a trash-icon button, red on hover and focus (trash T5)
+      const er = button('icon-btn trash-erase', '', eraseNow, 'trash');
+      er.title = 'Erase now'; er.setAttribute('aria-label', er.title);
+      acts.append(h('span', 'grow'), er);
       c.append(acts);
       // S3: a right-click on a deleted note offers the same two
       onContext(c, (x, y) => {
