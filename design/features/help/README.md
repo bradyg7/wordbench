@@ -1,19 +1,21 @@
 # Help, the Guide and the manual
 
-**State:** exploring · **Sheets:** `python design/features/help/help.py` writes `help.figcraft` and
+**State:** accepted (2026-11-13) · **Sheets:** `python design/features/help/help.py` writes `help.figcraft` and
 `help.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The Help pane: Guide (`wb guide`), Commands (`wb manual`) and Keys. 0050: it is plain text.
 
 ## Leading design (2026-11-12)
 
-Round 1 has not been reviewed, so every window still leads its part.
+Round 1 reviewed 2026-11-13: A's cards and B's ? and keys, inside the Settings menu.
 
 | Part | Leading | Superseded (and by what) |
 |---|---|---|
-| Today | H1 | |
-| A: the Guide as cards; commands to try | H2, H3 | |
-| B: help beside the part; keys | H4, H5 | |
+| Today | | H1 (by the cards) |
+| The Guide as cards | H2 | |
+| Commands to try | H3 | the Try button postponed |
+| ? beside the part | H4 (opens the menu at its card) | a separate help window |
+| Keys | H5, as Settings' only Keys section | Settings' own Keys list |
 
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
@@ -34,13 +36,13 @@ None yet; round 1 waits for the person's review.
 
 ## Open questions
 
-- Pictures in the Guide: exports from these design folders, or drawn apart?
+- Which cards each group holds exactly, and their steps (round 2 draws them).
 
 ## Rounds
 
 | Round | Date | Windows | What it tried | Review |
 |---|---|---|---|---|
-| 1 | 2026-11-12 | see Directions | the first drawing | waiting |
+| 1 | 2026-11-12 | see Directions | the first drawing | 2026-11-13: cards and keys, in the Settings menu |
 
 ## Data the sheets show
 
