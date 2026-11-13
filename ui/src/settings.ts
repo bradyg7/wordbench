@@ -5,7 +5,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { api, inApp, wb } from './api';
 import { customize as customizeToolbar } from './toolbar';
-import { KEYS as KEY_LIST } from './panes';
+import { guideRows, hasKeyboard, keysRows, manualRows } from './guide';
 import { toast } from './sheets';
 import { h, hoverMode, icon, setHover } from './ui';
 import { section as layoutsSection } from './layouts';
@@ -150,11 +150,17 @@ export async function loadWindowSettings() {
 // ---- the pane -----------------------------------------------------------------------------------------------------------
 // design/features/settings (accepted 2026-11-13): eight tabs became these; Hover and cards joined Reading, Advanced
 // became Study folder (window size and timings only with the developer switch), Documents is new.
-const SECTIONS = ['Reading', 'Theme', 'Notebook', 'Layouts', 'Commands', 'Keys', 'Study folder', 'Documents'] as const;
+// Help is the menu's second half (design/features/help, 2026-11-13): Guide, Keys (the only keys section), Manual.
+const SECTIONS = ['Reading', 'Theme', 'Notebook', 'Layouts', 'Commands', 'Study folder', 'Documents', 'Guide', 'Keys', 'Manual'] as const;
 type Section = (typeof SECTIONS)[number];
 let current: Section = 'Reading';
 /** Older names still open the tab that holds them now (`settings advanced`, `settings hover`). */
-const OLD: Record<string, Section> = { advanced: 'Study folder', hover: 'Reading', study: 'Study folder', docs: 'Documents' };
+const OLD: Record<string, Section> = { advanced: 'Study folder', hover: 'Reading', study: 'Study folder', docs: 'Documents', help: 'Guide', commands: 'Commands' };
+/** Where Help opens: a Guide group or topic to outline, or a Manual command to open. */
+let focus = '';
+/** Keys shows only with a keyboard (a phone or tablet has none until a key is pressed). */
+const keyed = () => hasKeyboard(bridge.inputMode());
+const shown = () => SECTIONS.filter(x => x !== 'Keys' || keyed());
 
 function row(name: string, what: string, ctl: HTMLElement, keywords = '') {
   const r = h('div', 'set-row');
@@ -182,10 +188,12 @@ function toggle(on: boolean, flip: (v: boolean) => void) {
 }
 
 /** Open Settings (at a section: `settings theme`). */
-export function openSettings(section: string = '') {
+export function openSettings(section: string = '', at = '') {
   const want = section.trim().toLowerCase();
   const s = want ? (OLD[want.split(' ')[0]] ?? SECTIONS.find(x => x.toLowerCase().startsWith(want))) : undefined;
   if (s) current = s;
+  if (current === 'Keys' && !keyed()) current = 'Guide';
+  focus = at;
   // Settings is its own menu, pulled to the front over the blurred app (the person, 2026-11-13): a customizer, not
   // a pane of the study. One at a time; Esc, × or a click outside closes it.
   let back = document.querySelector<HTMLElement>('.set-backdrop');
@@ -195,7 +203,7 @@ export function openSettings(section: string = '') {
   const box = h('div', 'set-modal');
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-modal', 'true');
-  box.setAttribute('aria-label', 'Settings');
+  box.setAttribute('aria-label', 'Settings and Help');
   const x = h('button', 'icon-btn set-close', '×');
   x.title = 'Close Settings (Esc)'; x.setAttribute('aria-label', 'Close Settings');
   const el = h('div', 'set-modal-body');
@@ -226,9 +234,9 @@ export function openSettings(section: string = '') {
 /** Each tab's icon and the groups the list is split into (as a settings panel: lines between groups). */
 const ICON_OF: Record<Section, string> = {
   Reading: 'book', Theme: 'eye', Notebook: 'notebook', Layouts: 'sidebar', Commands: 'prompt', Keys: 'lines',
-  'Study folder': 'folder', Documents: 'file',
+  'Study folder': 'folder', Documents: 'file', Guide: 'help', Manual: 'book',
 };
-const GROUPS: Section[][] = [['Reading', 'Theme'], ['Notebook', 'Layouts', 'Commands', 'Keys'], ['Study folder', 'Documents']];
+const GROUPS: Section[][] = [['Reading', 'Theme'], ['Notebook', 'Layouts', 'Commands'], ['Study folder', 'Documents'], ['Guide', 'Keys', 'Manual']];
 
 /** The Settings menu: a title bar, the search and tabs down the left (still), the chosen tab on the right (scrolls).
  *  Built once per opening; typing in the search only filters (the person, 2026-11-13: it froze on every letter, because
@@ -249,7 +257,7 @@ function draw(el: HTMLElement, query = '') {
   // narrow (a phone): the tabs become a menu above the settings, with the same search
   const menu = h('select', 'field set-nav-menu') as HTMLSelectElement;
   menu.setAttribute('aria-label', 'Settings section');
-  for (const name of SECTIONS) { const o = h('option', '', name) as HTMLOptionElement; o.value = name; o.selected = name === current; menu.append(o); }
+  for (const name of shown()) { const o = h('option', '', name) as HTMLOptionElement; o.value = name; o.selected = name === current; menu.append(o); }
   const narrow = h('div', 'set-narrow-bar');
   const find2 = h('input', 'field') as HTMLInputElement;
   find2.type = 'search'; find2.placeholder = 'Search'; find2.setAttribute('aria-label', 'Search settings (narrow)');
@@ -264,8 +272,10 @@ function draw(el: HTMLElement, query = '') {
   nav.append(searchBox);
   const buttons = new Map<Section, HTMLButtonElement>();
   GROUPS.forEach((g, i) => {
-    if (i) nav.append(h('hr', 'set-sep'));
+    if (i === GROUPS.length - 1) nav.append(h('div', 'set-group-label', 'Help'));
+    else if (i) nav.append(h('hr', 'set-sep'));
     for (const name of g) {
+      if (name === 'Keys' && !keyed()) continue;
       const b = h('button', 'set-tab') as HTMLButtonElement;
       b.append(icon(ICON_OF[name], 17), h('span', '', name));
       b.onclick = () => { find.value = ''; find2.value = ''; current = name; menu.value = name; show(); };
@@ -289,10 +299,13 @@ function draw(el: HTMLElement, query = '') {
       const rows = await rowsOf(current);
       if (mine !== token) return;
       body.replaceChildren(h('h3', 'set-heading', current), ...rows);
+      const at = body.querySelector<HTMLElement>('.guide-card.focus, details.doc[open]');
+      if (at) at.scrollIntoView({ block: 'center' }); else body.scrollTop = 0;
+      focus = '';
       return;
     }
     const parts: HTMLElement[] = [];
-    for (const name of SECTIONS) {
+    for (const name of shown()) {
       const rows = (await rowsOf(name)).filter(x => x.dataset.find?.includes(q));
       if (rows.length) parts.push(h('h3', 'set-heading', name), ...rows);
     }
@@ -363,10 +376,12 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
     out.push(...(await layoutsSection(redraw)));
   } else if (name === 'Commands') {
     out.push(...(await commandsSection(redraw)));
+  } else if (name === 'Guide') {
+    out.push(...guideRows(focus));
   } else if (name === 'Keys') {
-    // the keys themselves, each a row Find reaches; the ones that can be set say where
-    for (const [k, what] of KEY_LIST) out.push(row(k, what, h('kbd', 'set-kbd', k), `key shortcut keyboard ${k}`));
-    out.push(row('Changing keys', 'Quick capture is set under Notebook; a layout’s key under Layouts; a kept command’s under Commands.', h('span'), 'change rebind'));
+    out.push(...keysRows());
+  } else if (name === 'Manual') {
+    out.push(...(await manualRows(focus)));
   } else if (name === 'Study folder') {
     out.push(...(await studyRows(redraw)));
     out.push(row('Input', 'Auto follows the device; touch or pointer forces the other (bigger targets, handles on selections)',

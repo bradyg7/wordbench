@@ -69,6 +69,8 @@ const NAMES: Record<Docked, string> = { left: 'Left column', right: 'Right colum
 let seq = 0;
 
 export class Dock {
+  /** Opens Help at a pane kind's Guide cards (set by panes.ts). */
+  help?: (kind: string) => void;
   panes: Pane[] = [];
   groups: Group[] = [];
   /** The size a new floating window opens at. */
@@ -838,6 +840,8 @@ export class Dock {
         this.layout();
       });
     }
+    // design/features/help H10: the ? opens Help at this pane's Guide cards
+    if (this.help) tool('help', 'Help with this', () => this.help!(fp.kind));
     tool('minus', 'Minimize', () => this.minimize(fp));
     const focus = h('button', 'strip-btn dock-focus-button', 'Focus');
     focus.title = 'Focus pane'; focus.setAttribute('aria-label', `Focus ${fp.title}`);

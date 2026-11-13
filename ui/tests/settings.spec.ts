@@ -11,10 +11,11 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
   await expect(pane).toBeVisible();
   // its own menu in the centre, over the app (not a pane in the dock)
   await expect(page.locator('.set-backdrop')).toBeVisible();
-  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Settings and Help' })).toBeVisible();
   if (info.project.name !== 'webkit-phone') expect((await pane.evaluate(el => el.clientWidth)) >= 720).toBe(true);
 
-  const names = ['Reading', 'Theme', 'Notebook', 'Layouts', 'Commands', 'Keys', 'Study folder', 'Documents'];
+  // Keys is Help's now (design/features/help); with no keyboard pressed yet a phone has no Keys
+  const names = ['Reading', 'Theme', 'Notebook', 'Layouts', 'Commands', 'Study folder', 'Documents', 'Guide', ...(info.project.name === 'webkit-phone' ? [] : ['Keys']), 'Manual'];
   const menu = pane.getByRole('combobox', { name: 'Settings section' });
   const narrow = (await pane.evaluate(el => el.clientWidth)) < 520;
   if (info.project.name === 'webkit-phone') expect(narrow).toBe(true);
@@ -31,10 +32,10 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
     await expect(menu).toBeHidden();
     await expect(pane.locator('.set-nav button')).toHaveText(names);
   }
-  await go('Keys');
+  await go('Manual');
   // only the settings on the right scroll; the section list on the left stays where it is
   const body = pane.locator('.set-body');
-  await expect(pane.locator('.set-row').first()).toBeVisible();
+  await expect(pane.locator('details.doc').first()).toBeVisible();
   expect(await body.evaluate(el => getComputedStyle(el).overflowY)).toBe('auto');
   if (await body.evaluate(el => el.scrollHeight > el.clientHeight)) {
     const navTop = narrow ? 0 : await pane.locator('.set-nav').evaluate(el => el.getBoundingClientRect().top);
@@ -43,8 +44,6 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
     expect(await pane.evaluate(el => el.scrollTop)).toBe(0);
     if (!narrow) expect(await pane.locator('.set-nav').evaluate(el => el.getBoundingClientRect().top)).toBe(navTop);
   }
-  // Keys lists the keys themselves, F11 among them
-  await expect(pane.locator('.set-row', { hasText: 'Full screen' })).toBeVisible();
 
   // Hover and cards now lives in Reading
   await go('Reading');

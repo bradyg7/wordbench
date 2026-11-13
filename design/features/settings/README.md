@@ -113,7 +113,7 @@ Written once the person accepts a direction. Known already:
 - [ ] Theme: New theme from a base, colors in groups, live preview; italic words kept per theme (dark defaults grey); the five marks' colors with light and dark forms and contrast measured.
 - [ ] Notebook: Today's page, What it opens with, Places open in, Quick capture key; Links, Notes on chapters and books, Follow the reader always on.
 - [ ] Layouts: one grid, three across; New layout first, opening the builder from the window; right-click Edit, Rename, Key, Delete.
-- [ ] Keys: the keys listed, findable and changeable. Study folder: study folder, Bible database, backups, Input. Documents: look, theme, folder.
+- [ ] Keys: moved to Help's half of this menu (help, 2026-11-13). Study folder: study folder, Bible database, backups, Input. Documents: look, theme, folder.
 - [ ] Scroll bars thin and hidden until used, no arrows, everywhere (a design, not a setting); Full screen in the ⋯ menu and F11.
 - [ ] Narrow (C1′, C2): sections become a menu, Find a search icon, rows stack; text never shrinks. Tested among other tabs, floating, narrow, and on a generated study of years (C3).
 - [ ] `wb settings` reaches every new setting.

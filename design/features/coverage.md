@@ -34,7 +34,7 @@ A new button or command gets a row here, and its folder, before it is built.
 | Updates | the notice that a new version is ready, what changed, install and restart | [updates](updates/README.md) | exploring |
 | Findings | the box, the pane, `!` in the field | [findings](findings/README.md) | accepted |
 | Settings, layout, views | italic words, scroll bars, layouts, saved lists | [settings](settings/README.md) | accepted |
-| Help, guide, manual | Guide cards, commands to try, keys | [help](help/README.md) | exploring |
+| Help, guide, manual | Guide cards, commands to try, keys | [help](help/README.md) | accepted |
 | Phone | (deferred until the desktop is finished) | — | |
 
 ## `wb` commands
