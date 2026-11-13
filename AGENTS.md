@@ -36,8 +36,9 @@ a change alters expected behavior, document the contract and verify it with Rust
   `settings/pages.json`. A question written in a page is a callout line (`> [!question]`, `> [!done]`); a thread or a word
   put in a page is a ```` ```thread ```` or ```` ```word ```` fence holding only an id or a number, never the text. `wb page …`
   is `wb note …` under the new name. `wb study check` is the read-only check of what the folder holds.
-- **The Bible database is read-only.** `WB_BIBLE_DB` (default: `datasets/workbench.db` in the sibling `bible-workbench` checkout, where the data still lives) is opened with
-  SQLite's read-only flag. Never modify it.
+- **The Bible database is read-only.** Follow [local provisioning](data/README.md) and select it with `WB_BIBLE_DB`, the
+  setup screen or `wb setup database` (otherwise `datasets/workbench.db` beside the program, or in the sibling
+  `bible-workbench` checkout). It is opened with SQLite's read-only flag. Never modify it.
 - **Never lose the reader's place.** Anything opened from the text returns to the verse it came from.
 - **Designed before it is built** (the person, 2026-11-11). Every general feature, button and command has a planned
   design in a folder under `design/features/` before it is built or changed in a way the person would see: dated
@@ -65,7 +66,9 @@ a change alters expected behavior, document the contract and verify it with Rust
 ```
 cargo build                                  # the workspace
 cargo run -p wb-cli -- text "Num 25:11"      # verbatim scripture
+cargo test                                   # the Rust regression suite
 npm install && npm run tauri dev             # the app (from the repo root)
+npm run package                              # the buyer's ZIP (BUYER-README.md ships as README.md); npm run check:package checks it
 npm run test:webkit                          # the UI in Playwright's WebKit at phone size (this checkout's own vite, on its own port)
 node measure/desk.mjs                        # the desktop checked in the real app (its own instance and scratch copy)
 npm run measure                              # the speed budgets (after npx tauri build --no-bundle)

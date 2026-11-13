@@ -296,3 +296,91 @@ test('desktop: one part of a split column minimizes alone; the tab list closes a
   await expect(page.locator('.menu .tab-list-row')).toHaveCount(0);   // one tab left: the list closes
   expect(await page.evaluate(() => (window as any).__wb.dock().panes.map((p: any) => p.title).sort().join())).toBe('Four,One,Two');
 });
+
+test('desktop: layer menu and commands repaint both readers in place and persist', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'desktop');
+  const mark = (v: number, id: string, color?: string) => ({
+    kind: 'verse', code: 'NUM', c1: 25, v1: v, i1: null, c2: null, v2: null, i2: null, id, color,
+  });
+  const chapter = {
+    ...fx,
+    reader: {
+      ...fx.reader,
+      marks: { highlights: [mark(10, 'fill', 'yellow')], threads: [mark(10, 'trial', 'green')],
+        notes: [mark(11, 'note')], thread_names: { trial: 'Trial thread' } },
+      questions: [{ id: 'question', v: 12, text: 'Test question' }],
+    },
+  };
+  await page.route('**/fixtures/NUM.25.json', r => r.fulfill({ json: chapter }));
+  await page.route('**/fixtures/wb/text-num-25-10-version-kjv-json.json', r =>
+    r.fulfill({ json: { verses: [{ book: fx.reader.chapter.name, c: 25, v: 10 }] } }));
+  await page.route('**/fixtures/wb/thread-list.json', r => r.fulfill({ json: [{ name: 'Trial thread', id: 'trial', color: 'green' }] }));
+  for (const [word, on] of [['off', false], ['on', true]] as const) {
+    await page.route('**/fixtures/wb/parse-highlights-' + word + '.json', r => r.fulfill({ json: { action: { cmd: 'highlights', on } } }));
+  }
+
+  const main = page.locator('#reader');
+  const second = page.locator('.pane-reader2 .reader2');
+  async function openSecond() {
+    await main.locator('.vn[data-v="10"]').click({ button: 'right' });
+    await page.getByRole('button', { name: 'Open in a new tab', exact: true }).click();
+    await expect(second.locator('.vn-asked[data-v="10"]')).toBeAttached();
+  }
+  async function marks(fill: boolean, thread: boolean) {
+    for (const reader of [main, second]) {
+      const firstWord = reader.locator('.vn[data-v="10"] + .w');
+      if (fill) await expect(firstWord).toHaveClass(/\bhl\b/);
+      else await expect(firstWord).not.toHaveClass(/\bhl\b/);
+      if (thread) await expect(firstWord).toHaveAttribute('style', /linear-gradient/);
+      else await expect(firstWord).not.toHaveAttribute('style', /linear-gradient/);
+      await expect(reader.locator('.vn.vnote[data-v="11"], .vn.vq[data-v="12"]')).toHaveCount(2);
+    }
+    await expect(second.locator('.vn-asked[data-v="10"]')).toBeAttached();
+  }
+
+  await ready(page);
+  await openSecond();
+  await marks(true, true);
+  const readScroll = () => page.evaluate(() => ['#scroller', '.reader2-pane'].map(s => document.querySelector(s)!.scrollTop));
+  const position = await readScroll();
+  await page.locator('#hl-menu').click();
+  await page.getByRole('button', { name: 'Your highlights', exact: true }).click();
+  await marks(false, true);
+  await page.getByRole('button', { name: 'Trial thread', exact: true }).click();
+  await marks(false, false);
+  await page.keyboard.press('Escape');
+  expect(await readScroll()).toEqual(position);
+
+  await page.reload();
+  await page.waitForFunction(() => (window as any).__wbReady);
+  await openSecond();
+  await marks(false, false);
+  await page.locator('#hl-menu').click();
+  await page.getByRole('button', { name: 'Your highlights', exact: true }).click();
+  await page.getByRole('button', { name: 'Trial thread', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await marks(true, true);
+  expect(await page.evaluate(() => (window as any).__wb.run('highlights off'))).toMatchObject({ ok: true });
+  await marks(false, false);
+  expect(await page.evaluate(() => (window as any).__wb.run('highlights on'))).toMatchObject({ ok: true });
+  await marks(true, true);
+});
+
+test('an unlinked word opens the interlinear for its verse', async ({ page }, info) => {
+  const phone = info.project.name === 'webkit-phone';
+  const [key, word] = Object.entries(fx.words).find(([, value]: [string, any]) => !value.strong)!;
+  const [v, i] = key.split('.').map(Number);
+  await page.route(`**/fixtures/wb/interlinear-num-25-${v}.json`, r => r.fulfill({
+    json: { lang: 'heb', book: { name: fx.reader.chapter.name }, verses: [{ c: 25, v, words: [] }] },
+  }));
+  await ready(page);
+  const box = await wordBox(page, v, i);
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  if (phone) await page.touchscreen.tap(x, y);
+  else await page.mouse.click(x, y);
+  const card = page.getByRole('dialog');
+  await expect(card.getByText('No direct Strong’s tag on this word.')).toBeVisible();
+  await card.getByRole('button', { name: 'Verse interlinear' }).click();
+  await expect(page.locator('.pane-interlinear .pane-title')).toHaveText((word as any).reference);
+  await expect(card).toHaveCount(0);
+});

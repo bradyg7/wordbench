@@ -14,6 +14,8 @@ const INTERNAL: &[&str] = &[
     // the store keeping in step with its folder, and plain forms the commands reach through others (hl set keeps the
     // no-overlap rule over set_highlight; set rename is update_set without pane views, which come from the window)
     "refresh", "look_again", "set_highlight", "update_set",
+    // Legacy Trash primitives remain available to the store. User-facing deletes go through deletion.rs.
+    "delete_note", "delete_jot", "delete_day", "delete_thread_note", "delete_trail", "release",
     // reading: the pieces wb plan and wb read are made of
     "today", "schedule", "parse_plan_text", "label", "read_plan", "plans", "find_plan", "start_plan", "remove_plan", "log", "mark",
     "chapters_of", "progress", "today_view", "overall", "start_plan_with", "days_off_of", "next_reading_day", "plan_dates", "reading_days_between", "start_for", "build", "apply_missed",
@@ -67,7 +69,7 @@ fn every_action_has_a_command() {
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
     let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "dictionary.rs", "docs/look.rs"] {
+    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "dictionary.rs", "docs/look.rs", "deletion.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;

@@ -34,7 +34,7 @@ rmSync(path.join(study, 'settings', 'notebook.json'), { force: true });
 // the Shelf's checks open two sets by name; the person's folder is not trusted to hold them, so this copy gets its own
 shelfFixtures(study);
 mkdirSync(cache, { recursive: true });
-const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort, WB_NO_OPEN: '1' };
+const env = { ...process.env, WB_STUDY_DIR: study, WB_DOCS_DIR: '', WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort, WB_NO_OPEN: '1' };
 const proc = spawn(exe, [], { env, stdio: 'ignore' });
 const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
 
@@ -624,21 +624,16 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const tn = JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes;
   check('a thread holds pages: one put on it, one written on its page', tn.length === 2 && tn.some(n => n.text === 'a note on the thread itself' && n.anchor === ''));
   await page.screenshot({ path: shots + '1440-notes-on-a-thread.png' });
-  page.once('dialog', d => d.accept());
   await ed.locator('.nb-ed-head .icon-btn').last().click();
-  await page.locator('.menu .menu-item', { hasText: 'Delete (to the Trash)' }).click();
-  await sleep(900);
-  await page.evaluate(() => window.__wb.run('notebook'));
-  const openTrash = async () => { await page.locator('.pane-notebook .nb-trash-btn').click(); };
+  await page.locator('.menu .menu-item', { hasText: /^Delete$/ }).click();
+  const undoPage = page.getByRole('button', { name: 'Undo deletion of 1 page', exact: true });
+  await undoPage.waitFor();
+  const deletions = () => JSON.parse(execFileSync(wbExe, ['page', 'deletions'], { env }).toString()).operations;
+  check('a deleted note has a pending timed Undo', deletions().some(op => op.state === 'pending' && op.count === 1));
+  await undoPage.click();
+  await undoPage.waitFor({ state: 'hidden' });
+  check('Undo restores the note to its thread', JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes.length === 2);
   await nbBack();
-  await openTrash();
-  const gone = page.locator('.pane-notebook .nb-entry.trashed', { hasText: 'a note on the thread itself' }).first();
-  await gone.waitFor({ timeout: 10000 });
-  check('a deleted note is in the Trash with its days left', /erased in 7 days/.test(await gone.textContent()));
-  await gone.getByRole('button', { name: 'Put it back' }).click();
-  await page.waitForFunction(() => ![...document.querySelectorAll('.pane-notebook .nb-entry.trashed')].some(e => e.textContent.includes('a note on the thread itself')), null, { timeout: 10000 });
-  check('Put it back restores it to its thread', JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes.length === 2);
-  await page.locator('.pane-notebook .nb-back.shown').click();
 
   // Take off a note's place, its first too (note c8dc): the next of its places becomes its place; the last, the Inbox
   const notesAt = place => JSON.parse(execFileSync(wbExe, ['note', 'list', place], { env }).toString());
@@ -657,27 +652,14 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   check('Take off on a note’s last place sends it to the Inbox', !!inInbox && existsSync(path.join(study, 'notes', '_inbox', `${inInbox.id}.md`)));
   await page.screenshot({ path: shots + '1440-take-off-a-place.png' });
 
-  // Erase now in the Trash, asked first (note e48c, the person's decision of 2026-11-04)
-  page.once('dialog', d => d.accept());
+  // Expiry removes the operation snapshot when Undo is left unused.
   await ed.locator('.nb-ed-head .icon-btn').click();
-  await page.locator('.menu .menu-item', { hasText: 'Delete' }).click();
-  await sleep(500);
+  await page.locator('.menu .menu-item', { hasText: /^Delete$/ }).click();
+  await undoPage.waitFor();
+  const pending = deletions().find(op => op.deleted.includes(inInbox.id));
+  await undoPage.waitFor({ state: 'hidden', timeout: 15000 });
+  check('expired deletion removes the page and its operation snapshot', !!pending && !existsSync(path.join(study, 'notes', '_inbox', `${inInbox.id}.md`)) && !existsSync(path.join(study, '.trash', 'page-operations', pending.operation)));
   await nbBack();
-  await openTrash();
-  const doomed = page.locator('.pane-notebook .nb-entry.trashed', { hasText: 'a place to take off' }).first();
-  await doomed.waitFor({ timeout: 10000 });
-  const inTrash = () => JSON.parse(execFileSync(wbExe, ['trash'], { env }).toString()).notes.filter(n => n.text === 'a place to take off');
-  const trashName = inTrash()[0]?.name;
-  page.once('dialog', d => d.dismiss());
-  await doomed.getByRole('button', { name: 'Erase now' }).click();
-  await sleep(600);
-  check('Erase now asks first; Cancel keeps the note in the Trash', inTrash().length === 1);
-  let asked = '';
-  page.once('dialog', d => { asked = d.message(); d.accept(); });
-  await doomed.getByRole('button', { name: 'Erase now' }).click();
-  await page.waitForFunction(() => ![...document.querySelectorAll('.pane-notebook .nb-entry.trashed')].some(e => e.textContent.includes('a place to take off')), null, { timeout: 10000 });
-  check('Erase now, confirmed, erases it from .trash', inTrash().length === 0 && !!trashName && !existsSync(path.join(study, '.trash', trashName)), asked);
-  await page.locator('.pane-notebook .nb-back.shown').click();
 
   // phase 2b tier 2: the Notebook grouped (N2, N3), places on chapters and books (N1), links (N1), today's page (N2),
   // the format bar (B1), its settings (N4), the list and the editor side by side
@@ -775,7 +757,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   // W1: the sections replace Group and the ⋯ filters; Pages are the notes with no place (once the Inbox); Places has
   // its own Follow switch; ⋯ is the settings, cut down to what acts on the whole Notebook (findings c7ab, e09e)
   const sections = await page.locator('.pane-notebook .nb-sections .nb-section').allTextContents();
-  check('the Notebook’s sections: Days, Pages, Places, Threads, Questions, All, on one line; the Trash a bin beside the pen', sections.join(', ') === 'Days, Pages, Places, Threads, Questions, All' && await page.locator('.pane-notebook .nb-sections').evaluate(r => r.clientHeight < 40) && await page.locator('.pane-notebook .nb-head .nb-trash-btn').count() === 1, sections.join(', '));
+  check('the Notebook’s sections: Days, Pages, Places, Threads, Questions, All, on one line', sections.join(', ') === 'Days, Pages, Places, Threads, Questions, All' && await page.locator('.pane-notebook .nb-sections').evaluate(r => r.clientHeight < 40) && await page.locator('.pane-notebook .nb-head .nb-trash-btn').count() === 0, sections.join(', '));
   check('no Group control and no Inbox in the Notebook', await page.locator('.pane-notebook .nb-group').count() === 0 && !(await page.locator('.pane-notebook').textContent()).includes('Inbox'));
   await group('Pages');
   // W3: Pages is the tree of pages, in wb page tree's order (every note with no place is in it)
@@ -850,7 +832,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const sideParts = await page.locator('.pane-notebook .nb-side .nb-side-head .nb-glabel').allTextContents();
   // (W4: with a second reader open, At the readers)
   const atReaders = await page.evaluate(() => window.__wb.dock().panes.some(p => p.kind === 'reader2')) ? 'At the readers' : 'At the reader';
-  check('wide, the sidebar replaces the sections: Today, Pinned, Pages, At the reader, Questions (a thread is a page in Pages); the Trash at its foot', sideParts.join(', ') === `Today, Pinned, Pages, ${atReaders}, Questions` &&await page.locator('.pane-notebook .nb-sections').count() === 0 && await page.locator('.pane-notebook .nb-side-foot .nb-side-trash').count() === 1, sideParts.join(', '));
+  check('wide, the sidebar replaces the sections: Today, Pinned, Pages, At the reader, Questions (a thread is a page in Pages)', sideParts.join(', ') === `Today, Pinned, Pages, ${atReaders}, Questions` &&await page.locator('.pane-notebook .nb-sections').count() === 0 && await page.locator('.pane-notebook .nb-side-foot .nb-side-trash').count() === 0, sideParts.join(', '));
   const fileOf = id => { for (const d of readdirSync(path.join(study, 'notes'))) { const f = path.join(study, 'notes', d, `${id}.md`); if (existsSync(f)) return f; } return null; };
   const bodyOf = id => readFileSync(fileOf(id), 'utf8').replace(/\r\n/g, '\n').replace(/^---\n[\s\S]*?\n---\n/, '').trim();
   const waitFile = async (id, test) => { for (let i = 0; i < 60; i++) { const f = fileOf(id); if (f && test(readFileSync(f, 'utf8').replace(/\r\n/g, '\n'))) return true; await sleep(100); } return false; };
@@ -1461,7 +1443,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   // W6, a document from a page (sheets W7.1–W7.4): a page with headings, scripture blocks, to-dos, and two pages inside
   // it (one with scripture, one with a view) made into a Speaker Script and Verse by Verse. Every verse expected here
   // comes from the database (wb text); the view's rows are wb view run's.
-  const w6Docs = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
+  const w6Docs = path.join(study, 'exports');
   const w6 = wbj('page', 'new', 'W6 Lesson: Phinehas').id;
   for (const b of ['# Aim', 'Read Numbers 25 with the group, then Psalm 106 beside it.', '# Before Tuesday', '- [x] W6 read Numbers 25 twice\n- [ ] W6 print the verse deck', '```scripture\nNum 25:10-13\n```']) execFileSync(wbExe, ['block', 'add', w6, '-'], { env, input: b });
   const w6a = wbj('page', 'new', 'W6 The passage', '--parent', w6).id;
@@ -2298,7 +2280,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
 
   // tier 4: documents from a thread. The Documents pane makes the Speaker Script (Word); the command field makes Verse by
   // Verse (PDF pages); each is checked verse by verse before it is kept, listed with how it stands, and in its thread's pane
-  const docsDir = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
+  const docsDir = path.join(study, 'exports');
   // a lesson's PowerPoint, as the Python app records one (its file not made here): written into this run's own copy, so the
   // check below does not depend on what the scratch folder holds
   mkdirSync(path.join(study, 'documents'), { recursive: true });
@@ -2312,7 +2294,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const scriptRow = page.locator('.pane-documents .doc-row', { hasText: 'Speaker Script - Phinehas.docx' });
   await scriptRow.waitFor({ timeout: 20000 });
   const scriptRec = JSON.parse(execFileSync(wbExe, ['docs', 'show', 'thread-phinehas-script'], { env }).toString());
-  check('Make writes the Speaker Script, checked, beside the scratch folder', existsSync(path.join(docsDir, 'Speaker Script - Phinehas.docx')) && scriptRec.state === 'current' && scriptRec.theme === 'olivet', scriptRec.state);
+  check('Make writes the Speaker Script, checked, inside the scratch folder', existsSync(path.join(docsDir, 'Speaker Script - Phinehas.docx')) && scriptRec.state === 'current' && scriptRec.theme === 'olivet', scriptRec.state);
   check('the Speaker Script is listed Up to date', (await scriptRow.locator('.doc-state').innerText()) === 'Up to date');
   // R3: Adjust… opens the dials beside a live page drawn from the thread's own plan; a Look, Ink and See it in grey
   // change the page at once; Use these carries the dials back to the Make row (nothing is made until Make)
@@ -2353,10 +2335,12 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await page.evaluate(() => window.__wb.run('thread Phinehas'));
   await page.waitForSelector('.pane-notebook .nb-docs .doc-row', { timeout: 15000 }).catch(() => {});
   check('the thread’s page lists its documents, with Make for it', await page.locator('.pane-notebook .nb-docs .doc-row').count() >= 2 && await page.locator('.pane-notebook .nb-docs .doc-make').count() === 1, String(await page.locator('.pane-notebook .nb-docs .doc-row').count()));
-  // R1: the Python app opens the folder as this app reads it (scripts/py-opens.py, on this run's own copy)
-  let pyOpens = '';
-  try { pyOpens = execFileSync('python', ['-I', path.join(file('scripts/'), 'py-opens.py')], { env: { ...env, WB_STUDY_DIR: study }, cwd: file('') }).toString(); } catch (e) { pyOpens = String(e.stdout || e); }
-  check('the Python app still opens the study folder: what it reads is what this app counts (scripts/py-opens.py)', /^ok .*notes/m.test(pyOpens) && !/^DIFF/m.test(pyOpens), pyOpens.replace(/\n/g, ' | '));
+  // Optional predecessor comparison when its checkout is explicitly selected.
+  if (env.WB_LEGACY_APP) {
+    let pyOpens = '';
+    try { pyOpens = execFileSync('python', ['-I', path.join(file('scripts/'), 'py-opens.py')], { env: { ...env, WB_STUDY_DIR: study }, cwd: file('') }).toString(); } catch (e) { pyOpens = String(e.stdout || e); }
+    check('the Python app still opens the study folder: what it reads is what this app counts (scripts/py-opens.py)', /^ok .*notes/m.test(pyOpens) && !/^DIFF/m.test(pyOpens), pyOpens.replace(/\n/g, ' | '));
+  }
 
   // the Shelf as a tree (R2)
   await shelfChecks({ page, check, env, wbExe, study, shots, sleep });

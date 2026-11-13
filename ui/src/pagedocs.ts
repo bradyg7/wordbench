@@ -32,17 +32,30 @@ export function madeWhen(iso: string): string {
 const size = (n: number) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 
 /** The modal the three steps are drawn in (the plan modal's frame). */
-export function modal(label: string) {
+export function modal(label: string, aboveCurrent = false, onClose?: () => void) {
   const overlay = document.getElementById('overlay')!;
-  overlay.querySelectorAll('.pd-wrap').forEach(x => x.remove());
+  const current = [...overlay.querySelectorAll<HTMLElement>('.pd-wrap')];
+  const previous = aboveCurrent ? current.at(-1) : undefined;
+  if (previous) previous.inert = true;
+  if (!aboveCurrent) current.forEach(x => x.remove());
   const wrap = h('div', 'plan-modal-wrap pd-wrap');
   const box = h('section', 'plan-modal pd-modal');
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-label', label);
   wrap.append(box);
   overlay.append(wrap);
-  const key = (ev: KeyboardEvent) => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); } };
-  const close = () => { wrap.remove(); document.removeEventListener('keydown', key, true); };
+  const key = (ev: KeyboardEvent) => {
+    if (ev.key === 'Escape' && wrap.isConnected && !wrap.inert) {
+      ev.stopPropagation();
+      close();
+    }
+  };
+  const close = () => {
+    wrap.remove();
+    if (previous) previous.inert = false;
+    document.removeEventListener('keydown', key, true);
+    onClose?.();
+  };
   document.addEventListener('keydown', key, true);
   wrap.onmousedown = ev => { if (ev.target === wrap) close(); };
   const head = (title: string, sub: string) => {
@@ -64,6 +77,7 @@ export async function makeFromPage(pageId: string) {
   catch (x) { toast(String((x as Error).message || x)); return; }
   const m = modal('Make a document');
   const want = { word: true, pdf: true };
+  let slideFormat = 'pdf';
   let theme: string = designs.theme;
   let lookKey: string = looks?.saved || 'preview';
   let inkMode = '';
@@ -73,6 +87,18 @@ export async function makeFromPage(pageId: string) {
   const fromLine = () => `From the page ${parts.title}${parts.inside ? ` and the ${parts.inside === 1 ? 'page' : `${parts.inside} pages`} inside it` : ''}`;
   const themeName = () => designs.themes[theme]?.name || theme;
   const versionName = () => version === 'page' ? 'each block’s version' : version;
+
+  const switchArgs = () => parts.rows.flatMap(r => [switches.get(r.key) ? '--on' : '--off', r.key]);
+  const pageArgs = () => ['--page', pageId, '--theme', theme, '--version', version, ...switchArgs()];
+  const adjustLook = async (to: 'word' | 'pdf') => {
+    const start: Chosen = { look: lookKey, dials: [...extra, ...(inkMode ? [['ink', inkMode] as [string, string]] : [])] };
+    const r = await adjust(to, [...pageArgs(), '--to', to, '--structure', to === 'word' ? 'script' : 'verse'], start,
+      designs.themes[theme]?.doc_accent || '8E1B14');
+    if (!r) return;
+    lookKey = r.look;
+    inkMode = r.dials.find(d => d[0] === 'ink')?.[1] || '';
+    extra = r.dials.filter(d => d[0] !== 'ink');
+  };
 
   // ---- W7.1: what to make ----
   const drawWhat = () => {
@@ -92,7 +118,7 @@ export async function makeFromPage(pageId: string) {
         cb.disabled = !made;
         cb.onchange = () => { want[to] = cb.checked; opt.classList.toggle('on', cb.checked); next.disabled = !want.word && !want.pdf; };
         const t = h('div');
-        t.append(h('div', 'pd-opt-name', made ? s.label : `${s.label} · phase 5`), h('div', 'muted small', made && to === 'pdf' ? `${s.about} As PDF pages.` : s.about));
+        t.append(h('div', 'pd-opt-name', made ? s.label : `${s.label} · phase 5`), h('div', 'muted small', s.about));
         opt.append(cb, t);
         c.append(opt);
       }
@@ -112,6 +138,11 @@ export async function makeFromPage(pageId: string) {
     ver.onchange = () => { version = ver.value; };
     const lt = h('label', 'pd-field'); lt.append(h('span', 'pd-field-name', 'Theme'), th);
     const lv = h('label', 'pd-field'); lv.append(h('span', 'pd-field-name', 'Version'), ver);
+    const format = h('select', 'field small pd-slide-format');
+    format.append(new Option('PDF', 'pdf'), new Option('PowerPoint with PDF preview', 'pptx'));
+    format.value = slideFormat;
+    format.onchange = () => { slideFormat = format.value; };
+    const ls = h('label', 'pd-field'); ls.append(h('span', 'pd-field-name', 'Slide format'), format);
     const lf = lookFields(looks);
     lf.look.value = lookKey;
     lf.ink.value = inkMode;
@@ -120,18 +151,12 @@ export async function makeFromPage(pageId: string) {
     const ll = h('label', 'pd-field'); ll.append(h('span', 'pd-field-name', 'Look'), lf.look);
     const li = h('label', 'pd-field'); li.append(h('span', 'pd-field-name', 'Ink'), lf.ink);
     const adj = button('btn small pd-adjust', extra.length ? `Adjust… (${extra.length})` : 'Adjust…', async () => {
-      const to = want.word ? 'word' : 'pdf';
-      const start: Chosen = { look: lookKey, dials: [...extra, ...(inkMode ? [['ink', inkMode] as [string, string]] : [])] };
-      const r = await adjust(to, ['--page', pageId, '--to', to], start, designs.themes[theme]?.doc_accent || '8E1B14');
-      if (!r) return;
-      lookKey = r.look;
-      inkMode = r.dials.find(d => d[0] === 'ink')?.[1] || '';
-      extra = r.dials.filter(d => d[0] !== 'ink');
+      await adjustLook(want.word ? 'word' : 'pdf');
       lf.look.value = lookKey;
       lf.ink.value = inkMode;
       adj.textContent = extra.length ? `Adjust… (${extra.length})` : 'Adjust…';
     });
-    opts.append(lt, best, h('span', 'grow'), lv, ll, li, adj);
+    opts.append(lt, best, h('span', 'grow'), lv, ls, ll, li, adj);
     const foot = h('div', 'plan-modal-foot');
     const next = button('btn primary pd-next', 'Next: what goes in', () => void drawParts());
     foot.append(h('span'), button('btn pd-cancel', 'Cancel', m.close), next);
@@ -139,10 +164,14 @@ export async function makeFromPage(pageId: string) {
   };
 
   // ---- W7.2: what goes in ----
-  const switchArgs = () => parts.rows.flatMap(r => [switches.get(r.key) ? '--on' : '--off', r.key]);
+  let partsRequest = 0;
   const drawParts = async () => {
-    try { parts = await wb(['craft', 'parts', '--page', pageId, '--version', version, ...switchArgs()]); }
-    catch (x) { toast(String((x as Error).message || x)); return; }
+    const request = ++partsRequest;
+    try {
+      const next: Parts = await wb(['craft', 'parts', '--page', pageId, '--version', version, ...switchArgs()]);
+      if (request !== partsRequest || !m.box.isConnected) return;
+      parts = next;
+    } catch (x) { toast(String((x as Error).message || x)); return; }
     const made = [want.word && WHAT.word, want.pdf && WHAT.pdf].filter(Boolean).join(' and ');
     const list = h('div', 'pd-rows');
     for (const r of parts.rows) {
@@ -164,19 +193,25 @@ export async function makeFromPage(pageId: string) {
     if (!parts.rows.length) list.append(h('p', 'muted small', 'The page has nothing under its title yet: the documents would hold its title only.'));
     const note = h('div', 'pd-note muted small');
     note.append(icon('file'), h('span', '', 'The document is planned from the page each time it is made, the way the Python app plans one from a thread; nothing is copied into the page, and scripture comes from the database only.'));
-    const foot = h('div', 'plan-modal-foot');
+    const foot = h('div', 'plan-modal-foot pd-parts-foot');
     const go = button('btn primary pd-make', 'Make them', () => void makeThem(go));
-    foot.append(h('span'), button('btn pd-back', 'Back', drawWhat), go);
+    const previews = h('div', 'pd-part-previews');
+    for (const to of (['word', 'pdf'] as const).filter(t => want[t])) {
+      previews.append(button('btn small pd-parts-preview', to === 'word' ? 'Preview Word' : 'Preview PDF', () => void adjustLook(to)));
+    }
+    foot.append(previews, button('btn pd-back', 'Back', () => { partsRequest++; drawWhat(); }), go);
     m.box.replaceChildren(m.head('What goes in', `${made} · ${themeName()} · ${versionName()}`), list, note, foot);
   };
 
   // ---- W7.3: made, and every verse checked ----
   const makeThem = async (go: HTMLButtonElement) => {
+    partsRequest++;
     go.disabled = true;
     go.textContent = 'Making…';
     const done: { to: string; r?: any; error?: string }[] = [];
     for (const to of (['word', 'pdf'] as const).filter(t => want[t])) {
-      try { done.push({ to, r: await wb(['craft', to === 'word' ? 'word' : 'deck', '--page', pageId, '--theme', theme, '--version', version, '--look', lookKey, ...(inkMode ? ['--set', `ink=${inkMode}`] : []), ...extra.flatMap(([k, v]) => ['--set', `${k}=${v}`]), ...switchArgs()]) }); }
+      const format = to === 'pdf' && slideFormat === 'pptx' ? ['--format', slideFormat] : [];
+      try { done.push({ to, r: await wb(['craft', to === 'word' ? 'word' : 'deck', ...format, ...pageArgs(), '--look', lookKey, ...(inkMode ? ['--set', `ink=${inkMode}`] : []), ...extra.flatMap(([k, v]) => ['--set', `${k}=${v}`])]) }); }
       catch (x) { done.push({ to, error: String((x as Error).message || x) }); }
     }
     app.changed('documents');
@@ -191,8 +226,9 @@ export async function makeFromPage(pageId: string) {
       card.dataset.to = d.to;
       const t = h('div', 'pd-file-main');
       if (d.r) {
-        t.append(h('div', 'pd-file-name', d.r.name), h('div', 'muted small pd-file-meta', d.to === 'word' ? `Word · ${size(d.r.size)}` : `PDF · ${d.r.pages ?? d.r.checked?.pages ?? '?'} slides`));
+        t.append(h('div', 'pd-file-name', d.r.name), h('div', 'muted small pd-file-meta', d.to === 'word' ? `Word · ${size(d.r.size)}` : `${d.r.to === 'deck' ? 'PowerPoint' : 'PDF'} · ${d.r.pages ?? d.r.checked?.pages ?? '?'} slides`));
         card.append(icon('file'), t, button('btn small pd-open', 'Open', () => void wb(['docs', 'open', d.r.id]).catch(x => toast(String(x)))));
+        if (d.r.to === 'deck' && d.r.pdf) card.append(button('btn small', 'PDF preview', () => void wb(['docs', 'open-preview', d.r.id]).catch(x => toast(String(x)))));
       } else {
         t.append(h('div', 'pd-file-name', WHAT[d.to]), h('div', 'small pd-file-error', d.error!));
         card.append(icon('file'), t);
@@ -272,7 +308,7 @@ export async function pageDocuments(pageId: string, into: HTMLElement) {
  * the PDF's pages. */
 export function previewDoc(d: { id: string; name: string }) {
   if (!dock.find(`doc:${d.id}`)) dock.apart();
-  return dock.open('docpreview', d.name, `doc:${d.id}`, 'left', async el => {
+  return dock.open('docpreview', d.name, `doc:${d.id}`, 'left', async (el, pane) => {
     const head = h('header', 'pane-head pd-pv-head');
     const acts = h('div', 'pd-pv-acts');
     acts.append(button('btn small pd-pv-open', 'Open', () => void wb(['docs', 'open', d.id]).catch(x => toast(String(x)))),
@@ -282,7 +318,9 @@ export function previewDoc(d: { id: string; name: string }) {
     try { p = await wb(['docs', 'preview', d.id]); }
     catch (x) { el.replaceChildren(head, h('p', 'muted', String((x as Error).message || x))); return; }
     const body = h('div', 'pd-pv-body');
-    if (p.paras) {
+    if (p.to === 'deck' && p.pdf) {
+      body.append(button('btn small', 'Open saved PDF preview', () => void wb(['docs', 'open-preview', d.id]).catch(x => toast(String(x)))));
+    } else if (p.paras) {
       const sheet = h('div', 'pd-pv-sheet');
       for (const para of p.paras) {
         const e = h('p', `pd-pv-p dp-${para.style}`);
@@ -347,9 +385,19 @@ export function previewDoc(d: { id: string; name: string }) {
         } else if (single && (ev.key === 'Home' || ev.key === 'End')) { ev.preventDefault(); go(ev.key === 'Home' ? 0 : n - 1); }
       });
       show();
+      pane.captureView = () => ({ slide: cur, single });
+      pane.restoreView = state => {
+        if (!state || typeof state !== 'object') return;
+        if (typeof state.single === 'boolean') single = state.single;
+        if (Number.isInteger(state.slide)) cur = Math.max(0, Math.min(n - 1, state.slide));
+        show();
+      };
       body.append(bar, stage);
       setTimeout(() => body.focus({ preventScroll: true }));
     } else if (p.stale) {
+      if (typeof p.last_built_pages === 'number') {
+        body.append(h('p', 'muted small', `Last build · ${p.last_built_pages} page${p.last_built_pages === 1 ? '' : 's'}`));
+      }
       body.append(h('p', 'muted pd-pv-stale', p.stale), button('btn small soft pd-again', 'Make again', async () => {
         try { await wb(['docs', 'update', d.id]); app.changed('documents'); void dock.find(`doc:${d.id}`)?.refresh?.(); }
         catch (x) { toast(String((x as Error).message || x)); }

@@ -5,6 +5,7 @@ import { wb } from './api';
 import { runLine } from './actions';
 import { toast } from './sheets';
 import { h, popMenu } from './ui';
+import { kept, loadKept, save as saveCommand } from './mycommands';
 
 export interface Saved { name: string; id: string; saved?: string }
 
@@ -47,6 +48,7 @@ export async function menu(from: HTMLElement, openSettings: (s: string) => void)
 
 /** Settings ▸ Layouts: the saved ones (Open, Remove) and Save this layout. */
 export async function section(redraw: () => void): Promise<HTMLElement[]> {
+  await loadKept();
   const out: HTMLElement[] = [];
   for (const l of await list()) {
     const r = h('div', 'set-row');
@@ -56,6 +58,18 @@ export async function section(redraw: () => void): Promise<HTMLElement[]> {
     const go = h('button', 'btn', 'Open'); go.onclick = () => void apply(l.name);
     const rm = h('button', 'link-btn danger', 'Remove'); rm.onclick = () => void remove(l.name).then(redraw);
     ctl.append(go, rm);
+    const line = `layout load ${l.name}`;
+    const binding = kept.find(c => c.line === line);
+    const key = h('input', 'field') as HTMLInputElement;
+    key.value = binding?.key ?? '';
+    key.placeholder = 'Shortcut (optional)'; key.setAttribute('aria-label', `Shortcut for ${l.name}`);
+    const assign = h('button', 'btn', 'Save shortcut');
+    assign.onclick = async () => {
+      if (!key.value.trim()) { if (binding) await saveCommand({ ...binding, key: '' }); }
+      else await saveCommand({ name: binding?.name ?? `Layout: ${l.id}`, line, icon: 'sidebar', key: key.value.trim() });
+      redraw();
+    };
+    ctl.append(key, assign);
     r.append(t, ctl);
     r.dataset.find = `${l.name} layout arrangement panes`;
     out.push(r);

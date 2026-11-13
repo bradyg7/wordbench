@@ -1124,3 +1124,26 @@ now say what `window` answered and the window's size, should they fail again.
 Commit `3078ede` records **420 of 420** desktop checks on the merged build. See the [current debugging queue](current/README.md) for remaining verification, redesign work and newly reported findings.
 
 **Fresh verification at the same revision (2026-11-09).** Rust **172/172**, WebKit **20 passed and 10 project skips**, document plans **16/16**, Python-open counts **5/5**, and real mouse **5/5**. Golden matched **93/103** on the full copied fixture and **103/103** on the control copy with one documented Rust-only set item omitted. The [verification and reader diagnostics record](current/verification-3078ede.md) has the commands, fixture details, reproduction matrix and review decisions.
+
+## 37. H02 reader integration (2026-11-09)
+
+The Highlights menu, typed visibility commands and Notebook thread control repaint the main and all open secondary
+readers from the marks they already hold. The menu explains which marks it controls. Visibility preferences still
+live in window storage, and the repaint leaves the verse location, note dots and question badges in place.
+
+An unlinked KJV word card identifies the missing direct Strong’s tag and offers the verse interlinear. Tagged words
+still show their stored entries. The built-in light and dark themes now mix 40% accent into italic scripture ink.
+Calculated italic contrast against the page is 11.35:1 in Light and 11.63:1 in Dark. The lowest ratios across the five
+standard highlight fills are 8.85:1 and 6.59:1, respectively.
+
+Verification against the merged base: production UI build passed. WebKit passed 23 tests with 11 project skips,
+including two-reader visibility, position and reload checks and the interlinear action on desktop and phone.
+The native WebView2 replay reproduced immediate hide and restore in both readers, unchanged study bytes during
+toggles, and a working verse interlinear from each reader. The Bible database hash matched the baseline.
+
+The updated golden runner starts from the full copied fixture and omits pre-existing Rust-only document set rows
+from both disposable copies. It reported one omission per side and matched **103/103** cases. The source fixture
+and the application's set behavior are unaffected by this comparison rule.
+
+The [H01 and H02 baseline report](current/verification-3078ede.md) records the checks at `3078ede` and the original
+reader reproduction before this integration.

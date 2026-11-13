@@ -43,10 +43,11 @@ export async function run(c: Kept) {
 
 /** A key like "Ctrl+U" the event matches. */
 export function matches(e: KeyboardEvent, key: string) {
-  const m = /^(Ctrl|Alt)\+(.+)$/i.exec(key);
-  if (!m) return false;
-  const want = m[2].toLowerCase();
-  return (m[1].toLowerCase() === 'ctrl' ? e.ctrlKey || e.metaKey : e.altKey) && !e.shiftKey && e.key.toLowerCase() === want;
+  const parts = key.toLowerCase().split('+');
+  const want = parts.pop();
+  return !!want && parts.length > 0 && parts.every(p => ['ctrl', 'alt', 'shift'].includes(p))
+    && (e.ctrlKey || e.metaKey) === parts.includes('ctrl') && e.altKey === parts.includes('alt')
+    && e.shiftKey === parts.includes('shift') && e.key.toLowerCase() === want;
 }
 /** A kept command whose key this is (not while typing in a field). */
 export function byKey(e: KeyboardEvent): Kept | undefined {

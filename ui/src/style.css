@@ -89,7 +89,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .w, .g { background-size: 100% 2px; background-repeat: no-repeat; }
 .w { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 /* the KJV's italics (words the translators supplied): a heavier italic in a slightly different ink, so they read clearly */
-.w.it { font-style: italic; font-weight: 500; color: color-mix(in srgb, var(--fg) 78%, var(--accent)); }
+.w.it { font-style: italic; font-weight: 500; color: color-mix(in srgb, var(--fg) 60%, var(--accent)); }
 .w.nd { font-variant-caps: small-caps; }
 .w.wj { color: var(--jesus); }
 .w.noted { text-decoration: underline dotted var(--muted) 1.5px; text-underline-offset: 6px; }
@@ -103,6 +103,14 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .vn::before { content: ''; position: absolute; inset: -14px -10px; }   /* a finger-sized target around a small number */
 .ch-title.wide-note::after { content: ''; display: inline-block; vertical-align: super; margin-left: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 .vn.vnote::after { content: ''; position: absolute; top: -2px; right: -6px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.w.reading { background-image: linear-gradient(var(--accent-soft), var(--accent-soft)); }
+.w.reading-word { background-image: linear-gradient(color-mix(in srgb, var(--accent) 30%, transparent), color-mix(in srgb, var(--accent) 30%, transparent)); outline: 1px solid var(--accent); border-radius: 2px; }
+.listenbar { position: fixed; z-index: 30; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 20px); padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 24px var(--scrim); }
+.listenbar[hidden] { display: none; }
+.listen-place { white-space: nowrap; font: var(--type-interface); }
+.listen-status { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: var(--type-interface); }
+.listenbar select { max-width: 180px; min-height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); padding: 4px 6px; }
+@media (max-width: 620px) { .listenbar { left: 10px; right: 10px; transform: none; flex-wrap: wrap; justify-content: center; } .listen-status { max-width: 100px; } .listenbar select { max-width: 130px; } }
 
 .handle { position: absolute; width: 2px; margin-left: -1px; background: var(--accent); z-index: 3; touch-action: none; }
 .handle i { position: absolute; left: -6px; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); }
@@ -189,3 +197,47 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .plan-name { font: var(--type-small-strong); margin: 6px 0 6px; }
 
 @media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
+
+/* ---- first run: the setup screen (ui/src/setup.ts) ---- */
+.setup {
+  position: fixed; inset: 0; z-index: 40; overflow-y: auto;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: var(--bg);
+}
+.setup-card {
+  width: min(560px, 100%); padding: 32px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sheet); box-shadow: 0 24px 60px rgba(0, 0, 0, .18);
+}
+.setup-eyebrow {
+  margin: 0 0 12px; font: var(--type-label); letter-spacing: var(--type-label-tracking);
+  text-transform: uppercase; color: var(--accent);
+}
+.setup h1 { margin: 0 0 10px; font: var(--type-display); letter-spacing: var(--type-display-tracking); }
+.setup-lede { margin: 0 0 8px; color: var(--muted); font: var(--type-body); }
+.setup-step { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.setup-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.setup-step h2 { margin: 0; font: var(--type-heading); }
+.setup-state { font: var(--type-caption); color: var(--warn); }
+.setup-state.ok { color: var(--ok); }
+.setup-path {
+  margin: 10px 0 4px; padding: 7px 10px; overflow-wrap: anywhere;
+  font: 400 12.5px/18px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--sunken); border-radius: var(--radius-control); color: var(--fg);
+}
+.setup-detail { margin: 6px 0 12px; color: var(--muted); font: var(--type-small); }
+.setup-row { display: flex; gap: 8px; margin: 8px 0; }
+.setup-input {
+  flex: 1; min-width: 0; padding: 9px 10px; color: var(--fg);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control);
+  font: var(--type-body);
+}
+.setup-error { min-height: 22px; margin: 16px 0 4px; color: var(--jesus); font: var(--type-small); }
+.setup .btn.primary { min-height: var(--touch-phone); }
+.setup .btn:disabled { opacity: .55; cursor: default; }
+.setup-foot { margin: 12px 0 0; color: var(--muted); font: var(--type-caption); }
+@media (max-width: 520px) {
+  .setup { padding: 0; align-items: stretch; }
+  .setup-card { width: 100%; min-height: 100%; border: 0; border-radius: 0; padding: 24px 20px; }
+  .setup-row { flex-direction: column; }
+}

@@ -46,6 +46,22 @@ fn count(c: &Ctx<'_>, id: &str) -> Result<usize, String> {
 
 pub fn commands() -> Vec<Command> {
     vec![
+        cmd("page rm", "Delete a page with timed Undo. --all previews the ordinary Pages tree; --yes commits. Pinned, templates, days and threads are excluded by default. --now explicitly bypasses Undo.",
+            vec![Pos("id", N::Opt), Flag("all"), Flag("yes"), Flag("now"), Flag("include_pinned"), Flag("include_templates"), Flag("include_days"), Opt("expect", None)], |c,a| {
+                use wb_core::deletion as del;
+                let id=a.s("id");
+                if a.flag("all") == !id.is_empty() { return Err("Give a page ID or --all.".into()); }
+                if !a.flag("all") && (a.flag("include_pinned") || a.flag("include_templates") || a.flag("include_days")) { return Err("Inclusion options require --all.".into()); }
+                let mut st=c.study()?;
+                let selection=del::Selection { ids:if id.is_empty(){vec![]}else{vec![id]},all:a.flag("all"),pinned:a.flag("include_pinned"),templates:a.flag("include_templates"),days:a.flag("include_days") };
+                let plan=del::plan(c.bible()?,&mut st,&selection).map_err(e)?;
+                if a.flag("all") && !a.flag("yes") { return j(plan.preview()); }
+                j(del::commit(&mut st,plan,a.opt("expect").as_deref(),del::now_ms,a.flag("now")).map_err(e)?)
+            }),
+        cmd("page undo", "Restore a whole page deletion before its recorded deadline; interrupted operations remain recoverable. Later edits are never overwritten.",
+            vec![Pos("operation",N::One)],|c,a| j(wb_core::deletion::undo(&mut *c.study()?,&a.s("operation"),wb_core::deletion::now_ms()).map_err(e)?)),
+        cmd("page deletions", "Inspect pending page deletions, their deadlines and exact Undo commands.",vec![],|c,_| j(wb_core::deletion::inspect(&*c.study()?).map_err(e)?)),
+        cmd("page sweep", "Recover interrupted page deletions, then expire only committed operations past their original deadlines. Legacy Trash is unchanged.",vec![],|c,_| j(wb_core::deletion::sweep(&mut *c.study()?,wb_core::deletion::now_ms()).map_err(e)?)),
         cmd("page tree", "The Notebook's Pinned and Pages: the pinned pages in order, and every page with the pages inside it (children). A page is a note with no place, or any note put inside a page or holding one.",
             vec![], |c, _| j(pg::tree(c.bible()?, &*c.study()?).map_err(e)?)),
         cmd("page new", "A new page (a note with no place yet): wb page new \"Lesson: Phinehas\" [--parent ID: inside that page, last there] [--link: and a [[link]] to it in that page, after block --after N, or --first, else at its end]. Its first line is its title; - reads standard input.
@@ -131,14 +147,14 @@ pub fn commands() -> Vec<Command> {
                 let n = nth(a, "n")?;
                 j(pv::set_line(c.bible()?, &mut *c.study()?, &a.s("id"), n, &a.s("line")).map_err(e)?)
             }),
-        cmd("view run", "What a view's line finds, as a view lists it (and the command field): wb view run \"notebook @Num 25 questions\". The line: notebook, then any of @place (a verse, chapter, book or H7065), questions | open | answered, thread <name>, days N, pages, and words. Views read; they never write.",
+        cmd("view run", "What a view's line finds, as a view lists it (and the command field): wb view run \"notebook @Num 25 questions\". The line: notebook, then any of @place (a verse, chapter, book or H7065), questions | open | answered, thread <name>, days N, pages, kind all|note|question|day|thread, and words. Views read; they never write.",
             vec![Pos("line", N::Many)], |c, a| j(pv::run(c.bible()?, &*c.study()?, &a.s("line")).map_err(e)?)),
         cmd("template list", "Your templates (notes with template: true): what each holds, whether it asks for a place, the name new pages get, where they go, and how often used.",
             vec![], |c, _| j(tp::list(c.bible()?, &*c.study()?).map_err(e)?)),
-        cmd("template show", "A template whole: its text, blocks and settings; with --place (and --reader), what a page made from it now would be named and hold.",
-            vec![Pos("name", N::Many), Opt("place", None), Opt("reader", None)], |c, a| {
-                let (place, reader) = (a.opt("place"), a.opt("reader"));
-                j(tp::show(c.bible()?, &*c.study()?, &a.s("name"), place.as_deref(), reader.as_deref()).map_err(e)?)
+        cmd("template show", "A template whole: its text, blocks and settings; with --place (and --reader), what a page made from it now would be named and hold; --title previews an explicit page name.",
+            vec![Pos("name", N::Many), Opt("place", None), Opt("reader", None), Opt("title", None)], |c, a| {
+                let (place, reader, title) = (a.opt("place"), a.opt("reader"), a.opt("title"));
+                j(tp::show_with_title(c.bible()?, &*c.study()?, &a.s("name"), place.as_deref(), reader.as_deref(), title.as_deref()).map_err(e)?)
             }),
         cmd("template new", "A new template, empty but for its name: wb template new \"Word study\". Write its blocks as in any page (wb block add).",
             vec![Pos("name", N::Many)], |c, a| j(tp::new_template(c.bible()?, &mut *c.study()?, &a.s("name")).map_err(e)?)),
@@ -159,7 +175,7 @@ pub fn commands() -> Vec<Command> {
                 let goes = goes.as_deref().map(|g| if g.trim().eq_ignore_ascii_case("pages") { None } else { Some(g) });
                 j(tp::set_template(c.bible()?, &mut *c.study()?, &a.s("name"), names.as_deref(), asks, goes).map_err(e)?)
             }),
-        cmd("template rm", "Delete a template (it waits in .trash 7 days, as any page); the pages made from it stay as they are.",
+        cmd("template rm", "Delete a template with timed Undo; the pages made from it stay as they are.",
             vec![Pos("name", N::Many)], |c, a| j(tp::remove_template(c.bible()?, &mut *c.study()?, &a.s("name")).map_err(e)?)),
         cmd("guide", "Help's Guide: how a part of the Notebook works (wb guide templates, wb guide views); with no topic, the entries. --json for an entry as data.",
             vec![Pos("topic", N::Any)], |_, a| {
@@ -178,14 +194,14 @@ pub fn commands() -> Vec<Command> {
         cmd("page title","Change a page's title (its first line; a # it had stays): wb page title ID \"New title\". The links to its old title: wb note relink.",
             vec![Pos("id", N::One), Pos("title", N::Many)], |c, a| j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Title(&a.s("title"))).map_err(e)?)),
         cmd("block set", "Write a block anew: wb block set ID 3 \"- [ ] Print the verse deck\" (--count K: K blocks from it become this text; - reads standard input; a blank line in it makes two blocks).",
-            vec![Pos("id", N::One), Pos("n", N::One), Pos("text", N::Many), Opt("count", None)], |c, a| {
+            vec![Pos("id", N::One), Pos("n", N::One), Pos("text", N::Many), Opt("count", None), Opt("expect", None)], |c, a| {
                 let n = nth(a, "n")?;
                 let count = opt_n(a, "count")?.unwrap_or(1);
                 let text = text_of(c, &a.s("text"))?;
                 if text.trim().is_empty() {
                     return Err("Give the block's new text (wb block rm removes it).".into());
                 }
-                j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Set { n, count, text: &text }).map_err(e)?)
+                j(pg::edit_guarded(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Set { n, count, text: &text }, a.opt("expect").as_deref()).map_err(e)?)
             }),
         cmd("block add", "Add a block: wb block add ID \"# Before Tuesday\" --after 2 (--first: right under the title; neither: last). - reads standard input.",
             vec![Pos("id", N::One), Pos("text", N::Many), Opt("after", None), Flag("first")], |c, a| {
@@ -197,11 +213,21 @@ pub fn commands() -> Vec<Command> {
                 };
                 j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Add { after, text: &text }).map_err(e)?)
             }),
-        cmd("block rm", "Remove a block from a page (--count K: K blocks from it); the blocks around it meet.",
-            vec![Pos("id", N::One), Pos("n", N::One), Opt("count", None)], |c, a| {
+        cmd("block rm", "Remove a block from a page (--count K: K blocks from it). --undo returns a token for wb block undo; --expect TEXT requires the current page text to match.",
+            vec![Pos("id", N::One), Pos("n", N::One), Opt("count", None), Flag("undo"), Opt("expect", None)], |c, a| {
                 let n = nth(a, "n")?;
                 let count = opt_n(a, "count")?.unwrap_or(1);
-                j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Set { n, count, text: "" }).map_err(e)?)
+                if a.flag("undo") {
+                    j(pg::remove_block(c.bible()?, &mut *c.study()?, &a.s("id"), n, count, a.opt("expect").as_deref()).map_err(e)?)
+                } else {
+                    j(pg::edit_guarded(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Set { n, count, text: "" }, a.opt("expect").as_deref()).map_err(e)?)
+                }
+            }),
+        cmd("block undo", "Restore a removed block if the page text is unchanged. wb block undo ID TOKEN; - reads the undo token from standard input.",
+            vec![Pos("id", N::One), Pos("token", N::One)], |c, a| {
+                let text = text_of(c, &a.s("token"))?;
+                let undo = serde_json::from_str(&text).map_err(|_| "Give the undo token returned by wb block rm --undo.")?;
+                j(pg::undo_block(c.bible()?, &mut *c.study()?, &a.s("id"), undo).map_err(e)?)
             }),
         cmd("block move", "Move a block: wb block move ID 5 --to 2 (it then comes before what is now block 2), or --last.",
             vec![Pos("id", N::One), Pos("n", N::One), Opt("to", None), Flag("last")], |c, a| {

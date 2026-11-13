@@ -1018,3 +1018,52 @@ fn remove_place_takes_every_anchor_at_that_place_out_of_a_thread() {
     assert!(sa::remove_place(&b, &mut st, "phinehas", "NUM.25:11").is_err());
     assert_eq!(sa::remove_place(&b, &mut st, "nope", "NUM.25:11").unwrap_err().0, "No such thread.");
 }
+
+
+#[test]
+fn block_deletion_undo_keeps_the_day_and_rejects_later_body_edits() {
+    use wb_core::pages::{self, Edit};
+
+    let t = Scratch::new();
+    let Some(bible) = bible() else { return };
+    let mut st = store(&t);
+    let day = "2026-11-09";
+    let id = "d_2026-11-09";
+    let text = "A draft with an internal line break.\nSame block.";
+    st.write_day(day, text, false).unwrap();
+    assert!(pages::remove_block(&bible, &mut st, id, 0, 1, Some("Stale text")).is_err());
+    assert_eq!(s(st.day(day).unwrap(), "text"), text);
+
+    let deleted = pages::remove_block(&bible, &mut st, id, 0, 1, Some(text)).unwrap();
+    assert_eq!(deleted["blocks"], json!([]));
+    assert_eq!(s(st.day(day).unwrap(), "text"), "");
+    assert!(st.trashed().is_empty());
+    let inverse = || serde_json::from_value(deleted["undo"].clone()).unwrap();
+    pages::undo_block(&bible, &mut st, id, inverse()).unwrap();
+    assert_eq!(s(st.day(day).unwrap(), "text"), text);
+    assert!(pages::undo_block(&bible, &mut st, id, inverse()).is_err());
+
+    let deleted = pages::remove_block(&bible, &mut st, id, 0, 1, Some(text)).unwrap();
+    pages::edit(&bible, &mut st, id, Edit::Add { after: None, text: "Written after removal" }).unwrap();
+    let inverse = serde_json::from_value(deleted["undo"].clone()).unwrap();
+    assert!(pages::undo_block(&bible, &mut st, id, inverse).is_err());
+    assert_eq!(s(st.day(day).unwrap(), "text"), "Written after removal");
+}
+
+#[test]
+fn block_deletion_undo_restores_table_spacing_and_keeps_neighbors() {
+    use wb_core::pages;
+
+    let t = Scratch::new();
+    let Some(bible) = bible() else { return };
+    let mut st = store(&t);
+    let text = "Test page\n\nFirst block.\n\n\n| A | B |\n| :--- | ---: |\n| Left | Right |\n\nLast block.";
+    let page = pages::new_page(&bible, &mut st, None, text, false, None).unwrap();
+    let id = page["id"].as_str().unwrap();
+    let removed = pages::remove_block(&bible, &mut st, id, 1, 1, Some(text)).unwrap();
+    let blocks = removed["blocks"].as_array().unwrap();
+    assert_eq!(blocks[0]["text"], "First block.");
+    assert_eq!(blocks[1]["text"], "Last block.");
+    pages::undo_block(&bible, &mut st, id, serde_json::from_value(removed["undo"].clone()).unwrap()).unwrap();
+    assert_eq!(s(&st.find_note(id).unwrap(), "text"), text);
+}

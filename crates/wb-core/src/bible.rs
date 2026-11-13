@@ -1,5 +1,4 @@
-//! The Bible database, read-only: KJV words with Strong's numbers, the lexicons, the YLT (`datasets/workbench.db`, built
-//! by the Python repository). Opened with SQLite's read-only flag; nothing here writes.
+//! The read-only SQLite Bible database. Local builds use `scripts/data/build-bible.py`.
 
 use crate::{Error, Result};
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension};

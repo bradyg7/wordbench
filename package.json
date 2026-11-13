@@ -7,6 +7,9 @@
     "build": "tsc -p ui && vite build --config ui/vite.config.ts",
     "tauri": "tauri",
     "fixtures": "node scripts/fixtures.mjs",
+    "tokens:check": "python scripts/tokens.py --check",
+    "test:tokens": "node --test scripts/tokens.test.mjs",
+    "test:commands-cases": "node --test scripts/commands-cases.test.mjs",
     "test:webkit": "playwright test",
     "measure": "node measure/measure.mjs",
     "site:dev": "vite --config site/vite.config.ts",
@@ -15,7 +18,9 @@
     "release:prepare": "node scripts/release/prepare.mjs",
     "test:distribution": "node --test scripts/release/tests/*.test.mjs",
     "test:setup": "playwright test --config ui/setup.playwright.config.ts",
-    "test:site": "playwright test --config site/playwright.config.ts"
+    "test:site": "playwright test --config site/playwright.config.ts",
+    "package": "node scripts/package.mjs",
+    "check:package": "node scripts/check-package.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
@@ -28,5 +33,6 @@
     "@tauri-apps/cli": "^2.12.4",
     "typescript": "^7.0.2",
     "vite": "^8.3.5"
-  }
+  },
+  "version": "0.1.0"
 }

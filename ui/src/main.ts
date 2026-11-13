@@ -30,6 +30,8 @@ import { findInPane, paneForFind } from './panefind';
 import { findingBox, openFindings } from './findings';
 import { openDocuments } from './documents';
 import { parse, runLine, written } from './actions';
+import { setupIfNeeded } from './setup';
+import { createReadAloud } from './listen';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const reader = $('reader'), scroller = $('scroller');
@@ -85,6 +87,7 @@ async function setVersion(v: string): Promise<string> {
   v = v.toUpperCase();
   if (!VERSIONS.includes(v)) return `No version ${v} here: ${VERSIONS.join(', ')}`;
   if (v !== version) {
+    readAloud.stopForNavigation();
     savePlace();
     version = v;
     try { localStorage.setItem('wb.version', v); } catch { /* this run only */ }
@@ -126,19 +129,35 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   savePlace();
 }
 
+const readAloud = createReadAloud({
+  books: () => books,
+  drawn: () => drawn,
+  topVerse: () => topVerse().verse,
+  rememberPlace,
+  show: async (code, chapter, verse) => { await open(code, chapter, verse); return drawn; },
+  root: reader,
+  scroller,
+});
+
 function placeButton(label: string) {
   const b = $('place');
   b.replaceChildren(icon('book'), h('span', 'place-label', label), icon('down', 14));
 }
 
+function rememberPlace() {
+  if (drawn) { savePlace(); backStack.push({ ...place }); if (backStack.length > 50) backStack.shift(); }
+}
+
 /** A jump elsewhere: the place left is kept for back. */
 async function jump(code: string, chapter: number, verse = 1) {
-  if (drawn) { savePlace(); backStack.push({ ...place }); if (backStack.length > 50) backStack.shift(); }
+  readAloud.stopForNavigation();
+  rememberPlace();
   app.picked = verse > 1 ? { anchor: `${code}.${chapter}:${verse}`, label: `${books.find(b => b.code === code)?.name ?? code} ${chapter}:${verse}` } : null;
   await open(code, chapter, verse);
 }
 
 function back(): boolean {
+  readAloud.stopForNavigation();
   const p = backStack.pop();
   if (!p) return false;
   open(p.code, p.chapter, p.verse, p.offset);
@@ -146,6 +165,7 @@ function back(): boolean {
 }
 
 function step(n: number) {
+  readAloud.stopForNavigation();
   if (!drawn) return;
   const c = drawn.chapter;
   let i = books.findIndex(b => b.code === c.code), ch = c.chapter + n;
@@ -153,6 +173,14 @@ function step(n: number) {
   else if (ch > c.chapters) { if (i < 0 || i >= books.length - 1) return; i++; ch = 1; }
   app.picked = null;
   open(books[i]?.code ?? c.code, ch);
+}
+
+// Visibility changes use the marks already loaded in each reader.
+function repaintLayers() {
+  if (drawn) paint(reader, drawn);
+  for (const { view } of readers2.values()) {
+    if (view.drawn) paint(view.root, view.drawn);
+  }
 }
 
 /** The chapter's marks read again from the study folder and drawn, without moving the text. */
@@ -173,7 +201,20 @@ function lexiconBody(w: WordView, card = false): HTMLElement {
   if (card) b.append(h('div', 'card-head', `${w.text} · ${w.reference}`));
   else { b.append(h('h2', 'sheet-title', w.text), h('div', 'sheet-sub', w.reference)); }
   const lx = w.lexicon;
-  if (!lx) { b.append(h('p', 'muted', 'No Strong’s number on this word.')); return b; }
+  const verseInterlinear = () => {
+    closeSheet();
+    const [code, cv] = w.anchor.split('.');
+    openInterlinear(`${code} ${cv}`, w.reference);
+  };
+  if (!lx) {
+    b.append(h('p', 'muted', w.strong ? `No lexicon entry for ${w.strong}.` : 'No direct Strong’s tag on this word.'));
+    if (!card) {
+      const inter = h('button', 'btn', 'Verse interlinear');
+      inter.onclick = verseInterlinear;
+      b.append(inter);
+    }
+    return b;
+  }
   const row = h('div', 'lemma-row');
   const lemma = h('span', 'lemma', lx.lemma);
   lemma.lang = lx.lang === 'grk' ? 'grc' : 'he';
@@ -194,10 +235,10 @@ function lexiconBody(w: WordView, card = false): HTMLElement {
     const uses = h('button', 'btn primary', 'Every use');
     uses.onclick = () => { closeSheet(); openUses(lx.strong, ''); };
     const inter = h('button', 'btn', 'Interlinear');
-    inter.onclick = () => { closeSheet(); const [, cv] = w.anchor.split('.'); openInterlinear(`${w.anchor.slice(0, 3)} ${cv}`, w.reference); };
+    inter.onclick = verseInterlinear;
     acts.append(uses, inter);
     b.append(acts);
-    if (!compact()) b.append(actions(['Open as a tab'], () => { closeSheet(); openStrong(lx.strong); }));
+    if (!compact()) b.append(actions(['Keep as pane'], () => { closeSheet(); openStrong(lx.strong); }));
     for (const n of w.notes) b.append(noteCard(n.anchor === w.anchor ? w.reference : `${lx.strong} everywhere`, n.text));
     const note = h('button', 'btn soft wide', `Note on ${lx.strong} everywhere`);
     note.onclick = () => writeNote(note, { anchor: lx.strong, label: `${lx.strong} everywhere` }, 'note');
@@ -634,13 +675,14 @@ async function openSecondReader(ref: string, version = 'KJV') {
   let vw: View | null = null, drawnAt = '', head: HTMLElement | null = null;
   const draw2 = async (el: HTMLElement, p: Pane, toVerse: number) => {
     const { data } = await api.reader(st.code, st.chapter, ver);
+    if (!dock.panes.includes(p)) return;
     const v2 = vw!;
     v2.drawn = draw(v2.root, data.chapter, data.marks, 999, new Set((data.questions || []).map(q => q.v)));
     while (v2.drawn.more()) { /* the whole chapter at once: a pane holds one */ }
     v2.selector.attach(v2.drawn);
     drawnAt = `${st.code}.${st.chapter}`;
     // At the reader in the Notebook has a row for each second reader, following it as it turns (W4, sheet W1.2)
-    readers2.set(p.id, { pane: p.id, code: st.code, chapter: st.chapter, label: `${data.chapter.name} ${st.chapter}` });
+    readers2.set(p.id, { pane: p.id, code: st.code, chapter: st.chapter, label: `${data.chapter.name} ${st.chapter}`, view: v2 });
     readerMoved();
     // the verses asked for, unless that is the whole chapter
     const all = data.chapter.verses.every(x => asked.has(`${st.chapter}:${x.v}`));
@@ -720,6 +762,13 @@ async function openSecondReader(ref: string, version = 'KJV') {
     paint(vw.root, vw.drawn);
   });
   if (!readers2Watched.has(pane2.id)) {
+    pane2.captureView = () => ({ code: st.code, chapter: st.chapter, version: ver });
+    pane2.restoreView = async state => {
+      if (!state || !books.some(b => b.code === state.code && Number.isInteger(state.chapter) && state.chapter >= 1 && state.chapter <= b.chapters)) return;
+      st.code = state.code; st.chapter = state.chapter;
+      if (VERSIONS.includes(state.version)) ver = state.version;
+      await draw2(pane2.el, pane2, 1);
+    };
     readers2Watched.add(pane2.id);
     const was = pane2.onClose;
     pane2.onClose = () => { was?.(); readers2.delete(pane2.id); readers2Watched.delete(pane2.id); readerMoved(); };
@@ -730,7 +779,7 @@ async function openSecondReader(ref: string, version = 'KJV') {
 const turners = new WeakMap<HTMLElement, (n: number) => void>();
 
 /** The second readers open, by pane: the chapter each shows (app.readers). */
-const readers2 = new Map<string, { pane: string; code: string; chapter: number; label: string }>();
+const readers2 = new Map<string, { pane: string; code: string; chapter: number; label: string; view: View }>();
 const readers2Watched = new Set<string>();
 
 // ---- an Inbox note dragged from the Notebook onto a verse: placed there (wb note place) -------------------------------
@@ -886,13 +935,15 @@ async function highlightsMenu(from: HTMLElement) {
   const box = h('div', 'menu-list layers-menu');
   const toggle = (label: string, on: boolean, flip: () => void, dot?: HTMLElement) => {
     const b = h('button', `menu-item check${on ? ' on' : ''}`);
+    b.setAttribute('aria-pressed', String(on));
     b.append(icon(on ? 'eye' : 'eyeoff', 14));
     if (dot) b.append(dot);
     b.append(document.createTextNode(` ${label}`));
-    b.onclick = () => { flip(); layers.save(); refreshMarks(); close(); highlightsMenu(from); };
+    b.onclick = () => { flip(); layers.save(); repaintLayers(); close(); highlightsMenu(from); };
     box.append(b);
   };
-  box.append(h('div', 'label', 'Drawn in the reader'));
+  box.append(h('div', 'label', 'In all readers'));
+  box.append(h('p', 'layers-hint', 'Controls highlight fills and thread underlines. Notes, questions and verse markers stay visible.'));
   toggle('All highlights and threads', layers.all, () => { layers.all = !layers.all; });
   toggle('Your highlights', layers.mine, () => { layers.mine = !layers.mine; });
   let ts: any[] = [];
@@ -995,6 +1046,10 @@ function settings(from: HTMLElement) {
   go('Settings…', 'settings', () => openSettings(), '', 'Ctrl+,');
   go('Customize toolbar…', 'sliders', () => customize());
   go('Help', 'help', () => openHelp(), 'Guide · Commands · Keys');
+  go('Save chapter PDF', 'file', () => {
+    void runLine('pdf').then(result => toast(result.said || result.error || 'Could not save the chapter PDF'))
+      .catch(error => toast(String(error.message || error)));
+  });
   const fit = hiddenToFit();
   if (fit.length) {
     b.append(h('div', 'label', 'Hidden to fit'));
@@ -1035,6 +1090,7 @@ notebookBadge.set = n => setBadge(n);
 hooks.highlights = from => void highlightsMenu(from);
 hooks.toggleVersion = () => setVersion(version === 'KJV' ? 'YLT' : 'KJV');
 hooks.find = () => findInChapter(finding);
+hooks.listen = () => { void readAloud.execute({ action: 'start' }).then(toast).catch(e => toast(String(e))); };
 cmdFills.get = () => {
   const d = drawn, sel = selector.sel;
   let word = '';
@@ -1057,12 +1113,12 @@ document.addEventListener('keydown', e => {
   const typing = !!(e.target as HTMLElement).closest('input, textarea, [contenteditable]');
   if (e.key === 'Escape') { closeSheet(); clearSelection(); hideCard(); }
   // Ctrl+F finds in the pane last clicked or typed in, else in the chapter (note 5c4a)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
-  if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
   { const kc = commandByKey(e); if (kc) { e.preventDefault(); void runKeptCommand(kc); return; } }
-  if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === ',') { e.preventDefault(); openSettings(); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '0') { e.preventDefault(); setSize(100); return; }
   // a finding about the app, from anywhere (note 50c1)
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); findingBox(); return; }
   // quick capture (Ctrl+J unless set otherwise in the Notebook's settings): a small box at the verse, from anywhere
@@ -1101,14 +1157,17 @@ Object.assign(app, {
   step,
   back,
   refreshMarks,
+  repaintLayers,
   topVerse: () => topVerse().verse,
   setSize,
   size: () => sizePct,
   version: () => version,
   setVersion,
   findInChapter,
+  listen: (command: Parameters<typeof readAloud.execute>[0]) => readAloud.execute(command),
   secondReader: (ref: string, version?: string) => void openSecondReader(ref, version),
-  readers: () => [...readers2.values()].filter(r => dock.panes.some(p => p.id === r.pane)),
+  readers: () => [...readers2.values()].filter(r => dock.panes.some(p => p.id === r.pane))
+    .map(({ pane, code, chapter, label }) => ({ pane, code, chapter, label })),
   changed: (...what: Change[]) => { written(...what); if (!what.length || what.includes('threads')) loadThreads(); },
 });
 
@@ -1122,6 +1181,8 @@ bridge.setInputMode = m => { selector.mode = m as InputMode; document.documentEl
 
 // ---- start ------------------------------------------------------------------------------------------------------------
 async function start() {
+  // A first run (or a moved folder) opens the setup screen, and the reader starts after it.
+  if (await setupIfNeeded()) return;
   document.documentElement.dataset.size = sizeClass();
   try {
     const t = localStorage.getItem('wb.theme');

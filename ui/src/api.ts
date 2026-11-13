@@ -2,6 +2,7 @@
 // Outside the app (the WebKit tests) the same answers come from fixtures that `wb fixture` generated from the database.
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { removedPages, stopPageWriters, flushPageWriters } from './pagewriters';
 
 export interface Word { i: number; lead?: string; text: string; trail?: string; strong?: string; italic?: boolean; nd?: boolean; wj?: boolean; para?: string }
 export interface Verse { v: number; words: Word[] }
@@ -36,7 +37,10 @@ function fixture(code: string, chapter: number): Promise<any> {
 async function call<T>(cmd: string, args: Record<string, unknown>): Promise<Answer<T>> {
   if (inApp) return invoke<Answer<T>>(cmd, args);
   const a = args as any;
-  if (cmd === 'books') return { data: (await fetch('fixtures/books.json').then(r => r.json())) as T, rust_ms: 0 };
+  if (cmd === 'books') {
+    const fixture = await fetch('fixtures/books.json').then(r => r.json());
+    return { data: fixture.books as T, rust_ms: 0 };
+  }
   const f = await fixture(a.code, a.chapter);
   const data = cmd === 'reader' ? f.reader : cmd === 'word' ? f.words[`${a.verse}.${a.word}`] : f.verses[String(a.verse)];
   if (!data) throw new Error(`Not in the fixture: ${cmd} ${JSON.stringify(args)}`);
@@ -61,6 +65,27 @@ export const api = {
 export const wbFixtureName = (argv: string[]) => argv.join(' ').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
 
 export async function wb(argv: string[], input?: string): Promise<any> {
+  if (removedPages.has(argv[2]) && ['note', 'page', 'block', 'inbox', 'trail'].includes(argv[0]) && !['show', 'blocks', 'undo', 'deletions', 'sweep'].includes(argv[1])) throw new Error('This page was deleted. Undo its deletion before editing it.');
+  if (argv[1] === 'rm' && ['note', 'page', 'inbox', 'trail', 'day', 'template'].includes(argv[0])) {
+    const directId = ['note', 'page', 'trail'].includes(argv[0]) && argv[2] && !argv[2].startsWith('--');
+    await flushPageWriters(directId ? [argv[2]] : undefined);
+  }
+  const result = await wbRaw(argv, input);
+  const operations = argv[0] === 'page' && argv[1] === 'sweep' ? result.operations || [] : [result];
+  for (const operation of operations) {
+    if (!operation?.operation || !Array.isArray(operation.deleted)) continue;
+    if (operation.state === 'pending' || operation.state === 'erased') {
+      if (operation.deleted.some((id: string) => !removedPages.has(id))) {
+        stopPageWriters(operation.deleted);
+        window.dispatchEvent(new CustomEvent('wb-page-deletion', { detail: operation }));
+      }
+    } else if (operation.state === 'restored') {
+      for (const id of operation.deleted) removedPages.delete(id);
+    }
+  }
+  return result;
+}
+async function wbRaw(argv: string[], input?: string): Promise<any> {
   if (inApp) {
     const r = await invoke<Answer<{ json?: unknown; text?: string }>>('wb', { argv, input });
     return r.data.json !== undefined ? r.data.json : r.data.text;
