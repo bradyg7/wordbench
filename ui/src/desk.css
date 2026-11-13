@@ -1118,10 +1118,73 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .set-nav button { text-align: left; padding: 7px 10px; border-radius: 8px; font: var(--type-small-strong); color: var(--fg); }
 .set-nav button.on { background: var(--accent-soft); color: var(--accent); }
 .set-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.set-row .set-text { flex: 1; min-width: 0; }
+.set-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.set-row .set-text { flex: 1 1 240px; min-width: 0; }
+/* a control never squeezes its words: when both do not fit on one line it goes under them; a long choice (a voice, a Look) is cut with … */
+.set-row > :last-child:not(.set-text) { flex: 0 1 auto; max-width: 100%; min-width: 0; }
+.set-row select.field { width: auto; max-width: min(100%, 320px); min-width: 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 .set-name { font: var(--type-body-strong); }
 .set-key { width: 110px; }
+/* Layouts (design/features/settings L3): a grid, three across when there is room; New layout first */
+.lay-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 14px; padding: 6px 0; }
+.lay-card { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); text-align: left; }
+.lay-card:hover { border-color: var(--accent); }
+.lay-open { padding: 0; background: none; border: 0; cursor: pointer; }
+.lay-new { align-items: center; justify-content: center; min-height: 150px; color: var(--accent); cursor: pointer; border-style: dashed; }
+.lay-plus { font-size: 28px; line-height: 1; }
+.lay-foot { display: flex; align-items: flex-start; gap: 6px; }
+.lay-words { flex: 1; min-width: 0; }
+.lay-pic { position: relative; max-width: 100%; border-radius: 6px; background: var(--sunken); border: 1px solid var(--line); overflow: hidden; }
+.lay-pic i { position: absolute; box-sizing: border-box; border: 2px solid var(--sunken); border-radius: 5px; }
+.lay-pic .lay-reader { background: var(--accent-soft); }
+.lay-pic .lay-pane { background: var(--surface); }
+.lay-pic .lay-float { box-shadow: 0 2px 6px #0003; border-color: var(--line); }
+.lay-build-panes { display: flex; flex-direction: column; }
+/* Settings: its own menu in the centre, the app blurred behind (the person, 2026-11-13) */
+.set-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 45%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.set-close { position: absolute; top: 12px; right: 14px; z-index: 2; font-size: 22px; width: 36px; height: 36px; }
+/* The Settings menu, laid out as a settings panel (the person, 2026-11-13, after Claude's own): a title bar; the
+   search and tabs down the left, in groups, still; the chosen tab on the right with its title, scrolling. */
+.set-modal { position: relative; width: min(1280px, calc(100vw - 48px)); height: min(960px, calc(100vh - 48px)); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 64px #0005; overflow: hidden; }
+.set-modal-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.set-titlebar { flex: none; display: flex; align-items: center; padding: 16px 64px 15px 20px; border-bottom: 1px solid var(--line); }
+.set-title { margin: 0; font: var(--type-body-strong); font-size: 17px; }
+.set-modal .set-close { top: 9px; right: 12px; }
+.set-modal .set-wrap { flex: 1; min-height: 0; display: flex; flex-direction: row; align-items: stretch; gap: 0; padding: 0; }
+.set-modal .set-nav { width: 264px; flex: none; position: static; display: flex; flex-direction: column; flex-wrap: nowrap; gap: 2px; padding: 20px; border-right: 1px solid var(--line); overflow: hidden; }
+.set-search { display: flex; align-items: center; gap: 8px; padding: 0 10px; margin-bottom: 12px; border-radius: 8px; background: var(--sunken); color: var(--muted); }
+.set-search .set-find { flex: 1; min-width: 0; height: 36px; margin: 0; border: 0; background: none; box-shadow: none; padding: 0; }
+.set-modal .set-tab { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; border-radius: 8px; font: var(--type-body); color: var(--fg); text-align: left; background: none; }
+.set-modal .set-tab:hover { background: var(--sunken); }
+.set-modal .set-tab.on { color: var(--fg);  background: color-mix(in srgb, var(--fg) 10%, transparent); }
+.set-sep { border: 0; border-top: 1px solid var(--line); margin: 10px 12px; }
+.set-modal .set-body { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; padding: 22px 28px 32px; display: block; }
+.set-heading { margin: 0 0 6px; font: var(--type-body-strong); font-size: 17px; }
+.set-heading:not(:first-child) { margin-top: 26px; }
+.set-modal .set-row { padding: 18px 0; }
+.set-modal .set-name { font: var(--type-body); }
+.set-modal .set-narrow-bar { flex: none; margin: 10px 16px 0; }
+@media (max-width: 600px) { .set-modal { width: 100vw; height: 100vh; border-radius: 0; border: 0; } .set-modal .set-body { padding: 12px 16px 24px; } }
+/* Settings reflows instead of squeezing (design/features/settings C1′): a container, so a narrow pane (split, floating)
+   gets a menu for the sections, a search icon for Find, and rows that stack; text keeps its size. Wide: the sections
+   are a column on the left. */
+.set-pane { container-type: inline-size; }
+.set-narrow-bar { display: none; gap: 8px; align-items: center; margin: 6px 0; }
+.set-narrow-bar .set-nav-menu { flex: 1; min-width: 0; }
+.set-kbd { font: var(--type-caption); background: var(--sunken); border: 1px solid var(--line); border-radius: 5px; padding: 2px 8px; white-space: nowrap; }
+.set-inline { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; }
+@container (min-width: 720px) {
+  .set-wrap { flex-direction: row; align-items: flex-start; gap: 20px; }
+  .set-nav { flex-direction: column; flex-wrap: nowrap; width: 170px; flex: none; position: sticky; top: 0; }
+}
+@container (max-width: 519px) {
+  .set-pane .set-nav, .set-pane .set-find { display: none; }
+  .set-pane .set-narrow-bar { display: flex; }
+  .set-pane header.finding .set-find { display: block; }
+  .set-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .set-row > :last-child { align-self: flex-start; max-width: 100%; }
+  .set-row .seg { flex-wrap: wrap; }
+}
 .theme-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .theme-chip { padding: 7px 12px; border-radius: 10px; background: var(--sunken); font: var(--type-small-strong); }
 .theme-chip.on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }

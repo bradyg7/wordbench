@@ -951,12 +951,13 @@ pub fn new_note(bible: &Bible, store: &mut Store, place: Option<&str>, text: &st
 pub const SETTINGS: &[(&str, &str, &str)] = &[
     ("today", "true", "Today's page: a note for each day, made when you first write in it"),
     ("follow", "true", "Follow the reader: grouped by chapter, the list shows the chapter you are reading"),
-    ("links", "true", "Links between notes: [[title]] and [[title#heading]], as in Obsidian"),
-    ("chapters", "true", "Notes on chapters and books: + Place offers the chapter and the book, not only verses"),
     ("group", "\"day\"", "What it opens with: day, chapter (places), thread, none (all), pages or questions"),
     ("capture", "\"Ctrl+J\"", "Quick capture: the key that opens a small box at the verse"),
     ("places", "\"reader\"", "Places open in: reader (the reader goes there; Back returns it) or new (a new reader in a pane; the reader stays). Ctrl+click does the other"),
 ];
+
+/// Settings that were switches and are now always on (design/features/settings, e09e).
+pub const ALWAYS_ON: &[&str] = &["links", "chapters"];
 
 /// The Notebook's settings, each the saved one or its default.
 pub fn settings(store: &Store) -> Value {
@@ -964,6 +965,10 @@ pub fn settings(store: &Store) -> Value {
     let mut out = serde_json::Map::new();
     for (k, d, _) in SETTINGS {
         out.insert(k.to_string(), saved.get(*k).cloned().unwrap_or_else(|| serde_json::from_str(d).unwrap()));
+    }
+    // Always on since the settings design (2026-11-13, e09e): links between pages, and pages on chapters and books.
+    for k in ALWAYS_ON {
+        out.insert(k.to_string(), json!(true));
     }
     Value::Object(out)
 }
@@ -980,6 +985,9 @@ pub fn settings_about(store: &Store) -> Value {
 /// Change one of the Notebook's settings: on or off for the switches, day|chapter|thread|none for group, a key like
 /// Ctrl+J for capture; "default" puts it back. → every setting.
 pub fn set_setting(store: &mut Store, key: &str, value: &str) -> Result<Value> {
+    if ALWAYS_ON.contains(&key) {
+        return Err(bad(format!("{key} is always on now (it is no longer a setting).")));
+    }
     let names = SETTINGS.iter().map(|s| s.0).collect::<Vec<_>>().join(", ");
     let (_, d, _) = SETTINGS.iter().find(|(k, _, _)| *k == key).ok_or_else(|| bad(format!("The Notebook's settings are {names}.")))?;
     let v = value.trim();

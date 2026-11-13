@@ -241,3 +241,23 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   .setup-card { width: 100%; min-height: 100%; border: 0; border-radius: 0; padding: 24px 20px; }
   .setup-row { flex-direction: column; }
 }
+
+/* Scroll bars, everywhere (design/features/settings, cd59; a design choice, not a setting): thin, no arrows, and only
+   seen while the pointer is over what scrolls. Standard properties for WebView2/Chromium; the webkit ones for WebKit. */
+* { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+*:hover, *:focus-within { scrollbar-color: color-mix(in srgb, var(--muted) 55%, transparent) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-thumb { background: transparent; border-radius: 8px; }
+:hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 55%, transparent); }
+
+/* Italic words, per theme (design/features/settings TH1): the root's data-italic */
+:root[data-italic="italic"] .w.it { font-style: italic; text-decoration: none; }
+:root[data-italic="grey"] .w.it { font-style: normal; color: var(--muted); }
+:root[data-italic="grey-italic"] .w.it { font-style: italic; color: var(--muted); }
+:root[data-italic="underline"] .w.it { font-style: normal; color: inherit; text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 3px; }
+:root[data-italic="plain"] .w.it { font-style: normal; font-weight: inherit; color: inherit; }
+.theme-italics, .theme-marks { margin-bottom: 14px; }
+.theme-preview { margin-top: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.theme-preview-verse { font-family: var(--font-read, serif); margin: 4px 0; line-height: 1.6; }
+.theme-marks .swatch { width: 22px; height: 22px; border-radius: 6px; display: inline-block; flex: none; }

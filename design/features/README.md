@@ -40,6 +40,24 @@ every earlier window stays in git history and can be drawn again from there. The
 round, so it never needs deep zoom. The script exports the board as one vector PDF, `<feature>.pdf`, in the board's order: its text stays sharp at any zoom and can be searched, and there are no PNGs. Window numbers
 never change or get reused, so a window named in a decision is always the same one.
 
+## Every design is drawn in the real conditions (the person, 2026-11-13)
+
+A window drawn alone on an empty desk hides what goes wrong. Before a folder can be accepted, its board shows the
+part in each of these, and its "What the build must satisfy" checks each in the app:
+
+1. **Among other tabs:** opened while the reader and other panes are open (a tab beside others in a pane).
+2. **As a floating tab:** popped out over the reader, at a small size.
+3. **Narrow:** in a side pane or at phone width.
+4. **Years of study:** with a study the size of years of daily use (hundreds of pages, many threads, highlights,
+   layouts and kept commands), not a handful of samples. Tests use a generated scratch study of that size, never the
+   person's real folder.
+
+## A design choice is not a setting (the person, 2026-11-13)
+
+A setting is something a person would really want different from someone else (text size, a layout, a key). How the
+app is drawn (scroll bars, spacing, the shape of a control) is decided once, in the design, for the whole app, and is
+not made a toggle.
+
 ## A folder
 
 ```
