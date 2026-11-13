@@ -13,11 +13,11 @@ A new button or command gets a row here, and its folder, before it is built.
 | Area | Buttons and parts | Design | State |
 |---|---|---|---|
 | Panes, tabs, minimizing, full screen | tab strips, minimize, Full screen, Present | [minimize](minimize/README.md) | exploring |
-| The side rail | one icon per kind of pane, its menus, Show names | [minimize](minimize/README.md) | exploring |
-| The trail (history of tabs) | drawer, line under the top bar | [minimize](minimize/README.md) | exploring |
+| The side rail | one icon per kind of pane, its menus, Show names | [minimize](minimize/README.md) | building (the rail; its menus exploring) |
+| The trail (history of tabs) | drawer, line under the top bar | [minimize](minimize/README.md), [command](command/README.md) C13-C16 | building |
 | The Concordance | English, Hebrew, Greek, Interlinear | [concordance](concordance/README.md) | exploring |
 | BDB and Webster's 1913 as books | paging, the index, one card with three sources | [books](books/README.md) | exploring |
-| Top bar and the command box | suggestions as you type, kept commands, the ⋯ menu | [command](command/README.md) | exploring |
+| Top bar and the command box | the box keeps its line and pops off, the reader's tools at its end, More; suggestions (round 1) | [command](command/README.md) | building (round 2) |
 | Reader | verses, versions, marks, selection | [reader](reader/README.md) | exploring |
 | Word sheet, verse sheet, hover card | a card that moves, a verse alone, hover | [words](words/README.md) | exploring |
 | Highlights and the palette | colors with names, layers by year, light and dark forms | [highlights](highlights/README.md) | exploring |
@@ -58,6 +58,7 @@ The terminal side of each area above; a command is designed with the area whose 
 | `lesson`, `docs`, `craft` | Lessons and documents | [documents](documents/README.md) |
 | `trash` | Trash | [trash](trash/README.md) |
 | `finding`, `findings` | Findings | [findings](findings/README.md) |
+| `history` | The trail (`trail` is still the old questions) | [minimize](minimize/README.md) |
 | `settings`, `layout`, `view` | Settings, layout, views | [settings](settings/README.md) |
 | `help`, `guide`, `manual`, `commands` | Help ([command](command/README.md) for kept `commands`) | [help](help/README.md) |
 | `status`, `study`, `do` | Not shown in the window (checks and the relay) | not needed |
