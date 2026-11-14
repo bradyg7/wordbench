@@ -141,7 +141,9 @@ The rail:
 - [ ] Top: Notebook (once), Shelf, Highlights; under a rule: Trail (a dot while a sitting is going), Reading plans,
   Findings, Documents; foot: Show names, Help, Settings. The Concordance, BDB and Webster's join when their own folders
   are accepted and built.
-- [ ] A rail icon opens its pane or brings it to the front, and shows as on while that pane is in front.
+- [ ] A rail icon opens its pane **in the left column, beside the rail** (floating if it was last left floating), or
+  brings it to the front, and shows as on while that pane is in front. **Clicked again while on, it closes that pane**
+  (the person, 2026-11-13, after trying the build).
 - [ ] The dock's columns, bands and floats start right of the rail; the reader's place is kept when it opens out.
 
 The trail:

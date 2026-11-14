@@ -113,7 +113,7 @@ try {
   await page.locator('.trail-drawer .icon-btn').click();
 
   // C18: the box popped off and kept across a reload
-  const grip = await page.locator('#cmdbox .cmd-grip').boundingBox();
+  const grip = await page.locator('#cmdbox .cmd-handle').boundingBox();
   await page.mouse.move(grip.x + 3, grip.y + grip.height / 2);
   await page.mouse.down();
   await page.mouse.move(600, 700, { steps: 8 });
@@ -124,8 +124,20 @@ try {
   await sleep(500);
   check('the box popped off stays where it was put after the window opens again', /popped/.test(await page.locator('#cmdbox').getAttribute('class')) && (await page.locator('#cmdbox').boundingBox()).y > 500);
   await page.screenshot({ path: shots + '1440-box-popped.png' });
-  await page.locator('#cmdbox .cmd-grip').dblclick();
-  check('a double-click on the grip puts it back', !/popped/.test(await page.locator('#cmdbox').getAttribute('class')));
+  await page.locator('#cmdbox .cmd-handle').dblclick();
+  check('a double-click on the search icon puts it back', !/popped/.test(await page.locator('#cmdbox').getAttribute('class')));
+
+  // a rail icon closes its pane when clicked again, and opens it on the left, beside the rail (2026-11-13)
+  const nbIcon = page.locator('#rail [data-rail="notebook"]');
+  if (!(await nbIcon.getAttribute('class')).includes('on')) await nbIcon.click();
+  await sleep(400);
+  await nbIcon.click();
+  await sleep(600);
+  check('the Notebook\'s icon clicked while on closes the Notebook', await page.locator('.pane-notebook').count() === 0);
+  await nbIcon.click();
+  await page.waitForSelector('.pane-notebook', { timeout: 10000 });
+  await sleep(400);
+  check('clicked again, it opens the Notebook on the left, beside the rail', await page.locator('.dock-left.open .pane-notebook').count() === 1);
 
   // Show names
   await page.locator('#rail [data-rail="names"]').click();

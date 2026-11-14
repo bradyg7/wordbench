@@ -73,10 +73,11 @@ test('years of study: forty steps fold into "… N" and the line never overflows
   await expect(page.locator('.trail-drawer .trail-step')).toHaveCount(41);
 });
 
-test('the box pops off the bar by its grip, and a double-click puts it back', async ({ page }) => {
+test('the box pops off the bar by its search icon, and a double-click puts it back', async ({ page }) => {
   await ready(page);
   const box = page.locator('#cmdbox');
-  const grip = box.locator('.cmd-grip');
+  await expect(box.locator('.cmd-grip')).toHaveCount(0);
+  const grip = box.locator('.cmd-handle');
   const g = (await grip.boundingBox())!;
   await page.mouse.move(g.x + 3, g.y + g.height / 2);
   await page.mouse.down();
@@ -101,4 +102,17 @@ test('half a screen: the place button hides, the reader\'s tools fold into More'
   await page.locator('#more').click();
   await expect(page.locator('.more-menu').getByRole('button', { name: /^Highlights/ })).toBeVisible();
   await expect(page.locator('.more-menu').getByRole('button', { name: /^Full screen/ })).toBeVisible();
+});
+
+test('a rail icon opens its pane on the left, beside the rail, and a second click closes it', async ({ page }) => {
+  await ready(page);
+  const plans = page.locator('#rail [data-rail="plans"]');
+  await plans.click();
+  await expect(page.locator('.dock-left.open .pane-plans')).toHaveCount(1);
+  await expect(plans).toHaveClass(/\bon\b/);
+  await plans.click();
+  await expect(page.locator('.pane-plans')).toHaveCount(0);
+  await expect(plans).not.toHaveClass(/\bon\b/);
+  await plans.click();
+  await expect(page.locator('.dock-left.open .pane-plans')).toHaveCount(1);
 });

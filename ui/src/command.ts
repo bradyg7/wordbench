@@ -262,12 +262,16 @@ export function attachCommandField(): CommandField {
   return field;
 }
 
-/** The box popped off the bar (design/features/command C18, c567): dragged by its grip it floats where it is put and
- *  keeps its line; a double-click on the grip puts it back. Where it floats is kept in the window's storage. */
+/** The box popped off the bar (design/features/command C18, c567): dragged by its search icon (no grip of its own: the
+ *  person, 2026-11-13) it floats where it is put and keeps its line; a double-click on the icon puts it back. Where it floats is kept in the window's storage. */
 export function initPopOff() {
   const cb = document.getElementById('cmdbox')!;
-  const grip = cb.querySelector<HTMLElement>('.cmd-grip');
+  // the search icon main.ts puts at the box's start is the handle
+  const grip = cb.querySelector<HTMLElement>(':scope > svg.ico') as unknown as HTMLElement | null;
   if (!grip) return;
+  grip.classList.add('cmd-handle');
+  grip.setAttribute('aria-hidden', 'false');
+  (grip as unknown as SVGElement).insertAdjacentHTML('afterbegin', '<title>Drag to move the box; double-click to put it back</title>');
   const KEY = 'wb.cmdbox.at';
   const place = (x: number, y: number) => {
     const w = cb.offsetWidth || 480, hh = cb.offsetHeight || 36;

@@ -42,12 +42,11 @@
 .cmd-tool:hover { background: var(--accent-soft); color: var(--fg); }
 .cmd-version { font: var(--type-caption); color: var(--fg); border: 1px solid var(--line); border-radius: 999px; background: var(--sunken); height: 22px; padding: 0 8px; margin-right: 2px; }
 
-/* the box popped off the bar (C18): its grip drags it; a double-click puts it back */
-.cmd-grip { width: 8px; align-self: stretch; margin-left: -4px; cursor: grab; flex: none;
-  background: radial-gradient(circle, var(--muted) 1px, transparent 1.4px) 0 0 / 4px 4px; opacity: .45; }
-.cmd-grip:hover { opacity: .9; }
+/* the box popped off the bar (C18): its search icon drags it; a double-click puts it back */
+.cmd-handle { cursor: grab; touch-action: none; }
+.cmd-handle:hover { color: var(--fg); }
 .cmdbox.popped { position: fixed; z-index: 45; width: min(560px, calc(100vw - 32px)); margin: 0; box-shadow: 0 12px 32px rgba(0, 0, 0, .22); border-radius: 999px; padding-left: 14px; }
-.cmdbox.dragging .cmd-grip { cursor: grabbing; }
+.cmdbox.dragging .cmd-handle { cursor: grabbing; }
 
 /* narrow (C17): the place shows in the box; the reader's tools fold into More */
 @media (max-width: 899px) {

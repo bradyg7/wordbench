@@ -82,6 +82,11 @@ Round 2 (C13-C18) is accepted, and built on `feature/command` together with mini
 3. **The rail's Trail icon and the trail line both open the trail drawer**, for now.
 4. **The box can pop off the bar** (C18, c567): dragged by its grip it floats; double-clicking the grip puts it back.
 
+### After trying the build (the person, 2026-11-13)
+
+- **No grip.** The dotted grip at the box's start goes: the box's search icon is what drags it off the bar, and a
+  double-click on the icon puts it back.
+
 Round 1 is not reviewed. Round 2 uses its More menu for window things (C5); the suggestions in plain words (C2, C3)
 wait for their own review and are not part of this build.
 
@@ -123,8 +128,8 @@ For round 2 (C13-C18), built with minimize's rail and trail (see [minimize](../m
 - [ ] **The box keeps the line** (C14, 3a9f): the box shows the front tab's line (the reader's place, or the line that
   opened the pane in front) and, focused, gives it back to change. Enter runs it as today; Alt+Enter runs it and opens
   its result as a new tab. The reader's place is kept.
-- [ ] **The box pops off** (C18, c567): dragged by its grip it floats and keeps its line; a double-click on the grip
-  puts it back. Where it floats is kept in the window's storage.
+- [ ] **The box pops off** (C18, c567): dragged by its search icon (no grip, 2026-11-13) it floats and keeps its line;
+  a double-click on the icon puts it back. Where it floats is kept in the window's storage.
 - [ ] **Narrow** (C17): under 900 px wide the place button hides (the box shows the place) and the reader's tools fold
   into More. Phone (compact) is unchanged.
 - [ ] Checked in the app (`npm run test:webkit`): among other panes, a floating tab, half width, and a scratch study the

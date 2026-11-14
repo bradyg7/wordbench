@@ -1094,6 +1094,7 @@ $('pen').title = 'Write a page (on the place you picked, or the verse at the top
 $('tab-notebook').onclick = () => openNotebook();
 $('tab-study').onclick = () => openHelp();
 $('cmdbox').prepend(icon('search'));
+initPopOff();
 notebookBadge.set = n => setBadge(n);
 hooks.highlights = from => void highlightsMenu(from);
 hooks.toggleVersion = () => setVersion(version === 'KJV' ? 'YLT' : 'KJV');
@@ -1106,7 +1107,6 @@ cmdFills.get = () => {
   return { word, place: here().label, chapter: d ? `${d.chapter.name} ${d.chapter.chapter}` : '' };
 };
 initReaderTools();
-initPopOff();
 initRail();
 initTrail($('trailline'));
 // The box shows the line of the tab in front (command C14): the reader's place, or the line that opened the pane.
