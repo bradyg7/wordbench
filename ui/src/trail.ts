@@ -45,11 +45,12 @@ function lineOf(p: Pane): string {
   if (pendingLine && performance.now() - pendingLine.at < 4000) { const l = pendingLine.line; pendingLine = null; return l; }
   const [k, a = '', b = ''] = p.key.split('|');
   switch (k) {
+    // lines the command language reads back (wb parse): the box gives them back to change and run again
     case 'search': return `search ${a}`;
-    case 'strong': return `strong ${a}`;
-    case 'bdb': return `bdb ${a}`;
-    case 'def': return `define ${a}`;
-    case 'uses': return `uses ${b || a}`;
+    case 'strong': return `lex strongs ${a}`;
+    case 'bdb': return `lex bdb ${a}`;
+    case 'def': return `def ${a}`;
+    case 'uses': return `uses ${a || b}`;
     case 'count': return `count ${a}`;
     case 'forms': return `forms ${a}`;
     case 'find': return `find ${a}`;
@@ -91,6 +92,12 @@ export function paneStep(p: Pane, isNew: boolean) {
 /** The tab with this key is in front now (pressed in): its newest step becomes the step in front. */
 export function focusKey(key: string) {
   for (let i = steps.length - 1; i >= 0; i--) if (steps[i].key === key) { if (front !== steps[i].id) { front = steps[i].id; draw(); } return; }
+}
+
+/** The reader's newest step goes in front (the window has just opened: the Notebook docked beside it is not chosen). */
+export function focusReader() {
+  const r = [...steps].reverse().find(s => s.key.startsWith('reader|'));
+  if (r) focusKey(r.key);
 }
 
 export const frontStep = () => steps.find(s => s.id === front);

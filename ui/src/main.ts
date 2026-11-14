@@ -24,7 +24,7 @@ import { loadKept } from './mycommands';
 import { fills as cmdFills, byKey as commandByKey, run as runKeptCommand } from './mycommands';
 import { byId, CATALOG, flipTheme, hooks, initReaderTools, READER_TOOLS, setBadge, setVersionLabel, textSizeMenu, toggleFullScreen } from './toolbar';
 import { initRail, railOn } from './rail';
-import { frontStep, initTrail, onFront, paneStep, readerStep } from './trail';
+import { focusReader, frontStep, initTrail, onFront, paneStep, readerStep } from './trail';
 import { menu as layoutMenu } from './layouts';
 import { isCaptureKey, notebookBadge, openNote, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
 import type { Change } from './dock';
@@ -1243,7 +1243,7 @@ async function start() {
     void loadWindowSettings();
     void loadKept();
     loadPalette();
-    if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') openNotebook();
+    if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') { openNotebook(); focusReader(); }
   }
 }
 

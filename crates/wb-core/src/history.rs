@@ -148,8 +148,9 @@ pub fn as_page_text(sitting: &Value) -> String {
     out
 }
 
+/// A step's time as the person reads it: the computer's own time zone (the files keep UTC).
 fn short_time(at: &str) -> String {
-    when(at).map(|d| d.format("%Y-%m-%d %H:%M").to_string()).unwrap_or_else(|| at.to_string())
+    when(at).map(|d| d.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M").to_string()).unwrap_or_else(|| at.to_string())
 }
 
 #[cfg(test)]
@@ -218,8 +219,9 @@ mod tests {
         put(&root, "2026-11-13T09:16:00Z", "s3", "s2", "Every use: zeal");
         let s = sitting(&root, "last").unwrap();
         let text = as_page_text(&s);
-        assert!(text.starts_with("# Trail: 2026-11-13 09:14 · Numbers 25:11\n"));
-        assert!(text.contains("\n    - 2026-11-13 09:16 Every use: zeal (`go Every use: zeal`)\n"));
+        // the page is in the computer's own time; the files keep UTC
+        assert!(text.starts_with(&format!("# Trail: {} · Numbers 25:11\n", short_time("2026-11-13T09:14:00Z"))));
+        assert!(text.contains(&format!("\n    - {} Every use: zeal (`go Every use: zeal`)\n", short_time("2026-11-13T09:16:00Z"))));
         assert!(sitting(&root, "nope").is_err());
     }
 }
