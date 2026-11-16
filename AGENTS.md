@@ -92,6 +92,10 @@ Rust tests. The comparisons with the Python app (`scripts/golden.py`, `scripts/d
 `scripts/commands-cases.mjs`, `tests/golden/cases.json`) are history: run them only to learn how something used to
 behave, never as a test this app must pass.
 
+Every `measure/*.mjs` script that starts the real app first takes a machine-wide lock (`measure/instance.mjs`, a file in the temp folder)
+and gets a free debugging port, so sessions in different checkouts wait their turn instead of colliding or piling up windows; a dead
+run's lock is taken over. A script that starts the real app must call `await acquire('<name>')` before it touches its work folder.
+
 `npm run dev` (and `npm run tauri dev`) serve the UI on 1420, which Tauri's `devUrl` expects. `npm run test:webkit` never
 uses that server: Playwright starts this checkout's own vite on a port picked from the checkout's path (1430-1929;
 `WB_UI_PORT` sets it by hand) and never reuses a running one, so a worktree's tests always test that worktree's UI. If the

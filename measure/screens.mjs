@@ -1,13 +1,16 @@
 // Screenshots of the real app (WebView2) at the phone and laptop window sizes, for docs/phase0.
 import { spawn, execFileSync } from 'node:child_process';
 import { chromium } from '@playwright/test';
+import { acquire, freePort } from './instance.mjs';
 
 const root = new URL('..', import.meta.url);
 const exe = new URL('target/release/bible-workbench.exe', root).pathname.slice(1);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const proc = spawn(exe, [], { env: { ...process.env, WB_WINDOW: 'phone', WB_CDP_PORT: '9334' }, stdio: 'ignore' });
+await acquire('screens');
+const cdpPort = String(await freePort());
+const proc = spawn(exe, [], { env: { ...process.env, WB_WINDOW: 'phone', WB_CDP_PORT: cdpPort }, stdio: 'ignore' });
 let browser;
-for (let i = 0; i < 100 && !browser; i++) { try { browser = await chromium.connectOverCDP('http://127.0.0.1:9334'); } catch { await sleep(100); } }
+for (let i = 0; i < 100 && !browser; i++) { try { browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`); } catch { await sleep(100); } }
 const page = browser.contexts()[0].pages()[0];
 await page.waitForFunction(() => window.__wbReady);
 const shot = name => page.screenshot({ path: new URL(`docs/phase0/app-${name}.png`, root).pathname.slice(1) });

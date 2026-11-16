@@ -10,6 +10,7 @@ import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
 import { shelfChecks, shelfFixtures } from './shelf-checks.mjs';
+import { acquire, freePort } from './instance.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
@@ -19,8 +20,9 @@ const wbExe = file(`target/${release ? 'release' : 'debug'}/wb.exe`);
 const shots = file('docs/phase2/');
 mkdirSync(shots, { recursive: true });
 // (two sessions checking at once need a folder and a port each: WB_DESK_WORK and WB_DESK_PORT)
+await acquire('desk');
 const work = process.env.WB_DESK_WORK || path.join(os.tmpdir(), 'bible-workbench-rs', 'desk-check');
-const cdpPort = process.env.WB_DESK_PORT || '9334';
+const cdpPort = process.env.WB_DESK_PORT || String(await freePort());
 const study = path.join(work, 'study'), cache = path.join(work, 'cache'), profile = path.join(work, 'webview');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 

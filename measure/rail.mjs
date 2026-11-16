@@ -9,6 +9,7 @@ import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
+import { acquire, freePort } from './instance.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
@@ -17,8 +18,9 @@ const exe = file(`target/${release ? 'release' : 'debug'}/bible-workbench.exe`);
 const wbExe = file(`target/${release ? 'release' : 'debug'}/wb.exe`);
 const shots = file('docs/phase2/');
 mkdirSync(shots, { recursive: true });
+await acquire('rail');
 const work = process.env.WB_DESK_WORK || path.join(os.tmpdir(), 'bible-workbench-rs', 'rail-check');
-const cdpPort = process.env.WB_DESK_PORT || '9335';
+const cdpPort = process.env.WB_DESK_PORT || String(await freePort());
 const study = path.join(work, 'study'), cache = path.join(work, 'cache'), profile = path.join(work, 'webview');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
