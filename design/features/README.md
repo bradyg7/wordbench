@@ -7,6 +7,7 @@ is written so that a person or an AI can build the feature from it without the c
 |---|---|---|---|
 | [panels](panels/README.md) | The panel template: bands, a tab's top, buttons, text roles | Accepted (2026-11-16) | 2026-11-16 |
 | [minimize](minimize/README.md) | Minimized panes, full screen, the side rail, the trail | Rail and trail accepted to build (2026-11-13); the rest exploring | 2026-11-13 |
+| [tab-history](tab-history/README.md) | Going back inside a tab: each tab's own history, a tab copied with its history | Round 1 drawn in the app; exploring | 2026-11-16 |
 | [concordance](concordance/README.md) | The Concordance: the printed Strong's as a book (English, Hebrew, Greek, Interlinear) | Rounds 1-2 drawn; exploring | 2026-11-11 |
 | [library](library/README.md) | The Notebook and the Shelf as one library; what keeping (a bookmark) means | Rounds 1-3 drawn; exploring | 2026-11-11 |
 | [threads](threads/README.md) | Threads beside Page, Folder, Save and Library: legacy, or a role of their own | Round 2 drawn; exploring | 2026-11-11 |
