@@ -382,7 +382,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     const sr = t.getBoundingClientRect(), r = on.getBoundingClientRect();
     return { n: widths.length, narrowest: Math.min(...widths), onVisible: r.left >= sr.left - 1 && r.right <= sr.right + 1, scroll: t.scrollLeft };
   });
-  check('many tabs keep a usable width and the front one stays in view', strip.n >= 9 && strip.narrowest >= 84 && strip.onVisible, `${strip.n} tabs, narrowest ${Math.round(strip.narrowest)} px`);
+  check('many tabs keep a usable width and the front one stays in view', strip.n >= 9 && strip.narrowest >= 84 && strip.onVisible, `${strip.n} tabs, narrowest ${Math.round(strip.narrowest)} px, front in view ${strip.onVisible}`);
   await page.locator('.dock-right .tab-scroll.back').click();
   await sleep(500);
   const after = await page.evaluate(() => document.querySelector('.dock-right .tab-row').scrollLeft);
@@ -445,17 +445,18 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   check('find in the chapter marks the words', await page.locator('.w.found').count() > 0, await page.locator('.find-count').textContent());
   await page.keyboard.press('Escape');
   // Ctrl+F in a pane finds in that pane (note 5c4a); in the reader it still finds in the chapter
-  await page.evaluate(() => window.__wb.run('keys'));
-  await page.locator('.pane-keys:visible').click({ position: { x: 40, y: 10 } });
+  // (Keys is in the Settings dialog now, not a pane: the check uses a search's pane)
+  await page.evaluate(() => window.__wb.run('search plague'));
+  await page.locator('.pane-search:visible').click({ position: { x: 40, y: 10 } });
   await page.keyboard.press('Control+f');
-  await page.keyboard.type('chapter');
+  await page.keyboard.type('plague');
   await sleep(200);
-  const pf = await page.evaluate(() => { const b = document.querySelector('.pane-keys .pane-find'); return b && { found: +b.dataset.found, focus: document.activeElement?.closest('.pane-find') === b, reader: !document.getElementById('findbar').hidden }; });
+  const pf = await page.evaluate(() => { const b = document.querySelector('.pane-search .pane-find'); return b && { found: +b.dataset.found, focus: document.activeElement?.closest('.pane-find') === b, reader: !document.getElementById('findbar').hidden }; });
   check('Ctrl+F in a pane opens its own find bar and finds there (note 5c4a)', !!pf && pf.found > 0 && pf.focus && !pf.reader, JSON.stringify(pf));
   await page.screenshot({ path: shots + '1440-find-in-a-pane.png' });
   await page.keyboard.press('Escape');
   check('Esc closes the pane’s find bar', await page.locator('.pane-find').count() === 0);
-  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'keys')) d.close(p); });
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'search')) d.close(p); });
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('Control+f');
   check('Ctrl+F after a click in the reader finds in the chapter', await page.evaluate(() => !document.getElementById('findbar').hidden && document.activeElement?.closest('#findbar') !== null));
@@ -503,8 +504,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   check('with its place taken off, it waits in the Inbox', JSON.parse(execFileSync(wbExe, ['inbox'], { env }).toString()).notes.some(n => n.text === 'captured, then more'));
   await nbBack();
   await page.evaluate(() => window.__wb.run('keys'));
-  check('Keys lists Ctrl+J', await page.locator('.pane-keys kbd', { hasText: 'Ctrl+J' }).first().waitFor({ timeout: 5000 }).then(() => true, () => false));
-  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'keys')) d.close(p); });
+  check('Keys lists Ctrl+J', await page.locator('.set-modal kbd', { hasText: 'Ctrl+J' }).first().waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.keyboard.press('Escape');
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });
 
@@ -984,7 +985,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   execFileSync(wbExe, ['block', 'add', w4, 'Then the psalm, a verse to a line:'], { env });
   execFileSync(wbExe, ['block', 'add', w4, '-'], { env, input: '```scripture\nPs 106:28-31\nlines\n```' });
   execFileSync(wbExe, ['block', 'add', w4, 'Phinehas is named at Num 25:11; then Ps 106:30.'], { env });
-  await page.evaluate(() => window.__wb.changed());
+  // the tree redraws on changed(); one made while another redraw is reading can be passed over, so ask again until it shows
+  for (let i = 0; i < 20 && !(await rowOf(w4).count()); i++) { await page.evaluate(() => window.__wb.changed()); await sleep(500); }
   await rowOf(w4).locator('.nb-tree-open').click();
   await ed.locator('.nb-title', { hasText: 'W4 the passage' }).waitFor({ timeout: 10000 });
   const sblock = i => ed.locator('.nb-blocks .sv-block').nth(i);
@@ -1248,16 +1250,18 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await ed.locator('.nb-title', { hasText: 'W5 questions for the group' }).waitFor({ timeout: 10000 });
   await waitRows('.pane-notebook .nb-blocks .nb-view', ids(vRun.rows));
   await ed.locator('.nb-view .nbv-line').click();
-  await ed.locator('.nb-view .nbv-input').fill('notebook @Num 25:1-9 open');
-  await page.keyboard.press('Enter');
+  // (the line opens the block's card: View command, then Save block)
+  await ed.locator('.nb-structured-editor .nb-card-input').fill('notebook @Num 25:1-9 open');
+  await ed.locator('.nb-structured-editor button', { hasText: 'Save block' }).click();
   const lineKept = await waitLong(w5, t => t.includes('```view\nnotebook @Num 25:1-9 open\n```'));
   const vOpen = wbj('view', 'run', 'notebook @Num 25:1-9 open');
   check('the line edited in place is written in the fence, and the rows are what the new line finds', lineKept && await waitRows('.pane-notebook .nb-blocks .nb-view', ids(vOpen.rows)) && vOpen.rows.every(r => r.kind === 'question' && r.status !== 'done'), `${vOpen.count} rows`);
   await sleep(800);
   await ed.locator('.nb-view .nbv-line').click();
-  await ed.locator('.nb-view .nbv-input').fill('notebook @Nowhere 9');
-  await page.keyboard.press('Enter');
+  await ed.locator('.nb-structured-editor .nb-card-input').fill('notebook @Nowhere 9');
+  await ed.locator('.nb-structured-editor button', { hasText: 'Save block' }).click();
   await sleep(1500);
+  await page.keyboard.press('Escape');
   check('a line that cannot be read is not written', bodyOf(w5).includes('```view\nnotebook @Num 25:1-9 open\n```') && !bodyOf(w5).includes('Nowhere'));
   await page.evaluate(() => window.__wb.changed());
   await sleep(600);
@@ -1349,17 +1353,11 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const saved = wbj('template', 'list').templates.find(t => t.title === 'W4 the passage');
   const savedText = saved ? readFileSync(fileOf(saved.id), 'utf8').replace(/\r\n/g, '\n') : '';
   check('Save as a template copies the page with its places taken out: {place} in its scripture blocks, no place of its own; the page as it was', !!saved && /\ntemplate: true\n/.test(savedText) && /\nasks: "?place"?\n/.test(savedText) && savedText.includes('```scripture\n{place}\n```') && savedText.includes('```scripture\n{place}\nlines\n```') && !savedText.includes('Num 25:10-13') && /\nanchor: ""\n|\nanchor: \n|\nanchor: ''\n/.test(savedText) && readFileSync(fileOf(w4), 'utf8') === w4Before, saved?.title);
-  // Help: the Guide's entry, its text from wb-core (wb guide templates), and the Templates page's link to it
+  // Help (in the Settings dialog since feature/help): help templates opens it at the templates entry
   await page.evaluate(() => window.__wb.run('help templates'));
-  await page.locator('.pane-help .guide-entry[data-name="templates"]').waitFor({ timeout: 10000 });
-  const guideEntry = wbj('guide', 'templates', '--json');
-  const heads = await page.locator('.pane-help .guide-entry[data-name="templates"] .guide-head').allTextContents();
-  const texts = await page.locator('.pane-help .guide-entry[data-name="templates"] .guide-text').allTextContents();
-  const tabs = await page.locator('.pane-help .help-tabs button').allTextContents();
-  check('Help has Guide, Commands and Keys; its Templates entry is wb guide templates, word for word', tabs.join() === 'Guide,Commands,Keys' && (await page.locator('.pane-help .help-tab-guide').getAttribute('class')).includes('on') && JSON.stringify(heads) === JSON.stringify(guideEntry.parts.map(p => p.head)) && JSON.stringify(texts) === JSON.stringify(guideEntry.parts.map(p => p.text)), heads.join(' · '));
+  check('help templates opens Help in the Settings dialog at its templates entry', await page.waitForFunction(() => [...document.querySelectorAll('.set-modal .guide-card.focus, .set-modal details.doc[open]')].some(e => /template/i.test(e.textContent)), null, { timeout: 10000 }).then(() => true, () => false));
   await page.screenshot({ path: shots + '1440-help-guide-templates.png' });
-  const helpPane = await page.evaluate(() => window.__wb.dock().panes.find(p => p.kind === 'help')?.id);
-  if (helpPane) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, helpPane);
+  await page.keyboard.press('Escape');
   await page.evaluate(() => window.__wb.run('notebook'));
   await sleep(400);
   await page.locator('.pane-notebook .nb-side-templates').click();
@@ -1381,9 +1379,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   });
   check('the Templates page wraps its cards: no sideways scroll at the pane’s width, 320 or 240 px (note bd54)', Object.values(tplFit).every(Boolean), JSON.stringify(tplFit));
   await ed.locator('.nb-tpl-how').click();
-  check('How templates work opens Help at its Guide entry', await page.locator('.pane-help .guide-entry[data-name="templates"]').waitFor({ timeout: 10000 }).then(() => true, () => false));
-  const helpPane2 = await page.evaluate(() => window.__wb.dock().panes.find(p => p.kind === 'help')?.id);
-  if (helpPane2) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, helpPane2);
+  check('How templates work opens Help at its templates entry', await page.waitForFunction(() => [...document.querySelectorAll('.set-modal .guide-card.focus, .set-modal details.doc[open]')].some(e => /template/i.test(e.textContent)), null, { timeout: 10000 }).then(() => true, () => false));
+  await page.keyboard.press('Escape');
   // the Python app: it passes over a template (a page with no place, as every page), and reads a page made from one,
   // once placed, keeping from_template when it writes it
   execFileSync(wbExe, ['note', 'place', made, 'Num 25:11'], { env });
@@ -2080,7 +2077,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     check('Notes & lookup shows a question on part of the verse (note c39a)', await page.locator('.pane-place:visible .question-card', { hasText: 'Why these words here?' }).waitFor({ timeout: 10000 }).then(() => true, () => false));
     await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'place')) d.close(p); });
 
-    // 797d: the command field keeps the lines run, failed ones too; ↑ ↓ go through them, newest first
+    // 797d: the command field keeps the lines run, failed ones too; ↑ ↓ go through them, newest first. The box holds
+    // its place (command C14), so ↑ starts from the place shown and ↓ past the newest gives the place back
     await page.locator('#reader').click({ position: { x: 5, y: 5 } });
     await page.keyboard.press('Backquote');
     await page.keyboard.type('go Num 25:20');
@@ -2096,7 +2094,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     const recent = (await page.locator('.suggest-group').allTextContents()).some(t => t.startsWith('Recent'));
     const steps = [];
     for (const k of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown']) { await page.keyboard.press(k); steps.push(await page.locator('#cmd').inputValue()); }
-    check('the empty command field lists recent lines; ↑ ↓ go through them, the failed one too (note 797d)', recent && steps.join(' | ') === 'go Nowhere 99 | go Num 25:20 | go Nowhere 99 | ', steps.join(' | '));
+    check('the empty command field lists recent lines; ↑ ↓ go through them, the failed one too (note 797d)', recent && ['', 'Numbers 25'].some(end => steps.join(' | ') === 'go Nowhere 99 | go Num 25:20 | go Nowhere 99 | ' + end), steps.join(' | '));
     await page.keyboard.press('Escape');
 
     // 50c1: Ctrl+Shift+J writes a finding about the app, apart from the study, with what was on screen

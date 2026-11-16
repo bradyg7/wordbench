@@ -801,7 +801,8 @@ export class Dock {
       if (on) {
         const l = on.offsetLeft, r = l + on.offsetWidth;
         if (l < tabs.scrollLeft) tabs.scrollLeft = l - 24;
-        else if (r > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = r - tabs.clientWidth + 24;
+        // the room past its right edge never pushes its left edge out of a narrow row
+        else if (r > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = Math.min(r - tabs.clientWidth + 24, l);
       }
       this.arrows(strip, tabs);
     }
