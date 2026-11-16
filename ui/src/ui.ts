@@ -12,6 +12,8 @@ export const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<'
 
 // Line icons, 16px, drawn with currentColor (the toolbar and pane chrome of the design sheets).
 const PATHS: Record<string, string> = {
+  trail: 'M4 2.5a1.5 1.5 0 1 0 0 .01M12 13.5a1.5 1.5 0 1 0 0 .01M4 4v2.5a2 2 0 0 0 2 2h4a2 2 0 0 1 2 2V12',
+  word: 'M3 13L7 3l4 10M4.6 9h4.8M12 7v6',
   book: 'M2 3h5a2 2 0 0 1 2 2v9a1.5 1.5 0 0 0-1.5-1.5H2zM14 3H9a2 2 0 0 0-2 2v9a1.5 1.5 0 0 1 1.5-1.5H14z',
   search: 'M7 12A5 5 0 1 0 7 2a5 5 0 0 0 0 10zM14 14l-3.5-3.5',
   notebook: 'M4 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4zM4 2v12M2 5h2M2 8h2M2 11h2M7 5h4',

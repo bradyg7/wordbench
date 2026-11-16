@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('Documents exports a chosen passage and an existing lesson', async ({ page }) => {
+test('Documents exports a chosen passage and an existing lesson', async ({ page }, info) => {
   const calls: string[] = [];
   await page.route('**/fixtures/wb/*.json', async route => {
     const name = route.request().url().split('/').pop()!;
@@ -19,7 +19,8 @@ test('Documents exports a chosen passage and an existing lesson', async ({ page 
   });
   await page.goto('/?at=NUM.25');
   await page.waitForFunction(() => (window as any).__wbReady);
-  await page.locator('#more').click();
+  // Documents is on the rail on the desktop, and in More on a phone (design/features/command round 2)
+  if (info.project.name === 'webkit-phone') await page.locator('#more').click();
   await page.getByRole('button', { name: 'Documents', exact: true }).click();
   const form = page.locator('.pane-documents .doc-make');
   await form.getByRole('combobox', { name: 'Export source' }).selectOption('passage');
@@ -35,7 +36,7 @@ test('Documents exports a chosen passage and an existing lesson', async ({ page 
   await expect.poll(() => calls[1]).toContain('craft-word-lesson-existing-file-structure-script');
 });
 
-test('Documents sends PowerPoint and PDF preview to their separate open commands', async ({ page }) => {
+test('Documents sends PowerPoint and PDF preview to their separate open commands', async ({ page }, info) => {
   const id = 'passage-numbers-25-11-kjv-verse';
   const deck = { id, name: 'Saved.pptx', pdf: 'Saved - Preview.pdf', exists: true, to: 'deck', state: 'current', structure: 'verse',
     source: { kind: 'passage', ref: 'Num 25:11' }, theme: 'vellum' };
@@ -62,7 +63,7 @@ test('Documents sends PowerPoint and PDF preview to their separate open commands
 
   await page.goto('/?at=NUM.25');
   await page.waitForFunction(() => (window as any).__wbReady);
-  await page.locator('#more').click();
+  if (info.project.name === 'webkit-phone') await page.locator('#more').click();
   await page.getByRole('button', { name: 'Documents', exact: true }).click();
   const form = page.locator('.pane-documents .doc-make');
   await form.getByRole('combobox', { name: 'Export source' }).selectOption('passage');

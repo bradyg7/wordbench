@@ -157,11 +157,16 @@ test('a mark made while a long chapter is still being drawn reaches its last ver
 
 // Phase 2: the desktop shell around the reader. (The panes and the Notebook call Rust, so they are checked in the app
 // itself by measure/desk.mjs; here WebKit checks the layout the iPad and Mac web views will draw.)
-test('desktop: the toolbar with the command field, opened by backtick', async ({ page }, info) => {
+test('desktop: the rail, the top bar with the command field (opened by backtick) and the trail line', async ({ page }, info) => {
   test.skip(info.project.name === 'webkit-phone', 'desktop');
   await ready(page);
   expect(await page.evaluate(() => document.documentElement.dataset.size)).toBe('large');
-  for (const id of ['#cmd', '#tb-notebook', '#hl-menu']) await expect(page.locator(id)).toBeVisible();
+  // design/features/command round 2: no toolbar; the reader's tools at the box's end, the panes on the rail
+  for (const id of ['#cmd', '#hl-menu', '#tb-version', '#rail', '#trailline']) await expect(page.locator(id)).toBeVisible();
+  await expect(page.locator('nav.tools')).toHaveCount(0);
+  await expect(page.locator('#rail [data-rail="notebook"]')).toBeVisible();
+  await expect(page.locator('#trailline .trail-step.on')).toHaveText('Numbers 25');
+  await expect(page.locator('#cmd')).toHaveValue('Numbers 25');
   await expect(page.locator('#tabs')).toBeHidden();
   await page.locator('.ch-title').click();
   await page.keyboard.press('Backquote');

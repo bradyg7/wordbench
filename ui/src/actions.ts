@@ -14,6 +14,7 @@ import {
 } from './panes';
 import { setHover } from './ui';
 import { hooks } from './toolbar';
+import { noteLine } from './trail';
 import { addFinding, openFindings } from './findings';
 import { KINDS, makeDoc, openDocuments } from './documents';
 import { canonicalKey, readLayout } from './layout-state';
@@ -544,6 +545,7 @@ export async function runLine(line: string): Promise<{ ok: boolean; said?: strin
   if (!t) return { ok: true, said: '' };
   const p = await parse(t);
   if (p.error) return { ok: false, error: p.error };
+  noteLine(t);
   const said = await perform(p.action, t);
   if (inApp && p.action.cmd !== 'today') wb(['log', 'add', t, '--result', said]).catch(() => {});
   return { ok: true, said };

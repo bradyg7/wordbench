@@ -5,7 +5,7 @@ is written so that a person or an AI can build the feature from it without the c
 
 | Folder | Feature | State | Last round |
 |---|---|---|---|
-| [minimize](minimize/README.md) | Minimized panes, full screen, the side rail, the trail | Rounds 1-6 drawn; not accepted | 2026-11-11 |
+| [minimize](minimize/README.md) | Minimized panes, full screen, the side rail, the trail | Rail and trail accepted to build (2026-11-13); the rest exploring | 2026-11-13 |
 | [concordance](concordance/README.md) | The Concordance: the printed Strong's as a book (English, Hebrew, Greek, Interlinear) | Rounds 1-2 drawn; exploring | 2026-11-11 |
 | [library](library/README.md) | The Notebook and the Shelf as one library; what keeping (a bookmark) means | Rounds 1-3 drawn; exploring | 2026-11-11 |
 | [threads](threads/README.md) | Threads beside Page, Folder, Save and Library: legacy, or a role of their own | Round 2 drawn; exploring | 2026-11-11 |
@@ -14,7 +14,7 @@ is written so that a person or an AI can build the feature from it without the c
 | [search](search/README.md) | Search: filters you click, one box for everything, counts by book as the filter | Round 2 drawn; exploring | 2026-11-11 |
 | [highlights](highlights/README.md) | Highlights and the palette: colors with names, layers by year with an eye each, a light and a dark form for every color; when everything is colored | Rounds 1-2 drawn; exploring | 2026-11-12 |
 | [books](books/README.md) | BDB and Webster's 1913 as books: paging, an index, one card with three sources | Round 1 drawn; exploring | 2026-11-12 |
-| [command](command/README.md) | The top bar and the command box: suggestions, kept commands, the ⋯ | Round 1 drawn; exploring | 2026-11-12 |
+| [command](command/README.md) | The top bar and the command box: the trail under the bar, the box keeps its line; suggestions | Round 2 accepted; building | 2026-11-13 |
 | [words](words/README.md) | The word sheet, the verse sheet and the hover card | Round 1 drawn; exploring | 2026-11-12 |
 | [marks](marks/README.md) | Marks: the two layers on the text, the margin as a view of pages and saves, a passage with its marks | Round 1 drawn; exploring | 2026-11-12 |
 | [questions](questions/README.md) | Questions: one list or lines in pages; asking and answering | Round 1 drawn; exploring | 2026-11-12 |

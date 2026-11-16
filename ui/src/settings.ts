@@ -4,7 +4,6 @@
 // are read. Nothing here interprets scripture: it is color, type and switches.
 import { invoke } from '@tauri-apps/api/core';
 import { api, inApp, wb } from './api';
-import { customize as customizeToolbar } from './toolbar';
 import { guideRows, hasKeyboard, keysRows, manualRows } from './guide';
 import { toast } from './sheets';
 import { h, hoverMode, icon, setHover } from './ui';
@@ -349,9 +348,6 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
         m => { const v = m === 'Off' ? 'off' : m === 'References' ? 'refs' : 'on'; setHover(v); void save('hover', 'mode', v); }), 'hover tooltip preview cards'));
     out.push(...readAloudRows());
     out.push(copyRow());
-    const tb = h('button', 'btn', 'Choose…');
-    tb.onclick = () => customizeToolbar();
-    out.push(row('Toolbar', 'Which buttons sit on the top bar, and in what order', tb, 'toolbar buttons bar customize'));
     out.push(reset('reading', ['size', 'version']));
   } else if (name === 'Notebook') {
     let about: any[] = [];

@@ -5,7 +5,7 @@
 use crate::args::{Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Value};
-use wb_core::{commands as lang, findings as fd, notebook as nb};
+use wb_core::{commands as lang, findings as fd, history as hs, notebook as nb};
 
 fn e(x: wb_core::Error) -> String {
     x.0
@@ -31,8 +31,37 @@ fn text_of(c: &Ctx<'_>, words: &str) -> Result<String, String> {
 
 pub fn commands() -> Vec<Command> {
     let mut all = findings();
+    all.extend(history());
     all.extend(notebook_commands());
     all
+}
+
+/// The trail: every tab opened, kept in history/<day>.jsonl (design/features/minimize, build go-ahead 2026-11-13). The
+/// window calls it the trail; the command is `history` while `wb trail` still means the old questions.
+fn history() -> Vec<Command> {
+    vec![
+        cmd("history add", "Add a step to the trail: wb history add word H7068 --line \"strong H7068\" [--from <step id>]. The kind names the tab (verse, word, uses, search, page, …), the title is what the trail shows, the line opens it again.",
+            vec![Pos("kind", N::One), Pos("title", N::Many), Opt("line", None), Opt("from", None)], |c, a| {
+            j(hs::add(&c.root()?, &a.s("kind"), &a.s("title"), &a.opt("line").unwrap_or_default(), a.opt("from").as_deref()).map_err(e)?)
+        }),
+        cmd("history list", "The trail's steps, oldest first: {id, at, from, kind, title, line}; --days N: only the last N days kept (0: every day).",
+            vec![Opt("days", Some("1"))], |c, a| {
+            let days = a.opt("days").unwrap_or_default().parse::<usize>().map_err(|_| "--days takes a number".to_string())?;
+            j(json!({"steps": hs::steps(&c.root()?, days).map_err(e)?}))
+        }),
+        cmd("history sittings", "The trail cut into sittings (a 30-minute gap starts one), newest first: {start, at, end, count, title}; --days N (0: every day); --steps: with each sitting's steps.",
+            vec![Opt("days", Some("0")), Flag("steps")], |c, a| {
+            let days = a.opt("days").unwrap_or_default().parse::<usize>().map_err(|_| "--days takes a number".to_string())?;
+            j(hs::sittings(&c.root()?, days, a.flag("steps")).map_err(e)?)
+        }),
+        cmd("history show", "One sitting with its steps, by the id of its first step (or last: the newest).",
+            vec![Pos("start", N::One)], |c, a| j(hs::sitting(&c.root()?, &a.s("start")).map_err(e)?)),
+        cmd("history keep", "Keep a sitting as a page: a new page in the Inbox listing its steps, side trips indented under the step they came from. wb history keep <start | last>.",
+            vec![Pos("start", N::One)], |c, a| {
+            let s = hs::sitting(&c.root()?, &a.s("start")).map_err(e)?;
+            j(nb::jot(c.bible()?, &mut *c.study()?, &hs::as_page_text(&s), false).map_err(e)?)
+        }),
+    ]
 }
 
 /// The person's findings about the app while it is built (findings/<id>.md, kept apart from the study; note 50c1).

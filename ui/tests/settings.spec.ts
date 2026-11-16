@@ -6,7 +6,7 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
   await page.goto('/?at=NUM.25');
   await page.waitForFunction(() => (window as any).__wbReady);
   await page.locator('#more').click();
-  await page.getByRole('button', { name: /^Settings/ }).click();
+  await page.locator('.more-menu').getByRole('button', { name: /^Settings/ }).click();
   const pane = page.locator('.set-pane');
   await expect(pane).toBeVisible();
   // its own menu in the centre, over the app (not a pane in the dock)

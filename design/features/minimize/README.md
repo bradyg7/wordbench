@@ -1,7 +1,8 @@
 # Minimized panes, full screen and the side rail
 
-**State:** exploring · **Sheets:** `python design/features/minimize/minimize.py` writes `minimize.figcraft` and
-`minimize.pdf` (the board, one vector page) · Nothing here is built yet.
+**State:** the rail and the trail accepted to build (2026-11-13); the rest exploring · **Sheets:**
+`python design/features/minimize/minimize.py` writes `minimize.figcraft` and `minimize.pdf` (the board, one vector
+page) · The rail and the trail are building on `feature/command`.
 
 ## Leading design (2026-11-12)
 
@@ -126,9 +127,42 @@ Fetched on 2026-11-11 (the commands were not recorded); refetch with `wb` if the
 
 ## What the build must satisfy
 
-Not written yet: the person has not accepted a direction. When they do, each accepted decision above becomes a
-checkable line here (behaviour, the `wb` command for it, what happens to the study files, the reader's place kept),
-naming the window that shows it.
+### Build go-ahead (2026-11-13)
+
+The person accepted command round 2 (the top bar with the trail line under it) and asked for "the full rail and toolbar
+feature redesign" to be built in its own branch. That builds the parts of this folder those windows stand on: the
+round-5 rail and the trail (I2's line; N + O's sittings with side trips folded). Minimized tabs in rail menus, folder
+tabs everywhere, full screen and the Shelf stay as they are today and are not part of this build.
+
+The rail:
+
+- [ ] **On the left, always**, icons only; the name on hover; **Show names** at its foot opens it out with labels and
+  is remembered. No count badges.
+- [ ] Top: Notebook (once), Shelf, Highlights; under a rule: Trail (a dot while a sitting is going), Reading plans,
+  Findings, Documents; foot: Show names, Help, Settings. The Concordance, BDB and Webster's join when their own folders
+  are accepted and built.
+- [ ] A rail icon opens its pane **in the left column, beside the rail** (floating if it was last left floating), or
+  brings it to the front, and shows as on while that pane is in front. **Clicked again while on, it closes that pane**
+  (the person, 2026-11-13, after trying the build).
+- [ ] The dock's columns, bands and floats start right of the rail; the reader's place is kept when it opens out.
+
+The trail:
+
+- [ ] **Every tab opened is a step**: each pane opened and each place the reader goes to. A step keeps the step it was
+  opened from (the pane or reader last clicked), its kind, title and the line that opens it again.
+- [ ] **Sittings**: a 30-minute gap starts a new one. The line under the top bar shows the sitting chip, where the
+  sitting began and the way from there to the step in front, forks marked; a long way folds its middle into "… N".
+  Clicking a step brings its tab to the front, opening it again from its line if it was closed.
+- [ ] **The drawer** (the rail's Trail, the chip's Show the whole trail, a click on "… N"): the sitting as a tree with
+  side trips folded (O); earlier sittings newest first, folded by day (N). Keep as a page writes the sitting's steps
+  into a new page.
+- [ ] **Closed tabs stay on the trail.**
+- [ ] **Kept in the study folder** as `history/<yyyy-mm-dd>.jsonl`, one step per line (`id`, `at`, `from`, `kind`,
+  `title`, `line`). The folder is `history/` because `trails/` holds the old questions. No file that exists today
+  changes. (Compacting old sittings, decided in round 6, waits for a size that needs it; a later round says how.)
+- [ ] `wb history add|list|sittings|keep` reaches every action from a terminal.
+- [ ] Naming: the window says "trail"; the store and command say `history` until the old `wb trail` (questions) is
+  retired to `question`, which is not part of this build.
 
 ## Round 6 review (the person, 2026-11-11)
 

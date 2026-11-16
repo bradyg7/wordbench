@@ -237,7 +237,7 @@ fn changes_page_files(command: &str) -> bool {
         "page unpin" | "page title" |
         "block scripture" | "block thread" | "block word" | "block view" | "block set" |
         "block add" | "block rm" | "block undo" | "block move" | "template new" |
-        "template save" | "template set" | "template rm" | "trash restore"
+        "template save" | "template set" | "template rm" | "trash restore" | "history keep"
     )
 }
 
