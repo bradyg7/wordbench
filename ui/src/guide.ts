@@ -37,7 +37,8 @@ export function hasKeyboard(input: string): boolean {
 
 /** The Guide: each group a heading and a grid of cards. `focus`: a group (or a card's words) to outline. */
 export function guideRows(focus = ''): HTMLElement[] {
-  const f = focus.toLowerCase();
+  // `help templates` outlines "Make a template": a plural topic matches its singular too
+  const f = focus.toLowerCase().trim().replace(/s$/, '');
   const out: HTMLElement[] = [h('p', 'muted small guide-soon-note', 'Guides coming soon: each card will show its steps once the part it guides is finished.')];
   for (const [group, cards] of GUIDE) {
     const g = h('div', 'guide-group');

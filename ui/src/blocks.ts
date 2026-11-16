@@ -1159,7 +1159,11 @@ function askInside(ta: HTMLTextAreaElement, host: Host, cur: { n: number; count:
     // the block that held the / goes; the link is written where it was
     const after = cur.n ? cur.n - 1 : cur.after;
     ta.value = '';
+    ta.onkeydown = keys; ta.oninput = typed;
+    ta.classList.remove('asking');
     await finish();
+    // the box that asked is gone at once, not left on the page empty if a redraw passes it by
+    if (ta.isConnected) { const blk = ta.closest('.nb-new-block'); if (blk) blk.remove(); else ta.remove(); }
     try { await host.pageInside(title, after); } catch (x) { toast(String(x)); }
   };
   ta.oninput = () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight}px`; };

@@ -1249,16 +1249,18 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await ed.locator('.nb-title', { hasText: 'W5 questions for the group' }).waitFor({ timeout: 10000 });
   await waitRows('.pane-notebook .nb-blocks .nb-view', ids(vRun.rows));
   await ed.locator('.nb-view .nbv-line').click();
-  await ed.locator('.nb-view .nbv-input').fill('notebook @Num 25:1-9 open');
-  await page.keyboard.press('Enter');
+  // (the line opens the block's card: View command, then Save block)
+  await ed.locator('.nb-structured-editor .nb-card-input').fill('notebook @Num 25:1-9 open');
+  await ed.locator('.nb-structured-editor button', { hasText: 'Save block' }).click();
   const lineKept = await waitLong(w5, t => t.includes('```view\nnotebook @Num 25:1-9 open\n```'));
   const vOpen = wbj('view', 'run', 'notebook @Num 25:1-9 open');
   check('the line edited in place is written in the fence, and the rows are what the new line finds', lineKept && await waitRows('.pane-notebook .nb-blocks .nb-view', ids(vOpen.rows)) && vOpen.rows.every(r => r.kind === 'question' && r.status !== 'done'), `${vOpen.count} rows`);
   await sleep(800);
   await ed.locator('.nb-view .nbv-line').click();
-  await ed.locator('.nb-view .nbv-input').fill('notebook @Nowhere 9');
-  await page.keyboard.press('Enter');
+  await ed.locator('.nb-structured-editor .nb-card-input').fill('notebook @Nowhere 9');
+  await ed.locator('.nb-structured-editor button', { hasText: 'Save block' }).click();
   await sleep(1500);
+  await page.keyboard.press('Escape');
   check('a line that cannot be read is not written', bodyOf(w5).includes('```view\nnotebook @Num 25:1-9 open\n```') && !bodyOf(w5).includes('Nowhere'));
   await page.evaluate(() => window.__wb.changed());
   await sleep(600);
@@ -1350,17 +1352,11 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const saved = wbj('template', 'list').templates.find(t => t.title === 'W4 the passage');
   const savedText = saved ? readFileSync(fileOf(saved.id), 'utf8').replace(/\r\n/g, '\n') : '';
   check('Save as a template copies the page with its places taken out: {place} in its scripture blocks, no place of its own; the page as it was', !!saved && /\ntemplate: true\n/.test(savedText) && /\nasks: "?place"?\n/.test(savedText) && savedText.includes('```scripture\n{place}\n```') && savedText.includes('```scripture\n{place}\nlines\n```') && !savedText.includes('Num 25:10-13') && /\nanchor: ""\n|\nanchor: \n|\nanchor: ''\n/.test(savedText) && readFileSync(fileOf(w4), 'utf8') === w4Before, saved?.title);
-  // Help: the Guide's entry, its text from wb-core (wb guide templates), and the Templates page's link to it
+  // Help (in the Settings dialog since feature/help): help templates opens it at the templates entry
   await page.evaluate(() => window.__wb.run('help templates'));
-  await page.locator('.pane-help .guide-entry[data-name="templates"]').waitFor({ timeout: 10000 });
-  const guideEntry = wbj('guide', 'templates', '--json');
-  const heads = await page.locator('.pane-help .guide-entry[data-name="templates"] .guide-head').allTextContents();
-  const texts = await page.locator('.pane-help .guide-entry[data-name="templates"] .guide-text').allTextContents();
-  const tabs = await page.locator('.pane-help .help-tabs button').allTextContents();
-  check('Help has Guide, Commands and Keys; its Templates entry is wb guide templates, word for word', tabs.join() === 'Guide,Commands,Keys' && (await page.locator('.pane-help .help-tab-guide').getAttribute('class')).includes('on') && JSON.stringify(heads) === JSON.stringify(guideEntry.parts.map(p => p.head)) && JSON.stringify(texts) === JSON.stringify(guideEntry.parts.map(p => p.text)), heads.join(' · '));
+  check('help templates opens Help in the Settings dialog at its templates entry', await page.waitForFunction(() => [...document.querySelectorAll('.set-modal .guide-card.focus, .set-modal details.doc[open]')].some(e => /template/i.test(e.textContent)), null, { timeout: 10000 }).then(() => true, () => false));
   await page.screenshot({ path: shots + '1440-help-guide-templates.png' });
-  const helpPane = await page.evaluate(() => window.__wb.dock().panes.find(p => p.kind === 'help')?.id);
-  if (helpPane) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, helpPane);
+  await page.keyboard.press('Escape');
   await page.evaluate(() => window.__wb.run('notebook'));
   await sleep(400);
   await page.locator('.pane-notebook .nb-side-templates').click();
@@ -1382,9 +1378,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   });
   check('the Templates page wraps its cards: no sideways scroll at the pane’s width, 320 or 240 px (note bd54)', Object.values(tplFit).every(Boolean), JSON.stringify(tplFit));
   await ed.locator('.nb-tpl-how').click();
-  check('How templates work opens Help at its Guide entry', await page.locator('.pane-help .guide-entry[data-name="templates"]').waitFor({ timeout: 10000 }).then(() => true, () => false));
-  const helpPane2 = await page.evaluate(() => window.__wb.dock().panes.find(p => p.kind === 'help')?.id);
-  if (helpPane2) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, helpPane2);
+  check('How templates work opens Help at its templates entry', await page.waitForFunction(() => [...document.querySelectorAll('.set-modal .guide-card.focus, .set-modal details.doc[open]')].some(e => /template/i.test(e.textContent)), null, { timeout: 10000 }).then(() => true, () => false));
+  await page.keyboard.press('Escape');
   // the Python app: it passes over a template (a page with no place, as every page), and reads a page made from one,
   // once placed, keeping from_template when it writes it
   execFileSync(wbExe, ['note', 'place', made, 'Num 25:11'], { env });
