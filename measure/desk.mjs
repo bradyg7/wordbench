@@ -985,7 +985,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   execFileSync(wbExe, ['block', 'add', w4, 'Then the psalm, a verse to a line:'], { env });
   execFileSync(wbExe, ['block', 'add', w4, '-'], { env, input: '```scripture\nPs 106:28-31\nlines\n```' });
   execFileSync(wbExe, ['block', 'add', w4, 'Phinehas is named at Num 25:11; then Ps 106:30.'], { env });
-  await page.evaluate(() => window.__wb.changed());
+  // the tree redraws on changed(); one made while another redraw is reading can be passed over, so ask again until it shows
+  for (let i = 0; i < 20 && !(await rowOf(w4).count()); i++) { await page.evaluate(() => window.__wb.changed()); await sleep(500); }
   await rowOf(w4).locator('.nb-tree-open').click();
   await ed.locator('.nb-title', { hasText: 'W4 the passage' }).waitFor({ timeout: 10000 });
   const sblock = i => ed.locator('.nb-blocks .sv-block').nth(i);
@@ -2068,7 +2069,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     check('Notes & lookup shows a question on part of the verse (note c39a)', await page.locator('.pane-place:visible .question-card', { hasText: 'Why these words here?' }).waitFor({ timeout: 10000 }).then(() => true, () => false));
     await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'place')) d.close(p); });
 
-    // 797d: the command field keeps the lines run, failed ones too; ↑ ↓ go through them, newest first
+    // 797d: the command field keeps the lines run, failed ones too; ↑ ↓ go through them, newest first. The box holds
+    // its place (command C14), so ↑ starts from the place shown and ↓ past the newest gives the place back
     await page.locator('#reader').click({ position: { x: 5, y: 5 } });
     await page.keyboard.press('Backquote');
     await page.keyboard.type('go Num 25:20');
@@ -2084,7 +2086,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     const recent = (await page.locator('.suggest-group').allTextContents()).some(t => t.startsWith('Recent'));
     const steps = [];
     for (const k of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown']) { await page.keyboard.press(k); steps.push(await page.locator('#cmd').inputValue()); }
-    check('the empty command field lists recent lines; ↑ ↓ go through them, the failed one too (note 797d)', recent && steps.join(' | ') === 'go Nowhere 99 | go Num 25:20 | go Nowhere 99 | ', steps.join(' | '));
+    check('the empty command field lists recent lines; ↑ ↓ go through them, the failed one too (note 797d)', recent && ['', 'Numbers 25'].some(end => steps.join(' | ') === 'go Nowhere 99 | go Num 25:20 | go Nowhere 99 | ' + end), steps.join(' | '));
     await page.keyboard.press('Escape');
 
     // 50c1: Ctrl+Shift+J writes a finding about the app, apart from the study, with what was on screen

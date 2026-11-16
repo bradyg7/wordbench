@@ -118,8 +118,15 @@ pub fn sittings(root: &Path, days: usize, with_steps: bool) -> Result<Value> {
 pub fn sitting(root: &Path, start: &str) -> Result<Value> {
     let all = sittings(root, 0, true)?;
     let list = all["sittings"].as_array().cloned().unwrap_or_default();
-    let found = if start == "last" { list.first().cloned() } else { list.into_iter().find(|s| s["start"] == start) };
-    found.ok_or_else(|| bad(format!("No sitting starts with the step {start} (wb history sittings lists them).")))
+    // a sitting's first step, or any step in it: the window that opened again within 30 minutes goes on with the
+    // sitting kept on disk, whose start came before the window's own first step
+    let has = |s: &Value| s["steps"].as_array().is_some_and(|v| v.iter().any(|x| x["id"] == start));
+    let found = if start == "last" {
+        list.first().cloned()
+    } else {
+        list.iter().find(|s| s["start"] == start).or_else(|| list.iter().find(|s| has(s))).cloned()
+    };
+    found.ok_or_else(|| bad(format!("No sitting holds the step {start} (wb history sittings lists them).")))
 }
 
 /// A sitting written out as a page's text: a title line, then one line per step, indented under the step it came from.
@@ -200,6 +207,17 @@ mod tests {
         assert_eq!(s[2]["start"], "s1");
         assert_eq!(s[2]["count"], 3);
         assert_eq!(sittings(&root, 1, false).unwrap()["sittings"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_sitting_is_found_by_any_of_its_steps() {
+        let root = scratch();
+        put(&root, "2026-11-13T09:14:00Z", "s1", "", "Numbers 25");
+        put(&root, "2026-11-13T09:15:00Z", "s2", "", "Numbers 25");
+        put(&root, "2026-11-13T09:16:00Z", "s3", "s2", "H7065");
+        assert_eq!(sitting(&root, "s2").unwrap()["start"], "s1");
+        assert_eq!(sitting(&root, "s1").unwrap()["count"], 3);
+        assert!(sitting(&root, "nope").is_err());
     }
 
     #[test]
