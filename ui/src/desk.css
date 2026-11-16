@@ -1257,7 +1257,7 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .cmd-top { margin-top: 16px; }
 
 .nb-block-actions { min-width: 150px; }
-.nb-line-break, .nb-edit-structured, .nb-undo-block { display: inline-block; margin: 4px 0; }
+.nb-edit-structured, .nb-undo-block { display: inline-block; margin: 4px 0; }
 .nb-table-scroll { overflow: auto; }
 .nb-table-edit td, .nb-table-edit th { padding: 4px; }
 .nb-table-edit .nb-table-cell { min-width: 7em; width: 100%; }

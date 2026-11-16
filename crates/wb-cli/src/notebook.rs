@@ -56,7 +56,7 @@ fn history() -> Vec<Command> {
         }),
         cmd("history show", "One sitting with its steps, by the id of its first step (or last: the newest).",
             vec![Pos("start", N::One)], |c, a| j(hs::sitting(&c.root()?, &a.s("start")).map_err(e)?)),
-        cmd("history keep", "Keep a sitting as a page: a new page in the Inbox listing its steps, side trips indented under the step they came from. wb history keep <start | last>.",
+        cmd("history keep", "Keep a sitting as a page: a new page in the Inbox listing its steps, side trips indented under the step they came from. wb history keep <step | last>: the sitting that holds the step.",
             vec![Pos("start", N::One)], |c, a| {
             let s = hs::sitting(&c.root()?, &a.s("start")).map_err(e)?;
             j(nb::jot(c.bible()?, &mut *c.study()?, &hs::as_page_text(&s), false).map_err(e)?)

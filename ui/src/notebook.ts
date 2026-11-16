@@ -241,7 +241,8 @@ function createNotebookSession(fixed?: PageTab) {
     openId = id;
     const out = await drawEditor(editor);
     if (gen !== drawing || !el.isConnected) return;
-    if (out) {
+    // checked again: writing begun while the page was being read is never wiped by the redraw
+    if (out && !writingIn(editor)) {
       editor.replaceChildren(...out);
       afterEditorDrawn(editor);
     }
@@ -305,10 +306,12 @@ function createNotebookSession(fixed?: PageTab) {
     const sc = listEl.querySelector<HTMLElement>('.nb-scroll');
     if (sc) sc.scrollTop = keep;
     if (typing) { const f = listEl.querySelector<HTMLInputElement>('.nb-find'); f?.focus(); f?.setSelectionRange(f.value.length, f.value.length); }
-    if (ed) edEl.replaceChildren(...ed);
+    // checked again: writing begun while the page was being read is never wiped by the redraw
+    const edNow = ed && !writingIn(edEl) ? ed : null;
+    if (edNow) edEl.replaceChildren(...edNow);
     root.classList.toggle('editing', editorShown && (!!openId || !!draft || !!mainList));
     root.classList.toggle('side-folded', two && sideFolded && !showTrash);
-    if (ed) afterEditorDrawn(edEl);
+    if (edNow) afterEditorDrawn(edEl);
   }
 
   /** The reader turned to another chapter: the list follows it when grouped by chapter. */
@@ -967,10 +970,14 @@ function createNotebookSession(fixed?: PageTab) {
 
   let shown: Entry | null = null;
 
-  async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
-    // while the person types, the editor is left as it is (the list still redraws beside it)
+  /** The person is writing in this editor: it is left as it is (the list still redraws beside it). */
+  function writingIn(edEl: HTMLElement) {
     const a = document.activeElement;
-    if (edEl.contains(a) && (a?.classList.contains('nb-input') || a?.classList.contains('nb-title-input') || a?.closest('.nb-structured-editor, .nb-line-break'))) return null;
+    return edEl.contains(a) && (a?.classList.contains('nb-input') || a?.classList.contains('nb-title-input') || !!a?.closest('.nb-structured-editor'));
+  }
+
+  async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {
+    if (writingIn(edEl)) return null;
     blocksData = null;
     blockHostNow = null;
     if (!openId && !draft) {

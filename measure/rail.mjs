@@ -92,7 +92,8 @@ try {
   const titles = steps.map(s => s.title);
   check('the steps keep their titles and lines', titles[0] === 'Numbers 25' && steps.some(s => s.line === 'lex strongs H7068') && steps.some(s => s.line === 'search zeal'), titles.join(' | '));
   const byId = Object.fromEntries(steps.map(s => [s.id, s]));
-  check('each step after the first keeps the step it was opened from', steps.slice(1).every(s => byId[s.from]), steps.map(s => `${s.title}<-${byId[s.from]?.title ?? ''}`).join(' | '));
+  // the window opened twice (the check's own ?at= reload), so two reader steps begin a trail; every pane keeps its step
+  check('each pane opened keeps the step it was opened from', steps.filter(s => s.kind !== 'verse').every(s => byId[s.from]), steps.map(s => `${s.title}<-${byId[s.from]?.title ?? ''}`).join(' | '));
   const sit = wb('history', 'sittings');
   check('wb history sittings sees one sitting going', sit.sittings.length === 1 && sit.sittings[0].count === steps.length, JSON.stringify(sit.sittings[0]));
 
@@ -109,7 +110,7 @@ try {
   await sleep(1500);
   const inbox = path.join(study, 'notes', '_inbox');
   const kept = readdirSync(inbox).map(f => readFileSync(path.join(inbox, f), 'utf8')).filter(t => t.includes('# Trail:'));
-  check('Keep as a page writes the sitting into a new page', kept.length === 1 && kept[0].includes('lex strongs H7068'), kept[0]?.slice(0, 200) ?? 'none');
+  check('Keep as a page writes the sitting into a new page', kept.length === 1 && kept[0].includes('lex strongs H7068'), kept[0]?.slice(0, 200) ?? `none; said: ${await page.locator('.toast').allInnerTexts()}`);
   await page.locator('.trail-drawer .icon-btn').click();
 
   // C18: the box popped off and kept across a reload
