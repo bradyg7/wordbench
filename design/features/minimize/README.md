@@ -1,6 +1,6 @@
 # Minimized panes, full screen and the side rail
 
-**State:** the rail and the trail accepted to build (2026-11-13); the rest exploring · **Sheets:**
+**State:** the rail and the trail accepted to build (2026-11-13); minimized tabs, folder tabs and full screen accepted (round 7, 2026-11-16); the Shelf still exploring · **Sheets:**
 `python design/features/minimize/minimize.py` writes `minimize.figcraft` and `minimize.pdf` (the board, one vector
 page) · The rail and the trail are building on `feature/command`.
 
@@ -12,7 +12,7 @@ The board and its PDF hold only these windows. Superseded ones are left off the 
 |---|---|---|
 | Floating windows as folders | B2 | B1 (rejected: tabs on the reader's edges) |
 | Full screen and Present | C1, C2, E2, F2 |  |
-| Minimized tabs | the trail (below) | M1-M5 (the tray, A: by the rail and the trail), D1, D2 (by the rail of round 5), E1 (by the trail) |
+| Minimized tabs | round 7: R1-R4 (open), R5, R6 in `round7.html` | M1-M5 (the tray, A: by the rail and the trail), D1, D2 (by the rail of round 5), E1 (by the trail) |
 | The trail | I2 (the line under the top bar), N1 + O1 (sittings with side trips folded; chosen) | I1 (by N1 + O1), P1 (rejected) |
 | The rail's books | [concordance](../concordance/README.md), [books](../books/README.md) | G1-G3, J1, J2 (by the concordance folder), K1 (by books) |
 | Notebook and Shelf | [library](../library/README.md) | F1, H1, H2, L1 (by library S20) |
@@ -97,6 +97,7 @@ the rail menu's "keep on the Shelf" is the one-step bookmark c43b asks for.
 
 ## Open questions
 
+
 - Is a minimized tab a short-lived bookmark, and the Shelf the lasting one? (the Shelf round)
 - Which of A (tray of pills) and C (tray under a full-screen pane) keeps a part.
 - A persistent side rail in place of the top toolbar's tools.
@@ -111,6 +112,7 @@ the rail menu's "keep on the Shelf" is the one-step bookmark c43b asks for.
 | 4 | J, K, L | Ticks under icons, the Concordance as the printed Strong's, BDB and Webster's as books |
 | 5 | M1-M5 | Every tab joins a trail; the drawer and the line under the top bar |
 | 6 | N1, O1, P1 | Keeping the trail from bloating |
+| 7 (2026-11-16) | R0-R6 | Minimized tabs in the rail's menus: what a click does (R1a/b), kinds with no icon (R2a/b), 20+ tabs (R3a/b), what else shows a minimized tab (R4a/b), folder tabs (R5), full screen (R6). Drawn in `round7.html` (open it in a browser), not on the FigCraft board. Reviewed 2026-11-16 |
 
 Window tags are the names on the board (M1, H8…); each round's review is its dated section above. (The round-to-window
 mapping here is read from the script's function names; correct it if a window sits in another round.)
@@ -126,6 +128,41 @@ mapping here is read from the script's function names; correct it if a window si
 Fetched on 2026-11-11 (the commands were not recorded); refetch with `wb` if the database changes, never edit by hand.
 
 ## What the build must satisfy
+
+### Minimized tabs, folder tabs and full screen (round 7, accepted 2026-11-16)
+
+Minimized tabs:
+
+- [ ] **A minimized tab is a link, not a loaded pane.** Minimize saves the pane's view (`captureView`) and any writing
+  (`beforeClose`), closes the pane, and keeps a link: kind, title, trail line, view, when it was minimized. Restoring
+  runs the line, puts the view back and brings the pane to the front where it was docked (or its kind's usual place).
+- [ ] A link whose line cannot open it again (nothing to run) is not offered as minimized; Minimize on such a pane is
+  Close, and it stays on the trail.
+- [ ] Minimized links last across restarts (kept with the window's layout, not in the study folder).
+- [ ] **No "· minimized" chips** over the reader. Minimize folds the pane toward its rail icon (none with reduced motion).
+- [ ] A rail icon with minimized links gets a short bar at its left edge; no count (R1).
+- [ ] **A click on such an icon opens its menu** (R1a): the kind's name and Open <pane> at the top, then the links newest
+  first with when each was minimized; on hover, Keep on the Shelf and Close. A second click, Esc or a click outside closes
+  the menu. An icon with nothing minimized keeps today's rule (opens its pane; clicked again, closes it).
+- [ ] **Kinds with no rail icon** (word studies, search, a verse alone, a second reader) wait under one **Minimized**
+  icon under the rule, grouped by kind inside (R2a). It shows only while something waits there.
+- [ ] **More than eight**: the menu shows the newest eight, a find field over all of them, Show all and Close all; Close
+  all asks first; closed links stay on the trail (R3a).
+- [ ] Only the rail shows a minimized tab; the trail line is unchanged (R4a).
+- [ ] `wb` reaches it: the window's `minimize` / `restore` actions in the command language (`minimize <name>`,
+  `restore <name>`, `restore minimized`), as `actions.ts` already has for `minimize`.
+
+Folder tabs (R5):
+
+- [ ] Every tab strip draws folder tabs: the front tab shares the page's color with no rule under it; the others sit
+  back on the strip's color. Minimize and Full screen are icons at the strip's end.
+
+Full screen (R6):
+
+- [ ] Full screen (an icon, no word) shows one pane with the rail beside it; every other pane is hidden **but stays
+  loaded**. The same icon or Esc puts every pane back exactly where it was.
+
+Not changed: the study folder (no file changes); the trail's steps; the reader's place.
 
 ### Build go-ahead (2026-11-13)
 
@@ -163,6 +200,20 @@ The trail:
 - [ ] `wb history add|list|sittings|keep` reaches every action from a terminal.
 - [ ] Naming: the window says "trail"; the store and command say `history` until the old `wb trail` (questions) is
   retired to `question`, which is not part of this build.
+
+## Round 7 review (the person, 2026-11-16)
+
+- **All of round 7's a, with R5 and R6.** R1a: a click on a rail icon opens its menu of minimized tabs (Open <pane> at
+  the top; Keep on the Shelf and Close on hover). R2a: tabs with no rail icon wait under one Minimized icon, grouped by
+  kind. R3a: the newest eight and a find field, Show all and Close all. R4a: only the rail shows a minimized tab; it
+  folds toward its icon and today's "· minimized" chips go. R5: folder tabs on every strip. R6: full screen as drawn.
+- **Raised: a minimized tab as a link, not a loaded tab.** Today minimizing hides a group and keeps every pane in it
+  alive (`dock.minimize` sets `min` on the group; the panes stay in the page and are still redrawn when the study
+  changes). The person asked whether a minimized tab could be a clickable link instead, and chose links (2026-11-16): minimizing
+  closes the pane and keeps its trail line (the command that opens it again) and its view (`captureView`: scroll, the
+  open tab inside it); restoring runs the line and puts the view back. A pane with writing not yet saved saves it first
+  (`beforeClose`). Nothing is lost that the trail and the study folder do not already keep. Full screen is not
+  minimizing: the panes it hides stay loaded, so leaving it puts every pane back exactly.
 
 ## Round 6 review (the person, 2026-11-11)
 
