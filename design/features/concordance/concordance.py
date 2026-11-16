@@ -357,12 +357,139 @@ def round2(board):
         text(lr, new, "small", "fg", W="fill")
 
 
+ILIN25 = json.loads((D / "interlinear-num25.json").read_text(encoding="utf-8"))
+ILING = json.loads((D / "interlinear-john2-17.json").read_text(encoding="utf-8"))
+
+
+def cell(parent, wd, heb, on=False, picked=False):
+    c = col(parent, f"w/{wd['strong']}", gap=0, pad=[6, 8, 6, 8], radius=8, stroke="accent" if picked else "line",
+            sw=2 if picked else 1, crossAlign="center", W="fixed", fill="accentSoft" if (on or picked) else None)
+    Q.put(c, 0, 0, 100)
+    text(c, wd["original"], "heading", fontFamily=F.HEB if heb else F.READ, fontSize=18, lineHeight="24px")
+    text(c, wd["translit"], "caption", "muted", maxLines=1)
+    text(c, wd["strong"], "caption", "accent")
+    text(c, wd["gloss"], "caption", "fg", maxLines=1)
+    return c
+
+
+def heb_rows(parent, words, per, pad, on=("H7065", "H7068")):
+    """Hebrew reads right to left: each line holds the next words in order, first word on the right."""
+    blk = col(parent, "words", gap=6, W="fill", pad=pad, crossAlign="max")
+    for i in range(0, len(words), per):
+        ln = row(blk, f"line/{i // per}", gap=6, align="min")
+        for wd in reversed(words[i:i + per]):
+            cell(ln, wd, True, on=wd["strong"] in on)
+
+
+def scope_head(pg, ref, active):
+    sc = row(pg, "scope", gap=10, pad=[0, 0, 14, 0], W="fill")
+    text(sc, ref, "heading")
+    P.segmented(sc, ["Verse", "Passage", "Chapter"], active, W="hug")
+    spacer(sc)
+    return sc
+
+
+def return_bar(parent, ref):
+    b = row(parent, "came from", gap=8, pad=[8, 16, 8, 16], W="fill", fill="accentSoft")
+    icon(b, "left", 14, "accent")
+    text(b, f"From {ref}", "smallStrong", "accent")
+    text(b, "· the reader is still there", "caption", "muted", W="fill")
+    P.button(b, "Back to the verse", "secondary", size="sm")
+
+
+def round3(board):
+    cv = Q.section(board, "Round 3", 3200)
+    Q.sheet_title(cv, "Round 3: the interlinear, and the way back to the verse",
+                  "C5 and C6 were never reviewed. These draw them out: one verse with a word opened, a whole chapter, "
+                  "the interlinear beside the reader and following it, and the way back from deep in the book. Words "
+                  "are in the original's order; no English order is drawn, because the database holds none.")
+    r = row(cv, "row 3a", gap=64, align="min")
+    f = Q.win(r, "Round 3", "C11 · A verse, a word opened",
+              "Verse scope. Greek reads left to right, Hebrew right to left, each in its own order. Choosing a word "
+              "opens its entry and its parsing under the verse; the verse stays in view. In the Greek tab opens the "
+              "entry's every place (C8).")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "Interlinear", query="John 2:17")
+    pg = page(cp, pad=(16, 24, 16, 24))
+    scope_head(pg, "John 2:17", "Verse")
+    v = ILING["verses"][0]
+    para(pg, f"{v['c']}:{v['v']}  {v['text']}", "readSmall")
+    cells = row(pg, "words", gap=6, W="fill", wrap=True, align="min", pad=[12, 0, 16, 0])
+    pick = None
+    for wd in v["words"]:
+        cell(cells, wd, False, picked=wd["strong"] == "G2205")
+        if wd["strong"] == "G2205":
+            pick = wd
+    od = col(pg, "the word opened", gap=8, pad=[14, 16, 14, 16], radius=12, stroke="line", sw=1, W="fill")
+    hd = row(od, "parse", gap=10, W="fill")
+    text(hd, pick["original"], "heading")
+    text(hd, f"{pick['morph']} · " + " / ".join(x["text"] for x in pick["parse"]), "caption", "muted", W="fill")
+    entry(od, "G2205", full=True)
+    bt = row(od, "doors", gap=8)
+    P.button(bt, "In the Greek tab", "primary", size="sm", icon_name="word")
+    P.button(bt, "Every place", "secondary", size="sm")
+
+    f = Q.win(r, "Round 3", "C12 · A chapter",
+              "Chapter scope: every verse's KJV line; the words open under one verse at a time (here 11), or under all "
+              "with Words for every verse. The chapter scrolls like the reader.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "Interlinear", query="Numbers 25")
+    pg = page(cp, pad=(16, 24, 16, 24))
+    sc = scope_head(pg, "Numbers 25", "Chapter")
+    P.segmented(sc, ["One verse open", "Words for every verse"], "One verse open", W="hug")
+    for v in ILIN25["verses"][:13]:
+        open_ = v["v"] == 11
+        vr = row(pg, f"verse/{v['v']}", gap=10, pad=[4, 6, 4, 6], radius=6, W="fill",
+                 fill="accentSoft" if open_ else None)
+        icon(vr, "down" if open_ else "right", 12, "muted")
+        text(vr, f"{v['c']}:{v['v']}  {v['text']}", "small", "fg", W="fill", **({} if open_ else {"maxLines": 1}),
+             fontFamily=F.READ)
+        if open_:
+            heb_rows(pg, v["words"], 12, [6, 0, 10, 22])
+
+    r = row(cv, "row 3b", gap=64, align="min")
+    f = Q.win(r, "Round 3", "C13 · Beside the reader, following it",
+              "The interlinear in the right column with Follows the reader on: the verse you are on in the reader is "
+              "the verse shown. Turn it off and it stays where it is while you read on.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    B.desk_reader(f, w, TB, 640, H - TB, first=10, last=13)
+    cp = book(f, w + 640, W - w - 640, "Interlinear", query="Numbers 25:11")
+    pg = page(cp, pad=(16, 20, 16, 20))
+    sc = scope_head(pg, "Numbers 25:11", "Verse")
+    fl = row(pg, "follows", gap=8, pad=[0, 0, 12, 0])
+    P.chip(fl, "Follows the reader", "quiet", icon_name="sync")
+    text(fl, "on", "caption", "accent")
+    v = ILIN25["verses"][10]
+    para(pg, f"{v['c']}:{v['v']}  {v['text']}", "readSmall")
+    heb_rows(pg, v["words"], 6, [12, 0, 0, 0])
+
+    f = Q.win(r, "Round 3", "C14 · The way back, from deep in the book",
+              "Several steps in (Numbers 25:11, H7068, its every place ...), the book keeps a line at its head: From Numbers "
+              "25:11. Back to the verse puts the reader in front on that verse, marked; the book minimizes to the rail "
+              "at the page you were on. The trail line holds every step.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    M.crumbs(f, w, W - w)
+    B.desk_reader(f, w, TB + 34, 560, H - TB - 34, first=10, last=13)
+    cp = book(f, w + 560, W - w - 560, "Hebrew", y=TB + 34, h=H - TB - 34, query="H7068")
+    return_bar(cp, "Numbers 25:11")
+    pg = page(cp)
+    entry(pg, "H7068", on=True)
+    pl = col(pg, "places", gap=2, pad=[10, 0, 0, 0], W="fill")
+    for rw in USES["H7068"]["rows"][:8]:
+        place_line(pl, rw)
+
+
 def main():
     F.define_tokens()
     S.do("page.rename", {"name": BOARD}, ref=False)
     board = frame(None, BOARD, x=0, y=0, w=100, h=100, fill="sunken", layout="vertical", gap=96, pad=96, W="hug", H="hug")
     sheets(board)
     round2(board)
+    round3(board)
     build = LIB / "build"
     build.mkdir(exist_ok=True)
     script = build / "concordance.json"
