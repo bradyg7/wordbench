@@ -33,7 +33,7 @@ Round 1, asked 2026-11-16:
   words widen to their number. K3: hidden until the pointer is on a word (and a tap on a phone); the page reads as the
   KJV. Or one of these as the default with another a setting?
 - **How is it turned on?** K4: KJV+ is a reader version beside KJV and YLT, chosen where the version is chosen today
-  (and in a reader pane's own KJV | YLT switch). K5: a toggle, `H#`, among the reader's tools, which shows the numbers
+  (the KJV button at the box's end, and a reader pane's own KJV | YLT switch). K5: a toggle, `H#`, beside the KJV button among the reader's tools, which shows the numbers
   on whatever KJV is open. A version keeps one choice per reader pane and goes with the place; a toggle is one click
   and could later apply to the YLT if it ever carries numbers.
 - **Words without a number** (*the*, *of*, words in italics the translators supplied): left bare, as drawn, or
@@ -61,13 +61,14 @@ own highlights on the text.
 |---|---|---|
 | K0 | `scenes/k0-kjv-today.png` | the reader as it is today, for comparison |
 | K1 | `scenes/k1-after-each-word.png` | the number after each word, small and in the accent color |
-| K2 | `scenes/k2-above-each-word.png` | the number above each word, raised |
+| K2 | `scenes/k2-above-each-word.png` | the number above each word, raised (ruby text: the words keep their spacing, the lines open up) |
 | K3 | `scenes/k3-on-hover.png` | no numbers until the pointer is on a word (*zealous*, 25:11) |
 | K4 | `scenes/k4-turned-on-as-a-version.png` | KJV+ chosen as a version: KJV, KJV+, YLT |
 | K5 | `scenes/k5-turned-on-as-a-toggle.png` | an `H#` toggle on the bar, on |
 
-In this installed build the version is not on the bar, so K4 and K5 draw their button beside Highlights; where it
-finally sits follows the [command](../command/README.md) folder's reader tools.
+Drawn from the build installed 2026-11-16 2:19 PM: the KJV button at the command box's end is the app's own; K4
+turns it to KJV+ with a menu under it, K5 adds an `H#` toggle beside it. Each window is drawn in an instance of its
+own, so a run never carries one window's state into the next.
 
 ## Data the sheets show
 

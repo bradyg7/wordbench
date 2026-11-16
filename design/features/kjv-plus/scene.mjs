@@ -50,9 +50,9 @@ for (const v of chapter.verses) {
 
 const CSS = `
 #reader.kp-after .kp-n { font: 600 0.62em/1 var(--font-ui, Inter, sans-serif); color: var(--accent); margin-left: 2px; vertical-align: 0.1em; letter-spacing: .01em; }
-#reader.kp-above { line-height: 2.5; }
-#reader.kp-above .w.kp-has { display: inline-flex; flex-direction: column-reverse; align-items: center; line-height: 1.25; vertical-align: bottom; }
-#reader.kp-above .kp-n { font: 600 0.55em/1 var(--font-ui, Inter, sans-serif); color: var(--accent); opacity: .85; margin-bottom: 1px; }
+#reader.kp-above { line-height: 2.3; }
+#reader.kp-above ruby { ruby-align: center; }
+#reader.kp-above rt.kp-n { font: 600 0.5em/1.1 var(--font-ui, Inter, sans-serif); color: var(--accent); opacity: .9; }
 #reader.kp-hover .kp-n { display: none; }
 #reader.kp-hover .w.kp-has.kp-hot { background: var(--accent-soft); border-radius: 4px; }
 .kp-tip { position: fixed; z-index: 50; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: 0 10px 28px rgba(0,0,0,.22); padding: 6px 10px; font: var(--type-small); }
@@ -76,12 +76,12 @@ function number({ way, NUMS, CSS }) {
     const k = Number(el.dataset.k), n = NUMS[`${d.v[k]}:${d.i[k]}`];
     if (!n || el.querySelector('.kp-n')) continue;
     el.classList.add('kp-has'); el.dataset.kp = n;
-    const s = document.createElement('span'); s.className = 'kp-n'; s.textContent = n;
+    const s = document.createElement(way === 'above' ? 'rt' : 'span'); s.className = 'kp-n'; s.textContent = n;
     // right after the word itself, before its punctuation and space
     const t = [...el.childNodes].find(x => x.nodeType === 3 && x.textContent.trim());
     if (t) {
       const word = t.textContent.match(/^[\w'’-]+/)?.[0];
-      if (word) { const rest = t.splitText(word.length); el.insertBefore(s, rest); continue; }
+      if (word) { t.splitText(word.length); const wrap = document.createElement(way === 'above' ? 'ruby' : 'span'); wrap.className = 'kp-word'; el.insertBefore(wrap, t); wrap.append(t, s); continue; }
     }
     el.append(s);
   }
@@ -105,11 +105,11 @@ function hover({ v, i }) {
 
 /** Runs in the page: how it is turned on. 'version': KJV+ a reader version beside KJV and YLT; 'toggle': a # tool. */
 function turnOn(how) {
-  const hl = [...document.querySelectorAll('#bar button')].find(b => /Highlights/.test(b.textContent));
-  const ver = document.createElement('button'); ver.className = 'cmd-tool kp-on'; ver.style.cssText = 'padding:0 10px;height:30px;border-radius:8px;margin-right:6px';
-  hl.before(ver);
+  const real = document.getElementById('tb-version') || document.querySelector('.cmd-version');
+  let ver = real;
+  if (how === 'toggle') { real.textContent = 'KJV'; real.classList.remove('kp-on'); ver = document.createElement('button'); ver.className = real.className + ' kp-on kp-added'; ver.removeAttribute('id'); real.after(ver); }
   if (how === 'version') {
-    ver.textContent = 'KJV+ ▾';
+    ver.textContent = 'KJV+'; ver.classList.add('kp-on');
     const r = ver.getBoundingClientRect();
     const m = document.createElement('div'); m.className = 'kp-menu';
     for (const [v, sub, on] of [['KJV', 'the King James text', false], ['KJV+', 'the KJV with Strong’s numbers', true], ['YLT', 'Young’s Literal Translation', false]]) {
@@ -130,61 +130,71 @@ function turnOn(how) {
   }
 }
 
-const proc = spawn(exe, [], { env, stdio: 'ignore' });
-const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
-let browser;
-try {
-  for (let i = 0; i < 100 && !browser; i++) {
-    try { browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`); } catch { await sleep(300); }
+// Each window is drawn in an instance of its own, started fresh on a fresh copy of the scratch folder: today's build
+// draws a new page as it moves, so one long-running instance cannot be relied on to hold the page the script holds.
+const ready = async browser => {
+  for (let i = 0; i < 120; i++) {
+    for (const p of browser.contexts().flatMap(c => c.pages()).filter(p => !p.isClosed()).reverse()) {
+      if (await p.evaluate(() => !!window.__wbReady && !!document.querySelector('#reader .w')).catch(() => false)) return p;
+    }
+    await sleep(250);
   }
-  if (!browser) throw new Error(`The app did not open its DevTools port ${cdpPort}`);
-  const page = browser.contexts()[0].pages()[0];
-  page.on('pageerror', e => console.log('page error:', String(e)));
-  for (let i = 0; i < 100 && !/^(https?|tauri):/.test(page.url()); i++) await sleep(200);
-  await page.waitForLoadState('load');
-  const base = page.url().replace(/\?.*$/, '');
-  const type = async text => {
-    await page.locator('#cmd').click();
-    await page.keyboard.press('Control+A');
-    await page.keyboard.type(text);
-    await sleep(400);
-    await page.keyboard.press('Enter');
-    await sleep(1500);
-  };
-  // each window starts from a fresh reader mid-study: on Numbers 25:11, after a lookup, so the trail holds real steps
-  const fresh = async () => {
-    await page.goto(base + '?at=NUM.25');
-    await page.waitForFunction(() => window.__wbReady, null, { timeout: 30000 });
-    await sleep(800);
+  throw new Error('No ready page');
+};
+const shot = async (name, fn) => {
+  if (only.length && !only.includes(name)) return;
+  rmSync(study, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+  cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { recursive: true });
+  rmSync(path.join(study, 'history'), { recursive: true, force: true });
+  const proc = spawn(exe, [], { env, stdio: 'ignore' });
+  let browser;
+  try {
+    for (let i = 0; i < 100 && !browser; i++) {
+      try { browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`); } catch { await sleep(300); }
+    }
+    if (!browser) throw new Error(`The app did not open its DevTools port ${cdpPort}`);
+    let page = await ready(browser);
+    const type = async text => {
+      await page.locator('#cmd').click();
+      await page.keyboard.press('Control+A');
+      await page.keyboard.type(text);
+      await sleep(400);
+      await page.keyboard.press('Enter').catch(() => {});
+      await sleep(1800);
+      page = await ready(browser);
+    };
+    // the middle of a study: a lookup made, then back on Numbers 25:10, so the trail holds real steps
     await type('lex strongs H7068');
     await page.keyboard.press('Escape');
     await type('Numbers 25:10');
-  };
-  const shot = async (name, fn) => {
-    if (only.length && !only.includes(name)) return;
-    await fresh();
-    await fn();
-    await sleep(700);
+    await sleep(4000);   // the reader settles (it redraws once after a move), then the prototype goes on
+    page = await ready(browser);
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.mouse.click(5, 600);   // the command box closed, as when reading
+    await sleep(500);
+    await fn(page);
+    await sleep(300);
     await page.screenshot({ path: path.join(shots, `${name}.png`) });
     console.log('scene', name);
-  };
+  } finally {
+    await browser?.close().catch(() => {});
+    try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ }
+    await sleep(1500);
+  }
+};
 
-  await shot('k0-kjv-today', async () => {});
-  await shot('k1-after-each-word', async () => console.log('  numbers', await page.evaluate(number, { way: 'after', NUMS, CSS })));
-  await shot('k2-above-each-word', async () => console.log('  numbers', await page.evaluate(number, { way: 'above', NUMS, CSS })));
-  await shot('k3-on-hover', async () => {
-    await page.evaluate(number, { way: 'hover', NUMS, CSS });
-    console.log('  hover', await page.evaluate(hover, { v: 11, i: 24 }));
-  });
-  await shot('k4-turned-on-as-a-version', async () => {
-    await page.evaluate(number, { way: 'after', NUMS, CSS });
-    await page.evaluate(turnOn, 'version');
-  });
-  await shot('k5-turned-on-as-a-toggle', async () => {
-    await page.evaluate(number, { way: 'after', NUMS, CSS });
-    await page.evaluate(turnOn, 'toggle');
-  });
-} finally {
-  await browser?.close().catch(() => {});
-  kill();
-}
+await shot('k0-kjv-today', async () => {});
+await shot('k1-after-each-word', async page => console.log('  numbers', await page.evaluate(number, { way: 'after', NUMS, CSS })));
+await shot('k2-above-each-word', async page => console.log('  numbers', await page.evaluate(number, { way: 'above', NUMS, CSS })));
+await shot('k3-on-hover', async page => {
+  await page.evaluate(number, { way: 'hover', NUMS, CSS });
+  console.log('  hover', await page.evaluate(hover, { v: 11, i: 24 }));
+});
+await shot('k4-turned-on-as-a-version', async page => {
+  await page.evaluate(number, { way: 'after', NUMS, CSS });
+  await page.evaluate(turnOn, 'version');
+});
+await shot('k5-turned-on-as-a-toggle', async page => {
+  await page.evaluate(number, { way: 'after', NUMS, CSS });
+  await page.evaluate(turnOn, 'toggle');
+});
