@@ -973,7 +973,7 @@ function createNotebookSession(fixed?: PageTab) {
   /** The person is writing in this editor: it is left as it is (the list still redraws beside it). */
   function writingIn(edEl: HTMLElement) {
     const a = document.activeElement;
-    return edEl.contains(a) && (a?.classList.contains('nb-input') || a?.classList.contains('nb-title-input') || !!a?.closest('.nb-structured-editor, .nb-line-break'));
+    return edEl.contains(a) && (a?.classList.contains('nb-input') || a?.classList.contains('nb-title-input') || !!a?.closest('.nb-structured-editor'));
   }
 
   async function drawEditor(edEl: HTMLElement): Promise<HTMLElement[] | null> {

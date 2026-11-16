@@ -776,16 +776,14 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   ta.placeholder = 'Write, or type / for a block';
   el.classList.add('editing');
   const body = el.querySelector('.nb-block-body') || el;
-  const line = button('link-btn small nb-line-break', 'Line break', () => insertBreak());
-  line.setAttribute('aria-keyshortcuts', 'Shift+Enter');
-  line.onmousedown = ev => ev.preventDefault();
+  // a line break inside the block: Shift+Enter (no button under the box, so no text moves: note 6ed1)
   const insertBreak = () => {
     const quoted = b.kind === 'quote' || ta.value.trimStart().startsWith('>');
     ta.setRangeText(quoted ? '\n> ' : '\n', ta.selectionStart, ta.selectionEnd, 'end');
     ta.focus();
     ta.dispatchEvent(new Event('input'));
   };
-  body.replaceChildren(ta, line);
+  body.replaceChildren(ta);
   const fit = () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight}px`; };
   // where this writing is in the page: blocks n .. n+count-1 (from 1), or not written yet (after block `after`)
   const cur = { n: newAfter === undefined ? b.n : 0, count: 1, after: newAfter ?? 0 };
@@ -902,9 +900,8 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   };
   ta.onblur = () => {
     // a click on the format bar, the block menu or a [[link]] list keeps the box
-    setTimeout(() => { if (document.activeElement === ta || document.activeElement === line || !ta.isConnected || gone || ta.classList.contains('asking')) return; if (host.state.menuClose) return; void finish(); }, 150);
+    setTimeout(() => { if (document.activeElement === ta || !ta.isConnected || gone || ta.classList.contains('asking')) return; if (host.state.menuClose) return; void finish(); }, 150);
   };
-  line.onblur = ta.onblur;
   fit();
   ta.focus();
   const pos = at === 'start' ? 0 : ta.value.length;
