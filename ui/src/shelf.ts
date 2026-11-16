@@ -463,6 +463,17 @@ async function addTabs(f: Folder, tabs: string[]) {
   toast(`${added} added to ${f.name}${failed.length ? `; ${failed.length} cannot be kept in a set (${failed.slice(0, 3).join(', ')})` : ''}`);
 }
 
+/** Keep a tab on the Shelf from anywhere (a minimized tab's menu row): pick the folder, then it is added there. */
+export async function keepTab(from: Element, key: string, title: string) {
+  try { await load(); } catch (e) { toast(String(e)); return; }
+  const all = every();
+  if (!all.length) { toast('Make a folder on the Shelf first'); return; }
+  choose(from, `Keep “${title}” in…`, all.map(f => ({ label: `${'  '.repeat(f.depth)}${f.name}`, value: f.id })), id => {
+    const f = folderById(id);
+    if (f) void addTabs(f, [`${key}	${title}`]);
+  });
+}
+
 async function newPage(f: Folder) {
   const p = await wb(['page', 'new', 'New page', '--json']);
   await act(['set', 'add', f.id, '--note', p.id]);

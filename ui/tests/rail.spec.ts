@@ -116,3 +116,59 @@ test('a rail icon opens its pane on the left, beside the rail, and a second clic
   await plans.click();
   await expect(page.locator('.dock-left.open .pane-plans')).toHaveCount(1);
 });
+
+test('minimize round 7: a minimized tab is a link in the rail, opened again with its place', async ({ page }) => {
+  await ready(page);
+  // test panes stand for lookups: they open again from their key, as a layout opens them
+  await page.evaluate(() => {
+    const d = (window as any).__wb.dock();
+    d.canReopen = () => true;
+    d.reopen = async (k: string) => d.open('test', k, k, 'right', (el: HTMLElement) => { el.textContent = k; });
+  });
+  await openPane(page, 'H7068');
+  const rail = page.locator('#rail');
+  const min = rail.locator('[data-rail="minimized"]');
+  await expect(min).toBeHidden();
+  await page.locator('.dock-group', { hasText: 'H7068' }).locator('.strip-btn[aria-label="Minimize"]').click();
+  // the pane is closed, not hidden; no chip over the reader; Minimized shows, marked as holding something
+  await expect(page.locator('.pane-test')).toHaveCount(0);
+  await expect(page.locator('.dock-chip')).toHaveCount(0);
+  await expect(min).toBeVisible();
+  await expect(min).toHaveClass(/has/);
+  expect(await page.evaluate(() => (window as any).__wb.dock().links.map((l: any) => l.key))).toEqual(['H7068']);
+  await min.click();
+  const row = page.locator('.rail-menu .rail-link', { hasText: 'H7068' });
+  await expect(row).toHaveCount(1);
+  await row.locator('.rail-link-go').click();
+  await expect(page.locator('.pane-test', { hasText: 'H7068' })).toHaveCount(1);
+  await expect(min).toBeHidden();
+  expect(await page.evaluate(() => (window as any).__wb.dock().links.length)).toBe(0);
+});
+
+test('minimize round 7: past eight, the menu shows the newest eight and a find field', async ({ page }) => {
+  await ready(page);
+  await page.evaluate(async () => {
+    const d = (window as any).__wb.dock();
+    d.canReopen = () => true;
+    for (let i = 1; i <= 10; i++) d.open('test', `T${i}`, `T${i}`, 'right', (el: HTMLElement) => { el.textContent = `T${i}`; });
+    await d.toLinks(d.panes.filter((p: any) => p.kind === 'test'));
+  });
+  await page.locator('#rail [data-rail="minimized"]').click();
+  await expect(page.locator('.rail-menu .rail-link')).toHaveCount(8);
+  await page.locator('.rail-menu-find').fill('T10');
+  await expect(page.locator('.rail-menu .rail-link')).toHaveCount(1);
+  await expect(page.locator('.rail-menu-foot')).toContainText('Show all 10');
+});
+
+test('full screen is an icon; leaving puts the panes back', async ({ page }) => {
+  await ready(page);
+  await openPane(page, 'One');
+  // another kind, so it opens in its own group on the left
+  await page.evaluate(() => (window as any).__wb.dock().open('test2', 'Two', 'Two', 'left', (el: HTMLElement) => { el.textContent = 'Two'; }));
+  await page.locator('.dock-group', { has: page.locator('.pane-test', { hasText: 'One' }) }).locator('.strip-btn[aria-label="Full screen"]').click();
+  await expect(page.locator('.dock-focus .pane-test')).toHaveText('One');
+  await expect(page.locator('#rail')).toBeVisible();
+  await page.locator('.dock-focus-return').click();
+  await expect(page.locator('.dock-group .pane-test2', { hasText: 'Two' })).toHaveCount(1);
+  await expect(page.locator('.dock-group .pane-test', { hasText: 'One' })).toHaveCount(1);
+});

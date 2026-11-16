@@ -206,7 +206,8 @@ test('desktop: a band across the reader and floats each on their own, the verse 
   await expect(page.locator('.dock-top.open')).toHaveCount(0);
   expect(await topVerse(page)).toBe(v0);
   await page.locator('.dock-float').nth(1).locator('.strip-btn[aria-label="Minimize"]').click();
-  await expect(page.locator('.dock-chip')).toHaveCount(1);
+  // minimize round 7: no chip is left over the reader (a test pane cannot be opened again, so it closes)
+  await expect(page.locator('.dock-chip')).toHaveCount(0);
   await expect(page.locator('.dock-float')).toHaveCount(1);
   await page.screenshot({ path: `${shots}/${info.project.name}-dock-floats.png` });
 });
@@ -289,17 +290,15 @@ test('desktop: one part of a split column minimizes alone; the tab list closes a
   await expect(page.locator('.dock-left .dock-group')).toHaveCount(2);
   await page.locator('.dock-left .dock-group').nth(1).locator('.strip-btn[aria-label="Minimize"]').click();
   await expect(page.locator('.dock-left.open .dock-group')).toHaveCount(1);
-  await expect(page.locator('.dock-left .dock-restore-bar')).toContainText('Two');
+  await expect(page.locator('.dock-left .dock-restore-bar')).toHaveCount(0);
   await expect(page.locator('.dock-right.open')).toHaveCount(1);
-  await page.locator('.dock-left .dock-restore-bar').click();
-  await expect(page.locator('.dock-left .dock-group')).toHaveCount(2);
   await openPane(page, 'Four', 'right');
   await page.evaluate(() => { const d = (window as any).__wb.dock(); d.move(d.find('Four'), 'right'); });
   await page.locator('.dock-right .tab-list').click();
   await expect(page.locator('.menu .tab-list-close')).toHaveCount(2);
   await page.locator('.menu .tab-list-row', { hasText: 'Three' }).locator('.tab-list-close').click();
   await expect(page.locator('.menu .tab-list-row')).toHaveCount(0);   // one tab left: the list closes
-  expect(await page.evaluate(() => (window as any).__wb.dock().panes.map((p: any) => p.title).sort().join())).toBe('Four,One,Two');
+  expect(await page.evaluate(() => (window as any).__wb.dock().panes.map((p: any) => p.title).sort().join())).toBe('Four,One');   // Two was minimized: a test pane cannot be opened again, so it closed
 });
 
 test('desktop: layer menu and commands repaint both readers in place and persist', async ({ page }, info) => {
