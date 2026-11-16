@@ -6,18 +6,21 @@ import { cpSync, mkdirSync, rmSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
+import { acquire, freePort } from './instance.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
 const exe = file('target/release/bible-workbench.exe'), wbExe = file('target/release/wb.exe');
 const shots = file('docs/phase2/');
 mkdirSync(shots, { recursive: true });
+await acquire('definitions');
+const cdpPort = String(await freePort());
 const work = path.join(os.tmpdir(), 'bible-workbench-rs', 'defs-check');
 const study = path.join(work, 'study'), cache = path.join(work, 'cache'), profile = path.join(work, 'webview');
 rmSync(work, { recursive: true, force: true });
 cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { recursive: true });
 mkdirSync(cache, { recursive: true });
-const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: '9335' };
+const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort };
 execFileSync(wbExe, ['note', 'add', 'Num 25:11', 'Definitions try, on Num 25:11'], { env });
 const proc = spawn(exe, [], { env, stdio: 'ignore' });
 const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
@@ -26,7 +29,7 @@ const check = (name, ok, detail = '') => { results.push(ok); console.log(`${ok ?
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let browser;
 try {
-  for (let i = 0; i < 100 && !browser; i++) { try { browser = await chromium.connectOverCDP('http://127.0.0.1:9335'); } catch { await sleep(300); } }
+  for (let i = 0; i < 100 && !browser; i++) { try { browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`); } catch { await sleep(300); } }
   const page = browser.contexts()[0].pages()[0];
   page.on('pageerror', e => check('no page errors', false, String(e)));
   await page.locator('body').waitFor();

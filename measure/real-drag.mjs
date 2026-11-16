@@ -11,6 +11,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
+import { acquire, freePort } from './instance.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
@@ -19,13 +20,15 @@ const pagesOnly = process.argv.includes('--pages');
 const exe = file(`target/${release ? 'release' : 'debug'}/bible-workbench.exe`);
 const wbExe = file(`target/${release ? 'release' : 'debug'}/wb.exe`);
 const mouse = file('measure/real-mouse.ps1');
+await acquire('real-drag');
+const cdpPort = String(await freePort());
 const work = path.join(os.tmpdir(), 'bible-workbench-rs', pagesOnly ? 'real-drag-pages' : 'real-drag');
 const study = path.join(work, 'study'), cache = path.join(work, 'cache'), profile = path.join(work, 'webview');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 rmSync(work, { recursive: true, force: true });
 cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { recursive: true });
 mkdirSync(cache, { recursive: true });
-const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: '9335' };
+const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort };
 const wb = (...a) => execFileSync(wbExe, a, { env }).toString();
 // two pages made by the CLI before the app starts (the folder is a scratch copy)
 wb('page', 'new', ['Real drag A', 'The aim.', '', '- [ ] first to-do', '- [ ] second to-do'].join('\n'));
@@ -55,7 +58,7 @@ const ps = (...a) => execFileSync('powershell', ['-NoProfile', '-ExecutionPolicy
 
 let browser, page;
 try {
-  for (let i = 0; i < 100 && !browser; i++) { try { browser = await chromium.connectOverCDP('http://127.0.0.1:9335'); } catch { await sleep(300); } }
+  for (let i = 0; i < 100 && !browser; i++) { try { browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`); } catch { await sleep(300); } }
   page = browser.contexts()[0].pages()[0];
   for (let i = 0; i < 100 && !/^(https?|tauri):/.test(page.url()); i++) await sleep(200);
   await page.waitForLoadState('load');
