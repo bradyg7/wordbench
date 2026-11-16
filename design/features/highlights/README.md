@@ -37,7 +37,9 @@ highlight change color by current contrast standards, so any color can be used o
    reloading the chapter.
 4. A color the app cannot read as sRGB keeps the page's own ink.
 5. Settings › Highlight colors no longer speaks of light and dark forms.
-6. Tests: `npm run test:unit` (`ui/unit/hlink.test.ts`) checks the choice, the ratio and AA across every gray.
+6. A highlight is one continuous fill across its words: the spaces between them are filled too and overlap each word by
+   1px, so no seam shows where fractional pixel edges meet. The fill never runs past the first or last word.
+7. Tests: `npm run test:unit` (`ui/unit/hlink.test.ts`) checks the choice, the ratio and AA across every gray.
 
 Built in `ui/src/hlink.ts` on `feature/highlights`.
 

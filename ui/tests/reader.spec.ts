@@ -406,3 +406,24 @@ test('highlighted words take the higher-contrast ink, light and dark', async ({ 
     for (const x of r) { expect(x.ok).toBe(true); expect(['rgb(0, 0, 0)', 'rgb(255, 255, 255)']).toContain(x.ink); }
   }
 });
+
+// A highlight runs on across the spaces between its words: each space is filled and reaches under its neighbors.
+test('a highlight is continuous between words', async ({ page }) => {
+  await ready(page);
+  const r = await page.evaluate(() => {
+    const w = (window as any).__wb, d = w.drawn;
+    d.marks.highlights.push({ kind: 'phrase', code: 'NUM', c1: 25, v1: 5, i1: 1, c2: 25, v2: 5, i2: 40, id: 'cont', color: '#7a1f1f' });
+    w.repaint();
+    const ws = [...document.querySelectorAll<HTMLElement>('.w.hl')].filter(e => d.v[+e.dataset.k!] === 5);
+    return ws.slice(0, -1).map(e => {
+      const g = e.nextElementSibling as HTMLElement | null, s = g && getComputedStyle(g);
+      return { gap: g?.classList.contains('g') ?? false, bg: s?.backgroundColor, shadow: s?.boxShadow ?? '', touches: g ? Math.abs(g.getBoundingClientRect().left - e.getBoundingClientRect().right) < 0.01 : false };
+    });
+  });
+  expect(r.length).toBeGreaterThan(5);
+  for (const x of r) {
+    expect(x.gap).toBe(true);
+    expect(x.bg).toBe('rgb(122, 31, 31)');
+    expect(x.shadow).toContain('rgb(122, 31, 31)');
+  }
+});

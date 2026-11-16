@@ -39,11 +39,15 @@ export function inkFor(bg: string): string | null {
 
 /** Inline style for a highlight: its color and its ink. A named color reads its theme variables, so it follows the theme
  * without redrawing; refreshInks keeps `--hl-<name>-ink` in step. */
-export function hlStyle(color: string): string {
-  if (NAMED.has(color)) return `background-color:var(--hl-${color});color:var(--hl-${color}-ink);`;
-  const ink = inkFor(color);
-  return `background-color:${color};${ink ? `color:${ink};` : ''}`;
+export function hlStyle(color: string, bridge = false): string {
+  const bg = NAMED.has(color) ? `var(--hl-${color})` : color;
+  const ink = NAMED.has(color) ? `var(--hl-${color}-ink)` : inkFor(color);
+  return `background-color:${bg};${ink ? `color:${ink};` : ''}${bridge ? bridgeStyle(bg) : ''}`;
 }
+
+/** The space between two words of one highlight reaches 1px under each word, so the fill runs on without a seam where
+ * fractional pixel edges meet. Only spaces with the same highlight on both sides get it, so nothing shows past the ends. */
+export const bridgeStyle = (bg: string) => `box-shadow:-1px 0 0 ${bg},1px 0 0 ${bg};`;
 
 /** Set `--hl-<name>-ink` on the root from each named color as the current theme draws it. Run after any theme change. */
 export function refreshInks(root: HTMLElement = document.documentElement) {
