@@ -30,12 +30,48 @@ const MINE: Side = 'right';
 const q = (s: string) => `“${s}”`;
 const bookName = (id: number | string) => app.books.find(b => String(b.id) === String(id))?.name ?? String(id);
 
+/** The kind label over a pane's title (design/features/panels P1 ②): what this panel is. */
+const KIND: Record<string, string> = {
+  search: 'Search', find: 'In your study', near: 'Near', uses: 'Every use', count: 'Count', forms: 'Forms',
+  strong: "Strong's", bdb: 'BDB', def: "Webster's 1913", lexiconc: 'Lexicon', interlinear: 'Interlinear',
+  passage: 'Verses', place: 'Verse', versecard: 'Verse', marked: 'Highlights', today: 'Day', lesson: 'Lesson',
+};
+
+/**
+ * A pane's head, the panel template (design/features/panels, accepted 2026-11-16): the way back (only when opened from
+ * a verse picked in the text), the kind label, the title (callers append up to two icon buttons, then More), and one
+ * muted subtitle line.
+ */
 function head(el: HTMLElement, title: string, sub?: string) {
   const hd = h('header', 'pane-head');
+  // the verse it was opened from is kept on the pane, so a redraw keeps the way back
+  if (el.dataset.fromInit !== '1') {
+    el.dataset.fromInit = '1';
+    if (app.picked) { el.dataset.fromAnchor = app.picked.anchor; el.dataset.fromLabel = app.picked.label; }
+  }
+  if (el.dataset.fromAnchor) {
+    const from = h('div', 'pane-from');
+    const go = h('button', 'pane-from-go');
+    go.append(icon('left', 12), document.createTextNode(' From '), h('span', 'pane-from-ref', el.dataset.fromLabel || el.dataset.fromAnchor));
+    go.title = `Back to ${el.dataset.fromLabel} in the reader`;
+    go.onclick = () => void goTo(el.dataset.fromAnchor!);
+    from.append(go);
+    hd.append(from);
+  }
+  const kind = /\bpane-(\w+)/.exec(el.className)?.[1];
+  if (kind && KIND[kind]) hd.append(h('div', 'pane-kind', KIND[kind]));
   hd.append(h('h2', 'pane-title', title));
   if (sub !== undefined) hd.append(h('div', 'pane-sub', sub));
   el.append(hd);
   return hd;
+}
+
+/** The optional foot (P1 ⑦): one or two actions on the whole panel, the primary at the right. */
+export function paneFoot(el: HTMLElement, ...actions: HTMLElement[]) {
+  const f = h('footer', 'pane-foot');
+  f.append(h('span', 'grow'), ...actions.slice(0, 2));
+  el.append(f);
+  return f;
 }
 
 function scopeLabel(scope: string) {
