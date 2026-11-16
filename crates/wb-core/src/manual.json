@@ -274,12 +274,12 @@
   {
    "name": "minimize",
    "usage": "minimize <pane>",
-   "help": "minimize a pane"
+   "help": "minimize a pane: it closes and waits as a link in the rail, opened again where it was"
   },
   {
    "name": "restore",
    "usage": "restore <pane> | restore all",
-   "help": "bring a minimized pane back"
+   "help": "open a minimized pane again from its link (restore minimized: every one)"
   },
   {
    "name": "dock",

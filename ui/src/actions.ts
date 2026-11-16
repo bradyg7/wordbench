@@ -481,7 +481,18 @@ async function applyLayout(a: any): Promise<string> {
 }
 
 const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'marked', 'plans', 'settings']);
-function canReopen(key: string) { return reopenKinds.has(key.startsWith('doc:') ? 'doc' : key.split('|')[0]); }
+export function canReopen(key: string) { return reopenKinds.has(key.startsWith('doc:') ? 'doc' : key.split('|')[0]); }
+
+/** Minimized links whose title or kind starts with or holds `name`; `minimized` or `all` is every one. */
+function namedLinks(name: string) {
+  const n = name.trim().toLowerCase();
+  if (n === 'minimized' || n === 'all') return [...dock.links];
+  for (const fits of [(t: string) => t === n, (t: string) => t.startsWith(n), (t: string) => t.includes(n)]) {
+    const hit = dock.links.filter(l => fits(l.title.toLowerCase()) || fits(l.kind));
+    if (hit.length) return hit;
+  }
+  return [];
+}
 
 /** A pane brought back from its key (layouts, and a Shelf folder's Open all, whose keys wb set open gives). */
 export async function reopen(key: string) {
@@ -510,18 +521,26 @@ export async function reopen(key: string) {
 }
 
 async function paneAction(a: any): Promise<string> {
-  if (a.action === 'unfocus') { dock.exitFocus(); return 'Returned to layout'; }
-  const ps = a.target.toLowerCase() === 'minimized' ? dock.panes.filter(p => dock.isMinimized(p)) : dock.named(a.target);
+  if (a.action === 'unfocus') { dock.exitFocus(); return 'Left full screen'; }
+  if (a.action === 'restore') {
+    const ls = namedLinks(a.target);
+    if (ls.length) {
+      for (const l of ls) await dock.restoreLink(l.key);
+      return `restore: ${ls.map(l => l.title).join(', ')}`;
+    }
+  }
+  const ps = a.target.toLowerCase() === 'minimized' ? [] : dock.named(a.target);
+  if (!ps.length && a.action === 'restore') return `Nothing called “${a.target}” is minimized.`;
   if (!ps.length) return `No pane called “${a.target}” is open.`;
   if (a.action === 'focus') {
     if (ps.length !== 1) return `Choose one pane to focus: ${ps.map(p => p.title).join(' · ')}`;
-    dock.focusPane(ps[0]); return `Focused ${ps[0].title}`;
+    dock.focusPane(ps[0]); return `Full screen: ${ps[0].title}`;
   }
   for (const p of ps) {
     if (a.action === 'close') { if (!await dock.close(p)) return `${p.title} is still open`; }
     else if (a.action === 'float') dock.move(p, 'float');
     else if (a.action === 'dock') dock.dockAgain(p);
-    else if (a.action === 'minimize') dock.minimize(p);
+    else if (a.action === 'minimize') await dock.toLinks([p]);
     else dock.show(p);
   }
   return `${a.action}: ${ps.map(p => p.title).join(', ')}`;

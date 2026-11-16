@@ -1877,11 +1877,17 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     // one part of a split column minimized on its own: the other part, the other column and the bands stay (note 1b2d)
     await page.locator('.dock-left .dock-group').nth(1).locator('.strip-btn[aria-label="Minimize"]').click();
     await sleep(300);
-    check('minimizing one part of a split column minimizes only that part (note 1b2d)', await page.locator('.dock-left.open .dock-group').count() === 1 && await page.locator('.dock-left .pane-interlinear:visible').count() === 1 && await page.locator('.dock-left .dock-restore-bar', { hasText: 'H7065' }).count() === 1 && await page.locator('.dock-right.open').count() === 1);
+    // minimize round 7: a minimized tab is a link in the rail's Minimized menu, not a hidden pane
+    check('minimizing one part of a split column minimizes only that part (note 1b2d)', await page.locator('.dock-left.open .dock-group').count() === 1 && await page.locator('.dock-left .pane-interlinear:visible').count() === 1 && await page.locator('.pane-strong').count() === 0 && await page.locator('.dock-right.open').count() === 1);
+    check('it waits as a link under Minimized on the rail, no bar or chip', await page.locator('#rail [data-rail="minimized"].has').isVisible() && await page.locator('.dock-restore-bar, .dock-chip').count() === 0);
+    await page.locator('#rail [data-rail="minimized"]').click();
+    await sleep(200);
     await page.screenshot({ path: shots + '1440-dock-a-part-minimized.png' });
-    await page.locator('.dock-left .dock-restore-bar').click();
+    await page.locator('.rail-menu .rail-link', { hasText: 'H7065' }).locator('.rail-link-go').click();
+    await page.waitForSelector('.dock-left .pane-strong', { timeout: 10000 });
+    check('its link opens it again in its column', await page.locator('.dock-left .pane-strong').count() === 1);
+    await page.evaluate(() => { const d = window.__wb.dock(); const s = d.panes.find(x => x.kind === 'strong'), i = d.panes.find(x => x.kind === 'interlinear'); d.drop(s, { to: 'split', group: d.groupOf(i), after: true }); });
     await sleep(300);
-    check('its bar at the column’s foot shows it again', await page.locator('.dock-left .dock-group').count() === 2);
     // the line between the two parts, dragged: one part taller (note 523e)
     const parts = () => page.evaluate(() => [...document.querySelectorAll('.dock-left > .dock-group')].map(e => Math.round(e.getBoundingClientRect().height)));
     const [h0] = await parts();
@@ -1919,11 +1925,13 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     await page.screenshot({ path: shots + '1440-dock-two-floats.png' });
     await fB.locator('.strip-btn[aria-label="Minimize"]').click();
     await sleep(200);
-    check('a float minimized waits as a chip; the other stays open', await page.locator('.dock-chip', { hasText: 'H7065 · minimized' }).count() === 1 && await fA.isVisible());
-    await page.locator('.dock-chip', { hasText: 'H7065' }).click();
+    check('a float minimized becomes a link; the other stays open', await page.locator('.pane-strong').count() === 0 && await page.locator('.dock-chip').count() === 0 && await fA.isVisible());
+    await page.locator('#rail [data-rail="minimized"]').click();
+    await page.locator('.rail-menu .rail-link', { hasText: 'H7065' }).locator('.rail-link-go').click();
+    await page.waitForSelector('.dock-float .pane-strong', { timeout: 10000 });
     await sleep(200);
     const b2 = await fB.boundingBox();
-    check('its chip shows it again where it was', !!b2 && b2.x === b0.x && b2.y === b0.y);
+    check('its link opens it again where it was', !!b2 && b2.x === b0.x && b2.y === b0.y);
     const as = await fA.locator('.tab-row').boundingBox();
     said = await dragHold(await tabAt('H7065'), as.x + as.width - 20, as.y + as.height / 2);
     check('two floats join only when a tab is dropped on the other’s strip', said === 'Beside Interlinear' && await page.locator('.dock-float').count() === 1 && await fA.locator('.tab').count() === 2, said);

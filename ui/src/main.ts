@@ -23,7 +23,7 @@ import { bridge, loadWindowSettings, markName, openSettings } from './settings';
 import { loadKept } from './mycommands';
 import { fills as cmdFills, byKey as commandByKey, run as runKeptCommand } from './mycommands';
 import { byId, CATALOG, flipTheme, hooks, initReaderTools, READER_TOOLS, setBadge, setVersionLabel, textSizeMenu, toggleFullScreen } from './toolbar';
-import { initRail, railOn } from './rail';
+import { initRail, railLinksInit, railOn } from './rail';
 import { focusReader, frontStep, initTrail, onFront, paneStep, readerStep } from './trail';
 import { menu as layoutMenu } from './layouts';
 import { isCaptureKey, notebookBadge, openNote, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
@@ -32,7 +32,7 @@ import { attachCommandField, box as cmdBox, initPopOff, loadThreads } from './co
 import { findInPane, paneForFind } from './panefind';
 import { findingBox, openFindings } from './findings';
 import { openDocuments } from './documents';
-import { parse, runLine, written } from './actions';
+import { canReopen, parse, reopen, runLine, written } from './actions';
 import { setupIfNeeded } from './setup';
 import { createReadAloud } from './listen';
 import { refreshInks } from './hlink';
@@ -1223,6 +1223,10 @@ async function start() {
   } catch { /* defaults */ }
   refreshInks();
   initPanes($('dock'));
+  // a minimized tab is a link that opens again the way a layout does (design/features/minimize round 7)
+  dock.canReopen = canReopen;
+  dock.reopen = key => reopen(key);
+  railLinksInit();
   dock.onOpen = (p, isNew) => paneStep(p, isNew);
   dock.onLayout = () => railOn();
   dock.keepPlace = () => {
