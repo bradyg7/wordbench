@@ -384,3 +384,25 @@ test('an unlinked word opens the interlinear for its verse', async ({ page }, in
   await expect(page.locator('.pane-interlinear .pane-title')).toHaveText((word as any).reference);
   await expect(card).toHaveCount(0);
 });
+
+// The words on a highlight are black or white by WCAG contrast with its color, in either theme (highlights, 2026-11-16).
+test('highlighted words take the higher-contrast ink, light and dark', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await ready(page);
+    const r = await page.evaluate(() => {
+      const lum = (c: string) => {
+        const [r, g, b] = c.match(/[\d.]+/g)!.slice(0, 3).map(Number).map(v => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const ratio = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      return [...document.querySelectorAll<HTMLElement>('.w.hl')].slice(0, 20).map(e => {
+        const s = getComputedStyle(e);
+        const bg = lum(s.backgroundColor), ink = lum(s.color);
+        return { ink: s.color, ok: ratio(bg, ink) >= ratio(bg, 1 - ink) && ratio(bg, ink) >= 4.5 };
+      });
+    });
+    expect(r.length).toBeGreaterThan(0);
+    for (const x of r) { expect(x.ok).toBe(true); expect(['rgb(0, 0, 0)', 'rgb(255, 255, 255)']).toContain(x.ink); }
+  }
+});

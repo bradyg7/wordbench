@@ -25,6 +25,7 @@ export interface Drawn {
   more: () => boolean;           // draws the next part; false when the chapter is complete
 }
 
+import { hlStyle } from './hlink';
 const COLORS = new Set(['yellow', 'green', 'blue', 'pink', 'orange']);
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const threadColor = (t: Mark) => (COLORS.has(t.color || '') ? `var(--thread-${t.color})` : t.color || 'var(--thread-a)');
@@ -53,7 +54,7 @@ const marked = (m: Look) => !!m.hl || m.th.length > 0 || m.note;
 // background without moving the text); a highlight is the background color.
 function styleOf(m: Look): string {
   let s = '';
-  if (m.hl) s += `background-color:${COLORS.has(m.hl) ? `var(--hl-${m.hl})` : m.hl};`;
+  if (m.hl) s += hlStyle(m.hl);
   if (m.th.length) {
     s += `background-image:${m.th.map(col => `linear-gradient(${col},${col})`).join(',')};`;
     s += `background-position:${m.th.map((_, j) => `0 calc(100% - ${j * 4}px)`).join(',')};padding-bottom:${m.th.length * 4}px;`;

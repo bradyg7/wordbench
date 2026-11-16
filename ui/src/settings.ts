@@ -8,6 +8,7 @@ import { customize as customizeToolbar } from './toolbar';
 import { guideRows, hasKeyboard, keysRows, manualRows } from './guide';
 import { toast } from './sheets';
 import { h, hoverMode, icon, setHover } from './ui';
+import { refreshInks } from './hlink';
 import { section as layoutsSection } from './layouts';
 import { form, kept, loadKept, remove as removeKept, run as runKept, save as saveKept, topUsed, type Kept } from './mycommands';
 import { perf } from './perf';
@@ -87,11 +88,14 @@ export function applyTheme() {
   for (const [, v] of TOKENS) root().style.removeProperty(v);
   root().style.removeProperty('--font-read');
   root().style.removeProperty('--font-ui');
-  if (!theme) return;
+  if (!theme) { refreshInks(root()); return; }
   for (const [k, v] of TOKENS) if (theme.colors[k]) root().style.setProperty(v, theme.colors[k]);
   if (theme.fonts?.read) root().style.setProperty('--font-read', `"${theme.fonts.read}", serif`);
   if (theme.fonts?.ui) root().style.setProperty('--font-ui', `"${theme.fonts.ui}", system-ui, sans-serif`);
+  refreshInks(root());
 }
+// The system's light or dark can change under a theme that follows it; the inks follow too.
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => refreshInks()); } catch { /* no matchMedia */ }
 
 /** The base's own value of a color (what the theme starts from): the variables set aside while the browser is asked. */
 function baseColor(cssVar: string): string {
@@ -676,7 +680,7 @@ function italicsRow(redraw: () => void): HTMLElement {
 
 function marksRow(): HTMLElement {
   const wrap = h('div', 'theme-marks');
-  wrap.append(h('div', 'label', 'Highlight colors'), h('p', 'muted small', 'Name a color for what it stands for. Each color has a light and a dark form, so a highlight follows the theme.'));
+  wrap.append(h('div', 'label', 'Highlight colors'), h('p', 'muted small', 'Name a color for what it stands for. Any color works on any theme: the words on a highlight turn dark or light, whichever reads more clearly on it.'));
   for (const c of ['yellow', 'green', 'blue', 'pink', 'orange']) {
     const r = h('div', 'color-row');
     const i = h('input', 'field') as HTMLInputElement;

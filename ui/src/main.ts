@@ -32,6 +32,7 @@ import { openDocuments } from './documents';
 import { parse, runLine, written } from './actions';
 import { setupIfNeeded } from './setup';
 import { createReadAloud } from './listen';
+import { refreshInks } from './hlink';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const reader = $('reader'), scroller = $('scroller');
@@ -1191,6 +1192,7 @@ async function start() {
     document.documentElement.dataset.hover = localStorage.getItem('wb.hover') || 'off';
     setSize(+(localStorage.getItem(SIZE_STORE) || 100));
   } catch { /* defaults */ }
+  refreshInks();
   initPanes($('dock'));
   dock.keepPlace = () => {
     const at = drawn ? topVerse() : null;
