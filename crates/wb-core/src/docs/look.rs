@@ -1,4 +1,4 @@
-//! A document's Look (R3's second and third passes, docs/redesign-R3.md, sheets D9–D15): a named set of a few dials'
+//! A document's Look (R3's second and third passes, docs/archive/2026-11-10/docs/redesign-R3.md, sheets D9–D15): a named set of a few dials'
 //! values that style a Word document or a PDF deck. Five ship with the app; a person's own are files in
 //! `settings/doc-looks/<key>.json` (the dials' values only). A Look is styling only: it is never in the plan, so it never
 //! touches the fingerprint the Python app shares. A document's record keeps the values it was made with (`look_values`),

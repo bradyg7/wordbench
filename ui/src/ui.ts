@@ -12,6 +12,8 @@ export const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<'
 
 // Line icons, 16px, drawn with currentColor (the toolbar and pane chrome of the design sheets).
 const PATHS: Record<string, string> = {
+  trail: 'M4 2.5a1.5 1.5 0 1 0 0 .01M12 13.5a1.5 1.5 0 1 0 0 .01M4 4v2.5a2 2 0 0 0 2 2h4a2 2 0 0 1 2 2V12',
+  word: 'M3 13L7 3l4 10M4.6 9h4.8M12 7v6',
   book: 'M2 3h5a2 2 0 0 1 2 2v9a1.5 1.5 0 0 0-1.5-1.5H2zM14 3H9a2 2 0 0 0-2 2v9a1.5 1.5 0 0 1 1.5-1.5H14z',
   search: 'M7 12A5 5 0 1 0 7 2a5 5 0 0 0 0 10zM14 14l-3.5-3.5',
   notebook: 'M4 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4zM4 2v12M2 5h2M2 8h2M2 11h2M7 5h4',
@@ -23,6 +25,7 @@ const PATHS: Record<string, string> = {
   down: 'M4 6l4 4 4-4',
   left: 'M10 3L5 8l5 5',
   right: 'M6 3l5 5-5 5',
+  play: 'M4 2.5v11l9-5.5z',
   x: 'M4 4l8 8M12 4l-8 8',
   minus: 'M3 8h10',
   plus: 'M8 3v10M3 8h10',
@@ -136,7 +139,7 @@ export const sizeClass = () => {
 
 // A small menu or form beside an element; closes on Escape or a click outside. Returns a close function.
 let menuOpen: (() => void) | null = null;
-export function popMenu(from: Element, body: HTMLElement, opts: { align?: 'left' | 'right'; width?: number; at?: { x: number; y: number } } = {}): () => void {
+export function popMenu(from: Element, body: HTMLElement, opts: { align?: 'left' | 'right'; width?: number; at?: { x: number; y: number }; onClose?: () => void } = {}): () => void {
   menuOpen?.();
   const m = h('div', 'menu');
   if (opts.width) m.style.width = `${opts.width}px`;
@@ -157,6 +160,7 @@ export function popMenu(from: Element, body: HTMLElement, opts: { align?: 'left'
     document.removeEventListener('pointerdown', outside, true);
     document.removeEventListener('keydown', key, true);
     if (menuOpen === close) menuOpen = null;
+    opts.onClose?.();
   };
   setTimeout(() => document.addEventListener('pointerdown', outside, true));
   document.addEventListener('keydown', key, true);

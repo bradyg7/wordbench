@@ -5,7 +5,7 @@ import { api, inApp, wb } from './api';
 import { app, book, goTo, here, type At } from './app';
 import { layers } from './layers';
 import { CHANGES, type Change } from './dock';
-import { countInbox, openNote, openNotebook, openNotebookView } from './notebook';
+import { countInbox, openNotebook, openNotebookView, openPageTab, resolvePageTab } from './notebook';
 import { previewDoc } from './pagedocs';
 import { closeAll, openAll } from './shelf';
 import {
@@ -14,14 +14,17 @@ import {
 } from './panes';
 import { setHover } from './ui';
 import { hooks } from './toolbar';
+import { noteLine } from './trail';
 import { addFinding, openFindings } from './findings';
 import { KINDS, makeDoc, openDocuments } from './documents';
+import { canonicalKey, readLayout } from './layout-state';
+import { openCardPane } from './verses';
+import { openSettings } from './settings';
 
 // The last write, so `undo` can take it back.
 type Undo = { kind: 'note'; id: string } | { kind: 'hl'; record: unknown } | { kind: 'trail'; id: string } | { kind: 'thread'; name: string; anchor: string } | { kind: 'jot'; id: string };
 let last: Undo | null = null;
 
-const later = (what: string, phase: number) => `${what} comes in phase ${phase}; the Python app still does it for now.`;
 const at = (a: { at?: At }) => a.at ?? here();
 
 function spanPlace(s: { book: string; c1: number; v1: number; c2: number; v2: number }) {
@@ -176,14 +179,22 @@ export async function perform(a: any, line: string): Promise<string> {
     case 'set': return changeSet(a);
     case 'layout': return layout(a);
     case 'lesson': {
-      if (a.action === 'list') { const ls = await wb(['lesson', 'list']); return `Lessons: ${ls.map((l: any) => l.name).join(', ')}`; }
+      if (a.action === 'list') {
+        const lessons = await wb(['lesson', 'list']);
+        return lessons.length ? `Lessons: ${lessons.map((l: any) => `${l.title} (${l.id})`).join(', ')}` : 'No existing lessons';
+      }
       if (a.action === 'show') { openLesson(a.name); return `The lesson ${a.name}`; }
       if (a.action === 'check') { const r = await wb(['lesson', 'check', a.name]); return r.ok === false ? r.error : `${a.name}: ${r.slides ?? '?'} slides, every scripture read`; }
-      return later('Building a lesson’s documents', 5);
+      const r = await wb(['lesson', 'build', a.name,
+        ...(a.make?.length ? ['--make', a.make.join(',')] : []),
+        ...(a.theme ? ['--theme', a.theme] : []), ...(a.pdf ? ['--pdf'] : [])]);
+      app.changed('documents');
+      openDocuments();
+      return `Exported ${r.files.map((f: any) => f.name).join(', ')}`;
     }
     // ---- the window ----
     case 'layers': return changeLayers(a);
-    case 'highlights': layers.all = a.on; layers.save(); app.refreshMarks(); return a.on ? 'Highlights shown' : 'Highlights hidden';
+    case 'highlights': layers.all = a.on; layers.save(); app.repaintLayers(); return a.on ? 'Highlights shown' : 'Highlights hidden';
     case 'size': {
       const p = a.percent ?? app.size() + a.step * 10;
       app.setSize(p);
@@ -213,7 +224,7 @@ export async function perform(a: any, line: string): Promise<string> {
     case 'findings': openFindings(); return 'Your findings about the app';
     case 'finding': return addFinding(a.text);
     case 'version': return a.version ? app.setVersion(a.version) : `The reader is in the ${app.version()}`;
-    case 'listen': return later('Read aloud', 6);
+    case 'listen': return app.listen(a);
     case 'make': return makeFrom(a);
     case 'docs': return docs(a);
     case 'theme': {
@@ -222,18 +233,39 @@ export async function perform(a: any, line: string): Promise<string> {
       app.changed('documents');
       return `New documents are made in ${a.theme}`;
     }
-    case 'pdf': case 'pdfs': case 'packet': return later('Saved PDFs and packets', 5);
+    case 'pdfs': {
+      if (a.name) {
+        const file = await wb(['pdfs', a.name]);
+        return `Opened ${file.name}`;
+      }
+      const files: { name: string }[] = await wb(['pdfs']);
+      return files.length ? `Saved PDFs: ${files.map(file => file.name).join(', ')}` : 'No saved PDFs';
+    }
+    case 'pdf': {
+      const drawn = app.drawn;
+      if (!drawn) return 'Open a chapter before saving a PDF';
+      const chapter = `${drawn.chapter.name} ${drawn.chapter.chapter}`;
+      const threads = Object.keys(drawn.marks.thread_names).filter(id => layers.shown(id));
+      const flags = layers.all ? [...(layers.mine ? [] : ['--no-mine']), ...threads.flatMap(id => ['--thread', id])] : ['--no-highlights'];
+      const file = await wb(['pdf', chapter, ...flags, '--open']);
+      return `Saved ${file.name}`;
+    }
+    case 'packet': {
+      const file = await wb(['packet', ...a.names, '--open']);
+      return `Saved ${file.name} · ${file.pages} pages`;
+    }
     default: return `“${line}” is understood, but the window does not do it yet.`;
   }
 }
 
-// ---- documents from a thread (tier 4) ----
+// ---- document exports ----
 
 async function makeFrom(a: any): Promise<string> {
-  if (!a.thread) return 'Documents from a passage come in phase 5 (the Python app still makes them); here, from a thread: doc thread Phinehas';
   // the window starts on what it makes (a thread's default in the Python app is its Dossier or Map, made there until phase 5)
-  const structure = a.structure || KINDS.find(k => k[0] === a.kind)?.[1];
-  const said = await makeDoc(a.thread, a.kind === 'deck' ? 'deck' : 'word', structure, a.theme);
+  const source = a.thread ? { kind: 'thread' as const, name: a.thread }
+    : { kind: 'passage' as const, name: a.ref, version: a.version };
+  const structure = a.structure || (a.thread ? KINDS.find(k => k[0] === a.kind)?.[1] : undefined);
+  const said = await makeDoc(source, a.kind === 'deck' ? 'deck' : 'word', { structure, theme: a.theme, newCopy: a.new });
   openDocuments();
   return said;
 }
@@ -335,14 +367,14 @@ async function changeLayers(a: any): Promise<string> {
       if (!t) return `No thread called “${a.name}”.`;
       if (a.action === 'show') { layers.hidden.delete(t.id); layers.all = true; } else layers.hidden.add(t.id);
       layers.save();
-      app.refreshMarks();
+      app.repaintLayers();
       return `${a.action === 'show' ? 'Showing' : 'Hiding'} “${t.name}”`;
     }
     case 'panel': { const b = document.getElementById('hl-menu') ?? document.getElementById('more'); if (document.getElementById('hl-menu')) b!.click(); else hooks.highlights(b!); return 'The layers'; }
     default: return `Drawn: ${layers.highlightsShown() ? 'your highlights' : 'no highlights'}; threads: ${ts.filter(t => layers.shown(t.id)).map(t => t.name).join(', ') || 'none'}`;
   }
   layers.save();
-  app.refreshMarks();
+  app.repaintLayers();
   return 'Layers changed';
 }
 
@@ -363,7 +395,7 @@ async function results(a: any): Promise<string> {
       for (const an of anchors) if (a.spans.some((s: any) => inSpan(an, s))) { if (a.action === 'tick') r.ticked.add(an); else r.ticked.delete(an); }
       break;
     }
-    case 'as': r.shape = a.as; return `Added as ${a.as}`;
+    case 'as': r.shape = a.as; r.update?.(); return `Added as ${a.as}`;
     case 'add': {
       const places = r.ticked.size ? [...r.ticked] : anchors;
       const words = r.shape === 'words' && r.words ? r.words().filter(w => places.some(p => w.startsWith(p + '.'))) : places;
@@ -392,48 +424,123 @@ async function changeSet(a: any): Promise<string> {
   return `Set ${a.name}: ${a.action}`;
 }
 
-async function layout(a: any): Promise<string> {
+let layoutQueue: Promise<unknown> = Promise.resolve();
+function layout(a: any): Promise<string> {
+  const next = layoutQueue.then(() => applyLayout(a));
+  layoutQueue = next.catch(() => {});
+  return next;
+}
+async function applyLayout(a: any): Promise<string> {
   if (a.action === 'list') return `Layouts: ${(await wb(['layout', 'list'])).map((l: any) => l.name ?? l).join(', ') || 'none'}`;
   if (a.action === 'save') {
     // kept as the Rust window's own description of its panes (the Python app's dockview layouts are not read)
-    const panes = dock.describe();
-    await wb(['layout', 'save', a.name], JSON.stringify({ app: 'bible-workbench-rs', panes }));
-    return `Layout ${a.name}: ${panes.length} panes`;
+    const saved = dock.snapshot();
+    await wb(['layout', 'save', a.name], JSON.stringify(saved));
+    return `Layout ${a.name}: ${saved.panes.length} panes`;
   }
   const shown = await wb(['layout', 'show', a.name]);
-  const l = shown.layout ?? shown;   // the file holds {name, saved, layout}
-  if (l.app !== 'bible-workbench-rs') return `${a.name} is a layout from the Python app; this window cannot read it yet.`;
-  // a layout is the whole arrangement: panes not in it close (Settings stays, so a layout can be applied from there)
-  const want = new Set<string>(l.panes.map((p: any) => p.key));
-  for (const p of [...dock.panes]) if (p.key !== 'settings' && !want.has(p.key)) dock.close(p);
-  for (const p of l.panes) await reopen(p.key);
+  const l = readLayout(shown.layout ?? shown);
+  // Settings is a menu now, not a pane: an older layout that kept it opens without it
+  l.panes = l.panes.filter(p => p.key !== 'settings');
+  l.groups = l.groups.map(g => ({ ...g, keys: g.keys.filter(k => k !== 'settings') })).filter(g => g.keys.length);
+  for (const g of l.groups) if (g.front === 'settings') g.front = g.keys[0];
+  if (dock.panes.some(p => p.kind === 'notebook' && p.el.querySelector('.nb-input, .nb-title-input, .nb-structured-editor'))) {
+    throw new Error('Finish editing the open pages before opening a layout. Your arrangement is unchanged.');
+  }
+  const aliases = new Map<string, string>();
+  const unavailable = new Map<string, string>();
+  for (const p of l.panes) {
+    try {
+      if (!canReopen(p.key)) throw new Error('unsupported pane');
+      const [kind, value] = p.key.startsWith('doc:') ? ['doc', p.key.slice(4)] : p.key.split('|');
+      if (kind === 'note' || kind === 'thread') aliases.set(p.key, (await resolvePageTab(p.key)).key);
+      if (kind === 'doc') await wb(['docs', 'preview', value]);
+      else if (kind === 'lesson') await wb(['lesson', 'show', value]);
+    } catch (e) { unavailable.set(p.key, `${p.title || p.key}: ${String(e)}`); }
+  }
+  if (unavailable.size && !confirm(`Some panes cannot be restored:\n${[...unavailable.values()].join('\n')}\n\nOpen the remaining layout? Cancel keeps this arrangement.`)) return 'Layout unchanged';
+  l.panes = l.panes.filter(p => !unavailable.has(p.key));
+  l.groups = l.groups.map(g => ({ ...g, keys: g.keys.filter(k => !unavailable.has(k)) })).filter(g => g.keys.length);
+  for (const g of l.groups) if (!g.keys.includes(g.front!)) g.front = g.keys[0];
+  if (l.active && unavailable.has(l.active)) l.active = undefined;
+  const keyOf = (key: string) => aliases.get(key) ?? key;
+  for (const p of l.panes) p.key = keyOf(p.key);
+  if (new Set(l.panes.map(p => p.key)).size !== l.panes.length) throw new Error('This layout refers to the same page twice.');
+  for (const g of l.groups) { g.keys = g.keys.map(keyOf); if (g.front) g.front = keyOf(g.front); }
+  if (l.active) l.active = keyOf(l.active);
+  const before = dock.snapshot();
+  try {
+    for (const p of l.panes) { await reopen(p.key); await dock.find(p.key)?.ready; }
+    await dock.restore(l);
+  } catch (e) {
+    // Opening failed before old panes were removed. Restore their arrangement and discard only newly opened panes.
+    await dock.restore(before);
+    throw e;
+  }
   return `Layout ${a.name}`;
+}
+
+const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'marked', 'plans', 'settings']);
+export function canReopen(key: string) { return reopenKinds.has(key.startsWith('doc:') ? 'doc' : key.split('|')[0]); }
+
+/** Minimized links whose title or kind starts with or holds `name`; `minimized` or `all` is every one. */
+function namedLinks(name: string) {
+  const n = name.trim().toLowerCase();
+  if (n === 'minimized' || n === 'all') return [...dock.links];
+  for (const fits of [(t: string) => t === n, (t: string) => t.startsWith(n), (t: string) => t.includes(n)]) {
+    const hit = dock.links.filter(l => fits(l.title.toLowerCase()) || fits(l.kind));
+    if (hit.length) return hit;
+  }
+  return [];
 }
 
 /** A pane brought back from its key (layouts, and a Shelf folder's Open all, whose keys wb set open gives). */
 export async function reopen(key: string) {
-  const [kind, ...x] = key.split('|');
+  key = canonicalKey(key);
+  const existing = dock.find(key);
+  if (existing) { dock.show(existing); await existing.ready; return existing; }
+  const [kind, ...x] = key.startsWith('doc:') ? ['doc', key.slice(4)] : key.split('|');
+  if (kind === 'note' || kind === 'thread') return openPageTab(key);
   const f: Record<string, () => unknown> = {
     search: () => openSearch(x[0], x[1]), uses: () => openUses(x[0], x[1], x[2], x[3] ? { rendering: x[3] } : {}), def: () => openDefine(x[0]), strong: () => openStrong(x[0]),
     bdb: () => openBdb(x[0]), count: () => openCount(x[0]), forms: () => openForms(x[0]), lexiconc: () => openLexiconc(x[0]),
-    thread: () => openThread(x[0]), threads: () => openThreads(), notebook: () => openNotebook(), help: () => openHelp(), keys: () => openKeys(),
+    threads: () => openThreads(), notebook: () => openNotebook(), help: () => openHelp(), keys: () => openKeys(),
     shelf: () => openShelf(), find: () => openFind(x[0]), interlinear: () => openInterlinear(x[0], x[0]),
     place: () => openPlace(x[0], x[0]),
     passage: () => openPassage(x[0].split(';'), x[1], x[0]), reader2: () => app.secondReader(x[0], x[1]), today: () => openToday(x[0]), lesson: () => openLesson(x[0]), findings: () => openFindings(),
     documents: () => openDocuments(),
-    note: () => openNote(x[0]), doc: () => previewDoc({ id: x[0], name: x[1] || x[0] }),
+    doc: () => previewDoc({ id: x[0], name: x[1] || x[0] }),
+    versecard: () => openCardPane(x[0], x[0]), near: () => openNear(x[0], x[1], +x[2], x[3]),
+    marked: () => openMarked(x[0], x[1], x[2]), plans: () => openPlans(), settings: () => openSettings(),
   };
-  await f[kind]?.();
+  if (!f[kind]) throw new Error(`This pane cannot be reopened: ${key}`);
+  await f[kind]();
+  const p = dock.find(key);
+  await p?.ready;
+  return p;
 }
 
-function paneAction(a: any): string {
-  const ps = a.target.toLowerCase() === 'minimized' ? dock.panes.filter(p => dock.isMinimized(p)) : dock.named(a.target);
+async function paneAction(a: any): Promise<string> {
+  if (a.action === 'unfocus') { dock.exitFocus(); return 'Left full screen'; }
+  if (a.action === 'restore') {
+    const ls = namedLinks(a.target);
+    if (ls.length) {
+      for (const l of ls) await dock.restoreLink(l.key);
+      return `restore: ${ls.map(l => l.title).join(', ')}`;
+    }
+  }
+  const ps = a.target.toLowerCase() === 'minimized' ? [] : dock.named(a.target);
+  if (!ps.length && a.action === 'restore') return `Nothing called “${a.target}” is minimized.`;
   if (!ps.length) return `No pane called “${a.target}” is open.`;
+  if (a.action === 'focus') {
+    if (ps.length !== 1) return `Choose one pane to focus: ${ps.map(p => p.title).join(' · ')}`;
+    dock.focusPane(ps[0]); return `Full screen: ${ps[0].title}`;
+  }
   for (const p of ps) {
-    if (a.action === 'close') dock.close(p);
+    if (a.action === 'close') { if (!await dock.close(p)) return `${p.title} is still open`; }
     else if (a.action === 'float') dock.move(p, 'float');
     else if (a.action === 'dock') dock.dockAgain(p);
-    else if (a.action === 'minimize') dock.minimize(p);
+    else if (a.action === 'minimize') await dock.toLinks([p]);
     else dock.show(p);
   }
   return `${a.action}: ${ps.map(p => p.title).join(', ')}`;
@@ -457,6 +564,7 @@ export async function runLine(line: string): Promise<{ ok: boolean; said?: strin
   if (!t) return { ok: true, said: '' };
   const p = await parse(t);
   if (p.error) return { ok: false, error: p.error };
+  noteLine(t);
   const said = await perform(p.action, t);
   if (inApp && p.action.cmd !== 'today') wb(['log', 'add', t, '--result', said]).catch(() => {});
   return { ok: true, said };

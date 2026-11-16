@@ -1,5 +1,5 @@
 //! Pages and blocks (W3 of "The Notebook as a workspace", 2026-11-07; the sheets W1.1 and W2 of
-//! docs/workspace-design.md).
+//! docs/archive/2026-11-10/docs/workspace-design.md).
 //!
 //! **Pages inside pages.** Every note is one Markdown file where it always was; a page inside another names it in its
 //! front matter (`parent: "<id>"`), with its place among the pages beside it (`order`: 1, 2, 3 …). Pages with no
@@ -700,8 +700,8 @@ fn blocks_within(text: &str, titled: bool, a: usize, b: usize) -> (usize, usize)
 }
 
 fn check_n(blocks: &[Block], n: usize, count: usize) -> Result<()> {
-    if count == 0 || n + count > blocks.len() {
-        return Err(missing(format!("The page has {} block{}; there is no block {}.", blocks.len(), if blocks.len() == 1 { "" } else { "s" }, n + count.max(1))));
+    if count == 0 || n.saturating_add(count) > blocks.len() {
+        return Err(missing(format!("The page has {} block{}; there is no block {}.", blocks.len(), if blocks.len() == 1 { "" } else { "s" }, n.saturating_add(count.max(1)))));
     }
     Ok(())
 }
@@ -841,10 +841,14 @@ pub fn blocks(store: &Store, id: &str) -> Result<Value> {
 /// Write the changed text of a note and answer with its blocks, and which of them were just written (`n`, `count`).
 fn written(bible: &Bible, store: &mut Store, id: &str, text: &str, titled: bool, n: usize, count: usize) -> Result<Value> {
     let thread = crate::threadpage::slug_of(id).is_some();
-    if text.trim().is_empty() && !thread {
-        return Err(bad("A page needs some text. To remove it, delete the page."));
+    if let Some(day) = id.strip_prefix("d_").filter(|day| crate::store::is_day(day)) {
+        store.edit_day_blocks(day, text)?;
+    } else {
+        if text.trim().is_empty() && !thread {
+            return Err(bad("A page needs some text. To remove it, delete the page."));
+        }
+        nb::edit_text(bible, store, id, text)?;
     }
-    nb::edit_text(bible, store, id, text)?;
     let now = if thread { crate::threadpage::note_text(store, id)? } else { s(&store.find_note(id)?, "text") };
     let mut v = block_values(&now, titled);
     v["id"] = json!(id);
@@ -865,7 +869,15 @@ pub enum Edit<'a> {
 
 /// Change a note block by block (the window's way of writing in a page, and `wb block …`). → its blocks after.
 pub fn edit(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>) -> Result<Value> {
+    edit_guarded(bible, store, id, what, None)
+}
+
+/// Change a block only if the page still contains the text the editor displayed.
+pub fn edit_guarded(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>, expected: Option<&str>) -> Result<Value> {
     let (id, text, titled) = text_of(store, id)?;
+    if expected.is_some_and(|value| value != text) {
+        return Err(bad("The page changed. Reopen it and try again."));
+    }
     let (out, n, count) = match what {
         Edit::Set { n, count, text: new } => set(&text, titled, n, count, new)?,
         Edit::Add { after, text: new } => insert(&text, titled, after, new)?,
@@ -882,6 +894,47 @@ pub fn edit(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>) -> Resul
         }
     };
     written(bible, store, &id, &out, titled, n, count)
+}
+
+/// A successful deletion's inverse. The complete previous body preserves spacing, and the digest
+/// limits Undo to the exact body produced by the deletion.
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct BlockUndo {
+    page: String,
+    before: String,
+    after: String,
+    n: usize,
+    count: usize,
+}
+
+fn body_digest(text: &str) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
+}
+
+pub fn remove_block(bible: &Bible, store: &mut Store, id: &str, n: usize, count: usize, expected: Option<&str>) -> Result<Value> {
+    let (id, before, titled) = text_of(store, id)?;
+    if expected.is_some_and(|value| value != before) {
+        return Err(bad("The page changed. Reopen it and try again."));
+    }
+    let (out, at, remaining) = set(&before, titled, n, count, "")?;
+    let mut result = written(bible, store, &id, &out, titled, at, remaining)?;
+    let (_, after, _) = text_of(store, &id)?;
+    result["undo"] = json!(BlockUndo { page: id, before, after: body_digest(&after), n, count });
+    Ok(result)
+}
+
+pub fn undo_block(bible: &Bible, store: &mut Store, id: &str, undo: BlockUndo) -> Result<Value> {
+    let (id, current, titled) = text_of(store, id)?;
+    if undo.page != id || undo.after != body_digest(&current) {
+        return Err(bad("The page changed after the block was deleted."));
+    }
+    // Check the inverse before writing so a stale or damaged token cannot replace unrelated text.
+    let (after, _, _) = set(&undo.before, titled, undo.n, undo.count, "")?;
+    if after.trim() != current.trim() {
+        return Err(bad("The block Undo does not match this page."));
+    }
+    written(bible, store, &id, &undo.before, titled, undo.n, undo.count)
 }
 
 // ---- scripture blocks (W4) ----------------------------------------------------------------------------------------------
@@ -1208,4 +1261,33 @@ mod tests {
         assert_eq!(retitle("# Old\n\nBody", "New").unwrap(), "# New\n\nBody");
         assert_eq!(retitle("Old\nBody", "New").unwrap(), "New\nBody");
     }
+}
+
+/// Ordinary physical Pages scope only; thread associations are never descendants.
+pub(crate) fn deletion_layout(bible: &Bible, store: &Store, selected: &HashSet<String>, all: bool, pinned: bool, templates: bool, days: bool) -> Result<(Vec<String>, Vec<(String, Option<String>, usize)>)> {
+    let t = Tree::read(bible, store);
+    let mut ids: HashSet<String> = selected.clone();
+    if all {
+        ids.extend(t.all.iter().filter(|e| e["kind"] != "thread" && e["kind"] != "day" && t.in_tree(e) && (pinned || e["pinned"].is_null())).map(|e| id_of(e).to_string()));
+        if templates { ids.extend(nb::every(bible, store).iter().filter(|e| nb::is_template(e) && (pinned || e["pinned"].is_null())).map(|e| id_of(e).to_string())); }
+        if days { ids.extend(store.days().iter().map(|e| s(e, "id"))); }
+    }
+    for id in &ids { if crate::threadpage::slug_of(id).is_some() { return Err(bad("Thread records are excluded from page deletion.")); } store.find_note(id)?; }
+    fn walk(t: &Tree, parent: Option<&str>, surviving_parent: Option<&str>, ids: &HashSet<String>, out: &mut HashMap<Option<String>, Vec<String>>) {
+        for e in t.children(parent) {
+            let id = id_of(e);
+            if e["kind"] == "thread" { continue; }
+            if ids.contains(id) { walk(t, Some(id), surviving_parent, ids, out); }
+            else { out.entry(surviving_parent.map(String::from)).or_default().push(id.to_string()); walk(t, Some(id), Some(id), ids, out); }
+        }
+    }
+    let mut lists = HashMap::new(); walk(&t, None, None, &ids, &mut lists);
+    let mut changes = vec![];
+    for (parent, list) in lists {
+        let affected = list.iter().any(|id| t.parent_of(id) != parent.as_deref());
+        if !affected { continue; }
+        for (i, id) in list.into_iter().enumerate() { changes.push((id, parent.clone(), i + 1)); }
+    }
+    let mut ids: Vec<_> = ids.into_iter().collect(); ids.sort(); changes.sort_by(|a,b| a.0.cmp(&b.0));
+    Ok((ids, changes))
 }

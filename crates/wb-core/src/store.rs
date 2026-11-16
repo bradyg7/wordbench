@@ -32,7 +32,7 @@ pub const COLORS: &[&str] = &["yellow", "green", "blue", "pink", "orange"];
 pub const PALETTE_MAX: usize = 8;
 pub const ANCHORS_MARK: &str = "<!-- anchors -->";
 /// What a set can hold. `document` (a record in documents/, R2) is new here: the Python app passes over it when it reads a
-/// set, and drops it if it rewrites that set (docs/redesign-R2.md section 4).
+/// set, and drops it if it rewrites that set (docs/archive/2026-11-10/docs/redesign-R2.md section 4).
 pub const SET_KINDS: &[&str] = &["pane", "thread", "place", "note", "lesson", "pdf", "document"];
 
 /// A request the person can fix (the Python app's BadStudy, sent with status 400).
@@ -954,6 +954,18 @@ impl Store {
     /// the first time something is written in it; its header is an id, the day, its kind and the times (no anchor, so
     /// the Python app passes over it). Emptying a page sends it to .trash. → the page, or None once emptied.
     pub fn write_day(&mut self, day: &str, text: &str, append: bool) -> Result<Option<Rec>> {
+        self.write_day_body(day, text, append, false)
+    }
+
+    /// Replace an existing day's blocks while retaining the page even when it becomes empty.
+    pub(crate) fn edit_day_blocks(&mut self, day: &str, text: &str) -> Result<Rec> {
+        if self.day(day).is_none() {
+            return Err(missing("That day has no page."));
+        }
+        self.write_day_body(day, text, false, true)?.ok_or_else(|| missing("That day has no page."))
+    }
+
+    fn write_day_body(&mut self, day: &str, text: &str, append: bool, keep_empty: bool) -> Result<Option<Rec>> {
         if !is_day(day) {
             return Err(bad("A day looks like 2026-11-04."));
         }
@@ -966,7 +978,7 @@ impl Store {
             (Some(o), true) if !s(o, "text").is_empty() => format!("{}\n\n{text}", s(o, "text")),
             _ => text.to_string(),
         };
-        if body.trim().is_empty() {
+        if body.trim().is_empty() && !keep_empty {
             if old.is_some() {
                 self.trash(&self.day_path(day))?;
             }
@@ -1049,7 +1061,7 @@ impl Store {
     }
 
     /// Any note by its id, wherever it is: (its record, its file).
-    fn any_note(&self, id: &str) -> Result<(Rec, PathBuf)> {
+    pub(crate) fn any_note(&self, id: &str) -> Result<(Rec, PathBuf)> {
         if let Some(n) = self.notes.iter().find(|n| s(n, "id") == id) {
             return Ok((n.clone(), self.note_path(n)));
         }

@@ -1,4 +1,4 @@
-//! Views (W5 of "The Notebook as a workspace", 2026-11-07; sheet W4 of docs/workspace-design.md): a list kept up to
+//! Views (W5 of "The Notebook as a workspace", 2026-11-07; sheet W4 of docs/archive/2026-11-10/docs/workspace-design.md): a list kept up to
 //! date. In a page's file a view is a fenced block, ```` ```view ````, holding one line of the command language
 //! (`notebook @Num 25 questions`, `notebook thread phinehas`, `notebook days 7`); the window lists what the line finds
 //! each time the page is drawn. The line is read by `commands::view_line`, the one parser the command field and
@@ -32,12 +32,17 @@ fn reach(bible: &Bible, anchor: &str) -> Option<(u32, (u32, u32), (u32, u32))> {
 }
 
 /// Every place of an entry: its first, then `also`.
-fn places(e: &Value) -> Vec<String> {
+fn places(store: &Store, e: &Value) -> Vec<String> {
     let mut v: Vec<String> = vec![];
     if let Some(a) = e["anchor"].as_str().filter(|a| !a.is_empty()) {
         v.push(a.to_string());
     }
     v.extend(e["also"].as_array().into_iter().flatten().filter_map(|a| a["anchor"].as_str()).map(String::from));
+    if e["kind"] == "thread" {
+        if let Some(thread) = e["slug"].as_str().and_then(|slug| store.thread(slug).ok()) {
+            v.extend(thread["members"].as_array().into_iter().flatten().filter_map(|m| m["anchor"].as_str()).map(String::from));
+        }
+    }
     v
 }
 
@@ -62,8 +67,14 @@ pub fn run(bible: &Bible, store: &Store, line: &str) -> Result<Value> {
 fn find(bible: &Bible, store: &Store, q: &ViewQuery) -> Result<Vec<Value>> {
     let mut all: Vec<Value> = nb::all_lines(bible, store, true).into_iter().filter(|e| !nb::is_template(e)).collect();
     // a question written in a page (R1) is a question a view can list
-    if q.questions.is_some() {
+    if q.questions.is_some() || matches!(q.kind.as_deref(), Some("all" | "question")) {
         all.extend(crate::questions::entries(bible, store));
+    }
+    if matches!(q.kind.as_deref(), Some("all" | "thread")) {
+        all.extend(crate::threadpage::lines(bible, store));
+    }
+    if let Some(kind) = q.kind.as_deref().filter(|kind| *kind != "all") {
+        all.retain(|e| e["kind"] == kind);
     }
     if !q.words.is_empty() {
         all.retain(|e| nb::words_in(e, &q.words));
@@ -72,7 +83,7 @@ fn find(bible: &Bible, store: &Store, q: &ViewQuery) -> Result<Vec<Value>> {
         all.retain(|e| e["kind"] == "question" && (st == "all" || (st == "open") == (e["status"] != "done")));
     }
     if q.pages {
-        all.retain(|e| e["placed"] == false && e["kind"] != "day");
+        all.retain(|e| e["placed"] == false && e["kind"] != "day" && e["kind"] != "thread");
     }
     if let Some(name) = &q.thread {
         let t = store
@@ -81,7 +92,7 @@ fn find(bible: &Bible, store: &Store, q: &ViewQuery) -> Result<Vec<Value>> {
             .find(|t| crate::store::s(t, "name").eq_ignore_ascii_case(name) || crate::store::s(t, "id") == *name)
             .ok_or_else(|| bad(format!("No thread called “{name}” (wb thread list names them).")))?;
         let id = crate::store::s(t, "id");
-        all.retain(|e| e["threads"].as_array().into_iter().flatten().any(|x| x["id"] == id.as_str()));
+        all.retain(|e| e["slug"] == id.as_str() || e["threads"].as_array().into_iter().flatten().any(|x| x["id"] == id.as_str()));
     }
     if let Some(n) = q.days {
         let from = (Local::now().date_naive() - Duration::days(i64::from(n) - 1)).to_string();
@@ -97,14 +108,14 @@ fn find(bible: &Bible, store: &Store, q: &ViewQuery) -> Result<Vec<Value>> {
     match reach(bible, &want) {
         None => {
             for e in all {
-                if places(&e).iter().any(|p| p.eq_ignore_ascii_case(&want)) {
+                if places(store, &e).iter().any(|p| p.eq_ignore_ascii_case(&want)) {
                     hits.push(((0, 0, 0, 0), e));
                 }
             }
         }
         Some((book, lo, hi)) => {
             for e in all {
-                let at = places(&e).iter().filter_map(|p| Some((p.clone(), reach(bible, p)?))).find(|(_, (b, s, t))| *b == book && *s <= hi && *t >= lo);
+                let at = places(store, &e).iter().filter_map(|p| Some((p.clone(), reach(bible, p)?))).find(|(_, (b, s, t))| *b == book && *s <= hi && *t >= lo);
                 if let Some((p, (_, s, _))) = at {
                     let i = anchors::parse(&p).ok().and_then(|a| a.i1).unwrap_or(0);
                     hits.push(((book, s.0, s.1, i), e));

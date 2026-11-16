@@ -1,0 +1,8 @@
+
+/* Each deletion keeps its own keyboard-reachable Undo, independent of transient toasts. */
+.page-deletions { position: fixed; bottom: 1rem; right: 1rem; z-index: 10000; display: grid; gap: .5rem; max-width: min(32rem, calc(100vw - 2rem)); }
+.page-deletion { padding: .8rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--paper, #fff); box-shadow: 0 3px 20px #0002; }
+.page-delete-options { position: fixed; inset: 15% auto auto 50%; transform: translateX(-50%); width: min(34rem, calc(100vw - 2rem)); padding: 1.2rem; background: var(--paper, #fff); border: 1px solid var(--line); border-radius: .5rem; z-index: 10001; box-shadow: 0 3px 20px #0004; }
+.page-delete-options label { display: block; margin-bottom: .6rem; }
+.page-delete-options .btn { margin: .4rem; }
+.deletion-error { display: block; }

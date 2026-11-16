@@ -171,12 +171,13 @@ export function findingBox() {
   input.focus();
 }
 
+let tagFilter = '';
 let showHandled = false;
 
 /** The Findings pane: the open findings, newest first, each with what was on screen; Handled, Open again, Delete. */
 export function openFindings() {
   return dock.open('findings', 'Findings', 'findings', 'right', async el => {
-    const d = await wb(['findings', ...(showHandled ? ['--all'] : [])]);
+    const d = await wb(['findings', ...(showHandled ? ['--all'] : []), ...(tagFilter ? ['--tag', tagFilter] : [])]);
     el.replaceChildren();
     const hd = h('header', 'pane-head');
     hd.append(h('h2', 'pane-title', 'Findings'), h('div', 'pane-sub', `About the app, apart from your study · ${d.counts.open} open, ${d.counts.handled} handled · wb findings`));
@@ -185,6 +186,14 @@ export function openFindings() {
     acts.append(button('btn small primary', '+ A finding', () => findingBox()));
     acts.append(button('btn small', showHandled ? 'Only the open ones' : 'Show the handled too', () => { showHandled = !showHandled; void dock.find('findings')?.refresh?.(); }));
     el.append(acts);
+    // one chip per design folder the open (or shown) findings touch; a click narrows the list to that folder
+    if (tagFilter || d.findings.some((f: any) => f.tags?.length)) {
+      const all = tagFilter ? [tagFilter] : [...new Set<string>(d.findings.flatMap((f: any) => f.tags ?? []))].sort();
+      const tags = h('div', 'wrap finding-tags finding-tag-filter');
+      for (const t of all) tags.append(button(`pill finding-tag${t === tagFilter ? ' on' : ''}`, t, () => { tagFilter = t === tagFilter ? '' : t; void dock.find('findings')?.refresh?.(); }));
+      if (tagFilter) tags.append(button('link-btn', 'Every tag', () => { tagFilter = ''; void dock.find('findings')?.refresh?.(); }));
+      el.append(tags);
+    }
     if (!d.findings.length) el.append(h('p', 'muted small', showHandled ? 'No findings yet.' : 'No open findings. Ctrl+Shift+J writes one from anywhere.'));
     for (const f of d.findings) {
       const c = h('div', `note-card finding${f.status === 'handled' ? ' done' : ''}`);
@@ -199,6 +208,11 @@ export function openFindings() {
         app.changed('findings');
       }, 'trash'));
       c.append(top, h('p', 'nb-text', f.text));
+      if (f.tags?.length) {
+        const tags = h('div', 'wrap finding-tags');
+        for (const t of f.tags as string[]) tags.append(h('span', 'pill finding-tag', t));
+        c.append(tags);
+      }
       // its attached files (findings/<id>/): a click opens one; a file dropped on the card, or Attach…, adds one
       const files: { name: string; size: number }[] = f.files ?? [];
       const row = h('div', 'finding-files');

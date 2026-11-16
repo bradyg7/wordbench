@@ -55,7 +55,7 @@ async function main() {
   if (publicRelease.status === 'published' && publicRelease.version !== version) throw new Error('Website and app versions differ.');
   console.log(`Version ${version}: Cargo, Tauri, and website metadata agree.`);
   const args = process.argv.slice(2);
-  if (args.length !== 2 || args[0] !== '--staging') throw new Error('Packaging is not ready: supply --staging <directory> containing manifest.json and approved artifacts. See distribution/README.md.');
+  if (args.length !== 2 || args[0] !== '--staging') throw new Error('Packaging is not ready: supply --staging <directory> containing manifest.json and approved artifacts. See docs/SPEC.md.');
   await checkStaging(resolve(args[1]), version);
   console.log('Staged components and recorded provenance passed integrity checks. This does not verify legal rights, code signing, activation, or clean-machine behavior.');
 }

@@ -5,6 +5,7 @@
 // an empty block opens the block menu. A block is dragged by its grip. Every change is a `wb block …` command: the
 // splitting into blocks and the lines around them are wb-core's (pages.rs), never this file's.
 import { wb } from './api';
+import { registerPageWriter } from './pagewriters';
 import { app, here } from './app';
 import { toast } from './sheets';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
@@ -17,7 +18,9 @@ export interface LinkAt { start: number; end: number }
 
 /** What the Notebook lends the blocks: drawing Markdown, the [[link]] list, and redrawing after a change. */
 export interface Host {
+  state: BlockEditorState;
   render(text: string, refs: Found[], links: any[]): DocumentFragment;
+  text: string;
   refs: Found[];
   links: any[];
   linkSuggest(ta: HTMLTextAreaElement): void;
@@ -35,11 +38,92 @@ export interface Host {
   open(id: string): void;
   /** W5: the page is a template: `{` offers the blanks, and its blanks are shown as blanks. */
   template?: boolean;
+  questionPlaces?: { anchor: string; label: string }[];
 }
 
-/** Which block to start writing in once the page is drawn again: its number (from 1) and where the cursor goes. */
-export let focusBlock: { n: number; at: 'start' | 'end' } | { after: number; text: string } | null = null;
-export const setFocusBlock = (f: typeof focusBlock) => { focusBlock = f; };
+/** Pending input belongs to one editor. Its data is refreshed separately on each draw. */
+type BlockFocus = { n: number; at: 'start' | 'end' } | { after: number; text: string } | null;
+type BlockData = { id: string; got: Promise<any> } | null;
+export interface BlockEditorState {
+  focus: BlockFocus;
+  pending: { id: string; after: () => number; text: string } | null;
+  menuKey: ((ev: KeyboardEvent) => boolean) | null;
+  menuClose: (() => void) | null;
+  scripture: BlockData;
+  views: BlockData;
+  threads: BlockData;
+  words: BlockData;
+}
+export const createBlockEditorState = (): BlockEditorState => ({
+  focus: null, pending: null, menuKey: null, menuClose: null,
+  scripture: null, views: null, threads: null, words: null,
+});
+
+
+interface BlockHistory {
+  page: string;
+  undo: { token: string; n: number }[];
+  focus?: number;
+  visual?: number;
+  busy?: boolean;
+}
+
+const blockHistory = new WeakMap<HTMLElement, BlockHistory>();
+
+function historyFor(root: HTMLElement, page: string): BlockHistory {
+  let history = blockHistory.get(root);
+  if (history?.page !== page) {
+    history = { page, undo: [] };
+    blockHistory.set(root, history);
+  }
+  return history;
+}
+
+async function undoRemoval(wrap: HTMLElement, data: Blocks, host: Host) {
+  const root = wrap.closest<HTMLElement>('.nb-editor');
+  if (!root) return;
+  const history = historyFor(root, data.id);
+  const entry = history.undo.at(-1);
+  if (!entry || history.busy) return;
+  history.busy = true;
+  try {
+    await wb(['block', 'undo', data.id, '-'], entry.token);
+    history.undo.pop();
+    history.focus = entry.n;
+    host.changed();
+  } catch (x) { toast(String(x)); }
+  finally { history.busy = false; }
+}
+
+async function removeBlock(wrap: HTMLElement, data: Blocks, host: Host, n: number, count = 1, expected?: string): Promise<boolean> {
+  const root = wrap.closest<HTMLElement>('.nb-editor');
+  if (!root) return false;
+  const history = historyFor(root, data.id);
+  if (history.busy) return false;
+  history.busy = true;
+  try {
+    const result = await wb(['block', 'rm', data.id, String(n), '--count', String(count), '--undo', ...(expected === undefined ? [] : ['--expect', expected])]);
+    history.undo.push({ token: JSON.stringify(result.undo), n });
+    history.focus = Math.min(n, result.blocks.length);
+    host.changed();
+    return true;
+  } catch (x) { toast(String(x)); return false; }
+  finally { history.busy = false; }
+}
+
+/** The Undo toast after a block is deleted (trash T9): 10 seconds, in the same rail as a page's. A block is part of
+ *  its page, so it never goes to the Trash. */
+function blockUndoToast(wrap: HTMLElement, data: Blocks, host: Host) {
+  let rail = document.querySelector<HTMLElement>('.page-deletions');
+  if (!rail) { rail = h('div', 'page-deletions'); rail.setAttribute('aria-label', 'Page deletion Undo'); document.body.append(rail); }
+  rail.querySelectorAll('.block-deletion').forEach(x => x.remove());
+  const row = h('div', 'page-deletion block-deletion');
+  row.setAttribute('role', 'status');
+  const undo = button('btn small', 'Undo', () => { row.remove(); void undoRemoval(wrap, data, host); });
+  row.append(h('span', '', 'Block deleted. '), undo);
+  rail.append(row);
+  setTimeout(() => row.remove(), 10000);
+}
 
 /** Is this block's writing nothing but a list's mark ("- ", "- [ ] ", "2. ")? */
 // A block with only its marker is empty: a list item or to-do, a quote (`>`), a heading (`#`). A divider (`---`) and a
@@ -62,16 +146,16 @@ function goesOn(text: string): string {
 export function drawBlocks(data: Blocks, host: Host): HTMLElement {
   const wrap = h('div', 'nb-page nb-blocks');
   wrap.dataset.id = data.id;
-  scriptureNow = data.blocks.some(isScripture) ? { id: data.id, got: wb(['page', 'scripture', data.id]) } : null;
-  scriptureNow?.got.catch(() => {});
-  viewsNow = data.blocks.some(isView) ? { id: data.id, got: wb(['page', 'views', data.id]) } : null;
-  viewsNow?.got.catch(() => {});
-  threadsNow = data.blocks.some(isThread) ? { id: data.id, got: wb(['page', 'threads', data.id]) } : null;
-  threadsNow?.got.catch(() => {});
-  wordsNow = data.blocks.some(isWord) ? { id: data.id, got: wb(['page', 'words', data.id]) } : null;
-  wordsNow?.got.catch(() => {});
+  host.state.scripture = data.blocks.some(isScripture) ? { id: data.id, got: wb(['page', 'scripture', data.id]) } : null;
+  host.state.scripture?.got.catch(() => {});
+  host.state.views = data.blocks.some(isView) ? { id: data.id, got: wb(['page', 'views', data.id]) } : null;
+  host.state.views?.got.catch(() => {});
+  host.state.threads = data.blocks.some(isThread) ? { id: data.id, got: wb(['page', 'threads', data.id]) } : null;
+  host.state.threads?.got.catch(() => {});
+  host.state.words = data.blocks.some(isWord) ? { id: data.id, got: wb(['page', 'words', data.id]) } : null;
+  host.state.words?.got.catch(() => {});
   for (const b of data.blocks) wrap.append(blockEl(data, b, host));
-  const add = h('div', 'nb-block-add muted', data.blocks.length ? 'Write here, or type / for a block' : 'Write the page here, or type / for a block');
+  const add = h('button', 'link-btn nb-block-add muted', data.blocks.length ? 'Write here, or type / for a block' : 'Write the page here, or type / for a block');
   add.onclick = () => startNew(data, host, add, data.blocks.length ? data.blocks[data.blocks.length - 1].n : 0, '');
   wrap.append(add);
   return wrap;
@@ -86,17 +170,34 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
   el.dataset.n = String(b.n);
   const grip = h('button', 'nb-grip');
   grip.append(icon('grip'));
-  grip.title = 'Drag to move this block';
-  grip.setAttribute('aria-label', `Move block ${b.n}`);
+  grip.title = 'Block actions · drag to move';
+  grip.setAttribute('aria-label', `Actions for block ${b.n}`);
+  grip.onclick = () => {
+    const wrap = el.closest<HTMLElement>('.nb-blocks');
+    if (!wrap || el.classList.contains('editing')) return;
+    const menu = h('div', 'nb-block-actions');
+    const item = (label: string, action: () => void) => menu.append(button('menu-item', label, () => { close(); action(); }));
+    item('Edit block', () => editBlock(data, b, el, host));
+    item('Add block below', () => startNew(data, host, el.nextElementSibling as HTMLElement, b.n, ''));
+    const move = (to: number | null) => async () => {
+      try { await wb(['block', 'move', data.id, String(b.n), ...(to === null ? ['--last'] : ['--to', String(to)])]); host.changed(); } catch (x) { toast(String(x)); }
+    };
+    if (b.n > 1) item('Move up', () => void move(b.n - 1)());
+    if (b.n < data.blocks.length) item('Move down', () => void move(b.n + 1 >= data.blocks.length ? null : b.n + 2)());
+    item('Delete block', () => void removeBlock(wrap, data, host, b.n, 1, host.text).then(ok => { if (ok) blockUndoToast(wrap, data, host); }));
+    const close = popMenu(grip, menu);
+    menu.querySelector('button')?.focus();
+  };
   grip.draggable = true;
   grip.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-block', `${data.id} ${b.n}`); ev.dataTransfer!.effectAllowed = 'move'; el.classList.add('dragging'); };
   grip.ondragend = () => el.classList.remove('dragging');
   const body = h('div', 'nb-block-body');
   body.append(drawn(b, host, data.id));
+  if (isStructured(b)) body.append(button('link-btn small nb-edit-structured', b.kind === 'table' ? 'Edit table' : 'Edit card', () => editBlock(data, b, el, host), 'pen'));
   body.onclick = ev => {
     const t = ev.target as HTMLElement;
-    if (t.closest('a, input, button')) return;
-    startEdit(data, b, el, host, 'end');
+    if (t.closest('a, input, button, textarea, label, select, .nb-structured-editor')) return;
+    editBlock(data, b, el, host);
   };
   el.append(grip, body);
   // a block dropped on another goes before it (the upper half) or after it (the lower half)
@@ -153,7 +254,7 @@ function drawn(b: Blk, host: Host, id: string): Node {
   if (isScripture(b)) return scriptureBlock(b, id, host);
   if (isView(b)) return viewBlock(b, id, host);
   if (isThread(b)) return threadBlock(b, id, host);
-  if (isWord(b)) return wordBlock(b, id);
+  if (isWord(b)) return wordBlock(b, id, host);
   if (b.kind === 'quote' && b.question) return questionBlock(b, id, host);
   if (b.kind === 'fence') return fence(b);
   const f = host.render(b.text, refs, links);
@@ -168,22 +269,236 @@ function drawn(b: Blk, host: Host, id: string): Node {
 
 const blocksId = (el: Element) => (el.closest('.nb-blocks') as HTMLElement | null)?.dataset.id || '';
 
-/** A pipe table as a table (the first row its head; a row of dashes under it is the line between). */
+/** Pipe separators may be escaped. Retain Markdown and alignment in cells outside the edit. */
+function tableRows(text: string): string[][] {
+  return text.split('\n').map(line => {
+    const raw = line.trim().slice(1);
+    const cells: string[] = [];
+    let start = 0, escapes = 0;
+    for (let i = 0; i < raw.length; i++) {
+      if (raw[i] === '|' && escapes % 2 === 0) {
+        cells.push(raw.slice(start, i).trim());
+        start = i + 1;
+      }
+      escapes = raw[i] === '\\' ? escapes + 1 : 0;
+    }
+    if (start < raw.length || !cells.length) cells.push(raw.slice(start).trim());
+    return cells;
+  });
+}
+
+const tableRule = (cells?: string[]) => !!cells?.length && cells.every(cell => /^:?-+:?$/.test(cell));
+const cellText = (cell: string) => cell.replace(/\\\|/g, '|');
+
 function table(text: string): HTMLElement {
+  const scroll = h('div', 'nb-table-scroll');
   const t = h('table', 'nb-table');
-  const rows = text.split('\n').map(l => l.trim()).filter(l => l.startsWith('|'));
-  const cells = (l: string) => l.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
-  rows.forEach((l, i) => {
-    if (i === 1 && /^\|?[\s:|-]+\|?$/.test(l)) return;
+  tableRows(text).forEach((cells, row) => {
+    if (row === 1 && tableRule(cells)) return;
     const tr = h('tr');
-    for (const c of cells(l)) tr.append(h(i === 0 ? 'th' : 'td', '', c));
+    for (const c of cells) tr.append(h(row === 0 ? 'th' : 'td', '', cellText(c)));
     t.append(tr);
   });
-  return t;
+  scroll.append(t);
+  return scroll;
+}
+
+function editTable(text: string, form: HTMLElement, changed: () => void): () => string {
+  const rows = tableRows(text);
+  const rule = tableRule(rows[1]) ? rows.splice(1, 1)[0] : [];
+  const original = JSON.stringify({ rows, rule });
+  const scroll = h('div', 'nb-table-scroll');
+  const t = h('table', 'nb-table nb-table-edit');
+  scroll.append(t);
+  form.append(scroll);
+  const tools = h('div', 'nb-structured-tools');
+  const addRow = button('btn small', 'Add row', () => {
+    rows.push(Array.from({ length: width() }, () => ''));
+    draw(rows.length - 1, 0);
+    changed();
+  });
+  const addCol = button('btn small', 'Add column', () => {
+    const col = width();
+    for (const row of rows) row[col] = '';
+    if (rule.length) rule[col] = '---';
+    draw(0, col);
+    changed();
+  });
+  addRow.type = addCol.type = 'button';
+  tools.append(addRow, addCol);
+  form.append(tools);
+  const width = () => Math.max(1, rule.length, ...rows.map(row => row.length));
+  const draw = (focusRow?: number, focusCol?: number) => {
+    t.replaceChildren();
+    let focus: HTMLInputElement | undefined;
+    const cols = width();
+    rows.forEach((cells, row) => {
+      const tr = h('tr');
+      for (let col = 0; col < cols; col++) {
+        const cell = h(row ? 'td' : 'th');
+        const input = h('input', 'field small nb-table-cell') as HTMLInputElement;
+        const label = row ? `Row ${row}, column ${col + 1}` : `Column ${col + 1} heading`;
+        input.setAttribute('aria-label', label);
+        input.value = cellText(cells[col] || '');
+        input.oninput = () => { cells[col] = input.value.replace(/(?<!\\)\|/g, '\\|'); changed(); };
+        if (focusRow === row && focusCol === col) focus = input;
+        cell.append(input);
+        if (!row && cols > 1) {
+          const remove = button('link-btn small nb-table-remove', 'Remove column', () => {
+            for (const r of rows) r.splice(col, 1);
+            rule.splice(col, 1);
+            draw(0, Math.min(col, width() - 1));
+            changed();
+          });
+          remove.type = 'button';
+          remove.setAttribute('aria-label', `Remove column ${col + 1}`);
+          cell.append(remove);
+        }
+        tr.append(cell);
+      }
+      if (row) {
+        const remove = button('link-btn small nb-table-remove', 'Remove row', () => {
+          rows.splice(row, 1);
+          draw(Math.min(row, rows.length - 1), 0);
+          changed();
+        });
+        remove.type = 'button';
+        remove.setAttribute('aria-label', `Remove row ${row}`);
+        const td = h('td');
+        td.append(remove);
+        tr.append(td);
+      }
+      t.append(tr);
+    });
+    focus?.focus();
+  };
+  draw();
+  return () => {
+    if (JSON.stringify({ rows, rule }) === original) return text;
+    const cols = width();
+    const asLine = (cells: string[]) => `| ${Array.from({ length: cols }, (_, i) => cells[i] || '').join(' | ')} |`;
+    return [asLine(rows[0]), ...(rule.length ? [asLine(Array.from({ length: cols }, (_, i) => rule[i] || '---'))] : []), ...rows.slice(1).map(asLine)].join('\n');
+  };
+}
+
+function isStructured(b: Blk) {
+  return b.kind === 'table' || !!b.question || ['scripture', 'view', 'thread', 'word'].includes(fenceLang(b));
+}
+
+function editBlock(data: Blocks, b: Blk, el: HTMLElement, host: Host) {
+  if (isStructured(b)) editStructured(data, b, el, host);
+  else startEdit(data, b, el, host, 'end');
+}
+
+function editStructured(data: Blocks, b: Blk, el: HTMLElement, host: Host) {
+  if (el.classList.contains('editing')) return;
+  const body = el.querySelector('.nb-block-body')!;
+  el.classList.add('editing');
+  const form = h('form', 'nb-structured-editor');
+  const table = b.kind === 'table';
+  const lang = fenceLang(b);
+  const labels: Record<string, string> = { scripture: 'Scripture reference', view: 'View command', thread: 'Thread', word: 'Strong’s number' };
+  const title = table ? 'Edit table' : b.question ? 'Edit question' : labels[lang];
+  const heading = h('div', 'nb-structured-title', title);
+  form.append(heading);
+  const error = h('p', 'small nbv-error');
+  error.hidden = true;
+  error.setAttribute('role', 'alert');
+  const changed = () => { error.hidden = true; };
+  const serialize = table ? editTable(b.text, form, changed) : editCard(b, form, labels[lang] || 'Question', changed);
+  const tools = h('div', 'nb-structured-tools');
+  const finish = () => {
+    const root = el.closest<HTMLElement>('.nb-editor');
+    if (root) historyFor(root, data.id).focus = b.n;
+    (document.activeElement as HTMLElement | null)?.blur();
+  };
+  const cancel = button('btn small', 'Cancel', () => { finish(); host.redraw(); });
+  cancel.type = 'button';
+  const save = h('button', 'btn small primary', 'Save block');
+  save.type = 'submit';
+  tools.append(cancel, save);
+  form.append(error, tools);
+  form.onkeydown = ev => {
+    if (ev.key === 'Escape') { ev.stopPropagation(); ev.preventDefault(); cancel.click(); }
+    if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); form.requestSubmit(); }
+  };
+  form.onsubmit = async ev => {
+    ev.preventDefault();
+    save.disabled = true;
+    cancel.disabled = true;
+    try {
+      const text = await serialize();
+      if (text !== b.text) {
+        if (lang === 'view' && !/\{[a-z]+\}/i.test(text)) await wb(['view', 'run', heldIn({ ...b, text })]);
+        await wb(['block', 'set', data.id, String(b.n), '--expect', host.text, '-'], text);
+        finish();
+        host.changed();
+      } else { finish(); host.redraw(); }
+    } catch (x) { error.textContent = String(x); error.hidden = false; }
+    finally { save.disabled = false; cancel.disabled = false; }
+  };
+  registerPageWriter(form, data.id, async () => {
+    if (serialize() !== b.text) throw new Error('Save or cancel the open block form before deleting its page.');
+  }, () => { form.querySelectorAll<HTMLInputElement>('input, textarea, select, button').forEach(x => x.disabled = true); });
+  body.replaceChildren(form);
+  form.querySelector<HTMLElement>('input, textarea, select')?.focus();
+}
+
+function editCard(b: Blk, form: HTMLElement, label: string, changed: () => void): () => string | Promise<string> {
+  const lines = b.text.split('\n');
+  const field = h('label', 'nb-card-field', label);
+  form.append(field);
+  if (b.question) {
+    const first = /^\s*>\s?\[![a-z]+\][+-]?\s*/i.exec(lines[0]);
+    const input = h('textarea', 'field nb-card-text');
+    const original = [lines[0].slice(first?.[0].length || 0), ...lines.slice(1).map(line => line.replace(/^\s*>\s?/, ''))].join('\n');
+    input.value = original;
+    input.required = true;
+    input.oninput = changed;
+    field.append(input);
+    return () => {
+      if (input.value === original) return b.text;
+      const [head, ...rest] = input.value.split('\n');
+      return [`${first?.[0].trimEnd() || '> [!question]'} ${head}`, ...rest.map(line => `> ${line}`)].join('\n');
+    };
+  }
+  const lang = fenceLang(b);
+  const closing = lines.findIndex((line, i) => i > 0 && /^\s*(`{3,}|~{3,})\s*$/.test(line));
+  const limit = closing < 0 ? lines.length : closing;
+  const at = lines.findIndex((line, i) => i > 0 && i < limit && !!line.trim());
+  const original = at < 0 ? '' : lines[at].trim();
+  const input = h('input', 'field nb-card-input');
+  input.value = original;
+  input.required = true;
+  input.oninput = changed;
+  field.append(input);
+  const example: Record<string, string> = { scripture: 'Example: John 1:1', view: 'Example: notebook questions', thread: 'Thread ID or name', word: 'Example: H7065' };
+  field.append(h('span', 'muted small', example[lang]));
+  return async () => {
+    let value = input.value.trim();
+    if (value === original) return b.text;
+    if (!value || /^(`{3,}|~{3,})/.test(value)) throw new Error(`Enter a valid ${label.toLowerCase()}.`);
+    if (!/^\{(?:place|date|title|reader)\}$/i.test(value)) {
+      if (lang === 'word') {
+        value = value.toUpperCase();
+        if (!/^[HG]\d+$/.test(value)) throw new Error('Enter a Strong’s number beginning with H or G.');
+        await wb(['strong', value]);
+      } else if (lang === 'thread') {
+        const threads: { id: string; name: string }[] = await wb(['thread', 'list']);
+        const match = threads.find(t => t.id === value || t.name.toLowerCase() === value.toLowerCase());
+        if (!match) throw new Error(`No thread called “${value}”.`);
+        value = match.id;
+      } else if (lang === 'scripture') await wb(['preview', value]);
+    }
+    const next = [...lines];
+    if (at < 0) next.splice(limit, 0, value);
+    else next[at] = value;
+    if (closing < 0) next.push(lines[0].trimStart().slice(0, 3));
+    return next.join('\n');
+  };
 }
 
 /** A page's scripture blocks with their verses (`wb page scripture`), asked for once each time the page is drawn. */
-let scriptureNow: { id: string; got: Promise<any> } | null = null;
 const isScripture = (b: Blk) => b.kind === 'fence' && (b.lang || '').split(/\s/)[0].toLowerCase() === 'scripture';
 
 /** A scripture block (W4, sheet W3): the file holds only the reference (and `lines`, `ylt` when chosen); the verses are
@@ -222,10 +537,10 @@ function scriptureBlock(b: Blk, id: string, host: Host): HTMLElement {
   ylt.setAttribute('aria-pressed', String(isYlt));
   head.append(seg, ylt);
   if (ref) head.append(openSplit('Open', ref, () => label.textContent || ref, () => (isYlt ? 'YLT' : undefined), 'sv-open'));
-  const text = h('div', 'sv-body muted small', ref ? 'Reading the verses…' : 'No reference yet: click here and write one under ```scripture.');
+  const text = h('div', 'sv-body muted small', ref ? 'Reading the verses…' : 'No reference yet. Choose Edit card to enter one.');
   box.append(head, text);
-  if (ref && scriptureNow?.id === id) {
-    void scriptureNow.got.then(d => {
+  if (ref && host.state.scripture?.id === id) {
+    void host.state.scripture.got.then(d => {
       const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
       if (!mine) return;
       if (mine.error) { text.textContent = mine.error; return; }
@@ -237,7 +552,6 @@ function scriptureBlock(b: Blk, id: string, host: Host): HTMLElement {
 }
 
 /** A page's views with what each finds (`wb page views`), asked for once each time the page is drawn. */
-let viewsNow: { id: string; got: Promise<any> } | null = null;
 const isView = (b: Blk) => b.kind === 'fence' && (b.lang || '').split(/\s/)[0].toLowerCase() === 'view';
 
 /** A view (W5, sheet W4): a list kept up to date. The file holds one line of the command language; the notes it finds
@@ -256,36 +570,11 @@ function viewBlock(b: Blk, id: string, host: Host): HTMLElement {
   box.append(head, body);
   lineBtn.onclick = ev => {
     ev.stopPropagation();
-    const i = h('input', 'field nbv-input') as HTMLInputElement;
-    i.value = line || 'notebook ';
-    i.setAttribute('aria-label', 'The view’s line');
-    lineBtn.replaceWith(i);
-    i.focus();
-    i.setSelectionRange(i.value.length, i.value.length);
-    let over = false;
-    const end = async (keep: boolean) => {
-      if (over) return;
-      over = true;
-      const v = i.value.trim();
-      if (keep && v && v !== line) {
-        try {
-          const n = await blockNow(id, b);
-          if (!n) { toast('The page changed; try again'); return host.redraw(); }
-          await wb(['block', 'view', id, String(n), v]);
-          host.changed();
-          return;
-        } catch (x) { toast(String(x)); }
-      }
-      host.redraw();
-    };
-    i.onkeydown = e2 => {
-      if (e2.key === 'Enter') { e2.preventDefault(); void end(true); }
-      else if (e2.key === 'Escape') { e2.preventDefault(); e2.stopPropagation(); void end(false); }
-    };
-    i.onblur = () => void end(true);
+    const block = lineBtn.closest<HTMLElement>('.nb-block');
+    block?.querySelector<HTMLButtonElement>('.nb-edit-structured')?.click();
   };
-  if (line && viewsNow?.id === id) {
-    void viewsNow.got.then(d => {
+  if (line && host.state.views?.id === id) {
+    void host.state.views.got.then(d => {
       const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
       if (!mine) return;
       body.replaceChildren();
@@ -301,8 +590,6 @@ function viewBlock(b: Blk, id: string, host: Host): HTMLElement {
 }
 
 /** A page's thread blocks (`wb page threads`) and word blocks (`wb page words`), asked for once each time it is drawn. */
-let threadsNow: { id: string; got: Promise<any> } | null = null;
-let wordsNow: { id: string; got: Promise<any> } | null = null;
 const fenceLang = (b: Blk) => (b.kind === 'fence' ? (b.lang || '').split(/\s/)[0].toLowerCase() : '');
 const isThread = (b: Blk) => fenceLang(b) === 'thread';
 const isWord = (b: Blk) => fenceLang(b) === 'word';
@@ -320,9 +607,9 @@ function threadBlock(b: Blk, id: string, host: Host): HTMLElement {
   head.append(dot, name, count, h('span', 'grow'));
   const refs = h('div', 'nbt-refs');
   box.append(head, refs);
-  if (!heldIn(b)) refs.append(h('p', 'muted small nbv-note', 'No thread yet: click here and write its name under ```thread.'));
-  if (threadsNow?.id === id) {
-    void threadsNow.got.then(d => {
+  if (!heldIn(b)) refs.append(h('p', 'muted small nbv-note', 'No thread yet. Choose Edit card to pick a thread.'));
+  if (host.state.threads?.id === id) {
+    void host.state.threads.got.then(d => {
       const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
       if (!mine) return;
       if (mine.error) { if (heldIn(b)) { refs.replaceChildren(h('p', 'small nbv-note nbv-error', mine.error)); } return; }
@@ -340,15 +627,15 @@ function threadBlock(b: Blk, id: string, host: Host): HTMLElement {
 
 /** A word block (R1, sheet R1.5): the lexicon's entry for a Strong's number, drawn from the database each time; the file
  * holds only the number. */
-function wordBlock(b: Blk, id: string): HTMLElement {
+function wordBlock(b: Blk, id: string, host: Host): HTMLElement {
   const box = h('div', 'nb-wordblock');
   const head = h('div', 'nbw-head');
   head.append(h('span', 'nbw-mark', 'A'), h('span', 'nbw-num', heldIn(b).toUpperCase() || 'A word'), h('span', 'muted small', '· Strong’s'));
   const body = h('div', 'nbw-body');
   box.append(head, body);
-  if (!heldIn(b)) body.append(h('p', 'muted small nbv-note', 'No number yet: click here and write one under ```word, like H7065.'));
-  if (wordsNow?.id === id) {
-    void wordsNow.got.then(d => {
+  if (!heldIn(b)) body.append(h('p', 'muted small nbv-note', 'No number yet. Choose Edit card to enter a Strong’s number.'));
+  if (host.state.words?.id === id) {
+    void host.state.words.got.then(d => {
       const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
       if (!mine) return;
       if (mine.error) { if (heldIn(b)) body.replaceChildren(h('p', 'small nbv-note nbv-error', mine.error)); return; }
@@ -390,7 +677,32 @@ function questionBlock(b: Blk, id: string, host: Host): HTMLElement {
     } catch (x) { toast(String(x)); }
   });
   ans.title = done ? 'Open it again' : 'Mark it answered';
-  box.append(ans);
+  const actions = h('div', 'nbq-actions');
+  actions.append(ans);
+  const places = host.questionPlaces || [];
+  if (places.length) {
+    const move = async (anchor: string) => {
+      try {
+        const n = await blockNow(id, b);
+        if (!n) return toast('The page changed; try again');
+        const r = await wb(['question', 'unfold', `${id}#${n}`, '--at', anchor]);
+        host.open(r.trail);
+        host.changed();
+        toast('Question moved to its own page');
+      } catch (x) { toast(String(x)); }
+    };
+    const give = button('btn small nbq-unfold', places.length === 1 ? 'Give it its own page' : 'Give it its own page…', ev => {
+      ev.stopPropagation();
+      if (places.length === 1) return void move(places[0].anchor);
+      const menu = h('div', 'menu-list');
+      menu.append(h('p', 'muted small nb-menu-note', 'Which place should the question stay at?'));
+      for (const p of places) menu.append(button('menu-item', p.label, () => { close(); void move(p.anchor); }, 'pin'));
+      const close = popMenu(give, menu, { width: 270 });
+      menu.querySelector('button')?.focus();
+    });
+    actions.append(give);
+  }
+  box.append(actions);
   return box;
 }
 
@@ -433,7 +745,7 @@ function fence(b: Blk): HTMLElement {
 const MENU: { key: string; label: string; what: string; ico: string; write: string; caret?: number; alias?: string[] }[] = [
   { key: 'question', label: 'Question', what: 'Open until you answer it', ico: 'prompt', write: '> [!question] ', alias: ['?'] },
   { key: 'thread', label: 'Thread', what: 'A thread’s places, kept up to date', ico: 'threads', write: '', alias: ['~'] },
-  { key: 'word', label: 'Word', what: 'A Strong’s entry from the lexicon', ico: 'search', write: '```word\nH\n```', caret: 11 },
+  { key: 'word', label: 'Word', what: 'A Strong’s entry from the lexicon', ico: 'search', write: '' },
   { key: 'scripture', label: 'Scripture', what: 'A passage, drawn from the Bible', ico: 'book', write: '' },
   { key: 'heading', label: 'Heading', what: '# A heading', ico: 'prompt', write: '# ' },
   { key: 'list', label: 'List', what: '- an item', ico: 'shelf', write: '- ' },
@@ -446,8 +758,6 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
   { key: 'view', label: 'View', what: 'A list kept up to date (a line of the command language)', ico: 'filter', write: '```view\nnotebook \n```', caret: 17 },
 ];
 
-let menuKey: ((ev: KeyboardEvent) => boolean) | null = null;
-let menuClose: (() => void) | null = null;
 
 /** Write in a new block after block `after` (0: first, right under the title). */
 function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string) {
@@ -466,6 +776,13 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   ta.placeholder = 'Write, or type / for a block';
   el.classList.add('editing');
   const body = el.querySelector('.nb-block-body') || el;
+  // a line break inside the block: Shift+Enter (no button under the box, so no text moves: note 6ed1)
+  const insertBreak = () => {
+    const quoted = b.kind === 'quote' || ta.value.trimStart().startsWith('>');
+    ta.setRangeText(quoted ? '\n> ' : '\n', ta.selectionStart, ta.selectionEnd, 'end');
+    ta.focus();
+    ta.dispatchEvent(new Event('input'));
+  };
   body.replaceChildren(ta);
   const fit = () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight}px`; };
   // where this writing is in the page: blocks n .. n+count-1 (from 1), or not written yet (after block `after`)
@@ -513,42 +830,56 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     return saving;
   };
   /** The writing ends: saved, an emptied block removed, the page drawn again (and `then` started, if given). */
-  const finish = async (then?: typeof focusBlock) => {
+  const finish = async (then?: BlockFocus) => {
     if (gone) return;
     gone = true;
-    menuClose?.();
+    host.state.menuClose?.();
     await save();
     if (cur.n && (blank(ta.value) || !ta.value.trim())) {
-      try { await findAgain(); if (cur.n) await wb(['block', 'rm', data.id, String(cur.n), '--count', String(cur.count)]); host.changed(); } catch (x) { toast(String(x)); }
+      try {
+        await findAgain();
+        const wrap = el.closest<HTMLElement>('.nb-blocks');
+        if (cur.n && wrap) await removeBlock(wrap, data, host, cur.n, cur.count, last === b.text ? host.text : undefined);
+      } catch (x) { toast(String(x)); }
     }
-    focusBlock = then ?? null;
+    host.state.focus = then ?? null;
     // the box lets go of the cursor, so the page is drawn again (the Notebook leaves an editor being typed in alone)
     if (document.activeElement === ta) ta.blur();
     host.redraw();
   };
+  registerPageWriter(ta, data.id, async () => {
+    await save();
+    if (ta.value !== last && ta.value.trim() && !blank(ta.value)) throw new Error('Save or cancel the current block before deleting its page.');
+    await finish();
+  }, () => { gone = true; clearTimeout(timer); ta.disabled = true; });
   ta.oninput = () => {
     fit();
     slashMenu(ta, data, host, cur, finish);
-    if (host.template) blankMenu(ta);
+    if (host.template) blankMenu(ta, host);
     clearTimeout(timer);
     timer = window.setTimeout(save, 600);
     host.maybeSuggest(ta);
   };
   ta.onkeydown = ev => {
-    if (menuKey?.(ev) || host.suggestKey(ev) || host.formatKey(ev, ta)) return;
+    if (host.state.menuKey?.(ev) || host.suggestKey(ev) || host.formatKey(ev, ta)) return;
     const atEnd = ta.selectionStart === ta.value.length && ta.selectionEnd === ta.value.length;
     const atStart = ta.selectionStart === 0 && ta.selectionEnd === 0;
     const inFence = /^(```|~~~)/.test(ta.value) && ta.value.trim().split('\n').length < 2 + (/\n(```|~~~)\s*$/.test(ta.value) ? 1 : 0);
     if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); ta.blur(); return; }
-    if (ev.key === 'Enter' && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey && !ev.altKey && atEnd && !inFence && !ta.value.trim().startsWith('|') && !/^(```|~~~)/.test(ta.value)) {
+    if (ev.key === 'Enter' && ev.shiftKey && !ev.isComposing) {
+      ev.preventDefault();
+      insertBreak();
+      return;
+    }
+    if (ev.key === 'Enter' && !ev.isComposing && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey && !ev.altKey && atEnd && !inFence && !ta.value.trim().startsWith('|') && !/^(```|~~~)/.test(ta.value)) {
       ev.preventDefault();
       // Enter in a list item with nothing in it ends the list; else a new block after this one
       if (ta.value.trim() && blank(ta.value)) { ta.value = ''; fit(); return; }
       if (!ta.value.trim()) return;
       const next = goesOn(ta.value);
       void finish().then(() => {}); // the writing is saved and the page drawn again; the new block opens after it
-      focusBlock = null;
-      pendingNew = { id: data.id, after: () => cur.n + cur.count - 1, text: next };
+      host.state.focus = null;
+      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: next };
       return;
     }
     if (ev.key === 'Backspace' && !ta.value) {
@@ -569,7 +900,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   };
   ta.onblur = () => {
     // a click on the format bar, the block menu or a [[link]] list keeps the box
-    setTimeout(() => { if (document.activeElement === ta || !ta.isConnected || gone) return; if (menuClose) return; void finish(); }, 150);
+    setTimeout(() => { if (document.activeElement === ta || !ta.isConnected || gone || ta.classList.contains('asking')) return; if (host.state.menuClose) return; void finish(); }, 150);
   };
   fit();
   ta.focus();
@@ -578,25 +909,47 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   if (ta.value) slashMenu(ta, data, host, cur, finish);
 }
 
-/** A new block waiting to be opened once the page is drawn again (after Enter at a block's end). */
-let pendingNew: { id: string; after: () => number; text: string } | null = null;
-
 /** After the page is drawn: start writing where Enter, Backspace or an arrow key asked. */
-export function afterDrawn(root: HTMLElement, host: Host, data: Blocks | null) {
-  if (!data) { pendingNew = null; focusBlock = null; return; }
+export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Host | null, data: Blocks | null) {
+  if (!data || !host) { state.pending = null; state.focus = null; blockHistory.delete(root); return; }
   const wrap = root.querySelector<HTMLElement>('.nb-blocks');
   if (!wrap) return;
-  if (pendingNew && pendingNew.id === data.id) {
-    const p = pendingNew;
-    pendingNew = null;
+  const history = historyFor(root, data.id);
+  if (history.undo.length) {
+    const undo = button('link-btn small nb-undo-block', 'Undo block deletion', () => void undoRemoval(wrap, data, host));
+    wrap.prepend(undo);
+    wrap.onkeydown = ev => {
+      if ((!ev.ctrlKey && !ev.metaKey) || ev.shiftKey || ev.altKey || ev.key.toLowerCase() !== 'z') return;
+      if ((ev.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      void undoRemoval(wrap, data, host);
+    };
+  }
+  if (host.state.pending && host.state.pending.id === data.id) {
+    const p = host.state.pending;
+    host.state.pending = null;
     const after = p.after();
     const next = wrap.querySelector<HTMLElement>(`.nb-block[data-n="${after + 1}"]`) || wrap.querySelector<HTMLElement>('.nb-block-add')!;
     startNew(data, host, next, after, p.text);
     return;
   }
-  const f = focusBlock;
-  focusBlock = null;
-  if (!f) return;
+  const f = host.state.focus;
+  host.state.focus = null;
+  const action = history.focus;
+  const visual = history.visual;
+  delete history.focus;
+  delete history.visual;
+  if (visual !== undefined) {
+    const b = data.blocks.find(x => x.n === visual);
+    const el = wrap.querySelector<HTMLElement>(`.nb-block[data-n="${visual}"]`);
+    if (b && el) editBlock(data, b, el, host);
+    return;
+  }
+  if (!f) {
+    if (action !== undefined) (wrap.querySelector<HTMLElement>(`.nb-block[data-n="${action}"] .nb-grip`) || wrap.querySelector<HTMLElement>('.nb-block-add'))?.focus();
+    return;
+  }
   if ('after' in f) {
     const next = wrap.querySelector<HTMLElement>(`.nb-block[data-n="${f.after + 1}"]`) || wrap.querySelector<HTMLElement>('.nb-block-add')!;
     startNew(data, host, next, f.after, f.text);
@@ -609,12 +962,12 @@ export function afterDrawn(root: HTMLElement, host: Host, data: Blocks | null) {
 }
 
 /** `/` at the start of an empty block opens the block menu; what is typed after it narrows the menu. */
-function slashMenu(ta: HTMLTextAreaElement, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: typeof focusBlock) => Promise<void>) {
+function slashMenu(ta: HTMLTextAreaElement, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>) {
   const v = ta.value;
-  if (!v.startsWith('/') || v.includes('\n') || v.length > 30) { menuClose?.(); return; }
+  if (!v.startsWith('/') || v.includes('\n') || v.length > 30) { host.state.menuClose?.(); return; }
   const typed = v.slice(1).trim().toLowerCase();
   const hits = MENU.filter(m => !typed || m.label.toLowerCase().includes(typed) || m.key.startsWith(typed) || (m.alias || []).some(a => a.startsWith(typed)));
-  menuClose?.();
+  host.state.menuClose?.();
   if (!hits.length) return;
   const box = h('div', 'nb-blockmenu');
   box.append(h('div', 'nb-blockmenu-head', 'Add a block · type to narrow it'));
@@ -624,23 +977,24 @@ function slashMenu(ta: HTMLTextAreaElement, data: Blocks, host: Host, cur: { n: 
   const choose = async (m: typeof MENU[number]) => {
     close();
     if (m.key === 'inside') return askInside(ta, host, cur, finish);
-    if (m.key === 'thread') {
-      // the thread is picked, and its id is what the block holds
-      ta.value = '```thread\n\n```';
-      ta.setSelectionRange(11, 11);
-      ta.focus();
-      ta.dispatchEvent(new Event('input'));
-      threadChooser(ta, async name => {
-        let held = name;
-        try {
-          const ts: any[] = await wb(['thread', 'list']);
-          held = ts.find(t => t.name.toLowerCase() === name.toLowerCase())?.id || name;
-        } catch { /* the name as typed */ }
-        ta.value = `\`\`\`thread\n${held}\n\`\`\``;
-        ta.setSelectionRange(ta.value.length, ta.value.length);
+    if (m.key === 'thread' || m.key === 'word') {
+      const before = ta.value;
+      ta.classList.add('asking');
+      const cancel = () => {
+        ta.classList.remove('asking');
+        if (ta.value !== before || !ta.isConnected) return;
+        ta.value = data.blocks.find(b => b.n === cur.n)?.text || '';
         ta.focus();
         ta.dispatchEvent(new Event('input'));
-      });
+      };
+      const pick = (id: string) => {
+        if (!ta.isConnected) return;
+        ta.value = `\`\`\`${m.key}\n${id}\n\`\`\``;
+        ta.dispatchEvent(new Event('input'));
+        void finish();
+      };
+      if (m.key === 'thread') threadChooser(ta, (_name, id) => { if (id) pick(id); }, { existing: true, onClose: cancel });
+      else wordChooser(ta, pick, cancel);
       return;
     }
     if (m.key === 'scripture') {
@@ -655,10 +1009,18 @@ function slashMenu(ta: HTMLTextAreaElement, data: Blocks, host: Host, cur: { n: 
     ta.focus();
     ta.dispatchEvent(new Event('input'));
     if (m.key === 'link') host.linkSuggest(ta);
+    if (m.key === 'table' || m.key === 'scripture') {
+      const root = ta.closest<HTMLElement>('.nb-editor');
+      await finish();
+      if (root && cur.n) {
+        historyFor(root, data.id).visual = cur.n;
+        host.redraw();
+      }
+    }
     if (m.key === 'divider') {
       // a divider is whole as it is: saved, and the writing goes on in a new block under it
       await finish();
-      pendingNew = { id: data.id, after: () => cur.n + cur.count - 1, text: '' };
+      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '' };
       host.redraw();
     }
   };
@@ -676,10 +1038,11 @@ function slashMenu(ta: HTMLTextAreaElement, data: Blocks, host: Host, cur: { n: 
     box.append(r);
   }
   mark(0);
-  const closeMenu = popMenu(ta, box, { width: 300 });
-  const close = () => { closeMenu(); menuKey = null; if (menuClose === close) menuClose = null; };
-  menuClose = close;
-  menuKey = ev => {
+  const close = popMenu(ta, box, { width: 300, onClose: () => {
+    if (host.state.menuClose === close) { host.state.menuClose = null; host.state.menuKey = null; }
+  } });
+  host.state.menuClose = close;
+  host.state.menuKey = ev => {
     if (!box.isConnected) return false;
     if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); mark(on + (ev.key === 'ArrowDown' ? 1 : -1)); return true; }
     if (ev.key === 'Enter' || ev.key === 'Tab') { ev.preventDefault(); void choose(hits[on]); return true; }
@@ -689,17 +1052,17 @@ function slashMenu(ta: HTMLTextAreaElement, data: Blocks, host: Host, cur: { n: 
 }
 
 /** The blanks a template can hold (W5, sheet W6.2): `{` typed in a template's block offers them. */
-const BLANKS: { key: string; what: string; ico: string }[] = [
+export const BLANKS: { key: string; what: string; ico: string }[] = [
   { key: '{place}', what: 'The place picked', ico: 'pin' },
   { key: '{date}', what: 'The day it is made', ico: 'pen' },
   { key: '{title}', what: 'The new page’s name', ico: 'prompt' },
   { key: '{reader}', what: 'The chapter in the reader then', ico: 'book' },
 ];
 
-function blankMenu(ta: HTMLTextAreaElement) {
+function blankMenu(ta: HTMLTextAreaElement, host: Host) {
   const at = ta.selectionStart;
   if (ta.selectionEnd !== at || ta.value[at - 1] !== '{' || ta.value.startsWith('/')) return;
-  menuClose?.();
+  host.state.menuClose?.();
   const d = app.drawn;
   const here = d ? `${d.chapter.name} ${d.chapter.chapter}` : '';
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -730,10 +1093,11 @@ function blankMenu(ta: HTMLTextAreaElement) {
     box.append(r);
   }
   mark(0);
-  const closeMenu = popMenu(ta, box, { width: 300 });
-  const close = () => { closeMenu(); menuKey = null; if (menuClose === close) menuClose = null; };
-  menuClose = close;
-  menuKey = ev => {
+  const close = popMenu(ta, box, { width: 300, onClose: () => {
+    if (host.state.menuClose === close) { host.state.menuClose = null; host.state.menuKey = null; }
+  } });
+  host.state.menuClose = close;
+  host.state.menuKey = ev => {
     if (!box.isConnected) return false;
     if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); mark(on + (ev.key === 'ArrowDown' ? 1 : -1)); return true; }
     if (ev.key === 'Enter' || ev.key === 'Tab') { ev.preventDefault(); choose(BLANKS[on].key); return true; }
@@ -744,7 +1108,40 @@ function blankMenu(ta: HTMLTextAreaElement) {
 }
 
 /** "Page inside this one": its name is asked for in the block; the new page's link takes the block's place. */
-function askInside(ta: HTMLTextAreaElement, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: typeof focusBlock) => Promise<void>) {
+/** The picker validates a Strong's number before putting only that number into the block. */
+function wordChooser(from: HTMLElement, pick: (id: string) => void, cancel: () => void) {
+  const form = h('form', 'chooser') as HTMLFormElement;
+  const input = h('input', 'field') as HTMLInputElement;
+  input.placeholder = 'Strong’s number (H7065 or G26)';
+  input.setAttribute('aria-label', 'Strong’s number');
+  const go = h('button', 'btn small primary', 'Insert word') as HTMLButtonElement;
+  go.type = 'submit';
+  const error = h('p', 'muted small');
+  error.setAttribute('role', 'status');
+  form.append(input, go, error);
+  const close = popMenu(from, form, { width: 285, onClose: cancel });
+  form.onsubmit = async ev => {
+    ev.preventDefault();
+    const id = input.value.trim().toUpperCase();
+    if (!/^[HG]\d+$/.test(id)) {
+      error.textContent = 'Enter a Strong’s number beginning with H or G.';
+      return;
+    }
+    go.disabled = true;
+    try {
+      const result = await wb(['strong', id]);
+      if (!form.isConnected) return;
+      close();
+      pick(result.strong);
+    } catch (x) {
+      error.textContent = String(x);
+      go.disabled = false;
+    }
+  };
+  input.focus();
+}
+
+function askInside(ta: HTMLTextAreaElement, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>) {
   ta.value = '';
   ta.placeholder = 'The new page’s name, then Enter';
   ta.classList.add('asking');
@@ -759,7 +1156,11 @@ function askInside(ta: HTMLTextAreaElement, host: Host, cur: { n: number; count:
     // the block that held the / goes; the link is written where it was
     const after = cur.n ? cur.n - 1 : cur.after;
     ta.value = '';
+    ta.onkeydown = keys; ta.oninput = typed;
+    ta.classList.remove('asking');
     await finish();
+    // the box that asked is gone at once, not left on the page empty if a redraw passes it by
+    if (ta.isConnected) { const blk = ta.closest('.nb-new-block'); if (blk) blk.remove(); else ta.remove(); }
     try { await host.pageInside(title, after); } catch (x) { toast(String(x)); }
   };
   ta.oninput = () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight}px`; };

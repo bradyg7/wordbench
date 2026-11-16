@@ -102,14 +102,13 @@ pub fn commands() -> Vec<Command> {
             let text = body_text(c, &a.s("text"), a.opt("file"))?;
             j(json!(sa::save_note(c.bible()?, &mut *c.study()?, &an, &text, Some(&a.s("id"))).map_err(e)?))
         }),
-        cmd("note rm", "Delete a note (moved to .trash in the study folder).", vec![Pos("id", N::One)], |c, a| {
+        cmd("note rm", "Delete a page with timed Undo (wb page undo OPERATION).", vec![Pos("id", N::One)], |c, a| {
             let mut st = c.study()?;
             let id = a.s("id");
-            // the pages inside it move up a level (W3)
-            wb_core::pages::release(c.bible()?, &mut st, &id).map_err(e)?;
-            // a note written on a thread (no place in the text) is deleted the same way
-            if st.on_thread().iter().any(|n| n["id"] == id.as_str()) { st.delete_thread_note(&id) } else { st.delete_note(&id) }.map_err(e)?;
-            j(json!({"ok": true}))
+            if !st.notes().into_iter().chain(st.on_thread()).any(|n| s(n, "id") == id) {
+                return Err("No such note.".into());
+            }
+            j(wb_core::deletion::remove(c.bible()?, &mut st, &id).map_err(e)?)
         }),
         cmd("hl set", "Highlight a place: wb hl set John 3:16 yellow  (yellow green blue pink orange, or #rrggbb). Returns an undo record.",
             vec![Pos("place", N::One), Pos("color", N::One)], |c, a| {
@@ -303,7 +302,7 @@ pub fn commands() -> Vec<Command> {
             st.delete_set(&id).map_err(e)?;
             j(json!({"ok": true}))
         }),
-        cmd("set open", "What Open all opens for a set, item by item: the window's pane for each (open), or why not (why). Run in the window with wb do \"set open NAME\".", vec![Pos("name", N::Many)], |c, a| {
+        cmd("set open", "What Open all opens for a set, item by item: its target (open), or why not (why). Run in the window with wb do \"set open NAME\".", vec![Pos("name", N::Many)], |c, a| {
             let st = c.study()?;
             j(shelf::open_plan(c.bible()?, &st, &st.find_set(&a.s("name")).map_err(e)?).map_err(e)?)
         }),
@@ -370,11 +369,13 @@ pub fn commands() -> Vec<Command> {
             c.study()?.update_trail(&a.s("id"), &a.s("text")).map_err(e)?;
             j(json!({"ok": true}))
         }),
-        cmd("trail rm", "Delete a question (moved to .trash).", vec![Pos("id", N::One)], |c, a| {
+        cmd("trail rm", "Delete a question page with timed Undo.", vec![Pos("id", N::One)], |c, a| {
             let mut st = c.study()?;
-            wb_core::pages::release(c.bible()?, &mut st, &a.s("id")).map_err(e)?;
-            st.delete_trail(&a.s("id")).map_err(e)?;
-            j(json!({"ok": true}))
+            let id = a.s("id");
+            if !st.trails().into_iter().any(|t| s(t, "id") == id) {
+                return Err("No such trail.".into());
+            }
+            j(wb_core::deletion::remove(c.bible()?, &mut st, &id).map_err(e)?)
         }),
         cmd("find", "Search your own notes, thread names and notes, and trails.", vec![Pos("words", N::Many)], |c, a| {
             j(sa::find_mine(c.bible()?, &*c.study()?, &a.s("words")).map_err(e)?)

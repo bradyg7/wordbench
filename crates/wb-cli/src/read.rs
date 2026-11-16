@@ -90,7 +90,7 @@ pub fn commands() -> Vec<Command> {
                 let c2 = if s.c2 != s.c1 { Some(s.c2) } else { None };
                 Ok(Out::Json(lookup::interlinear(c.bible()?, s.book.id, s.c1, s.v1 as i64, c2, s.v2 as i64, a.int("offset")?, lookup::INTERLINEAR_VERSES).map_err(e)?))
             }),
-        // The app's own (not in the Python wb): an English word's definition, Webster's 1913, verbatim (docs/redesign-R5.md).
+        // The app's own (not in the Python wb): an English word's definition, Webster's 1913, verbatim (docs/archive/2026-11-10/docs/redesign-R5.md).
         cmd("word-define", "A word's English definition from Webster's 1913 (public domain), verbatim with its source: wb word-define envious.
                      --verse \"Prov 14:30\": the words of a place that have an entry. --source: which dictionary, its licence and where it came from.",
             vec![Pos("word", N::Any), Opt("verse", None), Flag("source")], word_define),

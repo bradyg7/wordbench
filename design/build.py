@@ -255,7 +255,7 @@ def design_system():
     # e-ink check
     text(cv, "One system, three modes", "display", fontSize=32, lineHeight="40px")
     para(cv, "The same reader and verse sheet in each mode. This is a check of the tokens, not the e-reader layout: "
-         "that waits until a device is chosen (design/e-reader.md).", "body", "muted")
+         "that waits until a device is chosen (docs/archive/2026-11-10/design/e-reader.md).", "body", "muted")
     modes = row(cv, "mode check", gap=40, align="min")
     for m in F.MODES:
         f = col(modes, f"reader/{m}", gap=12, pad=24, fill="bg", radius=16, stroke="line", sw=1, W="fixed")

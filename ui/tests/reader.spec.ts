@@ -157,11 +157,16 @@ test('a mark made while a long chapter is still being drawn reaches its last ver
 
 // Phase 2: the desktop shell around the reader. (The panes and the Notebook call Rust, so they are checked in the app
 // itself by measure/desk.mjs; here WebKit checks the layout the iPad and Mac web views will draw.)
-test('desktop: the toolbar with the command field, opened by backtick', async ({ page }, info) => {
+test('desktop: the rail, the top bar with the command field (opened by backtick) and the trail line', async ({ page }, info) => {
   test.skip(info.project.name === 'webkit-phone', 'desktop');
   await ready(page);
   expect(await page.evaluate(() => document.documentElement.dataset.size)).toBe('large');
-  for (const id of ['#cmd', '#tb-notebook', '#hl-menu']) await expect(page.locator(id)).toBeVisible();
+  // design/features/command round 2: no toolbar; the reader's tools at the box's end, the panes on the rail
+  for (const id of ['#cmd', '#hl-menu', '#tb-version', '#rail', '#trailline']) await expect(page.locator(id)).toBeVisible();
+  await expect(page.locator('nav.tools')).toHaveCount(0);
+  await expect(page.locator('#rail [data-rail="notebook"]')).toBeVisible();
+  await expect(page.locator('#trailline .trail-step.on')).toHaveText('Numbers 25');
+  await expect(page.locator('#cmd')).toHaveValue('Numbers 25');
   await expect(page.locator('#tabs')).toBeHidden();
   await page.locator('.ch-title').click();
   await page.keyboard.press('Backquote');
@@ -201,7 +206,8 @@ test('desktop: a band across the reader and floats each on their own, the verse 
   await expect(page.locator('.dock-top.open')).toHaveCount(0);
   expect(await topVerse(page)).toBe(v0);
   await page.locator('.dock-float').nth(1).locator('.strip-btn[aria-label="Minimize"]').click();
-  await expect(page.locator('.dock-chip')).toHaveCount(1);
+  // minimize round 7: no chip is left over the reader (a test pane cannot be opened again, so it closes)
+  await expect(page.locator('.dock-chip')).toHaveCount(0);
   await expect(page.locator('.dock-float')).toHaveCount(1);
   await page.screenshot({ path: `${shots}/${info.project.name}-dock-floats.png` });
 });
@@ -284,15 +290,144 @@ test('desktop: one part of a split column minimizes alone; the tab list closes a
   await expect(page.locator('.dock-left .dock-group')).toHaveCount(2);
   await page.locator('.dock-left .dock-group').nth(1).locator('.strip-btn[aria-label="Minimize"]').click();
   await expect(page.locator('.dock-left.open .dock-group')).toHaveCount(1);
-  await expect(page.locator('.dock-left .dock-restore-bar')).toContainText('Two');
+  await expect(page.locator('.dock-left .dock-restore-bar')).toHaveCount(0);
   await expect(page.locator('.dock-right.open')).toHaveCount(1);
-  await page.locator('.dock-left .dock-restore-bar').click();
-  await expect(page.locator('.dock-left .dock-group')).toHaveCount(2);
   await openPane(page, 'Four', 'right');
   await page.evaluate(() => { const d = (window as any).__wb.dock(); d.move(d.find('Four'), 'right'); });
   await page.locator('.dock-right .tab-list').click();
   await expect(page.locator('.menu .tab-list-close')).toHaveCount(2);
   await page.locator('.menu .tab-list-row', { hasText: 'Three' }).locator('.tab-list-close').click();
   await expect(page.locator('.menu .tab-list-row')).toHaveCount(0);   // one tab left: the list closes
-  expect(await page.evaluate(() => (window as any).__wb.dock().panes.map((p: any) => p.title).sort().join())).toBe('Four,One,Two');
+  expect(await page.evaluate(() => (window as any).__wb.dock().panes.map((p: any) => p.title).sort().join())).toBe('Four,One');   // Two was minimized: a test pane cannot be opened again, so it closed
+});
+
+test('desktop: layer menu and commands repaint both readers in place and persist', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'desktop');
+  const mark = (v: number, id: string, color?: string) => ({
+    kind: 'verse', code: 'NUM', c1: 25, v1: v, i1: null, c2: null, v2: null, i2: null, id, color,
+  });
+  const chapter = {
+    ...fx,
+    reader: {
+      ...fx.reader,
+      marks: { highlights: [mark(10, 'fill', 'yellow')], threads: [mark(10, 'trial', 'green')],
+        notes: [mark(11, 'note')], thread_names: { trial: 'Trial thread' } },
+      questions: [{ id: 'question', v: 12, text: 'Test question' }],
+    },
+  };
+  await page.route('**/fixtures/NUM.25.json', r => r.fulfill({ json: chapter }));
+  await page.route('**/fixtures/wb/text-num-25-10-version-kjv-json.json', r =>
+    r.fulfill({ json: { verses: [{ book: fx.reader.chapter.name, c: 25, v: 10 }] } }));
+  await page.route('**/fixtures/wb/thread-list.json', r => r.fulfill({ json: [{ name: 'Trial thread', id: 'trial', color: 'green' }] }));
+  for (const [word, on] of [['off', false], ['on', true]] as const) {
+    await page.route('**/fixtures/wb/parse-highlights-' + word + '.json', r => r.fulfill({ json: { action: { cmd: 'highlights', on } } }));
+  }
+
+  const main = page.locator('#reader');
+  const second = page.locator('.pane-reader2 .reader2');
+  async function openSecond() {
+    await main.locator('.vn[data-v="10"]').click({ button: 'right' });
+    await page.getByRole('button', { name: 'Open in a new tab', exact: true }).click();
+    await expect(second.locator('.vn-asked[data-v="10"]')).toBeAttached();
+  }
+  async function marks(fill: boolean, thread: boolean) {
+    for (const reader of [main, second]) {
+      const firstWord = reader.locator('.vn[data-v="10"] + .w');
+      if (fill) await expect(firstWord).toHaveClass(/\bhl\b/);
+      else await expect(firstWord).not.toHaveClass(/\bhl\b/);
+      if (thread) await expect(firstWord).toHaveAttribute('style', /linear-gradient/);
+      else await expect(firstWord).not.toHaveAttribute('style', /linear-gradient/);
+      await expect(reader.locator('.vn.vnote[data-v="11"], .vn.vq[data-v="12"]')).toHaveCount(2);
+    }
+    await expect(second.locator('.vn-asked[data-v="10"]')).toBeAttached();
+  }
+
+  await ready(page);
+  await openSecond();
+  await marks(true, true);
+  const readScroll = () => page.evaluate(() => ['#scroller', '.reader2-pane'].map(s => document.querySelector(s)!.scrollTop));
+  const position = await readScroll();
+  await page.locator('#hl-menu').click();
+  await page.getByRole('button', { name: 'Your highlights', exact: true }).click();
+  await marks(false, true);
+  await page.getByRole('button', { name: 'Trial thread', exact: true }).click();
+  await marks(false, false);
+  await page.keyboard.press('Escape');
+  expect(await readScroll()).toEqual(position);
+
+  await page.reload();
+  await page.waitForFunction(() => (window as any).__wbReady);
+  await openSecond();
+  await marks(false, false);
+  await page.locator('#hl-menu').click();
+  await page.getByRole('button', { name: 'Your highlights', exact: true }).click();
+  await page.getByRole('button', { name: 'Trial thread', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await marks(true, true);
+  expect(await page.evaluate(() => (window as any).__wb.run('highlights off'))).toMatchObject({ ok: true });
+  await marks(false, false);
+  expect(await page.evaluate(() => (window as any).__wb.run('highlights on'))).toMatchObject({ ok: true });
+  await marks(true, true);
+});
+
+test('an unlinked word opens the interlinear for its verse', async ({ page }, info) => {
+  const phone = info.project.name === 'webkit-phone';
+  const [key, word] = Object.entries(fx.words).find(([, value]: [string, any]) => !value.strong)!;
+  const [v, i] = key.split('.').map(Number);
+  await page.route(`**/fixtures/wb/interlinear-num-25-${v}.json`, r => r.fulfill({
+    json: { lang: 'heb', book: { name: fx.reader.chapter.name }, verses: [{ c: 25, v, words: [] }] },
+  }));
+  await ready(page);
+  const box = await wordBox(page, v, i);
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  if (phone) await page.touchscreen.tap(x, y);
+  else await page.mouse.click(x, y);
+  const card = page.getByRole('dialog');
+  await expect(card.getByText('No direct Strong’s tag on this word.')).toBeVisible();
+  await card.getByRole('button', { name: 'Verse interlinear' }).click();
+  await expect(page.locator('.pane-interlinear .pane-title')).toHaveText((word as any).reference);
+  await expect(card).toHaveCount(0);
+});
+
+// The words on a highlight are black or white by WCAG contrast with its color, in either theme (highlights, 2026-11-16).
+test('highlighted words take the higher-contrast ink, light and dark', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await ready(page);
+    const r = await page.evaluate(() => {
+      const lum = (c: string) => {
+        const [r, g, b] = c.match(/[\d.]+/g)!.slice(0, 3).map(Number).map(v => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const ratio = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      return [...document.querySelectorAll<HTMLElement>('.w.hl')].slice(0, 20).map(e => {
+        const s = getComputedStyle(e);
+        const bg = lum(s.backgroundColor), ink = lum(s.color);
+        return { ink: s.color, ok: ratio(bg, ink) >= ratio(bg, 1 - ink) && ratio(bg, ink) >= 4.5 };
+      });
+    });
+    expect(r.length).toBeGreaterThan(0);
+    for (const x of r) { expect(x.ok).toBe(true); expect(['rgb(0, 0, 0)', 'rgb(255, 255, 255)']).toContain(x.ink); }
+  }
+});
+
+// A highlight runs on across the spaces between its words: each space is filled and reaches under its neighbors.
+test('a highlight is continuous between words', async ({ page }) => {
+  await ready(page);
+  const r = await page.evaluate(() => {
+    const w = (window as any).__wb, d = w.drawn;
+    d.marks.highlights.push({ kind: 'phrase', code: 'NUM', c1: 25, v1: 5, i1: 1, c2: 25, v2: 5, i2: 40, id: 'cont', color: '#7a1f1f' });
+    w.repaint();
+    const ws = [...document.querySelectorAll<HTMLElement>('.w.hl')].filter(e => d.v[+e.dataset.k!] === 5);
+    return ws.slice(0, -1).map(e => {
+      const g = e.nextElementSibling as HTMLElement | null, s = g && getComputedStyle(g);
+      return { gap: g?.classList.contains('g') ?? false, bg: s?.backgroundColor, shadow: s?.boxShadow ?? '', touches: g ? Math.abs(g.getBoundingClientRect().left - e.getBoundingClientRect().right) < 0.01 : false };
+    });
+  });
+  expect(r.length).toBeGreaterThan(5);
+  for (const x of r) {
+    expect(x.gap).toBe(true);
+    expect(x.bg).toBe('rgb(122, 31, 31)');
+    expect(x.shadow).toContain('rgb(122, 31, 31)');
+  }
 });

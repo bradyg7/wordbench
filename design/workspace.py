@@ -5,7 +5,7 @@ person's review: W1.2, W3's Lines, W5c as the verse card (W5.1, W5.2), W6.1-W6.3
     python design/workspace.py     # writes design/workspace.figcraft and design/exports/workspace/*.png
 
 One page, "Workspace", holds every window. What each answers is in the plan (a Claude doc, "The Notebook as a
-workspace") and the person's findings of 2026-11-06 (docs/phase2-results.md sections 19 and 20); the decisions of
+workspace") and the person's findings of 2026-11-06 (docs/archive/2026-11-10/docs/phase2-results.md sections 19 and 20); the decisions of
 2026-11-07 are drawn in: a note with no place is a page, pages are edited block by block. Scripture comes only from
 content.json (fetched from the database with wb text); the writing shown is demo writing about the Phinehas demo, never
 scripture and never commentary.

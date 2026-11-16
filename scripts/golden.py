@@ -1,13 +1,15 @@
-"""Golden tests: the Python `wb` and the Rust `wb` run on the same inputs, and their answers compared (docs/PLAN.md phase 1).
+"""Golden tests: the Python `wb` and the Rust `wb` run on the same inputs, and their answers compared (docs/archive/2026-11-10/docs/PLAN.md phase 1).
 
     python scripts/golden.py [name-filter ...] [--list]
+
+Set WB_LEGACY_APP to an explicit path to the archived Python checkout for this optional comparison.
 
 Cases are in tests/golden/cases.json: each a name and a list of steps (the arguments of one `wb` command each). Both
 sides get a fresh copy of the scratch study folder (scripts/scratch-study.ps1); the person's real folder is never used.
 The Python side is a private workbench server on its own port, so the running app is never reached. Ids, times and the
 folders' paths are replaced by placeholders before comparing; a step can name an id an earlier step printed as $id1,
 $id2 ... (in the order that side printed them). After the steps of a case that writes, the two study folders are compared
-file by file.
+file by file. Pre-existing Rust-only document items are omitted from both scratch set copies for Python parity.
 """
 import difflib
 import json
@@ -23,7 +25,6 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
-OLD = Path.home() / "github" / "bible-workbench"
 REAL = Path.home() / "github" / "bible-study-data"
 SOURCE = Path(os.environ.get("WB_GOLDEN_SOURCE") or Path(tempfile.gettempdir()) / "bible-workbench-rs" / "study-scratch")
 WORK = Path(tempfile.gettempdir()) / "bible-workbench-rs" / "golden"
@@ -90,6 +91,27 @@ def tree(folder):
     return out
 
 
+def omit_document_set_items(folder):
+    count = 0
+    for path in sorted((folder / "sets").glob("*.md")):
+        lines = path.read_bytes().splitlines(keepends=True)
+        kept = []
+        for line in lines:
+            if line.startswith(b"- {"):
+                try:
+                    item = json.loads(line[2:])
+                except ValueError:
+                    pass
+                else:
+                    if isinstance(item, dict) and item.get("kind") == "document" and item.get("key"):
+                        count += 1
+                        continue
+            kept.append(line)
+        if len(kept) != len(lines):
+            path.write_bytes(b"".join(kept))
+    return count
+
+
 def main():
     want = [a for a in sys.argv[1:] if not a.startswith("--")]
     cases = json.loads((REPO / "tests" / "golden" / "cases.json").read_text(encoding="utf-8"))
@@ -97,6 +119,12 @@ def main():
         for c in cases:
             print(c["name"])
         return 0
+    legacy = os.environ.get("WB_LEGACY_APP")
+    if not legacy:
+        sys.exit("Set WB_LEGACY_APP to the Python checkout for this optional comparison.")
+    old = Path(legacy).resolve()
+    if not (old / "workbench" / "server.py").is_file() or not (old / "wb.py").is_file():
+        sys.exit(f"WB_LEGACY_APP is not a Python Workbench checkout: {old}")
     if want:
         cases = [c for c in cases if any(w in c["name"] for w in want)]
     if SOURCE.resolve() == REAL.resolve():
@@ -110,12 +138,15 @@ def main():
     py, rs = Side("python", WORK / "py"), Side("rust", WORK / "rs")
     for s in (py, rs):
         shutil.copytree(SOURCE, s.folder)
+        omitted = omit_document_set_items(s.folder)
+        if omitted:
+            print(f"{s.name} scratch: omitted {omitted} Rust-only document set item(s)")
 
     # each side's documents folder is its own empty scratch folder: the Python app's default is the person's Documents
     env_py = dict(os.environ, BIBLE_STUDY_DATA=str(py.folder), BIBLE_WORKBENCH_PORT=str(PORT), PYTHONIOENCODING="utf-8",
                   BIBLE_WORKBENCH_PDF_DIR=str(py.docs))
     env_rs = dict(os.environ, WB_STUDY_DIR=str(rs.folder), WB_DOCS_DIR=str(rs.docs))
-    server = subprocess.Popen([sys.executable, "-m", "workbench.server"], cwd=str(OLD), env=env_py,
+    server = subprocess.Popen([sys.executable, "-m", "workbench.server"], cwd=str(old), env=env_py,
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _ in range(100):
@@ -136,9 +167,15 @@ def main():
                 # second (which decide the order of ties) fall the same way for the slower Python side and the Rust one.
                 fresh = (lambda: time.sleep(1.02 - time.time() % 1)) if case.get("files") else (lambda: None)
                 fresh()
-                a = run([sys.executable, str(OLD / "wb.py")] + py.args(step), env_py, cwd=str(OLD))
+                a = run([sys.executable, str(old / "wb.py")] + py.args(step), env_py, cwd=str(old))
                 fresh()
                 b = run([str(RUST)] + rs.args(step), env_rs)
+                if step[:2] in (["note", "rm"], ["trail", "rm"]) and a[0] == b[0] == 0:
+                    # Rust reports timed Undo details. Compare the shared success result
+                    # here and still compare the live study files below.
+                    result = json.loads(b[1])
+                    if result.get("ok") is True and result.get("state") == "pending":
+                        b = (b[0], json.dumps({"ok": True}, indent=2) + "\n", b[2])
                 got_a = "exit %d\n%s%s" % (a[0], py.norm(a[1]), py.norm(a[2]))
                 got_b = "exit %d\n%s%s" % (b[0], rs.norm(b[1]), rs.norm(b[2]))
                 if got_a != got_b:

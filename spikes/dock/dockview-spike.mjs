@@ -5,9 +5,14 @@
 //   node spikes/dock/dockview-spike.mjs
 import { webkit } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const lib = readFileSync('C:/Users/brady/github/bible-workbench/web/vendor/dockview-core/dockview-core.min.js', 'utf8');
-const css = (() => { try { return readFileSync('C:/Users/brady/github/bible-workbench/web/vendor/dockview-core/dockview.css', 'utf8'); } catch { return ''; } })();
+// The Python app's vendored copy, in the sibling repository; WB_DOCKVIEW_VENDOR points elsewhere when it is not there.
+const vendor = process.env.WB_DOCKVIEW_VENDOR
+  ?? fileURLToPath(new URL('../../../bible-workbench/web/vendor/dockview-core/', import.meta.url));
+const lib = readFileSync(join(vendor, 'dockview-core.min.js'), 'utf8');
+const css = (() => { try { return readFileSync(join(vendor, 'dockview.css'), 'utf8'); } catch { return ''; } })();
 // placeholder lines only (no scripture here): the reader's scroll position is what is checked
 const lines = Array.from({ length: 200 }, (_, i) => `<p data-v="${i + 1}">line ${i + 1}</p>`).join('');
 const html = `<!doctype html><html><head><style>${css} html,body{margin:0;height:100%} #host{position:fixed;inset:0}

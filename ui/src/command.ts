@@ -1,4 +1,4 @@
-// The command field: search and the capture box merged into one (docs/PLAN-design.md, decided in review). Backtick
+// The command field: search and the capture box merged into one (docs/archive/2026-11-10/docs/PLAN-design.md, decided in review). Backtick
 // opens it from anywhere. As words are typed, suggestions come in groups: what the line means as a command, commands
 // that start with the first word, your threads (for +name), and a plain search of the KJV. Enter runs the one marked.
 import { wb } from './api';
@@ -72,6 +72,14 @@ function describe(a: any): string {
   }
 }
 
+/** What the box shows when it is not being typed in (the line of the tab in front, command C14), and the hooks that let
+ * Enter change the tab in front while Alt+Enter opens a new one; set by main.ts. */
+export const box = {
+  shows: () => '',
+  before: () => '',
+  after: (_was: string, _newTab: boolean) => {},
+};
+
 export class CommandField {
   private list: HTMLElement;
   private items: Suggestion[] = [];
@@ -112,17 +120,24 @@ export class CommandField {
     this.list.hidden = true;
   }
 
+  /** The field empty, or holding just the line the box showed (nothing typed yet). */
+  private untouched(): boolean {
+    const v = this.input.value.trim();
+    return !v || v === box.shows().trim();
+  }
+
   private key(e: KeyboardEvent) {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.input.value = ''; this.close(); this.input.blur(); return; }
-    // ↑ ↓ go through the history when the field is empty or already going through it (as PowerShell does)
-    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && (this.back !== null || (!this.input.value.trim() && e.key === 'ArrowUp'))) {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.input.value = box.shows(); this.close(); this.input.blur(); return; }
+    // ↑ ↓ go through the history when the field is empty, or still holds the line it was given (C14), or is already
+    // going through it (as PowerShell does; note 797d)
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && (this.back !== null || (this.untouched() && e.key === 'ArrowUp'))) {
       e.preventDefault();
       if (!history.length) return;
       const at = this.back ?? history.length;
       const to = e.key === 'ArrowUp' ? Math.max(0, at - 1) : at + 1;
       this.close();
       this.items = [];
-      if (to >= history.length) { this.back = null; this.input.value = ''; return; }
+      if (to >= history.length) { this.back = null; this.input.value = box.shows(); this.input.classList.remove('from-history-failed'); return; }
       this.back = to;
       this.input.value = history[to].line;
       this.input.setSelectionRange(this.input.value.length, this.input.value.length);
@@ -145,11 +160,12 @@ export class CommandField {
     if (e.key === 'Enter') {
       e.preventDefault();
       const s = this.back === null && this.itemsFor === this.input.value.trim() ? this.items[this.sel] : undefined;
-      this.run(s ? s.line : this.input.value);
+      this.run(s ? s.line : this.input.value, e.altKey);
     }
   }
 
-  async run(line: string) {
+  async run(line: string, newTab = false) {
+    const was = box.before();
     this.close();
     this.input.blur();
     this.back = null;
@@ -157,7 +173,7 @@ export class CommandField {
     const r: { ok: boolean; said?: string; error?: string } = await runLine(line).catch(x => ({ ok: false, error: String(x) }));
     remember(line, r.ok);
     this.say(r.ok ? r.said || '' : r.error || 'That did not work', !r.ok);
-    if (r.ok) this.input.value = '';
+    if (r.ok) { box.after(was, newTab); this.input.value = box.shows(); }
     else { this.input.focus(); this.input.value = line; }
   }
 
@@ -175,7 +191,7 @@ export class CommandField {
     const line = this.input.value;
     const seq = ++this.seq;
     const t = line.trim();
-    if (!t) {
+    if (!t || this.untouched()) {
       // the empty field: the last lines run, newest first (a line that did not work says so)
       this.items = history.slice(-6).reverse().map(r => ({ group: 'Recent · ↑ goes back through them', line: r.line, what: r.ok ? '' : 'did not work', ico: 'prompt' }));
       this.itemsFor = '';
@@ -251,4 +267,55 @@ export function attachCommandField(): CommandField {
     return r.ok ? r.said || '' : r.error || '';
   };
   return field;
+}
+
+/** The box popped off the bar (design/features/command C18, c567): dragged by its search icon (no grip of its own: the
+ *  person, 2026-11-13) it floats where it is put and keeps its line; a double-click on the icon puts it back. Where it floats is kept in the window's storage. */
+export function initPopOff() {
+  const cb = document.getElementById('cmdbox')!;
+  // the search icon main.ts puts at the box's start is the handle
+  const grip = cb.querySelector<HTMLElement>(':scope > svg.ico') as unknown as HTMLElement | null;
+  if (!grip) return;
+  grip.classList.add('cmd-handle');
+  grip.setAttribute('aria-hidden', 'false');
+  (grip as unknown as SVGElement).insertAdjacentHTML('afterbegin', '<title>Drag to move the box; double-click to put it back</title>');
+  const KEY = 'wb.cmdbox.at';
+  const place = (x: number, y: number) => {
+    const w = cb.offsetWidth || 480, hh = cb.offsetHeight || 36;
+    x = Math.max(8, Math.min(window.innerWidth - w - 8, x));
+    y = Math.max(8, Math.min(window.innerHeight - hh - 8, y));
+    cb.style.left = `${x}px`; cb.style.top = `${y}px`;
+    return { x, y };
+  };
+  const putBack = () => {
+    cb.classList.remove('popped');
+    cb.style.left = cb.style.top = '';
+    try { localStorage.removeItem(KEY); } catch { /* storage off */ }
+  };
+  try {
+    const at = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (at && typeof at.x === 'number') { cb.classList.add('popped'); requestAnimationFrame(() => place(at.x, at.y)); }
+  } catch { /* storage off */ }
+  grip.addEventListener('dblclick', e => { e.preventDefault(); putBack(); });
+  grip.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const r = cb.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top, x0 = e.clientX, y0 = e.clientY;
+    let moved = false, at = { x: r.left, y: r.top };
+    grip.setPointerCapture(e.pointerId);
+    const move = (m: PointerEvent) => {
+      if (!moved && Math.hypot(m.clientX - x0, m.clientY - y0) < 6) return;
+      if (!moved) { moved = true; cb.style.width = `${r.width}px`; cb.classList.add('popped', 'dragging'); cb.style.width = ''; }
+      at = place(m.clientX - dx, m.clientY - dy);
+    };
+    const up = () => {
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', up);
+      cb.classList.remove('dragging');
+      if (moved) { try { localStorage.setItem(KEY, JSON.stringify(at)); } catch { /* storage off */ } }
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+  });
+  window.addEventListener('resize', () => { if (cb.classList.contains('popped')) place(parseFloat(cb.style.left) || 0, parseFloat(cb.style.top) || 0); });
 }

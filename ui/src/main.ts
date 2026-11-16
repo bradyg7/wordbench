@@ -1,6 +1,6 @@
 // Bible Workbench: the reader with its marks, tap cards, touch selection, hover cards and the color bar (phase 0), and
 // the desktop around it (phase 2): the toolbar with the command field, the dock of panes, the Notebook, threads and
-// layers, word study, find, text size and the keyboard. See docs/phase0-results.md and docs/phase2-results.md.
+// layers, word study, find, text size and the keyboard. See docs/phase0-results.md and docs/archive/2026-11-10/docs/phase2-results.md.
 import '@fontsource/literata/400.css';
 import '@fontsource/literata/400-italic.css';
 import '@fontsource/literata/500-italic.css';
@@ -19,17 +19,23 @@ import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
 import type { Pane } from './dock';
 import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
-import { bridge, loadWindowSettings, openSettings } from './settings';
+import { bridge, loadWindowSettings, markName, openSettings } from './settings';
 import { loadKept } from './mycommands';
 import { fills as cmdFills, byKey as commandByKey, run as runKeptCommand } from './mycommands';
-import { absent, customize, hiddenToFit, hooks, initToolbar, loadToolbar, setBadge, setVersionLabel, fitToBar } from './toolbar';
+import { byId, CATALOG, flipTheme, hooks, initReaderTools, READER_TOOLS, setBadge, setVersionLabel, textSizeMenu, toggleFullScreen } from './toolbar';
+import { initRail, railLinksInit, railOn } from './rail';
+import { focusReader, frontStep, initTrail, onFront, paneStep, readerStep } from './trail';
+import { menu as layoutMenu } from './layouts';
 import { isCaptureKey, notebookBadge, openNote, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
 import type { Change } from './dock';
-import { attachCommandField, loadThreads } from './command';
+import { attachCommandField, box as cmdBox, initPopOff, loadThreads } from './command';
 import { findInPane, paneForFind } from './panefind';
 import { findingBox, openFindings } from './findings';
 import { openDocuments } from './documents';
-import { parse, runLine, written } from './actions';
+import { canReopen, parse, reopen, runLine, written } from './actions';
+import { setupIfNeeded } from './setup';
+import { createReadAloud } from './listen';
+import { refreshInks } from './hlink';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const reader = $('reader'), scroller = $('scroller');
@@ -85,6 +91,7 @@ async function setVersion(v: string): Promise<string> {
   v = v.toUpperCase();
   if (!VERSIONS.includes(v)) return `No version ${v} here: ${VERSIONS.join(', ')}`;
   if (v !== version) {
+    readAloud.stopForNavigation();
     savePlace();
     version = v;
     try { localStorage.setItem('wb.version', v); } catch { /* this run only */ }
@@ -111,6 +118,7 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
     if (vn) scroller.scrollTop = reader.offsetTop + vn.offsetTop - 12 + offset;
   }
   placeButton(`${data.chapter.name} ${chapter}`);
+  readerStep(`${data.chapter.name} ${chapter}`);
   readerMoved();
   setVersionLabel(data.chapter.version || 'KJV');
   const t2 = performance.now();
@@ -126,19 +134,35 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   savePlace();
 }
 
+const readAloud = createReadAloud({
+  books: () => books,
+  drawn: () => drawn,
+  topVerse: () => topVerse().verse,
+  rememberPlace,
+  show: async (code, chapter, verse) => { await open(code, chapter, verse); return drawn; },
+  root: reader,
+  scroller,
+});
+
 function placeButton(label: string) {
   const b = $('place');
   b.replaceChildren(icon('book'), h('span', 'place-label', label), icon('down', 14));
 }
 
+function rememberPlace() {
+  if (drawn) { savePlace(); backStack.push({ ...place }); if (backStack.length > 50) backStack.shift(); }
+}
+
 /** A jump elsewhere: the place left is kept for back. */
 async function jump(code: string, chapter: number, verse = 1) {
-  if (drawn) { savePlace(); backStack.push({ ...place }); if (backStack.length > 50) backStack.shift(); }
+  readAloud.stopForNavigation();
+  rememberPlace();
   app.picked = verse > 1 ? { anchor: `${code}.${chapter}:${verse}`, label: `${books.find(b => b.code === code)?.name ?? code} ${chapter}:${verse}` } : null;
   await open(code, chapter, verse);
 }
 
 function back(): boolean {
+  readAloud.stopForNavigation();
   const p = backStack.pop();
   if (!p) return false;
   open(p.code, p.chapter, p.verse, p.offset);
@@ -146,6 +170,7 @@ function back(): boolean {
 }
 
 function step(n: number) {
+  readAloud.stopForNavigation();
   if (!drawn) return;
   const c = drawn.chapter;
   let i = books.findIndex(b => b.code === c.code), ch = c.chapter + n;
@@ -153,6 +178,14 @@ function step(n: number) {
   else if (ch > c.chapters) { if (i < 0 || i >= books.length - 1) return; i++; ch = 1; }
   app.picked = null;
   open(books[i]?.code ?? c.code, ch);
+}
+
+// Visibility changes use the marks already loaded in each reader.
+function repaintLayers() {
+  if (drawn) paint(reader, drawn);
+  for (const { view } of readers2.values()) {
+    if (view.drawn) paint(view.root, view.drawn);
+  }
 }
 
 /** The chapter's marks read again from the study folder and drawn, without moving the text. */
@@ -173,7 +206,20 @@ function lexiconBody(w: WordView, card = false): HTMLElement {
   if (card) b.append(h('div', 'card-head', `${w.text} · ${w.reference}`));
   else { b.append(h('h2', 'sheet-title', w.text), h('div', 'sheet-sub', w.reference)); }
   const lx = w.lexicon;
-  if (!lx) { b.append(h('p', 'muted', 'No Strong’s number on this word.')); return b; }
+  const verseInterlinear = () => {
+    closeSheet();
+    const [code, cv] = w.anchor.split('.');
+    openInterlinear(`${code} ${cv}`, w.reference);
+  };
+  if (!lx) {
+    b.append(h('p', 'muted', w.strong ? `No lexicon entry for ${w.strong}.` : 'No direct Strong’s tag on this word.'));
+    if (!card) {
+      const inter = h('button', 'btn', 'Verse interlinear');
+      inter.onclick = verseInterlinear;
+      b.append(inter);
+    }
+    return b;
+  }
   const row = h('div', 'lemma-row');
   const lemma = h('span', 'lemma', lx.lemma);
   lemma.lang = lx.lang === 'grk' ? 'grc' : 'he';
@@ -194,10 +240,10 @@ function lexiconBody(w: WordView, card = false): HTMLElement {
     const uses = h('button', 'btn primary', 'Every use');
     uses.onclick = () => { closeSheet(); openUses(lx.strong, ''); };
     const inter = h('button', 'btn', 'Interlinear');
-    inter.onclick = () => { closeSheet(); const [, cv] = w.anchor.split('.'); openInterlinear(`${w.anchor.slice(0, 3)} ${cv}`, w.reference); };
+    inter.onclick = verseInterlinear;
     acts.append(uses, inter);
     b.append(acts);
-    if (!compact()) b.append(actions(['Open as a tab'], () => { closeSheet(); openStrong(lx.strong); }));
+    if (!compact()) b.append(actions(['Keep as pane'], () => { closeSheet(); openStrong(lx.strong); }));
     for (const n of w.notes) b.append(noteCard(n.anchor === w.anchor ? w.reference : `${lx.strong} everywhere`, n.text));
     const note = h('button', 'btn soft wide', `Note on ${lx.strong} everywhere`);
     note.onclick = () => writeNote(note, { anchor: lx.strong, label: `${lx.strong} everywhere` }, 'note');
@@ -260,7 +306,7 @@ function colorRow(current: string | undefined, pick: (c: string | null) => void,
   COLORS.forEach((c, n) => {
     const dot = h('button', `swatch c-${c}${c === current ? ' on' : ''}`);
     dot.setAttribute('aria-label', c);
-    dot.title = `${c[0].toUpperCase() + c.slice(1)} (${n + 1})`;
+    dot.title = `${markName(c)} (${n + 1})`;
     dot.onclick = () => pick(c);
     row.append(dot);
   });
@@ -634,13 +680,14 @@ async function openSecondReader(ref: string, version = 'KJV') {
   let vw: View | null = null, drawnAt = '', head: HTMLElement | null = null;
   const draw2 = async (el: HTMLElement, p: Pane, toVerse: number) => {
     const { data } = await api.reader(st.code, st.chapter, ver);
+    if (!dock.panes.includes(p)) return;
     const v2 = vw!;
     v2.drawn = draw(v2.root, data.chapter, data.marks, 999, new Set((data.questions || []).map(q => q.v)));
     while (v2.drawn.more()) { /* the whole chapter at once: a pane holds one */ }
     v2.selector.attach(v2.drawn);
     drawnAt = `${st.code}.${st.chapter}`;
     // At the reader in the Notebook has a row for each second reader, following it as it turns (W4, sheet W1.2)
-    readers2.set(p.id, { pane: p.id, code: st.code, chapter: st.chapter, label: `${data.chapter.name} ${st.chapter}` });
+    readers2.set(p.id, { pane: p.id, code: st.code, chapter: st.chapter, label: `${data.chapter.name} ${st.chapter}`, view: v2 });
     readerMoved();
     // the verses asked for, unless that is the whole chapter
     const all = data.chapter.verses.every(x => asked.has(`${st.chapter}:${x.v}`));
@@ -720,6 +767,13 @@ async function openSecondReader(ref: string, version = 'KJV') {
     paint(vw.root, vw.drawn);
   });
   if (!readers2Watched.has(pane2.id)) {
+    pane2.captureView = () => ({ code: st.code, chapter: st.chapter, version: ver });
+    pane2.restoreView = async state => {
+      if (!state || !books.some(b => b.code === state.code && Number.isInteger(state.chapter) && state.chapter >= 1 && state.chapter <= b.chapters)) return;
+      st.code = state.code; st.chapter = state.chapter;
+      if (VERSIONS.includes(state.version)) ver = state.version;
+      await draw2(pane2.el, pane2, 1);
+    };
     readers2Watched.add(pane2.id);
     const was = pane2.onClose;
     pane2.onClose = () => { was?.(); readers2.delete(pane2.id); readers2Watched.delete(pane2.id); readerMoved(); };
@@ -730,7 +784,7 @@ async function openSecondReader(ref: string, version = 'KJV') {
 const turners = new WeakMap<HTMLElement, (n: number) => void>();
 
 /** The second readers open, by pane: the chapter each shows (app.readers). */
-const readers2 = new Map<string, { pane: string; code: string; chapter: number; label: string }>();
+const readers2 = new Map<string, { pane: string; code: string; chapter: number; label: string; view: View }>();
 const readers2Watched = new Set<string>();
 
 // ---- an Inbox note dragged from the Notebook onto a verse: placed there (wb note place) -------------------------------
@@ -886,13 +940,15 @@ async function highlightsMenu(from: HTMLElement) {
   const box = h('div', 'menu-list layers-menu');
   const toggle = (label: string, on: boolean, flip: () => void, dot?: HTMLElement) => {
     const b = h('button', `menu-item check${on ? ' on' : ''}`);
+    b.setAttribute('aria-pressed', String(on));
     b.append(icon(on ? 'eye' : 'eyeoff', 14));
     if (dot) b.append(dot);
     b.append(document.createTextNode(` ${label}`));
-    b.onclick = () => { flip(); layers.save(); refreshMarks(); close(); highlightsMenu(from); };
+    b.onclick = () => { flip(); layers.save(); repaintLayers(); close(); highlightsMenu(from); };
     box.append(b);
   };
-  box.append(h('div', 'label', 'Drawn in the reader'));
+  box.append(h('div', 'label', 'In all readers'));
+  box.append(h('p', 'layers-hint', 'Controls highlight fills and thread underlines. Notes, questions and verse markers stay visible.'));
   toggle('All highlights and threads', layers.all, () => { layers.all = !layers.all; });
   toggle('Your highlights', layers.mine, () => { layers.mine = !layers.mine; });
   let ts: any[] = [];
@@ -973,10 +1029,10 @@ async function todaySection(into: HTMLElement) {
 }
 
 function settings(from: HTMLElement) {
-  // R4 (docs/redesign-R4.md): More is Settings, Help, and the panes that are not on the toolbar. Everything that was a
-  // setting lives in Settings; a pane put away (or never added) waits here with a way back.
+  // More (design/features/command round 2, C5 and C13): what is about the window, not the study. The panes are on the
+  // rail; under 900 px the reader's tools that sit at the box's end fold in here too (C17).
   const b = h('div', 'settings more-menu');
-  const go = (label: string, ico: string, fn: () => void, sub = '', key = '') => {
+  const go = (label: string, ico: string, fn: (at: HTMLElement) => void, sub = '', key = '') => {
     const x = h('button', 'menu-item more-item');
     x.append(icon(ico, 16));
     const t = h('span', 'more-text');
@@ -984,7 +1040,7 @@ function settings(from: HTMLElement) {
     if (sub) t.append(h('span', 'muted small', sub));
     x.append(t);
     if (key) x.append(h('kbd', '', key));
-    x.onclick = () => { closeSheet(); closeMenu(); fn(); };
+    x.onclick = () => { closeSheet(); closeMenu(); fn(from); };
     b.append(x);
   };
   if (compact() || !inApp) {
@@ -992,19 +1048,27 @@ function settings(from: HTMLElement) {
     b.append(h('h2', 'sheet-title', 'More'), reading);
     todaySection(reading);
   }
+  if (!compact() && window.innerWidth < 900) {
+    b.append(h('div', 'label', 'The reader'));
+    for (const id of READER_TOOLS) { const it = byId(id)!; go(id === 'version' ? `Version: ${version}` : it.label, it.icon || 'book', at => it.run(at), it.sub); }
+    b.append(h('div', 'label', 'The window'));
+  }
+  // the phone has no rail: its panes stay in More, as they were
+  if (compact()) {
+    b.append(h('div', 'label', 'Panes'));
+    for (const it of CATALOG.filter(i => i.group === 'Panes' && i.more)) go(it.label, it.icon || 'book', at => it.run(at));
+    b.append(h('div', 'label', 'The window'));
+  }
+  go('Full screen', 'expand', () => void toggleFullScreen(), '', 'F11');
+  go('Layout', 'sidebar', at => void layoutMenu(at, s => void openSettings(s)), 'Open or save an arrangement of panes');
+  go('Theme', 'eye', () => flipTheme(), 'Light or dark');
+  go('Text size', 'heading', at => textSizeMenu(at), `${sizePct}%`, 'Ctrl+=');
   go('Settings…', 'settings', () => openSettings(), '', 'Ctrl+,');
-  go('Customize toolbar…', 'sliders', () => customize());
-  go('Help', 'help', () => openHelp(), 'Guide · Commands · Keys');
-  const fit = hiddenToFit();
-  if (fit.length) {
-    b.append(h('div', 'label', 'Hidden to fit'));
-    for (const it of fit) go(it.label, it.icon || 'book', () => it.run($('more')));
-  }
-  const rest = absent();
-  if (rest.length) {
-    b.append(h('div', 'label', 'Not on your toolbar'));
-    for (const it of rest) go(it.label, it.icon || 'book', () => it.run($('more')));
-  }
+  go('Help', 'help', () => openHelp(), 'Guide · Keys · Manual', 'F1');
+  go('Save chapter PDF', 'file', () => {
+    void runLine('pdf').then(result => toast(result.said || result.error || 'Could not save the chapter PDF'))
+      .catch(error => toast(String(error.message || error)));
+  });
   if (compact() || !inApp) openSheet(b, from);
   else popMenu(from, b, { align: 'right', width: 300 });
 }
@@ -1031,17 +1095,39 @@ $('pen').title = 'Write a page (on the place you picked, or the verse at the top
 $('tab-notebook').onclick = () => openNotebook();
 $('tab-study').onclick = () => openHelp();
 $('cmdbox').prepend(icon('search'));
+initPopOff();
 notebookBadge.set = n => setBadge(n);
 hooks.highlights = from => void highlightsMenu(from);
 hooks.toggleVersion = () => setVersion(version === 'KJV' ? 'YLT' : 'KJV');
 hooks.find = () => findInChapter(finding);
+hooks.listen = () => { void readAloud.execute({ action: 'start' }).then(toast).catch(e => toast(String(e))); };
 cmdFills.get = () => {
   const d = drawn, sel = selector.sel;
   let word = '';
   if (d && sel) word = Array.from({ length: sel.b - sel.a + 1 }, (_, i) => d.el[sel.a + i]?.textContent ?? '').join(' ').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').trim();
   return { word, place: here().label, chapter: d ? `${d.chapter.name} ${d.chapter.chapter}` : '' };
 };
-initToolbar();
+initReaderTools();
+initRail();
+initTrail($('trailline'));
+// The box shows the line of the tab in front (command C14): the reader's place, or the line that opened the pane.
+const cmdInput = $<HTMLInputElement>('cmd');
+cmdBox.shows = () => { const f = frontStep(); return f ? f.line || f.title : $('place').textContent?.trim() || ''; };
+onFront(() => {
+  const f = frontStep();
+  // the reader's tools stay while a reader is in front: the main one or a second reader (both are drawn by them)
+  $('cmdbox').classList.toggle('pane-front', !!f && !f.key.startsWith('reader|') && f.kind !== 'reader2');
+  if (document.activeElement !== cmdInput) cmdInput.value = cmdBox.shows();
+});
+cmdBox.before = () => frontStep()?.key ?? '';
+// Enter changes the tab in front (C14): when the line opened another pane of the same kind or in the same group, the old
+// one closes; Alt+Enter keeps it (a new tab).
+cmdBox.after = (was, newTab) => {
+  const f = frontStep();
+  if (newTab || !was || was.startsWith('reader|') || !f || f.key === was || f.key.startsWith('reader|')) return;
+  const old = dock.find(was), now = dock.find(f.key);
+  if (old && now && old !== now && (old.kind === now.kind || old.group === now.group)) void dock.close(old);
+};
 
 // A box that is being scrolled shows its scrollbar for a moment afterwards (style.css; note cd59). Scroll events do not
 // bubble, so this listens in the capture phase.
@@ -1057,12 +1143,13 @@ document.addEventListener('keydown', e => {
   const typing = !!(e.target as HTMLElement).closest('input, textarea, [contenteditable]');
   if (e.key === 'Escape') { closeSheet(); clearSelection(); hideCard(); }
   // Ctrl+F finds in the pane last clicked or typed in, else in the chapter (note 5c4a)
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
-  if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
   { const kc = commandByKey(e); if (kc) { e.preventDefault(); void runKeptCommand(kc); return; } }
-  if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); return; }
-  if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === ',') { e.preventDefault(); openSettings(); return; }
+  if (e.key === 'F1' && !e.ctrlKey && !e.altKey && !e.metaKey) { e.preventDefault(); openSettings('guide'); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '0') { e.preventDefault(); setSize(100); return; }
   // a finding about the app, from anywhere (note 50c1)
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); findingBox(); return; }
   // quick capture (Ctrl+J unless set otherwise in the Notebook's settings): a small box at the verse, from anywhere
@@ -1101,14 +1188,17 @@ Object.assign(app, {
   step,
   back,
   refreshMarks,
+  repaintLayers,
   topVerse: () => topVerse().verse,
   setSize,
   size: () => sizePct,
   version: () => version,
   setVersion,
   findInChapter,
+  listen: (command: Parameters<typeof readAloud.execute>[0]) => readAloud.execute(command),
   secondReader: (ref: string, version?: string) => void openSecondReader(ref, version),
-  readers: () => [...readers2.values()].filter(r => dock.panes.some(p => p.id === r.pane)),
+  readers: () => [...readers2.values()].filter(r => dock.panes.some(p => p.id === r.pane))
+    .map(({ pane, code, chapter, label }) => ({ pane, code, chapter, label })),
   changed: (...what: Change[]) => { written(...what); if (!what.length || what.includes('threads')) loadThreads(); },
 });
 
@@ -1122,6 +1212,8 @@ bridge.setInputMode = m => { selector.mode = m as InputMode; document.documentEl
 
 // ---- start ------------------------------------------------------------------------------------------------------------
 async function start() {
+  // A first run (or a moved folder) opens the setup screen, and the reader starts after it.
+  if (await setupIfNeeded()) return;
   document.documentElement.dataset.size = sizeClass();
   try {
     const t = localStorage.getItem('wb.theme');
@@ -1129,7 +1221,14 @@ async function start() {
     document.documentElement.dataset.hover = localStorage.getItem('wb.hover') || 'off';
     setSize(+(localStorage.getItem(SIZE_STORE) || 100));
   } catch { /* defaults */ }
+  refreshInks();
   initPanes($('dock'));
+  // a minimized tab is a link that opens again the way a layout does (design/features/minimize round 7)
+  dock.canReopen = canReopen;
+  dock.reopen = key => reopen(key);
+  railLinksInit();
+  dock.onOpen = (p, isNew) => paneStep(p, isNew);
+  dock.onLayout = () => railOn();
   dock.keepPlace = () => {
     const at = drawn ? topVerse() : null;
     return () => { if (at) backTo(at); };
@@ -1148,9 +1247,9 @@ async function start() {
   if (inApp) {
     void readSettings();
     void loadWindowSettings();
-    void loadKept().then(() => loadToolbar()).then(() => fitToBar());
+    void loadKept();
     loadPalette();
-    if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') openNotebook();
+    if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') { openNotebook(); focusReader(); }
   }
 }
 

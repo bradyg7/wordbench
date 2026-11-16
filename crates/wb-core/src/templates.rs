@@ -1,4 +1,4 @@
-//! Templates (W5 of "The Notebook as a workspace", 2026-11-07; sheets W6.1 to W6.3 of docs/workspace-design.md).
+//! Templates (W5 of "The Notebook as a workspace", 2026-11-07; sheets W6.1 to W6.3 of docs/archive/2026-11-10/docs/workspace-design.md).
 //!
 //! A template is an ordinary note with `template: true` in its front matter: a page with no place (in `notes/_inbox/`,
 //! so the Python app passes over it as it does every page, and Obsidian opens it as a note). The Notebook leaves
@@ -184,13 +184,17 @@ fn made(bible: &Bible, t: &Value, place: Option<&str>, title: Option<&str>, read
 /// `wb template show`: a template whole (its text, blocks, settings, how often used); with a place (and the reader's
 /// chapter), what a page made from it now would be named and hold (`made`), as the window previews it.
 pub fn show(bible: &Bible, store: &Store, key: &str, place: Option<&str>, reader: Option<&str>) -> Result<Value> {
+    show_with_title(bible, store, key, place, reader, None)
+}
+
+pub fn show_with_title(bible: &Bible, store: &Store, key: &str, place: Option<&str>, reader: Option<&str>, title: Option<&str>) -> Result<Value> {
     let t = find(bible, store, key)?;
     let every = nb::every(bible, store);
     let mut v = row(&t, &every);
     v["text"] = t["text"].clone();
     v["blocks"] = pages::blocks(store, &id_of(&t))?["blocks"].clone();
     if place.is_some() || t["asks"] != "place" {
-        let (title, text) = made(bible, &t, place, None, reader)?;
+        let (title, text) = made(bible, &t, place, title, reader)?;
         v["made"] = json!({"title": title, "text": text});
     }
     Ok(v)
@@ -351,8 +355,10 @@ pub fn set_template(bible: &Bible, store: &mut Store, key: &str, new_name: Optio
 pub fn remove_template(bible: &Bible, store: &mut Store, key: &str) -> Result<Value> {
     let t = find(bible, store, key)?;
     let id = id_of(&t);
-    store.delete_jot(&id)?;
-    Ok(json!({"ok": true, "id": id, "title": t["title"]}))
+    let mut result = crate::deletion::remove(bible, store, &id)?;
+    result["id"] = json!(id);
+    result["title"] = t["title"].clone();
+    Ok(result)
 }
 
 #[cfg(test)]

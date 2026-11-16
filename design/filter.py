@@ -1,4 +1,4 @@
-"""S8 of the debug round (docs/debug-spec.md, 2026-11-08): the sheet for "a clean filter for the Notebook" (finding 4463),
+"""S8 of the debug round (docs/archive/2026-11-10/docs/debug-spec.md, 2026-11-08): the sheet for "a clean filter for the Notebook" (finding 4463),
 drawn with FigCraft as the workspace round was (it reuses workspace.py's and phase2b.py's helpers, so the sheets look
 alike). Nothing is built from this sheet until the person accepts it.
 

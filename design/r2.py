@@ -1,7 +1,7 @@
-"""R2 of the redesign list (docs/debug-spec.md, 2026-11-09): the Shelf (findings 1d0e, 3fa7, a484). The design round: the
+"""R2 of the redesign list (docs/archive/2026-11-10/docs/debug-spec.md, 2026-11-09): the Shelf (findings 1d0e, 3fa7, a484). The design round: the
 existing sheets (S1, SH1, SH2 of the phase 2b round) checked against the Notebook's rework, and the alternative the person
 asked about drawn beside them: an Obsidian-style file tree whose folders hold sets, pages, places and documents. Nothing is
-built from these sheets until the person chooses (docs/redesign-R2.md).
+built from these sheets until the person chooses (docs/archive/2026-11-10/docs/redesign-R2.md).
 
     python design/r2.py     # writes design/r2.figcraft and design/exports/r2/*.png
 
@@ -140,7 +140,7 @@ def sheets(board):
                   "of 2026-11-04) checked against the Notebook's rework and corrected where the rework or the files "
                   "changed it. B1 to B5 are the alternative: one tree whose folders hold sets, pages, places, threads and "
                   "documents, opened together with Open all. Both meet a484 the same way; they differ in how the Shelf "
-                  "looks and how much is built. The words are on docs/redesign-R2.md.")
+                  "looks and how much is built. The words are on docs/archive/2026-11-10/docs/redesign-R2.md.")
 
     # ======= row 1: A1 and B1 ===========================================================================================
     r = row(cv, "row 1", gap=64, align="min")

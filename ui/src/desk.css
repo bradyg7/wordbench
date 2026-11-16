@@ -141,9 +141,21 @@ body:has(.dock-grip.dragging) { cursor: col-resize; user-select: none; }
 .strip-btn { width: 30px; display: grid; place-items: center; color: var(--muted); border-radius: 4px; }
 .pane { flex: 1; overflow-y: auto; padding: 0 18px 32px; min-height: 0; }
 .pane[hidden] { display: none; }
-.pane-head { padding: 18px 0 8px; }
-.pane-title { font: var(--type-title); font-size: 20px; line-height: 28px; margin: 0; display: flex; align-items: center; gap: 8px; }
-.pane-sub { color: var(--muted); font: var(--type-small); margin-top: 4px; }
+/* the panel template (design/features/panels, accepted 2026-11-16): way back, kind, title, subtitle, tools, body, foot */
+.pane-head { padding: 14px 0 10px; }
+.pane-from { margin: 0 0 6px; }
+.pane-from-go { display: inline-flex; align-items: center; gap: 4px; font: var(--type-caption); color: var(--muted); padding: 2px 0; }
+.pane-from-ref { color: var(--accent); font: var(--type-small-strong); font-size: 12px; }
+.pane-from-go:hover .pane-from-ref { text-decoration: underline; }
+.pane-kind { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
+.pane-title { font: var(--type-title); letter-spacing: var(--type-title-tracking); margin: 0; display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+.pane-sub { color: var(--muted); font: var(--type-small); margin-top: 2px; }
+.pane-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
+.pane-foot { position: sticky; bottom: -32px; display: flex; align-items: center; gap: 8px; margin: 16px -18px -32px; padding: 8px 18px; border-top: 1px solid var(--line); background: var(--bg); }
+/* P3, the button ladder: icon button, quiet, button, primary (one per panel), switch and chips */
+.btn.quiet { border-color: transparent; background: none; color: var(--accent); padding-inline: 6px; }
+.pane .btn { min-height: 30px; padding: 5px 12px; }
+.btn.danger { color: var(--jesus); }
 .pane .label, .menu .label, .picker .label { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
 
 /* an Inbox note dragged onto a verse */
@@ -196,7 +208,9 @@ mark.m-s { background: var(--hl-blue); } mark.m-e { background: var(--hl-pink); 
 .chip.m-s { background: var(--hl-blue); color: var(--fg); } .chip.m-e { background: var(--hl-pink); color: var(--fg); } .chip.m-both { background: var(--hl-green); color: var(--fg); }
 .chip.link:hover { background: var(--accent-soft); color: var(--accent); }
 .chip.link.on { box-shadow: inset 0 0 0 2px var(--accent); }
-.results-bar { display: flex; gap: 6px; padding: 6px 0 4px; position: sticky; top: 0; background: var(--bg); z-index: 1; }
+.results-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 0 4px; position: sticky; top: 0; background: var(--bg); z-index: 1; }
+.results-shape { width: auto; max-width: 100%; }
+.results-count { flex-basis: 100%; }
 .entry-row { display: block; width: 100%; text-align: left; padding: 10px 12px; margin: 6px 0; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
 .entry-row:hover { border-color: var(--accent); }
 .entry-top { display: flex; align-items: center; gap: 10px; }
@@ -259,6 +273,7 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
   padding: 10px; max-height: calc(100vh - 24px); overflow-y: auto; }
 .menu .settings .sheet-title { margin-top: 0; }
 .menu-list { display: flex; flex-direction: column; }
+.layers-hint { margin: 2px 8px 8px; color: var(--muted); font: var(--type-caption); }
 .menu-item { display: flex; align-items: center; gap: 6px; text-align: left; padding: 8px 10px; border-radius: var(--radius-control); font: var(--type-small); }
 .menu-item:hover { background: var(--accent-soft); }
 .menu-item.check { color: var(--muted); }
@@ -284,6 +299,7 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 /* design B: the list and the editor, side by side when the pane is wide, else taking turns */
 .nb { flex: 1; min-height: 0; display: flex; }
 .nb-list { width: 100%; display: flex; flex-direction: column; min-height: 0; }
+.nb-fixed .nb-back { display: none; }
 .nb-editor { flex: 1; min-width: 0; overflow-y: auto; padding: 4px 22px 40px; display: none; }
 .nb.two .nb-list { width: 300px; flex: none; border-right: 1px solid var(--line); background: var(--sunken); }
 .nb.two .nb-editor { display: block; }
@@ -430,7 +446,7 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-block-body > ul, .nb-block-body > ol { margin-bottom: 0; }
 .nb-b-heading .nb-h { margin: 14px 0 2px; }
 .nb-block:first-child.nb-b-heading .nb-h { margin-top: 2px; }
-.nb-grip { position: absolute; left: 0; top: 3px; width: 20px; height: 20px; padding: 0; display: inline-grid; place-items: center; border: 0; border-radius: 4px; background: none; color: var(--muted); opacity: 0; cursor: grab; }
+.nb-grip { position: absolute; left: 0; top: 3px; width: 20px; height: 20px; padding: 0; display: inline-grid; place-items: center; border: 0; border-radius: 4px; background: none; color: var(--muted); opacity: .75; cursor: grab; }
 .nb-block:hover > .nb-grip, .nb-grip:focus-visible { opacity: 1; }
 .nb-grip:hover { background: var(--sunken); color: var(--fg); }
 .nb-block.dragging { opacity: .45; }
@@ -518,6 +534,12 @@ button.question-pill:hover { text-decoration: line-through; }
 .link-btn.answered { color: var(--ok); }
 .link-btn.danger { color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
 .link-btn.danger:hover { color: var(--jesus); }
+/* the Trash: a row's erase button and the Notebook's Trash line (trash T5, T6) */
+.icon-btn.trash-erase { cursor: pointer; color: var(--muted); border-radius: 6px; }
+.icon-btn.trash-erase:hover, .icon-btn.trash-erase:focus-visible { color: var(--jesus); background: color-mix(in srgb, var(--jesus) 12%, transparent); }
+.nb-trash-line { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 12px; padding: 8px 10px; border-top: 1px solid var(--line); color: var(--muted); background: none; border-left: 0; border-right: 0; border-bottom: 0; cursor: pointer; font: inherit; text-align: left; }
+.nb-trash-line:hover, .nb-trash-line:focus-visible { color: var(--fg); }
+.nb-trash-line .grow { flex: 1; }
 .chip.question-chip { background: none; border: 1px solid var(--line); color: var(--fg); }
 .chip.question-chip.on { border-color: var(--question); color: var(--question); }
 .chip.place-chip { background: var(--sunken); color: var(--muted); }
@@ -617,6 +639,8 @@ button.question-pill:hover { text-decoration: line-through; }
 .plan-summary-line { font: var(--type-small-strong); }
 .plan-summary .bad { color: var(--jesus); }
 .plan-modal-foot { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 6px; }
+.pd-parts-foot { flex-wrap: wrap; }
+.pd-part-previews { display: flex; flex-wrap: wrap; gap: 6px; margin-right: auto; }
 .plan-modal-foot > span:empty { flex: 1; }
 .plan-groups { display: flex; gap: 8px; flex-wrap: wrap; }
 .plan-books { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -666,6 +690,10 @@ button.question-pill:hover { text-decoration: line-through; }
 .findings-acts { margin: 4px 0 8px; }
 /* files attached to a finding (C1): chips in the box and on the card; a box or card with a file over it is marked */
 .finding-files { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.finding-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.finding-tag { font-size: 11px; cursor: default; }
+.finding-tag-filter .finding-tag { cursor: pointer; }
+.finding-tag.on { background: var(--accent-soft); outline: 1px solid var(--accent); }
 .finding-box .finding-files:empty { display: none; }
 .finding-box .finding-files { padding: 4px 0; }
 .note-card.finding .finding-files { margin-top: 6px; }
@@ -942,6 +970,7 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 @media (max-width: 640px) { .np-grid { grid-template-columns: 1fr; } }
 .help-tabs { margin: 4px 0 10px; }
 .help-filter { width: 100%; margin-bottom: 8px; }
+.help-index h3 { margin: 12px 0 4px; }
 .guide-entry { margin: 4px 0 16px; }
 .guide-title { font: var(--type-heading); margin: 6px 0 8px; }
 .guide-head { font: var(--type-small-strong); margin-top: 10px; }
@@ -976,13 +1005,13 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .nbw-def { margin: 4px 0 0; }
 .nbw-used, .nbw-slot { margin: 0; }
 .nbw-slot { padding: 6px 10px; border: 1px dashed var(--line); border-radius: 8px; margin-top: 6px; }
-.nb-questionblock { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; margin: 4px 0; border: 1px solid var(--question); border-radius: 10px; }
+.nb-questionblock { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 8px 12px; margin: 4px 0; border: 1px solid var(--question); border-radius: 10px; }
 .nb-questionblock.done { border-color: var(--line); background: var(--sunken); color: var(--muted); }
 .nbq-mark { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--question); color: var(--question); font: 700 12px/1 var(--font-ui, inherit); }
 .nb-questionblock.done .nbq-mark { border-color: var(--ok, #3b7a3b); color: var(--ok, #3b7a3b); }
 .nbq-text { flex: 1; min-width: 0; }
 .nbq-text p { margin: 0; }
-.nbq-answer { flex: none; }
+.nbq-actions { display: flex; flex-wrap: wrap; gap: 4px; flex: 1 0 100%; padding-left: 32px; }
 .nb-place-row { padding: 8px 0; }
 .nb-place-row.off .ref-link { color: var(--muted); }
 .nb-place-quote { margin: 2px 0 0; }
@@ -1024,6 +1053,12 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .shelf-bar-head .ico { color: var(--accent); }
 .shelf-bar-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shelf-bar-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.dock-focus { position: fixed; inset: 56px 0 0 var(--rail-w, 0px); z-index: 25; display: flex; flex-direction: column; background: var(--paper, Canvas); }
+.dock-focus[hidden] { display: none; }
+.dock-focus > .pane { display: block; flex: 1; min-height: 0; overflow: auto; }
+.dock-focus-bar { display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; border-bottom: 1px solid var(--line); background: var(--sunken); }
+.dock-focus-button { width: auto; padding-inline: 6px; }
+@media (max-width: 599px) { .shelf-open-all, .dock-focus-button { display: none; } }
 .shelf-empty { padding: 8px 4px; }
 .shelf-menu { display: flex; flex-direction: column; gap: 2px; padding: 6px; }
 .shelf-menu .label { margin: 4px 6px 6px; }
@@ -1041,6 +1076,8 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .lk-body { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 20px; overflow: hidden; min-height: 0; flex: 1; }
 .lk-side { overflow-y: auto; padding-right: 6px; display: flex; flex-direction: column; gap: 14px; }
 .lk-stage { overflow: auto; background: var(--sunken); border-radius: 8px; padding: 20px; display: flex; justify-content: center; align-items: flex-start; }
+.lk-stage.lk-with-count { flex-direction: column; align-items: center; justify-content: flex-start; }
+.lk-with-count .lk-slide { flex-shrink: 0; }
 .lk-dial { display: flex; flex-direction: column; gap: 6px; }
 .lk-dial-name { font: var(--type-small); font-weight: 600; }
 .lk-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; background: var(--sunken); border-radius: 8px; align-self: flex-start; }
@@ -1093,10 +1130,99 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .set-nav button { text-align: left; padding: 7px 10px; border-radius: 8px; font: var(--type-small-strong); color: var(--fg); }
 .set-nav button.on { background: var(--accent-soft); color: var(--accent); }
 .set-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.set-row .set-text { flex: 1; min-width: 0; }
+.set-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.set-row .set-text { flex: 1 1 240px; min-width: 0; }
+/* a control never squeezes its words: when both do not fit on one line it goes under them; a long choice (a voice, a Look) is cut with … */
+.set-row > :last-child:not(.set-text) { flex: 0 1 auto; max-width: 100%; min-width: 0; }
+.set-row select.field { width: auto; max-width: min(100%, 320px); min-width: 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 .set-name { font: var(--type-body-strong); }
 .set-key { width: 110px; }
+/* Layouts (design/features/settings L3): a grid, three across when there is room; New layout first */
+.lay-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 14px; padding: 6px 0; }
+.lay-card { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); text-align: left; }
+.lay-card:hover { border-color: var(--accent); }
+.lay-open { padding: 0; background: none; border: 0; cursor: pointer; }
+.lay-new { align-items: center; justify-content: center; min-height: 150px; color: var(--accent); cursor: pointer; border-style: dashed; }
+.lay-plus { font-size: 28px; line-height: 1; }
+.lay-foot { display: flex; align-items: flex-start; gap: 6px; }
+.lay-words { flex: 1; min-width: 0; }
+.lay-pic { position: relative; max-width: 100%; border-radius: 6px; background: var(--sunken); border: 1px solid var(--line); overflow: hidden; }
+.lay-pic i { position: absolute; box-sizing: border-box; border: 2px solid var(--sunken); border-radius: 5px; }
+.lay-pic .lay-reader { background: var(--accent-soft); }
+.lay-pic .lay-pane { background: var(--surface); }
+.lay-pic .lay-float { box-shadow: 0 2px 6px #0003; border-color: var(--line); }
+.lay-build-panes { display: flex; flex-direction: column; }
+/* Settings: its own menu in the centre, the app blurred behind (the person, 2026-11-13) */
+.set-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 45%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.set-close { position: absolute; top: 12px; right: 14px; z-index: 2; font-size: 22px; width: 36px; height: 36px; }
+/* The Settings menu, laid out as a settings panel (the person, 2026-11-13, after Claude's own): a title bar; the
+   search and tabs down the left, in groups, still; the chosen tab on the right with its title, scrolling. */
+/* smaller, so it sits in proportion over the window instead of filling it (the person, 2026-11-13) */
+.set-modal { position: relative; width: min(1040px, calc(100vw - 96px)); height: min(760px, calc(100vh - 96px)); display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 24px 64px #0005; overflow: hidden; }
+.set-modal-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.set-titlebar { flex: none; display: flex; align-items: center; padding: 16px 64px 15px 20px; border-bottom: 1px solid var(--line); }
+.set-title { margin: 0; font: var(--type-body-strong); font-size: 17px; }
+.set-modal .set-close { top: 9px; right: 12px; }
+.set-modal .set-wrap { flex: 1; min-height: 0; display: flex; flex-direction: row; align-items: stretch; gap: 0; padding: 0; }
+.set-modal .set-nav { width: 224px; flex: none; position: static; display: flex; flex-direction: column; flex-wrap: nowrap; gap: 1px; padding: 16px; overflow-y: auto; border-right: 1px solid var(--line); overflow: hidden; }
+.set-search { display: flex; align-items: center; gap: 8px; padding: 0 10px; margin-bottom: 12px; border-radius: 8px; background: var(--sunken); color: var(--muted); }
+.set-search .set-find { flex: 1; min-width: 0; height: 36px; margin: 0; border: 0; background: none; box-shadow: none; padding: 0; }
+.set-modal .set-tab { display: flex; align-items: center; gap: 12px; width: 100%; padding: 7px 12px; border-radius: 8px; font: var(--type-body); color: var(--fg); text-align: left; background: none; }
+.set-modal .set-tab:hover { background: var(--sunken); }
+.set-modal .set-tab.on { color: var(--fg);  background: color-mix(in srgb, var(--fg) 10%, transparent); }
+.set-sep { border: 0; border-top: 1px solid var(--line); margin: 10px 12px; }
+.set-modal .set-body { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; padding: 20px 24px 28px; display: block; }
+.set-group-label { margin: 14px 12px 4px; padding-top: 12px; border-top: 1px solid var(--line); font: var(--type-label); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+/* Help: the Guide as cards, one per thing done, in groups (design/features/help; steps come last) */
+.guide-group { margin: 6px 0 18px; }
+.guide-group-name { margin: 0 0 8px; font: var(--type-label); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.guide-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.guide-card { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.guide-card.focus { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.guide-card-head { display: flex; align-items: center; gap: 8px; color: var(--accent); }
+.guide-card-head h5 { margin: 0; font: var(--type-small-strong); color: var(--fg); }
+.guide-steps { margin: 0; padding-left: 18px; font: var(--type-small); display: grid; gap: 4px; }
+.guide-soon { font: var(--type-caption); }
+.guide-soon-note { margin: 0 0 14px; }
+/* Help: Keys, the keyboard and the list (H8) */
+.kb-wrap { padding: 4px 0 14px; overflow-x: auto; }
+.kb { display: inline-flex; flex-direction: column; gap: 5px; padding: 12px; border-radius: 10px; background: var(--sunken); }
+.kb-row { display: flex; gap: 5px; }
+.kb-key { min-width: 32px; height: 30px; padding: 0 6px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font: var(--type-caption); color: var(--fg); }
+.kb-key.wide { min-width: 52px; }
+.kb-key.used { background: var(--accent-soft); color: var(--accent); }
+.kb-key.lit { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.key-line { display: flex; align-items: center; gap: 14px; width: 100%; padding: 7px 8px; border-radius: 8px; text-align: left; background: none; }
+.key-line:hover { background: var(--sunken); }
+.key-line.on { background: var(--accent-soft); }
+.key-line .set-kbd { min-width: 110px; text-align: center; }
+.key-note { margin-top: 12px; }
+.set-heading { margin: 0 0 6px; font: var(--type-body-strong); font-size: 17px; }
+.set-heading:not(:first-child) { margin-top: 26px; }
+.set-modal .set-row { padding: 18px 0; }
+.set-modal .set-name { font: var(--type-body); }
+.set-modal .set-narrow-bar { flex: none; margin: 10px 16px 0; }
+@media (max-width: 600px) { .set-modal { width: 100vw; height: 100vh; border-radius: 0; border: 0; } .set-modal .set-body { padding: 12px 16px 24px; } }
+/* Settings reflows instead of squeezing (design/features/settings C1′): a container, so a narrow pane (split, floating)
+   gets a menu for the sections, a search icon for Find, and rows that stack; text keeps its size. Wide: the sections
+   are a column on the left. */
+.set-pane { container-type: inline-size; }
+.set-narrow-bar { display: none; gap: 8px; align-items: center; margin: 6px 0; }
+.set-narrow-bar .set-nav-menu { flex: 1; min-width: 0; }
+.set-kbd { font: var(--type-caption); background: var(--sunken); border: 1px solid var(--line); border-radius: 5px; padding: 2px 8px; white-space: nowrap; }
+.set-inline { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; }
+@container (min-width: 720px) {
+  .set-wrap { flex-direction: row; align-items: flex-start; gap: 20px; }
+  .set-nav { flex-direction: column; flex-wrap: nowrap; width: 170px; flex: none; position: sticky; top: 0; }
+}
+@container (max-width: 519px) {
+  .set-pane .set-nav, .set-pane .set-find { display: none; }
+  .set-pane .set-narrow-bar { display: flex; }
+  .set-pane header.finding .set-find { display: block; }
+  .set-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .set-row > :last-child { align-self: flex-start; max-width: 100%; }
+  .set-row .seg { flex-wrap: wrap; }
+}
 .theme-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .theme-chip { padding: 7px 12px; border-radius: 10px; background: var(--sunken); font: var(--type-small-strong); }
 .theme-chip.on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -1141,3 +1267,33 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .cmd-buttons { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
 .cmd-slot { margin-top: 8px; }
 .cmd-top { margin-top: 16px; }
+
+.nb-block-actions { min-width: 150px; }
+.nb-edit-structured, .nb-undo-block { display: inline-block; margin: 4px 0; }
+.nb-table-scroll { overflow: auto; }
+.nb-table-edit td, .nb-table-edit th { padding: 4px; }
+.nb-table-edit .nb-table-cell { min-width: 7em; width: 100%; }
+.nb-table-remove { display: block; white-space: nowrap; }
+.nb-structured-editor { display: grid; gap: 8px; max-width: 100%; }
+.nb-structured-title { font-weight: 600; }
+.nb-structured-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.nb-card-field { display: grid; gap: 4px; }
+
+.nb-filters { padding: 5px 10px; max-height: 100%; overflow-y: auto; }
+.nb-filters summary { cursor: pointer; font: var(--type-small); }
+.nb-filters[open].applied { flex: 1; }
+.nb-filters[open].applied ~ .nb-scroll { display: none; }
+.nb-filter-form, .nb-filter-command { display: grid; gap: 6px; margin: 7px 0; }
+.nb-filter-command[hidden] { display: none; }
+.nb-filter-field { display: grid; gap: 2px; font: var(--type-small); }
+.nb-filter-field > :is(input, select) { min-width: 0; width: 100%; }
+.nb-filter-tools { display: flex; flex-wrap: wrap; gap: 5px; }
+.nb-tpl-name-controls { width: 100%; }
+
+/* folder tabs on every strip (design/features/minimize R5): only the tabs show; the front one is joined to its page */
+.tabstrip { padding-top: 6px; }
+.tab-row { align-items: flex-end; gap: 2px; padding-left: 6px; }
+.tab { border: 1px solid var(--line); border-bottom: 0; border-radius: 9px 9px 0 0; background: var(--sunken); align-self: stretch; }
+.tab.on { background: var(--bg); box-shadow: none; margin-bottom: -1px; position: relative; z-index: 1; }
+.tab.tab-marked { box-shadow: inset 0 3px 0 var(--mark); }
+.tab.on.tab-marked { box-shadow: inset 0 3px 0 var(--mark); }

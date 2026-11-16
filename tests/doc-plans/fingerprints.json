@@ -1,0 +1,15 @@
+{
+  "source": "Rust regression baseline generated from tests/doc-plans/threads/baseline.md with wb docs plan and the repository-provisioned Bible database; it is not a Python-oracle comparison.",
+  "plans": [
+    {
+      "to": "word",
+      "structure": "script",
+      "fingerprint": "7b2a57dbadd39fa7c77e46273a18f1ef4cc573069dedfcc1fcd5ef12f3c34b62"
+    },
+    {
+      "to": "deck",
+      "structure": "verse",
+      "fingerprint": "122779d1e7f39a81efff59385f9ac658a957bcb974d43b77516b29c66f15ea45"
+    }
+  ]
+}

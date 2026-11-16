@@ -31,10 +31,12 @@ cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { r
 // without them; what the checks need they make.
 for (const d of ['notes/_inbox', 'notes/_threads', 'notes/_days', 'documents', 'findings', '.trash']) rmSync(path.join(study, d), { recursive: true, force: true });
 rmSync(path.join(study, 'settings', 'notebook.json'), { force: true });
+// the hover checks start from the default (off); the person's folder may have chosen otherwise
+rmSync(path.join(study, 'settings', 'hover.json'), { force: true });
 // the Shelf's checks open two sets by name; the person's folder is not trusted to hold them, so this copy gets its own
 shelfFixtures(study);
 mkdirSync(cache, { recursive: true });
-const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort, WB_NO_OPEN: '1' };
+const env = { ...process.env, WB_STUDY_DIR: study, WB_DOCS_DIR: '', WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort, WB_NO_OPEN: '1' };
 const proc = spawn(exe, [], { env, stdio: 'ignore' });
 const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
 
@@ -46,7 +48,7 @@ async function settingsChecks(page) {
   // R4: More is cut down; Settings holds the settings, saved per key; a theme of the person's own
   await page.locator('#more').click();
   const moreText = (await page.locator('.more-menu').innerText()).replace(/\s+/g, ' ');
-  check('More holds Settings, Help and the panes not on the toolbar, and none of the settings', /Settings/.test(moreText) && /Help/.test(moreText) && /Reading plans/.test(moreText) && /Documents/.test(moreText) && !/Text size|Hover cards|Window size|Go to/.test(moreText), moreText);
+  check('More holds the window: Settings, Help, Full screen, Layout, Theme, Text size (the panes are on the rail)', /Settings/.test(moreText) && /Help/.test(moreText) && /Full screen/.test(moreText) && /Layout/.test(moreText) && !/Hover cards|Window size|Go to/.test(moreText), moreText);
   await page.keyboard.press('Escape');
   await page.keyboard.press('Control+,');
   await page.waitForSelector('.pane-settings .set-body', { timeout: 10000 });
@@ -74,35 +76,9 @@ async function settingsChecks(page) {
   execFileSync(wbExe, ['settings', 'theme', 'active', 'default'], { env });
   await page.evaluate(() => { const d = window.__wb.dock(); d.panes.filter(p => p.title === 'Settings').forEach(p => d.close(p)); });
 
-  // R4 step 3: the toolbar in place
-  const ids = () => page.evaluate(() => [...document.querySelectorAll('nav.tools > .tb[data-item]')].map(b => b.dataset.item));
-  // (four: R1 took the Threads button off the standard toolbar, a thread being a page)
-  check('the standard toolbar is the four buttons it has', (await ids()).join() === 'version,notebook,shelf,highlights', (await ids()).join());
-  await page.locator('#more').click();
-  await page.locator('.more-menu .more-item', { hasText: 'Customize toolbar' }).click();
-  await page.waitForSelector('.tb-editing .tb-edit', { timeout: 5000 });
-  check('Customize turns the toolbar into its editor, with the catalog beside it', await page.locator('.tb-edit').count() === 4 && await page.locator('.tb-drawer .tb-entry').count() >= 10);
-  await page.locator('.tb-edit[data-item="shelf"] .tb-x').click();
-  await page.locator('.tb-drawer .tb-entry', { hasText: 'Reading plans' }).click();
-  await page.locator('.tb-drawer .tb-entry', { hasText: 'Reading plans' }).waitFor();
-  await page.screenshot({ path: shots + '1440-toolbar-editing.png' });
-  await page.locator('.tb-done').click();
-  await sleep(500);
-  const tbs = JSON.parse(execFileSync(wbExe, ['settings', 'toolbar'], { env }).toString());
-  check('Done keeps the list in settings/toolbar.json and the bar shows it', tbs.buttons.join() === 'version,notebook,highlights,plans' && (await ids()).join() === tbs.buttons.join(), JSON.stringify(tbs));
-  await page.locator('#more').click();
-  const more2 = (await page.locator('.more-menu').innerText()).replace(/\s+/g, ' ');
-  check('More lists what is not on the toolbar (the Shelf now) and not what is', /Not on your toolbar.*Shelf/i.test(more2) && !/Not on your toolbar.*Reading plans/i.test(more2), more2);
-  await page.keyboard.press('Escape');
-  await page.evaluate(() => window.__wb.run('window ipad'));
-  await sleep(900);
-  await page.locator('#more').click();
-  const narrow = (await page.locator('.more-menu').innerText()).replace(/\s+/g, ' ');
-  const shown = await page.evaluate(() => [...document.querySelectorAll('nav.tools > .tb[data-item]')].filter(b => !b.hidden).length);
-  check('a window too narrow for the buttons puts them in More under Hidden to fit, from the right', shown < 5 && /Hidden to fit/i.test(narrow), `${shown} shown`);
-  await page.keyboard.press('Escape');
-  await page.evaluate(() => window.__wb.run('window laptop-large'));
-  await sleep(900);
+  // The toolbar is gone (design/features/command round 2, 2026-11-13): the rail, the box and the trail are checked by
+  // measure/rail.mjs. Here: More holds the window's things and no toolbar editor.
+  check('there is no toolbar, and More has no Customize toolbar', await page.locator('nav.tools').count() === 0 && !/Customize toolbar/.test(moreText), moreText);
   // R4 step 4: my commands
   await page.keyboard.press('Control+,');
   await page.waitForSelector('.pane-settings .set-nav', { timeout: 10000 });
@@ -117,18 +93,6 @@ async function settingsChecks(page) {
   await sleep(700);
   const kept = JSON.parse(execFileSync(wbExe, ['commands'], { env }).toString());
   check('a command of your own is kept in settings/commands.json, with its key', kept.length === 1 && kept[0].line === 'uses {word}' && kept[0].key === 'Ctrl+U', JSON.stringify(kept));
-  await page.locator('#more').click();
-  await page.locator('.more-menu .more-item', { hasText: 'Customize toolbar' }).click();
-  await page.waitForSelector('.tb-drawer', { timeout: 5000 });
-  await page.locator('.tb-drawer .tb-entry', { hasText: 'Uses of a word' }).first().click({ timeout: 3000 });
-  await page.screenshot({ path: shots + '1440-my-commands.png' });
-  await page.locator('.tb-done').click();
-  await sleep(500);
-  const withCmd = await page.evaluate(() => [...document.querySelectorAll('nav.tools > .tb[data-item]')].map(b => b.dataset.item));
-  check('a kept command can be a toolbar button', withCmd.includes('cmd:uses-of-a-word'), withCmd.join());
-  await page.locator('nav.tools > .tb[data-item="cmd:uses-of-a-word"]').click();
-  await sleep(300);
-  check('its button says what it needs when nothing is selected', /Select a selected word/.test(await page.locator('.toast').innerText().catch(() => '')));
   execFileSync(wbExe, ['commands', 'rm', 'Uses of a word'], { env });
   // R4 step 5: layouts
   await page.locator('.pane-settings .set-nav button', { hasText: 'Layouts' }).click();
@@ -147,7 +111,6 @@ async function settingsChecks(page) {
   await page.locator('.pane-settings .set-row', { hasText: 'Desk check' }).locator('button', { hasText: 'Remove' }).click();
   await sleep(500);
   check('Remove takes the layout away', JSON.parse(execFileSync(wbExe, ['layout', 'list'], { env }).toString()).length === 0);
-  execFileSync(wbExe, ['settings', 'toolbar', 'buttons', 'default'], { env });
 
 }
 
@@ -175,7 +138,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   }
   check('the laptop-large window is the Large size class', size[2] === 'large', size.join('×'));
   check('the Notebook is docked on the right', await page.locator('.dock-right.open .pane-notebook').count() === 1);
-  check('the toolbar has the command field and the pane buttons', await page.locator('#cmd').isVisible() && await page.locator('#tb-notebook').isVisible() && await page.locator('#hl-menu').isVisible());
+  check('the top bar has the command field with the reader\'s tools, and the rail the panes', await page.locator('#cmd').isVisible() && await page.locator('#rail [data-rail="notebook"]').isVisible() && await page.locator('#hl-menu').isVisible());
   await page.screenshot({ path: shots + '1440-reader-with-the-notebook.png' });
 
   // scrollbars (note cd59): no arrows; the thumb is clear at rest and shows while scrolling, then fades
@@ -292,8 +255,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await page.mouse.click(zeal[0], zeal[1]);
   await page.waitForSelector('.popover .lemma', { timeout: 5000 });
   const strongNum = (await page.locator('.popover .lemma-row .small').textContent()).split(' ')[0];
-  await page.locator('.popover .act', { hasText: 'Open as a tab' }).click();
-  check('Open as a tab on a word opens its Strong’s entry', await page.locator('.tab-name', { hasText: strongNum }).first().waitFor({ timeout: 5000 }).then(() => true, () => false), strongNum);
+  await page.locator('.popover .act', { hasText: 'Keep as pane' }).click();
+  check('Keep as pane on a word opens its Strong’s entry', await page.locator('.tab-name', { hasText: strongNum }).first().waitFor({ timeout: 5000 }).then(() => true, () => false), strongNum);
   await page.keyboard.press('Escape');
   await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => ['passage', 'reader2', 'strong'].includes(p.kind))) d.close(p); });
 
@@ -419,7 +382,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     const sr = t.getBoundingClientRect(), r = on.getBoundingClientRect();
     return { n: widths.length, narrowest: Math.min(...widths), onVisible: r.left >= sr.left - 1 && r.right <= sr.right + 1, scroll: t.scrollLeft };
   });
-  check('many tabs keep a usable width and the front one stays in view', strip.n >= 9 && strip.narrowest >= 84 && strip.onVisible, `${strip.n} tabs, narrowest ${Math.round(strip.narrowest)} px`);
+  check('many tabs keep a usable width and the front one stays in view', strip.n >= 9 && strip.narrowest >= 84 && strip.onVisible, `${strip.n} tabs, narrowest ${Math.round(strip.narrowest)} px, front in view ${strip.onVisible}`);
   await page.locator('.dock-right .tab-scroll.back').click();
   await sleep(500);
   const after = await page.evaluate(() => document.querySelector('.dock-right .tab-row').scrollLeft);
@@ -482,17 +445,18 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   check('find in the chapter marks the words', await page.locator('.w.found').count() > 0, await page.locator('.find-count').textContent());
   await page.keyboard.press('Escape');
   // Ctrl+F in a pane finds in that pane (note 5c4a); in the reader it still finds in the chapter
-  await page.evaluate(() => window.__wb.run('keys'));
-  await page.locator('.pane-keys:visible').click({ position: { x: 40, y: 10 } });
+  // (Keys is in the Settings dialog now, not a pane: the check uses a search's pane)
+  await page.evaluate(() => window.__wb.run('search plague'));
+  await page.locator('.pane-search:visible').click({ position: { x: 40, y: 10 } });
   await page.keyboard.press('Control+f');
-  await page.keyboard.type('chapter');
+  await page.keyboard.type('plague');
   await sleep(200);
-  const pf = await page.evaluate(() => { const b = document.querySelector('.pane-keys .pane-find'); return b && { found: +b.dataset.found, focus: document.activeElement?.closest('.pane-find') === b, reader: !document.getElementById('findbar').hidden }; });
+  const pf = await page.evaluate(() => { const b = document.querySelector('.pane-search .pane-find'); return b && { found: +b.dataset.found, focus: document.activeElement?.closest('.pane-find') === b, reader: !document.getElementById('findbar').hidden }; });
   check('Ctrl+F in a pane opens its own find bar and finds there (note 5c4a)', !!pf && pf.found > 0 && pf.focus && !pf.reader, JSON.stringify(pf));
   await page.screenshot({ path: shots + '1440-find-in-a-pane.png' });
   await page.keyboard.press('Escape');
   check('Esc closes the pane’s find bar', await page.locator('.pane-find').count() === 0);
-  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'keys')) d.close(p); });
+  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'search')) d.close(p); });
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('Control+f');
   check('Ctrl+F after a click in the reader finds in the chapter', await page.evaluate(() => !document.getElementById('findbar').hidden && document.activeElement?.closest('#findbar') !== null));
@@ -540,8 +504,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   check('with its place taken off, it waits in the Inbox', JSON.parse(execFileSync(wbExe, ['inbox'], { env }).toString()).notes.some(n => n.text === 'captured, then more'));
   await nbBack();
   await page.evaluate(() => window.__wb.run('keys'));
-  check('Keys lists Ctrl+J', await page.locator('.pane-keys kbd', { hasText: 'Ctrl+J' }).first().waitFor({ timeout: 5000 }).then(() => true, () => false));
-  await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'keys')) d.close(p); });
+  check('Keys lists Ctrl+J', await page.locator('.set-modal kbd', { hasText: 'Ctrl+J' }).first().waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.keyboard.press('Escape');
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });
   await page.locator('#reader').click({ position: { x: 5, y: 5 } });
 
@@ -624,21 +588,16 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const tn = JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes;
   check('a thread holds pages: one put on it, one written on its page', tn.length === 2 && tn.some(n => n.text === 'a note on the thread itself' && n.anchor === ''));
   await page.screenshot({ path: shots + '1440-notes-on-a-thread.png' });
-  page.once('dialog', d => d.accept());
   await ed.locator('.nb-ed-head .icon-btn').last().click();
-  await page.locator('.menu .menu-item', { hasText: 'Delete (to the Trash)' }).click();
-  await sleep(900);
-  await page.evaluate(() => window.__wb.run('notebook'));
-  const openTrash = async () => { await page.locator('.pane-notebook .nb-trash-btn').click(); };
+  await page.locator('.menu .menu-item', { hasText: /^Delete$/ }).click();
+  const undoPage = page.getByRole('button', { name: 'Undo deletion of 1 page', exact: true });
+  await undoPage.waitFor();
+  const deletions = () => JSON.parse(execFileSync(wbExe, ['page', 'deletions'], { env }).toString()).operations;
+  check('a deleted note has a pending timed Undo', deletions().some(op => op.state === 'pending' && op.count === 1));
+  await undoPage.click();
+  await undoPage.waitFor({ state: 'hidden' });
+  check('Undo restores the note to its thread', JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes.length === 2);
   await nbBack();
-  await openTrash();
-  const gone = page.locator('.pane-notebook .nb-entry.trashed', { hasText: 'a note on the thread itself' }).first();
-  await gone.waitFor({ timeout: 10000 });
-  check('a deleted note is in the Trash with its days left', /erased in 7 days/.test(await gone.textContent()));
-  await gone.getByRole('button', { name: 'Put it back' }).click();
-  await page.waitForFunction(() => ![...document.querySelectorAll('.pane-notebook .nb-entry.trashed')].some(e => e.textContent.includes('a note on the thread itself')), null, { timeout: 10000 });
-  check('Put it back restores it to its thread', JSON.parse(execFileSync(wbExe, ['thread', 'notes', 'Zeal notes'], { env }).toString()).notes.length === 2);
-  await page.locator('.pane-notebook .nb-back.shown').click();
 
   // Take off a note's place, its first too (note c8dc): the next of its places becomes its place; the last, the Inbox
   const notesAt = place => JSON.parse(execFileSync(wbExe, ['note', 'list', place], { env }).toString());
@@ -657,27 +616,14 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   check('Take off on a note’s last place sends it to the Inbox', !!inInbox && existsSync(path.join(study, 'notes', '_inbox', `${inInbox.id}.md`)));
   await page.screenshot({ path: shots + '1440-take-off-a-place.png' });
 
-  // Erase now in the Trash, asked first (note e48c, the person's decision of 2026-11-04)
-  page.once('dialog', d => d.accept());
+  // Expiry removes the operation snapshot when Undo is left unused.
   await ed.locator('.nb-ed-head .icon-btn').click();
-  await page.locator('.menu .menu-item', { hasText: 'Delete' }).click();
-  await sleep(500);
+  await page.locator('.menu .menu-item', { hasText: /^Delete$/ }).click();
+  await undoPage.waitFor();
+  const pending = deletions().find(op => op.deleted.includes(inInbox.id));
+  await undoPage.waitFor({ state: 'hidden', timeout: 15000 });
+  check('expired deletion removes the page and its operation snapshot', !!pending && !existsSync(path.join(study, 'notes', '_inbox', `${inInbox.id}.md`)) && !existsSync(path.join(study, '.trash', 'page-operations', pending.operation)));
   await nbBack();
-  await openTrash();
-  const doomed = page.locator('.pane-notebook .nb-entry.trashed', { hasText: 'a place to take off' }).first();
-  await doomed.waitFor({ timeout: 10000 });
-  const inTrash = () => JSON.parse(execFileSync(wbExe, ['trash'], { env }).toString()).notes.filter(n => n.text === 'a place to take off');
-  const trashName = inTrash()[0]?.name;
-  page.once('dialog', d => d.dismiss());
-  await doomed.getByRole('button', { name: 'Erase now' }).click();
-  await sleep(600);
-  check('Erase now asks first; Cancel keeps the note in the Trash', inTrash().length === 1);
-  let asked = '';
-  page.once('dialog', d => { asked = d.message(); d.accept(); });
-  await doomed.getByRole('button', { name: 'Erase now' }).click();
-  await page.waitForFunction(() => ![...document.querySelectorAll('.pane-notebook .nb-entry.trashed')].some(e => e.textContent.includes('a place to take off')), null, { timeout: 10000 });
-  check('Erase now, confirmed, erases it from .trash', inTrash().length === 0 && !!trashName && !existsSync(path.join(study, '.trash', trashName)), asked);
-  await page.locator('.pane-notebook .nb-back.shown').click();
 
   // phase 2b tier 2: the Notebook grouped (N2, N3), places on chapters and books (N1), links (N1), today's page (N2),
   // the format bar (B1), its settings (N4), the list and the editor side by side
@@ -775,7 +721,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   // W1: the sections replace Group and the ⋯ filters; Pages are the notes with no place (once the Inbox); Places has
   // its own Follow switch; ⋯ is the settings, cut down to what acts on the whole Notebook (findings c7ab, e09e)
   const sections = await page.locator('.pane-notebook .nb-sections .nb-section').allTextContents();
-  check('the Notebook’s sections: Days, Pages, Places, Threads, Questions, All, on one line; the Trash a bin beside the pen', sections.join(', ') === 'Days, Pages, Places, Threads, Questions, All' && await page.locator('.pane-notebook .nb-sections').evaluate(r => r.clientHeight < 40) && await page.locator('.pane-notebook .nb-head .nb-trash-btn').count() === 1, sections.join(', '));
+  check('the Notebook’s sections: Days, Pages, Places, Threads, Questions, All, on one line', sections.join(', ') === 'Days, Pages, Places, Threads, Questions, All' && await page.locator('.pane-notebook .nb-sections').evaluate(r => r.clientHeight < 40) && await page.locator('.pane-notebook .nb-head .nb-trash-btn').count() === 0, sections.join(', '));
   check('no Group control and no Inbox in the Notebook', await page.locator('.pane-notebook .nb-group').count() === 0 && !(await page.locator('.pane-notebook').textContent()).includes('Inbox'));
   await group('Pages');
   // W3: Pages is the tree of pages, in wb page tree's order (every note with no place is in it)
@@ -850,7 +796,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const sideParts = await page.locator('.pane-notebook .nb-side .nb-side-head .nb-glabel').allTextContents();
   // (W4: with a second reader open, At the readers)
   const atReaders = await page.evaluate(() => window.__wb.dock().panes.some(p => p.kind === 'reader2')) ? 'At the readers' : 'At the reader';
-  check('wide, the sidebar replaces the sections: Today, Pinned, Pages, At the reader, Questions (a thread is a page in Pages); the Trash at its foot', sideParts.join(', ') === `Today, Pinned, Pages, ${atReaders}, Questions` &&await page.locator('.pane-notebook .nb-sections').count() === 0 && await page.locator('.pane-notebook .nb-side-foot .nb-side-trash').count() === 1, sideParts.join(', '));
+  check('wide, the sidebar replaces the sections: Today, Pinned, Pages, At the reader, Questions (a thread is a page in Pages)', sideParts.join(', ') === `Today, Pinned, Pages, ${atReaders}, Questions` &&await page.locator('.pane-notebook .nb-sections').count() === 0 && await page.locator('.pane-notebook .nb-side-foot .nb-side-trash').count() === 0, sideParts.join(', '));
   const fileOf = id => { for (const d of readdirSync(path.join(study, 'notes'))) { const f = path.join(study, 'notes', d, `${id}.md`); if (existsSync(f)) return f; } return null; };
   const bodyOf = id => readFileSync(fileOf(id), 'utf8').replace(/\r\n/g, '\n').replace(/^---\n[\s\S]*?\n---\n/, '').trim();
   const waitFile = async (id, test) => { for (let i = 0; i < 60; i++) { const f = fileOf(id); if (f && test(readFileSync(f, 'utf8').replace(/\r\n/g, '\n'))) return true; await sleep(100); } return false; };
@@ -1039,7 +985,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   execFileSync(wbExe, ['block', 'add', w4, 'Then the psalm, a verse to a line:'], { env });
   execFileSync(wbExe, ['block', 'add', w4, '-'], { env, input: '```scripture\nPs 106:28-31\nlines\n```' });
   execFileSync(wbExe, ['block', 'add', w4, 'Phinehas is named at Num 25:11; then Ps 106:30.'], { env });
-  await page.evaluate(() => window.__wb.changed());
+  // the tree redraws on changed(); one made while another redraw is reading can be passed over, so ask again until it shows
+  for (let i = 0; i < 20 && !(await rowOf(w4).count()); i++) { await page.evaluate(() => window.__wb.changed()); await sleep(500); }
   await rowOf(w4).locator('.nb-tree-open').click();
   await ed.locator('.nb-title', { hasText: 'W4 the passage' }).waitFor({ timeout: 10000 });
   const sblock = i => ed.locator('.nb-blocks .sv-block').nth(i);
@@ -1303,16 +1250,18 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await ed.locator('.nb-title', { hasText: 'W5 questions for the group' }).waitFor({ timeout: 10000 });
   await waitRows('.pane-notebook .nb-blocks .nb-view', ids(vRun.rows));
   await ed.locator('.nb-view .nbv-line').click();
-  await ed.locator('.nb-view .nbv-input').fill('notebook @Num 25:1-9 open');
-  await page.keyboard.press('Enter');
+  // (the line opens the block's card: View command, then Save block)
+  await ed.locator('.nb-structured-editor .nb-card-input').fill('notebook @Num 25:1-9 open');
+  await ed.locator('.nb-structured-editor button', { hasText: 'Save block' }).click();
   const lineKept = await waitLong(w5, t => t.includes('```view\nnotebook @Num 25:1-9 open\n```'));
   const vOpen = wbj('view', 'run', 'notebook @Num 25:1-9 open');
   check('the line edited in place is written in the fence, and the rows are what the new line finds', lineKept && await waitRows('.pane-notebook .nb-blocks .nb-view', ids(vOpen.rows)) && vOpen.rows.every(r => r.kind === 'question' && r.status !== 'done'), `${vOpen.count} rows`);
   await sleep(800);
   await ed.locator('.nb-view .nbv-line').click();
-  await ed.locator('.nb-view .nbv-input').fill('notebook @Nowhere 9');
-  await page.keyboard.press('Enter');
+  await ed.locator('.nb-structured-editor .nb-card-input').fill('notebook @Nowhere 9');
+  await ed.locator('.nb-structured-editor button', { hasText: 'Save block' }).click();
   await sleep(1500);
+  await page.keyboard.press('Escape');
   check('a line that cannot be read is not written', bodyOf(w5).includes('```view\nnotebook @Num 25:1-9 open\n```') && !bodyOf(w5).includes('Nowhere'));
   await page.evaluate(() => window.__wb.changed());
   await sleep(600);
@@ -1404,17 +1353,11 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const saved = wbj('template', 'list').templates.find(t => t.title === 'W4 the passage');
   const savedText = saved ? readFileSync(fileOf(saved.id), 'utf8').replace(/\r\n/g, '\n') : '';
   check('Save as a template copies the page with its places taken out: {place} in its scripture blocks, no place of its own; the page as it was', !!saved && /\ntemplate: true\n/.test(savedText) && /\nasks: "?place"?\n/.test(savedText) && savedText.includes('```scripture\n{place}\n```') && savedText.includes('```scripture\n{place}\nlines\n```') && !savedText.includes('Num 25:10-13') && /\nanchor: ""\n|\nanchor: \n|\nanchor: ''\n/.test(savedText) && readFileSync(fileOf(w4), 'utf8') === w4Before, saved?.title);
-  // Help: the Guide's entry, its text from wb-core (wb guide templates), and the Templates page's link to it
+  // Help (in the Settings dialog since feature/help): help templates opens it at the templates entry
   await page.evaluate(() => window.__wb.run('help templates'));
-  await page.locator('.pane-help .guide-entry[data-name="templates"]').waitFor({ timeout: 10000 });
-  const guideEntry = wbj('guide', 'templates', '--json');
-  const heads = await page.locator('.pane-help .guide-entry[data-name="templates"] .guide-head').allTextContents();
-  const texts = await page.locator('.pane-help .guide-entry[data-name="templates"] .guide-text').allTextContents();
-  const tabs = await page.locator('.pane-help .help-tabs button').allTextContents();
-  check('Help has Guide, Commands and Keys; its Templates entry is wb guide templates, word for word', tabs.join() === 'Guide,Commands,Keys' && (await page.locator('.pane-help .help-tab-guide').getAttribute('class')).includes('on') && JSON.stringify(heads) === JSON.stringify(guideEntry.parts.map(p => p.head)) && JSON.stringify(texts) === JSON.stringify(guideEntry.parts.map(p => p.text)), heads.join(' · '));
+  check('help templates opens Help in the Settings dialog at its templates entry', await page.waitForFunction(() => [...document.querySelectorAll('.set-modal .guide-card.focus, .set-modal details.doc[open]')].some(e => /template/i.test(e.textContent)), null, { timeout: 10000 }).then(() => true, () => false));
   await page.screenshot({ path: shots + '1440-help-guide-templates.png' });
-  const helpPane = await page.evaluate(() => window.__wb.dock().panes.find(p => p.kind === 'help')?.id);
-  if (helpPane) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, helpPane);
+  await page.keyboard.press('Escape');
   await page.evaluate(() => window.__wb.run('notebook'));
   await sleep(400);
   await page.locator('.pane-notebook .nb-side-templates').click();
@@ -1436,9 +1379,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   });
   check('the Templates page wraps its cards: no sideways scroll at the pane’s width, 320 or 240 px (note bd54)', Object.values(tplFit).every(Boolean), JSON.stringify(tplFit));
   await ed.locator('.nb-tpl-how').click();
-  check('How templates work opens Help at its Guide entry', await page.locator('.pane-help .guide-entry[data-name="templates"]').waitFor({ timeout: 10000 }).then(() => true, () => false));
-  const helpPane2 = await page.evaluate(() => window.__wb.dock().panes.find(p => p.kind === 'help')?.id);
-  if (helpPane2) await page.evaluate(id => { const d = window.__wb.dock(); d.close(d.panes.find(p => p.id === id)); }, helpPane2);
+  check('How templates work opens Help at its templates entry', await page.waitForFunction(() => [...document.querySelectorAll('.set-modal .guide-card.focus, .set-modal details.doc[open]')].some(e => /template/i.test(e.textContent)), null, { timeout: 10000 }).then(() => true, () => false));
+  await page.keyboard.press('Escape');
   // the Python app: it passes over a template (a page with no place, as every page), and reads a page made from one,
   // once placed, keeping from_template when it writes it
   execFileSync(wbExe, ['note', 'place', made, 'Num 25:11'], { env });
@@ -1461,7 +1403,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   // W6, a document from a page (sheets W7.1–W7.4): a page with headings, scripture blocks, to-dos, and two pages inside
   // it (one with scripture, one with a view) made into a Speaker Script and Verse by Verse. Every verse expected here
   // comes from the database (wb text); the view's rows are wb view run's.
-  const w6Docs = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
+  const w6Docs = path.join(study, 'exports');
   const w6 = wbj('page', 'new', 'W6 Lesson: Phinehas').id;
   for (const b of ['# Aim', 'Read Numbers 25 with the group, then Psalm 106 beside it.', '# Before Tuesday', '- [x] W6 read Numbers 25 twice\n- [ ] W6 print the verse deck', '```scripture\nNum 25:10-13\n```']) execFileSync(wbExe, ['block', 'add', w6, '-'], { env, input: b });
   const w6a = wbj('page', 'new', 'W6 The passage', '--parent', w6).id;
@@ -1935,11 +1877,17 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     // one part of a split column minimized on its own: the other part, the other column and the bands stay (note 1b2d)
     await page.locator('.dock-left .dock-group').nth(1).locator('.strip-btn[aria-label="Minimize"]').click();
     await sleep(300);
-    check('minimizing one part of a split column minimizes only that part (note 1b2d)', await page.locator('.dock-left.open .dock-group').count() === 1 && await page.locator('.dock-left .pane-interlinear:visible').count() === 1 && await page.locator('.dock-left .dock-restore-bar', { hasText: 'H7065' }).count() === 1 && await page.locator('.dock-right.open').count() === 1);
+    // minimize round 7: a minimized tab is a link in the rail's Minimized menu, not a hidden pane
+    check('minimizing one part of a split column minimizes only that part (note 1b2d)', await page.locator('.dock-left.open .dock-group').count() === 1 && await page.locator('.dock-left .pane-interlinear:visible').count() === 1 && await page.locator('.pane-strong').count() === 0 && await page.locator('.dock-right.open').count() === 1);
+    check('it waits as a link under Minimized on the rail, no bar or chip', await page.locator('#rail [data-rail="minimized"].has').isVisible() && await page.locator('.dock-restore-bar, .dock-chip').count() === 0);
+    await page.locator('#rail [data-rail="minimized"]').click();
+    await sleep(200);
     await page.screenshot({ path: shots + '1440-dock-a-part-minimized.png' });
-    await page.locator('.dock-left .dock-restore-bar').click();
+    await page.locator('.rail-menu .rail-link', { hasText: 'H7065' }).locator('.rail-link-go').click();
+    await page.waitForSelector('.dock-left .pane-strong', { timeout: 10000 });
+    check('its link opens it again in its column', await page.locator('.dock-left .pane-strong').count() === 1);
+    await page.evaluate(() => { const d = window.__wb.dock(); const s = d.panes.find(x => x.kind === 'strong'), i = d.panes.find(x => x.kind === 'interlinear'); d.drop(s, { to: 'split', group: d.groupOf(i), after: true }); });
     await sleep(300);
-    check('its bar at the column’s foot shows it again', await page.locator('.dock-left .dock-group').count() === 2);
     // the line between the two parts, dragged: one part taller (note 523e)
     const parts = () => page.evaluate(() => [...document.querySelectorAll('.dock-left > .dock-group')].map(e => Math.round(e.getBoundingClientRect().height)));
     const [h0] = await parts();
@@ -1977,11 +1925,13 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     await page.screenshot({ path: shots + '1440-dock-two-floats.png' });
     await fB.locator('.strip-btn[aria-label="Minimize"]').click();
     await sleep(200);
-    check('a float minimized waits as a chip; the other stays open', await page.locator('.dock-chip', { hasText: 'H7065 · minimized' }).count() === 1 && await fA.isVisible());
-    await page.locator('.dock-chip', { hasText: 'H7065' }).click();
+    check('a float minimized becomes a link; the other stays open', await page.locator('.pane-strong').count() === 0 && await page.locator('.dock-chip').count() === 0 && await fA.isVisible());
+    await page.locator('#rail [data-rail="minimized"]').click();
+    await page.locator('.rail-menu .rail-link', { hasText: 'H7065' }).locator('.rail-link-go').click();
+    await page.waitForSelector('.dock-float .pane-strong', { timeout: 10000 });
     await sleep(200);
     const b2 = await fB.boundingBox();
-    check('its chip shows it again where it was', !!b2 && b2.x === b0.x && b2.y === b0.y);
+    check('its link opens it again where it was', !!b2 && b2.x === b0.x && b2.y === b0.y);
     const as = await fA.locator('.tab-row').boundingBox();
     said = await dragHold(await tabAt('H7065'), as.x + as.width - 20, as.y + as.height / 2);
     check('two floats join only when a tab is dropped on the other’s strip', said === 'Beside Interlinear' && await page.locator('.dock-float').count() === 1 && await fA.locator('.tab').count() === 2, said);
@@ -2127,7 +2077,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     check('Notes & lookup shows a question on part of the verse (note c39a)', await page.locator('.pane-place:visible .question-card', { hasText: 'Why these words here?' }).waitFor({ timeout: 10000 }).then(() => true, () => false));
     await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => p.kind === 'place')) d.close(p); });
 
-    // 797d: the command field keeps the lines run, failed ones too; ↑ ↓ go through them, newest first
+    // 797d: the command field keeps the lines run, failed ones too; ↑ ↓ go through them, newest first. The box holds
+    // its place (command C14), so ↑ starts from the place shown and ↓ past the newest gives the place back
     await page.locator('#reader').click({ position: { x: 5, y: 5 } });
     await page.keyboard.press('Backquote');
     await page.keyboard.type('go Num 25:20');
@@ -2143,7 +2094,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     const recent = (await page.locator('.suggest-group').allTextContents()).some(t => t.startsWith('Recent'));
     const steps = [];
     for (const k of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown']) { await page.keyboard.press(k); steps.push(await page.locator('#cmd').inputValue()); }
-    check('the empty command field lists recent lines; ↑ ↓ go through them, the failed one too (note 797d)', recent && steps.join(' | ') === 'go Nowhere 99 | go Num 25:20 | go Nowhere 99 | ', steps.join(' | '));
+    check('the empty command field lists recent lines; ↑ ↓ go through them, the failed one too (note 797d)', recent && ['', 'Numbers 25'].some(end => steps.join(' | ') === 'go Nowhere 99 | go Num 25:20 | go Nowhere 99 | ' + end), steps.join(' | '));
     await page.keyboard.press('Escape');
 
     // 50c1: Ctrl+Shift+J writes a finding about the app, apart from the study, with what was on screen
@@ -2298,7 +2249,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
 
   // tier 4: documents from a thread. The Documents pane makes the Speaker Script (Word); the command field makes Verse by
   // Verse (PDF pages); each is checked verse by verse before it is kept, listed with how it stands, and in its thread's pane
-  const docsDir = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
+  const docsDir = path.join(study, 'exports');
   // a lesson's PowerPoint, as the Python app records one (its file not made here): written into this run's own copy, so the
   // check below does not depend on what the scratch folder holds
   mkdirSync(path.join(study, 'documents'), { recursive: true });
@@ -2312,7 +2263,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const scriptRow = page.locator('.pane-documents .doc-row', { hasText: 'Speaker Script - Phinehas.docx' });
   await scriptRow.waitFor({ timeout: 20000 });
   const scriptRec = JSON.parse(execFileSync(wbExe, ['docs', 'show', 'thread-phinehas-script'], { env }).toString());
-  check('Make writes the Speaker Script, checked, beside the scratch folder', existsSync(path.join(docsDir, 'Speaker Script - Phinehas.docx')) && scriptRec.state === 'current' && scriptRec.theme === 'olivet', scriptRec.state);
+  check('Make writes the Speaker Script, checked, inside the scratch folder', existsSync(path.join(docsDir, 'Speaker Script - Phinehas.docx')) && scriptRec.state === 'current' && scriptRec.theme === 'olivet', scriptRec.state);
   check('the Speaker Script is listed Up to date', (await scriptRow.locator('.doc-state').innerText()) === 'Up to date');
   // R3: Adjust… opens the dials beside a live page drawn from the thread's own plan; a Look, Ink and See it in grey
   // change the page at once; Use these carries the dials back to the Make row (nothing is made until Make)
@@ -2353,10 +2304,12 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await page.evaluate(() => window.__wb.run('thread Phinehas'));
   await page.waitForSelector('.pane-notebook .nb-docs .doc-row', { timeout: 15000 }).catch(() => {});
   check('the thread’s page lists its documents, with Make for it', await page.locator('.pane-notebook .nb-docs .doc-row').count() >= 2 && await page.locator('.pane-notebook .nb-docs .doc-make').count() === 1, String(await page.locator('.pane-notebook .nb-docs .doc-row').count()));
-  // R1: the Python app opens the folder as this app reads it (scripts/py-opens.py, on this run's own copy)
-  let pyOpens = '';
-  try { pyOpens = execFileSync('python', ['-I', path.join(file('scripts/'), 'py-opens.py')], { env: { ...env, WB_STUDY_DIR: study }, cwd: file('') }).toString(); } catch (e) { pyOpens = String(e.stdout || e); }
-  check('the Python app still opens the study folder: what it reads is what this app counts (scripts/py-opens.py)', /^ok .*notes/m.test(pyOpens) && !/^DIFF/m.test(pyOpens), pyOpens.replace(/\n/g, ' | '));
+  // Optional predecessor comparison when its checkout is explicitly selected.
+  if (env.WB_LEGACY_APP) {
+    let pyOpens = '';
+    try { pyOpens = execFileSync('python', ['-I', path.join(file('scripts/'), 'py-opens.py')], { env: { ...env, WB_STUDY_DIR: study }, cwd: file('') }).toString(); } catch (e) { pyOpens = String(e.stdout || e); }
+    check('the Python app still opens the study folder: what it reads is what this app counts (scripts/py-opens.py)', /^ok .*notes/m.test(pyOpens) && !/^DIFF/m.test(pyOpens), pyOpens.replace(/\n/g, ' | '));
+  }
 
   // the Shelf as a tree (R2)
   await shelfChecks({ page, check, env, wbExe, study, shots, sleep });

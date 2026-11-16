@@ -1,4 +1,4 @@
-//! Questions written in a page (R1, `docs/redesign-R1.md` question 4; sheets R1.3, R1.4). `/?` writes a callout in the
+//! Questions written in a page (R1, `docs/archive/2026-11-10/docs/redesign-R1.md` question 4; sheets R1.3, R1.4). `/?` writes a callout in the
 //! page's Markdown: `> [!question] How do the two numbers relate?`, and `> [!done] …` when it is answered (Obsidian draws
 //! both as callouts; the Python app shows a quote). It is a block of its page and nothing else: no file of its own.
 //!
@@ -23,6 +23,10 @@ pub struct Question {
 
 /// A block's Markdown → the question it holds, when it is a callout `[!question]` (open) or `[!done]` (answered).
 pub fn question_of(md: &str) -> Option<Question> {
+    read_callout(md, false)
+}
+
+fn read_callout(md: &str, keep_lines: bool) -> Option<Question> {
     let mut lines = md.lines().map(|l| l.trim_start().strip_prefix('>').map(|r| r.strip_prefix(' ').unwrap_or(r)));
     let first = lines.next()??.trim();
     let rest = first.strip_prefix("[!")?;
@@ -39,11 +43,13 @@ pub fn question_of(md: &str) -> Option<Question> {
     }
     for l in lines {
         let Some(l) = l else { return None };
-        if !l.trim().is_empty() {
+        if keep_lines {
+            words.push(l.to_string());
+        } else if !l.trim().is_empty() {
             words.push(l.trim().to_string());
         }
     }
-    Some(Question { text: words.join(" "), done })
+    Some(Question { text: words.join(if keep_lines { "\n" } else { " " }), done })
 }
 
 /// A question as its block is written: `> [!question] text`, or `[!done]` when answered. Words on several lines keep them.
@@ -52,7 +58,7 @@ pub fn question_md(done: bool, text: &str) -> String {
     let mut ls = text.trim().lines();
     let mut out = format!("> {mark} {}", ls.next().unwrap_or("").trim()).trim_end().to_string();
     for l in ls {
-        out += &format!("\n> {}", l.trim());
+        out += &format!("\n> {l}");
     }
     out
 }
@@ -246,13 +252,15 @@ pub fn list(bible: &Bible, store: &Store, status: &str) -> Result<Value> {
 pub fn fold(bible: &Bible, store: &mut Store, trail: &str, page: &str, also: bool) -> Result<Value> {
     let t = store.trails().into_iter().find(|t| s(t, "id") == trail).cloned().ok_or_else(|| missing("No such question at a place (a trail)."))?;
     let anchor = s(&t, "anchor");
-    let (pid, ptext, _) = pages::text_of(store, page)?;
+    let (pid, _, _) = pages::text_of(store, page)?;
     if pid.starts_with("thread:") || crate::store::is_day(&pid) || pid.starts_with("d_") {
         return Err(bad("Fold a question into a note or a page."));
     }
     let rec = store.find_note(&pid)?;
+    if rec.get("template") == Some(&json!(true)) {
+        return Err(bad("Fold a question into a page, not a template."));
+    }
     let has = places_of(&rec).iter().any(|p| *p == anchor);
-    let _ = ptext;
     if !has {
         if !also {
             return Err(bad("The page is not at that question's place; fold it in with --also to give the page the place."));
@@ -271,18 +279,24 @@ pub fn fold(bible: &Bible, store: &mut Store, trail: &str, page: &str, also: boo
     Ok(json!({"question": added["id"], "page": pid, "folded": trail}))
 }
 
-/// A question block given its own place again: a trail at the page's place, and the block taken out of the page.
-pub fn unfold(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
+/// A question block given its own place again: a trail at one of the page's places (first by default), and the block taken out.
+pub fn unfold(bible: &Bible, store: &mut Store, id: &str, at: Option<&str>) -> Result<Value> {
     let (page, n) = split_id(id).ok_or_else(|| bad("A question written in a page is named <page id>#<block number>."))?;
-    let (_, q) = block_md(store, page, n)?;
+    let (md, _) = block_md(store, page, n)?;
+    let q = read_callout(&md, true).expect("block_md validated the callout");
     let (pid, _, _) = pages::text_of(store, page)?;
     if pid.starts_with("thread:") || pid.starts_with("d_") {
         return Err(bad("Only a question in a note or a page at a place can become a trail."));
     }
     let rec = store.find_note(&pid)?;
-    let anchor = places_of(&rec).first().cloned().ok_or_else(|| bad("The page has no place; a question at a verse needs one."))?;
-    let quote = s(&rec, "quote");
-    let trail = store.add_trail(&anchor, &q.text, &quote)?;
+    let places = places_of(&rec);
+    let first = places.first().ok_or_else(|| bad("The page has no place; a question at a verse needs one."))?;
+    let anchor = at.unwrap_or(first);
+    if !places.iter().any(|p| p == anchor) {
+        return Err(bad("Choose one of the page's places."));
+    }
+    let quote = if anchor == first { s(&rec, "quote") } else { s(&crate::anchors::resolve(bible, anchor)?, "quote") };
+    let trail = store.add_trail(anchor, &q.text, &quote)?;
     if q.done {
         store.set_trail_status(&s(&trail, "id"), "done")?;
     }

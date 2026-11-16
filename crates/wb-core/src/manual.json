@@ -1,5 +1,5 @@
 {
- "made_by": "scripts/commands-cases.mjs from the Python app's web/help-docs.js and web/commands.js",
+ "source": "Rust-maintained command manual; originally ported from the legacy app. Edit this file as the canonical manual.",
  "commands": [
   {
    "name": "def",
@@ -108,7 +108,7 @@
   },
   {
    "name": "listen",
-   "usage": "listen [place] | pause | resume | stop | speed 1.2 | voices | voice <name> | voice mine",
+   "usage": "listen [place] | pause | resume | stop | speed 1.2 | voices | voice <name>",
    "help": "read aloud in the browser’s voice, or in your own recorded voice"
   },
   {
@@ -274,12 +274,12 @@
   {
    "name": "minimize",
    "usage": "minimize <pane>",
-   "help": "minimize a pane"
+   "help": "minimize a pane: it closes and waits as a link in the rail, opened again where it was"
   },
   {
    "name": "restore",
    "usage": "restore <pane> | restore all",
-   "help": "bring a minimized pane back"
+   "help": "open a minimized pane again from its link (restore minimized: every one)"
   },
   {
    "name": "dock",
@@ -878,18 +878,16 @@
     "listen stop",
     "listen speed <0.5 to 2>",
     "listen voices",
-    "listen voice <name>",
-    "listen voice mine",
-    "listen voice mine all"
+    "listen voice <name>"
    ],
-   "what": "Reads the KJV aloud in the browser’s own voice, or in your own recorded voice, marking each verse and keeping it on screen.",
+   "what": "Reads the reader's current Bible version with a local English voice, highlighting the verse on screen.",
    "details": [
-    "With no place it starts at the verse you last clicked, or the top of the reader, and keeps going through the chapters until you stop it. With a place it reads just that (a verse, a range, chapters or a whole book), moving the reader there; back returns.",
-    "A small bar at the bottom shows the place, with Pause, Stop and a list of voices; choosing one takes over from the start of the verse. Read aloud in the ... menu does the same as listen. Moving the reader to another chapter yourself stops the reading.",
+    "With no place it starts at the top visible verse, and keeps going through the chapters until you stop it. With a place it reads just that (a verse, a range, chapters or a whole book), moving the reader there; back returns.",
+    "Use Listen in More or add Listen to the toolbar. The bar shows the place and has Pause, Stop, voice and speed controls. Navigating away stops playback.",
     "Pausing and resuming starts the verse again from its beginning. The word being spoken is marked too, where the voice reports it; some voices only allow the verse to be marked.",
     "The voice reads the words on the page, without a footnote. A word in capitals is said as a normal word (LORD as Lord) so that no voice spells it out, and the reader still shows it as it is. A computer voice can mispronounce names; go by the text.",
-    "listen voice mine plays the chapters you have recorded and approved (wb record add, then wb record approve) in your own voice, verse by verse, marked on screen as the browser’s voice is. A verse or chapter with no recording is read by the browser’s voice, and the bar says which is speaking. listen voice mine all includes recordings not yet approved; choosing any other voice goes back to the browser’s voice. A recording made before the text was corrected is not played.",
-    "The voice and speed are remembered in this browser. Voices named Natural sound best but need the internet (the verse text is sent to the voice’s online service, Microsoft’s in Edge). If one fails, a voice on this computer takes over."
+    "Personal recording playback is deferred.",
+    "The voice and speed are remembered in this browser. Read-aloud uses English voices installed on this device."
    ],
    "examples": [
     [
@@ -923,10 +921,6 @@
     [
      "listen voice aria",
      "use the voice with aria in its name"
-    ],
-    [
-     "listen voice mine",
-     "your own recordings, where there are any"
     ],
     [
      "listen stop",
@@ -1467,7 +1461,11 @@
    "what": "Keeps an arrangement of panes and brings it back.",
    "details": [
     "Saves which panes are open, where (floating, docked, tabbed, minimized) and each pane’s own state (a query, a filter, a chapter). Saving a name again replaces it; load accepts the start of a name. layout alone is the same as layout list.",
-    "Files are kept in sessions/layouts/ in your study folder. The reader’s position is not part of a layout."
+    "Files are kept in sessions/layouts/ in your study folder. The reader’s position is not part of a layout.",
+    "Use Layout in the toolbar to save or restore an arrangement. Settings → Layouts also lets you remove saved layouts.",
+    "Use Focus pane and Return to layout for a temporary focused view. In the command field, use focus <pane> or unfocus. From a terminal, use wb do to relay those commands to the window.",
+    "In a terminal, use wb layout list to list arrangements, wb layout show <name> to inspect one, and wb layout rm <name> to remove one.",
+    "For a live list of Notebook pages or questions, use a View. Type help views in the command field or wb guide views in a terminal."
    ],
    "examples": [
     [
@@ -1740,10 +1738,10 @@
    "usage": [
     "packet <pdf> ; <pdf> [; <pdf> ...]"
    ],
-   "what": "Joins saved PDFs, in the order you give them, into one packet with PdfCraft, and opens it.",
+   "what": "Joins saved PDFs and existing Office PDF companions in the order you give them, then opens the packet.",
    "details": [
-    "Each name is a saved PDF, or a unique part of one (pdfs lists them). Two or more. The packet is saved as Study packet - <date>.pdf.",
-    "The Packet… button in the PDF viewer does the same by choosing from a list."
+    "Name two to sixty saved PDFs. Use an exact PDF filename or a unique part of its name. Use document:NAME to select an Office document's saved PDF companion.",
+    "In a terminal, use wb packet with each name as a separate argument. Pass --out to choose a new PDF filename or --open to open the saved packet."
    ],
    "examples": [
     [

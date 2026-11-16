@@ -13,7 +13,7 @@ use serde_json::Value;
 use std::io::{Read, Write};
 use std::path::Path;
 
-fn esc(s: &str) -> String {
+pub(super) fn esc(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
 }
 
@@ -137,7 +137,7 @@ fn style(name: &str, base: Option<&str>, c: &Chr, p: &Para) -> String {
     format!(r#"<w:style w:type="paragraph"{q} w:styleId="{id}"><w:name w:val="{shown}"/>{base}<w:qFormat/>{}{}</w:style>"#, ppr(p), rpr(c))
 }
 
-/// The design of the files this app writes (docs/redesign-R3.md): 1 was WordCraft's, 2 is the in-app preview's look.
+/// The design of the files this app writes (docs/archive/2026-11-10/docs/redesign-R3.md): 1 was WordCraft's, 2 is the in-app preview's look.
 pub const DESIGN: i64 = 2;
 /// The two fonts that travel (embedded in the file: `fonts_part`): scripture, and everything else.
 pub const SCRIPTURE_FONT: &str = "Literata";
@@ -374,7 +374,7 @@ pub fn write(plan: &[Value], t: &Theme, look: &Look, title: &str, size: f64, spa
     Ok(())
 }
 
-fn unescape(s: &str) -> String {
+pub(super) fn unescape(s: &str) -> String {
     let re = regex::Regex::new(r"&(#x[0-9a-fA-F]+|#\d+|amp|lt|gt|quot|apos);").unwrap();
     re.replace_all(s, |c: &regex::Captures| match &c[1] {
         "amp" => "&".to_string(),

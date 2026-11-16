@@ -1,73 +1,129 @@
+// First run: the window opens here when there is no Bible database or no folder for the person's notes, instead of
+// closing with a message box. The choices are saved by the Tauri side (wb_core::setup), so `wb` in a terminal sees the
+// same ones. Only the app can do this; the browser tests never call it.
 import { invoke } from '@tauri-apps/api/core';
-import '@fontsource/inter/400.css';
-import '@fontsource/literata/400.css';
-import './setup.css';
-type Status = { ready: boolean; resources_ok: boolean; suggested_dir: string; study_dir: string | null; problem: string | null };
-const form = document.querySelector<HTMLFormElement>('#setup')!;
-const status = document.querySelector<HTMLElement>('#status')!;
-const folder = document.querySelector<HTMLInputElement>('#folder')!;
-const retry = document.querySelector<HTMLButtonElement>('#retry')!;
-const restart = document.querySelector<HTMLButtonElement>('#restart')!;
-const licensing = document.querySelector<HTMLElement>('#licensing')!;
-const licenseStatus = document.querySelector<HTMLElement>('#license-status')!;
-const recovery = document.querySelector<HTMLElement>('#recovery')!;
-let folderReady = false;
-async function checkLicense() {
-  restart.hidden = true;
-  try {
-    const result = await invoke<{ active: boolean; problem: string | null }>('pilot_license', { action: 'status' });
-    licensing.hidden = result.active;
-    licenseStatus.textContent = result.problem ?? 'Pilot license active. Offline use does not expire.';
-    restart.hidden = !(result.active && folderReady);
-  } catch (error) { licensing.hidden = false; licenseStatus.textContent = String(error); }
-}
-async function check() {
-  form.hidden = true; retry.hidden = true; restart.hidden = true;
-  status.textContent = 'Checking the installation…';
-  try {
-    const result = await invoke<Status>('installation_status');
-    folderReady = result.ready;
-    recovery.hidden = !result.study_dir;
-    recovery.textContent = result.study_dir ? `Your study files remain accessible without activation. You can copy or back up this folder using your file manager: ${result.study_dir}` : '';
-    status.textContent = result.problem ?? (result.ready ? 'Your study folder is ready.' : 'The installed resources are ready. Choose your study folder below.');
-    if (!folder.value) folder.value = result.study_dir ?? result.suggested_dir;
-    form.hidden = !result.resources_ok || result.ready;
-    retry.hidden = result.resources_ok;
-    await checkLicense();
-  } catch (error) { status.textContent = String(error); retry.hidden = false; }
-}
-form.addEventListener('submit', async event => {
-  event.preventDefault();
-  const submit = form.querySelector<HTMLButtonElement>('button')!;
-  submit.disabled = true;
-  try {
-    await invoke('installation_configure', { path: folder.value.trim(), create: new FormData(form).get('mode') === 'new' });
-    form.hidden = true; folderReady = true; status.textContent = 'Study folder saved.';
-    recovery.hidden = false; recovery.textContent = `Your study files remain accessible without activation: ${folder.value.trim()}`;
-    await checkLicense();
-  } catch (error) { status.textContent = String(error); }
-  finally { submit.disabled = false; }
-});
-retry.addEventListener('click', check);
-restart.addEventListener('click', async () => {
-  try { await invoke('installation_restart'); } catch (error) { status.textContent = String(error); }
-});
-void check();
+import { inApp } from './api';
 
-document.querySelector<HTMLButtonElement>('#request-license')!.addEventListener('click', async () => {
+interface Slot { path: string | null; ok: boolean; detail: string; configured?: boolean }
+interface Status { ok: boolean; db: Slot; study: Slot; suggested_study: string; version?: string }
+
+/** True when the setup screen was drawn (the rest of the window should not start). */
+export async function setupIfNeeded(): Promise<boolean> {
+  if (!inApp) return false;
+  let status: Status;
   try {
-    const result = await invoke<{ request: string }>('pilot_license', { action: 'request' });
-    const field = document.querySelector<HTMLTextAreaElement>('#request-text')!;
-    field.value = result.request; field.focus(); field.select();
-    licenseStatus.textContent = 'Copy this request and send it through your pilot invitation contact. It contains a public device key, not your notes.';
-  } catch (error) { licenseStatus.textContent = String(error); }
-});
-document.querySelector<HTMLInputElement>('#certificate')!.addEventListener('change', async event => {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file) return;
-  try {
-    if (file.size > 32768) throw new Error('License file is too large.');
-    await invoke('pilot_license', { action: 'import', certificate: await file.text() });
-    await checkLicense();
-  } catch (error) { licenseStatus.textContent = String(error); }
-});
+    status = await invoke<Status>('setup_status');
+  } catch {
+    return false;   // an older shell without setup: let the window show its own error
+  }
+  if (status.ok) return false;
+  draw(status);
+  return true;
+}
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = ''): HTMLElementTagNameMap[K] {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text) e.textContent = text;
+  return e;
+}
+
+function draw(initial: Status) {
+  let status = initial;
+
+  const root = el('div', 'setup');
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-modal', 'true');
+  root.setAttribute('aria-labelledby', 'setup-title');
+
+  const card = el('div', 'setup-card');
+  card.append(el('p', 'setup-eyebrow', 'Bible Workbench'));
+  const title = el('h1', '', 'Set up your workbench');
+  title.id = 'setup-title';
+  card.append(title);
+  card.append(el('p', 'setup-lede', 'Two things and you are reading. The Bible stays read-only, and your notes stay in a folder you choose, as plain Markdown files that you own.'));
+
+  // ---- the Bible ----
+  const dbStep = el('section', 'setup-step');
+  const dbHead = el('div', 'setup-head');
+  dbHead.append(el('h2', '', 'The Bible'));
+  const dbState = el('span', 'setup-state', '');
+  dbHead.append(dbState);
+  dbStep.append(dbHead);
+  const dbPath = el('p', 'setup-path', '');
+  const dbDetail = el('p', 'setup-detail', '');
+  const dbButton = el('button', 'btn', 'Choose the database…');
+  dbButton.type = 'button';
+  dbStep.append(dbPath, dbDetail, dbButton);
+
+  // ---- the study folder ----
+  const studyStep = el('section', 'setup-step');
+  const studyHead = el('div', 'setup-head');
+  studyHead.append(el('h2', '', 'The folder for your notes'));
+  const studyState = el('span', 'setup-state', '');
+  studyHead.append(studyState);
+  studyStep.append(studyHead);
+  studyStep.append(el('p', 'setup-detail', 'This is where your notes, highlights, threads and reading plans are kept. Make a new folder here, or choose one you already use.'));
+  const pathRow = el('div', 'setup-row');
+  const input = el('input', 'setup-input');
+  input.type = 'text';
+  input.spellcheck = false;
+  input.setAttribute('aria-label', 'The folder for your notes');
+  const useButton = el('button', 'btn', 'Use this folder');
+  useButton.type = 'button';
+  pathRow.append(input, useButton);
+  const studyButton = el('button', 'btn soft', 'Choose a folder…');
+  studyButton.type = 'button';
+  studyStep.append(pathRow, studyButton);
+
+  // ---- the end ----
+  const message = el('p', 'setup-error', '');
+  message.setAttribute('role', 'status');
+  const start = el('button', 'btn primary wide', 'Start reading');
+  start.type = 'button';
+  const foot = el('p', 'setup-foot', 'Nothing is uploaded and no account is needed. Your files stay in the folder above; deletes wait in its .trash for seven days.');
+
+  card.append(dbStep, studyStep, message, start, foot);
+  root.append(card);
+
+  const paint = () => {
+    dbState.textContent = status.db.ok ? 'Ready' : 'Needed';
+    dbState.classList.toggle('ok', status.db.ok);
+    dbPath.textContent = status.db.path || '';
+    dbDetail.textContent = status.db.ok ? 'The Bible database is open, read-only.' : status.db.detail;
+    studyState.textContent = status.study.ok ? 'Ready' : 'Needed';
+    studyState.classList.toggle('ok', status.study.ok);
+    if (!input.value) input.value = status.study.path || status.suggested_study;
+    if (status.study.ok) input.value = status.study.path || input.value;
+    start.disabled = !status.ok;
+    start.textContent = status.ok ? 'Start reading' : 'Choose both to start';
+  };
+
+  const apply = async (command: string, args: Record<string, unknown> = {}) => {
+    message.textContent = '';
+    try {
+      status = await invoke<Status>(command, args);
+      paint();
+    } catch (e) {
+      message.textContent = String(e);
+    }
+  };
+
+  dbButton.onclick = () => apply('choose_bible_db');
+  studyButton.onclick = () => apply('choose_study_dir');
+  useButton.onclick = () => {
+    const path = input.value.trim();
+    if (!path) {
+      message.textContent = 'Type the folder to use, or choose one.';
+      return;
+    }
+    void apply('set_study_dir', { path });
+  };
+  start.onclick = () => {
+    if (status.ok) location.reload();
+  };
+
+  paint();
+  document.body.append(root);
+  (status.study.ok ? start : useButton).focus();
+}

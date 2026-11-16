@@ -1,4 +1,4 @@
-//! A word's English definition (docs/redesign-R5.md): Webster's 1913, in a read-only database of its own, built by
+//! A word's English definition (docs/archive/2026-11-10/docs/redesign-R5.md): Webster's 1913, in a read-only database of its own, built by
 //! `scripts/build-dictionary.py`. An entry is the source's text, verbatim, shown with its source and licence. Nothing
 //! here picks a sense or says what a word means in a verse.
 

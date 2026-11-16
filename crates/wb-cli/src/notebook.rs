@@ -5,7 +5,7 @@
 use crate::args::{Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Value};
-use wb_core::{commands as lang, findings as fd, notebook as nb};
+use wb_core::{commands as lang, findings as fd, history as hs, notebook as nb};
 
 fn e(x: wb_core::Error) -> String {
     x.0
@@ -31,15 +31,50 @@ fn text_of(c: &Ctx<'_>, words: &str) -> Result<String, String> {
 
 pub fn commands() -> Vec<Command> {
     let mut all = findings();
+    all.extend(history());
     all.extend(notebook_commands());
     all
+}
+
+/// The trail: every tab opened, kept in history/<day>.jsonl (design/features/minimize, build go-ahead 2026-11-13). The
+/// window calls it the trail; the command is `history` while `wb trail` still means the old questions.
+fn history() -> Vec<Command> {
+    vec![
+        cmd("history add", "Add a step to the trail: wb history add word H7068 --line \"strong H7068\" [--from <step id>]. The kind names the tab (verse, word, uses, search, page, …), the title is what the trail shows, the line opens it again.",
+            vec![Pos("kind", N::One), Pos("title", N::Many), Opt("line", None), Opt("from", None)], |c, a| {
+            j(hs::add(&c.root()?, &a.s("kind"), &a.s("title"), &a.opt("line").unwrap_or_default(), a.opt("from").as_deref()).map_err(e)?)
+        }),
+        cmd("history list", "The trail's steps, oldest first: {id, at, from, kind, title, line}; --days N: only the last N days kept (0: every day).",
+            vec![Opt("days", Some("1"))], |c, a| {
+            let days = a.opt("days").unwrap_or_default().parse::<usize>().map_err(|_| "--days takes a number".to_string())?;
+            j(json!({"steps": hs::steps(&c.root()?, days).map_err(e)?}))
+        }),
+        cmd("history sittings", "The trail cut into sittings (a 30-minute gap starts one), newest first: {start, at, end, count, title}; --days N (0: every day); --steps: with each sitting's steps.",
+            vec![Opt("days", Some("0")), Flag("steps")], |c, a| {
+            let days = a.opt("days").unwrap_or_default().parse::<usize>().map_err(|_| "--days takes a number".to_string())?;
+            j(hs::sittings(&c.root()?, days, a.flag("steps")).map_err(e)?)
+        }),
+        cmd("history show", "One sitting with its steps, by the id of its first step (or last: the newest).",
+            vec![Pos("start", N::One)], |c, a| j(hs::sitting(&c.root()?, &a.s("start")).map_err(e)?)),
+        cmd("history keep", "Keep a sitting as a page: a new page in the Inbox listing its steps, side trips indented under the step they came from. wb history keep <step | last>: the sitting that holds the step.",
+            vec![Pos("start", N::One)], |c, a| {
+            let s = hs::sitting(&c.root()?, &a.s("start")).map_err(e)?;
+            j(nb::jot(c.bible()?, &mut *c.study()?, &hs::as_page_text(&s), false).map_err(e)?)
+        }),
+    ]
 }
 
 /// The person's findings about the app while it is built (findings/<id>.md, kept apart from the study; note 50c1).
 fn findings() -> Vec<Command> {
     vec![
-        cmd("findings", "Your findings about the app, newest first: the open ones (--all: the handled ones too), with what was on screen when each was written.",
-            vec![Flag("all")], |c, a| j(fd::list(&c.root()?, a.flag("all")).map_err(e)?)),
+        cmd("findings", "Your findings about the app, newest first: the open ones (--all: the handled ones too), with what was on screen when each was written and their tags (--tag library: one design folder's).",
+            vec![Flag("all"), Opt("tag", None)], |c, a| j(fd::list_tagged(&c.root()?, a.flag("all"), a.opt("tag").as_deref()).map_err(e)?)),
+        cmd("finding tag", "Tag a finding with the design folders it touches: wb finding tag 1b2d library marks (names from design/features/coverage.md).",
+            vec![Pos("id", N::One), Pos("tags", N::Many)], |c, a| j(fd::tag(&c.root()?, &a.s("id"), &a.list("tags"), false).map_err(e)?)),
+        cmd("finding tags", "The names a finding's tag can take: the design folders in design/features/coverage.md.",
+            vec![], |_c, _a| j(json!({"tags": fd::tag_names()}))),
+        cmd("finding untag", "Take tags off a finding: wb finding untag 1b2d marks.",
+            vec![Pos("id", N::One), Pos("tags", N::Many)], |c, a| j(fd::tag(&c.root()?, &a.s("id"), &a.list("tags"), true).map_err(e)?)),
         cmd("finding add", "Write a finding: wb finding add \"Ctrl+F finds only in the reader\" [--context '{\"size\": \"large\"}']  |  - for standard input.",
             vec![Pos("text", N::Many), Opt("context", None)], |c, a| {
             let text = text_of(c, &a.s("text"))?;
@@ -136,8 +171,8 @@ fn notebook_commands() -> Vec<Command> {
                 let text = text_of(c, &a.s("text"))?;
                 j(nb::write_day(c.bible()?, &mut *c.study()?, a.opt("day").as_deref(), &text, false).map_err(e)?)
             }),
-        cmd("day rm", "Delete a day's page (today's, or wb day rm 2026-11-03); it waits in .trash 7 days.",
-            vec![Pos("day", N::Opt)], |c, a| j(nb::delete_day(&mut *c.study()?, day_of(a).as_deref()).map_err(e)?)),
+        cmd("day rm", "Delete a day's page with timed Undo.",
+            vec![Pos("day", N::Opt)], |c, a| j(nb::delete_day_with_undo(c.bible()?, &mut *c.study()?, day_of(a).as_deref()).map_err(e)?)),
         cmd("settings", "The window's settings for a part (notebook): wb settings notebook; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
             vec![Pos("part", N::One), Pos("key", N::Opt), Pos("value", N::Any), Flag("about")], |c, a| {
                 const FREE: [&str; 6] = ["reading", "hover", "theme", "advanced", "toolbar", "commands"];
@@ -246,7 +281,7 @@ fn notebook_commands() -> Vec<Command> {
                 c.study()?.erase(&a.s("name")).map_err(e)?;
                 j(json!({"erased": [a.s("name")]}))
             }),
-        cmd("trash empty","Erase the notes and questions deleted at least --days ago (default 7; the window does this when it opens). Other files in .trash stay.",
+        cmd("trash empty","Erase the notes and questions deleted at least --days ago (default 7; the window does this when it opens; --days 0 is Empty trash, everything listed). Other files in .trash stay.",
             vec![Opt("days", Some("7"))], |c, a| {
                 let days: i64 = a.opt_or("days", "7").parse().map_err(|_| "argument --days: invalid int value")?;
                 j(json!({"erased": c.study()?.empty_trash(days.max(0)).map_err(e)?}))
@@ -274,13 +309,12 @@ fn notebook_commands() -> Vec<Command> {
                 }
                 j(json!(st.update_jot(&id, text.as_deref(), q).map_err(e)?))
             }),
-        cmd("inbox rm", "Delete an Inbox note (moved to .trash in the study folder).", vec![Pos("note", N::Many)], |c, a| {
+        cmd("inbox rm", "Delete an Inbox page with timed Undo.", vec![Pos("note", N::Many)], |c, a| {
             let mut st = c.study()?;
             let id = nb::find_jot(&st, &a.s("note")).map_err(e)?;
-            // the pages inside it move up a level (W3)
-            wb_core::pages::release(c.bible()?, &mut st, &id).map_err(e)?;
-            st.delete_jot(&id).map_err(e)?;
-            j(json!({"ok": true, "id": id}))
+            let mut result = wb_core::deletion::remove(c.bible()?, &mut st, &id).map_err(e)?;
+            result["id"] = json!(id);
+            j(result)
         }),
         cmd("questions", "Your questions: those in the Inbox and those at a place (trails), newest first.", vec![Opt("status", Some("open"))], |c, a| {
             j(nb::questions(c.bible()?, &*c.study()?, &a.opt_or("status", "open")).map_err(e)?)
@@ -311,8 +345,11 @@ fn notebook_commands() -> Vec<Command> {
             vec![Pos("trail", N::One), Pos("page", N::One), Flag("also")], |c, a| {
                 j(wb_core::questions::fold(c.bible()?, &mut *c.study()?, &a.s("trail"), &a.s("page"), a.flag("also")).map_err(e)?)
             }),
-        cmd("question unfold", "Give a question written in a page its own place again: a trail at the page's place, and the block taken out of the page. wb question unfold <page id>#<block number>.",
-            vec![Pos("id", N::One)], |c, a| j(wb_core::questions::unfold(c.bible()?, &mut *c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("question unfold", "Give a question written in a page its own place again: a trail at the page's first place (or one of its places selected with --at), and the block taken out of the page. wb question unfold <page id>#<block number> [--at place].",
+            vec![Pos("id", N::One), Opt("at", None)], |c, a| {
+                let at = a.opt("at").map(|at| crate::study::anchor(c, &at)).transpose()?;
+                j(wb_core::questions::unfold(c.bible()?, &mut *c.study()?, &a.s("id"), at.as_deref()).map_err(e)?)
+            }),
         cmd("parse", "What a line of the capture box means, as the window reads it: wb parse \"uses zeal gospels\" (an action, or the error).",
             vec![Pos("line", N::Any)], |c, a| {
                 Ok(Out::Json(match lang::parse(&a.s("line"), c.bible()?.books()) {

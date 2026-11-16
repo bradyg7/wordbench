@@ -1,4 +1,4 @@
-// My commands (R4 step 4, docs/redesign-R4.md): command lines the person keeps, in settings/commands.json (`wb commands`).
+// My commands (R4 step 4, docs/archive/2026-11-10/docs/redesign-R4.md): command lines the person keeps, in settings/commands.json (`wb commands`).
 // A line is written as typed in the command field; {word}, {place} and {chapter} take what is selected or being read.
 // A kept command can be a toolbar button (the catalog lists them) and have its own key.
 import { wb } from './api';
@@ -43,10 +43,11 @@ export async function run(c: Kept) {
 
 /** A key like "Ctrl+U" the event matches. */
 export function matches(e: KeyboardEvent, key: string) {
-  const m = /^(Ctrl|Alt)\+(.+)$/i.exec(key);
-  if (!m) return false;
-  const want = m[2].toLowerCase();
-  return (m[1].toLowerCase() === 'ctrl' ? e.ctrlKey || e.metaKey : e.altKey) && !e.shiftKey && e.key.toLowerCase() === want;
+  const parts = key.toLowerCase().split('+');
+  const want = parts.pop();
+  return !!want && parts.length > 0 && parts.every(p => ['ctrl', 'alt', 'shift'].includes(p))
+    && (e.ctrlKey || e.metaKey) === parts.includes('ctrl') && e.altKey === parts.includes('alt')
+    && e.shiftKey === parts.includes('shift') && e.key.toLowerCase() === want;
 }
 /** A kept command whose key this is (not while typing in a field). */
 export function byKey(e: KeyboardEvent): Kept | undefined {
@@ -104,6 +105,7 @@ export function form(existing: Kept | null, done: (k: Kept | null) => void, extr
   const row = h('div', 'cmd-buttons');
   const keep = h('button', 'btn', 'Keep');
   const add = h('button', 'btn primary', 'Keep and add to toolbar');
+  add.hidden = !extra;   // no toolbar now (command round 2): offered only where a caller still has a place for it
   const cancel = h('button', 'link-btn', 'Cancel');
   const go = async (toolbar: boolean) => {
     if (existing && existing.name !== name.value.trim()) await remove(existing);

@@ -3,8 +3,8 @@
 //! window (a pane on the desktop, a sheet on a phone).
 //!
 //! An action serializes as the Python parser's object did (`{"cmd": "uses", "strong": "", "word": "zeal", ...}`), with a
-//! book as its code. `tests/commands-cases.json` holds the Python parser's own answers for every line its tests and
-//! manual give it (made by `scripts/commands-cases.mjs`), and the tests here compare with them.
+//! book as its code. `tests/commands-cases.json` is the Rust-maintained compatibility baseline, including cases from
+//! the command manual. The tests compare this parser with those reviewed expected values.
 //!
 //! New in the Rust app: the Notebook's `jot`, `place`, `journal`, `inbox` and `notebook`, and `window` (the test sizes).
 
@@ -20,7 +20,7 @@ pub const COPY_FORMATS: &[&str] = &["lines", "block", "para", "quote"];
 pub const DECK_STRUCTURES: &[&str] = &["reader", "pulpit", "verse", "table", "map"];
 pub const DOC_STRUCTURES: &[&str] = &["reading", "share", "script", "study", "dossier"];
 pub const EXPORT_THEMES: &[&str] = &["vellum", "vigil", "olivet", "veil", "daylight", "print"];
-/// The window sizes of docs/PLAN.md section 7.
+/// The window sizes of docs/archive/2026-11-10/docs/PLAN.md section 7.
 pub const WINDOW_SIZES: &[&str] = &["phone", "phone-landscape", "ipad", "ipad-landscape", "laptop", "laptop-large", "desktop"];
 
 /// A verse or a run of verses named with `@`: its anchor and how it reads.
@@ -303,7 +303,7 @@ pub fn find_doc(topic: &str) -> Option<&'static Value> {
 /// The commands' names, in the manual's order, then the ones new in the Rust app.
 pub fn command_names() -> Vec<String> {
     let mut v: Vec<String> = manual()["commands"].as_array().map(|a| a.iter().filter_map(|c| c["name"].as_str().map(String::from)).collect()).unwrap_or_default();
-    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version", "plans", "findings", "finding"].map(String::from));
+    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version", "plans", "findings", "finding", "focus", "unfocus"].map(String::from));
     v
 }
 
@@ -409,6 +409,9 @@ pub struct ViewQuery {
     /// `pages`: only the notes with no place (pages of their own).
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub pages: bool,
+    /// Explicit post-R1 Notebook kind filter, or all page kinds including thread pages.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
     /// Any other word: every one must be in the note (its text, title, places or threads).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub words: Vec<String>,
@@ -500,6 +503,11 @@ pub fn view_line(line: &str, books: &[Book]) -> Result<ViewQuery, String> {
             "open" => q.questions = Some("open".into()),
             "answered" => q.questions = Some("answered".into()),
             "pages" => q.pages = true,
+            "kind" => {
+                let kind = t.get(i + 1).map(|x| x.to_lowercase()).filter(|x| matches!(x.as_str(), "all" | "note" | "question" | "day" | "thread"));
+                q.kind = Some(kind.ok_or_else(|| "kind takes all, note, question, day or thread.".to_string())?);
+                i += 1;
+            }
             "days" => {
                 let n = t.get(i + 1).and_then(|x| x.parse::<u32>().ok()).filter(|n| (1..=3650).contains(n));
                 let Some(n) = n else { return Err("days takes a number: notebook days 7 (written in the last 7 days)".into()) };
@@ -1467,7 +1475,8 @@ pub fn parse(input: &str, books: &[Book]) -> Result<Action, String> {
         },
         "findpage" => Action::Findpage { q: a.into() },
         "panes" => Action::Panes,
-        "close" | "minimize" | "restore" | "dock" | "float" => {
+        "unfocus" if a.is_empty() => Action::Pane { action: "unfocus".into(), target: "all".into() },
+        "close" | "minimize" | "restore" | "dock" | "float" | "focus" => {
             if a.is_empty() {
                 let more = if head == "close" || head == "restore" { format!("all  or  {head} ") } else { String::new() };
                 return Err(format!("Which pane? Try: {head} {more}occurrences  (panes lists what is open)"));
@@ -1704,6 +1713,9 @@ mod tests {
         assert_eq!(p("version ylt"), serde_json::json!({"cmd": "version", "version": "YLT"}));
         assert_eq!(p("version"), serde_json::json!({"cmd": "version", "version": ""}));
         assert_eq!(p("plans"), serde_json::json!({"cmd": "plans"}));
+        assert_eq!(p("focus notebook"), serde_json::json!({"cmd": "pane", "action": "focus", "target": "notebook"}));
+        assert_eq!(p("unfocus"), serde_json::json!({"cmd": "pane", "action": "unfocus", "target": "all"}));
+        assert!(parse("focus", &bs).is_err());
         assert_eq!(p("findings"), serde_json::json!({"cmd": "findings"}));
         assert_eq!(p("finding Ctrl+F finds only in the reader"), serde_json::json!({"cmd": "finding", "text": "Ctrl+F finds only in the reader"}));
         assert!(parse("jot", &bs).is_err());

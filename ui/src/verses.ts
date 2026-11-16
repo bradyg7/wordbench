@@ -22,8 +22,7 @@ export interface Run { t: string; hl?: string }
 export interface MarkedVerse { ref: string; book: string; code: string; c: number; v: number; text: string; runs: Run[] }
 export interface Marked { label: string; version: string; verses: MarkedVerse[] }
 
-const COLORS = new Set(['yellow', 'green', 'blue', 'pink', 'orange']);
-const hlColor = (c: string) => (COLORS.has(c) ? `var(--hl-${c})` : c);
+import { hlStyle } from './hlink';
 
 /** Verses drawn verbatim, each with its number: as a paragraph (one after another) or a verse to a line. The person's
  * highlights are on the words, as in the reader (none while the highlights layer is hidden). */
@@ -41,7 +40,7 @@ export function drawVerses(verses: MarkedVerse[], lines: boolean): HTMLElement {
     for (const r of v.runs) {
       if (r.hl && showHl) {
         const m = h('span', 'sv-hl', r.t);
-        m.style.backgroundColor = hlColor(r.hl);
+        m.style.cssText = hlStyle(r.hl);
         t.append(m);
       } else t.append(r.t);
     }
@@ -160,30 +159,49 @@ export async function verseCard(ref: string, a: HTMLElement, e?: MouseEvent) {
     const below = r.bottom + 8;
     panel.style.top = `${below + hgt <= innerHeight - 16 ? below : Math.max(16, Math.min(r.top - 8 - hgt, innerHeight - hgt - 16))}px`;
   };
-  fillCard(body, ref, d, { pinned: false, changed: place });
+  fillCard(body, ref, d, { pinned: false, changed: place, source: a });
   place();
 }
 
 /** A card kept as a pane of its own (the pin): drawn again when highlights change. */
-export function openCardPane(ref: string, label: string, tab: Tab = null) {
+export function openCardPane(ref: string, label: string, tab: Tab = null, source?: HTMLElement) {
   let now: Tab = tab;
-  return dock.open('versecard', label, `versecard|${ref}`, 'right', async el => {
+  const sourcePane = source && dock.panes.find(p => p.el.contains(source));
+  return dock.open('versecard', label, `versecard|${ref}`, 'right', async (el, pane) => {
     const d: Marked | null = await wb(['scripture', ref]).catch(() => null);
     const body = h('div', 'verse-card-body in-pane');
     if (!d) body.append(h('p', 'muted', `Nothing found at ${ref}.`));
     else fillCard(body, ref, d, { pinned: true, tab: now, tabChanged: t => { now = t; } });
     el.replaceChildren(body);
+    if (sourcePane) {
+      const back = button('link-btn vc-back', `Back to ${sourcePane.title}`, () => {
+        const original = dock.find(sourcePane.key);
+        if (!original) return;
+        dock.show(original);
+        if (source?.isConnected) source.focus({ preventScroll: true });
+        else { original.el.tabIndex = -1; original.el.focus({ preventScroll: true }); }
+      }, 'left');
+      el.prepend(back);
+    }
+    pane.captureView = () => ({ tab: now });
+    pane.restoreView = async state => {
+      const tab = state?.tab;
+      if (tab === null || ['interlinear', 'strongs', 'definitions'].includes(tab)) {
+        now = tab;
+        if (d) fillCard(body, ref, d, { pinned: true, tab: now, tabChanged: t => { now = t; } });
+      }
+    };
   });
 }
 
-interface CardOpts { pinned: boolean; tab?: Tab; changed?: () => void; tabChanged?: (t: Tab) => void }
+interface CardOpts { pinned: boolean; tab?: Tab; changed?: () => void; tabChanged?: (t: Tab) => void; source?: HTMLElement }
 
 function fillCard(body: HTMLElement, ref: string, d: Marked, o: CardOpts) {
   body.replaceChildren();
   const head = h('div', 'vc-head');
   head.append(h('span', 'vc-ref', d.label), h('span', 'vc-ver muted', ` · ${d.version}`), h('span', 'grow'));
   if (!o.pinned) {
-    const pin = button('icon-btn vc-pin', '', () => { closeSheet(); openCardPane(ref, d.label, tab); }, 'float');
+    const pin = button('btn small vc-pin', 'Keep as pane', () => { closeSheet(); openCardPane(ref, d.label, tab, o.source); }, 'float');
     pin.title = 'Keep it as a pane';
     pin.setAttribute('aria-label', 'Keep it as a pane');
     const x = button('icon-btn vc-close', '', () => closeSheet(), 'x');

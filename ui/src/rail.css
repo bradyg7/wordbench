@@ -1,0 +1,112 @@
+/* The rail on the left, the top bar with the trail line under it (design/features/command round 2, C13-C18; the rail and
+   the trail from design/features/minimize). Desktop only: the phone (compact) keeps its own bar and tabs. */
+
+/* ---- minimized tabs as links in the rail's menus (design/features/minimize round 7) ---- */
+.rail-item.has::before { content: ''; position: absolute; left: 1px; top: 50%; width: 3px; height: 14px; margin-top: -7px; border-radius: 2px; background: var(--muted); }
+.rail-item[hidden], .rail-rule[hidden] { display: none; }
+.rail-menu { display: flex; flex-direction: column; padding: 2px; }
+.rail-menu-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 8px; font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); }
+.rail-menu-head .link-btn { margin-left: auto; text-transform: none; letter-spacing: 0; padding: 2px 4px; }
+.rail-menu-find { margin: 0 2px 6px; width: auto; }
+.rail-menu-list { display: flex; flex-direction: column; max-height: min(60vh, 520px); overflow: auto; }
+.rail-menu-label { padding: 6px 8px 2px; font: var(--type-caption); color: var(--muted); }
+.rail-menu-none { padding: 6px 8px; margin: 0; }
+.rail-link { display: flex; align-items: center; border-radius: 8px; }
+.rail-link:hover, .rail-link:focus-within { background: var(--accent-soft); }
+.rail-link-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 7px 8px; text-align: left; font: var(--type-small); color: var(--fg); }
+.rail-link-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-link-w { font: var(--type-caption); color: var(--muted); flex: none; }
+.rail-link-act { opacity: 0; }
+.rail-link:hover .rail-link-act, .rail-link:focus-within .rail-link-act { opacity: 1; }
+.rail-menu-foot { display: flex; align-items: center; gap: 6px; padding: 6px 4px 2px; border-top: 1px solid var(--line); margin-top: 4px; }
+.dock-fold { position: fixed; z-index: 30; pointer-events: none; border: 2px solid var(--accent); border-radius: 10px; background: var(--accent-soft); transform-origin: left center; }
+
+:root { --rail-w: 0px; --bar-row-h: 56px; --trail-h: 0px; }
+:root:not([data-size="compact"]) { --rail-w: 52px; --trail-h: 34px; --bar-h: calc(var(--bar-row-h) + var(--trail-h)); }
+:root:not([data-size="compact"]).rail-named { --rail-w: 196px; }
+:root.no-toolbar { --trail-h: 0px; }
+
+/* ---- the rail ---- */
+.rail { display: none; }
+:root:not([data-size="compact"]) .rail {
+  position: fixed; left: 0; top: 0; bottom: 0; width: var(--rail-w); z-index: 31; display: flex; flex-direction: column; align-items: stretch;
+  gap: 4px; padding: 10px 7px; background: var(--sunken); border-right: 1px solid var(--line); overflow: hidden auto;
+}
+.rail-item { position: relative; display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 10px; color: var(--fg); flex: none; white-space: nowrap; }
+.rail-item:hover { background: var(--accent-soft); }
+.rail-item.on { background: var(--accent-soft); color: var(--accent); }
+.rail-item .ico { flex: none; }
+.rail-name { display: none; font: var(--type-small-strong); }
+.rail-named .rail-name { display: inline; }
+.rail-rule { height: 1px; background: var(--line); margin: 4px 6px; flex: none; }
+.rail-item[data-rail="trail"].going::after { content: ''; position: absolute; left: 17px; bottom: 3px; width: 5px; height: 5px; border-radius: 3px; background: var(--accent); }
+.rail .grow { flex: 1; }
+
+/* everything else starts right of the rail */
+:root:not([data-size="compact"]) .bar { left: var(--rail-w); }
+:root:not([data-size="compact"]) #scroller { left: calc(var(--rail-w) + var(--dock-l)); }
+:root:not([data-size="compact"]) .dock-left { left: var(--rail-w); }
+:root:not([data-size="compact"]) .dock-band, :root:not([data-size="compact"]) .dock-chips { left: calc(var(--rail-w) + var(--dock-l)); }
+:root:not([data-size="compact"]) .drop-hint { left: calc((100vw + var(--rail-w) + var(--dock-l) - var(--dock-r)) / 2); }
+
+/* ---- the top bar: one row, then the trail line ---- */
+.bar { flex-direction: column; align-items: stretch; padding: 0; gap: 0; }
+.bar-row { display: flex; align-items: center; gap: 6px; height: calc(var(--bar-row-h) + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 12px 0; flex: none; }
+.bar-row .cmdbox { flex: 1 1 auto; max-width: none; }
+.bar-row #more { margin-left: 2px; }
+
+/* the reader's tools at the box's end, while the reader is in front (C13) */
+.cmd-tools { display: inline-flex; align-items: center; gap: 2px; }
+.cmdbox.pane-front .cmd-tools { display: none; }
+.cmd-tool { display: inline-grid; place-items: center; min-width: 28px; height: 28px; padding: 0 6px; border-radius: 6px; color: var(--muted); }
+.cmd-tool:hover { background: var(--accent-soft); color: var(--fg); }
+.cmd-version { font: var(--type-caption); color: var(--fg); border: 1px solid var(--line); border-radius: 999px; background: var(--sunken); height: 22px; padding: 0 8px; margin-right: 2px; }
+
+/* the box popped off the bar (C18): its search icon drags it; a double-click puts it back */
+.cmd-handle { cursor: grab; touch-action: none; }
+.cmd-handle:hover { color: var(--fg); }
+.cmdbox.popped { position: fixed; z-index: 45; width: min(560px, calc(100vw - 32px)); margin: 0; box-shadow: 0 12px 32px rgba(0, 0, 0, .22); border-radius: 999px; padding-left: 14px; }
+.cmdbox.dragging .cmd-handle { cursor: grabbing; }
+
+/* narrow (C17): the place shows in the box; the reader's tools fold into More */
+@media (max-width: 899px) {
+  :root:not([data-size="compact"]) .bar-row .place { display: none; }
+  :root:not([data-size="compact"]) .cmd-tools { display: none; }
+}
+
+/* ---- the trail line under the top bar (C13, C15-C17) ---- */
+.trail-line { display: none; }
+:root:not([data-size="compact"]) .trail-line {
+  display: flex; align-items: center; gap: 6px; height: var(--trail-h); padding: 0 12px; background: var(--bg); border-top: 1px solid var(--line);
+  overflow: hidden; white-space: nowrap; font: var(--type-small); color: var(--muted); flex: none;
+}
+:root.no-toolbar .trail-line { display: none; }
+.trail-line > .ico { color: var(--muted); flex: none; }
+.trail-chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: var(--type-caption); flex: none; }
+.trail-step { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 6px; border-radius: 6px; color: var(--muted); min-width: 0; max-width: 240px; }
+.trail-step:first-of-type .ico { color: var(--accent); }
+.trail-step:hover { background: var(--accent-soft); color: var(--fg); }
+.trail-step.on { background: var(--surface); border: 1px solid var(--line); color: var(--fg); font: var(--type-small-strong); }
+.trail-step.on .ico { color: var(--accent); }
+.trail-title { overflow: hidden; text-overflow: ellipsis; }
+.trail-fork { width: 5px; height: 5px; border-radius: 3px; background: var(--muted); flex: none; }
+.trail-fold { height: 22px; padding: 0 6px; border-radius: 6px; background: var(--sunken); color: var(--muted); font: var(--type-caption); flex: none; }
+.trail-count { flex: none; }
+@media (max-width: 899px) {
+  .trail-line .trail-step:not(.on):not(:first-of-type) .trail-title { display: none; }
+  .trail-count { display: none; }
+}
+
+/* ---- the drawer ---- */
+.trail-drawer { position: fixed; left: var(--rail-w); top: var(--bar-h); bottom: 0; width: 360px; z-index: 29; background: var(--sunken); border-right: 1px solid var(--line);
+  box-shadow: 8px 0 24px #00000026; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.trail-head { display: flex; align-items: flex-start; gap: 8px; padding: 0 6px; }
+.trail-acts { display: flex; gap: 6px; padding: 0 6px 6px; border-bottom: 1px solid var(--line); }
+.trail-tree { display: grid; gap: 1px; }
+.trail-node { display: flex; align-items: center; gap: 6px; border-radius: 8px; }
+.trail-node.on { background: var(--accent-soft); }
+.trail-node .trail-step { max-width: 250px; }
+.trail-node > .muted { margin-left: auto; padding-right: 8px; flex: none; }
+.trail-more { text-align: left; font: var(--type-caption); padding: 2px 0; }
+.trail-sittings { display: grid; gap: 2px; }
+.trail-sittings .more-item.on { background: var(--accent-soft); }

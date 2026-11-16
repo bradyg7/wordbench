@@ -1,11 +1,7 @@
 # Bible Workbench (Rust)
 
-A personal Bible study workbench for one person: the KJV and YLT with Strong's, lexicons and the interlinear, and the
-person's own notes, highlights and threads kept as plain files. This repository is its rebuild in Rust, for iPhone, iPad,
-Android and the desktop, from one Rust core and one web UI in Tauri 2.
+A personal Bible study workbench with KJV and YLT, Strong's, lexicons and interlinear lookup. Study notes, highlights and threads live in plain files shared with the Python predecessor. The Rust core serves both the `wb` CLI and the Tauri desktop app.
 
-- The plan: [docs/PLAN.md](docs/PLAN.md). Design decisions: [docs/PLAN-design.md](docs/PLAN-design.md).
-- Rules for working here (for people and AI assistants): [CLAUDE.md](CLAUDE.md).
-- Status: phase 0 done (results: [docs/phase0-results.md](docs/phase0-results.md)); phase 1 done (results: [docs/phase1-results.md](docs/phase1-results.md)); Phase 2 desktop is integrated ([results](docs/phase2-results.md)). See the [current debugging queue](docs/current/README.md) for remaining work.
-
-The Python app this replaces is `bible-workbench`; both read the same study folder in the same formats.
+- [Current spec and roadmap](docs/SPEC.md)
+- [Repository instructions and development commands](AGENTS.md)
+- [Archived plans, decisions and test evidence](docs/archive/2026-11-10/)

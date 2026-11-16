@@ -1,0 +1,530 @@
+{
+ "H7062": {
+  "strong": "H7062",
+  "lang": "heb",
+  "lemma": "קֹמֶץ",
+  "translit": "qômets",
+  "pron": "ko'mets",
+  "pos": "n-m",
+  "derivation": "from [[H7061]];",
+  "definition": "a grasp, i.e. handful",
+  "usage": "handful.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "handful",
+    "n": 2
+   },
+   {
+    "w": "handfuls",
+    "n": 1
+   }
+  ],
+  "occurrences": 3
+ },
+ "H7063": {
+  "strong": "H7063",
+  "lang": "heb",
+  "lemma": "קִמָּשׁוֹן",
+  "translit": "qimmâshôwn",
+  "pron": "kim-maw-shone'",
+  "pos": "n-m",
+  "derivation": "from the same as [[H7057]];",
+  "definition": "a prickly plant",
+  "usage": "thorn.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "thorns",
+    "n": 1
+   }
+  ],
+  "occurrences": 1
+ },
+ "H7064": {
+  "strong": "H7064",
+  "lang": "heb",
+  "lemma": "קֵן",
+  "translit": "qên",
+  "pron": "kane",
+  "pos": "n-m",
+  "derivation": "contracted from [[H7077]];",
+  "definition": "a nest (as fixed), sometimes including the nestlings; figuratively, a chamber or dwelling",
+  "usage": "nest, room.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "nest",
+    "n": 12
+   },
+   {
+    "w": "rooms",
+    "n": 1
+   }
+  ],
+  "occurrences": 13
+ },
+ "H7065": {
+  "strong": "H7065",
+  "lang": "heb",
+  "lemma": "קָנָא",
+  "translit": "qânâʼ",
+  "pron": "kaw-naw'",
+  "pos": "v",
+  "derivation": "a primitive root;",
+  "definition": "to be (causatively, make) zealous, i.e. (in a bad sense) jealous or envious",
+  "usage": "(be) envy(-ious), be (move to, provoke to) jealous(-y), × very, (be) zeal(-ous).",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "jealous",
+    "n": 10
+   },
+   {
+    "w": "envied",
+    "n": 5
+   },
+   {
+    "w": "jealousy",
+    "n": 5
+   },
+   {
+    "w": "envious",
+    "n": 4
+   },
+   {
+    "w": "envy",
+    "n": 3
+   },
+   {
+    "w": "very",
+    "n": 2
+   },
+   {
+    "w": "zealous",
+    "n": 2
+   },
+   {
+    "w": "enviest",
+    "n": 1
+   },
+   {
+    "w": "zeal",
+    "n": 1
+   }
+  ],
+  "occurrences": 33
+ },
+ "H7066": {
+  "strong": "H7066",
+  "lang": "arc",
+  "lemma": "קְנָא",
+  "translit": "qᵉnâʼ",
+  "pron": "ken-aw'",
+  "pos": "v",
+  "derivation": "(Aramaic) corresponding to [[H7069]];",
+  "definition": "to purchase",
+  "usage": "buy.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "buy",
+    "n": 1
+   }
+  ],
+  "occurrences": 1
+ },
+ "H7067": {
+  "strong": "H7067",
+  "lang": "heb",
+  "lemma": "קַנָּא",
+  "translit": "qannâʼ",
+  "pron": "kan-naw'",
+  "pos": "a",
+  "derivation": "from [[H7065]];",
+  "definition": "jealous",
+  "usage": "jealous. Compare [[H7072]].",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "jealous",
+    "n": 6
+   }
+  ],
+  "occurrences": 6
+ },
+ "H7068": {
+  "strong": "H7068",
+  "lang": "heb",
+  "lemma": "קִנְאָה",
+  "translit": "qinʼâh",
+  "pron": "kin-aw'",
+  "pos": "n-f",
+  "derivation": "from [[H7065]];",
+  "definition": "jealousy or envy",
+  "usage": "envy(-ied), jealousy, × sake, zeal.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "jealousy",
+    "n": 24
+   },
+   {
+    "w": "zeal",
+    "n": 9
+   },
+   {
+    "w": "envy",
+    "n": 7
+   },
+   {
+    "w": "envied",
+    "n": 1
+   },
+   {
+    "w": "jealousies",
+    "n": 1
+   },
+   {
+    "w": "sake",
+    "n": 1
+   }
+  ],
+  "occurrences": 43
+ },
+ "H7069": {
+  "strong": "H7069",
+  "lang": "heb",
+  "lemma": "קָנָה",
+  "translit": "qânâh",
+  "pron": "kaw-naw'",
+  "pos": "v",
+  "derivation": "a primitive root;",
+  "definition": "to erect, i.e. create; by extension, to procure, especially by purchase (causatively, sell); by implication to own",
+  "usage": "attain, buy(-er), teach to keep cattle, get, provoke to jealousy, possess(-or), purchase, recover, redeem, × surely, × verily.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "buy",
+    "n": 24
+   },
+   {
+    "w": "bought",
+    "n": 20
+   },
+   {
+    "w": "get",
+    "n": 8
+   },
+   {
+    "w": "purchased",
+    "n": 5
+   },
+   {
+    "w": "buyer",
+    "n": 3
+   },
+   {
+    "w": "getteth",
+    "n": 3
+   },
+   {
+    "w": "got",
+    "n": 3
+   },
+   {
+    "w": "buyest",
+    "n": 2
+   },
+   {
+    "w": "possessed",
+    "n": 2
+   },
+   {
+    "w": "possessor",
+    "n": 2
+   },
+   {
+    "w": "again",
+    "n": 1
+   },
+   {
+    "w": "attain",
+    "n": 1
+   },
+   {
+    "w": "cattle",
+    "n": 1
+   },
+   {
+    "w": "gotten",
+    "n": 1
+   },
+   {
+    "w": "he",
+    "n": 1
+   },
+   {
+    "w": "jealousy",
+    "n": 1
+   },
+   {
+    "w": "owner",
+    "n": 1
+   },
+   {
+    "w": "possessors",
+    "n": 1
+   },
+   {
+    "w": "recover",
+    "n": 1
+   },
+   {
+    "w": "redeemed",
+    "n": 1
+   },
+   {
+    "w": "surely",
+    "n": 1
+   },
+   {
+    "w": "verily",
+    "n": 1
+   }
+  ],
+  "occurrences": 84
+ },
+ "H7070": {
+  "strong": "H7070",
+  "lang": "heb",
+  "lemma": "קָנֶה",
+  "translit": "qâneh",
+  "pron": "kaw-neh'",
+  "pos": "n-m",
+  "derivation": "from [[H7069]];",
+  "definition": "a reed (as erect); by resemblance a rod (especially for measuring), shaft, tube, stem, the radius (of the arm), beam (of a steelyard)",
+  "usage": "balance, bone, branch, calamus, cane, reed, × spearman, stalk.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "reed",
+    "n": 22
+   },
+   {
+    "w": "branches",
+    "n": 19
+   },
+   {
+    "w": "reeds",
+    "n": 6
+   },
+   {
+    "w": "branch",
+    "n": 5
+   },
+   {
+    "w": "calamus",
+    "n": 3
+   },
+   {
+    "w": "cane",
+    "n": 2
+   },
+   {
+    "w": "stalk",
+    "n": 2
+   },
+   {
+    "w": "balance",
+    "n": 1
+   },
+   {
+    "w": "bone",
+    "n": 1
+   },
+   {
+    "w": "spearmen",
+    "n": 1
+   }
+  ],
+  "occurrences": 62
+ },
+ "G2203": {
+  "strong": "G2203",
+  "lang": "grk",
+  "lemma": "Ζεύς",
+  "translit": "Zeús",
+  "pron": "dzyooce",
+  "pos": null,
+  "derivation": "of uncertain affinity;",
+  "definition": "in the oblique cases there is used instead of it a (probably cognate) name Δίς, which is otherwise obsolete; Zeus or Dis (among the Latins, Jupiter or Jove), the supreme deity of the Greeks",
+  "usage": "Jupiter.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "jupiter",
+    "n": 2
+   }
+  ],
+  "occurrences": 2
+ },
+ "G2204": {
+  "strong": "G2204",
+  "lang": "grk",
+  "lemma": "ζέω",
+  "translit": "zéō",
+  "pron": "dzeh'-o",
+  "pos": null,
+  "derivation": "a primary verb;",
+  "definition": "to be hot (boil, of liquids; or glow, of solids), i.e. (figuratively) be fervid (earnest)",
+  "usage": "be fervent.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "fervent",
+    "n": 2
+   }
+  ],
+  "occurrences": 2
+ },
+ "G2205": {
+  "strong": "G2205",
+  "lang": "grk",
+  "lemma": "ζῆλος",
+  "translit": "zēlos",
+  "pron": "dzay'-los",
+  "pos": null,
+  "derivation": "from [[G2204]];",
+  "definition": "properly, heat, i.e. (figuratively) \"zeal\" (in a favorable sense, ardor; in an unfavorable one, jealousy, as of a husband (figuratively, of God), or an enemy, malice)",
+  "usage": "emulation, envy(-ing), fervent mind, indignation, jealousy, zeal.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "zeal",
+    "n": 6
+   },
+   {
+    "w": "envying",
+    "n": 4
+   },
+   {
+    "w": "indignation",
+    "n": 2
+   },
+   {
+    "w": "emulations",
+    "n": 1
+   },
+   {
+    "w": "envy",
+    "n": 1
+   },
+   {
+    "w": "envyings",
+    "n": 1
+   },
+   {
+    "w": "jealousy",
+    "n": 1
+   },
+   {
+    "w": "mind",
+    "n": 1
+   }
+  ],
+  "occurrences": 17
+ },
+ "G2206": {
+  "strong": "G2206",
+  "lang": "grk",
+  "lemma": "ζηλόω",
+  "translit": "zēlóō",
+  "pron": "dzay-lo'-o",
+  "pos": null,
+  "derivation": "from [[G2205]];",
+  "definition": "to have warmth of feeling for or against",
+  "usage": "affect, covet (earnestly), (have) desire, (move with) envy, be jealous over, (be) zealous(-ly affect).",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "affect",
+    "n": 2
+   },
+   {
+    "w": "envy",
+    "n": 2
+   },
+   {
+    "w": "affected",
+    "n": 1
+   },
+   {
+    "w": "be zealous",
+    "n": 1
+   },
+   {
+    "w": "covet",
+    "n": 1
+   },
+   {
+    "w": "desire",
+    "n": 1
+   },
+   {
+    "w": "earnestly",
+    "n": 1
+   },
+   {
+    "w": "envieth",
+    "n": 1
+   },
+   {
+    "w": "have",
+    "n": 1
+   },
+   {
+    "w": "jealous",
+    "n": 1
+   }
+  ],
+  "occurrences": 12
+ },
+ "G2207": {
+  "strong": "G2207",
+  "lang": "grk",
+  "lemma": "ζηλωτής",
+  "translit": "zēlōtḗs",
+  "pron": "dzay-lo-tace'",
+  "pos": null,
+  "derivation": "from [[G2206]];",
+  "definition": "a \"zealot\"",
+  "usage": "zealous.",
+  "extra": null,
+  "renderings": [
+   {
+    "w": "zealous",
+    "n": 5
+   },
+   {
+    "w": "zelotes",
+    "n": 2
+   }
+  ],
+  "occurrences": 7
+ },
+ "G2208": {
+  "strong": "G2208",
+  "lang": "grk",
+  "lemma": "Ζηλωτής",
+  "translit": "Zēlōtḗs",
+  "pron": "dzay-lo-tace'",
+  "pos": null,
+  "derivation": "the same as [[G2207]];",
+  "definition": "a Zealot, i.e. (specially) partisan for Jewish political independence",
+  "usage": "Zelotes.",
+  "extra": null,
+  "renderings": [],
+  "occurrences": 0
+ }
+}

@@ -1,4 +1,4 @@
-//! My commands (R4 step 4, docs/redesign-R4.md): command lines the person keeps, each with a name, an optional icon and an
+//! My commands (R4 step 4, docs/archive/2026-11-10/docs/redesign-R4.md): command lines the person keeps, each with a name, an optional icon and an
 //! optional key, in settings/commands.json (key `items`; the Python app passes over it). A line is written as it would be
 //! typed in the command field, and may hold fill-ins the window takes from what is selected: `{word}`, `{place}`,
 //! `{chapter}`. "Most used" is counted from the day's logs (sessions/<day>.jsonl, which hold every line run).
@@ -32,6 +32,43 @@ fn id_of(name: &str) -> String {
     out.trim_end_matches('-').to_string()
 }
 
+/// Shared by saved commands (including layout shortcuts) and Notebook capture.
+pub fn normalize_key(value: &str) -> Result<String> {
+    if value.trim().is_empty() { return Ok(String::new()); }
+    let parts: Vec<_> = value.split('+').map(str::trim).collect();
+    let (last, mods) = parts.split_last().ok_or_else(|| bad("Give a key like Ctrl+U."))?;
+    let mut have = Vec::new();
+    for m in mods {
+        let m = match m.to_lowercase().as_str() {
+            "ctrl" | "control" => "Ctrl", "alt" => "Alt", "shift" => "Shift",
+            _ => return Err(bad("A key's modifiers are Ctrl, Alt and Shift.")),
+        };
+        if have.contains(&m) { return Err(bad("A key cannot repeat a modifier.")); }
+        have.push(m);
+    }
+    if last.chars().count() != 1 || !last.chars().all(|c| c.is_ascii_alphanumeric() || ",=\\-".contains(c)) || !have.iter().any(|m| *m == "Ctrl" || *m == "Alt") {
+        return Err(bad("Give a key with Ctrl or Alt and one letter or digit, like Ctrl+U."));
+    }
+    let mut out: Vec<String> = ["Ctrl", "Alt", "Shift"].iter().filter(|m| have.contains(m)).map(|m| m.to_string()).collect();
+    out.push(last.to_uppercase());
+    Ok(out.join("+"))
+}
+
+pub fn check_key(store: &Store, key: &str, command_id: Option<&str>, capture: bool) -> Result<()> {
+    if key.is_empty() { return Ok(()); }
+    let reserved = [("Ctrl+F", "Find"), ("Ctrl+=", "Text size"), ("Ctrl+-", "Text size"), ("Ctrl+0", "Text size"), ("Ctrl+,", "Settings"), ("Ctrl+\\", "Notebook sidebar"), ("Ctrl+Shift+J", "Report a finding")];
+    if let Some((_, name)) = reserved.iter().find(|(k, _)| *k == key) { return Err(bad(format!("{key} is already {name}'s key."))); }
+    if !capture {
+        let settings = store.settings("notebook");
+        let current = settings.get("capture").and_then(Value::as_str).unwrap_or("Ctrl+J");
+        if normalize_key(current).ok().as_deref() == Some(key) { return Err(bad(format!("{key} is already Quick capture's key."))); }
+    }
+    if let Some(other) = list(store).iter().find(|i| Some(g(i, "id").as_str()) != command_id && normalize_key(&g(i, "key")).ok().as_deref() == Some(key)) {
+        return Err(bad(format!("{key} is already {}'s key.", g(other, "name"))));
+    }
+    Ok(())
+}
+
 /// Keep a command (or change the one with that name): `key` like `Ctrl+U`, `icon` one of the window's icon names.
 pub fn add(store: &mut Store, name: &str, line: &str, key: &str, icon: &str) -> Result<Value> {
     let name = name.trim();
@@ -42,27 +79,14 @@ pub fn add(store: &mut Store, name: &str, line: &str, key: &str, icon: &str) -> 
     if line.is_empty() {
         return Err(bad("A command needs a line, written as you would type it in the command field."));
     }
-    let low = key.trim().to_lowercase();
-    let key = if let Some(r) = low.strip_prefix("ctrl+") {
-        format!("Ctrl+{}", r.to_uppercase())
-    } else if let Some(r) = low.strip_prefix("alt+") {
-        format!("Alt+{}", r.to_uppercase())
-    } else if low.is_empty() {
-        String::new()
-    } else {
-        return Err(bad("A key starts with Ctrl+ or Alt+ (Ctrl+U)."));
-    };
+    let key = normalize_key(key)?;
     let key = key.as_str();
     let id = id_of(name);
     if id.is_empty() {
         return Err(bad("Give the command a name with a letter or a number in it."));
     }
     let mut items = list(store);
-    if !key.is_empty() {
-        if let Some(o) = items.iter().find(|i| g(i, "key").eq_ignore_ascii_case(key) && g(i, "id") != id) {
-            return Err(bad(format!("{key} is already {}'s key.", g(o, "name"))));
-        }
-    }
+    check_key(store, key, Some(&id), false)?;
     let rec = json!({"id": id, "name": name, "line": line, "icon": icon.trim(), "key": key});
     match items.iter().position(|i| g(i, "id") == id) {
         Some(p) => items[p] = rec.clone(),

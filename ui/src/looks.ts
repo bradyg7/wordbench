@@ -61,16 +61,43 @@ export async function adjust(kind: 'word' | 'pdf', planArgs: string[], start: Ch
   let grey = false;
 
   return new Promise(done => {
-    const m = modal('Adjust the look');
+    const m = modal('Adjust the look', true, () => done(null));
     m.box.classList.add('lk-modal');
-    const finish = (r: Chosen | null) => { m.close(); done(r); };
+    const finish = (r: Chosen) => { done(r); m.close(); };
     const side = h('div', 'lk-side');
-    const stage = h('div', 'lk-stage');
+    const stage = h('div', kind === 'pdf' ? 'lk-stage lk-with-count' : 'lk-stage');
+    const pageCount = h('p', 'muted small lk-page-count');
+    pageCount.setAttribute('aria-live', 'polite');
+    let countKey = '';
+    let countTimer: ReturnType<typeof setTimeout> | undefined;
     const body = h('div', 'lk-body');
     body.append(side, stage);
     const changed = (): [string, string][] => {
       const b = base(lookKey);
       return Object.entries(vals).filter(([k, v]) => k !== 'name' && str(b[k]) !== v).map(([k, v]) => [k, v]);
+    };
+
+    const updatePageCount = () => {
+      const args = ['docs', 'plan', ...planArgs, '--pages', '--look', lookKey,
+        ...changed().flatMap(([k, v]) => ['--set', `${k}=${v}`])];
+      const key = JSON.stringify(args);
+      if (key === countKey) return;
+      countKey = key;
+      clearTimeout(countTimer);
+      pageCount.textContent = 'Counting PDF pages…';
+      pageCount.removeAttribute('title');
+      countTimer = setTimeout(async () => {
+        if (!m.box.isConnected) return;
+        try {
+          const result = await wb(args);
+          if (key === countKey) pageCount.textContent = `${result.pages} PDF page${result.pages === 1 ? '' : 's'}`;
+        } catch (x) {
+          if (key === countKey) {
+            pageCount.textContent = 'PDF page count unavailable';
+            pageCount.title = String((x as Error).message || x);
+          }
+        }
+      }, 160);
     };
 
     const seg = (d: Dial) => {
@@ -206,6 +233,10 @@ export async function adjust(kind: 'word' | 'pdf', planArgs: string[], start: Ch
       );
       side.append(acts);
       stage.replaceChildren(live());
+      if (kind === 'pdf') {
+        stage.append(pageCount);
+        updatePageCount();
+      }
     };
     m.box.replaceChildren(m.head('Adjust the look', kind === 'pdf' ? 'Slides: the first verse of your source' : 'Word: the first page of your source'), body);
     draw();
