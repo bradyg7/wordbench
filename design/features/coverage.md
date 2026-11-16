@@ -20,6 +20,7 @@ A new button or command gets a row here, and its folder, before it is built.
 | BDB and Webster's 1913 as books | paging, the index, one card with three sources | [books](books/README.md) | exploring |
 | Top bar and the command box | the box keeps its line and pops off, the reader's tools at its end, More; suggestions (round 1) | [command](command/README.md) | round 2 merged; round 3 (⋯ into Settings, kept commands on the rail, suggestions) to draw |
 | Reader | verses, versions, marks, selection | [reader](reader/README.md) | exploring |
+| KJV+ (Strong's numbers in the text) | each word's number after it, above it, or on hover; a version or a toggle | [kjv-plus](kjv-plus/README.md) | exploring |
 | Word sheet, verse sheet, hover card | a card that moves, a verse alone, hover | [words](words/README.md) | exploring |
 | Highlights and the palette | colors with names, layers by year; words' ink by contrast, any color on any theme | [highlights](highlights/README.md) | exploring (ink accepted 2026-11-16) |
 | Notebook: pages, Pinned, blocks | folders, the library drawer | [library](library/README.md) | exploring |
