@@ -120,17 +120,24 @@ export class CommandField {
     this.list.hidden = true;
   }
 
+  /** The field empty, or holding just the line the box showed (nothing typed yet). */
+  private untouched(): boolean {
+    const v = this.input.value.trim();
+    return !v || v === box.shows().trim();
+  }
+
   private key(e: KeyboardEvent) {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.input.value = box.shows(); this.close(); this.input.blur(); return; }
-    // ↑ ↓ go through the history when the field is empty or already going through it (as PowerShell does)
-    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && (this.back !== null || (!this.input.value.trim() && e.key === 'ArrowUp'))) {
+    // ↑ ↓ go through the history when the field is empty, or still holds the line it was given (C14), or is already
+    // going through it (as PowerShell does; note 797d)
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && (this.back !== null || (this.untouched() && e.key === 'ArrowUp'))) {
       e.preventDefault();
       if (!history.length) return;
       const at = this.back ?? history.length;
       const to = e.key === 'ArrowUp' ? Math.max(0, at - 1) : at + 1;
       this.close();
       this.items = [];
-      if (to >= history.length) { this.back = null; this.input.value = ''; return; }
+      if (to >= history.length) { this.back = null; this.input.value = box.shows(); this.input.classList.remove('from-history-failed'); return; }
       this.back = to;
       this.input.value = history[to].line;
       this.input.setSelectionRange(this.input.value.length, this.input.value.length);
@@ -184,7 +191,7 @@ export class CommandField {
     const line = this.input.value;
     const seq = ++this.seq;
     const t = line.trim();
-    if (!t) {
+    if (!t || this.untouched()) {
       // the empty field: the last lines run, newest first (a line that did not work says so)
       this.items = history.slice(-6).reverse().map(r => ({ group: 'Recent · ↑ goes back through them', line: r.line, what: r.ok ? '' : 'did not work', ico: 'prompt' }));
       this.itemsFor = '';
