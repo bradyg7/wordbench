@@ -141,9 +141,21 @@ body:has(.dock-grip.dragging) { cursor: col-resize; user-select: none; }
 .strip-btn { width: 30px; display: grid; place-items: center; color: var(--muted); border-radius: 4px; }
 .pane { flex: 1; overflow-y: auto; padding: 0 18px 32px; min-height: 0; }
 .pane[hidden] { display: none; }
-.pane-head { padding: 18px 0 8px; }
-.pane-title { font: var(--type-title); font-size: 20px; line-height: 28px; margin: 0; display: flex; align-items: center; gap: 8px; }
-.pane-sub { color: var(--muted); font: var(--type-small); margin-top: 4px; }
+/* the panel template (design/features/panels, accepted 2026-11-16): way back, kind, title, subtitle, tools, body, foot */
+.pane-head { padding: 14px 0 10px; }
+.pane-from { margin: 0 0 6px; }
+.pane-from-go { display: inline-flex; align-items: center; gap: 4px; font: var(--type-caption); color: var(--muted); padding: 2px 0; }
+.pane-from-ref { color: var(--accent); font: var(--type-small-strong); font-size: 12px; }
+.pane-from-go:hover .pane-from-ref { text-decoration: underline; }
+.pane-kind { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
+.pane-title { font: var(--type-title); letter-spacing: var(--type-title-tracking); margin: 0; display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+.pane-sub { color: var(--muted); font: var(--type-small); margin-top: 2px; }
+.pane-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
+.pane-foot { position: sticky; bottom: -32px; display: flex; align-items: center; gap: 8px; margin: 16px -18px -32px; padding: 8px 18px; border-top: 1px solid var(--line); background: var(--bg); }
+/* P3, the button ladder: icon button, quiet, button, primary (one per panel), switch and chips */
+.btn.quiet { border-color: transparent; background: none; color: var(--accent); padding-inline: 6px; }
+.pane .btn { min-height: 30px; padding: 5px 12px; }
+.btn.danger { color: var(--jesus); }
 .pane .label, .menu .label, .picker .label { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
 
 /* an Inbox note dragged onto a verse */
