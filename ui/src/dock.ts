@@ -54,6 +54,11 @@ export interface Pane {
 /** One tab strip and its panes: a column (or a part of one, when split), a band, or a floating window. */
 interface Group { id: string; side: Side; front?: string; rect?: Rect; z: number; min?: boolean; share?: number }
 
+/** A minimized tab (design/features/minimize round 7): not a loaded pane but a link that opens it again from its key,
+ * with the view it had (scroll, its own state) put back. Kept with the window's layout, not in the study folder. */
+export interface MinLink { key: string; kind: string; title: string; at: number; view?: { scroll?: unknown; state?: unknown } }
+const LINKS = 'wb.dock.minimized.v1';
+
 /** Where a dragged tab would go, the box shown for it, and the box's label. */
 interface Drop { to: 'join' | 'split' | 'side' | 'float'; group?: Group; before?: Pane | null; after?: boolean; side?: Docked; rect?: Rect; label: string; box: Rect }
 
@@ -106,6 +111,13 @@ export class Dock {
   /** Told of every pane opened (new: not already open), and after each layout: the trail and the rail listen. */
   onOpen?: (p: Pane, isNew: boolean) => void;
   onLayout?: () => void;
+  /** Minimized tabs, newest last. */
+  links: MinLink[] = [];
+  /** Whether a key can be opened again, and opening it (set by actions.ts: the same reopen layouts use). */
+  canReopen?: (key: string) => boolean;
+  reopen?: (key: string) => Promise<Pane | undefined>;
+  /** Told when the minimized links change (the rail listens). */
+  onLinks?: () => void;
   /** The key of the pane last pressed in or opened (the box shows its line). */
   get frontKey() { return this.active; }
   /** Called before the reader's size changes; the function it returns puts the reader back at the same verse. */
@@ -129,6 +141,10 @@ export class Dock {
       Object.assign(this.bands, kept.bands || {});
       Object.assign(this.spots, kept.spots || {});
     } catch { /* defaults */ }
+    try {
+      const l = JSON.parse(localStorage.getItem(LINKS) || '[]');
+      if (Array.isArray(l)) this.links = l.filter(x => x && typeof x.key === 'string' && typeof x.title === 'string');
+    } catch { /* none */ }
     window.addEventListener('resize', () => this.layout());
     // the pane last pressed in: a pane opened from it opens beside it (a press in a menu or card opened from it keeps
     // it). Typing anywhere else (the command field) forgets it, and so do a few seconds. A press in a float brings it
@@ -364,17 +380,67 @@ export class Dock {
 
   /** Minimizes the group a pane is in, and only that group: the other part of a split column, the other column and the
    * bands stay as they are (note 1b2d). A column drawn as one strip (Expanded, Medium) is minimized as one. */
-  minimize(p: Pane) {
+  async minimize(p: Pane) {
     const g = this.groupOf(p), w = this.drawn(g.side);
     if (w === 'sheet') return;
-    if (this.oneStrip(w)) { for (const x of this.groups) if (this.drawn(x.side) === w) x.min = true; }
-    else g.min = true;
-    this.layout();
+    const gs = this.oneStrip(w) ? this.groups.filter(x => this.drawn(x.side) === w) : [g];
+    await this.toLinks(this.panes.filter(x => gs.some(y => y.id === x.group)));
   }
 
-  isMinimized(p: Pane) {
-    const g = this.groupOf(p);
-    return this.drawn(g.side) !== 'sheet' && !!g.min;
+  /** Each pane becomes a link and closes (its writing saved first by beforeClose). A pane that cannot be opened again
+   * from its key simply closes: it stays on the trail. */
+  async toLinks(list: Pane[]) {
+    const fold = list[0] && this.foldFrom(list[0]);
+    for (const p of list) {
+      const link: MinLink = { key: p.key, kind: p.kind, title: p.title, at: Date.now(), view: { scroll: captureScroll(p.el), state: p.captureView?.() } };
+      if (!await this.close(p)) continue;
+      if (!this.canReopen?.(p.key)) continue;
+      this.links = this.links.filter(l => l.key !== p.key);
+      this.links.push(link);
+    }
+    this.saveLinks();
+    fold?.();
+  }
+
+  /** The pane folds toward the rail (none with reduced motion). */
+  private foldFrom(p: Pane) {
+    const r = p.el.getBoundingClientRect();
+    if (!r.width || matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+    return () => {
+      const ghost = h('div', 'dock-fold');
+      Object.assign(ghost.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+      document.body.append(ghost);
+      ghost.animate([{ transform: 'none', opacity: .5 }, { transform: `translate(${-r.left}px, 0) scale(.08, .3)`, opacity: 0 }],
+        { duration: 220, easing: 'ease-in' }).onfinish = () => ghost.remove();
+    };
+  }
+
+  /** Opens a minimized tab again where it was, with its view put back. */
+  async restoreLink(key: string) {
+    const link = this.links.find(l => l.key === key);
+    if (!link || !this.reopen) return undefined;
+    const p = await this.reopen(key);
+    this.dropLink(key);
+    if (!p) return undefined;
+    await p.ready;
+    await p.restoreView?.(link.view?.state);
+    requestAnimationFrame(() => { if (link.view?.scroll) restoreScroll(p.el, link.view.scroll as any); });
+    return p;
+  }
+
+  dropLink(key: string) {
+    this.links = this.links.filter(l => l.key !== key);
+    this.saveLinks();
+  }
+
+  private saveLinks() {
+    try { localStorage.setItem(LINKS, JSON.stringify(this.links.slice(-200))); } catch { /* this run only */ }
+    this.onLinks?.();
+  }
+
+  /** No pane is held minimized any more: a minimized tab is a link (round 7). Kept for older callers. */
+  isMinimized(_p: Pane) {
+    return false;
   }
 
   /** Every open pane whose title or kind starts with or holds `name` (for `close threads`, `float occurrences`). */
@@ -735,7 +801,8 @@ export class Dock {
       if (on) {
         const l = on.offsetLeft, r = l + on.offsetWidth;
         if (l < tabs.scrollLeft) tabs.scrollLeft = l - 24;
-        else if (r > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = r - tabs.clientWidth + 24;
+        // the room past its right edge never pushes its left edge out of a narrow row
+        else if (r > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = Math.min(r - tabs.clientWidth + 24, l);
       }
       this.arrows(strip, tabs);
     }
@@ -855,11 +922,9 @@ export class Dock {
     }
     // design/features/help H10: the ? opens Help at this pane's Guide cards
     if (this.help) tool('help', 'Help with this', () => this.help!(fp.kind));
-    tool('minus', 'Minimize', () => this.minimize(fp));
-    const focus = h('button', 'strip-btn dock-focus-button', 'Focus');
-    focus.title = 'Focus pane'; focus.setAttribute('aria-label', `Focus ${fp.title}`);
-    focus.onclick = () => this.focusPane(fp);
-    s.append(focus);
+    tool('minus', 'Minimize', () => void this.minimize(fp));
+    // Full screen (minimize R6): an icon, not a word; the other panes are hidden but stay loaded
+    tool('expand', 'Full screen', () => this.focusPane(fp));
     if (where === 'float') tool('float', 'Dock it again', () => this.dockAgain(fp));
     else tool('float', 'Float it', () => this.move(fp, 'float'));
     tool('x', 'Close these panes', async () => { for (const p of list) await this.close(p); });
@@ -1032,9 +1097,11 @@ export class Dock {
     const returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.focused = { pane: p, returnTo, scroll };
     const bar = h('header', 'dock-focus-bar');
-    const back = h('button', 'btn dock-focus-return', 'Return to layout');
+    const back = h('button', 'strip-btn dock-focus-return');
+    back.append(icon('collapse', 14));
+    back.title = 'Leave full screen (Esc)'; back.setAttribute('aria-label', 'Leave full screen');
     back.onclick = () => this.exitFocus();
-    const full = h('button', 'btn dock-fullscreen', document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen');
+    const full = h('button', 'link-btn dock-fullscreen', document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen');
     full.onclick = async () => {
       try {
         if (document.fullscreenElement) await document.exitFullscreen();
@@ -1079,13 +1146,16 @@ export class Dock {
     // Keep old panes alive until state adapters finish, so a failed read can roll back without losing panes.
     const extras = this.panes.filter(p => !wanted.has(canonicalKey(p.key)));
     const oldGroups = this.groups;
+    // a layout kept before round 7 may hold minimized groups: they become links
+    const toFold: Group[] = [];
     this.groups = []; this.colFront = {}; this.stripScroll = {};
     this.widths = { ...snapshot.widths }; this.wide = { ...snapshot.wide }; this.bands = { ...snapshot.bands };
     for (const saved of snapshot.groups) {
       const members = saved.keys.map(k => this.find(k)).filter((p): p is Pane => !!p);
       if (!members.length) continue;
       const g = this.newGroup(saved.side, saved.rect);
-      g.share = saved.share; g.min = saved.min; g.z = saved.z ?? g.z;
+      g.share = saved.share; g.z = saved.z ?? g.z;
+      if (saved.min) toFold.push(g);
       this.z = Math.max(this.z, g.z);
       for (const p of members) this.put(p, g);
       g.front = members.find(p => p.key === saved.front)?.id ?? members[0].id;
@@ -1102,5 +1172,6 @@ export class Dock {
     for (const s of snapshot.panes) { const p = this.find(s.key); if (p && s.view) restoreScroll(p.el, s.view.scroll); }
     if (active && !this.isMinimized(active)) { active.el.tabIndex = -1; active.el.focus({ preventScroll: true }); }
     keep(); this.save();
+    if (toFold.length) await this.toLinks(this.panes.filter(p => toFold.some(g => g.id === p.group)));
   }
 }

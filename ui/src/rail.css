@@ -1,6 +1,26 @@
 /* The rail on the left, the top bar with the trail line under it (design/features/command round 2, C13-C18; the rail and
    the trail from design/features/minimize). Desktop only: the phone (compact) keeps its own bar and tabs. */
 
+/* ---- minimized tabs as links in the rail's menus (design/features/minimize round 7) ---- */
+.rail-item.has::before { content: ''; position: absolute; left: 1px; top: 50%; width: 3px; height: 14px; margin-top: -7px; border-radius: 2px; background: var(--muted); }
+.rail-item[hidden], .rail-rule[hidden] { display: none; }
+.rail-menu { display: flex; flex-direction: column; padding: 2px; }
+.rail-menu-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 8px; font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); }
+.rail-menu-head .link-btn { margin-left: auto; text-transform: none; letter-spacing: 0; padding: 2px 4px; }
+.rail-menu-find { margin: 0 2px 6px; width: auto; }
+.rail-menu-list { display: flex; flex-direction: column; max-height: min(60vh, 520px); overflow: auto; }
+.rail-menu-label { padding: 6px 8px 2px; font: var(--type-caption); color: var(--muted); }
+.rail-menu-none { padding: 6px 8px; margin: 0; }
+.rail-link { display: flex; align-items: center; border-radius: 8px; }
+.rail-link:hover, .rail-link:focus-within { background: var(--accent-soft); }
+.rail-link-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 7px 8px; text-align: left; font: var(--type-small); color: var(--fg); }
+.rail-link-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-link-w { font: var(--type-caption); color: var(--muted); flex: none; }
+.rail-link-act { opacity: 0; }
+.rail-link:hover .rail-link-act, .rail-link:focus-within .rail-link-act { opacity: 1; }
+.rail-menu-foot { display: flex; align-items: center; gap: 6px; padding: 6px 4px 2px; border-top: 1px solid var(--line); margin-top: 4px; }
+.dock-fold { position: fixed; z-index: 30; pointer-events: none; border: 2px solid var(--accent); border-radius: 10px; background: var(--accent-soft); transform-origin: left center; }
+
 :root { --rail-w: 0px; --bar-row-h: 56px; --trail-h: 0px; }
 :root:not([data-size="compact"]) { --rail-w: 52px; --trail-h: 34px; --bar-h: calc(var(--bar-row-h) + var(--trail-h)); }
 :root:not([data-size="compact"]).rail-named { --rail-w: 196px; }

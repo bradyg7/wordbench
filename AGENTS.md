@@ -50,6 +50,12 @@ a change alters expected behavior, document the contract and verify it with Rust
   branch from an up-to-date `main`, named `feature/<folder>` (`feature/trash`), and nothing else goes on it. It reaches
   `main` by a pull request, after the tests, only with the person's go-ahead. Work found on the wrong branch moves to its
   own before it is committed.
+- **Work found in a checkout that is not its own** (the person, 2026-11-16). Several sessions work at once, each in its
+  own worktree (`git worktree list`). Files changed or new in a checkout, outside the feature it is on, are someone
+  else's: never commit them there. Compare each with its folder's branch (`feature/<folder>`), by blob:
+  `git rev-parse -q --verify <branch>:<path>`. Identical: they are left-over copies, and may be cleared once checked.
+  Not on that branch: move them to it (in its worktree if it has one, never by switching that worktree's branch), or to
+  a new `feature/<folder>` from `main` if none exists. Say what was found, and where it went.
 - **Every core action is reachable from a `wb` command.** When wb-core gains an action, `wb` gains a command for it, so the
   person (or an AI) can do from a terminal anything the window does.
 
