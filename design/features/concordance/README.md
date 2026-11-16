@@ -47,11 +47,30 @@ Not yet reviewed far enough to supersede anything: every window still leads its 
 
 ## Scenes in the real app (from round 3)
 
-At the person's request (2026-11-16), rounds are drawn off the code where they can be: `scene.mjs` runs the release
-app on its own copy of the scratch study folder (the person's notes, highlights and trail, never the real folder),
-makes a few real lookups, then mounts the Concordance as a prototype pane with the dock's own `open()`, drawn with the
-app's CSS classes and tokens. Everything around it is the app as built; every word in the pane is a `wb` answer.
-The FigCraft board stays for the earlier rounds.
+At the person's request (2026-11-16), rounds are drawn off the code where they can be: `scene.mjs` runs the person's
+installed app (`%LOCALAPPDATA%\bible-workbench-rs\app`, or `WB_APP_DIR`) on its own copy of the scratch study folder
+(the person's notes, highlights and trail, never the real folder), makes a few real lookups, then mounts the
+Concordance as a prototype pane, one tab, with the dock's own `open()`, drawn with the app's CSS classes and tokens.
+Everything around it is the app as built (the word sheet in C10 is the app's own, its actions swapped as decided);
+every word in the pane is a `wb` answer. The FigCraft board stays for the earlier rounds.
+
+**The whole design, redrawn on the install of 2026-11-16 (14:19)**, as the decisions of rounds 1-3 stand, for the
+thorough review (`node design/features/concordance/scene.mjs`, shots in `scenes/c*.png`):
+
+| Shot | Window | As decided |
+|---|---|---|
+| `c02-search` | C2 | One box: English forms with their counts, then original words defined with the word |
+| `c01-english-page` | C1 + C7 | All forms (zeal, zealous, zealously), each place a short line with its number; a number opens its entry under the line (in the narrow column, not a right margin) |
+| `c08-hebrew-by-english-word` | C8 | H7068 with every place, grouped by rendering, 4 lines and N more |
+| `c09-greek-by-book` | C9 | G2205 grouped by book, the counts as bars |
+| `c10-word-card-door` | C10 | The app's word sheet with one In the Concordance door, BDB and Webster's |
+| `c11-verse-word-opened` | C11a | The word opens under the verse; Every place only if wanted |
+| `c12-chapter-toggles` | C12 | Each verse toggles its words; Expand all, Collapse all |
+| `c13-opened-from-the-reader` | C13 | Opened from Numbers 25:11 · zealous, that word picked; then the person's to move (‹ 25:10, 25:12 ›) |
+| `c14-before-back-to-the-verse`, `c14-back-at-the-verse` | C14b | From Numbers 25:11 and Back to the verse; then the book stays open beside the reader |
+
+C3 and C4 (the dictionaries in number order, A to Z by the original's letters) are shown only as the letter strip
+under the box here; their pages have not been redrawn.
 
 ## Data the sheets show
 
