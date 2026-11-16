@@ -20,7 +20,7 @@ A new button or command gets a row here, and its folder, before it is built.
 | Top bar and the command box | the box keeps its line and pops off, the reader's tools at its end, More; suggestions (round 1) | [command](command/README.md) | building (round 2) |
 | Reader | verses, versions, marks, selection | [reader](reader/README.md) | exploring |
 | Word sheet, verse sheet, hover card | a card that moves, a verse alone, hover | [words](words/README.md) | exploring |
-| Highlights and the palette | colors with names, layers by year, light and dark forms | [highlights](highlights/README.md) | exploring |
+| Highlights and the palette | colors with names, layers by year; words' ink by contrast, any color on any theme | [highlights](highlights/README.md) | exploring (ink accepted 2026-11-16) |
 | Notebook: pages, Pinned, blocks | folders, the library drawer | [library](library/README.md) | exploring |
 | Shelf and sets, bookmarks (Keep) | Keep on anything, the folder picker, a folder opened | [library](library/README.md) | exploring |
 | Threads | a thread as a colored folder (A), a page with Places (B), or a layer (C) | [threads](threads/README.md) | exploring |

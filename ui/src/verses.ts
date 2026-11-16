@@ -22,8 +22,7 @@ export interface Run { t: string; hl?: string }
 export interface MarkedVerse { ref: string; book: string; code: string; c: number; v: number; text: string; runs: Run[] }
 export interface Marked { label: string; version: string; verses: MarkedVerse[] }
 
-const COLORS = new Set(['yellow', 'green', 'blue', 'pink', 'orange']);
-const hlColor = (c: string) => (COLORS.has(c) ? `var(--hl-${c})` : c);
+import { hlStyle } from './hlink';
 
 /** Verses drawn verbatim, each with its number: as a paragraph (one after another) or a verse to a line. The person's
  * highlights are on the words, as in the reader (none while the highlights layer is hidden). */
@@ -41,7 +40,7 @@ export function drawVerses(verses: MarkedVerse[], lines: boolean): HTMLElement {
     for (const r of v.runs) {
       if (r.hl && showHl) {
         const m = h('span', 'sv-hl', r.t);
-        m.style.backgroundColor = hlColor(r.hl);
+        m.style.cssText = hlStyle(r.hl);
         t.append(m);
       } else t.append(r.t);
     }

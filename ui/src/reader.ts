@@ -25,6 +25,7 @@ export interface Drawn {
   more: () => boolean;           // draws the next part; false when the chapter is complete
 }
 
+import { hlStyle } from './hlink';
 const COLORS = new Set(['yellow', 'green', 'blue', 'pink', 'orange']);
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const threadColor = (t: Mark) => (COLORS.has(t.color || '') ? `var(--thread-${t.color})` : t.color || 'var(--thread-a)');
@@ -51,9 +52,9 @@ const marked = (m: Look) => !!m.hl || m.th.length > 0 || m.note;
 
 // Stacked thread underlines are background lines in the span's bottom padding (padding on an inline box widens its
 // background without moving the text); a highlight is the background color.
-function styleOf(m: Look): string {
+function styleOf(m: Look, gap = false): string {
   let s = '';
-  if (m.hl) s += `background-color:${COLORS.has(m.hl) ? `var(--hl-${m.hl})` : m.hl};`;
+  if (m.hl) s += hlStyle(m.hl, gap);
   if (m.th.length) {
     s += `background-image:${m.th.map(col => `linear-gradient(${col},${col})`).join(',')};`;
     s += `background-position:${m.th.map((_, j) => `0 calc(100% - ${j * 4}px)`).join(',')};padding-bottom:${m.th.length * 4}px;`;
@@ -61,10 +62,10 @@ function styleOf(m: Look): string {
   return s;
 }
 
-function apply(e: HTMLElement, m: Look) {
+function apply(e: HTMLElement, m: Look, gap = false) {
   e.classList.toggle('hl', !!m.hl);
   e.classList.toggle('noted', m.note);
-  e.style.cssText = styleOf(m);
+  e.style.cssText = styleOf(m, gap);
 }
 
 // The marks the layers let through: no highlights when they are hidden, and only the threads shown.
@@ -119,7 +120,7 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
       const m = look(c, k);
       out.push(`<span class="${w.cls}${m.hl ? ' hl' : ''}${m.note ? ' noted' : ''}" data-k="${k}"${marked(m) ? ` style="${styleOf(m)}"` : ''}>${esc(text[k])}</span>`);
       const g = gapLook(c, k, n);
-      out.push(!w.last && marked(g) ? `<span class="g" data-k="${k}" style="${styleOf(g)}">${esc(gapText[k])}</span>` : esc(gapText[k]));
+      out.push(!w.last && marked(g) ? `<span class="g" data-k="${k}" style="${styleOf(g, true)}">${esc(gapText[k])}</span>` : esc(gapText[k]));
     }
     next = n;
     if (open) out.push('</p>');
@@ -171,7 +172,7 @@ export function paint(root: HTMLElement, d: Drawn) {
       ge.textContent = d.gapText[k];
       d.gap[k] = ge;
     }
-    if (ge) apply(ge, g);
+    if (ge) apply(ge, g, true);
   }
   root.querySelector('.ch-title')?.classList.toggle('wide-note', d.c.wide > 0);
   root.querySelectorAll<HTMLElement>('.vn').forEach(e => {
