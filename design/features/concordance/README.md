@@ -82,6 +82,10 @@ under the box here; their pages have not been redrawn.
 - **Picking a word: open, to be worked out.** Drawn three ways for the next look: the word alone with the other forms
   a click away (`c02-pick-a-this-word`), the word alone with All forms beside it (`c02-pick-b-all-forms-at-hand`), and
   the word in a tab of its own (`c02-pick-c-own-tab`).
+- **Picking a word: a mixture of a and c** (decided after the drawings). The picked word opens alone with its other
+  forms a click away (a), in a new tab (c). The new tab is a copy of the tab it came from, with that tab's history, and
+  a back button in the tab goes back through it. Going back inside a tab is wanted in every tab, not only here, so it
+  is designed as an app-wide feature of its own (with the trail rule above), not in this folder.
 - **The letter strip earns its place at the opening of the book.** What a letter does after a search is to be worked
   out; the person's idea: the letter shows only the words that start with it, and only those can be clicked. Drawn as
   `c02-letter-after-a-search` (J clicked after zealous; letters with no words, like X, can't be clicked).
