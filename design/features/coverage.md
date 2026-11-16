@@ -12,6 +12,7 @@ A new button or command gets a row here, and its folder, before it is built.
 
 | Area | Buttons and parts | Design | State |
 |---|---|---|---|
+| What every panel looks like | a tab's top, the way back, buttons, text roles, foot | [panels](panels/README.md) | accepted |
 | Panes, tabs, minimizing, full screen | tab strips, minimize, Full screen, Present | [minimize](minimize/README.md) | exploring |
 | The side rail | one icon per kind of pane, its menus, Show names | [minimize](minimize/README.md) | building (the rail; its menus exploring) |
 | The trail (history of tabs) | drawer, line under the top bar | [minimize](minimize/README.md), [command](command/README.md) C13-C16 | building |
