@@ -90,17 +90,30 @@ Round 2 (C13-C18) is accepted, and built on `feature/command` together with mini
 Round 1 is not reviewed. Round 2 uses its More menu for window things (C5); the suggestions in plain words (C2, C3)
 wait for their own review and are not part of this build.
 
-## Open questions
+### Open questions answered, and round 1 reviewed (the person, 2026-11-16)
 
-- Do kept commands also stay reachable as keys only (no icon)?
-- Is the ⋯ the same menu as the rail's Settings, or apart?
-- A's suggestions: which sources, in what order (places, look-ups, your study)?
+- **Kept commands** (C4) are reachable by their keys, and can also be available on the rail. (This changes round 2's
+  answer 2, "no place on the rail for now": a kept command may now have a rail icon; its key stays.)
+- **The ⋯ (More) menu merges into Settings**, for now: with the rail's Settings icon, ⋯ may no longer be needed.
+  Settings' icon should probably be a gear.
+- **Suggestions** (A, C2, C3): something that predicts the next word or offers the words that can come next; for a
+  command, the fields it takes. In short: which books can be searched for, and where a command can go from what the
+  person has typed. Sources and order are not settled.
+- **Round 1:** C2 and C3 should both fit with C4 and C5; how C3 works with C2 is to be seen in the next round.
+
+## Next round (round 3, to draw before building)
+
+1. ⋯ folded into Settings: where each of More's items goes (Full screen, Layout, Theme, Text size, Help, Save chapter
+   PDF), and the rail's Settings drawn as a gear. Check with [settings](../settings/README.md) and [minimize](../minimize/README.md).
+2. Kept commands on the rail, beside their keys.
+3. Suggestions: the next word or the words that can come next, a command's fields, the books, where a command can go;
+   C2 and C3 drawn together. Sources and order to decide.
 
 ## Rounds
 
 | Round | Date | Windows | What it tried | Review |
 |---|---|---|---|---|
-| 1 | 2026-11-12 | see Directions | the first drawing | waiting |
+| 1 | 2026-11-12 | see Directions | the first drawing | reviewed 2026-11-16: C2, C3 go to round 3 with C4, C5 |
 | 2 | 2026-11-13 | C13-C18 (C6-C12 dropped the same day) | c9a2: the toolbar goes; the box keeps its line; the trail line under the bar; the real conditions | accepted 2026-11-13, built on `feature/command` |
 
 ## Data the sheets show
