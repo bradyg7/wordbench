@@ -72,6 +72,23 @@ thorough review (`node design/features/concordance/scene.mjs`, shots in `scenes/
 C3 and C4 (the dictionaries in number order, A to Z by the original's letters) are shown only as the letter strip
 under the box here; their pages have not been redrawn.
 
+## Round 4 review, shot by shot (the person, 2026-11-16)
+
+**Shot 1, C2 (the box):**
+- **The Concordance keeps its own box**: the top bar stays for opening other tabs. While the Concordance is in front,
+  the top bar may also search it.
+- **The suggestions are liked** (English forms, then original words defined with the word). Suggesting numbers and
+  sounds as well is worth testing, so long as it does not get in the way of the other searches.
+- **Picking a word: open, to be worked out.** Drawn three ways for the next look: the word alone with the other forms
+  a click away (`c02-pick-a-this-word`), the word alone with All forms beside it (`c02-pick-b-all-forms-at-hand`), and
+  the word in a tab of its own (`c02-pick-c-own-tab`).
+- **The letter strip earns its place at the opening of the book.** What a letter does after a search is to be worked
+  out; the person's idea: the letter shows only the words that start with it, and only those can be clicked. Drawn as
+  `c02-letter-after-a-search` (J clicked after zealous; letters with no words, like X, can't be clicked).
+- **A place line names its original word's number** (as drawn on the English page). The person wants a **KJV+** view
+  (the KJV with Strong's numbers in the text, as many students of Strong's use): its own design, not part of this
+  folder.
+
 ## Data the sheets show
 
 All fetched on 2026-11-11 with the release `wb`, `WB_BIBLE_DB` set to the Python checkout's `datasets/workbench.db`

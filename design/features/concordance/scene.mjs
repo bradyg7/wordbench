@@ -50,6 +50,8 @@ const uses = w => {
 };
 const DATA = {
   forms: wb('forms', 'zea'),
+  formsJ: wb('forms', 'j'),
+  empty: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(c => !wb('forms', c.toLowerCase()).forms.length),
   lexc: wb('lexiconc', 'zeal'),
   english: { zeal: uses('zeal'), zealous: uses('zealous'), zealously: uses('zealously') },
   h7065: wb('strong', 'H7065'),
@@ -187,6 +189,32 @@ function mount({ scene, D, CSS }) {
         }
       }
     },
+    // Shot 1, picking a word (round 4): a, the word alone, the other forms a click away
+    pickA: el => {
+      nav(el, 'zealous', 'English', 'Z');
+      const t = h('div', 'cc-scope'); t.append(seg(['All forms', 'This word'], 'This word'), h('span', 'grow'), h('span', 'muted small', 'zealous · 8 places')); el.append(t);
+      const hd = h('div', 'cc-head'); hd.append(h('h3', '', 'ZEALOUS'), h('span', 'muted small', '8')); el.append(hd);
+      for (const r of D.english.zealous.rows) line(el, r);
+      const more = h('div', 'cc-from'); more.append(h('span', 'grow', 'Other forms:'), h('button', 'btn small', 'zeal 16'), h('button', 'btn small', 'zealously 2')); el.append(more);
+    },
+    // b, the word alone, with All forms at hand at its head
+    pickB: el => {
+      nav(el, 'zealous', 'English', 'Z');
+      const b = h('div', 'cc-from'); b.append(h('b', '', 'zealous'), h('span', 'grow', '8 places · also zeal (16), zealously (2)'), h('button', 'btn small', 'Show all forms')); el.append(b);
+      const hd = h('div', 'cc-head'); hd.append(h('h3', '', 'ZEALOUS'), h('span', 'muted small', '8')); el.append(hd);
+      for (const r of D.english.zealous.rows) line(el, r);
+    },
+    // Shot 1, a letter clicked after a search (the person's idea): only the words that start with it, each clickable
+    letter: el => {
+      nav(el, 'zealous', 'English', 'J');
+      for (const s of el.querySelectorAll('.cc-az span')) if (D.empty.includes(s.textContent)) { s.style.opacity = '.3'; s.title = 'No words'; }
+      const b = h('div', 'cc-from'); b.append(h('b', '', 'J'), h('span', 'grow', `${D.formsJ.forms.length} words · ${D.formsJ.total} places`), h('button', 'btn small', 'Back to zealous')); el.append(b);
+      const words = [...D.formsJ.forms].sort((a, b) => a.form.localeCompare(b.form));
+      const g = h('div'); g.style.cssText = 'columns: 3; column-gap: 14px; font: var(--type-small);';
+      for (const f of words.slice(0, 120)) { const r = h('div'); r.style.cssText = 'display:flex;gap:6px;break-inside:avoid;padding:1px 0'; r.append(h('span', '', f.form), h('span', 'muted', String(f.n))); g.append(r); }
+      el.append(g);
+      el.append(h('div', 'cc-more', `${words.length - 120} more under J`));
+    },
     // C8: an entry with every place, grouped by how the KJV renders it: 4 lines and "N more" each
     hebrew: el => {
       nav(el, 'H7068', 'Hebrew', 'ק');
@@ -277,7 +305,10 @@ function mount({ scene, D, CSS }) {
     }
   };
   window.__ccScene = scene;
-  const p = window.__wb.dock().open('concordance', 'Concordance', 'concordance', 'left', fill);
+  // c, the picked word in a tab of its own beside the Concordance
+  const own = scene === 'pickC';
+  if (own) window.__ccScene = 'pickA';
+  const p = window.__wb.dock().open('concordance', own ? 'zealous' : 'Concordance', own ? 'concordance|zealous' : 'concordance', 'left', fill);
   fill(p.el);
 }
 
@@ -335,6 +366,10 @@ try {
   };
 
   await shot('c02-search', 'search');
+  await shot('c02-pick-a-this-word', 'pickA');
+  await shot('c02-pick-b-all-forms-at-hand', 'pickB');
+  await shot('c02-pick-c-own-tab', 'pickC');
+  await shot('c02-letter-after-a-search', 'letter');
   await shot('c01-english-page', 'english', '.cc-line.cc-open');
   await shot('c08-hebrew-by-english-word', 'hebrew');
   await shot('c09-greek-by-book', 'greek');
