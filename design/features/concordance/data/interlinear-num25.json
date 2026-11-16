@@ -1,0 +1,3785 @@
+{
+  "book": {
+    "id": 4,
+    "code": "NUM",
+    "name": "Numbers"
+  },
+  "lang": "heb",
+  "verses": [
+    {
+      "c": 25,
+      "v": 1,
+      "text": "And Israel abode in Shittim, and the people began to commit whoredom with the daughters of Moab.",
+      "words": [
+        {
+          "original": "וַיֵּשֶׁב",
+          "translit": "vai.Ye.shev",
+          "strong": "H3427",
+          "lemma": "יָשַׁב",
+          "gloss": "and it remained",
+          "morph": "Hc/Vqw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "בַּשִּׁטִּים",
+          "translit": "ba.shi.Tim",
+          "strong": "H7851",
+          "lemma": "שִׁטִּים",
+          "gloss": "in <the> Shittim",
+          "morph": "HRd/Npl",
+          "parse": [
+            {
+              "code": "HRd",
+              "text": "Preposition · Definite"
+            },
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "וַיָּחֶל",
+          "translit": "vai.Ya.chel",
+          "strong": "H2490",
+          "lemma": "חָלַל",
+          "gloss": "and it began",
+          "morph": "Hc/Vhw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVhw3ms",
+              "text": "Verb · Hiphil (hence Action=Causative/declarative; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "הָעָם",
+          "translit": "ha.'Am",
+          "strong": "H5971",
+          "lemma": "עַם",
+          "gloss": "the people",
+          "morph": "HTd/Ncmsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "לִזְנוֹת",
+          "translit": "liz.Not",
+          "strong": "H2181",
+          "lemma": "זָנָה",
+          "gloss": "to commit fornication",
+          "morph": "HR/Vqcc",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HVqcc",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Infinitive · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אֶל",
+          "translit": "'el-",
+          "strong": "H413",
+          "lemma": "אֶל",
+          "gloss": "into",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "בְּנוֹת",
+          "translit": "be.Not",
+          "strong": "H1323",
+          "lemma": "בַּת",
+          "gloss": "[the] daughters of",
+          "morph": "HNcfpc",
+          "parse": [
+            {
+              "code": "HNcfpc",
+              "text": "Noun · Common · Feminine · Plural · Construct"
+            }
+          ]
+        },
+        {
+          "original": "מוֹאָֽב",
+          "translit": "mo.'Av",
+          "strong": "H4124",
+          "lemma": "מוֹאָב",
+          "gloss": "Moab",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 2,
+      "text": "And they called the people unto the sacrifices of their gods: and the people did eat, and bowed down to their gods.",
+      "words": [
+        {
+          "original": "וַתִּקְרֶאןָ",
+          "translit": "va.tik.Re.na",
+          "strong": "H7121",
+          "lemma": "קָרָא",
+          "gloss": "and they invited",
+          "morph": "Hc/Vqw3fp",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3fp",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Feminine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "לָעָם",
+          "translit": "la.'Am",
+          "strong": "H5971",
+          "lemma": "עַם",
+          "gloss": "<to> the people",
+          "morph": "HRd/Ncmsa",
+          "parse": [
+            {
+              "code": "HRd",
+              "text": "Preposition · Definite"
+            },
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "לְזִבְחֵי",
+          "translit": "le.ziv.Chei",
+          "strong": "H2077",
+          "lemma": "זֶ֫בַח",
+          "gloss": "to [the] sacrifices of",
+          "morph": "HR/Ncmpc",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אֱלֹהֵיהֶן",
+          "translit": "'e.lo.hei.Hen",
+          "strong": "H430",
+          "lemma": "אֱלֹהִים",
+          "gloss": "gods their",
+          "morph": "HNcmpc/Sp3fp",
+          "parse": [
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            },
+            {
+              "code": "HSp3fp",
+              "text": "Suffix · Personal · Third · Feminine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "וַיֹּאכַל",
+          "translit": "vai.Yo.khal",
+          "strong": "H398",
+          "lemma": "אָכַל",
+          "gloss": "and it ate",
+          "morph": "Hc/Vqw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "הָעָם",
+          "translit": "ha.'Am",
+          "strong": "H5971",
+          "lemma": "עַם",
+          "gloss": "the people",
+          "morph": "HTd/Ncmsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "וַיִּֽשְׁתַּחֲוּוּ",
+          "translit": "vai.yish.ta.cha.Vu",
+          "strong": "H7812",
+          "lemma": "שָׁחָה",
+          "gloss": "and they bowed down",
+          "morph": "Hc/Vvw3mp",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVvw3mp",
+              "text": "Verb · Hishtaphel (hence Action=Causative/declarative; Voice=Reflexive/iterative) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "לֵֽאלֹהֵיהֶֽן",
+          "translit": "Le.lo.hei.Hen",
+          "strong": "H430",
+          "lemma": "אֱלֹהִים",
+          "gloss": "to gods their",
+          "morph": "HR/Ncmpc/Sp3fp",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            },
+            {
+              "code": "HSp3fp",
+              "text": "Suffix · Personal · Third · Feminine · Plural"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 3,
+      "text": "And Israel joined himself unto Baal-peor: and the anger of the LORD was kindled against Israel.",
+      "words": [
+        {
+          "original": "וַיִּצָּמֶד",
+          "translit": "vai.yi.Tza.med",
+          "strong": "H6775",
+          "lemma": "צָמַד",
+          "gloss": "and it joined itself",
+          "morph": "Hc/VNw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVNw3ms",
+              "text": "Verb · Niphal (hence Action=Simple; Voice=Passive) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "לְבַעַל",
+          "translit": "le.Va.'al",
+          "strong": "H1187",
+          "lemma": "בַּ֫עַל פְּעוֹר",
+          "gloss": "to Baal",
+          "morph": "HR/Npt",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNpt",
+              "text": "Noun · Proper · Title"
+            }
+          ]
+        },
+        {
+          "original": "פְּעוֹר",
+          "translit": "pe.'or",
+          "strong": "H1187",
+          "lemma": "בַּ֫עַל פְּעוֹר",
+          "gloss": "Peor",
+          "morph": "HNpt",
+          "parse": [
+            {
+              "code": "HNpt",
+              "text": "Noun · Proper · Title"
+            }
+          ]
+        },
+        {
+          "original": "וַיִּֽחַר",
+          "translit": "vai.yi.char-",
+          "strong": "H2734",
+          "lemma": "חָרָה",
+          "gloss": "and it burned",
+          "morph": "Hc/Vqw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אַף",
+          "translit": "'af",
+          "strong": "H639",
+          "lemma": "אַף",
+          "gloss": "[the] anger of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יְהוָה",
+          "translit": "Yah.weh",
+          "strong": "H3068",
+          "lemma": "יהוה",
+          "gloss": "Yahweh",
+          "morph": "HNpt",
+          "parse": [
+            {
+              "code": "HNpt",
+              "text": "Noun · Proper · Title"
+            }
+          ]
+        },
+        {
+          "original": "בְּיִשְׂרָאֵֽל",
+          "translit": "be.Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "on Israel",
+          "morph": "HR/Npl",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 4,
+      "text": "And the LORD said unto Moses, Take all the heads of the people, and hang them up before the LORD against the sun, that the fierce anger of the LORD may be turned away from Israel.",
+      "words": [
+        {
+          "original": "וַיֹּאמֶר",
+          "translit": "vai.Yo.mer",
+          "strong": "H559",
+          "lemma": "אָמַר",
+          "gloss": "and he said",
+          "morph": "Hc/Vqw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "יְהוָה",
+          "translit": "Yah.weh",
+          "strong": "H3068",
+          "lemma": "יהוה",
+          "gloss": "Yahweh",
+          "morph": "HNpt",
+          "parse": [
+            {
+              "code": "HNpt",
+              "text": "Noun · Proper · Title"
+            }
+          ]
+        },
+        {
+          "original": "אֶל",
+          "translit": "'el-",
+          "strong": "H413",
+          "lemma": "אֶל",
+          "gloss": "to",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "מֹשֶׁה",
+          "translit": "mo.Sheh",
+          "strong": "H4872",
+          "lemma": "מֹשֶׁה",
+          "gloss": "Moses",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "קַח",
+          "translit": "kach",
+          "strong": "H3947",
+          "lemma": "לָקַח",
+          "gloss": "take",
+          "morph": "HVqv2ms",
+          "parse": [
+            {
+              "code": "HVqv2ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Imperative (hence Tense=Present/future; Mood=Imperative) · Second · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אֶת",
+          "translit": "'et-",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.>",
+          "morph": "HTo",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            }
+          ]
+        },
+        {
+          "original": "כָּל",
+          "translit": "kol-",
+          "strong": "H3605",
+          "lemma": "כֹּל",
+          "gloss": "all",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "רָאשֵׁי",
+          "translit": "ra.Shei",
+          "strong": "H7218",
+          "lemma": "רֹאשׁ",
+          "gloss": "[the] leaders of",
+          "morph": "HNcmpc",
+          "parse": [
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            }
+          ]
+        },
+        {
+          "original": "הָעָם",
+          "translit": "ha.'Am",
+          "strong": "H5971",
+          "lemma": "עַם",
+          "gloss": "the people",
+          "morph": "HTd/Ncmsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "וְהוֹקַע",
+          "translit": "ve.ho.Ka'",
+          "strong": "H3363",
+          "lemma": "יָקַע",
+          "gloss": "and impale",
+          "morph": "HC/Vhv2ms",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HVhv2ms",
+              "text": "Verb · Hiphil (hence Action=Causative/declarative; Voice=Active) · Imperative (hence Tense=Present/future; Mood=Imperative) · Second · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אוֹתָם",
+          "translit": "'o.Tam",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.> them",
+          "morph": "HTo/Sp3mp",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            },
+            {
+              "code": "HSp3mp",
+              "text": "Suffix · Personal · Third · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "לַיהוָה",
+          "translit": "la.Yah.weh",
+          "strong": "H3068",
+          "lemma": "יהוה",
+          "gloss": "to Yahweh",
+          "morph": "HR/Npt",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNpt",
+              "text": "Noun · Proper · Title"
+            }
+          ]
+        },
+        {
+          "original": "נֶגֶד",
+          "translit": "Ne.ged",
+          "strong": "H5048",
+          "lemma": "נֶ֫גֶד",
+          "gloss": "before",
+          "morph": "HAcmsc",
+          "parse": [
+            {
+              "code": "HAcmsc",
+              "text": "Adjective · Numerical · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "הַשָּׁמֶשׁ",
+          "translit": "ha.Sha.mesh",
+          "strong": "H8121",
+          "lemma": "שֶׁ֫מֶשׁ",
+          "gloss": "the sun",
+          "morph": "HTd/Ncbsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcbsa",
+              "text": "Noun · Common · Either gender · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "וְיָשֹׁב",
+          "translit": "ve.ya.Sho",
+          "strong": "H7725",
+          "lemma": "שׁוּב",
+          "gloss": "so may it turn away",
+          "morph": "HC/Vqj3ms",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HVqj3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Imperfect (hence Tense=Future/present; Mood=Jussive) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "חֲרוֹן",
+          "translit": "cha.Ron",
+          "strong": "H2740",
+          "lemma": "חָרוֹן",
+          "gloss": "[the] burning of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אַף",
+          "translit": "'af-",
+          "strong": "H639",
+          "lemma": "אַף",
+          "gloss": "[the] anger of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יְהוָה",
+          "translit": "Yah.weh",
+          "strong": "H3068",
+          "lemma": "יהוה",
+          "gloss": "Yahweh",
+          "morph": "HNpt",
+          "parse": [
+            {
+              "code": "HNpt",
+              "text": "Noun · Proper · Title"
+            }
+          ]
+        },
+        {
+          "original": "מִיִּשְׂרָאֵֽל",
+          "translit": "mi.Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "from Israel",
+          "morph": "HR/Npl",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 5,
+      "text": "And Moses said unto the judges of Israel, Slay ye every one his men that were joined unto Baal-peor.",
+      "words": [
+        {
+          "original": "וַיֹּאמֶר",
+          "translit": "vai.Yo.mer",
+          "strong": "H559",
+          "lemma": "אָמַר",
+          "gloss": "and he said",
+          "morph": "Hc/Vqw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "מֹשֶׁה",
+          "translit": "mo.Sheh",
+          "strong": "H4872",
+          "lemma": "מֹשֶׁה",
+          "gloss": "Moses",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "אֶל",
+          "translit": "'el-",
+          "strong": "H413",
+          "lemma": "אֶל",
+          "gloss": "to",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "שֹׁפְטֵי",
+          "translit": "sho.fe.Tei",
+          "strong": "H8199",
+          "lemma": "שָׁפַט",
+          "gloss": "[the] judges of",
+          "morph": "HVqrmpc",
+          "parse": [
+            {
+              "code": "HVqrmpc",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Participle · Masculine · Plural · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "הִרְגוּ",
+          "translit": "hir.Gu",
+          "strong": "H2026",
+          "lemma": "הָרַג",
+          "gloss": "kill",
+          "morph": "HVqv2mp",
+          "parse": [
+            {
+              "code": "HVqv2mp",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Imperative (hence Tense=Present/future; Mood=Imperative) · Second · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "אִישׁ",
+          "translit": "'ish",
+          "strong": "H376",
+          "lemma": "אִישׁ",
+          "gloss": "everyone",
+          "morph": "HNcmsa",
+          "parse": [
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "אֲנָשָׁיו",
+          "translit": "'a.na.Shav",
+          "strong": "H582",
+          "lemma": "אֱנוֹשׁ",
+          "gloss": "men his",
+          "morph": "HNcmpc/Sp3ms",
+          "parse": [
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            },
+            {
+              "code": "HSp3ms",
+              "text": "Suffix · Personal · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "הַנִּצְמָדִים",
+          "translit": "ha.nitz.ma.Dim",
+          "strong": "H6775",
+          "lemma": "צָמַד",
+          "gloss": "who have joined themselves",
+          "morph": "HTd/VNrmpa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HVNrmpa",
+              "text": "Verb · Niphal (hence Action=Simple; Voice=Passive) · Participle · Masculine · Plural · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "לְבַעַל",
+          "translit": "le.Va.'al",
+          "strong": "H1187",
+          "lemma": "בַּ֫עַל פְּעוֹר",
+          "gloss": "to Baal",
+          "morph": "HR/Npt",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNpt",
+              "text": "Noun · Proper · Title"
+            }
+          ]
+        },
+        {
+          "original": "פְּעֽוֹר",
+          "translit": "pe.'or",
+          "strong": "H1187",
+          "lemma": "בַּ֫עַל פְּעוֹר",
+          "gloss": "Peor",
+          "morph": "HNpt",
+          "parse": [
+            {
+              "code": "HNpt",
+              "text": "Noun · Proper · Title"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 6,
+      "text": "And, behold, one of the children of Israel came and brought unto his brethren a Midianitish woman in the sight of Moses, and in the sight of all the congregation of the children of Israel, who were weeping before the door of the tabernacle of the congregation.",
+      "words": [
+        {
+          "original": "וְהִנֵּה",
+          "translit": "ve.hi.Neh",
+          "strong": "H2009",
+          "lemma": "הִנֵּה",
+          "gloss": "and there!",
+          "morph": "HC/Tj",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HTj",
+              "text": "Particle · Interjection"
+            }
+          ]
+        },
+        {
+          "original": "אִישׁ",
+          "translit": "'ish",
+          "strong": "H376",
+          "lemma": "אִישׁ",
+          "gloss": "a man",
+          "morph": "HNcmsa",
+          "parse": [
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "מִבְּנֵי",
+          "translit": "mi.be.Nei",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "from [the] people of",
+          "morph": "HR/Ncmpc",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "בָּא",
+          "translit": "Ba'",
+          "strong": "H935",
+          "lemma": "בּוֹא",
+          "gloss": "[was] coming",
+          "morph": "HVqp3ms",
+          "parse": [
+            {
+              "code": "HVqp3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Perfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "וַיַּקְרֵב",
+          "translit": "vai.yak.Rev",
+          "strong": "H7126",
+          "lemma": "קָרַב",
+          "gloss": "and he brought near",
+          "morph": "Hc/Vhw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVhw3ms",
+              "text": "Verb · Hiphil (hence Action=Causative/declarative; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אֶל",
+          "translit": "'el-",
+          "strong": "H413",
+          "lemma": "אֶל",
+          "gloss": "to",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "אֶחָיו",
+          "translit": "'e.Chav",
+          "strong": "H251",
+          "lemma": "אָח",
+          "gloss": "brothers his",
+          "morph": "HNcmpc/Sp3ms",
+          "parse": [
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            },
+            {
+              "code": "HSp3ms",
+              "text": "Suffix · Personal · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אֶת",
+          "translit": "'et-",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.>",
+          "morph": "HTo",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            }
+          ]
+        },
+        {
+          "original": "הַמִּדְיָנִית",
+          "translit": "ha.mid.ya.Nit",
+          "strong": "H4084",
+          "lemma": "מִדְיָנִי",
+          "gloss": "the Midianite [woman]",
+          "morph": "HTd/Ngfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNgfsa",
+              "text": "Noun · Gentilic · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "לְעֵינֵי",
+          "translit": "le.'ei.Nei",
+          "strong": "H5869",
+          "lemma": "עַ֫יִן",
+          "gloss": "to [the] eyes of",
+          "morph": "HR/Ncfdc",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcfdc",
+              "text": "Noun · Common · Feminine · Dual · Construct"
+            }
+          ]
+        },
+        {
+          "original": "מֹשֶׁה",
+          "translit": "mo.Sheh",
+          "strong": "H4872",
+          "lemma": "מֹשֶׁה",
+          "gloss": "Moses",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "וּלְעֵינֵי",
+          "translit": "u.le.'ei.Nei",
+          "strong": "H5869",
+          "lemma": "עַ֫יִן",
+          "gloss": "and to [the] eyes of",
+          "morph": "HC/R/Ncfdc",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcfdc",
+              "text": "Noun · Common · Feminine · Dual · Construct"
+            }
+          ]
+        },
+        {
+          "original": "כָּל",
+          "translit": "kol-",
+          "strong": "H3605",
+          "lemma": "כֹּל",
+          "gloss": "all",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "עֲדַת",
+          "translit": "'a.Dat",
+          "strong": "H5712",
+          "lemma": "עֵדָה",
+          "gloss": "[the] congregation of",
+          "morph": "HNcfsc",
+          "parse": [
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "בְּנֵי",
+          "translit": "be.nei-",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "[the] people of",
+          "morph": "HNcmpc",
+          "parse": [
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "וְהֵמָּה",
+          "translit": "ve.He.mah",
+          "strong": "H1992",
+          "lemma": "הֵ֫מָּה",
+          "gloss": "and they",
+          "morph": "HC/Pp3mp",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HPp3mp",
+              "text": "Pronoun · Personal · Third · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "בֹכִים",
+          "translit": "vo.Khim",
+          "strong": "H1058",
+          "lemma": "בָּכָה",
+          "gloss": "[were] weeping",
+          "morph": "HVqrmpa",
+          "parse": [
+            {
+              "code": "HVqrmpa",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Participle · Masculine · Plural · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "פֶּתַח",
+          "translit": "Pe.tach",
+          "strong": "H6607",
+          "lemma": "פֶּ֫תַח",
+          "gloss": "[the] entrance of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אֹהֶל",
+          "translit": "'O.hel",
+          "strong": "H168",
+          "lemma": "אֹ֫הֶל",
+          "gloss": "[the] tent of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "מוֹעֵֽד",
+          "translit": "mo.'Ed",
+          "strong": "H4150",
+          "lemma": "מוֹעֵד",
+          "gloss": "meeting",
+          "morph": "HNcmsa",
+          "parse": [
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 7,
+      "text": "And when Phinehas, the son of Eleazar, the son of Aaron the priest, saw it, he rose up from among the congregation, and took a javelin in his hand;",
+      "words": [
+        {
+          "original": "וַיַּרְא",
+          "translit": "vai.Yar'",
+          "strong": "H7200",
+          "lemma": "רָאָה",
+          "gloss": "and he saw [it]",
+          "morph": "Hc/Vqw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "פִּֽינְחָס",
+          "translit": "pi.ne.Chas",
+          "strong": "H6372",
+          "lemma": "פִּינְחָס",
+          "gloss": "Phinehas",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "בֶּן",
+          "translit": "ben-",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "[the] son of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אֶלְעָזָר",
+          "translit": "'el.'a.Zar",
+          "strong": "H499",
+          "lemma": "אֶלְעָזָר",
+          "gloss": "Eleazar",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "בֶּֽן",
+          "translit": "ben-",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "[the] son of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אַהֲרֹן",
+          "translit": "'a.ha.Ron",
+          "strong": "H175",
+          "lemma": "אַהֲרֹן",
+          "gloss": "Aaron",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "הַכֹּהֵן",
+          "translit": "ha.ko.Hen",
+          "strong": "H3548",
+          "lemma": "כֹּהֵן",
+          "gloss": "the priest",
+          "morph": "HTd/Ncmsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "וַיָּקָם",
+          "translit": "vai.Ya.kom",
+          "strong": "H6965",
+          "lemma": "קוּם",
+          "gloss": "and he arose",
+          "morph": "Hc/Vqw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "מִתּוֹךְ",
+          "translit": "mi.Tokh",
+          "strong": "H8432",
+          "lemma": "תָּ֫וֶךְ",
+          "gloss": "from among",
+          "morph": "HR/Ncmsc",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "הָֽעֵדָה",
+          "translit": "ha.'e.Dah",
+          "strong": "H5712",
+          "lemma": "עֵדָה",
+          "gloss": "the congregation",
+          "morph": "HTd/Ncfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcfsa",
+              "text": "Noun · Common · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "וַיִּקַּח",
+          "translit": "vai.yi.Kach",
+          "strong": "H3947",
+          "lemma": "לָקַח",
+          "gloss": "and he took",
+          "morph": "Hc/Vqw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "רֹמַח",
+          "translit": "Ro.mach",
+          "strong": "H7420",
+          "lemma": "רֹ֫מַח",
+          "gloss": "a spear",
+          "morph": "HNcmsa",
+          "parse": [
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "בְּיָדֽוֹ",
+          "translit": "be.ya.Do",
+          "strong": "H3027",
+          "lemma": "יָד",
+          "gloss": "in hand his",
+          "morph": "HR/Ncbsc/Sp3ms",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcbsc",
+              "text": "Noun · Common · Either gender · Singular · Construct"
+            },
+            {
+              "code": "HSp3ms",
+              "text": "Suffix · Personal · Third · Masculine · Singular"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 8,
+      "text": "And he went after the man of Israel into the tent, and thrust both of them through, the man of Israel, and the woman through her belly. So the plague was stayed from the children of Israel.",
+      "words": [
+        {
+          "original": "וַיָּבֹא",
+          "translit": "Vai.ya.vo'",
+          "strong": "H935",
+          "lemma": "בּוֹא",
+          "gloss": "and he went",
+          "morph": "Hc/Vqw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אַחַר",
+          "translit": "'a.Char",
+          "strong": "H310",
+          "lemma": "אַחַר",
+          "gloss": "after",
+          "morph": "HAcmsc",
+          "parse": [
+            {
+              "code": "HAcmsc",
+              "text": "Adjective · Numerical · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אִֽישׁ",
+          "translit": "'ish-",
+          "strong": "H376",
+          "lemma": "אִישׁ",
+          "gloss": "[the] man of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "אֶל",
+          "translit": "'el-",
+          "strong": "H413",
+          "lemma": "אֶל",
+          "gloss": "into",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "הַקֻּבָּה",
+          "translit": "ha.ku.Bah",
+          "strong": "H6898",
+          "lemma": "קֻבָּה",
+          "gloss": "the tent",
+          "morph": "HTd/Ncfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcfsa",
+              "text": "Noun · Common · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "וַיִּדְקֹר",
+          "translit": "vai.yid.Kor",
+          "strong": "H1856",
+          "lemma": "דָּקַר",
+          "gloss": "and he pierced through",
+          "morph": "Hc/Vqw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אֶת",
+          "translit": "'et-",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.>",
+          "morph": "HTo",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            }
+          ]
+        },
+        {
+          "original": "שְׁנֵיהֶם",
+          "translit": "she.nei.Hem",
+          "strong": "H8147",
+          "lemma": "שְׁנַ֫יִם",
+          "gloss": "both of them",
+          "morph": "HAcbdc/Sp3mp",
+          "parse": [
+            {
+              "code": "HAcbdc",
+              "text": "Adjective · Numerical · Either gender · Dual · Construct"
+            },
+            {
+              "code": "HSp3mp",
+              "text": "Suffix · Personal · Third · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "אֵת",
+          "translit": "'et",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.>",
+          "morph": "HTo",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            }
+          ]
+        },
+        {
+          "original": "אִישׁ",
+          "translit": "'ish",
+          "strong": "H376",
+          "lemma": "אִישׁ",
+          "gloss": "[the] man of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "וְאֶת",
+          "translit": "ve.'Et",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "and <obj.>",
+          "morph": "HC/To",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            }
+          ]
+        },
+        {
+          "original": "הָאִשָּׁה",
+          "translit": "ha.'i.Shah",
+          "strong": "H802",
+          "lemma": "אִשָּׁה",
+          "gloss": "the woman",
+          "morph": "HTd/Ncfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcfsa",
+              "text": "Noun · Common · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "אֶל",
+          "translit": "'el-",
+          "strong": "H413",
+          "lemma": "אֶל",
+          "gloss": "into",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "קֳבָתָהּ",
+          "translit": "koa.Tah",
+          "strong": "H6897",
+          "lemma": "קֹבָה",
+          "gloss": "belly her",
+          "morph": "HNcfsc/Sp3fs",
+          "parse": [
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            },
+            {
+              "code": "HSp3fs",
+              "text": "Suffix · Personal · Third · Feminine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "וַתֵּֽעָצַר",
+          "translit": "va.te.'a.Tzar",
+          "strong": "H6113",
+          "lemma": "עָצַר",
+          "gloss": "and it was restrained",
+          "morph": "Hc/VNw3fs",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVNw3fs",
+              "text": "Verb · Niphal (hence Action=Simple; Voice=Passive) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Feminine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "הַמַּגֵּפָה",
+          "translit": "ha.ma.ge.Fah",
+          "strong": "H4046",
+          "lemma": "מַגֵּפָה",
+          "gloss": "the plague",
+          "morph": "HTd/Ncfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcfsa",
+              "text": "Noun · Common · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "מֵעַל",
+          "translit": "me.'Al",
+          "strong": "H5921",
+          "lemma": "עַל",
+          "gloss": "from on",
+          "morph": "HR/R",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "בְּנֵי",
+          "translit": "be.Nei",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "[the] people of",
+          "morph": "HNcmpc",
+          "parse": [
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵֽל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 9,
+      "text": "And those that died in the plague were twenty and four thousand.",
+      "words": [
+        {
+          "original": "וַיִּהְיוּ",
+          "translit": "vai.yih.Yu",
+          "strong": "H1961",
+          "lemma": "הָיָה",
+          "gloss": "and they were",
+          "morph": "Hc/Vqw3mp",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqw3mp",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "הַמֵּתִים",
+          "translit": "ha.me.Tim",
+          "strong": "H4191",
+          "lemma": "מוּת",
+          "gloss": "those [who] died",
+          "morph": "HTd/Vqrmpa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HVqrmpa",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Participle · Masculine · Plural · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "בַּמַּגֵּפָה",
+          "translit": "ba.ma.ge.Fah",
+          "strong": "H4046",
+          "lemma": "מַגֵּפָה",
+          "gloss": "by the plague",
+          "morph": "HRd/Ncfsa",
+          "parse": [
+            {
+              "code": "HRd",
+              "text": "Preposition · Definite"
+            },
+            {
+              "code": "HNcfsa",
+              "text": "Noun · Common · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "אַרְבָּעָה",
+          "translit": "'ar.ba.'Ah",
+          "strong": "H702",
+          "lemma": "אַרְבַּע",
+          "gloss": "four",
+          "morph": "HAcbsa",
+          "parse": [
+            {
+              "code": "HAcbsa",
+              "text": "Adjective · Numerical · Either gender · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "וְעֶשְׂרִים",
+          "translit": "ve.'es.Rim",
+          "strong": "H6242",
+          "lemma": "עֶשְׂרִים",
+          "gloss": "and twenty",
+          "morph": "HC/Acmpa",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HAcmpa",
+              "text": "Adjective · Numerical · Masculine · Plural · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "אָֽלֶף פ",
+          "translit": "'A.lef",
+          "strong": "H505",
+          "lemma": "אֶ֫לֶף",
+          "gloss": "thousand",
+          "morph": "HAcbsa",
+          "parse": [
+            {
+              "code": "HAcbsa",
+              "text": "Adjective · Numerical · Either gender · Singular · Absolute"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 10,
+      "text": "And the LORD spake unto Moses, saying,",
+      "words": [
+        {
+          "original": "וַיְדַבֵּר",
+          "translit": "vay.da.Ber",
+          "strong": "H1696",
+          "lemma": "דָבַר",
+          "gloss": "and he spoke",
+          "morph": "Hc/Vpw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVpw3ms",
+              "text": "Verb · Piel (hence Action=Intensive/resultive/transtive; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "יְהוָה",
+          "translit": "Yah.weh",
+          "strong": "H3068",
+          "lemma": "יהוה",
+          "gloss": "Yahweh",
+          "morph": "HNpt",
+          "parse": [
+            {
+              "code": "HNpt",
+              "text": "Noun · Proper · Title"
+            }
+          ]
+        },
+        {
+          "original": "אֶל",
+          "translit": "'el-",
+          "strong": "H413",
+          "lemma": "אֶל",
+          "gloss": "to",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "מֹשֶׁה",
+          "translit": "mo.Sheh",
+          "strong": "H4872",
+          "lemma": "מֹשֶׁה",
+          "gloss": "Moses",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "לֵּאמֹֽר",
+          "translit": "le.Mor",
+          "strong": "H559",
+          "lemma": "אָמַר",
+          "gloss": "<to> saying",
+          "morph": "HR/Vqcc",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HVqcc",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Infinitive · Construct"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 11,
+      "text": "Phinehas, the son of Eleazar, the son of Aaron the priest, hath turned my wrath away from the children of Israel, while he was zealous for my sake among them, that I consumed not the children of Israel in my jealousy.",
+      "words": [
+        {
+          "original": "פִּֽינְחָס",
+          "translit": "pin.Chas",
+          "strong": "H6372",
+          "lemma": "פִּינְחָס",
+          "gloss": "Phinehas",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "בֶּן",
+          "translit": "ben-",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "[the] son of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אֶלְעָזָר",
+          "translit": "'el.'a.Zar",
+          "strong": "H499",
+          "lemma": "אֶלְעָזָר",
+          "gloss": "Eleazar",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "בֶּן",
+          "translit": "ben-",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "[the] son of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אַהֲרֹן",
+          "translit": "'a.ha.Ron",
+          "strong": "H175",
+          "lemma": "אַהֲרֹן",
+          "gloss": "Aaron",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "הַכֹּהֵן",
+          "translit": "ha.ko.Hen",
+          "strong": "H3548",
+          "lemma": "כֹּהֵן",
+          "gloss": "the priest",
+          "morph": "HTd/Ncmsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "הֵשִׁיב",
+          "translit": "he.Shiv",
+          "strong": "H7725",
+          "lemma": "שׁוּב",
+          "gloss": "he has turned back",
+          "morph": "HVhp3ms",
+          "parse": [
+            {
+              "code": "HVhp3ms",
+              "text": "Verb · Hiphil (hence Action=Causative/declarative; Voice=Active) · Perfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אֶת",
+          "translit": "'et-",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.>",
+          "morph": "HTo",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            }
+          ]
+        },
+        {
+          "original": "חֲמָתִי",
+          "translit": "cha.ma.Ti",
+          "strong": "H2534",
+          "lemma": "חֵמָה",
+          "gloss": "rage my",
+          "morph": "HNcfsc/Sp1bs",
+          "parse": [
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            },
+            {
+              "code": "HSp1bs",
+              "text": "Suffix · Personal · First · Either gender · Singular"
+            }
+          ]
+        },
+        {
+          "original": "מֵעַל",
+          "translit": "me.'Al",
+          "strong": "H5921",
+          "lemma": "עַל",
+          "gloss": "from against",
+          "morph": "HR/R",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "בְּנֵֽי",
+          "translit": "be.nei-",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "[the] people of",
+          "morph": "HNcmpc",
+          "parse": [
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "בְּקַנְאוֹ",
+          "translit": "be.kan.'O",
+          "strong": "H7065",
+          "lemma": "קָנָא",
+          "gloss": "because was zealous he",
+          "morph": "HR/Vpcc/Sp3ms",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HVpcc",
+              "text": "Verb · Piel (hence Action=Intensive/resultive/transtive; Voice=Active) · Infinitive · Construct"
+            },
+            {
+              "code": "HSp3ms",
+              "text": "Suffix · Personal · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אֶת",
+          "translit": "'et-",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.>",
+          "morph": "HTo",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            }
+          ]
+        },
+        {
+          "original": "קִנְאָתִי",
+          "translit": "kin.'a.Ti",
+          "strong": "H7068",
+          "lemma": "קִנְאָה",
+          "gloss": "zeal my",
+          "morph": "HNcfsc/Sp1bs",
+          "parse": [
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            },
+            {
+              "code": "HSp1bs",
+              "text": "Suffix · Personal · First · Either gender · Singular"
+            }
+          ]
+        },
+        {
+          "original": "בְּתוֹכָם",
+          "translit": "be.to.Kham",
+          "strong": "H8432",
+          "lemma": "תָּ֫וֶךְ",
+          "gloss": "in midst of them",
+          "morph": "HR/Ncmsc/Sp3mp",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            },
+            {
+              "code": "HSp3mp",
+              "text": "Suffix · Personal · Third · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "וְלֹא",
+          "translit": "ve.lo'-",
+          "strong": "H3808",
+          "lemma": "לֹא",
+          "gloss": "and not",
+          "morph": "HC/Tn",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HTn",
+              "text": "Particle · Negative"
+            }
+          ]
+        },
+        {
+          "original": "כִלִּיתִי",
+          "translit": "khi.Li.ti",
+          "strong": "H3615",
+          "lemma": "כָּלָה",
+          "gloss": "I made an end of",
+          "morph": "HVpp1cs",
+          "parse": [
+            {
+              "code": "HVpp1cs",
+              "text": "Verb · Piel (hence Action=Intensive/resultive/transtive; Voice=Active) · Perfect (hence Tense=Past/present; Mood=Indicative) · First · Either gender · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אֶת",
+          "translit": "'et-",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.>",
+          "morph": "HTo",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            }
+          ]
+        },
+        {
+          "original": "בְּנֵֽי",
+          "translit": "be.nei-",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "[the] people of",
+          "morph": "HNcmpc",
+          "parse": [
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "בְּקִנְאָתִֽי",
+          "translit": "be.kin.'a.Ti",
+          "strong": "H7068",
+          "lemma": "קִנְאָה",
+          "gloss": "in zeal my",
+          "morph": "HR/Ncfsc/Sp1bs",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            },
+            {
+              "code": "HSp1bs",
+              "text": "Suffix · Personal · First · Either gender · Singular"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 12,
+      "text": "Wherefore say, Behold, I give unto him my covenant of peace:",
+      "words": [
+        {
+          "original": "לָכֵן",
+          "translit": "la.Khen",
+          "strong": "H3651",
+          "lemma": "כֵּן",
+          "gloss": "<to> therefore",
+          "morph": "HR/D",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HD",
+              "text": "Adverb"
+            }
+          ]
+        },
+        {
+          "original": "אֱמֹר",
+          "translit": "'e.Mor",
+          "strong": "H559",
+          "lemma": "אָמַר",
+          "gloss": "say",
+          "morph": "HVqv2ms",
+          "parse": [
+            {
+              "code": "HVqv2ms",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Imperative (hence Tense=Present/future; Mood=Imperative) · Second · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "הִנְנִי",
+          "translit": "hi.Ni",
+          "strong": "H2005",
+          "lemma": "הֵן",
+          "gloss": "here I",
+          "morph": "HTj/Sp1bs",
+          "parse": [
+            {
+              "code": "HTj",
+              "text": "Particle · Interjection"
+            },
+            {
+              "code": "HSp1bs",
+              "text": "Suffix · Personal · First · Either gender · Singular"
+            }
+          ]
+        },
+        {
+          "original": "נֹתֵן",
+          "translit": "no.Ten",
+          "strong": "H5414",
+          "lemma": "נָתַן",
+          "gloss": "[am] about to give",
+          "morph": "HVqrmsa",
+          "parse": [
+            {
+              "code": "HVqrmsa",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Participle · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "לוֹ",
+          "translit": "lo",
+          "strong": "H9033",
+          "lemma": "Os3m",
+          "gloss": "to <the> him",
+          "morph": "HRd/Sp3ms",
+          "parse": [
+            {
+              "code": "HRd",
+              "text": "Preposition · Definite"
+            },
+            {
+              "code": "HSp3ms",
+              "text": "Suffix · Personal · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אֶת",
+          "translit": "'et-",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.>",
+          "morph": "HTo",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            }
+          ]
+        },
+        {
+          "original": "בְּרִיתִי",
+          "translit": "be.ri.Ti",
+          "strong": "H1285",
+          "lemma": "בְּרִית",
+          "gloss": "covenant my",
+          "morph": "HNcfsc/Sp1bs",
+          "parse": [
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            },
+            {
+              "code": "HSp1bs",
+              "text": "Suffix · Personal · First · Either gender · Singular"
+            }
+          ]
+        },
+        {
+          "original": "שָׁלֽוֹם",
+          "translit": "sha.Lom",
+          "strong": "H7965",
+          "lemma": "שָׁלוֹם",
+          "gloss": "peace",
+          "morph": "HNcmsa",
+          "parse": [
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 13,
+      "text": "And he shall have it, and his seed after him, even the covenant of an everlasting priesthood; because he was zealous for his God, and made an atonement for the children of Israel.",
+      "words": [
+        {
+          "original": "וְהָיְתָה",
+          "translit": "ve.Ha.ye.tah",
+          "strong": "H1961",
+          "lemma": "הָיָה",
+          "gloss": "and it will belong",
+          "morph": "Hc/Vqq3fs",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVqq3fs",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Consecutive Perfect (hence Tense=Future/present; Mood=Indicative) · Third · Feminine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "לּוֹ",
+          "translit": "lo",
+          "strong": "H9033",
+          "lemma": "Os3m",
+          "gloss": "to him",
+          "morph": "HR/Sp3ms",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HSp3ms",
+              "text": "Suffix · Personal · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "וּלְזַרְעוֹ",
+          "translit": "u.le.zar.'O",
+          "strong": "H2233",
+          "lemma": "זֶ֫רַע",
+          "gloss": "and to offspring his",
+          "morph": "HC/R/Ncmsc/Sp3ms",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            },
+            {
+              "code": "HSp3ms",
+              "text": "Suffix · Personal · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אַחֲרָיו",
+          "translit": "'a.cha.Rav",
+          "strong": "H310",
+          "lemma": "אַחַר",
+          "gloss": "after him",
+          "morph": "HAcmpc/Sp3ms",
+          "parse": [
+            {
+              "code": "HAcmpc",
+              "text": "Adjective · Numerical · Masculine · Plural · Construct"
+            },
+            {
+              "code": "HSp3ms",
+              "text": "Suffix · Personal · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "בְּרִית",
+          "translit": "be.Rit",
+          "strong": "H1285",
+          "lemma": "בְּרִית",
+          "gloss": "a covenant of",
+          "morph": "HNcfsc",
+          "parse": [
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "כְּהֻנַּת",
+          "translit": "ke.hu.Nat",
+          "strong": "H3550",
+          "lemma": "כְּהֻנָּה",
+          "gloss": "priesthood of",
+          "morph": "HNcfsc",
+          "parse": [
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "עוֹלָם",
+          "translit": "o.Lam",
+          "strong": "H5769",
+          "lemma": "עוֹלָם",
+          "gloss": "perpetuity",
+          "morph": "HNcmsa",
+          "parse": [
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "תַּחַת",
+          "translit": "Ta.chat",
+          "strong": "H8478",
+          "lemma": "תַּחַת",
+          "gloss": "because",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אֲשֶׁר",
+          "translit": "'a.Sher",
+          "strong": "H834",
+          "lemma": "אֲשֶׁר",
+          "gloss": "that",
+          "morph": "HTr",
+          "parse": [
+            {
+              "code": "HTr",
+              "text": "Particle · Relative"
+            }
+          ]
+        },
+        {
+          "original": "קִנֵּא",
+          "translit": "ki.Ne'",
+          "strong": "H7065",
+          "lemma": "קָנָא",
+          "gloss": "he was zealous",
+          "morph": "HVpp3ms",
+          "parse": [
+            {
+              "code": "HVpp3ms",
+              "text": "Verb · Piel (hence Action=Intensive/resultive/transtive; Voice=Active) · Perfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "לֵֽאלֹהָיו",
+          "translit": "le.lo.Hav",
+          "strong": "H430",
+          "lemma": "אֱלֹהִים",
+          "gloss": "for God his",
+          "morph": "HR/Ncmpc/Sp3ms",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            },
+            {
+              "code": "HSp3ms",
+              "text": "Suffix · Personal · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "וַיְכַפֵּר",
+          "translit": "vay.kha.Per",
+          "strong": "H3722",
+          "lemma": "כִּפֶּר",
+          "gloss": "and he made atonement",
+          "morph": "Hc/Vpw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVpw3ms",
+              "text": "Verb · Piel (hence Action=Intensive/resultive/transtive; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "עַל",
+          "translit": "'al-",
+          "strong": "H5921",
+          "lemma": "עַל",
+          "gloss": "on",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "בְּנֵי",
+          "translit": "be.Nei",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "[the] people of",
+          "morph": "HNcmpc",
+          "parse": [
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵֽל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 14,
+      "text": "Now the name of the Israelite that was slain, even that was slain with the Midianitish woman, was Zimri, the son of Salu, a prince of a chief house among the Simeonites.",
+      "words": [
+        {
+          "original": "וְשֵׁם",
+          "translit": "ve.Shem",
+          "strong": "H8034",
+          "lemma": "שֵׁם",
+          "gloss": "and [the] name of",
+          "morph": "HC/Ncmsc",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אִישׁ",
+          "translit": "'ish",
+          "strong": "H376",
+          "lemma": "אִישׁ",
+          "gloss": "[the] man of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "יִשְׂרָאֵל",
+          "translit": "Yis.ra.'El",
+          "strong": "H3478",
+          "lemma": "יִשְׂרָאֵל",
+          "gloss": "Israel",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "הַמֻּכֶּה",
+          "translit": "ha.mu.Keh",
+          "strong": "H5221",
+          "lemma": "נָכָה",
+          "gloss": "who was struck down",
+          "morph": "HTd/VHsmsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HVHsmsa",
+              "text": "Verb · Hophal (hence Action=Causative/declarative; Voice=Passive) · Participle passive · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "אֲשֶׁר",
+          "translit": "'a.Sher",
+          "strong": "H834",
+          "lemma": "אֲשֶׁר",
+          "gloss": "who",
+          "morph": "HTr",
+          "parse": [
+            {
+              "code": "HTr",
+              "text": "Particle · Relative"
+            }
+          ]
+        },
+        {
+          "original": "הֻכָּה",
+          "translit": "hu.Kah",
+          "strong": "H5221",
+          "lemma": "נָכָה",
+          "gloss": "he was struck down",
+          "morph": "HVHp3ms",
+          "parse": [
+            {
+              "code": "HVHp3ms",
+              "text": "Verb · Hophal (hence Action=Causative/declarative; Voice=Passive) · Perfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "אֶת",
+          "translit": "'et-",
+          "strong": "H854",
+          "lemma": "אֵת",
+          "gloss": "with",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "הַמִּדְיָנִית",
+          "translit": "ha.mid.ya.Nit",
+          "strong": "H4084",
+          "lemma": "מִדְיָנִי",
+          "gloss": "the Midianite [woman]",
+          "morph": "HTd/Ngfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNgfsa",
+              "text": "Noun · Gentilic · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "זִמְרִי",
+          "translit": "zim.Ri",
+          "strong": "H2174",
+          "lemma": "זִמְרִי",
+          "gloss": "[was] Zimri",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "בֶּן",
+          "translit": "ben-",
+          "strong": "H1121",
+          "lemma": "בֵּן",
+          "gloss": "[the] son of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "סָלוּא",
+          "translit": "sa.Lu'",
+          "strong": "H5543",
+          "lemma": "סַלוּא",
+          "gloss": "Salu",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "נְשִׂיא",
+          "translit": "ne.Si'",
+          "strong": "H5387",
+          "lemma": "נָשִׂיא",
+          "gloss": "a leader of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "בֵֽית",
+          "translit": "veit-",
+          "strong": "H1004",
+          "lemma": "בַּ֫יִת",
+          "gloss": "a house of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אָב",
+          "translit": "'av",
+          "strong": "H1",
+          "lemma": "אָב",
+          "gloss": "a father",
+          "morph": "HNcmsa",
+          "parse": [
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "לַשִּׁמְעֹנִֽי",
+          "translit": "la.shim.'o.Ni",
+          "strong": "H8099",
+          "lemma": "שִׁמְעֹנִי",
+          "gloss": "of the Simeonite[s]",
+          "morph": "HRd/Ngmsa",
+          "parse": [
+            {
+              "code": "HRd",
+              "text": "Preposition · Definite"
+            },
+            {
+              "code": "HNgmsa",
+              "text": "Noun · Gentilic · Masculine · Singular · Absolute"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 15,
+      "text": "And the name of the Midianitish woman that was slain was Cozbi, the daughter of Zur; he was head over a people, and of a chief house in Midian.",
+      "words": [
+        {
+          "original": "וְשֵׁם",
+          "translit": "ve.Shem",
+          "strong": "H8034",
+          "lemma": "שֵׁם",
+          "gloss": "and [the] name of",
+          "morph": "HC/Ncmsc",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "הָֽאִשָּׁה",
+          "translit": "ha.'i.Shah",
+          "strong": "H802",
+          "lemma": "אִשָּׁה",
+          "gloss": "the woman",
+          "morph": "HTd/Ncfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcfsa",
+              "text": "Noun · Common · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "הַמֻּכָּה",
+          "translit": "ha.mu.Kah",
+          "strong": "H5221",
+          "lemma": "נָכָה",
+          "gloss": "who was struck down",
+          "morph": "HTd/VHsfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HVHsfsa",
+              "text": "Verb · Hophal (hence Action=Causative/declarative; Voice=Passive) · Participle passive · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "הַמִּדְיָנִית",
+          "translit": "ha.mid.ya.Nit",
+          "strong": "H4084",
+          "lemma": "מִדְיָנִי",
+          "gloss": "the Midianite [woman]",
+          "morph": "HTd/Ngfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNgfsa",
+              "text": "Noun · Gentilic · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "כָּזְבִּי",
+          "translit": "ka.ze.Bi",
+          "strong": "H3579",
+          "lemma": "כָּזְבִי",
+          "gloss": "[was] Cozbi",
+          "morph": "HNpf",
+          "parse": [
+            {
+              "code": "HNpf",
+              "text": "Noun · Proper · Feminine"
+            }
+          ]
+        },
+        {
+          "original": "בַת",
+          "translit": "vat-",
+          "strong": "H1323",
+          "lemma": "בַּת",
+          "gloss": "[the] daughter of",
+          "morph": "HNcfsc",
+          "parse": [
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "צוּר",
+          "translit": "Tzur",
+          "strong": "H6698",
+          "lemma": "צוּר",
+          "gloss": "Zur",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "רֹאשׁ",
+          "translit": "rosh",
+          "strong": "H7218",
+          "lemma": "רֹאשׁ",
+          "gloss": "[was] a leader of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אֻמּוֹת",
+          "translit": "'u.Mot",
+          "strong": "H523",
+          "lemma": "אֻמָּה",
+          "gloss": "tribes",
+          "morph": "HNcfpa",
+          "parse": [
+            {
+              "code": "HNcfpa",
+              "text": "Noun · Common · Feminine · Plural · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "בֵּֽית",
+          "translit": "beit-",
+          "strong": "H1004",
+          "lemma": "בַּ֫יִת",
+          "gloss": "a house of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "אָב",
+          "translit": "'av",
+          "strong": "H1",
+          "lemma": "אָב",
+          "gloss": "a father",
+          "morph": "HNcmsa",
+          "parse": [
+            {
+              "code": "HNcmsa",
+              "text": "Noun · Common · Masculine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "בְּמִדְיָן",
+          "translit": "be.mid.Yan",
+          "strong": "H4080",
+          "lemma": "מִדְיָן",
+          "gloss": "in Midian",
+          "morph": "HR/Npl",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "הֽוּא פ",
+          "translit": "Hu'",
+          "strong": "H1931",
+          "lemma": "הוּא",
+          "gloss": "he",
+          "morph": "HPp3ms",
+          "parse": [
+            {
+              "code": "HPp3ms",
+              "text": "Pronoun · Personal · Third · Masculine · Singular"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 16,
+      "text": "And the LORD spake unto Moses, saying,",
+      "words": [
+        {
+          "original": "וַיְדַבֵּר",
+          "translit": "vay.da.Ber",
+          "strong": "H1696",
+          "lemma": "דָבַר",
+          "gloss": "and he spoke",
+          "morph": "Hc/Vpw3ms",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVpw3ms",
+              "text": "Verb · Piel (hence Action=Intensive/resultive/transtive; Voice=Active) · Consecutive Imperfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+            }
+          ]
+        },
+        {
+          "original": "יְהוָה",
+          "translit": "Yah.weh",
+          "strong": "H3068",
+          "lemma": "יהוה",
+          "gloss": "Yahweh",
+          "morph": "HNpt",
+          "parse": [
+            {
+              "code": "HNpt",
+              "text": "Noun · Proper · Title"
+            }
+          ]
+        },
+        {
+          "original": "אֶל",
+          "translit": "'el-",
+          "strong": "H413",
+          "lemma": "אֶל",
+          "gloss": "to",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "מֹשֶׁה",
+          "translit": "mo.Sheh",
+          "strong": "H4872",
+          "lemma": "מֹשֶׁה",
+          "gloss": "Moses",
+          "morph": "HNpm",
+          "parse": [
+            {
+              "code": "HNpm",
+              "text": "Noun · Proper · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "לֵּאמֹֽר",
+          "translit": "le.Mor",
+          "strong": "H559",
+          "lemma": "אָמַר",
+          "gloss": "<to> say",
+          "morph": "HR/Vqcc",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HVqcc",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Infinitive · Construct"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 17,
+      "text": "Vex the Midianites, and smite them:",
+      "words": [
+        {
+          "original": "צָרוֹר",
+          "translit": "tza.Ror",
+          "strong": "H6887",
+          "lemma": "צָרַר",
+          "gloss": "<to> oppose",
+          "morph": "HVqaa",
+          "parse": [
+            {
+              "code": "HVqaa",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Infinitive · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "אֶת",
+          "translit": "'et-",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.>",
+          "morph": "HTo",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            }
+          ]
+        },
+        {
+          "original": "הַמִּדְיָנִים",
+          "translit": "ha.mid.ya.Nim",
+          "strong": "H4084",
+          "lemma": "מִדְיָנִי",
+          "gloss": "the Midianites",
+          "morph": "HTd/Ngmpa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNgmpa",
+              "text": "Noun · Gentilic · Masculine · Plural · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "וְהִכִּיתֶם",
+          "translit": "ve.hi.ki.Tem",
+          "strong": "H5221",
+          "lemma": "נָכָה",
+          "gloss": "and you will strike down",
+          "morph": "Hc/Vhq2mp",
+          "parse": [
+            {
+              "code": "Hc",
+              "text": "Conjunction · Consecutive"
+            },
+            {
+              "code": "HVhq2mp",
+              "text": "Verb · Hiphil (hence Action=Causative/declarative; Voice=Active) · Consecutive Perfect (hence Tense=Future/present; Mood=Indicative) · Second · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "אוֹתָֽם",
+          "translit": "'o.Tam",
+          "strong": "H853",
+          "lemma": "אֵת",
+          "gloss": "<obj.> them",
+          "morph": "HTo/Sp3mp",
+          "parse": [
+            {
+              "code": "HTo",
+              "text": "Particle · Object indicator"
+            },
+            {
+              "code": "HSp3mp",
+              "text": "Suffix · Personal · Third · Masculine · Plural"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "c": 25,
+      "v": 18,
+      "text": "For they vex you with their wiles, wherewith they have beguiled you in the matter of Peor, and in the matter of Cozbi, the daughter of a prince of Midian, their sister, which was slain in the day of the plague for Peor’s sake.",
+      "words": [
+        {
+          "original": "כִּי",
+          "translit": "ki",
+          "strong": "H3588",
+          "lemma": "כִּי",
+          "gloss": "for",
+          "morph": "HTc",
+          "parse": [
+            {
+              "code": "HTc",
+              "text": "Particle · Conditional"
+            }
+          ]
+        },
+        {
+          "original": "צֹרְרִים",
+          "translit": "tzo.re.Rim",
+          "strong": "H6887",
+          "lemma": "צָרַר",
+          "gloss": "[are] opposers",
+          "morph": "HVqrmpa",
+          "parse": [
+            {
+              "code": "HVqrmpa",
+              "text": "Verb · Qal (hence Action=Simple; Voice=Active) · Participle · Masculine · Plural · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "הֵם",
+          "translit": "hem",
+          "strong": "H1992",
+          "lemma": "הֵ֫מָּה",
+          "gloss": "they",
+          "morph": "HPp3mp",
+          "parse": [
+            {
+              "code": "HPp3mp",
+              "text": "Pronoun · Personal · Third · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "לָכֶם",
+          "translit": "la.Khem",
+          "strong": "H9036",
+          "lemma": "Op2m",
+          "gloss": "<to> <the> you",
+          "morph": "HRd/Sp2mp",
+          "parse": [
+            {
+              "code": "HRd",
+              "text": "Preposition · Definite"
+            },
+            {
+              "code": "HSp2mp",
+              "text": "Suffix · Personal · Second · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "בְּנִכְלֵיהֶם",
+          "translit": "be.nikh.lei.Hem",
+          "strong": "H5231",
+          "lemma": "נֵ֫כֶל",
+          "gloss": "by deceitfulness<es> their",
+          "morph": "HR/Ncmpc/Sp3mp",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcmpc",
+              "text": "Noun · Common · Masculine · Plural · Construct"
+            },
+            {
+              "code": "HSp3mp",
+              "text": "Suffix · Personal · Third · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "אֲשֶׁר",
+          "translit": "'a.Sher-",
+          "strong": "H834",
+          "lemma": "אֲשֶׁר",
+          "gloss": "which",
+          "morph": "HTr",
+          "parse": [
+            {
+              "code": "HTr",
+              "text": "Particle · Relative"
+            }
+          ]
+        },
+        {
+          "original": "נִכְּלוּ",
+          "translit": "ni.ke.Lu",
+          "strong": "H5230",
+          "lemma": "נָכַל",
+          "gloss": "they have dealt deceptively",
+          "morph": "HVpp3cp",
+          "parse": [
+            {
+              "code": "HVpp3cp",
+              "text": "Verb · Piel (hence Action=Intensive/resultive/transtive; Voice=Active) · Perfect (hence Tense=Past/present; Mood=Indicative) · Third · Either gender · Plural"
+            }
+          ]
+        },
+        {
+          "original": "לָכֶם",
+          "translit": "la.Khem",
+          "strong": "H9036",
+          "lemma": "Op2m",
+          "gloss": "to <the> you",
+          "morph": "HRd/Sp2mp",
+          "parse": [
+            {
+              "code": "HRd",
+              "text": "Preposition · Definite"
+            },
+            {
+              "code": "HSp2mp",
+              "text": "Suffix · Personal · Second · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "עַל",
+          "translit": "'al-",
+          "strong": "H5921",
+          "lemma": "עַל",
+          "gloss": "on",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "דְּבַר",
+          "translit": "de.var-",
+          "strong": "H1697",
+          "lemma": "דָּבָר",
+          "gloss": "[the] matter of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "פְּעוֹר",
+          "translit": "pe.'or",
+          "strong": "H6465",
+          "lemma": "פְּעוֹר",
+          "gloss": "Peor",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "וְעַל",
+          "translit": "ve.'al-",
+          "strong": "H5921",
+          "lemma": "עַל",
+          "gloss": "and on",
+          "morph": "HC/R",
+          "parse": [
+            {
+              "code": "HC",
+              "text": "Conjunction"
+            },
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "דְּבַר",
+          "translit": "de.Var",
+          "strong": "H1697",
+          "lemma": "דָּבָר",
+          "gloss": "[the] matter of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "כָּזְבִּי",
+          "translit": "ka.ze.Bi",
+          "strong": "H3579",
+          "lemma": "כָּזְבִי",
+          "gloss": "Cozbi",
+          "morph": "HNpf",
+          "parse": [
+            {
+              "code": "HNpf",
+              "text": "Noun · Proper · Feminine"
+            }
+          ]
+        },
+        {
+          "original": "בַת",
+          "translit": "vat-",
+          "strong": "H1323",
+          "lemma": "בַּת",
+          "gloss": "[the] daughter of",
+          "morph": "HNcfsc",
+          "parse": [
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "נְשִׂיא",
+          "translit": "ne.Si'",
+          "strong": "H5387",
+          "lemma": "נָשִׂיא",
+          "gloss": "[the] leader of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "מִדְיָן",
+          "translit": "mid.Yan",
+          "strong": "H4080",
+          "lemma": "מִדְיָן",
+          "gloss": "Midian",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        },
+        {
+          "original": "אֲחֹתָם",
+          "translit": "'a.cho.Tam",
+          "strong": "H269",
+          "lemma": "אָחוֹת",
+          "gloss": "sister their",
+          "morph": "HNcfsc/Sp3mp",
+          "parse": [
+            {
+              "code": "HNcfsc",
+              "text": "Noun · Common · Feminine · Singular · Construct"
+            },
+            {
+              "code": "HSp3mp",
+              "text": "Suffix · Personal · Third · Masculine · Plural"
+            }
+          ]
+        },
+        {
+          "original": "הַמֻּכָּה",
+          "translit": "ha.mu.Kah",
+          "strong": "H5221",
+          "lemma": "נָכָה",
+          "gloss": "who was struck down",
+          "morph": "HTd/VHsfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HVHsfsa",
+              "text": "Verb · Hophal (hence Action=Causative/declarative; Voice=Passive) · Participle passive · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "בְיוֹם",
+          "translit": "ve.yom-",
+          "strong": "H3117",
+          "lemma": "יוֹם",
+          "gloss": "on [the] day of",
+          "morph": "HR/Ncmsc",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            },
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "הַמַּגֵּפָה",
+          "translit": "ha.ma.ge.Fah",
+          "strong": "H4046",
+          "lemma": "מַגֵּפָה",
+          "gloss": "the plague",
+          "morph": "HTd/Ncfsa",
+          "parse": [
+            {
+              "code": "HTd",
+              "text": "Particle · Definite article (Hebrew)"
+            },
+            {
+              "code": "HNcfsa",
+              "text": "Noun · Common · Feminine · Singular · Absolute"
+            }
+          ]
+        },
+        {
+          "original": "עַל",
+          "translit": "'al-",
+          "strong": "H5921",
+          "lemma": "עַל",
+          "gloss": "on",
+          "morph": "HR",
+          "parse": [
+            {
+              "code": "HR",
+              "text": "Preposition"
+            }
+          ]
+        },
+        {
+          "original": "דְּבַר",
+          "translit": "de.var-",
+          "strong": "H1697",
+          "lemma": "דָּבָר",
+          "gloss": "[the] matter of",
+          "morph": "HNcmsc",
+          "parse": [
+            {
+              "code": "HNcmsc",
+              "text": "Noun · Common · Masculine · Singular · Construct"
+            }
+          ]
+        },
+        {
+          "original": "פְּעֽוֹר",
+          "translit": "pe.'or",
+          "strong": "H6465",
+          "lemma": "פְּעוֹר",
+          "gloss": "Peor",
+          "morph": "HNpl",
+          "parse": [
+            {
+              "code": "HNpl",
+              "text": "Noun · Proper · Location"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "total": 18,
+  "offset": 0,
+  "more": false
+}
