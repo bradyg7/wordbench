@@ -389,3 +389,46 @@ test('an unlinked word opens the interlinear for its verse', async ({ page }, in
   await expect(page.locator('.pane-interlinear .pane-title')).toHaveText((word as any).reference);
   await expect(card).toHaveCount(0);
 });
+
+// The words on a highlight are black or white by WCAG contrast with its color, in either theme (highlights, 2026-11-16).
+test('highlighted words take the higher-contrast ink, light and dark', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await ready(page);
+    const r = await page.evaluate(() => {
+      const lum = (c: string) => {
+        const [r, g, b] = c.match(/[\d.]+/g)!.slice(0, 3).map(Number).map(v => { const x = v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const ratio = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      return [...document.querySelectorAll<HTMLElement>('.w.hl')].slice(0, 20).map(e => {
+        const s = getComputedStyle(e);
+        const bg = lum(s.backgroundColor), ink = lum(s.color);
+        return { ink: s.color, ok: ratio(bg, ink) >= ratio(bg, 1 - ink) && ratio(bg, ink) >= 4.5 };
+      });
+    });
+    expect(r.length).toBeGreaterThan(0);
+    for (const x of r) { expect(x.ok).toBe(true); expect(['rgb(0, 0, 0)', 'rgb(255, 255, 255)']).toContain(x.ink); }
+  }
+});
+
+// A highlight runs on across the spaces between its words: each space is filled and reaches under its neighbors.
+test('a highlight is continuous between words', async ({ page }) => {
+  await ready(page);
+  const r = await page.evaluate(() => {
+    const w = (window as any).__wb, d = w.drawn;
+    d.marks.highlights.push({ kind: 'phrase', code: 'NUM', c1: 25, v1: 5, i1: 1, c2: 25, v2: 5, i2: 40, id: 'cont', color: '#7a1f1f' });
+    w.repaint();
+    const ws = [...document.querySelectorAll<HTMLElement>('.w.hl')].filter(e => d.v[+e.dataset.k!] === 5);
+    return ws.slice(0, -1).map(e => {
+      const g = e.nextElementSibling as HTMLElement | null, s = g && getComputedStyle(g);
+      return { gap: g?.classList.contains('g') ?? false, bg: s?.backgroundColor, shadow: s?.boxShadow ?? '', touches: g ? Math.abs(g.getBoundingClientRect().left - e.getBoundingClientRect().right) < 0.01 : false };
+    });
+  });
+  expect(r.length).toBeGreaterThan(5);
+  for (const x of r) {
+    expect(x.gap).toBe(true);
+    expect(x.bg).toBe('rgb(122, 31, 31)');
+    expect(x.shadow).toContain('rgb(122, 31, 31)');
+  }
+});

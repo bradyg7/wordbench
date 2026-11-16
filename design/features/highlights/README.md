@@ -1,6 +1,6 @@
 # Highlights and the palette
 
-**State:** exploring · **Sheets:** `python design/features/highlights/highlights.py` writes `highlights.figcraft` and
+**State:** exploring; the ink on a highlight *accepted* (2026-11-16, below) · **Sheets:** `python design/features/highlights/highlights.py` writes `highlights.figcraft` and
 `highlights.pdf` (the board, one vector page) · Nothing here is built yet.
 
 Highlights and the palette were built before `design/features/` existed. This folder designs them for the first time.
@@ -18,6 +18,30 @@ The board (and its PDF) holds only these windows, grouped by part. Superseded wi
 | Colors: today, names, light and dark | R1 (today), R2, R3 (names, the Highlights pane), R6, R7 (light and dark forms) | |
 | Layers | H15-H19 (seeing the layers), R5 (which layer a new highlight goes in) | R4 (by H10 and H18) |
 | When everything is colored | H8-H14 | |
+
+## Decision (2026-11-16): the words' ink follows contrast; any color on any theme
+
+The person: instead of a light and a dark form of each color, or a limit on how many colors can be used, the words on a
+highlight change color by current contrast standards, so any color can be used on any theme.
+
+- This replaces **C** (R6, R7): no color is kept as a pair, and nothing works out a "dark form". Finding 31da is answered
+  by the words staying readable on the color the person chose, in either theme.
+- No list limits which colors a highlight may be. The five named colors stay as quick picks and theme tokens.
+
+### What the build must satisfy (the ink)
+
+1. Words on a highlight are drawn in black or white, whichever has the higher WCAG 2.2 contrast ratio with the
+   highlight's color. One of the two always reaches at least 4.58:1, so every color meets WCAG AA for body text.
+2. It holds wherever the person's highlights are drawn on scripture: the reader and verse blocks in pages.
+3. A named color is drawn from the theme's token and its ink follows the theme (and the system's light or dark) without
+   reloading the chapter.
+4. A color the app cannot read as sRGB keeps the page's own ink.
+5. Settings › Highlight colors no longer speaks of light and dark forms.
+6. A highlight is one continuous fill across its words: the spaces between them are filled too and overlap each word by
+   1px, so no seam shows where fractional pixel edges meet. The fill never runs past the first or last word.
+7. Tests: `npm run test:unit` (`ui/unit/hlink.test.ts`) checks the choice, the ratio and AA across every gray.
+
+Built in `ui/src/hlink.ts` on `feature/highlights`.
 
 ## What exists today (in code, 2026-11-11)
 
@@ -137,6 +161,7 @@ designs seeing them as a whole. Drawn on John 3:14-21 with a sample of four year
 | 1 | 2026-11-11 | R1-R7 | Today; A colors with names and a Highlights pane; B layers by year with an eye per layer and per kind of mark; C light and dark forms for every color | — |
 | 2 | 2026-11-12 | H8-H14 | when everything is colored: a lens, this year only, fading, a quiet reading mode, many layers on a verse | waiting |
 | 3 | 2026-11-12 | H15-H19 | seeing the layers: two years side by side, a year slider, the layers overview, one layer alone | waiting |
+| — | 2026-11-16 | — | the person's decision: ink by contrast replaces C's light and dark forms | accepted, built |
 
 ## Data the sheets show
 
