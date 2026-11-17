@@ -76,7 +76,10 @@ pub fn commands() -> Vec<Command> {
         v
     };
     vec![
-        cmd("anchor", "Everything on one place: your notes, highlight, threads, original words. wb anchor John 3:16  |  wb anchor H7065.", vec![Pos("place", N::Many)], |c, a| {
+        cmd("anchor", "Everything on one place: your notes, highlight, threads, original words. wb anchor John 3:16  |  wb anchor H7065. --pages: the pages whose text names the place or number, with their count.", vec![Pos("place", N::Many), Flag("pages")], |c, a| {
+            if a.flag("pages") {
+                return j(wb_core::wordpages::pages_naming(c.bible()?, &*c.study()?, &anchor(c, &a.s("place"))?).map_err(e)?);
+            }
             j(sa::anchor_view(c.bible()?, &*c.study()?, &anchor(c, &a.s("place"))?).map_err(e)?)
         }),
         cmd("note add", "Write a note on a place: wb note add John 3:16 \"text\"  (text - reads standard input). A raw anchor (JHN.3:16.4) or H7065 also works.",

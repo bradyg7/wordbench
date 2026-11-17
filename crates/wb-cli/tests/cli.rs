@@ -2276,3 +2276,23 @@ fn page_deletion_cli_preview_undo_and_aliases() {
     let alias=wb.js(&["inbox","rm",cid,"--json"]);assert_eq!(alias["state"],"pending");wb.ok(&["page","undo",alias["operation"].as_str().unwrap()]);
     let immediate=wb.js(&["page","rm",cid,"--now","--json"]);assert_eq!(immediate["state"],"erased");
 }
+
+/// words (W-5): `wb anchor <place|number> --pages` finds the pages whose text names the place or number, with their count;
+/// the study folder keeps no list of them. A verse nearby or a longer number does not count.
+#[test]
+fn anchor_pages_finds_pages_that_name_a_verse_or_a_number() {
+    let Some(wb) = Wb::new() else { return };
+    assert_eq!(wb.js(&["anchor", "Num 25:11", "--pages"])["count"], json!(0));
+    let a = wb.js(&["page", "new", "Phinehas\nRead Numbers 25:10-13 again, and H7065.", "--json"])["id"].as_str().unwrap().to_string();
+    let b = wb.js(&["page", "new", "Elsewhere\nNum 25:14 and H70651 and Ps 106:30.", "--json"])["id"].as_str().unwrap().to_string();
+    let verse = wb.js(&["anchor", "Num 25:11", "--pages"]);
+    assert_eq!(verse["count"], json!(1));
+    assert_eq!(verse["pages"][0]["id"], json!(a));
+    let number = wb.js(&["anchor", "H7065", "--pages"]);
+    assert_eq!(number["count"], json!(1));
+    assert_eq!(number["pages"][0]["id"], json!(a));
+    assert_eq!(wb.js(&["anchor", "Num 25:14", "--pages"])["pages"][0]["id"], json!(b));
+    assert_eq!(wb.js(&["anchor", "Ps 106:30-31", "--pages"])["count"], json!(1));
+    // the count line never carries a page's text
+    assert!(verse["pages"][0].get("text").is_none());
+}
