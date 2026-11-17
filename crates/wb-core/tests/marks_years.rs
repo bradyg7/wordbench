@@ -105,4 +105,16 @@ fn years_of_study_keep_their_shape() {
     assert_eq!(st.index.borrow().computed, kept);
     let _ = pageindex::all(&b, &st);
     assert_eq!(st.index.borrow().computed, kept);
+
+    // `WB_YEARS_KEEP=<folder>` keeps the generated study there, for the desk check (measure/marks.mjs)
+    if let Ok(out) = std::env::var("WB_YEARS_KEEP") {
+        fn copy(from: &std::path::Path, to: &std::path::Path) {
+            std::fs::create_dir_all(to).unwrap();
+            for e in std::fs::read_dir(from).unwrap().flatten() {
+                let (p, q) = (e.path(), to.join(e.file_name()));
+                if p.is_dir() { copy(&p, &q) } else { std::fs::copy(&p, &q).unwrap(); }
+            }
+        }
+        copy(t.path(), std::path::Path::new(&out));
+    }
 }

@@ -23,7 +23,8 @@ export function kindButton(current: () => string, words: () => string, choose: (
     const box = h('div', 'menu-list nb-kinds');
     let counts: Record<string, number> = {};
     try {
-      const r = await wb(['find', words()]);
+      const w = words().trim();
+      const r = await wb(['find', ...(w ? [w] : []), '--sort', 'edited']);
       for (const g of r.groups) counts[g.kind] = g.count;
     } catch { counts = {}; }
     const total = Object.entries(counts).filter(([k]) => k !== 'folder').reduce((a, [, n]) => a + n, 0);

@@ -45,9 +45,16 @@ try {
   for (const k of [1, 2, 3]) wb('page', 'new', `Fixture page ${k}
 
 Names Numbers 25:11 here.`);
+  // one page that shows what marks adds to a page: scripture named in a paragraph and in a block (With my marks), a margin note
+  // shown as a jot block, and the numbers the Notebook asks for when it draws it (design/features/marks)
+  const seed = JSON.parse(wb('margin', 'add', 'Numbers 25:11', 'Seed note (synthetic).', '--json')).id;
+  const marksPage = JSON.parse(wb('page', 'new', ['Marks page', '', 'See Numbers 25:11 and Psalm 119:105.', '', '```scripture', 'Numbers 25:10-12', 'marks', '```', '', '```jot', seed, '```', '', 'Also Romans 10:2 and Exodus 20:3.'].join('\n'), '--json')).id;
+  mkdirSync(new URL('wb/', out), { recursive: true });
+  writeFileSync(new URL('wb/marks-page.json', out), JSON.stringify({ id: marksPage, note: seed }));
   const named = argv => argv.join(' ').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
   for (const argv of [
-    ['margin', 'NUM 25'], ['margin', 'NUM 25:11'], ['margin', 'list'], ['settings', 'margin'],
+    ['page', 'overview', marksPage], ['page', 'blocks', marksPage], ['page', 'scripture', marksPage], ['page', 'jots', marksPage], ['note', 'show', marksPage],
+    ['page', 'tree'], ['notebook', 'sidebar', '--at', 'NUM 25'], ['parse', 'go Psalms 119:105'], ['find', '--sort', 'edited'], ['find', '--kind', 'margin'], ['find', '--kind', 'page'], ['margin', 'NUM 25'], ['margin', 'NUM 25:11'], ['margin', 'list'], ['settings', 'margin'],
     ['concordance', 'letters'], ['settings', 'concordance'],
     ['concordance', 'zeal', '--forms', 'all'], ['concordance', 'zeal', '--forms', 'one'], ['concordance', 'zealous', '--forms', 'one'],
     ['concordance', 'heart', '--forms', 'one'], ['concordance', 'heart', '--forms', 'one', '--book', 'PSA'], ['concordance', 'and', '--forms', 'all'], ['concordance', 'and', '--forms', 'one'],

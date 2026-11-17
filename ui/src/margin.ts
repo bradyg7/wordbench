@@ -34,17 +34,23 @@ export function summary(c: VerseCounts): string {
   return parts.join(' · ');
 }
 
-const close = () => { panel?.remove(); panel = null; document.querySelectorAll('.mg-pop').forEach(e => e.remove()); };
+/** The verse open in each chapter's margin: coming back to the chapter (Back) opens it again, as it was left. */
+const remembered = new Map<string, number>();
+const hide = () => { panel?.remove(); panel = null; document.querySelectorAll('.mg-pop').forEach(e => e.remove()); };
+/** The person closed it: it is not opened again. */
+const close = () => { remembered.delete(`${current.code}.${current.chapter}`); hide(); };
 
 /** Draw the margin for the chapter just drawn. Called again when more of a long chapter is drawn and when the width changes. */
 export async function drawMargin(reader: HTMLElement, scroller: HTMLElement, code: string, chapter: number) {
   host = { reader, scroller };
   if (current.code !== code || current.chapter !== chapter || !current.data) {
     current = { code, chapter, data: null };
-    close();
+    hide();
     try { current.data = await wb(['margin', `${code} ${chapter}`]); } catch { current.data = null; }
   }
   place();
+  const was = remembered.get(`${code}.${chapter}`);
+  if (was !== undefined && !panel) void openVerse(code, chapter, was);
 }
 
 export function placeMargin() { place(); }
@@ -117,7 +123,8 @@ function hover(from: HTMLElement, c: VerseCounts) {
 /** The verse opened in the margin: its words, its notes, the notes on the passage around it, then one line of counts. A chapter
  *  (`v` 0) opens its own notes. Where the panel sits never covers the verse it is about. */
 export async function openVerse(code: string, chapter: number, v: number) {
-  close();
+  hide();
+  remembered.set(`${code}.${chapter}`, v);
   const place = v ? `${code} ${chapter}:${v}` : `${code} ${chapter}`;
   let data: any;
   try { data = await wb(['margin', place]); } catch (e) { toast(String(e)); return; }

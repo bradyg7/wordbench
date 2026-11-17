@@ -61,7 +61,8 @@ export async function overviewBox(pageId: string): Promise<HTMLElement | null> {
     box.classList.toggle('wide', wide);
     box.classList.toggle('narrow', !wide);
   };
-  new ResizeObserver(fit).observe(box);
+  let frame = 0;
+  new ResizeObserver(() => { cancelAnimationFrame(frame); frame = requestAnimationFrame(fit); }).observe(box);
   queueMicrotask(fit);
   return box;
 }

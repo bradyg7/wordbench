@@ -487,6 +487,7 @@ function createNotebookSession(fixed?: PageTab) {
       if (!t.pages.length) scroll.append(h('p', 'muted nb-empty', 'No pages yet. The pen starts one; a note with no place is a page of its own.'));
       const tl = await trashLine();
       if (tl) scroll.append(tl);
+      scroll.append(await marginRow());
       out.push(scroll);
       return out;
     }
@@ -535,6 +536,7 @@ function createNotebookSession(fixed?: PageTab) {
     if (!any) scroll.append(h('p', 'muted nb-empty', group === 'questions' ? 'No questions yet. Write one with /? in a page, or mark a page with ?.' : 'Nothing written yet. Ctrl+J writes a thought at the verse you clicked; the pen starts a note.'));
     const bar = group === 'day' || group === 'thread' || group === 'chapter' ? foldAllBar(fkeys) : null;
     if (bar) out.push(bar);
+    scroll.append(await marginRow());
     out.push(scroll);
     return out;
   }

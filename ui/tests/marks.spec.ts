@@ -131,3 +131,39 @@ test('the pencil is one line under a run, U again removes it, and no dotted line
   // nothing in the reader is underlined with a dotted line
   expect(await page.locator('.w').evaluateAll(ws => ws.some(w => getComputedStyle(w).textDecorationStyle === 'dotted'))).toBe(false);
 });
+
+test('among other tabs: at 500 px the verse’s margin shows the verse and the counts line with no sideways scroll', async ({ page }, info) => {
+  test.skip(info.project.name !== 'webkit-desktop', 'desktop');
+  await page.setViewportSize({ width: 500, height: 800 });
+  await ready(page);
+  await page.locator('.mg-dot[data-v="11"]').click();
+  const panel = page.locator('.mg-panel');
+  await expect(panel.locator('.mg-verse')).toHaveText(verse11);
+  await expect(panel.locator('.mg-counts')).toBeVisible();
+  expect(await panel.evaluate(p => p.scrollWidth <= p.clientWidth)).toBeTruthy();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+});
+
+test('floating: at 320 px the counts wrap whole and the pane does not cover the verse it is about', async ({ page }, info) => {
+  test.skip(info.project.name !== 'webkit-desktop', 'desktop');
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await ready(page);
+  for (const v of [11, 5]) {
+    await page.locator(`.vn[data-v="${v}"]`).scrollIntoViewIfNeeded();
+    const mark = page.locator(`.mg-mark[data-v="${v}"], .mg-dot[data-v="${v}"]`);
+    if (!(await mark.count())) continue;
+    await mark.first().click();
+    const panel = page.locator('.mg-panel');
+    await expect(panel).toBeVisible();
+    const p = (await panel.boundingBox())!;
+    expect(Math.round(p.width)).toBe(320);
+    expect(await panel.evaluate(e => e.scrollWidth <= e.clientWidth)).toBeTruthy();
+    // each count is one whole piece: it never breaks across two lines
+    const heights = await panel.locator('.mg-count').evaluateAll(cs => cs.map(c => c.getBoundingClientRect().height));
+    expect(Math.max(...heights, 0)).toBeLessThan(24);
+    const vn = (await page.locator(`.vn[data-v="${v}"]`).boundingBox())!;
+    const touching = vn.y < p.y + p.height && vn.y + vn.height > p.y && vn.x < p.x + p.width && vn.x + vn.width > p.x;
+    expect(touching).toBeFalsy();
+    await page.locator('.mg-close').click();
+  }
+});

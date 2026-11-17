@@ -231,7 +231,7 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     let mut out_groups: Vec<(String, Vec<Value>)> = vec![];
     let mut all_total = 0usize;
     if want("page") {
-        let pages: Vec<Value> = crate::notebook::all_lines(bible, store, false).into_iter().filter(|e| e["kind"] != "question").collect();
+        let pages: Vec<Value> = crate::notebook::find_lines(bible, store);
         all_total += pages.len();
         let rows = pages
             .into_iter()
