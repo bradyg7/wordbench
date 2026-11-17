@@ -296,3 +296,22 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .mg-ask[hidden] { display: none; }
 .mg-leave, .mg-page-new { padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: inherit; cursor: pointer; }
 .mg-remember { font-size: 12px; color: var(--muted); }
+
+/* ---- Scripture in this page (marks M22, M23), a margin note in a page, a passage with my marks (M6, M7) ---- */
+.ov { margin: 6px 0 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: var(--type-interface); }
+.ov-head { display: flex; align-items: center; gap: 6px; }
+.ov.wide .ov-list { display: block; max-height: calc(6 * 30px); overflow-y: auto; margin-top: 4px; }
+.ov.wide .ov-line { display: none; }
+.ov.narrow .ov-list { display: none; }
+.ov.narrow .ov-list.open { display: block; max-height: 40vh; overflow-y: auto; }
+.ov-line { display: block; width: 100%; padding: 4px 0 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 13px; text-align: left; white-space: normal; cursor: pointer; }
+.ov-row { display: flex; align-items: center; gap: 8px; min-height: 30px; box-sizing: border-box; }
+.ov-name, .ov-open { border: 0; background: none; color: var(--accent); font: inherit; cursor: pointer; padding: 2px 0; }
+.ov-book summary { cursor: pointer; padding: 4px 0; }
+.ov-flash { outline: 2px solid var(--accent-soft); }
+.nb-jotblock { padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 8px 8px 0; }
+.nbj-head { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.nbj-text { margin-top: 4px; white-space: pre-wrap; outline: none; }
+.sv-dot { display: inline-block; width: 8px; height: 8px; margin: 0 3px; padding: 0; border: 1.5px solid var(--accent); border-radius: 50%; background: none; vertical-align: middle; cursor: pointer; }
+.sv-dotcard { margin: 4px 0 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: var(--type-interface); }
+.sv-dotline { margin-top: 2px; }

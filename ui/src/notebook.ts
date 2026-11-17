@@ -12,6 +12,7 @@
 // in place; pages sit inside pages (the path above the title, "Pages inside" under it). A wide Notebook has the sidebar
 // (sheet W1.1): Today, Pinned, the Pages tree (drag a page before, after or inside another), At the reader, Threads,
 // Questions, and the Trash at its foot. A narrow one keeps its row of sections, and its Pages section is the tree.
+import { overviewBox } from './overview';
 import { wb } from './api';
 import './notebook.css';
 import { registerPageWriter, flushPageWriters, removedPages } from './pagewriters';
@@ -1035,6 +1036,7 @@ function createNotebookSession(fixed?: PageTab) {
     if (tpl) out.push(templateAbout(), templateSettings(tpl));
     else if (isT) out.push(threadControls(e));
     else if (!e.template) out.push(chipsRow(e));
+    if (e.id && byBlocks && !e.template) { const ov = await overviewBox(e.id); if (ov) out.push(ov); }
     out.push(formatBar(e));
     if (byBlocks) {
       blocksData = bd;

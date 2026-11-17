@@ -207,6 +207,34 @@ async function refreshMarks() {
   paint(reader, d);
 }
 
+/** U on a selection draws the pencil under it; U again takes it off (marks M14). The color is not touched. */
+async function togglePencil() {
+  const d = barView?.drawn;
+  const at = app.picked;
+  if (!d || !at) return;
+  const touches = (m: Mark) => anchorOf(m) === at.anchor;
+  const on = (d.marks.pencil || []).some(touches);
+  if (!inApp) {
+    // In the WebKit tests there is no Rust: drawn for this session only, as a highlight is.
+    if (on) d.marks.pencil = (d.marks.pencil || []).filter(m => !touches(m));
+    else {
+      const m = /^\w+\.(\d+):(\d+)\.(\d+)(?:-(\d+):(\d+)\.(\d+))?$/.exec(at.anchor);
+      if (m) {
+        const n = m.slice(1).map(x => (x === undefined ? null : +x));
+        (d.marks.pencil ||= []).push({ kind: n[3] === null ? 'word' : 'phrase', code: d.chapter.code, c1: n[0]!, v1: n[1]!, i1: n[2], c2: n[3], v2: n[4], i2: n[5], id: `session_${Date.now()}` } as Mark);
+      }
+    }
+    paint(reader, d);
+    barView?.selector.clear();
+    return;
+  }
+  try {
+    await wb(['hl', 'pencil', ...(on ? ['--clear'] : []), at.anchor]);
+    barView?.selector.clear();
+    await refreshMarks();
+  } catch (e) { toast(String(e)); }
+}
+
 // ---- sheets and cards -----------------------------------------------------------------------------------------------
 function noteCard(placeLabel: string, text: string) {
   const c = h('div', 'note-card');
@@ -1120,6 +1148,8 @@ document.addEventListener('keydown', e => {
     barPick(e.key === '0' ? null : COLORS[+e.key - 1]);
     return;
   }
+  // U: the pencil under the selection, again to take it off
+  if (bar && barView?.selector.sel && (e.key === 'u' || e.key === 'U') && !e.ctrlKey && !e.altKey && !e.metaKey) { e.preventDefault(); void togglePencil(); return; }
   // ← → turn the chapter of the reader the key was pressed in: a second reader turns its own, never the main reader's
   const in2 = (e.target as HTMLElement).closest<HTMLElement>('.reader2-pane');
   const turn2 = in2 && turners.get(in2);
