@@ -1186,7 +1186,7 @@ mod tests {
     #[test]
     fn a_scripture_fence_holds_a_reference_and_its_choices() {
         let f = scripture_fence("```scripture\nNum 25:10-13\n```").unwrap();
-        assert_eq!(f, ScriptureFence { reference: "Num 25:10-13".into(), lines: false, ylt: false });
+        assert_eq!(f, ScriptureFence { reference: "Num 25:10-13".into(), lines: false, ylt: false, marks: false });
         let g = scripture_fence("```scripture\n  Ps 106:28-31 \nylt\nLines\n```").unwrap();
         assert_eq!((g.reference.as_str(), g.lines, g.ylt), ("Ps 106:28-31", true, true));
         assert_eq!(scripture_fence_text(&g), "```scripture\nPs 106:28-31\nlines\nylt\n```");

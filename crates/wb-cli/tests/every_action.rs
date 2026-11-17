@@ -37,7 +37,9 @@ const INTERNAL: &[&str] = &[
     // pages and blocks (W3): the text of a page as blocks, the pieces of wb page and wb block; the store's fields
     "split", "set", "insert", "move_block", "check", "retitle", "find_note", "set_fields",
     // scripture blocks (W4): a fence read and written, pieces of wb page scripture and wb block scripture
-    "scripture_fence", "scripture_fence_text",
+    "scripture_fence", "scripture_fence_text", "jot_fence",
+    // marks (MK-17): the margin's file forms and places, the verse index and the pencil's list: pieces of wb margin, wb page overview and wb hl pencil
+    "from_place", "at_of", "all", "rows", "add_dots", "forget", "naming", "list", "kind", "covers",
     // views and templates (W5): a view's fence and line read (pieces of wb page views, wb view run, wb template save), a
     // place as a reference again, the blanks filled, and the Templates rows of wb notebook sidebar
     "view_fence", "view_line", "span_ref", "fill", "rows",
@@ -69,9 +71,9 @@ fn public_fns(src: &str) -> Vec<String> {
 fn every_action_has_a_command() {
     let core = env!("CARGO_MANIFEST_DIR").to_string() + "/../wb-core/src/";
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
-    let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs", "library.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
+    let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs", "library.rs", "margin.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "library.rs", "dictionary.rs", "docs/look.rs", "deletion.rs"] {
+    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "library.rs", "dictionary.rs", "docs/look.rs", "deletion.rs", "margin.rs", "overview.rs", "pencil.rs", "pageindex.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;

@@ -544,14 +544,17 @@ fn counts(bible: &Bible, store: &Store, code: &str, ch: u32, exclude: Option<&st
         if exclude == Some(id.as_str()) {
             continue;
         }
+        // a page counts once at a verse however many times or ways it names it
+        let mut covered: std::collections::BTreeSet<u32> = Default::default();
         for x in e.spans.iter().filter(|x| x.code == code && x.lo <= (ch, u32::MAX) && (ch, 0) <= x.hi) {
             let (a, b) = (if x.lo.0 < ch { 1 } else { x.lo.1.max(1) }, if x.hi.0 > ch { last } else { x.hi.1.min(last) });
-            for v in a..=b {
-                if let Some(c) = by.get_mut(&v) {
-                    c.pages += 1;
-                    if c.lines.len() < 6 && !c.lines.iter().any(|l| l["id"] == id.as_str()) {
-                        c.lines.push(json!({"kind": "page", "id": id, "text": e.title}));
-                    }
+            covered.extend(a..=b);
+        }
+        for v in covered {
+            if let Some(c) = by.get_mut(&v) {
+                c.pages += 1;
+                if c.lines.len() < 6 && !c.lines.iter().any(|l| l["id"] == id.as_str()) {
+                    c.lines.push(json!({"kind": "page", "id": id, "text": e.title}));
                 }
             }
         }
