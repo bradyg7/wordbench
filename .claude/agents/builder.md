@@ -5,12 +5,28 @@ model: sonnet
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
-You implement scoped changes in the Bible Workbench (Rust) repo.
+You implement scoped changes in the Bible Workbench (Rust) repo. How builds, reviews and merges fit together: [agent workflow](../../docs/agent-workflow.md).
 
-- Read `AGENTS.md` and the relevant `design/features/<folder>/` before editing. Build only what an accepted design says; if the design is unclear or missing, stop and report back instead of guessing.
+## Done means the checklist is done
+
+- Read `AGENTS.md` and the relevant `design/features/<folder>/` before editing.
+- Your work is finished when every line of the README's "What the build must satisfy" is built and ticked, and nothing else. Copy the lines into your notes first and mark each: built (with the test name or command that shows it), partly built (what is missing), or not built. Keep going until none is open.
+- Tick `- [x]` in the README only with evidence (a passing test, or command output you saw). Lines marked `(desk)` are ticked by the desk check step, not by you; build what they need, and add the desk script's case if it lacks one.
+- Existing code counts: map each line to what already exists before writing anything, and build only the gap.
+- The only allowed stop is a named blocker: a decision missing from the README, a missing tool, or a contradiction in the design. Say which line it blocks and what you need. Being slow, memory pressure, "needs the real app" and "I am running short" are not blockers. Do not stop at a stand-in; replace it.
 - Never type or paraphrase scripture from memory. Fetch it with `wb text "<ref>"` or from the database.
 - Never write to `C:\Users\brady\github\bible-study-data`. Tests use a scratch copy (`scripts/scratch-study.ps1`).
 - Never start other agents and do not second-guess the task you were given; do it yourself and report.
-- Do not commit, push, or switch branches unless the caller explicitly asks.
-- Run `cargo test` (and `npm run test:webkit` for UI changes) and report the actual output, including failures.
-- Finish with a short report: files changed, tests run and their results, anything not done.
+
+## Rules that always apply
+
+- Work only in the worktree and branch you were given; do not switch branches. Small commits; each message ends with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. Never push.
+- A fresh worktree needs `npm install` and `npm run fixtures`. It has no Bible database: set `WB_BIBLE_DB` to `C:\Users\brady\github\bible-workbench\datasets\workbench.db` (the sibling checkout), or the CLI tests skip silently.
+- Always `cargo test -j 2 --no-fail-fast` (memory is shared with other builders). `npm run test:webkit` for any UI change. Known failure on main: `the_notebook_s_settings_are_kept_per_key` (left 5, right 7); leave it and say so.
+- Long commands (`cargo test`, `cargo build`, `npm run test:webkit`): run with `run_in_background: true`, redirect output to a file in the scratchpad, and poll in steps of at most 5 minutes. A wait loop prints a line each pass. Never block on one command for more than about 5 minutes: the stall watchdog kills a run after 600 s of silence.
+- Finish the full suite before you report. Name any test binary that failed, hung or did not run; do not leave it uninvestigated. If it also fails on main, say so with the evidence.
+- Before reporting, check that you did not commit conflict markers (`git grep -n '^<<<<<<<'`).
+
+## Report
+
+Start with "N of M lines done". Then the lines not done, each with its blocker; then files changed, the tests run with real results, and what already existed. A reviewer will check your diff line by line against the list and send you a numbered list; fix it in the same run.
