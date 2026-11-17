@@ -142,7 +142,7 @@ try {
   await page.locator('.mg-close').click().catch(() => {});
   await page.evaluate(() => window.__wb.open('JHN', 3));
   await sleep(800);
-  if (!(await page.locator('.pane-notebook .mgl').count())) await page.locator('.pane-notebook .nb-back').first().click({ timeout: 5000, force: true }).catch(() => {});
+  if (!(await page.locator('.pane-notebook .mgl').first().isVisible())) await page.locator('.pane-notebook .nb-back').first().click({ timeout: 5000, force: true }).catch(() => {});
   console.log('NBPANE', JSON.stringify(await page.evaluate(() => { const p = document.querySelector('.pane-notebook'); return p ? { cls: p.className, text: p.innerText.slice(0, 160), kids: [...p.querySelectorAll('.nb-back, .nb-side, .mgl')].map(e => e.className) } : null; })));
   await page.waitForSelector('.pane-notebook .mgl', { timeout: 10000 });
   const row = page.locator('.pane-notebook .mgl').first();
