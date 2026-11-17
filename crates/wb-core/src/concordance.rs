@@ -388,11 +388,6 @@ pub fn letters(bible: &Bible) -> Result<Value> {
 
 // ---- the two settings it keeps (C-1, settings: the click on a word) --------------------------------------------------
 
-/// What the click on a word opens: `card` (the word card) or `concordance`. The saved choice, else the card.
-pub fn word_click(store: &Store) -> String {
-    store.settings("reading").get("word-click").and_then(Value::as_str).filter(|v| *v == "card" || *v == "concordance").unwrap_or("card").to_string()
-}
-
 /// The page's forms choice, `all` or `one`, kept (C-1, C7). The saved choice, else all.
 pub fn forms_mode(store: &Store) -> String {
     store.settings("concordance").get("forms").and_then(Value::as_str).filter(|v| *v == "all" || *v == "one").unwrap_or("all").to_string()

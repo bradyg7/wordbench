@@ -12,6 +12,7 @@ import type { MinLink } from './dock';
 import { openDocuments } from './documents';
 import { openFindings } from './findings';
 import { openNotebook } from './notebook';
+import { openConcordance } from './concordance';
 import { openHelp, openPlans, openShelf } from './panes';
 import { openSettings } from './settings';
 import { keepTab } from './shelf';
@@ -26,6 +27,7 @@ interface Spot { id: string; label: string; ico: string; kind?: string; run: (fr
 const TOP: Spot[] = [
   { id: 'notebook', label: 'Notebook', ico: 'notebook', kind: 'notebook', run: () => void openNotebook() },
   { id: 'shelf', label: 'Shelf', ico: 'shelf', kind: 'shelf', run: () => void openShelf() },
+  { id: 'concordance', label: 'Concordance', ico: 'book', kind: 'concordance', run: () => void openConcordance() },
   { id: 'highlights', label: 'Highlights', ico: 'pen', run: from => hooks.highlights(from) },
 ];
 const UNDER: Spot[] = [

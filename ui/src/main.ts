@@ -18,6 +18,7 @@ import { app, goTo, here, type At } from './app';
 import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
 import type { Pane } from './dock';
+import { openConcordance } from './concordance';
 import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
 import { bridge, loadWindowSettings, markName, openSettings } from './settings';
 import { loadKept } from './mycommands';
@@ -237,8 +238,9 @@ function lexiconBody(w: WordView, card = false): HTMLElement {
   }
   if (!card) {
     const acts = h('div', 'acts two');
-    const uses = h('button', 'btn primary', 'Every use');
-    uses.onclick = () => { closeSheet(); openUses(lx.strong, ''); };
+    // One door (concordance C-4, C10): the Concordance, in a tab of its own, on this word's entry
+    const uses = h('button', 'btn primary', 'In the Concordance');
+    uses.onclick = () => { closeSheet(); openConcordance({ strong: lx.strong }); };
     const inter = h('button', 'btn', 'Interlinear');
     inter.onclick = verseInterlinear;
     acts.append(uses, inter);
@@ -542,6 +544,11 @@ async function openWord(vw: View, k: number, el: HTMLElement, at: number) {
   app.picked = selectionAt(vw, k, k);
   const { data, rust_ms } = await api.word(d.chapter.code, d.chapter.chapter, d.v[k], d.i[k]);
   const t1 = performance.now();
+  // Settings, Reading: a click on a word opens its card (the default) or the Concordance (wb settings reading word-click)
+  if (inApp && (await wb(['settings', 'reading']).catch(() => ({})))['word-click'] === 'concordance') {
+    openConcordance(data.strong ? { strong: data.strong } : { word: data.text.toLowerCase().replace(/[^a-z’'-]/g, '') });
+    return;
+  }
   el.classList.add('tapped');
   openSheet(lexiconBody(data), el, { closed: () => el.classList.remove('tapped') });
   await afterPaint();
@@ -1253,6 +1260,6 @@ async function start() {
   }
 }
 
-(window as any).__wb = { open, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
+(window as any).__wb = { open, concordance: openConcordance, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
 start().catch(e => { reader.innerHTML = `<p class="error">${String(e)}</p>`; });
 void here;
