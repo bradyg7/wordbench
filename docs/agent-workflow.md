@@ -23,3 +23,14 @@ One builder at a time (the person, 2026-11-17: feature by feature, never many at
 ## Open after merge
 
 If the person merges a partial build, the unticked lines are copied under an "Open after merge" heading in the folder's README (line text, the reason). A completion builder's brief is then the folder name: close the open lines. Remove the heading when empty.
+
+## After a pull request merges
+
+Each build lives in its own worktree and branch (`feature/<folder>`), and the worktree is removed once the work is on `main`. From the main checkout, in the person's terminal:
+
+```
+powershell -ExecutionPolicy Bypass -File scripts\finish-worktree.ps1           # dry run: says what it would remove
+powershell -ExecutionPolicy Bypass -File scripts\finish-worktree.ps1 -Apply    # removes them
+```
+
+A worktree and its local branch are removed only when its work is on `origin/main` (the branch is an ancestor, or its pull request is merged with the same last commit; a squash merge counts), nothing is uncommitted or untracked in it, it is not locked, and no process has it open. Otherwise it is kept, with the reason. A branch with no pull request that only sits on `main` (perhaps just made) is kept unless `-IncludeEmpty`; worktrees made by other tools (Codex, Gemini) are kept unless `-IncludeOtherTools`. Remote branches and the main checkout are never touched. The checklist ("What the build must satisfy") is checked before the pull request, by the builder and reviewer; the merge is the signal that it was accepted.
