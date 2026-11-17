@@ -2327,3 +2327,94 @@ fn reading_word_setting_is_kept() {
     assert_eq!(serde_json::from_str::<Value>(&file).unwrap()["word"], json!("concordance"));
     assert!(wb.js(&["settings", "reading", "word", "default"]).get("word").is_none());
 }
+
+// ---- trash round 3 (T10, TR-1): several pages at once ----
+
+#[test]
+fn several_pages_go_to_the_trash_in_one_operation_with_one_undo() {
+    let Some(wb) = Wb::new() else { return };
+    let ids: Vec<String> = (0..4).map(|i| wb.js(&["page", "new", &format!("Page {i}")])["id"].as_str().unwrap().to_string()).collect();
+    let mut argv = vec!["page", "rm"];
+    argv.extend(ids.iter().map(|s| s.as_str()));
+    let r = wb.js(&argv);
+    assert_eq!((r["count"].clone(), r["state"].clone()), (json!(4), json!("pending")));
+    let op = r["operation"].as_str().unwrap().to_string();
+    // the batch window is 30 seconds, not the single page's 10
+    let ms = r["deadline_ms"].as_i64().unwrap() - wb_core::deletion::now_ms();
+    assert!(ms > 10_000 && ms <= 30_000, "{ms}");
+    assert_eq!(wb.js(&["page", "deletions"])["operations"].as_array().unwrap().len(), 1);
+    assert_eq!(wb.js(&["page", "undo", &op])["state"], json!("restored"));
+    let tree = wb.js(&["page", "tree"]).to_string();
+    for id in &ids {
+        assert!(tree.contains(id.as_str()), "{id} not back");
+    }
+    // a page that is not there stops the whole delete: nothing is moved
+    let (code, ..) = wb.run(&["page", "rm", &ids[0], "no-such-page"], None);
+    assert_eq!(code, 1);
+    assert!(wb.js(&["page", "tree"]).to_string().contains(ids[0].as_str()));
+    // an id with --all is refused
+    assert!(wb.fails(&["page", "rm", &ids[0], "--all"]).contains("Give a page ID or --all"));
+}
+
+#[test]
+fn several_trashed_notes_are_put_back_by_one_command_and_empty_trash_leaves_the_rest() {
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["note", "jot", "first"])["id"].as_str().unwrap().to_string();
+    let b = wb.js(&["note", "jot", "second"])["id"].as_str().unwrap().to_string();
+    let mut legacy = wb_core::store::Store::open(&wb.dir).unwrap();
+    legacy.delete_jot(&a).unwrap();
+    legacy.delete_jot(&b).unwrap();
+    // TR-1: a finding's and a layout's files wait in .trash too; Empty trash does not touch them
+    let trash = wb.dir.join(".trash");
+    std::fs::write(trash.join("20200101-000000-finding-abcd.md"), "a finding").unwrap();
+    std::fs::write(trash.join("20200101-000000-layout-main.json"), "{}").unwrap();
+    let t = wb.js(&["trash"]);
+    let names: Vec<String> = t["notes"].as_array().unwrap().iter().map(|n| n["name"].as_str().unwrap().to_string()).collect();
+    assert_eq!(names.len(), 2);
+    let r = wb.js(&["trash", "restore", &names[0], &names[1]]);
+    assert_eq!(r["restored"].as_array().unwrap().len(), 2);
+    assert_eq!(wb.js(&["trash"])["notes"], json!([]));
+    legacy = wb_core::store::Store::open(&wb.dir).unwrap();
+    legacy.delete_jot(&a).unwrap();
+    legacy.delete_jot(&b).unwrap();
+    let erased = wb.js(&["trash", "empty", "--days", "0"]);
+    assert_eq!(erased["erased"].as_array().unwrap().len(), 2);
+    assert!(trash.join("20200101-000000-finding-abcd.md").exists());
+    assert!(trash.join("20200101-000000-layout-main.json").exists());
+}
+
+#[test]
+fn make_another_like_this_keeps_look_and_choice_per_kind_and_leaves_the_first_alone() {
+    // DC-2, D6: no document template; the choices travel by kind of part. --folder is --thread's new name (DC-3).
+    let Some(wb) = Wb::new() else { return };
+    let add = |id: &str, b: &str| {
+        let (code, _, err) = wb.run(&["block", "add", id, "-"], Some(b));
+        assert_eq!(code, 0, "{err}");
+    };
+    let first = wb.js(&["page", "new", "Like: first"])["id"].as_str().unwrap().to_string();
+    let second = wb.js(&["page", "new", "Like: second"])["id"].as_str().unwrap().to_string();
+    for p in [&first, &second] {
+        for b in ["# Aim", "Read it with the group.", "```scripture\nNum 25:10-11\n```"] {
+            add(p, b);
+        }
+    }
+    let parts = wb.js(&["craft", "parts", "--page", &first]);
+    let para = parts["rows"][1]["key"].as_str().unwrap().to_string();
+    let made = wb.js(&["craft", "deck", "--page", &first, "--off", &para, "--look", "large-print"]);
+    let before = std::fs::read(wb.docs().join(made["name"].as_str().unwrap())).unwrap();
+    let like = wb.js(&["docs", "like", made["id"].as_str().unwrap(), "--page", &second]);
+    assert_eq!(like["id"].as_str().unwrap(), format!("page-{second}-verse"));
+    assert_eq!(like["look"], made["look"]);
+    assert_eq!(like["checked"]["verses"], 2);
+    let rows = wb.js(&["craft", "parts", "--page", &second])["rows"].clone();
+    let on: Vec<(&str, bool)> = rows.as_array().unwrap().iter().map(|r| (r["kind"].as_str().unwrap(), r["on"].as_bool().unwrap())).collect();
+    assert_eq!(on, [("heading", true), ("paragraph", false), ("scripture", true)]);
+    assert_eq!(std::fs::read(wb.docs().join(made["name"].as_str().unwrap())).unwrap(), before);
+    assert!(wb.fails(&["docs", "like", made["id"].as_str().unwrap()]).contains("--page"));
+
+    // a folder is what a thread was
+    wb.js(&["thread", "new", "Phinehas folder", "--at", "Num 25:10"]);
+    let by_thread = wb.js(&["docs", "plan", "--thread", "Phinehas folder", "--to", "word", "--structure", "script"]);
+    let by_folder = wb.js(&["docs", "plan", "--folder", "Phinehas folder", "--to", "word", "--structure", "script"]);
+    assert_eq!(by_thread["fingerprint"], by_folder["fingerprint"]);
+}

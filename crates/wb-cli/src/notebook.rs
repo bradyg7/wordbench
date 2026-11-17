@@ -277,8 +277,18 @@ fn notebook_commands() -> Vec<Command> {
         cmd("trash", "The deleted notes and questions in .trash, newest first, with the days each has left before it is erased.", vec![], |c, _| {
             j(nb::trash(&*c.study()?))
         }),
-        cmd("trash restore", "Put a deleted note or question back where it was: wb trash restore <its name from wb trash>.", vec![Pos("name", N::One)], |c, a| {
-            j(json!(c.study()?.restore(&a.s("name")).map_err(e)?))
+        cmd("trash restore", "Put deleted notes or questions back where they were: wb trash restore <name> [<name> ...] (names from wb trash). One name gives that note; several give {restored: [...]}; each is put back or the first that cannot stops it and says which.", vec![Pos("name", N::Many)], |c, a| {
+            let names = a.list("name");
+            let mut st = c.study()?;
+            if names.len() == 1 {
+                return j(json!(st.restore(&names[0]).map_err(e)?));
+            }
+            let mut done = vec![];
+            for n in &names {
+                st.restore(n).map_err(|x| format!("{n}: {}{}", e(x), if done.is_empty() { String::new() } else { format!(" (already put back: {})", done.join(", ")) }))?;
+                done.push(n.clone());
+            }
+            j(json!({"restored": done}))
         }),
         cmd("trash erase", "Erase one deleted note or question now, without waiting the 7 days: wb trash erase <its name from wb trash>. It cannot be put back.",
             vec![Pos("name", N::One)], |c, a| {

@@ -1840,7 +1840,7 @@ function createNotebookSession(fixed?: PageTab) {
     if (!rail) { rail = h('div', 'page-deletions'); rail.setAttribute('aria-label', 'Page deletion Undo'); document.body.append(rail); }
     const row = h('div', 'page-deletion');
     row.setAttribute('role', 'status');
-    row.append(h('span', '', `Moved ${result.count} page${result.count === 1 ? '' : 's'} to the Trash${result.moved ? `; ${result.moved} retained pages moved up` : ''}. `));
+    row.append(h('span', '', `${result.count} page${result.count === 1 ? '' : 's'} moved to the Trash${result.moved ? `; ${result.moved} retained pages moved up` : ''}. `));
     const undo = button('btn small', 'Undo', async () => {
       undo.disabled = true;
       try {
@@ -1998,7 +1998,10 @@ function createNotebookSession(fixed?: PageTab) {
     }
     const scroll = h('div', 'nb-scroll');
     scroll.append(h('p', 'muted small nb-trash-about', `Deleted notes wait here ${d.days} days, then are erased. Put one back to keep it, or erase it now.`));
-    for (const t of d.notes) {
+    // T14 (TR-4): a large Trash is grouped by the day of deletion with a count each, every group folded to its first
+    // rows with "Show all N", under a plain search field. The rows and their buttons are as before.
+    const FOLD = 5;
+    const row = (t: any): HTMLElement => {
       const c = h('div', 'note-card nb-entry trashed');
       const top2 = h('div', 'nb-top');
       if (t.question) top2.append(h('span', 'pill question-pill', '? Question'));
@@ -2026,8 +2029,39 @@ function createNotebookSession(fixed?: PageTab) {
         box.append(button('menu-item', 'Put it back', () => { close(); void putBack(); }), button('menu-item', 'Erase now', () => { close(); void eraseNow(); }));
         close = popMenu(c, box, { width: 190, at: { x, y } });
       });
-      scroll.append(c);
+      return c;
+    };
+    const groups = h('div', 'nb-trash-groups');
+    const drawGroups = (q: string) => {
+      groups.replaceChildren();
+      const want = q.trim().toLowerCase();
+      const hit = d.notes.filter((t: any) => !want || `${t.text} ${t.anchor || ''} ${t.id}`.toLowerCase().includes(want));
+      const by = new Map<string, any[]>();
+      for (const t of hit) { const day = String(t.deleted || '').slice(0, 10); (by.get(day) || by.set(day, []).get(day)!).push(t); }
+      if (want && !hit.length) groups.append(h('p', 'muted nb-empty', 'Nothing matches.'));
+      for (const [day, rows] of by) {
+        const g = h('section', 'nb-trash-group');
+        g.dataset.day = day;
+        const list = h('div', 'nb-trash-rows');
+        const head = h('div', 'nb-trash-day');
+        head.append(h('span', 'nb-trash-dayname', day || 'Earlier'), h('span', 'nb-trash-count', String(rows.length)));
+        const more = (rows.length > FOLD) ? button('link-btn nb-trash-showall', `Show all ${rows.length}`, () => {
+          list.replaceChildren(...rows.map(row)); more!.remove();
+        }) : null;
+        list.append(...(more ? rows.slice(0, FOLD) : rows).map(row));
+        g.append(head, list);
+        if (more) g.append(more);
+        groups.append(g);
+      }
+    };
+    if (d.notes.length > FOLD) {
+      const find = h('input', 'field nb-trash-search') as HTMLInputElement;
+      find.type = 'search'; find.placeholder = 'Search the Trash by name'; find.setAttribute('aria-label', 'Search the Trash');
+      find.oninput = () => drawGroups(find.value);
+      scroll.append(find);
     }
+    drawGroups('');
+    scroll.append(groups);
     if (!d.notes.length) scroll.append(h('p', 'muted nb-empty', 'Nothing deleted.'));
     return two ? [top, scroll] : [top, sectionsRow(), scroll];
   }
