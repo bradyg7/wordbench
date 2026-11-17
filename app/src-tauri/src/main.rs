@@ -497,7 +497,8 @@ fn main() {
             // For measuring: lets Playwright attach to the web view over the DevTools protocol (WebView2 only).
             #[cfg(not(feature = "distribution"))]
             let b = if let Ok(port) = std::env::var("WB_CDP_PORT") {
-                b.additional_browser_args(&format!(
+                // A window opened for measuring does not take the keyboard from whatever the person is typing in.
+                b.focused(false).additional_browser_args(&format!(
                     "--remote-debugging-port={port} --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection"
                 ))
             } else { b };

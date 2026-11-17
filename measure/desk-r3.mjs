@@ -8,6 +8,7 @@ import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
+import { acquire, freePort } from './instance.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
@@ -15,6 +16,8 @@ const release = process.argv.includes('--release');
 const exe = file(`target/${release ? 'release' : 'debug'}/bible-workbench.exe`);
 const wbExe = file(`target/${release ? 'release' : 'debug'}/wb.exe`);
 const shots = file('docs/phase2/');
+await acquire('desk-r3');
+const cdpPort = String(await freePort());
 const work = path.join(os.tmpdir(), 'bible-workbench-rs', 'desk-r3');
 const study = path.join(work, 'study'), cache = path.join(work, 'cache'), profile = path.join(work, 'webview');
 const docsDir = path.join(study, 'exports');
@@ -24,7 +27,7 @@ rmSync(work, { recursive: true, force: true });
 cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { recursive: true });
 rmSync(path.join(study, 'documents'), { recursive: true, force: true }); // this run's copy starts with no documents
 mkdirSync(cache, { recursive: true });
-const env = { ...process.env, WB_STUDY_DIR: study, WB_DOCS_DIR: '', WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: '9335' };
+const env = { ...process.env, WB_STUDY_DIR: study, WB_DOCS_DIR: '', WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort };
 const proc = spawn(exe, [], { env, stdio: 'ignore' });
 const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
 const wbj = args => JSON.parse(execFileSync(wbExe, args, { env }).toString());
@@ -35,7 +38,7 @@ const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); c
 let browser;
 try {
   for (let i = 0; i < 100 && !browser; i++) {
-    try { browser = await chromium.connectOverCDP('http://127.0.0.1:9335'); } catch { await sleep(300); }
+    try { browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`); } catch { await sleep(300); }
   }
   const page = browser.contexts()[0].pages()[0];
   page.on('pageerror', e => check('no page errors', false, String(e)));

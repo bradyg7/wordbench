@@ -8,6 +8,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync, mkdirSync, statSync } 
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
+import { acquire, freePort } from './instance.mjs';
 
 const root = new URL('..', import.meta.url);
 // --debug: the debug app (it loads the UI from `npm run dev`); --chapters: only the chapter draws, for quick profiling.
@@ -15,6 +16,7 @@ const debug = process.argv.includes('--debug'), only = process.argv.includes('--
 const exe = new URL(`target/${debug ? 'debug' : 'release'}/bible-workbench.exe`, root).pathname.slice(1);
 const out = new URL('measure/out/', root);
 const profile = path.join(os.tmpdir(), 'bible-workbench-rs', 'measure-webview');
+await acquire('measure');
 mkdirSync(out, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const median = xs => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
@@ -66,7 +68,7 @@ for (let run = 0; run < (only || sheets ? 0 : 6); run++) {
 }
 
 // ---- budgets with the CPU slowed 4x ---------------------------------------------------------------------------------
-const port = 9333;
+const port = await freePort();
 const l = launch({ WB_CDP_PORT: String(port) });
 await waitReady(l);
 const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
