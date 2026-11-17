@@ -351,7 +351,7 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
     out.push(row('Cards on hover', 'Off: a click opens a card, as a tap does. References: only references in pages show a card on hover. Everything: every word and reference.',
       seg(['Off', 'References', 'Everything'], { off: 'Off', refs: 'References', on: 'Everything' }[hoverMode()] ?? 'Off',
         m => { const v = m === 'Off' ? 'off' : m === 'References' ? 'refs' : 'on'; setHover(v); void save('hover', 'mode', v); }), 'hover tooltip preview cards'));
-    out.push(row('A click on a word opens', 'The word’s card, or the Concordance at its entry. Cards on hover is separate.',
+    out.push(row('A click on a word opens', 'The word’s card, or the Concordance at its entry.',
       seg(['Card', 'Concordance'], wordClick() === 'concordance' ? 'Concordance' : 'Card', m => { setWordClick(m === 'Concordance' ? 'concordance' : 'card'); void save('reading', 'word', m === 'Concordance' ? 'concordance' : null); }), 'click word card concordance'));
     out.push(...readAloudRows());
     out.push(copyRow());
