@@ -166,7 +166,8 @@ export async function verseCard(ref: string, a: HTMLElement, e?: MouseEvent) {
 }
 
 /** A card kept as a pane of its own (the pin): drawn again when highlights change. */
-export function openCardPane(ref: string, label: string, tab: Tab = null, source?: HTMLElement, side: 'right' | 'float' = 'right') {
+/** A card as a pane: a tab in the study column (`tab`), or a floating pane (`float`). The `card` line reaches it. */
+export function openCardPane(ref: string, label: string, tab: Tab = null, source?: HTMLElement, side: 'left' | 'float' = 'left') {
   let now: Tab = tab;
   const sourcePane = source && dock.panes.find(p => p.el.contains(source));
   return dock.open('versecard', label, `versecard|${ref}`, side, async (el, pane) => {
@@ -381,4 +382,13 @@ async function strongs(panel: HTMLElement, data: () => Promise<any>, changed?: (
     panel.append(b);
   }
   changed?.();
+}
+
+/** The `card` line (wb do "card Num 25:11 float"): the verse card itself, or as a floating pane, or as a tab. */
+export async function openCardLine(ref: string, how: 'open' | 'float' | 'tab'): Promise<string> {
+  const d: Marked | null = await wb(['scripture', ref]).catch(() => null);
+  if (!d?.verses?.length) throw new Error(`Nothing found at ${ref}`);
+  if (how === 'open') { await verseCard(ref, document.getElementById('reader') ?? document.body); return `The card for ${d.label}`; }
+  openCardPane(ref, d.label, null, undefined, how === 'float' ? 'float' : 'left');
+  return `${d.label} as a ${how === 'float' ? 'floating pane' : 'tab'}`;
 }

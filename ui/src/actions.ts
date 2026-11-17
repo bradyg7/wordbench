@@ -18,7 +18,8 @@ import { noteLine } from './trail';
 import { addFinding, openFindings } from './findings';
 import { KINDS, makeDoc, openDocuments } from './documents';
 import { canonicalKey, readLayout } from './layout-state';
-import { openCardPane } from './verses';
+import { openCardLine, openCardPane } from './verses';
+import { openWordPane } from './wordcard';
 import { openSettings } from './settings';
 
 // The last write, so `undo` can take it back.
@@ -204,6 +205,7 @@ export async function perform(a: any, line: string): Promise<string> {
     case 'findpage': app.findInChapter(a.q); return a.q ? `Finding “${a.q}” in this chapter` : 'Find in this chapter';
     case 'panes': return dock.describe().map(p => p.title).join(' · ') || 'No panes open';
     case 'pane': return paneAction(a);
+    case 'card': return /^[A-Z0-9]{3}\.\d+:\d+\.\d+$/.test(a.place) && a.how !== 'open' ? openWordPane(a.place, a.how) : openCardLine(a.place, a.how);
     case 'hover': setHover(a.mode); return `Hover cards: ${a.mode}`;
     case 'copy': {
       if (a.action === 'format') { localStorage.setItem('wb.copy', JSON.stringify({ format: a.format, short: a.short })); return `Copies are laid out as ${a.format}${a.short ? ', short' : ''}`; }
@@ -480,7 +482,7 @@ async function applyLayout(a: any): Promise<string> {
   return `Layout ${a.name}`;
 }
 
-const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'marked', 'plans', 'settings']);
+const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'wordcard', 'marked', 'plans', 'settings']);
 export function canReopen(key: string) { return reopenKinds.has(key.startsWith('doc:') ? 'doc' : key.split('|')[0]); }
 
 /** Minimized links whose title or kind starts with or holds `name`; `minimized` or `all` is every one. */
@@ -510,7 +512,7 @@ export async function reopen(key: string) {
     passage: () => openPassage(x[0].split(';'), x[1], x[0]), reader2: () => app.secondReader(x[0], x[1]), today: () => openToday(x[0]), lesson: () => openLesson(x[0]), findings: () => openFindings(),
     documents: () => openDocuments(),
     doc: () => previewDoc({ id: x[0], name: x[1] || x[0] }),
-    versecard: () => openCardPane(x[0], x[0]), near: () => openNear(x[0], x[1], +x[2], x[3]),
+    versecard: () => openCardPane(x[0], x[0]), wordcard: () => openWordPane(x[0]), near: () => openNear(x[0], x[1], +x[2], x[3]),
     marked: () => openMarked(x[0], x[1], x[2]), plans: () => openPlans(), settings: () => openSettings(),
   };
   if (!f[kind]) throw new Error(`This pane cannot be reopened: ${key}`);

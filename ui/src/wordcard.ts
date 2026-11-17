@@ -7,7 +7,7 @@
 //   and nothing that can be clicked.
 // - At phone width the word card is a sheet over the bottom with the same parts.
 // The verse card is in verses.ts; this file also holds the count line it shares (`pagesLine`).
-import { wb, type WordView } from './api';
+import { api, wb, type WordView } from './api';
 import { frameCard, grip } from './cardframe';
 import { dock, openBdb, openInterlinear, openStrong } from './panes';
 import { closeSheet, compact, openSheet } from './sheets';
@@ -157,13 +157,22 @@ async function websters(into: HTMLElement, word: string) {
 }
 
 /** Float: the word as a floating pane (the card closes; a pane has a body of its own, so it is drawn again there). */
-function floatWord(w: WordView) {
+function floatWord(w: WordView, side: 'float' | 'left' = 'float') {
   const strong = w.lexicon?.strong ?? w.strong ?? w.text;
-  dock.open('wordcard', strong, `wordcard|${w.anchor}`, 'float', async el => {
+  dock.open('wordcard', strong, `wordcard|${w.anchor}`, side, async el => {
     el.replaceChildren();
     const body = h('div', 'lex word-body in-pane');
     body.append(h('div', 'wc-text', `${w.text} · ${w.reference}`));
     fillWord(body, w, w.lexicon?.strong ?? w.strong);
     el.append(body);
   });
+}
+
+/** A word card as a pane from its anchor (NUM.25:11.24): a floating pane or a tab. Layout reopen and the `card` line use it. */
+export async function openWordPane(anchor: string, how: 'float' | 'tab' = 'float'): Promise<string> {
+  const m = /^([A-Z0-9]{3})\.(\d+):(\d+)\.(\d+)$/.exec(anchor);
+  if (!m) throw new Error(`${anchor} is not a word`);
+  const { data } = await api.word(m[1], +m[2], +m[3], +m[4]);
+  floatWord(data, how === 'float' ? 'float' : 'left');
+  return `${data.text} as a ${how === 'float' ? 'floating pane' : 'tab'}`;
 }
