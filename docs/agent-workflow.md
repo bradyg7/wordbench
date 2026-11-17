@@ -34,3 +34,7 @@ powershell -ExecutionPolicy Bypass -File scripts\finish-worktree.ps1 -Apply    #
 ```
 
 A worktree and its local branch are removed only when its work is on `origin/main` (the branch is an ancestor, or its pull request is merged with the same last commit; a squash merge counts), nothing is uncommitted or untracked in it, it is not locked, and no process has it open. Otherwise it is kept, with the reason. A branch with no pull request that only sits on `main` (perhaps just made) is kept unless `-IncludeEmpty`; worktrees made by other tools (Codex, Gemini) are kept unless `-IncludeOtherTools`. Remote branches and the main checkout are never touched. The checklist ("What the build must satisfy") is checked before the pull request, by the builder and reviewer; the merge is the signal that it was accepted.
+
+## Waiting on a build
+
+Builders never wait with `timeout`/`until`/`sleep` loops. A long command is started with `run_in_background`, and the builder does other work or looks at its log once; one wait is at most 45 seconds. (2026-11-17: one builder made 347 such loops, and three runs were stopped by the 600 s stall watchdog.)
