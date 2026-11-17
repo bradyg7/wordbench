@@ -24,12 +24,12 @@ fn thread_id(c: &Ctx<'_>, name: &str) -> Result<String, String> {
 }
 
 fn source_args() -> Vec<crate::args::Spec> {
-    vec![Opt("thread", None), Opt("page", None), Opt("passage", None), Opt("lesson", None), Opt("version", None)]
+    vec![Opt("thread", None), Opt("folder", None), Opt("page", None), Opt("passage", None), Opt("lesson", None), Opt("version", None)]
 }
 
 fn require_one_source(a: &crate::args::Args) -> Result<(), String> {
-    if ["thread", "page", "passage", "lesson"].iter().filter(|key| a.opt(key).is_some()).count() != 1 {
-        return Err("Give exactly one source: --thread NAME, --page ID, --passage REF or --lesson NAME.".into());
+    if ["thread", "folder", "page", "passage", "lesson"].iter().filter(|key| a.opt(key).is_some()).count() != 1 {
+        return Err("Give exactly one source: --folder NAME (or --thread NAME), --page ID, --passage REF or --lesson NAME.".into());
     }
     Ok(())
 }
@@ -41,7 +41,7 @@ fn source(c: &Ctx<'_>, a: &crate::args::Args) -> Result<docs::Source, String> {
     if let Some(name) = a.opt("lesson") {
         return Ok(docs::Source::Lesson(name));
     }
-    let name = a.opt("thread").ok_or("Give a thread, passage or lesson.")?;
+    let name = a.opt("folder").or_else(|| a.opt("thread")).ok_or("Give a folder, passage or lesson.")?;
     Ok(docs::Source::Thread(thread_id(c, &name)?))
 }
 
@@ -153,8 +153,8 @@ pub fn commands() -> Vec<Command> {
             j(docs::pdfs::open(&out, &name, a.flag("exact")).map_err(e)?)
         }),
         cmd("docs list", "Your Word documents and slide decks, and how each stands. --thread NAME, --page ID or --lesson ID filters by source.",
-            vec![Opt("thread", None), Opt("page", None), Opt("lesson", None)], |c, a| {
-            let of = if let Some(t) = a.opt("thread") { Some(("thread", thread_id(c, &t)?)) }
+            vec![Opt("thread", None), Opt("folder", None), Opt("page", None), Opt("lesson", None)], |c, a| {
+            let of = if let Some(t) = a.opt("folder").or_else(|| a.opt("thread")) { Some(("thread", thread_id(c, &t)?)) }
                 else if let Some(p) = a.opt("page") { Some(("page", p.trim().to_string())) }
                 else { a.opt("lesson").map(|l| ("lesson", wb_core::studyapi::lesson_slug(&l))) };
             let out = out_dir(c)?;
@@ -188,6 +188,17 @@ pub fn commands() -> Vec<Command> {
             }
             j(r)
         }),
+        cmd("docs like", "Make another like this: wb docs like NAME --page ID makes the same kind of document (Word or slides) from another page, with the same Look and theme and the same choice for each kind of part. The first document is not changed.",
+            vec![Pos("name", N::Many), Opt("page", None), Flag("force"), Flag("open")], |c, a| {
+            let Some(p) = a.opt("page") else { return Err("Give the page: --page ID (wb page tree lists them).".into()) };
+            let out = out_dir(c)?;
+            let st = c.study()?;
+            let r = docs::make_like(c.bible()?, &st, &out, &a.s("name"), &p, a.flag("force")).map_err(e)?;
+            if a.flag("open") {
+                docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
+            }
+            j(r)
+        }),
         cmd("docs open", "Open the saved document in the system app for its format.", vec![Pos("name", N::Many)], |c, a| {
             let out = out_dir(c)?;
             j(docs::open(&*c.study()?, &out, &a.s("name")).map_err(e)?)
@@ -209,7 +220,7 @@ pub fn commands() -> Vec<Command> {
             j(docs::delete(&mut *c.study()?, &out, &a.s("name")).map_err(e)?)
         }),
         cmd("docs plan", "What a document would hold if made now, and its plan's fingerprint.\n\
-                          Choose --thread NAME, --passage REF [--version V], --lesson NAME or --page ID.\n\
+                          Choose --folder NAME (or --thread NAME), --passage REF [--version V], --lesson NAME or --page ID.\n\
                           From a page: wb docs plan --page ID --to word|pdf [--version V] [--on KEY] [--off KEY]. For PDF, --pages lays out the selected plan with --theme, --look and --set.",
             [source_args(), vec![Opt("to", Some("word")), Opt("structure", None),
                 Append("on"), Append("off"), Flag("pages"), Opt("theme", None), Opt("look", None), Append("set")]].into_iter().flatten().collect(), |c, a| {
@@ -231,14 +242,14 @@ pub fn commands() -> Vec<Command> {
             let st = c.study()?;
             j(docs::plan_for(c.bible()?, &st, input, &to, a.opt("structure").as_deref(), layout).map_err(e)?)
         }),
-        cmd("craft word", "A Word document from --thread NAME, --passage REF [--version V], --lesson NAME or --page ID.\n\
+        cmd("craft word", "A Word document from --folder NAME (or --thread NAME), --passage REF [--version V], --lesson NAME or --page ID.\n\
                            Structures: script, share, study and reading. --theme: otherwise your saved theme.\n\
                            Asking again for the same source and structure updates the same file (see wb docs). Every verse in the file is checked against the Bible.\n\
                            From a page and the pages inside it: wb craft word --page ID [--on KEY] [--off KEY] [--version kjv|ylt|page]; the rows' keys are in\n\
                            wb craft parts --page ID. To-dos are left out unless switched on; with no --on or --off, the switches it was last made with stay.\n\
                            --look NAME (wb docs looks) and --set DIAL=VALUE style it; otherwise the Look it was last made with, or the one new documents use.",
             make_args(), |c, a| make(c, a, "word")),
-        cmd("craft deck", "Slides from --thread NAME, --passage REF [--version V], --lesson NAME or --page ID.\n\
+        cmd("craft deck", "Slides from --folder NAME (or --thread NAME), --passage REF [--version V], --lesson NAME or --page ID.\n\
                            Structures: verse (Verse by Verse) and reader (Reader).\n\
                            --format pptx makes editable PowerPoint with a saved PDF preview. The default format is pdf.\n\
                            Asking again for the same source and structure updates the same file (see wb docs). Every verse on the pages is checked against the Bible.\n\

@@ -2381,4 +2381,39 @@ fn several_trashed_notes_are_put_back_by_one_command_and_empty_trash_leaves_the_
     assert_eq!(erased["erased"].as_array().unwrap().len(), 2);
     assert!(trash.join("20200101-000000-finding-abcd.md").exists());
     assert!(trash.join("20200101-000000-layout-main.json").exists());
+
+#[test]
+fn make_another_like_this_keeps_look_and_choice_per_kind_and_leaves_the_first_alone() {
+    // DC-2, D6: no document template; the choices travel by kind of part. --folder is --thread's new name (DC-3).
+    let Some(wb) = Wb::new() else { return };
+    let add = |id: &str, b: &str| {
+        let (code, _, err) = wb.run(&["block", "add", id, "-"], Some(b));
+        assert_eq!(code, 0, "{err}");
+    };
+    let first = wb.js(&["page", "new", "Like: first"])["id"].as_str().unwrap().to_string();
+    let second = wb.js(&["page", "new", "Like: second"])["id"].as_str().unwrap().to_string();
+    for p in [&first, &second] {
+        for b in ["# Aim", "Read it with the group.", "```scripture\nNum 25:10-11\n```"] {
+            add(p, b);
+        }
+    }
+    let parts = wb.js(&["craft", "parts", "--page", &first]);
+    let para = parts["rows"][1]["key"].as_str().unwrap().to_string();
+    let made = wb.js(&["craft", "deck", "--page", &first, "--off", &para, "--look", "large-print"]);
+    let before = std::fs::read(wb.docs().join(made["name"].as_str().unwrap())).unwrap();
+    let like = wb.js(&["docs", "like", made["id"].as_str().unwrap(), "--page", &second]);
+    assert_eq!(like["id"].as_str().unwrap(), format!("page-{second}-verse"));
+    assert_eq!(like["look"], made["look"]);
+    assert_eq!(like["checked"]["verses"], 2);
+    let rows = wb.js(&["craft", "parts", "--page", &second])["rows"].clone();
+    let on: Vec<(&str, bool)> = rows.as_array().unwrap().iter().map(|r| (r["kind"].as_str().unwrap(), r["on"].as_bool().unwrap())).collect();
+    assert_eq!(on, [("heading", true), ("paragraph", false), ("scripture", true)]);
+    assert_eq!(std::fs::read(wb.docs().join(made["name"].as_str().unwrap())).unwrap(), before);
+    assert!(wb.fails(&["docs", "like", made["id"].as_str().unwrap()]).contains("--page"));
+
+    // a folder is what a thread was
+    wb.js(&["thread", "new", "Phinehas folder", "--at", "Num 25:10"]);
+    let by_thread = wb.js(&["docs", "plan", "--thread", "Phinehas folder", "--to", "word", "--structure", "script"]);
+    let by_folder = wb.js(&["docs", "plan", "--folder", "Phinehas folder", "--to", "word", "--structure", "script"]);
+    assert_eq!(by_thread["fingerprint"], by_folder["fingerprint"]);
 }
