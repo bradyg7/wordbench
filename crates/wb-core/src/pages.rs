@@ -838,6 +838,11 @@ pub fn blocks(store: &Store, id: &str) -> Result<Value> {
     Ok(v)
 }
 
+/// Write a page's whole text back (Tether's Accept and its Undo), as every block change is written.
+pub(crate) fn write_text(bible: &Bible, store: &mut Store, id: &str, text: &str, titled: bool) -> Result<Value> {
+    written(bible, store, id, text, titled, 0, 0)
+}
+
 /// Write the changed text of a note and answer with its blocks, and which of them were just written (`n`, `count`).
 fn written(bible: &Bible, store: &mut Store, id: &str, text: &str, titled: bool, n: usize, count: usize) -> Result<Value> {
     let thread = crate::threadpage::slug_of(id).is_some();
