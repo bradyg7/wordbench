@@ -27,7 +27,6 @@ interface Spot { id: string; label: string; ico: string; kind?: string; run: (fr
 const TOP: Spot[] = [
   { id: 'notebook', label: 'Notebook', ico: 'notebook', kind: 'notebook', run: () => void openNotebook() },
   { id: 'shelf', label: 'Shelf', ico: 'shelf', kind: 'shelf', run: () => void openShelf() },
-  { id: 'concordance', label: 'Concordance', ico: 'book', kind: 'concordance', run: () => void openConcordance() },
   { id: 'highlights', label: 'Highlights', ico: 'pen', run: from => hooks.highlights(from) },
 ];
 const UNDER: Spot[] = [
@@ -35,6 +34,7 @@ const UNDER: Spot[] = [
   { id: 'plans', label: 'Reading plans', ico: 'lines', kind: 'plans', run: () => void openPlans() },
   { id: 'findings', label: 'Findings', ico: 'prompt', kind: 'findings', run: () => void openFindings() },
   { id: 'documents', label: 'Documents', ico: 'file', kind: 'documents', run: () => void openDocuments() },
+  { id: 'concordance', label: 'Concordance', ico: 'book', kind: 'concordance', run: () => void openConcordance() },
 ];
 const MINIMIZED: Spot = { id: 'minimized', label: 'Minimized', ico: 'float', run: () => {} };
 const FOOT: Spot[] = [
