@@ -180,6 +180,26 @@ pub fn dangling(bible: &Bible, store: &Store) -> Result<Vec<Value>> {
     Ok(out)
 }
 
+/// A place's words without asking the database: "Numbers 25:11", "Numbers 25:10–13" (the anchor's own book and numbers).
+fn anchor_label(bible: &Bible, anchor: &str) -> String {
+    let Ok(a) = crate::anchors::parse(anchor) else { return anchor.to_string() };
+    if a.strong.is_some() {
+        return anchor.to_string();
+    }
+    let name = bible.books().iter().find(|b| b.code == a.code).map(|b| b.name.clone()).unwrap_or_else(|| a.code.clone());
+    crate::anchors::py_label(&name, a.c1 as i64, a.v1 as i64, a.c2.unwrap_or(a.c1) as i64, a.v2.unwrap_or(a.v1) as i64, a.c2.is_some())
+}
+
+/// What a saved item is called in the search: a page by its title, a place by its words, anything else by what it names.
+fn cheap_label(bible: &Bible, titles: &std::collections::HashMap<String, String>, i: &Value) -> String {
+    let r = s_of(i, "ref");
+    match s_of(i, "kind").as_str() {
+        "note" => titles.get(&r).cloned().unwrap_or(r),
+        "place" => anchor_label(bible, &r),
+        _ => r,
+    }
+}
+
 // ---- the one search (S21) and the filter line (S27) ----------------------------------------------------------------------
 
 /// What `wb find` asks when it is given more than words. `kind`: "" (all), page, folder, save, question or margin.
@@ -251,20 +271,32 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     }
     if want("save") && !f.has_question {
         let mut rows = vec![];
+        // the saves as the search lists them: labelled from what the item names, never resolved one by one (a folder of
+        // thousands of pages must not make a search slow, marks M40)
+        let titles: std::collections::HashMap<String, String> = store
+            .notes()
+            .into_iter()
+            .chain(store.inbox())
+            .chain(store.on_thread())
+            .map(|r| (s(r, "id"), crate::notebook::page_title(r)))
+            .collect();
         let mut every: Vec<(String, Value)> = vec![];
+        let mut put = |folder: String, mut i: Value| {
+            let label = cheap_label(bible, &titles, &i);
+            i["label"] = json!(label);
+            every.push((folder, i));
+        };
         for t in store.sets() {
             if folder_id.as_ref().is_some_and(|id| *id != s(&t, "id")) {
                 continue;
             }
-            let v = crate::studyapi::set_view(bible, store, &t)?;
-            for i in v["items"].as_array().cloned().unwrap_or_default() {
-                every.push((s(&t, "name"), i));
+            for i in t["items"].as_array().cloned().unwrap_or_default() {
+                put(s(&t, "name"), i);
             }
         }
         if in_folder.is_none() {
-            let v = shelf_view(bible, store)?;
-            for i in v["items"].as_array().cloned().unwrap_or_default() {
-                every.push((String::new(), i));
+            for i in store.shelf_saves() {
+                put(String::new(), i);
             }
         }
         all_total += every.len();
@@ -304,7 +336,7 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         all_total += hl.len();
         let rows = hl
             .iter()
-            .map(|h| (crate::notebook::label(bible, &s(h, "anchor")), h))
+            .map(|h| (anchor_label(bible, &s(h, "anchor")), h))
             .filter(|(label, h)| has(&format!("{label} {} {}", s(h, "quote"), s(h, "color"))))
             .filter(|(_, h)| cutoff.as_ref().is_none_or(|c| s(h, "created").as_str() >= c.as_str()))
             .filter(|_| in_folder.is_none() && !f.has_question)

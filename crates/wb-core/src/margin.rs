@@ -196,8 +196,28 @@ fn parse_file(text: &str) -> Vec<Note> {
     out
 }
 
+type Sig = (std::time::SystemTime, u64);
+/// Chapter files already read, by path: a file is read again only when its time or size changed (a search over every margin
+/// note stats the files and parses none that are as they were).
+static READ: std::sync::Mutex<Option<HashMap<PathBuf, (Sig, Vec<Note>)>>> = std::sync::Mutex::new(None);
+
+fn read_path(p: &Path) -> Vec<Note> {
+    let Ok(meta) = std::fs::metadata(p) else { return vec![] };
+    let sig = (meta.modified().unwrap_or(std::time::UNIX_EPOCH), meta.len());
+    let mut guard = READ.lock().unwrap_or_else(|e| e.into_inner());
+    let map = guard.get_or_insert_with(HashMap::new);
+    if let Some((s0, notes)) = map.get(p) {
+        if *s0 == sig {
+            return notes.clone();
+        }
+    }
+    let notes = std::fs::read_to_string(p).map(|t| parse_file(&t)).unwrap_or_default();
+    map.insert(p.to_path_buf(), (sig, notes.clone()));
+    notes
+}
+
 fn read_chapter(root: &Path, code: &str, chapter: u32) -> Vec<Note> {
-    std::fs::read_to_string(file(root, code, chapter)).map(|t| parse_file(&t)).unwrap_or_default()
+    read_path(&file(root, code, chapter))
 }
 
 fn write_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, mut notes: Vec<Note>) -> Result<()> {
@@ -247,9 +267,7 @@ pub fn all(bible: &Bible, store: &Store) -> Vec<Note> {
     files.sort_by_key(|(c, ch, _)| (book_order(bible, c), *ch));
     let mut out = vec![];
     for (_, _, p) in files {
-        if let Ok(t) = std::fs::read_to_string(&p) {
-            out.extend(parse_file(&t));
-        }
+        out.extend(read_path(&p));
     }
     out
 }

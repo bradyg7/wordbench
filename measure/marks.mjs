@@ -100,7 +100,8 @@ try {
   await page.waitForSelector('.mg-panel .mg-count', { timeout: 10000 });
   await page.locator('.mg-panel .mg-count', { hasText: 'pages' }).click();
   const rows = await page.locator('.mg-panel .mg-lists .mg-page').count();
-  check('in the window its pages are folders of at most 20 rows, with Show all', rows <= 20 * (v16.json.groups.length) && (await page.locator('.mg-panel .mg-group').count()) > 1, `${rows} rows, ${await page.locator('.mg-panel .mg-group').count()} folders`);
+  const shown = await page.locator('.mg-panel .mg-group').count();
+  check('in the window its pages are grouped by folder, at most 20 folders before Show all', shown === 20 && (await page.locator('.mg-panel .mg-showall').count()) === 1, `${shown} folders shown of ${v16.json.groups.length}`);
   await page.locator('.mg-close').click();
   const map = await invoke(['margin', 'list', '--map']);
   const allChapters = map.json.books.every(b => b.chapters.length > 0);
@@ -125,8 +126,8 @@ try {
   await page.locator('.mg-panel .mg-lists .mg-page', { hasText: 'Reader place check' }).click();
   await page.waitForSelector('.pane-notebook .nb-title', { timeout: 10000 });
   await sleep(500);
-  const link = page.locator('.pane-notebook .nb-page a, .pane-notebook .nb-page .ref-link, .pane-notebook .nb-body a').filter({ hasText: /Psalm 106:30/ }).first();
-  await link.click();
+  await page.locator('.pane-notebook a.ref', { hasText: /Psalm 106:30/ }).first().click();
+  await page.locator('.verse-card .open-split-go').first().click();
   await sleep(1500);
   const moved = await page.evaluate(() => document.querySelector('.ch-title')?.textContent + '|' + [...document.querySelectorAll('.reader2-title')].map(e => e.textContent).join(','));
   check('following the page’s reference goes to Psalms 106:30 (the reader or a second reader)', /Psalms 106/.test(moved), moved);

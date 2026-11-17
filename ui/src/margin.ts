@@ -317,16 +317,23 @@ function pagesList(d: any, into: HTMLElement, refresh: () => void) {
   };
   if (d.groups?.length) {
     // past 20, grouped by folder (M37)
-    for (const g of d.groups) {
+    const folder = (g: any) => {
       const det = h('details', 'mg-group');
       det.append(h('summary', '', `${g.folder || 'No folder'} · ${g.count}`));
       for (const p of g.pages) det.append(row(p));
-      into.append(det);
+      return det;
+    };
+    // never more than 20 rows before Show all: the first 20 folders, then the rest
+    for (const g of d.groups.slice(0, 20)) into.append(folder(g));
+    if (d.groups.length > 20) {
+      const more = h('button', 'mg-showall', `Show all ${d.groups.length} folders`);
+      more.onclick = () => { more.replaceWith(...d.groups.slice(20).map(folder)); };
+      into.append(more);
     }
   } else {
     for (const p of d.pages) into.append(row(p));
   }
-  if (d.pages_total > d.pages.length) {
+  if (!d.groups?.length && d.pages_total > d.pages.length) {
     const all = h('button', 'mg-showall', `Show all ${d.pages_total}`);
     all.onclick = async () => { const full = await wb(['margin', d.anchor.replace(/^(\w+)\.(\d+):(\d+)$/, '$1 $2:$3'), '--all']); pagesList(full, into, refresh); };
     into.append(all);
