@@ -142,7 +142,7 @@ try {
   await page.locator('.mg-close').click().catch(() => {});
   await page.evaluate(() => window.__wb.open('JHN', 3));
   await sleep(800);
-  if (!(await page.locator('.pane-notebook .mgl').count())) await page.locator('.pane-notebook .nb-back').first().click({ timeout: 5000 }).catch(() => {});
+  if (!(await page.locator('.pane-notebook .mgl').count())) await page.locator('.pane-notebook .nb-back').first().click({ timeout: 5000, force: true }).catch(() => {});
   await page.waitForSelector('.pane-notebook .mgl', { timeout: 10000 });
   const row = page.locator('.pane-notebook .mgl').first();
   await row.locator('.mgl-sum').click();

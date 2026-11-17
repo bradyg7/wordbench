@@ -222,6 +222,7 @@ fn read_chapter(root: &Path, code: &str, chapter: u32) -> Vec<Note> {
 
 fn write_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, mut notes: Vec<Note>) -> Result<()> {
     guard(root)?;
+    forget_snapshot();
     let p = file(root, code, chapter);
     if notes.is_empty() {
         if p.exists() {
@@ -261,15 +262,37 @@ fn book_order(bible: &Bible, code: &str) -> u32 {
     bible.books().iter().find(|b| b.code == code).map(|b| b.id).unwrap_or(999)
 }
 
-/// Every margin note, in the Bible's order.
-pub fn all(bible: &Bible, store: &Store) -> Vec<Note> {
+/// Every margin note, in the Bible's order, as the files were at most a second ago: the one search and the Library's counts
+/// go over all of them, and listing a thousand files is the slow part. A note this process writes drops the snapshot at once.
+static SNAP: std::sync::Mutex<Option<(std::time::Instant, PathBuf, std::sync::Arc<Vec<Note>>)>> = std::sync::Mutex::new(None);
+
+fn forget_snapshot() {
+    *SNAP.lock().unwrap_or_else(|e| e.into_inner()) = None;
+}
+
+fn snapshot(bible: &Bible, store: &Store) -> std::sync::Arc<Vec<Note>> {
+    {
+        let g = SNAP.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some((at, root, notes)) = g.as_ref() {
+            if *root == store.root && at.elapsed() < std::time::Duration::from_secs(1) {
+                return notes.clone();
+            }
+        }
+    }
     let mut files = chapter_files(&store.root);
     files.sort_by_key(|(c, ch, _)| (book_order(bible, c), *ch));
     let mut out = vec![];
     for (_, _, p) in files {
         out.extend(read_path(&p));
     }
+    let out = std::sync::Arc::new(out);
+    *SNAP.lock().unwrap_or_else(|e| e.into_inner()) = Some((std::time::Instant::now(), store.root.clone(), out.clone()));
     out
+}
+
+/// Every margin note, in the Bible's order.
+pub fn all(bible: &Bible, store: &Store) -> Vec<Note> {
+    snapshot(bible, store).as_ref().clone()
 }
 
 fn find(bible: &Bible, store: &Store, id: &str) -> Result<Note> {
@@ -716,11 +739,8 @@ fn s_of(v: &Value, k: &str) -> String {
 /// `map` lists every chapter of every book, empty ones too (the map shades by count). `book` lists one book.
 pub fn list(bible: &Bible, store: &Store, book: Option<&str>, map: bool) -> Result<Value> {
     let mut counts: HashMap<(String, u32), usize> = HashMap::new();
-    for (code, ch, p) in chapter_files(&store.root) {
-        let n = std::fs::read_to_string(&p).map(|t| t.lines().filter(|l| l.trim_start().starts_with(MARKER)).count()).unwrap_or(0);
-        if n > 0 {
-            counts.insert((code, ch), n);
-        }
+    for n in snapshot(bible, store).iter() {
+        *counts.entry((n.at.code.clone(), n.at.c)).or_default() += 1;
     }
     let want = match book {
         Some(b) => Some(crate::places::match_book(b, bible.books())?.code.clone()),
@@ -750,7 +770,7 @@ pub fn list(bible: &Bible, store: &Store, book: Option<&str>, map: bool) -> Resu
 
 /// The margin notes as the one search lists them (`wb find --kind margin`): `{kind, id, title, snippet, updated}`.
 pub fn rows(bible: &Bible, store: &Store) -> Vec<Value> {
-    all(bible, store)
+    snapshot(bible, store)
         .iter()
         .map(|n| json!({"kind": "margin", "id": n.id, "title": n.at.label(bible), "snippet": n.text, "updated": n.written, "at": n.at.id(), "question": question_of(&n.text).is_some()}))
         .collect()
