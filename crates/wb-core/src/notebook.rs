@@ -86,6 +86,13 @@ pub fn title_of(text: &str) -> String {
     t.to_string()
 }
 
+/// A page's title (library L-21): its `title:` field when it has one, else its first line.
+pub fn page_title(r: &Rec) -> String {
+    let t = s(r, "title");
+    let t = t.trim();
+    if t.is_empty() { title_of(&s(r, "text")) } else { t.to_string() }
+}
+
 /// What follows a note's title, as one short line with the Markdown marks left out.
 fn preview_of(text: &str, skip_title: bool) -> String {
     let mut lines = text.lines().map(str::trim).filter(|l| !l.is_empty());
@@ -135,7 +142,7 @@ fn entry(bible: &Bible, r: &Rec, kind: &str, placed: bool) -> Value {
         "label": if placed && !anchor.is_empty() { label(bible, &anchor) } else { String::new() },
         "quote": s(r, "quote"), "text": s(r, "text"), "created": r["created"], "updated": r["updated"], "time": time,
         "refs": find_refs(&s(r, "text"), bible.books()),
-        "title": title_of(&s(r, "text")), "preview": preview_of(&s(r, "text"), true),
+        "title": page_title(r), "preview": preview_of(&s(r, "text"), true),
         "whole": whole_place(bible, &anchor).map(|w| w.1).unwrap_or(""),
         "day": local(&s(r, "created")).map(|x| x.0.to_string()).unwrap_or_default(),
     });

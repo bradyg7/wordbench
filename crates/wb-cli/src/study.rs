@@ -154,7 +154,12 @@ pub fn commands() -> Vec<Command> {
             j(json!({"colors": c.study()?.drop_palette_color(Some(&a.s("color"))).map_err(e)?}))
         }),
         cmd("study check", "What the study folder holds, as this app reads it, and which files the next change would write (none). Reads only; scripts/py-opens.py is the Python app's side of the same check.",
-            vec![], |c, _| j(wb_core::check::study_check(&*c.study()?).map_err(e)?)),
+            vec![], |c, _| {
+                let st = c.study()?;
+                let mut v = wb_core::check::study_check(&st).map_err(e)?;
+                v["library"] = wb_core::check::library_check(c.bible()?, &st).map_err(e)?;
+                j(v)
+            }),
         cmd("thread list", "Your threads, newest first; with words, only those whose name or note has them all.", vec![Pos("words", N::Any)], |c, a| {
             j(sa::thread_list(&*c.study()?, Some(&a.s("words"))).map_err(e)?)
         }),
@@ -380,7 +385,17 @@ pub fn commands() -> Vec<Command> {
             }
             j(wb_core::deletion::remove(c.bible()?, &mut st, &id).map_err(e)?)
         }),
-        cmd("find", "Search your own notes, thread names and notes, and trails.", vec![Pos("words", N::Many)], |c, a| {
+        cmd("find", "Search your own notes, thread names and notes, and trails. With --kind, --folder, --has-question, --edited or --sort it is the library's one search: pages, folders, saves and questions grouped by kind, \"count\" of \"total\". --kind page|folder|save|question|margin, --folder NAME, --has-question, --edited 7d|2026-11-01, --sort edited|title.",
+            vec![Pos("words", N::Any), Opt("kind", None), Opt("folder", None), Flag("has_question"), Opt("edited", None), Opt("sort", None)], |c, a| {
+            let (kind, folder, edited, sort) = (a.opt("kind"), a.opt("folder"), a.opt("edited"), a.opt("sort"));
+            if kind.is_some() || folder.is_some() || edited.is_some() || sort.is_some() || a.flag("has_question") {
+                let f = wb_core::library::Find { words: &a.s("words"), kind: kind.as_deref().unwrap_or(""), folder: folder.as_deref(), has_question: a.flag("has_question"),
+                    edited: edited.as_deref(), sort: sort.as_deref().unwrap_or("") };
+                return j(wb_core::library::find(c.bible()?, &*c.study()?, &f).map_err(e)?);
+            }
+            if a.s("words").trim().is_empty() {
+                return Err("Type a word or two to look for in your notes.".into());
+            }
             j(sa::find_mine(c.bible()?, &*c.study()?, &a.s("words")).map_err(e)?)
         }),
         cmd("log", "What was typed into the capture box on a day (default today); log add records a line.", vec![Pos("day", N::Opt)], |c, a| {

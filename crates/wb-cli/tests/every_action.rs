@@ -5,6 +5,8 @@ use std::fs;
 
 /// Public functions that are helpers of other actions, not actions of their own.
 const INTERNAL: &[&str] = &[
+    // the library's storage pieces: reached through wb save, wb folder and wb page look (design/features/library)
+    "same_item", "set_parent", "shelf_saves", "shelf_add", "shelf_remove", "page_title", "parent_map", "children_of", "item_of", "dangling",
     "is_strong", "is_word", "known_word", "strongs_brief", "plain", "text", "public", "set_view", "lesson_slug", "lesson_find",
     "lesson_parse", "lesson_listing", "open", "root", "notes", "highlights", "all_highlights", "edit_highlights", "use_palette_color",
     "threads", "thread", "trails", "sets", "find_set", "add_note", "update_note", "add_trail", "create_thread", "add_to_thread",
@@ -67,9 +69,9 @@ fn public_fns(src: &str) -> Vec<String> {
 fn every_action_has_a_command() {
     let core = env!("CARGO_MANIFEST_DIR").to_string() + "/../wb-core/src/";
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
-    let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
+    let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs", "library.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "dictionary.rs", "docs/look.rs", "deletion.rs"] {
+    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "library.rs", "dictionary.rs", "docs/look.rs", "deletion.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
                 continue;
