@@ -15,6 +15,7 @@ mod read;
 mod reading;
 mod setup;
 mod study;
+mod tether;
 
 use args::{Args, Spec};
 use std::cell::{OnceCell, RefCell, RefMut};
@@ -142,6 +143,7 @@ fn commands() -> Vec<Command> {
     all.extend(library::commands());
     all.extend(docs::commands());
     all.extend(setup::commands());
+    all.extend(tether::commands());
     all
 }
 
@@ -238,7 +240,7 @@ fn changes_page_files(command: &str) -> bool {
         "day add" | "day text" | "day rm" | "page new" | "page move" | "page pin" |
         "page unpin" | "page title" |
         "block scripture" | "block thread" | "block word" | "block view" | "block set" |
-        "block add" | "block rm" | "block undo" | "block move" | "template new" |
+        "block add" | "block rm" | "block undo" | "block move" | "tether accept" | "template new" |
         "template save" | "template set" | "template rm" | "trash restore" | "history keep"
     )
 }
