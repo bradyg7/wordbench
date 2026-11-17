@@ -16,6 +16,8 @@ import { app, goTo } from './app';
 import { layers } from './layers';
 import { dock, openStrong } from './panes';
 import { closeSheet, compact, hideCard, openSheet } from './sheets';
+import { frameCard, grip } from './cardframe';
+import { pagesLine } from './wordcard';
 import { button, h, icon, placePill, popMenu } from './ui';
 
 export interface Run { t: string; hl?: string }
@@ -136,7 +138,7 @@ function keepPutAway(key: string, s: Set<number>) {
   try { localStorage.setItem(PUT_AWAY, JSON.stringify(all)); } catch { /* only for now */ }
 }
 
-type Tab = 'interlinear' | 'strongs' | 'definitions' | null;
+type Tab = 'interlinear' | 'concordance' | 'definitions' | null;
 const MOST = 12;
 
 /** A click on a reference in a note: the card at the link. Ctrl+click opens the place at once, as the Open menu's
@@ -147,10 +149,10 @@ export async function verseCard(ref: string, a: HTMLElement, e?: MouseEvent) {
   const d: Marked | null = await wb(['scripture', ref]).catch(() => null);
   if (!d?.verses?.length) return void goTo(ref);
   const body = h('div', 'verse-card-body');
-  const panel = openSheet(body, a);
+  const panel = openSheet(body, a, { stays: true });
   panel.classList.add('verse-card');
   const place = () => {
-    if (compact()) return;
+    if (compact() || panel.dataset.moved) return;   // once the card is moved or sized it stays where it was put (dfce, 149b)
     const r = a.getBoundingClientRect();
     const w = Math.min(560, innerWidth - 32);
     panel.style.width = `${w}px`;
@@ -159,15 +161,16 @@ export async function verseCard(ref: string, a: HTMLElement, e?: MouseEvent) {
     const below = r.bottom + 8;
     panel.style.top = `${below + hgt <= innerHeight - 16 ? below : Math.max(16, Math.min(r.top - 8 - hgt, innerHeight - hgt - 16))}px`;
   };
-  fillCard(body, ref, d, { pinned: false, changed: place, source: a });
+  fillCard(body, ref, d, { pinned: false, changed: place, source: a, panel });
   place();
 }
 
 /** A card kept as a pane of its own (the pin): drawn again when highlights change. */
-export function openCardPane(ref: string, label: string, tab: Tab = null, source?: HTMLElement) {
+/** A card as a pane: a tab in the study column (`tab`), or a floating pane (`float`). The `card` line reaches it. */
+export function openCardPane(ref: string, label: string, tab: Tab = null, source?: HTMLElement, side: 'left' | 'float' = 'left') {
   let now: Tab = tab;
   const sourcePane = source && dock.panes.find(p => p.el.contains(source));
-  return dock.open('versecard', label, `versecard|${ref}`, 'right', async (el, pane) => {
+  return dock.open('versecard', label, `versecard|${ref}`, side, async (el, pane) => {
     const d: Marked | null = await wb(['scripture', ref]).catch(() => null);
     const body = h('div', 'verse-card-body in-pane');
     if (!d) body.append(h('p', 'muted', `Nothing found at ${ref}.`));
@@ -186,39 +189,49 @@ export function openCardPane(ref: string, label: string, tab: Tab = null, source
     pane.captureView = () => ({ tab: now });
     pane.restoreView = async state => {
       const tab = state?.tab;
-      if (tab === null || ['interlinear', 'strongs', 'definitions'].includes(tab)) {
-        now = tab;
+      if (tab === null || ['interlinear', 'concordance', 'strongs', 'definitions'].includes(tab)) {
+        now = tab === 'strongs' ? 'concordance' : tab;   // 'strongs' is what a kept layout may hold from before the door
         if (d) fillCard(body, ref, d, { pinned: true, tab: now, tabChanged: t => { now = t; } });
       }
     };
   });
 }
 
-interface CardOpts { pinned: boolean; tab?: Tab; changed?: () => void; tabChanged?: (t: Tab) => void; source?: HTMLElement }
+interface CardOpts { pinned: boolean; tab?: Tab; changed?: () => void; tabChanged?: (t: Tab) => void; source?: HTMLElement; panel?: HTMLElement }
 
 function fillCard(body: HTMLElement, ref: string, d: Marked, o: CardOpts) {
   body.replaceChildren();
+  // The handle (W4): the grip to drag by, the title, Float, Open as a tab and close. At phone width it is the sheet's own bar.
   const head = h('div', 'vc-head');
+  const wide = !o.pinned && !!o.panel && !compact();
+  if (wide) head.append(grip());
   head.append(h('span', 'vc-ref', d.label), h('span', 'vc-ver muted', ` · ${d.version}`), h('span', 'grow'));
   if (!o.pinned) {
-    const pin = button('btn small vc-pin', 'Keep as pane', () => { closeSheet(); openCardPane(ref, d.label, tab, o.source); }, 'float');
-    pin.title = 'Keep it as a pane';
-    pin.setAttribute('aria-label', 'Keep it as a pane');
+    if (!compact()) {
+      const fl = button('icon-btn vc-pin vc-float', '', () => { closeSheet(); openCardPane(ref, d.label, tab, o.source, 'float'); }, 'float');
+      fl.title = 'Float: keep it as a floating pane';
+      fl.setAttribute('aria-label', 'Float');
+      const tb = button('icon-btn vc-as-tab', '', () => { closeSheet(); openCardPane(ref, d.label, tab, o.source); }, 'sendto');
+      tb.title = 'Open as a tab';
+      tb.setAttribute('aria-label', 'Open as a tab');
+      head.append(fl, tb);
+    }
     const x = button('icon-btn vc-close', '', () => closeSheet(), 'x');
     x.title = 'Close';
     x.setAttribute('aria-label', 'Close');
-    head.append(pin, x);
+    head.append(x);
   }
+  if (wide) frameCard(o.panel!, head, true);
   body.append(head);
   body.append(drawVerses(d.verses.slice(0, MOST), false));
   if (d.verses.length > MOST) body.append(h('p', 'muted small', `and ${d.verses.length - MOST} more verses: Open the chapter shows them all`));
-  const tabs = h('div', 'vc-tabs');
+  const tabs = h('div', 'vc-tabs vc-seg');
   const panel = h('div', 'vc-panel');
   let tab: Tab = null;
   let inter: Promise<any> | null = null;
   const interOf = () => (inter ??= wb(['interlinear', ref]));
-  const tabBtn = (t: Exclude<Tab, null>, label: string, ico: string) => {
-    const b = button(`btn small vc-tab vc-tab-${t}`, label, () => show(tab === t ? null : t), ico);
+  const tabBtn = (t: Exclude<Tab, null>, label: string) => {
+    const b = button(`btn small vc-tab vc-tab-${t}`, label, () => show(tab === t ? null : t));
     b.dataset.tab = t;
     return b;
   };
@@ -228,21 +241,25 @@ function fillCard(body: HTMLElement, ref: string, d: Marked, o: CardOpts) {
     tabs.querySelectorAll<HTMLElement>('.vc-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     panel.replaceChildren();
     if (t === 'interlinear') void interlinear(panel, interOf, o.changed);
-    else if (t === 'strongs') void strongs(panel, interOf, o.changed);
+    else if (t === 'concordance') void strongs(panel, interOf, o.changed);
     else if (t === 'definitions') void definitions(panel, ref, o.changed);
     o.changed?.();
   };
   const first = d.verses[0];
   const chRef = `${first.code} ${first.c}:${first.v}`;
   tabs.append(
-    tabBtn('interlinear', 'Interlinear', 'shelf'),
-    tabBtn('strongs', 'Strong’s', 'prompt'),
-    tabBtn('definitions', 'Definitions', 'notebook'),
-    h('span', 'grow'),
-    // opening the chapter closes the card (a pinned card stays, as a pane does)
-    openSplit('Open the chapter', chRef, () => `${first.book} ${first.c}, at verse ${first.v}`, () => (d.version === 'KJV' ? undefined : d.version), 'vc-open', o.pinned ? undefined : () => closeSheet()),
+    tabBtn('interlinear', 'Interlinear'),
+    tabBtn('concordance', 'In the Concordance'),
+    tabBtn('definitions', 'Definitions'),
   );
-  body.append(tabs, panel);
+  const foot = h('div', 'vc-foot');
+  foot.append(
+    // reading the chapter closes the card (a kept card stays, as a pane does)
+    openSplit('Read the chapter', chRef, () => `${first.book} ${first.c}, at verse ${first.v}`, () => (d.version === 'KJV' ? undefined : d.version), 'vc-open', o.pinned ? undefined : () => closeSheet()),
+  );
+  body.append(tabs, panel, foot);
+  // the pages whose text names this verse: one count line, never their text (W-5, 2bc9)
+  void pagesLine(ref, 'verse').then(l => { if (l) { foot.before(l); o.changed?.(); } });
   if (o.tab) show(o.tab);
 }
 
@@ -365,4 +382,13 @@ async function strongs(panel: HTMLElement, data: () => Promise<any>, changed?: (
     panel.append(b);
   }
   changed?.();
+}
+
+/** The `card` line (wb do "card Num 25:11 float"): the verse card itself, or as a floating pane, or as a tab. */
+export async function openCardLine(ref: string, how: 'open' | 'float' | 'tab'): Promise<string> {
+  const d: Marked | null = await wb(['scripture', ref]).catch(() => null);
+  if (!d?.verses?.length) throw new Error(`Nothing found at ${ref}`);
+  if (how === 'open') { await verseCard(ref, document.getElementById('reader') ?? document.body); return `The card for ${d.label}`; }
+  openCardPane(ref, d.label, null, undefined, how === 'float' ? 'float' : 'left');
+  return `${d.label} as a ${how === 'float' ? 'floating pane' : 'tab'}`;
 }

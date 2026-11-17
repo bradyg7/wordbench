@@ -6,7 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { api, inApp, wb } from './api';
 import { guideRows, hasKeyboard, keysRows, manualRows } from './guide';
 import { toast } from './sheets';
-import { h, hoverMode, icon, setHover } from './ui';
+import { h, hoverMode, icon, setHover, setWordClick, wordClick } from './ui';
 import { refreshInks } from './hlink';
 import { section as layoutsSection } from './layouts';
 import { form, kept, loadKept, remove as removeKept, run as runKept, save as saveKept, topUsed, type Kept } from './mycommands';
@@ -145,6 +145,7 @@ export async function loadWindowSettings() {
     for (const [k, key] of Object.entries(MIRROR)) if (typeof r[key] === 'string') { try { localStorage.setItem(k, r[key]); } catch { /* this run only */ } }
     if (typeof r.version === 'string' && r.version.toUpperCase() !== bridge.version()) await bridge.setVersion(r.version);
     else if (typeof r.version !== 'string' && bridge.version() !== 'KJV') await save('reading', 'version', bridge.version());
+    setWordClick(r.word);
     const hv: any = await wb(['settings', 'hover']);
     if (typeof hv.mode === 'string') setHover(hv.mode); else if (hoverMode() !== 'off') await save('hover', 'mode', hoverMode());
   } catch { /* the window's own copy stands */ }
@@ -334,7 +335,7 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
   const out: HTMLElement[] = [];
   const reset = (part: string, keys: string[], note = 'Reset this page') => {
     const b = h('button', 'link-btn', note);
-    b.onclick = async () => { for (const k of keys) await save(part, k, null); if (part === 'reading') { bridge.setSize(100); } if (part === 'hover') setHover('off'); redraw(); };
+    b.onclick = async () => { for (const k of keys) await save(part, k, null); if (part === 'reading') { bridge.setSize(100); setWordClick('card'); } if (part === 'hover') setHover('off'); redraw(); };
     return b;
   };
   if (name === 'Reading') {
@@ -350,9 +351,11 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
     out.push(row('Cards on hover', 'Off: a click opens a card, as a tap does. References: only references in pages show a card on hover. Everything: every word and reference.',
       seg(['Off', 'References', 'Everything'], { off: 'Off', refs: 'References', on: 'Everything' }[hoverMode()] ?? 'Off',
         m => { const v = m === 'Off' ? 'off' : m === 'References' ? 'refs' : 'on'; setHover(v); void save('hover', 'mode', v); }), 'hover tooltip preview cards'));
+    out.push(row('A click on a word opens', 'The word’s card, or the Concordance at its entry.',
+      seg(['Card', 'Concordance'], wordClick() === 'concordance' ? 'Concordance' : 'Card', m => { setWordClick(m === 'Concordance' ? 'concordance' : 'card'); void save('reading', 'word', m === 'Concordance' ? 'concordance' : null); }), 'click word card concordance'));
     out.push(...readAloudRows());
     out.push(copyRow());
-    out.push(reset('reading', ['size', 'version']));
+    out.push(reset('reading', ['size', 'version', 'word']));
   } else if (name === 'Notebook') {
     let about: any[] = [];
     try { about = await wb(['settings', 'notebook', '--about']); } catch { /* none */ }

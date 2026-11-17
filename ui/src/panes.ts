@@ -34,7 +34,7 @@ const bookName = (id: number | string) => app.books.find(b => String(b.id) === S
 const KIND: Record<string, string> = {
   search: 'Search', find: 'In your study', near: 'Near', uses: 'Every use', count: 'Count', forms: 'Forms',
   strong: "Strong's", bdb: 'BDB', def: "Webster's 1913", lexiconc: 'Lexicon', interlinear: 'Interlinear',
-  passage: 'Verses', place: 'Verse', versecard: 'Verse', marked: 'Highlights', today: 'Day', lesson: 'Lesson',
+  passage: 'Verses', place: 'Verse', versecard: 'Verse', wordcard: 'Word', marked: 'Highlights', today: 'Day', lesson: 'Lesson',
 };
 
 /**
@@ -871,7 +871,7 @@ export function openHelp(topic = '') {
 const HELP_GROUP: Record<string, string> = {
   notebook: 'keeping', note: 'keeping', thread: 'keeping', threads: 'keeping', shelf: 'keeping', today: 'keeping', marked: 'keeping',
   uses: 'looking up', search: 'looking up', find: 'looking up', interlinear: 'looking up', strong: 'looking up', bdb: 'looking up',
-  def: 'looking up', lexiconc: 'looking up', forms: 'looking up', count: 'looking up', near: 'looking up', versecard: 'looking up',
+  def: 'looking up', lexiconc: 'looking up', forms: 'looking up', count: 'looking up', near: 'looking up', versecard: 'looking up', wordcard: 'looking up',
   documents: 'making', doc: 'making', lesson: 'making',
   passage: 'reading', reader2: 'reading', place: 'reading', plans: 'reading',
 };

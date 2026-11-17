@@ -132,6 +132,12 @@ export function setHover(mode: string) {
   try { localStorage.setItem('wb.hover', mode); } catch { /* this run only */ }
 }
 
+// What a click on a word opens (design/features/settings, Reading): 'card' (the default) or 'concordance'.
+export const wordClick = () => (document.documentElement.dataset.wordclick === 'concordance' ? 'concordance' : 'card');
+export function setWordClick(mode: string) {
+  document.documentElement.dataset.wordclick = mode === 'concordance' ? 'concordance' : 'card';
+}
+
 export const sizeClass = () => {
   const w = window.innerWidth;
   return w < 600 ? 'compact' : w < 1024 ? 'medium' : w < 1440 ? 'expanded' : 'large';
