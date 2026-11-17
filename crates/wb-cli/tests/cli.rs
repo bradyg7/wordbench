@@ -2381,6 +2381,7 @@ fn several_trashed_notes_are_put_back_by_one_command_and_empty_trash_leaves_the_
     assert_eq!(erased["erased"].as_array().unwrap().len(), 2);
     assert!(trash.join("20200101-000000-finding-abcd.md").exists());
     assert!(trash.join("20200101-000000-layout-main.json").exists());
+}
 
 #[test]
 fn make_another_like_this_keeps_look_and_choice_per_kind_and_leaves_the_first_alone() {
