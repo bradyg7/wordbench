@@ -25,6 +25,7 @@ is written so that a person or an AI can build the feature from it without the c
 | [findings](findings/README.md) | Findings: a small movable box, the pane, `!` in the field | Round 1 drawn; exploring | 2026-11-12 | not assessed |
 | [settings](settings/README.md) | Settings, layouts and views: italic words, scroll bars, layouts as pictures | Round 1 drawn; exploring | 2026-11-12 | not assessed |
 | [help](help/README.md) | Help: the Guide as cards, commands to try, keys on a keyboard | Round 1 drawn; exploring | 2026-11-12 | not assessed |
+| [updates](updates/README.md) | Updates: the app updates itself; a dot on the Settings gear, what changed, install and restart, checking by hand, failure | Round 1 drawn (U1-U14); not reviewed by the person; exploring | 2026-11-16 | likely finished (2026-11-16, second pass): all ten checks pass; every decision (U-1 to U-19) is the overseer's inference, so the person's first look is its first review: U1, U2, U3, U4, U5, U6, then U7, U10, U8, U9, then U11-U14. Needs the person: the update signing key, where releases are public, one last install by hand |
 Every general feature, button and command is designed here before it is built; [coverage.md](coverage.md) lists
 every area of the app and the folder that designs it; [overlaps.md](overlaps.md) lists the parts several folders draw, and
 which directions conflict. The round-1 folders of 2026-11-12 share [kit.py](kit.py) for their sheets.

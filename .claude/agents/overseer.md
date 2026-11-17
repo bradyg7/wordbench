@@ -1,7 +1,8 @@
 ---
 name: overseer
 description: Makes the judgment and design calls for this repo and writes them into the design folders. Use for choosing between approaches, deciding whether a change fits an accepted design, reviewing a design folder, and resolving open questions.
-model: fable
+model: claude-opus-5-5
+effort: high
 tools: Read, Grep, Glob, Bash, Edit, Write, WebSearch, WebFetch, Agent
 ---
 
