@@ -274,6 +274,12 @@ pub fn at_of(root: &Path, id: &str) -> Option<At> {
     None
 }
 
+/// `m_` and the second it was written, then its millisecond (so notes of one second still sort in the order they were written), then two random bytes.
+fn stamped_id() -> String {
+    let base = new_id("m");
+    format!("{}{:03}{}", &base[..16], chrono::Utc::now().timestamp_subsec_millis(), &base[16..])
+}
+
 fn today() -> String {
     chrono::Local::now().format("%Y-%m-%d").to_string()
 }
@@ -329,7 +335,7 @@ pub fn add(bible: &Bible, store: &mut Store, place: &str, text: &str, question: 
     check_text(text)?;
     let at = At::from_place(bible, place)?;
     let body = if question && question_of(text).is_none() { question_md(false, text) } else { text.trim_matches('\n').to_string() };
-    let note = Note { id: new_id("m"), at: at.clone(), text: body, written: today(), words: words.trim().to_string() };
+    let note = Note { id: stamped_id(), at: at.clone(), text: body, written: today(), words: words.trim().to_string() };
     let mut notes = read_chapter(&store.root, &at.code, at.c);
     notes.push(note.clone());
     write_chapter(bible, &store.root, &at.code, at.c, notes)?;
