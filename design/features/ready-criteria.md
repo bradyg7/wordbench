@@ -21,6 +21,14 @@ the template.)
    round 4). Windows that only draw the chosen design in the real conditions do not: looking at them is how the
    person decides acceptance, so they are listed for the person, with any inference they carry, and do not fail
    this check.
+   *Revised 2026-11-16 (the Notebook pass):* the person does not want to be asked anything until a design is likely
+   finished, so the overseer no longer leaves a proposed round waiting. Where the person's dated words, findings or
+   leanings point to a direction, the overseer chooses it, records it in the folder as "decided by overseer from
+   existing decisions (inference)", marks the others superseded and has them taken off the board. The check then
+   passes, and the Readiness block lists every such inference first, so the person's look at the sheets is the
+   review. A direction that changes an `AGENTS.md` rule, a study-folder format or the page and thread model is still
+   chosen and drawn, but it is also written under "Needs the person" with the recommendation, and nothing that
+   depends on it is built before the answer.
 2. **No open questions** the existing decisions can answer. Questions left are only the person's (a change to an
    `AGENTS.md` rule, a study-folder format, or the foundation), each with a recommendation.
 3. **The real conditions are drawn:** the part among other tabs, floating, narrow, and with years of study

@@ -23,16 +23,16 @@ A new button or command gets a row here, and its folder, before it is built.
 | Reader | verses, versions, marks, selection | [reader](reader/README.md) | exploring |
 | Word sheet, verse sheet, hover card | a card that moves, a verse alone, hover | [words](words/README.md) | exploring |
 | Highlights and the palette | colors with names, layers by year; words' ink by contrast, any color on any theme | [highlights](highlights/README.md) | exploring (ink accepted 2026-11-16) |
-| Notebook: pages, Pinned, blocks | folders, the library drawer | [library](library/README.md) | exploring |
+| Notebook: pages, Pinned, blocks | the side list, the page, / and the selection bar, many pages at once, folders | [library](library/README.md) | exploring (likely finished 2026-11-16) |
 | Shelf and sets, bookmarks (Keep) | Keep on anything, the folder picker, a folder opened | [library](library/README.md) | exploring |
-| Threads | a thread as a colored folder (A), a page with Places (B), or a layer (C) | [threads](threads/README.md) | exploring |
-| Marks: what the text shows of yours | on the words, in the margin, a passage with its marks | [marks](marks/README.md) | exploring |
-| Questions | asking, the list, answering | [questions](questions/README.md) | exploring |
+| Threads | a thread is a folder with a color (TH-1, waiting on the person's word); its line on the text and its eye | [threads](threads/README.md) | exploring (likely finished 2026-11-16) |
+| Marks: what the text shows of yours | on the words, in the margin, margin notes, Scripture in this page, a passage with its marks | [marks](marks/README.md) | exploring (likely finished 2026-11-16) |
+| Questions | asking, the list, answering | [questions](questions/README.md) | exploring (likely finished 2026-11-16) |
 | Day page, journal, inbox | Today optional; Inbox removed (minimize round 5) | [library](library/README.md) | exploring |
 | Search, uses, count, near, forms | asking and narrowing a search; the [Concordance](concordance/README.md) hosts uses, count, forms and near for an entry and reuses search's controls | [search](search/README.md) | exploring |
 | Reading plans and the reading log | a plan's day, starting a plan, what was read | [reading-plans](reading-plans/README.md) | exploring |
-| Lessons and documents (Word, PDF, Present) | the builder, the viewer, Looks | [documents](documents/README.md) | exploring |
-| Trash | Undo, the 7 days, Empty trash, the way in, deleting a block | [trash](trash/README.md) | accepted |
+| Lessons and documents (Word, PDF, Present) | the builder, the viewer, Looks, where a file went | [documents](documents/README.md) | exploring (likely finished 2026-11-16) |
+| Trash | Undo, the 7 days, Empty trash, the way in, deleting a block; several pages at once (T10) | [trash](trash/README.md) | accepted (rounds 1-2); round 3 likely finished 2026-11-16 |
 | Updates | the notice that a new version is ready, what changed, install and restart | [updates](updates/README.md) | exploring |
 | Findings | the box, the pane, `!` in the field | [findings](findings/README.md) | accepted |
 | Settings, layout, views | italic words, scroll bars, layouts, saved lists | [settings](settings/README.md) | accepted |
@@ -50,12 +50,13 @@ The terminal side of each area above; a command is designed with the area whose 
 | `preview`, `word`, `verse`, `anchor`, `fixture` | Word sheet, verse sheet, hover card | [words](words/README.md) |
 | `strong`, `bdb`, `define`, `lexiconc`, `interlinear`, `word-define` | Concordance, BDB, Webster's | [concordance](concordance/README.md), [books](books/README.md) |
 | `search`, `find`, `uses`, `count`, `forms`, `near` | Search | [search](search/README.md) |
-| `hl`, `marks`, `palette` | Highlights | [highlights](highlights/README.md) |
+| `hl`, `marks`, `palette` | Highlights (`marks` and `hl pencil` also [marks](marks/README.md)) | [highlights](highlights/README.md) |
 | `note`, `page`, `block`, `notebook`, `template` | Notebook | [library](library/README.md) |
-| `thread` | Threads | [threads](threads/README.md) |
+| `thread`; `folder color`, `folder shown` (to add) | Threads | [threads](threads/README.md) |
 | `trail`, `question`, `questions` | Questions (`trail` is retired to "question" by [minimize](minimize/README.md)) | [questions](questions/README.md) |
 | `day`, `journal`, `inbox` | Day page, journal, inbox | [library](library/README.md) |
-| `set`, `shelf` | Shelf and sets | [library](library/README.md) |
+| `set`, `shelf`; `save`, `folder` (to add) | Shelf and sets | [library](library/README.md) |
+| `margin` (to add) | Margin notes | [marks](marks/README.md) |
 | `read`, `plan`, `log` | Reading plans | [reading-plans](reading-plans/README.md) |
 | `lesson`, `docs`, `craft` | Lessons and documents | [documents](documents/README.md) |
 | `trash` | Trash | [trash](trash/README.md) |
