@@ -1077,6 +1077,18 @@ pub fn threads(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
         }
         let Some(held) = thread_fence(&sub(&c, b.start, b.end)) else { continue };
         let mut v = json!({"n": i + 1, "held": held});
+        // a ```thread fence names a folder (TH-3): a thread file read as one, or a set folder; it shows the folder's saves
+        let folder = if thread_by(store, &held).is_none() && !held.is_empty() { store.find_set(&held).ok() } else { None };
+        if let Some(set) = folder {
+            let places: Vec<Value> = set["items"].as_array().cloned().unwrap_or_default().into_iter().filter(|i| i["kind"] == "place").collect();
+            v["thread"] = set["id"].clone();
+            v["name"] = set["name"].clone();
+            v["color"] = json!(s(&set, "color"));
+            v["count"] = json!(places.len());
+            v["refs"] = json!(places.iter().take(4).map(|m| nb::label(bible, m["ref"].as_str().unwrap_or(""))).collect::<Vec<_>>());
+            out.push(v);
+            continue;
+        }
         match thread_by(store, &held) {
             None if held.is_empty() => v["error"] = json!("No thread yet: write its name under ```thread."),
             None => v["error"] = json!(format!("No thread called “{held}”.")),
@@ -1141,8 +1153,10 @@ pub fn set_value_block(bible: &Bible, store: &mut Store, id: &str, n: usize, lan
     }
     let value = value.trim();
     let held = if lang == "thread" {
-        let t = thread_by(store, value).ok_or_else(|| missing(format!("No thread called “{value}”.")))?;
-        s(&t, "id")
+        match thread_by(store, value) {
+            Some(t) => s(&t, "id"),
+            None => s(&store.find_set(value).map_err(|_| missing(format!("No thread called “{value}”.")))?, "id"),
+        }
     } else {
         let st = value.to_uppercase();
         if !crate::lookup::is_strong(&st) || crate::lookup::strong(bible, &st)?.is_none() {

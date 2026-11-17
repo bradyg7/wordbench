@@ -12,7 +12,7 @@ import '@fontsource/noto-sans-hebrew/400.css';
 import { api, inApp, onDo, wb, type WordView, type VerseView, type Book, type Mark } from './api';
 import { draw, drawTimes, paint, textOf, labelOf, type Drawn } from './reader';
 import { Selector, type InputMode } from './select';
-import { openSheet, closeSheet, showCard, hideCard, toast, compact } from './sheets';
+import { openSheet, closeSheet, showCard, hideCard, toast, toastUndo, compact } from './sheets';
 import { perf, afterPaint, record } from './perf';
 import { app, goTo, here, type At } from './app';
 import { layers } from './layers';
@@ -897,17 +897,58 @@ async function highlightsMenu(from: HTMLElement) {
     b.append(icon(on ? 'eye' : 'eyeoff', 14));
     if (dot) b.append(dot);
     b.append(document.createTextNode(` ${label}`));
-    b.onclick = () => { flip(); layers.save(); repaintLayers(); close(); highlightsMenu(from); };
+    b.onclick = () => { flip(); layers.save(); repaintLayers(); close(); void highlightsMenu(from); };
     box.append(b);
   };
   box.append(h('div', 'label', 'In all readers'));
-  box.append(h('p', 'layers-hint', 'Controls highlight fills and thread underlines. Notes, questions and verse markers stay visible.'));
-  toggle('All highlights and threads', layers.all, () => { layers.all = !layers.all; });
+  box.append(h('p', 'layers-hint', 'Controls highlight fills and the lines of folders with a color. Notes, questions and verse markers stay visible.'));
+  toggle('All highlights and folder lines', layers.all, () => { layers.all = !layers.all; });
   toggle('Your highlights', layers.mine, () => { layers.mine = !layers.mine; });
-  let ts: any[] = [];
-  try { ts = await wb(['thread', 'list']); } catch { /* outside the app */ }
-  if (ts.length) box.append(h('div', 'label', 'Threads'));
-  for (const t of ts) toggle(t.name, !layers.hidden.has(t.id), () => { if (layers.hidden.has(t.id)) layers.hidden.delete(t.id); else layers.hidden.add(t.id); }, h('i', `dot c-${t.color}`));
+  // Shown on the text (T1, T10, T11): the folders with a color, the shown ones first, the rest folded under their parent
+  let ts: any[] = [], where: any[] = [];
+  try { [ts, where] = await Promise.all([wb(['folder', 'shown']), wb(['folder', 'list'])]); } catch { /* outside the app */ }
+  if (ts.length) {
+    box.append(h('div', 'label', 'Shown on the text'));
+    const parentOf = (key: string) => { const f = where.find(x => x.id === key); const p = where.find(x => x.id === f?.parent); return p ? p.name : 'Other folders'; };
+    const row = (t: any) => {
+      const b = h('button', `menu-item check eye-row${t.shown ? ' on' : ''}`);
+      b.setAttribute('aria-pressed', String(t.shown));
+      b.append(icon(t.shown ? 'eye' : 'eyeoff', 14), h('i', `dot c-${t.color}`), h('span', 'eye-name', t.name));
+      b.onclick = async () => { try { await wb(['folder', 'shown', t.key, t.shown ? 'off' : 'on']); await refreshMarks(); } catch (x) { toast(String(x)); } close(); void highlightsMenu(from); };
+      return b;
+    };
+    const search = h('input', 'field small eye-search') as HTMLInputElement;
+    search.placeholder = 'Find a folder';
+    search.setAttribute('aria-label', 'Find a folder with a color');
+    const list = h('div', 'eye-list');
+    const paint = () => {
+      const q = search.value.trim().toLowerCase();
+      list.replaceChildren();
+      const hit = ts.filter(t => !q || t.name.toLowerCase().includes(q));
+      for (const t of hit.filter(t => t.shown)) list.append(row(t));
+      const rest = hit.filter(t => !t.shown);
+      const by = new Map<string, any[]>();
+      for (const t of rest) by.set(parentOf(t.id), [...(by.get(parentOf(t.id)) || []), t]);
+      for (const [p, rows] of by) {
+        const d = h('details', 'eye-group') as HTMLDetailsElement;
+        d.open = !!q;
+        d.append(h('summary', '', `${p} (${rows.length})`), ...rows.map(row));
+        list.append(d);
+      }
+    };
+    search.oninput = paint;
+    paint();
+    const hideAll = h('button', 'menu-item eye-hide-all', 'Hide all');
+    hideAll.onclick = async () => {
+      try {
+        const r = await wb(['folder', 'shown', '--none']);
+        await refreshMarks();
+        close();
+        toastUndo('Every folder line is hidden', async () => { await wb(['folder', 'shown', ...(r.was_shown as string[]).flatMap(k => ['--restore', k])]); await refreshMarks(); });
+      } catch (x) { toast(String(x)); }
+    };
+    box.append(search, hideAll, list);
+  }
   const list = h('button', 'menu-item', 'Your highlights, listed…');
   list.onclick = () => { close(); openMarked('', 'all'); };
   box.append(list);

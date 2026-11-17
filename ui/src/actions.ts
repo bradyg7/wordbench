@@ -248,7 +248,8 @@ export async function perform(a: any, line: string): Promise<string> {
       const drawn = app.drawn;
       if (!drawn) return 'Open a chapter before saving a PDF';
       const chapter = `${drawn.chapter.name} ${drawn.chapter.chapter}`;
-      const threads = Object.keys(drawn.marks.thread_names).filter(id => layers.shown(id));
+      const off = drawn.marks.hidden || [];
+      const threads = Object.keys(drawn.marks.thread_names).filter(id => layers.all && !off.includes(id) && !id.startsWith('folder:'));
       const flags = layers.all ? [...(layers.mine ? [] : ['--no-mine']), ...threads.flatMap(id => ['--thread', id])] : ['--no-highlights'];
       const file = await wb(['pdf', chapter, ...flags, '--open']);
       return `Saved ${file.name}`;
@@ -359,22 +360,23 @@ async function changeThread(a: any): Promise<string> {
 }
 
 async function changeLayers(a: any): Promise<string> {
-  const ts: any[] = await wb(['thread', 'list']);
+  const ts: any[] = await wb(['folder', 'shown']);
   const named = (n: string) => ts.find(t => t.name.toLowerCase() === n.toLowerCase()) || ts.find(t => t.name.toLowerCase().startsWith(n.toLowerCase()));
   switch (a.action) {
-    case 'all': layers.all = true; layers.mine = true; layers.hidden.clear(); break;
+    case 'all': layers.all = true; layers.mine = true; await wb(['folder', 'shown', '--all']); await app.refreshMarks(); break;
     case 'none': layers.all = false; break;
     case 'mine': layers.mine = a.on; break;
     case 'show': case 'hide': {
       const t = named(a.name);
-      if (!t) return `No thread called “${a.name}”.`;
-      if (a.action === 'show') { layers.hidden.delete(t.id); layers.all = true; } else layers.hidden.add(t.id);
+      if (!t) return `No folder with a color called “${a.name}”.`;
+      if (a.action === 'show') layers.all = true;
+      await wb(['folder', 'shown', t.key, a.action === 'show' ? 'on' : 'off']);
       layers.save();
-      app.repaintLayers();
+      await app.refreshMarks();
       return `${a.action === 'show' ? 'Showing' : 'Hiding'} “${t.name}”`;
     }
     case 'panel': { const b = document.getElementById('hl-menu') ?? document.getElementById('more'); if (document.getElementById('hl-menu')) b!.click(); else hooks.highlights(b!); return 'The layers'; }
-    default: return `Drawn: ${layers.highlightsShown() ? 'your highlights' : 'no highlights'}; threads: ${ts.filter(t => layers.shown(t.id)).map(t => t.name).join(', ') || 'none'}`;
+    default: return `Drawn: ${layers.highlightsShown() ? 'your highlights' : 'no highlights'}; folders: ${ts.filter(t => t.shown).map(t => t.name).join(', ') || 'none'}`;
   }
   layers.save();
   app.repaintLayers();

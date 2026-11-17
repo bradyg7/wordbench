@@ -35,17 +35,18 @@ const STEP = 500;    // words per later part
 // Where drawing time goes (read by open() for the budgets).
 export const drawTimes = { html_ms: 0, refs_ms: 0, first_words: 0 };
 
-interface Look { hl?: string; th: string[]; note: boolean }
+interface Look { hl?: string; th: string[]; names: string[]; note: boolean }
 
 function look(c: Computed, k: number): Look {
   const th = c.threads[k];
-  return { hl: c.hl[k], th: th ? th.map(threadColor) : [], note: c.noted[k] === 1 };
+  // at most two lines under a run (TH-6); the hover names every folder
+  return { hl: c.hl[k], th: th ? th.slice(0, 2).map(threadColor) : [], names: th ? th.map(t => c.names[t.id] || '') : [], note: c.noted[k] === 1 };
 }
 
 function gapLook(c: Computed, k: number, n: number): Look {
-  if (k + 1 >= n) return { th: [], note: false };
+  if (k + 1 >= n) return { th: [], names: [], note: false };
   const a = look(c, k), b = look(c, k + 1);
-  return { hl: a.hl && a.hl === b.hl ? a.hl : undefined, th: a.th.filter(x => b.th.includes(x)), note: false };
+  return { hl: a.hl && a.hl === b.hl ? a.hl : undefined, th: a.th.filter(x => b.th.includes(x)), names: a.names, note: false };
 }
 
 const marked = (m: Look) => !!m.hl || m.th.length > 0 || m.note;
@@ -66,12 +67,22 @@ function apply(e: HTMLElement, m: Look, gap = false) {
   e.classList.toggle('hl', !!m.hl);
   e.classList.toggle('noted', m.note);
   e.style.cssText = styleOf(m, gap);
+  if (!gap) { if (m.names.length) e.title = m.names.join(', '); else e.removeAttribute('title'); }
 }
+
+// A whole verse saved in a shown folder with a color: its color in the verse number's margin mark, the words untouched.
+function marginStyle(c: Computed, v: number): string {
+  const at = c.margin.get(v);
+  if (!at) return '';
+  return at.slice(0, 2).map((t, j) => `${threadColor(t)} ${-3 - j * 4}px 0 0 0`).join(',');
+}
+const marginTitle = (c: Computed, v: number) => (c.margin.get(v) || []).map(t => c.names[t.id] || '').join(', ');
 
 // The marks the layers let through: no highlights when they are hidden, and only the threads shown.
 function compute(keys: number[], m: Marks, ch: number): Computed {
   const shown = layers.highlightsShown() ? m : { ...m, highlights: [] };
-  return computeMarks(keys, shown, ch, id => layers.shown(id));
+  const off = m.hidden || [];
+  return computeMarks(keys, shown, ch, id => layers.all && !off.includes(id));
 }
 
 export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVerse = 1, questions = new Set<number>()): Drawn {
@@ -116,9 +127,9 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
         open = true;
       }
       const c = now.c;
-      if (w.first) out.push(`<span class="vn${c.verses.has(v[k]) ? ' vnote' : ''}${questions.has(v[k]) ? ' vq' : ''}" data-v="${v[k]}">${v[k]}</span>`);
+      if (w.first) out.push(`<span class="vn${c.verses.has(v[k]) ? ' vnote' : ''}${questions.has(v[k]) ? ' vq' : ''}${c.margin.has(v[k]) ? ' vth' : ''}" data-v="${v[k]}"${c.margin.has(v[k]) ? ` style="box-shadow:${marginStyle(c, v[k])}" title="${esc(marginTitle(c, v[k]))}"` : ''}>${v[k]}</span>`);
       const m = look(c, k);
-      out.push(`<span class="${w.cls}${m.hl ? ' hl' : ''}${m.note ? ' noted' : ''}" data-k="${k}"${marked(m) ? ` style="${styleOf(m)}"` : ''}>${esc(text[k])}</span>`);
+      out.push(`<span class="${w.cls}${m.hl ? ' hl' : ''}${m.note ? ' noted' : ''}" data-k="${k}"${m.names.length ? ` title="${esc(m.names.join(', '))}"` : ''}${marked(m) ? ` style="${styleOf(m)}"` : ''}>${esc(text[k])}</span>`);
       const g = gapLook(c, k, n);
       out.push(!w.last && marked(g) ? `<span class="g" data-k="${k}" style="${styleOf(g, true)}">${esc(gapText[k])}</span>` : esc(gapText[k]));
     }
@@ -178,6 +189,10 @@ export function paint(root: HTMLElement, d: Drawn) {
   root.querySelectorAll<HTMLElement>('.vn').forEach(e => {
     e.classList.toggle('vnote', d.c.verses.has(+e.dataset.v!));
     e.classList.toggle('vq', d.questions.has(+e.dataset.v!));
+    const v = +e.dataset.v!;
+    e.classList.toggle('vth', d.c.margin.has(v));
+    e.style.boxShadow = marginStyle(d.c, v);
+    if (d.c.margin.has(v)) e.title = marginTitle(d.c, v); else e.removeAttribute('title');
   });
 }
 

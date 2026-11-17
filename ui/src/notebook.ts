@@ -33,7 +33,6 @@ const SECTIONS: [Group, string, string][] = [
   ['day', 'Days', 'Today’s page and every page by the day it was written'],
   ['pages', 'Pages', 'Pages with no place yet'],
   ['chapter', 'Places', 'Pages by place: the chapter you are reading, or every chapter'],
-  ['thread', 'Threads', 'Pages by thread'],
   ['questions', 'Questions', 'Your questions, open and answered'],
   ['none', 'All', 'Every page, the most recently changed first'],
 ];
@@ -178,7 +177,7 @@ function createNotebookSession(fixed?: PageTab) {
       if (!state || typeof state !== 'object') return;
       if (typeof state.openId === 'string') openId = dock.find(pageTabKey(state.openId)) ? null : state.openId;
       else if (state.openId === null) openId = null;
-      if (['day', 'chapter', 'thread', 'none', 'pages', 'questions', null].includes(state.group)) group = state.group;
+      if (['day', 'chapter', 'none', 'pages', 'questions', null].includes(state.group)) group = state.group;
       showTrash = state.showTrash === true; editorShown = state.editorShown === true;
       mainList = state.mainList && ['chapter', 'view', 'templates'].includes(state.mainList.kind) ? state.mainList : null;
       draft = null;
@@ -341,11 +340,11 @@ function createNotebookSession(fixed?: PageTab) {
       }
       return field(label, input);
     };
-    const kind = select('Kind', [['all', 'All pages'], ['note', 'Notes'], ['question', 'Questions'], ['day', 'Day pages'], ['thread', 'Thread pages']]);
+    const kind = select('Kind', [['all', 'All pages'], ['note', 'Notes'], ['question', 'Questions'], ['day', 'Day pages'], ['thread', 'Folder pages']]);
     const place = field('Place', h('input', 'field small'));
     place.placeholder = 'Reference or Strong’s number';
-    const thread = field('Thread', h('select', 'field small'));
-    const any = h('option', '', 'Any thread');
+    const thread = field('Folder', h('select', 'field small'));
+    const any = h('option', '', 'Any folder');
     any.value = '';
     thread.append(any);
     let loaded = false;
@@ -596,7 +595,7 @@ function createNotebookSession(fixed?: PageTab) {
     else if (e.kind === 'day' && !e.exists) it.append(h('div', 'nb-item-preview', 'Not written in yet'));
     const chips = h('div', 'nb-item-chips');
     if (e.kind === 'question') chips.append(h('span', 'pill question-pill', e.status === 'done' ? '? Answered' : '?'));
-    if (e.kind === 'thread') chips.append(h('span', 'pill unplaced', 'Thread'));
+    if (e.kind === 'thread') chips.append(h('span', 'pill unplaced', 'Folder'));
     else if (e.kind === 'day') chips.append(h('span', 'pill unplaced', e.today ? 'Today’s page' : 'Day’s page'));
     else if (e.placed && e.anchor) chips.append(placePill(e.label));
     else if (e.placed) chips.append(h('span', 'pill unplaced', e.label));
@@ -2621,15 +2620,14 @@ function createNotebookSession(fixed?: PageTab) {
     color.title = 'The color of the underline this thread draws in the reader';
     row.append(color);
     row.append(button('chip nb-add', 'Put in Bible order', async () => { try { await wb(['thread', 'sort', e.slug!]); changed('threads'); } catch (x) { toast(String(x)); } }, 'lines'));
-    const shown = () => layers.shown(e.slug!);
-    const eye = button('chip nb-add nb-thread-eye', '', () => {
-      if (layers.hidden.has(e.slug!)) layers.hidden.delete(e.slug!); else layers.hidden.add(e.slug!);
-      layers.save();
-      app.repaintLayers();
-      draw();
+    // the eye is kept in settings (wb folder shown), not in the browser and not in the thread's file (TH-5)
+    let on = true;
+    const eye = button('chip nb-add nb-thread-eye', '', async () => {
+      try { await wb(['folder', 'shown', `thread:${e.slug}`, on ? 'off' : 'on']); changed('threads'); } catch (x) { toast(String(x)); }
     });
-    const draw = () => { eye.replaceChildren(icon(shown() ? 'eye' : 'eyeoff', 14), document.createTextNode(shown() ? ' Drawn in the reader' : ' Hidden in the reader')); };
+    const draw = () => { eye.replaceChildren(icon(on ? 'eye' : 'eyeoff', 14), document.createTextNode(on ? ' Shown on the text' : ' Hidden on the text')); };
     draw();
+    void wb(['folder', 'list']).then((l: any[]) => { on = l.find(f => f.id === `thread:${e.slug}`)?.shown !== false; draw(); }).catch(() => {});
     row.append(eye, h('span', 'grow'));
     row.append(button('btn soft small', 'Make a document', () => pane?.el.querySelector('.nb-docs')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 'file'));
     return row;
