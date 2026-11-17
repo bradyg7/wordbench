@@ -20,6 +20,12 @@ Dated, newest round last. Each says what was chosen and what was rejected, so th
 
 - **Short name.** What was decided. What was rejected, and why if the person said.
 
+## The person's findings that touch it (read only, `bible-study-data/findings`)
+
+| Finding | In short |
+|---|---|
+|  |  |
+
 ## Open questions
 
 - Question, and which round will answer it.
@@ -57,7 +63,7 @@ follow it. Name the window (its tag, e.g. A1, on the board) that shows it.
 
 - [ ] Behaviour, in the app's words. (A1)
 - [ ] The `wb` command that reaches the same action (every core action has one).
-- [ ] What happens to the study files, if anything (same files, same formats; the Python app still opens them).
+- [ ] What happens to the study files, if anything (the study formats are this app's to shape; an old form is still read, and moving files to a new form is designed first).
 - [ ] The reader's place is kept.
 
 ## Out of scope / later

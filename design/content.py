@@ -19,7 +19,10 @@ OUT = Path(__file__).resolve().parent / "content.json"
 
 def wb(*args):
     env = dict(os.environ, PYTHONIOENCODING="utf-8")
-    out = subprocess.run([sys.executable, str(ROOT / "wb.py"), *args], cwd=ROOT, env=env, capture_output=True,
+    exe = ROOT / "target" / "release" / "wb.exe"
+    if not exe.exists():
+        exe = ROOT / "target" / "debug" / "wb.exe"
+    out = subprocess.run([str(exe), *args], cwd=ROOT, env=env, capture_output=True,
                          text=True, encoding="utf-8", check=True)
     return out.stdout
 
