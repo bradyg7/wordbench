@@ -1301,9 +1301,18 @@ pub fn duplicate(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
         return Err(bad("A day's page or a thread's page is not duplicated."));
     }
     let rec = store.find_note(id.trim())?;
-    let text = retitle(&s(&rec, "text"), &format!("{} (copy)", nb::page_title(&rec)))?;
+    let copy_title = format!("{} (copy)", nb::page_title(&rec));
     let parent = s(&rec, "parent");
-    new_page(bible, store, Some(parent.as_str()).filter(|p| !p.is_empty()), &text, false, None)
+    let parent = Some(parent.as_str()).filter(|p| !p.is_empty());
+    if !s(&rec, "title").trim().is_empty() {
+        // a page with a `title:` field (L-21): the copy keeps the body as it is and has the field with " (copy)"
+        let made = new_page(bible, store, parent, &s(&rec, "text"), false, None)?;
+        let id = made["id"].as_str().unwrap_or_default().to_string();
+        store.set_fields(&id, &[("title", Some(json!(copy_title)))])?;
+        return nb::show(bible, store, &id);
+    }
+    let text = retitle(&s(&rec, "text"), &copy_title)?;
+    new_page(bible, store, parent, &text, false, None)
 }
 
 /// The `[[link]]` that Copy link copies: the page's title in double brackets (its day for a day's page).

@@ -1173,7 +1173,7 @@ fn the_notebook_s_settings_are_kept_per_key() {
     assert!(wb.fails(&["settings", "notebook", "group", "verse"]).contains("Group by"));
     assert!(wb.fails(&["settings", "notebook", "capture", "J"]).contains("Ctrl or Alt"));
     assert!(wb.fails(&["settings", "reader"]).contains("notebook"));
-    assert_eq!(wb.js(&["settings", "notebook", "--about"]).as_array().unwrap().len(), 5); // library L-8: the Notebook keeps Today, Opens with, Places, Quick capture and its grouping
+    assert_eq!(wb.js(&["settings", "notebook", "--about"]).as_array().unwrap().len(), 5); // the settings build: five Notebook settings now
     // W1: the Inbox is gone from the settings; the Notebook can open with Pages or Questions
     assert!(wb.fails(&["settings", "notebook", "inbox", "on"]).contains("settings are"));
     assert_eq!(wb.js(&["settings", "notebook", "group", "pages"])["group"], json!("pages"));

@@ -99,8 +99,20 @@ fn write_placing(store: &mut Store, par: &HashMap<String, String>, lists: &HashM
             out.insert(id.clone(), json!({"parent": parent, "order": i + 1}));
         }
     }
+    // only a folder whose place this edit changes has its own file written (L-22); a legacy set file whose place is only
+    // in settings/shelf.json stays byte for byte as it is, with its `updated` untouched
+    let before = parents(store);
+    let own: HashMap<String, String> = store.sets().iter().filter_map(|t| t.get("parent").and_then(|p| p.as_str()).map(|p| (s(t, "id"), p.to_string()))).collect();
     for (id, p) in par {
-        store.set_parent(id, p)?;
+        // a file with its own `parent:` is changed when that differs (a parent that is gone is cleared); a legacy file only
+        // when this edit changes where the folder sits
+        let differs = match own.get(id) {
+            Some(o) => o != p,
+            None => before.get(id) != Some(p),
+        };
+        if differs {
+            store.set_parent(id, p)?;
+        }
     }
     let mut sorted: Vec<(String, Value)> = out.into_iter().collect();
     sorted.sort_by(|a, b| a.0.cmp(&b.0));

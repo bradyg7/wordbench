@@ -257,3 +257,59 @@ fn a_pages_title_field_wins_and_check_reports_a_difference() {
     let diff = wb.js(&["study", "check"])["library"]["title_differs"].clone();
     assert_eq!((diff[0]["title_field"].clone(), diff[0]["first_line"].clone()), (json!("The field title"), json!("First line title")));
 }
+
+#[test]
+fn a_folder_edit_writes_only_the_files_it_changes() {
+    let Some(wb) = Wb::new() else { return };
+    // legacy form: sets with no parent field, their place only in settings/shelf.json
+    for (slug, name) in [("alpha", "Alpha"), ("beta", "Beta"), ("gamma", "Gamma")] {
+        std::fs::create_dir_all(wb.dir.join("sets")).unwrap();
+        std::fs::write(wb.dir.join("sets").join(format!("{slug}.md")), format!("---
+name: \"{name}\"
+created: \"2026-01-01T00:00:00Z\"
+updated: \"2026-01-01T00:00:00Z\"
+---
+
+")).unwrap();
+    }
+    std::fs::create_dir_all(wb.dir.join("settings")).unwrap();
+    std::fs::write(wb.dir.join("settings").join("shelf.json"), r#"{"folders": {"beta": {"parent": "alpha", "order": 1}}}"#).unwrap();
+    let read = |s: &str| std::fs::read(wb.dir.join("sets").join(format!("{s}.md"))).unwrap();
+    let (a, b, g) = (read("alpha"), read("beta"), read("gamma"));
+    wb.js(&["folder", "new", "Delta"]);
+    wb.js(&["folder", "move", "Delta", "--in", "Gamma"]);
+    assert_eq!((read("alpha"), read("beta"), read("gamma")), (a.clone(), b.clone(), g.clone()));
+    assert!(String::from_utf8(read("delta")).unwrap().contains("parent: \"gamma\""));
+    // removing a folder rewrites only the folders that were inside it
+    wb.js(&["folder", "rm", "Gamma"]);
+    assert_eq!((read("alpha"), read("beta")), (a, b));
+    assert!(!String::from_utf8(read("delta")).unwrap().contains("parent:"));
+    // the legacy placing is still read
+    let list = wb.js(&["folder", "list"]);
+    assert!(list.as_array().unwrap().iter().any(|f| f["name"] == "Beta" && f["parent"] == "alpha"));
+}
+
+#[test]
+fn duplicating_a_page_with_a_title_field_keeps_the_body_and_the_field() {
+    let Some(wb) = Wb::new() else { return };
+    let id = wb.page("Old first line
+
+The body text");
+    let file = wb.file_with("The body text");
+    let text = std::fs::read_to_string(&file).unwrap().replacen("---
+", "---
+title: \"Field title\"
+", 1);
+    std::fs::write(&file, text).unwrap();
+    let copy = wb.js(&["page", "duplicate", &id]);
+    let cid = copy["id"].as_str().unwrap();
+    assert_eq!(wb.ok(&["page", "link", cid]).trim(), "[[Field title (copy)]]");
+    let cfile = std::fs::read_to_string(wb.file_with("title: \"Field title (copy)\"")).unwrap();
+    let cfile = cfile.replace(char::from(13), "");
+    assert!(cfile.contains("Old first line
+
+The body text"), "{cfile}");
+    // the original is untouched
+    assert!(std::fs::read_to_string(&file).unwrap().contains("title: \"Field title\"
+"));
+}

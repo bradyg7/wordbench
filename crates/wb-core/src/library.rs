@@ -27,7 +27,7 @@ pub fn item_of(bible: &Bible, store: &Store, thing: &str) -> Result<Value> {
         return Err(bad("Name what to save: a place (Num 25:11), H7065, page:<id>, search:\"words\", document:<name> or sitting:<id>."));
     }
     let (head, rest) = match t.split_once(':') {
-        Some((h, r)) if ["page", "search", "document", "sitting"].contains(&h.to_lowercase().as_str()) => (h.to_lowercase(), r.trim()),
+        Some((h, r)) if ["page", "search", "document", "sitting", "thread"].contains(&h.to_lowercase().as_str()) => (h.to_lowercase(), r.trim()),
         _ => (String::new(), t),
     };
     match head.as_str() {
@@ -38,6 +38,10 @@ pub fn item_of(bible: &Bible, store: &Store, thing: &str) -> Result<Value> {
             }
             let id = store.find_note(rest)?;
             Ok(json!({"kind": "note", "ref": s(&id, "id")}))
+        }
+        "thread" => {
+            store.thread(rest)?;
+            Ok(json!({"kind": "thread", "ref": rest}))
         }
         "search" => {
             let q = rest.trim_matches('"').trim();
