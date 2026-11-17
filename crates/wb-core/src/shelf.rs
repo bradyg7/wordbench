@@ -82,7 +82,8 @@ pub fn tree(bible: &Bible, store: &Store) -> Result<Value> {
         Ok(v)
     }
     let top = children(store, &par, "");
-    Ok(json!({"folders": top.iter().map(|t| node(bible, store, &par, t, 0)).collect::<Result<Vec<_>>>()?}))
+    // thread files are folders with a color (TH-1), listed apart so a set's own operations never meet one
+    Ok(json!({"folders": top.iter().map(|t| node(bible, store, &par, t, 0)).collect::<Result<Vec<_>>>()?, "thread_folders": crate::folders::thread_folders(store)}))
 }
 
 /// Write where every folder sits, from the parents and the order of each folder's children (sets that are gone are left out).

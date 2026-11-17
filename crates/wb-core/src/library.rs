@@ -152,11 +152,14 @@ pub fn folder_list(store: &Store) -> Value {
         for t in crate::shelf::children_of(store, par, of) {
             let id = s(&t, "id");
             let kids = crate::shelf::children_of(store, par, &id).len();
-            out.push(json!({"id": id, "name": t["name"], "parent": of, "depth": depth, "items": t["items"].as_array().map(|a| a.len()).unwrap_or(0), "folders": kids}));
+            out.push(json!({"id": id, "name": t["name"], "parent": of, "depth": depth, "items": t["items"].as_array().map(|a| a.len()).unwrap_or(0), "folders": kids,
+                "kind": "folder", "color": s(&t, "color"), "shown": !s(&t, "color").is_empty() && !crate::folders::hidden_keys(store).contains(&id)}));
             walk(store, par, &id, depth + 1, out);
         }
     }
     walk(store, &tree, "", 0, &mut out);
+    // a thread file is a folder with a color (TH-1): at the top, after the folders, read where it is
+    out.extend(crate::folders::thread_folders(store));
     json!(out)
 }
 

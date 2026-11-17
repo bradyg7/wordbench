@@ -261,3 +261,17 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .theme-preview { margin-top: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .theme-preview-verse { font-family: var(--font-read, serif); margin: 4px 0; line-height: 1.6; }
 .theme-marks .swatch { width: 22px; height: 22px; border-radius: 6px; display: inline-block; flex: none; }
+
+/* A whole verse saved in a shown folder with a color: its color beside the verse number, the words untouched (threads TH-7) */
+.vn.vth { margin-left: 6px; }
+.eye-list { max-height: 260px; overflow: auto; }
+.eye-row .eye-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; text-align: left; }
+.eye-row { min-height: 32px; }
+.eye-group > summary { cursor: pointer; padding: 6px 8px; color: var(--muted, inherit); }
+.eye-search { width: calc(100% - 16px); margin: 4px 8px; }
+.toast-undo { pointer-events: auto; }
+@media (max-width: 600px) { .layers-menu .menu-item { min-height: 44px; } .eye-row { min-height: 44px; } }
+/* narrow: Shown on the text is a sheet over the bottom, not a small popover (threads T10) */
+@media (max-width: 600px) {
+  .menu:has(.layers-menu) { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: 100% !important; max-height: 80vh; overflow: auto; border-radius: 12px 12px 0 0; }
+}

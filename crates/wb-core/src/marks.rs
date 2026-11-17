@@ -23,6 +23,8 @@ pub struct ChapterMarks {
     pub threads: Vec<Mark>,
     /// Thread id → name, for the threads that have places here.
     pub thread_names: std::collections::BTreeMap<String, String>,
+    /// Ids (as in `threads`) of colored folders whose eye is off: the reader draws none of their marks (TH-5).
+    pub hidden: Vec<String>,
 }
 
 fn inside(a: &Anchor, code: &str, chapter: u32) -> bool {
@@ -43,6 +45,30 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: u32) -> Result<ChapterM
             if let Ok(a) = anchors::parse(&place) {
                 if inside(&a, code, chapter) {
                     m.notes.push(Mark { at: a, id: s(n, "id"), color: String::new() });
+                }
+            }
+        }
+    }
+    for f in crate::folders::colored(store) {
+        if !crate::folders::eye_on(store, &f) {
+            m.hidden.push(crate::folders::mark_id(&f));
+        }
+    }
+    // a set folder with a color: the places it saves (TH-1)
+    for t in store.sets() {
+        let color = s(&t, "color");
+        if color.is_empty() {
+            continue;
+        }
+        let id = format!("folder:{}", s(&t, "id"));
+        for i in t["items"].as_array().cloned().unwrap_or_default() {
+            if i["kind"] != "place" {
+                continue;
+            }
+            if let Ok(a) = anchors::parse(i["ref"].as_str().unwrap_or("")) {
+                if inside(&a, code, chapter) {
+                    m.thread_names.insert(id.clone(), s(&t, "name"));
+                    m.threads.push(Mark { at: a, id: id.clone(), color: color.clone() });
                 }
             }
         }
@@ -89,5 +115,5 @@ pub fn verse_level(m: ChapterMarks) -> ChapterMarks {
         .collect();
     let threads: Vec<Mark> = m.threads.into_iter().filter(whole).collect();
     let thread_names = m.thread_names.into_iter().filter(|(id, _)| threads.iter().any(|t| &t.id == id)).collect();
-    ChapterMarks { highlights: m.highlights.into_iter().filter(whole).collect(), notes, threads, thread_names }
+    ChapterMarks { highlights: m.highlights.into_iter().filter(whole).collect(), notes, threads, thread_names, hidden: m.hidden }
 }

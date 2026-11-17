@@ -1496,6 +1496,10 @@ impl Store {
         if let Some(p) = t.get("parent").and_then(|p| p.as_str()).filter(|p| !p.is_empty()) {
             meta.insert("parent".into(), json!(p));
         }
+        // a folder's color (what a thread was, TH-1): written only when it has one
+        if !s(t, "color").is_empty() {
+            meta.insert("color".into(), t["color"].clone());
+        }
         let bullets: Vec<String> = t["items"].as_array().unwrap().iter().map(|i| format!("- {}", py_dumps(i))).collect();
         let body = format!("{}\n\n{}", s(t, "note"), bullets.join("\n"));
         let id = s(t, "id");
@@ -1617,6 +1621,24 @@ impl Store {
             t.shift_remove("parent");
         } else {
             t.insert("parent".into(), json!(parent));
+        }
+        self.write_set(&mut t)
+    }
+
+    /// A folder's color (TH-1), in its own set file; "" clears it. The file is written only when this changes it.
+    pub fn set_color(&mut self, id: &str, color: &str) -> Result<()> {
+        let c = check_color(Some(color).filter(|x| !x.is_empty()))?.unwrap_or_default();
+        let mut t = self.set(id)?;
+        if s(&t, "color") == c {
+            return Ok(());
+        }
+        if c.is_empty() {
+            t.shift_remove("color");
+        } else {
+            t.insert("color".into(), json!(c));
+            if !COLORS.contains(&c.as_str()) {
+                self.use_palette_color(&c)?;
+            }
         }
         self.write_set(&mut t)
     }
@@ -1811,6 +1833,9 @@ fn parse_set(stem: &str, text: &str) -> Option<Rec> {
         "note": note.join("\n").trim(), "items": items}).as_object().unwrap().clone();
     if let Some(p) = meta.get("parent").and_then(|p| p.as_str()).filter(|p| !p.is_empty()) {
         rec.insert("parent".into(), json!(p));
+    }
+    if let Some(c) = check_color(meta.get("color").and_then(|c| c.as_str())).ok().flatten() {
+        rec.insert("color".into(), json!(c));
     }
     Some(rec)
 }
