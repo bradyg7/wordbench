@@ -33,7 +33,7 @@ pub const PALETTE_MAX: usize = 8;
 pub const ANCHORS_MARK: &str = "<!-- anchors -->";
 /// What a set can hold. `document` (a record in documents/, R2) is new here: the Python app passes over it when it reads a
 /// set, and drops it if it rewrites that set (docs/archive/2026-11-10/docs/redesign-R2.md section 4).
-pub const SET_KINDS: &[&str] = &["pane", "thread", "place", "note", "lesson", "pdf", "document"];
+pub const SET_KINDS: &[&str] = &["pane", "thread", "place", "note", "lesson", "pdf", "document", "sitting"];
 
 /// A request the person can fix (the Python app's BadStudy, sent with status 400).
 pub fn bad(msg: impl Into<String>) -> Error {
@@ -243,7 +243,10 @@ pub fn threads_of(n: &Rec) -> Vec<String> {
 /// pages get, with blanks: `Chapter study: {place}`), `asks` (`place` when it asks for one) and `goes_in` (the id of the
 /// page new pages go inside; absent: Pages). A page made from one carries `from_template` (the template's id), which is
 /// how a template's "used N times" is counted.
-pub const PAGE_FIELDS: &[&str] = &["parent", "order", "pinned", "template", "new_name", "asks", "goes_in", "from_template"];
+///
+/// Library L-21 (2026-11-17): `title` is the page's own title field. A page without it is titled by its first line (read,
+/// never rewritten until edited); where both exist and differ, the field wins and `wb study check` reports it.
+pub const PAGE_FIELDS: &[&str] = &["parent", "order", "pinned", "title", "template", "new_name", "asks", "goes_in", "from_template"];
 
 /// A note's page fields, kept when its file is written anew (placed, moved, a place taken off).
 fn carry(old: &Rec, meta: &mut Rec) {
@@ -1489,6 +1492,10 @@ impl Store {
         for k in ["name", "created", "updated"] {
             meta.insert(k.into(), t[k].clone());
         }
+        // where the folder sits (L-22): a parent set's id, only when it sits inside one
+        if let Some(p) = t.get("parent").and_then(|p| p.as_str()).filter(|p| !p.is_empty()) {
+            meta.insert("parent".into(), json!(p));
+        }
         let bullets: Vec<String> = t["items"].as_array().unwrap().iter().map(|i| format!("- {}", py_dumps(i))).collect();
         let body = format!("{}\n\n{}", s(t, "note"), bullets.join("\n"));
         let id = s(t, "id");
@@ -1498,7 +1505,7 @@ impl Store {
     fn set_item(raw: &Value) -> Result<Rec> {
         let kind = raw.get("kind").and_then(|k| k.as_str()).unwrap_or("");
         if !SET_KINDS.contains(&kind) {
-            return Err(bad("A set holds panes, threads, places, notes, lessons, PDFs and documents."));
+            return Err(bad("A set holds panes, threads, places, notes, lessons, PDFs, documents and sittings."));
         }
         if kind == "pane" {
             let params = raw.get("params").cloned().unwrap_or(json!({}));
@@ -1517,7 +1524,7 @@ impl Store {
         Ok(json!({"kind": kind, "ref": r}).as_object().unwrap().clone())
     }
 
-    fn same_item(a: &Value, b: &Rec) -> bool {
+    pub fn same_item(a: &Value, b: &Rec) -> bool {
         if a["kind"] != b["kind"] {
             return false;
         }
@@ -1597,6 +1604,47 @@ impl Store {
     pub fn set_item_of(&self, id: &str, key: &str) -> Result<Rec> {
         let t = self.set(id)?;
         t["items"].as_array().unwrap().iter().find(|i| i["key"] == key).and_then(|i| i.as_object().cloned()).ok_or_else(|| missing("No such item in that set."))
+    }
+
+    /// Where a folder sits, in its own set file (`parent:` in the front matter, L-22): the id of the folder it is inside,
+    /// or "" for the top. The file is written only when this changes it.
+    pub fn set_parent(&mut self, id: &str, parent: &str) -> Result<()> {
+        let mut t = self.set(id)?;
+        if t.get("parent").and_then(|p| p.as_str()).unwrap_or("") == parent {
+            return Ok(());
+        }
+        if parent.is_empty() {
+            t.shift_remove("parent");
+        } else {
+            t.insert("parent".into(), json!(parent));
+        }
+        self.write_set(&mut t)
+    }
+
+    // ---- the Shelf: saves that sit in no folder (settings/shelf.json, "saves") ----
+
+    /// The saves in no folder, in the order they were made (each with its key, as a set's item).
+    pub fn shelf_saves(&self) -> Vec<Value> {
+        self.settings("shelf").get("saves").and_then(|v| v.as_array().cloned()).unwrap_or_default()
+    }
+
+    fn write_shelf_saves(&mut self, items: Vec<Value>) -> Result<()> {
+        self.set_setting("shelf", "saves", if items.is_empty() { None } else { Some(Value::Array(items)) })?;
+        Ok(())
+    }
+
+    /// Put items on the Shelf (a thing already there is not added twice). → their keys.
+    pub fn shelf_add(&mut self, raw: &[Value]) -> Result<Vec<String>> {
+        let mut t = json!({"items": self.shelf_saves()}).as_object().unwrap().clone();
+        let keys = Self::add_items(&mut t, raw)?;
+        self.write_shelf_saves(t["items"].as_array().cloned().unwrap_or_default())?;
+        Ok(keys)
+    }
+
+    /// Take items off the Shelf by key (the things themselves are not touched).
+    pub fn shelf_remove(&mut self, keys: &[String]) -> Result<()> {
+        let items: Vec<Value> = self.shelf_saves().into_iter().filter(|i| !keys.iter().any(|k| i["key"] == *k)).collect();
+        self.write_shelf_saves(items)
     }
 
     pub fn rename_set(&mut self, id: &str, name: &str) -> Result<Rec> {
@@ -1759,8 +1807,12 @@ fn parse_set(stem: &str, text: &str) -> Option<Rec> {
             items.push(item);
         }
     }
-    Some(json!({"id": stem, "name": meta["name"], "created": s(&meta, "created"), "updated": s(&meta, "updated"),
-        "note": note.join("\n").trim(), "items": items}).as_object().unwrap().clone())
+    let mut rec = json!({"id": stem, "name": meta["name"], "created": s(&meta, "created"), "updated": s(&meta, "updated"),
+        "note": note.join("\n").trim(), "items": items}).as_object().unwrap().clone();
+    if let Some(p) = meta.get("parent").and_then(|p| p.as_str()).filter(|p| !p.is_empty()) {
+        rec.insert("parent".into(), json!(p));
+    }
+    Some(rec)
 }
 
 #[cfg(test)]

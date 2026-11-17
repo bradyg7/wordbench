@@ -1173,7 +1173,7 @@ fn the_notebook_s_settings_are_kept_per_key() {
     assert!(wb.fails(&["settings", "notebook", "group", "verse"]).contains("Group by"));
     assert!(wb.fails(&["settings", "notebook", "capture", "J"]).contains("Ctrl or Alt"));
     assert!(wb.fails(&["settings", "reader"]).contains("notebook"));
-    assert_eq!(wb.js(&["settings", "notebook", "--about"]).as_array().unwrap().len(), 7); // W4: places
+    assert_eq!(wb.js(&["settings", "notebook", "--about"]).as_array().unwrap().len(), 5); // the settings build: five Notebook settings now
     // W1: the Inbox is gone from the settings; the Notebook can open with Pages or Questions
     assert!(wb.fails(&["settings", "notebook", "inbox", "on"]).contains("settings are"));
     assert_eq!(wb.js(&["settings", "notebook", "group", "pages"])["group"], json!("pages"));
@@ -2185,7 +2185,7 @@ updated: \"2026-11-02T20:29:10Z\"
     let file = std::fs::read_to_string(wb.dir.join("sets").join("word-study.md")).unwrap();
     assert!(file.starts_with("---
 name: \"Word study\"
-created:") && !file.contains("parent"), "{file}");
+created:") && file.contains("parent: \"phinehas-study\""), "{file}"); // library L-22: the folder's own file says where it sits
     let placing: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("settings").join("shelf.json")).unwrap()).unwrap();
     assert_eq!(placing["folders"]["ruth"]["parent"], "word-study");
 
@@ -2206,6 +2206,13 @@ created:") && !file.contains("parent"), "{file}");
     assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().contains("word-study")));
 
     // a set whose placing is written by hand into a loop is read as the top, not lost
+    // (the older form: the sets carry no parent field of their own, L-22)
+    for e in std::fs::read_dir(wb.dir.join("sets")).unwrap().flatten() {
+        let text = std::fs::read_to_string(e.path()).unwrap();
+        std::fs::write(e.path(), text.lines().filter(|l| !l.starts_with("parent:")).collect::<Vec<_>>().join("
+") + "
+").unwrap();
+    }
     std::fs::write(wb.dir.join("settings").join("shelf.json"), r#"{"folders": {"covenant": {"parent": "ruth"}, "ruth": {"parent": "covenant"}}}"#).unwrap();
     let t = wb.js(&["shelf"]);
     assert_eq!(t["folders"].as_array().unwrap().len(), 3);

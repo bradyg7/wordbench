@@ -1302,3 +1302,62 @@ pub(crate) fn deletion_layout(bible: &Bible, store: &Store, selected: &HashSet<S
     let mut ids: Vec<_> = ids.into_iter().collect(); ids.sort(); changes.sort_by(|a,b| a.0.cmp(&b.0));
     Ok((ids, changes))
 }
+
+// ---- the library's page actions (design/features/library: Duplicate, Copy link, the page's view choices) ---------------------
+
+/// Duplicate a page: a new page beside it (same parent) with the same text and the title "<title> (copy)". Its pages
+/// inside it are not copied, and it is not pinned. → the new page, as `new_page` gives it.
+pub fn duplicate(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
+    if crate::threadpage::slug_of(id).is_some() || crate::store::is_day(id.trim()) || id.trim().starts_with("d_") {
+        return Err(bad("A day's page or a thread's page is not duplicated."));
+    }
+    let rec = store.find_note(id.trim())?;
+    let copy_title = format!("{} (copy)", nb::page_title(&rec));
+    let parent = s(&rec, "parent");
+    let parent = Some(parent.as_str()).filter(|p| !p.is_empty());
+    if !s(&rec, "title").trim().is_empty() {
+        // a page with a `title:` field (L-21): the copy keeps the body as it is and has the field with " (copy)"
+        let made = new_page(bible, store, parent, &s(&rec, "text"), false, None)?;
+        let id = made["id"].as_str().unwrap_or_default().to_string();
+        store.set_fields(&id, &[("title", Some(json!(copy_title)))])?;
+        return nb::show(bible, store, &id);
+    }
+    let text = retitle(&s(&rec, "text"), &copy_title)?;
+    new_page(bible, store, parent, &text, false, None)
+}
+
+/// The `[[link]]` that Copy link copies: the page's title in double brackets (its day for a day's page).
+pub fn link_of(store: &Store, id: &str) -> Result<String> {
+    if let Some(slug) = crate::threadpage::slug_of(id) {
+        return Ok(format!("[[{}]]", s(&store.thread(slug)?, "name")));
+    }
+    let rec = store.find_note(id.trim())?;
+    let title = if s(&rec, "id").starts_with("d_") { s(&rec, "day") } else { nb::page_title(&rec) };
+    Ok(format!("[[{title}]]"))
+}
+
+/// A page's view choices (L-25), kept in `settings/pages.json` under `look`, not in the page: Full width and Small text.
+pub fn look(store: &Store, id: &str) -> Value {
+    let all = store.settings("pages").get("look").and_then(|l| l.get(id.trim())).cloned().unwrap_or(json!({}));
+    json!({"id": id.trim(), "full_width": all["full_width"] == true, "small_text": all["small_text"] == true})
+}
+
+/// Change a page's view choices (`None` keeps one as it is). Other pages' choices and Pinned in the file are kept.
+pub fn set_look(store: &mut Store, id: &str, full_width: Option<bool>, small_text: Option<bool>) -> Result<Value> {
+    let id = id.trim();
+    if crate::threadpage::slug_of(id).is_some() {
+        store.thread(crate::threadpage::slug_of(id).unwrap_or(""))?;
+    } else {
+        store.find_note(id)?;
+    }
+    let now = look(store, id);
+    let (fw, st) = (full_width.unwrap_or(now["full_width"] == true), small_text.unwrap_or(now["small_text"] == true));
+    let mut all = store.settings("pages").get("look").and_then(|l| l.as_object().cloned()).unwrap_or_default();
+    if fw || st {
+        all.insert(id.to_string(), json!({"full_width": fw, "small_text": st}));
+    } else {
+        all.shift_remove(id);
+    }
+    store.set_setting("pages", "look", if all.is_empty() { None } else { Some(Value::Object(all)) })?;
+    Ok(look(store, id))
+}
