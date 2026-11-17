@@ -1,0 +1,2616 @@
+{
+ "command": "wb uses heart (every page, --offset)",
+ "occurrences": 830,
+ "verses": 762,
+ "by_book": {
+  "1": 11,
+  "2": 37,
+  "3": 2,
+  "4": 3,
+  "5": 47,
+  "6": 5,
+  "7": 12,
+  "8": 1,
+  "9": 23,
+  "10": 15,
+  "11": 34,
+  "12": 14,
+  "13": 18,
+  "14": 35,
+  "15": 3,
+  "16": 5,
+  "17": 4,
+  "18": 23,
+  "19": 123,
+  "20": 81,
+  "21": 40,
+  "22": 5,
+  "23": 40,
+  "24": 58,
+  "25": 9,
+  "26": 38,
+  "27": 14,
+  "28": 9,
+  "29": 2,
+  "31": 2,
+  "34": 1,
+  "36": 3,
+  "38": 4,
+  "39": 4,
+  "40": 15,
+  "41": 10,
+  "42": 12,
+  "43": 7,
+  "44": 19,
+  "45": 9,
+  "46": 4,
+  "47": 7,
+  "49": 4,
+  "50": 1,
+  "51": 1,
+  "52": 1,
+  "54": 1,
+  "55": 1,
+  "58": 5,
+  "59": 1,
+  "60": 2,
+  "61": 1,
+  "62": 3,
+  "66": 1
+ },
+ "groups": {
+  "1": {
+   "count": 11,
+   "first": [
+    {
+     "ref": "Genesis 6:5",
+     "code": "GEN",
+     "b": 1,
+     "c": 6,
+     "v": 5,
+     "i": 22,
+     "word": "heart",
+     "before": "imagination of the thoughts of his ",
+     "after": "was only evil continually.",
+     "pre": true,
+     "post": false,
+     "strong": "H3820"
+    },
+    {
+     "ref": "Genesis 6:6",
+     "code": "GEN",
+     "b": 1,
+     "c": 6,
+     "v": 6,
+     "i": 19,
+     "word": "heart.",
+     "before": "and it grieved him at his ",
+     "after": "",
+     "pre": true,
+     "post": false,
+     "strong": "H3820"
+    },
+    {
+     "ref": "Genesis 8:21",
+     "code": "GEN",
+     "b": 1,
+     "c": 8,
+     "v": 21,
+     "i": 13,
+     "word": "heart,",
+     "before": "and the LORD said in his ",
+     "after": "I will not again curse the",
+     "pre": true,
+     "post": true,
+     "strong": "H3820"
+    },
+    {
+     "ref": "Genesis 8:21",
+     "code": "GEN",
+     "b": 1,
+     "c": 8,
+     "v": 21,
+     "i": 31,
+     "word": "heart",
+     "before": "sake; for the imagination of man’s ",
+     "after": "is evil from his youth; neither",
+     "pre": true,
+     "post": true,
+     "strong": "H3820"
+    }
+   ]
+  },
+  "2": {
+   "count": 37,
+   "first": [
+    {
+     "ref": "Exodus 4:14",
+     "code": "EXO",
+     "b": 2,
+     "c": 4,
+     "v": 14,
+     "i": 47,
+     "word": "heart.",
+     "before": "he will be glad in his ",
+     "after": "",
+     "pre": true,
+     "post": false,
+     "strong": "H3820"
+    },
+    {
+     "ref": "Exodus 4:21",
+     "code": "EXO",
+     "b": 2,
+     "c": 4,
+     "v": 21,
+     "i": 34,
+     "word": "heart,",
+     "before": "hand: but I will harden his ",
+     "after": "that he shall not let the",
+     "pre": true,
+     "post": true,
+     "strong": "H3820"
+    },
+    {
+     "ref": "Exodus 7:3",
+     "code": "EXO",
+     "b": 2,
+     "c": 7,
+     "v": 3,
+     "i": 5,
+     "word": "heart,",
+     "before": "And I will harden Pharaoh’s ",
+     "after": "and multiply my signs and my",
+     "pre": false,
+     "post": true,
+     "strong": "H3820"
+    },
+    {
+     "ref": "Exodus 7:13",
+     "code": "EXO",
+     "b": 2,
+     "c": 7,
+     "v": 13,
+     "i": 4,
+     "word": "heart,",
+     "before": "And he hardened Pharaoh’s ",
+     "after": "that he hearkened not unto them;",
+     "pre": false,
+     "post": true,
+     "strong": "H3820"
+    }
+   ]
+  },
+  "3": {
+   "count": 2,
+   "first": [
+    {
+     "ref": "Leviticus 19:17",
+     "code": "LEV",
+     "b": 3,
+     "c": 19,
+     "v": 17,
+     "i": 8,
+     "word": "heart:",
+     "before": "not hate thy brother in thine ",
+     "after": "thou shalt in any wise rebuke",
+     "pre": true,
+     "post": true,
+     "strong": "H3824"
+    },
+    {
+     "ref": "Leviticus 26:16",
+     "code": "LEV",
+     "b": 3,
+     "c": 26,
+     "v": 16,
+     "i": 28,
+     "word": "heart:",
+     "before": "the eyes, and cause sorrow of ",
+     "after": "and ye shall sow your seed",
+     "pre": true,
+     "post": true,
+     "strong": "H5315"
+    }
+   ]
+  },
+  "4": {
+   "count": 3,
+   "first": [
+    {
+     "ref": "Numbers 15:39",
+     "code": "NUM",
+     "b": 4,
+     "c": 15,
+     "v": 39,
+     "i": 34,
+     "word": "heart",
+     "before": "ye seek not after your own ",
+     "after": "and your own eyes, after which",
+     "pre": true,
+     "post": true,
+     "strong": "H3824"
+    },
+    {
+     "ref": "Numbers 32:7",
+     "code": "NUM",
+     "b": 4,
+     "c": 32,
+     "v": 7,
+     "i": 5,
+     "word": "heart",
+     "before": "And wherefore discourage ye the ",
+     "after": "of the children of Israel from",
+     "pre": false,
+     "post": true,
+     "strong": "H3820"
+    },
+    {
+     "ref": "Numbers 32:9",
+     "code": "NUM",
+     "b": 4,
+     "c": 32,
+     "v": 9,
+     "i": 17,
+     "word": "heart",
+     "before": "saw the land, they discouraged the ",
+     "after": "of the children of Israel, that",
+     "pre": true,
+     "post": true,
+     "strong": "H3820"
+    }
+   ]
+  },
+  "5": {
+   "count": 47,
+   "first": [
+    {
+     "ref": "Deuteronomy 1:28",
+     "code": "DEU",
+     "b": 5,
+     "c": 1,
+     "v": 28,
+     "i": 10,
+     "word": "heart,",
+     "before": "up? our brethren have discouraged our ",
+     "after": "saying, The people is greater and",
+     "pre": true,
+     "post": true,
+     "strong": "H3824"
+    },
+    {
+     "ref": "Deuteronomy 2:30",
+     "code": "DEU",
+     "b": 5,
+     "c": 2,
+     "v": 30,
+     "i": 23,
+     "word": "heart",
+     "before": "hardened his spirit, and made his ",
+     "after": "obstinate, that he might deliver him",
+     "pre": true,
+     "post": true,
+     "strong": "H3824"
+    },
+    {
+     "ref": "Deuteronomy 4:9",
+     "code": "DEU",
+     "b": 5,
+     "c": 4,
+     "v": 9,
+     "i": 26,
+     "word": "heart",
+     "before": "and lest they depart from thy ",
+     "after": "all the days of thy life:",
+     "pre": true,
+     "post": true,
+     "strong": "H3824"
+    },
+    {
+     "ref": "Deuteronomy 4:29",
+     "code": "DEU",
+     "b": 5,
+     "c": 4,
+     "v": 29,
+     "i": 22,
+     "word": "heart",
+     "before": "thou seek him with all thy ",
+     "after": "and with all thy soul.",
+     "pre": true,
+     "post": false,
+     "strong": "H3824"
+    }
+   ]
+  },
+  "6": {
+   "count": 5,
+   "first": [
+    {
+     "ref": "Joshua 5:1",
+     "code": "JOS",
+     "b": 6,
+     "c": 5,
+     "v": 1,
+     "i": 56,
+     "word": "heart",
+     "before": "we were passed over, that their ",
+     "after": "melted, neither was there spirit in",
+     "pre": true,
+     "post": true,
+     "strong": "H3824"
+    },
+    {
+     "ref": "Joshua 14:7",
+     "code": "JOS",
+     "b": 6,
+     "c": 14,
+     "v": 7,
+     "i": 32,
+     "word": "heart.",
+     "before": "again as it was in mine ",
+     "after": "",
+     "pre": true,
+     "post": false,
+     "strong": "H3824"
+    },
+    {
+     "ref": "Joshua 14:8",
+     "code": "JOS",
+     "b": 6,
+     "c": 14,
+     "v": 8,
+     "i": 10,
+     "word": "heart",
+     "before": "went up with me made the ",
+     "after": "of the people melt: but I",
+     "pre": true,
+     "post": true,
+     "strong": "H3820"
+    },
+    {
+     "ref": "Joshua 22:5",
+     "code": "JOS",
+     "b": 6,
+     "c": 22,
+     "v": 5,
+     "i": 50,
+     "word": "heart",
+     "before": "to serve him with all your ",
+     "after": "and with all your soul.",
+     "pre": true,
+     "post": false,
+     "strong": "H3824"
+    }
+   ]
+  },
+  "7": {
+   "count": 12,
+   "first": [
+    {
+     "ref": "Judges 5:9",
+     "code": "JDG",
+     "b": 7,
+     "c": 5,
+     "v": 9,
+     "i": 1,
+     "word": "heart",
+     "before": "My ",
+     "after": "is toward the governors of Israel,",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Judges 5:15",
+     "code": "JDG",
+     "b": 7,
+     "c": 5,
+     "v": 15,
+     "i": 31,
+     "word": "heart.",
+     "before": "Reuben there were great thoughts of ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Judges 5:16",
+     "code": "JDG",
+     "b": 7,
+     "c": 5,
+     "v": 16,
+     "i": 23,
+     "word": "heart.",
+     "before": "Reuben there were great searchings of ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Judges 16:15",
+     "code": "JDG",
+     "b": 7,
+     "c": 16,
+     "v": 15,
+     "i": 14,
+     "word": "heart",
+     "before": "say, I love thee, when thine ",
+     "after": "is not with me? thou hast",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "8": {
+   "count": 1,
+   "first": [
+    {
+     "ref": "Ruth 3:7",
+     "code": "RUT",
+     "b": 8,
+     "c": 3,
+     "v": 7,
+     "i": 9,
+     "word": "heart",
+     "before": "had eaten and drunk, and his ",
+     "after": "was merry, he went to lie",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "9": {
+   "count": 23,
+   "first": [
+    {
+     "ref": "1 Samuel 1:8",
+     "code": "1SA",
+     "b": 9,
+     "c": 1,
+     "v": 8,
+     "i": 20,
+     "word": "heart",
+     "before": "thou not? and why is thy ",
+     "after": "grieved? am not I better to",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "1 Samuel 1:13",
+     "code": "1SA",
+     "b": 9,
+     "c": 1,
+     "v": 13,
+     "i": 6,
+     "word": "heart;",
+     "before": "Now Hannah, she spake in her ",
+     "after": "only her lips moved, but her",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "1 Samuel 2:1",
+     "code": "1SA",
+     "b": 9,
+     "c": 2,
+     "v": 1,
+     "i": 6,
+     "word": "heart",
+     "before": "And Hannah prayed, and said, My ",
+     "after": "rejoiceth in the LORD, mine horn",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "1 Samuel 2:33",
+     "code": "1SA",
+     "b": 9,
+     "c": 2,
+     "v": 33,
+     "i": 24,
+     "word": "heart:",
+     "before": "thine eyes, and to grieve thine ",
+     "after": "and all the increase of thine",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "10": {
+   "count": 15,
+   "first": [
+    {
+     "ref": "2 Samuel 3:21",
+     "code": "2SA",
+     "b": 10,
+     "c": 3,
+     "v": 21,
+     "i": 37,
+     "word": "heart",
+     "before": "mayest reign over all that thine ",
+     "after": "desireth. And David sent Abner away;",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "2 Samuel 6:16",
+     "code": "2SA",
+     "b": 10,
+     "c": 6,
+     "v": 16,
+     "i": 36,
+     "word": "heart.",
+     "before": "and she despised him in her ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "2 Samuel 7:3",
+     "code": "2SA",
+     "b": 10,
+     "c": 7,
+     "v": 3,
+     "i": 13,
+     "word": "heart;",
+     "before": "do all that is in thine ",
+     "after": "for the LORD is with thee.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "2 Samuel 7:21",
+     "code": "2SA",
+     "b": 10,
+     "c": 7,
+     "v": 21,
+     "i": 9,
+     "word": "heart,",
+     "before": "sake, and according to thine own ",
+     "after": "hast thou done all these great",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "11": {
+   "count": 34,
+   "first": [
+    {
+     "ref": "1 Kings 2:4",
+     "code": "1KI",
+     "b": 11,
+     "c": 2,
+     "v": 4,
+     "i": 30,
+     "word": "heart",
+     "before": "me in truth with all their ",
+     "after": "and with all their soul, there",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "1 Kings 2:44",
+     "code": "1KI",
+     "b": 11,
+     "c": 2,
+     "v": 44,
+     "i": 13,
+     "word": "heart",
+     "before": "knowest all the wickedness which thine ",
+     "after": "is privy to, that thou didst",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "1 Kings 3:6",
+     "code": "1KI",
+     "b": 11,
+     "c": 3,
+     "v": 6,
+     "i": 29,
+     "word": "heart",
+     "before": "in righteousness, and in uprightness of ",
+     "after": "with thee; and thou hast kept",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "1 Kings 3:9",
+     "code": "1KI",
+     "b": 11,
+     "c": 3,
+     "v": 9,
+     "i": 6,
+     "word": "heart",
+     "before": "Give therefore thy servant an understanding ",
+     "after": "to judge thy people, that I",
+     "pre": false,
+     "post": true
+    }
+   ]
+  },
+  "12": {
+   "count": 14,
+   "first": [
+    {
+     "ref": "2 Kings 5:26",
+     "code": "2KI",
+     "b": 12,
+     "c": 5,
+     "v": 26,
+     "i": 8,
+     "word": "heart",
+     "before": "said unto him, Went not mine ",
+     "after": "with thee, when the man turned",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "2 Kings 6:11",
+     "code": "2KI",
+     "b": 12,
+     "c": 6,
+     "v": 11,
+     "i": 2,
+     "word": "heart",
+     "before": "Therefore the ",
+     "after": "of the king of Syria was",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "2 Kings 9:24",
+     "code": "2KI",
+     "b": 12,
+     "c": 9,
+     "v": 24,
+     "i": 22,
+     "word": "heart,",
+     "before": "the arrow went out at his ",
+     "after": "and he sunk down in his",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "2 Kings 10:15",
+     "code": "2KI",
+     "b": 12,
+     "c": 10,
+     "v": 15,
+     "i": 28,
+     "word": "heart",
+     "before": "and said to him, Is thine ",
+     "after": "right, as my heart is with",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "13": {
+   "count": 18,
+   "first": [
+    {
+     "ref": "1 Chronicles 12:17",
+     "code": "1CH",
+     "b": 13,
+     "c": 12,
+     "v": 17,
+     "i": 24,
+     "word": "heart",
+     "before": "unto me to help me, mine ",
+     "after": "shall be knit unto you: but",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "1 Chronicles 12:33",
+     "code": "1CH",
+     "b": 13,
+     "c": 12,
+     "v": 33,
+     "i": 27,
+     "word": "heart.",
+     "before": "rank: they were not of double ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "1 Chronicles 12:38",
+     "code": "1CH",
+     "b": 13,
+     "c": 12,
+     "v": 38,
+     "i": 13,
+     "word": "heart",
+     "before": "keep rank, came with a perfect ",
+     "after": "to Hebron, to make David king",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "1 Chronicles 12:38",
+     "code": "1CH",
+     "b": 13,
+     "c": 12,
+     "v": 38,
+     "i": 33,
+     "word": "heart",
+     "before": "also of Israel were of one ",
+     "after": "to make David king.",
+     "pre": true,
+     "post": false
+    }
+   ]
+  },
+  "14": {
+   "count": 35,
+   "first": [
+    {
+     "ref": "2 Chronicles 1:11",
+     "code": "2CH",
+     "b": 14,
+     "c": 1,
+     "v": 11,
+     "i": 10,
+     "word": "heart,",
+     "before": "Solomon, Because this was in thine ",
+     "after": "and thou hast not asked riches,",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "2 Chronicles 6:7",
+     "code": "2CH",
+     "b": 14,
+     "c": 6,
+     "v": 7,
+     "i": 5,
+     "word": "heart",
+     "before": "Now it was in the ",
+     "after": "of David my father to build",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "2 Chronicles 6:8",
+     "code": "2CH",
+     "b": 14,
+     "c": 6,
+     "v": 8,
+     "i": 14,
+     "word": "heart",
+     "before": "Forasmuch as it was in thine ",
+     "after": "to build an house for my",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "2 Chronicles 6:8",
+     "code": "2CH",
+     "b": 14,
+     "c": 6,
+     "v": 8,
+     "i": 31,
+     "word": "heart:",
+     "before": "in that it was in thine ",
+     "after": "",
+     "pre": true,
+     "post": false
+    }
+   ]
+  },
+  "15": {
+   "count": 3,
+   "first": [
+    {
+     "ref": "Ezra 6:22",
+     "code": "EZR",
+     "b": 15,
+     "c": 6,
+     "v": 22,
+     "i": 21,
+     "word": "heart",
+     "before": "made them joyful, and turned the ",
+     "after": "of the king of Assyria unto",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Ezra 7:10",
+     "code": "EZR",
+     "b": 15,
+     "c": 7,
+     "v": 10,
+     "i": 5,
+     "word": "heart",
+     "before": "For Ezra had prepared his ",
+     "after": "to seek the law of the",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Ezra 7:27",
+     "code": "EZR",
+     "b": 15,
+     "c": 7,
+     "v": 27,
+     "i": 19,
+     "word": "heart,",
+     "before": "thing as this in the king’s ",
+     "after": "to beautify the house of the",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "16": {
+   "count": 5,
+   "first": [
+    {
+     "ref": "Nehemiah 2:2",
+     "code": "NEH",
+     "b": 16,
+     "c": 2,
+     "v": 2,
+     "i": 23,
+     "word": "heart.",
+     "before": "is nothing else but sorrow of ",
+     "after": "Then I was very sore afraid,",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Nehemiah 2:12",
+     "code": "NEH",
+     "b": 16,
+     "c": 2,
+     "v": 12,
+     "i": 25,
+     "word": "heart",
+     "before": "my God had put in my ",
+     "after": "to do at Jerusalem: neither was",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Nehemiah 6:8",
+     "code": "NEH",
+     "b": 16,
+     "c": 6,
+     "v": 8,
+     "i": 23,
+     "word": "heart.",
+     "before": "feignest them out of thine own ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Nehemiah 7:5",
+     "code": "NEH",
+     "b": 16,
+     "c": 7,
+     "v": 5,
+     "i": 6,
+     "word": "heart",
+     "before": "¶ And my God put into mine ",
+     "after": "to gather together the nobles, and",
+     "pre": false,
+     "post": true
+    }
+   ]
+  },
+  "17": {
+   "count": 4,
+   "first": [
+    {
+     "ref": "Esther 1:10",
+     "code": "EST",
+     "b": 17,
+     "c": 1,
+     "v": 10,
+     "i": 6,
+     "word": "heart",
+     "before": "¶ On the seventh day, when the ",
+     "after": "of the king was merry with",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Esther 5:9",
+     "code": "EST",
+     "b": 17,
+     "c": 5,
+     "v": 9,
+     "i": 11,
+     "word": "heart:",
+     "before": "day joyful and with a glad ",
+     "after": "but when Haman saw Mordecai in",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Esther 6:6",
+     "code": "EST",
+     "b": 17,
+     "c": 6,
+     "v": 6,
+     "i": 28,
+     "word": "heart,",
+     "before": "honour? Now Haman thought in his ",
+     "after": "To whom would the king delight",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Esther 7:5",
+     "code": "EST",
+     "b": 17,
+     "c": 7,
+     "v": 5,
+     "i": 23,
+     "word": "heart",
+     "before": "he, that durst presume in his ",
+     "after": "to do so?",
+     "pre": true,
+     "post": false
+    }
+   ]
+  },
+  "18": {
+   "count": 23,
+   "first": [
+    {
+     "ref": "Job 7:17",
+     "code": "JOB",
+     "b": 18,
+     "c": 7,
+     "v": 17,
+     "i": 14,
+     "word": "heart",
+     "before": "and that thou shouldest set thine ",
+     "after": "upon him?",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Job 8:10",
+     "code": "JOB",
+     "b": 18,
+     "c": 8,
+     "v": 10,
+     "i": 14,
+     "word": "heart?",
+     "before": "and utter words out of their ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Job 9:4",
+     "code": "JOB",
+     "b": 18,
+     "c": 9,
+     "v": 4,
+     "i": 4,
+     "word": "heart,",
+     "before": "He is wise in ",
+     "after": "and mighty in strength: who hath",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Job 10:13",
+     "code": "JOB",
+     "b": 18,
+     "c": 10,
+     "v": 13,
+     "i": 8,
+     "word": "heart:",
+     "before": "things hast thou hid in thine ",
+     "after": "I know that this is with",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "19": {
+   "count": 123,
+   "first": [
+    {
+     "ref": "Psalms 4:4",
+     "code": "PSA",
+     "b": 19,
+     "c": 4,
+     "v": 4,
+     "i": 10,
+     "word": "heart",
+     "before": "sin not: commune with your own ",
+     "after": "upon your bed, and be still.",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Psalms 4:7",
+     "code": "PSA",
+     "b": 19,
+     "c": 4,
+     "v": 7,
+     "i": 6,
+     "word": "heart,",
+     "before": "Thou hast put gladness in my ",
+     "after": "more than in the time that",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Psalms 7:10",
+     "code": "PSA",
+     "b": 19,
+     "c": 7,
+     "v": 10,
+     "i": 10,
+     "word": "heart.",
+     "before": "God, which saveth the upright in ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Psalms 9:1",
+     "code": "PSA",
+     "b": 19,
+     "c": 9,
+     "v": 1,
+     "i": 9,
+     "word": "heart;",
+     "before": "thee, O LORD, with my whole ",
+     "after": "I will shew forth all thy",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "20": {
+   "count": 81,
+   "first": [
+    {
+     "ref": "Proverbs 2:2",
+     "code": "PRO",
+     "b": 20,
+     "c": 2,
+     "v": 2,
+     "i": 11,
+     "word": "heart",
+     "before": "ear unto wisdom, and apply thine ",
+     "after": "to understanding;",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Proverbs 2:10",
+     "code": "PRO",
+     "b": 20,
+     "c": 2,
+     "v": 10,
+     "i": 5,
+     "word": "heart,",
+     "before": "¶ When wisdom entereth into thine ",
+     "after": "and knowledge is pleasant unto thy",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Proverbs 3:1",
+     "code": "PRO",
+     "b": 20,
+     "c": 3,
+     "v": 1,
+     "i": 9,
+     "word": "heart",
+     "before": "not my law; but let thine ",
+     "after": "keep my commandments:",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Proverbs 3:3",
+     "code": "PRO",
+     "b": 20,
+     "c": 3,
+     "v": 3,
+     "i": 19,
+     "word": "heart:",
+     "before": "them upon the table of thine ",
+     "after": "",
+     "pre": true,
+     "post": false
+    }
+   ]
+  },
+  "21": {
+   "count": 40,
+   "first": [
+    {
+     "ref": "Ecclesiastes 1:13",
+     "code": "ECC",
+     "b": 21,
+     "c": 1,
+     "v": 13,
+     "i": 4,
+     "word": "heart",
+     "before": "And I gave my ",
+     "after": "to seek and search out by",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Ecclesiastes 1:16",
+     "code": "ECC",
+     "b": 21,
+     "c": 1,
+     "v": 16,
+     "i": 5,
+     "word": "heart,",
+     "before": "I communed with mine own ",
+     "after": "saying, Lo, I am come to",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Ecclesiastes 1:16",
+     "code": "ECC",
+     "b": 21,
+     "c": 1,
+     "v": 16,
+     "i": 31,
+     "word": "heart",
+     "before": "before me in Jerusalem: yea, my ",
+     "after": "had great experience of wisdom and",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Ecclesiastes 1:17",
+     "code": "ECC",
+     "b": 21,
+     "c": 1,
+     "v": 17,
+     "i": 4,
+     "word": "heart",
+     "before": "And I gave my ",
+     "after": "to know wisdom, and to know",
+     "pre": false,
+     "post": true
+    }
+   ]
+  },
+  "22": {
+   "count": 5,
+   "first": [
+    {
+     "ref": "Song of Solomon 3:11",
+     "code": "SNG",
+     "b": 22,
+     "c": 3,
+     "v": 11,
+     "i": 34,
+     "word": "heart.",
+     "before": "day of the gladness of his ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Song of Solomon 4:9",
+     "code": "SNG",
+     "b": 22,
+     "c": 4,
+     "v": 9,
+     "i": 4,
+     "word": "heart,",
+     "before": "Thou hast ravished my ",
+     "after": "my sister, my spouse; thou hast",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Song of Solomon 4:9",
+     "code": "SNG",
+     "b": 22,
+     "c": 4,
+     "v": 9,
+     "i": 13,
+     "word": "heart",
+     "before": "my spouse; thou hast ravished my ",
+     "after": "with one of thine eyes, with",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Song of Solomon 5:2",
+     "code": "SNG",
+     "b": 22,
+     "c": 5,
+     "v": 2,
+     "i": 4,
+     "word": "heart",
+     "before": "¶ I sleep, but my ",
+     "after": "waketh: it is the voice of",
+     "pre": false,
+     "post": true
+    }
+   ]
+  },
+  "23": {
+   "count": 40,
+   "first": [
+    {
+     "ref": "Isaiah 1:5",
+     "code": "ISA",
+     "b": 23,
+     "c": 1,
+     "v": 5,
+     "i": 21,
+     "word": "heart",
+     "before": "head is sick, and the whole ",
+     "after": "faint.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Isaiah 6:10",
+     "code": "ISA",
+     "b": 23,
+     "c": 6,
+     "v": 10,
+     "i": 2,
+     "word": "heart",
+     "before": "Make the ",
+     "after": "of this people fat, and make",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Isaiah 6:10",
+     "code": "ISA",
+     "b": 23,
+     "c": 6,
+     "v": 10,
+     "i": 31,
+     "word": "heart,",
+     "before": "their ears, and understand with their ",
+     "after": "and convert, and be healed.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Isaiah 7:2",
+     "code": "ISA",
+     "b": 23,
+     "c": 7,
+     "v": 2,
+     "i": 16,
+     "word": "heart",
+     "before": "is confederate with Ephraim. And his ",
+     "after": "was moved, and the heart of",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "24": {
+   "count": 58,
+   "first": [
+    {
+     "ref": "Jeremiah 3:10",
+     "code": "JER",
+     "b": 24,
+     "c": 3,
+     "v": 10,
+     "i": 17,
+     "word": "heart,",
+     "before": "turned unto me with her whole ",
+     "after": "but feignedly, saith the LORD.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Jeremiah 3:15",
+     "code": "JER",
+     "b": 24,
+     "c": 3,
+     "v": 15,
+     "i": 9,
+     "word": "heart,",
+     "before": "give you pastors according to mine ",
+     "after": "which shall feed you with knowledge",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Jeremiah 3:17",
+     "code": "JER",
+     "b": 24,
+     "c": 3,
+     "v": 17,
+     "i": 41,
+     "word": "heart.",
+     "before": "after the imagination of their evil ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Jeremiah 4:4",
+     "code": "JER",
+     "b": 24,
+     "c": 4,
+     "v": 4,
+     "i": 12,
+     "word": "heart,",
+     "before": "take away the foreskins of your ",
+     "after": "ye men of Judah and inhabitants",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "25": {
+   "count": 9,
+   "first": [
+    {
+     "ref": "Lamentations 1:20",
+     "code": "LAM",
+     "b": 25,
+     "c": 1,
+     "v": 20,
+     "i": 13,
+     "word": "heart",
+     "before": "distress: my bowels are troubled; mine ",
+     "after": "is turned within me; for I",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Lamentations 1:22",
+     "code": "LAM",
+     "b": 25,
+     "c": 1,
+     "v": 22,
+     "i": 28,
+     "word": "heart",
+     "before": "my sighs are many, and my ",
+     "after": "is faint.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Lamentations 2:18",
+     "code": "LAM",
+     "b": 25,
+     "c": 2,
+     "v": 18,
+     "i": 1,
+     "word": "heart",
+     "before": "Their ",
+     "after": "cried unto the Lord, O wall",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Lamentations 2:19",
+     "code": "LAM",
+     "b": 25,
+     "c": 2,
+     "v": 19,
+     "i": 15,
+     "word": "heart",
+     "before": "of the watches pour out thine ",
+     "after": "like water before the face of",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "26": {
+   "count": 38,
+   "first": [
+    {
+     "ref": "Ezekiel 3:10",
+     "code": "EZK",
+     "b": 26,
+     "c": 3,
+     "v": 10,
+     "i": 20,
+     "word": "heart,",
+     "before": "speak unto thee receive in thine ",
+     "after": "and hear with thine ears.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Ezekiel 6:9",
+     "code": "EZK",
+     "b": 26,
+     "c": 6,
+     "v": 9,
+     "i": 25,
+     "word": "heart,",
+     "before": "I am broken with their whorish ",
+     "after": "which hath departed from me, and",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Ezekiel 11:19",
+     "code": "EZK",
+     "b": 26,
+     "c": 11,
+     "v": 19,
+     "i": 6,
+     "word": "heart,",
+     "before": "And I will give them one ",
+     "after": "and I will put a new",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Ezekiel 11:19",
+     "code": "EZK",
+     "b": 26,
+     "c": 11,
+     "v": 19,
+     "i": 22,
+     "word": "heart",
+     "before": "and I will take the stony ",
+     "after": "out of their flesh, and will",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "27": {
+   "count": 14,
+   "first": [
+    {
+     "ref": "Daniel 1:8",
+     "code": "DAN",
+     "b": 27,
+     "c": 1,
+     "v": 8,
+     "i": 5,
+     "word": "heart",
+     "before": "¶ But Daniel purposed in his ",
+     "after": "that he would not defile himself",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Daniel 2:30",
+     "code": "DAN",
+     "b": 27,
+     "c": 2,
+     "v": 30,
+     "i": 43,
+     "word": "heart.",
+     "before": "mightest know the thoughts of thy ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Daniel 4:16",
+     "code": "DAN",
+     "b": 27,
+     "c": 4,
+     "v": 16,
+     "i": 2,
+     "word": "heart",
+     "before": "Let his ",
+     "after": "be changed from man’s, and let",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Daniel 4:16",
+     "code": "DAN",
+     "b": 27,
+     "c": 4,
+     "v": 16,
+     "i": 11,
+     "word": "heart",
+     "before": "from man’s, and let a beast’s ",
+     "after": "be given unto him; and let",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "28": {
+   "count": 9,
+   "first": [
+    {
+     "ref": "Hosea 4:8",
+     "code": "HOS",
+     "b": 28,
+     "c": 4,
+     "v": 8,
+     "i": 12,
+     "word": "heart",
+     "before": "my people, and they set their ",
+     "after": "on their iniquity.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Hosea 4:11",
+     "code": "HOS",
+     "b": 28,
+     "c": 4,
+     "v": 11,
+     "i": 9,
+     "word": "heart.",
+     "before": "and new wine take away the ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Hosea 7:6",
+     "code": "HOS",
+     "b": 28,
+     "c": 7,
+     "v": 6,
+     "i": 6,
+     "word": "heart",
+     "before": "For they have made ready their ",
+     "after": "like an oven, whiles they lie",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Hosea 7:11",
+     "code": "HOS",
+     "b": 28,
+     "c": 7,
+     "v": 11,
+     "i": 8,
+     "word": "heart:",
+     "before": "is like a silly dove without ",
+     "after": "they call to Egypt, they go",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "29": {
+   "count": 2,
+   "first": [
+    {
+     "ref": "Joel 2:12",
+     "code": "JOL",
+     "b": 29,
+     "c": 2,
+     "v": 12,
+     "i": 14,
+     "word": "heart,",
+     "before": "even to me with all your ",
+     "after": "and with fasting, and with weeping,",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Joel 2:13",
+     "code": "JOL",
+     "b": 29,
+     "c": 2,
+     "v": 13,
+     "i": 3,
+     "word": "heart,",
+     "before": "And rend your ",
+     "after": "and not your garments, and turn",
+     "pre": false,
+     "post": true
+    }
+   ]
+  },
+  "31": {
+   "count": 2,
+   "first": [
+    {
+     "ref": "Obadiah 1:3",
+     "code": "OBA",
+     "b": 31,
+     "c": 1,
+     "v": 3,
+     "i": 4,
+     "word": "heart",
+     "before": "¶ The pride of thine ",
+     "after": "hath deceived thee, thou that dwellest",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Obadiah 1:3",
+     "code": "OBA",
+     "b": 31,
+     "c": 1,
+     "v": 3,
+     "i": 25,
+     "word": "heart,",
+     "before": "is high; that saith in his ",
+     "after": "Who shall bring me down to",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "34": {
+   "count": 1,
+   "first": [
+    {
+     "ref": "Nahum 2:10",
+     "code": "NAM",
+     "b": 34,
+     "c": 2,
+     "v": 10,
+     "i": 9,
+     "word": "heart",
+     "before": "and void, and waste: and the ",
+     "after": "melteth, and the knees smite together,",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "36": {
+   "count": 3,
+   "first": [
+    {
+     "ref": "Zephaniah 1:12",
+     "code": "ZEP",
+     "b": 36,
+     "c": 1,
+     "v": 12,
+     "i": 30,
+     "word": "heart,",
+     "before": "their lees: that say in their ",
+     "after": "The LORD will not do good,",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Zephaniah 2:15",
+     "code": "ZEP",
+     "b": 36,
+     "c": 2,
+     "v": 15,
+     "i": 12,
+     "word": "heart,",
+     "before": "dwelt carelessly, that said in her ",
+     "after": "I am, and there is none",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Zephaniah 3:14",
+     "code": "ZEP",
+     "b": 36,
+     "c": 3,
+     "v": 14,
+     "i": 15,
+     "word": "heart,",
+     "before": "glad and rejoice with all the ",
+     "after": "O daughter of Jerusalem.",
+     "pre": true,
+     "post": false
+    }
+   ]
+  },
+  "38": {
+   "count": 4,
+   "first": [
+    {
+     "ref": "Zechariah 7:10",
+     "code": "ZEC",
+     "b": 38,
+     "c": 7,
+     "v": 10,
+     "i": 25,
+     "word": "heart.",
+     "before": "evil against his brother in your ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Zechariah 10:7",
+     "code": "ZEC",
+     "b": 38,
+     "c": 10,
+     "v": 7,
+     "i": 12,
+     "word": "heart",
+     "before": "like a mighty man, and their ",
+     "after": "shall rejoice as through wine: yea,",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Zechariah 10:7",
+     "code": "ZEC",
+     "b": 38,
+     "c": 10,
+     "v": 7,
+     "i": 28,
+     "word": "heart",
+     "before": "see it, and be glad; their ",
+     "after": "shall rejoice in the LORD.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Zechariah 12:5",
+     "code": "ZEC",
+     "b": 38,
+     "c": 12,
+     "v": 5,
+     "i": 9,
+     "word": "heart,",
+     "before": "of Judah shall say in their ",
+     "after": "The inhabitants of Jerusalem shall be",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "39": {
+   "count": 4,
+   "first": [
+    {
+     "ref": "Malachi 2:2",
+     "code": "MAL",
+     "b": 39,
+     "c": 2,
+     "v": 2,
+     "i": 13,
+     "word": "heart,",
+     "before": "ye will not lay it to ",
+     "after": "to give glory unto my name,",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Malachi 2:2",
+     "code": "MAL",
+     "b": 39,
+     "c": 2,
+     "v": 2,
+     "i": 52,
+     "word": "heart.",
+     "before": "ye do not lay it to ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Malachi 4:6",
+     "code": "MAL",
+     "b": 39,
+     "c": 4,
+     "v": 6,
+     "i": 5,
+     "word": "heart",
+     "before": "And he shall turn the ",
+     "after": "of the fathers to the children,",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Malachi 4:6",
+     "code": "MAL",
+     "b": 39,
+     "c": 4,
+     "v": 6,
+     "i": 14,
+     "word": "heart",
+     "before": "fathers to the children, and the ",
+     "after": "of the children to their fathers,",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "40": {
+   "count": 15,
+   "first": [
+    {
+     "ref": "Matthew 5:8",
+     "code": "MAT",
+     "b": 40,
+     "c": 5,
+     "v": 8,
+     "i": 5,
+     "word": "heart:",
+     "before": " Blessed are the pure in ",
+     "after": "for they shall see God.",
+     "pre": false,
+     "post": false
+    },
+    {
+     "ref": "Matthew 5:28",
+     "code": "MAT",
+     "b": 40,
+     "c": 5,
+     "v": 28,
+     "i": 23,
+     "word": "heart.",
+     "before": "adultery with her already in his ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Matthew 6:21",
+     "code": "MAT",
+     "b": 40,
+     "c": 6,
+     "v": 21,
+     "i": 8,
+     "word": "heart",
+     "before": "your treasure is, there will your ",
+     "after": "be also.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Matthew 11:29",
+     "code": "MAT",
+     "b": 40,
+     "c": 11,
+     "v": 29,
+     "i": 16,
+     "word": "heart:",
+     "before": "I am meek and lowly in ",
+     "after": "and ye shall find rest unto",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "41": {
+   "count": 10,
+   "first": [
+    {
+     "ref": "Mark 6:52",
+     "code": "MRK",
+     "b": 41,
+     "c": 6,
+     "v": 52,
+     "i": 11,
+     "word": "heart",
+     "before": "miracle of the loaves: for their ",
+     "after": "was hardened.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Mark 7:6",
+     "code": "MRK",
+     "b": 41,
+     "c": 7,
+     "v": 6,
+     "i": 26,
+     "word": "heart",
+     "before": "me with their lips, but their ",
+     "after": "is far from me.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Mark 7:19",
+     "code": "MRK",
+     "b": 41,
+     "c": 7,
+     "v": 19,
+     "i": 6,
+     "word": "heart,",
+     "before": " Because it entereth not into his ",
+     "after": "but into the belly, and goeth",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Mark 7:21",
+     "code": "MRK",
+     "b": 41,
+     "c": 7,
+     "v": 21,
+     "i": 6,
+     "word": "heart",
+     "before": " For from within, out of the ",
+     "after": "of men, proceed evil thoughts, adulteries,",
+     "pre": false,
+     "post": true
+    }
+   ]
+  },
+  "42": {
+   "count": 12,
+   "first": [
+    {
+     "ref": "Luke 2:19",
+     "code": "LUK",
+     "b": 42,
+     "c": 2,
+     "v": 19,
+     "i": 11,
+     "word": "heart.",
+     "before": "things, and pondered them in her ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Luke 2:51",
+     "code": "LUK",
+     "b": 42,
+     "c": 2,
+     "v": 51,
+     "i": 24,
+     "word": "heart.",
+     "before": "kept all these sayings in her ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Luke 6:45",
+     "code": "LUK",
+     "b": 42,
+     "c": 6,
+     "v": 45,
+     "i": 10,
+     "word": "heart",
+     "before": "of the good treasure of his ",
+     "after": "bringeth forth that which is good;",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Luke 6:45",
+     "code": "LUK",
+     "b": 42,
+     "c": 6,
+     "v": 45,
+     "i": 28,
+     "word": "heart",
+     "before": "of the evil treasure of his ",
+     "after": "bringeth forth that which is evil:",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "43": {
+   "count": 7,
+   "first": [
+    {
+     "ref": "John 12:40",
+     "code": "JHN",
+     "b": 43,
+     "c": 12,
+     "v": 40,
+     "i": 8,
+     "word": "heart;",
+     "before": "blinded their eyes, and hardened their ",
+     "after": "that they should not see with",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "John 12:40",
+     "code": "JHN",
+     "b": 43,
+     "c": 12,
+     "v": 40,
+     "i": 21,
+     "word": "heart,",
+     "before": "their eyes, nor understand with their ",
+     "after": "and be converted, and I should",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "John 13:2",
+     "code": "JHN",
+     "b": 43,
+     "c": 13,
+     "v": 2,
+     "i": 11,
+     "word": "heart",
+     "before": "devil having now put into the ",
+     "after": "of Judas Iscariot, Simon’s son, to",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "John 14:1",
+     "code": "JHN",
+     "b": 43,
+     "c": 14,
+     "v": 1,
+     "i": 3,
+     "word": "heart",
+     "before": " Let not your ",
+     "after": "be troubled: ye believe in God,",
+     "pre": false,
+     "post": true
+    }
+   ]
+  },
+  "44": {
+   "count": 19,
+   "first": [
+    {
+     "ref": "Acts 2:26",
+     "code": "ACT",
+     "b": 44,
+     "c": 2,
+     "v": 26,
+     "i": 3,
+     "word": "heart",
+     "before": "Therefore did my ",
+     "after": "rejoice, and my tongue was glad;",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Acts 2:37",
+     "code": "ACT",
+     "b": 44,
+     "c": 2,
+     "v": 37,
+     "i": 10,
+     "word": "heart,",
+     "before": "this, they were pricked in their ",
+     "after": "and said unto Peter and to",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Acts 2:46",
+     "code": "ACT",
+     "b": 44,
+     "c": 2,
+     "v": 46,
+     "i": 26,
+     "word": "heart,",
+     "before": "meat with gladness and singleness of ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Acts 4:32",
+     "code": "ACT",
+     "b": 44,
+     "c": 4,
+     "v": 32,
+     "i": 10,
+     "word": "heart",
+     "before": "them that believed were of one ",
+     "after": "and of one soul: neither said",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "45": {
+   "count": 9,
+   "first": [
+    {
+     "ref": "Romans 1:21",
+     "code": "ROM",
+     "b": 45,
+     "c": 1,
+     "v": 21,
+     "i": 24,
+     "word": "heart",
+     "before": "in their imaginations, and their foolish ",
+     "after": "was darkened.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Romans 2:5",
+     "code": "ROM",
+     "b": 45,
+     "c": 2,
+     "v": 5,
+     "i": 6,
+     "word": "heart",
+     "before": "But after thy hardness and impenitent ",
+     "after": "treasurest up unto thyself wrath against",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "Romans 2:29",
+     "code": "ROM",
+     "b": 45,
+     "c": 2,
+     "v": 29,
+     "i": 15,
+     "word": "heart,",
+     "before": "and circumcision is that of the ",
+     "after": "in the spirit, and not in",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Romans 6:17",
+     "code": "ROM",
+     "b": 45,
+     "c": 6,
+     "v": 17,
+     "i": 17,
+     "word": "heart",
+     "before": "but ye have obeyed from the ",
+     "after": "that form of doctrine which was",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "46": {
+   "count": 4,
+   "first": [
+    {
+     "ref": "1 Corinthians 2:9",
+     "code": "1CO",
+     "b": 46,
+     "c": 2,
+     "v": 9,
+     "i": 17,
+     "word": "heart",
+     "before": "heard, neither have entered into the ",
+     "after": "of man, the things which God",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "1 Corinthians 7:37",
+     "code": "1CO",
+     "b": 46,
+     "c": 7,
+     "v": 37,
+     "i": 7,
+     "word": "heart,",
+     "before": "he that standeth stedfast in his ",
+     "after": "having no necessity, but hath power",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "1 Corinthians 7:37",
+     "code": "1CO",
+     "b": 46,
+     "c": 7,
+     "v": 37,
+     "i": 24,
+     "word": "heart",
+     "before": "and hath so decreed in his ",
+     "after": "that he will keep his virgin,",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "1 Corinthians 14:25",
+     "code": "1CO",
+     "b": 46,
+     "c": 14,
+     "v": 25,
+     "i": 7,
+     "word": "heart",
+     "before": "thus are the secrets of his ",
+     "after": "made manifest; and so falling down",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "47": {
+   "count": 7,
+   "first": [
+    {
+     "ref": "2 Corinthians 2:4",
+     "code": "2CO",
+     "b": 47,
+     "c": 2,
+     "v": 4,
+     "i": 8,
+     "word": "heart",
+     "before": "of much affliction and anguish of ",
+     "after": "I wrote unto you with many",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "2 Corinthians 3:3",
+     "code": "2CO",
+     "b": 47,
+     "c": 3,
+     "v": 3,
+     "i": 38,
+     "word": "heart.",
+     "before": "but in fleshy tables of the ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "2 Corinthians 3:15",
+     "code": "2CO",
+     "b": 47,
+     "c": 3,
+     "v": 15,
+     "i": 14,
+     "word": "heart.",
+     "before": "read, the vail is upon their ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "2 Corinthians 5:12",
+     "code": "2CO",
+     "b": 47,
+     "c": 5,
+     "v": 12,
+     "i": 32,
+     "word": "heart.",
+     "before": "glory in appearance, and not in ",
+     "after": "",
+     "pre": true,
+     "post": false
+    }
+   ]
+  },
+  "49": {
+   "count": 4,
+   "first": [
+    {
+     "ref": "Ephesians 4:18",
+     "code": "EPH",
+     "b": 49,
+     "c": 4,
+     "v": 18,
+     "i": 24,
+     "word": "heart:",
+     "before": "because of the blindness of their ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Ephesians 5:19",
+     "code": "EPH",
+     "b": 49,
+     "c": 5,
+     "v": 19,
+     "i": 16,
+     "word": "heart",
+     "before": "singing and making melody in your ",
+     "after": "to the Lord;",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Ephesians 6:5",
+     "code": "EPH",
+     "b": 49,
+     "c": 6,
+     "v": 5,
+     "i": 21,
+     "word": "heart,",
+     "before": "and trembling, in singleness of your ",
+     "after": "as unto Christ;",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Ephesians 6:6",
+     "code": "EPH",
+     "b": 49,
+     "c": 6,
+     "v": 6,
+     "i": 18,
+     "word": "heart;",
+     "before": "the will of God from the ",
+     "after": "",
+     "pre": true,
+     "post": false
+    }
+   ]
+  },
+  "50": {
+   "count": 1,
+   "first": [
+    {
+     "ref": "Philippians 1:7",
+     "code": "PHP",
+     "b": 50,
+     "c": 1,
+     "v": 7,
+     "i": 19,
+     "word": "heart;",
+     "before": "because I have you in my ",
+     "after": "inasmuch as both in my bonds,",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "51": {
+   "count": 1,
+   "first": [
+    {
+     "ref": "Colossians 3:22",
+     "code": "COL",
+     "b": 51,
+     "c": 3,
+     "v": 22,
+     "i": 20,
+     "word": "heart,",
+     "before": "as menpleasers; but in singleness of ",
+     "after": "fearing God:",
+     "pre": true,
+     "post": false
+    }
+   ]
+  },
+  "52": {
+   "count": 1,
+   "first": [
+    {
+     "ref": "1 Thessalonians 2:17",
+     "code": "1TH",
+     "b": 52,
+     "c": 2,
+     "v": 17,
+     "i": 15,
+     "word": "heart,",
+     "before": "short time in presence, not in ",
+     "after": "endeavoured the more abundantly to see",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "54": {
+   "count": 1,
+   "first": [
+    {
+     "ref": "1 Timothy 1:5",
+     "code": "1TI",
+     "b": 54,
+     "c": 1,
+     "v": 5,
+     "i": 12,
+     "word": "heart,",
+     "before": "is charity out of a pure ",
+     "after": "and of a good conscience, and",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "55": {
+   "count": 1,
+   "first": [
+    {
+     "ref": "2 Timothy 2:22",
+     "code": "2TI",
+     "b": 55,
+     "c": 2,
+     "v": 22,
+     "i": 21,
+     "word": "heart.",
+     "before": "the Lord out of a pure ",
+     "after": "",
+     "pre": true,
+     "post": false
+    }
+   ]
+  },
+  "58": {
+   "count": 5,
+   "first": [
+    {
+     "ref": "Hebrews 3:10",
+     "code": "HEB",
+     "b": 58,
+     "c": 3,
+     "v": 10,
+     "i": 15,
+     "word": "heart;",
+     "before": "They do alway err in their ",
+     "after": "and they have not known my",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Hebrews 3:12",
+     "code": "HEB",
+     "b": 58,
+     "c": 3,
+     "v": 12,
+     "i": 12,
+     "word": "heart",
+     "before": "in any of you an evil ",
+     "after": "of unbelief, in departing from the",
+     "pre": true,
+     "post": true
+    },
+    {
+     "ref": "Hebrews 4:12",
+     "code": "HEB",
+     "b": 58,
+     "c": 4,
+     "v": 12,
+     "i": 42,
+     "word": "heart.",
+     "before": "the thoughts and intents of the ",
+     "after": "",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "Hebrews 10:22",
+     "code": "HEB",
+     "b": 58,
+     "c": 10,
+     "v": 22,
+     "i": 7,
+     "word": "heart",
+     "before": "us draw near with a true ",
+     "after": "in full assurance of faith, having",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "59": {
+   "count": 1,
+   "first": [
+    {
+     "ref": "James 1:26",
+     "code": "JAS",
+     "b": 59,
+     "c": 1,
+     "v": 26,
+     "i": 18,
+     "word": "heart,",
+     "before": "his tongue, but deceiveth his own ",
+     "after": "this man’s religion is vain.",
+     "pre": true,
+     "post": false
+    }
+   ]
+  },
+  "60": {
+   "count": 2,
+   "first": [
+    {
+     "ref": "1 Peter 1:22",
+     "code": "1PE",
+     "b": 60,
+     "c": 1,
+     "v": 22,
+     "i": 28,
+     "word": "heart",
+     "before": "love one another with a pure ",
+     "after": "fervently:",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "1 Peter 3:4",
+     "code": "1PE",
+     "b": 60,
+     "c": 3,
+     "v": 4,
+     "i": 9,
+     "word": "heart,",
+     "before": "be the hidden man of the ",
+     "after": "in that which is not corruptible,",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "61": {
+   "count": 1,
+   "first": [
+    {
+     "ref": "2 Peter 2:14",
+     "code": "2PE",
+     "b": 61,
+     "c": 2,
+     "v": 14,
+     "i": 15,
+     "word": "heart",
+     "before": "from sin; beguiling unstable souls: an ",
+     "after": "they have exercised with covetous practices;",
+     "pre": true,
+     "post": true
+    }
+   ]
+  },
+  "62": {
+   "count": 3,
+   "first": [
+    {
+     "ref": "1 John 3:20",
+     "code": "1JN",
+     "b": 62,
+     "c": 3,
+     "v": 20,
+     "i": 3,
+     "word": "heart",
+     "before": "For if our ",
+     "after": "condemn us, God is greater than",
+     "pre": false,
+     "post": true
+    },
+    {
+     "ref": "1 John 3:20",
+     "code": "1JN",
+     "b": 62,
+     "c": 3,
+     "v": 20,
+     "i": 11,
+     "word": "heart,",
+     "before": "us, God is greater than our ",
+     "after": "and knoweth all things.",
+     "pre": true,
+     "post": false
+    },
+    {
+     "ref": "1 John 3:21",
+     "code": "1JN",
+     "b": 62,
+     "c": 3,
+     "v": 21,
+     "i": 3,
+     "word": "heart",
+     "before": "Beloved, if our ",
+     "after": "condemn us not, then have we",
+     "pre": false,
+     "post": true
+    }
+   ]
+  },
+  "66": {
+   "count": 1,
+   "first": [
+    {
+     "ref": "Revelation 18:7",
+     "code": "REV",
+     "b": 66,
+     "c": 18,
+     "v": 7,
+     "i": 21,
+     "word": "heart,",
+     "before": "her: for she saith in her ",
+     "after": "I sit a queen, and am",
+     "pre": true,
+     "post": true
+    }
+   ]
+  }
+ }
+}
