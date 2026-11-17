@@ -131,12 +131,35 @@ def fetch():
 
 
 
-def book(f, x, w, tab, h=H - TB, y=TB, query="zeal"):
-    """The Concordance pane: its strip, the navigator (search, the four tabs, A to Z), and its page."""
+def fetch6():
+    """Round 6 (picking a word, a letter after a search, numbers and sounds in the box): wb answers, never typed."""
+    D.mkdir(exist_ok=True)
+    letters = {}
+    for ch in "abcdefghijklmnopqrstuvwxyz":
+        d = json.loads(wb("forms", ch))
+        letters[ch] = {"words": len(d["forms"]), "places": d["total"]}
+    j = json.loads(wb("forms", "j"))
+    out = {"command": "wb forms <letter> for a to z (words = forms listed, places = total); the first 60 forms of j",
+           "letters": letters, "j": j["forms"][:60]}
+    (D / "letters-forms.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    sug = {"command": "wb define H7068 / wb define kanna / wb forms zealous / wb lexiconc zealous",
+           "number": json.loads(wb("define", "H7068")), "sound": json.loads(wb("define", "kanna")),
+           "zealous": json.loads(wb("forms", "zealous")), "lexiconc_zealous": json.loads(wb("lexiconc", "zealous"))}
+    (D / "box-suggestions.json").write_text(json.dumps(sug, ensure_ascii=False, indent=1), encoding="utf-8")
+    print("fetched round 6")
+
+
+def book(f, x, w, tab, h=H - TB, y=TB, query="zeal", tabs=("Concordance",), active="Concordance", back=False,
+         letter=None, off=()):
+    """The Concordance pane: its strip, the navigator (search, the four tabs, A to Z), and its page. back: the tab's own
+    back button (round 4: a picked word opens in a new tab that copies the old tab's history); letter and off: a letter
+    clicked after a search, and the letters with no words (they cannot be clicked)."""
     cp = frame(f, "concordance", x=x, y=y, w=w, h=h, fill="surface", layout="vertical", W="fixed", H="fixed", clip=True)
-    M.folder_strip(cp, ["Concordance"], "Concordance")
+    M.folder_strip(cp, list(tabs), active)
     nav = row(cp, "navigator", gap=10, pad=[10, 16, 10, 16], W="fill", stroke="line", strokeBottomWeight=1,
               strokeTopWeight=0, strokeLeftWeight=0, strokeRightWeight=0)
+    if back:
+        P.icon_button(nav, "left", "fg", size=34, icon_size=18, stroke="line")
     fld = P.field(nav, "Word, number or sound", query, icon_name="search", height=34, W="fixed")
     S.do("node.set", {"ids": [fld], "props": {"width": 240}}, ref=False)
     P.segmented(nav, ["English", "Hebrew", "Greek", "Interlinear"], tab, W="hug")
@@ -147,8 +170,11 @@ def book(f, x, w, tab, h=H - TB, y=TB, query="zeal"):
                    "א ב ג ד ה ו ז ח ט י כ ל מ נ ס ע פ צ ק ר ש ת".split() if tab == "Hebrew" else
                    "Α Β Γ Δ Ε Ζ Η Θ Ι Κ Λ Μ Ν Ξ Ο Π Ρ Σ Τ Υ Φ Χ Ψ Ω".split() if tab == "Greek" else []):
             # English: the letter of the word shown; Hebrew and Greek: the letter of the open entry's word
-            on = (ch == query[:1].upper()) if tab == "English" else ch in ("ק", "Ζ")
-            text(az, ch, "caption", "accent" if on else "muted")
+            on = (ch == (letter or query[:1]).upper()) if tab == "English" else ch in ("ק", "Ζ")
+            if ch in off:
+                text(az, ch, "caption", "muted", opacity=0.35)
+            else:
+                text(az, ch, "caption", "accent" if on else "muted")
     return cp
 
 
@@ -825,7 +851,148 @@ def round5(board):
         text(blk, f"   {d['verses'] - 18:,} more", "caption", "accent")
 
 
+def menu_head(m, s):
+    text(m, "  " + s, "label", "muted")
+
+
+def round6(board):
+    """Round 6: the decisions of round 4 drawn (2026-11-16): picking a word, a letter after a search, numbers and sounds."""
+    LF = json.loads((D / "letters-forms.json").read_text(encoding="utf-8"))
+    BS = json.loads((D / "box-suggestions.json").read_text(encoding="utf-8"))
+    zforms = BS["zealous"]["forms"]
+    others = [x for x in FORMS["forms"] if x["form"] != "zealous"]
+    cv = Q.section(board, "Round 6", 3200)
+    Q.sheet_title(cv, "Round 6: picking a word, a letter after a search, numbers and sounds (2026-11-16)",
+                  "The person's round 4 decisions, drawn: a picked word opens alone with its other forms a click away, in "
+                  "a new tab that copies the old tab's history, with a back button in the tab (a and c); the letter strip "
+                  "after a search; and numbers and sounds as suggestions behind the others. Where a click goes after "
+                  "that, tab by tab, is the app-wide going-back feature (design/features/tab-history). Every word and "
+                  "count is a wb answer (data/letters-forms.json, data/box-suggestions.json).")
+    r = row(cv, "row 6a", gap=64, align="min")
+
+    # C21 the pick: the box with its suggestions, the English word picked
+    f = Q.win(r, "Round 6", "C21 · Picking a word from the box",
+              "Typing zealous lists the English forms first, then the original words whose definition holds it. Choosing "
+              "the English word zealous opens it in a new tab (the label on the row says so); the tab you were in stays "
+              "as it was.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "English", query="zealous")
+    pg = page(cp)
+    switch_head(pg, "zeal · 16 places")
+    lines(pg, "zeal", CONC["zeal"])
+    m = col(f, "suggestions", gap=2, pad=[8, 8, 8, 8], fill="surface", radius=12, stroke="line", sw=1, W="fixed")
+    Q.put(m, w + 16, TB + 92, 560)
+    shadow(m, 8, 28, "#00000033")
+    menu_head(m, "ENGLISH WORDS")
+    for i, x in enumerate(zforms):
+        it = row(m, f"s/{x['form']}", gap=10, pad=[7, 8, 7, 8], radius=8, W="fill", fill="accentSoft" if i == 0 else None)
+        text(it, x["form"], "smallStrong" if i == 0 else "body", W="fill")
+        if i == 0:
+            P.chip(it, "Opens in a new tab", "quiet", icon_name="right")
+        text(it, f"{x['n']} places", "caption", "muted")
+    P.divider(m)
+    menu_head(m, "ORIGINAL WORDS WHOSE DEFINITION HOLDS “ZEALOUS”")
+    for x in BS["lexiconc_zealous"]["entries"][:3]:
+        it = row(m, f"s/{x['strong']}", gap=10, pad=[7, 8, 7, 8], radius=8, W="fill")
+        text(it, x["strong"], "smallStrong", "accent")
+        text(it, x["lemma"], "body")
+        text(it, x["translit"], "caption", "muted")
+        text(it, x["definition"], "caption", "muted", W="fill", maxLines=1)
+
+    # C22 the new tab: zealous alone, the other forms a click away, a back button in the tab
+    f = Q.win(r, "Round 6", "C22 · The new tab: the word alone, its other forms a click away",
+              "The new tab is next to the old one and is a copy of it, with its history. It shows zealous alone "
+              "(wb uses zealous: 8 places); the other forms are a click away, in the row at the foot and in All forms. "
+              "The back button at the left of its box goes back through the history it copied.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "English", query="zealous", tabs=("Concordance", "zealous"), active="zealous", back=True)
+    pg = page(cp)
+    switch_head(pg, "zealous · 8 places")
+    lines(pg, "zealous", CONC["zealous"])
+    ft = row(pg, "other forms", gap=10, pad=[10, 12, 10, 12], radius=10, fill="sunken", W="fill")
+    text(ft, "Other forms", "caption", "muted", W="fill")
+    for x in others:
+        P.chip(ft, f"{x['form']} {x['n']}", "outline")
+
+    r = row(cv, "row 6b", gap=64, align="min")
+    # C23 after Back: the copy steps back; the old tab is untouched
+    f = Q.win(r, "Round 6", "C23 · Back inside the new tab",
+              "Back in the new tab goes one step back through the history it copied: here to the page the old tab was "
+              "on (zeal). The old tab, to its left, is exactly where it was. Going back is wanted in every tab, so the "
+              "button, the history and the trail are designed as one app-wide feature (tab-history).")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "English", query="zeal", tabs=("Concordance", "zeal"), active="zeal", back=True)
+    pg = page(cp)
+    switch_head(pg, "zeal · 16 places")
+    lines(pg, "zeal", CONC["zeal"])
+
+    # C24 a letter after a search
+    f = Q.win(r, "Round 6", "C24 · A letter after a search",
+              "After zealous was searched, J is clicked: the page shows only the words that start with J (wb forms j: "
+              f"{LF['letters']['j']['words']} words, {LF['letters']['j']['places']:,} places) and only those words can be "
+              "clicked. Letters with no words (X) are dimmed and cannot be clicked. The search is not lost: the line at the "
+              "top goes back to it.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    off = tuple(k.upper() for k, v in LF["letters"].items() if v["words"] == 0)
+    cp = book(f, w, W - w, "English", query="zealous", letter="J", off=off)
+    pg = page(cp, pad=(16, 28, 16, 28))
+    hd = row(pg, "letter head", gap=12, pad=[10, 14, 10, 14], radius=10, fill="accentSoft", W="fill")
+    text(hd, "J", "heading", "accent", fontFamily=F.READ)
+    text(hd, f"{LF['letters']['j']['words']} words · {LF['letters']['j']['places']:,} places", "small", "muted",
+         W="fill")
+    P.button(hd, "Back to zealous", "secondary", size="sm")
+    cols = row(pg, "words", gap=24, pad=[14, 0, 0, 0], W="fill", align="min")
+    per = 20
+    for k in range(3):
+        c_ = col(cols, "column", gap=3, W="fill")
+        for x in LF["j"][k * per:(k + 1) * per]:
+            it = row(c_, f"word/{x['form']}", gap=8, W="fill")
+            text(it, x["form"], "small", W="fill")
+            text(it, str(x["n"]), "caption", "muted")
+
+    # C25 numbers and sounds
+    f = Q.win(r, "Round 6", "C25 · Numbers and sounds in the box",
+              "The box also takes a Strong's number (H7068: wb define H7068) and a sound (kanna: wb define kanna, an "
+              "original word by its transliteration). They are rows behind the English forms and original words, shown "
+              "only when what is typed matches, in their own groups and never in front of the other searches, except "
+              "that a typed number goes first, being exact.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "English", query="H7068")
+    page(cp)
+    n = BS["number"]["strong"]
+    nn = STRONG["H7068"]
+    m = col(f, "suggestions: number", gap=2, pad=[8, 8, 8, 8], fill="surface", radius=12, stroke="line", sw=1, W="fixed")
+    Q.put(m, w + 16, TB + 92, 560)
+    shadow(m, 8, 28, "#00000033")
+    text(m, "  typed: H7068", "caption", "muted")
+    menu_head(m, "NUMBER")
+    it = row(m, f"s/{nn['strong']}", gap=10, pad=[7, 8, 7, 8], radius=8, W="fill", fill="accentSoft")
+    text(it, nn["strong"], "smallStrong", "accent")
+    text(it, nn["lemma"], "body")
+    text(it, nn["translit"], "caption", "muted")
+    text(it, nn["definition"], "caption", "muted", W="fill", maxLines=1)
+    text(it, f"{nn['occurrences']} places", "caption", "muted")
+    m2 = col(f, "suggestions: sound", gap=2, pad=[8, 8, 8, 8], fill="surface", radius=12, stroke="line", sw=1, W="fixed")
+    Q.put(m2, w + 16, TB + 240, 560)
+    shadow(m2, 8, 28, "#00000033")
+    text(m2, "  typed: kanna", "caption", "muted")
+    menu_head(m2, "SOUNDS LIKE")
+    for x in BS["sound"]["original"][:3]:
+        it = row(m2, f"s/{x['strong']}", gap=10, pad=[7, 8, 7, 8], radius=8, W="fill")
+        text(it, x["strong"], "smallStrong", "accent")
+        text(it, x["lemma"], "body")
+        text(it, x["translit"], "caption", "muted")
+        text(it, x["definition"], "caption", "muted", W="fill", maxLines=1)
+
+
 def main():
+    if "--fetch6" in sys.argv:
+        return fetch6()
     if "--fetch" in sys.argv:
         return fetch()
     F.define_tokens()
@@ -835,6 +1002,7 @@ def main():
     round2(board)
     round3(board)
     round5(board)
+    round6(board)
     build = LIB / "build"
     build.mkdir(exist_ok=True)
     script = build / "concordance.json"
