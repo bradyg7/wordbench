@@ -23,17 +23,17 @@ A new button or command gets a row here, and its folder, before it is built.
 | Reader | verses, versions, marks, selection | [reader](reader/README.md) | exploring |
 | Word sheet, verse sheet, hover card | a card that moves, a verse alone, hover | [words](words/README.md) | exploring |
 | Highlights and the palette | colors with names, layers by year; words' ink by contrast, any color on any theme | [highlights](highlights/README.md) | exploring (ink accepted 2026-11-16) |
-| Notebook: pages, Pinned, blocks | the side list, the page, / and the selection bar, many pages at once, folders | [library](library/README.md) | exploring (likely finished 2026-11-16) |
+| Notebook: pages, Pinned, blocks | the side list, the page, / and the selection bar, many pages at once, folders | [library](library/README.md) | accepted (2026-11-17); building |
 | Notebook: Find scripture in a page | Find scripture… in a page's ⋯, the Tether pane, Accept and Skip, the verses in order for a deck or script | [tether](tether/README.md) | exploring (seeded 2026-11-17) |
-| Shelf and sets, bookmarks (Keep) | Keep on anything, the folder picker, a folder opened | [library](library/README.md) | exploring |
-| Threads | a thread is a folder with a color (TH-1, waiting on the person's word); its line on the text and its eye | [threads](threads/README.md) | exploring (likely finished 2026-11-16) |
-| Marks: what the text shows of yours | on the words, in the margin, margin notes, Scripture in this page, a passage with its marks | [marks](marks/README.md) | exploring (likely finished 2026-11-16) |
-| Questions | asking, the list, answering | [questions](questions/README.md) | exploring (likely finished 2026-11-16) |
-| Day page, journal, inbox | Today optional; Inbox removed (minimize round 5) | [library](library/README.md) | exploring |
+| Shelf and sets, bookmarks (Keep) | Keep on anything, the folder picker, a folder opened | [library](library/README.md) | accepted (2026-11-17); building |
+| Threads | a thread is a folder with a color (TH-1; the person's word 2026-11-17, TH-11); its line on the text and its eye | [threads](threads/README.md) | accepted (2026-11-17); building |
+| Marks: what the text shows of yours | on the words, in the margin, margin notes, Scripture in this page, a passage with its marks | [marks](marks/README.md) | accepted (2026-11-17); building |
+| Questions | asking, the list, answering | [questions](questions/README.md) | accepted (2026-11-17); building |
+| Day page, journal, inbox | Today optional; Inbox removed (minimize round 5) | [library](library/README.md) | accepted (2026-11-17); building |
 | Search, uses, count, near, forms | asking and narrowing a search; the [Concordance](concordance/README.md) hosts uses, count, forms and near for an entry and reuses search's controls | [search](search/README.md) | exploring |
 | Reading plans and the reading log | a plan's day, starting a plan, what was read | [reading-plans](reading-plans/README.md) | exploring |
-| Lessons and documents (Word, PDF, Present) | the builder, the viewer, Looks, where a file went | [documents](documents/README.md) | exploring (likely finished 2026-11-16) |
-| Trash | Undo, the 7 days, Empty trash, the way in, deleting a block; several pages at once (T10) | [trash](trash/README.md) | accepted (rounds 1-2); round 3 likely finished 2026-11-16 |
+| Lessons and documents (Word, PDF, Present) | the builder, the viewer, Looks, where a file went | [documents](documents/README.md) | accepted (2026-11-17); building |
+| Trash | Undo, the 7 days, Empty trash, the way in, deleting a block; several pages at once (T10) | [trash](trash/README.md) | accepted (2026-11-17, round 3; rounds 1-2 built); building |
 | Updates | the dot on the Settings gear that says a new version is ready, the Updates section of the Settings menu (what changed, Install, Restart now, Check now, Look for updates, Go back) | [updates](updates/README.md) | exploring (round 1 drawn 2026-11-16, U1-U14; not reviewed by the person) |
 | Findings | the box, the pane, `!` in the field | [findings](findings/README.md) | accepted |
 | Settings, layout, views | italic words, scroll bars, layouts, saved lists | [settings](settings/README.md) | accepted |

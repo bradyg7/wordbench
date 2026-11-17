@@ -30,12 +30,18 @@ a change alters expected behavior, document the contract and verify it with Rust
   person's findings about the app, beside `notes/` so the Notebook never lists them; `findings/<id>/` holds the files
   attached to a finding, copied in, 10 MB each at most.
 - **Everything is a page, in the window** (the person's decision, 2026-11-09, [R1 decision record](docs/archive/2026-11-10/docs/redesign-R1.md)).
-  A note, a question, a day and a thread are shown as pages; "note" is the old word. How a page is kept on disk follows
-  the design folders (pages lose their single place for references in their text: [marks](design/features/marks/README.md),
-  2026-11-12); today a thread is its `threads/<slug>.md` read as a page (`thread:<slug>`) and Pinned is in
-  `settings/pages.json`. A question written in a page is a callout line (`> [!question]`, `> [!done]`); a thread or a word
-  put in a page is a ```` ```thread ```` or ```` ```word ```` fence holding only an id or a number, never the text. `wb page …`
-  is `wb note …` under the new name. `wb study check` is the read-only check of what the folder holds.
+  A note, a question and a day are shown as pages; "note" is the old word. **A thread is a folder with a color** (the
+  person, 2026-11-17, [threads](design/features/threads/README.md) TH-1, TH-11): its places are the saves in the folder,
+  in the folder's own order; its note is a page in the folder; pages written on it are pages in the folder. The window's
+  word is "folder"; `wb thread …` keeps its contracts and works on folders with a color, and `thread:<slug>` still opens
+  one (TH-3). How a page is kept on disk follows the design folders (pages lose their single place for references in
+  their text: [marks](design/features/marks/README.md), 2026-11-12). Today's `threads/<slug>.md` files stay where they
+  are and stay readable: they are read as folders with a color (until that is built, the app shows one as a page), and
+  moving them into the folders' own form happens only as a designed, backed-up move with the person's go-ahead (TH-2,
+  TH-12). Pinned is in `settings/pages.json`. A question written in a page is a callout line (`> [!question]`,
+  `> [!done]`); a word put in a page is a ```` ```word ```` fence, and a ```` ```thread ```` fence in a page shows the folder's
+  saves; each holds only an id or a number, never the text. `wb page …` is `wb note …` under the new name.
+  `wb study check` is the read-only check of what the folder holds.
 - **The Bible database is read-only.** Follow [local provisioning](data/README.md) and select it with `WB_BIBLE_DB`, the
   setup screen or `wb setup database` (otherwise `datasets/workbench.db` beside the program, or in the sibling
   `bible-workbench` checkout). It is opened with SQLite's read-only flag. Never modify it.
@@ -63,7 +69,7 @@ a change alters expected behavior, document the contract and verify it with Rust
 
 | Path | What |
 |---|---|
-| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `pages` (pages inside pages, Pinned, a page's blocks, thread and word blocks), `concordance` (the printed Strong's as a book: the English page, an entry's places, the box, the letter strip and its two settings), `threadpage` (a thread as a page), `questions` (questions written in a page, and the one list of them), `check` (the read-only check of the folder), `relay` (`wb do`), `docs` (documents from a thread or a page: the plans, the Word writer, the PDF deck through Typst, `documents/` records; its fonts in `crates/wb-core/fonts`) |
+| `crates/wb-core` | Everything that is not drawing: `bible` (read-only SQLite), `places` (references), `lookup`, `scripture`, `anchors`, `store` (the study files), `studyapi`, `reading` (plans and progress), `cache`, `marks`, `views`, `commands` (the command language), `notebook` (journal, inbox, placing), `pages` (pages inside pages, Pinned, a page's blocks, thread and word blocks), `concordance` (the printed Strong's as a book: the English page, an entry's places, the box, the letter strip and its two settings), `threadpage` (today a thread file shown as a page; threads TH-1 reads it as a folder with a color), `questions` (questions written in a page, and the one list of them), `check` (the read-only check of the folder), `relay` (`wb do`), `docs` (documents from a thread, that is a folder with a color, or a page: the plans, the Word writer, the PDF deck through Typst, `documents/` records; its fonts in `crates/wb-core/fonts`) |
 | `crates/wb-cli` | The `wb` command table (a library the app runs in-process) and the `wb` binary |
 | `app/src-tauri` | The Tauri 2 shell: commands that call wb-core |
 | `ui/` | The UI: TypeScript, CSS, fonts (Literata for scripture, Inter for the interface), `tokens.css` from the design tokens |
