@@ -3,7 +3,7 @@
 use crate::args::{Args, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Map, Value};
-use wb_core::{lookup, scripture, views};
+use wb_core::{concordance, lookup, scripture, views};
 
 fn e(x: wb_core::Error) -> String {
     x.0
@@ -54,9 +54,36 @@ pub fn commands() -> Vec<Command> {
             }
             Ok(Out::Json(lookup::chapter(c.bible()?, s.book.id, s.c1).map_err(e)?.ok_or("no such chapter")?))
         }),
-        cmd("strong", "A lexicon entry for a Strong's number (H7065, G26).", vec![Pos("number", N::One)], |c, a| {
-            Ok(Out::Json(lookup::strong(c.bible()?, &a.s("number").to_uppercase()).map_err(e)?.ok_or("no such Strong's number")?))
-        }),
+        cmd("strong", "A lexicon entry for a Strong's number (H7065, G26). --next / --prev: the entry after or before it in number order; --list hebrew|greek [--from H7068]: the entries in number order, a page from a number.",
+            vec![Pos("number", N::Opt), Flag("next"), Flag("prev"), Opt("list", None), Opt("from", None)], |c, a| {
+                if let Some(lang) = a.opt("list") {
+                    return Ok(Out::Json(concordance::list(c.bible()?, &lang, a.opt("from").as_deref()).map_err(e)?));
+                }
+                if a.s("number").is_empty() {
+                    return Err("Give a Strong's number like H7065, or --list hebrew|greek.".into());
+                }
+                if a.flag("next") || a.flag("prev") {
+                    if a.flag("next") && a.flag("prev") {
+                        return Err("Give --next or --prev, not both.".into());
+                    }
+                    return Ok(Out::Json(concordance::neighbour(c.bible()?, &a.s("number"), a.flag("next")).map_err(e)?));
+                }
+                Ok(Out::Json(lookup::strong(c.bible()?, &a.s("number").to_uppercase()).map_err(e)?.ok_or("no such Strong's number")?))
+            }),
+        // The Concordance (design/features/concordance): the printed Strong's as a book.
+        cmd("concordance", "The English page of the Concordance: every place of a word in Bible order, with words either side and the original word's number: wb concordance zeal [--forms all|one] [--book NUM].
+                     --forms: all (zeal, zealous, zealously) or one (the word alone); without it, the kept choice (wb settings concordance forms). More than 100 places are shown under their books, 4 lines each and \"more\"; the commonest small words (and, the, of) with references only. --book: that book's every line.",
+            vec![Pos("word", N::One), Opt("forms", None), Opt("book", None)], |c, a| {
+                let mode = match a.opt("forms") {
+                    Some(m) => m,
+                    None => wb_core::concordance::forms_mode(&*c.study()?),
+                };
+                Ok(Out::Json(concordance::page(c.bible()?, &a.s("word"), &mode.to_lowercase(), a.opt("book").as_deref()).map_err(e)?))
+            }),
+        cmd("concordance box", "What the Concordance's one box suggests for what is typed: a Strong's number (NUMBER), English forms with counts, original words whose definition holds it, and sounds-alike (at most 3 rows each): wb concordance box zea.",
+            vec![Pos("text", N::Many)], |c, a| Ok(Out::Json(concordance::suggest(c.bible()?, &a.s("text")).map_err(e)?))),
+        cmd("concordance letters", "The letter strip: for each letter a to z, how many English words start with it and their places (x has none): wb concordance letters.",
+            vec![], |c, _| Ok(Out::Json(concordance::letters(c.bible()?).map_err(e)?))),
         cmd("bdb", "Brown-Driver-Briggs for a Hebrew or Aramaic number (H7065), with the source file's own status.", vec![Pos("number", N::One)], |c, a| {
             Ok(Out::Json(lookup::bdb(c.bible()?, &a.s("number").to_uppercase()).map_err(e)?))
         }),
@@ -64,7 +91,7 @@ pub fn commands() -> Vec<Command> {
             Ok(Out::Json(lookup::define(c.bible()?, &a.s("word")).map_err(e)?))
         }),
         cmd("uses", "Every occurrence of an English word and/or Strong's number: wb uses zeal --scope gospels  |  wb uses H7065 --word zealous.",
-            vec![Pos("term", N::One), Opt("word", None), Opt("scope", Some("all")), Opt("rendering", None), Opt("cat", Some("all")), Opt("offset", Some("0"))], uses),
+            vec![Pos("term", N::One), Opt("word", None), Opt("scope", Some("all")), Opt("rendering", None), Opt("cat", Some("all")), Opt("offset", Some("0")), Opt("by", None), Opt("group", None), Opt("around", None)], uses),
         cmd("count", "How many occurrences in each book: wb count zeal  |  wb count H7065.", vec![Pos("term", N::One)], count),
         cmd("search", "Search the KJV (every word must be in the verse; \"quotes\" for a phrase; zeal* for endings).",
             vec![Pos("query", N::Many), Opt("scope", Some("all")), Flag("case"), Flag("regex"), Opt("offset", Some("0"))], |c, a| {
@@ -193,6 +220,16 @@ fn preview(c: &Ctx<'_>, a: &Args) -> Res {
 fn uses(c: &Ctx<'_>, a: &Args) -> Res {
     let term = a.s("term");
     let strong = strong_term(&term);
+    if let Some(by) = a.opt("by") {
+        if strong.is_empty() {
+            return Err("--by groups an original word's places: give a Strong's number like H7068 (an English word's page is wb concordance).".into());
+        }
+        let around = match a.opt("around") {
+            Some(n) => n.parse::<usize>().map_err(|_| "--around is a number of words")?,
+            None => concordance::AROUND,
+        };
+        return Ok(Out::Json(concordance::entry_places(c.bible()?, &strong, &by.to_lowercase(), a.opt("group").as_deref(), around).map_err(e)?));
+    }
     let word = a.opt("word").unwrap_or_else(|| if strong.is_empty() { term.to_lowercase() } else { String::new() });
     let scope = c.scope(&a.opt_or("scope", "all"))?;
     let rendering = a.opt("rendering").unwrap_or_default();
