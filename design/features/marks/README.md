@@ -99,6 +99,24 @@ with the person's go-ahead for that run.
 | MK-18 | **Moving the old notes that have a place, once:** a placed note that is only plain sentences (no title, heading, block, table or page inside) becomes a margin note at its place (in MK-17's form); any other becomes a page whose first line is its reference. Before anything is written, a read-only list says which each note would become (`wb study check --margin-move`); then a scratch copy, a hashed backup (`scripts/backup-study.ps1`), and the person's go-ahead for the run on the real folder. Old trails at a verse move in the same pass ([questions](../questions/README.md) QN-8). Until then the app reads the old form: a placed note is shown in its verse's margin as it is. Main risk named in the recommendation: a short note the person thinks of as a page lands in the margin; Grow into a page (MK-8) is the way back, and the list shows it first. The rule is decided; the move itself has not been run, and this decision runs nothing. | The person, 2026-11-17 (was "Needs the person" 2); the person, 2026-11-12 (a page has no place; old notes move once with the go-ahead) |
 | MK-19 | **History (M18, M19):** keep the date on every margin note (in MK-17's form) and on every highlight (how is [highlights](../highlights/README.md)' own format question, still open there), and do not keep earlier versions of pages yet. Dates are small and make M18's line of dots true; versions of every page would grow the folder and need their own design (where, how long, how erased). Main risk named in the recommendation: thoughts edited before versions exist cannot be shown as they were. Nothing else on the board depends on M18 or M19. | The person, 2026-11-17 (was "Needs the person" 3) |
 
+## Decisions made while building (the builder, 2026-11-17, inference, for the person's look)
+
+The accepted design left these open; the build chose the smallest answer that keeps what the person already has. Each can be changed.
+
+| # | Decision | Rests on |
+|---|---|---|
+| MK-20 | **A margin note lies in one chapter.** A verse, a passage inside one chapter, or one chapter. A passage across a chapter break (Numbers 25:10-26:2) is refused with a plain sentence; the file is `margin/<BOOK>/<chapter>.md`, so a note across two would sit in two files. | MK-17 (one file per chapter); MK-7 |
+| MK-21 | **Delete is recoverable.** `wb margin rm` copies the note to `.trash/<time>-<id>.md` first; `wb margin restore <id>` puts it back. That file is not a page, so Trash's seven-day erase never touches it. | AGENTS.md ("anything deleted is moved to .trash") |
+| MK-22 | **The pencil is kept in `pencil/<BOOK>.json`**, one small file per book, each line `{id, anchor, created}`. It does not touch the highlight files. U again (`wb hl pencil --clear`) takes off every line that touches the place. | MK-1, MK-19; [highlights](../highlights/README.md) leaves its own format open |
+| MK-23 | **A page carries no `anchor` at all.** New pages in the Inbox, notes on a thread and the like no longer write `anchor: ""` in their front matter. Pages that already have one are read as before and not rewritten. | "A new page has no `anchor` in its front matter" (the build list); the no-places decision |
+| MK-24 | **A margin note's id carries the millisecond** (`m_<second><ms>_<hex>`), so notes written in one second still sort in the order written. | MK-17, MK-19 |
+| MK-25 | **The verse index lives in memory**, one entry per page, forgotten when that page's file is read again or is gone and worked out again on the next question. It is not written to disk; a `wb` run builds it when it first needs it, the window keeps it. | MK-14 |
+| MK-26 | **A saved phrase's line is the thread underline already drawn.** The folder's own colour belongs to threads (`wb folder color`, not built); until it is, nothing new is drawn for a saved phrase. | MK-1 (M15); [threads](../threads/README.md) |
+| MK-27 | **"Remember my choice" is the setting `margin` → `write_choice`** (`margin` or `page`), read and set by `wb settings margin`. | MK-3 (M27) |
+| MK-28 | **Scripture in this page folds past 30 scriptures** to books with counts; open it is at most 6 rows (30 px each). | MK-5 (M22, M39) |
+| MK-29 | **The margin opens again where it was left.** Going Back to a chapter whose verse was open in the margin opens it on that verse again; closing it with × forgets it. | "the margin still open on verse 11" (the build list) |
+| MK-30 | **The Margin notes row sits in the Notebook's own side list** (and its narrow list) until the Library's side list (library S25 to S35) is built; it is one component and moves there as it is. | MK-12; [library](../library/README.md) |
+
 ## Needs the person
 
 Nothing. All three were answered by the person on 2026-11-17 (accepted the recommendation):
