@@ -373,6 +373,7 @@ async function changeLayers(a: any): Promise<string> {
       await wb(['folder', 'shown', t.key, a.action === 'show' ? 'on' : 'off']);
       layers.save();
       await app.refreshMarks();
+      app.repaintLayers();
       return `${a.action === 'show' ? 'Showing' : 'Hiding'} “${t.name}”`;
     }
     case 'panel': { const b = document.getElementById('hl-menu') ?? document.getElementById('more'); if (document.getElementById('hl-menu')) b!.click(); else hooks.highlights(b!); return 'The layers'; }

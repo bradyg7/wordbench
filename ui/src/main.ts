@@ -888,6 +888,14 @@ function closeFind() {
   fb.hidden = true;
 }
 
+/** An eye turned in every drawn reader at once (the marks carry which folders are hidden), then the study's own answer. */
+function setEyes(markIds: string[], hide: boolean) {
+  const apply = (m: { hidden?: string[] }) => { const s = new Set(m.hidden || []); for (const id of markIds) { if (hide) s.add(id); else s.delete(id); } m.hidden = [...s]; };
+  if (drawn) apply(drawn.marks);
+  for (const { view } of readers2.values()) if (view.drawn) apply(view.drawn.marks);
+  repaintLayers();
+}
+
 // ---- the Highlights menu: layers -------------------------------------------------------------------------------------
 async function highlightsMenu(from: HTMLElement) {
   const box = h('div', 'menu-list layers-menu');
@@ -914,7 +922,7 @@ async function highlightsMenu(from: HTMLElement) {
       const b = h('button', `menu-item check eye-row${t.shown ? ' on' : ''}`);
       b.setAttribute('aria-pressed', String(t.shown));
       b.append(icon(t.shown ? 'eye' : 'eyeoff', 14), h('i', `dot c-${t.color}`), h('span', 'eye-name', t.name));
-      b.onclick = async () => { try { await wb(['folder', 'shown', t.key, t.shown ? 'off' : 'on']); await refreshMarks(); } catch (x) { toast(String(x)); } close(); void highlightsMenu(from); };
+      b.onclick = async () => { try { await wb(['folder', 'shown', t.key, t.shown ? 'off' : 'on']); setEyes([t.mark], t.shown); } catch (x) { toast(String(x)); } close(); void highlightsMenu(from); };
       return b;
     };
     const search = h('input', 'field small eye-search') as HTMLInputElement;
@@ -942,9 +950,10 @@ async function highlightsMenu(from: HTMLElement) {
     hideAll.onclick = async () => {
       try {
         const r = await wb(['folder', 'shown', '--none']);
-        await refreshMarks();
+        const was = ts.filter(t => t.shown).map(t => t.mark);
+        setEyes(ts.map(t => t.mark), true);
         close();
-        toastUndo('Every folder line is hidden', async () => { await wb(['folder', 'shown', ...(r.was_shown as string[]).flatMap(k => ['--restore', k])]); await refreshMarks(); });
+        toastUndo('Every folder line is hidden', async () => { await wb(['folder', 'shown', ...((r?.was_shown || []) as string[]).flatMap(k => ['--restore', k])]); setEyes(was, false); });
       } catch (x) { toast(String(x)); }
     };
     box.append(search, hideAll, list);

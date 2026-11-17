@@ -46,7 +46,8 @@ test('Shelf opens a saved PDF individually and with its folder', async ({ page }
 test('Save chapter PDF uses the current chapter and visible layers', async ({ page }, info) => {
   const fixture = JSON.parse(readFileSync(new URL('../public/fixtures/NUM.25.json', import.meta.url), 'utf8'));
   fixture.reader.marks.thread_names = { shown: 'Shown thread', hidden: 'Hidden thread' };
-  await page.addInitScript(() => localStorage.setItem('wb.layers.v1', JSON.stringify({ mine: false, all: true, hidden: ['hidden'] })));
+  fixture.reader.marks.hidden = ['hidden'];
+  await page.addInitScript(() => localStorage.setItem('wb.layers.v1', JSON.stringify({ mine: false, all: true })));
   await page.route('**/fixtures/NUM.25.json', route => route.fulfill({ json: fixture }));
   let opened = false;
   await page.route('**/fixtures/wb/*.json', async route => {

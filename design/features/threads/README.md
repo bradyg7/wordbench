@@ -142,39 +142,51 @@ a Rust test or in the desk check, on a generated scratch study (never the real f
   Library's FOLDERS lists "Phinehas" with its color dot and the count 56; opening it lists the 56 saves in the file's
   order and one page holding the note (T1, T2). No file in the study folder is written by opening it (compare hashes
   before and after).
+  Built, not ticked: `crates/wb-cli/tests/threads.rs` `a_thread_file_is_read_as_a_folder_and_nothing_is_written` (wb folder list shows Phinehas, yellow, 56; wb folder show lists the 56 in order and one page; file hashes equal before and after) and `the_shelf_lists_thread_files_as_folders_with_their_color`. Open: the Library's FOLDERS side list in the window is library S25 (not built), so the dot and count are not drawn there yet.
 - [ ] **No Threads group or tab.** The Notebook's side list has no group, tab or filter named Threads; the word
   "thread" appears nowhere in the window except in Help's account of the change (T1).
-- [ ] **The line on the text.** With the folder's eye on, every phrase or word saved in it is underlined in its
+  Partly built: the Notebook's Threads section/tab, "Any thread" filter and the Thread pill are renamed or removed (`ui/src/notebook.ts`); Highlights menu and Help say "folder" (Help topic `threads` is the account of the change). Open: many other window strings still say "thread" (the Thread button on the selection bar, "Add to thread", the thread page head); they belong to the library side-list and page rebuild (S25-S35, not built).
+- [x] **The line on the text.** With the folder's eye on, every phrase or word saved in it is underlined in its
   color in the reader, one joined line under a run (marks M13), and every whole verse saved in it has a mark in the
   left margin in that color with its words not underlined; with the eye off, neither shows. A page or a search saved
   in the folder draws nothing (T1, TH-7).
-- [ ] **Two lines at most.** A run saved in five shown folders draws two lines; hovering it lists all five folder
+  Evidence: `threads.spec.ts` "a whole verse is a mark by its number and its words are not underlined; an eye off draws nothing"; `threads.rs` `a_saved_place_in_a_colored_folder_is_drawn_and_an_eye_off_hides_it`, `a_page_saved_in_a_colored_folder_draws_nothing`.
+- [x] **Two lines at most.** A run saved in five shown folders draws two lines; hovering it lists all five folder
   names (T11).
+  Evidence: `threads.spec.ts` "a run in five folders draws two lines and the hover names all five" (title lists the five names).
 - [ ] **Saving.** K on Numbers 25:12, ticking a folder with a color, shows the folder's color in the verse's margin
   mark at once without reopening the chapter; unticking removes it; Esc leaves the save on the Shelf with no color (T7).
-- [ ] **The eyes.** "Shown on the text" lists every folder with a color, the shown ones first; an eye turned off stays
+  Not built: K and the Save picker are library (S7, window not built). The core half is built: `wb save` into a colored folder is drawn at once by `wb marks` (`threads.rs` `a_saved_place_in_a_colored_folder_is_drawn_and_an_eye_off_hides_it`). Blocker: the picker UI.
+- [x] **The eyes.** "Shown on the text" lists every folder with a color, the shown ones first; an eye turned off stays
   off after the app restarts; Hide all turns every eye off in one action and one Undo puts them back (T1, T11).
-- [ ] **Order.** Dragging a save in the folder changes the order in the file as `wb thread move` does; the line on the
+  Evidence: `threads.rs` `the_eyes_are_kept_in_settings_and_hide_all_is_one_action_with_an_undo` (settings/folders.json, shown first, `--none` prints was_shown, `--restore` undoes); `threads.spec.ts` "Shown on the text lists the folders with a color, the shown ones first, and Hide all offers an Undo"; `reader.spec.ts` "layer menu ... persist".
+- [x] **Order.** Dragging a save in the folder changes the order in the file as `wb thread move` does; the line on the
   text does not change.
+  Evidence: `threads.rs` `moving_a_place_changes_the_folders_order_as_wb_thread_move_does` (the marks are the same after the move).
 - [ ] **Among other tabs, floating, narrow.** The folder as one tab of four keeps its head (name, dot, eye, counts) on
   one line at 500 px; floated at 320 px its rows end with an ellipsis and the eye and count stay whole; at 390 px
   Shown on the text is a sheet reaching the bottom edge with rows at least 44 px high (T8, T9, T10).
+  Partly built: at 390 px Shown on the text is a bottom sheet with rows of at least 44 px (`threads.spec.ts` "narrow: ..."). Open: the folder's page head at 500 px and the floating 320 px rows need the folder page of library S25-S35 (not built) (desk).
 - [ ] **Years of study.** With a generated study of 140 folders (34 with a color) and one folder of 412 saves, the
   panel opens showing only the shown folders and the folded parents with counts; the folder shows its first 20 saves
   and "Show all 412"; opening Numbers 25 with every eye on stays inside the reader's speed budget in
   `npm run measure` (T11).
+  Not built: the panel shows the shown folders first and the rest folded under their parent with counts and a search field and Hide all (webkit test with 3 folders); the folder's first 20 saves and "Show all N" need the folder page (library S25-S35, not built), and the 140-folder generated study and the measure budget are (desk).
 - [ ] **The reader's place is kept.** From Numbers 25:11 in the reader, hovering the line, opening the folder from the
   hover, opening the save "Joshua 22:13" in it and going back returns the reader to Numbers 25:11 at the same scroll
   position, with the same selection.
-- [ ] **Commands.** Existing and kept: `wb thread list | show | page | new | add | add-many | from-search | from-uses |
+  (desk) `measure/threads-checks.mjs` is added to `measure/desk.mjs`; not run (no real app run in this build).
+- [x] **Commands.** Existing and kept: `wb thread list | show | page | new | add | add-many | from-search | from-uses |
   move | sort | order | rm | edit | delete | notes | write | pin | unpin`, `wb marks`. Required
   and missing today: `wb folder color <folder> <color | none>` (today only `wb thread edit --color`),
   `wb folder shown <folder> on | off` and `wb folder shown --none` (the eyes; today they are kept only by the window),
   and `wb shelf` listing thread files as folders with their color. `wb folder …` is library's family (its build list).
-- [ ] **The study files.** Nothing is written to `threads/` except what `wb thread …` writes today; the eyes are kept
+  Evidence: `threads.rs` runs `wb folder color`, `wb folder shown` (on|off, --none, --all, --restore), `wb folder show`, `wb shelf` (thread_folders), `wb thread list|page|move` unchanged; `every_action.rs` passes.
+- [x] **The study files.** Nothing is written to `threads/` except what `wb thread …` writes today; the eyes are kept
   in `settings/` (not in the thread's file). No thread file is moved by this build: the move into the folders' form
   (TH-12) happens once, designed, tried on a scratch copy after a hashed backup (`scripts/backup-study.ps1`), with the
   person's go-ahead.
+  Evidence: `a_thread_file_is_read_as_a_folder_and_nothing_is_written` and `the_eyes_are_kept_in_settings...` (threads/phinehas.md byte-identical after eye changes; eyes in settings/folders.json); no file is moved.
 
 ## Out of scope / later
 

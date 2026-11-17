@@ -33,7 +33,8 @@ test('draws Numbers 25 with the marks, in Literata', async ({ page }, info) => {
   expect(await page.evaluate(() => document.fonts.check('18px Literata'))).toBe(true);
   expect(await page.locator('.w.hl').count()).toBeGreaterThan(0);
   expect(await page.locator('.w.noted').count()).toBeGreaterThan(0);
-  expect(await page.locator('.w[style*="linear-gradient"]').count()).toBeGreaterThan(0);   // thread lines
+  // folder lines: under a phrase or word; a whole verse is a mark by its number (threads TH-7)
+  expect(await page.locator('.w[style*="linear-gradient"]').count() + await page.locator('.vn.vth').count()).toBeGreaterThan(0);
   // The words on screen are the database's words, in order.
   const v11 = fx.reader.chapter.verses.find((v: any) => v.v === 11);
   const shown = await page.$$eval('.w', els => els.map(e => e.textContent));
@@ -316,10 +317,14 @@ test('desktop: layer menu and commands repaint both readers in place and persist
       questions: [{ id: 'question', v: 12, text: 'Test question' }],
     },
   };
-  await page.route('**/fixtures/NUM.25.json', r => r.fulfill({ json: chapter }));
+  let trialShown = true;   // the study's eye for the folder; the chapter's marks say it as they do in the app
+  await page.route('**/fixtures/NUM.25.json', r => r.fulfill({ json: { ...chapter, reader: { ...chapter.reader, marks: { ...chapter.reader.marks, hidden: trialShown ? [] : ['trial'] } } } }));
   await page.route('**/fixtures/wb/text-num-25-10-version-kjv-json.json', r =>
     r.fulfill({ json: { verses: [{ book: fx.reader.chapter.name, c: 25, v: 10 }] } }));
-  await page.route('**/fixtures/wb/thread-list.json', r => r.fulfill({ json: [{ name: 'Trial thread', id: 'trial', color: 'green' }] }));
+  // the eyes are the study's (wb folder shown), answered here with one that keeps its state
+  await page.route('**/fixtures/wb/folder-shown.json', r => r.fulfill({ json: [{ key: 'trial', id: 'trial', mark: 'trial', name: 'Trial thread', color: 'green', kind: 'thread', shown: trialShown }] }));
+  await page.route('**/fixtures/wb/folder-list.json', r => r.fulfill({ json: [] }));
+  await page.route('**/fixtures/wb/folder-shown-trial-*.json', r => { trialShown = r.request().url().includes('-on.'); return r.fulfill({ json: {} }); });
   for (const [word, on] of [['off', false], ['on', true]] as const) {
     await page.route('**/fixtures/wb/parse-highlights-' + word + '.json', r => r.fulfill({ json: { action: { cmd: 'highlights', on } } }));
   }
@@ -336,8 +341,8 @@ test('desktop: layer menu and commands repaint both readers in place and persist
       const firstWord = reader.locator('.vn[data-v="10"] + .w');
       if (fill) await expect(firstWord).toHaveClass(/\bhl\b/);
       else await expect(firstWord).not.toHaveClass(/\bhl\b/);
-      if (thread) await expect(firstWord).toHaveAttribute('style', /linear-gradient/);
-      else await expect(firstWord).not.toHaveAttribute('style', /linear-gradient/);
+      if (thread) await expect(reader.locator('.vn[data-v="10"]')).toHaveClass(/(^| )vth( |$)/);
+      else await expect(reader.locator('.vn[data-v="10"]')).not.toHaveClass(/(^| )vth( |$)/);
       await expect(reader.locator('.vn.vnote[data-v="11"], .vn.vq[data-v="12"]')).toHaveCount(2);
     }
     await expect(second.locator('.vn-asked[data-v="10"]')).toBeAttached();
@@ -362,6 +367,7 @@ test('desktop: layer menu and commands repaint both readers in place and persist
   await marks(false, false);
   await page.locator('#hl-menu').click();
   await page.getByRole('button', { name: 'Your highlights', exact: true }).click();
+  await page.locator('.eye-group summary').click();   // a hidden folder is folded under its parent (threads TH-10)
   await page.getByRole('button', { name: 'Trial thread', exact: true }).click();
   await page.keyboard.press('Escape');
   await marks(true, true);

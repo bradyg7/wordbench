@@ -39,7 +39,7 @@ async function ready(page: Page, hidden: string[] = ['off']) {
   await page.waitForFunction(() => (window as any).__wbReady);
 }
 
-test.beforeEach(async ({}, info) => { test.skip(info.project.name === 'webkit-phone', 'desktop'); });
+
 
 test('a run in five folders draws two lines and the hover names all five', async ({ page }) => {
   await ready(page);
@@ -61,7 +61,8 @@ test('a whole verse is a mark by its number and its words are not underlined; an
   expect(await page.locator(`.w[data-k="${k14}"]`).evaluate(e => (e as HTMLElement).style.backgroundImage)).toBe('');
 });
 
-test('Shown on the text lists the folders with a color, the shown ones first, and Hide all offers an Undo', async ({ page }) => {
+test('Shown on the text lists the folders with a color, the shown ones first, and Hide all offers an Undo', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'desktop');
   await ready(page);
   await page.locator('#hl-menu').click();
   const menu = page.locator('.layers-menu');
@@ -76,4 +77,18 @@ test('Shown on the text lists the folders with a color, the shown ones first, an
   await menu.locator('.eye-hide-all').click();
   await expect(page.locator('.toast-undo')).toContainText('Undo');
   await expect(page.locator('.toast-undo button')).toBeVisible();
+});
+
+test('narrow: Shown on the text is a sheet over the bottom with rows at least 44 px high', async ({ page }, info) => {
+  test.skip(info.project.name !== 'webkit-phone', 'phone');
+  await ready(page);
+  await page.evaluate(async () => { const p = '/src/toolbar.ts'; (await import(p)).hooks.highlights(document.querySelector('#place') ?? document.body); });
+  const menu = page.locator('.layers-menu');
+  await expect(menu.getByText('Shown on the text')).toBeVisible();
+  const rows = await menu.locator('.eye-row').evaluateAll(els => els.map(e => e.getBoundingClientRect().height));
+  expect(rows.length).toBeGreaterThan(1);
+  expect(Math.min(...rows)).toBeGreaterThanOrEqual(44);
+  const box = (await page.locator('.menu:has(.layers-menu)').boundingBox())!;
+  const vh = page.viewportSize()!.height;
+  expect(Math.round(box.y + box.height)).toBeGreaterThanOrEqual(vh - 1);
 });
