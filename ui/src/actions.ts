@@ -483,11 +483,7 @@ async function applyLayout(a: any): Promise<string> {
   return `Layout ${a.name}`;
 }
 
-<<<<<<< HEAD
-const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'marked', 'plans', 'settings', 'concordance']);
-=======
-const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'wordcard', 'marked', 'plans', 'settings']);
->>>>>>> feature/words-build
+const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'wordcard', 'marked', 'plans', 'settings', 'concordance']);
 export function canReopen(key: string) { return reopenKinds.has(key.startsWith('doc:') ? 'doc' : key.split('|')[0]); }
 
 /** Minimized links whose title or kind starts with or holds `name`; `minimized` or `all` is every one. */

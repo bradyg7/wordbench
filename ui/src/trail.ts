@@ -28,13 +28,8 @@ let earlier: any[] | null = null;
 let shown: () => void = () => {};
 
 const ICON: Record<string, string> = {
-<<<<<<< HEAD
-  verse: 'book', reader2: 'book', place: 'book', passage: 'book', versecard: 'book', interlinear: 'book',
-  concordance: 'book', strong: 'word', bdb: 'word', def: 'word', lexiconc: 'word',
-=======
   verse: 'book', reader2: 'book', place: 'book', passage: 'book', versecard: 'book', wordcard: 'word', interlinear: 'book',
-  strong: 'word', bdb: 'word', def: 'word', lexiconc: 'word',
->>>>>>> feature/words-build
+  concordance: 'book', strong: 'word', bdb: 'word', def: 'word', lexiconc: 'word',
   uses: 'lines', count: 'lines', forms: 'lines', marked: 'lines',
   search: 'search', find: 'search', near: 'search',
   notebook: 'notebook', shelf: 'shelf', plans: 'lines', findings: 'prompt', documents: 'file', docpreview: 'file', lesson: 'file', today: 'file',
