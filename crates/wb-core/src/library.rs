@@ -342,13 +342,25 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     if want("highlight") {
         let mut rows: Vec<Value> = vec![];
         let mut every = 0usize;
+        // labels are worked out once per place and kept (18,000 highlights make one search, not 18,000 lookups)
+        static LABELS: std::sync::Mutex<Option<std::collections::HashMap<String, (String, String)>>> = std::sync::Mutex::new(None);
+        let mut cache = LABELS.lock().unwrap_or_else(|e| e.into_inner());
+        let cache = cache.get_or_insert_with(Default::default);
         store.each_highlight(|h| {
             every += 1;
             if f.has_question || in_folder.is_some() {
                 return;
             }
-            let label = anchor_label(bible, &s(h, "anchor"));
-            if has(&format!("{label} {} {}", s(h, "quote"), s(h, "color"))) && cutoff.as_ref().is_none_or(|c| s(h, "created").as_str() >= c.as_str()) {
+            let anchor = s(h, "anchor");
+            if !cache.contains_key(&anchor) {
+                let label = anchor_label(bible, &anchor);
+                cache.insert(anchor.clone(), (label.to_lowercase(), label));
+            }
+            let (lower, label) = &cache[&anchor];
+            let (quote, color) = (s(h, "quote").to_lowercase(), s(h, "color").to_lowercase());
+            if words.iter().all(|w| lower.contains(w.as_str()) || quote.contains(w.as_str()) || color.contains(w.as_str()))
+                && cutoff.as_ref().is_none_or(|c| s(h, "created").as_str() >= c.as_str())
+            {
                 rows.push(json!({"kind": "highlight", "id": h["id"], "title": label, "snippet": s(h, "quote"), "color": h["color"], "updated": s(h, "created")}));
             }
         });

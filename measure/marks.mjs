@@ -9,7 +9,7 @@
 //   node measure/marks.mjs            (after: npx tauri build --no-bundle; the years study in WB_YEARS_STUDY)
 // The window's CPU is slowed 4x for the budgets, as measure.mjs does for a phone.
 import { spawn, execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, openSync, rmSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
@@ -36,7 +36,7 @@ const wb = (...argv) => execFileSync(wbExe, argv, { env, maxBuffer: 1 << 28 }).t
 const placePage = JSON.parse(wb('page', 'new', 'Reader place check\n\nSee Numbers 25:11 and Psalm 106:30.', '--json')).id;
 wb('margin', 'add', 'Numbers 25:11', 'A note for the place check.');
 
-const proc = spawn(exe, [], { env, stdio: 'ignore' });
+const proc = spawn(exe, [], { env: { ...env, WB_FIND_TIMES: '1' }, stdio: ['ignore', 'ignore', openSync(path.join(work, 'app-stderr.log'), 'w')] });
 proc.on('exit', code => console.log('APP EXITED', code));
 const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
 const results = [];
@@ -143,6 +143,7 @@ try {
   await page.evaluate(() => window.__wb.open('JHN', 3));
   await sleep(800);
   if (!(await page.locator('.pane-notebook .mgl').count())) await page.locator('.pane-notebook .nb-back').first().click({ timeout: 5000, force: true }).catch(() => {});
+  console.log('NBPANE', JSON.stringify(await page.evaluate(() => { const p = document.querySelector('.pane-notebook'); return p ? { cls: p.className, text: p.innerText.slice(0, 160), kids: [...p.querySelectorAll('.nb-back, .nb-side, .mgl')].map(e => e.className) } : null; })));
   await page.waitForSelector('.pane-notebook .mgl', { timeout: 10000 });
   const row = page.locator('.pane-notebook .mgl').first();
   await row.locator('.mgl-sum').click();

@@ -262,7 +262,7 @@ fn book_order(bible: &Bible, code: &str) -> u32 {
     bible.books().iter().find(|b| b.code == code).map(|b| b.id).unwrap_or(999)
 }
 
-/// Every margin note, in the Bible's order, as the files were at most a second ago: the one search and the Library's counts
+/// Every margin note, in the Bible's order, as the files were at most half a minute ago (a note this process writes, or any `wb margin` change from the window, drops it at once): the one search and the Library's counts
 /// go over all of them, and listing a thousand files is the slow part. A note this process writes drops the snapshot at once.
 static SNAP: std::sync::Mutex<Option<(std::time::Instant, PathBuf, std::sync::Arc<Vec<Note>>)>> = std::sync::Mutex::new(None);
 
@@ -274,7 +274,7 @@ fn snapshot(bible: &Bible, store: &Store) -> std::sync::Arc<Vec<Note>> {
     {
         let g = SNAP.lock().unwrap_or_else(|e| e.into_inner());
         if let Some((at, root, notes)) = g.as_ref() {
-            if *root == store.root && at.elapsed() < std::time::Duration::from_secs(1) {
+            if *root == store.root && at.elapsed() < std::time::Duration::from_secs(30) {
                 return notes.clone();
             }
         }
