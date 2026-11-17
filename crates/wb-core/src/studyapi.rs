@@ -584,6 +584,10 @@ pub fn remove_place(bible: &Bible, store: &mut Store, id: &str, anchor: &str) ->
 // ---- sets -----------------------------------------------------------------------------------------------------------
 
 /// A set with each item named as it stands now; something deleted since it was added stays listed, marked gone.
+fn s_val(v: &Value) -> String {
+    v.as_str().unwrap_or("").to_string()
+}
+
 pub fn set_view(bible: &Bible, store: &Store, t: &Rec) -> Result<Value> {
     let threads: Vec<&Rec> = store.threads();
     let lessons = lesson_listing(store)?;
@@ -608,11 +612,23 @@ pub fn set_view(bible: &Bible, store: &Store, t: &Rec) -> Result<Value> {
                 view.insert("gone".into(), json!(res["ok"] != true));
             }
             "note" => {
-                let nt = store.notes().into_iter().find(|x| s(x, "id") == r);
-                view.insert("label".into(), match nt { Some(x) => json!(label(bible, &s(x, "anchor"))?), None => json!(r) });
-                view.insert("snippet".into(), json!(nt.map(|x| cut(&s(x, "text"), 90)).unwrap_or_default()));
-                view.insert("anchor".into(), json!(nt.map(|x| s(x, "anchor")).unwrap_or_default()));
+                // any page, placed or not (a saved page is a "note" item whose ref is the page's id)
+                let nt = store.find_note(&r).ok();
+                let anchor = nt.as_ref().map(|x| s(x, "anchor")).unwrap_or_default();
+                let label_text = match &nt {
+                    Some(x) if anchor.is_empty() => crate::notebook::title_of(&s(x, "text")),
+                    Some(_) => label(bible, &anchor)?,
+                    None => r.clone(),
+                };
+                view.insert("label".into(), json!(label_text));
+                view.insert("snippet".into(), json!(nt.as_ref().map(|x| cut(&s(x, "text"), 90)).unwrap_or_default()));
+                view.insert("anchor".into(), json!(anchor));
                 view.insert("gone".into(), json!(nt.is_none()));
+            }
+            "sitting" => {
+                let found = crate::history::sitting(&store.root, &r).ok();
+                view.insert("label".into(), json!(found.as_ref().map(|x| format!("Sitting: {}", s_val(&x["title"]))).unwrap_or_else(|| r.clone())));
+                view.insert("gone".into(), json!(found.is_none()));
             }
             "lesson" => {
                 let l = lessons.iter().find(|x| x["id"] == r.as_str());

@@ -89,22 +89,54 @@ pub fn commands() -> Vec<Command> {
                 };
                 j(pg::new_page(c.bible()?, &mut *c.study()?, a.opt("parent").as_deref(), &text, a.flag("link"), after).map_err(e)?)
             }),
-        cmd("page move", "Move a page: inside another (--parent ID), to the top (--top), or among the pages beside it; --after ID puts it after that page, --first first, else last. Only parent and order change in the files.",
-            vec![Pos("id", N::One), Opt("parent", None), Flag("top"), Opt("after", None), Flag("first")], |c, a| {
+        cmd("page move", "Move one or several pages: inside another (--parent ID), to the top (--top), or among the pages beside it; --after ID puts it after that page, --first first, else last. Several ids keep their order. Only parent and order change in the files.",
+            vec![Pos("id", N::Many), Opt("parent", None), Flag("top"), Opt("after", None), Flag("first")], |c, a| {
                 let parent = a.opt("parent");
-                let under = match (&parent, a.flag("top")) {
-                    (Some(_), true) => return Err("Give --parent or --top, not both.".into()),
-                    (Some(p), false) => Under::In(p.as_str()),
-                    (None, true) => Under::Top,
-                    (None, false) => Under::Keep,
+                let under = || match (&parent, a.flag("top")) {
+                    (Some(_), true) => Err("Give --parent or --top, not both.".to_string()),
+                    (Some(p), false) => Ok(Under::In(p.as_str())),
+                    (None, true) => Ok(Under::Top),
+                    (None, false) => Ok(Under::Keep),
                 };
-                let after = a.opt("after");
-                j(pg::move_page(c.bible()?, &mut *c.study()?, &a.s("id"), under, Place { after: after.as_deref(), first: a.flag("first") }).map_err(e)?)
+                let ids = a.list("id");
+                let (mut prev, mut out) = (a.opt("after"), vec![]);
+                for (i, id) in ids.iter().enumerate() {
+                    let first = a.flag("first") && i == 0;
+                    out.push(pg::move_page(c.bible()?, &mut *c.study()?, id, under()?, Place { after: prev.as_deref(), first }).map_err(e)?);
+                    prev = Some(id.clone());
+                }
+                if out.len() == 1 { j(out.remove(0)) } else { j(Value::Array(out)) }
             }),
-        cmd("page pin", "Pin a page (last in Pinned), or move it there: --after ID, --first. Its place is kept in the page itself (pinned: 1, 2, 3 …).",
-            vec![Pos("id", N::One), Opt("after", None), Flag("first")], |c, a| {
-                let after = a.opt("after");
-                j(pg::pin(c.bible()?, &mut *c.study()?, &a.s("id"), Place { after: after.as_deref(), first: a.flag("first") }).map_err(e)?)
+        cmd("page pin", "Pin one or several pages (last in Pinned), or move them there: --after ID, --first. A place is kept in the page itself (pinned: 1, 2, 3 …).",
+            vec![Pos("id", N::Many), Opt("after", None), Flag("first")], |c, a| {
+                let ids = a.list("id");
+                let (mut prev, mut out) = (a.opt("after"), vec![]);
+                for (i, id) in ids.iter().enumerate() {
+                    let first = a.flag("first") && i == 0;
+                    out.push(pg::pin(c.bible()?, &mut *c.study()?, id, Place { after: prev.as_deref(), first }).map_err(e)?);
+                    prev = Some(id.clone());
+                }
+                if out.len() == 1 { j(out.remove(0)) } else { j(Value::Array(out)) }
+            }),
+        cmd("page duplicate", "Duplicate a page: a new page beside it with the same text, titled \"<title> (copy)\"; the pages inside it are not copied. wb page duplicate ID.",
+            vec![Pos("id", N::One)], |c, a| j(pg::duplicate(c.bible()?, &mut *c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("page link", "The [[link]] that Copy link copies, for a page: wb page link ID prints [[Its title]].",
+            vec![Pos("id", N::One)], |c, a| Ok(Out::Text(pg::link_of(&*c.study()?, &a.s("id")).map_err(e)?))),
+        cmd("page look", "A page's view choices, kept in settings/pages.json and not in the page: wb page look ID [--full-width on|off] [--small-text on|off]. With neither, what is set.",
+            vec![Pos("id", N::One), Opt("full_width", None), Opt("small_text", None)], |c, a| {
+                let onoff = |name: &str| -> Result<Option<bool>, String> {
+                    match a.opt(name).map(|v| v.trim().to_lowercase()).as_deref() {
+                        None => Ok(None),
+                        Some("on") => Ok(Some(true)),
+                        Some("off") => Ok(Some(false)),
+                        Some(v) => Err(format!("--{} is on or off, not “{v}”.", name.replace('_', "-"))),
+                    }
+                };
+                let (fw, st) = (onoff("full_width")?, onoff("small_text")?);
+                if fw.is_none() && st.is_none() {
+                    return j(pg::look(&*c.study()?, &a.s("id")));
+                }
+                j(pg::set_look(&mut *c.study()?, &a.s("id"), fw, st).map_err(e)?)
             }),
         cmd("page unpin", "Take a page out of Pinned.", vec![Pos("id", N::One)], |c, a| j(pg::unpin(c.bible()?, &mut *c.study()?, &a.s("id")).map_err(e)?)),
         cmd("page blocks", "A page's blocks, numbered from 1: each one's kind (paragraph, heading, item, numbered, todo, quote, divider, table, fence), its Markdown and where it is in the text; and its title. A day's page by its day (2026-11-07).",

@@ -44,3 +44,23 @@ pub fn study_check(store: &Store) -> Result<Value> {
         "would_write": Vec::<String>::new(),
     }))
 }
+
+/// What the library adds to the check (design/features/library L-21, L-22): the folders and the Shelf, the items that
+/// point at something that is gone (a page file deleted by hand, a removed document), and the pages whose `title:` field
+/// and first line differ (the field wins). Read only.
+pub fn library_check(bible: &crate::bible::Bible, store: &Store) -> Result<Value> {
+    let mut titles = vec![];
+    for n in store.notes().into_iter().chain(store.inbox()).chain(store.on_thread()) {
+        let field = s(n, "title");
+        let field = field.trim();
+        if !field.is_empty() && field != crate::notebook::title_of(&s(n, "text")) {
+            titles.push(json!({"id": n["id"], "title_field": field, "first_line": crate::notebook::title_of(&s(n, "text"))}));
+        }
+    }
+    Ok(json!({
+        "folders": store.sets().len(),
+        "shelf_saves": store.shelf_saves().len(),
+        "dangling": crate::library::dangling(bible, store)?,
+        "title_differs": titles,
+    }))
+}

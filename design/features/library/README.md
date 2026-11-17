@@ -151,6 +151,7 @@ scratch copy after a hashed backup (`scripts/backup-study.ps1`), and only with t
 | L-23 | **Columns (S30):** comment markers in the Markdown (as threads use `<!-- anchors -->`), so the file reads top to bottom in any editor and stacks when narrow (6659). A marker deleted by hand unbalances the columns; unbalanced markers are read as plain blocks. | The person, 2026-11-17 (was "Needs the person" 3) |
 | L-24 | **A saved sitting (L-4)** is a kind of set item pointing into `history/`. | The person, 2026-11-17 (was "Needs the person" 4) |
 | L-25 | **Full width and Small text (S31)** are kept per page in `settings/pages.json` beside Pinned, not in the page's own file, so the person's writing is not touched by a view choice. | The person, 2026-11-17 (was "Needs the person" 5) |
+| L-26 | **Decided by overseer, inference, 2026-11-17 (for the person's look):** the Shelf's saves (saves in no folder) are stored under key `saves` in `settings/shelf.json`, additive, written per key, old files read unchanged. The `wb save` thing is named as built: a place, a phrase or an H/G-number bare (`Num 25:11`, `NUM.25:11.4`, `H7065`); `page:<id>`, `search:"…"`, `document:<name>`, `sitting:<id or last>`, and `thread:<slug>`. | L-3, L-5, L-22 (no file for loose saves was named) |
 
 ## Needs the person
 
@@ -228,10 +229,23 @@ The Notebook like Notion (round 4)
   - `wb page duplicate <id>`, `wb page link <id>` (prints the `[[link]]` Copy link copies), `wb page rm <id> <id> …`, `wb page move <id> <id> … --parent <id>`, `wb page pin <id> <id> …`;
   - `wb page look <id> --full-width on | off --small-text on | off` (kept in `settings/pages.json`, L-25);
   - Open beside the reader is a window action: `wb do "open page <id> beside"`.
-- [ ] **Folders in set files.** A page put in two folders is listed in both folders' set files and its file does not move; a folder nested in another has the parent field in its set file; a page file deleted by hand leaves its folder showing nothing broken, and `wb study check` reports the dangling item (L-22, L-3).
+- [x] **Folders in set files.** A page put in two folders is listed in both folders' set files and its file does not move; a folder nested in another has the parent field in its set file; a page file deleted by hand leaves its folder showing nothing broken, and `wb study check` reports the dangling item (L-22, L-3). Evidence (`crates/wb-cli/tests/library.rs`): `folders_nest_in_their_own_file_and_pages_do_not_move`, `a_page_file_deleted_by_hand_is_reported_not_shown_broken`, `a_folder_edit_writes_only_the_files_it_changes` (legacy set files stay byte-identical after an unrelated folder edit).
 - [ ] **A saved sitting.** Saving a sitting writes one set item of the sitting kind pointing into `history/`; opening it from the folder shows the sitting (L-24, L-4).
-- [ ] **The study files.** New forms are only L-21 to L-25: `title:` in front matter, membership and a parent field in set files, column markers in Markdown, a sitting item kind, per-page view choices in `settings/pages.json`. Old files are read as they are (pages with the first line as the title, today's sets) and are not rewritten by reading. No file of the person's is moved by this build: any move into a new form happens once, designed, tried on a scratch copy after a hashed backup (`scripts/backup-study.ps1`), with the person's go-ahead.
+- [x] **The study files.** New forms are only L-21 to L-25: `title:` in front matter, membership and a parent field in set files, column markers in Markdown, a sitting item kind, per-page view choices in `settings/pages.json`. Old files are read as they are (pages with the first line as the title, today's sets) and are not rewritten by reading. No file of the person's is moved by this build: any move into a new form happens once, designed, tried on a scratch copy after a hashed backup (`scripts/backup-study.ps1`), with the person's go-ahead. Evidence: `a_folder_edit_writes_only_the_files_it_changes`, `a_pages_title_field_wins_and_check_reports_a_difference`, `page_actions_for_several_pages_and_the_pages_own_look` (the page file is byte-identical after `wb page look`); the one addition not in L-21 to L-25 is L-26.
 
+
+## Open after merge
+
+Built and tested: the data model and `wb` commands (`wb save`, `wb folder list | new | rename | move | rm`, `wb find --kind …`, `wb page duplicate | link | look`, several-id `wb page rm | move | pin`), folders in set files, a saved sitting as a set item, the `title:` field read side, dangling items in `wb study check`. Unticked lines and why:
+
+- **Window work, S25 to S35** (the side list, right-click menu, filter line, page layout, writing, the page's ⋯, choosing several pages, side by side, ten tabs, floating, narrow): no UI built. Lines: Save's picker and mark, Saved is not open, Saves in the text, A big folder, The picker at size, The side list, A folder with a color, Right click, One filter line, The page, Writing, The page's ⋯, Several pages, Side by side, Among other tabs, Years of study (desk), The reader's place is kept (desk).
+- **One search** (window field menu and Clear), **Five pieces** (window rules): the Rust search and rules exist, the window does not.
+- **A title field, write side:** `wb page title` and the window do not write `title:`; doing so strips the first line from the body and shifts block numbers. Needs its own design pass.
+- **Columns (L-23):** comment markers are not read or written.
+- **Commands left:** `wb folder color` and `wb folder shown` (threads), `wb do "open page <id> beside"` (window action).
+- **A saved sitting:** `wb save sitting:…` and `wb set show` work; opening a sitting from a folder in the window, and `wb set open`'s target, are not built.
+- **Margin saves:** `wb find --kind margin` returns nothing until marks builds margin notes.
+- **Dangling items in the window:** `wb study check` reports them and `wb set show` marks them `gone`; how the window shows them is not built.
 
 ## Out of scope / later
 

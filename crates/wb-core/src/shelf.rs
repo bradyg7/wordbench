@@ -1,7 +1,8 @@
 //! The Shelf as a tree (R2, docs/archive/2026-11-10/docs/redesign-R2.md; the person chose the tree on 2026-11-09).
 //!
-//! A folder IS a set: each folder is an ordinary `sets/<slug>.md` in the Python app's format, holding its own items. Where
-//! a folder sits (inside which folder, in what order) is kept apart, in `settings/shelf.json` as
+//! A folder IS a set: each folder is an ordinary `sets/<slug>.md`, holding its own items. Where a folder sits is its own
+//! file's `parent:` (the library design, L-22: a parent set's id, absent at the top); a file without one is read from the
+//! older form below. Its order among its siblings is kept apart, in `settings/shelf.json` as
 //! `{"folders": {"<set id>": {"parent": "<set id or empty>", "order": n}}}`, because both apps drop any extra front matter
 //! when they rewrite a set. A set that is not in that file sits at the top, in name order; an entry whose set (or parent)
 //! is gone, or that would loop, is read as the top. So a set made or deleted by the Python app never breaks the tree, and
@@ -26,11 +27,14 @@ fn placing(store: &Store) -> Map<String, Value> {
 /// Each set's parent as read: only a parent that is a set, never a loop. → id → parent id ("" for the top).
 fn parents(store: &Store) -> HashMap<String, String> {
     let pl = placing(store);
-    let ids: HashSet<String> = store.sets().iter().map(|t| s(t, "id")).collect();
+    let sets = store.sets();
+    let ids: HashSet<String> = sets.iter().map(|t| s(t, "id")).collect();
+    // L-22: the folder's own file says where it sits (`parent:`); a file without it is read from settings/shelf.json
+    let own: HashMap<String, String> = sets.iter().filter_map(|t| t.get("parent").and_then(|p| p.as_str()).map(|p| (s(t, "id"), p.to_string()))).collect();
     let raw: HashMap<String, String> = ids
         .iter()
         .map(|id| {
-            let p = pl.get(id).and_then(|v| v.get("parent")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let p = own.get(id).cloned().unwrap_or_else(|| pl.get(id).and_then(|v| v.get("parent")).and_then(|v| v.as_str()).unwrap_or("").to_string());
             (id.clone(), if ids.contains(&p) && &p != id { p } else { String::new() })
         })
         .collect();
@@ -93,6 +97,21 @@ fn write_placing(store: &mut Store, par: &HashMap<String, String>, lists: &HashM
     for (parent, ids) in lists {
         for (i, id) in ids.iter().enumerate() {
             out.insert(id.clone(), json!({"parent": parent, "order": i + 1}));
+        }
+    }
+    // only a folder whose place this edit changes has its own file written (L-22); a legacy set file whose place is only
+    // in settings/shelf.json stays byte for byte as it is, with its `updated` untouched
+    let before = parents(store);
+    let own: HashMap<String, String> = store.sets().iter().filter_map(|t| t.get("parent").and_then(|p| p.as_str()).map(|p| (s(t, "id"), p.to_string()))).collect();
+    for (id, p) in par {
+        // a file with its own `parent:` is changed when that differs (a parent that is gone is cleared); a legacy file only
+        // when this edit changes where the folder sits
+        let differs = match own.get(id) {
+            Some(o) => o != p,
+            None => before.get(id) != Some(p),
+        };
+        if differs {
+            store.set_parent(id, p)?;
         }
     }
     let mut sorted: Vec<(String, Value)> = out.into_iter().collect();
@@ -340,4 +359,14 @@ pub fn item_from_key(bible: &Bible, key: &str, title: &str) -> Result<Value> {
         "doc" => json!({"kind": "document", "ref": x(1)}),
         _ => return Err(bad("That tab cannot be kept in a set.")),
     })
+}
+
+/// Each folder's parent as read ("" for the top): `parents`, for the library's folder list.
+pub fn parent_map(store: &Store) -> HashMap<String, String> {
+    parents(store)
+}
+
+/// The folders inside one ("" for the top), in their order.
+pub fn children_of(store: &Store, par: &HashMap<String, String>, of: &str) -> Vec<Rec> {
+    children(store, par, of)
 }
