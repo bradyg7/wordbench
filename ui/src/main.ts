@@ -38,6 +38,7 @@ import { canReopen, parse, reopen, runLine, written } from './actions';
 import { setupIfNeeded } from './setup';
 import { createReadAloud } from './listen';
 import { refreshInks } from './hlink';
+import { drawMargin, initMargin, placeMargin } from './margin';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const reader = $('reader'), scroller = $('scroller');
@@ -130,11 +131,14 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   const d = drawn;
   const rest = () => {
     if (seq === drawSeq && d.more()) setTimeout(rest, 0);
-    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); if (finding) findInChapter(finding); }
+    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); if (finding) findInChapter(finding); placeMargin(); }
   };
+  if (!version || version === 'KJV') void drawMargin(reader, scroller, code, chapter);
   setTimeout(rest, 0);
   savePlace();
 }
+
+initMargin({ openPage: id => openNote(id) });
 
 const readAloud = createReadAloud({
   books: () => books,
@@ -185,6 +189,7 @@ function step(n: number) {
 // Visibility changes use the marks already loaded in each reader.
 function repaintLayers() {
   if (drawn) paint(reader, drawn);
+  placeMargin();
   for (const { view } of readers2.values()) {
     if (view.drawn) paint(view.root, view.drawn);
   }
@@ -904,6 +909,7 @@ async function highlightsMenu(from: HTMLElement) {
   box.append(h('p', 'layers-hint', 'Controls highlight fills and thread underlines. Notes, questions and verse markers stay visible.'));
   toggle('All highlights and threads', layers.all, () => { layers.all = !layers.all; });
   toggle('Your highlights', layers.mine, () => { layers.mine = !layers.mine; });
+  toggle('The margin', layers.margin, () => { layers.margin = !layers.margin; });
   let ts: any[] = [];
   try { ts = await wb(['thread', 'list']); } catch { /* outside the app */ }
   if (ts.length) box.append(h('div', 'label', 'Threads'));
@@ -1132,7 +1138,7 @@ window.addEventListener('resize', () => {
   document.documentElement.dataset.size = sizeClass();
   const p = { ...place };
   cancelAnimationFrame(resizing);
-  resizing = requestAnimationFrame(() => { if (drawn && p.code === drawn.chapter.code && p.chapter === drawn.chapter.chapter) backTo(p); selector.placeHandles(); placeBar(); });
+  resizing = requestAnimationFrame(() => { if (drawn && p.code === drawn.chapter.code && p.chapter === drawn.chapter.chapter) backTo(p); selector.placeHandles(); placeBar(); placeMargin(); });
 });
 
 // ---- the hub ----------------------------------------------------------------------------------------------------------

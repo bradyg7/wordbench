@@ -8,7 +8,7 @@ export interface Word { i: number; lead?: string; text: string; trail?: string; 
 export interface Verse { v: number; words: Word[] }
 export interface Chapter { code: string; name: string; chapter: number; chapters: number; title?: string; verses: Verse[]; version?: string }
 export interface Mark { kind: string; code: string; c1: number; v1: number; i1: number | null; c2: number | null; v2: number | null; i2: number | null; id: string; color?: string }
-export interface Marks { highlights: Mark[]; notes: Mark[]; threads: Mark[]; thread_names: Record<string, string> }
+export interface Marks { highlights: Mark[]; notes: Mark[]; pencil?: Mark[]; threads: Mark[]; thread_names: Record<string, string> }
 export interface Question { id: string; v: number; text: string }
 export interface ReaderView { chapter: Chapter; marks: Marks; questions?: Question[] }
 export interface Lexicon { strong: string; lang: string; lemma: string; translit?: string; pron?: string; pos?: string; derivation?: string; definition?: string; usage?: string }

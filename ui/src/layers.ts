@@ -6,9 +6,9 @@ const STORE = 'wb.layers.v1';
 function load() {
   try {
     const x = JSON.parse(localStorage.getItem(STORE) || '{}');
-    return { mine: x.mine !== false, all: x.all !== false, hidden: new Set<string>(x.hidden || []) };
+    return { mine: x.mine !== false, all: x.all !== false, margin: x.margin !== false, hidden: new Set<string>(x.hidden || []) };
   } catch {
-    return { mine: true, all: true, hidden: new Set<string>() };
+    return { mine: true, all: true, margin: true, hidden: new Set<string>() };
   }
 }
 
@@ -21,6 +21,6 @@ export const layers = {
     return this.all && this.mine;
   },
   save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ mine: this.mine, all: this.all, hidden: [...this.hidden] })); } catch { /* kept for this run */ }
+    try { localStorage.setItem(STORE, JSON.stringify({ mine: this.mine, all: this.all, margin: this.margin, hidden: [...this.hidden] })); } catch { /* kept for this run */ }
   },
 };
