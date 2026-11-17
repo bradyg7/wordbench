@@ -241,6 +241,14 @@ export async function makeFromPage(pageId: string) {
       if (!where.has(ref)) where.set(ref, new Set());
       where.get(ref)!.add(d.to === 'word' ? 'Script' : 'slides');
     }
+    // D5 (2089): where it really is, and what was checked, as two quiet lines
+    const wheres = h('div', 'pd-where');
+    for (const d of ok) {
+      const dir = String(d.r.path || '').replace(/[\\/][^\\/]*$/, '');
+      const n = d.r.checked?.verses;
+      wheres.append(h('div', 'muted small pd-where-line', `Made ${d.r.name}, in ${dir}`),
+        h('div', 'muted small pd-where-checked', typeof n === 'number' ? `${n} verse${n === 1 ? '' : 's'} checked against the Bible` : 'No scripture in it: there were no verses to check.'));
+    }
     const checked = h('div', 'pd-checked');
     if (where.size) {
       const versions = [...new Set([...where.keys()].map(k => /\(([^)]+)\)$/.exec(k)?.[1] || 'KJV'))].join(' and ');
@@ -260,7 +268,7 @@ export async function makeFromPage(pageId: string) {
     folder.disabled = !ok.length;
     foot.append(h('span'), folder, button('btn primary pd-done', 'Done', m.close));
     m.box.classList.add('pd-made');
-    m.box.replaceChildren(m.head(ok.length ? 'Made' : 'Not made', `${ok.length} file${ok.length === 1 ? '' : 's'} from ${parts.title}${when ? ` · ${when}` : ''}`), files, checked, note, foot);
+    m.box.replaceChildren(m.head(ok.length ? 'Made' : 'Not made', `${ok.length} file${ok.length === 1 ? '' : 's'} from ${parts.title}${when ? ` · ${when}` : ''}`), files, wheres, checked, note, foot);
   };
 
   drawWhat();

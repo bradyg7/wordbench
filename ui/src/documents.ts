@@ -70,6 +70,34 @@ async function act(argv: string[], said: (r: any) => string) {
   }
 }
 
+/** Pages to choose from, flat: each with its title and how deep it is inside another (wb page tree). */
+function flatPages(nodes: any[], depth = 0, out: { id: string; title: string }[] = []) {
+  for (const n of nodes || []) {
+    out.push({ id: n.id, title: `${'  '.repeat(depth)}${n.title || n.id}` });
+    flatPages(n.children, depth + 1, out);
+  }
+  return out;
+}
+
+/** Make another like this (D6): the same kind of document, Look and choices per kind of part, from another page. The
+ * first document is not changed (wb docs like). */
+async function likeThis(d: any) {
+  const tree = await wb(['page', 'tree']);
+  const pages = flatPages(tree.pages).filter(p => p.id !== d.source?.id);
+  const box = h('div', 'menu-list doc-like');
+  const pick = h('select', 'field doc-like-page') as HTMLSelectElement;
+  pick.setAttribute('aria-label', 'Page to make another from');
+  for (const p of pages) pick.append(new Option(p.title, p.id));
+  const go = button('btn primary small doc-like-make', 'Make', () => {
+    if (!pick.value) return;
+    close();
+    void act(['docs', 'like', d.id, '--page', pick.value], r => `Made ${r.name}, in ${String(r.path || '').replace(/[\\/][^\\/]*$/, '')}${r.checked?.verses ? `, every verse checked (${r.checked.verses})` : ''}`);
+  });
+  box.append(h('div', 'muted small', `Another like ${d.name}: same Look and choices, from the page you pick`), pick, go);
+  const anchor = document.querySelector<HTMLElement>(`.doc-row[data-id="${CSS.escape(d.id)}"] .doc-more`) || document.body;
+  const close = popMenu(anchor, box, { align: 'right', width: 300 });
+}
+
 /** One document: its name, how it stands, when it was made, and what can be done with it. */
 function docRow(d: any): HTMLElement {
   const row = h('div', `doc-row state-${d.state}`);
@@ -98,6 +126,7 @@ function docRow(d: any): HTMLElement {
     if (pptx && d.pdf) item('Open saved PDF preview', () => void wb(['docs', 'open-preview', d.id]).catch(e => toast(String(e.message || e))));
     else if (here && d.exists && !pptx) item('Preview it here', () => previewDoc(d));
     if (here && d.state !== 'forgotten') item('Make again now', () => act(['docs', 'update', d.id, '--force'], r => `Made ${r.name} again`));
+    if (d.source?.kind === 'page') item('Make another like this…', () => void likeThis(d));
     if (d.state === 'forgotten') item('Keep it up to date again', () => act(['docs', 'remember', d.id], r => `${r.name}: ${STATES[r.state]?.[0] || r.state}`));
     else item('Stop keeping it up to date', () => act(['docs', 'forget', d.id], () => `${d.name} is left as it is from now on`));
     item('Delete…', () => {

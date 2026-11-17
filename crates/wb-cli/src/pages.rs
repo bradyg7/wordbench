@@ -46,11 +46,11 @@ fn count(c: &Ctx<'_>, id: &str) -> Result<usize, String> {
 
 pub fn commands() -> Vec<Command> {
     vec![
-        cmd("page rm", "Delete one or several pages with timed Undo (wb page rm ID ID …: one Undo for all). --all previews the ordinary Pages tree; --yes commits. Pinned, templates, days and threads are excluded by default. --now explicitly bypasses Undo.",
+        cmd("page rm", "Delete a page, or several (wb page rm <id> <id> ...: one operation, one Undo), with timed Undo. --all previews the ordinary Pages tree; --yes commits. Pinned, templates, days and threads are excluded by default. --now explicitly bypasses Undo.",
             vec![Pos("id", N::Any), Flag("all"), Flag("yes"), Flag("now"), Flag("include_pinned"), Flag("include_templates"), Flag("include_days"), Opt("expect", None)], |c,a| {
                 use wb_core::deletion as del;
                 let ids=a.list("id");
-                if a.flag("all") == !ids.is_empty() { return Err("Give a page ID (several may be given, one Undo for all) or --all.".into()); }
+                if a.flag("all") == !ids.is_empty() { return Err("Give a page ID or --all.".into()); }
                 if !a.flag("all") && (a.flag("include_pinned") || a.flag("include_templates") || a.flag("include_days")) { return Err("Inclusion options require --all.".into()); }
                 let mut st=c.study()?;
                 let selection=del::Selection { ids,all:a.flag("all"),pinned:a.flag("include_pinned"),templates:a.flag("include_templates"),days:a.flag("include_days") };
