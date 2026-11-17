@@ -583,6 +583,13 @@ impl Store {
         self.hl.iter().find(|(c, _)| c == code).map(|(_, v)| v.clone()).unwrap_or_default()
     }
 
+    /// Each highlight in turn, without copying them (the one search goes over all of them).
+    pub fn each_highlight(&self, mut f: impl FnMut(&Rec)) {
+        for (_, v) in &self.hl {
+            v.iter().for_each(&mut f);
+        }
+    }
+
     /// Every highlight, book file by book file.
     pub fn all_highlights(&self) -> Vec<Rec> {
         self.hl.iter().flat_map(|(_, v)| v.clone()).collect()

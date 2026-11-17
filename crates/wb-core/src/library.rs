@@ -247,12 +247,15 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         None => None,
     };
     let folder_id = f.folder.map(|n| store.find_set(n).map(|t| s(&t, "id"))).transpose()?;
+    let clock = std::time::Instant::now();
+    let lap = |what: &str| { if std::env::var("WB_FIND_TIMES").is_ok() { eprintln!("find {what}: {:?}", clock.elapsed()); } };
     let mut groups = vec![];
     let mut out_groups: Vec<(String, Vec<Value>)> = vec![];
     let mut all_total = 0usize;
+    lap("before page");
     if want("page") {
-        let pages: Vec<Value> = crate::notebook::find_lines(bible, store);
-        all_total += pages.len();
+        let (pages, total) = crate::notebook::find_lines(bible, store, &words);
+        all_total += total;
         let rows = pages
             .into_iter()
             .filter(|e| crate::notebook::words_in(e, &words))
@@ -263,12 +266,14 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
             .collect();
         out_groups.push(("page".into(), rows));
     }
+    lap("before folder");
     if want("folder") && in_folder.is_none() && !f.has_question && cutoff.is_none() {
         let sets = store.sets();
         all_total += sets.len();
         let rows = sets.iter().filter(|t| has(&s(t, "name"))).map(|t| json!({"kind": "folder", "id": t["id"], "title": t["name"], "updated": t["updated"]})).collect();
         out_groups.push(("folder".into(), rows));
     }
+    lap("before save");
     if want("save") && !f.has_question {
         let mut rows = vec![];
         // the saves as the search lists them: labelled from what the item names, never resolved one by one (a folder of
@@ -308,6 +313,7 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         }
         out_groups.push(("save".into(), rows));
     }
+    lap("before question");
     if want("question") {
         let qs = crate::questions::entries(bible, store);
         all_total += qs.len();
@@ -319,6 +325,7 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
             .collect();
         out_groups.push(("question".into(), rows));
     }
+    lap("before margin");
     if want("margin") {
         let notes = crate::margin::rows(bible, store);
         all_total += notes.len();
@@ -331,19 +338,24 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
             .collect();
         out_groups.push(("margin".into(), rows));
     }
+    lap("before highlight");
     if want("highlight") {
-        let hl = store.all_highlights();
-        all_total += hl.len();
-        let rows = hl
-            .iter()
-            .map(|h| (anchor_label(bible, &s(h, "anchor")), h))
-            .filter(|(label, h)| has(&format!("{label} {} {}", s(h, "quote"), s(h, "color"))))
-            .filter(|(_, h)| cutoff.as_ref().is_none_or(|c| s(h, "created").as_str() >= c.as_str()))
-            .filter(|_| in_folder.is_none() && !f.has_question)
-            .map(|(label, h)| json!({"kind": "highlight", "id": h["id"], "title": label, "snippet": s(h, "quote"), "color": h["color"], "updated": s(h, "created")}))
-            .collect();
+        let mut rows: Vec<Value> = vec![];
+        let mut every = 0usize;
+        store.each_highlight(|h| {
+            every += 1;
+            if f.has_question || in_folder.is_some() {
+                return;
+            }
+            let label = anchor_label(bible, &s(h, "anchor"));
+            if has(&format!("{label} {} {}", s(h, "quote"), s(h, "color"))) && cutoff.as_ref().is_none_or(|c| s(h, "created").as_str() >= c.as_str()) {
+                rows.push(json!({"kind": "highlight", "id": h["id"], "title": label, "snippet": s(h, "quote"), "color": h["color"], "updated": s(h, "created")}));
+            }
+        });
+        all_total += every;
         out_groups.push(("highlight".into(), rows));
     }
+    lap("after groups");
     let mut count = 0;
     for (kind, mut rows) in out_groups {
         if f.sort == "title" {

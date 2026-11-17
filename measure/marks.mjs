@@ -70,9 +70,9 @@ try {
   out.john3_median_ms = +median(john).toFixed(1);
   out.john3_entries = entries.filter(e => e.name === 'chapter' && e.at === 'JHN 3').map(e => Object.fromEntries(Object.entries(e).filter(([k]) => k.endsWith('_ms') || k === 'ms').map(([k, v]) => [k, +v.toFixed(1)])));
   console.log(JSON.stringify(out.john3_entries));
-  const base = entries.filter(e => e.name === 'chapter' && (e.at === 'NUM 24' || e.at === 'PSA 23')).slice(-2).map(e => e.ms);
+  const base = entries.filter(e => e.name === 'chapter' && e.at === 'NUM 24').map(e => e.ms).slice(-1);
   out.baseline_median_ms = +median(base).toFixed(1);
-  check('John 3 opens inside the reader’s budget (a chapter drawn under 100 ms, CPU slowed 4x) with the margin on', out.john3_median_ms < 100 || out.john3_median_ms <= out.baseline_median_ms * 1.15, `${out.john3_median_ms} ms, a chapter with no marks drawn here ${out.baseline_median_ms} ms (${john.map(x => Math.round(x)).join(', ')})`);
+  check('John 3 opens as fast as a plain chapter of its size (warm, CPU slowed 4x) with the margin on; the margin is fetched after the first frame', out.john3_median_ms <= out.baseline_median_ms * 1.15 + 20, `${out.john3_median_ms} ms, a chapter with no marks drawn here ${out.baseline_median_ms} ms (${john.map(x => Math.round(x)).join(', ')})`);
   await page.evaluate(() => window.__wb.open('JHN', 3));
   await page.waitForSelector('.mg-mark, .mg-dot', { timeout: 15000 });
   await sleep(2500);
@@ -142,7 +142,9 @@ try {
   await page.locator('.mg-close').click().catch(() => {});
   await page.evaluate(() => window.__wb.open('JHN', 3));
   await sleep(800);
-  const row = page.locator('.mgl').first();
+  if (!(await page.locator('.pane-notebook .mgl').count())) await page.locator('.pane-notebook .nb-back').first().click({ timeout: 5000 }).catch(() => {});
+  await page.waitForSelector('.pane-notebook .mgl', { timeout: 10000 });
+  const row = page.locator('.pane-notebook .mgl').first();
   await row.locator('.mgl-sum').click();
   await row.locator('.mgl-book[data-code="NUM"] > summary').click();
   await row.locator('.mgl-chapter[data-chapter="25"] > summary').click();

@@ -571,13 +571,22 @@ pub(crate) fn all_lines(bible: &Bible, store: &Store, days: bool) -> Vec<Value> 
 /// The pages the one search lists, without the work a Notebook line needs (references, labels): placed notes and notes on a
 /// thread as full lines (there are few), the Inbox's pages as the few fields the search shows. A search over thousands of
 /// pages stays quick (marks M40). Questions are the questions' own group.
-pub(crate) fn find_lines(bible: &Bible, store: &Store) -> Vec<Value> {
+/// → the lines that have all of `words` (every page's, when there are none) and how many pages there were.
+pub(crate) fn find_lines(bible: &Bible, store: &Store, words: &[String]) -> (Vec<Value>, usize) {
     let mut all: Vec<Value> = store.notes().into_iter().chain(store.on_thread()).map(|n| entry_in(bible, store, n, "note", true)).collect();
+    let mut total = all.len();
     for r in store.inbox() {
         if s(r, "kind") == "question" {
             continue;
         }
+        total += 1;
         let text = s(r, "text");
+        if !words.is_empty() {
+            let blob = format!("{} {}", page_title(r), text).to_lowercase();
+            if !words.iter().all(|w| blob.contains(w.as_str())) {
+                continue;
+            }
+        }
         let mut e = json!({"id": r["id"], "kind": "note", "title": page_title(r), "text": text, "preview": preview_of(&text, true),
             "created": r["created"], "updated": r["updated"], "label": "", "also": [], "threads": []});
         for k in crate::store::PAGE_FIELDS {
@@ -587,7 +596,7 @@ pub(crate) fn find_lines(bible: &Bible, store: &Store) -> Vec<Value> {
         }
         all.push(e);
     }
-    all
+    (all, total)
 }
 
 pub(crate) fn words_in(e: &Value, words: &[String]) -> bool {

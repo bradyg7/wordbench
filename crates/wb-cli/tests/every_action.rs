@@ -39,7 +39,7 @@ const INTERNAL: &[&str] = &[
     // scripture blocks (W4): a fence read and written, pieces of wb page scripture and wb block scripture
     "scripture_fence", "scripture_fence_text", "jot_fence",
     // marks (MK-17): the margin's file forms and places, the verse index and the pencil's list: pieces of wb margin, wb page overview and wb hl pencil
-    "from_place", "at_of", "all", "rows", "add_dots", "forget", "naming", "list", "kind", "covers",
+    "from_place", "at_of", "all", "rows", "add_dots", "forget", "naming", "list", "kind", "covers", "each_highlight",
     // views and templates (W5): a view's fence and line read (pieces of wb page views, wb view run, wb template save), a
     // place as a reference again, the blanks filled, and the Templates rows of wb notebook sidebar
     "view_fence", "view_line", "span_ref", "fill", "rows",
