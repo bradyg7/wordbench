@@ -1061,6 +1061,58 @@ pub fn make_page(bible: &Bible, store: &Store, folders: &ExportFolders, page: &s
     build(bible, store, folders, rec, &theme, lk, force)
 }
 
+/// Make another like this (D6): a document of the same kind (Word or slides) from another page, with the same Look and
+/// theme and the same choice for each kind of part (a kind whose rows are all in, or all out, in the first document is
+/// in, or out, here; a mixed kind keeps its default). The first document is not changed. Nothing is a template.
+pub fn make_like(bible: &Bible, store: &Store, folders: &ExportFolders, like: &str, page: &str, force: bool) -> Result<Value> {
+    let from = find(store, like)?;
+    if s_(&from["source"], "kind") != "page" {
+        return Err(bad("Make another like this starts from a document made from a page (wb docs list --page)."));
+    }
+    let to = s(&from, "to");
+    let key = page_structure(&to, Some(&s(&from, "structure")))?;
+    let from_id = s_(&from["source"], "id").to_string();
+    let id = page_id(store, page)?;
+    let ver = version_of(&from);
+    let mut kinds: std::collections::BTreeMap<String, (bool, bool)> = Default::default();
+    let first = page::parts(bible, store, &from_id, &switched_of(&from), ver.as_deref())?;
+    for r in first["rows"].as_array().into_iter().flatten() {
+        let e = kinds.entry(r["kind"].as_str().unwrap_or("").to_string()).or_default();
+        if r["on"].as_bool().unwrap_or(false) { e.0 = true } else { e.1 = true }
+    }
+    let (mut on, mut off) = (vec![], vec![]);
+    let here = page::parts(bible, store, &id, &serde_json::Map::new(), ver.as_deref())?;
+    for r in here["rows"].as_array().into_iter().flatten() {
+        let k = r["key"].as_str().unwrap_or("").to_string();
+        match kinds.get(r["kind"].as_str().unwrap_or("")) {
+            Some((true, false)) => on.push(k),
+            Some((false, true)) => off.push(k),
+            _ => {}
+        }
+    }
+    let mut rec = page_record(store, &id, &to, key);
+    for k in ["switched", "version"] {
+        rec.shift_remove(k);
+    }
+    choose_page_parts(bible, store, &id, &mut rec, None, &on, &off)?;
+    if let Some(v) = &ver {
+        rec.insert("version".into(), json!(v));
+    }
+    for k in ["theme", "look", "look_values"] {
+        if let Some(v) = from.get(k) {
+            rec.insert(k.into(), v.clone());
+        }
+    }
+    rec.shift_remove("forgotten");
+    folders.build_in(&rec)?;
+    let theme = if rec.contains_key("theme") { s(&rec, "theme") } else { saved_theme(store) };
+    let lk = look_for(store, &rec, None, &[])?;
+    if rec.contains_key("name") {
+        save(store, &rec)?;
+    }
+    build(bible, store, folders, rec, &theme, lk, force)
+}
+
 /// The plan a page's document would be made from now, optionally with pending Make choices.
 #[allow(clippy::too_many_arguments)]
 pub fn plan_for_page(bible: &Bible, store: &Store, page: &str, to: &str, structure: Option<&str>, version: Option<&str>,
