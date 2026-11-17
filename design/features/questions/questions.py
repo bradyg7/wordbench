@@ -1,8 +1,7 @@
-"""Questions, round 1. Today a question lives three ways: a trail at a place (wb trail), an Inbox question (wb note jot
---question), and a callout written in a page (> [!question], wb question add); `wb question list` already reads them as
-one list. This round asks how a person asks, sees and answers questions in the window, with the reader's margin
-(reader C) and the library (library) as they now stand. The questions on the sheets are a drawn sample, not anyone's
-study; scripture is fetched with wb text.
+"""Questions. A question is stored only as a callout line (> [!question], answered > [!done]), in a page or in a margin
+note beside a verse; the list of them is the Library's search with its field menu set to Questions (marks M21) and a
+saved list block in any page (Q6). The questions on the sheets are a drawn sample, not anyone's study; scripture is
+fetched with wb text (data/num25-6-13.json).
 
     python design/features/questions/questions.py
 """
@@ -12,26 +11,37 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 import kit as K  # noqa: E402
-from kit import P, Q, W, H, TB, col, frame, icon, para, row, spacer, text  # noqa: E402
+from kit import P, Q, W, H, TB, col, frame, icon, para, row, spacer, text, shadow  # noqa: E402
 
 PG = "Questions"
 NUM25 = K.verses_of(K.fetch(HERE, "num25-6-13", ["text", "Num 25:6-13"], as_json=False))
-SAMPLE = [  # (place, question, open, where it is written)
-    ("Numbers 25:11", "What is the covenant of peace given here?", True, "at the verse"),
-    ("Numbers 25:13", "Where else is an everlasting priesthood promised?", True, "in the page Phinehas"),
-    ("Psalms 106:30", "Why does the psalm say judgment where Numbers says zeal?", False, "in the page Phinehas"),
-    (None, "Read the whole of Numbers 22–25 together?", True, "with no place"),
+NUM25_10_13 = [v for v in NUM25 if 10 <= v["v"] <= 13]
+QPH = "A question of yours, as you wrote it"
+QPH2 = "Another question of yours"
+OWN = "Your own words, as you wrote them"
+TYPED = "? " + QPH
+SAMPLE = [  # (place, question, open, where it is written); the questions are placeholders, never the person's words
+    ("Numbers 25:11", QPH, True, "in the margin"),
+    ("Numbers 25:13", QPH2, True, "in the page Phinehas"),
+    ("Psalms 106:30", QPH, False, "in the page Phinehas"),
+    (None, QPH2, True, "in the page Tuesday study"),
 ]
+OPEN = [s for s in SAMPLE if s[2]]
+PICKER = ("Tuesday study", "Phinehas", "Reading notes")
+
+
+def where_line(place, where):
+    return (place + " · " + where) if place else where
 
 
 def qrow(p, place, q, open_, where):
     it = row(p, f"q/{q[:20]}", gap=10, pad=[10, 10, 10, 10], radius=8, stroke="line", sw=1, W="fill",
              align="min")
-    box = frame(it, "tick", w=18, h=18, radius=9, stroke="question" if open_ else "ok", sw=2,
-                fill=None if open_ else "ok", W="fixed", H="fixed")
+    frame(it, "tick", w=18, h=18, radius=9, stroke="question" if open_ else "ok", sw=2,
+          fill=None if open_ else "ok", W="fixed", H="fixed")
     tc = col(it, "text", gap=2, W="fill")
     para(tc, q, "body", "fg" if open_ else "muted")
-    text(tc, (place or "no place") + " · " + where, "caption", "muted")
+    text(tc, where_line(place, where), "caption", "muted")
     return it
 
 
@@ -46,200 +56,319 @@ def today(cv):
     p = K.M.pane(f, W - 420, TB, 420, H - TB, ["Notebook"], "Notebook")
     P.segmented(p, ["Pages", "Questions", "Days"], "Questions")
     for s in SAMPLE:
-        qrow(p, *s)
+        qrow(p, s[0], s[1], s[2], "at the verse" if s[3] == "in the margin" else
+             s[3].replace("in the page Tuesday study", "with no place"))
 
 
-def direction_a(cv):
-    r = row(cv, "A", gap=64, align="min")
-    f = Q.win(r, PG, "Q2 · A: one Questions list, by place",
-              "One list for every question, wherever it was written: open first, by place in Bible order, then those "
-              "with no place. A click goes to where it was written (the verse, or the page at its line); the circle "
-              "answers it. Its writing place is a caption, not a kind.")
-    w = K.app(f)
-    p = K.panel(f, w, TB, W - w, H - TB, "Questions", "3 open · 1 answered · wb question list")
-    tb = row(p, "filter", gap=8, W="fill")
-    P.segmented(tb, ["Open", "Answered", "All"], "Open", W="hug")
-    P.field(tb, "Narrow by words or a place")
-    text(p, "NUMBERS", "label", "muted")
-    for s in SAMPLE[:2]:
-        qrow(p, *s)
-    text(p, "NO PLACE", "label", "muted")
-    qrow(p, *SAMPLE[3])
-
-    f = Q.win(r, PG, "Q3 · A: asking from the reader",
-              "Ask a question (?) on a verse writes it beside the verse in the margin (reader C), with the cursor in "
-              "it; Enter keeps it. It is a question at that place; a later page on the verse can take it in (wb "
-              "question fold).")
-    w = K.app(f)
-    K.reader(f, w, W - w - 300, NUM25, "Numbers 25", sel=(11, 0, 999))
-    mg = col(f, "margin", gap=10, pad=[16, 14, 16, 14], W="fixed", H="fixed", stroke="line", strokeLeftWeight=1,
-             strokeRightWeight=0, strokeTopWeight=0, strokeBottomWeight=0)
-    K.Q.put(mg, W - 300, TB, 300, H - TB)
-    frame(mg, "space", w=10, h=250, W="fixed", H="fixed")
-    box = col(mg, "asking", gap=6, pad=[10, 10, 10, 10], radius=8, stroke="question", sw=1, fill="surface", W="fill")
-    rr = row(box, "head", gap=6)
-    icon(rr, "question", 14, "question")
-    text(rr, "25:11", "caption", "muted")
-    para(box, "What is the covenant of peace given here?|", "small")
-    text(box, "Enter keeps it · Esc leaves it", "caption", "muted")
-
-
-def direction_b(cv):
-    r = row(cv, "B", gap=64, align="min")
-    f = Q.win(r, PG, "Q4 · B: a question is only ever a line in a page",
-              "Every question is a callout in some page: a question at a verse goes in that verse's page (made if "
-              "there is none), a placeless one in today's page. One way to ask, answer and delete. The trail and "
-              "Inbox kinds are folded in once, with the person's go-ahead (wb question fold).")
-    w = K.app(f, on="Notebook")
-    pg = K.panel(f, w, TB, W - w, H - TB, "Numbers 25:11", "the verse's page", fill="bg")
-    para(pg, "A drawn sample of a page's paragraph.", "body", "muted")
-    for q, open_ in (("What is the covenant of peace given here?", True), ("Where else is an everlasting priesthood "
-                                                                           "promised?", True)):
-        it = row(pg, "callout", gap=10, pad=[10, 12, 10, 12], radius=8, fill="accentSoft" if open_ else "sunken",
-                 W="fill", stroke="question", strokeLeftWeight=3, strokeRightWeight=0, strokeTopWeight=0,
-                 strokeBottomWeight=0)
-        icon(it, "question", 18, "question")
-        para(it, q, "body")
-        P.button(it, "Answered", "ghost", "check", size="sm")
-
-    f = Q.win(r, PG, "Q5 · Answering: a line under the question",
-              "Answered asks for an optional line, kept under the question in the same page (an ordinary paragraph "
-              "after the > [!done] callout). The answer is the person's own words; the app suggests none.")
-    w = K.app(f, on="Notebook")
-    pg = K.panel(f, w, TB, W - w, H - TB, "Numbers 25:11", "the verse's page", fill="bg")
-    it = row(pg, "callout", gap=10, pad=[10, 12, 10, 12], radius=8, fill="sunken", W="fill", stroke="ok",
-             strokeLeftWeight=3, strokeRightWeight=0, strokeTopWeight=0, strokeBottomWeight=0)
-    icon(it, "check", 18, "ok")
-    para(it, "What is the covenant of peace given here?", "body", "muted")
-    ans = col(pg, "answer", gap=4, pad=[8, 12, 8, 40], W="fill")
-    text(ans, "Your answer (optional)", "caption", "muted")
-    P.field(ans, "Write what you found…", icon_name="pen")
+def tick(parent, open_, size=22):
+    """The round tick that answers a question: empty for an open one, filled with a check for an answered one."""
+    t = frame(parent, "tick/open" if open_ else "tick/answered", w=size, h=size, radius=size / 2,
+              stroke="question" if open_ else "ok", sw=2, fill=None if open_ else "ok", layout="horizontal",
+              mainAlign="center", crossAlign="center", W="fixed", H="fixed")
+    if not open_:
+        icon(t, "check", 14, "surface")
+    return t
 
 
 def callout(p, q, open_=True, place=None):
     it = row(p, "callout", gap=10, pad=[10, 12, 10, 12], radius=8, fill="accentSoft" if open_ else "sunken", W="fill",
              stroke="question" if open_ else "ok", strokeLeftWeight=3, strokeRightWeight=0, strokeTopWeight=0,
-             strokeBottomWeight=0)
-    icon(it, "question" if open_ else "check", 18, "question" if open_ else "ok")
+             strokeBottomWeight=0, align="min")
+    tick(it, open_)
     tc = col(it, "text", gap=2, W="fill")
     para(tc, q, "body", "fg" if open_ else "muted")
     if place:
-        text(tc, place, "caption", "muted")
+        para(tc, place, "caption", "muted")
+    if open_:
+        icon(it, "question", 16, "question")
     return it
 
 
-def round2(board):
-    """Round 2 (2026-11-12): the person chose B plus a list view. Every question is a callout line in a page; this
-    round draws where the list of them lives, where a question with no place goes, and asking from the reader."""
-    cv = Q.section(board, "Round 2", 3200)
-    Q.sheet_title(cv, "Questions, round 2",
-                  "Questions are only lines in pages (decided 2026-11-12). The list as a block in a page (Q6) or as a "
-                  "Library section (Q7); a question with no place when Today is off (Q8, Q9); asking from the reader "
-                  "writes into the verse's page, shown in the margin (Q10, Q11).")
-    r = row(cv, "the list", gap=64, align="min")
-    f = Q.win(r, PG, "Q6 · List 1: a saved list in a page",
-              "The list is a block you put in any page: a saved list (settings S5) whose line is notebook questions, "
-              "optionally @a place or open only. It lists each question with the page it is in; ticking one answers "
-              "it in its own page. A page called Questions holding only this block is the old tab, kept by choice.")
-    w = K.app(f, on="Notebook")
-    pg = K.panel(f, w, TB, W - w, H - TB, "Open questions", "a page holding one saved list", fill="bg")
-    blk = col(pg, "saved list", gap=8, pad=[12, 14, 12, 14], radius=10, stroke="line", sw=1, fill="surface", W="fill")
-    hd = row(blk, "head", gap=8, W="fill")
-    icon(hd, "list", 16, "muted")
-    text(hd, "notebook questions open", "caption", "muted", W="fill")
-    P.chip(hd, "Open", "selected")
-    P.chip(hd, "All places", "outline")
-    for place, q, open_, where in SAMPLE:
-        if open_:
-            callout(blk, q, True, (place or "no place") + " · " + where.replace("at the verse", "in the page Numbers 25:11")
-                    .replace("with no place", "in the page Tuesday study"))
-
-    f = Q.win(r, PG, "Q7 · List 2: a Questions section in the Library",
-              "The Library's drawer has a Questions section under Pages: a count of open ones, opened to the list "
-              "grouped by book. Nothing to set up; it cannot be put in a page. The list is the same as Q6's.")
-    w = K.app(f, on="Notebook")
-    lib = K.panel(f, w, TB, 340, H - TB, "Library", None, fill="sunken")
-    for n, ic, on, right in (("Pinned", "bookmark", False, "4"), ("Pages", "page", False, "38"),
-                             ("Questions", "question", True, "3 open"), ("Shelf", "shelf", False, "")):
-        K.line(lib, n, None, ic, right=right, on=on)
-    p = K.panel(f, w + 340, TB, W - w - 340, H - TB, "Questions", "3 open · in 2 pages", fill="bg")
-    P.segmented(p, ["Open", "Answered", "All"], "Open", W="hug")
-    text(p, "NUMBERS", "label", "muted")
-    for place, q, open_, where in SAMPLE[:2]:
-        callout(p, q, True, place + " · in a page")
-    text(p, "NO PLACE", "label", "muted")
-    callout(p, SAMPLE[3][1], True, "in a page")
-
-    r = row(cv, "no place", gap=64, align="min")
-    f = Q.win(r, PG, "Q8 · No place 1: it goes in the page you are in",
-              "A question asked with no verse is written in the page open in front, at the cursor, as any block is. "
-              "With no page open, the command field asks which page (the last few first, or a new one). Today is "
-              "never made for it.")
-    w = K.app(f, on="Notebook")
-    pg = K.panel(f, w, TB, 640, H - TB, "Tuesday study", "the page in front (a drawn sample)", fill="bg")
+def page_lines(pg, qs=(QPH, QPH2)):
     para(pg, "A drawn sample of a page's paragraph.", "body", "muted")
-    callout(pg, SAMPLE[3][1])
-    p = K.floating(f, "which page", w + 680, TB + 60, 380, gap=2)
-    text(p, "No page is open. Write the question in:", "small", "muted")
-    for n, on in (("Tuesday study", True), ("Phinehas", False), ("Reading notes", False)):
-        K.line(p, n, None, "page", on=on)
-    K.line(p, "A new page", None, "plus")
+    for q in qs:
+        callout(pg, q, True)
 
-    f = Q.win(r, PG, "Q9 · No place 2: a Questions page of its own",
-              "A question with no verse and no page goes in one page named Questions, made the first time (a page "
-              "like any other, pinned or not). Today stays optional and is never needed. Moving the line to another "
-              "page later is a drag.")
-    w = K.app(f, on="Notebook")
-    pg = K.panel(f, w, TB, W - w, H - TB, "Questions", "a page made for questions with no place", fill="bg")
-    callout(pg, SAMPLE[3][1])
-    callout(pg, "Look up every use of the covenant of peace?")
-    K.note(f, "Q8 and Q9 can go together: the page in front when there is one, the Questions page when not.",
-           W - 470, H - 90, 420)
 
-    r = row(cv, "asking", gap=64, align="min")
-    f = Q.win(r, PG, "Q10 · Asking from the reader, into the verse's page",
-              "Ask a question (?) on a verse opens a line in the margin beside it, as in round 1, but Enter writes "
-              "it as a callout at the end of the verse's page (Numbers 25:11, made if there is none). The margin "
-              "shows the question's words, which are the page's line.")
-    w = K.app(f)
-    K.reader(f, w, W - w - 300, NUM25, "Numbers 25", sel=(11, 0, 999))
+def margin_col(f, x, w, head_text, qs):
     mg = col(f, "margin", gap=10, pad=[16, 14, 16, 14], W="fixed", H="fixed", stroke="line", strokeLeftWeight=1,
              strokeRightWeight=0, strokeTopWeight=0, strokeBottomWeight=0)
-    Q.put(mg, W - 300, TB, 300, H - TB)
-    frame(mg, "space", w=10, h=250, W="fixed", H="fixed")
-    box = col(mg, "asking", gap=6, pad=[10, 10, 10, 10], radius=8, stroke="question", sw=1, fill="surface", W="fill")
-    rr = row(box, "head", gap=6)
-    icon(rr, "question", 14, "question")
-    text(rr, "25:11", "caption", "muted")
-    para(box, SAMPLE[0][1] + "|", "small")
-    text(box, "Enter writes it in the page Numbers 25:11", "caption", "muted")
+    Q.put(mg, x, TB, w, H - TB)
+    frame(mg, "space", w=10, h=60, W="fixed", H="fixed")
+    hd = row(mg, "head", gap=6)
+    icon(hd, "question", 14, "muted")
+    text(hd, head_text, "caption", "muted")
+    for q in qs:
+        callout(mg, q, True)
+    return mg
 
-    f = Q.win(r, PG, "Q11 · The verse's page after asking",
-              "The verse's page as it then is: its title is the place, the question its last line. Opening it from "
-              "the margin's line goes to that line; answering there or in the list is the same tick.")
+
+def line_in_page_and_margin(f):
+    """Q4's body: a page holding two question lines, and the reader with a margin note that is the same line."""
     w = K.app(f, on="Notebook")
-    K.reader(f, w, W - w - 520, NUM25, "Numbers 25")
-    p = K.M.pane(f, W - 520, TB, 520, H - TB, ["Numbers 25:11"], "Numbers 25:11")
-    text(p, "Numbers 25:11", "title")
-    text(p, "a page at a place · made when the question was asked", "caption", "muted")
-    callout(p, SAMPLE[0][1])
+    pw = 470
+    pg = K.panel(f, w, TB, pw, H - TB, "Phinehas", None, fill="bg")
+    page_lines(pg)
+    mw = 330
+    K.reader(f, w + pw, W - w - pw - mw, NUM25_10_13, "Numbers 25", sel=(11, 0, 999))
+    margin_col(f, W - mw, mw, "Margin · Numbers 25:11", [QPH])
+
+
+def answering(f):
+    """Q5's body: the page Phinehas, one open line with its empty tick, one answered with the check and, under it,
+    the person's optional line."""
+    w = K.app(f, on="Notebook")
+    pg = K.panel(f, w, TB, W - w, H - TB, "Phinehas", None, fill="bg")
+    callout(pg, QPH, True)
+    callout(pg, QPH2, False)
+    ans = col(pg, "answer", gap=4, pad=[0, 12, 8, 44], W="fill")
+    para(ans, OWN, "body")
+
+
+def list_head(blk, line_kept):
+    hd = row(blk, "head", gap=8, W="fill")
+    icon(hd, "list", 16, "muted")
+    text(hd, "Questions · open · every place", "smallStrong", W="fill", maxLines=1)
+    P.icon_button(hd, "pen", "muted", size=26, icon_size=14)
+    text(blk, line_kept, "caption", "muted")
+
+
+def list_block(parent, rows, answered=None, width=None, more=None, kept="notebook questions open", pad=None):
+    """The saved list block (Q6, Q12, Q13, Q15): one plain line of what it holds with a small pencil, the line as kept,
+    then the rows. rows: [(place, question, where)]; `answered` is the index of a row shown answered in place (Q12);
+    `width` makes the block that wide (a floating pane); `more` is the label of a Show all button under the rows."""
+    blk = col(parent, "saved list", gap=8, pad=pad or [12, 14, 12, 14], radius=10, stroke="line", sw=1, fill="surface",
+              W="fixed" if width else "fill")
+    if width:
+        K.S.do("node.set", {"ids": [blk], "props": {"width": width}}, ref=False)
+    list_head(blk, kept)
+    for i, (place, q, where) in enumerate(rows):
+        callout(blk, q, i != answered, where_line(place, where))
+        if i == answered:
+            ans = col(blk, "answer", gap=4, pad=[0, 0, 0, 32], W="fill")
+            P.field(ans, "A line of your own (optional)", icon_name="pen", height=36)
+    if more:
+        P.button(blk, more, "secondary", size="sm")
+    return blk
+
+
+def list_rows():
+    return [(s[0], s[1], s[3]) for s in OPEN]
+
+
+def more_rows(places):
+    return [(pl, QPH if i % 2 else QPH2, wh) for i, (pl, wh) in enumerate(places)]
+
+
+def _vpad(r, pad):
+    K.S.do("node.set", {"ids": [r], "props": {"paddingTop": pad, "paddingBottom": pad}}, ref=False)
+
+
+def picker(p, pad=8):
+    """Q8's picker: the last three pages written in, and a new page."""
+    for i, n in enumerate(PICKER):
+        r = K.line(p, n, None, "page", on=i == 0)
+        if pad != 8:
+            _vpad(r, pad)
+    r = K.line(p, "A new page", None, "plus")
+    if pad != 8:
+        _vpad(r, pad)
+
+
+def half_label(f, x, w, label):
+    r = row(f, "label", gap=0, pad=[0, 22, 0, 22], W="fixed", H="fixed")
+    Q.put(r, x, TB, w, 40)
+    text(r, label, "smallStrong", "muted")
+    return r
+
+
+def no_verse(f):
+    """Q8: two cases side by side, a page in front (left) and no page open (right)."""
+    w = K.app(f, on="Notebook")
+    hw = (W - w) // 2
+    half_label(f, w, hw, "A page is in front")
+    half_label(f, w + hw, hw, "No page is open")
+    # left: the field above, the page, the new line as its last block
+    pg = K.panel(f, w, TB + 120, hw, H - TB - 120, "Tuesday study", None, fill="bg")
+    para(pg, "A drawn sample of a page's paragraph.", "body", "muted")
+    callout(pg, QPH2, True)
+    callout(pg, QPH, True)
+    fl = K.floating(f, "command field", w + 22, TB + 44, hw - 44, pad=(8, 8, 8, 8), gap=0)
+    P.field(fl, "", value=TYPED, icon_name="search")
+    # right: the desk, the reader only, the field and the picker under it
+    K.reader(f, w + hw, hw, NUM25, "Numbers 25", top=TB + 40, width=hw - 64)
+    fr = K.floating(f, "command field", w + hw + 22, TB + 44, hw - 44, pad=(8, 8, 8, 8), gap=0)
+    P.field(fr, "", value=TYPED, icon_name="search")
+    pk = K.floating(f, "which page", w + hw + 22, TB + 120, hw - 44, gap=2)
+    text(pk, "Write the question in:", "small", "muted")
+    picker(pk)
+    dv = frame(f, "divider", w=1, h=H - TB, fill="line", W="fixed", H="fixed")
+    Q.put(dv, w + hw, TB, 1, H - TB)
+
+
+def tabs_among(f):
+    """Q12: the saved list as one tab of four in a side pane, the reader beside it, one row answered in place."""
+    w = K.app(f)
+    pw = 560
+    K.reader(f, w, W - w - pw, NUM25, "Numbers 25")
+    p = K.M.pane(f, W - pw, TB, pw, H - TB, ["Open questions", "Phinehas", "Concordance", "Trash"], "Open questions")
+    text(p, "Open questions", "title")
+    rows = list_rows()
+    rows.append((None, QPH2, "in the page Phinehas"))
+    list_block(p, rows, answered=0)
+
+
+def floating_list(f):
+    """Q13: the list as a small floating pane (320 wide) over the reader, drawn by list_block."""
+    w = K.app(f)
+    K.reader(f, w, W - w, NUM25, "Numbers 25")
+    fw = 320
+    c = K.floating(f, "floating list", W - fw - 40, TB + 60, fw, pad=(8, 8, 8, 8), gap=6)
+    hd = row(c, "head", gap=8, pad=[0, 0, 0, 6], W="fill")
+    text(hd, "Open questions", "smallStrong", W="fill")
+    P.icon_button(hd, "close", "muted", size=32, icon_size=14)
+    list_block(c, list_rows(), width=fw - 16, pad=[10, 10, 10, 10])
+
+
+def phone_bar(f, pw):
+    """The phone's top bar: the time and the place button."""
+    bar = row(f, "top bar", gap=10, pad=[0, 16, 0, 16], fill="bg", W="fixed", H="fixed")
+    Q.put(bar, 0, 0, pw, 52)
+    text(bar, "9:41", "smallStrong", W="fill")
+    pb = row(bar, "place button", gap=6, pad=[0, 12, 0, 12], radius=10, stroke="line", sw=1, fill="surface", H="fixed")
+    K.S.do("node.set", {"ids": [pb], "props": {"height": 44}}, ref=False)
+    text(pb, "Numbers 25", "bodyStrong")
+    icon(pb, "down", 13, "muted")
+
+
+def phone_ask(f, pw, ph):
+    """Q14: 390 wide, a question asked with no page open; the sheet reaches the bottom edge, every row 44 px or more."""
+    phone_bar(f, pw)
+    K.reader(f, 0, pw, NUM25, "Numbers 25", top=52, width=pw - 40)
+    top = 440
+    c = col(f, "page sheet", gap=6, pad=[10, 14, 14, 14], fill="surface", radius=14, stroke="line", sw=1, W="fixed",
+            H="fixed")
+    Q.put(c, 0, ph - top, pw, top + 16)
+    shadow(c, 8, 28, "#00000033")
+    g = row(c, "grabber", mainAlign="center", W="fill")
+    frame(g, "grab", w=40, h=4, radius=2, fill="line", W="fixed", H="fixed")
+    hd = row(c, "head", gap=8, W="fill")
+    text(hd, "Write the question in:", "smallStrong", W="fill")
+    P.icon_button(hd, "close", "muted", size=44, icon_size=16, fill="sunken")
+    q = row(c, "question", gap=8, pad=[12, 12, 12, 12], radius=8, fill="accentSoft", W="fill")
+    icon(q, "question", 16, "question")
+    para(q, QPH, "small")
+    picker(c, pad=13)
+
+
+def years_library(p):
+    """Q15 left: the Library's search, its field menu reading Questions · open, results grouped by book."""
+    fld = row(p, "search field", gap=8, pad=[0, 12, 0, 8], fill="surface", radius=10, stroke="line", sw=1, W="fill",
+              H="fixed")
+    K.S.do("node.set", {"ids": [fld], "props": {"height": 44}}, ref=False)
+    mn = row(fld, "field menu", gap=6, pad=[5, 4, 5, 4])
+    text(mn, "Questions · open", "smallStrong")
+    icon(mn, "down", 13, "muted")
+    icon(fld, "search", 18, "muted")
+    text(fld, "Search", "body", "muted", W="fill")
+    text(p, "212 open of 640 questions", "caption", "muted")
+    groups = (("Numbers", 14), ("Psalms", 31), ("Isaiah", 27), ("Matthew", 22), ("Romans", 19))
+    for i, (b, n) in enumerate(groups):
+        g = row(p, f"group/{b}", gap=8, pad=[6, 8, 6, 8], radius=8, W="fill", fill="sunken" if i == 0 else None)
+        icon(g, "down" if i == 0 else "right", 14, "muted")
+        text(g, b + " · " + str(n), "smallStrong", W="fill")
+        if i == 0:
+            for place, q, where in list_rows():
+                callout(p, q, True, where_line(place, where))
+            callout(p, QPH2, True, "Numbers 25:1 · in the margin")
+    text(p, "and 9 more books · 99 questions", "caption", "muted")
+    P.button(p, "Show all 212", "secondary", size="sm")
+
+
+def years_block(pg):
+    """Q15 right: the saved list block, its first 20 rows (about 8 drawn), then Show all 212."""
+    rows = list_rows() + more_rows((("Psalms 19:2", "in the margin"), ("Isaiah 6:1", "in the page Phinehas"),
+                                    ("Matthew 5:3", "in the page Tuesday study"), ("Romans 3:1", "in the margin"),
+                                    ("Romans 8:2", "in the page Reading notes")))
+    list_block(pg, rows, more="Show all 212", kept="notebook questions open · the first 20 of 212")
+
+
+def years(f):
+    w = K.app(f, on="Notebook")
+    lw = 600
+    lib = K.panel(f, w, TB, lw, H - TB, "Library", None, fill="sunken")
+    years_library(lib)
+    pg = K.panel(f, w + lw, TB, W - w - lw, H - TB, "Open questions", None, fill="bg")
+    years_block(pg)
+
+
+def part(cv, title):
+    text(cv, title, "display", fontSize=30, lineHeight="38px")
 
 
 def sheets(board):
-    round2(board)
-    cv = Q.section(board, "Round 1", 3200)
-    Q.sheet_title(cv, "Questions, round 1",
-                  "Today (Q1); A, one Questions list and asking in the reader's margin (Q2, Q3); B, a question is only "
-                  "a line in a page, answered with an optional line (Q4, Q5).")
+    cv = Q.section(board, "Questions", 3200)
+    Q.sheet_title(cv, "Questions",
+                  "A question is stored only as a callout line (> [!question], answered > [!done]), in a page or in a "
+                  "margin note beside a verse: one way to ask, answer and delete. Every open question is seen as one "
+                  "list, as a filtered view and never as a Questions tab: the Library's search with its field menu "
+                  "set to Questions, and a saved list in any page.")
+    part(cv, "Today")
     today(cv)
-    direction_a(cv)
-    direction_b(cv)
 
 
-# windows that no longer lead (see the README's Leading design table)
-DROP = ["Q2", "Q3", "Q7", "Q10", "Q11"]
+    part(cv, "A question is a line")
+    r = row(cv, "line", gap=64, align="min")
+    f = Q.win(r, PG, "Q4 · A question is a line: in a page, or in a verse's margin",
+              "One way to ask, answer and delete: the same line in a page (left) and in the margin note beside a verse "
+              "(right), in the same look. The old trails and Inbox questions are read as they are until the person "
+              "has them folded in (wb question fold).")
+    line_in_page_and_margin(f)
+    f = Q.win(r, PG, "Q5 · Answering: a line under the question",
+              "Answered asks for an optional line, kept under the question in the same page (an ordinary paragraph "
+              "after the > [!done] callout). The answer is the person's own words; the app suggests none.")
+    answering(f)
+
+    part(cv, "The list")
+    r = row(cv, "list", gap=64, align="min")
+    f = Q.win(r, PG, "Q6 · The list: a saved list in a page",
+              "The list is a block you put in any page: its head says in plain words what it holds, with a pencil to "
+              "change it, and under it the line as kept. Each row says where the question lives; ticking one answers "
+              "it where it is written.")
+    w = K.app(f, on="Notebook")
+    pg = K.panel(f, w, TB, W - w, H - TB, "Open questions", None, fill="bg")
+    list_block(pg, list_rows())
+
+    part(cv, "A question with no verse")
+    r = row(cv, "no verse", gap=64, align="min")
+    f = Q.win(r, PG, "Q8 · No verse: it goes in the page you are in",
+              "Left: a page is in front, so the question typed in the command field is written as the page's last "
+              "block. Right: no page is open, so under the field it asks Write the question in: the last three pages "
+              "written in, and A new page.")
+    no_verse(f)
+
+    part(cv, "The real conditions")
+    r = row(cv, "conditions a", gap=64, align="min")
+    f = Q.win(r, PG, "Q12 · Among other tabs",
+              "The saved list is a page, one tab of four in a side pane beside the reader. One row is being answered "
+              "in place: its tick is on and the optional line of the person's own is under it.")
+    tabs_among(f)
+    f = Q.win(r, PG, "Q13 · Floating",
+              "The same list as a small floating pane, about 320 wide, over the reader: a question wraps to two lines, "
+              "the where-line stays whole and the tick stays reachable.")
+    floating_list(f)
+    r = row(cv, "conditions b", gap=64, align="min")
+    pw, ph = 390, 800
+    f = Q.win(r, PG, "Q14 · Narrow",
+              "At phone width, a question asked with no page open: Write the question in: is a sheet over the bottom "
+              "of the screen with the last pages and A new page.", w=pw, h=ph)
+    phone_ask(f, pw, ph)
+    f = Q.win(r, PG, "Q15 · Years of study",
+              "640 questions, 212 open. The Library's search with its field menu at Questions · open: results by "
+              "book with counts, the first group opened, Show all 212. The saved list in a page shows its first 20 "
+              "rows (about 8 drawn), then Show all 212.")
+    years(f)
+
 
 if __name__ == "__main__":
-    import lead  # noqa: E402
-    lead.drop(Q, DROP)
     K.run_board(HERE, "Questions", sheets)
