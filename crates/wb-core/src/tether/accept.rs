@@ -103,13 +103,19 @@ fn apply(r: &anchor::Read, titled: bool, picked: &[&Candidate], version: &str) -
 
 /// Add the scripture blocks of these candidates. `ids`: candidates of the run; `expect`: the run's `page_hash`.
 pub fn accept(bible: &Bible, store: &mut Store, page: &str, ids: &[String], all_named: bool, expect: Option<&str>, dry: bool, opt: &Options) -> Result<Accepted> {
-    let report = anchor::run(bible, store, page, opt)?;
-    if let Some(h) = expect {
-        if h != report.summary.page_hash {
-            return Err(bad("The page has changed since it was read. Run wb tether again."));
-        }
-    }
     let r = anchor::read(store, page)?;
+    accept_read(bible, store, r, ids, all_named, expect, dry, opt)
+}
+
+/// Accept on a page as it was read: the run is made on that read, and the write checks the page is still that text (TG-5).
+#[allow(clippy::too_many_arguments)]
+pub fn accept_read(bible: &Bible, store: &mut Store, r: anchor::Read, ids: &[String], all_named: bool, expect: Option<&str>, dry: bool, opt: &Options) -> Result<Accepted> {
+    let page = r.id.clone();
+    let page = page.as_str();
+    let report = anchor::run(bible, store, page, opt)?;
+    if report.summary.page_hash != digest(&r.text) || expect.is_some_and(|h| h != report.summary.page_hash) {
+        return Err(bad("The page has changed since it was read. Run wb tether again."));
+    }
     let (_, _, titled) = pages::text_of(store, page)?;
     let mut picked: Vec<&Candidate> = vec![];
     if all_named {
@@ -132,7 +138,7 @@ pub fn accept(bible: &Bible, store: &mut Store, page: &str, ids: &[String], all_
     let mut json = json!({"page": r.id, "added": nums, "accepted": picked.iter().map(|c| c.id.clone()).collect::<Vec<_>>(), "changes": changes, "dry_run": dry});
     let token = Token { page: r.id.clone(), before: r.text.clone(), after: digest(&text), skipped: vec![] };
     if !dry {
-        pages::write_text(bible, store, &r.id, &text, titled)?;
+        pages::write_text(bible, store, &r.id, &text, titled, Some(&r.text)).map_err(|_| bad("The page has changed since it was read. Run wb tether again."))?;
         // the file as written, which may differ from `text` in a trailing newline
         let (_, now, _) = pages::text_of(store, &r.id)?;
         let token = Token { after: digest(&now), ..token };
@@ -148,7 +154,7 @@ pub fn undo(bible: &Bible, store: &mut Store, token: &Token) -> Result<Value> {
     if digest(&current) != token.after {
         return Err(bad("The page changed after the scripture was added; it is not put back."));
     }
-    pages::write_text(bible, store, &id, &token.before, titled)?;
+    pages::write_text(bible, store, &id, &token.before, titled, Some(&current))?;
     Ok(json!({"page": id, "restored": true}))
 }
 

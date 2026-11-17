@@ -1,7 +1,7 @@
 # Tether: finding the scripture in a long note
 
 **State:** accepted by the person 2026-11-17: Named and Quoted tiers only; no suggestion by meaning (tier 3 dropped, the "Needs the person" question closed) · **Sheets:** `python design/features/tether/tether.py` writes `tether.figcraft` and
-`tether.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet. What other tools
+`tether.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · **Built 2026-11-17 on `feature/tether-build`: the backend (spoken-form reader, quote matcher, anchoring, Accept, the `wb tether` commands, the corpus and tests); the window is not built** (see "Open after merge"). What other tools
 get wrong, and so what this folder avoids: [bible-software-complaints](../../research/bible-software-complaints.md)
 (theme 4, exports that drop the verse reference; theme 5, AI features users did not ask for).
 
@@ -68,6 +68,8 @@ The person's request is the only decision of theirs here.
 | TG-12 | **Where the window is.** The page's ⋯ holds **Find scripture…** beside Make a document…. It opens the Tether pane as a tab beside the page (a floating tab and a phone sheet are drawn, TG10, TG11). One more row in the page's ⋯ is recorded in [overlaps](../overlaps.md) with library's list (S31). Keys in the pane: ↓ ↑ step the candidates, **A** accepts, **S** skips, Esc leaves the pane; the page scrolls to the candidate on the person's step only and returns to where it was on Esc. | library S31, L-9 line 210; [panels](../panels/README.md) |
 | TG-13 | **Accept all named is the one bulk action, and it asks.** "Add the 61 named references" shows the count and the first and last, and adds them as one Undo. There is no Accept all for quotations: each is looked at (TG-2), though the keys make it a run of A and S. | TG-1; the person's tiredness is by-hand lookup, not the choosing |
 | TG-14 | **The AI step is not built. If the person turns the rule's exception on, it is a separate tier with its own switch, off by default, drawn in TG8.** What it would send is fixed in "Needs the person" 1. | `AGENTS.md`; TG-1 |
+
+| TG-15 | **A quotation must also be dense, and the matcher skips very common 3-word seeds.** Stricter than TG-7, fixed, not a setting (design choice, for the person's look): of the stretch a match covers, at most a third is other words, in the note and in the verse, and some 3 words lie side by side in both. Without it, plain speech matched real verses by scattered common words (run on the corpus's filler). Words are found through 3-word seeds; a seed found in more than 600 verses (`COMMON` in `quote.rs`) is not used to start a match, so a match is started by some other 3 words of the stretch. Where several verses match the same stretch, all are listed (TG-6); a stretch lying inside a longer match is part of that quotation, not a group of its own. | TG-1, TG-2, TG-7; decided by overseer (inference), 2026-11-17 |
 
 ## Needs the person
 
@@ -140,17 +142,17 @@ no run of 6 survives; 5 decoys that are not verses ("Romans 40:2"). Its `expecte
 its block, character range and reference. The filler speech is from a fixed list and a test shows the list alone finds
 no candidate.
 
-- [ ] **Named, written.** `wb tether "Word dump" --json` lists each of the 40 written references with `tier: "named"`, the right reference and a `range` whose text equals what the person wrote; `wb refs --json` on the same text still prints what it did (TG2).
-- [ ] **Named, spoken.** Each of the 25 spoken references is found with the range on the spoken words ("second Timothy two fifteen" → 2 Timothy 2:15; "Romans 8 verse 28" → Romans 8:28 and not the chapter); "one twenty three" after Psalms gives Psalm 123 and 1:23 is absent because Psalm 1 has 6 verses; a case that is valid both ways lists both (TG2, TG-8).
-- [ ] **Not guessed.** None of the 5 decoys is a candidate; "verse 28" with no book before it is not a candidate; the two-letter words `wb refs` already refuses ("is 5:2") stay text.
-- [ ] **Quoted.** At least 57 of the 60 exact quotations and 27 of the 30 with dropout are found, each with `tier: "quoted"`, the verse, `matched` and `of` word counts, and the range of the words; the `matched` words of the evidence are exactly those words in the note and in the verse, in order (TG3). A paraphrase (no run of 6) is not a candidate, and the window shows no verse for it (TG-7).
-- [ ] **No false matches.** The filler-only page gives zero candidates. The 15 phrases found in more than 3 verses are not candidates and are counted in `many` (TG6, TG-6); the 10 parallels give 2 or 3 candidates each, linked by `also`, with no one preferred (TG-6).
-- [ ] **Evidence, no score.** No field or word in the output or the window is a percentage, "strong", "likely", "best" or an order by strength; `wb tether` lists candidates in page order, by block then range (TG-2).
-- [ ] **Accept writes a scripture block at the place.** `wb tether accept "Word dump" <id>` on a quotation in the middle of a paragraph splits that block at the sentence end after the range and puts ```` ```scripture ```` with only the reference between the halves; the two halves joined with one space equal the original block's text apart from whitespace at the cut; no verse text is in the file; `wb page blocks` shows block numbers up by 2 (TG4, TG5).
-- [ ] **The place without punctuation.** In the single-block raw transcript with no full stops, Accept splits at the range's end; with a full stop within 40 words after the range, at it (TG-4).
-- [ ] **A list item or a quote is not split.** On a candidate in an item, the scripture block goes after the item and the item's text is unchanged (TG-4).
-- [ ] **Undo and the guard.** `wb tether accept … --undo TOKEN` (the token Accept printed) restores the page byte for byte; Accept on a block whose text changed since the run refuses with "the page has changed" and writes nothing (TG-5).
-- [ ] **Accept all named.** `wb tether accept "Word dump" --all-named` adds all 65 named references in one operation and one token; undoing it once restores the page exactly. The quoted ones are not touched (TG-13).
+- [x] **Named, written.** `wb tether "Word dump" --json` lists each of the 40 written references with `tier: "named"`, the right reference and a `range` whose text equals what the person wrote; `wb refs --json` on the same text still prints what it did (TG2). *Test: named_written_and_spoken_are_found_with_their_words; wb-cli tether::tether_finds_accepts_and_undoes.*
+- [x] **Named, spoken.** Each of the 25 spoken references is found with the range on the spoken words ("second Timothy two fifteen" → 2 Timothy 2:15; "Romans 8 verse 28" → Romans 8:28 and not the chapter); "one twenty three" after Psalms gives Psalm 123 and 1:23 is absent because Psalm 1 has 6 verses; a case that is valid both ways lists both (TG2, TG-8). *Test: named_written_and_spoken_are_found_with_their_words; spoken_forms_that_are_two_things_or_nothing; spoken.rs tests.*
+- [x] **Not guessed.** None of the 5 decoys is a candidate; "verse 28" with no book before it is not a candidate; the two-letter words `wb refs` already refuses ("is 5:2") stay text. *Test: decoys_and_bare_verses_are_not_guessed.*
+- [x] **Quoted.** At least 57 of the 60 exact quotations and 27 of the 30 with dropout are found, each with `tier: "quoted"`, the verse, `matched` and `of` word counts, and the range of the words; the `matched` words of the evidence are exactly those words in the note and in the verse, in order (TG3). A paraphrase (no run of 6) is not a candidate, and the window shows no verse for it (TG-7). *Test: quotations_are_found_and_paraphrases_are_not.*
+- [x] **No false matches.** The filler-only page gives zero candidates. The 15 phrases found in more than 3 verses are not candidates and are counted in `many` (TG6, TG-6); the 10 parallels give 2 or 3 candidates each, linked by `also`, with no one preferred (TG-6). *Test: filler_alone_finds_nothing_and_phrases_in_many_verses_are_counted.*
+- [x] **Evidence, no score.** No field or word in the output or the window is a percentage, "strong", "likely", "best" or an order by strength; `wb tether` lists candidates in page order, by block then range (TG-2). *Test: evidence_is_words_and_counts_in_the_order_of_the_page.*
+- [x] **Accept writes a scripture block at the place.** `wb tether accept "Word dump" <id>` on a quotation in the middle of a paragraph splits that block at the sentence end after the range and puts ```` ```scripture ```` with only the reference between the halves; the two halves joined with one space equal the original block's text apart from whitespace at the cut; no verse text is in the file; `wb page blocks` shows block numbers up by 2 (TG4, TG5). *Test: accept_adds_a_scripture_block_after_the_sentence_and_undo_restores_it.*
+- [x] **The place without punctuation.** In the single-block raw transcript with no full stops, Accept splits at the range's end; with a full stop within 40 words after the range, at it (TG-4). *Test: without_punctuation_the_split_is_at_the_words_end; accept_adds_a_scripture_block_after_the_sentence_and_undo_restores_it.*
+- [x] **A list item or a quote is not split.** On a candidate in an item, the scripture block goes after the item and the item's text is unchanged (TG-4). *Test: a_list_item_is_not_split.*
+- [x] **Undo and the guard.** `wb tether accept … --undo TOKEN` (the token Accept printed) restores the page byte for byte; Accept on a block whose text changed since the run refuses with "the page has changed" and writes nothing (TG-5). *Test: accept_refuses_a_page_that_has_changed; a_page_changed_between_the_read_and_the_write_is_refused; wb-cli the_undo_of_a_long_page_is_kept_in_a_file_not_on_the_command_line.*
+- [x] **Accept all named.** `wb tether accept "Word dump" --all-named` adds all 65 named references in one operation and one token; undoing it once restores the page exactly. The quoted ones are not touched (TG-13). *Test: accept_all_named_is_one_operation_and_leaves_the_quotations.*
 - [ ] **Run again.** After accepting, `wb tether "Word dump"` lists those candidates with `status: "in_page"` and `new` reduced by the same number; after Skip, a candidate is `skipped` and stays so after the app restarts; deleting the app's state folder brings skips back and changes no page (TG-10).
 - [ ] **Alternatives.** Accepting one verse of a parallel marks its others skipped; Skip on that one brings them back (TG-6).
 - [ ] **The handoff.** After accepting 37 tethers, `wb tether verses "Word dump" --json` lists 37 references in page order, each with the verse text equal to `wb text` for the reference; `wb craft deck --page ID` and `wb docs plan` list the same 37 verses in the same order; every verse is checked in the finished file (documents D5, `AGENTS.md`) (TG7, TG-9).
@@ -160,8 +162,8 @@ no candidate.
 - [ ] **Years of study.** In the 420-page study the run reads only the page it is asked about; the page's list opens inside the list budget; "Show skipped (52)" lists the 52 (TG12, TG13).
 - [ ] **No AI.** With the network blocked, every line above passes. Nothing in the run opens a connection (tested by the build's offline switch) (TG-1, TG-14).
 - [ ] **The reader's place is kept.** Stepping through candidates, accepting some, and pressing Esc returns the page to the scroll position and selection it had before Find scripture… was opened; a candidate's reference clicked in the list opens the verse alone in a card ([words](../words/README.md) W4), and Back returns to the same candidate with the page where it was; Accept leaves the page scrolled to the new scripture block, and closing the pane leaves it there.
-- [ ] **Commands.** Each action above is a `wb` command (below). `wb tether <page>` run twice on an unchanged page prints the same candidates and ids.
-- [ ] **The study files.** Nothing changes format. The only writes are Accept's: scripture fences and a break in a block, in the page. The tests assert the study folder is untouched by `wb tether <page>` (a hash of the folder before and after).
+- [x] **Commands.** Each action above is a `wb` command (below). `wb tether <page>` run twice on an unchanged page prints the same candidates and ids. *Test: wb-cli tether tests; tether_finds_accepts_and_undoes (same ids twice).*
+- [x] **The study files.** Nothing changes format. The only writes are Accept's: scripture fences and a break in a block, in the page. The tests assert the study folder is untouched by `wb tether <page>` (a hash of the folder before and after). *Test: a_run_writes_nothing_and_reads_one_page.*
 
 ### Commands (all required; none exists today)
 
@@ -177,7 +179,7 @@ no candidate.
 | Make slides… from here | `wb craft deck --page ID` (exists; documents D2) |
 | Close the pane | no command (a window action; `wb do` reaches the line the command box takes if minimize gives it one) |
 
-## Build plan (for helper agents; not started until the folder is accepted)
+## Build plan (steps 0 to 5 built 2026-11-17 on `feature/tether-build`; step 6 the window and step 7 are open)
 
 Each piece is its own branch-sized unit inside `feature/tether` (one branch, per `AGENTS.md`); the pieces are
 separate files in a new `crates/wb-core/src/tether/` module, so they do not touch the same files. Do step 0 first.
@@ -196,6 +198,20 @@ separate files in a new `crates/wb-core/src/tether/` module, so they do not touc
 Parallel: after step 0, steps **1, 2, 4 and 6** are independent (four helpers). Step 3 starts when 1 and 2 have
 stable outputs; step 5 when 3 and 4 do; step 7 last. The slowest line is 2 (the matcher), so it starts first. A helper
 reads its piece's rows in this README and nothing else of the design.
+
+## Open after merge
+
+Built and ticked above: the backend and its commands. Not built, with the reason (time and memory of the build session; the window is a separate step 6):
+
+- **Window, step 6** (`ui/src/tether.ts`): the pane, groups, candidate rows, marks in the page, keys, the phone sheet, floating and tab forms, the strip (TG1 to TG13). Lines open: "The Tether pane", "Among other tabs, floating, narrow" (desk), "The reader's place is kept" (desk).
+- **Tauri commands** in `app/src-tauri` and the page's ⋯ item "Find scripture…"; `wb do` wiring.
+- **Show skipped (N)** in the window (the command `wb tether skipped` exists).
+- **Run again / Alternatives**, end to end: the skip marking of alternatives and its undo (B6) have no test of their own; "Run again" is ticked only in part (skips after restart are tested in wb-cli; the app-folder deletion is too).
+- **Speed** line: a cached index and the 2 s / 15 s budget in `npm run measure` (a run is about 4 s in a debug build; the index is rebuilt each run).
+- **Years of study** line: the 420-page corpus is tested for one-page reads; the list budget in the window is open.
+- **The handoff**: the comparison with `wb craft deck --page` and `wb docs plan`, and the verse check in the finished file.
+- **No AI**: only a static test that the module has no network code; the offline run is open.
+- **Deck-plan test, coverage rows in `coverage.md`, the guide entry.**
 
 ## Out of scope / later
 

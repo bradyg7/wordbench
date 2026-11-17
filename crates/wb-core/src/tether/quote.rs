@@ -251,33 +251,28 @@ pub enum Outcome {
 /// Group the chains of a block by the words they cover, drop what is a part of a longer quotation, and join consecutive
 /// verses quoted together (within 30 words).
 pub fn group(verses: &[VerseRec], mut chains: Vec<Chain>) -> Vec<Outcome> {
-    chains.sort_by_key(|c| (c.first, c.last, c.verse));
-    // groups of chains that cover some of the same words
-    let mut groups: Vec<Vec<Chain>> = vec![];
-    let mut reach = 0usize;
+    // Words that cover the same stretch (their ends within 2 words) are one group, whichever verses they fit: every verse
+    // that matches is listed, none is dropped for matching less (TG-2, TG-6). A stretch lying inside a longer group's
+    // stretch is a part of that quotation ("thus saith the LORD" inside a verse quoted whole) and is not a group of its own.
+    chains.sort_by_key(|c| (std::cmp::Reverse(c.last - c.first), c.first, c.verse));
+    let mut groups: Vec<(usize, usize, Vec<Chain>)> = vec![];
     for c in chains {
-        match groups.last_mut() {
-            Some(g) if c.first <= reach => {
-                reach = reach.max(c.last);
-                g.push(c);
+        if let Some(g) = groups.iter_mut().find(|g| c.first.abs_diff(g.0) <= 2 && c.last.abs_diff(g.1) <= 2) {
+            if !g.2.iter().any(|k| k.verse == c.verse) {
+                g.2.push(c);
             }
-            _ => {
-                reach = c.last;
-                groups.push(vec![c]);
-            }
+        } else if groups.iter().any(|g| c.first >= g.0 && c.last <= g.1) {
+            continue;
+        } else {
+            groups.push((c.first, c.last, vec![c]));
         }
     }
+    groups.sort_by_key(|g| g.0);
     let mut ones: Vec<Chain> = vec![];
     let mut out: Vec<Outcome> = vec![];
     let mut pending: Vec<(usize, Outcome)> = vec![];
-    for g in groups {
-        let best = g.iter().map(|c| c.matched).max().unwrap();
-        let mut kept: Vec<Chain> = vec![];
-        for c in g {
-            if c.matched * 10 >= best * 7 && !kept.iter().any(|k| k.verse == c.verse) {
-                kept.push(c);
-            }
-        }
+    for (_, _, mut kept) in groups {
+        kept.sort_by_key(|c| c.verse);
         match kept.len() {
             1 => ones.push(kept.pop().unwrap()),
             2 | 3 => pending.push((kept[0].first, Outcome::Alike(kept))),

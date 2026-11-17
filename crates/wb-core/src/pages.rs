@@ -839,7 +839,13 @@ pub fn blocks(store: &Store, id: &str) -> Result<Value> {
 }
 
 /// Write a page's whole text back (Tether's Accept and its Undo), as every block change is written.
-pub(crate) fn write_text(bible: &Bible, store: &mut Store, id: &str, text: &str, titled: bool) -> Result<Value> {
+pub(crate) fn write_text(bible: &Bible, store: &mut Store, id: &str, text: &str, titled: bool, expected: Option<&str>) -> Result<Value> {
+    // guarded as edit_guarded is: a page that is not what was read is not written
+    if let Some(e) = expected {
+        if text_of(store, id)?.1 != e {
+            return Err(bad("The page changed. Reopen it and try again."));
+        }
+    }
     written(bible, store, id, text, titled, 0, 0)
 }
 

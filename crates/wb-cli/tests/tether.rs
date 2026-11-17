@@ -44,6 +44,10 @@ impl Wb {
         o
     }
 
+    fn js_in(&self, args: &[&str], stdin: &str) -> Value {
+        serde_json::from_str(&self.run_in(args, stdin)).unwrap()
+    }
+
     fn js(&self, args: &[&str]) -> Value {
         serde_json::from_str(&self.ok(args)).unwrap_or_else(|e| panic!("wb {args:?}: {e}"))
     }
@@ -121,4 +125,63 @@ fn refs_hears_chapter_and_verse() {
     assert_eq!(r[0]["ref"], "ROM 8:28");
     let s = wb.js(&["refs", "--spoken", "second Timothy two fifteen"]);
     assert_eq!(s[0]["ref"], "2TI 2:15");
+}
+
+impl Wb {
+    fn run_in(&self, args: &[&str], stdin: &str) -> String {
+        use std::io::Write;
+        let mut child = Command::new(env!("CARGO_BIN_EXE_wb"))
+            .args(args)
+            .env("WB_STUDY_DIR", self.dir.join("study"))
+            .env("WB_APP_DIR", self.app())
+            .env("WB_NO_OPEN", "1")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child.stdin.take().unwrap().write_all(stdin.as_bytes()).unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(out.status.code(), Some(0), "wb {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+        String::from_utf8_lossy(&out.stdout).into()
+    }
+}
+
+#[test]
+fn the_undo_of_a_long_page_is_kept_in_a_file_not_on_the_command_line() {
+    let Some(wb) = Wb::new() else { return };
+    let verse = wb.js(&["text", "John 3:16", "--json"])["verses"][0]["text"].as_str().unwrap().to_string();
+    let quote: Vec<String> = verse.to_lowercase().split_whitespace().map(|w| w.trim_matches(|c: char| !c.is_alphanumeric()).to_string()).collect();
+    let filler = "so what i want to say here is that we need to slow down and look at this together ".repeat(500);
+    let text = format!("Long\n\n{filler} {} and then Romans 8:28 came up. {filler}", quote.join(" "));
+    assert!(text.split_whitespace().count() > 7500);
+    let id = wb.js_in(&["page", "new", "-", "--json"], &text)["id"].as_str().unwrap().to_string();
+    let before = wb.js(&["page", "blocks", &id, "--json"]);
+    let done = wb.js(&["tether", "accept", "Long", "--all-named"]);
+    let file = done["undo_file"].as_str().expect("the token is kept in a file");
+    assert!(std::fs::metadata(file).unwrap().len() > 30_000, "the token is long");
+    assert!(done["undo"].is_null(), "and is not printed for the command line");
+    wb.ok(&["tether", "accept", "Long", "--undo", "last"]);
+    assert_eq!(wb.js(&["page", "blocks", &id, "--json"]), before);
+    // the same from standard input
+    wb.js(&["tether", "accept", "Long", "--all-named"]);
+    let token = std::fs::read_to_string(file).unwrap();
+    wb.run_in(&["tether", "accept", "Long", "--undo", "-"], &token);
+    assert_eq!(wb.js(&["page", "blocks", &id, "--json"]), before);
+}
+
+#[test]
+fn a_skip_that_cannot_be_kept_still_prints_the_result_and_skip_checks_the_id() {
+    let Some(wb) = Wb::new() else { return };
+    let (id, _) = page(&wb);
+    let e = wb.run(&["tether", "skip", "Dump", "tnotacandidate"]);
+    assert_eq!(e.0, 1);
+    assert!(e.2.contains("No candidate"), "{}", e.2);
+    // a folder where the skips file should be: writing it fails, the accept still reports and keeps its token
+    std::fs::create_dir_all(wb.app().join("tether-skips.json")).unwrap();
+    let r = wb.js(&["tether", "Dump", "--json"]);
+    let ids: Vec<String> = r["candidates"].as_array().unwrap().iter().map(|c| c["id"].as_str().unwrap().to_string()).collect();
+    let done = wb.js(&["tether", "accept", "Dump", &ids[1]]);
+    assert!(done["undo_file"].is_string());
+    let _ = id;
 }

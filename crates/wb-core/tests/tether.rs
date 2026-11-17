@@ -429,3 +429,16 @@ fn nothing_in_tether_opens_a_connection() {
         }
     }
 }
+
+#[test]
+fn a_page_changed_between_the_read_and_the_write_is_refused() {
+    let Some(mut w) = work() else { return };
+    let id = w.page("Word dump paragraphs");
+    let r = w.run("Word dump paragraphs", "named");
+    let stale = anchor::read(&w.store, &id).unwrap();
+    pages::edit(&w.bible, &mut w.store, &id, pages::Edit::Add { after: Some(0), text: "A line added after the page was read." }).unwrap();
+    let changed = w.text(&id);
+    let e = accept::accept_read(&w.bible, &mut w.store, stale, &[r.candidates[0].id.clone()], false, None, false, &anchor::Options::default()).err().unwrap();
+    assert!(e.0.contains("changed since it was read"), "{}", e.0);
+    assert_eq!(w.text(&id), changed, "nothing written");
+}
