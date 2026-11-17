@@ -1,12 +1,12 @@
 # Trash
 
-**State:** accepted (the person, 2026-11-13: T5, T6, T8, T9) · built (commit `4f4f4d0`, 2026-11-13) · round 3
-(T10-T14) for the person's look · **Sheets:** `python design/features/trash/trash.py` writes `trash.figcraft` and
+**State:** accepted by the person 2026-11-17 (ready to build): round 3 (T10-T14) accepted 2026-11-17; rounds 1-2
+accepted 2026-11-13 (T5, T6, T8, T9) and built (commit `4f4f4d0`, 2026-11-13) · **Sheets:** `python design/features/trash/trash.py` writes `trash.figcraft` and
 `trash.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)). What other tools get wrong, and so what this
 folder avoids: [bible-software-complaints](../../research/bible-software-complaints.md) (theme 3: notes lost for good).
 
-**Readiness: likely finished** (2026-11-16, the Notebook pass, by [ready-criteria](../ready-criteria.md); never
-"accepted", which is the person's word for round 3). Inferences first: TR-1 to TR-4 (below), each from a dated
+**Readiness: likely finished** (2026-11-16, the Notebook pass, by [ready-criteria](../ready-criteria.md)); the person
+accepted round 3 on 2026-11-17, with TR-1 to TR-5 as written. Inferences first: TR-1 to TR-4 (below), each from a dated
 decision or the spec.
 
 - **1** T1, T5, T6, T8, T9 accepted by the person; T2-T4 and T7 off the board (the board shows T1, T5, T6, T8-T14 and
@@ -22,7 +22,7 @@ decision or the spec.
   `data/num25-10-13.json` (`wb text`), equal byte for byte to marks' copy; nothing typed (`trash.py:24`).
 - **9** no suggestion or commentary on the board. **10** no format change.
 
-For the person, to accept round 3: T10 (several pages), then T14, T11, T12, T13.
+The person accepted round 3 (T10, T14, T11, T12, T13) on 2026-11-17; "Needs the person" held nothing to answer.
 
 Deleting: a timed Undo, then 7 days in the Trash (the person's decisions, 2026-11-03, 2026-11-04 and 2026-11-13).
 cf09 (2026-11-08) asked that deletes just be destroyed; 0ade asks for deleting many pages at once.
@@ -72,7 +72,7 @@ accepted.
 
 ## Needs the person
 
-Nothing. No format changes; no rule changes.
+Nothing (none was open when the person accepted, 2026-11-17). No format changes; no rule changes.
 
 ## Rounds
 
@@ -80,7 +80,7 @@ Nothing. No format changes; no rule changes.
 |---|---|---|---|---|
 | 1 | 2026-11-12 | T1-T4 | today; A Undo only and several pages; B the Trash in Settings | 2026-11-13: T1 kept, A and B declined |
 | 2 | 2026-11-13 | T5-T9 | Empty trash; the way to the Trash; deleting a block | 2026-11-13: T5, T6, T8, T9 accepted; trash icon asked for; T7 declined |
-| 3 | 2026-11-16 | T10-T14; T2-T4, T7 off the board | several pages at once; the real conditions | For the person's look (nothing new to choose) |
+| 3 | 2026-11-16 | T10-T14; T2-T4, T7 off the board | several pages at once; the real conditions | Accepted by the person, 2026-11-17 |
 
 ## Data the sheets show
 

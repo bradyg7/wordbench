@@ -1,33 +1,35 @@
 # Threads
 
-**State:** exploring (round 2 drawn 2026-11-16, for the person's look) · **Sheets:** `python design/features/threads/threads.py` writes `threads.figcraft` and
+**State:** accepted by the person 2026-11-17 (ready to build); was exploring (round 2 drawn 2026-11-16) · **Sheets:** `python design/features/threads/threads.py` writes `threads.figcraft` and
 `threads.pdf` (the board, one vector page) · Nothing here is built yet. What other tools get wrong, and so what this
 folder avoids: [bible-software-complaints](../../research/bible-software-complaints.md) (theme 9: flat lists of saved
 things; theme 8: the place lost on the way back).
 
-**Readiness: likely finished** (2026-11-16, the Notebook pass, by [ready-criteria](../ready-criteria.md); never
-"accepted", which only the person says). Inferences first: TH-1 (direction A, from the person's words of 2026-11-11
-and 2026-11-12) and TH-2 to TH-10. TH-1 changes the thread model `AGENTS.md` names, so it is also "Needs the person"
-1, as check 1's revision requires; nothing is built before that answer.
+**Readiness: likely finished** (2026-11-16, the Notebook pass, by [ready-criteria](../ready-criteria.md)); the person
+accepted it on 2026-11-17, with the recommendations on the thread model (TH-11: TH-1 is the person's) and on moving
+thread files (TH-12). Inferences first: TH-1 (direction A, from the person's words of 2026-11-11 and 2026-11-12) and
+TH-2 to TH-10. TH-1 changed the thread model `AGENTS.md` names, so it was also "Needs the person" 1, as check 1's
+revision requires; the person answered it on 2026-11-17 and `AGENTS.md` now says it.
 
 - **1** A chosen (TH-1); B and C superseded, off the board (the board shows T1, T2, T7-T11 only, read from
   `threads.figcraft`).
-- **2** the questions left are the person's: the thread model (1) and moving thread files (2), each with a
-  recommendation.
+- **2** the questions left were the person's: the thread model (1) and moving thread files (2), each with a
+  recommendation. Both decided by the person 2026-11-17 (TH-11, TH-12).
 - **3** T8-T11 drawn; T10's sheet reaches the bottom edge (looked at on the rendered board).
 - **4** every line names inputs and a result; "The reader's place is kept" is its own line.
 - **5** `wb thread …` kept; `wb folder color`, `wb folder shown`, `wb shelf` listing thread files named as required.
 - **6** [overlaps](../overlaps.md) "Layers, eyes and what can be hidden" and "What an underline means" resolved
   (TH-1, TH-5, TH-7, marks MK-1); [coverage](../coverage.md)'s Threads row reads TH-1.
-- **7** the only clash with `AGENTS.md` is the wording TH-1 asks the person to change ("Needs the person" 1); TH-3
-  keeps every `wb thread` contract and the ```` ```thread ```` fence.
+- **7** the only clash with `AGENTS.md` was the wording TH-1 asked the person to change ("Needs the person" 1); it
+  is reworded with the person's acceptance (2026-11-17, TH-11). TH-3 keeps every `wb thread` contract and the
+  ```` ```thread ```` fence.
 - **8** fixed on this pass: TH-7 and two build lines said a whole saved verse is underlined, but T1 and T7 (and
   library S8, marks M15) draw it as a margin mark with the words untouched; the README now says what the sheets draw.
   Scripture through `build.C` from `design/content.json` (generated); the phrase is cut by word position.
-- **9** nothing suggested. **10** no file moves (TH-2); eyes in `settings/`; the move is "Needs the person" 2.
+- **9** nothing suggested. **10** no file moves (TH-2); eyes in `settings/`; the move is TH-12 (later, its own pass).
 
-For the person, to accept: answer "Needs the person" 1, then look at T1 (shown on the text), T2 (the folder), T7
-(saving), then T8-T11.
+The person answered "Needs the person" 1 and 2 and accepted T1 (shown on the text), T2 (the folder), T7 (saving) and
+T8-T11 on 2026-11-17.
 
 Threads "will likely become consumed by the folder feature" (the person, library round 1 review, 2026-11-11). This
 folder decides what a thread is beside the pieces the library fixed (Page, Folder, Save, Margin note, Library:
@@ -69,7 +71,10 @@ folder decides what a thread is beside the pieces the library fixed (Page, Folde
   underline mean? Give a system people can understand that does not fight their own way of organizing.
 - d84d: the separate Threads tab "just seems like legacy stuff"; a thread's verses should show where the thread is.
 
-The person has not reviewed round 1's sheets. The decisions below are the overseer's, from these words.
+- 2026-11-17: accepted the design, and the overseer's recommendation on both questions it asked (TH-11, TH-12).
+
+The person did not review round 1's sheets on their own. TH-1 to TH-10 are the overseer's, from these words; TH-11
+and TH-12 are the person's.
 
 ## Decisions (2026-11-16)
 
@@ -77,8 +82,8 @@ Each is **decided by overseer from existing decisions (inference)**, dated 2026-
 
 | # | Decision | Rests on |
 |---|---|---|
-| TH-1 | **A thread is a folder with a color** (direction A). Its places are the saves in the folder, in the folder's own order; its note is a page in the folder; pages written on it are pages in the folder. B (a page that also sorts) breaks library S20's line, which the person set; C (a layer with no pages and no nesting) loses the thread's note and pages. Both are superseded. **This changes the thread model `AGENTS.md` names, so it is also under "Needs the person".** | The person, 2026-11-11 and 2026-11-12; library S20 (the person's line, round 3 review) |
-| TH-2 | **No file moves to build it.** `threads/<slug>.md` stays where it is and is read as a folder with a color (T2). Moving threads into the folders' own file form is a separate, one-time move (below, "Needs the person"). | `AGENTS.md` ("what the person already wrote must never be lost"; a move is designed first and needs the go-ahead) |
+| TH-1 | **A thread is a folder with a color** (direction A). Its places are the saves in the folder, in the folder's own order; its note is a page in the folder; pages written on it are pages in the folder. B (a page that also sorts) breaks library S20's line, which the person set; C (a layer with no pages and no nesting) loses the thread's note and pages. Both are superseded. **It changed the thread model `AGENTS.md` names; the person decided it on 2026-11-17 (TH-11).** | The person, 2026-11-11 and 2026-11-12; library S20 (the person's line, round 3 review) |
+| TH-2 | **No file moves to build it.** `threads/<slug>.md` stays where it is and is read as a folder with a color (T2). Moving threads into the folders' own file form is a separate, one-time move (TH-12, the person, 2026-11-17). | `AGENTS.md` ("what the person already wrote must never be lost"; a move is designed first and needs the go-ahead) |
 | TH-3 | **The window's word is "folder"; "thread" leaves the window.** The Notebook's Threads group and tab go (d84d); a folder with a color sits in FOLDERS with its dot (library S25). `wb thread …` keeps every contract and works on folders with a color; `thread:<slug>` still opens it; a ```` ```thread ```` fence in a page keeps working and shows the folder's saves. | d84d; `AGENTS.md` ("Preserve established `wb` command contracts") |
 | TH-4 | **A color can mark a phrase, not only a verse.** A save can be a verse, a phrase or a word (library S8), and a thread's places already take a run of words (`wb thread rm`: "a verse, a run, or H7065"). How the line looks is [marks](../marks/README.md) M13 and M15. | library S8 (liked); marks M15 |
 | TH-5 | **Each folder with a color has an eye**, listed in the reader's one marks panel as "Shown on the text" (T1, T10, T11). A thread is not a layer: layers by year and by color are [highlights](../highlights/README.md)' own question and are not decided here. | reader R7 (decided: one panel shows or hides every kind of mark); 64f0 |
@@ -88,28 +93,29 @@ Each is **decided by overseer from existing decisions (inference)**, dated 2026-
 | TH-9 | **Collapse (4c02):** FOLDERS folds as every group of the side list does (library S25). | library S25 |
 | TH-10 | **Years of study:** the panel lists the shown folders first, the rest folded under their parent folder with counts, with a search field and Hide all; a folder with hundreds of saves shows its first 20 in its own order and "Show all N" (T11). | index, "Every design is drawn in the real conditions" |
 
+## Decisions (the person, 2026-11-17)
+
+Each is **decided by the person 2026-11-17 (accepted the recommendation)**: the overseer's recommendation under "Needs
+the person", accepted as written.
+
+| # | Decision | Rests on |
+|---|---|---|
+| TH-11 | **A thread is a folder with a color (TH-1).** It keeps one way to sort (library S20) and puts a thread's verses where the thread is (d84d); nothing the person wrote is lost or moved (TH-2). `AGENTS.md` is reworded to say so: a thread is a folder with a color, read today from its `threads/<slug>.md` (`thread:<slug>` still opens it), and a ```` ```thread ```` fence in a page shows the folder's saves. Main risk named in the recommendation: a long folder that is also underlined makes the eye matter more (T11 draws it). | The person, 2026-11-17 (was "Needs the person" 1) |
+| TH-12 | **Thread files are not moved now.** TH-1 is built by reading `threads/<slug>.md` where it is. Moving thread files into the folders' own form is one later, one-time move, designed in [library](../library/README.md) now that its folder format is decided (L-22: membership in the folder's set file): it reads the old form, is tried on a scratch copy after a hashed backup (`scripts/backup-study.ps1`), and runs on the real folder only with the person's go-ahead for that run. This decision moves no file. | The person, 2026-11-17 (was "Needs the person" 2); `AGENTS.md` (a move is designed first, scratch copy, hashed backup, go-ahead) |
+
 ## Needs the person
 
-These change the thread model or move the person's files. Each has the overseer's recommendation; the design is drawn
-for the recommended answer, and nothing that depends on them is built before the answer.
+Nothing. Both questions were answered by the person on 2026-11-17 (accepted the recommendation):
 
-1. **Is a thread a folder with a color (TH-1)?** Recommended: yes. Reasons: it is what the person leaned to twice; it
-   keeps one way to sort (S20) and puts a thread's verses where the thread is (d84d); nothing the person wrote is lost
-   or moved (TH-2). Main risk: a folder's order is the person's own, and a long folder that is also underlined makes
-   the eye matter more (T11 draws it). If the answer is yes, the `AGENTS.md` lines "a thread is its
-   `threads/<slug>.md` read as a page" and "a thread … put in a page is a ```` ```thread ```` … fence" need the
-   person's rewording ("read as a folder"); the overseer does not edit `AGENTS.md`.
-2. **Moving thread files into the folders' form, once.** Recommended: not now. Build TH-1 by reading the files where
-   they are. When [library](../library/README.md)'s folder format is settled (its open question 2), design the move
-   there: read the old form, try it on a scratch copy, hashed backup (`scripts/backup-study.ps1`), the person's
-   go-ahead. The design is complete without it: T1-T11 need no file to move.
+1. ~~Is a thread a folder with a color (TH-1)?~~ Yes: TH-11. `AGENTS.md` is reworded to match.
+2. ~~Moving thread files into the folders' form, once.~~ Not now: TH-12.
 
 ## Rounds
 
 | Round | Date | Windows | What it tried | Review |
 |---|---|---|---|---|
 | 1 | 2026-11-11 | T1-T6 | A: a colored folder shown on the text (T1), the folder opened (T2); B: a page with a Places block (T3), saving into a thread page (T4); C: layers on the text (T5), where each piece sits (T6) | Not reviewed by the person. A chosen by the overseer (TH-1, 2026-11-16) from the person's words of 2026-11-11 and 2026-11-12 |
-| 2 | 2026-11-16 | T1, T2 redrawn; T7-T11 | A alone: the library's side list, saving into a colored folder, and the real conditions | For the person's look |
+| 2 | 2026-11-16 | T1, T2 redrawn; T7-T11 | A alone: the library's side list, saving into a colored folder, and the real conditions | Accepted by the person, 2026-11-17 (with TH-11, TH-12) |
 
 ## Data the sheets show
 
@@ -129,8 +135,8 @@ references are generated. Folder names and counts are a drawn sample.
 
 ## What the build must satisfy
 
-Not to be built until the person answers "Needs the person" 1. Each line is checked in a Rust test or in the desk
-check, on a generated scratch study (never the real folder).
+Ready to build (the person answered "Needs the person" 1 and 2 on 2026-11-17: TH-11, TH-12). Each line is checked in
+a Rust test or in the desk check, on a generated scratch study (never the real folder).
 
 - [ ] **A thread file is read as a folder.** Given `threads/phinehas.md` with a color, a note and 56 places, the
   Library's FOLDERS lists "Phinehas" with its color dot and the count 56; opening it lists the 56 saves in the file's
@@ -166,7 +172,9 @@ check, on a generated scratch study (never the real folder).
   `wb folder shown <folder> on | off` and `wb folder shown --none` (the eyes; today they are kept only by the window),
   and `wb shelf` listing thread files as folders with their color. `wb folder …` is library's family (its build list).
 - [ ] **The study files.** Nothing is written to `threads/` except what `wb thread …` writes today; the eyes are kept
-  in `settings/` (not in the thread's file).
+  in `settings/` (not in the thread's file). No thread file is moved by this build: the move into the folders' form
+  (TH-12) happens once, designed, tried on a scratch copy after a hashed backup (`scripts/backup-study.ps1`), with the
+  person's go-ahead.
 
 ## Out of scope / later
 

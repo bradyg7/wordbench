@@ -1,19 +1,21 @@
 # Marks
 
-**State:** exploring (round 6 drawn 2026-11-16, for the person's look) · **Sheets:** `python design/features/marks/marks.py` writes `marks.figcraft` and `marks.pdf` (the board, one vector page)
+**State:** accepted by the person 2026-11-17 (ready to build); was exploring (round 6 drawn 2026-11-16) · **Sheets:** `python design/features/marks/marks.py` writes `marks.figcraft` and `marks.pdf` (the board, one vector page)
 (it uses [kit.py](../kit.py)) · Nothing here is built yet. What other tools get wrong, and so what this folder avoids:
 [bible-software-complaints](../../research/bible-software-complaints.md) (theme 3: margin notes lost; theme 6: the
 reading screen crowded; theme 8: the place lost).
 
-**Readiness: likely finished** (2026-11-16, the Notebook pass, by [ready-criteria](../ready-criteria.md); never
-"accepted", which only the person says). Inferences first: MK-1 to MK-16, which close rounds 2-5 (not reviewed by the
+**Readiness: likely finished** (2026-11-16, the Notebook pass, by [ready-criteria](../ready-criteria.md)); the person
+accepted it on 2026-11-17, with the recommendations on the margin's files (MK-17), moving old placed notes (MK-18) and
+history (MK-19). Inferences first: MK-1 to MK-16, which close rounds 2-5 (not reviewed by the
 person) from the person's dated words of 2026-11-12; MK-3 (M26 as the reader's margin), MK-8 (grow, not move) and
 MK-12 (Margin notes as the Library's fifth piece) carry the most.
 
 - **1** one direction per part; M2-M5, M8-M11, M16, M17, M20, M24, M29, M41 off the board (it shows M6, M7, M12-M15,
   M18, M19, M21-M23, M25-M28, M30-M40, M42-M44 only, read from `marks.figcraft`).
-- **2** every open question struck (rounds 2 and 3, closed by MK-1 to MK-10); "Needs the person" 1-3 are study-folder
-  formats or a move of the person's files, each with a recommendation.
+- **2** every open question struck (rounds 2 and 3, closed by MK-1 to MK-10); "Needs the person" 1-3 were
+  study-folder formats or a move of the person's files, each with a recommendation; decided by the person 2026-11-17
+  (MK-17 to MK-19).
 - **3** M42-M44, M12, M23, M36-M40 drawn. **4** every line names inputs and a result; the reader's place is its own
   line.
 - **5** existing commands named; `wb margin …`, `wb page overview`, `wb hl pencil`, `wb anchor --pages`,
@@ -21,19 +23,19 @@ MK-12 (Margin notes as the Library's fifth piece) carry the most.
 - **6** [overlaps](../overlaps.md) rows on the margin, underlines, places, Margin notes in the Library and too many
   highlights are resolved or agree, with highlights the owner of layers and Reading mode (MK-15).
 - **7** agrees with `AGENTS.md` (pages lose their single place, marks 2026-11-12; a fence holds an id, MK-8); the
-  jot fence is a new fence kind, so it is part of "Needs the person" 1.
+  jot fence is a new fence kind, so it was part of "Needs the person" 1 (decided: MK-17).
 - **8** fixed on this pass: the data table named `rom10-2.json`, which the sheets no longer use; the record below is
   marked as superseded where it differs. Scripture from `data/*.json` via `K.fetch` (`marks.py:19`, `:435`, `:852`);
   what the person wrote is a placeholder.
 - **9** no prompt or suggestion (MK-10); MK-13's order is a fixed rule, not a judgment. **10** formats and the move
-  are "Needs the person" 1-3, with the migration steps written.
+  were "Needs the person" 1-3, with the migration steps written; decided by the person 2026-11-17 (MK-17 to MK-19).
+  No file of the person's is moved by the decision: the move (MK-18) happens once, designed, tried on a scratch copy
+  after a hashed backup (`scripts/backup-study.ps1`), with the person's go-ahead.
 
-Nothing here is built before "Needs the person" 1 is answered.
-
-For the person, to accept: answer "Needs the person" 1, then look at M26 and M25 (the reader's margin and the verse
-opened in it), M27, M28, M32-M35 (margin notes and pages), M30, M31 (in the Library), M22, M23 (Scripture in this
-page), M13-M15 (lines on the words), M6, M7 (a passage with your marks), M21 (filters), then M42-M44, M12 and
-M36-M40. M18, M19 wait on "Needs the person" 3.
+The person answered "Needs the person" 1-3 and accepted M26 and M25 (the reader's margin and the verse opened in it),
+M27, M28, M32-M35 (margin notes and pages), M30, M31 (in the Library), M22, M23 (Scripture in this page), M13-M15
+(lines on the words), M6, M7 (a passage with your marks), M21 (filters), M42-M44, M12 and M36-M40 on 2026-11-17.
+M18, M19 follow MK-19: dates are kept from the start; earlier versions of pages are not kept yet.
 
 What "a mark" is, how marks relate to pages, the reader's margin, the Library and the questions list. Asked by the
 person on 2026-11-12, after questions round 2: questions look like a kind of marking beside the text, and it was not
@@ -55,7 +57,7 @@ The board (and its PDF) holds only these windows, grouped by part. Superseded wi
 | A page's scripture overview | M22, M23 | M1's model (by the no-places and margin decisions); M24, "Not a tether" (by MK-6) |
 | Marks on the words | M13 (one line under a run), M14 (the pencil), M15 (a saved phrase: the folder's color) | M5 (by M13-M15); M16, your own styles (left to [highlights](../highlights/README.md), MK-1); M17, the dotted line (dropped, MK-2) |
 | A passage with its marks | M6, M7 (the photograph) | |
-| History (not built until "Needs the person" 3 is answered) | M18, M19 | |
+| History (MK-19: dates are kept; what needs earlier versions of pages waits for their own design) | M18, M19 | |
 | Filters | M21 (one menu in the search field) | M8 (chips; not liked by the person); M20, a side list of kinds (by MK-4) |
 | The real conditions | M42 (among other tabs), M43 (floating), M44 and M12, M23 (narrow), M36-M40 (years of study) | M41, the Pages tree (by [library](../library/README.md) S36, MK-12) |
 
@@ -82,33 +84,28 @@ and store; writing in the margin asks; questions are a filter of the Library's s
 | MK-13 | **A crowded verse (strain 2):** the pages that name a verse are ordered by a fixed rule, not a judgment: pages that hold the verse in a scripture block first, then by how many times the page names it, then newest. Grouped by folder past 20 (M37). | Round 5, strain 2 |
 | MK-14 | **Speed is part of the design (strains 3, 4):** the cache indexes verse → pages and verse → margin notes and is updated one file at a time on save; opening a chapter never reads page files. | Round 5, strains 3 and 4 |
 | MK-15 | **The margin obeys its eye** in the reader's one marks panel (reader R7). Whether a quiet Reading mode also turns that eye off is [highlights](../highlights/README.md)' to say; marks follows the panel. | reader R7 (decided) |
-| MK-16 | **A passage in a page** has the switch Just the text · With my marks; with marks: colors and pencil on the words and one dot per verse that has something, a click opening a small card in place (M6, M7). "As of a date" belongs to history ("Needs the person" 3) and is not built before it. | The person, 2026-11-12 (answer 3; "the photograph is liked") |
+| MK-16 | **A passage in a page** has the switch Just the text · With my marks; with marks: colors and pencil on the words and one dot per verse that has something, a click opening a small card in place (M6, M7). "As of a date" belongs to history (was "Needs the person" 3; now MK-19) and is not built from this design. | The person, 2026-11-12 (answer 3; "the photograph is liked") |
+
+## Decisions (the person, 2026-11-17)
+
+Each is **decided by the person 2026-11-17 (accepted the recommendation)**: the overseer's recommendation under "Needs
+the person", accepted as written. None of them moves or rewrites a file the person already has: a move of the
+person's files happens once, designed first, tried on a scratch copy after a hashed backup (`scripts/backup-study.ps1`), and only
+with the person's go-ahead for that run.
+
+| # | Decision | Rests on |
+|---|---|---|
+| MK-17 | **How margin notes are kept on disk:** one Markdown file per chapter, `margin/<BOOK>/<chapter>.md` (for example `margin/NUM/25.md`), each note under a line naming its verse, passage or the chapter, with its id and the date it was written; a question is the same callout line as in a page (`> [!question]`, `> [!done]`); a page's seed block is a ```` ```jot ```` fence holding only the note's id. Reasons: at most 1,189 files however long the person studies; a chapter's notes read top to bottom in the Bible's order in any editor; one file changes when one note changes. Main risk named in the recommendation: two notes edited in one chapter on two devices touch the same file once sync exists. This is a new form for new margin notes; it moves nothing already written. | The person, 2026-11-17 (was "Needs the person" 1) |
+| MK-18 | **Moving the old notes that have a place, once:** a placed note that is only plain sentences (no title, heading, block, table or page inside) becomes a margin note at its place (in MK-17's form); any other becomes a page whose first line is its reference. Before anything is written, a read-only list says which each note would become (`wb study check --margin-move`); then a scratch copy, a hashed backup (`scripts/backup-study.ps1`), and the person's go-ahead for the run on the real folder. Old trails at a verse move in the same pass ([questions](../questions/README.md) QN-8). Until then the app reads the old form: a placed note is shown in its verse's margin as it is. Main risk named in the recommendation: a short note the person thinks of as a page lands in the margin; Grow into a page (MK-8) is the way back, and the list shows it first. The rule is decided; the move itself has not been run, and this decision runs nothing. | The person, 2026-11-17 (was "Needs the person" 2); the person, 2026-11-12 (a page has no place; old notes move once with the go-ahead) |
+| MK-19 | **History (M18, M19):** keep the date on every margin note (in MK-17's form) and on every highlight (how is [highlights](../highlights/README.md)' own format question, still open there), and do not keep earlier versions of pages yet. Dates are small and make M18's line of dots true; versions of every page would grow the folder and need their own design (where, how long, how erased). Main risk named in the recommendation: thoughts edited before versions exist cannot be shown as they were. Nothing else on the board depends on M18 or M19. | The person, 2026-11-17 (was "Needs the person" 3) |
 
 ## Needs the person
 
-These are study-folder formats or moves of the person's files. Each has the overseer's recommendation; the sheets
-draw the recommended answer, and nothing that writes a new form is built before the answer.
+Nothing. All three were answered by the person on 2026-11-17 (accepted the recommendation):
 
-1. **How margin notes are kept on disk.** Recommended: one Markdown file per chapter, `margin/<BOOK>/<chapter>.md`
-   (for example `margin/NUM/25.md`), each note under a line naming its verse, passage or the chapter, with its id and
-   the date it was written; a question is the same callout line as in a page; a page's seed block is a
-   ```` ```jot ```` fence holding only the note's id. Reasons: at most 1,189 files however long the person studies
-   (one per place would be thousands of tiny files); a chapter's notes read top to bottom in the Bible's order in any
-   editor; one file changes when one note changes. Main risk: two notes edited in one chapter on two devices touch the
-   same file once sync exists.
-2. **Moving the old notes that have a place, once.** The person decided a page has no place (2026-11-12) and that old
-   notes move once with the go-ahead. Recommended rule: a placed note that is only plain sentences (no title, heading,
-   block, table or page inside) becomes a margin note at its place; any other becomes a page whose first line is its
-   reference. Before anything is written, a read-only list says which each note would become
-   (`wb study check --margin-move`); then a scratch copy, a hashed backup (`scripts/backup-study.ps1`), and the
-   go-ahead. Old trails at a verse move in the same pass ([questions](../questions/README.md)). Until then the app
-   reads the old form: a placed note is shown in its verse's margin as it is. Main risk: a short note the person
-   thinks of as a page lands in the margin; Grow into a page (MK-8) is the way back, and the list shows it first.
-3. **History (M18, M19): keep how a page read before, and when each mark was made?** Recommended: keep the date on
-   every margin note (in 1) and on every highlight (highlights' own format question), and do not keep earlier versions
-   of pages yet. Reasons: dates are small and make M18's line of dots true; versions of every page grow the folder and
-   need their own design (where, how long, how erased). Main risk: thoughts edited before versions exist cannot be
-   shown as they were. The design is complete without it: nothing else on the board depends on M18 or M19.
+1. ~~How margin notes are kept on disk.~~ One Markdown file per chapter: MK-17.
+2. ~~Moving the old notes that have a place, once.~~ The rule and the steps: MK-18 (the move is not run by the decision).
+3. ~~History (M18, M19).~~ Dates kept, no earlier versions of pages yet: MK-19.
 
 ## The real conditions
 
@@ -121,8 +118,8 @@ draw the recommended answer, and nothing that writes a new form is built before 
 
 ## What the build must satisfy
 
-Not to be built until "Needs the person" 1 is answered (2 and 3 can follow). Each line is checked in a Rust test or
-the desk check on a generated scratch study, never the real folder.
+Ready to build (the person answered "Needs the person" 1-3 on 2026-11-17: MK-17 to MK-19). Each line is checked in a
+Rust test or the desk check on a generated scratch study, never the real folder.
 
 - [ ] **No place.** A new page has no `anchor` in its front matter; a page that names Numbers 25:11 in a paragraph, a scripture block or a word block is listed for that verse by `wb anchor "Num 25:11"`, and removing the reference removes it from the list with no other file changed.
 - [ ] **Scripture in this page.** A page naming 5 scriptures shows them in Bible order under "Scripture in this page · 5", each saying where it is named; a click scrolls to that block, its arrow opens the text. At 560 px or wider it is open and at most 6 rows high; narrower it is one line that opens the list (M22, M23). It equals `wb refs` run on the page's text plus its scripture and word blocks.
@@ -141,8 +138,10 @@ the desk check on a generated scratch study, never the real folder.
 - [ ] **The cache.** After one page is saved, only that page's entries in the verse index change (a test counts the files read: 1); opening a chapter reads no page file (MK-14).
 - [ ] **The reader's place is kept.** From Numbers 25:11, opening the verse in the margin, opening a page from its list, following that page's reference to Psalms 106:30 and going back twice returns the reader to Numbers 25:11 at the same scroll position with the margin still open on verse 11. From Margin notes in the Library, a click on a note and Back returns to the same row.
 - [ ] **Old forms are read.** With 5 notes that still have an `anchor`, each shows in its verse's margin and opens as today; no file is rewritten by reading (compare hashes).
-- [ ] **Commands.** Existing: `wb marks`, `wb anchor`, `wb refs`, `wb page scripture`, `wb block scripture`, `wb page blocks`, `wb find`, `wb hl …`. Required and missing today: `wb margin "Num 25"` (a chapter's or verse's margin notes), `wb margin add "Num 25:11" "text" [--question]`, `wb margin edit <id> "text"`, `wb margin rm <id>`, `wb margin grow <id> [--into <page id>]`, `wb margin list [--book NUM]` (the Library's counts), `wb page overview <id>` (Scripture in this page), `wb block scripture <id> <n> --marks | --no-marks`, `wb hl pencil "<place>"` and `wb hl pencil --clear "<place>"`, `wb anchor <place> --pages` (the ordered pages; also named by [words](../words/README.md)), and `wb study check --margin-move` (the read-only list of "Needs the person" 2).
-- [ ] **The study files.** The margin's files, the jot fence and the dates are written only in the form the person approves ("Needs the person" 1); the move of old notes runs only on the go-ahead (2).
+- [ ] **Commands.** Existing: `wb marks`, `wb anchor`, `wb refs`, `wb page scripture`, `wb block scripture`, `wb page blocks`, `wb find`, `wb hl …`. Required and missing today: `wb margin "Num 25"` (a chapter's or verse's margin notes), `wb margin add "Num 25:11" "text" [--question]`, `wb margin edit <id> "text"`, `wb margin rm <id>`, `wb margin grow <id> [--into <page id>]`, `wb margin list [--book NUM]` (the Library's counts), `wb page overview <id>` (Scripture in this page), `wb block scripture <id> <n> --marks | --no-marks`, `wb hl pencil "<place>"` and `wb hl pencil --clear "<place>"`, `wb anchor <place> --pages` (the ordered pages; also named by [words](../words/README.md)), and `wb study check --margin-move` (the read-only list of MK-18).
+- [ ] **The margin's file.** A margin note written at Numbers 25:11 on a scratch study is written to `margin/NUM/25.md` under a line naming Numbers 25:11 with the note's id and the date it was written; a note on Numbers 25:10-13 is under a line naming the passage, and a note on the chapter under a line naming Numbers 25; a question note is the `> [!question]` callout line; Grow into a page writes a jot fence holding only the id; editing one note changes only that chapter's file (MK-17).
+- [ ] **Dates, no versions.** Every margin note carries the date it was written, and no earlier version of a page is written anywhere in the study folder (MK-19).
+- [ ] **The study files.** The margin's files, the jot fence and the dates are written only in MK-17's form. No file the person already has is moved or rewritten by this build: the move of old placed notes (MK-18) happens once, designed, the read-only list first, tried on a scratch copy after a hashed backup (`scripts/backup-study.ps1`), and run on the real folder only with the person's go-ahead.
 
 ## The person's findings that touch it (read only, `bible-study-data/findings`)
 
@@ -157,7 +156,7 @@ the desk check on a generated scratch study, never the real folder.
 ## The record (2026-11-12)
 
 Everything from here down is the record of how the decisions above were reached. Where it differs from the Leading
-design, MK-1 to MK-16 and "Needs the person", those win: a page now has no place (it is tethered by its text), the
+design and MK-1 to MK-19, those win: a page now has no place (it is tethered by its text), the
 Library has five pieces (library L-11), M24 and the dotted line are dropped, and the margin never prompts.
 
 ## What is already decided elsewhere (the frame this must fit, as it stood on 2026-11-12)
@@ -399,7 +398,7 @@ margin, as in a paper Bible.
 
 ## Open questions (round 2): all closed 2026-11-16
 
-Closed by the decisions at the top: 4 by MK-1, 5 by MK-2, 6 is "Needs the person" 3, 7 by MK-4, 8 by MK-3. Kept as asked:
+Closed by the decisions at the top: 4 by MK-1, 5 by MK-2, 6 by MK-19 (the person, 2026-11-17), 7 by MK-4, 8 by MK-3. Kept as asked:
 
 1-3. Settled 2026-11-12: no place field; references in a page tether it; the margin is the verse's page and the
    store of its notes (see the decisions above).
@@ -535,7 +534,7 @@ rest scales by its own order.
 
 ## Open questions (round 3): all closed 2026-11-16
 
-Closed by the decisions at the top: 1 and 2 by MK-5, 3 by MK-6, 4 is "Needs the person" 1, 5 by MK-7, 6 by MK-8, 7 by MK-10. Kept as asked:
+Closed by the decisions at the top: 1 and 2 by MK-5, 3 by MK-6, 4 by MK-17 (the person, 2026-11-17), 5 by MK-7, 6 by MK-8, 7 by MK-10. Kept as asked:
 
 1. The overview's name: Scripture in this page, Scripture, References?
 2. Should the overview be shown always, or folded by default (M23's line) in every width?
@@ -556,7 +555,7 @@ Closed by the decisions at the top: 1 and 2 by MK-5, 3 by MK-6, 4 is "Needs the 
 | 3 | 2026-11-12 | M22-M29 | a page's scripture overview (wide, narrow, a reference in passing); the margin opened, in the reader, writing asks where, passages and chapters, moving a note | Not reviewed by the person; decided by the overseer 2026-11-16 (MK-3, MK-5 to MK-7) |
 | 4 | 2026-11-12 | M30-M35 | jots and pages: Margin notes in the Library, a chapter's jots, growing a jot into a page, the seed block, the margin after, adding to a page | Not reviewed by the person; decided by the overseer 2026-11-16 (MK-8, MK-10, MK-12) |
 | 5 | 2026-11-12 | M36-M41 | a full vault fifteen years on: the busiest chapter, one verse's margin, the map, a long overview, searching everything, the Pages tree | Not reviewed by the person; M41 to library (MK-12); MK-13, MK-14 |
-| 6 | 2026-11-16 | M42-M44; M32 redrawn; M16, M17, M20, M24, M41 off the board | the real conditions; the decisions of 2026-11-16 drawn | For the person's look |
+| 6 | 2026-11-16 | M42-M44; M32 redrawn; M16, M17, M20, M24, M41 off the board | the real conditions; the decisions of 2026-11-16 drawn | Accepted by the person, 2026-11-17 (with MK-17 to MK-19) |
 
 ## Data the sheets show
 

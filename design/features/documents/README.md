@@ -1,19 +1,19 @@
 # Lessons and documents (Word, PDF, Present)
 
-**State:** exploring (round 2 drawn 2026-11-16, for the person's look) · **Sheets:** `python design/features/documents/documents.py` writes `documents.figcraft` and
+**State:** accepted by the person 2026-11-17 (ready to build); was exploring (round 2 drawn 2026-11-16) · **Sheets:** `python design/features/documents/documents.py` writes `documents.figcraft` and
 `documents.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · The new design is not built; `wb craft …`
 and `wb docs …` exist today. What other tools get wrong, and so what this folder avoids:
 [bible-software-complaints](../../research/bible-software-complaints.md) (theme 4: exports that drop the verse
 reference; work trapped in the app).
 
-**Readiness: likely finished** (2026-11-16, the Notebook pass, by [ready-criteria](../ready-criteria.md); never
-"accepted", which only the person says). Inferences first: DC-1 to DC-10 (below); the person reviewed no round here,
-so DC-1 (A and B joined) and DC-2 (no document template) are the ones to look at.
+**Readiness: likely finished** (2026-11-16, the Notebook pass, by [ready-criteria](../ready-criteria.md)); the person
+accepted it on 2026-11-17, with DC-1 to DC-10 as written and the recommendation on lessons (DC-11). Inferences first:
+DC-1 to DC-10 (below); DC-1 (A and B joined) and DC-2 (no document template) carried the most.
 
 - **1** one design (DC-1); D2's template link superseded (DC-2) and not drawn. The board shows D1-D11 only (read from
   `documents.figcraft`); D11, the Word half of D2's switch, was added to the Leading table on this pass.
-- **2** no open question; "Needs the person" 1 (lessons as pages) is the foundation's, with a recommendation, and
-  D2-D11 never need it.
+- **2** no open question; "Needs the person" 1 (lessons as pages) was the foundation's, with a recommendation, and
+  D2-D11 never need it. Decided by the person 2026-11-17 (DC-11).
 - **3** D7-D10 drawn. **4** every line names inputs and a result; the reader's place is its own line.
 - **5** existing `wb craft`, `wb docs`, `wb lesson` named; `wb docs like` and `wb craft … --folder` named as required.
 - **6** [overlaps](../overlaps.md) "Templates: pages and documents" resolved (DC-2, library L-14); "Documents' Present"
@@ -23,8 +23,8 @@ so DC-1 (A and B joined) and DC-2 (no document template) are the ones to look at
 - **9** no suggestion or commentary; a Look is styling only (DC-7). **10** no format change; a field added to the
   app's own `documents/` record is read as absent in old records.
 
-For the person, to accept: D2 and D11 (the builder), D6 (Make another like this), D3 (the viewer), D4 (Looks),
-D5 (where it went), then D7-D10. D1 is today, for comparison.
+The person accepted D2 and D11 (the builder), D6 (Make another like this), D3 (the viewer), D4 (Looks), D5 (where it
+went) and D7-D10 on 2026-11-17. D1 is today, for comparison.
 
 Documents made from a page, a folder, a passage or a lesson; 868e asks for an in-depth design and a builder like the
 page templates.
@@ -50,7 +50,9 @@ page templates.
 
 ## Decisions (the person)
 
-None in this folder; round 1 was not reviewed. Decided elsewhere and binding here: Present is for documents only
+- **2026-11-17:** the design accepted as drawn (rounds 1-2, DC-1 to DC-10), and the recommendation on lessons (DC-11).
+
+Round 1 was not reviewed on its own. Decided elsewhere and binding here: Present is for documents only
 ([minimize](../minimize/README.md)); every verse in a made file is checked after it is made, and one that fails is not
 kept (`AGENTS.md`).
 
@@ -69,23 +71,27 @@ Each is **decided by overseer from existing decisions (inference)**, dated 2026-
 | DC-7 | **Looks are chosen from pictures of the same slide**, whole, with the one new documents use marked "In use" (D4). A Look is styling only. | 868e; `wb docs looks` |
 | DC-8 | **The verse check is shown**: after Make, a quiet second line says how many verses were checked (D5); a failure says which verse and keeps no file. | `AGENTS.md` |
 | DC-9 | **Many documents** are grouped by what each was made from, folded, with a search field, the count behind and "Update the N" (D10). A row's actions are in its menu (D6), not a line of links. | index, "the real conditions" |
-| DC-10 | **Lessons stay a source as they are** (`lessons/*.md`, `wb lesson …`, `wb craft --lesson`). Whether they become pages is the person's ("Needs the person" 1). | `AGENTS.md` ("Everything is a page" names notes, questions, days and threads, not lessons) |
+| DC-10 | **Lessons stay a source as they are** (`lessons/*.md`, `wb lesson …`, `wb craft --lesson`). Whether they become pages was the person's ("Needs the person" 1; now DC-11). | `AGENTS.md` ("Everything is a page" names notes, questions, days and threads, not lessons) |
+
+## Decisions (the person, 2026-11-17)
+
+Each is **decided by the person 2026-11-17 (accepted the recommendation)**: the overseer's recommendation under "Needs
+the person", accepted as written.
+
+| # | Decision | Rests on |
+|---|---|---|
+| DC-11 | **Lessons become pages, later, as their own one-time move**, so there is one kind of writing (a page) with one builder. Not now: until that move is designed and run, lessons are read where they are and made into documents as today (DC-10), and D2-D11 start from a page and never need a lesson to move. The move is designed first (a lesson's slide marks need a page block before it, or moving early would lose how a lesson builds), reads the old form, is tried on a scratch copy after a hashed backup (`scripts/backup-study.ps1`), and runs on the real folder only with the person's go-ahead for that run; this decision moves no file. | The person, 2026-11-17 (was "Needs the person" 1); `AGENTS.md` (a move is designed first, scratch copy, hashed backup, go-ahead) |
 
 ## Needs the person
 
-1. **Do lessons become pages?** Recommended: yes, later, as their own one-time move: a lesson file is already Markdown
-   the person wrote, and one kind of writing (a page) with one builder is simpler than two. Until then nothing changes:
-   lessons are read where they are and made into documents as today (DC-10). The move would be designed first (read
-   the old form, scratch copy, hashed backup, the person's go-ahead). Main risk: a lesson's slide marks have no page
-   block yet, so moving early would lose how a lesson builds. The design is complete without the answer: D2-D10 start
-   from a page and never need a lesson to move.
+Nothing. ~~1. Do lessons become pages?~~ Decided by the person 2026-11-17 (accepted the recommendation): DC-11.
 
 ## Rounds
 
 | Round | Date | Windows | What it tried | Review |
 |---|---|---|---|---|
 | 1 | 2026-11-12 | D1-D5 | today; a builder from a page's parts and the viewer; Looks and where files go | Not reviewed by the person. A and B joined by the overseer (DC-1, 2026-11-16) |
-| 2 | 2026-11-16 | D2, D4, D5 redrawn; D6-D11 | no document template (D2); Looks as whole pictures (D4); the real folder and the verse check (D5); Make another like this (D6); the real conditions | For the person's look |
+| 2 | 2026-11-16 | D2, D4, D5 redrawn; D6-D11 | no document template (D2); Looks as whole pictures (D4); the real folder and the verse check (D5); Make another like this (D6); the real conditions | Accepted by the person, 2026-11-17 (with DC-11) |
 
 ## Data the sheets show
 
@@ -123,7 +129,8 @@ Each line is checked in a Rust test or the desk check, on a scratch study whose 
 - [ ] **Years of study.** With 318 document records (12 behind) the pane shows the head line "318 documents · 12 behind", the groups folded with counts, and opens inside the list budget of `npm run measure`; "Update the 12" equals `wb docs update` with no name (D10).
 - [ ] **The reader's place is kept.** From Numbers 25:11, opening a document's viewer as a tab, presenting it, leaving Present and closing the tab leaves the reader at Numbers 25:11 at the same scroll position; a document made from a page returns to that page at the block it was opened from.
 - [ ] **Commands.** Existing: `wb craft parts | word | deck | designs | theme`, `wb docs list | show | plan | update | open | open-preview | preview | reveal | looks | look | forget | remember | delete`, `wb lesson list | show | save | rm | check | build`, `wb packet`, `wb pdf`, `wb pdfs`. Required and missing today: `wb docs like <document> --page ID` (Make another like this), and `wb craft word | deck --folder NAME` as the new name beside `--thread`.
-- [ ] **The study files.** No format change: `documents/` records as today. If "Make another like this" needs a field the record lacks, it is added to the record (the app's own file, not the person's writing) and old records are read without it.
+- [ ] **Lessons as they are.** `wb lesson list` and `wb craft word --lesson NAME` on a scratch study's `lessons/` give the same output as before the change, and nothing under `lessons/` is written by this build (DC-10, DC-11).
+- [ ] **The study files.** No format change: `documents/` records as today. If "Make another like this" needs a field the record lacks, it is added to the record (the app's own file, not the person's writing) and old records are read without it. Lessons are not moved by this build: their move into pages (DC-11) happens once, designed, tried on a scratch copy after a hashed backup (`scripts/backup-study.ps1`), with the person's go-ahead.
 
 ## Out of scope / later
 

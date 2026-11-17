@@ -1,20 +1,21 @@
 # The library: the Notebook, the Shelf, and keeping
 
-**State:** exploring (round 4 drawn 2026-11-16, for the person's look) · **Sheets:** `python design/features/library/library.py` writes `library.figcraft` and
+**State:** accepted by the person 2026-11-17 (ready to build); was exploring (round 4 drawn 2026-11-16) · **Sheets:** `python design/features/library/library.py` writes `library.figcraft` and
 `library.pdf` (the board, one vector page) · Nothing here is built yet. What other tools get wrong, and so what this folder avoids:
 [bible-software-complaints](../../research/bible-software-complaints.md).
 
-**Readiness: likely finished** (2026-11-16, the Notebook pass, by [ready-criteria](../ready-criteria.md); never
-"accepted", which only the person says). The earlier mark (unfinished: checks 1, 2, 4, 5, 6) is replaced. Inferences
+**Readiness: likely finished** (2026-11-16, the Notebook pass, by [ready-criteria](../ready-criteria.md)); the person
+accepted it on 2026-11-17, with the recommendations on the five study-folder formats (L-21 to L-25). The earlier mark (unfinished: checks 1, 2, 4, 5, 6) is replaced. Inferences
 first: L-5 (the Shelf), L-9 (round 4 leads, never reviewed by the person), L-10 to L-20; L-9 carries the most.
 
 - **1** round 4 leads (L-9); superseded windows S1-S4, S12, S14, S16 are hidden by `DROP` (`library.py:1397`) and
   absent from the rendered board; S27 is redrawn with one line of text and no chips (`library.py:939`, `:1180`), S31's
   menu has no Page history (`:1260`), S13 has no tab row (`:464`).
-- **2** every question after round 3 is struck; "Needs the person" 1-5 are study-folder formats, each with a
-  recommendation; the rest of the design builds on today's files.
+- **2** every question after round 3 is struck; "Needs the person" 1-5 were study-folder formats, each with a
+  recommendation; decided by the person 2026-11-17 (L-21 to L-25).
 - **3** S33-S36 drawn, with S10, S15, S17, S18, S24 for rounds 1-3.
-- **4** every line names inputs and a result; *(format)* lines are marked; the reader's place is its own line.
+- **4** every line names inputs and a result; the lines once marked *(format)* now name the decided form (L-21 to
+  L-25); the reader's place is its own line.
 - **5** existing commands named; `wb save`, `wb folder …`, `wb find --kind …`, `wb page duplicate | link`, several-id
   `wb page rm | move | pin`, `wb page look` named as required.
 - **6** [overlaps](../overlaps.md) "Choosing and deleting several pages" (L-13), "Templates" (L-14), "Today's page"
@@ -26,10 +27,13 @@ first: L-5 (the Shelf), L-9 (round 4 leads, never reviewed by the person), L-10 
 - **8** fixed on this pass: S8's "never colors the text" read against threads' colored folders, settled by L-20;
   round 1's proposals marked as reviewed. Scripture through `build.C` from `design/content.json`; phrases cut by word
   position.
-- **9** nothing suggested on the board. **10** formats are "Needs the person" 1-5, with the migration steps written.
+- **9** nothing suggested on the board. **10** formats were "Needs the person" 1-5, with the migration steps written;
+  decided by the person 2026-11-17 (L-21 to L-25). Each adds to today's files and reads the old form; no file of the
+  person's is moved by the decision, and any move happens once, designed, tried on a scratch copy after a hashed backup
+  (`scripts/backup-study.ps1`), with the person's go-ahead.
 
-For the person, to accept, in this order: S25 (the side list), S28 (the page), S29 (writing), S26, S27, S31, S32, S30,
-then S33-S36; then rounds 1-3: S7, S5, S11, S8, S17, S20, S21, S13, S19, S22, S10, S15, S18, S23, S24, S6, S9.
+The person accepted S25 (the side list), S28 (the page), S29 (writing), S26, S27, S31, S32, S30, S33-S36, and rounds
+1-3 (S7, S5, S11, S8, S17, S20, S21, S13, S19, S22, S10, S15, S18, S23, S24, S6, S9) on 2026-11-17.
 
 The Notebook and the Shelf "conceptually don't have to be separate": folders and pages working together, and a
 bookmark that is "almost second nature ... a one or at most two step process, especially to retrieve it" (the person,
@@ -125,7 +129,7 @@ Each is **decided by overseer from existing decisions (inference)**, dated 2026-
 | L-13 | **Choosing several pages is the library's** (S32): Shift or Ctrl click, a bar with the count and Move to, Pin, Delete. Delete follows [trash](../trash/README.md) TR-2 and TR-3: one toast, one Undo for all for 30 seconds, then 7 days in the Trash. | 0ade; trash (accepted); `docs/SPEC.md:32` |
 | L-14 | **A page template and a document are different things.** `wb template` makes a page from a page; a document is made from a page and keeps its own choices ([documents](../documents/README.md) DC-2). No shared builder. | documents DC-2 |
 | L-15 | **A kept search is "a saved list"**: a block in a page holding the line (`wb view run`, `wb block view`). The filter line's menu has "Keep as a list in a page". One name everywhere ([settings](../settings/README.md) S5, [questions](../questions/README.md) Q6). | settings S5; marks M8 ("Keep as a list in a page") |
-| L-16 | **Page history leaves the page's ⋯** (S31). Keeping earlier versions of a page is a format question asked in marks ("Needs the person" 3); nothing here depends on it. | marks |
+| L-16 | **Page history leaves the page's ⋯** (S31). Keeping earlier versions of a page was a format question asked in marks; the person decided not yet (marks MK-19, 2026-11-17); nothing here depends on it. | marks |
 | L-17 | **The / menu offers Saved thing (/save), not a thread block** (S29). A ```` ```thread ```` fence already in a page keeps working and shows the folder's saves (threads TH-3). | threads TH-3 |
 | L-18 | **Today's page is never required**: nothing in the Notebook writes to it unless the person switched it on; a question with no verse goes in the page in front ([questions](../questions/README.md) QN-3). | minimize round 5 (Today optional); questions QN-3 |
 | L-19 | **S13 (Folders, liked in round 2) keeps its cards but loses its Notebook / Folders / Shelf tab row**: S20 says the Library replaces those tabs. | Round 3 review (S20 is the line) |
@@ -133,33 +137,36 @@ Each is **decided by overseer from existing decisions (inference)**, dated 2026-
 
 L-5 can be reversed with a word from the person.
 
+## Decisions (the person, 2026-11-17)
+
+Each is **decided by the person 2026-11-17 (accepted the recommendation)**: the overseer's recommendation under "Needs
+the person", accepted as written. Each is a form for what the app writes from now on, and each reads the old form; none
+moves or rewrites a file the person already has. A move of the person's files happens once, designed first, tried on a
+scratch copy after a hashed backup (`scripts/backup-study.ps1`), and only with the person's go-ahead for that run.
+
+| # | Decision | Rests on |
+|---|---|---|
+| L-21 | **A title field (S28, 9b88):** `title:` in the page's front matter, with the first line read as the title where the field is absent, so no file has to move at once. `[[title]]` links resolve through the title (`crates/wb-core/src/pages.rs`), so the reader takes the field first. A page whose first line and `title:` differ after an edit outside the app: the field wins and `wb study check` reports it. | The person, 2026-11-17 (was "Needs the person" 1) |
+| L-22 | **Pages in folders (S25):** membership is kept in the folder's set file; page files are not moved into directories (a thing may sit in several folders, L-3, which directories cannot express). Nested folders take a parent field in the set file (a format addition; `wb shelf move --in` already nests). A folder's file and its pages can drift if a page file is deleted outside the app; `wb study check` reports dangling items. This is the folder format [threads](../threads/README.md) TH-12 waits on: moving thread files into it is a later, one-time move of its own. | The person, 2026-11-17 (was "Needs the person" 2) |
+| L-23 | **Columns (S30):** comment markers in the Markdown (as threads use `<!-- anchors -->`), so the file reads top to bottom in any editor and stacks when narrow (6659). A marker deleted by hand unbalances the columns; unbalanced markers are read as plain blocks. | The person, 2026-11-17 (was "Needs the person" 3) |
+| L-24 | **A saved sitting (L-4)** is a kind of set item pointing into `history/`. | The person, 2026-11-17 (was "Needs the person" 4) |
+| L-25 | **Full width and Small text (S31)** are kept per page in `settings/pages.json` beside Pinned, not in the page's own file, so the person's writing is not touched by a view choice. | The person, 2026-11-17 (was "Needs the person" 5) |
+
 ## Needs the person
 
-These change how the study folder is kept. Each has the overseer's recommendation; the sheets draw the recommended
-answer. Nothing that writes a new form is built until answered, and any move of the person's files is designed first,
-tried on a scratch copy, after a hashed backup (`scripts/backup-study.ps1`), with the person's go-ahead. The rest of
-the design (the side list, the menus, the filter line, saving, the picker, many pages, the editor's / and selection
-bar) needs none of them and can be built on today's files.
+Nothing. All five were answered by the person on 2026-11-17 (accepted the recommendation):
 
-1. **A title field (S28, 9b88).** Recommended: `title:` in the page's front matter, with the first line read as the
-   title where the field is absent, so no file has to move at once. `[[title]]` links resolve through the title today
-   (`crates/wb-core/src/pages.rs`), so the reader takes the field first. Main risk: a page whose first line and
-   `title:` differ after an edit outside the app; the field wins and `wb study check` reports it.
-2. **Pages in folders (S25).** Recommended: keep membership in the folder's set file; do not move page files into
-   directories. A thing may sit in several folders (L-3), which directories cannot express. Nested folders need a
-   parent field in the set file (a format addition; `wb shelf move --in` already nests). Main risk: a folder's file
-   and the pages drift if a page file is deleted outside the app; `wb study check` reports dangling items.
-3. **Columns (S30).** Recommended: comment markers in the Markdown (as threads use `<!-- anchors -->`), so the file
-   reads top to bottom in any editor and stacks when narrow (6659). Main risk: a marker deleted by hand unbalances
-   the columns; unbalanced markers are read as plain blocks.
-4. **A saved sitting (L-4)** adds a kind of set item pointing into `history/`. Recommended: yes, as an item kind.
-5. **Full width and Small text (S31)** are kept per page. Recommended: in `settings/pages.json` beside Pinned, not in
-   the page's own file, so the person's writing is not touched by a view choice.
-L-5 (the Shelf, not Unsorted) was item 6 here; it is a label, not a format, so it is decided (L-5) and left for the
+1. ~~A title field (S28, 9b88).~~ `title:` in the front matter, the first line where absent: L-21.
+2. ~~Pages in folders (S25).~~ Membership in the folder's set file, a parent field for nesting: L-22.
+3. ~~Columns (S30).~~ Comment markers in the Markdown: L-23.
+4. ~~A saved sitting (L-4).~~ A set item kind pointing into `history/`: L-24.
+5. ~~Full width and Small text (S31).~~ In `settings/pages.json`: L-25.
+
+L-5 (the Shelf, not Unsorted) was item 6 here; it is a label, not a format, so it is decided (L-5) and was left for the
 person's look at the sheets, not asked.
 
-Threads (the old question 5) are answered in [threads](../threads/README.md) (TH-1, with its own "Needs the person").
-
+Threads (the old question 5) are answered in [threads](../threads/README.md) (TH-1; decided by the person 2026-11-17,
+TH-11).
 
 ## Rounds
 
@@ -168,7 +175,7 @@ Threads (the old question 5) are answered in [threads](../threads/README.md) (TH
 | 1 | 2026-11-11 | S1-S6 | Keep a verse in one step with a toast (S1), the folder picker (S2), the library drawer with pages, folders and the Shelf (S3), a folder opened as cards with Open all as tabs (S4), the same bookmark everywhere (S5), kept is not open (S6) | Round 1 review below |
 | 2 | 2026-11-11 | S7-S14 | Save opens the picker at once, several folders by ticking, Just the Shelf, Esc keeps it unfiled (S7); saves in the reader margin: whole verse, phrase, several on a line, never coloring text (S8); what + adds (S9); a big folder opened as a list, open only what you tick, more than 10 asks (S10); one save in several folders (S11); the three views: Shelf as the bookmark manager (S12), Folders (S13), Notebook (S14) | Round 2 review below |
 | 3 | 2026-11-11 | S15-S24 | The picker with dozens of nested folders (S15); saves in the left margin and your pages in the right margin (S16); 30 saves on one verse, grouped by folder (S17); "What is open now" with ten tabs (S18); reaching a folder by clicking it, Cards with folders (S19); four pieces defined, the Shelf folded into Unsorted (S20); one library search (S21); cards: click, drag, menu (S22); the page editor and New page (S23); the Library in a narrow column (S24) | Round 3 review below |
-| 4 | 2026-11-16 | S25-S36 (redrawn the same day for L-10 to L-13, L-16, L-17) | The Notebook like Notion, from the installed build of 16 November: one folding side list with folders above pages and hover-only ⋯/+ (S25); one right-click menu (S26); one filter line of chips instead of the Filters form and the Days/Pages/Places/Threads/Questions/All tabs (S27); the page centred with a title field and properties, plain text lines (S28); / blocks and a selection bar, no top toolbar (S29); blocks side by side at full width (S30); the page's own … menu, Notebook settings moved to Settings (S31); choosing many pages, one Delete (S32); then the real conditions: floating (S33), among ten tabs (S34), narrow (S35), 412 pages with forty loose (S36) | Not reviewed by the person; leading by L-9 (2026-11-16). For the person's look |
+| 4 | 2026-11-16 | S25-S36 (redrawn the same day for L-10 to L-13, L-16, L-17) | The Notebook like Notion, from the installed build of 16 November: one folding side list with folders above pages and hover-only ⋯/+ (S25); one right-click menu (S26); one filter line of chips instead of the Filters form and the Days/Pages/Places/Threads/Questions/All tabs (S27); the page centred with a title field and properties, plain text lines (S28); / blocks and a selection bar, no top toolbar (S29); blocks side by side at full width (S30); the page's own … menu, Notebook settings moved to Settings (S31); choosing many pages, one Delete (S32); then the real conditions: floating (S33), among ten tabs (S34), narrow (S35), 412 pages with forty loose (S36) | Leading by L-9 (2026-11-16). Accepted by the person, 2026-11-17 (with L-21 to L-25) |
 
 ## Data the sheets show
 
@@ -186,8 +193,8 @@ read through `build.C`. Nothing is typed by hand: every phrase shown alone is cu
 
 ## What the build must satisfy
 
-Each line is checked in a Rust test or the desk check, on a generated scratch study (never the real folder). Lines
-marked *(format)* wait for "Needs the person"; the others can be built on today's files.
+Each line is checked in a Rust test or the desk check, on a generated scratch study (never the real folder). The
+study-folder forms are L-21 to L-25 (the person, 2026-11-17); every line can be built.
 
 Saving and folders (rounds 1-3)
 
@@ -207,10 +214,10 @@ The Notebook like Notion (round 4)
 - [ ] **One filter line.** The search box's menu offers Kind, Folder, Has a question, Edited, and the sorts Last edited and Title A-Z; what is on shows as one line of text under the box with Clear; the old Filters form and the Days / Pages / Places / Threads / Questions / All tab row are gone (S27).
 - [ ] **The page.** The page is centred, at most 720 px of text, with its path above; under the title its properties are Folders and Edited and nothing else; there is no toolbar above the text (S28, 6e30).
 - [ ] **Writing.** / on an empty line opens the block menu (text, headings, lists, to-do, quote, divider, table, scripture, word, question, Saved thing, page); selecting text shows a bar with bold, italic, heading, link, highlight; Ctrl+Z and Ctrl+Y undo and redo typing in the page and do not open the command box (S29, bd7b); Enter makes a new line (c940); a new block has no border or box (6ed1); leaving a scripture block does not scroll the page (65b1).
-- [ ] **The page's ⋯** holds Full width, Small text, Pin, Move to…, Copy link, Make a document…, Delete, and nothing else; the Notebook has no ⋯ of its own, and Today's page, What it opens with, Places open in and the Quick capture key are in Settings › Notebook (S31, [settings](../settings/README.md)).
+- [ ] **The page's ⋯** holds Full width, Small text, Pin, Move to…, Copy link, Make a document…, Find scripture… ([tether](../tether/README.md) TG-12, accepted 2026-11-17), Delete, and nothing else; the Notebook has no ⋯ of its own, and Today's page, What it opens with, Places open in and the Quick capture key are in Settings › Notebook (S31, [settings](../settings/README.md)).
 - [ ] **Several pages.** Shift click or Ctrl click chooses rows; the bar says "3 chosen" with Move to…, Pin and Delete; Delete shows one toast with one Undo for 30 seconds and each page then waits 7 days in the Trash (S32, [trash](../trash/README.md) T10).
-- [ ] *(format)* **A title field.** The title is its own field above the body; changing it rewrites `[[links]]` to the page as `wb note relink` does; a page with no `title:` shows its first line as the title and is not rewritten until edited (S28).
-- [ ] *(format)* **Side by side.** At Full width two blocks dragged beside each other make two columns; in a pane narrower than 700 px they stack in reading order; the file reads top to bottom (S30).
+- [ ] **A title field.** The title is its own field above the body, kept as `title:` in the page's front matter; changing it rewrites `[[links]]` to the page as `wb note relink` does; a page with no `title:` shows its first line as the title and is not rewritten until edited; a page whose `title:` and first line differ shows the field and is reported by `wb study check` (S28, L-21).
+- [ ] **Side by side.** At Full width two blocks dragged beside each other make two columns, kept as comment markers in the page's Markdown; in a pane narrower than 700 px they stack in reading order; the file reads top to bottom; with one marker deleted by hand the blocks are read as plain blocks and nothing is lost (S30, L-23).
 - [ ] **Among other tabs, floating, narrow.** As one of ten tabs the Notebook keeps its list and page; floated, the list folds to the path above the page under 560 px; in a 420 px column the list is a path that opens over the page, and the title, properties and text keep their order (S33, S34, S35).
 - [ ] **Years of study.** With 412 pages (forty loose), 140 folders and 86 margin notes the side list opens inside the list budget of `npm run measure`; Pages shows its newest 20 and "Show all"; a filter line answering 23 of 412 says "23 of 412"; typing in a page of 400 blocks stays inside the typing budget (S36, 0960).
 - [ ] **The reader's place is kept.** From Numbers 25:11 in the reader, K, saving, opening the Library, opening that save from its row and going back returns to the Library row it was opened from; closing the Library leaves the reader at Numbers 25:11 at the same scroll position. A reference clicked inside a page opens the verse, and Back returns to the same block of the page.
@@ -219,9 +226,11 @@ The Notebook like Notion (round 4)
   - `wb folder new | rename | move | list | rm` as the new name for the `wb shelf` folder commands (as `wb page` is `wb note`), plus `wb folder color` and `wb folder shown` ([threads](../threads/README.md));
   - `wb find --kind page | save | question | margin`, `--folder <name>`, `--has-question`, `--edited <since>`, `--sort edited | title` (the one search and the filter line);
   - `wb page duplicate <id>`, `wb page link <id>` (prints the `[[link]]` Copy link copies), `wb page rm <id> <id> …`, `wb page move <id> <id> … --parent <id>`, `wb page pin <id> <id> …`;
-  - `wb page look <id> --full-width on | off --small-text on | off` *(format)*;
+  - `wb page look <id> --full-width on | off --small-text on | off` (kept in `settings/pages.json`, L-25);
   - Open beside the reader is a window action: `wb do "open page <id> beside"`.
-- [ ] **The study files.** Until "Needs the person" is answered nothing is written in a new form: folders are today's sets (`wb set`), pages are today's files with the first line as the title.
+- [ ] **Folders in set files.** A page put in two folders is listed in both folders' set files and its file does not move; a folder nested in another has the parent field in its set file; a page file deleted by hand leaves its folder showing nothing broken, and `wb study check` reports the dangling item (L-22, L-3).
+- [ ] **A saved sitting.** Saving a sitting writes one set item of the sitting kind pointing into `history/`; opening it from the folder shows the sitting (L-24, L-4).
+- [ ] **The study files.** New forms are only L-21 to L-25: `title:` in front matter, membership and a parent field in set files, column markers in Markdown, a sitting item kind, per-page view choices in `settings/pages.json`. Old files are read as they are (pages with the first line as the title, today's sets) and are not rewritten by reading. No file of the person's is moved by this build: any move into a new form happens once, designed, tried on a scratch copy after a hashed backup (`scripts/backup-study.ps1`), with the person's go-ahead.
 
 
 ## Out of scope / later
