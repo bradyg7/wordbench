@@ -973,6 +973,9 @@ pub fn scripture_fence_text(f: &ScriptureFence) -> String {
     if f.ylt {
         out += "ylt\n";
     }
+    if f.marks {
+        out += "marks\n";
+    }
     out + "```"
 }
 
@@ -998,7 +1001,7 @@ pub fn scripture(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
                     v["label"] = p["label"].clone();
                     v["verses"] = p["verses"].clone();
                     if f.marks {
-                        crate::margin::add_dots(bible, store, &mut v["verses"])?;
+                        crate::margin::add_dots(bible, store, &mut v["verses"], &id)?;
                     }
                 }
                 Err(e) => v["error"] = json!(e.0),

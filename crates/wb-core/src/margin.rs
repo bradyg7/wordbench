@@ -515,7 +515,7 @@ fn saves_in(store: &Store) -> Vec<Anchor> {
 }
 
 /// Per verse of a chapter, from the files and the index: margin notes, notes on the passage around, pages, saves, marks.
-fn counts(bible: &Bible, store: &Store, code: &str, ch: u32) -> Result<HashMap<u32, Counts>> {
+fn counts(bible: &Bible, store: &Store, code: &str, ch: u32, exclude: Option<&str>) -> Result<HashMap<u32, Counts>> {
     let last = bible.last_verse(code, ch)?;
     let mut by: HashMap<u32, Counts> = HashMap::new();
     let line = |text: &str| -> String { nb::title_of(text).chars().take(80).collect() };
@@ -541,6 +541,9 @@ fn counts(bible: &Bible, store: &Store, code: &str, ch: u32) -> Result<HashMap<u
     }
     // chapter notes are on the chapter's top, not on every verse
     for (id, e, _, _) in pageindex::naming(bible, store, code, (ch, 0), (ch, u32::MAX)) {
+        if exclude == Some(id.as_str()) {
+            continue;
+        }
         for x in e.spans.iter().filter(|x| x.code == code && x.lo <= (ch, u32::MAX) && (ch, 0) <= x.hi) {
             let (a, b) = (if x.lo.0 < ch { 1 } else { x.lo.1.max(1) }, if x.hi.0 > ch { last } else { x.hi.1.min(last) });
             for v in a..=b {
@@ -580,7 +583,7 @@ pub fn chapter(bible: &Bible, store: &Store, code: &str, ch: u32) -> Result<Valu
             j
         })
         .collect();
-    let verses: serde_json::Map<String, Value> = counts(bible, store, code, ch)?
+    let verses: serde_json::Map<String, Value> = counts(bible, store, code, ch, None)?
         .into_iter()
         .filter(|(_, c)| c.notes + c.around + c.pages + c.saves + c.marks > 0)
         .map(|(v, c)| (v.to_string(), json!({"notes": c.notes, "around": c.around, "pages": c.pages, "saves": c.saves, "marks": c.marks, "lines": c.lines})))
@@ -642,7 +645,7 @@ pub fn verse(bible: &Bible, store: &Store, place: &str, all_rows: bool) -> Resul
         }
         groups = by.into_iter().map(|(f, p)| json!({"folder": f, "count": p.len(), "pages": p.into_iter().take(if all_rows { usize::MAX } else { 20 }).collect::<Vec<_>>()})).collect();
     }
-    let k = counts(bible, store, &code, c)?.remove(&v).unwrap_or_default();
+    let k = counts(bible, store, &code, c, None)?.remove(&v).unwrap_or_default();
     let mut years: Vec<(String, usize)> = vec![];
     for n in &own {
         let y = n.written.get(..4).unwrap_or("").to_string();
@@ -723,13 +726,13 @@ pub fn rows(bible: &Bible, store: &Store) -> Vec<Value> {
 }
 
 /// Add a dot to each verse of a scripture block that has a margin note, a page or a save (M6, M7).
-pub fn add_dots(bible: &Bible, store: &Store, verses: &mut Value) -> Result<()> {
+pub fn add_dots(bible: &Bible, store: &Store, verses: &mut Value, host: &str) -> Result<()> {
     let mut cache: HashMap<(String, u32), HashMap<u32, Counts>> = HashMap::new();
     for v in verses.as_array_mut().into_iter().flatten() {
         let (Some(code), Some(c), Some(n)) = (v["code"].as_str().map(String::from), v["c"].as_u64(), v["v"].as_u64()) else { continue };
         let key = (code.clone(), c as u32);
         if !cache.contains_key(&key) {
-            cache.insert(key.clone(), counts(bible, store, &code, c as u32)?);
+            cache.insert(key.clone(), counts(bible, store, &code, c as u32, Some(host))?);
         }
         if let Some(k) = cache[&key].get(&(n as u32)) {
             if k.notes + k.around + k.pages + k.saves > 0 {

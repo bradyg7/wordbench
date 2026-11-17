@@ -819,14 +819,14 @@ impl Store {
     }
 
     /// A thought with no place yet, into the Inbox; a question (`question`) waits there to be placed and answered.
-    /// Same front matter as a note, with an empty anchor (so the Python app passes over it) and kind "jot" or "question".
+    /// Front matter like a note's but with no `anchor` (a page has no place, marks 2026-11-12) and kind "jot" or "question".
     pub fn jot(&mut self, text: &str, question: bool) -> Result<Rec> {
         let text = text.trim();
         if text.is_empty() {
             return Err(bad("Write the thought first."));
         }
         let kind = if question { "question" } else { "jot" };
-        let meta = json!({"id": new_id(if question { "q" } else { "n" }), "anchor": "", "kind": kind, "quote": "", "strong": "", "created": now(), "updated": now()});
+        let meta = json!({"id": new_id(if question { "q" } else { "n" }), "kind": kind, "quote": "", "strong": "", "created": now(), "updated": now()});
         let meta = meta.as_object().unwrap().clone();
         self.put(&self.inbox_path(&s(&meta, "id")), &dump_md(&meta, text))?;
         let mut n = meta;
@@ -1061,7 +1061,7 @@ impl Store {
         if text.is_empty() {
             return Err(bad("A note needs some text."));
         }
-        let meta = json!({"id": new_id("n"), "anchor": "", "kind": "thread", "quote": "", "strong": "", "threads": [thread_id], "created": now(), "updated": now()});
+        let meta = json!({"id": new_id("n"), "kind": "thread", "quote": "", "strong": "", "threads": [thread_id], "created": now(), "updated": now()});
         let meta = meta.as_object().unwrap().clone();
         self.put(&self.on_thread_path(&s(&meta, "id")), &dump_md(&meta, text))?;
         let mut n = meta;
@@ -1250,11 +1250,11 @@ impl Store {
             }
             None if was_q => {
                 let status = if s(&old, "status") == "done" { "done" } else { "open" };
-                json!({"id": id, "anchor": "", "kind": "question", "quote": "", "strong": "", "status": status, "created": old["created"], "updated": now()})
+                json!({"id": id, "kind": "question", "quote": "", "strong": "", "status": status, "created": old["created"], "updated": now()})
             }
             None => {
                 let kind = if threads.is_empty() { "jot" } else { "thread" };
-                json!({"id": id, "anchor": "", "kind": kind, "quote": "", "strong": "", "created": old["created"], "updated": now()})
+                json!({"id": id, "kind": kind, "quote": "", "strong": "", "created": old["created"], "updated": now()})
             }
         }
         .as_object()

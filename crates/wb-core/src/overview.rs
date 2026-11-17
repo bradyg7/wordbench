@@ -44,7 +44,7 @@ pub fn page(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
             return (0, "title".into());
         }
         match blocks.iter().position(|b| at >= b.start && at <= b.end) {
-            Some(k) => (k + 1, if blocks[k].kind == "fence" { "block".into() } else { format!("¶{}", k + 1) }),
+            Some(k) => (k + 1, if blocks[k].kind == "fence" { if scripture_fence(&sub(&c, blocks[k].start, blocks[k].end)).is_some() { "scripture block".into() } else { "block".into() } } else { format!("¶{}", k + 1) }),
             None => (0, "title".into()),
         }
     };
