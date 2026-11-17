@@ -285,32 +285,29 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
             .chain(store.on_thread())
             .map(|r| (s(r, "id"), crate::notebook::page_title(r)))
             .collect();
-        let mut every: Vec<(String, Value)> = vec![];
-        let mut put = |folder: String, mut i: Value| {
-            let label = cheap_label(bible, &titles, &i);
-            i["label"] = json!(label);
-            every.push((folder, i));
+        let mut every = 0usize;
+        let mut take = |folder: &str, i: &Value| {
+            every += 1;
+            let label = cheap_label(bible, &titles, i);
+            if cutoff.is_none() && has(&format!("{label} {}", s_of(i, "ref"))) {
+                rows.push(json!({"kind": "save", "id": i["key"], "title": label, "type": i["kind"], "ref": i["ref"], "folder": folder, "updated": ""}));
+            }
         };
         for t in store.sets() {
             if folder_id.as_ref().is_some_and(|id| *id != s(&t, "id")) {
                 continue;
             }
-            for i in t["items"].as_array().cloned().unwrap_or_default() {
-                put(s(&t, "name"), i);
+            let name = s(&t, "name");
+            for i in t["items"].as_array().into_iter().flatten() {
+                take(&name, i);
             }
         }
         if in_folder.is_none() {
             for i in store.shelf_saves() {
-                put(String::new(), i);
+                take("", &i);
             }
         }
-        all_total += every.len();
-        for (folder, i) in every {
-            let label = s_of(&i, "label");
-            if has(&format!("{label} {}", s_of(&i, "ref"))) && cutoff.is_none() {
-                rows.push(json!({"kind": "save", "id": i["key"], "title": label, "type": i["kind"], "ref": i["ref"], "folder": folder, "updated": ""}));
-            }
-        }
+        all_total += every;
         out_groups.push(("save".into(), rows));
     }
     lap("before question");
@@ -327,15 +324,13 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     }
     lap("before margin");
     if want("margin") {
-        let notes = crate::margin::rows(bible, store);
-        all_total += notes.len();
-        let rows = notes
-            .into_iter()
-            .filter(|e| has(&format!("{} {}", e["title"].as_str().unwrap_or(""), e["snippet"].as_str().unwrap_or(""))))
-            .filter(|e| !f.has_question || e["question"] == true)
-            .filter(|e| cutoff.as_ref().is_none_or(|c| e["updated"].as_str().unwrap_or("") >= c.as_str()))
-            .filter(|_| in_folder.is_none())
-            .collect();
+        let (rows, n) = crate::margin::rows(bible, store, |label, text, written| {
+            in_folder.is_none()
+                && has(&format!("{label} {text}"))
+                && (!f.has_question || crate::questions::question_of(text).is_some())
+                && cutoff.as_ref().is_none_or(|c| written >= c.as_str())
+        });
+        all_total += n;
         out_groups.push(("margin".into(), rows));
     }
     lap("before highlight");

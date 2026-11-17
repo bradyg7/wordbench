@@ -769,11 +769,16 @@ pub fn list(bible: &Bible, store: &Store, book: Option<&str>, map: bool) -> Resu
 }
 
 /// The margin notes as the one search lists them (`wb find --kind margin`): `{kind, id, title, snippet, updated}`.
-pub fn rows(bible: &Bible, store: &Store) -> Vec<Value> {
-    snapshot(bible, store)
-        .iter()
-        .map(|n| json!({"kind": "margin", "id": n.id, "title": n.at.label(bible), "snippet": n.text, "updated": n.written, "at": n.at.id(), "question": question_of(&n.text).is_some()}))
-        .collect()
+pub fn rows(bible: &Bible, store: &Store, mut keep: impl FnMut(&str, &str, &str) -> bool) -> (Vec<Value>, usize) {
+    let all = snapshot(bible, store);
+    let mut out = vec![];
+    for n in all.iter() {
+        let label = n.at.label(bible);
+        if keep(&label, &n.text, &n.written) {
+            out.push(json!({"kind": "margin", "id": n.id, "title": label, "snippet": n.text, "updated": n.written, "at": n.at.id(), "question": question_of(&n.text).is_some()}));
+        }
+    }
+    (out, all.len())
 }
 
 /// Add a dot to each verse of a scripture block that has a margin note, a page or a save (M6, M7).
