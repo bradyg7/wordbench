@@ -12,6 +12,7 @@
 // in place; pages sit inside pages (the path above the title, "Pages inside" under it). A wide Notebook has the sidebar
 // (sheet W1.1): Today, Pinned, the Pages tree (drag a page before, after or inside another), At the reader, Threads,
 // Questions, and the Trash at its foot. A narrow one keeps its row of sections, and its Pages section is the tree.
+import { kindButton, kindResults, marginRow } from './kinds';
 import { overviewBox } from './overview';
 import { wb } from './api';
 import './notebook.css';
@@ -442,6 +443,7 @@ function createNotebookSession(fixed?: PageTab) {
     input.placeholder = 'Search every page';
     input.setAttribute('aria-label', 'Search every page');
     input.value = search;
+    f.append(kindButton(() => kind, () => search, k => { kind = k; void pane?.refresh?.(); }));
     let t = 0;
     input.oninput = () => { clearTimeout(t); t = window.setTimeout(() => { search = input.value; void pane?.refresh?.(); }, 220); };
     input.onkeydown = e => { if (e.key === 'Escape' && input.value) { e.stopPropagation(); input.value = ''; search = ''; void pane?.refresh?.(); } };
@@ -469,8 +471,10 @@ function createNotebookSession(fixed?: PageTab) {
     return b;
   }
 
+  let kind = '';
   async function drawList(): Promise<HTMLElement[]> {
     const head = listHead(false);
+    if (kind) return [head, await kindResults(kind, search, { openPage: id => void openNote(id) })];
     if (search.trim()) return [head, searchResults(await wb(listArgs()))];
     const out = [head, sectionsRow()];
     // Pages (W3): the tree, Pinned first.
@@ -864,6 +868,7 @@ function createNotebookSession(fixed?: PageTab) {
       return [rail];
     }
     const top = listHead(true);
+    if (kind) return [top, await kindResults(kind, search, { openPage: id => void openNote(id) })];
     if (search.trim()) {
       return [top, searchResults(await wb(listArgs()))];
     }
@@ -923,6 +928,7 @@ function createNotebookSession(fixed?: PageTab) {
         side.append(tr);
       }
     }
+    side.append(await marginRow());
     const foot = h('div', 'nb-side-foot');
     const tbtn = button('link-btn nb-side-link nb-side-templates', 'Templates', () => showTemplates(), 'notebook');
     tbtn.title = 'Your templates: pages that new pages start from';

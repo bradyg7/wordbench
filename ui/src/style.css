@@ -315,3 +315,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .sv-dot { display: inline-block; width: 8px; height: 8px; margin: 0 3px; padding: 0; border: 1.5px solid var(--accent); border-radius: 50%; background: none; vertical-align: middle; cursor: pointer; }
 .sv-dotcard { margin: 4px 0 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: var(--type-interface); }
 .sv-dotline { margin-top: 2px; }
+
+.nb-kind { flex: none; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.nb-kind-line { margin: 4px 8px; }
+.mgl { margin: 6px 0; }
+.mgl-sum { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 8px; font: var(--type-interface); }
+.mgl-book > summary, .mgl-chapter > summary { cursor: pointer; padding: 3px 8px 3px 16px; }
+.mgl-chapter > summary { padding-left: 28px; }
+.mgl-note { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 3px 8px 3px 40px; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.mgl-verse { font-size: 13px; }
