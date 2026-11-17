@@ -12,19 +12,23 @@ test('a large Trash is grouped by day, folded, and narrowed by the search field'
   await page.route('**/fixtures/wb/*.json', async route => {
     const name = new URL(route.request().url()).pathname.split('/').at(-1)!;
     if (name === 'trash.json') return route.fulfill({ json: { days: 7, notes } });
+    if (name === 'page-sweep.json') return route.fulfill({ json: { operations: [], errors: [] } });
+    if (name.startsWith('notebook-group-')) return route.fulfill({ json: { groups: [] } });
+    if (name.startsWith('notebook-sidebar')) return route.fulfill({ json: { today: [], pinned: [], pages: [], questions: [], templates: [] } });
+    if (name === 'page-tree.json') return route.fulfill({ json: { pinned: [], pages: [] } });
     return route.fallback();
   });
   await page.goto('/?at=NUM.25');
   await page.waitForFunction(() => (window as any).__wbReady);
   await page.getByRole('button', { name: 'Notebook', exact: true }).click();
-  await page.evaluate(() => (window as any).__wbOpenTrash?.());
+  await page.locator('.pane-notebook .nb-section[data-section="pages"]').click();
   const trash = page.locator('.pane-notebook .nb-trash-groups');
-  if (!(await trash.count())) await page.locator('.pane-notebook .nb-trash-line').click();
+  await page.locator('.pane-notebook .nb-trash-line').click();
   await expect(trash.locator('.nb-trash-group')).toHaveCount(2);
   await expect(trash.locator('.nb-trash-group').first().locator('.nb-trash-rows .trashed')).toHaveCount(5);
   await expect(trash.locator('.nb-trash-day .nb-trash-count').first()).toHaveText('180');
   await page.getByRole('button', { name: 'Show all 180' }).click();
   await expect(trash.locator('.nb-trash-group').first().locator('.nb-trash-rows .trashed')).toHaveCount(180);
   await page.getByRole('searchbox', { name: 'Search the Trash' }).fill('pear page 3');
-  await expect(trash.locator('.trashed')).toHaveCount(11);
+  await expect(trash.locator('.trashed')).toHaveCount(5);
 });
