@@ -17,7 +17,7 @@ The board and its PDF hold only these windows. Superseded ones are left off the 
 | Today | R1 |  |
 | A click and a right click | R2, R3 (A, chosen) | R4, R5 (B, rejected) |
 | The margin and one switch | R6, R7 (C, chosen; extended by [marks](../marks/README.md) M25-M28) |  |
-| A second reader; a verse alone | R8, R9 (need more design; R9 overlaps [words](../words/README.md) W4) |  |
+| A second reader; a verse alone | R8 (needs more design) | R9 (by [words](../words/README.md) W4, the person's option B, 2026-11-16) |
 
 ## What exists today (in code, 2026-11-11)
 
@@ -56,7 +56,7 @@ The board and its PDF hold only these windows. Superseded ones are left off the 
 - **C** (R6, R7): what the person wrote sits in a margin beside its verse, names only (a page, a question, a
   thread's name), each a link; one Highlights/marks panel with an eye for every kind of mark, the margin included.
 - **R8**: the second reader with the same navigation and version switch, smaller type, Send to reader.
-- **R9**: a verse opened alone, with Interlinear / Strong's / Definitions tabs and Read the chapter.
+- **R9**: a verse opened alone, with Interlinear / Strong's / Definitions tabs and Read the chapter. Superseded 2026-11-16 by [words](../words/README.md) W4 (the person chose B; decided by overseer from existing decisions).
 
 A and B are alternatives for click/selection; C can go with either.
 
@@ -72,12 +72,12 @@ A and B are alternatives for click/selection; C can go with either.
 
 ## Open questions
 
-- Should a plain click on a *word* still open its sheet, or only the right click / hover?
+- ~~Should a plain click on a *word* still open its sheet?~~ Yes: the word card, or the Concordance by the Reading setting ([words](../words/README.md) W-2, decided by overseer from existing decisions, 2026-11-16); struck.
 - C: is a margin the "layer" 5a80 means, or should marks drawn by hand (circles, free underlines) be a later round?
 - Which marks get an eye (R7), and is the margin one of them?
 - Save (K) and Thread in the menu follow [library](../library/README.md) and [threads](../threads/README.md);
   does Thread stay in the menu at all?
-- R9: is a verse opened alone a tab of its own, or the verse sheet made larger? (round 2, with R8)
+- ~~R9: is a verse opened alone a tab of its own, or the verse sheet made larger?~~ Words W4 is that design (2026-11-16); struck. R8 stays for round 2.
 - Round 2: A in detail (the menu on a selection of words, the colors after a drag) with C's margin; R8 and R9 further.
 
 ## Rounds

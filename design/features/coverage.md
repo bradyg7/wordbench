@@ -12,7 +12,7 @@ A new button or command gets a row here, and its folder, before it is built.
 
 | Area | Buttons and parts | Design | State |
 |---|---|---|---|
-| What every panel looks like | a tab's top, the way back, buttons, text roles, foot | [panels](panels/README.md) | accepted |
+| What every panel looks like | a tab's top, the way back, buttons, text roles, foot | panels (no folder exists; the dead link is removed 2026-11-16) | accepted |
 | Panes, tabs, minimizing, full screen | tab strips, minimize, Full screen, Present | [minimize](minimize/README.md) | accepted (round 7; Present exploring) |
 | The side rail | one icon per kind of pane, its menus, Show names | [minimize](minimize/README.md) | building (the rail; its menus exploring) |
 | The trail (history of tabs) | drawer, line under the top bar | [minimize](minimize/README.md), [command](command/README.md) C13-C16 | building |
@@ -28,7 +28,7 @@ A new button or command gets a row here, and its folder, before it is built.
 | Marks: what the text shows of yours | on the words, in the margin, a passage with its marks | [marks](marks/README.md) | exploring |
 | Questions | asking, the list, answering | [questions](questions/README.md) | exploring |
 | Day page, journal, inbox | Today optional; Inbox removed (minimize round 5) | [library](library/README.md) | exploring |
-| Search, uses, count, near, forms | asking and narrowing a search | [search](search/README.md) | exploring |
+| Search, uses, count, near, forms | asking and narrowing a search; the [Concordance](concordance/README.md) hosts uses, count, forms and near for an entry and reuses search's controls | [search](search/README.md) | exploring |
 | Reading plans and the reading log | a plan's day, starting a plan, what was read | [reading-plans](reading-plans/README.md) | exploring |
 | Lessons and documents (Word, PDF, Present) | the builder, the viewer, Looks | [documents](documents/README.md) | exploring |
 | Trash | Undo, the 7 days, Empty trash, the way in, deleting a block | [trash](trash/README.md) | accepted |
