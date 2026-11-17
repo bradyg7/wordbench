@@ -15,12 +15,16 @@ HERE = Path(__file__).resolve().parent
 LIB = HERE.parents[1]
 sys.path.insert(0, str(LIB))
 sys.path.insert(0, str(HERE.parent / "minimize"))
+sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE.parent / "words"))
 
 import build as B  # noqa: E402
 import figlib as F  # noqa: E402
 import parts as P  # noqa: E402
 import phase2b as Q  # noqa: E402
 import minimize as M  # noqa: E402  (the rail, the top bar, folder tabs, the trail line)
+import kit as K  # noqa: E402
+import words as WD  # noqa: E402  (words' verse card and phone sheet, C-10)
 from figlib import S, col, frame, icon, para, row, shadow, spacer, text  # noqa: E402
 
 W, H, TB = Q.W, Q.H, Q.TB
@@ -34,12 +38,128 @@ STRONG = json.loads((D / "strong-entries.json").read_text(encoding="utf-8"))
 ILIN = json.loads((D / "interlinear-num25-11-12.json").read_text(encoding="utf-8"))
 
 
-def book(f, x, w, tab, h=H - TB, y=TB, query="zeal"):
-    """The Concordance pane: its strip, the navigator (search, the four tabs, A to Z), and its page."""
+# ---- data: fetched with wb (python concordance.py --fetch), never edited by hand --------------------------------------
+def wb(*args):
+    import os
+    repo = LIB.parent
+    exe = repo / "target" / "release" / "wb.exe"
+    if not exe.exists():
+        exe = repo / "target" / "debug" / "wb.exe"
+    env = dict(os.environ)
+    env.setdefault("WB_BIBLE_DB", str(repo.parent / "bible-workbench" / "datasets" / "workbench.db"))
+    env.setdefault("WB_STUDY_DIR", str(Path(os.environ.get("TEMP", ".")) / "wb-concordance-empty"))
+    Path(env["WB_STUDY_DIR"]).mkdir(exist_ok=True)
+    out = subprocess.run([str(exe), *args], capture_output=True, text=True, encoding="utf-8", env=env, check=True)
+    return out.stdout
+
+
+def occurrences(row_):
+    """One entry per marked word of a verse (so counted per occurrence): six words either side, as the older sheets."""
+    ws = row_["words"]
+    res = []
+    for k, w in enumerate(ws):
+        if not w["m"]:
+            continue
+        lo = max(0, k - 6)
+        before = "".join(x["lead"] + x["t"] + x["trail"] for x in ws[lo:k]) + w["lead"]
+        after = "".join(x["lead"] + x["t"] + x["trail"] for x in ws[k + 1:k + 7]).rstrip()
+        res.append({"ref": f"{row_['ref']['name']} {row_['ref']['c']}:{row_['ref']['v']}", "code": row_["ref"]["code"],
+                    "b": row_["ref"]["b"], "c": row_["ref"]["c"], "v": row_["ref"]["v"], "i": w["i"],
+                    "word": w["t"] + w["trail"].strip(), "before": before, "after": after, "pre": lo > 0,
+                    "post": k + 7 < len(ws)})
+    return res
+
+
+def uses_all(term):
+    """Every page of `wb uses <term> --offset N`: the totals and the places, per occurrence."""
+    rows, off, head = [], 0, None
+    while True:
+        d = json.loads(wb("uses", term, "--offset", str(off)))
+        head = head or d
+        rows += d["rows"]
+        if not d["more"]:
+            break
+        off += len(d["rows"])
+    occ = [o for r in rows for o in occurrences(r)]
+    return {"command": f"wb uses {term} (every page, --offset)", "occurrences": head["occurrences"],
+            "verses": head["verses"], "by_book": head["by_book"], "rows": occ}
+
+
+def fetch():
+    D.mkdir(exist_ok=True)
+    out = {n: uses_all(n) for n in ("H7068", "G2205")}
+    for n, v in out.items():
+        assert len(v["rows"]) == v["occurrences"], (n, len(v["rows"]), v["occurrences"])
+    (D / "uses-H7068-G2205.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    h = uses_all("heart")
+    assert len(h["rows"]) == h["occurrences"], (len(h["rows"]), h["occurrences"])
+    per = {}
+    for o in h["rows"]:
+        per.setdefault(str(o["b"]), []).append(o)
+    assert {k: len(v) for k, v in per.items()} == {k: v for k, v in h["by_book"].items()}
+    # the number of the original word, from wb word, for the first four places of the first six books (the ones drawn)
+    for k in list(per)[:6]:
+        for o in per[k][:4]:
+            w = json.loads(wb("word", o["code"], str(o["c"]), str(o["v"]), str(o["i"])))
+            o["strong"] = w["strong"]
+    h["groups"] = {k: {"count": len(v), "first": v[:4]} for k, v in per.items()}
+    del h["rows"]
+    (D / "uses-heart.json").write_text(json.dumps(h, ensure_ascii=False, indent=1), encoding="utf-8")
+    small = {}
+    for t in ("and", "the", "of"):
+        d = json.loads(wb("uses", t))
+        small[t] = {"command": f"wb uses {t} (first page)", "occurrences": d["occurrences"], "verses": d["verses"],
+                    "refs": [f"{r['ref']['name']} {r['ref']['c']}:{r['ref']['v']}" for r in d["rows"]]}
+    (D / "uses-small-words.json").write_text(json.dumps(small, ensure_ascii=False, indent=1), encoding="utf-8")
+    # the verse opened from the first place line of H7068 (C15), the reader's verses beside it, and its interlinear
+    first = out["H7068"]["rows"][0]
+    key = f"{first['code']} {first['c']}:{first['v']}"
+    slug = f"{first['code'].lower()}{first['c']}-{first['v']}"
+    (D / f"text-{slug}.json").write_text(json.dumps({"command": f'wb text "{key}"', "output": wb("text", key)},
+                                                    ensure_ascii=False, indent=1), encoding="utf-8")
+    il = json.loads(wb("interlinear", key))
+    (D / f"interlinear-{slug}.json").write_text(json.dumps({
+        "command": f'wb interlinear "{key}" (verses[].words[]: original, strong, gloss)',
+        "verses": [{"c": v["c"], "v": v["v"], "text": v["text"],
+                    "words": [{k: w[k] for k in ("original", "strong", "gloss")} for w in v["words"]]}
+                   for v in il["verses"]]}, ensure_ascii=False, indent=1), encoding="utf-8")
+    rng = f"{first['code']} {first['c']}:{first['v'] - 2}-{first['v'] + 2}"
+    (D / f"text-{first['code'].lower()}{first['c']}-reader.json").write_text(
+        json.dumps({"command": f'wb text "{rng}"', "output": wb("text", rng)}, ensure_ascii=False, indent=1),
+        encoding="utf-8")
+    print("fetched")
+
+
+
+def fetch6():
+    """Round 6 (picking a word, a letter after a search, numbers and sounds in the box): wb answers, never typed."""
+    D.mkdir(exist_ok=True)
+    letters = {}
+    for ch in "abcdefghijklmnopqrstuvwxyz":
+        d = json.loads(wb("forms", ch))
+        letters[ch] = {"words": len(d["forms"]), "places": d["total"]}
+    j = json.loads(wb("forms", "j"))
+    out = {"command": "wb forms <letter> for a to z (words = forms listed, places = total); the first 60 forms of j",
+           "letters": letters, "j": j["forms"][:60]}
+    (D / "letters-forms.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    sug = {"command": "wb define H7068 / wb define kanna / wb forms zealous / wb lexiconc zealous",
+           "number": json.loads(wb("define", "H7068")), "sound": json.loads(wb("define", "kanna")),
+           "zealous": json.loads(wb("forms", "zealous")), "lexiconc_zealous": json.loads(wb("lexiconc", "zealous"))}
+    (D / "box-suggestions.json").write_text(json.dumps(sug, ensure_ascii=False, indent=1), encoding="utf-8")
+    print("fetched round 6")
+
+
+def book(f, x, w, tab, h=H - TB, y=TB, query="zeal", tabs=("Concordance",), active="Concordance", back=False,
+         letter=None, off=()):
+    """The Concordance pane: its strip, the navigator (search, the four tabs, A to Z), and its page. back: the tab's own
+    back button (round 4: a picked word opens in a new tab that copies the old tab's history); letter and off: a letter
+    clicked after a search, and the letters with no words (they cannot be clicked)."""
     cp = frame(f, "concordance", x=x, y=y, w=w, h=h, fill="surface", layout="vertical", W="fixed", H="fixed", clip=True)
-    M.folder_strip(cp, ["Concordance"], "Concordance")
+    M.folder_strip(cp, list(tabs), active)
     nav = row(cp, "navigator", gap=10, pad=[10, 16, 10, 16], W="fill", stroke="line", strokeBottomWeight=1,
               strokeTopWeight=0, strokeLeftWeight=0, strokeRightWeight=0)
+    if back:
+        P.icon_button(nav, "left", "fg", size=34, icon_size=18, stroke="line")
     fld = P.field(nav, "Word, number or sound", query, icon_name="search", height=34, W="fixed")
     S.do("node.set", {"ids": [fld], "props": {"width": 240}}, ref=False)
     P.segmented(nav, ["English", "Hebrew", "Greek", "Interlinear"], tab, W="hug")
@@ -49,8 +169,12 @@ def book(f, x, w, tab, h=H - TB, y=TB, query="zeal"):
         for ch in ("ABCDEFGHIJKLMNOPQRSTUVWXYZ" if tab == "English" else
                    "א ב ג ד ה ו ז ח ט י כ ל מ נ ס ע פ צ ק ר ש ת".split() if tab == "Hebrew" else
                    "Α Β Γ Δ Ε Ζ Η Θ Ι Κ Λ Μ Ν Ξ Ο Π Ρ Σ Τ Υ Φ Χ Ψ Ω".split() if tab == "Greek" else []):
-            on = ch in ("Z", "ק", "Ζ")
-            text(az, ch, "caption", "accent" if on else "muted")
+            # English: the letter of the word shown; Hebrew and Greek: the letter of the open entry's word
+            on = (ch == (letter or query[:1]).upper()) if tab == "English" else ch in ("ק", "Ζ")
+            if ch in off:
+                text(az, ch, "caption", "muted", opacity=0.35)
+            else:
+                text(az, ch, "caption", "accent" if on else "muted")
     return cp
 
 
@@ -72,19 +196,33 @@ def lines(parent, word, rows, hit=None):
         text(r, ln["strong"] or "·", "caption", "accent")
 
 
-def entry(parent, n, on=False, full=True):
+def save_mark(parent, on, label=True):
+    """Library S5's mark (the bookmark; library.py keep_button), labelled Save: filled and 'Saved' once it is."""
+    b = row(parent, "save", gap=6, pad=[5, 10, 5, 8] if label else [4, 4, 4, 4], radius=8,
+            fill="accentSoft" if on else "surface", stroke="accent" if on else "line", sw=1)
+    icon(b, "bookmark", 16 if label else 15, "accent" if on else "muted")
+    if label:
+        text(b, "Saved" if on else "Save", "smallStrong", "accent" if on else "fg")
+    return b
+
+
+def entry(parent, n, on=False, full=True, mark=None, brief=False):
     e = STRONG[n]
     b = col(parent, f"entry/{n}", gap=4, pad=[10, 12, 10, 12], radius=10, W="fill",
             fill="accentSoft" if on else None, stroke="accent" if on else None, sw=1 if on else None)
     hd = row(b, "head", gap=10, W="fill", align="baseline")
     text(hd, n, "smallStrong", "accent")
     text(hd, e["lemma"], "heading", fontSize=20, lineHeight="26px")
-    text(hd, f"{e['translit']}  ·  {e['pron']}" + (f"  ·  {e['pos']}" if e.get("pos") else ""), "caption", "muted",
+    text(hd, f"{e['translit']}  ·  {e['pron']}" + (f"  ·  {e['pos']}" if e.get("pos") and full else ""), "caption", "muted",
          W="fill")
     if e.get("occurrences"):
         text(hd, f"{e['occurrences']}×", "caption", "muted")
+    if mark is not None:
+        save_mark(hd, mark)
     if full or on:
         para(b, e["definition"], "small")
+        if brief:
+            return
         if e.get("derivation"):
             text(b, re.sub(r"\[\[(\w+)\]\]", r"\1", e["derivation"]), "caption", "muted")
         if e.get("usage"):
@@ -93,6 +231,39 @@ def entry(parent, n, on=False, full=True):
             rr = row(b, "renderings", gap=6, wrap=True, W="fill")
             for x in e["renderings"]:
                 P.chip(rr, f"{x['w']} {x['n']}", "quiet")
+
+
+def switch_head(pg, caption):
+    """C7's head of every English page (C-1, C-9): the All forms / This word switch and what the page holds."""
+    hd = row(pg, "page head", gap=10, pad=[0, 0, 14, 0], W="fill")
+    P.segmented(hd, ["All forms", "This word"], "This word", W="hug")
+    text(hd, caption, "caption", "muted")
+    return hd
+
+
+def slim_bar(f, x, w, place):
+    """minimize's slim top bar with the place it shows (M.slim_bar always says Numbers 25)."""
+    bar = row(f, "top bar", gap=10, pad=[0, 12, 0, 12], fill="sunken", W="fixed", H="fixed", stroke="line",
+              strokeBottomWeight=1, strokeTopWeight=0, strokeLeftWeight=0, strokeRightWeight=0)
+    Q.put(bar, x, 0, w, TB)
+    nav = row(bar, "place", gap=2)
+    P.icon_button(nav, "left", "fg", size=32, icon_size=18)
+    pl = row(nav, "place button", gap=6, pad=[5, 10, 5, 12], radius=8, fill="surface", stroke="line", sw=1)
+    icon(pl, "book", 18, "fg")
+    text(pl, place, "bodyStrong")
+    text(pl, "KJV", "caption", "muted")
+    icon(pl, "down", 14, "muted")
+    P.icon_button(nav, "right", "fg", size=32, icon_size=18)
+    spacer(bar)
+    cmd = row(bar, "command field", gap=10, pad=[0, 10, 0, 12], fill="surface", radius=8, stroke="line", sw=1,
+              W="fixed", H="fixed")
+    Q.put(cmd, 0, 0, 520, 34)
+    icon(cmd, "search", 18, "muted")
+    text(cmd, "Search, go to a place, or type a command", "small", "muted", W="fill", maxLines=1)
+    P.kbd(cmd, "`")
+    spacer(bar)
+    frame(bar, "balance", w=170, h=8, W="fixed", H="fixed")
+    return bar
 
 
 def sheets(board):
@@ -213,28 +384,62 @@ def sheets(board):
     lines(pg, "zealous", CONC["zealous"], hit="Numbers 25:11")
     entry(pg, "H7065", on=True)
 
+HEART = json.loads((D / "uses-heart.json").read_text(encoding="utf-8"))
+SMALL = json.loads((D / "uses-small-words.json").read_text(encoding="utf-8"))
 USES = json.loads((D / "uses-H7068-G2205.json").read_text(encoding="utf-8"))
 BOOKS = {str(b["id"]): b["name"] for b in json.loads((D / "books.json").read_text(encoding="utf-8"))["books"]}
 
 
-def place_line(parent, rw):
-    r = row(parent, f"place/{rw['ref']}", gap=12, W="fill", pad=[3, 6, 3, 6])
-    t = text(r, rw["ref"], "caption", "muted", W="fixed")
-    Q.put(t, 0, 0, 120)
+def trim(rw, k):
+    """The same place with k words either side (the narrow windows)."""
+    b, a = rw["before"].split(" "), rw["after"].split(" ")
+    pre = rw["pre"] or len([x for x in b if x]) > k
+    post = rw["post"] or len([x for x in a if x]) > k
+    return " ".join(b[-(k + 1):]) if len([x for x in b if x]) > k else rw["before"], " ".join(a[:k]), pre, post
+
+
+def place_line(parent, rw, narrow=False, mark=None, hit=False, words=None):
+    """One place: its reference (which opens the verse card, C-4), the words around the marked one, its number,
+    and library's mark (C-7) when mark is on/off."""
+    r = (col if narrow else row)(parent, f"place/{rw['ref']}", gap=1 if narrow else 12, W="fill",
+                                 pad=[3, 6, 3, 6], radius=6, fill="accentSoft" if hit else None)
+    if narrow:
+        top = row(r, "ref", gap=8, W="fill")
+        text(top, rw["ref"], "caption", "accent" if hit else "muted", W="fill")
+        if rw.get("strong"):
+            text(top, rw["strong"], "caption", "accent")
+        if mark is not None:
+            save_mark(top, mark == "on", label=False)
+        before, after, pre, post = trim(rw, 3)
+    else:
+        t = text(r, rw["ref"], "caption", "accent" if hit else "muted", W="fixed")
+        Q.put(t, 0, 0, 120)
+        if words:
+            before, after, pre, post = trim(rw, words)
+        else:
+            before, after, pre, post = rw["before"], rw["after"], rw["pre"], rw["post"]
     line = row(r, "words", gap=0, W="fill")
-    text(line, ("… " if rw["pre"] else "") + rw["before"].rstrip(), "small", "fg", fontFamily=F.READ, maxLines=1)
-    text(line, (" " if rw["before"].endswith(" ") else "") + rw["word"], "smallStrong", "accent", fontFamily=F.READ)
-    text(line, " " + rw["after"] + (" …" if rw["post"] else ""), "small", "fg", fontFamily=F.READ, maxLines=1)
+    text(line, ("… " if pre else "") + before.rstrip(), "small", "fg", fontFamily=F.READ, maxLines=1)
+    text(line, (" " if before.endswith(" ") else "") + rw["word"], "smallStrong", "accent", fontFamily=F.READ)
+    text(line, " " + after + (" …" if post else ""), "small", "fg", fontFamily=F.READ, maxLines=1)
+    if not narrow:
+        if rw.get("strong"):
+            text(r, rw["strong"], "caption", "accent")
+        if mark is not None:
+            save_mark(r, mark == "on", label=False)
 
 
-def tools(parent, n):
-    t = row(parent, "place tools", gap=8, pad=[8, 0, 8, 0], W="fill")
-    P.segmented(t, ["By English word", "By book"], "By English word" if n.startswith("H") else "By book", W="hug")
+def tools(parent, n, compact=False, seg=None, total=None):
+    t = row(parent, "place tools", gap=8, pad=[8, 0, 8, 0], W="fill", wrap=compact)
+    P.segmented(t, ["By English word", "By book"],
+                seg or ("By English word" if n.startswith("H") else "By book"), W="hug")
     P.chip(t, "Whole Bible", "outline", icon_name="down")
-    nf = P.field(t, "Near a word…", None, icon_name="search", height=32, W="fixed")
-    S.do("node.set", {"ids": [nf], "props": {"width": 200}}, ref=False)
-    spacer(t)
-    text(t, f"{USES[n]['occurrences']} times in {USES[n]['verses']} verses", "caption", "muted")
+    if not compact:
+        nf = P.field(t, "Near a word…", None, icon_name="search", height=32, W="fixed")
+        S.do("node.set", {"ids": [nf], "props": {"width": 200}}, ref=False)
+        spacer(t)
+    if total is not False:
+        text(t, total or f"{USES[n]['occurrences']} times in {USES[n]['verses']} verses", "caption", "muted")
 
 
 def by_book(parent, n):
@@ -248,7 +453,28 @@ def by_book(parent, n):
         text(br, str(v), "caption", "muted")
 
 
-def entry_with_places(f, w, n, neighbours, tab, group):
+def word_key(rw):
+    return re.sub(r"[^\w]", "", rw["word"].lower())
+
+
+def word_groups(parent, n, per=4, narrow=False, marks=None, hit=None, limit=None, words=None):
+    """Grouped by English word, counted per occurrence (C-3): per lines each, then 'N more'."""
+    groups = {}
+    for rw in USES[n]["rows"]:
+        groups.setdefault(word_key(rw), []).append(rw)
+    for word, rws in list(sorted(groups.items(), key=lambda kv: -len(kv[1])))[:limit]:
+        hd = row(parent, f"group/{word}", gap=8, pad=[8, 0, 2, 0])
+        text(hd, word, "heading", fontFamily=F.READ)
+        text(hd, str(len(rws)), "caption", "muted")
+        for i, rw in enumerate(rws[:per]):
+            mk = None if marks is None else ("on" if marks == (word, i) else "off")
+            place_line(parent, rw, narrow=narrow, mark=mk, hit=(hit == (word, i)), words=words)
+        if len(rws) > per:
+            text(parent, f"   {len(rws) - per} more", "caption", "accent")
+    return {k: len(v) for k, v in groups.items()}
+
+
+def entry_with_places(f, w, n, neighbours, tab, group, saved=False, marks=None):
     M.slim_bar(f, x=w, w=W - w)
     cp = book(f, w, W - w, tab, query=n)
     body = row(cp, "body", gap=0, W="fill", H="fill", align="min")
@@ -263,20 +489,10 @@ def entry_with_places(f, w, n, neighbours, tab, group):
         text(it, e["lemma"], "small")
         text(it, e["definition"], "caption", "muted", W="fill", maxLines=1)
     main = col(body, "entry and places", gap=6, pad=[16, 22, 16, 22], W="fill", H="fill", clip=True)
-    entry(main, n, on=True)
+    entry(main, n, on=True, mark=saved)
     tools(main, n)
     if group == "word":
-        groups = {}
-        for rw in USES[n]["rows"]:
-            groups.setdefault(rw["word"].lower(), []).append(rw)
-        for word, rws in sorted(groups.items(), key=lambda kv: -len(kv[1])):
-            hd = row(main, f"group/{word}", gap=8, pad=[8, 0, 2, 0])
-            text(hd, word, "heading", fontFamily=F.READ)
-            text(hd, str(len(rws)), "caption", "muted")
-            for rw in rws[:4]:
-                place_line(main, rw)
-            if len(rws) > 4:
-                text(main, f"   {len(rws) - 4} more", "caption", "accent")
+        word_groups(main, n, marks=marks)
     else:
         two = row(main, "by book", gap=28, W="fill", align="min")
         bars = col(two, "bars", gap=4, W="fixed")
@@ -284,7 +500,20 @@ def entry_with_places(f, w, n, neighbours, tab, group):
         by_book(bars, n)
         pl = col(two, "places", gap=0, W="fill")
         for rw in USES[n]["rows"][:14]:
-            place_line(pl, rw)
+            place_line(pl, rw, mark=None if marks is None else "off")
+
+
+def group_counts(n):
+    g = {}
+    for r_ in USES[n]["rows"]:
+        g[word_key(r_)] = g.get(word_key(r_), 0) + 1
+    return g
+
+
+for _n in ("H7068", "G2205"):
+    assert group_counts(_n) == {x["w"]: x["n"] for x in STRONG[_n]["renderings"]}, (_n, group_counts(_n))
+    assert len(USES[_n]["rows"]) == USES[_n]["occurrences"] == STRONG[_n]["occurrences"], _n
+JEALOUSY = group_counts("H7068")["jealousy"]
 
 
 def round2(board):
@@ -301,23 +530,23 @@ def round2(board):
     M.slim_bar(f, x=w, w=W - w)
     cp = book(f, w, W - w, "English", query="zealous")
     pg = page(cp)
-    hd = row(pg, "page head", gap=10, pad=[0, 0, 14, 0], W="fill")
-    P.segmented(hd, ["All forms", "This word"], "This word", W="hug")
-    text(hd, "zealous · 8 places", "caption", "muted")
+    switch_head(pg, "zealous · 8 places")
     lines(pg, "zealous", CONC["zealous"])
 
     f = Q.win(r, "Round 2", "C8 · H7068 with every place, by English word",
               "Under the entry, every place it stands, grouped by how the KJV renders it (jealousy, zeal, envy ...), "
-              "the rendering marked in each line. Tools over the list: group by word or by book, narrow to part of "
-              "the Bible, near another word.")
+              f"the rendering marked in each line, counted per occurrence (jealousy {JEALOUSY}, as the entry says). Tools "
+              "over the list: group by word or by book, narrow to part of the Bible, near another word. Save "
+              "(library S5's mark, C-7) is on the entry and on each place; the entry and one place are saved here.")
     w = M.rail5(f, on="Concordance")
-    entry_with_places(f, w, "H7068", [f"H{i}" for i in range(7062, 7071)], "Hebrew", "word")
+    entry_with_places(f, w, "H7068", [f"H{i}" for i in range(7062, 7071)], "Hebrew", "word", saved=True,
+                      marks=("jealousy", 2))
 
     r = row(cv, "row 2b", gap=64, align="min")
     f = Q.win(r, "Round 2", "C9 · G2205 by book",
               "The same entry page grouped by book: how the uses fall, then the places in Bible order.")
     w = M.rail5(f, on="Concordance")
-    entry_with_places(f, w, "G2205", [f"G{i}" for i in range(2203, 2209)], "Greek", "book")
+    entry_with_places(f, w, "G2205", [f"G{i}" for i in range(2203, 2209)], "Greek", "book", saved=False, marks=())
 
     f = Q.win(r, "Round 2", "C10 · The word card's one door",
               "The card keeps the word, its number and sound; its actions become In the Concordance (the entry and "
@@ -357,12 +586,423 @@ def round2(board):
         text(lr, new, "small", "fg", W="fill")
 
 
+ILIN25 = json.loads((D / "interlinear-num25.json").read_text(encoding="utf-8"))
+ILING = json.loads((D / "interlinear-john2-17.json").read_text(encoding="utf-8"))
+
+
+def cell(parent, wd, heb, on=False, picked=False):
+    c = col(parent, f"w/{wd['strong']}", gap=0, pad=[6, 8, 6, 8], radius=8, stroke="accent" if picked else "line",
+            sw=2 if picked else 1, crossAlign="center", W="fixed", fill="accentSoft" if (on or picked) else None)
+    Q.put(c, 0, 0, 100)
+    text(c, wd["original"], "heading", fontFamily=F.HEB if heb else F.READ, fontSize=18, lineHeight="24px")
+    text(c, wd["translit"], "caption", "muted", maxLines=1)
+    text(c, wd["strong"], "caption", "accent")
+    text(c, wd["gloss"], "caption", "fg", maxLines=1)
+    return c
+
+
+def heb_rows(parent, words, per, pad, on=("H7065", "H7068")):
+    """Hebrew reads right to left: each line holds the next words in order, first word on the right."""
+    blk = col(parent, "words", gap=6, W="fill", pad=pad, crossAlign="max")
+    for i in range(0, len(words), per):
+        ln = row(blk, f"line/{i // per}", gap=6, align="min")
+        for wd in reversed(words[i:i + per]):
+            cell(ln, wd, True, on=wd["strong"] in on)
+
+
+def scope_head(pg, ref, active):
+    sc = row(pg, "scope", gap=10, pad=[0, 0, 14, 0], W="fill")
+    text(sc, ref, "heading")
+    P.segmented(sc, ["Verse", "Passage", "Chapter"], active, W="hug")
+    spacer(sc)
+    return sc
+
+
+def return_bar(parent, ref):
+    b = row(parent, "came from", gap=8, pad=[8, 16, 8, 16], W="fill", fill="accentSoft")
+    icon(b, "left", 14, "accent")
+    text(b, f"From {ref}", "smallStrong", "accent")
+    text(b, "· the reader is still there", "caption", "muted", W="fill")
+    P.button(b, "Back to the verse", "secondary", size="sm")
+
+
+def verses_of(out):
+    return [{"v": int(m.group(1)), "text": m.group(2)} for ln in out.splitlines()[1:]
+            if (m := re.match(r"(\d+) (.*)", ln))]
+
+
+OPEN = json.loads((D / "interlinear-num5-14.json").read_text(encoding="utf-8"))["verses"][0]
+OPEN_VERSES = verses_of(json.loads((D / "text-num5-14.json").read_text(encoding="utf-8"))["output"])  # wb text, C-10
+READER = verses_of(json.loads((D / "text-num5-reader.json").read_text(encoding="utf-8"))["output"])
+OPEN_REF = f"Numbers {OPEN['c']}:{OPEN['v']}"
+
+
+def conc_pane(f, x, y, w, h, query, tab="Hebrew", narrow=False, actions=("minimize", "expand", "float", "close"),
+              tabs=("Concordance",)):
+    """The Concordance in a pane of any width: its strip, a search box and the four tabs (stacked when narrow)."""
+    cp = frame(f, "concordance", x=x, y=y, w=w, h=h, fill="surface", layout="vertical", W="fixed", H="fixed", clip=True,
+               stroke="line", strokeLeftWeight=1, strokeRightWeight=0, strokeTopWeight=0, strokeBottomWeight=0)
+    M.folder_strip(cp, list(tabs), "Concordance", actions=actions)
+    nav = (col if narrow else row)(cp, "navigator", gap=8 if narrow else 10, pad=[10, 14, 10, 14], W="fill",
+                                   stroke="line", strokeBottomWeight=1, strokeTopWeight=0, strokeLeftWeight=0,
+                                   strokeRightWeight=0)
+    fld = P.field(nav, "Word, number or sound", query, icon_name="search", height=34, W="fill" if narrow else "fixed")
+    if not narrow:
+        S.do("node.set", {"ids": [fld], "props": {"width": 220}}, ref=False)
+    P.segmented(nav, ["English", "Hebrew", "Greek", "Interlinear"], tab, W="fill" if narrow else "hug")
+    return cp
+
+
+def h7068_body(cp, narrow, saved_place=("jealousy", 0), hit=None, limit=2, pad=(12, 16, 12, 16), brief=False, words=None):
+    main = col(cp, "entry and places", gap=6, pad=list(pad), W="fill", H="fill", clip=True)
+    entry(main, "H7068", on=True, full=not narrow, mark=True, brief=brief)
+    tools(main, "H7068", compact=True, total=False if narrow else None)
+    word_groups(main, "H7068", narrow=narrow, marks=saved_place, hit=hit, limit=limit, words=words)
+    return main
+
+
+def round3(board):
+    cv = Q.section(board, "Round 3", 3200)
+    Q.sheet_title(cv, "Round 3: the interlinear, and the way back to the verse",
+                  "C5 and C6 were never reviewed. These draw them out: one verse with a word opened, a whole chapter, "
+                  "the interlinear beside the reader and following it, and the way back from deep in the book. Words "
+                  "are in the original's order; no English order is drawn, because the database holds none.")
+    r = row(cv, "row 3a", gap=64, align="min")
+    f = Q.win(r, "Round 3", "C11 · A verse, a word opened",
+              "Verse scope. Greek reads left to right, Hebrew right to left, each in its own order. Choosing a word "
+              "opens its entry and its parsing under the verse; the verse stays in view. In the Greek tab opens the "
+              "entry's every place (C8).")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "Interlinear", query="John 2:17")
+    pg = page(cp, pad=(16, 24, 16, 24))
+    scope_head(pg, "John 2:17", "Verse")
+    v = ILING["verses"][0]
+    para(pg, f"{v['c']}:{v['v']}  {v['text']}", "readSmall")
+    cells = row(pg, "words", gap=6, W="fill", wrap=True, align="min", pad=[12, 0, 16, 0])
+    pick = None
+    for wd in v["words"]:
+        cell(cells, wd, False, picked=wd["strong"] == "G2205")
+        if wd["strong"] == "G2205":
+            pick = wd
+    od = col(pg, "the word opened", gap=8, pad=[14, 16, 14, 16], radius=12, stroke="line", sw=1, W="fill")
+    hd = row(od, "parse", gap=10, W="fill")
+    text(hd, pick["original"], "heading")
+    text(hd, f"{pick['morph']} · " + " / ".join(x["text"] for x in pick["parse"]), "caption", "muted", W="fill")
+    entry(od, "G2205", full=True)
+    bt = row(od, "doors", gap=8)
+    P.button(bt, "In the Greek tab", "primary", size="sm", icon_name="word")
+    P.button(bt, "Every place", "secondary", size="sm")
+
+    f = Q.win(r, "Round 3", "C12 · A chapter",
+              "Chapter scope: every verse's KJV line; the words open under one verse at a time (here 11), or under all "
+              "with Words for every verse. The chapter scrolls like the reader.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "Interlinear", query="Numbers 25")
+    pg = page(cp, pad=(16, 24, 16, 24))
+    sc = scope_head(pg, "Numbers 25", "Chapter")
+    P.segmented(sc, ["One verse open", "Words for every verse"], "One verse open", W="hug")
+    for v in ILIN25["verses"][:13]:
+        open_ = v["v"] == 11
+        vr = row(pg, f"verse/{v['v']}", gap=10, pad=[4, 6, 4, 6], radius=6, W="fill",
+                 fill="accentSoft" if open_ else None)
+        icon(vr, "down" if open_ else "right", 12, "muted")
+        text(vr, f"{v['c']}:{v['v']}  {v['text']}", "small", "fg", W="fill", **({} if open_ else {"maxLines": 1}),
+             fontFamily=F.READ)
+        if open_:
+            heb_rows(pg, v["words"], 12, [6, 0, 10, 22])
+
+    r = row(cv, "row 3b", gap=64, align="min")
+    f = Q.win(r, "Round 3", "C13 · Beside the reader, following it",
+              "The interlinear in the right column with Follows the reader on: the verse you are on in the reader is "
+              "the verse shown. Turn it off and it stays where it is while you read on.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    B.desk_reader(f, w, TB, 640, H - TB, first=10, last=13)
+    cp = book(f, w + 640, W - w - 640, "Interlinear", query="Numbers 25:11")
+    pg = page(cp, pad=(16, 20, 16, 20))
+    sc = scope_head(pg, "Numbers 25:11", "Verse")
+    fl = row(pg, "follows", gap=8, pad=[0, 0, 12, 0])
+    P.chip(fl, "Follows the reader", "quiet", icon_name="sync")
+    text(fl, "on", "caption", "accent")
+    v = ILIN25["verses"][10]
+    para(pg, f"{v['c']}:{v['v']}  {v['text']}", "readSmall")
+    heb_rows(pg, v["words"], 6, [12, 0, 0, 0])
+
+    f = Q.win(r, "Round 3", "C14 · The way back, from deep in the book",
+              "Several steps in (Numbers 25:11, H7068, its every place ...), the book keeps a line at its head: From Numbers "
+              "25:11. Back to the verse puts the reader in front on that verse, marked; the book minimizes to the rail "
+              "at the page you were on. The trail line holds every step.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    M.crumbs(f, w, W - w)
+    B.desk_reader(f, w, TB + 34, 560, H - TB - 34, first=10, last=13)
+    cp = book(f, w + 560, W - w - 560, "Hebrew", y=TB + 34, h=H - TB - 34, query="H7068")
+    return_bar(cp, "Numbers 25:11")
+    pg = page(cp)
+    entry(pg, "H7068", on=True)
+    pl = col(pg, "places", gap=2, pad=[10, 0, 0, 0], W="fill")
+    for rw in USES["H7068"]["rows"][:8]:
+        place_line(pl, rw)
+
+
+def round5(board):
+    cv = Q.section(board, "Round 5", 3200)
+    Q.sheet_title(cv, "Round 5: the real conditions, drawn (2026-11-16)",
+                  "The Concordance among other tabs, floated small over the reader, narrow (a side pane and phone width) "
+                  "and after years of study (an entry with hundreds of places, and a small-words page). Places, counts "
+                  "and scripture are fetched with wb; pages named on the sheets are a drawn sample, not anyone's study.")
+    r = row(cv, "row 3a", gap=64, align="min")
+    f = Q.win(r, "Round 5", "C15 · Among other tabs: a tab beside the reader and a page",
+              "The Concordance is one tab among the reader (Numbers 5) and a page, each in its own pane. A place "
+              "line's reference opens the verse card of words W4 over the panes (C-4): the card moves, floats, and "
+              "closing it leaves the entry, group and scroll, and the reader's place, as they were (5f45).")
+    w = M.rail5(f, on="Concordance")
+    slim_bar(f, w, W - w, "Numbers 5")
+    rw_, pw_ = 400, 300
+    body = M.pane(f, w, TB, rw_, H - TB, ["Numbers 5"], "Numbers 5", side="left", actions=("minimize", "expand", "close"))
+    text(body, "Numbers 5", "chapter", fontSize=26, lineHeight="34px")
+    F.verses(body, READER, "readSmall")
+    body = M.pane(f, w + rw_, TB, pw_, H - TB, ["Phinehas"], "Phinehas", side="left",
+                  actions=("minimize", "expand", "close"))
+    para(body, "a page (a drawn sample)", "small", "muted")
+    cx = w + rw_ + pw_
+    cp = conc_pane(f, cx, TB, W - cx, H - TB, "H7068")
+    h7068_body(cp, narrow=False, hit=("jealousy", 0), limit=3, words=4)
+    WD.verse_card(f, cx - 520, TB + 330, 520, OPEN_VERSES, OPEN_REF, note=True, floated=False,
+                  text_style="readSmall", compact=False)
+
+    f = Q.win(r, "Round 5", "C16 · Floated small over the reader",
+              "Float makes the Concordance a small floating pane over the reader (minimize B2): the search box and "
+              "tabs stack, each place shows three words either side, the entry still has its Save mark. It is "
+              "dragged and sized from its corner; the reader's verse stays where it was.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    B.desk_reader(f, w, TB, W - w, H - TB, first=10, last=13)
+    fw = frame(f, "floated concordance", x=W - 470, y=TB + 70, w=420, h=600, fill="surface", radius=12, stroke="line",
+               sw=1, layout="vertical", W="fixed", H="fixed", clip=True)
+    shadow(fw, 14, 40, "#00000026")
+    M.folder_strip(fw, ["Concordance"], "Concordance", actions=("minimize", "expand", "close"))
+    nav = col(fw, "navigator", gap=8, pad=[10, 14, 10, 14], W="fill", stroke="line", strokeBottomWeight=1,
+              strokeTopWeight=0, strokeLeftWeight=0, strokeRightWeight=0)
+    P.field(nav, "Word, number or sound", "H7068", icon_name="search", height=34, W="fill")
+    P.segmented(nav, ["English", "Hebrew", "Greek", "Interlinear"], "Hebrew", W="fill")
+    h7068_body(fw, narrow=True, limit=2)
+
+    r = row(cv, "row 3b", gap=64, align="min")
+    f = Q.win(r, "Round 5", "C17 · Narrow: a side pane",
+              "A narrow pane (360 wide) beside the reader, as the Concordance is docked in a small window. Same "
+              "entry, same groups, same Save mark; the controls stack and the places wrap onto two lines.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cw = 360
+    B.desk_reader(f, w, TB, W - w - cw, H - TB, first=10, last=13)
+    cp = conc_pane(f, W - cw, TB, cw, H - TB, "H7068", narrow=True, actions=("minimize", "expand", "close"))
+    h7068_body(cp, narrow=True, limit=3)
+
+    pw, ph = 390, 800
+    f = Q.win(r, "Round 5", "C18 · Narrow: phone width (390 wide)",
+              "At phone width the Concordance fills the screen, strip on top: the search box, the four tabs full "
+              "width, the entry and its places stacked. A place's reference opens words W4's sheet from the bottom, "
+              "as words W10 draws it (words' own drawing, C-10: full tab labels and the float button).", w=pw, h=ph)
+    cp = conc_pane(f, 0, 0, pw, ph, "H7068", narrow=True, actions=("minimize", "close"))
+    h7068_body(cp, narrow=True, hit=("jealousy", 0), limit=2, pad=(10, 14, 10, 14), brief=True)
+    WD.verse_phone_sheet(f, pw, ph, 247, OPEN_REF, OPEN_VERSES)
+
+    r = row(cv, "row 3c", gap=64, align="min")
+    f = Q.win(r, "Round 5", "C19 · Years of study: an entry with hundreds of places",
+              f"The English page for heart is C1's page with C7's switch at its head (C-9, an inference): "
+              f"{HEART['occurrences']} places in {HEART['verses']} verses, shown under their books "
+              f"({len(HEART['groups'])}) in Bible order, 4 lines and \"N more\" each, counted per occurrence. "
+              "No tools row: Whole Bible and Near are an entry's tools (C8). Every number is wb uses heart.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "English", query="heart")
+    pg = page(cp, pad=(16, 28, 16, 28))
+    switch_head(pg, f"heart · {HEART['occurrences']:,} places in {HEART['verses']} verses")
+    for k, g in HEART["groups"].items():
+        bh = row(pg, f"group/{BOOKS[k]}", gap=8, pad=[8, 0, 2, 0])
+        text(bh, BOOKS[k], "heading", fontFamily=F.READ)
+        text(bh, str(g["count"]), "caption", "muted")
+        for o in g["first"]:
+            place_line(pg, o)
+        if g["count"] > 4:
+            text(pg, f"   {g['count'] - 4} more", "caption", "accent")
+
+    f = Q.win(r, "Round 5", "C20 · The small words: references only",
+              "The commonest small words are in the book as the printed one has them (C-2): the word, how many "
+              "times, and references only, with no words around them and no number. Counts and references are "
+              "wb uses; the lists are the first references in Bible order.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "English", query="the")
+    pg = page(cp)
+    for word in ("and", "the", "of"):
+        d = SMALL[word]
+        blk = col(pg, f"heading/{word}", gap=4, pad=[0, 0, 14, 0], W="fill")
+        hd = row(blk, "head", gap=10, W="fill", align="baseline")
+        text(hd, word.upper(), "heading", "fg", fontFamily=F.READ)
+        text(hd, f"{d['occurrences']:,} times in {d['verses']:,} verses", "caption", "muted")
+        text(hd, "references only", "caption", "accent")
+        rr = row(blk, "references", gap=14, wrap=True, W="fill")
+        for ref in d["refs"][:18]:
+            text(rr, ref, "caption", "muted")
+        text(blk, f"   {d['verses'] - 18:,} more", "caption", "accent")
+
+
+def menu_head(m, s):
+    text(m, "  " + s, "label", "muted")
+
+
+def round6(board):
+    """Round 6: the decisions of round 4 drawn (2026-11-16): picking a word, a letter after a search, numbers and sounds."""
+    LF = json.loads((D / "letters-forms.json").read_text(encoding="utf-8"))
+    BS = json.loads((D / "box-suggestions.json").read_text(encoding="utf-8"))
+    zforms = BS["zealous"]["forms"]
+    others = [x for x in FORMS["forms"] if x["form"] != "zealous"]
+    cv = Q.section(board, "Round 6", 3200)
+    Q.sheet_title(cv, "Round 6: picking a word, a letter after a search, numbers and sounds (2026-11-16)",
+                  "The person's round 4 decisions, drawn: a picked word opens alone with its other forms a click away, in "
+                  "a new tab that copies the old tab's history, with a back button in the tab (a and c); the letter strip "
+                  "after a search; and numbers and sounds as suggestions behind the others. Where a click goes after "
+                  "that, tab by tab, is the app-wide going-back feature (design/features/tab-history). Every word and "
+                  "count is a wb answer (data/letters-forms.json, data/box-suggestions.json).")
+    r = row(cv, "row 6a", gap=64, align="min")
+
+    # C21 the pick: the box with its suggestions, the English word picked
+    f = Q.win(r, "Round 6", "C21 · Picking a word from the box",
+              "Typing zealous lists the English forms first, then the original words whose definition holds it. Choosing "
+              "the English word zealous opens it in a new tab (the label on the row says so); the tab you were in stays "
+              "as it was.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "English", query="zealous")
+    pg = page(cp)
+    switch_head(pg, "zeal · 16 places")
+    lines(pg, "zeal", CONC["zeal"])
+    m = col(f, "suggestions", gap=2, pad=[8, 8, 8, 8], fill="surface", radius=12, stroke="line", sw=1, W="fixed")
+    Q.put(m, w + 16, TB + 92, 560)
+    shadow(m, 8, 28, "#00000033")
+    menu_head(m, "ENGLISH WORDS")
+    for i, x in enumerate(zforms):
+        it = row(m, f"s/{x['form']}", gap=10, pad=[7, 8, 7, 8], radius=8, W="fill", fill="accentSoft" if i == 0 else None)
+        text(it, x["form"], "smallStrong" if i == 0 else "body", W="fill")
+        if i == 0:
+            P.chip(it, "Opens in a new tab", "quiet", icon_name="right")
+        text(it, f"{x['n']} places", "caption", "muted")
+    P.divider(m)
+    menu_head(m, "ORIGINAL WORDS WHOSE DEFINITION HOLDS “ZEALOUS”")
+    for x in BS["lexiconc_zealous"]["entries"][:3]:
+        it = row(m, f"s/{x['strong']}", gap=10, pad=[7, 8, 7, 8], radius=8, W="fill")
+        text(it, x["strong"], "smallStrong", "accent")
+        text(it, x["lemma"], "body")
+        text(it, x["translit"], "caption", "muted")
+        text(it, x["definition"], "caption", "muted", W="fill", maxLines=1)
+
+    # C22 the new tab: zealous alone, the other forms a click away, a back button in the tab
+    f = Q.win(r, "Round 6", "C22 · The new tab: the word alone, its other forms a click away",
+              "The new tab is next to the old one and is a copy of it, with its history. It shows zealous alone "
+              "(wb uses zealous: 8 places); the other forms are a click away, in the row at the foot and in All forms. "
+              "The back button at the left of its box goes back through the history it copied.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "English", query="zealous", tabs=("Concordance", "zealous"), active="zealous", back=True)
+    pg = page(cp)
+    switch_head(pg, "zealous · 8 places")
+    lines(pg, "zealous", CONC["zealous"])
+    ft = row(pg, "other forms", gap=10, pad=[10, 12, 10, 12], radius=10, fill="sunken", W="fill")
+    text(ft, "Other forms", "caption", "muted", W="fill")
+    for x in others:
+        P.chip(ft, f"{x['form']} {x['n']}", "outline")
+
+    r = row(cv, "row 6b", gap=64, align="min")
+    # C23 after Back: the copy steps back; the old tab is untouched
+    f = Q.win(r, "Round 6", "C23 · Back inside the new tab",
+              "Back in the new tab goes one step back through the history it copied: here to the page the old tab was "
+              "on (zeal). The old tab, to its left, is exactly where it was. Going back is wanted in every tab, so the "
+              "button, the history and the trail are designed as one app-wide feature (tab-history).")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "English", query="zeal", tabs=("Concordance", "zeal"), active="zeal", back=True)
+    pg = page(cp)
+    switch_head(pg, "zeal · 16 places")
+    lines(pg, "zeal", CONC["zeal"])
+
+    # C24 a letter after a search
+    f = Q.win(r, "Round 6", "C24 · A letter after a search",
+              "After zealous was searched, J is clicked: the page shows only the words that start with J (wb forms j: "
+              f"{LF['letters']['j']['words']} words, {LF['letters']['j']['places']:,} places) and only those words can be "
+              "clicked. Letters with no words (X) are dimmed and cannot be clicked. The search is not lost: the line at the "
+              "top goes back to it.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    off = tuple(k.upper() for k, v in LF["letters"].items() if v["words"] == 0)
+    cp = book(f, w, W - w, "English", query="zealous", letter="J", off=off)
+    pg = page(cp, pad=(16, 28, 16, 28))
+    hd = row(pg, "letter head", gap=12, pad=[10, 14, 10, 14], radius=10, fill="accentSoft", W="fill")
+    text(hd, "J", "heading", "accent", fontFamily=F.READ)
+    text(hd, f"{LF['letters']['j']['words']} words · {LF['letters']['j']['places']:,} places", "small", "muted",
+         W="fill")
+    P.button(hd, "Back to zealous", "secondary", size="sm")
+    cols = row(pg, "words", gap=24, pad=[14, 0, 0, 0], W="fill", align="min")
+    per = 20
+    for k in range(3):
+        c_ = col(cols, "column", gap=3, W="fill")
+        for x in LF["j"][k * per:(k + 1) * per]:
+            it = row(c_, f"word/{x['form']}", gap=8, W="fill")
+            text(it, x["form"], "small", W="fill")
+            text(it, str(x["n"]), "caption", "muted")
+
+    # C25 numbers and sounds
+    f = Q.win(r, "Round 6", "C25 · Numbers and sounds in the box",
+              "The box also takes a Strong's number (H7068: wb define H7068) and a sound (kanna: wb define kanna, an "
+              "original word by its transliteration). They are rows behind the English forms and original words, shown "
+              "only when what is typed matches, in their own groups and never in front of the other searches, except "
+              "that a typed number goes first, being exact.")
+    w = M.rail5(f, on="Concordance")
+    M.slim_bar(f, x=w, w=W - w)
+    cp = book(f, w, W - w, "English", query="H7068")
+    page(cp)
+    n = BS["number"]["strong"]
+    nn = STRONG["H7068"]
+    m = col(f, "suggestions: number", gap=2, pad=[8, 8, 8, 8], fill="surface", radius=12, stroke="line", sw=1, W="fixed")
+    Q.put(m, w + 16, TB + 92, 560)
+    shadow(m, 8, 28, "#00000033")
+    text(m, "  typed: H7068", "caption", "muted")
+    menu_head(m, "NUMBER")
+    it = row(m, f"s/{nn['strong']}", gap=10, pad=[7, 8, 7, 8], radius=8, W="fill", fill="accentSoft")
+    text(it, nn["strong"], "smallStrong", "accent")
+    text(it, nn["lemma"], "body")
+    text(it, nn["translit"], "caption", "muted")
+    text(it, nn["definition"], "caption", "muted", W="fill", maxLines=1)
+    text(it, f"{nn['occurrences']} places", "caption", "muted")
+    m2 = col(f, "suggestions: sound", gap=2, pad=[8, 8, 8, 8], fill="surface", radius=12, stroke="line", sw=1, W="fixed")
+    Q.put(m2, w + 16, TB + 240, 560)
+    shadow(m2, 8, 28, "#00000033")
+    text(m2, "  typed: kanna", "caption", "muted")
+    menu_head(m2, "SOUNDS LIKE")
+    for x in BS["sound"]["original"][:3]:
+        it = row(m2, f"s/{x['strong']}", gap=10, pad=[7, 8, 7, 8], radius=8, W="fill")
+        text(it, x["strong"], "smallStrong", "accent")
+        text(it, x["lemma"], "body")
+        text(it, x["translit"], "caption", "muted")
+        text(it, x["definition"], "caption", "muted", W="fill", maxLines=1)
+
+
 def main():
+    if "--fetch6" in sys.argv:
+        return fetch6()
+    if "--fetch" in sys.argv:
+        return fetch()
     F.define_tokens()
     S.do("page.rename", {"name": BOARD}, ref=False)
     board = frame(None, BOARD, x=0, y=0, w=100, h=100, fill="sunken", layout="vertical", gap=96, pad=96, W="hug", H="hug")
     sheets(board)
     round2(board)
+    round3(board)
+    round5(board)
+    round6(board)
     build = LIB / "build"
     build.mkdir(exist_ok=True)
     script = build / "concordance.json"

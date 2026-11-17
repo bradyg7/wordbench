@@ -1,0 +1,351 @@
+{
+ "command": "wb forms <letter> for a to z (words = forms listed, places = total); the first 60 forms of j",
+ "letters": {
+  "a": {
+   "words": 954,
+   "places": 98005
+  },
+  "b": {
+   "words": 865,
+   "places": 35150
+  },
+  "c": {
+   "words": 976,
+   "places": 24122
+  },
+  "d": {
+   "words": 663,
+   "places": 19099
+  },
+  "e": {
+   "words": 573,
+   "places": 13055
+  },
+  "f": {
+   "words": 550,
+   "places": 28484
+  },
+  "g": {
+   "words": 413,
+   "places": 16896
+  },
+  "h": {
+   "words": 699,
+   "places": 55096
+  },
+  "i": {
+   "words": 306,
+   "places": 44137
+  },
+  "j": {
+   "words": 386,
+   "places": 7805
+  },
+  "k": {
+   "words": 153,
+   "places": 6617
+  },
+  "l": {
+   "words": 434,
+   "places": 21284
+  },
+  "m": {
+   "words": 672,
+   "places": 29710
+  },
+  "n": {
+   "words": 263,
+   "places": 16680
+  },
+  "o": {
+   "words": 266,
+   "places": 52195
+  },
+  "p": {
+   "words": 849,
+   "places": 17865
+  },
+  "q": {
+   "words": 35,
+   "places": 300
+  },
+  "r": {
+   "words": 606,
+   "places": 9815
+  },
+  "s": {
+   "words": 1546,
+   "places": 58537
+  },
+  "t": {
+   "words": 640,
+   "places": 154575
+  },
+  "u": {
+   "words": 181,
+   "places": 18087
+  },
+  "v": {
+   "words": 126,
+   "places": 2697
+  },
+  "w": {
+   "words": 471,
+   "places": 47457
+  },
+  "x": {
+   "words": 0,
+   "places": 0
+  },
+  "y": {
+   "words": 37,
+   "places": 11091
+  },
+  "z": {
+   "words": 158,
+   "places": 927
+  }
+ },
+ "j": [
+  {
+   "form": "jesus",
+   "n": 973
+  },
+  {
+   "form": "judah",
+   "n": 812
+  },
+  {
+   "form": "jerusalem",
+   "n": 811
+  },
+  {
+   "form": "jacob",
+   "n": 358
+  },
+  {
+   "form": "judgment",
+   "n": 294
+  },
+  {
+   "form": "jews",
+   "n": 243
+  },
+  {
+   "form": "joseph",
+   "n": 228
+  },
+  {
+   "form": "joshua",
+   "n": 216
+  },
+  {
+   "form": "jordan",
+   "n": 197
+  },
+  {
+   "form": "judge",
+   "n": 191
+  },
+  {
+   "form": "joy",
+   "n": 165
+  },
+  {
+   "form": "jeremiah",
+   "n": 146
+  },
+  {
+   "form": "joab",
+   "n": 137
+  },
+  {
+   "form": "john",
+   "n": 131
+  },
+  {
+   "form": "judgments",
+   "n": 127
+  },
+  {
+   "form": "jonathan",
+   "n": 118
+  },
+  {
+   "form": "jeroboam",
+   "n": 102
+  },
+  {
+   "form": "just",
+   "n": 94
+  },
+  {
+   "form": "jehoshaphat",
+   "n": 85
+  },
+  {
+   "form": "jericho",
+   "n": 64
+  },
+  {
+   "form": "judged",
+   "n": 63
+  },
+  {
+   "form": "journey",
+   "n": 60
+  },
+  {
+   "form": "jehu",
+   "n": 59
+  },
+  {
+   "form": "job",
+   "n": 59
+  },
+  {
+   "form": "josiah",
+   "n": 53
+  },
+  {
+   "form": "jehoiada",
+   "n": 52
+  },
+  {
+   "form": "judges",
+   "n": 52
+  },
+  {
+   "form": "joash",
+   "n": 49
+  },
+  {
+   "form": "jesse",
+   "n": 47
+  },
+  {
+   "form": "joined",
+   "n": 43
+  },
+  {
+   "form": "justified",
+   "n": 43
+  },
+  {
+   "form": "james",
+   "n": 42
+  },
+  {
+   "form": "jehoiakim",
+   "n": 37
+  },
+  {
+   "form": "jezreel",
+   "n": 36
+  },
+  {
+   "form": "jealousy",
+   "n": 34
+  },
+  {
+   "form": "journeyed",
+   "n": 33
+  },
+  {
+   "form": "judas",
+   "n": 33
+  },
+  {
+   "form": "jew",
+   "n": 32
+  },
+  {
+   "form": "judæa",
+   "n": 31
+  },
+  {
+   "form": "jeshua",
+   "n": 30
+  },
+  {
+   "form": "jephthah",
+   "n": 29
+  },
+  {
+   "form": "joram",
+   "n": 29
+  },
+  {
+   "form": "justice",
+   "n": 28
+  },
+  {
+   "form": "johanan",
+   "n": 27
+  },
+  {
+   "form": "jebusites",
+   "n": 25
+  },
+  {
+   "form": "jewels",
+   "n": 25
+  },
+  {
+   "form": "joyful",
+   "n": 25
+  },
+  {
+   "form": "jotham",
+   "n": 24
+  },
+  {
+   "form": "jehoahaz",
+   "n": 23
+  },
+  {
+   "form": "jehoram",
+   "n": 23
+  },
+  {
+   "form": "jezebel",
+   "n": 22
+  },
+  {
+   "form": "joseph’s",
+   "n": 22
+  },
+  {
+   "form": "jubile",
+   "n": 22
+  },
+  {
+   "form": "joel",
+   "n": 20
+  },
+  {
+   "form": "jacob’s",
+   "n": 19
+  },
+  {
+   "form": "jealous",
+   "n": 19
+  },
+  {
+   "form": "jonah",
+   "n": 19
+  },
+  {
+   "form": "jehoash",
+   "n": 17
+  },
+  {
+   "form": "judgeth",
+   "n": 17
+  },
+  {
+   "form": "jehiel",
+   "n": 16
+  }
+ ]
+}

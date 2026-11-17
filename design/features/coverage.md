@@ -16,7 +16,8 @@ A new button or command gets a row here, and its folder, before it is built.
 | Panes, tabs, minimizing, full screen | tab strips, minimize, Full screen, Present | [minimize](minimize/README.md) | accepted (round 7; Present exploring) |
 | The side rail | one icon per kind of pane, its menus, Show names | [minimize](minimize/README.md) | building (the rail; its menus exploring) |
 | The trail (history of tabs) | drawer, line under the top bar | [minimize](minimize/README.md), [command](command/README.md) C13-C16 | building |
-| The Concordance | English, Hebrew, Greek, Interlinear | [concordance](concordance/README.md) | exploring |
+| The Concordance | English, Hebrew, Greek, Interlinear; the box's picked word, letters, numbers and sounds | [concordance](concordance/README.md) | exploring |
+| Going back inside a tab | a back button in every tab that goes back through the tab's own history; a new tab copies it | [tab-history](tab-history/README.md) | exploring (seeded 2026-11-16; nothing drawn) |
 | BDB and Webster's 1913 as books | paging, the index, one card with three sources | [books](books/README.md) | exploring |
 | Top bar and the command box | the box keeps its line and pops off, the reader's tools at its end, More; suggestions (round 1) | [command](command/README.md) | round 2 merged; round 3 (⋯ into Settings, kept commands on the rail, suggestions) to draw |
 | Reader | verses, versions, marks, selection | [reader](reader/README.md) | exploring |
@@ -59,7 +60,7 @@ The terminal side of each area above; a command is designed with the area whose 
 | `lesson`, `docs`, `craft` | Lessons and documents | [documents](documents/README.md) |
 | `trash` | Trash | [trash](trash/README.md) |
 | `finding`, `findings` | Findings | [findings](findings/README.md) |
-| `history` | The trail (`trail` is still the old questions) | [minimize](minimize/README.md) |
+| `history` | The trail (`trail` is still the old questions); going back inside a tab (command to be named) | [minimize](minimize/README.md), [tab-history](tab-history/README.md) |
 | `settings`, `layout`, `view` | Settings, layout, views | [settings](settings/README.md) |
 | `help`, `guide`, `manual`, `commands` | Help ([command](command/README.md) for kept `commands`) | [help](help/README.md) |
 | `status`, `study`, `do` | Not shown in the window (checks and the relay) | not needed |

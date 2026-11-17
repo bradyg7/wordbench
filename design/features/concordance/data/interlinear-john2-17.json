@@ -1,0 +1,230 @@
+{
+  "book": {
+    "id": 43,
+    "code": "JHN",
+    "name": "John"
+  },
+  "lang": "grk",
+  "verses": [
+    {
+      "c": 2,
+      "v": 17,
+      "text": "And his disciples remembered that it was written, The zeal of thine house hath eaten me up.",
+      "words": [
+        {
+          "original": "ἐμνήσθησαν",
+          "translit": "emnēsthēsan",
+          "strong": "G3403",
+          "lemma": "μιμνήσκω",
+          "gloss": "Remembered",
+          "morph": "V-API-3P",
+          "parse": [
+            {
+              "code": "V-API-3P",
+              "text": "Verb · Aorist · Passive · Indicative · 3rd · Plural"
+            }
+          ]
+        },
+        {
+          "original": "δὲ",
+          "translit": "de",
+          "strong": "G1161",
+          "lemma": "δέ",
+          "gloss": "now",
+          "morph": "CONJ",
+          "parse": [
+            {
+              "code": "CONJ",
+              "text": "Conjunction"
+            }
+          ]
+        },
+        {
+          "original": "οἱ",
+          "translit": "hoi",
+          "strong": "G3588",
+          "lemma": "ὁ",
+          "gloss": "the",
+          "morph": "T-NPM",
+          "parse": [
+            {
+              "code": "T-NPM",
+              "text": "Definite article · Nominative · Plural · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "μαθηταὶ",
+          "translit": "mathētai",
+          "strong": "G3101",
+          "lemma": "μαθητής",
+          "gloss": "disciples",
+          "morph": "N-NPM",
+          "parse": [
+            {
+              "code": "N-NPM",
+              "text": "Noun · Nominative · Plural · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "αὐτοῦ",
+          "translit": "autou",
+          "strong": "G846",
+          "lemma": "αὐτός",
+          "gloss": "of Him",
+          "morph": "P-GSM",
+          "parse": [
+            {
+              "code": "P-GSM",
+              "text": "Personal pronoun · Genitive · Singular · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "ὅτι",
+          "translit": "hoti",
+          "strong": "G3754",
+          "lemma": "ὅτι",
+          "gloss": "that",
+          "morph": "CONJ",
+          "parse": [
+            {
+              "code": "CONJ",
+              "text": "Conjunction"
+            }
+          ]
+        },
+        {
+          "original": "γεγραμμένον",
+          "translit": "gegrammenon",
+          "strong": "G1125",
+          "lemma": "γράφω",
+          "gloss": "written",
+          "morph": "V-RPP-NSN",
+          "parse": [
+            {
+              "code": "V-RPP-NSN",
+              "text": "Verb · Perfect · Passive · Participle · Nominative · Singular · Neuter"
+            }
+          ]
+        },
+        {
+          "original": "ἐστίν",
+          "translit": "estin",
+          "strong": "G1510",
+          "lemma": "εἰμί",
+          "gloss": "it is:",
+          "morph": "V-PAI-3S",
+          "parse": [
+            {
+              "code": "V-PAI-3S",
+              "text": "Verb · Present · Active · Indicative · 3rd · Singular"
+            }
+          ]
+        },
+        {
+          "original": "ὁ",
+          "translit": "ho",
+          "strong": "G3588",
+          "lemma": "ὁ",
+          "gloss": "The",
+          "morph": "T-NSM",
+          "parse": [
+            {
+              "code": "T-NSM",
+              "text": "Definite article · Nominative · Singular · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "ζῆλος",
+          "translit": "zēlos",
+          "strong": "G2205",
+          "lemma": "ζῆλος",
+          "gloss": "zeal",
+          "morph": "N-NSM",
+          "parse": [
+            {
+              "code": "N-NSM",
+              "text": "Noun · Nominative · Singular · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "τοῦ",
+          "translit": "tou",
+          "strong": "G3588",
+          "lemma": "ὁ",
+          "gloss": "of the",
+          "morph": "T-GSM",
+          "parse": [
+            {
+              "code": "T-GSM",
+              "text": "Definite article · Genitive · Singular · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "οἴκου",
+          "translit": "oikou",
+          "strong": "G3624",
+          "lemma": "οἶκος",
+          "gloss": "house",
+          "morph": "N-GSM",
+          "parse": [
+            {
+              "code": "N-GSM",
+              "text": "Noun · Genitive · Singular · Masculine"
+            }
+          ]
+        },
+        {
+          "original": "σου",
+          "translit": "sou",
+          "strong": "G4771",
+          "lemma": "σύ",
+          "gloss": "of You",
+          "morph": "P-2GS",
+          "parse": [
+            {
+              "code": "P-2GS",
+              "text": "Personal pronoun · 2nd · Genitive · Singular"
+            }
+          ]
+        },
+        {
+          "original": "κατέφαγεν",
+          "translit": "katephagen",
+          "strong": "G2719",
+          "lemma": "κατεσθίω",
+          "gloss": "devoured",
+          "morph": "V-2AAI-3S",
+          "parse": [
+            {
+              "code": "V-2AAI-3S",
+              "text": "Verb · 2nd Aorist · Active · Indicative · 3rd · Singular"
+            }
+          ]
+        },
+        {
+          "original": "με",
+          "translit": "me",
+          "strong": "G3165",
+          "lemma": "ἐγώ",
+          "gloss": "Me.",
+          "morph": "P-1AS",
+          "parse": [
+            {
+              "code": "P-1AS",
+              "text": "Personal pronoun · 1st · Accusative · Singular"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "total": 1,
+  "offset": 0,
+  "more": false
+}

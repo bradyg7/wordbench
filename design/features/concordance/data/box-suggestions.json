@@ -1,0 +1,83 @@
+{
+ "command": "wb define H7068 / wb define kanna / wb forms zealous / wb lexiconc zealous",
+ "number": {
+  "query": "H7068",
+  "strong": "H7068",
+  "english": [],
+  "original": []
+ },
+ "sound": {
+  "query": "kanna",
+  "strong": null,
+  "english": [],
+  "original": [
+   {
+    "strong": "H3657",
+    "lang": "heb",
+    "lemma": "כַּנָּה",
+    "translit": "kannâh",
+    "definition": "a plant (as set)"
+   }
+  ]
+ },
+ "zealous": {
+  "word": "zealous",
+  "forms": [
+   {
+    "form": "zealous",
+    "n": 8
+   },
+   {
+    "form": "zealously",
+    "n": 2
+   }
+  ],
+  "total": 10
+ },
+ "lexiconc_zealous": {
+  "q": "zealous",
+  "total": 4,
+  "entries": [
+   {
+    "strong": "H7065",
+    "lang": "heb",
+    "lemma": "קָנָא",
+    "translit": "qânâʼ",
+    "definition": "to be (causatively, make) zealous, i.e. (in a bad sense) jealous or envious",
+    "in_def": true,
+    "in_usage": false,
+    "n": 33
+   },
+   {
+    "strong": "G2206",
+    "lang": "grk",
+    "lemma": "ζηλόω",
+    "translit": "zēlóō",
+    "definition": "to have warmth of feeling for or against",
+    "in_def": false,
+    "in_usage": true,
+    "n": 12
+   },
+   {
+    "strong": "G2207",
+    "lang": "grk",
+    "lemma": "ζηλωτής",
+    "translit": "zēlōtḗs",
+    "definition": "a \"zealot\"",
+    "in_def": false,
+    "in_usage": true,
+    "n": 7
+   },
+   {
+    "strong": "G2581",
+    "lang": "grk",
+    "lemma": "Κανανίτης",
+    "translit": "Kananítēs",
+    "definition": "zealous; Cananites, an epithet",
+    "in_def": true,
+    "in_usage": false,
+    "n": 2
+   }
+  ]
+ }
+}
