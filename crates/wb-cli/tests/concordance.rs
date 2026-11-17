@@ -133,13 +133,14 @@ fn a_long_word_is_under_its_books_and_a_small_word_has_references_only() {
 #[test]
 fn the_forms_choice_is_kept_and_the_click_choice_takes_only_its_words() {
     let Some(wb) = Wb::new() else { return };
-    assert_eq!(wb.js(&["concordance", "zeal"])["mode"], "all");
-    wb.js(&["settings", "concordance", "forms", "one"]);
-    // closing and reopening the window: the next page is This word
+    // the default is This word: the page agrees with the box's count, `wb count` and `wb uses`
     assert_eq!(wb.js(&["concordance", "zeal"])["mode"], "one");
+    wb.js(&["settings", "concordance", "forms", "all"]);
+    // closing and reopening the window: the next page is All forms
+    assert_eq!(wb.js(&["concordance", "zeal"])["mode"], "all");
     assert!(wb.err(&["settings", "concordance", "forms", "both"]).contains("all or one"));
     wb.js(&["settings", "concordance", "forms", "default"]);
-    assert_eq!(wb.js(&["concordance", "zeal"])["mode"], "all");
+    assert_eq!(wb.js(&["concordance", "zeal"])["mode"], "one");
     assert_eq!(wb.js(&["settings", "reading", "word-click", "concordance"])["word"], "concordance");
     assert!(wb.err(&["settings", "reading", "word-click", "pane"]).contains("card or concordance"));
     wb.js(&["settings", "reading", "word-click", "card"]);
@@ -200,4 +201,32 @@ fn the_box_shows_numbers_sounds_and_letters_only_where_they_apply() {
     assert_eq!((n(&of("j")["words"]), n(&of("j")["places"])), (386, 7805));
     assert_eq!(n(&of("x")["words"]), 0);
     assert_eq!(wb.js(&["forms", "j"])["forms"].as_array().unwrap().len(), 386);
+}
+
+#[test]
+fn the_default_page_of_heart_agrees_with_the_box_and_wb_count() {
+    let Some(wb) = Wb::new() else { return };
+    // no --forms, nothing kept: heart is 830 places everywhere
+    let page = wb.js(&["concordance", "heart"]);
+    assert_eq!(n(&page["places"]), 830);
+    assert_eq!(page["words"].as_array().unwrap().len(), 1);
+    let counted = wb.js(&["count", "heart"]);
+    assert_eq!(page["places"], counted["occurrences"]);
+    let boxed = wb.js(&["concordance", "box", "heart"]);
+    let heart = boxed["english"].as_array().unwrap().iter().find(|f| f["form"] == "heart").unwrap();
+    assert_eq!(heart["n"], page["places"]);
+}
+
+#[test]
+fn a_small_word_chosen_alone_offers_no_other_forms() {
+    let Some(wb) = Wb::new() else { return };
+    for word in ["a", "he", "and"] {
+        let p = wb.js(&["concordance", word, "--forms", "one"]);
+        assert_eq!(p["small"], true, "{word}");
+        assert!(p["forms"].as_array().unwrap().is_empty(), "{word}: {}", p["forms"]);
+        // and with All forms chosen it is still the word alone
+        let all = wb.js(&["concordance", word, "--forms", "all"]);
+        assert_eq!((all["mode"].as_str().unwrap(), all["words"].as_array().unwrap().len()), ("one", 1));
+        assert!(all["forms"].as_array().unwrap().is_empty());
+    }
 }

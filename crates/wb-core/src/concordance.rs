@@ -193,7 +193,8 @@ pub fn page(bible: &Bible, word: &str, mode: &str, book: Option<&str>) -> Result
     let is_small = small(&word);
     // a small word's other forms by beginning (the, thee, their, ...) are other words: it is shown alone
     let mode = if is_small { "one" } else { mode };
-    let forms = form_rows(bible, &word)?;
+    // a small word has no other forms to offer: its prefix forms (a, i, he) are other words, thousands of them
+    let forms = if is_small { vec![] } else { form_rows(bible, &word)? };
     let names: Vec<String> = if mode == "all" {
         let mut v: Vec<String> = forms.iter().filter_map(|f| f["form"].as_str().map(String::from)).collect();
         if !v.contains(&word) {
@@ -388,9 +389,10 @@ pub fn letters(bible: &Bible) -> Result<Value> {
 
 // ---- the two settings it keeps (C-1, settings: the click on a word) --------------------------------------------------
 
-/// The page's forms choice, `all` or `one`, kept (C-1, C7). The saved choice, else all.
+/// The page's forms choice, `all` or `one`, kept (C-1, C7). The saved choice, else one: This word, so the page agrees with
+/// the box's count, `wb count` and `wb uses` (heart: 830); All forms is a click away and is then kept.
 pub fn forms_mode(store: &Store) -> String {
-    store.settings("concordance").get("forms").and_then(Value::as_str).filter(|v| *v == "all" || *v == "one").unwrap_or("all").to_string()
+    store.settings("concordance").get("forms").and_then(Value::as_str).filter(|v| *v == "all" || *v == "one").unwrap_or("one").to_string()
 }
 
 /// `wb settings concordance forms all|one` and `wb settings reading word-click card|concordance`. `default` puts one back.
