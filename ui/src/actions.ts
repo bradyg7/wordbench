@@ -1,6 +1,7 @@
 // What each line of the command language does in the window. The line is parsed once, by wb-core (`wb parse`); the
 // action that comes back is carried out here: a pane, a move of the reader, or a write through a `wb` command. Every
 // action answers with a short sentence (shown under the field, and sent back to `wb do`).
+import { reopenConcordance } from './concordance';
 import { api, inApp, wb } from './api';
 import { app, book, goTo, here, type At } from './app';
 import { layers } from './layers';
@@ -482,7 +483,7 @@ async function applyLayout(a: any): Promise<string> {
   return `Layout ${a.name}`;
 }
 
-const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'wordcard', 'marked', 'plans', 'settings']);
+const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'wordcard', 'marked', 'plans', 'settings', 'concordance']);
 export function canReopen(key: string) { return reopenKinds.has(key.startsWith('doc:') ? 'doc' : key.split('|')[0]); }
 
 /** Minimized links whose title or kind starts with or holds `name`; `minimized` or `all` is every one. */
@@ -507,7 +508,7 @@ export async function reopen(key: string) {
     search: () => openSearch(x[0], x[1]), uses: () => openUses(x[0], x[1], x[2], x[3] ? { rendering: x[3] } : {}), def: () => openDefine(x[0]), strong: () => openStrong(x[0]),
     bdb: () => openBdb(x[0]), count: () => openCount(x[0]), forms: () => openForms(x[0]), lexiconc: () => openLexiconc(x[0]),
     threads: () => openThreads(), notebook: () => openNotebook(), help: () => openHelp(), keys: () => openKeys(),
-    shelf: () => openShelf(), find: () => openFind(x[0]), interlinear: () => openInterlinear(x[0], x[0]),
+    concordance: () => reopenConcordance(key), shelf: () => openShelf(), find: () => openFind(x[0]), interlinear: () => openInterlinear(x[0], x[0]),
     place: () => openPlace(x[0], x[0]),
     passage: () => openPassage(x[0].split(';'), x[1], x[0]), reader2: () => app.secondReader(x[0], x[1]), today: () => openToday(x[0]), lesson: () => openLesson(x[0]), findings: () => openFindings(),
     documents: () => openDocuments(),

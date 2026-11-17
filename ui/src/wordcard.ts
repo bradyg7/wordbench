@@ -8,15 +8,15 @@
 // - At phone width the word card is a sheet over the bottom with the same parts.
 // The verse card is in verses.ts; this file also holds the count line it shares (`pagesLine`).
 import { api, wb, type WordView } from './api';
+import { openConcordance } from './concordance';
 import { frameCard, grip } from './cardframe';
-import { dock, openBdb, openInterlinear, openStrong } from './panes';
+import { dock, openBdb, openInterlinear } from './panes';
 import { closeSheet, compact, openSheet } from './sheets';
 import { button, h } from './ui';
 
-/** Where "In the Concordance" goes. The Concordance's own build replaces this (design/features/concordance); until it is
- * built the door opens the word's entry, which is where Strong's led before. */
+/** Where "In the Concordance" goes: the Concordance, in a tab of its own, at the word's entry (design/features/concordance). */
 export const doors = {
-  concordance: (strong: string) => { openStrong(strong); },
+  concordance: (strong: string) => { openConcordance({ strong }); },
 };
 
 /** One count line for the pages whose text names a word or a verse (W-5): "412 pages name this word". A click opens their

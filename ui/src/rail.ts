@@ -12,6 +12,7 @@ import type { MinLink } from './dock';
 import { openDocuments } from './documents';
 import { openFindings } from './findings';
 import { openNotebook } from './notebook';
+import { openConcordance } from './concordance';
 import { openHelp, openPlans, openShelf } from './panes';
 import { openSettings } from './settings';
 import { keepTab } from './shelf';
@@ -33,6 +34,7 @@ const UNDER: Spot[] = [
   { id: 'plans', label: 'Reading plans', ico: 'lines', kind: 'plans', run: () => void openPlans() },
   { id: 'findings', label: 'Findings', ico: 'prompt', kind: 'findings', run: () => void openFindings() },
   { id: 'documents', label: 'Documents', ico: 'file', kind: 'documents', run: () => void openDocuments() },
+  { id: 'concordance', label: 'Concordance', ico: 'book', kind: 'concordance', run: () => void openConcordance() },
 ];
 const MINIMIZED: Spot = { id: 'minimized', label: 'Minimized', ico: 'float', run: () => {} };
 const FOOT: Spot[] = [
@@ -50,7 +52,7 @@ function named(): boolean {
 
 /** Which rail icon holds a minimized tab of this kind; the rest wait under Minimized (R2a). */
 const HOLDS: Record<string, string> = {
-  notebook: 'notebook', note: 'notebook', thread: 'notebook', threads: 'notebook', today: 'notebook',
+  concordance: 'concordance', notebook: 'notebook', note: 'notebook', thread: 'notebook', threads: 'notebook', today: 'notebook',
   shelf: 'shelf', plans: 'plans', findings: 'findings', documents: 'documents', docpreview: 'documents', lesson: 'documents', doc: 'documents',
 };
 const holder = (l: MinLink) => HOLDS[l.kind] ?? 'minimized';

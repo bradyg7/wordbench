@@ -1,6 +1,6 @@
 # The Concordance
 
-**State:** exploring (rounds 1-4 reviewed; the real conditions drawn 2026-11-16, C15-C20; round 4's decisions drawn, C21-C25) · **Sheets:** `python -I design/features/concordance/concordance.py` writes `concordance.figcraft`
+**State:** accepted by the person 2026-11-16 (build starts on feature/concordance-build); was exploring (rounds 1-4 reviewed; the real conditions drawn 2026-11-16, C15-C20; round 4's decisions drawn, C21-C25) · **Sheets:** `python -I design/features/concordance/concordance.py` writes `concordance.figcraft`
 and `concordance.pdf` (the board, one vector page; it imports words' `verse_card` and `verse_phone_sheet`) · Nothing here is built yet. What other tools get wrong, and so what this folder avoids:
 [bible-software-complaints](../../research/bible-software-complaints.md).
 
@@ -171,22 +171,23 @@ and `WB_STUDY_DIR` set to an empty scratch folder (nothing written). Never edit 
 
 ## What the build must satisfy
 
-Direction settled (2026-11-16, decided by overseer from existing decisions); the person has not accepted the folder. The windows are drawn (C1-C25; C11-C14, the interlinear and the way back, are also the real-app scenes).
+Built on `feature/concordance-build` (2026-11-16); ticked lines are built and tested (`crates/wb-cli/tests/concordance.rs`, `ui/tests/concordance.spec.ts`). Not ticked, and why: picking a word (its new tab is built; the back button is [tab-history](../tab-history/README.md)'s), Save (library's `wb save` and S5 mark do not exist yet), the return case and real conditions (to be checked in the real app), the single door (here only the word sheet's Every use became In the Concordance; the verse card and the BDB / Webster's buttons are [words](../words/README.md)' build), and the commands (`wb save` missing). The windows are drawn (C1-C25; C11-C14, the interlinear and the way back, are also the real-app scenes).
 
-- [ ] The rail's Concordance button opens one tab with four tabs inside: English, Hebrew, Greek, Interlinear.
-- [ ] English: typing `zeal` shows the words `wb forms zea` lists with the same counts; the page for a word shows exactly the places `wb uses <word>` returns, in Bible order, each with words either side of the marked word and its Strong's number. `zeal` (16 places) is one run with no book headings. `heart` (830 places, more than 100) shows them under 54 book headings in Bible order, each heading's count equal to `wb count heart` for that book, 4 lines and "N more" per book, and "N more" shows the rest of that book (C-9). A small word (and, the, of) shows references only, no words around them. With This word chosen, closing and reopening the window still shows This word.
-- [ ] Hebrew and Greek: entries are in number order (H7068 follows H7067), and ← → open the previous and next number. An entry lists every occurrence, grouped by English word or by book, 4 lines per group and "N more". Each group's count equals the entry's rendering count (H7068: jealousy 24 lines, not 22).
-- [ ] Interlinear: `Num 25:11` (a verse), `Num 25:11-12` (a passage) and `Num 25` (a chapter) each show, for every verse, the KJV text and the words `wb interlinear` returns for it, with their numbers.
-- [ ] Every line of scripture on screen equals `wb text` for its reference, character for character; fixtures are generated from the database.
+- [x] The rail's Concordance button opens one tab with four tabs inside: English, Hebrew, Greek, Interlinear.
+- [x] English: typing `zeal` shows the words `wb forms zea` lists with the same counts; the page for a word shows exactly the places `wb uses <word>` returns, in Bible order, each with words either side of the marked word and its Strong's number. `zeal` (16 places) is one run with no book headings. `heart` (830 places, more than 100) shows them under 54 book headings in Bible order, each heading's count equal to `wb count heart` for that book, 4 lines and "N more" per book, and "N more" shows the rest of that book (C-9). A small word (and, the, of) shows references only, no words around them. With This word chosen, closing and reopening the window still shows This word.
+- [x] Hebrew and Greek: entries are in number order (H7068 follows H7067), and ← → open the previous and next number. An entry lists every occurrence, grouped by English word or by book, 4 lines per group and "N more". Each group's count equals the entry's rendering count (H7068: jealousy 24 lines, not 22).
+- [x] Interlinear: `Num 25:11` (a verse), `Num 25:11-12` (a passage) and `Num 25` (a chapter) each show, for every verse, the KJV text and the words `wb interlinear` returns for it, with their numbers.
+- [x] Every line of scripture on screen equals `wb text` for its reference, character for character; fixtures are generated from the database.
 - [ ] Picking a word from the box (the person, round 4: a and c; C21, C22, C23): with `zealous` typed, choosing the English word `zealous` opens a new tab named zealous beside the old one, which keeps its page; the new tab shows exactly the 8 places `wb uses zealous` returns and, at the foot, the other forms `wb forms zea` lists (zeal 16, zealously 2) as buttons, each of which opens that form's page; All forms shows zeal, zealous and zealously together. The new tab starts with the old tab's history; its back button goes one step back to the page the old tab was on, and a second goes to the step before that; the old tab is unchanged after either. Scripture on the page equals `wb text`.
-- [ ] A letter after a search (C-11, C24): with `zealous` searched, clicking J shows `wb forms j`'s 386 words with their counts and no others, each clickable; clicking X does nothing and X is dimmed (`wb forms x` is empty); a letter with words is never dimmed. Back to zealous returns to the search page, unchanged.
-- [ ] Numbers and sounds in the box (C-12, C25): typing `H7068` shows one NUMBER row, H7068 with the lemma, sound, definition and 43 places that `wb strong H7068` returns, and nothing above it; typing `kanna` shows a SOUNDS LIKE row for H3657 as `wb define kanna` lists it; typing `zea` shows exactly the rows C2 shows and neither group; a group never has more than 3 rows. A number or sound row opens its entry in a new tab, like a picked word.
+- [x] A letter after a search (C-11, C24): with `zealous` searched, clicking J shows `wb forms j`'s 386 words with their counts and no others, each clickable; clicking X does nothing and X is dimmed (`wb forms x` is empty); a letter with words is never dimmed. Back to zealous returns to the search page, unchanged.
+- [x] Numbers and sounds in the box (C-12, C25): typing `H7068` shows one NUMBER row, H7068 with the lemma, sound, definition and 43 places that `wb strong H7068` returns, and nothing above it; typing `kanna` shows a SOUNDS LIKE row for H3657 as `wb define kanna` lists it; typing `zea` shows exactly the rows C2 shows and neither group; a group never has more than 3 rows. A number or sound row opens its entry in a new tab, like a picked word.
 - [ ] Save (K) on an entry and on a place line shows [library](../library/README.md) S5's mark filled, and the save is listed by `wb shelf` (C-7).
 - [ ] **Return case, the reader's place is kept (5f45):** from a place line, the reference opens the verse card over the Concordance. Read the chapter goes to the reader at that verse with the verse selected (2c00). Back returns to the same entry, group and scroll position, and the reader's earlier place is restored. The same holds for C6: reader, word card, door, and back to the word.
 - [ ] The word card and the verse card have one door; no Strong's or Every use buttons remain. The word card keeps C10's BDB and Webster's buttons, which open those books ([words](../words/README.md) W-8).
-- [ ] Nothing is suggested: no related words, no commentary; only entries, places and counts.
+- [x] Nothing is suggested: no related words, no commentary; only entries, places and counts.
 - [ ] Commands. Existing: `wb strong`, `uses`, `count`, `forms`, `near`, `lexiconc`, `interlinear`. Missing, so required:
   - `wb concordance <word> [--forms all|one]` for the English page's lines;
+    (built, with `wb concordance box <text>` for the box's suggestions, `wb concordance letters` for the letter strip and `--book <code>` for one book's every line; with no `--forms` the kept choice, and until one is kept This word, so the page agrees with the box's count, `wb count` and `wb uses`: heart 830);
   - `wb strong <n> --next|--prev` and `wb strong --list hebrew|greek [--from <n>]`;
   - `wb uses <n> --by word|book`, per occurrence;
   - `wb interlinear "Num 25"` already takes a chapter (run 2026-11-16), so nothing is missing there;
@@ -207,6 +208,13 @@ Drawn 2026-11-16 in round 5 (not yet reviewed by the person).
 | Years of study | drawn: C19, heart (830 places, 54 books, 4 lines and "N more" each), and C20, the small words and, the, of with references only (C-2) | The round 3 and 4 scenes show zeal and H7068, 43 places at most (`c01-english-page`, `c08-hebrew-by-english-word`), so they do not show a long word or a small word. C19 and C20 stay. |
 
 The direction is settled; the six windows (C15-C20), C8 (Save's mark, per-occurrence counts) and round 4's C21-C25 are drawn. C19's heart page (C-9), C18's phone sheet and C15's card (C-10) were redrawn several times on 2026-11-16; the phone sheet sits on the window's bottom and C15's place lines are four words either side so none is cut. The person has not seen C15-C20 or accepted the folder.
+
+## Inferences made in the build (2026-11-17), for the person to look at
+
+- **The small words** (given with references only, C-2) are a fixed list; the design names only and, the and of. The list is: a, an, and, are, as, at, be, but, by, for, from, had, has, have, he, her, him, his, i, in, is, it, me, my, not, of, on, or, our, shall, that, the, their, them, they, thee, thou, thy, to, unto, us, was, we, were, which, with, ye, you, your. Such a word is shown alone, with no "Other forms".
+- **The default of This word / All forms** is This word until the person chooses All forms (then it is kept), because the box's count, `wb count` and `wb uses` count the word alone (heart 830); C-1 says only that the choice is kept.
+- **Enter on a typed word** opens its tab like a click on the suggestion (C-13); a typed number does the same; a place goes to the Interlinear tab of the tab in front. Text starting with a dash is refused.
+- **A word clicked in the letter list** opens in the same tab (the letter does not clear the search, C-11).
 
 ## Out of scope / later
 

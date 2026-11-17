@@ -19,6 +19,7 @@ import { layers } from './layers';
 import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu, wordClick } from './ui';
 import { doors, openWordCard, wordHover } from './wordcard';
 import type { Pane } from './dock';
+import { openConcordance } from './concordance';
 import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
 import { bridge, loadWindowSettings, markName, openSettings } from './settings';
 import { loadKept } from './mycommands';
@@ -1205,6 +1206,6 @@ async function start() {
   }
 }
 
-(window as any).__wb = { open, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
+(window as any).__wb = { open, concordance: openConcordance, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
 start().catch(e => { reader.innerHTML = `<p class="error">${String(e)}</p>`; });
 void here;

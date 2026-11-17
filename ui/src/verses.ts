@@ -14,7 +14,8 @@
 import { wb } from './api';
 import { app, goTo } from './app';
 import { layers } from './layers';
-import { dock, openStrong } from './panes';
+import { dock } from './panes';
+import { openConcordance } from './concordance';
 import { closeSheet, compact, hideCard, openSheet } from './sheets';
 import { frameCard, grip } from './cardframe';
 import { pagesLine } from './wordcard';
@@ -329,7 +330,7 @@ async function interlinear(panel: HTMLElement, data: () => Promise<any>, changed
         c.dataset.i = String(i);
         const o = h('div', 'inter-orig', w.original);
         o.lang = rtl ? 'he' : 'grc';
-        const s = button('inter-strong', w.strong || '', () => w.strong && openStrong(w.strong));
+        const s = button('inter-strong', w.strong || '', () => w.strong && openConcordance({ strong: w.strong }));
         const minus = button('vc-away', '−', () => { const a = putAwayOf(key); a.add(i); keepPutAway(key, a); draw(); });
         minus.title = 'Put this word away';
         minus.setAttribute('aria-label', `Put away “${w.gloss || w.translit || w.original}”`);
@@ -378,7 +379,7 @@ async function strongs(panel: HTMLElement, data: () => Promise<any>, changed?: (
     top.append(l, h('span', 'translit', e.translit || ''), h('span', 'muted small', ` ${e.strong}`));
     b.append(top);
     if (e.definition) b.append(h('p', 'small', e.definition));
-    b.onclick = () => openStrong(e.strong);
+    b.onclick = () => openConcordance({ strong: e.strong });
     panel.append(b);
   }
   changed?.();
