@@ -1,0 +1,2052 @@
+{
+  "command": "wb search --json the temple of the lord the",
+  "output": {
+    "q": "the temple of the lord the",
+    "case": false,
+    "regex": false,
+    "scope": "all",
+    "by_book": {
+      "9": 2,
+      "10": 1,
+      "12": 5,
+      "14": 4,
+      "15": 3,
+      "19": 4,
+      "23": 1,
+      "24": 4,
+      "26": 1,
+      "30": 1,
+      "37": 2,
+      "38": 5,
+      "39": 1,
+      "42": 1,
+      "66": 1
+    },
+    "verses": 36,
+    "matches": 397,
+    "offset": 0,
+    "rows": [
+      {
+        "ref": {
+          "b": 9,
+          "code": "1SA",
+          "name": "1 Samuel",
+          "c": 1,
+          "v": 9
+        },
+        "text": "So Hannah rose up after they had eaten in Shiloh, and after they had drunk. Now Eli the priest sat upon a seat by a post of the temple of the LORD.",
+        "spans": [
+          [
+            84,
+            87
+          ],
+          [
+            121,
+            123
+          ],
+          [
+            124,
+            127
+          ],
+          [
+            128,
+            134
+          ],
+          [
+            135,
+            137
+          ],
+          [
+            138,
+            141
+          ],
+          [
+            142,
+            146
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 9,
+          "code": "1SA",
+          "name": "1 Samuel",
+          "c": 3,
+          "v": 3
+        },
+        "text": "And ere the lamp of God went out in the temple of the LORD, where the ark of God was, and Samuel was laid down to sleep;",
+        "spans": [
+          [
+            8,
+            11
+          ],
+          [
+            17,
+            19
+          ],
+          [
+            36,
+            39
+          ],
+          [
+            40,
+            46
+          ],
+          [
+            47,
+            49
+          ],
+          [
+            50,
+            53
+          ],
+          [
+            54,
+            58
+          ],
+          [
+            66,
+            69
+          ],
+          [
+            74,
+            76
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 10,
+          "code": "2SA",
+          "name": "2 Samuel",
+          "c": 22,
+          "v": 7
+        },
+        "text": "In my distress I called upon the LORD, and cried to my God: and he did hear my voice out of his temple, and my cry did enter into his ears.",
+        "spans": [
+          [
+            29,
+            32
+          ],
+          [
+            33,
+            37
+          ],
+          [
+            89,
+            91
+          ],
+          [
+            96,
+            102
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 12,
+          "code": "2KI",
+          "name": "2 Kings",
+          "c": 11,
+          "v": 10
+        },
+        "text": "And to the captains over hundreds did the priest give king David’s spears and shields, that were in the temple of the LORD.",
+        "spans": [
+          [
+            7,
+            10
+          ],
+          [
+            38,
+            41
+          ],
+          [
+            100,
+            103
+          ],
+          [
+            104,
+            110
+          ],
+          [
+            111,
+            113
+          ],
+          [
+            114,
+            117
+          ],
+          [
+            118,
+            122
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 12,
+          "code": "2KI",
+          "name": "2 Kings",
+          "c": 11,
+          "v": 13
+        },
+        "text": "And when Athaliah heard the noise of the guard and of the people, she came to the people into the temple of the LORD.",
+        "spans": [
+          [
+            24,
+            27
+          ],
+          [
+            34,
+            36
+          ],
+          [
+            37,
+            40
+          ],
+          [
+            51,
+            53
+          ],
+          [
+            54,
+            57
+          ],
+          [
+            78,
+            81
+          ],
+          [
+            94,
+            97
+          ],
+          [
+            98,
+            104
+          ],
+          [
+            105,
+            107
+          ],
+          [
+            108,
+            111
+          ],
+          [
+            112,
+            116
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 12,
+          "code": "2KI",
+          "name": "2 Kings",
+          "c": 18,
+          "v": 16
+        },
+        "text": "At that time did Hezekiah cut off the gold from the doors of the temple of the LORD, and from the pillars which Hezekiah king of Judah had overlaid, and gave it to the king of Assyria.",
+        "spans": [
+          [
+            34,
+            37
+          ],
+          [
+            48,
+            51
+          ],
+          [
+            58,
+            60
+          ],
+          [
+            61,
+            64
+          ],
+          [
+            65,
+            71
+          ],
+          [
+            72,
+            74
+          ],
+          [
+            75,
+            78
+          ],
+          [
+            79,
+            83
+          ],
+          [
+            94,
+            97
+          ],
+          [
+            126,
+            128
+          ],
+          [
+            164,
+            167
+          ],
+          [
+            173,
+            175
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 12,
+          "code": "2KI",
+          "name": "2 Kings",
+          "c": 23,
+          "v": 4
+        },
+        "text": "And the king commanded Hilkiah the high priest, and the priests of the second order, and the keepers of the door, to bring forth out of the temple of the LORD all the vessels that were made for Baal, and for the grove, and for all the host of heaven: and he burned them without Jerusalem in the fields of Kidron, and carried the ashes of them unto Beth-el.",
+        "spans": [
+          [
+            4,
+            7
+          ],
+          [
+            31,
+            34
+          ],
+          [
+            52,
+            55
+          ],
+          [
+            64,
+            66
+          ],
+          [
+            67,
+            70
+          ],
+          [
+            89,
+            92
+          ],
+          [
+            101,
+            103
+          ],
+          [
+            104,
+            107
+          ],
+          [
+            133,
+            135
+          ],
+          [
+            136,
+            139
+          ],
+          [
+            140,
+            146
+          ],
+          [
+            147,
+            149
+          ],
+          [
+            150,
+            153
+          ],
+          [
+            154,
+            158
+          ],
+          [
+            163,
+            166
+          ],
+          [
+            208,
+            211
+          ],
+          [
+            231,
+            234
+          ],
+          [
+            240,
+            242
+          ],
+          [
+            291,
+            294
+          ],
+          [
+            302,
+            304
+          ],
+          [
+            325,
+            328
+          ],
+          [
+            335,
+            337
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 12,
+          "code": "2KI",
+          "name": "2 Kings",
+          "c": 24,
+          "v": 13
+        },
+        "text": "And he carried out thence all the treasures of the house of the LORD, and the treasures of the king’s house, and cut in pieces all the vessels of gold which Solomon king of Israel had made in the temple of the LORD, as the LORD had said.",
+        "spans": [
+          [
+            30,
+            33
+          ],
+          [
+            44,
+            46
+          ],
+          [
+            47,
+            50
+          ],
+          [
+            57,
+            59
+          ],
+          [
+            60,
+            63
+          ],
+          [
+            64,
+            68
+          ],
+          [
+            74,
+            77
+          ],
+          [
+            88,
+            90
+          ],
+          [
+            91,
+            94
+          ],
+          [
+            131,
+            134
+          ],
+          [
+            143,
+            145
+          ],
+          [
+            170,
+            172
+          ],
+          [
+            192,
+            195
+          ],
+          [
+            196,
+            202
+          ],
+          [
+            203,
+            205
+          ],
+          [
+            206,
+            209
+          ],
+          [
+            210,
+            214
+          ],
+          [
+            219,
+            222
+          ],
+          [
+            223,
+            227
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 14,
+          "code": "2CH",
+          "name": "2 Chronicles",
+          "c": 26,
+          "v": 16
+        },
+        "text": "But when he was strong, his heart was lifted up to his destruction: for he transgressed against the LORD his God, and went into the temple of the LORD to burn incense upon the altar of incense.",
+        "spans": [
+          [
+            96,
+            99
+          ],
+          [
+            100,
+            104
+          ],
+          [
+            128,
+            131
+          ],
+          [
+            132,
+            138
+          ],
+          [
+            139,
+            141
+          ],
+          [
+            142,
+            145
+          ],
+          [
+            146,
+            150
+          ],
+          [
+            172,
+            175
+          ],
+          [
+            182,
+            184
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 14,
+          "code": "2CH",
+          "name": "2 Chronicles",
+          "c": 27,
+          "v": 2
+        },
+        "text": "And he did that which was right in the sight of the LORD, according to all that his father Uzziah did: howbeit he entered not into the temple of the LORD. And the people did yet corruptly.",
+        "spans": [
+          [
+            35,
+            38
+          ],
+          [
+            45,
+            47
+          ],
+          [
+            48,
+            51
+          ],
+          [
+            52,
+            56
+          ],
+          [
+            131,
+            134
+          ],
+          [
+            135,
+            141
+          ],
+          [
+            142,
+            144
+          ],
+          [
+            145,
+            148
+          ],
+          [
+            149,
+            153
+          ],
+          [
+            159,
+            162
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 14,
+          "code": "2CH",
+          "name": "2 Chronicles",
+          "c": 29,
+          "v": 16
+        },
+        "text": "And the priests went into the inner part of the house of the LORD, to cleanse it, and brought out all the uncleanness that they found in the temple of the LORD into the court of the house of the LORD. And the Levites took it, to carry it out abroad into the brook Kidron.",
+        "spans": [
+          [
+            4,
+            7
+          ],
+          [
+            26,
+            29
+          ],
+          [
+            41,
+            43
+          ],
+          [
+            44,
+            47
+          ],
+          [
+            54,
+            56
+          ],
+          [
+            57,
+            60
+          ],
+          [
+            61,
+            65
+          ],
+          [
+            102,
+            105
+          ],
+          [
+            137,
+            140
+          ],
+          [
+            141,
+            147
+          ],
+          [
+            148,
+            150
+          ],
+          [
+            151,
+            154
+          ],
+          [
+            155,
+            159
+          ],
+          [
+            165,
+            168
+          ],
+          [
+            175,
+            177
+          ],
+          [
+            178,
+            181
+          ],
+          [
+            188,
+            190
+          ],
+          [
+            191,
+            194
+          ],
+          [
+            195,
+            199
+          ],
+          [
+            205,
+            208
+          ],
+          [
+            254,
+            257
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 14,
+          "code": "2CH",
+          "name": "2 Chronicles",
+          "c": 36,
+          "v": 7
+        },
+        "text": "Nebuchadnezzar also carried of the vessels of the house of the LORD to Babylon, and put them in his temple at Babylon.",
+        "spans": [
+          [
+            28,
+            30
+          ],
+          [
+            31,
+            34
+          ],
+          [
+            43,
+            45
+          ],
+          [
+            46,
+            49
+          ],
+          [
+            56,
+            58
+          ],
+          [
+            59,
+            62
+          ],
+          [
+            63,
+            67
+          ],
+          [
+            100,
+            106
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 15,
+          "code": "EZR",
+          "name": "Ezra",
+          "c": 3,
+          "v": 6
+        },
+        "text": "From the first day of the seventh month began they to offer burnt offerings unto the LORD. But the foundation of the temple of the LORD was not yet laid.",
+        "spans": [
+          [
+            5,
+            8
+          ],
+          [
+            19,
+            21
+          ],
+          [
+            22,
+            25
+          ],
+          [
+            81,
+            84
+          ],
+          [
+            85,
+            89
+          ],
+          [
+            95,
+            98
+          ],
+          [
+            110,
+            112
+          ],
+          [
+            113,
+            116
+          ],
+          [
+            117,
+            123
+          ],
+          [
+            124,
+            126
+          ],
+          [
+            127,
+            130
+          ],
+          [
+            131,
+            135
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 15,
+          "code": "EZR",
+          "name": "Ezra",
+          "c": 3,
+          "v": 10
+        },
+        "text": "And when the builders laid the foundation of the temple of the LORD, they set the priests in their apparel with trumpets, and the Levites the sons of Asaph with cymbals, to praise the LORD, after the ordinance of David king of Israel.",
+        "spans": [
+          [
+            9,
+            12
+          ],
+          [
+            27,
+            30
+          ],
+          [
+            42,
+            44
+          ],
+          [
+            45,
+            48
+          ],
+          [
+            49,
+            55
+          ],
+          [
+            56,
+            58
+          ],
+          [
+            59,
+            62
+          ],
+          [
+            63,
+            67
+          ],
+          [
+            78,
+            81
+          ],
+          [
+            126,
+            129
+          ],
+          [
+            138,
+            141
+          ],
+          [
+            147,
+            149
+          ],
+          [
+            180,
+            183
+          ],
+          [
+            184,
+            188
+          ],
+          [
+            196,
+            199
+          ],
+          [
+            210,
+            212
+          ],
+          [
+            224,
+            226
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 15,
+          "code": "EZR",
+          "name": "Ezra",
+          "c": 4,
+          "v": 1
+        },
+        "text": "Now when the adversaries of Judah and Benjamin heard that the children of the captivity builded the temple unto the LORD God of Israel;",
+        "spans": [
+          [
+            9,
+            12
+          ],
+          [
+            25,
+            27
+          ],
+          [
+            58,
+            61
+          ],
+          [
+            71,
+            73
+          ],
+          [
+            74,
+            77
+          ],
+          [
+            96,
+            99
+          ],
+          [
+            100,
+            106
+          ],
+          [
+            112,
+            115
+          ],
+          [
+            116,
+            120
+          ],
+          [
+            125,
+            127
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 19,
+          "code": "PSA",
+          "name": "Psalms",
+          "c": 11,
+          "v": 4
+        },
+        "text": "The LORD is in his holy temple, the LORD’s throne is in heaven: his eyes behold, his eyelids try, the children of men.",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            4,
+            8
+          ],
+          [
+            24,
+            30
+          ],
+          [
+            32,
+            35
+          ],
+          [
+            36,
+            40
+          ],
+          [
+            98,
+            101
+          ],
+          [
+            111,
+            113
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 19,
+          "code": "PSA",
+          "name": "Psalms",
+          "c": 18,
+          "v": 6
+        },
+        "text": "In my distress I called upon the LORD, and cried unto my God: he heard my voice out of his temple, and my cry came before him, even into his ears.",
+        "spans": [
+          [
+            29,
+            32
+          ],
+          [
+            33,
+            37
+          ],
+          [
+            84,
+            86
+          ],
+          [
+            91,
+            97
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 19,
+          "code": "PSA",
+          "name": "Psalms",
+          "c": 27,
+          "v": 4
+        },
+        "text": "One thing have I desired of the LORD, that will I seek after; that I may dwell in the house of the LORD all the days of my life, to behold the beauty of the LORD, and to enquire in his temple.",
+        "spans": [
+          [
+            25,
+            27
+          ],
+          [
+            28,
+            31
+          ],
+          [
+            32,
+            36
+          ],
+          [
+            82,
+            85
+          ],
+          [
+            92,
+            94
+          ],
+          [
+            95,
+            98
+          ],
+          [
+            99,
+            103
+          ],
+          [
+            108,
+            111
+          ],
+          [
+            117,
+            119
+          ],
+          [
+            139,
+            142
+          ],
+          [
+            150,
+            152
+          ],
+          [
+            153,
+            156
+          ],
+          [
+            157,
+            161
+          ],
+          [
+            185,
+            191
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 19,
+          "code": "PSA",
+          "name": "Psalms",
+          "c": 29,
+          "v": 9
+        },
+        "text": "The voice of the LORD maketh the hinds to calve, and discovereth the forests: and in his temple doth every one speak of his glory.",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            10,
+            12
+          ],
+          [
+            13,
+            16
+          ],
+          [
+            17,
+            21
+          ],
+          [
+            29,
+            32
+          ],
+          [
+            65,
+            68
+          ],
+          [
+            89,
+            95
+          ],
+          [
+            117,
+            119
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 23,
+          "code": "ISA",
+          "name": "Isaiah",
+          "c": 66,
+          "v": 6
+        },
+        "text": "A voice of noise from the city, a voice from the temple, a voice of the LORD that rendereth recompence to his enemies.",
+        "spans": [
+          [
+            8,
+            10
+          ],
+          [
+            22,
+            25
+          ],
+          [
+            45,
+            48
+          ],
+          [
+            49,
+            55
+          ],
+          [
+            65,
+            67
+          ],
+          [
+            68,
+            71
+          ],
+          [
+            72,
+            76
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 7,
+          "v": 4
+        },
+        "text": "Trust ye not in lying words, saying, The temple of the LORD, The temple of the LORD, The temple of the LORD, are these.",
+        "spans": [
+          [
+            37,
+            40
+          ],
+          [
+            41,
+            47
+          ],
+          [
+            48,
+            50
+          ],
+          [
+            51,
+            54
+          ],
+          [
+            55,
+            59
+          ],
+          [
+            61,
+            64
+          ],
+          [
+            65,
+            71
+          ],
+          [
+            72,
+            74
+          ],
+          [
+            75,
+            78
+          ],
+          [
+            79,
+            83
+          ],
+          [
+            85,
+            88
+          ],
+          [
+            89,
+            95
+          ],
+          [
+            96,
+            98
+          ],
+          [
+            99,
+            102
+          ],
+          [
+            103,
+            107
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 24,
+          "v": 1
+        },
+        "text": "The LORD shewed me, and, behold, two baskets of figs were set before the temple of the LORD, after that Nebuchadrezzar king of Babylon had carried away captive Jeconiah the son of Jehoiakim king of Judah, and the princes of Judah, with the carpenters and smiths, from Jerusalem, and had brought them to Babylon.",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            4,
+            8
+          ],
+          [
+            45,
+            47
+          ],
+          [
+            69,
+            72
+          ],
+          [
+            73,
+            79
+          ],
+          [
+            80,
+            82
+          ],
+          [
+            83,
+            86
+          ],
+          [
+            87,
+            91
+          ],
+          [
+            124,
+            126
+          ],
+          [
+            169,
+            172
+          ],
+          [
+            177,
+            179
+          ],
+          [
+            195,
+            197
+          ],
+          [
+            209,
+            212
+          ],
+          [
+            221,
+            223
+          ],
+          [
+            236,
+            239
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 50,
+          "v": 28
+        },
+        "text": "The voice of them that flee and escape out of the land of Babylon, to declare in Zion the vengeance of the LORD our God, the vengeance of his temple.",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            10,
+            12
+          ],
+          [
+            43,
+            45
+          ],
+          [
+            46,
+            49
+          ],
+          [
+            55,
+            57
+          ],
+          [
+            86,
+            89
+          ],
+          [
+            100,
+            102
+          ],
+          [
+            103,
+            106
+          ],
+          [
+            107,
+            111
+          ],
+          [
+            121,
+            124
+          ],
+          [
+            135,
+            137
+          ],
+          [
+            142,
+            148
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 51,
+          "v": 11
+        },
+        "text": "Make bright the arrows; gather the shields: the LORD hath raised up the spirit of the kings of the Medes: for his device is against Babylon, to destroy it; because it is the vengeance of the LORD, the vengeance of his temple.",
+        "spans": [
+          [
+            12,
+            15
+          ],
+          [
+            31,
+            34
+          ],
+          [
+            44,
+            47
+          ],
+          [
+            48,
+            52
+          ],
+          [
+            68,
+            71
+          ],
+          [
+            79,
+            81
+          ],
+          [
+            82,
+            85
+          ],
+          [
+            92,
+            94
+          ],
+          [
+            95,
+            98
+          ],
+          [
+            170,
+            173
+          ],
+          [
+            184,
+            186
+          ],
+          [
+            187,
+            190
+          ],
+          [
+            191,
+            195
+          ],
+          [
+            197,
+            200
+          ],
+          [
+            211,
+            213
+          ],
+          [
+            218,
+            224
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 26,
+          "code": "EZK",
+          "name": "Ezekiel",
+          "c": 8,
+          "v": 16
+        },
+        "text": "And he brought me into the inner court of the LORD’s house, and, behold, at the door of the temple of the LORD, between the porch and the altar, were about five and twenty men, with their backs toward the temple of the LORD, and their faces toward the east; and they worshipped the sun toward the east.",
+        "spans": [
+          [
+            23,
+            26
+          ],
+          [
+            39,
+            41
+          ],
+          [
+            42,
+            45
+          ],
+          [
+            46,
+            50
+          ],
+          [
+            76,
+            79
+          ],
+          [
+            85,
+            87
+          ],
+          [
+            88,
+            91
+          ],
+          [
+            92,
+            98
+          ],
+          [
+            99,
+            101
+          ],
+          [
+            102,
+            105
+          ],
+          [
+            106,
+            110
+          ],
+          [
+            120,
+            123
+          ],
+          [
+            134,
+            137
+          ],
+          [
+            201,
+            204
+          ],
+          [
+            205,
+            211
+          ],
+          [
+            212,
+            214
+          ],
+          [
+            215,
+            218
+          ],
+          [
+            219,
+            223
+          ],
+          [
+            248,
+            251
+          ],
+          [
+            278,
+            281
+          ],
+          [
+            293,
+            296
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 30,
+          "code": "AMO",
+          "name": "Amos",
+          "c": 8,
+          "v": 3
+        },
+        "text": "And the songs of the temple shall be howlings in that day, saith the Lord GOD: there shall be many dead bodies in every place; they shall cast them forth with silence.",
+        "spans": [
+          [
+            4,
+            7
+          ],
+          [
+            14,
+            16
+          ],
+          [
+            17,
+            20
+          ],
+          [
+            21,
+            27
+          ],
+          [
+            65,
+            68
+          ],
+          [
+            69,
+            73
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 37,
+          "code": "HAG",
+          "name": "Haggai",
+          "c": 2,
+          "v": 15
+        },
+        "text": "And now, I pray you, consider from this day and upward, from before a stone was laid upon a stone in the temple of the LORD:",
+        "spans": [
+          [
+            101,
+            104
+          ],
+          [
+            105,
+            111
+          ],
+          [
+            112,
+            114
+          ],
+          [
+            115,
+            118
+          ],
+          [
+            119,
+            123
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 37,
+          "code": "HAG",
+          "name": "Haggai",
+          "c": 2,
+          "v": 18
+        },
+        "text": "Consider now from this day and upward, from the four and twentieth day of the ninth month, even from the day that the foundation of the LORD’s temple was laid, consider it.",
+        "spans": [
+          [
+            44,
+            47
+          ],
+          [
+            71,
+            73
+          ],
+          [
+            74,
+            77
+          ],
+          [
+            101,
+            104
+          ],
+          [
+            114,
+            117
+          ],
+          [
+            129,
+            131
+          ],
+          [
+            132,
+            135
+          ],
+          [
+            136,
+            140
+          ],
+          [
+            143,
+            149
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 6,
+          "v": 12
+        },
+        "text": "And speak unto him, saying, Thus speaketh the LORD of hosts, saying, Behold the man whose name is The BRANCH; and he shall grow up out of his place, and he shall build the temple of the LORD:",
+        "spans": [
+          [
+            42,
+            45
+          ],
+          [
+            46,
+            50
+          ],
+          [
+            51,
+            53
+          ],
+          [
+            76,
+            79
+          ],
+          [
+            98,
+            101
+          ],
+          [
+            135,
+            137
+          ],
+          [
+            168,
+            171
+          ],
+          [
+            172,
+            178
+          ],
+          [
+            179,
+            181
+          ],
+          [
+            182,
+            185
+          ],
+          [
+            186,
+            190
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 6,
+          "v": 13
+        },
+        "text": "Even he shall build the temple of the LORD; and he shall bear the glory, and shall sit and rule upon his throne; and he shall be a priest upon his throne: and the counsel of peace shall be between them both.",
+        "spans": [
+          [
+            20,
+            23
+          ],
+          [
+            24,
+            30
+          ],
+          [
+            31,
+            33
+          ],
+          [
+            34,
+            37
+          ],
+          [
+            38,
+            42
+          ],
+          [
+            62,
+            65
+          ],
+          [
+            159,
+            162
+          ],
+          [
+            171,
+            173
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 6,
+          "v": 14
+        },
+        "text": "And the crowns shall be to Helem, and to Tobijah, and to Jedaiah, and to Hen the son of Zephaniah, for a memorial in the temple of the LORD.",
+        "spans": [
+          [
+            4,
+            7
+          ],
+          [
+            77,
+            80
+          ],
+          [
+            85,
+            87
+          ],
+          [
+            117,
+            120
+          ],
+          [
+            121,
+            127
+          ],
+          [
+            128,
+            130
+          ],
+          [
+            131,
+            134
+          ],
+          [
+            135,
+            139
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 6,
+          "v": 15
+        },
+        "text": "And they that are far off shall come and build in the temple of the LORD, and ye shall know that the LORD of hosts hath sent me unto you. And this shall come to pass, if ye will diligently obey the voice of the LORD your God.",
+        "spans": [
+          [
+            50,
+            53
+          ],
+          [
+            54,
+            60
+          ],
+          [
+            61,
+            63
+          ],
+          [
+            64,
+            67
+          ],
+          [
+            68,
+            72
+          ],
+          [
+            97,
+            100
+          ],
+          [
+            101,
+            105
+          ],
+          [
+            106,
+            108
+          ],
+          [
+            194,
+            197
+          ],
+          [
+            204,
+            206
+          ],
+          [
+            207,
+            210
+          ],
+          [
+            211,
+            215
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 9
+        },
+        "text": "Thus saith the LORD of hosts; Let your hands be strong, ye that hear in these days these words by the mouth of the prophets, which were in the day that the foundation of the house of the LORD of hosts was laid, that the temple might be built.",
+        "spans": [
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            98,
+            101
+          ],
+          [
+            108,
+            110
+          ],
+          [
+            111,
+            114
+          ],
+          [
+            139,
+            142
+          ],
+          [
+            152,
+            155
+          ],
+          [
+            167,
+            169
+          ],
+          [
+            170,
+            173
+          ],
+          [
+            180,
+            182
+          ],
+          [
+            183,
+            186
+          ],
+          [
+            187,
+            191
+          ],
+          [
+            192,
+            194
+          ],
+          [
+            216,
+            219
+          ],
+          [
+            220,
+            226
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 39,
+          "code": "MAL",
+          "name": "Malachi",
+          "c": 3,
+          "v": 1
+        },
+        "text": "Behold, I will send my messenger, and he shall prepare the way before me: and the Lord, whom ye seek, shall suddenly come to his temple, even the messenger of the covenant, whom ye delight in: behold, he shall come, saith the LORD of hosts.",
+        "spans": [
+          [
+            55,
+            58
+          ],
+          [
+            78,
+            81
+          ],
+          [
+            82,
+            86
+          ],
+          [
+            129,
+            135
+          ],
+          [
+            142,
+            145
+          ],
+          [
+            156,
+            158
+          ],
+          [
+            159,
+            162
+          ],
+          [
+            222,
+            225
+          ],
+          [
+            226,
+            230
+          ],
+          [
+            231,
+            233
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 42,
+          "code": "LUK",
+          "name": "Luke",
+          "c": 1,
+          "v": 9
+        },
+        "text": "According to the custom of the priest’s office, his lot was to burn incense when he went into the temple of the Lord.",
+        "spans": [
+          [
+            13,
+            16
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            30
+          ],
+          [
+            94,
+            97
+          ],
+          [
+            98,
+            104
+          ],
+          [
+            105,
+            107
+          ],
+          [
+            108,
+            111
+          ],
+          [
+            112,
+            116
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 66,
+          "code": "REV",
+          "name": "Revelation",
+          "c": 21,
+          "v": 22
+        },
+        "text": "And I saw no temple therein: for the Lord God Almighty and the Lamb are the temple of it.",
+        "spans": [
+          [
+            13,
+            19
+          ],
+          [
+            33,
+            36
+          ],
+          [
+            37,
+            41
+          ],
+          [
+            59,
+            62
+          ],
+          [
+            72,
+            75
+          ],
+          [
+            76,
+            82
+          ],
+          [
+            83,
+            85
+          ]
+        ]
+      }
+    ],
+    "more": false
+  }
+}

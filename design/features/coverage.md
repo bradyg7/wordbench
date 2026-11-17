@@ -24,6 +24,7 @@ A new button or command gets a row here, and its folder, before it is built.
 | Word sheet, verse sheet, hover card | a card that moves, a verse alone, hover | [words](words/README.md) | exploring |
 | Highlights and the palette | colors with names, layers by year; words' ink by contrast, any color on any theme | [highlights](highlights/README.md) | exploring (ink accepted 2026-11-16) |
 | Notebook: pages, Pinned, blocks | the side list, the page, / and the selection bar, many pages at once, folders | [library](library/README.md) | exploring (likely finished 2026-11-16) |
+| Notebook: Find scripture in a page | Find scripture… in a page's ⋯, the Tether pane, Accept and Skip, the verses in order for a deck or script | [tether](tether/README.md) | exploring (seeded 2026-11-17) |
 | Shelf and sets, bookmarks (Keep) | Keep on anything, the folder picker, a folder opened | [library](library/README.md) | exploring |
 | Threads | a thread is a folder with a color (TH-1, waiting on the person's word); its line on the text and its eye | [threads](threads/README.md) | exploring (likely finished 2026-11-16) |
 | Marks: what the text shows of yours | on the words, in the margin, margin notes, Scripture in this page, a passage with its marks | [marks](marks/README.md) | exploring (likely finished 2026-11-16) |
@@ -52,6 +53,7 @@ The terminal side of each area above; a command is designed with the area whose 
 | `search`, `find`, `uses`, `count`, `forms`, `near` | Search | [search](search/README.md) |
 | `hl`, `marks`, `palette` | Highlights (`marks` and `hl pencil` also [marks](marks/README.md)) | [highlights](highlights/README.md) |
 | `note`, `page`, `block`, `notebook`, `template` | Notebook | [library](library/README.md) |
+| `tether` (to build: `tether`, `accept`, `skip`, `unskip`, `skipped`, `verses`) | Find scripture in a page | [tether](tether/README.md) |
 | `thread`; `folder color`, `folder shown` (to add) | Threads | [threads](threads/README.md) |
 | `trail`, `question`, `questions` | Questions (`trail` is retired to "question" by [minimize](minimize/README.md)) | [questions](questions/README.md) |
 | `day`, `journal`, `inbox` | Day page, journal, inbox | [library](library/README.md) |
