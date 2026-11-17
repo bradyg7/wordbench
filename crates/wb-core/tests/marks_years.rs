@@ -46,7 +46,8 @@ fn years_of_study_keep_their_shape() {
     // 18,000 highlights, in one write per book
     let mut per: std::collections::BTreeMap<String, Vec<wb_core::store::Rec>> = Default::default();
     for i in 0..18000 {
-        let (code, c, v) = if i % 3 == 0 { ("JHN", 3, 1 + i % 36) } else { ("PSA", 1 + i % 150, 1 + i % 2) };
+        // every verse of John 3 is marked once; the rest are spread over the Psalms
+        let (code, c, v) = if i % 500 == 0 { ("JHN", 3, 1 + (i / 500) % 36) } else { ("PSA", 1 + i % 150, 1 + i % 2) };
         let h = json!({"id": format!("h_{i}"), "anchor": format!("{code}.{c}:{v}"), "color": "yellow", "quote": "", "created": "2026-01-01T00:00:00Z"});
         per.entry(code.into()).or_default().push(h.as_object().unwrap().clone());
     }

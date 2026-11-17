@@ -534,14 +534,18 @@ fn counts(bible: &Bible, store: &Store, code: &str, ch: u32, exclude: Option<&st
             }
             if n.at.kind() == "verse" {
                 c.notes += 1;
-                c.lines.push(json!({"kind": "note", "id": n.id, "text": line(&n.text)}));
+                if c.lines.len() < 6 {
+                    c.lines.push(json!({"kind": "note", "id": n.id, "text": line(&n.text)}));
+                }
             } else {
                 c.around += 1;
             }
         }
         for l in legacy_at(store, code, ch, v) {
             c.notes += 1;
-            c.lines.push(json!({"kind": "note", "id": l["id"], "text": l["first_line"]}));
+            if c.lines.len() < 6 {
+                c.lines.push(json!({"kind": "note", "id": l["id"], "text": l["first_line"]}));
+            }
         }
         by.insert(v, c);
     }
