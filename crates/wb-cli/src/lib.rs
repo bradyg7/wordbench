@@ -8,6 +8,7 @@
 mod args;
 mod docs;
 mod library;
+mod margin;
 mod mycommands;
 mod notebook;
 mod pages;
@@ -140,6 +141,7 @@ fn commands() -> Vec<Command> {
     all.extend(notebook::commands());
     all.extend(pages::commands());
     all.extend(library::commands());
+    all.extend(margin::commands());
     all.extend(docs::commands());
     all.extend(setup::commands());
     all
@@ -236,7 +238,7 @@ fn changes_page_files(command: &str) -> bool {
         "inbox edit" | "inbox rm" | "trail add" | "trail edit" | "trail done" | "trail reopen" |
         "trail rm" | "question add" | "question answer" | "question fold" | "question unfold" |
         "day add" | "day text" | "day rm" | "page new" | "page move" | "page pin" |
-        "page unpin" | "page title" |
+        "page unpin" | "page title" | "margin add" | "margin grow" |
         "block scripture" | "block thread" | "block word" | "block view" | "block set" |
         "block add" | "block rm" | "block undo" | "block move" | "template new" |
         "template save" | "template set" | "template rm" | "trash restore" | "history keep"

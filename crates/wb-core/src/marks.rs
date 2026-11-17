@@ -19,6 +19,9 @@ pub struct Mark {
 pub struct ChapterMarks {
     pub highlights: Vec<Mark>,
     pub notes: Vec<Mark>,
+    /// The pencil's lines (marks M14); `color` is empty.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pencil: Vec<Mark>,
     /// `id` is the thread's id; one mark per place.
     pub threads: Vec<Mark>,
     /// Thread id → name, for the threads that have places here.
@@ -35,6 +38,13 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: u32) -> Result<ChapterM
         if let Ok(a) = anchors::parse(&s(&h, "anchor")) {
             if inside(&a, code, chapter) {
                 m.highlights.push(Mark { at: a, id: s(&h, "id"), color: s(&h, "color") });
+            }
+        }
+    }
+    for p in crate::pencil::list(store, code) {
+        if let Ok(a) = anchors::parse(&s(&p, "anchor")) {
+            if inside(&a, code, chapter) {
+                m.pencil.push(Mark { at: a, id: s(&p, "id"), color: String::new() });
             }
         }
     }
@@ -89,5 +99,5 @@ pub fn verse_level(m: ChapterMarks) -> ChapterMarks {
         .collect();
     let threads: Vec<Mark> = m.threads.into_iter().filter(whole).collect();
     let thread_names = m.thread_names.into_iter().filter(|(id, _)| threads.iter().any(|t| &t.id == id)).collect();
-    ChapterMarks { highlights: m.highlights.into_iter().filter(whole).collect(), notes, threads, thread_names }
+    ChapterMarks { highlights: m.highlights.into_iter().filter(whole).collect(), notes, pencil: m.pencil.into_iter().filter(whole).collect(), threads, thread_names }
 }

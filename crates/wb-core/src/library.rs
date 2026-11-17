@@ -207,10 +207,10 @@ fn since(text: &str) -> Result<String> {
 }
 
 /// Pages, folders, saves and questions in one list, grouped by kind: `{q, count, total, groups: [{kind, count, results}]}`.
-/// `total` is how many there were before the words and filters, for "23 of 412". Margin notes belong to marks (not built).
+/// `total` is how many there were before the words and filters, for "23 of 412". Margin notes and highlights are groups too.
 pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
-    if !["", "page", "folder", "save", "question", "margin"].contains(&f.kind) {
-        return Err(bad("--kind is page, folder, save, question or margin."));
+    if !["", "page", "folder", "save", "question", "margin", "highlight"].contains(&f.kind) {
+        return Err(bad("--kind is page, folder, save, question, margin or highlight."));
     }
     if !["", "edited", "title"].contains(&f.sort) {
         return Err(bad("--sort is edited or title."));
@@ -288,8 +288,29 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         out_groups.push(("question".into(), rows));
     }
     if want("margin") {
-        // margin notes are marks' (marks M30); there are none to find until that folder is built
-        out_groups.push(("margin".into(), vec![]));
+        let notes = crate::margin::rows(bible, store);
+        all_total += notes.len();
+        let rows = notes
+            .into_iter()
+            .filter(|e| has(&format!("{} {}", e["title"].as_str().unwrap_or(""), e["snippet"].as_str().unwrap_or(""))))
+            .filter(|e| !f.has_question || e["question"] == true)
+            .filter(|e| cutoff.as_ref().is_none_or(|c| e["updated"].as_str().unwrap_or("") >= c.as_str()))
+            .filter(|_| in_folder.is_none())
+            .collect();
+        out_groups.push(("margin".into(), rows));
+    }
+    if want("highlight") {
+        let hl = store.all_highlights();
+        all_total += hl.len();
+        let rows = hl
+            .iter()
+            .map(|h| (crate::notebook::label(bible, &s(h, "anchor")), h))
+            .filter(|(label, h)| has(&format!("{label} {} {}", s(h, "quote"), s(h, "color"))))
+            .filter(|(_, h)| cutoff.as_ref().is_none_or(|c| s(h, "created").as_str() >= c.as_str()))
+            .filter(|_| in_folder.is_none() && !f.has_question)
+            .map(|(label, h)| json!({"kind": "highlight", "id": h["id"], "title": label, "snippet": s(h, "quote"), "color": h["color"], "updated": s(h, "created")}))
+            .collect();
+        out_groups.push(("highlight".into(), rows));
     }
     let mut count = 0;
     for (kind, mut rows) in out_groups {

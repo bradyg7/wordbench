@@ -946,6 +946,8 @@ pub struct ScriptureFence {
     pub reference: String,
     pub lines: bool,
     pub ylt: bool,
+    /// With my marks (marks M6, M7): the block draws the reader's colors and pencil and a dot per verse with something.
+    pub marks: bool,
 }
 
 /// A block's Markdown → its scripture fence, when it is one (```` ```scripture ````, the reference on its first line).
@@ -959,7 +961,7 @@ pub fn scripture_fence(block: &str) -> Option<ScriptureFence> {
     let inner: Vec<&str> = ls.take_while(|l| !l.trim_start().starts_with(mark)).map(str::trim).filter(|l| !l.is_empty()).collect();
     let (reference, opts) = inner.split_first().map(|(r, o)| (r.to_string(), o)).unwrap_or_default();
     let has = |w: &str| opts.iter().any(|o| o.eq_ignore_ascii_case(w));
-    Some(ScriptureFence { reference, lines: has("lines"), ylt: has("ylt") })
+    Some(ScriptureFence { reference, lines: has("lines"), ylt: has("ylt"), marks: has("marks") })
 }
 
 /// The fence written back: the reference, then `lines` and `ylt` on their own lines when chosen.
@@ -987,7 +989,7 @@ pub fn scripture(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
         }
         let Some(f) = scripture_fence(&sub(&c, b.start, b.end)) else { continue };
         let version = if f.ylt { "YLT" } else { "KJV" };
-        let mut v = json!({"n": i + 1, "reference": f.reference, "lines": f.lines, "version": version});
+        let mut v = json!({"n": i + 1, "reference": f.reference, "lines": f.lines, "version": version, "marks": f.marks});
         if f.reference.is_empty() {
             v["error"] = json!("No reference yet: write one under ```scripture.");
         } else {
@@ -995,6 +997,9 @@ pub fn scripture(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
                 Ok(p) => {
                     v["label"] = p["label"].clone();
                     v["verses"] = p["verses"].clone();
+                    if f.marks {
+                        crate::margin::add_dots(bible, store, &mut v["verses"])?;
+                    }
                 }
                 Err(e) => v["error"] = json!(e.0),
             }
@@ -1006,7 +1011,7 @@ pub fn scripture(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
 
 /// Change a scripture block's choices (Paragraph or Lines, KJV or YLT): its fence is written anew, the reference kept.
 /// None leaves a choice as it is. → the page's blocks, as `edit`.
-pub fn set_scripture(bible: &Bible, store: &mut Store, id: &str, n: usize, lines: Option<bool>, ylt: Option<bool>) -> Result<Value> {
+pub fn set_scripture(bible: &Bible, store: &mut Store, id: &str, n: usize, lines: Option<bool>, ylt: Option<bool>, marks: Option<bool>) -> Result<Value> {
     let (_, text, titled) = text_of(store, id)?;
     let c = chars(&text);
     let bs = split(&text, titled).1;
@@ -1017,6 +1022,9 @@ pub fn set_scripture(bible: &Bible, store: &mut Store, id: &str, n: usize, lines
     }
     if let Some(x) = ylt {
         f.ylt = x;
+    }
+    if let Some(x) = marks {
+        f.marks = x;
     }
     edit(bible, store, id, Edit::Set { n, count: 1, text: &scripture_fence_text(&f) })
 }
@@ -1043,6 +1051,11 @@ pub fn thread_fence(block: &str) -> Option<String> {
 /// A block's Markdown → the Strong's number it holds, when it is a word block (```` ```word ````).
 pub fn word_fence(block: &str) -> Option<String> {
     value_fence(block, "word")
+}
+
+/// A block's Markdown → the margin note's id it holds, when it is a jot block (```` ```jot ````; marks MK-8, MK-17).
+pub fn jot_fence(block: &str) -> Option<String> {
+    value_fence(block, "jot")
 }
 
 /// A thread or word block as it is written.

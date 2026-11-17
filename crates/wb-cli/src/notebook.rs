@@ -175,7 +175,7 @@ fn notebook_commands() -> Vec<Command> {
             vec![Pos("day", N::Opt)], |c, a| j(nb::delete_day_with_undo(c.bible()?, &mut *c.study()?, day_of(a).as_deref()).map_err(e)?)),
         cmd("settings", "The window's settings for a part (notebook): wb settings notebook; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
             vec![Pos("part", N::One), Pos("key", N::Opt), Pos("value", N::Any), Flag("about")], |c, a| {
-                const FREE: [&str; 7] = ["reading", "hover", "theme", "advanced", "toolbar", "commands", "concordance"];
+                const FREE: [&str; 8] = ["reading", "hover", "theme", "advanced", "toolbar", "commands", "concordance", "margin"];
                 if FREE.contains(&a.s("part").as_str()) {
                     // the window's other settings (R4): any key, a value that is JSON or plain text; "default" forgets it
                     let part = a.s("part");

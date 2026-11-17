@@ -292,6 +292,8 @@ pub struct Store {
     /// How many files have been read and how often the folder was looked at (for the tests).
     pub loads: usize,
     pub scans: usize,
+    /// Which pages name which verses (marks MK-14); an entry is forgotten when its file is read again or gone.
+    pub index: std::cell::RefCell<crate::pageindex::PageIndex>,
 }
 
 fn stem(p: &Path) -> String {
@@ -361,6 +363,7 @@ impl Store {
             checked: None,
             loads: 0,
             scans: 0,
+            index: Default::default(),
         };
         st.refresh()?;
         Ok(st)
@@ -411,6 +414,9 @@ impl Store {
     fn drop_file(&mut self, path: &Path) {
         self.sigs.remove(path);
         if let Some((kind, key)) = self.paths.remove(path) {
+            if matches!(kind, Kind::Note | Kind::Trail | Kind::OnThread | Kind::Inbox) {
+                self.index.get_mut().forget(&key);
+            }
             match kind {
                 Kind::Note => self.notes.retain(|n| s(n, "id") != key),
                 Kind::Trail => self.trails.retain(|n| s(n, "id") != key),

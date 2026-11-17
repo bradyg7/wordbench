@@ -75,7 +75,22 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: i64) -> Result<Value> {
             }
         }
     }
-    Ok(json!({"highlights": hls, "notes": notes, "threads": threads}))
+    let mut out = json!({"highlights": hls, "notes": notes, "threads": threads});
+    let pencil: Vec<Value> = crate::pencil::list(store, code)
+        .into_iter()
+        .filter_map(|p| {
+            let a = py_parse(&s(&p, "anchor")).ok()?;
+            inside(&a, code, chapter).then(|| {
+                let mut m = coords(&a);
+                m.insert("id".into(), p["id"].clone());
+                Value::Object(m)
+            })
+        })
+        .collect();
+    if !pencil.is_empty() {
+        out["pencil"] = json!(pencil);
+    }
+    Ok(out)
 }
 
 /// Do two places share a verse? (Word and phrase anchors count by their verses.)
