@@ -399,8 +399,11 @@ fn notebook_commands() -> Vec<Command> {
                 }
                 j(json!(out))
             }),
-        cmd("refs", "The verse references in a piece of text, as the Notebook links them: wb refs \"see 1 Cor 10:8 and Num 25:9\". Heard as said: \"Romans 8 verse 28\" and \"John chapter 3 verse 16\" are the verse; --spoken also reads number words (\"second Timothy two fifteen\").",
-            vec![Pos("text", N::Many), Flag("spoken")], |c, a| {
+        cmd("refs", "The verse references in a piece of text, as the Notebook links them: wb refs \"see 1 Cor 10:8 and Num 25:9\". Heard as said: \"Romans 8 verse 28\" and \"John chapter 3 verse 16\" are the verse; --plain: only the written forms, as the Notebook links them; --spoken also reads number words (\"second Timothy two fifteen\").",
+            vec![Pos("text", N::Many), Flag("spoken"), Flag("plain")], |c, a| {
+                if a.flag("plain") {
+                    return j(json!(lang::find_refs(&a.s("text"), c.bible()?.books())));
+                }
                 let found = wb_core::tether::spoken::find_said(&a.s("text"), c.bible()?.books(), a.flag("spoken"));
                 j(json!(found.iter().map(|f| {
                     let mut v = json!({"start": f.start, "end": f.end, "ref": f.place, "hash": f.hash});
