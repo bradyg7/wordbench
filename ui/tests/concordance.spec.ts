@@ -73,10 +73,8 @@ test('the English page is the places of wb concordance, a long word is under its
 
 test('a letter after a search shows its words, a letter with none is dimmed, Back returns to the search', async ({ page }) => {
   await ready(page);
-  await open(page);
+  await open(page, { word: 'zeal', mode: 'one' });
   const c = front(page);
-  await c.locator('.conc-input').fill('zeal');
-  await c.locator('.conc-input').press('Enter');
   await expect(c.locator('.conc-word')).toHaveText('zeal');
   await expect(c.locator('.conc-letter[data-letter="x"]')).toBeDisabled();
   await expect(c.locator('.conc-letter[data-letter="j"]')).toBeEnabled();
@@ -116,4 +114,33 @@ test('the Interlinear tab shows the verse as wb text gives it, with the words an
   const inter = await fixture(page, 'interlinear-numbers-25-11');
   await expect(c.locator('.conc-words .inter-card')).toHaveCount(inter.verses[0].words.length);
   await expect(c.locator('.conc-words .inter-strong').first()).toHaveText(inter.verses[0].words[0].strong);
+});
+
+test('picking the same word twice keeps the one tab and its steps', async ({ page }) => {
+  await ready(page);
+  await open(page, { word: 'zeal', mode: 'one' });
+  await open(page, { word: 'zeal', mode: 'one', from: { tab: 'english', word: 'heart', mode: 'one', letter: '', back: '', entry: '', by: 'word', ref: '', from: '', offset: 0, steps: ['english heart'] } });
+  expect(await tabs(page)).toEqual(['zeal']);
+  const steps = () => page.evaluate(() => (window as any).__wb.dock().panes.find((p: any) => p.kind === 'concordance').captureView().steps);
+  await expect.poll(steps).toEqual(['english zeal']);
+  await open(page, { word: 'zeal', mode: 'one' });
+  expect(await tabs(page)).toEqual(['zeal']);
+  expect(await steps()).toEqual(['english zeal']);
+  await expect(front(page).locator('.conc-line')).toHaveCount(16);
+});
+
+test('Enter on a word opens its tab like a click; a dash never reaches wb; a small word has no other forms', async ({ page }) => {
+  await ready(page);
+  await open(page);
+  const c = front(page);
+  await c.locator('.conc-input').fill('zealous');
+  await c.locator('.conc-input').press('Enter');
+  expect(await tabs(page)).toEqual(['Concordance', 'zealous']);
+  await expect(front(page).locator('.conc-other')).toHaveText(['zeal 16', 'zealously 2']);
+  await c.locator('.conc-input').fill('-zeal');
+  await c.locator('.conc-input').press('Enter');
+  expect(await tabs(page)).toEqual(['Concordance', 'zealous']);
+  // a small word chosen alone: references only and nothing at the foot
+  await open(page, { word: 'and', mode: 'one' });
+  await expect(front(page).locator('.conc-forms')).toHaveCount(0);
 });

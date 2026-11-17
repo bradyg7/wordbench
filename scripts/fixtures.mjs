@@ -43,7 +43,7 @@ try {
   for (const argv of [
     ['concordance', 'letters'], ['settings', 'concordance'],
     ['concordance', 'zeal', '--forms', 'all'], ['concordance', 'zeal', '--forms', 'one'], ['concordance', 'zealous', '--forms', 'one'],
-    ['concordance', 'heart', '--forms', 'one'], ['concordance', 'heart', '--forms', 'one', '--book', 'PSA'], ['concordance', 'and', '--forms', 'all'],
+    ['concordance', 'heart', '--forms', 'one'], ['concordance', 'heart', '--forms', 'one', '--book', 'PSA'], ['concordance', 'and', '--forms', 'all'], ['concordance', 'and', '--forms', 'one'],
     ['concordance', 'box', 'zea'], ['concordance', 'box', 'zealous'], ['concordance', 'box', 'H7068'], ['concordance', 'box', 'kanna'],
     ['strong', 'H7068'], ['strong', 'H7068', '--next'], ['strong', 'H7068', '--prev'], ['strong', '--list', 'hebrew'], ['strong', '--list', 'greek'],
     ['uses', 'H7068', '--by', 'word'], ['uses', 'H7068', '--by', 'book'], ['uses', 'H7068', '--by', 'word', '--group', 'jealousy'],

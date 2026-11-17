@@ -43,7 +43,7 @@ export interface Open {
   from?: State;
 }
 
-const fresh = (): State => ({ tab: 'english', word: '', mode: 'all', letter: '', back: '', entry: '', by: 'word', ref: '', from: '', offset: 0, steps: [] });
+const fresh = (): State => ({ tab: 'english', word: '', mode: 'one', letter: '', back: '', entry: '', by: 'word', ref: '', from: '', offset: 0, steps: [] });
 const langOf = (n: string): Tab => (n.toUpperCase().startsWith('H') ? 'hebrew' : 'greek');
 const isNumber = (s: string) => /^[HhGg]\d{1,4}$/.test(s.trim());
 const lemmaEl = (text: string, lang?: string) => {
@@ -111,7 +111,7 @@ class Book {
     root.append(box, this.strip, this.tabs, this.body);
     this.pane.captureView = () => ({ ...this.st, steps: [...this.st.steps] });
     this.pane.restoreView = async (s: State) => { if (s?.tab) { Object.assign(this.st, s); await this.draw(); } };
-    if (!this.st.word) this.st.mode = (await wb(['settings', 'concordance']).catch(() => ({})))?.forms === 'one' ? 'one' : 'all';
+    if (!this.st.word) this.st.mode = (await wb(['settings', 'concordance']).catch(() => ({})))?.forms === 'all' ? 'all' : 'one';
     try { this.letters = (await wb(['concordance', 'letters'])).letters; } catch { this.letters = []; }
     this.drawLetters();
     await this.draw();
@@ -170,16 +170,12 @@ class Book {
     if (!q) return;
     this.sug.replaceChildren();
     if (isNumber(q)) return this.pick({ strong: q });
-    if (/^[a-z’'-]+$/i.test(q)) {
-      this.input.value = '';
-      this.st.back = '';
-      this.st.letter = '';
-      Object.assign(this.st, { tab: 'english', word: q.toLowerCase() });
-      this.st.mode = (await wb(['settings', 'concordance']).catch(() => ({})))?.forms === 'one' ? 'one' : 'all';
-      return this.draw();
-    }
+    // what is typed never starts with a dash: it would reach wb as a flag
+    if (q.startsWith('-')) { toast('Type a word, a number like H7068 or a place'); return; }
+    // Enter on a word is a pick like a click on a suggestion: a new tab, the word alone (C-13)
+    if (/^[a-z’'][a-z’'-]*$/i.test(q)) return this.pick({ word: q.toLowerCase() });
     this.input.value = '';
-    Object.assign(this.st, { tab: 'interlinear', ref: q });
+    Object.assign(this.st, { tab: 'interlinear', ref: q, offset: 0 });
     return this.draw();
   }
 
@@ -275,7 +271,7 @@ class Book {
     }
     // the other forms, a click away (C22)
     const others = (d.forms || []).filter((f: any) => f.form !== st.word);
-    if (others.length && st.mode === 'one') {
+    if (others.length && d.mode === 'one' && !d.small) {
       const foot = h('footer', 'conc-forms');
       foot.append(h('span', 'label', 'Other forms'));
       for (const f of others) {
@@ -430,7 +426,7 @@ class Book {
     ref.value = st.ref;
     ref.setAttribute('aria-label', 'Place');
     find.append(ref, button('btn', 'Show', () => find.requestSubmit()));
-    find.onsubmit = e => { e.preventDefault(); st.ref = ref.value.trim(); st.offset = 0; void this.draw(); };
+    find.onsubmit = e => { e.preventDefault(); const v = ref.value.trim(); if (v.startsWith('-')) { toast('Type a place, like Numbers 25:11'); return; } st.ref = v; st.offset = 0; void this.draw(); };
     this.body.append(find);
     if (!st.ref) {
       this.body.append(h('p', 'muted conc-hint', 'The original words under each verse of a place, with their numbers.'));
