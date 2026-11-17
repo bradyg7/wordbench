@@ -1,0 +1,4458 @@
+{
+  "command": "wb search --json thus saith the lord of hosts",
+  "output": {
+    "q": "thus saith the lord of hosts",
+    "case": false,
+    "regex": false,
+    "scope": "all",
+    "by_book": {
+      "9": 1,
+      "10": 1,
+      "13": 1,
+      "23": 3,
+      "24": 52,
+      "30": 1,
+      "37": 4,
+      "38": 17,
+      "39": 2
+    },
+    "verses": 82,
+    "matches": 862,
+    "offset": 0,
+    "rows": [
+      {
+        "ref": {
+          "b": 9,
+          "code": "1SA",
+          "name": "1 Samuel",
+          "c": 15,
+          "v": 2
+        },
+        "text": "Thus saith the LORD of hosts, I remember that which Amalek did to Israel, how he laid wait for him in the way, when he came up from Egypt.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            102,
+            105
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 10,
+          "code": "2SA",
+          "name": "2 Samuel",
+          "c": 7,
+          "v": 8
+        },
+        "text": "Now therefore so shalt thou say unto my servant David, Thus saith the LORD of hosts, I took thee from the sheepcote, from following the sheep, to be ruler over my people, over Israel:",
+        "spans": [
+          [
+            55,
+            59
+          ],
+          [
+            60,
+            65
+          ],
+          [
+            66,
+            69
+          ],
+          [
+            70,
+            74
+          ],
+          [
+            75,
+            77
+          ],
+          [
+            78,
+            83
+          ],
+          [
+            102,
+            105
+          ],
+          [
+            132,
+            135
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 13,
+          "code": "1CH",
+          "name": "1 Chronicles",
+          "c": 17,
+          "v": 7
+        },
+        "text": "Now therefore thus shalt thou say unto my servant David, Thus saith the LORD of hosts, I took thee from the sheepcote, even from following the sheep, that thou shouldest be ruler over my people Israel:",
+        "spans": [
+          [
+            14,
+            18
+          ],
+          [
+            57,
+            61
+          ],
+          [
+            62,
+            67
+          ],
+          [
+            68,
+            71
+          ],
+          [
+            72,
+            76
+          ],
+          [
+            77,
+            79
+          ],
+          [
+            80,
+            85
+          ],
+          [
+            104,
+            107
+          ],
+          [
+            139,
+            142
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 23,
+          "code": "ISA",
+          "name": "Isaiah",
+          "c": 10,
+          "v": 24
+        },
+        "text": "Therefore thus saith the Lord GOD of hosts, O my people that dwellest in Zion, be not afraid of the Assyrian: he shall smite thee with a rod, and shall lift up his staff against thee, after the manner of Egypt.",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            34,
+            36
+          ],
+          [
+            37,
+            42
+          ],
+          [
+            93,
+            95
+          ],
+          [
+            96,
+            99
+          ],
+          [
+            190,
+            193
+          ],
+          [
+            201,
+            203
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 23,
+          "code": "ISA",
+          "name": "Isaiah",
+          "c": 22,
+          "v": 15
+        },
+        "text": "Thus saith the Lord GOD of hosts, Go, get thee unto this treasurer, even unto Shebna, which is over the house, and say,",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            100,
+            103
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 23,
+          "code": "ISA",
+          "name": "Isaiah",
+          "c": 44,
+          "v": 6
+        },
+        "text": "Thus saith the LORD the King of Israel, and his redeemer the LORD of hosts; I am the first, and I am the last; and beside me there is no God.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            23
+          ],
+          [
+            29,
+            31
+          ],
+          [
+            57,
+            60
+          ],
+          [
+            61,
+            65
+          ],
+          [
+            66,
+            68
+          ],
+          [
+            69,
+            74
+          ],
+          [
+            81,
+            84
+          ],
+          [
+            101,
+            104
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 5,
+          "v": 14
+        },
+        "text": "Wherefore thus saith the LORD God of hosts, Because ye speak this word, behold, I will make my words in thy mouth fire, and this people wood, and it shall devour them.",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            34,
+            36
+          ],
+          [
+            37,
+            42
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 6,
+          "v": 9
+        },
+        "text": "Thus saith the LORD of hosts, They shall throughly glean the remnant of Israel as a vine: turn back thine hand as a grapegatherer into the baskets.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            57,
+            60
+          ],
+          [
+            69,
+            71
+          ],
+          [
+            135,
+            138
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 7,
+          "v": 3
+        },
+        "text": "Thus saith the LORD of hosts, the God of Israel, Amend your ways and your doings, and I will cause you to dwell in this place.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            38,
+            40
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 7,
+          "v": 21
+        },
+        "text": "Thus saith the LORD of hosts, the God of Israel; Put your burnt offerings unto your sacrifices, and eat flesh.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            38,
+            40
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 9,
+          "v": 7
+        },
+        "text": "Therefore thus saith the LORD of hosts, Behold, I will melt them, and try them; for how shall I do for the daughter of my people?",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            30,
+            32
+          ],
+          [
+            33,
+            38
+          ],
+          [
+            103,
+            106
+          ],
+          [
+            116,
+            118
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 9,
+          "v": 15
+        },
+        "text": "Therefore thus saith the LORD of hosts, the God of Israel; Behold, I will feed them, even this people, with wormwood, and give them water of gall to drink.",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            30,
+            32
+          ],
+          [
+            33,
+            38
+          ],
+          [
+            40,
+            43
+          ],
+          [
+            48,
+            50
+          ],
+          [
+            138,
+            140
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 9,
+          "v": 17
+        },
+        "text": "Thus saith the LORD of hosts, Consider ye, and call for the mourning women, that they may come; and send for cunning women, that they may come:",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            56,
+            59
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 11,
+          "v": 22
+        },
+        "text": "Therefore thus saith the LORD of hosts, Behold, I will punish them: the young men shall die by the sword; their sons and their daughters shall die by famine:",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            30,
+            32
+          ],
+          [
+            33,
+            38
+          ],
+          [
+            68,
+            71
+          ],
+          [
+            95,
+            98
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 16,
+          "v": 9
+        },
+        "text": "For thus saith the LORD of hosts, the God of Israel; Behold, I will cause to cease out of this place in your eyes, and in your days, the voice of mirth, and the voice of gladness, the voice of the bridegroom, and the voice of the bride.",
+        "spans": [
+          [
+            4,
+            8
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            34,
+            37
+          ],
+          [
+            42,
+            44
+          ],
+          [
+            87,
+            89
+          ],
+          [
+            133,
+            136
+          ],
+          [
+            143,
+            145
+          ],
+          [
+            157,
+            160
+          ],
+          [
+            167,
+            169
+          ],
+          [
+            180,
+            183
+          ],
+          [
+            190,
+            192
+          ],
+          [
+            193,
+            196
+          ],
+          [
+            213,
+            216
+          ],
+          [
+            223,
+            225
+          ],
+          [
+            226,
+            229
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 19,
+          "v": 3
+        },
+        "text": "And say, Hear ye the word of the LORD, O kings of Judah, and inhabitants of Jerusalem; Thus saith the LORD of hosts, the God of Israel; Behold, I will bring evil upon this place, the which whosoever heareth, his ears shall tingle.",
+        "spans": [
+          [
+            17,
+            20
+          ],
+          [
+            26,
+            28
+          ],
+          [
+            29,
+            32
+          ],
+          [
+            33,
+            37
+          ],
+          [
+            47,
+            49
+          ],
+          [
+            73,
+            75
+          ],
+          [
+            87,
+            91
+          ],
+          [
+            92,
+            97
+          ],
+          [
+            98,
+            101
+          ],
+          [
+            102,
+            106
+          ],
+          [
+            107,
+            109
+          ],
+          [
+            110,
+            115
+          ],
+          [
+            117,
+            120
+          ],
+          [
+            125,
+            127
+          ],
+          [
+            179,
+            182
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 19,
+          "v": 11
+        },
+        "text": "And shalt say unto them, Thus saith the LORD of hosts; Even so will I break this people and this city, as one breaketh a potter’s vessel, that cannot be made whole again: and they shall bury them in Tophet, till there be no place to bury.",
+        "spans": [
+          [
+            25,
+            29
+          ],
+          [
+            30,
+            35
+          ],
+          [
+            36,
+            39
+          ],
+          [
+            40,
+            44
+          ],
+          [
+            45,
+            47
+          ],
+          [
+            48,
+            53
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 19,
+          "v": 15
+        },
+        "text": "Thus saith the LORD of hosts, the God of Israel; Behold, I will bring upon this city and upon all her towns all the evil that I have pronounced against it, because they have hardened their necks, that they might not hear my words.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            38,
+            40
+          ],
+          [
+            112,
+            115
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 23,
+          "v": 15
+        },
+        "text": "Therefore thus saith the LORD of hosts concerning the prophets; Behold, I will feed them with wormwood, and make them drink the water of gall: for from the prophets of Jerusalem is profaneness gone forth into all the land.",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            30,
+            32
+          ],
+          [
+            33,
+            38
+          ],
+          [
+            50,
+            53
+          ],
+          [
+            124,
+            127
+          ],
+          [
+            134,
+            136
+          ],
+          [
+            152,
+            155
+          ],
+          [
+            165,
+            167
+          ],
+          [
+            213,
+            216
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 23,
+          "v": 16
+        },
+        "text": "Thus saith the LORD of hosts, Hearken not unto the words of the prophets that prophesy unto you: they make you vain: they speak a vision of their own heart, and not out of the mouth of the LORD.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            47,
+            50
+          ],
+          [
+            57,
+            59
+          ],
+          [
+            60,
+            63
+          ],
+          [
+            137,
+            139
+          ],
+          [
+            169,
+            171
+          ],
+          [
+            172,
+            175
+          ],
+          [
+            182,
+            184
+          ],
+          [
+            185,
+            188
+          ],
+          [
+            189,
+            193
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 25,
+          "v": 8
+        },
+        "text": "Therefore thus saith the LORD of hosts; Because ye have not heard my words,",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            30,
+            32
+          ],
+          [
+            33,
+            38
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 25,
+          "v": 27
+        },
+        "text": "Therefore thou shalt say unto them, Thus saith the LORD of hosts, the God of Israel; Drink ye, and be drunken, and spue, and fall, and rise no more, because of the sword which I will send among you.",
+        "spans": [
+          [
+            36,
+            40
+          ],
+          [
+            41,
+            46
+          ],
+          [
+            47,
+            50
+          ],
+          [
+            51,
+            55
+          ],
+          [
+            56,
+            58
+          ],
+          [
+            59,
+            64
+          ],
+          [
+            66,
+            69
+          ],
+          [
+            74,
+            76
+          ],
+          [
+            157,
+            159
+          ],
+          [
+            160,
+            163
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 25,
+          "v": 28
+        },
+        "text": "And it shall be, if they refuse to take the cup at thine hand to drink, then shalt thou say unto them, Thus saith the LORD of hosts; Ye shall certainly drink.",
+        "spans": [
+          [
+            40,
+            43
+          ],
+          [
+            103,
+            107
+          ],
+          [
+            108,
+            113
+          ],
+          [
+            114,
+            117
+          ],
+          [
+            118,
+            122
+          ],
+          [
+            123,
+            125
+          ],
+          [
+            126,
+            131
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 25,
+          "v": 32
+        },
+        "text": "Thus saith the LORD of hosts, Behold, evil shall go forth from nation to nation, and a great whirlwind shall be raised up from the coasts of the earth.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            127,
+            130
+          ],
+          [
+            138,
+            140
+          ],
+          [
+            141,
+            144
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 26,
+          "v": 18
+        },
+        "text": "Micah the Morasthite prophesied in the days of Hezekiah king of Judah, and spake to all the people of Judah, saying, Thus saith the LORD of hosts; Zion shall be plowed like a field, and Jerusalem shall become heaps, and the mountain of the house as the high places of a forest.",
+        "spans": [
+          [
+            6,
+            9
+          ],
+          [
+            35,
+            38
+          ],
+          [
+            44,
+            46
+          ],
+          [
+            61,
+            63
+          ],
+          [
+            88,
+            91
+          ],
+          [
+            99,
+            101
+          ],
+          [
+            117,
+            121
+          ],
+          [
+            122,
+            127
+          ],
+          [
+            128,
+            131
+          ],
+          [
+            132,
+            136
+          ],
+          [
+            137,
+            139
+          ],
+          [
+            140,
+            145
+          ],
+          [
+            220,
+            223
+          ],
+          [
+            233,
+            235
+          ],
+          [
+            236,
+            239
+          ],
+          [
+            249,
+            252
+          ],
+          [
+            265,
+            267
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 27,
+          "v": 4
+        },
+        "text": "And command them to say unto their masters, Thus saith the LORD of hosts, the God of Israel; Thus shall ye say unto your masters;",
+        "spans": [
+          [
+            44,
+            48
+          ],
+          [
+            49,
+            54
+          ],
+          [
+            55,
+            58
+          ],
+          [
+            59,
+            63
+          ],
+          [
+            64,
+            66
+          ],
+          [
+            67,
+            72
+          ],
+          [
+            74,
+            77
+          ],
+          [
+            82,
+            84
+          ],
+          [
+            93,
+            97
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 27,
+          "v": 19
+        },
+        "text": "For thus saith the LORD of hosts concerning the pillars, and concerning the sea, and concerning the bases, and concerning the residue of the vessels that remain in this city,",
+        "spans": [
+          [
+            4,
+            8
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            44,
+            47
+          ],
+          [
+            72,
+            75
+          ],
+          [
+            96,
+            99
+          ],
+          [
+            122,
+            125
+          ],
+          [
+            134,
+            136
+          ],
+          [
+            137,
+            140
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 27,
+          "v": 21
+        },
+        "text": "Yea, thus saith the LORD of hosts, the God of Israel, concerning the vessels that remain in the house of the LORD, and in the house of the king of Judah and of Jerusalem;",
+        "spans": [
+          [
+            5,
+            9
+          ],
+          [
+            10,
+            15
+          ],
+          [
+            16,
+            19
+          ],
+          [
+            20,
+            24
+          ],
+          [
+            25,
+            27
+          ],
+          [
+            28,
+            33
+          ],
+          [
+            35,
+            38
+          ],
+          [
+            43,
+            45
+          ],
+          [
+            65,
+            68
+          ],
+          [
+            92,
+            95
+          ],
+          [
+            102,
+            104
+          ],
+          [
+            105,
+            108
+          ],
+          [
+            109,
+            113
+          ],
+          [
+            122,
+            125
+          ],
+          [
+            132,
+            134
+          ],
+          [
+            135,
+            138
+          ],
+          [
+            144,
+            146
+          ],
+          [
+            157,
+            159
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 28,
+          "v": 14
+        },
+        "text": "For thus saith the LORD of hosts, the God of Israel; I have put a yoke of iron upon the neck of all these nations, that they may serve Nebuchadnezzar king of Babylon; and they shall serve him: and I have given him the beasts of the field also.",
+        "spans": [
+          [
+            4,
+            8
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            34,
+            37
+          ],
+          [
+            42,
+            44
+          ],
+          [
+            71,
+            73
+          ],
+          [
+            84,
+            87
+          ],
+          [
+            93,
+            95
+          ],
+          [
+            155,
+            157
+          ],
+          [
+            214,
+            217
+          ],
+          [
+            225,
+            227
+          ],
+          [
+            228,
+            231
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 29,
+          "v": 4
+        },
+        "text": "Thus saith the LORD of hosts, the God of Israel, unto all that are carried away captives, whom I have caused to be carried away from Jerusalem unto Babylon;",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            38,
+            40
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 29,
+          "v": 8
+        },
+        "text": "For thus saith the LORD of hosts, the God of Israel; Let not your prophets and your diviners, that be in the midst of you, deceive you, neither hearken to your dreams which ye cause to be dreamed.",
+        "spans": [
+          [
+            4,
+            8
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            34,
+            37
+          ],
+          [
+            42,
+            44
+          ],
+          [
+            105,
+            108
+          ],
+          [
+            115,
+            117
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 29,
+          "v": 17
+        },
+        "text": "Thus saith the LORD of hosts; Behold, I will send upon them the sword, the famine, and the pestilence, and will make them like vile figs, that cannot be eaten, they are so evil.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            60,
+            63
+          ],
+          [
+            71,
+            74
+          ],
+          [
+            87,
+            90
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 29,
+          "v": 21
+        },
+        "text": "Thus saith the LORD of hosts, the God of Israel, of Ahab the son of Kolaiah, and of Zedekiah the son of Maaseiah, which prophesy a lie unto you in my name; Behold, I will deliver them into the hand of Nebuchadrezzar king of Babylon; and he shall slay them before your eyes;",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            38,
+            40
+          ],
+          [
+            49,
+            51
+          ],
+          [
+            57,
+            60
+          ],
+          [
+            65,
+            67
+          ],
+          [
+            81,
+            83
+          ],
+          [
+            93,
+            96
+          ],
+          [
+            101,
+            103
+          ],
+          [
+            189,
+            192
+          ],
+          [
+            198,
+            200
+          ],
+          [
+            221,
+            223
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 31,
+          "v": 23
+        },
+        "text": "Thus saith the LORD of hosts, the God of Israel; As yet they shall use this speech in the land of Judah and in the cities thereof, when I shall bring again their captivity; The LORD bless thee, O habitation of justice, and mountain of holiness.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            38,
+            40
+          ],
+          [
+            86,
+            89
+          ],
+          [
+            95,
+            97
+          ],
+          [
+            111,
+            114
+          ],
+          [
+            173,
+            176
+          ],
+          [
+            177,
+            181
+          ],
+          [
+            207,
+            209
+          ],
+          [
+            232,
+            234
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 31,
+          "v": 35
+        },
+        "text": "Thus saith the LORD, which giveth the sun for a light by day, and the ordinances of the moon and of the stars for a light by night, which divideth the sea when the waves thereof roar; The LORD of hosts is his name:",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            34,
+            37
+          ],
+          [
+            66,
+            69
+          ],
+          [
+            81,
+            83
+          ],
+          [
+            84,
+            87
+          ],
+          [
+            97,
+            99
+          ],
+          [
+            100,
+            103
+          ],
+          [
+            147,
+            150
+          ],
+          [
+            160,
+            163
+          ],
+          [
+            184,
+            187
+          ],
+          [
+            188,
+            192
+          ],
+          [
+            193,
+            195
+          ],
+          [
+            196,
+            201
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 32,
+          "v": 14
+        },
+        "text": "Thus saith the LORD of hosts, the God of Israel; Take these evidences, this evidence of the purchase, both which is sealed, and this evidence which is open; and put them in an earthen vessel, that they may continue many days.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            38,
+            40
+          ],
+          [
+            85,
+            87
+          ],
+          [
+            88,
+            91
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 32,
+          "v": 15
+        },
+        "text": "For thus saith the LORD of hosts, the God of Israel; Houses and fields and vineyards shall be possessed again in this land.",
+        "spans": [
+          [
+            4,
+            8
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            34,
+            37
+          ],
+          [
+            42,
+            44
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 33,
+          "v": 12
+        },
+        "text": "Thus saith the LORD of hosts; Again in this place, which is desolate without man and without beast, and in all the cities thereof, shall be an habitation of shepherds causing their flocks to lie down.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            111,
+            114
+          ],
+          [
+            154,
+            156
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 35,
+          "v": 13
+        },
+        "text": "Thus saith the LORD of hosts, the God of Israel; Go and tell the men of Judah and the inhabitants of Jerusalem, Will ye not receive instruction to hearken to my words? saith the LORD.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            38,
+            40
+          ],
+          [
+            61,
+            64
+          ],
+          [
+            69,
+            71
+          ],
+          [
+            82,
+            85
+          ],
+          [
+            98,
+            100
+          ],
+          [
+            168,
+            173
+          ],
+          [
+            174,
+            177
+          ],
+          [
+            178,
+            182
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 35,
+          "v": 17
+        },
+        "text": "Therefore thus saith the LORD God of hosts, the God of Israel; Behold, I will bring upon Judah and upon all the inhabitants of Jerusalem all the evil that I have pronounced against them: because I have spoken unto them, but they have not heard; and I have called unto them, but they have not answered.",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            34,
+            36
+          ],
+          [
+            37,
+            42
+          ],
+          [
+            44,
+            47
+          ],
+          [
+            52,
+            54
+          ],
+          [
+            108,
+            111
+          ],
+          [
+            124,
+            126
+          ],
+          [
+            141,
+            144
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 35,
+          "v": 18
+        },
+        "text": "And Jeremiah said unto the house of the Rechabites, Thus saith the LORD of hosts, the God of Israel; Because ye have obeyed the commandment of Jonadab your father, and kept all his precepts, and done according unto all that he hath commanded you:",
+        "spans": [
+          [
+            23,
+            26
+          ],
+          [
+            33,
+            35
+          ],
+          [
+            36,
+            39
+          ],
+          [
+            52,
+            56
+          ],
+          [
+            57,
+            62
+          ],
+          [
+            63,
+            66
+          ],
+          [
+            67,
+            71
+          ],
+          [
+            72,
+            74
+          ],
+          [
+            75,
+            80
+          ],
+          [
+            82,
+            85
+          ],
+          [
+            90,
+            92
+          ],
+          [
+            124,
+            127
+          ],
+          [
+            140,
+            142
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 35,
+          "v": 19
+        },
+        "text": "Therefore thus saith the LORD of hosts, the God of Israel; Jonadab the son of Rechab shall not want a man to stand before me for ever.",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            30,
+            32
+          ],
+          [
+            33,
+            38
+          ],
+          [
+            40,
+            43
+          ],
+          [
+            48,
+            50
+          ],
+          [
+            67,
+            70
+          ],
+          [
+            75,
+            77
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 38,
+          "v": 17
+        },
+        "text": "Then said Jeremiah unto Zedekiah, Thus saith the LORD, the God of hosts, the God of Israel; If thou wilt assuredly go forth unto the king of Babylon’s princes, then thy soul shall live, and this city shall not be burned with fire; and thou shalt live, and thine house:",
+        "spans": [
+          [
+            34,
+            38
+          ],
+          [
+            39,
+            44
+          ],
+          [
+            45,
+            48
+          ],
+          [
+            49,
+            53
+          ],
+          [
+            55,
+            58
+          ],
+          [
+            63,
+            65
+          ],
+          [
+            66,
+            71
+          ],
+          [
+            73,
+            76
+          ],
+          [
+            81,
+            83
+          ],
+          [
+            129,
+            132
+          ],
+          [
+            138,
+            140
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 39,
+          "v": 16
+        },
+        "text": "Go and speak to Ebed-melech the Ethiopian, saying, Thus saith the LORD of hosts, the God of Israel; Behold, I will bring my words upon this city for evil, and not for good; and they shall be accomplished in that day before thee.",
+        "spans": [
+          [
+            28,
+            31
+          ],
+          [
+            51,
+            55
+          ],
+          [
+            56,
+            61
+          ],
+          [
+            62,
+            65
+          ],
+          [
+            66,
+            70
+          ],
+          [
+            71,
+            73
+          ],
+          [
+            74,
+            79
+          ],
+          [
+            81,
+            84
+          ],
+          [
+            89,
+            91
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 42,
+          "v": 15
+        },
+        "text": "And now therefore hear the word of the LORD, ye remnant of Judah; Thus saith the LORD of hosts, the God of Israel; If ye wholly set your faces to enter into Egypt, and go to sojourn there;",
+        "spans": [
+          [
+            23,
+            26
+          ],
+          [
+            32,
+            34
+          ],
+          [
+            35,
+            38
+          ],
+          [
+            39,
+            43
+          ],
+          [
+            56,
+            58
+          ],
+          [
+            66,
+            70
+          ],
+          [
+            71,
+            76
+          ],
+          [
+            77,
+            80
+          ],
+          [
+            81,
+            85
+          ],
+          [
+            86,
+            88
+          ],
+          [
+            89,
+            94
+          ],
+          [
+            96,
+            99
+          ],
+          [
+            104,
+            106
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 42,
+          "v": 18
+        },
+        "text": "For thus saith the LORD of hosts, the God of Israel; As mine anger and my fury hath been poured forth upon the inhabitants of Jerusalem; so shall my fury be poured forth upon you, when ye shall enter into Egypt: and ye shall be an execration, and an astonishment, and a curse, and a reproach; and ye shall see this place no more.",
+        "spans": [
+          [
+            4,
+            8
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            34,
+            37
+          ],
+          [
+            42,
+            44
+          ],
+          [
+            107,
+            110
+          ],
+          [
+            123,
+            125
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 43,
+          "v": 10
+        },
+        "text": "And say unto them, Thus saith the LORD of hosts, the God of Israel; Behold, I will send and take Nebuchadrezzar the king of Babylon, my servant, and will set his throne upon these stones that I have hid; and he shall spread his royal pavilion over them.",
+        "spans": [
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            29
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            34,
+            38
+          ],
+          [
+            39,
+            41
+          ],
+          [
+            42,
+            47
+          ],
+          [
+            49,
+            52
+          ],
+          [
+            57,
+            59
+          ],
+          [
+            112,
+            115
+          ],
+          [
+            121,
+            123
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 44,
+          "v": 2
+        },
+        "text": "Thus saith the LORD of hosts, the God of Israel; Ye have seen all the evil that I have brought upon Jerusalem, and upon all the cities of Judah; and, behold, this day they are a desolation, and no man dwelleth therein,",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            38,
+            40
+          ],
+          [
+            66,
+            69
+          ],
+          [
+            124,
+            127
+          ],
+          [
+            135,
+            137
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 44,
+          "v": 7
+        },
+        "text": "Therefore now thus saith the LORD, the God of hosts, the God of Israel; Wherefore commit ye this great evil against your souls, to cut off from you man and woman, child and suckling, out of Judah, to leave you none to remain;",
+        "spans": [
+          [
+            14,
+            18
+          ],
+          [
+            19,
+            24
+          ],
+          [
+            25,
+            28
+          ],
+          [
+            29,
+            33
+          ],
+          [
+            35,
+            38
+          ],
+          [
+            43,
+            45
+          ],
+          [
+            46,
+            51
+          ],
+          [
+            53,
+            56
+          ],
+          [
+            61,
+            63
+          ],
+          [
+            187,
+            189
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 44,
+          "v": 11
+        },
+        "text": "Therefore thus saith the LORD of hosts, the God of Israel; Behold, I will set my face against you for evil, and to cut off all Judah.",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            30,
+            32
+          ],
+          [
+            33,
+            38
+          ],
+          [
+            40,
+            43
+          ],
+          [
+            48,
+            50
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 44,
+          "v": 25
+        },
+        "text": "Thus saith the LORD of hosts, the God of Israel, saying; Ye and your wives have both spoken with your mouths, and fulfilled with your hand, saying, We will surely perform our vows that we have vowed, to burn incense to the queen of heaven, and to pour out drink offerings unto her: ye will surely accomplish your vows, and surely perform your vows.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            38,
+            40
+          ],
+          [
+            219,
+            222
+          ],
+          [
+            229,
+            231
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 48,
+          "v": 1
+        },
+        "text": "Against Moab thus saith the LORD of hosts, the God of Israel; Woe unto Nebo! for it is spoiled: Kiriathaim is confounded and taken: Misgab is confounded and dismayed.",
+        "spans": [
+          [
+            13,
+            17
+          ],
+          [
+            18,
+            23
+          ],
+          [
+            24,
+            27
+          ],
+          [
+            28,
+            32
+          ],
+          [
+            33,
+            35
+          ],
+          [
+            36,
+            41
+          ],
+          [
+            43,
+            46
+          ],
+          [
+            51,
+            53
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 49,
+          "v": 7
+        },
+        "text": "Concerning Edom, thus saith the LORD of hosts; Is wisdom no more in Teman? is counsel perished from the prudent? is their wisdom vanished?",
+        "spans": [
+          [
+            17,
+            21
+          ],
+          [
+            22,
+            27
+          ],
+          [
+            28,
+            31
+          ],
+          [
+            32,
+            36
+          ],
+          [
+            37,
+            39
+          ],
+          [
+            40,
+            45
+          ],
+          [
+            100,
+            103
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 49,
+          "v": 35
+        },
+        "text": "Thus saith the LORD of hosts; Behold, I will break the bow of Elam, the chief of their might.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            51,
+            54
+          ],
+          [
+            59,
+            61
+          ],
+          [
+            68,
+            71
+          ],
+          [
+            78,
+            80
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 50,
+          "v": 18
+        },
+        "text": "Therefore thus saith the LORD of hosts, the God of Israel; Behold, I will punish the king of Babylon and his land, as I have punished the king of Assyria.",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            30,
+            32
+          ],
+          [
+            33,
+            38
+          ],
+          [
+            40,
+            43
+          ],
+          [
+            48,
+            50
+          ],
+          [
+            81,
+            84
+          ],
+          [
+            90,
+            92
+          ],
+          [
+            134,
+            137
+          ],
+          [
+            143,
+            145
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 50,
+          "v": 33
+        },
+        "text": "Thus saith the LORD of hosts; The children of Israel and the children of Judah were oppressed together: and all that took them captives held them fast; they refused to let them go.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            43,
+            45
+          ],
+          [
+            57,
+            60
+          ],
+          [
+            70,
+            72
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 51,
+          "v": 33
+        },
+        "text": "For thus saith the LORD of hosts, the God of Israel; The daughter of Babylon is like a threshingfloor, it is time to thresh her: yet a little while, and the time of her harvest shall come.",
+        "spans": [
+          [
+            4,
+            8
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            34,
+            37
+          ],
+          [
+            42,
+            44
+          ],
+          [
+            53,
+            56
+          ],
+          [
+            66,
+            68
+          ],
+          [
+            153,
+            156
+          ],
+          [
+            162,
+            164
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 51,
+          "v": 58
+        },
+        "text": "Thus saith the LORD of hosts; The broad walls of Babylon shall be utterly broken, and her high gates shall be burned with fire; and the people shall labour in vain, and the folk in the fire, and they shall be weary.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            46,
+            48
+          ],
+          [
+            132,
+            135
+          ],
+          [
+            169,
+            172
+          ],
+          [
+            181,
+            184
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 30,
+          "code": "AMO",
+          "name": "Amos",
+          "c": 5,
+          "v": 16
+        },
+        "text": "Therefore the LORD, the God of hosts, the Lord, saith thus; Wailing shall be in all streets; and they shall say in all the highways, Alas! alas! and they shall call the husbandman to mourning, and such as are skilful of lamentation to wailing.",
+        "spans": [
+          [
+            10,
+            13
+          ],
+          [
+            14,
+            18
+          ],
+          [
+            20,
+            23
+          ],
+          [
+            28,
+            30
+          ],
+          [
+            31,
+            36
+          ],
+          [
+            38,
+            41
+          ],
+          [
+            42,
+            46
+          ],
+          [
+            48,
+            53
+          ],
+          [
+            54,
+            58
+          ],
+          [
+            119,
+            122
+          ],
+          [
+            165,
+            168
+          ],
+          [
+            217,
+            219
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 37,
+          "code": "HAG",
+          "name": "Haggai",
+          "c": 1,
+          "v": 5
+        },
+        "text": "Now therefore thus saith the LORD of hosts; Consider your ways.",
+        "spans": [
+          [
+            14,
+            18
+          ],
+          [
+            19,
+            24
+          ],
+          [
+            25,
+            28
+          ],
+          [
+            29,
+            33
+          ],
+          [
+            34,
+            36
+          ],
+          [
+            37,
+            42
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 37,
+          "code": "HAG",
+          "name": "Haggai",
+          "c": 1,
+          "v": 7
+        },
+        "text": "Thus saith the LORD of hosts; Consider your ways.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 37,
+          "code": "HAG",
+          "name": "Haggai",
+          "c": 2,
+          "v": 6
+        },
+        "text": "For thus saith the LORD of hosts; Yet once, it is a little while, and I will shake the heavens, and the earth, and the sea, and the dry land;",
+        "spans": [
+          [
+            4,
+            8
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            83,
+            86
+          ],
+          [
+            100,
+            103
+          ],
+          [
+            115,
+            118
+          ],
+          [
+            128,
+            131
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 37,
+          "code": "HAG",
+          "name": "Haggai",
+          "c": 2,
+          "v": 11
+        },
+        "text": "Thus saith the LORD of hosts; Ask now the priests concerning the law, saying,",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            38,
+            41
+          ],
+          [
+            61,
+            64
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 1,
+          "v": 3
+        },
+        "text": "Therefore say thou unto them, Thus saith the LORD of hosts; Turn ye unto me, saith the LORD of hosts, and I will turn unto you, saith the LORD of hosts.",
+        "spans": [
+          [
+            30,
+            34
+          ],
+          [
+            35,
+            40
+          ],
+          [
+            41,
+            44
+          ],
+          [
+            45,
+            49
+          ],
+          [
+            50,
+            52
+          ],
+          [
+            53,
+            58
+          ],
+          [
+            77,
+            82
+          ],
+          [
+            83,
+            86
+          ],
+          [
+            87,
+            91
+          ],
+          [
+            92,
+            94
+          ],
+          [
+            95,
+            100
+          ],
+          [
+            128,
+            133
+          ],
+          [
+            134,
+            137
+          ],
+          [
+            138,
+            142
+          ],
+          [
+            143,
+            145
+          ],
+          [
+            146,
+            151
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 1,
+          "v": 4
+        },
+        "text": "Be ye not as your fathers, unto whom the former prophets have cried, saying, Thus saith the LORD of hosts; Turn ye now from your evil ways, and from your evil doings: but they did not hear, nor hearken unto me, saith the LORD.",
+        "spans": [
+          [
+            37,
+            40
+          ],
+          [
+            77,
+            81
+          ],
+          [
+            82,
+            87
+          ],
+          [
+            88,
+            91
+          ],
+          [
+            92,
+            96
+          ],
+          [
+            97,
+            99
+          ],
+          [
+            100,
+            105
+          ],
+          [
+            211,
+            216
+          ],
+          [
+            217,
+            220
+          ],
+          [
+            221,
+            225
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 1,
+          "v": 14
+        },
+        "text": "So the angel that communed with me said unto me, Cry thou, saying, Thus saith the LORD of hosts; I am jealous for Jerusalem and for Zion with a great jealousy.",
+        "spans": [
+          [
+            3,
+            6
+          ],
+          [
+            67,
+            71
+          ],
+          [
+            72,
+            77
+          ],
+          [
+            78,
+            81
+          ],
+          [
+            82,
+            86
+          ],
+          [
+            87,
+            89
+          ],
+          [
+            90,
+            95
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 1,
+          "v": 16
+        },
+        "text": "Therefore thus saith the LORD; I am returned to Jerusalem with mercies: my house shall be built in it, saith the LORD of hosts, and a line shall be stretched forth upon Jerusalem.",
+        "spans": [
+          [
+            10,
+            14
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            25,
+            29
+          ],
+          [
+            103,
+            108
+          ],
+          [
+            109,
+            112
+          ],
+          [
+            113,
+            117
+          ],
+          [
+            118,
+            120
+          ],
+          [
+            121,
+            126
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 1,
+          "v": 17
+        },
+        "text": "Cry yet, saying, Thus saith the LORD of hosts; My cities through prosperity shall yet be spread abroad; and the LORD shall yet comfort Zion, and shall yet choose Jerusalem.",
+        "spans": [
+          [
+            17,
+            21
+          ],
+          [
+            22,
+            27
+          ],
+          [
+            28,
+            31
+          ],
+          [
+            32,
+            36
+          ],
+          [
+            37,
+            39
+          ],
+          [
+            40,
+            45
+          ],
+          [
+            108,
+            111
+          ],
+          [
+            112,
+            116
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 2,
+          "v": 8
+        },
+        "text": "For thus saith the LORD of hosts; After the glory hath he sent me unto the nations which spoiled you: for he that toucheth you toucheth the apple of his eye.",
+        "spans": [
+          [
+            4,
+            8
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            40,
+            43
+          ],
+          [
+            71,
+            74
+          ],
+          [
+            136,
+            139
+          ],
+          [
+            146,
+            148
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 3,
+          "v": 7
+        },
+        "text": "Thus saith the LORD of hosts; If thou wilt walk in my ways, and if thou wilt keep my charge, then thou shalt also judge my house, and shalt also keep my courts, and I will give thee places to walk among these that stand by.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 2
+        },
+        "text": "Thus saith the LORD of hosts; I was jealous for Zion with great jealousy, and I was jealous for her with great fury.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 3
+        },
+        "text": "Thus saith the LORD; I am returned unto Zion, and will dwell in the midst of Jerusalem: and Jerusalem shall be called a city of truth; and the mountain of the LORD of hosts the holy mountain.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            64,
+            67
+          ],
+          [
+            74,
+            76
+          ],
+          [
+            125,
+            127
+          ],
+          [
+            139,
+            142
+          ],
+          [
+            152,
+            154
+          ],
+          [
+            155,
+            158
+          ],
+          [
+            159,
+            163
+          ],
+          [
+            164,
+            166
+          ],
+          [
+            167,
+            172
+          ],
+          [
+            173,
+            176
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 4
+        },
+        "text": "Thus saith the LORD of hosts; There shall yet old men and old women dwell in the streets of Jerusalem, and every man with his staff in his hand for very age.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            77,
+            80
+          ],
+          [
+            89,
+            91
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 6
+        },
+        "text": "Thus saith the LORD of hosts; If it be marvellous in the eyes of the remnant of this people in these days, should it also be marvellous in mine eyes? saith the LORD of hosts.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            53,
+            56
+          ],
+          [
+            62,
+            64
+          ],
+          [
+            65,
+            68
+          ],
+          [
+            77,
+            79
+          ],
+          [
+            150,
+            155
+          ],
+          [
+            156,
+            159
+          ],
+          [
+            160,
+            164
+          ],
+          [
+            165,
+            167
+          ],
+          [
+            168,
+            173
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 7
+        },
+        "text": "Thus saith the LORD of hosts; Behold, I will save my people from the east country, and from the west country;",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            65,
+            68
+          ],
+          [
+            92,
+            95
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 9
+        },
+        "text": "Thus saith the LORD of hosts; Let your hands be strong, ye that hear in these days these words by the mouth of the prophets, which were in the day that the foundation of the house of the LORD of hosts was laid, that the temple might be built.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            98,
+            101
+          ],
+          [
+            108,
+            110
+          ],
+          [
+            111,
+            114
+          ],
+          [
+            139,
+            142
+          ],
+          [
+            152,
+            155
+          ],
+          [
+            167,
+            169
+          ],
+          [
+            170,
+            173
+          ],
+          [
+            180,
+            182
+          ],
+          [
+            183,
+            186
+          ],
+          [
+            187,
+            191
+          ],
+          [
+            192,
+            194
+          ],
+          [
+            195,
+            200
+          ],
+          [
+            216,
+            219
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 14
+        },
+        "text": "For thus saith the LORD of hosts; As I thought to punish you, when your fathers provoked me to wrath, saith the LORD of hosts, and I repented not:",
+        "spans": [
+          [
+            4,
+            8
+          ],
+          [
+            9,
+            14
+          ],
+          [
+            15,
+            18
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            24,
+            26
+          ],
+          [
+            27,
+            32
+          ],
+          [
+            102,
+            107
+          ],
+          [
+            108,
+            111
+          ],
+          [
+            112,
+            116
+          ],
+          [
+            117,
+            119
+          ],
+          [
+            120,
+            125
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 19
+        },
+        "text": "Thus saith the LORD of hosts; The fast of the fourth month, and the fast of the fifth, and the fast of the seventh, and the fast of the tenth, shall be to the house of Judah joy and gladness, and cheerful feasts; therefore love the truth and peace.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            30,
+            33
+          ],
+          [
+            39,
+            41
+          ],
+          [
+            42,
+            45
+          ],
+          [
+            64,
+            67
+          ],
+          [
+            73,
+            75
+          ],
+          [
+            76,
+            79
+          ],
+          [
+            91,
+            94
+          ],
+          [
+            100,
+            102
+          ],
+          [
+            103,
+            106
+          ],
+          [
+            120,
+            123
+          ],
+          [
+            129,
+            131
+          ],
+          [
+            132,
+            135
+          ],
+          [
+            155,
+            158
+          ],
+          [
+            165,
+            167
+          ],
+          [
+            228,
+            231
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 20
+        },
+        "text": "Thus saith the LORD of hosts; It shall yet come to pass, that there shall come people, and the inhabitants of many cities:",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            91,
+            94
+          ],
+          [
+            107,
+            109
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 38,
+          "code": "ZEC",
+          "name": "Zechariah",
+          "c": 8,
+          "v": 23
+        },
+        "text": "Thus saith the LORD of hosts; In those days it shall come to pass, that ten men shall take hold out of all languages of the nations, even shall take hold of the skirt of him that is a Jew, saying, We will go with you: for we have heard that God is with you.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            22
+          ],
+          [
+            23,
+            28
+          ],
+          [
+            100,
+            102
+          ],
+          [
+            117,
+            119
+          ],
+          [
+            120,
+            123
+          ],
+          [
+            154,
+            156
+          ],
+          [
+            157,
+            160
+          ],
+          [
+            167,
+            169
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 39,
+          "code": "MAL",
+          "name": "Malachi",
+          "c": 1,
+          "v": 4
+        },
+        "text": "Whereas Edom saith, We are impoverished, but we will return and build the desolate places; thus saith the LORD of hosts, They shall build, but I will throw down; and they shall call them, The border of wickedness, and, The people against whom the LORD hath indignation for ever.",
+        "spans": [
+          [
+            13,
+            18
+          ],
+          [
+            70,
+            73
+          ],
+          [
+            91,
+            95
+          ],
+          [
+            96,
+            101
+          ],
+          [
+            102,
+            105
+          ],
+          [
+            106,
+            110
+          ],
+          [
+            111,
+            113
+          ],
+          [
+            114,
+            119
+          ],
+          [
+            188,
+            191
+          ],
+          [
+            199,
+            201
+          ],
+          [
+            219,
+            222
+          ],
+          [
+            243,
+            246
+          ],
+          [
+            247,
+            251
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 39,
+          "code": "MAL",
+          "name": "Malachi",
+          "c": 1,
+          "v": 13
+        },
+        "text": "Ye said also, Behold, what a weariness is it! and ye have snuffed at it, saith the LORD of hosts; and ye brought that which was torn, and the lame, and the sick; thus ye brought an offering: should I accept this of your hand? saith the LORD.",
+        "spans": [
+          [
+            73,
+            78
+          ],
+          [
+            79,
+            82
+          ],
+          [
+            83,
+            87
+          ],
+          [
+            88,
+            90
+          ],
+          [
+            91,
+            96
+          ],
+          [
+            138,
+            141
+          ],
+          [
+            152,
+            155
+          ],
+          [
+            162,
+            166
+          ],
+          [
+            212,
+            214
+          ],
+          [
+            226,
+            231
+          ],
+          [
+            232,
+            235
+          ],
+          [
+            236,
+            240
+          ]
+        ]
+      }
+    ],
+    "more": false
+  }
+}

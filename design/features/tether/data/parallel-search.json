@@ -1,0 +1,99 @@
+{
+  "command": "wb search --json is he that was spoken of",
+  "output": {
+    "q": "is he that was spoken of",
+    "case": false,
+    "regex": false,
+    "scope": "all",
+    "by_book": {
+      "40": 1,
+      "45": 1
+    },
+    "verses": 2,
+    "matches": 14,
+    "offset": 0,
+    "rows": [
+      {
+        "ref": {
+          "b": 40,
+          "code": "MAT",
+          "name": "Matthew",
+          "c": 3,
+          "v": 3
+        },
+        "text": "For this is he that was spoken of by the prophet Esaias, saying, The voice of one crying in the wilderness, Prepare ye the way of the Lord, make his paths straight.",
+        "spans": [
+          [
+            9,
+            11
+          ],
+          [
+            12,
+            14
+          ],
+          [
+            15,
+            19
+          ],
+          [
+            20,
+            23
+          ],
+          [
+            24,
+            30
+          ],
+          [
+            31,
+            33
+          ],
+          [
+            75,
+            77
+          ],
+          [
+            127,
+            129
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 45,
+          "code": "ROM",
+          "name": "Romans",
+          "c": 15,
+          "v": 21
+        },
+        "text": "But as it is written, To whom he was not spoken of, they shall see: and they that have not heard shall understand.",
+        "spans": [
+          [
+            10,
+            12
+          ],
+          [
+            30,
+            32
+          ],
+          [
+            33,
+            36
+          ],
+          [
+            41,
+            47
+          ],
+          [
+            48,
+            50
+          ],
+          [
+            77,
+            81
+          ]
+        ]
+      }
+    ],
+    "more": false
+  }
+}

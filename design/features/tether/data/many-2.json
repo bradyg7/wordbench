@@ -1,0 +1,672 @@
+{
+  "command": "wb search --json word and say hear the word",
+  "output": {
+    "q": "word and say hear the word",
+    "case": false,
+    "regex": false,
+    "scope": "all",
+    "by_book": {
+      "24": 6,
+      "26": 6,
+      "30": 1
+    },
+    "verses": 13,
+    "matches": 124,
+    "offset": 0,
+    "rows": [
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 7,
+          "v": 2
+        },
+        "text": "Stand in the gate of the LORD’s house, and proclaim there this word, and say, Hear the word of the LORD, all ye of Judah, that enter in at these gates to worship the LORD.",
+        "spans": [
+          [
+            9,
+            12
+          ],
+          [
+            21,
+            24
+          ],
+          [
+            39,
+            42
+          ],
+          [
+            63,
+            67
+          ],
+          [
+            69,
+            72
+          ],
+          [
+            73,
+            76
+          ],
+          [
+            78,
+            82
+          ],
+          [
+            83,
+            86
+          ],
+          [
+            87,
+            91
+          ],
+          [
+            95,
+            98
+          ],
+          [
+            162,
+            165
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 17,
+          "v": 20
+        },
+        "text": "And say unto them, Hear ye the word of the LORD, ye kings of Judah, and all Judah, and all the inhabitants of Jerusalem, that enter in by these gates:",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            19,
+            23
+          ],
+          [
+            27,
+            30
+          ],
+          [
+            31,
+            35
+          ],
+          [
+            39,
+            42
+          ],
+          [
+            68,
+            71
+          ],
+          [
+            83,
+            86
+          ],
+          [
+            91,
+            94
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 19,
+          "v": 3
+        },
+        "text": "And say, Hear ye the word of the LORD, O kings of Judah, and inhabitants of Jerusalem; Thus saith the LORD of hosts, the God of Israel; Behold, I will bring evil upon this place, the which whosoever heareth, his ears shall tingle.",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            9,
+            13
+          ],
+          [
+            17,
+            20
+          ],
+          [
+            21,
+            25
+          ],
+          [
+            29,
+            32
+          ],
+          [
+            57,
+            60
+          ],
+          [
+            98,
+            101
+          ],
+          [
+            117,
+            120
+          ],
+          [
+            179,
+            182
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 21,
+          "v": 11
+        },
+        "text": "And touching the house of the king of Judah, say, Hear ye the word of the LORD;",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            13,
+            16
+          ],
+          [
+            26,
+            29
+          ],
+          [
+            45,
+            48
+          ],
+          [
+            50,
+            54
+          ],
+          [
+            58,
+            61
+          ],
+          [
+            62,
+            66
+          ],
+          [
+            70,
+            73
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 22,
+          "v": 2
+        },
+        "text": "And say, Hear the word of the LORD, O king of Judah, that sittest upon the throne of David, thou, and thy servants, and thy people that enter in by these gates:",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            9,
+            13
+          ],
+          [
+            14,
+            17
+          ],
+          [
+            18,
+            22
+          ],
+          [
+            26,
+            29
+          ],
+          [
+            71,
+            74
+          ],
+          [
+            98,
+            101
+          ],
+          [
+            116,
+            119
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 24,
+          "code": "JER",
+          "name": "Jeremiah",
+          "c": 31,
+          "v": 10
+        },
+        "text": "Hear the word of the LORD, O ye nations, and declare it in the isles afar off, and say, He that scattered Israel will gather him, and keep him, as a shepherd doth his flock.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            5,
+            8
+          ],
+          [
+            9,
+            13
+          ],
+          [
+            17,
+            20
+          ],
+          [
+            41,
+            44
+          ],
+          [
+            59,
+            62
+          ],
+          [
+            79,
+            82
+          ],
+          [
+            83,
+            86
+          ],
+          [
+            130,
+            133
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 26,
+          "code": "EZK",
+          "name": "Ezekiel",
+          "c": 6,
+          "v": 3
+        },
+        "text": "And say, Ye mountains of Israel, hear the word of the Lord GOD; Thus saith the Lord GOD to the mountains, and to the hills, to the rivers, and to the valleys; Behold, I, even I, will bring a sword upon you, and I will destroy your high places.",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            33,
+            37
+          ],
+          [
+            38,
+            41
+          ],
+          [
+            42,
+            46
+          ],
+          [
+            50,
+            53
+          ],
+          [
+            75,
+            78
+          ],
+          [
+            91,
+            94
+          ],
+          [
+            106,
+            109
+          ],
+          [
+            113,
+            116
+          ],
+          [
+            127,
+            130
+          ],
+          [
+            139,
+            142
+          ],
+          [
+            146,
+            149
+          ],
+          [
+            207,
+            210
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 26,
+          "code": "EZK",
+          "name": "Ezekiel",
+          "c": 13,
+          "v": 2
+        },
+        "text": "Son of man, prophesy against the prophets of Israel that prophesy, and say thou unto them that prophesy out of their own hearts, Hear ye the word of the LORD;",
+        "spans": [
+          [
+            29,
+            32
+          ],
+          [
+            67,
+            70
+          ],
+          [
+            71,
+            74
+          ],
+          [
+            129,
+            133
+          ],
+          [
+            137,
+            140
+          ],
+          [
+            141,
+            145
+          ],
+          [
+            149,
+            152
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 26,
+          "code": "EZK",
+          "name": "Ezekiel",
+          "c": 20,
+          "v": 47
+        },
+        "text": "And say to the forest of the south, Hear the word of the LORD; Thus saith the Lord GOD; Behold, I will kindle a fire in thee, and it shall devour every green tree in thee, and every dry tree: the flaming flame shall not be quenched, and all faces from the south to the north shall be burned therein.",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            11,
+            14
+          ],
+          [
+            25,
+            28
+          ],
+          [
+            36,
+            40
+          ],
+          [
+            41,
+            44
+          ],
+          [
+            45,
+            49
+          ],
+          [
+            53,
+            56
+          ],
+          [
+            74,
+            77
+          ],
+          [
+            126,
+            129
+          ],
+          [
+            172,
+            175
+          ],
+          [
+            192,
+            195
+          ],
+          [
+            233,
+            236
+          ],
+          [
+            252,
+            255
+          ],
+          [
+            265,
+            268
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 26,
+          "code": "EZK",
+          "name": "Ezekiel",
+          "c": 25,
+          "v": 3
+        },
+        "text": "And say unto the Ammonites, Hear the word of the Lord GOD; Thus saith the Lord GOD; Because thou saidst, Aha, against my sanctuary, when it was profaned; and against the land of Israel, when it was desolate; and against the house of Judah, when they went into captivity;",
+        "spans": [
+          [
+            0,
+            3
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            13,
+            16
+          ],
+          [
+            28,
+            32
+          ],
+          [
+            33,
+            36
+          ],
+          [
+            37,
+            41
+          ],
+          [
+            45,
+            48
+          ],
+          [
+            70,
+            73
+          ],
+          [
+            154,
+            157
+          ],
+          [
+            166,
+            169
+          ],
+          [
+            208,
+            211
+          ],
+          [
+            220,
+            223
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 26,
+          "code": "EZK",
+          "name": "Ezekiel",
+          "c": 36,
+          "v": 1
+        },
+        "text": "Also, thou son of man, prophesy unto the mountains of Israel, and say, Ye mountains of Israel, hear the word of the LORD:",
+        "spans": [
+          [
+            37,
+            40
+          ],
+          [
+            62,
+            65
+          ],
+          [
+            66,
+            69
+          ],
+          [
+            95,
+            99
+          ],
+          [
+            100,
+            103
+          ],
+          [
+            104,
+            108
+          ],
+          [
+            112,
+            115
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 26,
+          "code": "EZK",
+          "name": "Ezekiel",
+          "c": 37,
+          "v": 4
+        },
+        "text": "Again he said unto me, Prophesy upon these bones, and say unto them, O ye dry bones, hear the word of the LORD.",
+        "spans": [
+          [
+            50,
+            53
+          ],
+          [
+            54,
+            57
+          ],
+          [
+            85,
+            89
+          ],
+          [
+            90,
+            93
+          ],
+          [
+            94,
+            98
+          ],
+          [
+            102,
+            105
+          ]
+        ]
+      },
+      {
+        "ref": {
+          "b": 30,
+          "code": "AMO",
+          "name": "Amos",
+          "c": 4,
+          "v": 1
+        },
+        "text": "Hear this word, ye kine of Bashan, that are in the mountain of Samaria, which oppress the poor, which crush the needy, which say to their masters, Bring, and let us drink.",
+        "spans": [
+          [
+            0,
+            4
+          ],
+          [
+            10,
+            14
+          ],
+          [
+            47,
+            50
+          ],
+          [
+            86,
+            89
+          ],
+          [
+            108,
+            111
+          ],
+          [
+            125,
+            128
+          ],
+          [
+            154,
+            157
+          ]
+        ]
+      }
+    ],
+    "more": false
+  }
+}
