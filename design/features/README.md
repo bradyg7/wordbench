@@ -3,30 +3,32 @@
 Each feature of the app is designed in its own folder here, in rounds of FigCraft sheets the person reviews. A folder
 is written so that a person or an AI can build the feature from it without the conversation that made it.
 
-| Folder | Feature | State | Last round |
-|---|---|---|---|
-| [panels](panels/README.md) | The panel template: bands, a tab's top, buttons, text roles | Accepted (2026-11-16) | 2026-11-16 |
-| [minimize](minimize/README.md) | Minimized panes, full screen, the side rail, the trail | Rail and trail accepted to build (2026-11-13); the rest exploring | 2026-11-13 |
-| [concordance](concordance/README.md) | The Concordance: the printed Strong's as a book (English, Hebrew, Greek, Interlinear) | Rounds 1-2 drawn; exploring | 2026-11-11 |
-| [library](library/README.md) | The Notebook and the Shelf as one library; what keeping (a bookmark) means | Rounds 1-3 drawn; exploring | 2026-11-11 |
-| [threads](threads/README.md) | Threads beside Page, Folder, Save and Library: legacy, or a role of their own | Round 2 drawn; exploring | 2026-11-11 |
-| [reader](reader/README.md) | The Reader: click, right click and selection; marks over the text or in a margin; a second reader; a verse alone | Round 2 drawn; exploring | 2026-11-11 |
-| [reading-plans](reading-plans/README.md) | Reading plans: the plan leading the reader, the day as a checklist, starting from a kind, what was read as a whole | Round 2 drawn; exploring | 2026-11-11 |
-| [search](search/README.md) | Search: filters you click, one box for everything, counts by book as the filter | Round 2 drawn; exploring | 2026-11-11 |
-| [highlights](highlights/README.md) | Highlights and the palette: colors with names, layers by year with an eye each, a light and a dark form for every color; when everything is colored | Rounds 1-2 drawn; exploring | 2026-11-12 |
-| [books](books/README.md) | BDB and Webster's 1913 as books: paging, an index, one card with three sources | Round 1 drawn; exploring | 2026-11-12 |
-| [command](command/README.md) | The top bar and the command box: the trail under the bar, the box keeps its line; suggestions | Round 2 accepted; building | 2026-11-13 |
-| [words](words/README.md) | The word sheet, the verse sheet and the hover card | Round 1 drawn; exploring | 2026-11-12 |
-| [marks](marks/README.md) | Marks: the two layers on the text, the margin as a view of pages and saves, a passage with its marks | Round 1 drawn; exploring | 2026-11-12 |
-| [questions](questions/README.md) | Questions: one list or lines in pages; asking and answering | Round 1 drawn; exploring | 2026-11-12 |
-| [documents](documents/README.md) | Lessons and documents: a builder from a page, the viewer, Looks | Round 1 drawn; exploring | 2026-11-12 |
-| [trash](trash/README.md) | Trash: Undo only, or the 7 days kept; deleting several pages | Round 1 drawn; exploring | 2026-11-12 |
-| [findings](findings/README.md) | Findings: a small movable box, the pane, `!` in the field | Round 1 drawn; exploring | 2026-11-12 |
-| [settings](settings/README.md) | Settings, layouts and views: italic words, scroll bars, layouts as pictures | Round 1 drawn; exploring | 2026-11-12 |
-| [help](help/README.md) | Help: the Guide as cards, commands to try, keys on a keyboard | Round 1 drawn; exploring | 2026-11-12 |
+| Folder | Feature | State | Last round | Readiness |
+|---|---|---|---|---|
+| [panels](panels/README.md) | The panel template: bands, a tab's top, buttons, text roles | Accepted (2026-11-16) | 2026-11-16 | not assessed |
+| [minimize](minimize/README.md) | Minimized panes, full screen, the side rail, the trail | Rail and trail accepted to build (2026-11-13); the rest exploring | 2026-11-13 | not assessed |
+| [concordance](concordance/README.md) | The Concordance: the printed Strong's as a book (English, Hebrew, Greek, Interlinear) | Rounds 1-2 reviewed; direction settled 2026-11-16; the real conditions drawn (C11-C14); exploring | 2026-11-16 | likely finished (2026-11-16, fourth pass): all ten checks pass; the person looks at C14, C11-C13 and C8 to accept (C-9 is the one inference) |
+| [library](library/README.md) | The Notebook and the Shelf as one library; what keeping (a bookmark) means | Rounds 1-4 drawn; round 4 not reviewed; exploring | 2026-11-16 | unfinished (2026-11-16, second pass; block re-read and still true on the fourth): checks 1, 2, 4, 5, 6 (round 4's review, threads and the open questions are the person's) |
+| [threads](threads/README.md) | Threads beside Page, Folder, Save and Library: legacy, or a role of their own | Round 2 drawn; exploring | 2026-11-11 | not assessed |
+| [reader](reader/README.md) | The Reader: click, right click and selection; marks over the text or in a margin; a second reader; a verse alone | Round 2 drawn; exploring | 2026-11-11 | not assessed |
+| [reading-plans](reading-plans/README.md) | Reading plans: the plan leading the reader, the day as a checklist, starting from a kind, what was read as a whole | Round 2 drawn; exploring | 2026-11-11 | not assessed |
+| [search](search/README.md) | Search: filters you click, one box for everything, counts by book as the filter | Round 2 drawn; exploring | 2026-11-11 | not assessed |
+| [highlights](highlights/README.md) | Highlights and the palette: colors with names, layers by year with an eye each, a light and a dark form for every color; when everything is colored | Rounds 1-2 drawn; exploring | 2026-11-12 | not assessed |
+| [books](books/README.md) | BDB and Webster's 1913 as books: paging, an index, one card with three sources | Round 1 drawn; exploring | 2026-11-12 | not assessed |
+| [command](command/README.md) | The top bar and the command box: the trail under the bar, the box keeps its line; suggestions | Round 2 accepted; building | 2026-11-13 | not assessed |
+| [words](words/README.md) | The word sheet, the verse sheet and the hover card | Round 1 reviewed: B chosen; the real conditions drawn (W6-W11); exploring | 2026-11-16 | likely finished (2026-11-16, fourth pass): all ten checks pass; the person looks at W4-W11 to accept |
+| [marks](marks/README.md) | Marks: the two layers on the text, the margin as a view of pages and saves, a passage with its marks | Round 1 drawn; exploring | 2026-11-12 | not assessed |
+| [questions](questions/README.md) | Questions: one list or lines in pages; asking and answering | Round 1 drawn; exploring | 2026-11-12 | not assessed |
+| [documents](documents/README.md) | Lessons and documents: a builder from a page, the viewer, Looks | Round 1 drawn; exploring | 2026-11-12 | not assessed |
+| [trash](trash/README.md) | Trash: Undo only, or the 7 days kept; deleting several pages | Round 1 drawn; exploring | 2026-11-12 | not assessed |
+| [findings](findings/README.md) | Findings: a small movable box, the pane, `!` in the field | Round 1 drawn; exploring | 2026-11-12 | not assessed |
+| [settings](settings/README.md) | Settings, layouts and views: italic words, scroll bars, layouts as pictures | Round 1 drawn; exploring | 2026-11-12 | not assessed |
+| [help](help/README.md) | Help: the Guide as cards, commands to try, keys on a keyboard | Round 1 drawn; exploring | 2026-11-12 | not assessed |
 Every general feature, button and command is designed here before it is built; [coverage.md](coverage.md) lists
 every area of the app and the folder that designs it; [overlaps.md](overlaps.md) lists the parts several folders draw, and
 which directions conflict. The round-1 folders of 2026-11-12 share [kit.py](kit.py) for their sheets.
+
+Readiness is the overseer's mark from [ready-criteria.md](ready-criteria.md): *unfinished* (with the failing checks) or *likely finished*; it is never *accepted*, which only the person says.
 
 State is one of: *exploring* (rounds being drawn), *accepted* (the person accepted the design; ready to build),
 *building*, *built* (link the commit or spec section), *dropped*.
