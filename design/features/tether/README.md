@@ -1,6 +1,6 @@
 # Tether: finding the scripture in a long note
 
-**State:** exploring · **Sheets:** `python design/features/tether/tether.py` writes `tether.figcraft` and
+**State:** accepted by the person 2026-11-17: Named and Quoted tiers only; no suggestion by meaning (tier 3 dropped, the "Needs the person" question closed) · **Sheets:** `python design/features/tether/tether.py` writes `tether.figcraft` and
 `tether.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet. What other tools
 get wrong, and so what this folder avoids: [bible-software-complaints](../../research/bible-software-complaints.md)
 (theme 4, exports that drop the verse reference; theme 5, AI features users did not ask for).
