@@ -63,33 +63,33 @@ def drawer(f, x, w=290, open_folder="Phinehas", shelf_on=None):
     node("Zeal", "page")
     node("Today · Wednesday 11 November", "page", muted=True, kind="optional")
     hd = row(d, "shelf head", gap=6, W="fill", pad=[12, 4, 2, 4])
-    text(hd, "SHELF · KEPT, NOT YET FILED", "label", "muted", W="fill")
+    text(hd, "THE SHELF · SAVED, NOT YET FILED", "label", "muted", W="fill")
     for label, ic, kind in (("Psalms 106:30", "book", "verse"), ("Every use: zeal", "list", "search"),
                             ("G2205", "word", "word"), ("Malachi 2:5", "book", "verse")):
         node(label, ic, on=(label == shelf_on), kind=kind)
     return d
 
 
-def keep_button(parent, on=False):
-    b = row(parent, "keep", gap=6, pad=[6, 10, 6, 8], radius=8, fill="accentSoft" if on else "surface",
+def save_button(parent, on=False):
+    b = row(parent, "save", gap=6, pad=[6, 10, 6, 8], radius=8, fill="accentSoft" if on else "surface",
             stroke="accent" if on else "line", sw=1)
     icon(b, "bookmark", 16, "accent")
-    text(b, "Kept" if on else "Keep", "smallStrong", "accent" if on else "fg")
+    text(b, "Saved" if on else "Save", "smallStrong", "accent" if on else "fg")
     return b
 
 
 def sheets(board):
     cv = Q.section(board, PG, 3200)
-    Q.sheet_title(cv, "The library: pages, folders and keeping",
-                  "One idea for what a bookmark is. To keep something is one step (the bookmark, or K) on anything you "
-                  "can open: a verse, a word, a Concordance entry, a search, a page, a document, a trail. Kept things "
+    Q.sheet_title(cv, "The library: pages, folders and saving",
+                  "One idea for what a bookmark is. To save something is one step (the bookmark, or K) on anything you "
+                  "can open: a verse, a word, a Concordance entry, a search, a page, a document, a trail. Saved things "
                   "land on the Shelf; putting one in a folder is the optional second step. A folder holds pages and "
-                  "kept things alike, and is today's Shelf set under a new name (same file, so nothing moves).")
+                  "saved things alike, and is today's Shelf set under a new name (same file, so nothing moves).")
 
     r = row(cv, "row 1", gap=64, align="min")
-    f = Q.win(r, PG, "S1 · Keep a verse: one step",
-              "Select a verse; Keep is on the selection bar (or press K). It lands on the Shelf at once. The toast "
-              "offers the second step, a folder, and Undo. A kept verse shows a ribbon at its number.")
+    f = Q.win(r, PG, "S1 · Save a verse: one step",
+              "Select a verse; Save is on the selection bar (or press K). It lands on the Shelf at once. The toast "
+              "offers the second step, a folder, and Undo. A saved verse shows a ribbon at its number.")
     w = M.rail5(f)
     M.slim_bar(f, x=w, w=W - w)
     B.desk_reader(f, w, TB, W - w, H - TB, first=10, last=13, sel=(11, 0, 999))
@@ -98,7 +98,7 @@ def sheets(board):
     shadow(bar, 8, 24, "#00000026")
     for c_ in ("hlYellow", "hlGreen", "hlBlue", "hlPink"):
         frame(bar, f"color/{c_}", w=22, h=22, radius=11, fill=c_, W="fixed", H="fixed")
-    keep_button(bar, on=True)
+    save_button(bar, on=True)
     for lab, ic in (("Note", "pen"), ("Thread", "threads"), ("Copy", "copy")):
         b = row(bar, f"tool/{lab}", gap=6, pad=[6, 8, 6, 8])
         icon(b, ic, 16, "fg")
@@ -107,7 +107,7 @@ def sheets(board):
     toast = row(f, "toast", gap=12, pad=[10, 14, 10, 14], fill="fg", radius=10)
     Q.put(toast, w + 380, H - 80)
     icon(toast, "bookmark", 16, "bg")
-    text(toast, "Numbers 25:11 kept on the Shelf", "smallStrong", "bg")
+    text(toast, "Numbers 25:11 saved on the Shelf", "smallStrong", "bg")
     text(toast, "Put in a folder…", "smallStrong", "accentSoft")
     text(toast, "Undo", "smallStrong", "accentSoft")
 
@@ -179,9 +179,9 @@ def sheets(board):
     card("Phinehas.pdf", "document", "Slides made from this folder's verses.", "docs")
 
     r = row(cv, "row 3", gap=64, align="min")
-    f = Q.win(r, PG, "S5 · Keep from anywhere: the same mark everywhere",
-              "The bookmark sits in the same corner of everything that can be kept: a Concordance entry and its "
-              "place lines, a tab's strip, a trail step, the word card. Filled means kept; a click on a filled one "
+    f = Q.win(r, PG, "S5 · Save from anywhere: the same mark everywhere",
+              "The bookmark sits in the same corner of everything that can be saved: a Concordance entry and its "
+              "place lines, a tab's strip, a trail step, the word card. Filled means saved; a click on a filled one "
               "shows which folder holds it.")
     w = M.rail5(f, on="Concordance")
     M.slim_bar(f, x=w, w=W - w)
@@ -193,7 +193,7 @@ def sheets(board):
     text(e, "H7065", "smallStrong", "accent")
     text(e, lx[0].split(" ", 2)[1], "heading")
     text(e, lx[1], "small", W="fill")
-    keep_button(e, on=True)
+    save_button(e, on=True)
     for ref, key, v in (("Numbers 25:11", "num25", 11), ("Numbers 25:13", "num25", 13)):
         ln = row(pg, f"place/{ref}", gap=12, W="fill", pad=[4, 6, 4, 6])
         t = text(ln, ref, "caption", "muted", W="fixed")
@@ -202,26 +202,26 @@ def sheets(board):
         icon(ln, "bookmark", 15, "accent" if v == 11 else "muted")
     tip = col(f, "where kept", gap=2, pad=[8, 12, 8, 12], fill="fg", radius=8, W="hug", H="hug")
     Q.put(tip, W - 360, TB + 150)
-    text(tip, "Kept in Phinehas", "smallStrong", "bg")
+    text(tip, "Saved in Phinehas", "smallStrong", "bg")
     text(tip, "Move to another folder · Take off the Shelf", "caption", "bg")
 
-    f = Q.win(r, PG, "S6 · Kept is not open",
+    f = Q.win(r, PG, "S6 · Saved is not open",
               "Finding 9413 asked why taking a tab out of a set did not close it. Here the two are separate on "
-              "purpose: keeping is the library, tabs are the desk. Closing a tab never unkeeps it (it stays on the "
+              "purpose: saving is the library, tabs are the desk. Closing a tab never unsaves it (it stays on the "
               "trail too); taking something out of a folder never closes its tab.")
     w = M.rail5(f, on="Notebook")
     M.slim_bar(f, x=w, w=W - w)
     drawer(f, w, shelf_on="Psalms 106:30")
     body = col(f, "two", gap=18, pad=[40, 40, 40, 40], W="fixed")
     Q.put(body, w + 330, TB + 40, W - w - 380)
-    for title, lines in (("The library (kept)", ["Pages and folders", "The Shelf", "Lasts until you take it out"]),
+    for title, lines in (("The library (saved)", ["Pages and folders", "The Shelf", "Lasts until you take it out"]),
                          ("The desk (open)", ["Tabs, columns, floating windows", "Minimized ones wait on the rail",
                                               "Every tab joins the trail"])):
         cd = col(body, title, gap=6, pad=[16, 18, 16, 18], fill="surface", radius=12, stroke="line", sw=1, W="fill")
         text(cd, title, "heading")
         for l_ in lines:
             text(cd, "· " + l_, "body", "muted")
-    text(body, "Open all as tabs: library → desk.   Keep: desk → library.", "bodyStrong", "accent")
+    text(body, "Open all as tabs: library → desk.   Save: desk → library.", "bodyStrong", "accent")
 
 
 def checkbox(parent, on):
@@ -318,8 +318,10 @@ def round2(board):
     Q.put(hv, w + 300, TB + 400, 330)
     shadow(hv, 6, 20)
     text(hv, "Saved on this line", "caption", "muted")
+    phrase = "my covenant of peace"
+    assert phrase in verse("num25", 12)  # the saved phrase is read out of the database's verse, not typed as scripture
     for t, s in (("Numbers 25:12 · whole verse", "in Phinehas, Covenant of peace"),
-                 ("“my covenant of peace” · phrase", "on the Shelf")):
+                 (f"“{phrase}” · phrase", "on the Shelf")):
         it = row(hv, f"s/{t}", gap=8, W="fill", pad=[4, 4, 4, 4])
         icon(it, "bookmark", 15, "accent", fill="accent")
         tc = col(it, "t", gap=0, W="fill")
@@ -530,14 +532,14 @@ def lib_head(pg, title, ic, right=None):
 
 
 def library_shell(f, w, on="Library", tree_on=None):
-    """Round 3's one Library: a tree on the left (Unsorted, folders, pages not in a folder), its search on top."""
+    """Round 3's one Library: a tree on the left (the Shelf, folders, pages not in a folder), its search on top."""
     M.slim_bar(f, x=w, w=W - w)
     t = col(f, "library tree", gap=2, pad=[12, 10, 12, 10], fill="sunken", W="fixed", H="fixed", stroke="line",
             strokeRightWeight=1, strokeLeftWeight=0, strokeTopWeight=0, strokeBottomWeight=0)
     Q.put(t, w, TB, 270, H - TB)
     sf = P.field(t, "Search the library", None, icon_name="search", height=32)
     tree_row(t, "Library home", 0, "home", on=(tree_on == "home"))
-    tree_row(t, "Unsorted", 0, "inbox", sub="4", on=(tree_on == "unsorted"))
+    tree_row(t, "The Shelf", 0, "shelf", sub="4", on=(tree_on == "shelf"))
     text(t, "  FOLDERS", "label", "muted")
     tree_row(t, "Phinehas", 0, open_=True, on=(tree_on == "Phinehas"))
     tree_row(t, "Phinehas", 1, "page", sub="page")
@@ -553,7 +555,14 @@ def library_shell(f, w, on="Library", tree_on=None):
     return w + 270
 
 
+S17_PHRASES = ("while he was zealous", "my wrath away")  # Numbers 25:11, asserted in round3
+S21_PHRASE = "an everlasting priesthood"  # Numbers 25:13, asserted in round3
+
+
 def round3(board):
+    for p_ in S17_PHRASES:  # read from the database's verse, not typed as scripture
+        assert p_ in verse("num25", 11), p_
+    assert S21_PHRASE in verse("num25", 13)
     cv = Q.section(board, "Round 3", 3200)
     Q.sheet_title(cv, "Round 3: the library at real scale, one search, and the page editor",
                   "Dozens of folders in the picker; thirty saves on one verse; notes beside the text on the right; one "
@@ -643,10 +652,10 @@ def round3(board):
     P.field(pn, "Filter folders", None, icon_name="search", height=30)
     for t, n, open_ in (("Phinehas", "3 · whole verse, 2 phrases", True), ("Sunday lessons › 2025 › Numbers series", "6", False),
                         ("Covenant of peace", "2", False), ("Word studies › Zeal", "4", False),
-                        ("Unsorted", "5", False)):
+                        ("The Shelf", "5", False)):
         tree_row(pn, t, 0, open_=open_, sub=n, name=f"g/{t}")
         if open_:
-            for s in ("Whole verse", "“while he was zealous”", "“my wrath away”"):
+            for s in ("Whole verse",) + tuple(f"“{p_}”" for p_ in S17_PHRASES):
                 it = row(pn, f"s/{s}", gap=8, pad=[3, 8, 3, 46], W="fill")
                 icon(it, "bookmark", 13, "accent", fill="accent" if s == "Whole verse" else None)
                 text(it, s, "caption", "fg")
@@ -723,8 +732,8 @@ def round3(board):
     text(pg, "111 more pages · List view sorts and filters them", "caption", "accent")
 
     f = Q.win(r, "Round 3", "S20 · Four pieces, one library",
-              "What each piece is, so none overlaps another. The Shelf as a separate place goes: what it held (saves "
-              "in no folder) is Unsorted, and finding anything is the Library's one search.")
+              "What each piece is, so none overlaps another. Saves in no folder are the Shelf, a place in the "
+              "one tree and not a separate tab; finding anything is the Library's one search. (The name is an inference, L-5.)")
     w = M.rail5(f, on="Notebook")
     M.slim_bar(f, x=w, w=W - w)
     body = row(f, "pieces", gap=20, pad=[40, 40, 40, 40], W="fixed", align="min", wrap=True)
@@ -735,9 +744,9 @@ def round3(board):
             ("Folder", "folder", "A place you sort into.", "Pages, saves and folders. It has a name and, if you like, a "
              "line saying what it is for; no writing of its own.", "Not something you write in."),
             ("Save", "bookmark", "A pointer to a thing you want back.", "One verse, phrase, word, search, trail, "
-             "document or page. It can sit in several folders, or in none (Unsorted).", "Not a copy: the thing stays "
+             "document or page. It can sit in several folders, or in none (the Shelf).", "Not a copy: the thing stays "
              "where it is."),
-            ("Library", "notebook", "Where all of it lives.", "One tree (Unsorted, folders, pages in no folder) and one "
+            ("Library", "notebook", "Where all of it lives.", "One tree (the Shelf, folders, pages in no folder) and one "
              "search over every page's text, every folder and every save.", "Replaces the Notebook / Folders / "
              "Shelf tabs.")):
         cd = col(body, f"piece/{t}", gap=8, pad=[18, 20, 18, 20], fill="surface", radius=14, stroke="line", sw=1,
@@ -764,7 +773,7 @@ def round3(board):
     for kind, items in (("PAGES", (("Covenant", "…compare the covenant of peace with…", "Phinehas"),
                                    ("Lesson · 9 November", "…the covenant made at…", "Sunday lessons › 2025"))),
                         ("SAVES", (("Numbers 25:12", "verse", "Phinehas · Covenant of peace"),
-                                   ("“an everlasting priesthood”", "phrase · Numbers 25:13", "Unsorted"))),
+                                   (f"“{S21_PHRASE}”", f"phrase · Numbers 25:13", "The Shelf"))),
                         ("FOLDERS", (("Covenant of peace", "4 things", "Library"),))):
         text(pg, kind, "label", "muted")
         for t, s, where in items:
@@ -814,7 +823,7 @@ def round3(board):
     # --- S23, S24
     r = row(cv, "row 3e", gap=64, align="min")
     f = Q.win(r, "Round 3", "S23 · The page editor, and New page",
-              "New page opens a blank page as a tab: a title, “in Unsorted” (click to choose a folder), and the cursor. "
+              "New page opens a blank page as a tab: a title, “on the Shelf” (click to choose a folder), and the cursor. "
               "Writing works like Notion: / opens the blocks, each line has a handle to drag and a + to insert. App "
               "blocks are first-class: a verse block shows the verse verbatim from the database, a word block its "
               "entry, a question a callout. No toolbar across the top; selecting text shows a small bar.")
@@ -825,8 +834,8 @@ def round3(board):
     M.folder_strip(ed, ["Untitled", "Phinehas"], "Untitled")
     pg = col(ed, "page", gap=10, pad=[36, 0, 36, 260], W="fill", H="fill")
     loc = row(pg, "where", gap=6)
-    icon(loc, "inbox", 14, "muted")
-    text(loc, "in Unsorted", "caption", "muted")
+    icon(loc, "shelf", 14, "muted")
+    text(loc, "on the Shelf", "caption", "muted")
     icon(loc, "down", 12, "muted")
     text(pg, "Zeal in Numbers 25", "display")
     ln = row(pg, "line", gap=8)
@@ -884,6 +893,444 @@ def round3(board):
         text(cd, s, "caption", "muted")
 
 
+def side_row(parent, label, depth=0, ic="page", open_=None, on=False, hover=False, sel=None, dot=None, sub=None):
+    """A row of the Notebook's side list, Notion-style: the ⋯ and + show only on the row under the pointer."""
+    it = row(parent, f"side/{label}/{depth}", gap=6, pad=[4, 6, 4, 6 + 16 * depth], radius=6, W="fill",
+             fill="accentSoft" if (on or sel) else ("sunken" if hover else None))
+    if open_ is None:
+        frame(it, "pad", w=12, h=12, W="fixed", H="fixed")
+    else:
+        icon(it, "down" if open_ else "right", 12, "muted")
+    if sel is not None:
+        checkbox(it, sel)
+    if dot:
+        frame(it, "dot", w=8, h=8, radius=99, fill=dot, W="fixed", H="fixed")
+    else:
+        icon(it, ic, 15, "accent" if on else "muted")
+    text(it, label, "smallStrong" if on else "small", W="fill", maxLines=1)
+    if sub:
+        text(it, sub, "caption", "muted")
+    if hover:
+        icon(it, "more", 14, "muted")
+        icon(it, "plus", 14, "muted")
+    return it
+
+
+def side_list(f, x, w=270, hover=None, on=None, selecting=False, filt=False):
+    """The side list: Today, Pinned, Folders, Pages, each folding; one filter line under the search."""
+    t = col(f, "side list", gap=1, pad=[10, 8, 10, 8], fill="sunken", W="fixed", H="fixed", stroke="line",
+            strokeRightWeight=1, strokeLeftWeight=0, strokeTopWeight=0, strokeBottomWeight=0, clip=True)
+    Q.put(t, x, TB, w, H - TB)
+    top = row(t, "top", gap=6, W="fill", pad=[0, 0, 6, 0])
+    P.field(top, "Search pages", None, icon_name="search", height=30)
+    icon(top, "pen", 16, "muted")
+    if filt:
+        # one line of plain text, no chips (marks M8); the filters are search's own (M20, M21), opened from the field
+        fl = row(t, "filter line", gap=6, W="fill", pad=[2, 6, 8, 6])
+        icon(fl, "list", 13, "accent")
+        text(fl, "Pages · edited this week", "caption", "accent", W="fill", maxLines=1)
+        text(fl, "Clear", "caption", "muted")
+
+    def head(label, n=None, fold=True):
+        hd = row(t, f"head/{label}", gap=6, W="fill", pad=[10, 6, 3, 6])
+        text(hd, label, "label", "muted", W="fill")
+        if n:
+            text(hd, n, "caption", "muted")
+        if fold:
+            icon(hd, "down", 11, "muted")
+
+    def r(label, depth=0, **k):
+        s = k.pop("sel", False)
+        side_row(t, label, depth, on=(label == on), hover=(label == hover), sel=(s if selecting else None), **k)
+
+    head("TODAY")
+    r("Monday, November 16", ic="pen", sub="today")
+    head("PINNED", "2")
+    r("SALT Bible Study Notes", ic="page")
+    head("FOLDERS", "3")
+    r("Salt", ic="folder", open_=True)
+    r("SALT Bible Study Notes: Nov 12", 1, ic="page")
+    r("SALT Bible Study Notes: Nov 10", 1, ic="page")
+    r("Anna", ic="folder", open_=False, sub="2")
+    r("Findings to sort", ic="folder", open_=False, sub="31")
+    head("PAGES", "77")
+    r("Zeal in Numbers 25", ic="page", sel=True)
+    r("Phinehas", dot="threadA", open_=False, sub="thread")
+    r("Phinehas echoes", dot="threadB", sub="thread")
+    r("Cessationist Discussion", ic="page", open_=False, sel=True)
+    r("Haste Study", ic="page")
+    r("That it might be fulfilled…", ic="page", sel=True)
+    return x + w
+
+
+def notion_page(f, x, w, title, full=False, hover_line=None, props=True):
+    """A page as Notion lays it out: a centred, left-aligned column; a title field; properties; plain blocks."""
+    M.slim_bar(f, x=x, w=W - x)
+    ed = frame(f, "page", x=x, y=TB, w=W - x, h=H - TB, fill="bg", layout="vertical", W="fixed", H="fixed", clip=True)
+    crumbs = row(ed, "crumbs", gap=6, pad=[10, 16, 10, 16], W="fill")
+    text(crumbs, "Folders  /  Salt  /  " + title, "caption", "muted", W="fill")
+    for ic in ("check", "more"):
+        icon(crumbs, ic, 15, "muted")
+    colw = (w - 120) if full else min(720, w - 120)
+    wrap = row(ed, "centre", W="fill", mainAlign="center")
+    pg = col(wrap, "column", gap=6, W="fixed", pad=[28, 0, 28, 0])
+    Q.put(pg, 0, 0, colw)
+    text(pg, title, "display")
+    if props:
+        for k, v, ic in (("Thread", "Phinehas", "threads"),
+                         ("Edited", "16 November, 15:33", "pen")):
+            pr = row(pg, f"prop/{k}", gap=10, W="fill", pad=[2, 0, 2, 0])
+            icon(pr, ic, 14, "muted")
+            t_ = text(pr, k, "small", "muted")
+            S.do("node.set", {"ids": [t_], "props": {"width": 110}}, ref=False)
+            text(pr, v, "small")
+        P.divider(pg)
+    return pg, colw
+
+
+def block_line(pg, s, hover=False, style="body", color="fg"):
+    ln = row(pg, f"line/{s[:20]}", gap=6, W="fill")
+    if hover:
+        icon(ln, "plus", 14, "muted")
+        icon(ln, "drag", 14, "muted")
+    else:
+        frame(ln, "gutter", w=34, h=14, W="fixed", H="fixed")
+    text(ln, s, style, color, W="fill")
+    return ln
+
+
+def verse_block(parent, key, vs, label, w=None, ylt=False):
+    vb = col(parent, f"verse/{label}", gap=6, pad=[10, 14, 12, 14], radius=8, fill="surface", W="fill" if w is None else "fixed")
+    if w:
+        S.do("node.set", {"ids": [vb], "props": {"width": w}}, ref=False)
+    h_ = row(vb, "h", gap=8, W="fill")
+    icon(h_, "book", 14, "accent")
+    text(h_, label, "smallStrong", "accent", W="fill")
+    text(h_, "KJV", "caption", "muted")
+    for v in vs:
+        para(vb, f"{v}  " + verse(key, v), "readSmall")
+    return vb
+
+
+def menu(f, x, y, title, items, w=250):
+    m = col(f, f"menu/{title}", gap=1, pad=[6, 6, 6, 6], fill="surface", radius=10, stroke="line", sw=1, W="fixed")
+    Q.put(m, x, y, w)
+    shadow(m, 8, 28, "#00000033")
+    if title:
+        text(m, "  " + title, "label", "muted")
+    for it_ in items:
+        if it_ == "-":
+            P.divider(m)
+            continue
+        lab, ic, key = (it_ + (None,))[:3] if len(it_) == 2 else it_
+        rr = row(m, f"m/{lab}", gap=10, pad=[5, 8, 5, 8], radius=6, W="fill")
+        icon(rr, ic, 15, "warn" if lab.startswith("Delete") else "muted")
+        text(rr, lab, "small", "warn" if lab.startswith("Delete") else "fg", W="fill")
+        if key:
+            text(rr, key, "caption", "muted")
+    return m
+
+
+def round4(board):
+    cv = Q.section(board, "Round 4", 3200)
+    Q.sheet_title(cv, "Round 4: the Notebook like Notion",
+                  "From the installed build (16 November) and the findings asking for Notion (2c9c, 6e30, 6ed1, b737, "
+                  "6659, d2a1, fc71): one side list with folders, menus on right-click, one filter line, and a page "
+                  "that reads like a Notion page: centred, a real title, properties, no toolbar.")
+
+    # --- S25, S26
+    rr = row(cv, "row 4a", gap=64, align="min")
+    f = Q.win(rr, "Round 4", "S25 · The side list, Notion-style",
+              "As built today, but every group folds (Today, Pinned, Folders, Pages) and Folders sit above loose pages "
+              "(round 3's line). A row shows … and + only under the pointer; + makes a page inside it. Threads keep "
+              "their coloured dot among pages. The pen at the top is New page. Nothing else on the list.")
+    w = M.rail5(f, on="Notebook")
+    x = side_list(f, w, hover="Salt", on="SALT Bible Study Notes: Nov 12")
+    pg, _ = notion_page(f, x, W - x, "SALT Bible Study Notes: Nov 12", props=False)
+    block_line(pg, "Loving Our Neighbors", style="title")
+    verse_block(pg, "num25", [11], "Numbers 25:11")
+
+    f = Q.win(rr, "Round 4", "S26 · Right-click a page (or its …)",
+              "The same menu from right-click, … on the row, or … at the top of the open page. Move to… opens the "
+              "folder picker (S15). Delete goes to the Trash with Undo; Erase stays in the Trash.")
+    w = M.rail5(f, on="Notebook")
+    x = side_list(f, w, hover="Cessationist Discussion")
+    notion_page(f, x, W - x, "Cessationist Discussion", props=False)
+    menu(f, w + 200, TB + 470, None, [
+        ("Open", "page", "Enter"), ("Open in a new tab", "layers", "Ctrl+click"), ("Open beside the reader", "dock"),
+        "-", ("Pin", "check"), ("Move to…", "folder", "Ctrl+Shift+P"), ("Add a page inside", "plus"),
+        ("Duplicate", "copy", "Ctrl+D"), ("Rename", "type", "F2"), ("Copy link", "copy"),
+        "-", ("Make a document…", "docs"), "-", ("Delete", "trash", "Del")])
+
+    # --- S27, S28
+    rr = row(cv, "row 4b", gap=64, align="min")
+    f = Q.win(rr, "Round 4", "S27 · One filter line instead of a form and a tab row",
+              "Today the Notebook has Filters (Kind, Place, Thread, Questions) and a tab row (Days, Pages, Places, "
+              "Threads, Questions, All): two ways to do one thing. Here: the search box and one line of plain text "
+              "under it saying what is on (no chips, marks M8; Clear empties it). The filters are search's own, "
+              "opened from the field (marks M20, M21), not a second set. A page has no Place (marks, 2026-11-12). "
+              "Which filters and sorts search offers is search's to decide; this draws only what a page has.")
+    w = M.rail5(f, on="Notebook")
+    x = side_list(f, w, filt=True)
+    notion_page(f, x, W - x, "Zeal in Numbers 25", props=True)
+    menu(f, w + 120, TB + 80, "FILTER (search's own)", [
+        ("Kind", "layers"), ("Thread", "threads"), ("Has a question", "question"),
+        ("Edited", "pen"), "-", ("Sort: last edited", "list"), ("Sort: title A–Z", "list")], w=230)
+
+    f = Q.win(rr, "Round 4", "S28 · The page: centred, a title field, properties, no toolbar",
+              "A real title (not the first line, 9b88). Under it the page's properties as Notion shows them: "
+              "Thread, Edited; click one to change it (a page has no Place, marks 2026-11-12). The column is centred, text left-aligned (6659). Text blocks "
+              "are plain lines with no box (6ed1); + and the grip show only on the line under the pointer (d2a1).")
+    w = M.rail5(f, on="Notebook")
+    x = side_list(f, w, on="Zeal in Numbers 25")
+    pg, _ = notion_page(f, x, W - x, "Zeal in Numbers 25")
+    block_line(pg, "Where the word first appears in this story:", hover=True)
+    verse_block(pg, "num25", [11], "Numbers 25:11")
+    block_line(pg, "And what is promised for it:")
+    verse_block(pg, "num25", [12, 13], "Numbers 25:12–13")
+    callout = row(pg, "question", gap=8, pad=[8, 12, 8, 12], radius=8, fill="accentSoft", W="fill")
+    icon(callout, "question", 15, "question")
+    text(callout, "How does Psalm 106 remember this?", "small", W="fill")
+
+    # --- S29, S30
+    rr = row(cv, "row 4c", gap=64, align="min")
+    f = Q.win(rr, "Round 4", "S29 · Writing: / for blocks, select for formatting",
+              "No bar across the top (6e30). Typing / opens the blocks and filters as you type (/ver). Selecting text "
+              "shows a small bar: Turn into, B, I, U, link, Question. Markdown shortcuts work (# heading, - list, "
+              "> quote) and Ctrl+Z/Y undo in the page (bd7b).")
+    w = M.rail5(f, on="Notebook")
+    x = side_list(f, w, on="Zeal in Numbers 25")
+    pg, colw = notion_page(f, x, W - x, "Zeal in Numbers 25", props=False)
+    block_line(pg, "Where the word first appears in this story:")
+    verse_block(pg, "num25", [11], "Numbers 25:11")
+    sel = row(pg, "selected", gap=6, W="fill")
+    frame(sel, "gutter", w=34, h=14, W="fixed", H="fixed")
+    v12 = verse("num25", 12)  # Numbers 25:12 from content.json; the highlighted part is cut from it
+    a, b = v12.split("my covenant of peace", 1)
+    text(sel, a, "body")
+    hi = row(sel, "hi", pad=[0, 2, 0, 2], fill="accentSoft")
+    text(hi, "my covenant of peace", "body")
+    text(sel, b, "body", W="fill")
+    bar = row(f, "selection bar", gap=12, pad=[6, 10, 6, 10], fill="surface", radius=8, stroke="line", sw=1)
+    Q.put(bar, x + (W - x - colw) // 2 + 30, TB + 300)
+    shadow(bar, 6, 20, "#00000033")
+    for lab in ("Turn into ▾", "B", "I", "U", "Link", "?"):
+        text(bar, lab, "smallStrong")
+    block_line(pg, "/ver", style="body", color="accent")
+    sl = menu(f, x + (W - x - colw) // 2 + 30, TB + 420, "BLOCKS", [
+        ("Verse or passage", "book", "/verse"), ("Interlinear verse", "interlinear", "/inter"),
+        ("Word (Strong's)", "word", "/word"), "-", ("Text", "type"), ("Heading", "type", "#"),
+        ("Question", "question", "/?"), ("Thread", "threads", "/~"), ("Page inside", "page", "/page")], w=300)
+
+    f = Q.win(rr, "Round 4", "S30 · Full width: blocks side by side",
+              "Full width (from the page's …) uses the space: drag a block beside another to make columns, as in "
+              "Notion (6659). Shrunk into a pane, columns stack again as they are today.")
+    w = M.rail5(f, on="Notebook")
+    pg, colw = notion_page(f, w, W - w, "Zeal in Numbers 25", full=True, props=False)
+    block_line(pg, "The zeal, and what the psalm remembers:")
+    cols = row(pg, "columns", gap=16, W="fill", align="min")
+    verse_block(cols, "num25", [11], "Numbers 25:11", w=(colw - 16) // 2)
+    verse_block(cols, "ps106", [30, 31], "Psalms 106:30–31", w=(colw - 16) // 2)
+    block_line(pg, "The covenant that follows:")
+    verse_block(pg, "num25", [12, 13], "Numbers 25:12–13")
+
+    # --- S31, S32
+    rr = row(cv, "row 4d", gap=64, align="min")
+    f = Q.win(rr, "Round 4", "S31 · The page's …, and what leaves the Notebook's …",
+              "The page's own menu holds what belongs to one page: Full width, Small text, Pin, Move to, Copy link, "
+              "Make a document, Delete. The Notebook's settings (Today's page, Links between pages, Opens with, Places "
+              "open in, Quick capture, Templates) move to Settings › Notebook (e09e); the Notebook's own … goes.")
+    w = M.rail5(f, on="Notebook")
+    x = side_list(f, w, on="Zeal in Numbers 25")
+    notion_page(f, x, W - x, "Zeal in Numbers 25")
+    menu(f, W - 300, TB + 40, None, [
+        ("Full width", "layers", "on/off"), ("Small text", "type", "on/off"),
+        "-", ("Pin", "check"), ("Move to…", "folder"), ("Copy link", "copy"), ("Make a document…", "docs"),
+        "-", ("Page history", "sync"), ("Delete", "trash")], w=260)
+
+    f = Q.win(rr, "Round 4", "S32 · Choosing many pages, and deleting them",
+              "Shift- or Ctrl-click rows (or drag down the list) to choose several: a bar says how many and offers Move "
+              "to…, Pin, Delete (0ade). Delete goes to the Trash with one Undo for all.")
+    w = M.rail5(f, on="Notebook")
+    x = side_list(f, w, selecting=True)
+    notion_page(f, x, W - x, "Zeal in Numbers 25", props=False)
+    bb = row(f, "bulk bar", gap=14, pad=[8, 14, 8, 14], fill="fg", radius=10)
+    Q.put(bb, w + 20, H - 70)
+    text(bb, "3 pages", "smallStrong", "bg")
+    for lab in ("Move to…", "Pin", "Delete"):
+        text(bb, lab, "small", "bg")
+    icon(bb, "close", 14, "bg")
+
+
+
+def many_list(f, x, w=300, loose=40, shown=9, filt=None):
+    """The side list at years of study: folders fold, 412 pages, forty one-line pages loose at the root."""
+    t = col(f, "side list", gap=1, pad=[10, 8, 10, 8], fill="sunken", W="fixed", H="fixed", stroke="line",
+            strokeRightWeight=1, strokeLeftWeight=0, strokeTopWeight=0, strokeBottomWeight=0, clip=True)
+    Q.put(t, x, TB, w, H - TB)
+    top = row(t, "top", gap=6, W="fill", pad=[0, 0, 6, 0])
+    P.field(top, filt or "Search pages", filt, icon_name="search", height=30)
+    icon(top, "pen", 16, "muted")
+    if filt:
+        fl = row(t, "filter line", gap=6, W="fill", pad=[2, 6, 8, 6])
+        icon(fl, "list", 13, "accent")
+        text(fl, "Pages · 23 found of 412", "caption", "accent", W="fill", maxLines=1)
+        text(fl, "Clear", "caption", "muted")
+
+    def head(label, n=None):
+        hd = row(t, f"head/{label}", gap=6, W="fill", pad=[10, 6, 3, 6])
+        text(hd, label, "label", "muted", W="fill")
+        if n:
+            text(hd, n, "caption", "muted")
+        icon(hd, "down", 11, "muted")
+
+    head("TODAY")
+    side_row(t, "Monday, November 16", 0, ic="pen", sub="today")
+    head("PINNED", "4")
+    side_row(t, "SALT Bible Study Notes", 0)
+    side_row(t, "Zeal in Numbers 25", 0, on=True)
+    head("FOLDERS", "14")
+    for lab, n in (("Sunday lessons", "117"), ("Salt", "64"), ("Word studies", "48"), ("Findings to sort", "31"),
+                   ("Anna", "22")):
+        side_row(t, lab, 0, ic="folder", open_=False, sub=n)
+    text(t, "      9 more folders", "caption", "muted")
+    head("PAGES, LOOSE", str(loose))
+    for lab in ("Haste Study", "Cessationist Discussion", "Phinehas", "Zeal", "Covenant", "Questions", "Reading plan",
+                "Prayer list", "Sermon ideas")[:shown]:
+        side_row(t, lab, 0)
+    text(t, f"      {loose - shown} more, scroll", "caption", "accent")
+    return x + w
+
+
+def conditions(board):
+    cv = Q.section(board, "Real conditions", 3200)
+    Q.sheet_title(cv, "The real conditions: floating, among other tabs, narrow, and years of study",
+                  "Round 4's Notebook (S25-S32, unreviewed) drawn where the person works: as a floating window, as one "
+                  "of ten tabs, in a 420px column, and with 412 pages of which forty sit loose. Scripture is read from "
+                  "the database. These draw what round 4 already proposes; the open format questions in the README "
+                  "(title field, folders, columns, saved sitting) are not decided here.")
+
+    rr = row(cv, "row 5a", gap=64, align="min")
+    # --- S33: floating
+    f = Q.win(rr, "Real conditions", "S33 · Round 4 as a floating window",
+              "The Notebook floats over the reader: its folder tabs stand on the window's top edge, the side list folds "
+              "to a path (as in S24) and the page keeps its title, properties and plain lines. The reader's verse "
+              "stays where it was; closing or minimizing the float returns to it.")
+    w = M.rail5(f, on="Notebook")
+    M.slim_bar(f, x=w, w=W - w)
+    B.desk_reader(f, w, TB, W - w, H - TB, first=10, last=14)
+    fw = frame(f, "float", x=w + 330, y=TB + 70, w=640, h=700, fill="surface", radius=12, stroke="line", sw=1,
+               layout="vertical", W="fixed", H="fixed", clip=True)
+    shadow(fw, 16, 44, "#00000030")
+    M.folder_strip(fw, ["Zeal in Numbers 25", "Phinehas"], "Zeal in Numbers 25")
+    body = col(fw, "page", gap=8, pad=[16, 28, 16, 28], W="fill", H="fill", clip=True)
+    pth = row(body, "path", gap=6, pad=[6, 10, 6, 10], radius=8, fill="sunken", W="fill")
+    icon(pth, "page", 15, "accent")
+    text(pth, "Notebook › Salt", "smallStrong", W="fill")
+    icon(pth, "down", 13, "muted")
+    text(body, "Zeal in Numbers 25", "display")
+    for k, v, ic in (("Thread", "Phinehas", "threads"), ("Edited", "16 November, 15:33", "pen")):
+        pr = row(body, f"prop/{k}", gap=10, W="fill", pad=[2, 0, 2, 0])
+        icon(pr, ic, 14, "muted")
+        t_ = text(pr, k, "small", "muted")
+        S.do("node.set", {"ids": [t_], "props": {"width": 90}}, ref=False)
+        text(pr, v, "small")
+    P.divider(body)
+    block_line(body, "Where the word first appears in this story:")
+    verse_block(body, "num25", [11], "Numbers 25:11")
+    block_line(body, "And what is promised for it:")
+    verse_block(body, "num25", [12], "Numbers 25:12")
+
+    # --- S34: among other tabs
+    f = Q.win(rr, "Real conditions", "S34 · Round 4 among other tabs (ten open)",
+              "The Notebook is one of ten tabs in the reader's strip. The strip shows what fits and 3 more lists the "
+              "rest (BDB H7065, Phinehas.pdf, Malachi 2); the page in front is the Notebook's, its side list at its "
+              "left. A page opened from a verse returns to that verse's tab. Ten tabs change nothing the Notebook "
+              "shows.")
+    w = M.rail5(f, on="Notebook")
+    M.slim_bar(f, x=w, w=W - w)
+    ed = frame(f, "tabs", x=w, y=TB, w=W - w, h=H - TB, fill="surface", layout="vertical", W="fixed", H="fixed",
+               clip=True)
+    st = M.folder_strip(ed, ["Numbers 25", "H7065", "Every use: zealous", "Concordance", "Notebook", "Psalms 106",
+                             "Romans 10", "3 more ▾"], "Notebook")
+    body = row(ed, "body", gap=0, W="fill", H="fill", align="min")
+    sl = col(body, "side list", gap=1, pad=[10, 8, 10, 8], fill="sunken", W="fixed", H="fill", stroke="line",
+             strokeRightWeight=1, strokeLeftWeight=0, strokeTopWeight=0, strokeBottomWeight=0)
+    Q.put(sl, 0, 0, 270)
+    P.field(sl, "Search pages", None, icon_name="search", height=30)
+    for lab, ic, op, d_, on in (("Monday, November 16", "pen", None, 0, False), ("SALT Bible Study Notes", "page", None, 0, False),
+                                ("Salt", "folder", True, 0, False), ("SALT Bible Study Notes: Nov 12", "page", None, 1, False),
+                                ("Anna", "folder", False, 0, False), ("Zeal in Numbers 25", "page", None, 0, True),
+                                ("Phinehas", "page", None, 0, False)):
+        side_row(sl, lab, d_, ic=ic, open_=op, on=on)
+    pgc = col(body, "page", gap=8, pad=[28, 40, 28, 40], W="fill", H="fill")
+    text(pgc, "Zeal in Numbers 25", "display")
+    pr = row(pgc, "prop/Thread", gap=10, W="fill")
+    icon(pr, "threads", 14, "muted")
+    text(pr, "Thread", "small", "muted")
+    text(pr, "Phinehas", "small")
+    P.divider(pgc)
+    block_line(pgc, "Where the word first appears in this story:")
+    verse_block(pgc, "num25", [11], "Numbers 25:11")
+    hv = col(f, "hidden tabs", gap=2, pad=[8, 8, 8, 8], fill="surface", radius=12, stroke="line", sw=1, W="fixed")
+    Q.put(hv, W - 300, TB + 44, 250)
+    shadow(hv, 8, 28, "#00000033")
+    text(hv, "  3 MORE OPEN", "label", "muted")
+    for t, ic in (("BDB H7065", "lexicon"), ("Phinehas.pdf", "docs"), ("Malachi 2", "book")):
+        it = row(hv, f"hidden/{t}", gap=8, pad=[5, 8, 5, 8], radius=8, W="fill")
+        icon(it, ic, 15, "muted")
+        text(it, t, "small", W="fill", maxLines=1)
+
+    # --- S35, S36
+    rr = row(cv, "row 5b", gap=64, align="min")
+    f = Q.win(rr, "Real conditions", "S35 · Round 4 narrow (a 420px column)",
+              "Docked beside the reader: the side list folds into a path (tap it to open the list, drawn open), the "
+              "page keeps its title and properties, lines stay plain, verse blocks fill the width. The ⋯ and + that "
+              "show only on hover elsewhere are always shown here, since a touch screen has no hover.", w=1100)
+    w = M.rail5(f, on="Notebook")
+    M.slim_bar(f, x=w, w=1100 - w)
+    B.desk_reader(f, w, TB, 1100 - w - 420, H - TB, first=10, last=13)
+    lb = frame(f, "notebook column", x=1100 - 420, y=TB, w=420, h=H - TB, fill="surface", layout="vertical",
+               W="fixed", H="fixed", clip=True, stroke="line", strokeLeftWeight=1, strokeRightWeight=0,
+               strokeTopWeight=0, strokeBottomWeight=0)
+    M.folder_strip(lb, ["Zeal in Numbers 25"], "Zeal in Numbers 25", actions=("minimize", "expand", "close"))
+    pg = col(lb, "page", gap=8, pad=[12, 16, 12, 16], W="fill", H="fill", clip=True)
+    top = row(pg, "top", gap=6, W="fill")
+    P.field(top, "Search pages", None, icon_name="search", height=32)
+    icon(top, "pen", 16, "muted")
+    pth = row(pg, "path", gap=6, pad=[6, 10, 6, 10], radius=8, fill="sunken", W="fill")
+    icon(pth, "page", 15, "accent")
+    text(pth, "Notebook › Salt › Zeal in Numbers 25", "smallStrong", W="fill", maxLines=1)
+    icon(pth, "down", 13, "muted")
+    lst = col(pg, "open list", gap=1, pad=[6, 6, 6, 6], fill="surface", radius=10, stroke="line", sw=1, W="fill")
+    for lab, ic, op, d_ in (("Monday, November 16", "pen", None, 0), ("Pinned", "check", False, 0),
+                            ("Salt", "folder", True, 0), ("SALT Bible Study Notes: Nov 12", "page", None, 1),
+                            ("SALT Bible Study Notes: Nov 10", "page", None, 1), ("Anna", "folder", False, 0),
+                            ("Zeal in Numbers 25", "page", None, 0)):
+        side_row(lst, lab, d_, ic=ic, open_=op, on=(lab == "Zeal in Numbers 25"), hover=True)
+    text(pg, "Zeal in Numbers 25", "display")
+    pr = row(pg, "prop/Thread", gap=10, W="fill")
+    icon(pr, "threads", 14, "muted")
+    text(pr, "Thread", "small", "muted")
+    text(pr, "Phinehas", "small")
+    block_line(pg, "Where the word first appears:")
+    verse_block(pg, "num25", [11], "Numbers 25:11")
+
+    f = Q.win(rr, "Real conditions", "S36 · Round 4 at years of study: 412 pages, forty loose",
+              "The side list with 412 pages: folders fold and show their counts, the forty loose pages are one-line "
+              "rows that scroll, and the search box answers 23 of 412 on one plain filter line (search's own filters). "
+              "The list shows only the rows in view, so it opens at once. What to do about forty loose pages is the "
+              "folders' question (README question 2); nothing here sorts them.")
+    w = M.rail5(f, on="Notebook")
+    x = many_list(f, w, filt="covenant")
+    pg, _ = notion_page(f, x, W - x, "Zeal in Numbers 25", props=True)
+    block_line(pg, "Where the word first appears in this story:")
+    verse_block(pg, "num25", [11], "Numbers 25:11")
+    block_line(pg, "And the psalm that remembers it:")
+    verse_block(pg, "ps106", [30], "Psalms 106:30")
+    frame(f, "scrollbar", x=w + 300 - 8, y=TB + 460, w=4, h=230, radius=2, fill="line", W="fixed", H="fixed")
+
+
 # windows that no longer lead (see the README's Leading design table)
 DROP = ['S1', 'S2', 'S3', 'S4', 'S12', 'S14', 'S16']
 
@@ -899,6 +1346,8 @@ def main():
     sheets(board)
     round2(board)
     round3(board)
+    round4(board)
+    conditions(board)
     build = LIB / "build"
     build.mkdir(exist_ok=True)
     script = build / "library.json"
