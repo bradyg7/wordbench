@@ -46,14 +46,14 @@ fn count(c: &Ctx<'_>, id: &str) -> Result<usize, String> {
 
 pub fn commands() -> Vec<Command> {
     vec![
-        cmd("page rm", "Delete a page with timed Undo. --all previews the ordinary Pages tree; --yes commits. Pinned, templates, days and threads are excluded by default. --now explicitly bypasses Undo.",
-            vec![Pos("id", N::Opt), Flag("all"), Flag("yes"), Flag("now"), Flag("include_pinned"), Flag("include_templates"), Flag("include_days"), Opt("expect", None)], |c,a| {
+        cmd("page rm", "Delete a page, or several (wb page rm <id> <id> ...: one operation, one Undo), with timed Undo. --all previews the ordinary Pages tree; --yes commits. Pinned, templates, days and threads are excluded by default. --now explicitly bypasses Undo.",
+            vec![Pos("id", N::Any), Flag("all"), Flag("yes"), Flag("now"), Flag("include_pinned"), Flag("include_templates"), Flag("include_days"), Opt("expect", None)], |c,a| {
                 use wb_core::deletion as del;
-                let id=a.s("id");
-                if a.flag("all") == !id.is_empty() { return Err("Give a page ID or --all.".into()); }
+                let ids=a.list("id");
+                if a.flag("all") == !ids.is_empty() { return Err("Give a page ID or --all.".into()); }
                 if !a.flag("all") && (a.flag("include_pinned") || a.flag("include_templates") || a.flag("include_days")) { return Err("Inclusion options require --all.".into()); }
                 let mut st=c.study()?;
-                let selection=del::Selection { ids:if id.is_empty(){vec![]}else{vec![id]},all:a.flag("all"),pinned:a.flag("include_pinned"),templates:a.flag("include_templates"),days:a.flag("include_days") };
+                let selection=del::Selection { ids,all:a.flag("all"),pinned:a.flag("include_pinned"),templates:a.flag("include_templates"),days:a.flag("include_days") };
                 let plan=del::plan(c.bible()?,&mut st,&selection).map_err(e)?;
                 if a.flag("all") && !a.flag("yes") { return j(plan.preview()); }
                 j(del::commit(&mut st,plan,a.opt("expect").as_deref(),del::now_ms,a.flag("now")).map_err(e)?)

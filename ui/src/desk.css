@@ -1324,3 +1324,12 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .vc-tabs .vc-tab { white-space: nowrap; }
 .vc-pages { margin-top: 6px; }
 .vc-foot { margin-top: 10px; }
+
+/* trash T14 (TR-4): the Trash grouped by the day of deletion, folded to its first rows */
+.nb-trash-search { width: 100%; margin: 6px 0 10px; }
+.nb-trash-day { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0 6px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.nb-trash-day .nb-trash-count { font-weight: 400; }
+.nb-trash-showall { margin: 4px 0 8px; }
+.nb-trash-rows .note-card { min-width: 0; overflow-wrap: anywhere; }
+.nb-trash-rows .nb-acts { flex-wrap: wrap; }
+@media (max-width: 480px) { .nb-trash-rows .nb-acts .btn, .nb-trash-rows .nb-acts .icon-btn, .nb-empty-trash, .nb-trash-showall { min-height: 44px; } }
