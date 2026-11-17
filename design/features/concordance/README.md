@@ -187,6 +187,7 @@ Built on `feature/concordance-build` (2026-11-16); ticked lines are built and te
 - [x] Nothing is suggested: no related words, no commentary; only entries, places and counts.
 - [ ] Commands. Existing: `wb strong`, `uses`, `count`, `forms`, `near`, `lexiconc`, `interlinear`. Missing, so required:
   - `wb concordance <word> [--forms all|one]` for the English page's lines;
+    (built, with `wb concordance box <text>` for the box's suggestions, `wb concordance letters` for the letter strip and `--book <code>` for one book's every line; with no `--forms` the kept choice, and until one is kept This word, so the page agrees with the box's count, `wb count` and `wb uses`: heart 830);
   - `wb strong <n> --next|--prev` and `wb strong --list hebrew|greek [--from <n>]`;
   - `wb uses <n> --by word|book`, per occurrence;
   - `wb interlinear "Num 25"` already takes a chapter (run 2026-11-16), so nothing is missing there;
@@ -207,6 +208,13 @@ Drawn 2026-11-16 in round 5 (not yet reviewed by the person).
 | Years of study | drawn: C19, heart (830 places, 54 books, 4 lines and "N more" each), and C20, the small words and, the, of with references only (C-2) | The round 3 and 4 scenes show zeal and H7068, 43 places at most (`c01-english-page`, `c08-hebrew-by-english-word`), so they do not show a long word or a small word. C19 and C20 stay. |
 
 The direction is settled; the six windows (C15-C20), C8 (Save's mark, per-occurrence counts) and round 4's C21-C25 are drawn. C19's heart page (C-9), C18's phone sheet and C15's card (C-10) were redrawn several times on 2026-11-16; the phone sheet sits on the window's bottom and C15's place lines are four words either side so none is cut. The person has not seen C15-C20 or accepted the folder.
+
+## Inferences made in the build (2026-11-17), for the person to look at
+
+- **The small words** (given with references only, C-2) are a fixed list; the design names only and, the and of. The list is: a, an, and, are, as, at, be, but, by, for, from, had, has, have, he, her, him, his, i, in, is, it, me, my, not, of, on, or, our, shall, that, the, their, them, they, thee, thou, thy, to, unto, us, was, we, were, which, with, ye, you, your. Such a word is shown alone, with no "Other forms".
+- **The default of This word / All forms** is This word until the person chooses All forms (then it is kept), because the box's count, `wb count` and `wb uses` count the word alone (heart 830); C-1 says only that the choice is kept.
+- **Enter on a typed word** opens its tab like a click on the suggestion (C-13); a typed number does the same; a place goes to the Interlinear tab of the tab in front. Text starting with a dash is refused.
+- **A word clicked in the letter list** opens in the same tab (the letter does not clear the search, C-11).
 
 ## Out of scope / later
 
