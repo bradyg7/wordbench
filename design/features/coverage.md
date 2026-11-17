@@ -33,7 +33,7 @@ A new button or command gets a row here, and its folder, before it is built.
 | Reading plans and the reading log | a plan's day, starting a plan, what was read | [reading-plans](reading-plans/README.md) | exploring |
 | Lessons and documents (Word, PDF, Present) | the builder, the viewer, Looks | [documents](documents/README.md) | exploring |
 | Trash | Undo, the 7 days, Empty trash, the way in, deleting a block | [trash](trash/README.md) | accepted |
-| Updates | the notice that a new version is ready, what changed, install and restart | [updates](updates/README.md) | exploring |
+| Updates | the dot on the Settings gear that says a new version is ready, the Updates section of the Settings menu (what changed, Install, Restart now, Check now, Look for updates, Go back) | [updates](updates/README.md) | exploring (round 1 drawn 2026-11-16, U1-U14; not reviewed by the person) |
 | Findings | the box, the pane, `!` in the field | [findings](findings/README.md) | accepted |
 | Settings, layout, views | italic words, scroll bars, layouts, saved lists | [settings](settings/README.md) | accepted |
 | Help, guide, manual | Guide cards, commands to try, keys | [help](help/README.md) | accepted |
@@ -61,6 +61,7 @@ The terminal side of each area above; a command is designed with the area whose 
 | `trash` | Trash | [trash](trash/README.md) |
 | `finding`, `findings` | Findings | [findings](findings/README.md) |
 | `history` | The trail (`trail` is still the old questions); going back inside a tab (command to be named) | [minimize](minimize/README.md), [tab-history](tab-history/README.md) |
+| `update` (to build: `status`, `check`, `notes`, `install`, `stop`, `skip`, `back`), `settings updates` | Updates | [updates](updates/README.md) |
 | `settings`, `layout`, `view` | Settings, layout, views | [settings](settings/README.md) |
 | `help`, `guide`, `manual`, `commands` | Help ([command](command/README.md) for kept `commands`) | [help](help/README.md) |
 | `status`, `study`, `do` | Not shown in the window (checks and the relay) | not needed |
