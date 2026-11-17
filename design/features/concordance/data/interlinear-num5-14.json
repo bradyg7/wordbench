@@ -1,0 +1,112 @@
+{
+ "command": "wb interlinear \"NUM 5:14\" (verses[].words[]: original, strong, gloss)",
+ "verses": [
+  {
+   "c": 5,
+   "v": 14,
+   "text": "And the spirit of jealousy come upon him, and he be jealous of his wife, and she be defiled: or if the spirit of jealousy come upon him, and he be jealous of his wife, and she be not defiled:",
+   "words": [
+    {
+     "original": "וְעָבַר",
+     "strong": "H5674",
+     "gloss": "and it will pass"
+    },
+    {
+     "original": "עָלָיו",
+     "strong": "H5921",
+     "gloss": "over him"
+    },
+    {
+     "original": "רֽוּחַ",
+     "strong": "H7307",
+     "gloss": "a spirit of"
+    },
+    {
+     "original": "קִנְאָה",
+     "strong": "H7068",
+     "gloss": "jealousy"
+    },
+    {
+     "original": "וְקִנֵּא",
+     "strong": "H7065",
+     "gloss": "and he will be jealous of"
+    },
+    {
+     "original": "אֶת",
+     "strong": "H853",
+     "gloss": "<obj.>"
+    },
+    {
+     "original": "אִשְׁתּוֹ",
+     "strong": "H802",
+     "gloss": "wife his"
+    },
+    {
+     "original": "וְהִוא",
+     "strong": "H1931",
+     "gloss": "and she"
+    },
+    {
+     "original": "נִטְמָאָה",
+     "strong": "H2930",
+     "gloss": "she has made herself unclean"
+    },
+    {
+     "original": "אוֹ",
+     "strong": "H176",
+     "gloss": "or"
+    },
+    {
+     "original": "עָבַר",
+     "strong": "H5674",
+     "gloss": "it has passed"
+    },
+    {
+     "original": "עָלָיו",
+     "strong": "H5921",
+     "gloss": "over him"
+    },
+    {
+     "original": "רֽוּחַ",
+     "strong": "H7307",
+     "gloss": "a spirit of"
+    },
+    {
+     "original": "קִנְאָה",
+     "strong": "H7068",
+     "gloss": "jealousy"
+    },
+    {
+     "original": "וְקִנֵּא",
+     "strong": "H7065",
+     "gloss": "and he will be jealous of"
+    },
+    {
+     "original": "אֶת",
+     "strong": "H853",
+     "gloss": "<obj.>"
+    },
+    {
+     "original": "אִשְׁתּוֹ",
+     "strong": "H802",
+     "gloss": "wife his"
+    },
+    {
+     "original": "וְהִיא",
+     "strong": "H1931",
+     "gloss": "and she"
+    },
+    {
+     "original": "לֹא",
+     "strong": "H3808",
+     "gloss": "not"
+    },
+    {
+     "original": "נִטְמָֽאָה",
+     "strong": "H2930",
+     "gloss": "she has made herself unclean"
+    }
+   ]
+  }
+ ]
+}
