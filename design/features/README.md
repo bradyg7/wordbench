@@ -17,7 +17,7 @@ is written so that a person or an AI can build the feature from it without the c
 | [highlights](highlights/README.md) | Highlights and the palette: colors with names, layers by year with an eye each, a light and a dark form for every color; when everything is colored | Rounds 1-2 drawn; exploring | 2026-11-12 | not assessed |
 | [books](books/README.md) | BDB and Webster's 1913 as books: paging, an index, one card with three sources | Round 1 drawn; exploring | 2026-11-12 | not assessed |
 | [command](command/README.md) | The top bar and the command box: the trail under the bar, the box keeps its line; suggestions | Round 2 accepted; building | 2026-11-13 | not assessed |
-| [words](words/README.md) | The word sheet, the verse sheet and the hover card | Round 1 reviewed: B chosen; the real conditions drawn (W6-W11); exploring | 2026-11-16 | likely finished (2026-11-16, fourth pass): all ten checks pass; the person looks at W4-W11 to accept |
+| [words](words/README.md) | The word sheet, the verse sheet and the hover card | Accepted (2026-11-16); building | 2026-11-16 | likely finished (2026-11-16, fourth pass): all ten checks pass; the person looks at W4-W11 to accept |
 | [marks](marks/README.md) | Marks: the two layers on the text, the margin as a view of pages and saves, a passage with its marks | Round 1 drawn; exploring | 2026-11-12 | not assessed |
 | [questions](questions/README.md) | Questions: one list or lines in pages; asking and answering | Round 1 drawn; exploring | 2026-11-12 | not assessed |
 | [documents](documents/README.md) | Lessons and documents: a builder from a page, the viewer, Looks | Round 1 drawn; exploring | 2026-11-12 | not assessed |

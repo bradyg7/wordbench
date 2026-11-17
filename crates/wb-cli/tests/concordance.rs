@@ -140,7 +140,7 @@ fn the_forms_choice_is_kept_and_the_click_choice_takes_only_its_words() {
     assert!(wb.err(&["settings", "concordance", "forms", "both"]).contains("all or one"));
     wb.js(&["settings", "concordance", "forms", "default"]);
     assert_eq!(wb.js(&["concordance", "zeal"])["mode"], "all");
-    assert_eq!(wb.js(&["settings", "reading", "word-click", "concordance"])["word-click"], "concordance");
+    assert_eq!(wb.js(&["settings", "reading", "word-click", "concordance"])["word"], "concordance");
     assert!(wb.err(&["settings", "reading", "word-click", "pane"]).contains("card or concordance"));
     wb.js(&["settings", "reading", "word-click", "card"]);
 }

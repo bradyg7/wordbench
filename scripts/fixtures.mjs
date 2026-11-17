@@ -27,6 +27,9 @@ try {
   mkdirSync(help, { recursive: true });
   for (const args of [
     ['guide', '--json'], ['manual'],
+    // the cards of design/features/words: the verse card and the word card's lookups
+    ['scripture', 'Num 25:11'], ['interlinear', 'Num 25:11'], ['word-define', '--verse', 'Num 25:11'], ['word-define', 'zealous'],
+    ['strong', 'H7065'], ['anchor', 'Num', '25:11', '--pages'], ['anchor', 'H7065', '--pages'],
     ...['help', 'help view', 'help threads', 'help The Shelf', 'help vie', 'help t', 'help layout',
       'listen Numbers 25:11-12', 'listen Numbers 26:1', 'listen pause', 'listen resume', 'listen stop', 'back',
       'packet John 3 ; document:Study Slides'].map(line => ['parse', line]),

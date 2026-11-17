@@ -61,7 +61,8 @@ test('tap a word: the word sheet', async ({ page }, info) => {
   await expect(sheet.locator('.sheet-title')).toHaveText(zeal.text);
   await expect(sheet).toContainText(zeal.lexicon.strong);
   await expect(sheet.locator('.def')).toHaveText(zeal.lexicon.definition);
-  await expect(sheet).toContainText(`${zeal.count.times} times in ${zeal.count.verses} verses`);
+  await expect(sheet.locator('.wc-door')).toHaveText('In the Concordance');
+  await expect(sheet.locator('.wc-webster')).toBeVisible();
   await page.screenshot({ path: `${shots}/${info.project.name}-word-sheet.png` });
   // Closing returns exactly where the reader was.
   const before = await page.evaluate(() => document.getElementById('scroller')!.scrollTop);

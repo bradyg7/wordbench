@@ -36,6 +36,7 @@ pub mod studyapi;
 pub mod templates;
 pub mod threadpage;
 pub mod views;
+pub mod wordpages;
 
 use std::path::PathBuf;
 

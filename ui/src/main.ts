@@ -16,7 +16,8 @@ import { openSheet, closeSheet, showCard, hideCard, toast, compact } from './she
 import { perf, afterPaint, record } from './perf';
 import { app, goTo, here, type At } from './app';
 import { layers } from './layers';
-import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu } from './ui';
+import { h, hoverMode, icon, popMenu, setHover, sizeClass, closeMenu, wordClick } from './ui';
+import { doors, openWordCard, wordHover } from './wordcard';
 import type { Pane } from './dock';
 import { openConcordance } from './concordance';
 import { dock, initPanes, openPlans, openPlace, openInterlinear, openStrong, openKeys, openHelp, openMarked, openShelf, openThread, openThreads, openToday, openUses, threadChooser } from './panes';
@@ -202,58 +203,6 @@ async function refreshMarks() {
 }
 
 // ---- sheets and cards -----------------------------------------------------------------------------------------------
-function lexiconBody(w: WordView, card = false): HTMLElement {
-  const b = h('div', 'lex');
-  if (card) b.append(h('div', 'card-head', `${w.text} · ${w.reference}`));
-  else { b.append(h('h2', 'sheet-title', w.text), h('div', 'sheet-sub', w.reference)); }
-  const lx = w.lexicon;
-  const verseInterlinear = () => {
-    closeSheet();
-    const [code, cv] = w.anchor.split('.');
-    openInterlinear(`${code} ${cv}`, w.reference);
-  };
-  if (!lx) {
-    b.append(h('p', 'muted', w.strong ? `No lexicon entry for ${w.strong}.` : 'No direct Strong’s tag on this word.'));
-    if (!card) {
-      const inter = h('button', 'btn', 'Verse interlinear');
-      inter.onclick = verseInterlinear;
-      b.append(inter);
-    }
-    return b;
-  }
-  const row = h('div', 'lemma-row');
-  const lemma = h('span', 'lemma', lx.lemma);
-  lemma.lang = lx.lang === 'grk' ? 'grc' : 'he';
-  lemma.dir = lx.lang === 'grk' ? 'ltr' : 'rtl';
-  const tr = h('div');
-  tr.append(h('div', 'translit', lx.translit || ''), h('div', 'muted small', `${lx.strong} · Strong's`));
-  row.append(lemma, tr);
-  b.append(row);
-  if (lx.definition) b.append(h('p', 'def', lx.definition));
-  if (lx.usage) b.append(h('p', 'usage', `KJV: ${lx.usage}`));
-  if (w.count) {
-    const chips = h('div', 'chips');
-    chips.append(h('span', 'chip', `${w.count.times} times in ${w.count.verses} verses`), h('span', 'chip', `${w.count.books} books`));
-    b.append(chips);
-  }
-  if (!card) {
-    const acts = h('div', 'acts two');
-    // One door (concordance C-4, C10): the Concordance, in a tab of its own, on this word's entry
-    const uses = h('button', 'btn primary', 'In the Concordance');
-    uses.onclick = () => { closeSheet(); openConcordance({ strong: lx.strong }); };
-    const inter = h('button', 'btn', 'Interlinear');
-    inter.onclick = verseInterlinear;
-    acts.append(uses, inter);
-    b.append(acts);
-    if (!compact()) b.append(actions(['Keep as pane'], () => { closeSheet(); openStrong(lx.strong); }));
-    for (const n of w.notes) b.append(noteCard(n.anchor === w.anchor ? w.reference : `${lx.strong} everywhere`, n.text));
-    const note = h('button', 'btn soft wide', `Note on ${lx.strong} everywhere`);
-    note.onclick = () => writeNote(note, { anchor: lx.strong, label: `${lx.strong} everywhere` }, 'note');
-    b.append(note);
-  }
-  return b;
-}
-
 function noteCard(placeLabel: string, text: string) {
   const c = h('div', 'note-card');
   c.append(h('span', 'pill', placeLabel), h('p', '', text));
@@ -544,13 +493,10 @@ async function openWord(vw: View, k: number, el: HTMLElement, at: number) {
   app.picked = selectionAt(vw, k, k);
   const { data, rust_ms } = await api.word(d.chapter.code, d.chapter.chapter, d.v[k], d.i[k]);
   const t1 = performance.now();
-  // Settings, Reading: a click on a word opens its card (the default) or the Concordance (wb settings reading word-click)
-  if (inApp && (await wb(['settings', 'reading']).catch(() => ({})))['word-click'] === 'concordance') {
-    openConcordance(data.strong ? { strong: data.strong } : { word: data.text.toLowerCase().replace(/[^a-z’'-]/g, '') });
-    return;
-  }
   el.classList.add('tapped');
-  openSheet(lexiconBody(data), el, { closed: () => el.classList.remove('tapped') });
+  // A click on a word: its card, or (Reading: a click on a word opens) the Concordance at its entry
+  if (wordClick() === 'concordance' && (data.lexicon?.strong ?? data.strong)) { doors.concordance((data.lexicon?.strong ?? data.strong)!); el.classList.remove('tapped'); }
+  else openWordCard(data, el, () => el.classList.remove('tapped'));
   await afterPaint();
   record('word-sheet', performance.now() - at, { word: data.text, rust_ms, call_ms: t1 - at });
 }
@@ -579,7 +525,7 @@ function handlersFor(vw: View) {
       const seq = ++hoverSeq, t0 = performance.now(), d = vw.drawn!;
       const { data } = await api.word(d.chapter.code, d.chapter.chapter, d.v[k], d.i[k]);
       if (seq !== hoverSeq) return;
-      showCard(lexiconBody(data, true), el.getBoundingClientRect());
+      showCard(wordHover(data), el.getBoundingClientRect());
       await afterPaint();
       record('hover-card', performance.now() - t0, { word: data.text });
     },

@@ -398,7 +398,7 @@ pub fn forms_mode(store: &Store) -> String {
 pub fn set_setting(store: &mut Store, part: &str, key: &str, value: &str) -> Result<Option<Map<String, Value>>> {
     let (choices, what): (&[&str], &str) = match (part, key) {
         ("concordance", "forms") => (&["all", "one"], "forms"),
-        ("reading", "word-click") => (&["card", "concordance"], "word-click"),
+        ("reading", "word-click" | "word") => (&["card", "concordance"], "word-click"),
         ("concordance", _) => return Err(bad("The Concordance keeps one setting: forms (all or one).")),
         _ => return Ok(None),
     };
@@ -410,5 +410,7 @@ pub fn set_setting(store: &mut Store, part: &str, key: &str, value: &str) -> Res
     } else {
         return Err(bad(format!("{what} is {}.", choices.join(" or "))));
     };
+    // the window keeps the click choice under `word` (Settings, Reading); word-click is the name the design gives it
+    let key = if key == "word-click" { "word" } else { key };
     Ok(Some(store.set_setting(part, key, new)?))
 }
