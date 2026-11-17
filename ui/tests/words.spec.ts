@@ -201,3 +201,57 @@ test('at phone width the verse card is a sheet over the bottom with the same thr
   }
   await expect(sheet.locator('.vc-open')).toBeVisible();
 });
+
+// ---- years of study: one count line, whatever the count (W9; W-5, 2bc9) --------------------------------------------------
+test('a word named by 412 pages shows one count line and the card is no taller than for 2', async ({ page }, info) => {
+  const pagesOf = (n: number) => ({ anchor: 'H7065', count: n, pages: Array.from({ length: n }, (_, k) => ({ id: `n_${k}`, title: `Page ${k + 1}`, kind: 'note', created: '2026-01-01T00:00:00Z' })) });
+  const measure = async (n: number) => {
+    await page.route('**/fixtures/wb/anchor-h7065-pages.json', r => r.fulfill({ json: pagesOf(n) }));
+    await ready(page);
+    const box = await wordBox(page, 11, 24);
+    if (info.project.name === 'webkit-phone') await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    else await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    const card = page.locator('.word-card');
+    const line = card.locator('.wc-pages');
+    await expect(line).toHaveText(`${n} pages name this word`);
+    const out = { card: (await card.boundingBox())!.height, line: (await line.boundingBox())!.height, text: await line.evaluate(e => e.getClientRects().length) };
+    // the line opens a list of titles, never a page's text
+    await line.click();
+    expect(await card.locator('.wc-page-list button').count()).toBe(Math.min(n, 50));
+    expect(await card.locator('.wc-page-list').textContent()).not.toContain('\n#');
+    await page.unroute('**/fixtures/wb/anchor-h7065-pages.json');
+    return out;
+  };
+  const two = await measure(2);
+  const many = await measure(412);
+  expect(many.line).toBe(two.line);       // one line, the same height as the line for 2
+  expect(many.card).toBeLessThanOrEqual(two.card);
+});
+
+// ---- history and reopen -------------------------------------------------------------------------------------------------
+test('opening and closing a card adds no history step; floating it adds one', async ({ page }, info) => {
+  test.skip(info.project.name !== 'webkit-desktop', 'desktop');
+  await openVerseCard(page);
+  const steps = () => page.locator('#trailline .trail-step').count();
+  const before = await steps();
+  await page.locator('.verse-card .vc-close').click();
+  await openVerseCard(page);
+  await page.locator('.verse-card .vc-close').click();
+  expect(await steps()).toBe(before);
+  await openVerseCard(page);
+  await page.locator('.verse-card .vc-float').click();
+  await expect(page.locator('.pane-versecard')).toHaveCount(1);
+  expect(await steps()).toBe(before + 1);
+});
+
+test('Open as a tab makes a tab in the study column, and a floated word card reopens from its key', async ({ page }, info) => {
+  test.skip(info.project.name !== 'webkit-desktop', 'desktop');
+  await openVerseCard(page);
+  await page.locator('.verse-card .vc-as-tab').click();
+  await expect(page.locator('.pane-versecard')).toHaveCount(1);
+  expect(await page.evaluate(() => (window as any).__wb.dock().panes.find((p: any) => p.kind === 'versecard').side)).toBe('left');
+  const key = `wordcard|NUM.25:11.24`;
+  await page.evaluate(async k => { const m = await import('/src/actions.ts'); await m.reopen(k); }, key);
+  await expect(page.locator('.pane-wordcard .wc-door')).toHaveText('In the Concordance');
+  expect(await page.evaluate(() => (window as any).__wb.dock().panes.find((p: any) => p.kind === 'wordcard').side)).toBe('float');
+});

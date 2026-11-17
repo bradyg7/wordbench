@@ -60,7 +60,7 @@ const holder = (l: MinLink) => HOLDS[l.kind] ?? 'minimized';
 const GROUP: Record<string, string> = {
   strong: 'Word studies', bdb: 'Word studies', def: 'Word studies', lexiconc: 'Word studies', uses: 'Word studies', count: 'Word studies', forms: 'Word studies',
   search: 'Search', find: 'Search', near: 'Search', marked: 'Search',
-  verse: 'Verses', reader2: 'Verses', place: 'Verses', passage: 'Verses', versecard: 'Verses', interlinear: 'Verses',
+  verse: 'Verses', reader2: 'Verses', place: 'Verses', passage: 'Verses', versecard: 'Verses', wordcard: 'Word studies', interlinear: 'Verses',
 };
 const SHOWN = 8;
 

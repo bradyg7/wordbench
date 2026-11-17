@@ -28,8 +28,13 @@ let earlier: any[] | null = null;
 let shown: () => void = () => {};
 
 const ICON: Record<string, string> = {
+<<<<<<< HEAD
   verse: 'book', reader2: 'book', place: 'book', passage: 'book', versecard: 'book', interlinear: 'book',
   concordance: 'book', strong: 'word', bdb: 'word', def: 'word', lexiconc: 'word',
+=======
+  verse: 'book', reader2: 'book', place: 'book', passage: 'book', versecard: 'book', wordcard: 'word', interlinear: 'book',
+  strong: 'word', bdb: 'word', def: 'word', lexiconc: 'word',
+>>>>>>> feature/words-build
   uses: 'lines', count: 'lines', forms: 'lines', marked: 'lines',
   search: 'search', find: 'search', near: 'search',
   notebook: 'notebook', shelf: 'shelf', plans: 'lines', findings: 'prompt', documents: 'file', docpreview: 'file', lesson: 'file', today: 'file',
@@ -56,6 +61,8 @@ function lineOf(p: Pane): string {
     case 'forms': return `forms ${a}`;
     case 'find': return `find ${a}`;
     case 'interlinear': return `interlinear ${a}`;
+    case 'versecard': return `card ${a} tab`;
+    case 'wordcard': return `card ${a} tab`;
     default: return '';
   }
 }

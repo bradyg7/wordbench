@@ -4,6 +4,7 @@
 use crate::anchors::{self, Kind};
 use crate::bible::Bible;
 use crate::notebook::every;
+use crate::pages::{scripture_fence, word_fence};
 use crate::places::parse_span;
 use crate::store::Store;
 use crate::Result;
@@ -31,6 +32,31 @@ fn bounds(c1: u32, v1: u32, c2: u32, v2: u32) -> ((u32, u32), (u32, u32)) {
     ((c1, v1), (c2, if v2 == 0 { u32::MAX } else { v2 }))
 }
 
+/// Every fenced block of a page's text, each as its own Markdown (the opening fence to the closing one).
+fn fences(text: &str) -> Vec<String> {
+    let mut out = vec![];
+    let mut cur: Option<(String, Vec<&str>)> = None;
+    for line in text.lines() {
+        let t = line.trim_start();
+        match &mut cur {
+            None => {
+                if let Some(m) = ["```", "~~~"].into_iter().find(|m| t.starts_with(m)) {
+                    cur = Some((m.to_string(), vec![line]));
+                }
+            }
+            Some((mark, ls)) => {
+                ls.push(line);
+                if t.starts_with(mark.as_str()) {
+                    out.push(ls.join("
+"));
+                    cur = None;
+                }
+            }
+        }
+    }
+    out
+}
+
 /// The pages (notes, questions, days, threads kept as pages) whose text names the place or the number, newest first,
 /// with their count: `wb anchor <place|number> --pages`.
 pub fn pages_naming(bible: &Bible, store: &Store, anchor: &str) -> Result<Value> {
@@ -38,15 +64,19 @@ pub fn pages_naming(bible: &Bible, store: &Store, anchor: &str) -> Result<Value>
     let mut hits = vec![];
     for e in every(bible, store) {
         let text = e["text"].as_str().unwrap_or("");
+        let blocks = fences(text);
         let named = if a.kind == Kind::Lemma {
-            names_number(text, a.strong.as_deref().unwrap_or(""))
+            let number = a.strong.as_deref().unwrap_or("");
+            names_number(text, number) || blocks.iter().filter_map(|b| word_fence(b)).any(|v| v.trim().eq_ignore_ascii_case(number))
         } else {
             let (lo, hi) = bounds(a.c1, a.v1, a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1));
-            e["refs"].as_array().into_iter().flatten().any(|f| {
-                let Some(sp) = f["ref"].as_str().and_then(|p| parse_span(p, bible.books()).ok()) else { return false };
+            let overlaps = |sp: crate::places::Span| {
                 let (flo, fhi) = bounds(sp.c1, sp.v1, sp.c2, sp.v2);
                 sp.book.code == a.code && flo <= hi && lo <= fhi
-            })
+            };
+            // the references in the text, and the references a scripture block holds (a chapter alone, an abbreviation)
+            e["refs"].as_array().into_iter().flatten().any(|f| f["ref"].as_str().and_then(|p| parse_span(p, bible.books()).ok()).is_some_and(overlaps))
+                || blocks.iter().filter_map(|b| scripture_fence(b)).any(|f| parse_span(&f.reference, bible.books()).ok().is_some_and(overlaps))
         };
         if named {
             hits.push(json!({"id": e["id"], "title": e["title"], "kind": e["kind"], "created": e["created"]}));

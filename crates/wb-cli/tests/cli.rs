@@ -2296,3 +2296,34 @@ fn anchor_pages_finds_pages_that_name_a_verse_or_a_number() {
     // the count line never carries a page's text
     assert!(verse["pages"][0].get("text").is_none());
 }
+
+/// words (W-5): a scripture block or a word block holds only a reference or a number, and the page counts as naming it.
+/// The reference is read from the database's own answer for the verse (nothing is typed from scripture).
+#[test]
+fn anchor_pages_counts_scripture_and_word_blocks() {
+    let Some(wb) = Wb::new() else { return };
+    let v = wb.js(&["scripture", "Num 25:11"]);
+    let first = &v["verses"][0];
+    let chapter = format!("{} {}", first["code"].as_str().unwrap(), first["c"]);   // like NUM 25: a chapter alone, no verse
+    let page = wb.js(&["page", "new", &format!("Blocks only\n\n```scripture\n{chapter}\n```\n\n```word\nH7065\n```"), "--json"]);
+    let id = page["id"].as_str().unwrap();
+    let verse = wb.js(&["anchor", "Num 25:11", "--pages"]);
+    assert_eq!(verse["count"], json!(1), "{verse}");
+    assert_eq!(verse["pages"][0]["id"], json!(id));
+    assert_eq!(wb.js(&["anchor", "Num 26:1", "--pages"])["count"], json!(0));
+    let word = wb.js(&["anchor", "H7065", "--pages"]);
+    assert_eq!(word["count"], json!(1), "{word}");
+    assert_eq!(wb.js(&["anchor", "H7066", "--pages"])["count"], json!(0));
+}
+
+/// settings: the Reading setting "a click on a word opens" (card or Concordance) is kept in the study folder and reset by default.
+#[test]
+fn reading_word_setting_is_kept() {
+    let Some(wb) = Wb::new() else { return };
+    assert!(wb.js(&["settings", "reading"]).get("word").is_none());
+    assert_eq!(wb.js(&["settings", "reading", "word", "concordance"])["word"], json!("concordance"));
+    assert_eq!(wb.js(&["settings", "reading"])["word"], json!("concordance"));
+    let file = std::fs::read_to_string(wb.dir.join("settings").join("reading.json")).unwrap();
+    assert_eq!(serde_json::from_str::<Value>(&file).unwrap()["word"], json!("concordance"));
+    assert!(wb.js(&["settings", "reading", "word", "default"]).get("word").is_none());
+}
