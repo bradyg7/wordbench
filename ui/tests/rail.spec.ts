@@ -16,7 +16,7 @@ test('the rail sits left of everything, and Show names opens it out and is remem
   await ready(page);
   const rail = page.locator('#rail');
   await expect(rail).toBeVisible();
-  for (const name of ['Notebook', 'Shelf', 'Highlights', 'Trail', 'Reading plans', 'Findings', 'Documents', 'Help', 'Settings']) {
+  for (const name of ['Notebook', 'Shelf', 'Highlights', 'Trail', 'Reading plans', 'Findings', 'Documents', 'Concordance', 'Help', 'Settings']) {
     await expect(rail.getByRole('button', { name, exact: true })).toBeVisible();
   }
   const w = (await rail.boundingBox())!.width;
@@ -171,4 +171,16 @@ test('full screen is an icon; leaving puts the panes back', async ({ page }) => 
   await page.locator('.dock-focus-return').click();
   await expect(page.locator('.dock-group .pane-test2', { hasText: 'Two' })).toHaveCount(1);
   await expect(page.locator('.dock-group .pane-test', { hasText: 'One' })).toHaveCount(1);
+});
+
+test('a minimized Concordance tab waits under the Concordance button, and opens again', async ({ page }) => {
+  await ready(page);
+  await page.evaluate(() => (window as any).__wb.concordance({ strong: 'H7068' }));
+  await page.evaluate(async () => { const d = (window as any).__wb.dock(); await d.toLinks(d.panes.filter((p: any) => p.kind === 'concordance')); });
+  const rail = page.locator('#rail');
+  await expect(rail.locator('[data-rail="concordance"]')).toHaveClass(/has/);
+  await expect(rail.locator('[data-rail="minimized"]')).toBeHidden();
+  await rail.locator('[data-rail="concordance"]').click();
+  await page.locator('.rail-link-go', { hasText: 'H7068' }).click();
+  expect(await page.evaluate(() => (window as any).__wb.dock().panes.some((p: any) => p.key === 'concordance|entry|H7068'))).toBe(true);
 });

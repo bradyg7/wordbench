@@ -253,6 +253,9 @@ pub enum Action {
     Findpage { q: String },
     Panes,
     Pane { action: String, target: String },
+    /// `card Num 25:11 float|tab`: the verse card (or, from a word's anchor, the word card) as a floating pane or a tab; with
+    /// neither, the card itself (design/features/words, W-4). `how` is open, float or tab.
+    Card { place: String, how: String },
     // ---- new in the Rust app ----
     /// `jot <text>`: a note with no place yet, into the Notebook's Inbox; `jot ?<text>` makes it a question.
     Jot { text: String, question: bool },
@@ -303,7 +306,7 @@ pub fn find_doc(topic: &str) -> Option<&'static Value> {
 /// The commands' names, in the manual's order, then the ones new in the Rust app.
 pub fn command_names() -> Vec<String> {
     let mut v: Vec<String> = manual()["commands"].as_array().map(|a| a.iter().filter_map(|c| c["name"].as_str().map(String::from)).collect()).unwrap_or_default();
-    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version", "plans", "findings", "finding", "focus", "unfocus"].map(String::from));
+    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version", "plans", "findings", "finding", "focus", "unfocus", "card"].map(String::from));
     v
 }
 
@@ -1483,6 +1486,19 @@ pub fn parse(input: &str, books: &[Book]) -> Result<Action, String> {
             }
             Action::Pane { action: head.clone(), target: a.into() }
         }
+        // ---- the cards (new in the Rust app; design/features/words) ----
+        "card" => {
+            let words: Vec<&str> = a.split_whitespace().collect();
+            let (how, place) = match words.last().map(|w| w.to_lowercase()) {
+                Some(w) if w == "float" || w == "tab" => (w, words[..words.len() - 1].join(" ")),
+                _ => ("open".to_string(), words.join(" ")),
+            };
+            let word_anchor = regex!(r"^[A-Z0-9]{3}.[0-9]{1,3}:[0-9]{1,3}.[0-9]{1,3}$").is_match(&place);
+            if place.is_empty() || (!word_anchor && parse_span(&place, books).is_err()) {
+                return Err("Name a verse, like: card Num 25:11  (then float or tab: card Num 25:11 float)".into());
+            }
+            Action::Card { place, how }
+        }
         // ---- the Notebook (new in the Rust app) ----
         "jot" => {
             let body = a.trim();
@@ -1682,6 +1698,18 @@ mod tests {
             }
         }
         assert!(wrong.is_empty(), "{} of {} differ:\n{}", wrong.len(), cases["parse"].as_array().unwrap().len(), wrong.join("\n"));
+    }
+
+    #[test]
+    fn the_card_line_floats_or_tabs_a_verse_and_a_word() {
+        let bs = books();
+        let a = |t: &str| serde_json::to_value(parse(t, &bs).unwrap()).unwrap();
+        assert_eq!(a("card Num 25:11 float"), serde_json::json!({"cmd": "card", "place": "Num 25:11", "how": "float"}));
+        assert_eq!(a("card Numbers 25:11-13 tab")["how"], "tab");
+        assert_eq!(a("card Num 25:11")["how"], "open");
+        assert_eq!(a("card NUM.25:11.24 float")["place"], "NUM.25:11.24");
+        assert!(parse("card", &bs).is_err());
+        assert!(parse("card nothing here float", &bs).is_err());
     }
 
     #[test]

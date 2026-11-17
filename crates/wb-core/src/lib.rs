@@ -11,6 +11,7 @@ pub mod findings;
 pub mod guide;
 pub mod history;
 pub mod commands;
+pub mod concordance;
 pub mod dictionary;
 pub mod deletion;
 pub mod docs;
@@ -35,6 +36,7 @@ pub mod studyapi;
 pub mod templates;
 pub mod threadpage;
 pub mod views;
+pub mod wordpages;
 
 use std::path::PathBuf;
 

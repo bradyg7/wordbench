@@ -1,0 +1,56 @@
+/* The Concordance (design/features/concordance): the printed Strong's as a book. Sheets C1-C25; tokens only. */
+.pane-concordance .conc { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-5); min-width: 0; }
+.conc-box { position: relative; }
+.conc-input { width: 100%; }
+.conc-sug { display: flex; flex-direction: column; margin-top: 4px; border-radius: var(--radius-control); background: var(--surface); }
+.conc-sug:empty { display: none; }
+.conc-sug-group { display: flex; flex-direction: column; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.conc-sug-group .label { padding: 2px 8px; font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); }
+.conc-sug-row { display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 6px; font: var(--type-body); color: var(--fg); }
+.conc-sug-row:hover, .conc-sug-row:focus-visible { background: var(--accent-soft); }
+.conc-form { display: flex; justify-content: space-between; gap: 8px; }
+.conc-none { padding: 6px 8px; margin: 0; }
+
+.conc-letters { display: flex; flex-wrap: wrap; gap: 2px; }
+.conc-letter { min-width: 26px; padding: 3px 4px; border-radius: 6px; font: var(--type-small-strong); color: var(--fg); text-align: center; }
+.conc-letter:hover:not(:disabled) { background: var(--accent-soft); }
+.conc-letter.on { background: var(--accent); color: var(--on-accent); }
+.conc-letter:disabled { color: var(--muted); opacity: 0.4; cursor: default; }
+
+.conc-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
+.conc-tab { padding: 6px 12px; font: var(--type-small-strong); color: var(--muted); border-bottom: 2px solid transparent; }
+.conc-tab.on { color: var(--fg); border-bottom-color: var(--accent); }
+
+.conc-head, .conc-entry-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3); }
+.conc-word { font: var(--type-title); letter-spacing: var(--type-title-tracking); margin: 0; }
+.conc-switch { display: inline-flex; margin-left: auto; border: 1px solid var(--line); border-radius: var(--radius-pill); overflow: hidden; }
+.conc-switch.conc-by { margin: 4px 0; align-self: flex-start; }
+.conc-sw { padding: 4px 12px; font: var(--type-small-strong); color: var(--muted); }
+.conc-sw.on { background: var(--accent-soft); color: var(--fg); }
+
+.conc-lines { display: flex; flex-direction: column; }
+.conc-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.conc-ref { font: var(--type-small-strong); flex: none; }
+.conc-ctx { font: var(--type-read-small); flex: 1 1 14em; min-width: 0; overflow-wrap: anywhere; }
+.conc-mark { background: none; color: var(--accent); font-weight: 700; }
+.conc-num { flex: none; }
+.conc-group { margin-top: var(--space-3); }
+.conc-group-head { display: flex; align-items: center; gap: 8px; }
+.conc-group-name { font: var(--type-heading); margin: 0; }
+.conc-more { margin-top: 4px; }
+.conc-forms { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--line); }
+.conc-forms-list { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.conc-form-btn { padding: 4px 10px; border-radius: var(--radius-pill); background: var(--sunken); font: var(--type-small); color: var(--fg); }
+.conc-find { display: flex; gap: 8px; }
+.conc-find .field { flex: 1; min-width: 0; }
+.conc-entry-nav { display: flex; align-items: center; gap: 6px; }
+.conc-all-entries { margin-left: auto; }
+.conc-entries { display: flex; flex-direction: column; gap: 2px; }
+.conc-tools { display: flex; gap: var(--space-3); }
+.conc-pages { display: flex; gap: 8px; }
+.conc-verse { border-bottom: 1px solid var(--line); padding: 6px 0; }
+.conc-verse-head { display: block; width: 100%; text-align: left; font: var(--type-heading); }
+.conc-verse-text { font: var(--type-read-small); margin: 4px 0; }
+.conc-verse:not(.open) .conc-words { display: none; }
+.conc-hint { margin: var(--space-3) 0; }
+@media (max-width: 480px) { .pane-concordance .conc { padding: var(--space-3); } .conc-switch { margin-left: 0; } }

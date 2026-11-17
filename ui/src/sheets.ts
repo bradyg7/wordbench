@@ -16,7 +16,7 @@ export function sheetOpen() {
 }
 
 // Opens `body` as a sheet (compact) or a popover near `from` (wider). Returns the panel.
-export function openSheet(body: HTMLElement, from: Element | null, opts: { closed?: () => void } = {}): HTMLElement {
+export function openSheet(body: HTMLElement, from: Element | null, opts: { closed?: () => void; stays?: boolean } = {}): HTMLElement {
   closeSheet();
   const scrim = document.createElement('div');
   scrim.className = 'scrim';
@@ -37,7 +37,8 @@ export function openSheet(body: HTMLElement, from: Element | null, opts: { close
   x.textContent = '✕';
   x.onclick = () => closeSheet();
   panel.append(x, body);
-  overlay().append(scrim, panel);
+  // a card that stays (it is moved and sized, the reader behind it still read) has no scrim over the reader; at phone width it is a sheet and keeps one
+  overlay().append(...(opts.stays && !asSheet ? [panel] : [scrim, panel]));
   if (!asSheet && from) placeBeside(panel, from.getBoundingClientRect());
   scrim.addEventListener('pointerdown', e => { e.preventDefault(); closeSheet(); });
   const prevFocus = document.activeElement as HTMLElement | null;
