@@ -18,9 +18,6 @@ try {
   wb('note', 'add', 'NUM.25:11.24', 'Synthetic reader fixture note.');
   // the margin (design/features/marks): margin notes and pages at Numbers 25:11, as generated text, no scripture
   for (const [at, text] of [['Numbers 25:11', 'First margin note (synthetic).'], ['Numbers 25:11', 'Second margin note (synthetic).'], ['Numbers 25:10-13', 'A note on the passage (synthetic).'], ['Numbers 25', 'A note on the chapter (synthetic).']]) wb('margin', 'add', at, text);
-  for (const k of [1, 2, 3]) wb('page', 'new', `Fixture page ${k}
-
-Names Numbers 25:11 here.`);
   wb('thread', 'new', 'Fixture thread', '--at', 'Numbers 25:12', '--color', '#654321');
   for (const [book, ch] of [['NUM', 25], ['NUM', 24], ['NUM', 26], ['PSA', 119]]) {
     writeFileSync(new URL(`${book}.${ch}.json`, out), wb('fixture', book, String(ch)));
@@ -44,6 +41,10 @@ Names Numbers 25:11 here.`);
   }
 
   // The Concordance (design/features/concordance): every `wb` answer its page asks for, named as ui/src/api.ts names them.
+  // three pages that name Numbers 25:11, made after the cards' fixtures above (those say that no page names it yet)
+  for (const k of [1, 2, 3]) wb('page', 'new', `Fixture page ${k}
+
+Names Numbers 25:11 here.`);
   const named = argv => argv.join(' ').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
   for (const argv of [
     ['margin', 'NUM 25'], ['margin', 'NUM 25:11'], ['margin', 'list'], ['settings', 'margin'],

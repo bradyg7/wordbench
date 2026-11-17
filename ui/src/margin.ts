@@ -55,7 +55,7 @@ function place() {
   reader.querySelector('.mg-rail')?.remove();
   reader.classList.toggle('mg-off', !layers.margin);
   const data = current.data;
-  if (!data || !layers.margin) return;
+  if (!data || !Array.isArray(data.verses) || !layers.margin) return;
   const rail = h('div', 'mg-rail');
   const wide = scroller.clientWidth >= reader.offsetWidth + 2 * 170 && window.innerWidth > 700;
   rail.classList.toggle('mg-wide', wide);
@@ -68,7 +68,7 @@ function place() {
     b.dataset.v = String(c.v);
     b.setAttribute('aria-label', `${data.label}:${c.v}: ${text}`);
     if (wide) { b.textContent = text; b.style.left = `${reader.offsetWidth + 6}px`; b.style.top = `${vn.offsetTop - 2}px`; }
-    else { b.style.left = `${vn.offsetLeft - 11}px`; b.style.top = `${vn.offsetTop - 4}px`; }
+    else { b.style.left = `${vn.offsetLeft - 15}px`; b.style.top = `${vn.offsetTop - 4}px`; }
     b.onmouseenter = () => hover(b, c);
     b.onmouseleave = () => document.querySelectorAll('.mg-pop').forEach(e => e.remove());
     b.onclick = () => { document.querySelectorAll('.mg-pop').forEach(e => e.remove()); void openVerse(code(), data.chapter, c.v); };

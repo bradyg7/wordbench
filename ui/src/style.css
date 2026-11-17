@@ -271,7 +271,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .mg-mark { position: absolute; max-width: 160px; padding: 0; border: 0; background: none; text-align: left; color: var(--muted); font: var(--type-caption); line-height: 1.2; cursor: pointer; white-space: normal; }
 .mg-mark:hover, .mg-mark:focus-visible { color: var(--accent); }
 .mg-dot { position: absolute; width: 10px; height: 10px; padding: 0; border: 1.5px solid var(--accent); border-radius: 50%; background: none; cursor: pointer; }
-.mg-dot::before { content: ''; position: absolute; inset: -8px; }
+.mg-dot::before { content: ''; position: absolute; inset: -4px; }
 .mg-bracket { position: absolute; width: 5px; border: 1.5px solid var(--muted); border-left: 0; border-radius: 0 3px 3px 0; opacity: .7; }
 .mg-pop { position: fixed; z-index: 60; max-width: 300px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 18px var(--scrim); font: var(--type-interface); }
 .mg-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
