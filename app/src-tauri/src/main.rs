@@ -11,6 +11,10 @@ use std::sync::mpsc;
 use tauri::{Emitter, LogicalSize, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::{DialogExt, FilePath};
 use wb_core::{bible::Bible, store::Store, studyapi, views};
+#[cfg(feature = "updater")]
+use tauri_plugin_dialog::MessageDialogButtons;
+#[cfg(feature = "updater")]
+use tauri_plugin_updater::UpdaterExt;
 
 /// Said when the setup screen has not finished: the window still draws, and says what is missing rather than closing.
 const NOT_SET_UP: &str = "Bible Workbench is not set up yet. Choose the Bible database and the folder for your notes.";
@@ -430,6 +434,43 @@ fn pilot_license(action: String, certificate: Option<String>) -> Result<Value, S
     { let _ = (action, certificate); Err("Pilot licensing is available in distribution builds only.".into()) }
 }
 
+/// Looks at the update feed once, a little after the reader opens, and asks before installing: an update is never
+/// something that happens to someone mid-chapter. The installer closes the app and opens it again where it was; the
+/// study folder and the settings are not part of it. `WB_NO_UPDATE_CHECK=1` turns the check off.
+#[cfg(feature = "updater")]
+fn check_for_update(app: tauri::AppHandle) {
+    // Without the updater's configuration its plugin is not registered (see main), and there is nothing to check.
+    if std::env::var("WB_NO_UPDATE_CHECK").is_ok() || !app.config().plugins.0.contains_key("updater") {
+        return;
+    }
+    std::thread::spawn(move || {
+        // The reader comes first: the first chapter is on screen before this asks anything of the network.
+        std::thread::sleep(std::time::Duration::from_secs(10));
+        let found = tauri::async_runtime::block_on(async {
+            let updater = app.updater().ok()?;
+            updater.check().await.ok().flatten()
+        });
+        let Some(update) = found else { return };
+        let install = app
+            .dialog()
+            .message(format!(
+                "Bible Workbench {} is ready to install.\n\nYour notes stay where they are, and the window opens again where you left off.",
+                update.version
+            ))
+            .title("A new version of Bible Workbench")
+            .buttons(MessageDialogButtons::OkCancelCustom("Install it".into(), "Not now".into()))
+            .blocking_show();
+        if !install {
+            return;
+        }
+        // Windows runs the installer and exits this process; elsewhere the app restarts into the new version.
+        let installed = tauri::async_runtime::block_on(update.download_and_install(|_, _| {}, || {})).is_ok();
+        if installed {
+            app.restart();
+        }
+    });
+}
+
 /// The study folder the person chose (a setting or WB_STUDY_DIR), opened; none on a first run.
 #[cfg(not(feature = "distribution"))]
 fn open_configured_study() -> Option<Store> {
@@ -453,15 +494,24 @@ fn main() {
     let (bible, store) = (Bible::open(&wb_core::default_db_path()).ok(), open_configured_study());
     #[cfg(feature = "distribution")]
     let (bible, store): (Option<Bible>, Option<Store>) = (None, None);
-    tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
+    let context = tauri::generate_context!();
+    let builder = tauri::Builder::default().plugin(tauri_plugin_dialog::init());
+    // The updater starts only when the build supplies its configuration (plugins.updater: public key and endpoint). Without
+    // it the plugin refuses to start and the app does not open, so an updater build without that configuration just has no update check.
+    #[cfg(feature = "updater")]
+    let builder = if context.config().plugins.0.contains_key("updater") {
+        builder.plugin(tauri_plugin_updater::Builder::new().build())
+    } else {
+        builder
+    };
+    builder
         .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
         .invoke_handler(tauri::generate_handler![
             pilot_license, installation_status, installation_configure, installation_restart,
             wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready,
             setup_status, set_study_dir, choose_study_dir, set_bible_db, choose_bible_db
         ])
-        .setup(|app| {
+        .setup(move |app| {
             #[cfg(feature = "distribution")]
             {
                 let roots = wb_core::runtime::initialize(app.path().resource_dir()?.join("resources"))?;
@@ -503,8 +553,10 @@ fn main() {
                 ))
             } else { b };
             b.build()?;
+            #[cfg(feature = "updater")]
+            check_for_update(app.handle().clone());
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running Bible Workbench");
 }
