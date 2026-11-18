@@ -224,7 +224,7 @@ fn the_one_search_filters_and_counts() {
     wb.js(&["save", "Num 25:11"]);
     let all = wb.js(&["find", "zeal", "--sort", "title"]);
     let kinds: Vec<&str> = all["groups"].as_array().unwrap().iter().map(|g| g["kind"].as_str().unwrap()).collect();
-    assert_eq!(kinds, ["page", "folder", "save", "question", "margin"][..kinds.len()]);
+    assert_eq!(kinds, ["page", "folder", "save", "question", "margin", "highlight"][..kinds.len()]);
     assert_eq!(all["groups"][0]["count"], json!(1));
     let pages = wb.js(&["find", "--kind", "page"]);
     assert_eq!((pages["count"].clone(), pages["groups"].as_array().unwrap().len()), (json!(3), 1));

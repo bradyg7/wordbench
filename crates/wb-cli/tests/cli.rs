@@ -805,10 +805,10 @@ fn a_jot_waits_in_the_inbox_apart_from_placed_notes_then_is_placed() {
     let n = wb.js(&["note", "jot", "check where else this phrase is used; see Rom 10:2"]);
     let id = n["id"].as_str().unwrap().to_string();
     assert_eq!((n["placed"].clone(), n["kind"].clone(), n["offer"]["anchor"].clone()), (json!(false), json!("note"), json!("ROM.10:2")));
-    // its own file in notes/_inbox, in the notes' format, with an empty anchor (the Python app passes over it)
+    // its own file in notes/_inbox, in the notes' format, with no anchor at all (a page has no place)
     let file = wb.dir.join("notes").join("_inbox").join(format!("{id}.md"));
     let text = std::fs::read_to_string(&file).unwrap();
-    assert!(text.starts_with("---\nid: \"") && text.contains("\nanchor: \"\"\n") && text.contains("kind: \"jot\""), "{text}");
+    assert!(text.starts_with("---\nid: \"") && !text.contains("anchor") && text.contains("kind: \"jot\""), "{text}");
     // not a placed note: the margins, note list, anchor views and find do not see it
     assert_eq!(wb.js(&["note", "list", "Romans 10"]), json!([]));
     assert_eq!(wb.js(&["find", "phrase"])["notes"], json!([]));

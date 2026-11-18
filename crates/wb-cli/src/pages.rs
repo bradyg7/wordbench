@@ -143,21 +143,25 @@ pub fn commands() -> Vec<Command> {
             vec![Pos("id", N::One)], |c, a| j(pg::blocks(&*c.study()?, &a.s("id")).map_err(e)?)),
         cmd("page scripture", "A page's scripture blocks with their verses from the Bible: each block's number, reference, Paragraph or Lines (lines), version, and its verses verbatim with the highlights on them (as wb scripture). The file holds only the reference.",
             vec![Pos("id", N::One)], |c, a| j(pg::scripture(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
-        cmd("block scripture", "A scripture block's choices, kept in its fence after the reference: --lines (a verse to a line) or --paragraph; --ylt or --kjv. wb block scripture ID 3 --lines --ylt.",
-            vec![Pos("id", N::One), Pos("n", N::One), Flag("lines"), Flag("paragraph"), Flag("ylt"), Flag("kjv")], |c, a| {
+        cmd("block scripture", "A scripture block's choices, kept in its fence after the reference: --lines (a verse to a line) or --paragraph; --ylt or --kjv; --marks (With my marks: the reader's colors and pencil and a dot per verse that has a note, page or save) or --no-marks (Just the text). wb block scripture ID 3 --lines --ylt.",
+            vec![Pos("id", N::One), Pos("n", N::One), Flag("lines"), Flag("paragraph"), Flag("ylt"), Flag("kjv"), Flag("marks"), Flag("no_marks")], |c, a| {
                 let n = nth(a, "n")?;
                 let pick = |on: &str, off: &str| match (a.flag(on), a.flag(off)) {
-                    (true, true) => Err(format!("--{on} or --{off}, not both.")),
+                    (true, true) => Err(format!("--{} or --{}, not both.", on.replace('_', "-"), off.replace('_', "-"))),
                     (true, false) => Ok(Some(true)),
                     (false, true) => Ok(Some(false)),
                     _ => Ok(None),
                 };
-                let (lines, ylt) = (pick("lines", "paragraph")?, pick("ylt", "kjv")?);
-                if lines.is_none() && ylt.is_none() {
-                    return Err("Say what to change: --lines or --paragraph, --ylt or --kjv.".into());
+                let (lines, ylt, marks) = (pick("lines", "paragraph")?, pick("ylt", "kjv")?, pick("marks", "no_marks")?);
+                if lines.is_none() && ylt.is_none() && marks.is_none() {
+                    return Err("Say what to change: --lines or --paragraph, --ylt or --kjv, --marks or --no-marks.".into());
                 }
-                j(pg::set_scripture(c.bible()?, &mut *c.study()?, &a.s("id"), n, lines, ylt).map_err(e)?)
+                j(pg::set_scripture(c.bible()?, &mut *c.study()?, &a.s("id"), n, lines, ylt, marks).map_err(e)?)
             }),
+        cmd("page overview", "Scripture in this page: every scripture the page names (in its text, its scripture blocks and the place of a margin note it shows), in the Bible's order, each with where it is named (a block number, or ¶n); with books and counts, and folded (true) past 30. The same as wb refs on the page's text plus its blocks.",
+            vec![Pos("id", N::One)], |c, a| j(wb_core::overview::page(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("page jots", "A page's jot blocks (a margin note shown in the page): the block's number and the note it holds with its place, words and date. The file holds only the note's id.",
+            vec![Pos("id", N::One)], |c, a| j(wb_core::margin::page_jots(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
         cmd("page threads", "A page's thread blocks (/~) with what each shows: the block's number, the thread, its color, how many places and its first places' references; a thread that is gone says so.",
             vec![Pos("id", N::One)], |c, a| j(pg::threads(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
         cmd("page words", "A page's word blocks (/word) with the lexicon's entry for each: the number, the word, its sound, Strong's own words, the KJV's renderings and how often. The file holds only the number.",

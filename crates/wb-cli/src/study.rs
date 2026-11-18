@@ -128,6 +128,12 @@ pub fn commands() -> Vec<Command> {
                 let an = anchor(c, &a.s("place"))?;
                 j(sa::save_highlight(c.bible()?, &mut st, &an, Some(&color)).map_err(e)?)
             }),
+        cmd("hl pencil", "Draw the pencil under a place (marks M14: one grey, thin line under the run, no meaning): wb hl pencil John 3:16  |  wb hl pencil --clear John 3:16 takes it off (U again). Kept in pencil/<BOOK>.json with its date; highlights are not touched.",
+            vec![Pos("place", N::One), Flag("clear")], |c, a| {
+                let an = anchor(c, &a.s("place"))?;
+                let st = c.study()?;
+                j(if a.flag("clear") { wb_core::pencil::clear(&st, &an) } else { wb_core::pencil::set(&st, &an) }.map_err(e)?)
+            }),
         cmd("hl clear", "Remove the highlight from a place.", vec![Pos("place", N::One)], |c, a| {
             let an = anchor(c, &a.s("place"))?;
             j(sa::save_highlight(c.bible()?, &mut *c.study()?, &an, None).map_err(e)?)
@@ -153,9 +159,12 @@ pub fn commands() -> Vec<Command> {
         cmd("palette rm", "Forget a saved color (highlights already made in it stay).", vec![Pos("color", N::One)], |c, a| {
             j(json!({"colors": c.study()?.drop_palette_color(Some(&a.s("color"))).map_err(e)?}))
         }),
-        cmd("study check", "What the study folder holds, as this app reads it, and which files the next change would write (none). Reads only; scripts/py-opens.py is the Python app's side of the same check.",
-            vec![], |c, _| {
+        cmd("study check", "What the study folder holds, as this app reads it, and which files the next change would write (none). Reads only. --margin-move: the read-only list of what each old note that has a place would become (a margin note or a page, MK-18), run on nothing; scripts/py-opens.py is the Python app's side of the same check.",
+            vec![Flag("margin_move")], |c, a| {
                 let st = c.study()?;
+                if a.flag("margin_move") {
+                    return j(wb_core::margin::move_list(c.bible()?, &st));
+                }
                 let mut v = wb_core::check::study_check(&st).map_err(e)?;
                 v["library"] = wb_core::check::library_check(c.bible()?, &st).map_err(e)?;
                 j(v)
