@@ -45,7 +45,7 @@ impl PageIndex {
 }
 
 /// Strong's numbers as whole tokens of a text.
-fn numbers_in(text: &str) -> Vec<String> {
+pub(crate) fn numbers_in(text: &str) -> Vec<String> {
     let mut out: Vec<String> = vec![];
     for tok in text.split(|c: char| !c.is_alphanumeric()) {
         let b = tok.as_bytes();

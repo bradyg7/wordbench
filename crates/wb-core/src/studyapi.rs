@@ -782,7 +782,8 @@ pub fn find_mine(bible: &Bible, store: &Store, q: &str) -> Result<Value> {
                 "snippet": snippet(&s(t, "text"), &words)}));
         }
     }
-    Ok(json!({"q": q.trim(), "notes": notes, "threads": threads, "trails": trails}))
+    let margin = crate::margin::matching(bible, store, &words, |t| snippet(t, &words));
+    Ok(json!({"q": q.trim(), "notes": notes, "threads": threads, "trails": trails, "margin": margin}))
 }
 
 // ---- lessons (the files; building documents from them is phase 5) -------------------------------------------------

@@ -216,6 +216,8 @@ T2 built (core and wb): rows 25 to 28 (show, at, style). Tests (`crates/wb-cli/t
 
 T3 built (core and wb): rows 4 (--style), 8, 9, 33 to 39. Tests (`crates/wb-cli/tests/marks.rs`): `a_mark_takes_an_entrys_style_and_shows_its_legend_name` (4 --style, `legend` in show and at), `legend_add_makes_named_and_unnamed_entries_and_refuses_the_same_style_twice` (8, 9, 33), `a_new_library_has_an_empty_legend_and_marks_in_no_entry_are_listed_as_unnamed` (9, MK7-26, 32 core), `a_new_name_shows_on_every_mark_in_the_style` (34), `changing_an_entrys_color_restyles_its_marks_or_only_the_entry` (35), `quick_styles_are_five_at_most_and_a_key_is_unique_unless_moved` (36, 37), `entries_move_and_removing_one_keeps_its_marks_as_unnamed` (38, 39), `the_legend_file_is_kept_whole_and_a_bad_one_is_an_empty_legend`.
 
+T4 built (core and wb): rows 17 to 19, 29, 30, 52. Tests (`crates/wb-cli/tests/margin_notes.rs`): `a_margin_note_is_kept_in_its_chapters_file_at_a_verse_a_span_or_the_chapter` (17, 18, 19), `rewriting_a_note_sets_changed_and_keeps_its_id_place_and_created` (29), `growing_a_note_makes_a_page_and_the_note_stays_with_a_link` (30), `references_and_questions_in_a_note_are_found_by_themselves` (52, MK-11), `a_deleted_note_waits_in_the_trash_and_can_be_put_back` (MK-21), `old_margin_files_are_read_as_they_are_and_never_rewritten_by_reading`, `the_study_check_counts_margin_note_files`; `every_action_has_a_command`.
+
 ## Disk (proposed)
 
 - **Drawn marks:** `marks/<BOOK>.json`, one file per book: each mark `{id, kind, color, lines?, at, to?, created, changed?}`,

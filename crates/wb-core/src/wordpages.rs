@@ -26,6 +26,14 @@ pub fn pages_naming(bible: &Bible, store: &Store, anchor: &str) -> Result<Value>
         let (lo, hi) = ((a.c1, a.v1), (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1)));
         crate::pageindex::naming(bible, store, &a.code, lo, hi).iter().map(|(id, e, t, b)| row(id, e, *t, *b)).collect()
     };
+    // margin notes whose own words name it (found like a page's references, after the pages)
+    let mut hits = hits;
+    let notes = if a.kind == Kind::Lemma {
+        crate::margin::naming(bible, store, "", (0, 0), (0, 0), Some(&a.strong.as_deref().unwrap_or("").to_uppercase()))
+    } else {
+        crate::margin::naming(bible, store, &a.code, (a.c1, a.v1), (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1)), None)
+    };
+    hits.extend(notes.iter().map(|(n, t)| crate::margin::naming_row(bible, n, *t)));
     let mut out = json!({"anchor": anchor, "count": hits.len(), "pages": hits});
     if out["count"].as_u64().unwrap_or(0) > 20 {
         // past 20 the list is grouped by folder (marks M37)

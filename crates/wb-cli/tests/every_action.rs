@@ -43,7 +43,7 @@ const INTERNAL: &[&str] = &[
     // marks (MK-17): the margin's file forms and places, the verse index and the pencil's list: pieces of wb margin, wb page overview and wb hl pencil
     // (named by file, so a public `all` or `list` elsewhere cannot hide behind them)
     "store.rs:write_atomic_unique",
-    "pageindex.rs:all", "pageindex.rs:forget", "pageindex.rs:naming", "store.rs:each_highlight", "marks.rs:verse_level", "marks.rs:is_trash_file", "marks.rs:drawn_in_chapter", "marks.rs:trashed_marks",
+    "margin.rs:all", "margin.rs:has", "margin.rs:rows", "margin.rs:trashed", "margin.rs:trashed_has", "margin.rs:is_trash_file", "margin.rs:question_entries", "margin.rs:naming", "margin.rs:naming_row", "margin.rs:matching", "pageindex.rs:all", "pageindex.rs:forget", "pageindex.rs:naming", "store.rs:each_highlight", "marks.rs:verse_level", "marks.rs:is_trash_file", "marks.rs:drawn_in_chapter", "marks.rs:trashed_marks",
     // views and templates (W5): a view's fence and line read (pieces of wb page views, wb view run, wb template save), a
     // place as a reference again, the blanks filled, and the Templates rows of wb notebook sidebar
     "view_fence", "view_line", "span_ref", "fill", "templates.rs:rows",
@@ -77,7 +77,7 @@ fn every_action_has_a_command() {
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
     let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs", "library.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "library.rs", "folders.rs", "dictionary.rs", "docs/look.rs", "deletion.rs", "overview.rs", "pageindex.rs", "marks.rs"] {
+    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "library.rs", "folders.rs", "dictionary.rs", "docs/look.rs", "deletion.rs", "overview.rs", "pageindex.rs", "marks.rs", "margin.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
             if INTERNAL.contains(&f.as_str()) || INTERNAL.contains(&format!("{file}:{f}").as_str()) || f.starts_with("py_") {
                 continue;

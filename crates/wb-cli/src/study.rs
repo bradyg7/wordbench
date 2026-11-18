@@ -192,22 +192,45 @@ pub fn commands() -> Vec<Command> {
                 let mut st = c.study()?;
                 j(marks::mark_style(&mut st, &a.s("id"), a.opt("kind").as_deref(), a.opt("color").as_deref(), lines).map_err(e)?)
             }),
-        cmd("mark rm", "Delete a mark (any id from wb marks, an old highlight too): it goes to .trash for 7 days; wb mark restore puts it back.", vec![Pos("id", N::Many)], |c, a| {
+        cmd("mark rm", "Delete a mark (any id from wb marks, an old highlight too) or a margin note (its id from wb mark notes): it goes to .trash for 7 days; wb mark restore puts it back.", vec![Pos("id", N::Many)], |c, a| {
             let mut st = c.study()?;
             let mut done = vec![];
             for id in a.list("id") {
-                done.push(marks::mark_rm(&mut st, &id).map_err(e)?);
+                // a margin note's id is a delete too (MK-21); any other id is a mark's
+                let note = wb_core::margin::has(c.bible()?, &st, &id);
+                done.push(if note { wb_core::margin::rm(c.bible()?, &mut st, &id) } else { marks::mark_rm(&mut st, &id) }.map_err(e)?);
             }
             j(if done.len() == 1 { done.remove(0) } else { json!({"deleted": done}) })
         }),
-        cmd("mark restore", "Put a deleted mark back: wb mark restore <id>.", vec![Pos("id", N::Many)], |c, a| {
+        cmd("mark restore", "Put a deleted mark or margin note back: wb mark restore <id>.", vec![Pos("id", N::Many)], |c, a| {
             let mut st = c.study()?;
             let mut done = vec![];
             for id in a.list("id") {
-                done.push(marks::mark_restore(&mut st, &id).map_err(e)?);
+                let note = wb_core::margin::trashed_has(&st, &id);
+                done.push(if note { wb_core::margin::restore(c.bible()?, &mut st, &id) } else { marks::mark_restore(&mut st, &id) }.map_err(e)?);
             }
             j(if done.len() == 1 { done.remove(0) } else { json!({"restored": done}) })
         }),
+        cmd("mark note", "Write a margin note (text only, kept in margin/<BOOK>/<chapter>.md): wb mark note Num 25:11 \"words\"  |  wb mark note Num 25:10-13 \"words\" (a span of verses in one chapter)  |  wb mark note Num 25 \"words\" (the chapter). The words may be - to read standard input. With --text it rewrites a note's words and sets changed: wb mark note <id> --text \"new words\" (or --text -).",
+            vec![Pos("args", N::Many), Opt("text", None)], |c, a| {
+                let mut args = a.list("args");
+                if let Some(t) = a.opt("text") {
+                    let text = if t.trim() == "-" { c.stdin()? } else { t };
+                    return j(wb_core::margin::edit(c.bible()?, &*c.study()?, &args.join(" "), &text).map_err(e)?);
+                }
+                if args.len() < 2 {
+                    return Err("Give the place and the words: wb mark note Num 25:11 \"words\" (or wb mark note <id> --text \"words\").".into());
+                }
+                let words = args.pop().unwrap();
+                let text = if words.trim() == "-" { c.stdin()? } else { words };
+                j(wb_core::margin::add(c.bible()?, &*c.study()?, &args.join(" "), &text).map_err(e)?)
+            }),
+        cmd("mark notes", "A chapter's margin notes, the chapter's own first, then by verse: wb mark notes Num 25. {\"place\", \"count\", \"notes\"}; each has id, at, label, kind (chapter|verse|span), text, question, created, changed, grew (the pages it grew into). Reads one file and no page.",
+            vec![Pos("chapter", N::Many)], |c, a| j(wb_core::margin::chapter(c.bible()?, &*c.study()?, &a.s("chapter")).map_err(e)?)),
+        cmd("mark grow", "Grow a margin note into a page: wb mark grow <id> [--title T]. A new page holds the note's words, titled by its place; the note stays in the margin and gains a grew link to the page. {\"note\", \"page\", \"title\"}.",
+            vec![Pos("id", N::One), Opt("title", None)], |c, a| {
+                j(wb_core::margin::grow(c.bible()?, &mut *c.study()?, &a.s("id"), a.opt("title").as_deref()).map_err(e)?)
+            }),
         cmd("legend", "The legend (settings/legend.json): its entries in order, each with its label (its name, or \"Unnamed <color> <kind>\"), style, quick pin, key and the count of marks in the style (old highlights too); \"unlisted\" are styles marks use that no entry names, shown as Unnamed. Name an entry by its name or by its style written kind:color[:lines] (highlight:yellow, underline:red:2).", vec![], |c, _| {
             j(marks::legend(&*c.study()?))
         }),

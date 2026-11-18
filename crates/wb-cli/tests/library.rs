@@ -224,7 +224,7 @@ fn the_one_search_filters_and_counts() {
     wb.js(&["save", "Num 25:11"]);
     let all = wb.js(&["find", "zeal", "--sort", "title"]);
     let kinds: Vec<&str> = all["groups"].as_array().unwrap().iter().map(|g| g["kind"].as_str().unwrap()).collect();
-    assert_eq!(kinds, ["page", "folder", "save", "question", "highlight"][..kinds.len()]);
+    assert_eq!(kinds, ["page", "folder", "save", "question", "margin", "highlight"][..kinds.len()]);
     assert_eq!(all["groups"][0]["count"], json!(1));
     let pages = wb.js(&["find", "--kind", "page"]);
     assert_eq!((pages["count"].clone(), pages["groups"].as_array().unwrap().len()), (json!(3), 1));
@@ -234,7 +234,7 @@ fn the_one_search_filters_and_counts() {
     assert_eq!(wb.js(&["find", "--kind", "page", "--edited", "2000-01-01"])["count"], json!(3));
     let some = wb.js(&["find", "--kind", "page", "zeal"]);
     assert_eq!((some["count"].clone(), some["total"].clone()), (json!(1), json!(3)));
-    assert!(wb.fails(&["find", "--kind", "margin"]).contains("--kind"));
+    assert_eq!(wb.js(&["find", "--kind", "margin"])["count"], json!(0));
     assert!(wb.fails(&["find", "--kind", "thread"]).contains("--kind"));
     // plain find keeps its old answer
     assert!(wb.js(&["find", "zeal"]).get("notes").is_some());

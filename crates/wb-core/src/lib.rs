@@ -18,6 +18,7 @@ pub mod docs;
 pub mod folders;
 pub mod library;
 pub mod lookup;
+pub mod margin;
 pub mod marks;
 pub mod mycommands;
 pub mod notebook;
