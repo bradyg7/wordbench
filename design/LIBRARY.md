@@ -107,3 +107,10 @@ Each line: folder, state, then rows built of rows designed (filled in once every
 5. library, threads, questions: accepted, partly built; re-check against this map
 6. concordance and words: accepted; add Greek and Hebrew alphabet selection, minimizable interlinear, optimize
 7. everything else, each re-checked against this map when it comes up
+
+## Later (ideas kept, not designed)
+
+- **A personal cross-reference graph** (the person, 2026-11-18): not curated by the app, a tool for the person to build
+  their own web of linked scriptures, inspired by the arrow mark but not a mark. Its own design folder when its turn
+  comes.
+- **A whole-Bible view of colors**: where each highlight style or folder color appears across the Bible, and its gaps.
