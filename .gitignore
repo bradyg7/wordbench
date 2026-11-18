@@ -16,3 +16,4 @@ node_modules/
 !/design/features/*/*.pdf
 /design/build/
 /.findings-review/
+design/features/*/review.html
