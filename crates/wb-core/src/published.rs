@@ -137,8 +137,7 @@ pub const HORNER_LISTS: [&str; 10] = [
 ];
 
 pub fn horner_kind(bible: &Bible) -> Result<Imported> {
-    let text: String = HORNER_LISTS.iter().enumerate().map(|(k, l)| format!("List {}: {l}
-", k + 1)).collect();
+    let text: String = HORNER_LISTS.iter().enumerate().map(|(k, l)| format!("List {}: {l}\n", k + 1)).collect();
     let mut imp = import(bible, &text, Some(Format::Horner), Some("Horner"))?;
     imp.extra["lists_named"] = json!(HORNER_LISTS);
     Ok(imp)

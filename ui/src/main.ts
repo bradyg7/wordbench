@@ -982,7 +982,6 @@ const PRESETS = [['phone', 'Phone 390×844'], ['phone-landscape', 'Phone landsca
 // takes the latest mark off (wb read unmark; the line is kept in .trash). Note c419.
 function chapterEnd(d: Drawn) {
   planReading.endCard(d, reader);   // the day's card (R3): a reading of the open plan day, one step, never marked by itself
-  if (!inApp) return;
   const place = `${d.chapter.name} ${d.chapter.chapter}`;
   const end = h('div', 'chapter-end');
   const said = h('span', 'chapter-read');
@@ -991,14 +990,14 @@ function chapterEnd(d: Drawn) {
   unread.title = 'Take the latest mark off the reading log';
   const show = (r: { times: number; last: string } | undefined) => {
     const when = r ? new Date(r.last).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
-    said.textContent = r ? `${place}: read ${r.times === 1 ? 'once' : `${r.times} times`} · last ${when}` : '';
-    btn.textContent = r ? 'Read again' : `Mark ${place} read`;
+    said.textContent = r ? `${place}: ${r.times === 0 ? 'read in part' : `read ${r.times === 1 ? 'once' : `${r.times} times`}`} · last ${when}` : '';
+    btn.textContent = r && r.times > 0 ? 'Read again' : `Mark ${place} read`;
     unread.hidden = !r;
   };
   const times = async () => show(Object.values((await wb(['read', 'times', place])) ?? {})[0] as any);
   btn.onclick = async () => {
     try {
-      await api.readMark(place);
+      await wb(['read', 'mark', place]);
       await times();
       app.changed('plans');
     } catch (e) { toast(String(e)); }

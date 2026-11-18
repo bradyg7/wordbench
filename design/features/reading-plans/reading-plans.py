@@ -230,8 +230,8 @@ def direction_b(cv):
     for name, what, on in (
             ("The Bible in its order", "Genesis to Revelation · 365 days, balanced by words", False),
             ("Some books", "Choose books (the Gospels, Romans…) · you set the days", False),
-            ("Ten lists at once (Horner)", "Gospels; Genesis–Deuteronomy; Romans–Hebrews; 1 Thess–Revelation; "
-             "Job, Ecclesiastes, Song; Psalms; Proverbs; Joshua–2 Chronicles; Isaiah–Malachi; Acts · a chapter of each "
+            ("Ten lists at once (Horner)", "Gospels; Genesis–Deuteronomy; Romans–Colossians; 1 Thess–Revelation; "
+             "Job, Ecclesiastes, Song; Psalms; Proverbs; Joshua–Esther; Isaiah–Malachi; Acts · a chapter of each "
              "a day, no end date", True),
             ("A published plan", "Paste it, one day to a line", False)):
         c = col(b, f"kind/{name}", gap=4, pad=[12, 14, 12, 14], radius=10, W="fill",

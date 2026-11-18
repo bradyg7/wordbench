@@ -131,6 +131,15 @@ try {
   await page.waitForFunction(() => window.__wbReady, null, { timeout: 30000 });
   await page.waitForSelector('.pane-notebook .nb-sections', { timeout: 15000 });
   const size = await page.evaluate(() => [innerWidth, innerHeight, document.documentElement.dataset.size]);
+  if (process.argv.includes('--reading-plans')) {
+    await readingPlansChecks({ page, check, env, wbExe, sleep });
+    await browser.close().catch(() => {});
+    kill();
+    const bad = results.filter(r => !r.ok);
+    console.log(`
+${results.length - bad.length} of ${results.length} checks passed`);
+    process.exit(bad.length ? 1 : 0);
+  }
   if (process.argv.includes('--settings')) {
     await settingsChecks(page);
     await browser.close().catch(() => {});

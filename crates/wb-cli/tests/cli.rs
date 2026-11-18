@@ -2594,3 +2594,46 @@ fn the_map_has_what_was_read_and_what_was_written_about() {
     assert!(kinds.contains(&"page") && kinds.contains(&"highlight"), "{kinds:?}");
     assert_eq!(num["written"][0][0], json!(26));
 }
+
+#[test]
+fn what_refers_to_a_chapter_counts_pages_places_in_pages_questions_folders_days_and_highlights() {
+    // RP-19: Written about counts every reference to a chapter
+    let Some(wb) = Wb::new() else { return };
+    let kinds = |wb: &Wb| -> Vec<String> { wb.js(&["read", "about", "Num 26"]).as_array().unwrap().iter().map(|x| x["kind"].as_str().unwrap().to_string()).collect() };
+    assert!(kinds(&wb).is_empty());
+    wb.js(&["note", "jot", "check where else this is used; see Num 26:3"]); // a place written in a page
+    wb.js(&["note", "jot", "how do the two numbers relate; Num 26:5", "--question"]);
+    wb.js(&["note", "add", "Num 26:9", "A note at a verse"]);
+    wb.js(&["hl", "set", "Num 26:1", "yellow"]);
+    wb.js(&["thread", "new", "Census", "--at", "Num 26:2"]);
+    wb.js(&["day", "add", "Read Numbers 26:4 today"]);
+    let k = kinds(&wb);
+    for want in ["place in a page", "question", "page", "highlight", "folder"] {
+        assert!(k.iter().any(|x| x == want), "{want} missing: {k:?}");
+    }
+    let places = wb.js(&["read", "about", "Num 26"]).as_array().unwrap().iter().filter(|x| x["kind"] == "place in a page").count();
+    assert_eq!(places, 2, "a place in the inbox page and one in today's page");
+    assert_eq!(wb.js(&["read", "about", "Num 25"]), json!([]), "another chapter has none");
+}
+
+#[test]
+fn the_builders_old_abilities_and_pasting_a_published_plan_still_work() {
+    // RP-18: move days, set the start, days off, a pasted published plan, and Horner with days off
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["plan", "start", "Gospels", "--books", "gospels", "--days", "10", "--start", "2026-11-02", "--days-off", "sun,sat"]);
+    let shown = wb.js(&["plan", "show", "gospels"]);
+    assert_eq!(shown["days_off"], json!(["sat", "sun"]));
+    let first: Vec<String> = day_entries(&shown)[0].clone();
+    wb.js(&["plan", "move-day", "gospels", "--day", "1", "--to", "3"]);
+    assert_eq!(day_entries(&wb.js(&["plan", "show", "gospels"]))[2], first);
+    assert_eq!(wb.js(&["plan", "edit", "gospels", "--start", "2026-12-01"])["start"], json!("2026-12-01"));
+    let (code, _, err) = wb.run(&["plan", "import", "Guth", "--format", "guthrie", "--start", "2026-11-02"], Some("Week 1\nDay 1: Genesis 1; Matthew 1\nDay 2: Genesis 2; Matthew 2\n"));
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(wb.js(&["plan", "show", "guth"])["source"], json!("Guthrie"));
+    let h = wb.js(&["plan", "start", "Horner", "--kind", "horner", "--start", "2026-11-02", "--days-off", "sun"]);
+    assert_eq!(h["days_off"], json!(["sun"]));
+    assert_eq!(h["cycle"], json!(true));
+    // 2026-11-08 is a Sunday: day 7 falls on the Monday after
+    let s = wb.js(&["plan", "show", "horner", "--on", "2026-11-09"]);
+    assert_eq!(s["schedule"][6]["date"], json!("2026-11-09"));
+}

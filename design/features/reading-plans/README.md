@@ -148,6 +148,9 @@ A and B can go together: the strip while reading, the checklist in the pane. C s
   cannot answer). The build adds no Chronological kind; a published plan is still pasted (`wb plan import`). When
   confirmed, adding the kind is a small change under this folder's "Open after merge".
 
+- **RP-22 Horner's ranges as shipped.** The first sheets named Romans-Hebrews and 1 Thessalonians-Revelation (they overlap) and Joshua-2 Chronicles (Ezra, Nehemiah and Esther would never be read). The build ships ten lists that partition the Bible: Matthew-John; Genesis-Deuteronomy; Romans-Colossians; 1 Thessalonians-Revelation; Job, Ecclesiastes, Song of Solomon; Psalms; Proverbs; Joshua-Esther; Isaiah-Malachi; Acts. A Rust test checks that every chapter is in exactly one list. Whether these are Horner's own ranges is the person's to confirm.
+- **`wb read mark` and `unmark` (RP-5, RP-7).** `wb read mark "Num 25:3"` now writes a part line (`"v": "3"`), where before it marked the whole chapter; only a place without verses marks whole chapters. `wb read unmark "Num 25"` takes off the latest line of that chapter, part or whole; `wb read unmark "Num 25:1-5"` takes off the part line of exactly those verses.
+
 ## What the build must satisfy
 
 Lines marked `(desk)` are ticked by the desk check. Each is built or mapped to what exists, with a test.
@@ -184,8 +187,7 @@ Lines marked `(desk)` are ticked by the desk check. Each is built or mapped to w
   `Mark read`, `Not now`. On the day's last reading only `Mark read` and `Not now`. Nothing is marked without a click (the last verse
   and Listen stopping do not mark). Nothing follows the last reading: no streak, no cheer, no prompt for the next day.
 - [x] **RP-14** After Listen reads a chapter through, the question comes as today (2dcf) and shares the same Mark read.
-- [x] **RP-15** The pane's checklist (R8): one row per reading with a box, the ten-part bar, `read to v. N` on a reading read in part; Rename,
-  Start day, Edit as text, Days, Stop under ⋯; `Go on: <reading>` and `Mark the day read`. Under it, the chapter you are in: read times,
+- [x] **RP-15** The pane's checklist (R8): one row per reading with a box, the ten-part bar, `read to v. N` on a reading read in part; Days, Rename…, Start day…, Edit as text…, Stop under ⋯ (in that order); `Go on: <reading>` and `Mark the day read`. Under it, the chapter you are in: read times,
   last read, what refers to it (pages, questions, highlights) as links.
 - [x] **RP-16** Mark read to here is in a verse number's right click; the verses read have a thin margin line (to the last verse of the run from
   verse 1; further ranges each a line); the pane, the strip and the map update at once (R18). Mark the chapter read is the line under it.
@@ -204,7 +206,7 @@ Lines marked `(desk)` are ticked by the desk check. Each is built or mapped to w
 
 ## Open after merge
 
-(empty)
+- **Horner's ranges (RP-22) wait for the person to confirm.** The build ships them as in RP-22; the sheets (R5, R12, R14) were corrected to match.
 
 ## Earlier questions (round 1, answered above or by the decisions)
 

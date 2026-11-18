@@ -284,3 +284,19 @@ test('Listen asks Mark read through the same step as the strip', async ({ page }
   await ask.getByRole('button', { name: 'Mark read' }).click();
   await expect.poll(() => m.read.has('NUM.26')).toBe(true);
 });
+
+test('a chapter read in part says so at its end, not "read 0 times"', async ({ page }) => {
+  const m = fresh();
+  m.part['NUM.25'] = 9;
+  await mock(page, m);
+  await ready(page);
+  const said = page.locator('.chapter-read');
+  await expect(said).toContainText('Numbers 25: read in part');
+  await expect(said).not.toContainText('0 times');
+  await expect(page.locator('.chapter-end .btn.soft')).toHaveText('Mark Numbers 25 read');
+  m.read.add('NUM.25');
+  await page.goto('/?at=NUM.25');
+  await page.waitForFunction(() => (window as any).__wbReady);
+  await expect(page.locator('.chapter-read')).toContainText('read once');
+  await expect(page.locator('.chapter-end .btn.soft')).toHaveText('Read again');
+});

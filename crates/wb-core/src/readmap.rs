@@ -63,6 +63,14 @@ pub fn written_about(bible: &Bible, store: &Store) -> BTreeMap<String, Vec<Value
             add(ch, json!({"kind": "highlight", "id": s(&h, "id"), "title": a, "anchor": a}));
         }
     }
+    for t in store.threads() {
+        for m in t["members"].as_array().cloned().unwrap_or_default() {
+            let at = m["anchor"].as_str().unwrap_or("").to_string();
+            for ch in chapters_touched(bible, &at) {
+                add(ch, json!({"kind": "folder", "id": s(t, "id"), "title": s(t, "name"), "anchor": at}));
+            }
+        }
+    }
     for t in store.sets() {
         for i in t["items"].as_array().cloned().unwrap_or_default() {
             if i["kind"] != "place" {
