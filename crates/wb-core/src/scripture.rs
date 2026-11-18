@@ -153,46 +153,58 @@ fn covers(a: &Anchor, c: u32, v: u32, i: u32) -> bool {
 /// A verse's text as runs, each with the color of the highlight over it (the last one made wins, as in the reader).
 /// The runs joined are the text exactly as given: the words are only found in it, never rebuilt from the word list, so
 /// a word that cannot be found leaves its part of the text as it is, with no color.
-fn runs(text: &str, words: &[Word], c: u32, v: u32, marks: &[Mark]) -> Vec<Value> {
+fn runs(text: &str, words: &[Word], c: u32, v: u32, marks: &[Mark], pencil: &[Mark]) -> Vec<Value> {
+    let pen = |i: u32| pencil.iter().any(|m| covers(&m.at, c, v, i));
     let color = |i: u32| marks.iter().rev().find(|m| covers(&m.at, c, v, i)).map(|m| m.color.clone());
     // (start, end, color) of each word found, in order
-    let mut found: Vec<(usize, usize, Option<String>)> = vec![];
+    let mut found: Vec<(usize, usize, Option<String>, bool)> = vec![];
     let mut at = 0;
     for w in words {
         let full = format!("{}{}{}", w.lead, w.text, w.trail.trim_end());
         let bare = format!("{}{}", w.lead, w.text);
         let hit = [full.as_str(), bare.as_str()].into_iter().filter(|t| !t.is_empty()).find_map(|t| text[at..].find(t).map(|p| (at + p, at + p + t.len())));
         if let Some((a, b)) = hit {
-            found.push((a, b, color(w.i)));
+            found.push((a, b, color(w.i), pen(w.i)));
             at = b;
         }
     }
-    let mut out: Vec<(String, Option<String>)> = vec![];
-    let mut push = |t: &str, hl: Option<String>| {
+    let mut out: Vec<(String, Option<String>, bool)> = vec![];
+    let mut push = |t: &str, hl: Option<String>, p: bool| {
         if t.is_empty() {
             return;
         }
         match out.last_mut() {
-            Some(last) if last.1 == hl => last.0.push_str(t),
-            _ => out.push((t.to_string(), hl)),
+            Some(last) if last.1 == hl && last.2 == p => last.0.push_str(t),
+            _ => out.push((t.to_string(), hl, p)),
         }
     };
     let mut at = 0;
-    for (k, (a, b, hl)) in found.iter().enumerate() {
+    for (k, (a, b, hl, p)) in found.iter().enumerate() {
         // the space between two words keeps a color both have, so a highlight runs unbroken through a phrase
         let between = if k > 0 && found[k - 1].2.is_some() && found[k - 1].2 == *hl { hl.clone() } else { None };
-        push(&text[at..*a], between);
-        push(&text[*a..*b], hl.clone());
+        push(&text[at..*a], between, k > 0 && found[k - 1].3 && *p);
+        push(&text[*a..*b], hl.clone(), *p);
         at = *b;
     }
     if found.is_empty() {
         // no word found: a highlight on the whole verse still shows
         let whole = marks.iter().rev().find(|m| matches!(m.at.kind, Kind::Verse | Kind::Verses) && covers(&m.at, c, v, 0)).map(|m| m.color.clone());
-        push(text, whole);
+        push(text, whole, false);
     } else {
-        push(&text[at..], None);
+        push(&text[at..], None, false);
     }
-    out.into_iter().map(|(t, hl)| if let Some(c) = hl { json!({"t": t, "hl": c}) } else { json!({"t": t}) }).collect()
+    out.into_iter()
+        .map(|(t, hl, p)| {
+            let mut r = json!({"t": t});
+            if let Some(c) = hl {
+                r["hl"] = json!(c);
+            }
+            if p {
+                r["pencil"] = json!(true);
+            }
+            r
+        })
+        .collect()
 }
 
 /// Verses as a scripture block and the verse card draw them (`wb scripture`): the passage, each verse verbatim with its
@@ -202,7 +214,7 @@ pub fn marked(bible: &Bible, store: &Store, text: &str, version: &str) -> Result
     let mut psg = passage(bible, text, version)?;
     let ver = psg["version"].as_str().unwrap_or("KJV").to_string();
     let spans = parse_spans(text, bible.books())?;
-    let mut chapters: HashMap<(String, u32), (Chapter, Vec<Mark>)> = HashMap::new();
+    let mut chapters: HashMap<(String, u32), (Chapter, Vec<Mark>, Vec<Mark>)> = HashMap::new();
     for v in psg["verses"].as_array_mut().unwrap() {
         let span = &spans[v["span"].as_u64().unwrap_or(0) as usize];
         let code = span.book.code.clone();
@@ -211,13 +223,13 @@ pub fn marked(bible: &Bible, store: &Store, text: &str, version: &str) -> Result
             let ch = bible.chapter_in(&code, c, &ver)?;
             let m = marks::chapter_marks(store, &code, c)?;
             let m = if ch.version.is_some() { marks::verse_level(m) } else { m };
-            chapters.insert((code.clone(), c), (ch, m.highlights));
+            chapters.insert((code.clone(), c), (ch, m.highlights, m.pencil));
         }
-        let (ch, hls) = &chapters[&(code.clone(), c)];
+        let (ch, hls, pen) = &chapters[&(code.clone(), c)];
         let words = ch.verses.iter().find(|x| x.v == n).map(|x| x.words.as_slice()).unwrap_or(&[]);
         let t = v["text"].as_str().unwrap_or("").to_string();
         v["code"] = json!(code);
-        v["runs"] = json!(runs(&t, words, c, n, hls));
+        v["runs"] = json!(runs(&t, words, c, n, hls, pen));
     }
     Ok(psg)
 }

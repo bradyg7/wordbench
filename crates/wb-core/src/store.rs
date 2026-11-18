@@ -123,6 +123,21 @@ pub fn write_atomic(path: &Path, text: &str) -> Result<()> {
     Ok(())
 }
 
+/// `write_atomic` with a temp name of its own for each write (the process and a counter), so two writers of one file never share
+/// a temp file: the later rename wins whole, and neither's text is half of the other's. Used for the margin's chapter files.
+pub fn write_atomic_unique(path: &Path, text: &str) -> Result<()> {
+    static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir)?;
+    }
+    let tmp = path.with_file_name(format!("{}.{}.{}.tmp", path.file_name().unwrap().to_string_lossy(), std::process::id(), N.fetch_add(1, std::sync::atomic::Ordering::SeqCst)));
+    if let Err(e) = fs::write(&tmp, text).and_then(|_| fs::rename(&tmp, path)) {
+        let _ = fs::remove_file(&tmp);
+        return Err(e.into());
+    }
+    Ok(())
+}
+
 pub fn s(r: &Rec, k: &str) -> String {
     match r.get(k) {
         Some(Value::String(v)) => v.clone(),
@@ -292,6 +307,8 @@ pub struct Store {
     /// How many files have been read and how often the folder was looked at (for the tests).
     pub loads: usize,
     pub scans: usize,
+    /// Which pages name which verses (marks MK-14); an entry is forgotten when its file is read again or gone.
+    pub index: std::cell::RefCell<crate::pageindex::PageIndex>,
 }
 
 fn stem(p: &Path) -> String {
@@ -361,6 +378,7 @@ impl Store {
             checked: None,
             loads: 0,
             scans: 0,
+            index: Default::default(),
         };
         st.refresh()?;
         Ok(st)
@@ -411,6 +429,9 @@ impl Store {
     fn drop_file(&mut self, path: &Path) {
         self.sigs.remove(path);
         if let Some((kind, key)) = self.paths.remove(path) {
+            if matches!(kind, Kind::Note | Kind::Trail | Kind::OnThread | Kind::Inbox) {
+                self.index.get_mut().forget(&key);
+            }
             match kind {
                 Kind::Note => self.notes.retain(|n| s(n, "id") != key),
                 Kind::Trail => self.trails.retain(|n| s(n, "id") != key),
@@ -575,6 +596,13 @@ impl Store {
     /// A book's highlights, in their file's order.
     pub fn highlights(&self, code: &str) -> Vec<Rec> {
         self.hl.iter().find(|(c, _)| c == code).map(|(_, v)| v.clone()).unwrap_or_default()
+    }
+
+    /// Each highlight in turn, without copying them (the one search goes over all of them).
+    pub fn each_highlight(&self, mut f: impl FnMut(&Rec)) {
+        for (_, v) in &self.hl {
+            v.iter().for_each(&mut f);
+        }
     }
 
     /// Every highlight, book file by book file.
@@ -813,14 +841,14 @@ impl Store {
     }
 
     /// A thought with no place yet, into the Inbox; a question (`question`) waits there to be placed and answered.
-    /// Same front matter as a note, with an empty anchor (so the Python app passes over it) and kind "jot" or "question".
+    /// Front matter like a note's but with no `anchor` (a page has no place, marks 2026-11-12) and kind "jot" or "question".
     pub fn jot(&mut self, text: &str, question: bool) -> Result<Rec> {
         let text = text.trim();
         if text.is_empty() {
             return Err(bad("Write the thought first."));
         }
         let kind = if question { "question" } else { "jot" };
-        let meta = json!({"id": new_id(if question { "q" } else { "n" }), "anchor": "", "kind": kind, "quote": "", "strong": "", "created": now(), "updated": now()});
+        let meta = json!({"id": new_id(if question { "q" } else { "n" }), "kind": kind, "quote": "", "strong": "", "created": now(), "updated": now()});
         let meta = meta.as_object().unwrap().clone();
         self.put(&self.inbox_path(&s(&meta, "id")), &dump_md(&meta, text))?;
         let mut n = meta;
@@ -1055,7 +1083,7 @@ impl Store {
         if text.is_empty() {
             return Err(bad("A note needs some text."));
         }
-        let meta = json!({"id": new_id("n"), "anchor": "", "kind": "thread", "quote": "", "strong": "", "threads": [thread_id], "created": now(), "updated": now()});
+        let meta = json!({"id": new_id("n"), "kind": "thread", "quote": "", "strong": "", "threads": [thread_id], "created": now(), "updated": now()});
         let meta = meta.as_object().unwrap().clone();
         self.put(&self.on_thread_path(&s(&meta, "id")), &dump_md(&meta, text))?;
         let mut n = meta;
@@ -1244,11 +1272,11 @@ impl Store {
             }
             None if was_q => {
                 let status = if s(&old, "status") == "done" { "done" } else { "open" };
-                json!({"id": id, "anchor": "", "kind": "question", "quote": "", "strong": "", "status": status, "created": old["created"], "updated": now()})
+                json!({"id": id, "kind": "question", "quote": "", "strong": "", "status": status, "created": old["created"], "updated": now()})
             }
             None => {
                 let kind = if threads.is_empty() { "jot" } else { "thread" };
-                json!({"id": id, "anchor": "", "kind": kind, "quote": "", "strong": "", "created": old["created"], "updated": now()})
+                json!({"id": id, "kind": kind, "quote": "", "strong": "", "created": old["created"], "updated": now()})
             }
         }
         .as_object()

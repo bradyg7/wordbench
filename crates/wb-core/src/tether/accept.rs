@@ -35,7 +35,7 @@ pub struct Accepted {
 fn pieces(kind: &str, text: &str, group: &[&Candidate], version: &str) -> Vec<String> {
     // group: candidates of one block in page order
     let cs: Vec<char> = text.chars().collect();
-    let fence = |c: &Candidate| scripture_fence_text(&ScriptureFence { reference: c.reference.clone(), lines: false, ylt: version == "YLT" });
+    let fence = |c: &Candidate| scripture_fence_text(&ScriptureFence { reference: c.reference.clone(), lines: false, ylt: version == "YLT", marks: false });
     let mut cuts: Vec<(Option<usize>, &Candidate)> = group.iter().map(|c| (anchor::split_for(kind, text, c.range.end), *c)).collect();
     cuts.sort_by_key(|(p, c)| (p.unwrap_or(usize::MAX), c.range.start));
     let mut out: Vec<String> = vec![];

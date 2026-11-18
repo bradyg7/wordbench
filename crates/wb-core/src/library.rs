@@ -183,6 +183,26 @@ pub fn dangling(bible: &Bible, store: &Store) -> Result<Vec<Value>> {
     Ok(out)
 }
 
+/// A place's words without asking the database: "Numbers 25:11", "Numbers 25:10–13" (the anchor's own book and numbers).
+fn anchor_label(bible: &Bible, anchor: &str) -> String {
+    let Ok(a) = crate::anchors::parse(anchor) else { return anchor.to_string() };
+    if a.strong.is_some() {
+        return anchor.to_string();
+    }
+    let name = bible.books().iter().find(|b| b.code == a.code).map(|b| b.name.clone()).unwrap_or_else(|| a.code.clone());
+    crate::anchors::py_label(&name, a.c1 as i64, a.v1 as i64, a.c2.unwrap_or(a.c1) as i64, a.v2.unwrap_or(a.v1) as i64, a.c2.is_some())
+}
+
+/// What a saved item is called in the search: a page by its title, a place by its words, anything else by what it names.
+fn cheap_label(bible: &Bible, titles: &std::collections::HashMap<String, String>, i: &Value) -> String {
+    let r = s_of(i, "ref");
+    match s_of(i, "kind").as_str() {
+        "note" => titles.get(&r).cloned().unwrap_or(r),
+        "place" => anchor_label(bible, &r),
+        _ => r,
+    }
+}
+
 // ---- the one search (S21) and the filter line (S27) ----------------------------------------------------------------------
 
 /// What `wb find` asks when it is given more than words. `kind`: "" (all), page, folder, save, question or margin.
@@ -210,10 +230,10 @@ fn since(text: &str) -> Result<String> {
 }
 
 /// Pages, folders, saves and questions in one list, grouped by kind: `{q, count, total, groups: [{kind, count, results}]}`.
-/// `total` is how many there were before the words and filters, for "23 of 412". Margin notes belong to marks (not built).
+/// `total` is how many there were before the words and filters, for "23 of 412". Margin notes and highlights are groups too.
 pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
-    if !["", "page", "folder", "save", "question", "margin"].contains(&f.kind) {
-        return Err(bad("--kind is page, folder, save, question or margin."));
+    if !["", "page", "folder", "save", "question", "margin", "highlight"].contains(&f.kind) {
+        return Err(bad("--kind is page, folder, save, question, margin or highlight."));
     }
     if !["", "edited", "title"].contains(&f.sort) {
         return Err(bad("--sort is edited or title."));
@@ -230,12 +250,15 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         None => None,
     };
     let folder_id = f.folder.map(|n| store.find_set(n).map(|t| s(&t, "id"))).transpose()?;
+    let clock = std::time::Instant::now();
+    let lap = |what: &str| { if std::env::var("WB_FIND_TIMES").is_ok() { eprintln!("find {what}: {:?}", clock.elapsed()); } };
     let mut groups = vec![];
     let mut out_groups: Vec<(String, Vec<Value>)> = vec![];
     let mut all_total = 0usize;
+    lap("before page");
     if want("page") {
-        let pages: Vec<Value> = crate::notebook::all_lines(bible, store, false).into_iter().filter(|e| e["kind"] != "question").collect();
-        all_total += pages.len();
+        let (pages, total) = crate::notebook::find_lines(bible, store, &words);
+        all_total += total;
         let rows = pages
             .into_iter()
             .filter(|e| crate::notebook::words_in(e, &words))
@@ -246,39 +269,51 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
             .collect();
         out_groups.push(("page".into(), rows));
     }
+    lap("before folder");
     if want("folder") && in_folder.is_none() && !f.has_question && cutoff.is_none() {
         let sets = store.sets();
         all_total += sets.len();
         let rows = sets.iter().filter(|t| has(&s(t, "name"))).map(|t| json!({"kind": "folder", "id": t["id"], "title": t["name"], "updated": t["updated"]})).collect();
         out_groups.push(("folder".into(), rows));
     }
+    lap("before save");
     if want("save") && !f.has_question {
         let mut rows = vec![];
-        let mut every: Vec<(String, Value)> = vec![];
+        // the saves as the search lists them: labelled from what the item names, never resolved one by one (a folder of
+        // thousands of pages must not make a search slow, marks M40)
+        let titles: std::collections::HashMap<String, String> = store
+            .notes()
+            .into_iter()
+            .chain(store.inbox())
+            .chain(store.on_thread())
+            .map(|r| (s(r, "id"), crate::notebook::page_title(r)))
+            .collect();
+        let mut every = 0usize;
+        let mut take = |folder: &str, i: &Value| {
+            every += 1;
+            let label = cheap_label(bible, &titles, i);
+            if cutoff.is_none() && has(&format!("{label} {}", s_of(i, "ref"))) {
+                rows.push(json!({"kind": "save", "id": i["key"], "title": label, "type": i["kind"], "ref": i["ref"], "folder": folder, "updated": ""}));
+            }
+        };
         for t in store.sets() {
             if folder_id.as_ref().is_some_and(|id| *id != s(&t, "id")) {
                 continue;
             }
-            let v = crate::studyapi::set_view(bible, store, &t)?;
-            for i in v["items"].as_array().cloned().unwrap_or_default() {
-                every.push((s(&t, "name"), i));
+            let name = s(&t, "name");
+            for i in t["items"].as_array().into_iter().flatten() {
+                take(&name, i);
             }
         }
         if in_folder.is_none() {
-            let v = shelf_view(bible, store)?;
-            for i in v["items"].as_array().cloned().unwrap_or_default() {
-                every.push((String::new(), i));
+            for i in store.shelf_saves() {
+                take("", &i);
             }
         }
-        all_total += every.len();
-        for (folder, i) in every {
-            let label = s_of(&i, "label");
-            if has(&format!("{label} {}", s_of(&i, "ref"))) && cutoff.is_none() {
-                rows.push(json!({"kind": "save", "id": i["key"], "title": label, "type": i["kind"], "ref": i["ref"], "folder": folder, "updated": ""}));
-            }
-        }
+        all_total += every;
         out_groups.push(("save".into(), rows));
     }
+    lap("before question");
     if want("question") {
         let qs = crate::questions::entries(bible, store);
         all_total += qs.len();
@@ -290,10 +325,47 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
             .collect();
         out_groups.push(("question".into(), rows));
     }
+    lap("before margin");
     if want("margin") {
-        // margin notes are marks' (marks M30); there are none to find until that folder is built
-        out_groups.push(("margin".into(), vec![]));
+        let (rows, n) = crate::margin::rows(bible, store, |label, text, written| {
+            in_folder.is_none()
+                && has(&format!("{label} {text}"))
+                && (!f.has_question || crate::questions::question_of(text).is_some())
+                && cutoff.as_ref().is_none_or(|c| written >= c.as_str())
+        });
+        all_total += n;
+        out_groups.push(("margin".into(), rows));
     }
+    lap("before highlight");
+    if want("highlight") {
+        let mut rows: Vec<Value> = vec![];
+        let mut every = 0usize;
+        // labels are worked out once per place and kept (18,000 highlights make one search, not 18,000 lookups)
+        static LABELS: std::sync::Mutex<Option<std::collections::HashMap<String, (String, String)>>> = std::sync::Mutex::new(None);
+        let mut cache = LABELS.lock().unwrap_or_else(|e| e.into_inner());
+        let cache = cache.get_or_insert_with(Default::default);
+        store.each_highlight(|h| {
+            every += 1;
+            if f.has_question || in_folder.is_some() {
+                return;
+            }
+            let anchor = s(h, "anchor");
+            if !cache.contains_key(&anchor) {
+                let label = anchor_label(bible, &anchor);
+                cache.insert(anchor.clone(), (label.to_lowercase(), label));
+            }
+            let (lower, label) = &cache[&anchor];
+            let (quote, color) = (s(h, "quote").to_lowercase(), s(h, "color").to_lowercase());
+            if words.iter().all(|w| lower.contains(w.as_str()) || quote.contains(w.as_str()) || color.contains(w.as_str()))
+                && cutoff.as_ref().is_none_or(|c| s(h, "created").as_str() >= c.as_str())
+            {
+                rows.push(json!({"kind": "highlight", "id": h["id"], "title": label, "snippet": s(h, "quote"), "color": h["color"], "updated": s(h, "created")}));
+            }
+        });
+        all_total += every;
+        out_groups.push(("highlight".into(), rows));
+    }
+    lap("after groups");
     let mut count = 0;
     for (kind, mut rows) in out_groups {
         if f.sort == "title" {

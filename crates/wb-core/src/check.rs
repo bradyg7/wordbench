@@ -27,6 +27,10 @@ pub fn study_check(store: &Store) -> Result<Value> {
     let inbox = store.inbox();
     let inbox_questions = inbox.iter().filter(|n| s(n, "kind") == "question").count();
     let root = &store.root;
+    let margin_held = crate::margin::held(root);
+    let pencil_lines: usize = fs::read_dir(root.join("pencil"))
+        .map(|rd| rd.flatten().filter_map(|e| fs::read_to_string(e.path()).ok()).filter_map(|t| serde_json::from_str::<Value>(&t).ok()).map(|v| v["pencil"].as_array().map(|a| a.len()).unwrap_or(0)).sum())
+        .unwrap_or(0);
     Ok(json!({
         "folder": root.display().to_string(),
         "notes": {"files": placed.len() + inbox.len() + store.on_thread().len() + store.days().len(),
@@ -38,6 +42,9 @@ pub fn study_check(store: &Store) -> Result<Value> {
         "lessons": files_in(&root.join("lessons"), ".md"),
         "documents": files_in(&root.join("documents"), ".json"),
         "highlight_files": files_in(&root.join("highlights"), ".json"),
+        // the margin and the pencil (marks MK-17, MK-22): files and what they hold
+        "margin": {"files": margin_held.0, "notes": margin_held.1},
+        "pencil": {"files": files_in(&root.join("pencil"), ".json"), "lines": pencil_lines},
         // what the Python app reads of it: a note only with a place, and the rest as they are
         "python_reads": {"notes": placed.len(), "threads": threads.len(), "thread_places": places, "trails": trails.len(), "sets": store.sets().len()},
         "pages_file": root.join("settings").join("pages.json").exists(),

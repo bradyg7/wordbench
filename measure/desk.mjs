@@ -2339,6 +2339,16 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const shown = await page.evaluate(() => { const r = [...document.querySelectorAll('.pane-reader2 .reader2')].find(x => x.offsetWidth); return { asked: [...r.querySelectorAll('.vn-asked')].map(v => +v.dataset.v), text: r.textContent.replace(/\s+/g, ' ') }; });
   check('wb do opens the passage in a second reader, verbatim, its verses marked', shown.asked.join() === '16,17,18' && john.verses.every(v => shown.text.includes(v.text.replace(/\s+/g, ' '))), said);
 
+  // marks (design/features/marks): a margin note at a verse shows its mark beside the verse and opens the verse in the margin;
+  // the longer years-of-study and reader's-place checks are measure/marks.mjs
+  execFileSync(wbExe, ['margin', 'add', 'Num 25:11', 'checked from the desk'], { env });
+  await page.evaluate(() => window.__wb.open('NUM', 25, 11));
+  await page.waitForSelector('.mg-mark[data-v="11"], .mg-dot[data-v="11"]', { timeout: 10000 }).catch(() => {});
+  check('a margin note at Numbers 25:11 shows its mark beside the verse', await page.locator('.mg-mark[data-v="11"], .mg-dot[data-v="11"]').count() === 1);
+  await page.locator('.mg-mark[data-v="11"], .mg-dot[data-v="11"]').first().click().catch(() => {});
+  check('a click opens the verse in the margin: the verse, its note, the field', await page.locator('.mg-panel .mg-verse').waitFor({ timeout: 5000 }).then(() => true, () => false) && await page.locator('.mg-panel .mg-field').count() === 1);
+  await page.locator('.mg-close').click().catch(() => {});
+
   // size classes; the verse at the top stays at the top through each
   await page.evaluate(() => window.__wb.open('PSA', 119, 50));
   await sleep(500);
