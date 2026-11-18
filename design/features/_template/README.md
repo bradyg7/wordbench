@@ -56,6 +56,16 @@ The board shows the part among other tabs, as a floating tab, narrow, and with y
 | Narrow | |
 | Years of study | |
 
+## Interaction table
+
+One row per thing a person can do: every button, key, menu item, drag and command, in every state the sheets draw.
+Builders build from this table and guess nothing; a missing row stops the build. Objects and words come from
+[the Library map](../../LIBRARY.md). `Built` is ticked only when the row's test passes.
+
+| # | Where (window tag) | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
+|---|---|---|---|---|---|---|---|
+| 1 | A1 | | | | | | [ ] |
+
 ## What the build must satisfy
 
 Written once the person accepts a direction; each line is checkable, so the build's tests and the desk check can
