@@ -67,6 +67,16 @@ This milestone does not claim a ready installer: approved artifacts, application
 
 No online activation service, finished signed installer, or update service is represented as complete by this foundation.
 
+## Automatic updates (off by default)
+
+The app carries the update check behind the Cargo feature `updater` (`app/src-tauri/src/main.rs`, `check_for_update`). It is not part of `distribution` and nothing enables it yet.
+
+- Without the feature, the app has no update code.
+- With the feature but no `plugins.updater` configuration (the public key and endpoint), the app still starts: the plugin is not registered and the check does nothing. This was checked by launching the built app.
+- With both, the app waits about ten seconds after the reader opens, looks once at the endpoint, and asks before installing. `WB_NO_UPDATE_CHECK=1` turns the check off.
+
+Still to decide before the feature is enabled for a release: the update host and its visibility (a private repository's release assets need a token, so the public endpoint must be public or live elsewhere), the signing key pair (generated and kept by the owner, never committed), and the release script that publishes `latest.json`. Enabling it means adding `updater` to the overlay's features and the endpoint and public key to the overlay's `plugins.updater`. The dialog and the install-and-restart path have not been exercised against a real signed update.
+
 ## Manual licensing milestone
 
 The manual issuer, Rust certificate verifier, Windows-protected device identity, setup request/import interface, and shared GUI/CLI authorization are implemented. See [LICENSING.md](LICENSING.md) for the operator and recipient workflows, trust configuration, recovery, and limits. A valid activated pilot copy runs permanently offline. No renewal or expiry policy was added.
