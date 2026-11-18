@@ -7,13 +7,21 @@ use common::{bible, Scratch};
 use wb_core::margin;
 use wb_core::store::Store;
 
+/// These tests are about the files and the locks, and are not skipped without the Bible database: they stop with a message. The
+/// locks are kept in a folder of this test run's own, never the app's.
+fn need_bible() -> wb_core::bible::Bible {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| std::env::set_var("WB_APP_DIR", std::env::temp_dir().join("bible-workbench-rs").join(format!("margin-locks-{}", std::process::id()))));
+    bible().expect("these tests need the Bible database: set WB_BIBLE_DB")
+}
+
 fn chapter_file(t: &Scratch, code: &str, chapter: u32) -> std::path::PathBuf {
     t.path().join("margin").join(code).join(format!("{chapter}.md"))
 }
 
 #[test]
 fn a_hand_edited_margin_file_loses_no_text_when_a_note_is_edited() {
-    let Some(b) = bible() else { return };
+    let b = need_bible();
     let t = Scratch::new();
     let mut st = Store::open(t.path()).unwrap();
     let first = margin::add(&b, &mut st, "Num 25:11", "First line\nLast body line", false, "").unwrap();
@@ -42,7 +50,7 @@ fn a_hand_edited_margin_file_loses_no_text_when_a_note_is_edited() {
 
 #[test]
 fn a_write_by_another_process_is_seen_at_once() {
-    let Some(b) = bible() else { return };
+    let b = need_bible();
     let t = Scratch::new();
     let mut st = Store::open(t.path()).unwrap();
     margin::add(&b, &mut st, "Num 25:11", "Mine", false, "").unwrap();
@@ -61,7 +69,7 @@ fn a_write_by_another_process_is_seen_at_once() {
 
 #[test]
 fn deleting_or_restoring_a_margin_note_refreshes_the_page_that_shows_it() {
-    let Some(b) = bible() else { return };
+    let b = need_bible();
     let t = Scratch::new();
     let mut st = Store::open(t.path()).unwrap();
     let n = margin::add(&b, &mut st, "Num 25:11", "A thought", false, "").unwrap();
@@ -78,7 +86,7 @@ fn deleting_or_restoring_a_margin_note_refreshes_the_page_that_shows_it() {
 
 #[test]
 fn same_length_edits_back_to_back_lose_nothing() {
-    let Some(b) = bible() else { return };
+    let b = need_bible();
     let t = Scratch::new();
     let mut st = Store::open(t.path()).unwrap();
     let a = margin::add(&b, &mut st, "Num 25:11", "aaaa", false, "").unwrap()["id"].as_str().unwrap().to_string();
@@ -96,7 +104,7 @@ fn same_length_edits_back_to_back_lose_nothing() {
 
 #[test]
 fn an_edit_in_place_with_the_same_size_and_time_is_not_overwritten() {
-    let Some(b) = bible() else { return };
+    let b = need_bible();
     let t = Scratch::new();
     let mut st = Store::open(t.path()).unwrap();
     let a = margin::add(&b, &mut st, "Num 25:11", "aaaa", false, "").unwrap()["id"].as_str().unwrap().to_string();
@@ -118,7 +126,7 @@ fn an_edit_in_place_with_the_same_size_and_time_is_not_overwritten() {
 
 #[test]
 fn a_deleted_note_goes_to_the_trash_as_the_file_holds_it_now() {
-    let Some(b) = bible() else { return };
+    let b = need_bible();
     let t = Scratch::new();
     let mut st = Store::open(t.path()).unwrap();
     let a = margin::add(&b, &mut st, "Num 25:11", "aaaa", false, "").unwrap()["id"].as_str().unwrap().to_string();
@@ -136,7 +144,7 @@ fn a_deleted_note_goes_to_the_trash_as_the_file_holds_it_now() {
 
 #[test]
 fn two_writers_editing_different_notes_of_one_chapter_lose_neither() {
-    let Some(b) = bible() else { return };
+    let b = need_bible();
     let t = Scratch::new();
     let mut st = Store::open(t.path()).unwrap();
     let a = margin::add(&b, &mut st, "Num 25:11", "start a", false, "").unwrap()["id"].as_str().unwrap().to_string();
@@ -146,7 +154,7 @@ fn two_writers_editing_different_notes_of_one_chapter_lose_neither() {
     for (id, tag) in [(a.clone(), "a"), (c.clone(), "c")] {
         let root = root.clone();
         handles.push(std::thread::spawn(move || {
-            let b = bible().unwrap();
+            let b = need_bible();
             let mut st = Store::open(&root).unwrap();
             let mut last = String::new();
             for i in 0..25 {
@@ -166,4 +174,75 @@ fn two_writers_editing_different_notes_of_one_chapter_lose_neither() {
 {file}");
     }
     assert!(lasts.iter().all(|l| !l.is_empty()));
+}
+
+#[test]
+fn a_file_that_cannot_be_read_is_never_written_over() {
+    let b = need_bible();
+    let t = Scratch::new();
+    let mut st = Store::open(t.path()).unwrap();
+    let a = margin::add(&b, &mut st, "Num 25:11", "kept", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    let p = chapter_file(&t, "NUM", 25);
+    // saved by hand in Windows-1252: a byte that is not UTF-8
+    let mut bytes = std::fs::read(&p).unwrap();
+    bytes.extend_from_slice(b"\nA note by hand with an \xE9 in it.\n");
+    std::fs::write(&p, &bytes).unwrap();
+    assert!(margin::edit(&b, &mut st, &a, "changed").is_err(), "refused");
+    assert!(margin::add(&b, &mut st, "Num 25:12", "another", false, "").is_err());
+    assert!(margin::rm(&b, &mut st, &a).is_err());
+    assert_eq!(std::fs::read(&p).unwrap(), bytes, "the file is byte for byte as it was");
+    assert!(!t.path().join(".trash").exists() || std::fs::read_dir(t.path().join(".trash")).unwrap().count() == 0, "no trash copy of a delete that did not happen");
+}
+
+#[cfg(windows)]
+#[test]
+fn a_file_held_open_by_another_program_is_never_written_over() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let b = need_bible();
+    let t = Scratch::new();
+    let mut st = Store::open(t.path()).unwrap();
+    let a = margin::add(&b, &mut st, "Num 25:11", "kept", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    let p = chapter_file(&t, "NUM", 25);
+    let before = std::fs::read(&p).unwrap();
+    let held = std::fs::OpenOptions::new().read(true).share_mode(0).open(&p).unwrap();
+    let e = margin::edit(&b, &mut st, &a, "changed");
+    drop(held);
+    assert!(e.is_err(), "refused while another program holds the file");
+    assert_eq!(std::fs::read(&p).unwrap(), before);
+    margin::edit(&b, &mut st, &a, "changed").unwrap();
+}
+
+#[test]
+fn an_edit_waits_for_the_lock_then_refuses_with_a_clear_message() {
+    let b = need_bible();
+    let t = Scratch::new();
+    let mut st = Store::open(t.path()).unwrap();
+    let a = margin::add(&b, &mut st, "Num 25:11", "kept", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    let lock = margin::lock_path(t.path(), "NUM", 25);
+    assert!(lock.starts_with(wb_core::setup::app_dir()) && !lock.starts_with(t.path()), "the lock is in the app's folder, not the study");
+    let held = std::fs::OpenOptions::new().create(true).truncate(false).write(true).open(&lock).unwrap();
+    held.lock().unwrap();
+    let started = std::time::Instant::now();
+    let e = margin::edit(&b, &mut st, &a, "changed").unwrap_err().to_string();
+    assert!(e.contains("Another writer is changing this margin file"), "{e}");
+    assert!(started.elapsed() >= std::time::Duration::from_secs(2), "it waited first");
+    assert!(std::fs::read_to_string(chapter_file(&t, "NUM", 25)).unwrap().contains("kept"));
+    held.unlock().unwrap();
+    drop(held);
+    margin::edit(&b, &mut st, &a, "changed").unwrap();
+}
+
+#[test]
+fn a_lock_file_left_by_a_dead_writer_locks_nothing() {
+    let b = need_bible();
+    let t = Scratch::new();
+    let mut st = Store::open(t.path()).unwrap();
+    let a = margin::add(&b, &mut st, "Num 25:11", "kept", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    // the leftover: a file with an owner's name and an old time, and nobody holding it
+    let lock = margin::lock_path(t.path(), "NUM", 25);
+    std::fs::create_dir_all(lock.parent().unwrap()).unwrap();
+    std::fs::write(&lock, "pid 999999 1970-01-01").unwrap();
+    margin::edit(&b, &mut st, &a, "first").unwrap();
+    margin::edit(&b, &mut st, &a, "second").unwrap();
+    assert!(std::fs::read_to_string(chapter_file(&t, "NUM", 25)).unwrap().contains("second"));
 }

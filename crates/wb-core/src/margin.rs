@@ -229,51 +229,55 @@ fn hash_of(text: &str) -> u64 {
     h.finish()
 }
 
-fn read_path(p: &Path) -> Vec<Note> {
+/// A chapter file's notes, or None when the file cannot be read now (not UTF-8, held open, no permission).
+fn try_read_path(p: &Path) -> Option<Vec<Note>> {
     let Ok(text) = std::fs::read_to_string(p) else {
         READ.lock().unwrap_or_else(|e| e.into_inner()).as_mut().map(|m| m.remove(p));
-        return vec![];
+        return None;
     };
     let hash = hash_of(&text);
     let mut guard = READ.lock().unwrap_or_else(|e| e.into_inner());
     let map = guard.get_or_insert_with(HashMap::new);
     if let Some((h0, notes)) = map.get(p) {
         if *h0 == hash {
-            return notes.clone();
+            return Some(notes.clone());
         }
     }
     let notes = parse_file(&text);
     map.insert(p.to_path_buf(), (hash, notes.clone()));
-    notes
+    Some(notes)
+}
+
+fn read_path(p: &Path) -> Vec<Note> {
+    try_read_path(p).unwrap_or_default()
 }
 
 fn read_chapter(root: &Path, code: &str, chapter: u32) -> Vec<Note> {
     read_path(&file(root, code, chapter))
 }
 
-/// A chapter file's lock while one writer changes it: a file made only if it is not there, taken away when the writer is done
-/// (or found older than ten seconds, a writer that died). Two writers of one chapter wait for each other, so neither's note is
-/// dropped.
-struct ChapterLock(PathBuf);
+/// Where a chapter file's lock is kept: in the app's own folder, never in the study (a leftover there could be committed by sync).
+pub fn lock_path(root: &Path, code: &str, chapter: u32) -> PathBuf {
+    crate::setup::app_dir().join("locks").join(format!("{:016x}.lock", hash_of(&file(root, code, chapter).to_string_lossy())))
+}
+
+/// An operating-system lock on a file in the app's folder, held while one writer changes a chapter. The system gives it up when the
+/// writer ends, even by dying, so there is no stale lock to take over and a leftover file locks nothing. The window and a `wb`
+/// call, or two calls, wait for one another (about three seconds, then a clear refusal).
+struct ChapterLock(std::fs::File);
 
 impl ChapterLock {
-    fn take(chapter_file: &Path) -> Result<ChapterLock> {
-        let lock = chapter_file.with_extension("md.lock");
+    fn take(root: &Path, code: &str, chapter: u32) -> Result<ChapterLock> {
+        let lock = lock_path(root, code, chapter);
         if let Some(d) = lock.parent() {
             std::fs::create_dir_all(d)?;
         }
+        let f = std::fs::OpenOptions::new().create(true).truncate(false).write(true).open(&lock)?;
         for _ in 0..600 {
-            match std::fs::OpenOptions::new().write(true).create_new(true).open(&lock) {
-                Ok(_) => return Ok(ChapterLock(lock)),
-                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                    let old = std::fs::metadata(&lock).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|d| d > std::time::Duration::from_secs(10));
-                    if old {
-                        let _ = std::fs::remove_file(&lock);
-                    } else {
-                        std::thread::sleep(std::time::Duration::from_millis(5));
-                    }
-                }
-                Err(e) => return Err(e.into()),
+            match f.try_lock() {
+                Ok(()) => return Ok(ChapterLock(f)),
+                Err(std::fs::TryLockError::WouldBlock) => std::thread::sleep(std::time::Duration::from_millis(5)),
+                Err(std::fs::TryLockError::Error(e)) => return Err(e.into()),
             }
         }
         Err(bad("Another writer is changing this margin file. Nothing was lost; try again."))
@@ -282,25 +286,35 @@ impl ChapterLock {
 
 impl Drop for ChapterLock {
     fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
+        let _ = self.0.unlock();
     }
 }
 
-/// Change one chapter's file: take its lock, read its text, let `f` change the notes, write the result. The window and a `wb`
-/// call, or two calls, wait for one another. The text is also hashed again just before the write: if an editor (not this app)
-/// changed the file meanwhile, the edit is made again on the new text (five tries).
+/// A chapter file's text. Only a file that is not there is empty: a file that cannot be read (not UTF-8, held open by another
+/// program, no permission) is an error, and nothing is written over it.
+fn read_text(p: &Path) -> Result<String> {
+    match std::fs::read_to_string(p) {
+        Ok(t) => Ok(t),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(e) => Err(bad(format!("The margin's file {} cannot be read ({e}). Nothing was written and the file is as it was.", p.display()))),
+    }
+}
+
+/// Change one chapter's file: take its lock, read its text, let `f` change the notes, write the result. The text is also hashed
+/// again just before the write: if an editor (not this app) changed the file meanwhile, the edit is made again on the new text
+/// (five tries).
 fn update_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, f: &mut dyn FnMut(&mut Vec<Note>) -> Result<()>) -> Result<()> {
     guard(root)?;
     let p = file(root, code, chapter);
-    let _lock = ChapterLock::take(&p)?;
+    let _lock = ChapterLock::take(root, code, chapter)?;
     for _ in 0..5 {
-        let text = std::fs::read_to_string(&p).unwrap_or_default();
+        let text = read_text(&p)?;
         let seen = hash_of(&text);
         let (preface, mut notes) = parse_full(&text);
         f(&mut notes)?;
         forget_snapshot();
         if notes.is_empty() && preface.is_empty() {
-            if std::fs::read_to_string(&p).map(|t| hash_of(&t)).unwrap_or(hash_of("")) != seen {
+            if hash_of(&read_text(&p)?) != seen {
                 continue;
             }
             if p.exists() {
@@ -319,7 +333,7 @@ fn update_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, f: &mut 
             out += &n.render(bible);
             out.push('\n');
         }
-        if std::fs::read_to_string(&p).map(|t| hash_of(&t)).unwrap_or(hash_of("")) != seen {
+        if hash_of(&read_text(&p)?) != seen {
             continue;
         }
         write_atomic_unique(&p, &(out.trim_end_matches('\n').to_string() + "\n"))?;
@@ -406,11 +420,18 @@ fn snapshot(bible: &Bible, store: &Store) -> std::sync::Arc<Vec<Note>> {
     let mut files = chapter_files(&store.root);
     files.sort_by_key(|(c, ch, _)| (book_order(bible, c), *ch));
     let mut out = vec![];
+    let mut whole = true;
     for (_, _, p) in files {
-        out.extend(read_path(&p));
+        match try_read_path(&p) {
+            Some(notes) => out.extend(notes),
+            None => whole = false,
+        }
     }
     let out = std::sync::Arc::new(out);
-    *SNAP.lock().unwrap_or_else(|e| e.into_inner()) = Some(Snap { root: store.root.clone(), seen: now, notes: out.clone() });
+    // a file that could not be read this time is read again next time: the snapshot is not kept
+    if whole {
+        *SNAP.lock().unwrap_or_else(|e| e.into_inner()) = Some(Snap { root: store.root.clone(), seen: now, notes: out.clone() });
+    }
     out
 }
 
@@ -566,13 +587,18 @@ pub fn rm(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
     guard(&store.root)?;
     let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
     let trash = store.root.join(".trash").join(format!("{stamp}-{}.md", found.id));
-    update_chapter(bible, &store.root, &found.at.code, found.at.c, &mut |notes| {
+    let done = update_chapter(bible, &store.root, &found.at.code, found.at.c, &mut |notes| {
         // the copy in the trash is the note as the file holds it now, not as the listing last saw it
         let at = notes.iter().position(|n| n.id == found.id).ok_or_else(|| missing("That note is gone."))?;
         write_atomic(&trash, &notes[at].render(bible))?;
         notes.remove(at);
         Ok(())
-    })?;
+    });
+    if let Err(e) = done {
+        // the chapter was not changed: the copy is not wanted
+        let _ = std::fs::remove_file(&trash);
+        return Err(e);
+    }
     refresh_pages(store, &found.id);
     Ok(json!({"removed": found.id, "at": found.at.id(), "undo": format!("wb margin restore {}", found.id)}))
 }
