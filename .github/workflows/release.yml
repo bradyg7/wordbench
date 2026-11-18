@@ -1,0 +1,58 @@
+# A release: push a tag v<version> (the version in Cargo.toml and tauri.conf.json). GitHub's Windows machine builds the
+# installer with the updater switched on, signs it with the update key (secrets TAURI_SIGNING_PRIVATE_KEY and
+# TAURI_SIGNING_PRIVATE_KEY_PASSWORD), and publishes it with latest.json to the public bradyg7/wordbench-releases
+# (secret RELEASES_TOKEN), where the installed apps and the website look. Design: design/features/updates (U-17).
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+
+      - name: The tag matches the app's version
+        shell: bash
+        run: |
+          v=$(node -p "require('./app/src-tauri/tauri.conf.json').version")
+          test "v$v" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME but the app is $v"; exit 1; }
+          test -f "docs/releases/$v.md" || { echo "No docs/releases/$v.md"; exit 1; }
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+
+      - name: The Bible database (data-v1 of the public releases repository)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          mkdir -p datasets
+          gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
+          echo "fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c  datasets/workbench.db" | sha256sum -c
+
+      - run: npm ci
+
+      - name: Build and sign the installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --config app/src-tauri/tauri.release.conf.json --features updater
+
+      - name: Publish to bradyg7/wordbench-releases
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: node scripts/release/publish.mjs
