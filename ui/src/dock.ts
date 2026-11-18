@@ -482,7 +482,10 @@ export class Dock {
     const want = (side: 'left' | 'right') => {
       const base = WIDTH[size][side === 'left' ? 0 : 1];
       if (!base) return 0;
-      return this.wide[side] ? Math.round(W * 0.5) : this.widths[side] ?? base;
+      // A width kept below a column's minimum (a column once dragged to the window's edge) is not a width: the column
+      // would open invisible and every pane in it with it. Such a width reads as the size class's own.
+      const kept = this.widths[side];
+      return this.wide[side] ? Math.round(W * 0.5) : kept !== undefined && kept >= COL_MIN ? kept : base;
     };
     let l = leftOpen ? want('left') : 0, r = rightOpen ? want('right') : 0;
     const room = Math.max(0, W - READER_MIN);
@@ -691,7 +694,7 @@ export class Dock {
       this.lastSized = side;
       const move = (m: PointerEvent) => {
         this.wide[side] = false;
-        this.widths[side] = side === 'left' ? m.clientX - railWidth() : window.innerWidth - m.clientX;
+        this.widths[side] = Math.max(COL_MIN, side === 'left' ? m.clientX - railWidth() : window.innerWidth - m.clientX);
         const [lw, rw] = this.widthsNow(this.isOpen('left'), this.isOpen('right'));
         const [th, bh] = this.heightsNow(this.isOpen('top'), this.isOpen('bottom'));
         this.room(this.isOpen('left') ? lw : 0, this.isOpen('right') ? rw : 0, th, bh);
