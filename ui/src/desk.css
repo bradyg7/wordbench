@@ -1333,3 +1333,64 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .nb-trash-rows .note-card { min-width: 0; overflow-wrap: anywhere; }
 .nb-trash-rows .nb-acts { flex-wrap: wrap; }
 @media (max-width: 480px) { .nb-trash-rows .nb-acts .btn, .nb-trash-rows .nb-acts .icon-btn, .nb-empty-trash, .nb-trash-showall { min-height: 44px; } }
+
+/* ---- the plan leads the reader (reading-plans R2, R3, R8, R18, R19) ---- */
+.plan-strip { border-top: 1px solid var(--line); background: var(--bg); padding: 4px 12px; }
+.plan-strip[hidden] { display: none; }
+.plan-strip-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 32px; }
+.plan-strip-label { font: var(--type-small-strong); }
+.plan-strip-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.plan-strip-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); font: var(--type-small); }
+.plan-strip-chip.open { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.plan-strip-chip.done { color: var(--muted); }
+.plan-strip-box { width: 16px; height: 16px; border: 1px solid var(--line); border-radius: 4px; display: inline-grid; place-items: center; font-size: 11px; line-height: 1; }
+.plan-strip-chip.done .plan-strip-box { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.plan-strip-count { margin-left: auto; }
+.plan-strip-close { width: 24px; height: 24px; }
+.plan-end { margin: 24px 0 8px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.plan-end-title { font: var(--type-small-strong); margin-bottom: 8px; }
+.vn.vread { border-left: 2px solid var(--line); padding-left: 4px; }
+.vn.vread-run { border-left-color: var(--accent); }
+
+/* the plan pane's checklist (R8) and the counter (R17) */
+.plan-count { color: var(--muted); font: var(--type-small); }
+.plan-menu-btn { margin-left: auto; }
+.plan-title-row { display: flex; align-items: center; gap: 8px; }
+.plan-title-row .plan-title { flex: 1; margin: 0; }
+.plan-checks { display: grid; gap: 6px; margin: 8px 0; }
+.plan-check { display: grid; grid-template-columns: 22px 1fr 84px; gap: 8px; align-items: center; }
+.plan-check .box { width: 18px; height: 18px; border: 1px solid var(--line); border-radius: 4px; display: inline-grid; place-items: center; font-size: 12px; background: var(--surface); }
+.plan-check.done .box { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.plan-check .stopped { grid-column: 2 / 4; margin-top: -4px; }
+.tenbar { display: inline-grid; grid-template-columns: repeat(10, 1fr); gap: 2px; height: 8px; }
+.tenbar i { background: var(--sunken); border-radius: 2px; }
+.tenbar i.on { background: var(--accent); }
+.plan-foot-acts { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+.plan-here { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 8px; display: grid; gap: 4px; }
+.plan-reading-row { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg); }
+
+/* Reading: the plan going now, Past plans, and the map (R13, R16) */
+.reading-back { margin-bottom: 6px; }
+.rd-layers { display: inline-flex; gap: 6px; margin: 8px 0; }
+.rd-map { display: grid; gap: 6px; }
+.rd-book { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: start; }
+.rd-book-name { font: var(--type-small); color: var(--muted); padding-top: 1px; }
+.rd-chs { display: flex; flex-wrap: wrap; gap: 2px; }
+.rd-ch { width: 10px; height: 10px; border-radius: 2px; background: var(--sunken); border: 0; padding: 0; cursor: pointer; }
+.rd-ch.t1 { background: color-mix(in srgb, var(--accent) 45%, var(--sunken)); }
+.rd-ch.t2 { background: color-mix(in srgb, var(--accent) 70%, var(--sunken)); }
+.rd-ch.t3 { background: var(--accent); }
+.rd-ch.w1 { background: color-mix(in srgb, var(--hl-orange, #e0a040) 50%, var(--sunken)); }
+.rd-ch.w2 { background: var(--hl-orange, #e0a040); }
+.rd-ch.sel { outline: 2px solid var(--fg); }
+.rd-list { margin-top: 10px; display: grid; gap: 4px; }
+
+/* starting a plan: the kinds as cards (R14), and Horner's lists side by side (R12) */
+.plan-kinds { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.plan-kind { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg); }
+.plan-kind.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.plan-kind-name { font: var(--type-small-strong); }
+.plan-lists { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 12px 0; }
+.plan-list { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; align-content: start; }
+.plan-list-books { font: var(--type-small-strong); }
+@media (max-width: 640px) { .plan-kinds { grid-template-columns: 1fr; } .plan-lists { grid-template-columns: repeat(2, 1fr); } }

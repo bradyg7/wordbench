@@ -14,6 +14,7 @@ import {
   openMarked, openNear, openPlace, openPassage, openPlans, openSearch, openShelf, openStrong, openThread, openThreads, openToday, openUses,
 } from './panes';
 import { setHover } from './ui';
+import { openReading } from './reading';
 import { hooks } from './toolbar';
 import { noteLine } from './trail';
 import { addFinding, openFindings } from './findings';
@@ -486,7 +487,7 @@ async function applyLayout(a: any): Promise<string> {
   return `Layout ${a.name}`;
 }
 
-const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'wordcard', 'marked', 'plans', 'settings', 'concordance']);
+const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'wordcard', 'marked', 'plans', 'reading', 'settings', 'concordance']);
 export function canReopen(key: string) { return reopenKinds.has(key.startsWith('doc:') ? 'doc' : key.split('|')[0]); }
 
 /** Minimized links whose title or kind starts with or holds `name`; `minimized` or `all` is every one. */
@@ -517,7 +518,7 @@ export async function reopen(key: string) {
     documents: () => openDocuments(),
     doc: () => previewDoc({ id: x[0], name: x[1] || x[0] }),
     versecard: () => openCardPane(x[0], x[0]), wordcard: () => openWordPane(x[0]), near: () => openNear(x[0], x[1], +x[2], x[3]),
-    marked: () => openMarked(x[0], x[1], x[2]), plans: () => openPlans(), settings: () => openSettings(),
+    marked: () => openMarked(x[0], x[1], x[2]), plans: () => openPlans(), reading: () => void openReading(), settings: () => openSettings(),
   };
   if (!f[kind]) throw new Error(`This pane cannot be reopened: ${key}`);
   await f[kind]();
