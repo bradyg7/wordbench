@@ -200,9 +200,13 @@ Lines marked `(desk)` are ticked by the desk check. Each is built or mapped to w
   Reading holds the plan going now, Past plans (how far each got, Use again), and the map with its two layers (Read, Written about;
   Written about counts every reference to a chapter: pages, places in pages, questions, highlights, folders); a click on a chapter lists them,
   and opens the chapter. A part-read chapter is drawn part filled. The pane no longer has Past plans or What you have read.
-- [ ] **RP-20** Rust and WebKit tests for each line above (`cargo test -j 2 --no-fail-fast`; `npm run test:webkit`), and a desk case (`measure/desk.mjs`) that
+- [x] **RP-20** Rust and WebKit tests for each line above (`cargo test -j 2 --no-fail-fast`; `npm run test:webkit`), and a desk case (`measure/desk.mjs`) that
   marks a part, reads on from the strip, and sees the counter. (desk)
-- [ ] **RP-21** The reader's place is kept: Read, the strip, Mark read · next and Reading each return to the verse the reader was on. (desk)
+- [x] **RP-21** The reader's place is kept: Read, the strip, Mark read · next and Reading each return to the verse the reader was on. (desk)
+
+## Evidence (2026-11-17)
+
+`node measure/desk.mjs --reading-plans` on a scratch copy (debug app): 7 of 7 checks passed: part marked from the verse right click (read_to 9, margin line), `Day 4 of 12 · 4 days behind`, `read to v. 9` in the checklist, Read opened Numbers 8 with the strip, `Mark read · next: Numbers 9` arrived at Numbers 9, the strip chip went to Numbers 8, Reading and ‹ Plan left the reader at Numbers 25 (same scroll).
 
 ## Open after merge
 
