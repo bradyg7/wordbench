@@ -55,7 +55,7 @@ async function ready(page: Page, at = 'NUM.25') {
 }
 
 async function openPlanPane(page: Page) {
-  await page.evaluate(() => (window as any).__wb.run('plans'));
+  await page.evaluate(() => (window as any).__wb.plans());
   await expect(page.locator('.pane-plans .plan-card')).toHaveCount(1);
 }
 
@@ -78,7 +78,7 @@ test('Read opens the day in the reader with a strip that ticks and goes to any r
   await expect(page.locator('.ch-title')).toHaveText('Numbers 26');
   await expect(strip.locator('.plan-strip-chip.open')).toContainText('Numbers 26');
   // the pane may stay closed; the label opens it
-  await page.evaluate(() => (window as any).__wb.run('close plans'));
+  await page.evaluate(() => { const d = (window as any).__wb.dock(); d.named('plans').forEach((p: any) => d.close(p)); });
   await expect(page.locator('.pane-plans')).toHaveCount(0);
   await strip.locator('.plan-strip-label').click();
   await expect(page.locator('.pane-plans')).toHaveCount(1);
@@ -98,7 +98,7 @@ test('the end of a reading asks, marks only on a click, and goes on', async ({ p
   await expect(card).toHaveCount(0);
   expect(m.read.size).toBe(0);
   // Mark read · next is one step: it marks and opens the next reading
-  await page.evaluate(() => (window as any).__wb.run('go Numbers 24'));
+  await page.evaluate(() => (window as any).__wb.open('NUM', 24));
   await expect(page.locator('.plan-end .plan-end-next')).toBeVisible();
   await page.locator('.plan-end .plan-end-next').click();
   await expect(page.locator('.ch-title')).toHaveText('Numbers 25');
@@ -109,9 +109,9 @@ test('the end of a reading asks, marks only on a click, and goes on', async ({ p
 
 test('on the day’s last reading there is only Mark read and Not now, and nothing follows it', async ({ page }) => {
   const m = fresh();
-  ['NUM.24', 'NUM.25', 'NUM.26', 'NUM.27', 'NUM.28'].forEach(e => m.read.add(e));
+  ['NUM.24', 'NUM.25', 'NUM.27', 'NUM.28', 'NUM.29'].forEach(e => m.read.add(e));
   await mock(page, m);
-  await ready(page, 'NUM.29');
+  await ready(page, 'NUM.26');
   await openPlanPane(page);
   await page.locator('.pane-plans [data-act="read"]').click();
   const last = page.locator('.plan-end');
@@ -120,7 +120,7 @@ test('on the day’s last reading there is only Mark read and Not now, and nothi
   await expect(last.locator('button')).toHaveText(['Mark read', 'Not now']);
   await last.locator('.plan-end-mark').click();
   await expect(last).toHaveCount(0);
-  expect(m.read.has('NUM.29')).toBe(true);
+  expect(m.read.has('NUM.26')).toBe(true);
   // nothing follows: no cheer, no streak, no prompt for the next day
   await expect(page.locator('.plan-end, .toast, .page-deletion')).toHaveCount(0);
   await expect(page.locator('#planstrip .plan-strip-count')).toHaveText('6 of 6');
@@ -165,7 +165,7 @@ test('the pane is a checklist with a counter that shows only when behind, and th
   await expect(card.getByText('What should happen?')).toHaveCount(0);
   // behind: one count in the quiet line, no prompt, no choices
   m.behind = 2;
-  await page.evaluate(() => (window as any).__wb.run('close plans'));
+  await page.evaluate(() => { const d = (window as any).__wb.dock(); d.named('plans').forEach((p: any) => d.close(p)); });
   await openPlanPane(page);
   await expect(page.locator('.pane-plans .plan-where')).toHaveText('Day 2 of 365 · 2 days behind');
   await expect(page.locator('.pane-plans .plan-where')).not.toHaveCSS('color', 'rgb(255, 0, 0)');
@@ -177,7 +177,7 @@ test('the pane is a checklist with a counter that shows only when behind, and th
   await page.keyboard.press('Escape');
   // Go on: and Mark the day read
   m.read.add('NUM.24');
-  await page.evaluate(() => (window as any).__wb.run('close plans'));
+  await page.evaluate(() => { const d = (window as any).__wb.dock(); d.named('plans').forEach((p: any) => d.close(p)); });
   await openPlanPane(page);
   await expect(page.locator('.pane-plans [data-act="read"]')).toHaveText('Go on: Numbers 25');
   await page.locator('.pane-plans [data-act="mark-day"]').click();
@@ -209,8 +209,8 @@ test('Reading holds past plans and the map, and the plan pane keeps one row that
   const pane = page.locator('.pane-reading');
   await expect(pane).toBeVisible();
   await expect(pane.locator('.reading-going')).toHaveCount(1);
-  await expect(pane.locator('.plan-past-row')).toContainText('Old plan');
-  await expect(pane.locator('.plan-past-row button', { hasText: 'Use again' })).toBeVisible();
+  await expect(pane.locator('.plan-past-list .plan-past-row')).toContainText('Old plan');
+  await expect(pane.locator('.plan-past-list .plan-past-row button', { hasText: 'Use again' })).toBeVisible();
   // the map: two layers; a chapter read in part is part filled
   await expect(pane.locator('[data-layer="read"]')).toHaveClass(/\bon\b/);
   const part = pane.locator('.rd-ch[data-ch="NUM.25"]');
@@ -266,7 +266,7 @@ test('Listen asks Mark read through the same step as the strip', async ({ page }
   });
   await ready(page, 'NUM.26');
   await openPlanPane(page);
-  await page.evaluate(() => { (window as any).__wb.run('listen Numbers 26'); });
+  await page.evaluate(() => { (window as any).__wb.run('listen Numbers 26:1'); });
   for (let i = 0; i < 80; i++) {
     const done = await page.evaluate(() => {
       const u = (window as any).__speech.utterances;

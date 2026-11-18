@@ -5,7 +5,8 @@
 import { wb } from './api';
 import type { Drawn } from './reader';
 import { app, goTo } from './app';
-import { toast } from './sheets';
+import { compact, toast } from './sheets';
+import { dock } from './panes';
 import { button, h } from './ui';
 
 /** One reading of the day, as the strip and the pane's checklist show it. */
@@ -63,6 +64,8 @@ export async function startDay(id: string, dayNo?: number, entry?: string) {
   if (!d) return;
   day = d; hidden = false;
   drawStrip();
+  // on a phone the pane covers the reader: Read leaves it and opens the reading
+  if (compact()) dock.named('plans').forEach(p => dock.close(p));
   const first = (entry && d.readings.find(r => r.entry === entry)) || d.readings.find(r => !r.read) || d.readings[0];
   if (first) goTo(first.entry);
 }
