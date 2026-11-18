@@ -60,8 +60,8 @@ One word per thing. A builder never uses a retired word in the window.
 | Shelf | Unsorted | L-5 |
 | saved list | view | settings S5 |
 
-**Open:** the study `trails/` files (questions to follow up) need a home now that "trail" means history. Proposal:
-they are questions, and fold into Questions.
+**Decided (the person, 2026-11-18):** the study `trails/` files (questions to follow up) fold into Questions; `wb trail`
+and `trails/` are read and moved forward by a designed, backed-up move with the person's go-ahead.
 
 ## Search
 
