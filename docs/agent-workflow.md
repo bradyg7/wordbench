@@ -18,7 +18,7 @@ After each builder reports, the overseer starts a `reviewer` on the diff against
 
 ## Machine load
 
-One builder at a time (the person, 2026-11-17: feature by feature, never many at once). A builder has the machine to itself, so it may build the Tauri app and run the desk and measure checks itself; start the next builder only when the last one has finished and passed review. Each uses `-j 2`. Never merge a partial build as a plan: a feature merges when every line is ticked, or when the one remaining blocker is named and is the person's.
+One builder at a time (the person, 2026-11-17: feature by feature, never many at once). A builder has the machine to itself, so it may build the Tauri app and run the desk and measure checks itself; start the next builder only when the last one has finished and passed review. Each uses `-j 2` and builds into the shared target folder (`$env:CARGO_TARGET_DIR = 'C:\Users\brady\cargo-target\wb'`; see [build-speed.md](build-speed.md)), so a new worktree's first build takes about 85 s instead of 15 minutes. Never merge a partial build as a plan: a feature merges when every line is ticked, or when the one remaining blocker is named and is the person's.
 
 ## Open after merge
 
