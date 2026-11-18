@@ -37,4 +37,4 @@ A worktree and its local branch are removed only when its work is on `origin/mai
 
 ## Waiting on a build
 
-Builders never wait with `timeout`/`until`/`sleep` loops. A long command is started with `run_in_background`, and the builder does other work or looks at its log once; one wait is at most 45 seconds. (2026-11-17: one builder made 347 such loops, and three runs were stopped by the 600 s stall watchdog.)
+Builders never wait by polling (no `timeout`/`until`/`sleep` loops, no repeated sleep-and-tail calls). A long command is started with `run_in_background`; the builder does other work, and when nothing is left it ends its turn with a one-line note. The harness resumes it when the command finishes. (2026-11-17: one builder made 347 wait loops and three runs were stopped by the 600 s stall watchdog; the marks builder then waited this way for about 30 minutes, resumed each time, and finished.)
