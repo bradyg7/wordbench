@@ -1,6 +1,7 @@
 # Puts the latest release build where the person's own app runs from (%LOCALAPPDATA%\bible-workbench-rs\app), so a
 # rebuild reaches the app used for daily study:
-#   npx tauri build --no-bundle
+#   npm run build; cargo build --release -j 2 -p wb-cli -p bible-workbench -F tauri/custom-protocol
+#   (or npx tauri build --no-bundle, then cargo build --release -p wb-cli: slower, compiles the shared crates twice)
 #   powershell -ExecutionPolicy Bypass -File scripts\install-app.ps1
 # It refuses while that app is open (close the window first). It copies files only (the two programs and, when it has
 # changed, the Bible database); no study folder is touched, and it does not start the app or say which study folder it opens.
@@ -13,7 +14,7 @@ if ($open) { Write-Output "The app is open (process $($open.Id)). Close its wind
 New-Item -ItemType Directory -Force $dest | Out-Null
 foreach ($f in "bible-workbench.exe", "wb.exe") {
     $src = Join-Path $repo "target\release\$f"
-    if (-not (Test-Path $src)) { Write-Output "No ${src}: build first (npx tauri build --no-bundle; cargo build --release -p wb-cli)."; exit 1 }
+    if (-not (Test-Path $src)) { Write-Output "No ${src}: build first (npm run build; cargo build --release -j 2 -p wb-cli -p bible-workbench -F tauri/custom-protocol)."; exit 1 }
     Copy-Item $src $dest -Force
 }
 # The Bible database goes beside the program (datasets\workbench.db), as in the buyer's package, so the app finds it
