@@ -257,10 +257,12 @@ test('floating: at 320 px the counts wrap whole and the pane does not cover the 
   await openPane(page, 'One', 'left');
   await page.evaluate(() => { const d = (window as any).__wb.dock(); d.move(d.find('One'), 'float'); });
   await expect(page.locator('.dock-float')).toHaveCount(1);
+  let checked = 0;
   for (const v of [11, 5]) {
     await page.locator(`.vn[data-v="${v}"]`).scrollIntoViewIfNeeded();
     const mark = page.locator(`.mg-mark[data-v="${v}"], .mg-dot[data-v="${v}"]`);
     if (!(await mark.count())) continue;
+    checked++;
     await mark.first().click();
     const panel = page.locator('.mg-panel');
     await expect(panel).toBeVisible();
@@ -275,4 +277,5 @@ test('floating: at 320 px the counts wrap whole and the pane does not cover the 
     expect(touching).toBeFalsy();
     await page.locator('.mg-close').click();
   }
+  expect(checked).toBeGreaterThan(0);
 });

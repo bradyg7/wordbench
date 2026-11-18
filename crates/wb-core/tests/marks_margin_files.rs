@@ -75,3 +75,46 @@ fn deleting_or_restoring_a_margin_note_refreshes_the_page_that_shows_it() {
     margin::restore(&b, &mut st, &id).unwrap();
     assert_eq!(names(&st), vec![page], "restored: named again");
 }
+
+#[test]
+fn same_length_edits_back_to_back_lose_nothing() {
+    let Some(b) = bible() else { return };
+    let t = Scratch::new();
+    let mut st = Store::open(t.path()).unwrap();
+    let a = margin::add(&b, &mut st, "Num 25:11", "aaaa", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    let c = margin::add(&b, &mut st, "Num 25:12", "cccc", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    // two edits of one chapter in a row, each the same length as before: both stay
+    margin::edit(&b, &mut st, &a, "bbbb").unwrap();
+    margin::edit(&b, &mut st, &c, "dddd").unwrap();
+    margin::edit(&b, &mut st, &a, "eeee").unwrap();
+    let all = margin::all(&b, &st);
+    assert_eq!(all.iter().find(|n| n.id == a).unwrap().text, "eeee");
+    assert_eq!(all.iter().find(|n| n.id == c).unwrap().text, "dddd");
+    let text = std::fs::read_to_string(chapter_file(&t, "NUM", 25)).unwrap();
+    assert!(text.contains("eeee") && text.contains("dddd") && text.ends_with("\n") && !text.ends_with("\n\n"), "{text}");
+}
+
+#[test]
+fn an_edit_in_place_with_the_same_size_and_time_is_not_overwritten() {
+    let Some(b) = bible() else { return };
+    let t = Scratch::new();
+    let mut st = Store::open(t.path()).unwrap();
+    let a = margin::add(&b, &mut st, "Num 25:11", "aaaa", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    let c = margin::add(&b, &mut st, "Num 25:12", "cccc", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    margin::all(&b, &st);
+    // another process changes "aaaa" to "zzzz" in place and puts the file's time back as it was
+    let p = chapter_file(&t, "NUM", 25);
+    let before = std::fs::metadata(&p).unwrap().modified().unwrap();
+    let text = std::fs::read_to_string(&p).unwrap();
+    std::fs::write(&p, text.replace("aaaa", "zzzz")).unwrap();
+    std::fs::OpenOptions::new().write(true).open(&p).unwrap().set_modified(before).unwrap();
+    assert_eq!(std::fs::metadata(&p).unwrap().len() as usize, text.len());
+    // the next edit, of the other note, starts from the file as it is: the hand edit stays
+    margin::edit(&b, &mut st, &c, "yyyy").unwrap();
+    let after = std::fs::read_to_string(&p).unwrap();
+    assert!(after.contains("zzzz") && after.contains("yyyy") && !after.contains("aaaa"), "{after}");
+    // and a plain same-size change a moment later is seen by the listing too
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    std::fs::write(&p, after.replace("zzzz", "xxxx")).unwrap();
+    assert_eq!(margin::all(&b, &st).iter().find(|n| n.id == a).unwrap().text, "xxxx");
+}

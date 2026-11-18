@@ -37,7 +37,7 @@ const INTERNAL: &[&str] = &[
     // pages and blocks (W3): the text of a page as blocks, the pieces of wb page and wb block; the store's fields
     "split", "set", "insert", "move_block", "check", "retitle", "find_note", "set_fields",
     // scripture blocks (W4): a fence read and written, pieces of wb page scripture and wb block scripture
-    "scripture_fence", "scripture_fence_text", "jot_fence",
+    "scripture_fence", "scripture_fence_text", "pages.rs:jot_fence",
     // marks (MK-17): the margin's file forms and places, the verse index and the pencil's list: pieces of wb margin, wb page overview and wb hl pencil
     // (named by file, so a public `all` or `list` elsewhere cannot hide behind them)
     "margin.rs:from_place", "margin.rs:at_of", "margin.rs:all", "margin.rs:rows", "margin.rs:add_dots", "margin.rs:kind", "margin.rs:covers", "margin.rs:held",

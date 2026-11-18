@@ -217,22 +217,33 @@ fn parse_full(text: &str) -> (String, Vec<Note>) {
 }
 
 type Sig = (std::time::SystemTime, u64);
-/// Chapter files already read, by path: a file is read again only when its time or size changed (a search over every margin
-/// note stats the files and parses none that are as they were).
-static READ: std::sync::Mutex<Option<HashMap<PathBuf, (Sig, Vec<Note>)>>> = std::sync::Mutex::new(None);
+/// Chapter files already parsed, by path and by a hash of what the file holds: a file's text is always read (an edit that keeps
+/// the same time and size, by hand or by another process, is still seen), and only the parse is skipped when the text is as
+/// it was.
+static READ: std::sync::Mutex<Option<HashMap<PathBuf, (u64, Vec<Note>)>>> = std::sync::Mutex::new(None);
+
+fn hash_of(text: &str) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut h);
+    h.finish()
+}
 
 fn read_path(p: &Path) -> Vec<Note> {
-    let Ok(meta) = std::fs::metadata(p) else { return vec![] };
-    let sig = (meta.modified().unwrap_or(std::time::UNIX_EPOCH), meta.len());
+    let Ok(text) = std::fs::read_to_string(p) else {
+        READ.lock().unwrap_or_else(|e| e.into_inner()).as_mut().map(|m| m.remove(p));
+        return vec![];
+    };
+    let hash = hash_of(&text);
     let mut guard = READ.lock().unwrap_or_else(|e| e.into_inner());
     let map = guard.get_or_insert_with(HashMap::new);
-    if let Some((s0, notes)) = map.get(p) {
-        if *s0 == sig {
+    if let Some((h0, notes)) = map.get(p) {
+        if *h0 == hash {
             return notes.clone();
         }
     }
-    let notes = std::fs::read_to_string(p).map(|t| parse_file(&t)).unwrap_or_default();
-    map.insert(p.to_path_buf(), (sig, notes.clone()));
+    let notes = parse_file(&text);
+    map.insert(p.to_path_buf(), (hash, notes.clone()));
     notes
 }
 
@@ -261,8 +272,9 @@ fn write_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, mut notes
         out += &n.render(bible);
         out.push('\n');
     }
-    write_atomic(&p, out.trim_end_matches('\n'))?;
-    write_atomic(&p, &(out.trim_end_matches('\n').to_string() + "\n"))
+    write_atomic(&p, &(out.trim_end_matches('\n').to_string() + "\n"))?;
+    READ.lock().unwrap_or_else(|e| e.into_inner()).as_mut().map(|m| m.remove(&p));
+    Ok(())
 }
 
 /// Every chapter file of the margin: (book code, chapter, path), in the Bible's order of codes' files.
@@ -293,7 +305,9 @@ fn book_order(bible: &Bible, code: &str) -> u32 {
 }
 
 /// Every margin note, in the Bible's order, kept while the margin's folders and files are as they were (each one's time and size
-/// are looked at on every call, so another process's `wb margin` write is seen at once): the one search and the Library's counts
+/// are looked at on every call, so another process's `wb margin` write is seen at once; the limit: an edit in place that keeps
+/// both the size and the file's time to the tick is not seen until something else changes, though every edit made through
+/// `wb margin` reads the file's text itself, never this snapshot): the one search and the Library's counts
 /// go over all of them. A note this process writes drops it too.
 struct Snap {
     root: PathBuf,
