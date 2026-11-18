@@ -123,6 +123,21 @@ pub fn write_atomic(path: &Path, text: &str) -> Result<()> {
     Ok(())
 }
 
+/// `write_atomic` with a temp name of its own for each write (the process and a counter), so two writers of one file never share
+/// a temp file: the later rename wins whole, and neither's text is half of the other's. Used for the margin's chapter files.
+pub fn write_atomic_unique(path: &Path, text: &str) -> Result<()> {
+    static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir)?;
+    }
+    let tmp = path.with_file_name(format!("{}.{}.{}.tmp", path.file_name().unwrap().to_string_lossy(), std::process::id(), N.fetch_add(1, std::sync::atomic::Ordering::SeqCst)));
+    if let Err(e) = fs::write(&tmp, text).and_then(|_| fs::rename(&tmp, path)) {
+        let _ = fs::remove_file(&tmp);
+        return Err(e.into());
+    }
+    Ok(())
+}
+
 pub fn s(r: &Rec, k: &str) -> String {
     match r.get(k) {
         Some(Value::String(v)) => v.clone(),

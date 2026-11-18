@@ -29,7 +29,7 @@ use crate::pageindex;
 use crate::pages::{chars, jot_fence, split, sub};
 use crate::places::{parse_span, span_label, Span};
 use crate::questions::{question_md, question_of};
-use crate::store::{bad, guard, missing, new_id, places_of, s, write_atomic, Store};
+use crate::store::{write_atomic_unique, bad, guard, missing, new_id, places_of, s, write_atomic, Store};
 use crate::Result;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -251,30 +251,46 @@ fn read_chapter(root: &Path, code: &str, chapter: u32) -> Vec<Note> {
     read_path(&file(root, code, chapter))
 }
 
-fn write_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, mut notes: Vec<Note>) -> Result<()> {
+/// Change one chapter's file: read its text, let `f` change the notes, write the result. Two writers (the window and a `wb`
+/// call, or two calls) may both have read the file: the text is hashed again just before the write, and when it is no longer
+/// what `f` was given, the edit is made again on the new text (five tries), so neither writer's note is dropped.
+fn update_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, f: &mut dyn FnMut(&mut Vec<Note>) -> Result<()>) -> Result<()> {
     guard(root)?;
-    forget_snapshot();
     let p = file(root, code, chapter);
-    let preface = std::fs::read_to_string(&p).map(|t| parse_full(&t).0).unwrap_or_default();
-    if notes.is_empty() && preface.is_empty() {
-        if p.exists() {
-            std::fs::remove_file(&p)?;
+    for _ in 0..5 {
+        let text = std::fs::read_to_string(&p).unwrap_or_default();
+        let seen = hash_of(&text);
+        let (preface, mut notes) = parse_full(&text);
+        f(&mut notes)?;
+        forget_snapshot();
+        if notes.is_empty() && preface.is_empty() {
+            if std::fs::read_to_string(&p).map(|t| hash_of(&t)).unwrap_or(hash_of("")) != seen {
+                continue;
+            }
+            if p.exists() {
+                std::fs::remove_file(&p)?;
+            }
+            READ.lock().unwrap_or_else(|e| e.into_inner()).as_mut().map(|m| m.remove(&p));
+            return Ok(());
         }
+        notes.sort_by(|a, b| (a.at.v1, a.at.v2, &a.written, &a.id).cmp(&(b.at.v1, b.at.v2, &b.written, &b.id)));
+        let name = bible.books().iter().find(|b| b.code == code).map(|b| b.name.clone()).unwrap_or_else(|| code.into());
+        let mut out = format!("---\nbook: \"{code}\"\nchapter: {chapter}\n---\n\n# {name} {chapter}\n\n");
+        if !preface.is_empty() {
+            out += &format!("{preface}\n\n");
+        }
+        for n in &notes {
+            out += &n.render(bible);
+            out.push('\n');
+        }
+        if std::fs::read_to_string(&p).map(|t| hash_of(&t)).unwrap_or(hash_of("")) != seen {
+            continue;
+        }
+        write_atomic_unique(&p, &(out.trim_end_matches('\n').to_string() + "\n"))?;
+        READ.lock().unwrap_or_else(|e| e.into_inner()).as_mut().map(|m| m.remove(&p));
         return Ok(());
     }
-    notes.sort_by(|a, b| (a.at.v1, a.at.v2, &a.written, &a.id).cmp(&(b.at.v1, b.at.v2, &b.written, &b.id)));
-    let name = bible.books().iter().find(|b| b.code == code).map(|b| b.name.clone()).unwrap_or_else(|| code.into());
-    let mut out = format!("---\nbook: \"{code}\"\nchapter: {chapter}\n---\n\n# {name} {chapter}\n\n");
-    if !preface.is_empty() {
-        out += &format!("{preface}\n\n");
-    }
-    for n in &notes {
-        out += &n.render(bible);
-        out.push('\n');
-    }
-    write_atomic(&p, &(out.trim_end_matches('\n').to_string() + "\n"))?;
-    READ.lock().unwrap_or_else(|e| e.into_inner()).as_mut().map(|m| m.remove(&p));
-    Ok(())
+    Err(bad(format!("The margin's file for {code} {chapter} kept changing while it was being written. Nothing was lost; try again.")))
 }
 
 /// Every chapter file of the margin: (book code, chapter, path), in the Bible's order of codes' files.
@@ -460,19 +476,23 @@ pub fn add(bible: &Bible, store: &mut Store, place: &str, text: &str, question: 
     let at = At::from_place(bible, place)?;
     let body = if question && question_of(text).is_none() { question_md(false, text) } else { text.trim_matches('\n').to_string() };
     let note = Note { id: stamped_id(), at: at.clone(), text: body, written: today(), words: words.trim().to_string() };
-    let mut notes = read_chapter(&store.root, &at.code, at.c);
-    notes.push(note.clone());
-    write_chapter(bible, &store.root, &at.code, at.c, notes)?;
+    update_chapter(bible, &store.root, &at.code, at.c, &mut |notes| {
+        notes.push(note.clone());
+        Ok(())
+    })?;
     Ok(note_json(bible, &note, &HashMap::new()))
 }
 
-fn change(bible: &Bible, store: &mut Store, id: &str, f: impl FnOnce(&mut Note) -> Result<()>) -> Result<Value> {
+fn change(bible: &Bible, store: &mut Store, id: &str, f: impl Fn(&mut Note) -> Result<()>) -> Result<Value> {
     let found = find(bible, store, id)?;
-    let mut notes = read_chapter(&store.root, &found.at.code, found.at.c);
-    let n = notes.iter_mut().find(|n| n.id == found.id).ok_or_else(|| missing("That note is gone."))?;
-    f(n)?;
-    let after = n.clone();
-    write_chapter(bible, &store.root, &found.at.code, found.at.c, notes)?;
+    let mut after: Option<Note> = None;
+    update_chapter(bible, &store.root, &found.at.code, found.at.c, &mut |notes| {
+        let n = notes.iter_mut().find(|n| n.id == found.id).ok_or_else(|| missing("That note is gone."))?;
+        f(n)?;
+        after = Some(n.clone());
+        Ok(())
+    })?;
+    let after = after.ok_or_else(|| missing("That note is gone."))?;
     Ok(note_json(bible, &after, &jot_map(store)))
 }
 
@@ -509,9 +529,14 @@ pub fn rm(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
     let found = find(bible, store, id)?;
     guard(&store.root)?;
     let stamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
-    write_atomic(&store.root.join(".trash").join(format!("{stamp}-{}.md", found.id)), &found.render(bible))?;
-    let notes: Vec<Note> = read_chapter(&store.root, &found.at.code, found.at.c).into_iter().filter(|n| n.id != found.id).collect();
-    write_chapter(bible, &store.root, &found.at.code, found.at.c, notes)?;
+    let trash = store.root.join(".trash").join(format!("{stamp}-{}.md", found.id));
+    update_chapter(bible, &store.root, &found.at.code, found.at.c, &mut |notes| {
+        // the copy in the trash is the note as the file holds it now, not as the listing last saw it
+        let at = notes.iter().position(|n| n.id == found.id).ok_or_else(|| missing("That note is gone."))?;
+        write_atomic(&trash, &notes[at].render(bible))?;
+        notes.remove(at);
+        Ok(())
+    })?;
     refresh_pages(store, &found.id);
     Ok(json!({"removed": found.id, "at": found.at.id(), "undo": format!("wb margin restore {}", found.id)}))
 }
@@ -527,9 +552,10 @@ pub fn restore(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
     if find(bible, store, id).is_ok() {
         return Err(bad("That note is already in the margin."));
     }
-    let mut notes = read_chapter(&store.root, &n.at.code, n.at.c);
-    notes.push(n.clone());
-    write_chapter(bible, &store.root, &n.at.code, n.at.c, notes)?;
+    update_chapter(bible, &store.root, &n.at.code, n.at.c, &mut |notes| {
+        notes.push(n.clone());
+        Ok(())
+    })?;
     std::fs::remove_file(p)?;
     refresh_pages(store, &n.id);
     Ok(note_json(bible, &n, &jot_map(store)))

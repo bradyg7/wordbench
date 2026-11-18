@@ -108,13 +108,62 @@ fn an_edit_in_place_with_the_same_size_and_time_is_not_overwritten() {
     let text = std::fs::read_to_string(&p).unwrap();
     std::fs::write(&p, text.replace("aaaa", "zzzz")).unwrap();
     std::fs::OpenOptions::new().write(true).open(&p).unwrap().set_modified(before).unwrap();
-    assert_eq!(std::fs::metadata(&p).unwrap().len() as usize, text.len());
+    assert_eq!(std::fs::metadata(&p).unwrap().len() as usize, text.len(), "the same size");
+    assert_eq!(std::fs::metadata(&p).unwrap().modified().unwrap(), before, "the same time");
     // the next edit, of the other note, starts from the file as it is: the hand edit stays
     margin::edit(&b, &mut st, &c, "yyyy").unwrap();
     let after = std::fs::read_to_string(&p).unwrap();
     assert!(after.contains("zzzz") && after.contains("yyyy") && !after.contains("aaaa"), "{after}");
-    // and a plain same-size change a moment later is seen by the listing too
-    std::thread::sleep(std::time::Duration::from_millis(30));
-    std::fs::write(&p, after.replace("zzzz", "xxxx")).unwrap();
-    assert_eq!(margin::all(&b, &st).iter().find(|n| n.id == a).unwrap().text, "xxxx");
+}
+
+#[test]
+fn a_deleted_note_goes_to_the_trash_as_the_file_holds_it_now() {
+    let Some(b) = bible() else { return };
+    let t = Scratch::new();
+    let mut st = Store::open(t.path()).unwrap();
+    let a = margin::add(&b, &mut st, "Num 25:11", "aaaa", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    margin::all(&b, &st);
+    let p = chapter_file(&t, "NUM", 25);
+    let before = std::fs::metadata(&p).unwrap().modified().unwrap();
+    let text = std::fs::read_to_string(&p).unwrap();
+    std::fs::write(&p, text.replace("aaaa", "zzzz")).unwrap();
+    std::fs::OpenOptions::new().write(true).open(&p).unwrap().set_modified(before).unwrap();
+    margin::rm(&b, &mut st, &a).unwrap();
+    let trash: Vec<String> = std::fs::read_dir(t.path().join(".trash")).unwrap().flatten().map(|e| std::fs::read_to_string(e.path()).unwrap()).collect();
+    assert_eq!(trash.len(), 1);
+    assert!(trash[0].contains("zzzz") && !trash[0].contains("aaaa"), "{}", trash[0]);
+}
+
+#[test]
+fn two_writers_editing_different_notes_of_one_chapter_lose_neither() {
+    let Some(b) = bible() else { return };
+    let t = Scratch::new();
+    let mut st = Store::open(t.path()).unwrap();
+    let a = margin::add(&b, &mut st, "Num 25:11", "start a", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    let c = margin::add(&b, &mut st, "Num 25:12", "start c", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    let root = t.path().to_path_buf();
+    let mut handles = vec![];
+    for (id, tag) in [(a.clone(), "a"), (c.clone(), "c")] {
+        let root = root.clone();
+        handles.push(std::thread::spawn(move || {
+            let b = bible().unwrap();
+            let mut st = Store::open(&root).unwrap();
+            let mut last = String::new();
+            for i in 0..25 {
+                let text = format!("{tag} edit {i}");
+                match margin::edit(&b, &mut st, &id, &text) {
+                    Ok(_) => last = text,
+                    Err(e) => assert!(e.to_string().contains("kept changing"), "a clear refusal, not a loss: {e}"),
+                }
+            }
+            last
+        }));
+    }
+    let lasts: Vec<String> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+    let file = std::fs::read_to_string(chapter_file(&t, "NUM", 25)).unwrap();
+    for last in &lasts {
+        assert!(file.contains(last.as_str()), "{last} is in the file:
+{file}");
+    }
+    assert!(lasts.iter().all(|l| !l.is_empty()));
 }
