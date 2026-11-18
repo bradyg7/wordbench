@@ -1,0 +1,1241 @@
+diff --git a/crates/wb-core/src/commands.rs b/crates/wb-core/src/commands.rs
+index 3db7aad..54ef13d 100644
+--- a/crates/wb-core/src/commands.rs
++++ b/crates/wb-core/src/commands.rs
+@@ -303,7 +303,7 @@ pub fn find_doc(topic: &str) -> Option<&'static Value> {
+ /// The commands' names, in the manual's order, then the ones new in the Rust app.
+ pub fn command_names() -> Vec<String> {
+     let mut v: Vec<String> = manual()["commands"].as_array().map(|a| a.iter().filter_map(|c| c["name"].as_str().map(String::from)).collect()).unwrap_or_default();
+-    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version", "plans", "findings", "finding"].map(String::from));
++    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version", "plans", "findings", "finding", "focus", "unfocus"].map(String::from));
+     v
+ }
+ 
+@@ -1467,7 +1467,8 @@ pub fn parse(input: &str, books: &[Book]) -> Result<Action, String> {
+         },
+         "findpage" => Action::Findpage { q: a.into() },
+         "panes" => Action::Panes,
+-        "close" | "minimize" | "restore" | "dock" | "float" => {
++        "unfocus" if a.is_empty() => Action::Pane { action: "unfocus".into(), target: "all".into() },
++        "close" | "minimize" | "restore" | "dock" | "float" | "focus" => {
+             if a.is_empty() {
+                 let more = if head == "close" || head == "restore" { format!("all  or  {head} ") } else { String::new() };
+                 return Err(format!("Which pane? Try: {head} {more}occurrences  (panes lists what is open)"));
+@@ -1704,6 +1705,9 @@ mod tests {
+         assert_eq!(p("version ylt"), serde_json::json!({"cmd": "version", "version": "YLT"}));
+         assert_eq!(p("version"), serde_json::json!({"cmd": "version", "version": ""}));
+         assert_eq!(p("plans"), serde_json::json!({"cmd": "plans"}));
++        assert_eq!(p("focus notebook"), serde_json::json!({"cmd": "pane", "action": "focus", "target": "notebook"}));
++        assert_eq!(p("unfocus"), serde_json::json!({"cmd": "pane", "action": "unfocus", "target": "all"}));
++        assert!(parse("focus", &bs).is_err());
+         assert_eq!(p("findings"), serde_json::json!({"cmd": "findings"}));
+         assert_eq!(p("finding Ctrl+F finds only in the reader"), serde_json::json!({"cmd": "finding", "text": "Ctrl+F finds only in the reader"}));
+         assert!(parse("jot", &bs).is_err());
+diff --git a/crates/wb-core/src/mycommands.rs b/crates/wb-core/src/mycommands.rs
+index cebd2c5..a0e398e 100644
+--- a/crates/wb-core/src/mycommands.rs
++++ b/crates/wb-core/src/mycommands.rs
+@@ -32,6 +32,43 @@ fn id_of(name: &str) -> String {
+     out.trim_end_matches('-').to_string()
+ }
+ 
++/// Shared by saved commands (including layout shortcuts) and Notebook capture.
++pub fn normalize_key(value: &str) -> Result<String> {
++    if value.trim().is_empty() { return Ok(String::new()); }
++    let parts: Vec<_> = value.split('+').map(str::trim).collect();
++    let (last, mods) = parts.split_last().ok_or_else(|| bad("Give a key like Ctrl+U."))?;
++    let mut have = Vec::new();
++    for m in mods {
++        let m = match m.to_lowercase().as_str() {
++            "ctrl" | "control" => "Ctrl", "alt" => "Alt", "shift" => "Shift",
++            _ => return Err(bad("A key's modifiers are Ctrl, Alt and Shift.")),
++        };
++        if have.contains(&m) { return Err(bad("A key cannot repeat a modifier.")); }
++        have.push(m);
++    }
++    if last.chars().count() != 1 || !last.chars().all(|c| c.is_ascii_alphanumeric() || ",=\\-".contains(c)) || !have.iter().any(|m| *m == "Ctrl" || *m == "Alt") {
++        return Err(bad("Give a key with Ctrl or Alt and one letter or digit, like Ctrl+U."));
++    }
++    let mut out: Vec<String> = ["Ctrl", "Alt", "Shift"].iter().filter(|m| have.contains(m)).map(|m| m.to_string()).collect();
++    out.push(last.to_uppercase());
++    Ok(out.join("+"))
++}
++
++pub fn check_key(store: &Store, key: &str, command_id: Option<&str>, capture: bool) -> Result<()> {
++    if key.is_empty() { return Ok(()); }
++    let reserved = [("Ctrl+F", "Find"), ("Ctrl+=", "Text size"), ("Ctrl+-", "Text size"), ("Ctrl+0", "Text size"), ("Ctrl+,", "Settings"), ("Ctrl+\\", "Notebook sidebar"), ("Ctrl+Shift+J", "Report a finding")];
++    if let Some((_, name)) = reserved.iter().find(|(k, _)| *k == key) { return Err(bad(format!("{key} is already {name}'s key."))); }
++    if !capture {
++        let settings = store.settings("notebook");
++        let current = settings.get("capture").and_then(Value::as_str).unwrap_or("Ctrl+J");
++        if normalize_key(current).ok().as_deref() == Some(key) { return Err(bad(format!("{key} is already Quick capture's key."))); }
++    }
++    if let Some(other) = list(store).iter().find(|i| Some(g(i, "id").as_str()) != command_id && normalize_key(&g(i, "key")).ok().as_deref() == Some(key)) {
++        return Err(bad(format!("{key} is already {}'s key.", g(other, "name"))));
++    }
++    Ok(())
++}
++
+ /// Keep a command (or change the one with that name): `key` like `Ctrl+U`, `icon` one of the window's icon names.
+ pub fn add(store: &mut Store, name: &str, line: &str, key: &str, icon: &str) -> Result<Value> {
+     let name = name.trim();
+@@ -42,27 +79,14 @@ pub fn add(store: &mut Store, name: &str, line: &str, key: &str, icon: &str) ->
+     if line.is_empty() {
+         return Err(bad("A command needs a line, written as you would type it in the command field."));
+     }
+-    let low = key.trim().to_lowercase();
+-    let key = if let Some(r) = low.strip_prefix("ctrl+") {
+-        format!("Ctrl+{}", r.to_uppercase())
+-    } else if let Some(r) = low.strip_prefix("alt+") {
+-        format!("Alt+{}", r.to_uppercase())
+-    } else if low.is_empty() {
+-        String::new()
+-    } else {
+-        return Err(bad("A key starts with Ctrl+ or Alt+ (Ctrl+U)."));
+-    };
++    let key = normalize_key(key)?;
+     let key = key.as_str();
+     let id = id_of(name);
+     if id.is_empty() {
+         return Err(bad("Give the command a name with a letter or a number in it."));
+     }
+     let mut items = list(store);
+-    if !key.is_empty() {
+-        if let Some(o) = items.iter().find(|i| g(i, "key").eq_ignore_ascii_case(key) && g(i, "id") != id) {
+-            return Err(bad(format!("{key} is already {}'s key.", g(o, "name"))));
+-        }
+-    }
++    check_key(store, key, Some(&id), false)?;
+     let rec = json!({"id": id, "name": name, "line": line, "icon": icon.trim(), "key": key});
+     match items.iter().position(|i| g(i, "id") == id) {
+         Some(p) => items[p] = rec.clone(),
+diff --git a/crates/wb-core/src/notebook.rs b/crates/wb-core/src/notebook.rs
+index 3468cd1..192d21e 100644
+--- a/crates/wb-core/src/notebook.rs
++++ b/crates/wb-core/src/notebook.rs
+@@ -995,31 +995,18 @@ pub fn set_setting(store: &mut Store, key: &str, value: &str) -> Result<Value> {
+     } else {
+         Some(json!(capture_key(v)?))
+     };
++    if key == "capture" {
++        crate::mycommands::check_key(store, new.as_ref().and_then(Value::as_str).unwrap_or("Ctrl+J"), None, true)?;
++    }
+     store.set_setting("notebook", key, new)?;
+     Ok(settings(store))
+ }
+ 
+ /// A key as the window reads it: Ctrl or Alt (and Shift) with one letter or digit: "Ctrl+J", "Ctrl+Shift+K", "Alt+N".
+ fn capture_key(v: &str) -> Result<String> {
+-    let parts: Vec<&str> = v.split('+').map(str::trim).collect();
+-    let (last, mods) = parts.split_last().ok_or_else(|| bad("Give a key like Ctrl+J."))?;
+-    let mut have = vec![];
+-    for m in mods {
+-        let m = match m.to_lowercase().as_str() {
+-            "ctrl" | "control" => "Ctrl",
+-            "alt" => "Alt",
+-            "shift" => "Shift",
+-            _ => return Err(bad("A key's modifiers are Ctrl, Alt and Shift: Ctrl+J.")),
+-        };
+-        have.push(m);
+-    }
+-    let one = last.chars().count() == 1 && last.chars().all(|c| c.is_ascii_alphanumeric());
+-    if !one || !have.iter().any(|m| *m == "Ctrl" || *m == "Alt") {
+-        return Err(bad("Give a key with Ctrl or Alt and a letter or digit, like Ctrl+J."));
+-    }
+-    let mut out: Vec<String> = ["Ctrl", "Alt", "Shift"].iter().filter(|m| have.contains(m)).map(|m| m.to_string()).collect();
+-    out.push(last.to_uppercase());
+-    Ok(out.join("+"))
++    let normalized = crate::mycommands::normalize_key(v)?;
++    if normalized.is_empty() { return Err(bad("Give a key like Ctrl+J.")); }
++    Ok(normalized)
+ }
+ 
+ #[cfg(test)]
+diff --git a/crates/wb-core/tests/layout_shortcuts.rs b/crates/wb-core/tests/layout_shortcuts.rs
+new file mode 100644
+index 0000000..ea0f66a
+--- /dev/null
++++ b/crates/wb-core/tests/layout_shortcuts.rs
+@@ -0,0 +1,36 @@
++mod common;
++use common::Scratch;
++use wb_core::{mycommands as commands, notebook, store::Store};
++
++#[test]
++fn shortcut_modifiers_are_normalized_and_invalid_chords_rejected() {
++    assert_eq!(commands::normalize_key("shift+control+k").unwrap(), "Ctrl+Shift+K");
++    assert_eq!(commands::normalize_key("alt+ctrl+u").unwrap(), "Ctrl+Alt+U");
++    for key in ["U", "Shift+K", "Ctrl+Ctrl+U", "Ctrl+Unknown", "Ctrl+", "Meta+U"] { assert!(commands::normalize_key(key).is_err(), "{key}"); }
++}
++
++#[test]
++fn layout_keys_share_collision_checks_with_commands_and_capture() {
++    let scratch = Scratch::new();
++    let mut store = Store::open(scratch.path()).unwrap();
++    for key in ["Ctrl+F", "Ctrl+J", "Ctrl+,", "Ctrl+\\", "Ctrl+Shift+J", "Ctrl+0"] {
++        assert!(commands::add(&mut store, "Layout: desk", "layout load Desk", key, "").unwrap_err().0.contains("already"));
++    }
++    commands::add(&mut store, "Layout: desk", "layout load Desk", "Ctrl+Shift+K", "").unwrap();
++    assert!(commands::add(&mut store, "Other", "help", "shift+ctrl+k", "").is_err());
++    assert!(notebook::set_setting(&mut store, "capture", "Ctrl+Shift+K").is_err());
++    assert_eq!(commands::list(&store).len(), 1);
++    commands::add(&mut store, "Layout: desk", "layout load Desk", "Alt+U", "").unwrap();
++    notebook::set_setting(&mut store, "capture", "Ctrl+Shift+K").unwrap();
++    assert!(commands::add(&mut store, "Other", "help", "Ctrl+Shift+K", "").is_err());
++}
++
++#[test]
++fn resetting_capture_cannot_steal_a_saved_command_key() {
++    let scratch = Scratch::new();
++    let mut store = Store::open(scratch.path()).unwrap();
++    notebook::set_setting(&mut store, "capture", "Alt+U").unwrap();
++    commands::add(&mut store, "Layout: desk", "layout load Desk", "Ctrl+J", "").unwrap();
++    assert!(notebook::set_setting(&mut store, "capture", "default").is_err());
++    assert_eq!(notebook::settings(&store)["capture"], "Alt+U");
++}
+diff --git a/measure/h05-layout-checks.mjs b/measure/h05-layout-checks.mjs
+new file mode 100644
+index 0000000..bc5e85b
+--- /dev/null
++++ b/measure/h05-layout-checks.mjs
+@@ -0,0 +1,185 @@
++// Isolated Dock/layout contract checks. No Bible or study-folder reads/writes.
++// WB_TOOL_ROOT may point at an existing dependency checkout; it never installs anything.
++import assert from 'node:assert/strict';
++import { fileURLToPath, pathToFileURL } from 'node:url';
++import { resolve } from 'node:path';
++import { readLayout } from '../ui/src/layout-state.ts';
++const root = fileURLToPath(new URL('..', import.meta.url));
++const deps = process.env.WB_TOOL_ROOT || root;
++const { createServer } = await import(pathToFileURL(resolve(deps, 'node_modules/vite/dist/node/index.js')));
++const { chromium, webkit } = await import(pathToFileURL(resolve(deps, 'node_modules/playwright/index.mjs')));
++let checks = 0;
++const check = (name, fn) => { fn(); checks++; console.log(`PASS ${name}`); };
++const legacy = { app: 'bible-workbench-rs', panes: [
++  { key: 'doc|sample|Sample', side: 'float', front: true, rect: { x: 10, y: 60, w: 320, h: 400 } },
++  { key: 'strong|H1', side: 'left', front: true },
++] };
++check('legacy geometry/front migrates and document key normalizes', () => {
++  const s = readLayout(legacy); assert.equal(s.panes[0].key, 'doc:sample'); assert.equal(s.groups[0].front, 'doc:sample'); assert.equal(s.groups[1].side, 'left');
++});
++for (const [name, value] of [
++  ['future version', { ...legacy, version: 3 }], ['Python layout', { app: 'python', panes: [] }],
++  ['duplicate aliases', { ...legacy, panes: [...legacy.panes, { key: 'doc:sample' }] }],
++  ['invalid float bounds', { ...legacy, panes: [{ key: 'help', rect: { x: 0, y: 0, w: -2, h: 1 } }] }],
++  ['missing group member', { ...readLayout(legacy), groups: [{ side: 'left', keys: ['absent'] }] }],
++  ['malformed view state', { ...legacy, panes: [{ key: 'help', view: { scroll: [{ path: [-1], top: 0, left: 0 }] } }] }],
++]) check(`reject ${name}`, () => assert.throws(() => readLayout(value)));
++const port = Number(process.env.WB_UI_PORT || 1865);
++const server = await createServer({ configFile: false, root: resolve(root, 'ui'), cacheDir: resolve(root, 'target/h05-vite-cache'),
++  optimizeDeps: { noDiscovery: true, entries: [] },
++  resolve: { alias: { '@fontsource': resolve(deps, 'node_modules/@fontsource'), '@tauri-apps/api': resolve(deps, 'node_modules/@tauri-apps/api') } },
++  server: { host: '127.0.0.1', port, strictPort: true, fs: { allow: [root, deps] } },
++  plugins: [{ name: 'h05-shell', configureServer(s) { s.middlewares.use('/h05-check', (_req, res) => { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><html style="--bar-h:56px"><head><link rel="stylesheet" href="/tokens.css"><link rel="stylesheet" href="/src/style.css"><link rel="stylesheet" href="/src/desk.css"></head><body><header id="bar" style="height:56px"></header><div id="scroller"></div><div id="host"></div><div id="overlay"></div></body></html>'); }); } }],
++});
++await server.listen();
++try {
++  for (const engine of process.env.WB_BROWSER_CHANNEL ? [chromium] : [chromium, webkit]) {
++    const browser = await engine.launch({ headless: true, ...(process.env.WB_BROWSER_CHANNEL ? { channel: process.env.WB_BROWSER_CHANNEL } : {}) });
++    try {
++      const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
++      await page.goto(`http://127.0.0.1:${port}/h05-check`);
++      const result = await page.evaluate(async () => {
++        const { Dock } = await import('/src/dock.ts');
++        const { readLayout } = await import('/src/layout-state.ts');
++        const d = new Dock(document.getElementById('host'));
++        window.testDock = d;
++        let restores = 0;
++        d.keepPlace = () => () => restores++;
++        const add = (key, side) => d.open('test', key, key, side, (el, p) => {
++          el.innerHTML = '<div style="height:140px;overflow:auto" class="nested"><div style="height:900px">Test content</div></div>';
++          let slide = 7;
++          p.captureView = () => ({ slide }); p.restoreView = state => { slide = state.slide; };
++        });
++        add('a', 'left'); add('b', 'left'); add('c', 'right'); add('d', 'float'); add('e', 'top'); add('f', 'bottom');
++        const saved = readLayout({ app: 'bible-workbench-rs', version: 2,
++          panes: d.snapshot().panes.map(p => ({ ...p, view: { scroll: [{ path: [0], top: 117, left: 0 }], state: { slide: 4 } } })),
++          groups: [
++            { side: 'left', keys: ['a', 'b'], front: 'b', share: 2, strip: 20 },
++            { side: 'left', keys: ['c'], front: 'c', share: 1, min: true },
++            { side: 'float', keys: ['d'], rect: { x: 700, y: 140, w: 350, h: 440 }, z: 12 },
++            { side: 'top', keys: ['e'] }, { side: 'bottom', keys: ['f'] },
++          ], widths: { left: 355, right: 320 }, wide: {}, bands: { top: 160, bottom: 180 }, active: 'b' });
++        await d.restore(saved);
++        const out = d.snapshot();
++        return { out, restores, active: document.activeElement === d.find('b').el, scroll: d.find('b').el.firstElementChild.scrollTop };
++      });
++      check(`${engine.name()}: split groups, tab order/front, bands and float restored`, () => {
++        assert.deepEqual(result.out.groups.map(g => [g.side, g.keys, g.front]), [['left', ['a', 'b'], 'b'], ['left', ['c'], 'c'], ['float', ['d'], 'd'], ['top', ['e'], 'e'], ['bottom', ['f'], 'f']]);
++        assert.equal(result.out.groups[0].share, 2); assert.equal(result.out.groups[1].min, true); assert.equal(result.out.widths.left, 355); assert.equal(result.out.bands.bottom, 180); assert.equal(result.out.groups[2].rect.w, 350);
++      });
++      check(`${engine.name()}: active pane, nested scroll, custom slide state, reader preservation`, () => {
++        assert.equal(result.active, true); assert.equal(result.scroll, 117); assert.ok(result.restores > 0); assert.equal(result.out.panes.find(p => p.key === 'b').view.state.slide, 4);
++      });
++      const rollback = await page.evaluate(async () => {
++        const d = window.testDock, before = d.snapshot(), p = d.find('b'), restore = p.restoreView;
++        const next = structuredClone(before); next.panes = next.panes.filter(p => p.key !== 'f'); next.groups = next.groups.filter(g => !g.keys.includes('f'));
++        p.restoreView = () => { throw new Error('simulated read failure'); };
++        let rejected = false;
++        try { await d.restore(next); } catch { rejected = true; }
++        const oldPaneAlive = !!d.find('f'); p.restoreView = restore; await d.restore(before);
++        return { rejected, oldPaneAlive, restored: d.snapshot().groups.map(g => [g.side, g.keys]) };
++      });
++      check(`${engine.name()}: failed view-state read retains old panes for rollback`, () => {
++        assert.equal(rollback.rejected, true); assert.equal(rollback.oldPaneAlive, true); assert.deepEqual(rollback.restored, result.out.groups.map(g => [g.side, g.keys]));
++      });
++      const focus = await page.evaluate(async () => {
++        const d = window.testDock, p = d.find('b');
++        const input = document.createElement('textarea'); input.value = 'An editor selection'; p.el.append(input); input.focus(); input.setSelectionRange(3, 8);
++        const before = d.snapshot(); d.focusPane(p);
++        const focused = p.el.closest('.dock-focus') !== null;
++        const backgroundInert = document.getElementById('scroller').inert;
++        const sameInput = document.activeElement === input && input.selectionStart === 3 && input.selectionEnd === 8;
++        p.el.firstElementChild.scrollTop = 151;
++        const during = d.snapshot(); d.exitFocus();
++        return { focused, backgroundInert, backgroundRestored: !document.getElementById('scroller').inert, sameInput, before, during, after: d.snapshot(), scroll: p.el.firstElementChild.scrollTop, returned: document.activeElement === input };
++      });
++      check(`${engine.name()}: focus preserves layout, editor identity, selection and reading progress`, () => {
++        assert.equal(focus.focused, true); assert.equal(focus.sameInput, true); assert.equal(focus.returned, true); assert.equal(focus.scroll, 151);
++        assert.equal(focus.backgroundInert, true); assert.equal(focus.backgroundRestored, true);
++        assert.deepEqual(focus.before.groups, focus.during.groups); assert.deepEqual(focus.before.groups, focus.after.groups);
++      });
++      await page.evaluate(() => { const d = window.testDock; d.focusPane(d.find('d')); });
++      await page.keyboard.press('Escape');
++      check(`${engine.name()}: Escape returns a floating pane`, () => {});
++      assert.equal(await page.locator('.dock-focus').isVisible(), false);
++      await page.evaluate(() => { const d = window.testDock; d.focusPane(d.find('b')); d.show(d.find('a')); });
++      check(`${engine.name()}: activating another pane exits focus`, () => {});
++      assert.equal(await page.locator('.dock-focus').isVisible(), false);
++      await page.evaluate(() => {
++        const d = window.testDock; window.keptDrops = 0;
++        const target = document.createElement('div'); target.id = 'external-target'; target.textContent = 'Folder target';
++        Object.assign(target.style, { position: 'fixed', left: '550px', top: '70px', width: '200px', height: '60px', zIndex: '20' }); document.body.append(target);
++        d.externalDrop = (x, y) => x >= 550 && x <= 750 && y >= 70 && y <= 130 ? { label: 'Keep in Folder target', box: { x: 550, y: 70, w: 200, h: 60 }, drop: () => window.keptDrops++ } : null;
++      });
++      const drag = page.locator('.tab-name').filter({ hasText: /^a$/ }).first();
++      await drag.hover();
++      const start = await drag.boundingBox();
++      await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2); await page.mouse.down(); await page.mouse.move(620, 100, { steps: 12 });
++      assert.equal(await page.locator('.drop-label').textContent(), 'Keep in Folder target');
++      await page.mouse.up();
++      check(`${engine.name()}: real pointer drop calls external destination without moving tab`, () => {});
++      assert.equal(await page.evaluate(() => window.keptDrops), 1);
++      assert.equal(await page.evaluate(() => window.testDock.find('a').side), 'left');
++      await drag.hover();
++      await page.mouse.down(); await page.mouse.move(620, 100, { steps: 12 });
++      await page.evaluate(() => document.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true })));
++      await page.mouse.up();
++      check(`${engine.name()}: canceled pointer drag performs no external write`, () => {});
++      assert.equal(await page.evaluate(() => window.keptDrops), 1);
++      await page.setViewportSize({ width: 390, height: 844 });
++      const compact = await page.evaluate(() => window.testDock.snapshot());
++      check(`${engine.name()}: phone presentation preserves saved groups`, () => assert.deepEqual(compact.groups.map(g => [g.side, g.keys]), result.out.groups.map(g => [g.side, g.keys])));
++      // The actual Shelf uses mocked wb responses: no filesystem study data is involved.
++      await page.setViewportSize({ width: 1600, height: 1000 });
++      const folders = ['alpha', 'beta'].map(id => ({ id, name: id, parent: '', depth: 0, folders: [], items: [{ key: 'item-keys', kind: 'pane', label: 'Keys', open: 'keys' }] }));
++      let shelfWrites = 0;
++      await page.route('**/fixtures/wb/*.json', route => {
++        const name = new URL(route.request().url()).pathname.split('/').pop();
++        if (name === 'shelf.json') return route.fulfill({ json: { folders } });
++        const plan = /set-(?:open|show)-(alpha|beta)\.json/.exec(name);
++        if (plan) return route.fulfill({ json: folders.find(f => f.id === plan[1]) });
++        if (name.startsWith('set-add-alpha-')) { shelfWrites++; return route.fulfill({ json: { added: true } }); }
++        return route.fulfill({ json: {} });
++      });
++      await page.goto(`http://127.0.0.1:${port}/h05-check`);
++      const ownership = await page.evaluate(async () => {
++        const panes = await import('/src/panes.ts'); const shelf = await import('/src/shelf.ts');
++        panes.initPanes(document.getElementById('host')); window.shelfDock = panes.dock;
++        const p = shelf.openShelf(); await p.ready;
++        await shelf.openAll('alpha'); await shelf.openAll('beta');
++        const owners = panes.dock.find('keys').owners.map(m => m.set);
++        await shelf.closeAll('alpha'); const sharedRemains = !!panes.dock.find('keys');
++        await shelf.closeAll('beta'); const sharedCloses = !panes.dock.find('keys');
++        const manual = panes.openKeys(); await manual.ready;
++        await shelf.openAll('alpha'); await shelf.closeAll('alpha');
++        const manualRemains = !!panes.dock.find('keys');
++        panes.dock.move(manual, 'left'); panes.dock.show(p);
++        return { owners, sharedRemains, sharedCloses, manualRemains };
++      });
++      check(`${engine.name()}: Shelf shared ownership and preexisting pane preservation`, () => {
++        assert.deepEqual(ownership.owners, ['alpha', 'beta']); assert.equal(ownership.sharedRemains, true); assert.equal(ownership.sharedCloses, true); assert.equal(ownership.manualRemains, true);
++      });
++      const keysTab = page.locator('.tab-name').filter({ hasText: /^Keys$/ });
++      await keysTab.hover();
++      const tab = await keysTab.boundingBox();
++      const folder = await page.locator('.shelf-folder[data-folder="alpha"]').boundingBox();
++      await page.mouse.move(tab.x + tab.width / 2, tab.y + tab.height / 2); await page.mouse.down();
++      await page.mouse.move(folder.x + folder.width / 2, folder.y + folder.height / 2, { steps: 15 });
++      assert.equal(await page.locator('.drop-label').textContent(), 'Keep in alpha');
++      await page.mouse.up();
++      await page.waitForFunction(() => !document.querySelector('.tab-ghost'));
++      await page.waitForTimeout(150);
++      check(`${engine.name()}: real Dock-to-Shelf pointer writes one pointer and retains placement`, () => assert.equal(shelfWrites, 1));
++      assert.equal(await page.evaluate(() => window.shelfDock.find('keys').side), 'left');
++      await page.setViewportSize({ width: 390, height: 844 });
++      await page.evaluate(() => window.shelfDock.show(window.shelfDock.find('shelf')));
++      await page.locator('.shelf-item[data-folder="alpha"] .shelf-more').click();
++      assert.equal(await page.getByText('Move to…', { exact: true }).isVisible(), true);
++      await page.keyboard.press('Escape');
++      await page.locator('.shelf-folder[data-folder="alpha"] .shelf-more').click();
++      assert.equal(await page.getByText('Open all', { exact: true }).count(), 0);
++      check(`${engine.name()}: phone item menu is visible and folder Open All is absent`, () => {});
++    } finally { await browser.close(); }
++  }
++} finally { await server.close(); }
++console.log(`${checks}/${checks} H05 layout checks passed`);
+diff --git a/tests/golden/cases.json b/tests/golden/cases.json
+index 3f41d14..9449db2 100644
+--- a/tests/golden/cases.json
++++ b/tests/golden/cases.json
+@@ -1,4 +1,8 @@
+ [
++ {
++  "name": "known difference: Rust-only focus and unfocus pane relay commands; covered by the Rust command parser tests",
++  "steps": []
++ },
+  {
+   "name": "books",
+   "steps": [
+diff --git a/ui/src/actions.ts b/ui/src/actions.ts
+index b8b361e..9c37bd1 100644
+--- a/ui/src/actions.ts
++++ b/ui/src/actions.ts
+@@ -16,6 +16,9 @@ import { setHover } from './ui';
+ import { hooks } from './toolbar';
+ import { addFinding, openFindings } from './findings';
+ import { KINDS, makeDoc, openDocuments } from './documents';
++import { canonicalKey, readLayout } from './layout-state';
++import { openCardPane } from './verses';
++import { openSettings } from './settings';
+ 
+ // The last write, so `undo` can take it back.
+ type Undo = { kind: 'note'; id: string } | { kind: 'hl'; record: unknown } | { kind: 'trail'; id: string } | { kind: 'thread'; name: string; anchor: string } | { kind: 'jot'; id: string };
+@@ -392,27 +395,59 @@ async function changeSet(a: any): Promise<string> {
+   return `Set ${a.name}: ${a.action}`;
+ }
+ 
+-async function layout(a: any): Promise<string> {
++let layoutQueue: Promise<unknown> = Promise.resolve();
++function layout(a: any): Promise<string> {
++  const next = layoutQueue.then(() => applyLayout(a));
++  layoutQueue = next.catch(() => {});
++  return next;
++}
++async function applyLayout(a: any): Promise<string> {
+   if (a.action === 'list') return `Layouts: ${(await wb(['layout', 'list'])).map((l: any) => l.name ?? l).join(', ') || 'none'}`;
+   if (a.action === 'save') {
+     // kept as the Rust window's own description of its panes (the Python app's dockview layouts are not read)
+-    const panes = dock.describe();
+-    await wb(['layout', 'save', a.name], JSON.stringify({ app: 'bible-workbench-rs', panes }));
+-    return `Layout ${a.name}: ${panes.length} panes`;
++    const saved = dock.snapshot();
++    await wb(['layout', 'save', a.name], JSON.stringify(saved));
++    return `Layout ${a.name}: ${saved.panes.length} panes`;
+   }
+   const shown = await wb(['layout', 'show', a.name]);
+-  const l = shown.layout ?? shown;   // the file holds {name, saved, layout}
+-  if (l.app !== 'bible-workbench-rs') return `${a.name} is a layout from the Python app; this window cannot read it yet.`;
+-  // a layout is the whole arrangement: panes not in it close (Settings stays, so a layout can be applied from there)
+-  const want = new Set<string>(l.panes.map((p: any) => p.key));
+-  for (const p of [...dock.panes]) if (p.key !== 'settings' && !want.has(p.key)) dock.close(p);
+-  for (const p of l.panes) await reopen(p.key);
++  const l = readLayout(shown.layout ?? shown);
++  if (dock.find('notebook')?.el.querySelector('.nb-input, .nb-title-input')) throw new Error('Finish editing the current page before opening a layout. Your arrangement is unchanged.');
++  const unavailable = new Map<string, string>();
++  for (const p of l.panes) {
++    try {
++      if (!canReopen(p.key)) throw new Error('unsupported pane');
++      const [kind, value] = p.key.startsWith('doc:') ? ['doc', p.key.slice(4)] : p.key.split('|');
++      if (kind === 'note' || kind === 'thread') throw new Error('This older page pane now belongs to the Notebook; separate page tabs are not supported yet.');
++      if (kind === 'doc') await wb(['docs', 'preview', value]);
++      else if (kind === 'lesson') await wb(['lesson', 'show', value]);
++    } catch (e) { unavailable.set(p.key, `${p.title || p.key}: ${String(e)}`); }
++  }
++  if (unavailable.size && !confirm(`Some panes cannot be restored:\n${[...unavailable.values()].join('\n')}\n\nOpen the remaining layout? Cancel keeps this arrangement.`)) return 'Layout unchanged';
++  l.panes = l.panes.filter(p => !unavailable.has(p.key));
++  l.groups = l.groups.map(g => ({ ...g, keys: g.keys.filter(k => !unavailable.has(k)) })).filter(g => g.keys.length);
++  for (const g of l.groups) if (!g.keys.includes(g.front!)) g.front = g.keys[0];
++  if (l.active && unavailable.has(l.active)) l.active = undefined;
++  const before = dock.snapshot();
++  try {
++    for (const p of l.panes) { await reopen(p.key); await dock.find(p.key)?.ready; }
++    await dock.restore(l);
++  } catch (e) {
++    // Opening failed before old panes were removed. Restore their arrangement and discard only newly opened panes.
++    await dock.restore(before);
++    throw e;
++  }
+   return `Layout ${a.name}`;
+ }
+ 
++const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'marked', 'plans', 'settings']);
++function canReopen(key: string) { return reopenKinds.has(key.startsWith('doc:') ? 'doc' : key.split('|')[0]); }
++
+ /** A pane brought back from its key (layouts, and a Shelf folder's Open all, whose keys wb set open gives). */
+ export async function reopen(key: string) {
+-  const [kind, ...x] = key.split('|');
++  key = canonicalKey(key);
++  const existing = dock.find(key);
++  if (existing) { dock.show(existing); await existing.ready; return existing; }
++  const [kind, ...x] = key.startsWith('doc:') ? ['doc', key.slice(4)] : key.split('|');
+   const f: Record<string, () => unknown> = {
+     search: () => openSearch(x[0], x[1]), uses: () => openUses(x[0], x[1], x[2], x[3] ? { rendering: x[3] } : {}), def: () => openDefine(x[0]), strong: () => openStrong(x[0]),
+     bdb: () => openBdb(x[0]), count: () => openCount(x[0]), forms: () => openForms(x[0]), lexiconc: () => openLexiconc(x[0]),
+@@ -422,13 +457,24 @@ export async function reopen(key: string) {
+     passage: () => openPassage(x[0].split(';'), x[1], x[0]), reader2: () => app.secondReader(x[0], x[1]), today: () => openToday(x[0]), lesson: () => openLesson(x[0]), findings: () => openFindings(),
+     documents: () => openDocuments(),
+     note: () => openNote(x[0]), doc: () => previewDoc({ id: x[0], name: x[1] || x[0] }),
++    versecard: () => openCardPane(x[0], x[0]), near: () => openNear(x[0], x[1], +x[2], x[3]),
++    marked: () => openMarked(x[0], x[1], x[2]), plans: () => openPlans(), settings: () => openSettings(),
+   };
+-  await f[kind]?.();
++  if (!f[kind]) throw new Error(`This pane cannot be reopened: ${key}`);
++  await f[kind]();
++  const p = dock.find(key);
++  await p?.ready;
++  return p;
+ }
+ 
+ function paneAction(a: any): string {
++  if (a.action === 'unfocus') { dock.exitFocus(); return 'Returned to layout'; }
+   const ps = a.target.toLowerCase() === 'minimized' ? dock.panes.filter(p => dock.isMinimized(p)) : dock.named(a.target);
+   if (!ps.length) return `No pane called “${a.target}” is open.`;
++  if (a.action === 'focus') {
++    if (ps.length !== 1) return `Choose one pane to focus: ${ps.map(p => p.title).join(' · ')}`;
++    dock.focusPane(ps[0]); return `Focused ${ps[0].title}`;
++  }
+   for (const p of ps) {
+     if (a.action === 'close') dock.close(p);
+     else if (a.action === 'float') dock.move(p, 'float');
+diff --git a/ui/src/desk.css b/ui/src/desk.css
+index 043b1f7..2fd4795 100644
+--- a/ui/src/desk.css
++++ b/ui/src/desk.css
+@@ -1024,6 +1024,12 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
+ .shelf-bar-head .ico { color: var(--accent); }
+ .shelf-bar-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .shelf-bar-acts { display: flex; gap: 8px; flex-wrap: wrap; }
++.dock-focus { position: fixed; inset: 56px 0 0; z-index: 25; display: flex; flex-direction: column; background: var(--paper, Canvas); }
++.dock-focus[hidden] { display: none; }
++.dock-focus > .pane { display: block; flex: 1; min-height: 0; overflow: auto; }
++.dock-focus-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--sunken); }
++.dock-focus-button { width: auto; padding-inline: 6px; }
++@media (max-width: 599px) { .shelf-open-all, .dock-focus-button { display: none; } }
+ .shelf-empty { padding: 8px 4px; }
+ .shelf-menu { display: flex; flex-direction: column; gap: 2px; padding: 6px; }
+ .shelf-menu .label { margin: 4px 6px 6px; }
+diff --git a/ui/src/dock.ts b/ui/src/dock.ts
+index f852141..f5bef75 100644
+--- a/ui/src/dock.ts
++++ b/ui/src/dock.ts
+@@ -10,6 +10,7 @@
+ // the place (keepPlace puts the verse at the top back after the reader's size changes).
+ import { h, icon, popMenu, sizeClass } from './ui';
+ import { toast } from './sheets';
++import { captureScroll, restoreScroll, canonicalKey, type LayoutState } from './layout-state';
+ 
+ export type Side = 'left' | 'right' | 'top' | 'bottom' | 'float';
+ type Docked = 'left' | 'right' | 'top' | 'bottom';
+@@ -41,8 +42,12 @@ export interface Pane {
+   /** Draw again from the study folder (after a change). */
+   refresh?: () => void | Promise<void>;
+   onClose?: () => void;
++  ready?: Promise<void>;
++  captureView?: () => unknown;
++  restoreView?: (state: any) => void | Promise<void>;
+   /** Opened by a Shelf folder's Open all (R2): its tab carries the folder's mark, and Close all closes it. */
+   mark?: { set: string; name: string; color: string };
++  owners?: { set: string; name: string; color: string }[];
+ }
+ 
+ /** One tab strip and its panes: a column (or a part of one, when split), a band, or a floating window. */
+@@ -83,6 +88,12 @@ export class Dock {
+   private chips: HTMLElement;
+   private sheet: HTMLElement;
+   private z = 0;
++  private active?: string;
++  private focused: { pane: Pane; returnTo: HTMLElement | null; scroll: ReturnType<typeof captureScroll> } | null = null;
++  private focusHost = h('section', 'dock-focus');
++  private focusInert = new Map<HTMLElement, boolean>();
++  /** External destinations (the Shelf) share the real pointer drag; they never move the pane. */
++  externalDrop?: (x: number, y: number, pane: Pane) => { label: string; box: Rect; drop: () => void } | null;
+   backLabel = () => '';
+   /** Called before the reader's size changes; the function it returns puts the reader back at the same verse. */
+   keepPlace: () => () => void = () => () => {};
+@@ -95,6 +106,8 @@ export class Dock {
+     this.chips = h('div', 'dock-chips');
+     this.sheet = h('section', 'pane-sheet');
+     host.append(this.frames.left, this.frames.right, this.frames.top, this.frames.bottom, this.chips, this.sheet);
++    this.focusHost.hidden = true;
++    host.append(this.focusHost);
+     try {
+       const kept = JSON.parse(localStorage.getItem(STORE) || '{}');
+       if (kept.floatAt?.w) this.floatAt = { w: kept.floatAt.w, h: kept.floatAt.h };
+@@ -112,10 +125,19 @@ export class Dock {
+       if (t.closest?.('.menu, .popover, .hovercard')) return;
+       const g = t.closest?.('.dock-group') as HTMLElement | null;
+       this.origin = g?.dataset.front ? { pane: g.dataset.front, at: performance.now() } : null;
++      if (g?.dataset.front) this.active = this.panes.find(p => p.id === g.dataset.front)?.key;
+       const f = t.closest?.('.dock-float') as HTMLElement | null;
+       if (f) this.raise(f.dataset.group!);
+     }, true);
+     document.addEventListener('keydown', e => { if (!(e.target as Element).closest?.('.dock-group')) this.origin = null; }, true);
++    document.addEventListener('keydown', e => {
++      if (this.focused && ['ArrowLeft', 'ArrowRight'].includes(e.key) && !(e.target as Element).closest?.('.reader2-pane')) {
++        // The hidden main reader must not turn from a focused note or lookup. PDF handles its arrows locally.
++        e.stopImmediatePropagation(); return;
++      }
++      if (e.key !== 'Escape' || !this.focused || e.defaultPrevented || document.querySelector('.menu, .popover, .sheet, .pd-modal, .nb-modal')) return;
++      e.preventDefault(); e.stopImmediatePropagation(); this.exitFocus();
++    });
+   }
+ 
+   private frame(tag: 'aside' | 'section', cls: string, side: Docked) {
+@@ -241,7 +263,7 @@ export class Dock {
+     }
+     const el = h('div', `pane pane-${kind}`);
+     const p: Pane = { id: `p${++seq}`, key, kind, title, side, group: '', el };
+-    p.refresh = () => fill(el, p);
++    p.refresh = () => { p.ready = Promise.resolve(fill(el, p)); return p.ready; };
+     const from = this.origin && performance.now() - this.origin.at < 3000 ? this.panes.find(x => x.id === this.origin!.pane) : undefined;
+     const spot = this.spots[key];
+     const kin = this.panes.find(x => x.kind === kind);
+@@ -258,11 +280,14 @@ export class Dock {
+     else if (kin) this.put(p, this.groupOf(kin));
+     else this.put(p, this.groupOn(side));
+     this.show(p);
+-    Promise.resolve(fill(el, p)).catch(e => { el.replaceChildren(h('p', 'error', String(e))); });
++    p.ready = Promise.resolve(fill(el, p));
++    void p.ready.catch(e => { el.replaceChildren(h('p', 'error', String(e))); });
+     return p;
+   }
+ 
+   show(p: Pane) {
++    if (this.focused && this.focused.pane !== p) this.exitFocus();
++    this.active = p.key;
+     const g = this.groupOf(p);
+     g.front = p.id;
+     g.min = false;
+@@ -290,6 +315,7 @@ export class Dock {
+   }
+ 
+   close(p: Pane) {
++    if (this.focused?.pane === p) this.exitFocus();
+     this.remember(p);
+     this.panes = this.panes.filter(x => x !== p);
+     p.el.remove();
+@@ -410,6 +436,8 @@ export class Dock {
+ 
+   /** Puts every group in its column, band or window, draws the tab strips, and moves the reader over to make room. */
+   layout() {
++    const focusedScroll = this.focused && captureScroll(this.focused.pane.el);
++    const focusEl = this.focused?.pane.el.contains(document.activeElement) ? document.activeElement as HTMLElement : null;
+     const size = sizeClass();
+     this.prune();
+     const at: Record<string, Group[]> = { left: [], right: [], top: [], bottom: [], float: [], sheet: [] };
+@@ -488,6 +516,15 @@ export class Dock {
+     this.room(this.isOpen('left') ? lw : 0, this.isOpen('right') ? rw : 0, th, bh);
+     restore();
+     this.drawSheet(at.sheet.flatMap(g => this.inGroup(g)));
++    if (this.focused) {
++      const p = this.focused.pane;
++      this.focusHost.style.top = `${this.barBottom()}px`;
++      p.el.hidden = false;
++      this.focusHost.append(p.el);
++      this.hideFocusBackground();
++      if (focusedScroll) restoreScroll(p.el, focusedScroll);
++      focusEl?.focus({ preventScroll: true });
++    }
+     requestAnimationFrame(() => this.fitStrips());
+   }
+ 
+@@ -792,6 +829,10 @@ export class Dock {
+       });
+     }
+     tool('minus', 'Minimize', () => this.minimize(fp));
++    const focus = h('button', 'strip-btn dock-focus-button', 'Focus');
++    focus.title = 'Focus pane'; focus.setAttribute('aria-label', `Focus ${fp.title}`);
++    focus.onclick = () => this.focusPane(fp);
++    s.append(focus);
+     if (where === 'float') tool('float', 'Dock it again', () => this.dockAgain(fp));
+     else tool('float', 'Float it', () => this.move(fp, 'float'));
+     tool('x', 'Close these panes', () => list.forEach(p => this.close(p)));
+@@ -809,6 +850,7 @@ export class Dock {
+     const x0 = e.clientX, y0 = e.clientY;
+     let ghost: HTMLElement | null = null, zone: HTMLElement | null = null, label: HTMLElement | null = null, hint: HTMLElement | null = null;
+     let drop: Drop | null = null;
++    let external: ReturnType<NonNullable<Dock['externalDrop']>> = null;
+     this.dragged = false;
+     const move = (m: PointerEvent) => {
+       if (!this.dragged && Math.hypot(m.clientX - x0, m.clientY - y0) < 8) return;
+@@ -824,16 +866,17 @@ export class Dock {
+       }
+       ghost!.style.left = `${m.clientX + 12}px`;
+       ghost!.style.top = `${m.clientY + 8}px`;
+-      drop = this.dropAt(m.clientX, m.clientY, m.shiftKey, p);
+-      zone!.hidden = !drop;
+-      if (!drop) return;
+-      const b = drop.box;
++      external = this.externalDrop?.(m.clientX, m.clientY, p) ?? null;
++      drop = external ? null : this.dropAt(m.clientX, m.clientY, m.shiftKey, p);
++      zone!.hidden = !drop && !external;
++      if (!drop && !external) return;
++      const b = (external ?? drop)!.box;
+       Object.assign(zone!.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.w}px`, height: `${b.h}px` });
+-      zone!.dataset.to = drop.to;
+-      label!.textContent = drop.label;
++      zone!.dataset.to = external ? 'shelf' : drop!.to;
++      label!.textContent = (external ?? drop)!.label;
+     };
+     // the whole document listens while the button is held, so a quick first move off the tab is not lost
+-    const up = () => {
++    const up = (event: PointerEvent) => {
+       document.removeEventListener('pointermove', move);
+       document.removeEventListener('pointerup', up);
+       document.removeEventListener('pointercancel', up);
+@@ -841,7 +884,9 @@ export class Dock {
+       zone?.remove();
+       hint?.remove();
+       document.body.classList.remove('tab-dragging');
+-      if (this.dragged && drop) this.drop(p, drop);
++      if (event.type !== 'pointercancel' && this.dragged) {
++        if (external) external.drop(); else if (drop) this.drop(p, drop);
++      }
+       setTimeout(() => { this.dragged = false; });
+     };
+     document.addEventListener('pointermove', move);
+@@ -939,4 +984,96 @@ export class Dock {
+       return { title: p.title, kind: p.kind, key: p.key, side: p.side, front: g?.front === p.id, ...(g?.rect ? { rect: { ...g.rect } } : {}) };
+     });
+   }
++
++  snapshot(): LayoutState {
++    return {
++      app: 'bible-workbench-rs', version: 2,
++      panes: this.panes.map(p => ({ key: canonicalKey(p.key), title: p.title, kind: p.kind, home: p.home, view: { scroll: captureScroll(p.el), state: p.captureView?.() } })),
++      groups: this.groups.filter(g => this.inGroup(g).length).map(g => ({
++        side: g.side, keys: this.inGroup(g).map(p => canonicalKey(p.key)), front: canonicalKey(this.panes.find(p => p.id === g.front)?.key ?? this.inGroup(g)[0].key),
++        ...(g.rect ? { rect: { ...g.rect } } : {}), share: g.share, min: g.min, z: g.z, strip: this.stripScroll[g.id],
++      })),
++      widths: { ...this.widths }, wide: { ...this.wide }, bands: { ...this.bands }, active: this.panes.some(p => p.key === this.active) ? this.active : undefined,
++    };
++  }
++
++  focusPane(p: Pane) {
++    if (sizeClass() === 'compact') { this.show(p); return; }
++    if (this.focused?.pane === p) return;
++    if (this.focused) this.exitFocus();
++    const scroll = captureScroll(p.el);
++    const returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
++    this.focused = { pane: p, returnTo, scroll };
++    const bar = h('header', 'dock-focus-bar');
++    const back = h('button', 'btn dock-focus-return', 'Return to layout');
++    back.onclick = () => this.exitFocus();
++    const full = h('button', 'btn dock-fullscreen', document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen');
++    full.onclick = async () => {
++      try {
++        if (document.fullscreenElement) await document.exitFullscreen();
++        else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
++        else throw new Error('Fullscreen is not available in this window. Focus pane is still available.');
++        full.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Enter fullscreen';
++      } catch (e) { toast(String(e)); }
++    };
++    bar.append(h('strong', '', p.title), h('span', 'grow'), full, back);
++    this.focusHost.replaceChildren(bar, p.el); this.focusHost.hidden = false; p.el.hidden = false;
++    this.focusHost.style.top = `${this.barBottom()}px`;
++    this.hideFocusBackground();
++    restoreScroll(p.el, scroll);
++    if (returnTo && p.el.contains(returnTo)) returnTo.focus({ preventScroll: true });
++    else { p.el.tabIndex = -1; p.el.focus({ preventScroll: true }); }
++  }
++
++  exitFocus() {
++    const focused = this.focused;
++    if (!focused) return;
++    const scroll = captureScroll(focused.pane.el);
++    this.focused = null; this.focusHost.hidden = true;
++    for (const [el, before] of this.focusInert) el.inert = before;
++    this.focusInert.clear();
++    this.layout(); this.focusHost.replaceChildren();
++    restoreScroll(focused.pane.el, scroll);
++    if (focused.returnTo?.isConnected) focused.returnTo.focus({ preventScroll: true });
++    else { focused.pane.el.tabIndex = -1; focused.pane.el.focus({ preventScroll: true }); }
++  }
++
++  private hideFocusBackground() {
++    const els = [...Object.values(this.frames), ...this.floats.values(), this.chips, this.sheet, document.getElementById('scroller')];
++    for (const el of els) if (el) { if (!this.focusInert.has(el)) this.focusInert.set(el, el.inert); el.inert = true; }
++  }
++
++  /** Content is ready before this runs. Keep the reader's place while replacing the arrangement. */
++  async restore(snapshot: LayoutState) {
++    this.exitFocus();
++    const keep = this.keepPlace();
++    const keepSettings = this.find('settings');
++    const wanted = new Set(snapshot.panes.map(p => p.key));
++    // Keep old panes alive until state adapters finish, so a failed read can roll back without losing panes.
++    const extras = this.panes.filter(p => !wanted.has(canonicalKey(p.key)));
++    const oldGroups = this.groups;
++    this.groups = []; this.colFront = {}; this.stripScroll = {};
++    this.widths = { ...snapshot.widths }; this.wide = { ...snapshot.wide }; this.bands = { ...snapshot.bands };
++    for (const saved of snapshot.groups) {
++      const members = saved.keys.map(k => this.find(k)).filter((p): p is Pane => !!p);
++      if (!members.length) continue;
++      const g = this.newGroup(saved.side, saved.rect);
++      g.share = saved.share; g.min = saved.min; g.z = saved.z ?? g.z;
++      this.z = Math.max(this.z, g.z);
++      for (const p of members) this.put(p, g);
++      g.front = members.find(p => p.key === saved.front)?.id ?? members[0].id;
++      this.stripScroll[g.id] = saved.strip ?? 0;
++    }
++    this.groups.push(...oldGroups.filter(g => extras.some(p => p.group === g.id)));
++    for (const s of snapshot.panes) { const p = this.find(s.key); if (p) { p.home = s.home; await p.restoreView?.(s.view?.state); } }
++    for (const p of extras) if (p !== keepSettings) this.close(p);
++    const active = snapshot.active && this.find(snapshot.active);
++    this.active = active ? active.key : undefined;
++    if (active) { this.colFront[this.drawn(active.side) as Docked] = active.id; this.sheetFor = active.id; }
++    this.layout();
++    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
++    for (const s of snapshot.panes) { const p = this.find(s.key); if (p && s.view) restoreScroll(p.el, s.view.scroll); }
++    if (active && !this.isMinimized(active)) { active.el.tabIndex = -1; active.el.focus({ preventScroll: true }); }
++    keep(); this.save();
++  }
+ }
+diff --git a/ui/src/layout-state.ts b/ui/src/layout-state.ts
+new file mode 100644
+index 0000000..9cd2ad9
+--- /dev/null
++++ b/ui/src/layout-state.ts
+@@ -0,0 +1,93 @@
++// Named layout data is separate from live DOM identities and temporary focus.
++export const LAYOUT_VERSION = 2;
++export type LayoutSide = 'left' | 'right' | 'top' | 'bottom' | 'float';
++export interface Box { x: number; y: number; w: number; h: number }
++export interface PaneView { scroll: { path: number[]; top: number; left: number }[]; state?: unknown }
++export interface SavedPane { key: string; title?: string; kind?: string; home?: LayoutSide; view?: PaneView }
++export interface SavedGroup { side: LayoutSide; keys: string[]; front?: string; rect?: Box; share?: number; min?: boolean; z?: number; strip?: number }
++export interface LayoutState {
++  app: 'bible-workbench-rs'; version: 2; panes: SavedPane[]; groups: SavedGroup[];
++  widths: Partial<Record<'left' | 'right', number>>; wide: Partial<Record<'left' | 'right', boolean>>;
++  bands: Partial<Record<'top' | 'bottom', number>>; active?: string;
++}
++export const canonicalKey = (key: string) => key.startsWith('doc|') ? `doc:${key.split('|')[1]}` : key;
++const sides = ['left', 'right', 'top', 'bottom', 'float'];
++const object = (v: any) => !!v && typeof v === 'object' && !Array.isArray(v);
++const number = (v: any) => typeof v === 'number' && Number.isFinite(v);
++const bad = (): never => { throw new Error('This layout is invalid; the current arrangement was left unchanged.'); };
++
++/** Parse before opening or closing anything. Old Rust snapshots have no version or groups. */
++export function readLayout(raw: any): LayoutState {
++  if (!object(raw) || raw.app !== 'bible-workbench-rs') throw new Error('This window cannot read layouts from the Python app.');
++  if (raw.version !== undefined && raw.version !== LAYOUT_VERSION) throw new Error('This layout uses an unsupported version; the current arrangement was left unchanged.');
++  if (!Array.isArray(raw.panes) || raw.panes.length > 500) bad();
++  const seen = new Set<string>();
++  const panes: SavedPane[] = raw.panes.map((p: any) => {
++    if (!object(p) || typeof p.key !== 'string' || !p.key || p.key.length > 4000) bad();
++    const key = canonicalKey(p.key);
++    if (seen.has(key)) bad();
++    seen.add(key);
++    if (p.home !== undefined && !sides.includes(p.home)) bad();
++    if (p.view !== undefined) {
++      if (!object(p.view) || !Array.isArray(p.view.scroll) || p.view.scroll.length > 1000) bad();
++      for (const s of p.view.scroll) if (!object(s) || !Array.isArray(s.path) || s.path.length > 100 || !s.path.every((n: any) => Number.isInteger(n) && n >= 0) || !number(s.top) || !number(s.left)) bad();
++    }
++    return { key, title: typeof p.title === 'string' ? p.title : undefined, kind: typeof p.kind === 'string' ? p.kind : undefined, home: p.home, view: p.view };
++  });
++  let groups: SavedGroup[];
++  if (raw.version === undefined) {
++    groups = [];
++    for (const p of raw.panes) {
++      const side: LayoutSide = sides.includes(p.side) ? p.side : 'right';
++      const rect = p.rect;
++      if (rect !== undefined && (!object(rect) || !['x', 'y', 'w', 'h'].every(k => number(rect[k])) || rect.w <= 0 || rect.h <= 0)) bad();
++      let g = groups.find(g => g.side === side && (side !== 'float' || JSON.stringify(g.rect) === JSON.stringify(rect)));
++      if (!g) { g = { side, keys: [], ...(rect ? { rect } : {}) }; groups.push(g); }
++      const key = canonicalKey(p.key); g.keys.push(key);
++      if (p.front || !g.front) g.front = key;
++    }
++  } else {
++    if (!Array.isArray(raw.groups) || raw.groups.length > 500) bad();
++    const grouped = new Set<string>();
++    groups = raw.groups.map((g: any) => {
++      if (!object(g) || !sides.includes(g.side) || !Array.isArray(g.keys) || !g.keys.length) bad();
++      const keys = g.keys.map((k: any) => {
++        if (typeof k !== 'string') bad();
++        const key = canonicalKey(k);
++        if (!seen.has(key) || grouped.has(key)) bad();
++        grouped.add(key); return key;
++      });
++      if (g.front !== undefined && typeof g.front !== 'string') bad();
++      const front = g.front === undefined ? keys[0] : canonicalKey(g.front);
++      if (!keys.includes(front)) bad();
++      if (g.rect !== undefined && (!object(g.rect) || !['x', 'y', 'w', 'h'].every(k => number(g.rect[k])) || g.rect.w <= 0 || g.rect.h <= 0)) bad();
++      for (const k of ['share', 'z', 'strip']) if (g[k] !== undefined && (!number(g[k]) || g[k] < 0 || (k === 'share' && g[k] === 0))) bad();
++      if (g.min !== undefined && typeof g.min !== 'boolean') bad();
++      return { side: g.side, keys, front, rect: g.rect, share: g.share, z: g.z, strip: g.strip, min: g.min };
++    });
++    if (grouped.size !== seen.size) bad();
++  }
++  const sizes = (v: any, keys: string[], bool = false) => {
++    if (v === undefined) return {};
++    if (!object(v) || Object.entries(v).some(([k, n]) => !keys.includes(k) || (bool ? typeof n !== 'boolean' : !number(n) || (n as number) < 0))) bad();
++    return { ...v };
++  };
++  if (raw.active !== undefined && (typeof raw.active !== 'string' || !seen.has(canonicalKey(raw.active)))) bad();
++  return { app: 'bible-workbench-rs', version: 2, panes, groups, widths: sizes(raw.widths, ['left', 'right']), wide: sizes(raw.wide, ['left', 'right'], true), bands: sizes(raw.bands, ['top', 'bottom']), active: raw.active && canonicalKey(raw.active) };
++}
++
++export function captureScroll(root: HTMLElement): PaneView['scroll'] {
++  const out: PaneView['scroll'] = [];
++  const visit = (el: HTMLElement, path: number[]) => {
++    if (el.scrollTop || el.scrollLeft || !path.length) out.push({ path, top: el.scrollTop, left: el.scrollLeft });
++    [...el.children].forEach((c, i) => { if (c instanceof HTMLElement) visit(c, [...path, i]); });
++  };
++  visit(root, []); return out;
++}
++export function restoreScroll(root: HTMLElement, scroll: PaneView['scroll']) {
++  for (const s of scroll) {
++    let el: Element | undefined = root;
++    for (const i of s.path) el = el?.children[i];
++    if (el instanceof HTMLElement) { el.scrollTop = s.top; el.scrollLeft = s.left; }
++  }
++}
+diff --git a/ui/src/layouts.ts b/ui/src/layouts.ts
+index 37ff09d..cbcb922 100644
+--- a/ui/src/layouts.ts
++++ b/ui/src/layouts.ts
+@@ -5,6 +5,7 @@ import { wb } from './api';
+ import { runLine } from './actions';
+ import { toast } from './sheets';
+ import { h, popMenu } from './ui';
++import { kept, loadKept, save as saveCommand } from './mycommands';
+ 
+ export interface Saved { name: string; id: string; saved?: string }
+ 
+@@ -47,6 +48,7 @@ export async function menu(from: HTMLElement, openSettings: (s: string) => void)
+ 
+ /** Settings ▸ Layouts: the saved ones (Open, Remove) and Save this layout. */
+ export async function section(redraw: () => void): Promise<HTMLElement[]> {
++  await loadKept();
+   const out: HTMLElement[] = [];
+   for (const l of await list()) {
+     const r = h('div', 'set-row');
+@@ -56,6 +58,18 @@ export async function section(redraw: () => void): Promise<HTMLElement[]> {
+     const go = h('button', 'btn', 'Open'); go.onclick = () => void apply(l.name);
+     const rm = h('button', 'link-btn danger', 'Remove'); rm.onclick = () => void remove(l.name).then(redraw);
+     ctl.append(go, rm);
++    const line = `layout load ${l.name}`;
++    const binding = kept.find(c => c.line === line);
++    const key = h('input', 'field') as HTMLInputElement;
++    key.value = binding?.key ?? '';
++    key.placeholder = 'Shortcut (optional)'; key.setAttribute('aria-label', `Shortcut for ${l.name}`);
++    const assign = h('button', 'btn', 'Save shortcut');
++    assign.onclick = async () => {
++      if (!key.value.trim()) { if (binding) await saveCommand({ ...binding, key: '' }); }
++      else await saveCommand({ name: binding?.name ?? `Layout: ${l.id}`, line, icon: 'sidebar', key: key.value.trim() });
++      redraw();
++    };
++    ctl.append(key, assign);
+     r.append(t, ctl);
+     r.dataset.find = `${l.name} layout arrangement panes`;
+     out.push(r);
+diff --git a/ui/src/main.ts b/ui/src/main.ts
+index ec1a49c..ce1469d 100644
+--- a/ui/src/main.ts
++++ b/ui/src/main.ts
+@@ -720,6 +720,13 @@ async function openSecondReader(ref: string, version = 'KJV') {
+     paint(vw.root, vw.drawn);
+   });
+   if (!readers2Watched.has(pane2.id)) {
++    pane2.captureView = () => ({ code: st.code, chapter: st.chapter, version: ver });
++    pane2.restoreView = async state => {
++      if (!state || !books.some(b => b.code === state.code && Number.isInteger(state.chapter) && state.chapter >= 1 && state.chapter <= b.chapters)) return;
++      st.code = state.code; st.chapter = state.chapter;
++      if (VERSIONS.includes(state.version)) ver = state.version;
++      await draw2(pane2.el, pane2, 1);
++    };
+     readers2Watched.add(pane2.id);
+     const was = pane2.onClose;
+     pane2.onClose = () => { was?.(); readers2.delete(pane2.id); readers2Watched.delete(pane2.id); readerMoved(); };
+@@ -1057,12 +1064,12 @@ document.addEventListener('keydown', e => {
+   const typing = !!(e.target as HTMLElement).closest('input, textarea, [contenteditable]');
+   if (e.key === 'Escape') { closeSheet(); clearSelection(); hideCard(); }
+   // Ctrl+F finds in the pane last clicked or typed in, else in the chapter (note 5c4a)
+-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
+-  if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
+-  if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
++  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
++  if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
++  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
+   { const kc = commandByKey(e); if (kc) { e.preventDefault(); void runKeptCommand(kc); return; } }
+-  if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); openSettings(); return; }
+-  if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setSize(100); return; }
++  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === ',') { e.preventDefault(); openSettings(); return; }
++  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '0') { e.preventDefault(); setSize(100); return; }
+   // a finding about the app, from anywhere (note 50c1)
+   if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); findingBox(); return; }
+   // quick capture (Ctrl+J unless set otherwise in the Notebook's settings): a small box at the verse, from anywhere
+diff --git a/ui/src/mycommands.ts b/ui/src/mycommands.ts
+index 07c98cd..7344e3d 100644
+--- a/ui/src/mycommands.ts
++++ b/ui/src/mycommands.ts
+@@ -43,10 +43,11 @@ export async function run(c: Kept) {
+ 
+ /** A key like "Ctrl+U" the event matches. */
+ export function matches(e: KeyboardEvent, key: string) {
+-  const m = /^(Ctrl|Alt)\+(.+)$/i.exec(key);
+-  if (!m) return false;
+-  const want = m[2].toLowerCase();
+-  return (m[1].toLowerCase() === 'ctrl' ? e.ctrlKey || e.metaKey : e.altKey) && !e.shiftKey && e.key.toLowerCase() === want;
++  const parts = key.toLowerCase().split('+');
++  const want = parts.pop();
++  return !!want && parts.length > 0 && parts.every(p => ['ctrl', 'alt', 'shift'].includes(p))
++    && (e.ctrlKey || e.metaKey) === parts.includes('ctrl') && e.altKey === parts.includes('alt')
++    && e.shiftKey === parts.includes('shift') && e.key.toLowerCase() === want;
+ }
+ /** A kept command whose key this is (not while typing in a field). */
+ export function byKey(e: KeyboardEvent): Kept | undefined {
+diff --git a/ui/src/notebook.ts b/ui/src/notebook.ts
+index 7eb1ea9..1e0fc89 100644
+--- a/ui/src/notebook.ts
++++ b/ui/src/notebook.ts
+@@ -153,6 +153,17 @@ export function openNotebook(v?: 'journal' | 'inbox' | 'all' | 'trash' | Group,
+   const was = dock.find('notebook');
+   pane = dock.open('notebook', 'Notebook', 'notebook', 'right', el => draw(el));
+   pane.onClose = () => { pane = null; };
++  pane.captureView = () => ({ openId, group, showTrash, editorShown, mainList });
++  pane.restoreView = async state => {
++    if (!state || typeof state !== 'object') return;
++    if (typeof state.openId === 'string') openId = state.openId;
++    else if (state.openId === null) openId = null;
++    if (['day', 'chapter', 'thread', 'none', 'pages', 'questions', null].includes(state.group)) group = state.group;
++    showTrash = state.showTrash === true; editorShown = state.editorShown === true;
++    mainList = state.mainList && ['chapter', 'view', 'templates'].includes(state.mainList.kind) ? state.mainList : null;
++    draft = null;
++    await pane?.refresh?.();
++  };
+   if (was && (v || opts.questions !== undefined)) void pane.refresh?.();
+   return pane;
+ }
+diff --git a/ui/src/pagedocs.ts b/ui/src/pagedocs.ts
+index a22dec3..53bbbfd 100644
+--- a/ui/src/pagedocs.ts
++++ b/ui/src/pagedocs.ts
+@@ -272,7 +272,7 @@ export async function pageDocuments(pageId: string, into: HTMLElement) {
+  * the PDF's pages. */
+ export function previewDoc(d: { id: string; name: string }) {
+   if (!dock.find(`doc:${d.id}`)) dock.apart();
+-  return dock.open('docpreview', d.name, `doc:${d.id}`, 'left', async el => {
++  return dock.open('docpreview', d.name, `doc:${d.id}`, 'left', async (el, pane) => {
+     const head = h('header', 'pane-head pd-pv-head');
+     const acts = h('div', 'pd-pv-acts');
+     acts.append(button('btn small pd-pv-open', 'Open', () => void wb(['docs', 'open', d.id]).catch(x => toast(String(x)))),
+@@ -347,6 +347,13 @@ export function previewDoc(d: { id: string; name: string }) {
+         } else if (single && (ev.key === 'Home' || ev.key === 'End')) { ev.preventDefault(); go(ev.key === 'Home' ? 0 : n - 1); }
+       });
+       show();
++      pane.captureView = () => ({ slide: cur, single });
++      pane.restoreView = state => {
++        if (!state || typeof state !== 'object') return;
++        if (typeof state.single === 'boolean') single = state.single;
++        if (Number.isInteger(state.slide)) cur = Math.max(0, Math.min(n - 1, state.slide));
++        show();
++      };
+       body.append(bar, stage);
+       setTimeout(() => body.focus({ preventScroll: true }));
+     } else if (p.stale) {
+diff --git a/ui/src/shelf.ts b/ui/src/shelf.ts
+index 6651e9e..fa01b84 100644
+--- a/ui/src/shelf.ts
++++ b/ui/src/shelf.ts
+@@ -11,7 +11,8 @@ import { reopen, written } from './actions';
+ import type { Pane } from './dock';
+ import { dock } from './panes';
+ import { toast } from './sheets';
+-import { button, h, icon, popMenu } from './ui';
++import { button, h, icon, popMenu, sizeClass } from './ui';
++import { canonicalKey } from './layout-state';
+ 
+ const FOLDED = 'wb.shelf.folded.v1';
+ const MARKS = ['var(--thread-b)', 'var(--thread-a)', 'var(--question)', 'var(--accent)'];
+@@ -55,10 +56,10 @@ function paneKey(open: string) {
+   const [kind, a] = open.split('|');
+   if (kind === 'doc') return `doc:${a}`;
+   if (kind === 'thread') return `thread|${a.toLowerCase()}`;
+-  return open;
++  return canonicalKey(open);
+ }
+ const isOpen = (it: Item) => !!it.open && !!dock.find(paneKey(it.open));
+-const markedFor = (id: string) => dock.panes.filter(p => p.mark?.set === id);
++const markedFor = (id: string) => dock.panes.filter(p => p.owners?.some(m => m.set === id));
+ 
+ async function waitFor(key: string, ms = 4000): Promise<Pane | undefined> {
+   const end = performance.now() + ms;
+@@ -77,12 +78,15 @@ async function load() {
+ 
+ /** Open everything a folder holds (deep: the folders inside it too). → what it did, in a sentence. */
+ export async function openAll(name: string, deep = false): Promise<string> {
++  if (sizeClass() === 'compact') return 'Open items individually on this screen. Open all is available in a wider window.';
+   if (!tree.length) await load();
+   const plan = await wb(['set', 'open', name]);
+   const sets = [plan];
+   if (deep) for (const f of every(folderById(plan.id)?.folders ?? [])) sets.push(await wb(['set', 'open', f.id]));
+   const shelf = dock.find('shelf');
+   let opened = 0;
++  let already = 0;
++  const counted = new Set<string>();
+   const pages: string[] = [], why: string[] = [];
+   for (const s of sets) {
+     for (const it of s.items as Item[]) {
+@@ -90,15 +94,23 @@ export async function openAll(name: string, deep = false): Promise<string> {
+       // a note and a thread are pages (R1): they open in the Notebook, which is one tab, so neither is marked
+       if (it.open.startsWith('note|') || it.open.startsWith('thread|')) { pages.push(it.open); continue; }
+       if (shelf) dock.from(shelf);
++      const before = dock.find(paneKey(it.open));
+       await reopen(it.open);
+       const p = await waitFor(paneKey(it.open));
+-      if (p) { p.mark = { set: s.id, name: s.name, color: markColor(s.id) }; opened++; }
++      if (p) {
++        const mark = { set: s.id, name: s.name, color: markColor(s.id) };
++        if (!before) p.owners = [mark];
++        else if (p.owners?.length && !p.owners.some(m => m.set === s.id)) p.owners.push(mark);
++        p.mark = p.owners?.[0];
++        if (!counted.has(p.key)) { counted.add(p.key); if (before) already++; else opened++; }
++      }
+     }
+   }
+   if (pages.length) await reopen(pages[0]);
+   dock.layout();
+   void redraw();
+   const said = [`${plan.name}: ${opened} opened`];
++  if (already) said.push(`${already} already open`);
+   if (pages.length) said.push(pages.length > 1 ? `the Notebook shows the first of its ${pages.length} pages` : 'its page in the Notebook');
+   if (why.length) said.push(`${why.length} could not open (${why.slice(0, 2).join('; ')}${why.length > 2 ? '…' : ''})`);
+   return said.join('; ');
+@@ -109,10 +121,16 @@ export async function closeAll(name: string, deep = false): Promise<string> {
+   const s = await wb(['set', 'show', name]);
+   if (!tree.length) await load();
+   const ids = new Set([s.id, ...(deep ? every(folderById(s.id)?.folders ?? []).map(f => f.id) : [])]);
+-  const ps = dock.panes.filter(p => p.mark && ids.has(p.mark.set));
+-  for (const p of ps) dock.close(p);
++  const ps = dock.panes.filter(p => p.owners?.some(m => ids.has(m.set)));
++  let closed = 0;
++  for (const p of ps) {
++    p.owners = p.owners!.filter(m => !ids.has(m.set));
++    p.mark = p.owners[0];
++    if (!p.owners.length) { dock.close(p); closed++; }
++  }
++  dock.layout();
+   void redraw();
+-  return `${s.name}: ${ps.length} closed`;
++  return `${s.name}: ${closed} closed${ps.length > closed ? `; ${ps.length - closed} still used by another folder` : ''}`;
+ }
+ 
+ const run = (p: Promise<string>) => void p.then(toast, e => toast(String((e as Error).message || e)));
+@@ -120,6 +138,13 @@ const run = (p: Promise<string>) => void p.then(toast, e => toast(String((e as E
+ // ---- the pane ----------------------------------------------------------------------------------------------------------
+ 
+ export function openShelf() {
++  dock.externalDrop = (x, y, pane) => {
++    const row = document.elementsFromPoint(x, y).map(el => el.closest<HTMLElement>('.shelf-folder')).find(Boolean);
++    const folder = row?.dataset.folder && folderById(row.dataset.folder);
++    if (!row || !folder || pane.kind === 'shelf') return null;
++    const r = row.getBoundingClientRect();
++    return { label: `Keep in ${folder.name}`, box: { x: r.x, y: r.y, w: r.width, h: r.height }, drop: () => void addTabs(folder, [`${pane.key}\t${pane.title}`]) };
++  };
+   const p = dock.open('shelf', 'Shelf', 'shelf', 'right', async el => {
+     paneEl = el;
+     await load();
+@@ -241,7 +266,7 @@ function folderRow(f: Folder, shut: boolean) {
+   r.append(h('span', 'shelf-count', String(f.items.length + f.folders.length)));
+   r.append(button('icon-btn shelf-more', '', e => { e.stopPropagation(); folderMenu(e.currentTarget as Element, f); }, 'more'));
+   r.onclick = () => { selected = { folder: f.id }; setFolded(f.id, !shut); keepKeys = true; draw(); };
+-  r.ondblclick = e => { e.preventDefault(); run(openAll(f.id)); };
++  r.ondblclick = e => { e.preventDefault(); if (sizeClass() !== 'compact') run(openAll(f.id)); };
+   r.oncontextmenu = e => { e.preventDefault(); selected = { folder: f.id }; folderMenu(r, f, { x: e.clientX, y: e.clientY }); };
+   dragRow(r, { folder: f.id }, f);
+   return r;
+@@ -263,6 +288,12 @@ function itemRow(f: Folder, it: Item) {
+   x.setAttribute('aria-label', `Take ${it.label} out of ${f.name}`);
+   x.title = 'Take it out of the folder (it is not deleted)';
+   r.append(x);
++  const more = button('icon-btn shelf-more', '', e => {
++    e.stopPropagation(); const box = more.getBoundingClientRect();
++    itemMenu(more, f, it, { x: box.left, y: box.bottom });
++  }, 'more');
++  more.setAttribute('aria-label', `More for ${it.label}`);
++  r.append(more);
+   r.onclick = () => {
+     selected = { folder: f.id, key: it.key };
+     keepKeys = true;
+@@ -297,8 +328,8 @@ function folderMenu(from: Element, f: Folder, at?: { x: number; y: number }) {
+   const body = h('div', 'shelf-menu');
+   const open = markedFor(f.id).length;
+   body.append(h('div', 'label', f.name),
+-    menuItem('Open all', 'sidebar', () => run(openAll(f.id)), `its ${f.items.length} items, as tabs`),
+-    ...(f.folders.length ? [menuItem('Open all, folders inside too', 'sidebar', () => run(openAll(f.id, true)))] : []),
++    ...(sizeClass() !== 'compact' ? [menuItem('Open all', 'sidebar', () => run(openAll(f.id)), `its ${f.items.length} items, as tabs`)] : []),
++    ...(f.folders.length && sizeClass() !== 'compact' ? [menuItem('Open all, folders inside too', 'sidebar', () => run(openAll(f.id, true)))] : []),
+     menuItem('Close all', 'x', () => run(closeAll(f.id, true)), open ? `the ${open} tabs it opened` : 'none open'),
+     menuItem('Add…', 'plus', () => addMenu(from, f), 'a tab, a page, a place…'),
+     menuItem('New folder inside', 'folder', () => newFolder(f.id, from)),
+diff --git a/ui/src/verses.ts b/ui/src/verses.ts
+index 6f79379..3620bf1 100644
+--- a/ui/src/verses.ts
++++ b/ui/src/verses.ts
+@@ -160,30 +160,49 @@ export async function verseCard(ref: string, a: HTMLElement, e?: MouseEvent) {
+     const below = r.bottom + 8;
+     panel.style.top = `${below + hgt <= innerHeight - 16 ? below : Math.max(16, Math.min(r.top - 8 - hgt, innerHeight - hgt - 16))}px`;
+   };
+-  fillCard(body, ref, d, { pinned: false, changed: place });
++  fillCard(body, ref, d, { pinned: false, changed: place, source: a });
+   place();
+ }
+ 
+ /** A card kept as a pane of its own (the pin): drawn again when highlights change. */
+-export function openCardPane(ref: string, label: string, tab: Tab = null) {
++export function openCardPane(ref: string, label: string, tab: Tab = null, source?: HTMLElement) {
+   let now: Tab = tab;
+-  return dock.open('versecard', label, `versecard|${ref}`, 'right', async el => {
++  const sourcePane = source && dock.panes.find(p => p.el.contains(source));
++  return dock.open('versecard', label, `versecard|${ref}`, 'right', async (el, pane) => {
+     const d: Marked | null = await wb(['scripture', ref]).catch(() => null);
+     const body = h('div', 'verse-card-body in-pane');
+     if (!d) body.append(h('p', 'muted', `Nothing found at ${ref}.`));
+     else fillCard(body, ref, d, { pinned: true, tab: now, tabChanged: t => { now = t; } });
+     el.replaceChildren(body);
++    if (sourcePane) {
++      const back = button('link-btn vc-back', `Back to ${sourcePane.title}`, () => {
++        const original = dock.find(sourcePane.key);
++        if (!original) return;
++        dock.show(original);
++        if (source?.isConnected) source.focus({ preventScroll: true });
++        else { original.el.tabIndex = -1; original.el.focus({ preventScroll: true }); }
++      }, 'left');
++      el.prepend(back);
++    }
++    pane.captureView = () => ({ tab: now });
++    pane.restoreView = async state => {
++      const tab = state?.tab;
++      if (tab === null || ['interlinear', 'strongs', 'definitions'].includes(tab)) {
++        now = tab;
++        if (d) fillCard(body, ref, d, { pinned: true, tab: now, tabChanged: t => { now = t; } });
++      }
++    };
+   });
+ }
+ 
+-interface CardOpts { pinned: boolean; tab?: Tab; changed?: () => void; tabChanged?: (t: Tab) => void }
++interface CardOpts { pinned: boolean; tab?: Tab; changed?: () => void; tabChanged?: (t: Tab) => void; source?: HTMLElement }
+ 
+ function fillCard(body: HTMLElement, ref: string, d: Marked, o: CardOpts) {
+   body.replaceChildren();
+   const head = h('div', 'vc-head');
+   head.append(h('span', 'vc-ref', d.label), h('span', 'vc-ver muted', ` · ${d.version}`), h('span', 'grow'));
+   if (!o.pinned) {
+-    const pin = button('icon-btn vc-pin', '', () => { closeSheet(); openCardPane(ref, d.label, tab); }, 'float');
++    const pin = button('btn small vc-pin', 'Keep as pane', () => { closeSheet(); openCardPane(ref, d.label, tab, o.source); }, 'float');
+     pin.title = 'Keep it as a pane';
+     pin.setAttribute('aria-label', 'Keep it as a pane');
+     const x = button('icon-btn vc-close', '', () => closeSheet(), 'x');

@@ -1,0 +1,1104 @@
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 2f1507f..9b13be0 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -78,9 +78,12 @@ uses that server: Playwright starts this checkout's own vite on a port picked fr
+ port is taken, the run stops with "is already used" instead of testing another checkout. A new worktree needs
+ `npm install` and `npm run fixtures` before the tests.
+ 
+-Documents (Word files, PDF slides) go to `WB_DOCS_DIR`; with the person's real study folder, to the Python app's folder
+-(Documents\Bible Workbench), where its documents already are; with any other study folder, to a folder beside it
+-(`<study>-documents`), so tests and scratch copies never write the person's documents. After a document is made, every
+-verse the source holds is checked in the finished file; one that fails is not kept.
++New Word and PDF exports go to `<study>/exports/` unless `WB_DOCS_DIR` explicitly selects another directory.
++Records stay in `<study>/documents/`. Earlier real-study records can resolve files from `BIBLE_WORKBENCH_PDF_DIR`
++or its historical default (`Documents/Bible Workbench`). Earlier scratch records can resolve files from the sibling
++`<study>-documents` directory. Existing files update in place. To keep both apps using one output directory during
++the Python transition, set Rust's `WB_DOCS_DIR` to the same absolute directory as Python's `BIBLE_WORKBENCH_PDF_DIR`
++(or to Python's default). Keep these overrides unset for scratch runs unless they explicitly point at that run's fixtures.
++Every verse the selected source holds is checked during export, and a file that fails the check is discarded.
+ 
+ No remote yet: do not push anywhere without the person's go-ahead.
+diff --git a/crates/wb-cli/src/docs.rs b/crates/wb-cli/src/docs.rs
+index 57663fe..4c443dd 100644
+--- a/crates/wb-cli/src/docs.rs
++++ b/crates/wb-cli/src/docs.rs
+@@ -5,7 +5,7 @@
+ use crate::args::{Append, Flag, Opt, Pos, N};
+ use crate::{cmd, Command, Ctx, Out, Res};
+ use serde_json::{json, Value};
+-use std::path::PathBuf;
++use std::path::Path;
+ use wb_core::docs;
+ 
+ fn e(x: wb_core::Error) -> String {
+@@ -16,8 +16,8 @@ fn j(v: Value) -> Res {
+     Ok(Out::Json(v))
+ }
+ 
+-fn out_dir(c: &Ctx<'_>) -> Result<PathBuf, String> {
+-    Ok(docs::folder_for(&c.root()?))
++fn out_dir(c: &Ctx<'_>) -> Result<docs::ExportFolders, String> {
++    docs::ExportFolders::for_study(&c.root()?).map_err(e)
+ }
+ 
+ fn thread_id(c: &Ctx<'_>, name: &str) -> Result<String, String> {
+@@ -41,7 +41,7 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
+         let r = docs::make_page(c.bible()?, &st, &out, &page, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(), a.opt("version").as_deref(),
+             &a.list("on"), &a.list("off"), a.opt("look").as_deref(), &set, a.flag("force")).map_err(e)?;
+         if a.flag("open") {
+-            docs::open_file(&out.join(r["name"].as_str().unwrap_or(""))).map_err(e)?;
++            docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
+         }
+         return j(r);
+     }
+@@ -54,7 +54,7 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
+     let st = c.study()?;
+     let r = docs::make(c.bible()?, &st, &out, &id, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(), a.opt("look").as_deref(), &set, a.flag("new"), a.flag("force")).map_err(e)?;
+     if a.flag("open") {
+-        docs::open_file(&out.join(r["name"].as_str().unwrap_or(""))).map_err(e)?;
++        docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
+     }
+     j(r)
+ }
+@@ -100,16 +100,13 @@ pub fn commands() -> Vec<Command> {
+             }
+             let r = docs::update(c.bible()?, &st, &out, &name, a.opt("theme").as_deref(), a.opt("look").as_deref(), &set, a.flag("force")).map_err(e)?;
+             if a.flag("open") {
+-                docs::open_file(&out.join(r["name"].as_str().unwrap_or(""))).map_err(e)?;
++                docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
+             }
+             j(r)
+         }),
+         cmd("docs open", "Open a document in its app (Word, or the PDF viewer).", vec![Pos("name", N::Many)], |c, a| {
+             let out = out_dir(c)?;
+-            let rec = docs::find(&*c.study()?, &a.s("name")).map_err(e)?;
+-            let path = out.join(rec["name"].as_str().unwrap_or(""));
+-            docs::open_file(&path).map_err(e)?;
+-            j(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}))
++            j(docs::open(&*c.study()?, &out, &a.s("name")).map_err(e)?)
+         }),
+         cmd("docs forget", "Stop keeping a document up to date. It stays listed and its file is left alone; docs remember takes it back.",
+             vec![Pos("name", N::Many)], |c, a| j(docs::forget(&*c.study()?, &a.s("name")).map_err(e)?)),
+@@ -125,11 +122,17 @@ pub fn commands() -> Vec<Command> {
+         }),
+         cmd("docs plan", "What a document from a thread would hold if made now, and its plan's fingerprint (the same as the Python app's):\n\
+                           wb docs plan --thread phinehas --to word --structure script  |  --to deck --structure verse.\n\
+-                          From a page, with the switches it was last made with: wb docs plan --page ID --to word|pdf (and the verses it holds).",
+-            vec![Opt("thread", None), Opt("page", None), Opt("to", Some("word")), Opt("structure", None)], |c, a| {
++                          From a page: wb docs plan --page ID --to word|pdf [--version V] [--on KEY] [--off KEY]. For PDF, --pages lays out the selected plan with --theme, --look and --set.",
++            vec![Opt("thread", None), Opt("page", None), Opt("to", Some("word")), Opt("structure", None),
++                 Opt("version", None), Append("on"), Append("off"), Flag("pages"), Opt("theme", None), Opt("look", None), Append("set")], |c, a| {
++            let theme = a.opt("theme");
++            let look = a.opt("look");
++            let set = dials(a)?;
++            let layout = a.flag("pages").then_some(docs::PdfLayout { theme: theme.as_deref(), look: look.as_deref(), dials: &set });
+             if let Some(p) = a.opt("page") {
+                 let st = c.study()?;
+-                return j(docs::plan_for_page(c.bible()?, &st, &p, &a.opt_or("to", "word")).map_err(e)?);
++                return j(docs::plan_for_page(c.bible()?, &st, &p, &a.opt_or("to", "word"), a.opt("structure").as_deref(),
++                    a.opt("version").as_deref(), &a.list("on"), &a.list("off"), layout).map_err(e)?);
+             }
+             let Some(t) = a.opt("thread") else { return Err("Give the thread (--thread NAME) or the page (--page ID).".into()) };
+             let id = thread_id(c, &t)?;
+@@ -138,7 +141,7 @@ pub fn commands() -> Vec<Command> {
+                 return Err("--to: word, deck or pdf.".into());
+             }
+             let st = c.study()?;
+-            j(docs::plan_for(c.bible()?, &st, &id, &to, a.opt("structure").as_deref()).map_err(e)?)
++            j(docs::plan_for(c.bible()?, &st, &id, &to, a.opt("structure").as_deref(), layout).map_err(e)?)
+         }),
+         cmd("craft word", "A Word document from a thread: wb craft word --thread phinehas --structure script [--theme olivet].\n\
+                            Here: script (the Speaker Script); the other structures are made by the Python app until phase 5. --theme: otherwise your saved theme.\n\
+diff --git a/crates/wb-cli/tests/cli.rs b/crates/wb-cli/tests/cli.rs
+index eadfd3e..8a41f07 100644
+--- a/crates/wb-cli/tests/cli.rs
++++ b/crates/wb-cli/tests/cli.rs
+@@ -30,7 +30,7 @@ impl Wb {
+     /// Runs wb; → (exit code, stdout, stderr).
+     fn run(&self, args: &[&str], stdin: Option<&str>) -> (i32, String, String) {
+         let mut c = Command::new(env!("CARGO_BIN_EXE_wb"));
+-        c.args(args).env("WB_STUDY_DIR", &self.dir).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
++        c.args(args).env("WB_STUDY_DIR", &self.dir).env_remove("WB_DOCS_DIR").env("WB_NO_OPEN", "1").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+         let mut child = c.spawn().unwrap();
+         if let Some(text) = stdin {
+             use std::io::Write;
+@@ -62,14 +62,12 @@ impl Wb {
+ impl Drop for Wb {
+     fn drop(&mut self) {
+         let _ = std::fs::remove_dir_all(&self.dir);
+-        let _ = std::fs::remove_dir_all(self.docs()); // the documents made from this scratch folder, beside it
+     }
+ }
+ 
+ impl Wb {
+-    /// Where documents from this scratch folder go: beside it, never the person's Documents folder.
+     fn docs(&self) -> PathBuf {
+-        self.dir.with_file_name(format!("{}-documents", self.dir.file_name().unwrap().to_string_lossy()))
++        self.dir.join("exports")
+     }
+ }
+ 
+@@ -1410,6 +1408,8 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
+     let deck = wb.js(&["craft", "deck", "--page", &top]);
+     assert_eq!(deck["id"].as_str().unwrap(), format!("page-{top}-verse"));
+     assert!(deck["pages"].as_i64().unwrap() >= 5);
++    let planned = wb.js(&["docs", "plan", "--page", &top, "--to", "pdf", "--pages"]);
++    assert_eq!(planned["pages"], deck["pages"]);
+     let file = wb.docs().join(word["name"].as_str().unwrap());
+     let text = docx_text(&file);
+     for v in verses.iter().chain(&ylt) {
+@@ -1428,6 +1428,15 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
+     assert_eq!(wb.js(&["craft", "parts", "--page", &top])["rows"][2]["on"], true);
+     assert!(wb.fails(&["craft", "word", "--page", &top, "--on", "b:nothing"]).contains("no row"));
+ 
++    // Pending switches and version are used by the preview without saving choices.
++    let scripture = parts["rows"][3]["key"].as_str().unwrap();
++    let pending = wb.js(&["docs", "plan", "--page", &top, "--to", "pdf", "--off", scripture, "--version", "kjv", "--pages", "--theme", "print"]);
++    assert_eq!(pending["verses"], json!(["Psalms 106:30 (KJV)"]));
++    assert_eq!(wb.js(&["docs", "plan", "--page", &top, "--to", "pdf"])["fingerprint"], planned["fingerprint"]);
++    let applied = wb.js(&["craft", "deck", "--page", &top, "--off", scripture, "--version", "kjv", "--theme", "print"]);
++    assert_eq!(applied["pages"], pending["pages"]);
++    assert_eq!(applied["checked"]["refs"], pending["verses"]);
++
+     // one version for every block, in the documents only: the page keeps its own
+     let all_kjv = wb.js(&["craft", "word", "--page", &top, "--version", "kjv"]);
+     assert_eq!(all_kjv["checked"]["refs"][2], "Psalms 106:30 (KJV)");
+@@ -1446,7 +1455,9 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
+     // change a deck of verses, a scripture block does
+     assert!(wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].is_array());
+     add(&top, "```scripture\nNum 25:9\n```");
+-    assert!(wb.js(&["docs", "preview", &format!("page-{top}-verse")])["stale"].is_string());
++    let stale = wb.js(&["docs", "preview", &format!("page-{top}-verse")]);
++    assert!(stale["stale"].is_string());
++    assert_eq!(stale["last_built_pages"], applied["pages"]);
+     let deck_now = wb.js(&["docs", "update", &format!("page-{top}-verse")]);
+     let slides = wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].clone();
+     assert_eq!(slides.as_array().unwrap().len() as i64, deck_now["pages"].as_i64().unwrap());
+@@ -1458,6 +1469,55 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
+     assert_eq!(state(format!("page-{top}-verse")), "gone");
+ }
+ 
++#[test]
++fn a_legacy_export_is_resolved_safely_for_open_preview_update_and_delete() {
++    let Some(wb) = Wb::new() else { return };
++    wb.js(&["thread", "new", "Export location", "--at", "Num 25:10"]);
++    let made = wb.js(&["craft", "word", "--thread", "Export location", "--structure", "script"]);
++    let id = made["id"].as_str().unwrap();
++    let name = made["name"].as_str().unwrap();
++    let record_file = wb.dir.join("documents").join(format!("{id}.json"));
++    let mut record: Value = serde_json::from_slice(&std::fs::read(&record_file).unwrap()).unwrap();
++    assert_eq!(record["export_location"], "study");
++    record.as_object_mut().unwrap().shift_remove("export_location");
++    record["pdf"] = json!("associated.pdf");
++    record["kept"] = json!(["kept.docx"]);
++    std::fs::write(&record_file, serde_json::to_vec(&record).unwrap()).unwrap();
++
++    let local_file = wb.docs().join(name);
++    let legacy = wb.dir.with_file_name(format!("{}-documents", wb.dir.file_name().unwrap().to_string_lossy()));
++    std::fs::create_dir_all(&legacy).unwrap();
++    let legacy_file = legacy.join(name);
++    std::fs::rename(&local_file, &legacy_file).unwrap();
++    std::fs::copy(&legacy_file, &local_file).unwrap();
++    for op in ["open", "preview", "reveal", "update", "delete"] {
++        assert!(wb.fails(&["docs", op, id]).contains("More than one export"));
++    }
++    assert!(record_file.is_file() && local_file.is_file() && legacy_file.is_file());
++    assert_eq!(wb.js(&["docs", "show", id])["state"], "unreadable");
++
++    std::fs::write(&local_file, "a different file with the same name").unwrap();
++    for op in ["show", "open", "preview", "reveal", "update"] {
++        assert_eq!(wb.js(&["docs", op, id])["path"], legacy_file.to_string_lossy().as_ref());
++    }
++    for dir in [&legacy, &wb.docs()] {
++        std::fs::write(dir.join("associated.pdf"), "test companion").unwrap();
++        std::fs::write(dir.join("kept.docx"), "test kept version").unwrap();
++    }
++    let deleted = wb.js(&["docs", "delete", id]);
++    assert_eq!(deleted["deleted"].as_array().unwrap().len(), 3);
++    assert!(local_file.is_file() && wb.docs().join("kept.docx").is_file() && wb.docs().join("associated.pdf").is_file());
++    assert!(!record_file.is_file());
++    std::fs::remove_dir(&legacy).unwrap();
++
++    std::fs::remove_file(local_file).unwrap();
++    std::fs::write(&record_file, serde_json::to_vec(&record).unwrap()).unwrap();
++    assert_eq!(wb.js(&["docs", "show", id])["state"], "missing");
++    assert!(wb.fails(&["docs", "update", id]).contains("set WB_DOCS_DIR"));
++    assert!(wb.fails(&["docs", "delete", id]).contains("Restore the main export"));
++    assert!(record_file.is_file() && wb.docs().join("associated.pdf").is_file());
++}
++
+ #[test]
+ fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
+     let Some(wb) = Wb::new() else { return };
+diff --git a/crates/wb-core/src/docs/deck.rs b/crates/wb-core/src/docs/deck.rs
+index 937101d..06c9cb7 100644
+--- a/crates/wb-core/src/docs/deck.rs
++++ b/crates/wb-core/src/docs/deck.rs
+@@ -278,6 +278,11 @@ pub fn render(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<(Ve
+     Ok((pdf, page_text(&doc), doc.pages().len()))
+ }
+ 
++/// Count the pages from the same layout as render, without writing a file.
++pub fn page_count(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<usize> {
++    Ok(lay_out(plan, t, look, title)?.pages().len())
++}
++
+ /// A deck's plan as its pages drawn in SVG, for the window's preview (W6): the same layout as the PDF's, page for page.
+ pub fn pages_svg(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<Vec<String>> {
+     let doc = lay_out(plan, t, look, title)?;
+diff --git a/crates/wb-core/src/docs/mod.rs b/crates/wb-core/src/docs/mod.rs
+index b10933b..73edc91 100644
+--- a/crates/wb-core/src/docs/mod.rs
++++ b/crates/wb-core/src/docs/mod.rs
+@@ -47,23 +47,104 @@ fn ext(to: &str) -> Option<&'static str> {
+ 
+ // ---- where the files go -----------------------------------------------------------------------------------------------
+ 
+-/// The documents folder: `WB_DOCS_DIR`; else, for the person's real study folder, the Python app's (`BIBLE_WORKBENCH_PDF_DIR`,
+-/// or Documents\Bible Workbench), where its documents already are; else a folder beside the study folder, so a scratch copy
+-/// never writes into the person's real documents.
+-pub fn folder_for(study: &Path) -> PathBuf {
+-    if let Ok(p) = std::env::var("WB_DOCS_DIR") {
+-        return PathBuf::from(p);
+-    }
+-    let real = matches!((fs::canonicalize(study), fs::canonicalize(crate::real_study_dir())), (Ok(a), Ok(b)) if a == b);
+-    if real {
+-        if let Ok(p) = std::env::var("BIBLE_WORKBENCH_PDF_DIR") {
+-            return PathBuf::from(p);
++/// Where new exports go and where records created before study-local exports may still point.
++pub struct ExportFolders {
++    local: PathBuf,
++    override_dir: Option<PathBuf>,
++    legacy: PathBuf,
++}
++
++impl ExportFolders {
++    pub fn for_study(study: &Path) -> Result<Self> {
++        let override_dir = std::env::var_os("WB_DOCS_DIR").filter(|p| !p.is_empty()).map(std::path::absolute).transpose()?;
++        let real = matches!((fs::canonicalize(study), fs::canonicalize(crate::real_study_dir())), (Ok(a), Ok(b)) if a == b);
++        let legacy = if real {
++            std::env::var_os("BIBLE_WORKBENCH_PDF_DIR").filter(|p| !p.is_empty()).map(PathBuf::from).unwrap_or_else(|| {
++                let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from).unwrap_or_default();
++                home.join("Documents").join("Bible Workbench")
++            })
++        } else {
++            let name = study.file_name().map(|n| n.to_string_lossy()).unwrap_or_else(|| "study".into());
++            study.with_file_name(format!("{name}-documents"))
++        };
++        Ok(Self { local: study.join("exports"), override_dir, legacy })
++    }
++
++    fn preferred(&self) -> &Path {
++        self.override_dir.as_deref().unwrap_or(&self.local)
++    }
++
++    // Bind a record to an override without storing the machine's absolute path in shared study data.
++    fn override_key(path: &Path) -> String {
++        let identity = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
++        format!("override:{}", plan::sha256_hex(identity.to_string_lossy().as_bytes()))
++    }
++
++    fn remember(&self, rec: &mut Rec, out: &Path) {
++        let key = if out == self.local {
++            "study".to_string()
++        } else if self.override_dir.as_deref() == Some(out) {
++            Self::override_key(out)
++        } else {
++            return;
++        };
++        rec.insert("export_location".into(), json!(key));
++    }
++
++    /// A known destination, or no safe destination for a missing unmarked legacy record.
++    fn resolve(&self, rec: &Rec) -> Result<Option<&Path>> {
++        let name = s(rec, "name");
++        if name.is_empty() && !rec.contains_key("name") {
++            return Ok(Some(self.preferred()));
++        }
++        checked_name(&name)?;
++        match rec.get("export_location") {
++            Some(v) if v == "study" => return Ok(Some(&self.local)),
++            Some(v) => {
++                return self.override_dir.as_deref().filter(|p| v == &Self::override_key(p)).map(Some)
++                    .ok_or_else(|| missing("This export needs its original WB_DOCS_DIR. Restore that folder setting and try again."));
++            }
++            None => {}
++        }
++        let mut seen = Vec::new();
++        let mut candidates = Vec::new();
++        for dir in [Some(self.local.as_path()), self.override_dir.as_deref(), Some(self.legacy.as_path())].into_iter().flatten() {
++            let path = dir.join(&name);
++            if path.is_file() {
++                let identity = fs::canonicalize(&path)?;
++                if !seen.contains(&identity) {
++                    seen.push(identity);
++                    candidates.push(dir);
++                }
++            }
++        }
++        match candidates.as_slice() {
++            [] => Ok(None),
++            [one] => Ok(Some(one)),
++            _ => {
++                let file = s(rec, "file");
++                let matches: Vec<_> = candidates.iter().filter(|dir| sha_file(&dir.join(&name)).ok().as_deref() == Some(file.as_str())).collect();
++                if let [one] = matches.as_slice() {
++                    return Ok(Some(**one));
++                }
++                Err(bad(format!("More than one export named “{name}” was found. Resolve the duplicate before continuing.")))
++            }
+         }
+-        let home = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from).unwrap_or_default();
+-        return home.join("Documents").join("Bible Workbench");
+     }
+-    let name = study.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "study".into());
+-    study.with_file_name(format!("{name}-documents"))
++
++    fn build_in(&self, rec: &Rec) -> Result<&Path> {
++        self.resolve(rec)?.or(self.override_dir.as_deref()).ok_or_else(|| {
++            missing("The existing export could not be found. Restore the file or set WB_DOCS_DIR explicitly to choose where to rebuild it.")
++        })
++    }
++}
++
++fn checked_name(name: &str) -> Result<&str> {
++    use std::path::Component;
++    if !name.contains(['/', '\\', ':']) && matches!(Path::new(name).components().collect::<Vec<_>>().as_slice(), [Component::Normal(_)]) {
++        return Ok(name);
++    }
++    Err(bad("The export record needs a file name without a path."))
+ }
+ 
+ // ---- the records -------------------------------------------------------------------------------------------------------
+@@ -234,12 +315,14 @@ fn changed_by_hand(rec: &Rec, path: &Path) -> bool {
+     sha_file(path).ok().as_deref() != Some(s(rec, "file").as_str())
+ }
+ 
+-fn public(rec: &Rec, out: &Path) -> Value {
+-    let path = out.join(s(rec, "name"));
+-    let there = path.is_file();
+-    let kept: Vec<Value> = rec.get("kept").and_then(|k| k.as_array()).map(|a| a.iter().filter(|k| out.join(k.as_str().unwrap_or("")).is_file()).cloned().collect()).unwrap_or_default();
+-    let mut v = json!({"id": rec["id"], "name": rec["name"], "path": path.to_string_lossy(), "exists": there,
+-        "size": if there { fs::metadata(&path).map(|m| m.len()).unwrap_or(0) } else { 0 }, "title": s(rec, "title"),
++fn public(rec: &Rec, out: Option<&Path>) -> Value {
++    let path = out.map(|dir| dir.join(s(rec, "name")));
++    let there = path.as_ref().is_some_and(|p| p.is_file());
++    let kept: Vec<Value> = rec.get("kept").and_then(|k| k.as_array()).map(|a| a.iter().filter(|k| {
++        out.zip(k.as_str().and_then(|name| checked_name(name).ok())).is_some_and(|(dir, name)| dir.join(name).is_file())
++    }).cloned().collect()).unwrap_or_default();
++    let mut v = json!({"id": rec["id"], "name": rec["name"], "path": path.as_ref().map(|p| p.to_string_lossy()), "exists": there,
++        "size": path.as_ref().and_then(|p| fs::metadata(p).ok()).filter(|m| m.is_file()).map(|m| m.len()).unwrap_or(0), "title": s(rec, "title"),
+         "source": rec["source"], "to": rec["to"], "structure": rec["structure"], "theme": rec["theme"], "built": rec["built"],
+         "pdf": rec.get("pdf").cloned().unwrap_or(Value::Null), "kept": kept});
+     // made here (W6): a PDF's slide count, and a page's version and switches; the Python app's records have none
+@@ -254,10 +337,24 @@ fn public(rec: &Rec, out: &Path) -> Value {
+ /// A record and how it stands: current, behind (its source has changed), edited (its file was changed by hand), missing
+ /// (the file is gone), gone (the source), unreadable (the source has an error), forgotten, or elsewhere (a document the
+ /// Python app keeps up to date until phase 5: a lesson's, or a structure not made here; `problem` says which).
+-pub fn status(bible: &Bible, store: &Store, out: &Path, rec: &Rec) -> Value {
+-    let path = out.join(s(rec, "name"));
+-    let there = path.is_file();
+-    let edited = there && changed_by_hand(rec, &path);
++pub fn status(bible: &Bible, store: &Store, folders: &ExportFolders, rec: &Rec) -> Value {
++    match folders.resolve(rec) {
++        Ok(out) => status_at(bible, store, out.or(folders.override_dir.as_deref()), rec),
++        Err(err) => {
++            let mut v = public(rec, None);
++            v["state"] = json!("unreadable");
++            v["problem"] = json!(err.0);
++            v["edited"] = json!(false);
++            v["behind"] = json!(false);
++            v
++        }
++    }
++}
++
++fn status_at(bible: &Bible, store: &Store, out: Option<&Path>, rec: &Rec) -> Value {
++    let path = out.map(|dir| dir.join(s(rec, "name"))).filter(|p| p.is_file());
++    let there = path.is_some();
++    let edited = path.as_ref().is_some_and(|p| changed_by_hand(rec, p));
+     let mut v = public(rec, out);
+     v["edited"] = json!(edited);
+     if rec.get("forgotten") == Some(&json!(true)) {
+@@ -296,11 +393,11 @@ pub fn status(bible: &Bible, store: &Store, out: &Path, rec: &Rec) -> Value {
+ }
+ 
+ /// Every document (or one source's: ("thread", id) or ("page", id)), newest first.
+-pub fn listing(bible: &Bible, store: &Store, out: &Path, of: Option<(&str, &str)>) -> Value {
++pub fn listing(bible: &Bible, store: &Store, folders: &ExportFolders, of: Option<(&str, &str)>) -> Value {
+     let mut every: Vec<Value> = records(store)
+         .iter()
+         .filter(|r| of.is_none_or(|(k, id)| r["source"]["kind"].as_str() == Some(k) && r["source"]["id"].as_str() == Some(id)))
+-        .map(|r| status(bible, store, out, r))
++        .map(|r| status(bible, store, folders, r))
+         .collect();
+     every.sort_by(|a, b| s_(b, "built").cmp(s_(a, "built")));
+     json!(every)
+@@ -332,13 +429,17 @@ fn safe_stem(text: &str) -> String {
+ }
+ 
+ fn unique(dir: &Path, stem: &str, ext: &str) -> PathBuf {
+-    let mut out = dir.join(format!("{stem}{ext}"));
++    unique_reserved(dir, stem, ext, &[])
++}
++
++fn unique_reserved(dir: &Path, stem: &str, ext: &str, reserved: &[String]) -> PathBuf {
++    let mut name = format!("{stem}{ext}");
+     let mut n = 2;
+-    while out.exists() {
+-        out = dir.join(format!("{stem} ({n}){ext}"));
++    while dir.join(&name).exists() || reserved.iter().any(|other| other.eq_ignore_ascii_case(&name)) {
++        name = format!("{stem} ({n}){ext}");
+         n += 1;
+     }
+-    out
++    dir.join(name)
+ }
+ 
+ /// The verses the source holds that are not in the finished file's text, word for word.
+@@ -398,7 +499,8 @@ fn look_for(store: &Store, rec: &Rec, name: Option<&str>, dials: &[(String, Stri
+ }
+ 
+ #[allow(clippy::too_many_arguments)]
+-fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str, lk: (String, look::Look), force: bool) -> Result<Value> {
++fn build(bible: &Bible, store: &Store, folders: &ExportFolders, mut rec: Rec, theme_key: &str, lk: (String, look::Look), force: bool) -> Result<Value> {
++    let out = folders.build_in(&rec)?;
+     let (look_key, lk) = lk;
+     let look_values = serde_json::to_value(&lk).unwrap();
+     crate::store::guard(&store.root)?;
+@@ -412,7 +514,7 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
+     let there = old.as_ref().is_some_and(|o| o.is_file());
+     fs::create_dir_all(out)?;
+     if there && !force && s(&rec, "plan") == finger && s(&rec, "theme") == theme_key && rec.get("design").and_then(|d| d.as_i64()) == Some(docx::DESIGN) && rec.get("look_values") == Some(&look_values) {
+-        let mut v = public(&rec, out);
++        let mut v = public(&rec, Some(out));
+         v["changed"] = json!(false);
+         v["kept_now"] = Value::Null;
+         return Ok(v);
+@@ -437,7 +539,11 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
+         // a first build, or a thread renamed, takes a new name, and never that of a file that is not this document's
+         let target = match &old {
+             Some(o) if s(&rec, "stem") == stem => o.clone(),
+-            _ => unique(out, &stem, ext),
++            _ => {
++                // A fresh file must not be mistaken for another record's missing legacy export.
++                let reserved = records(store).iter().filter(|r| r["id"] != rec["id"]).map(|r| s(r, "name")).collect::<Vec<_>>();
++                unique_reserved(out, &stem, ext, &reserved)
++            }
+         };
+         let mut kept = None;
+         if let (true, Some(o)) = (there, old.as_ref()) {
+@@ -481,8 +587,9 @@ fn build(bible: &Bible, store: &Store, out: &Path, mut rec: Rec, theme_key: &str
+             list.push(json!(k.file_name().unwrap().to_string_lossy()));
+             rec.insert("kept".into(), json!(list));
+         }
++        folders.remember(&mut rec, out);
+         save(store, &rec)?;
+-        let mut v = public(&rec, out);
++        let mut v = public(&rec, Some(out));
+         v["changed"] = json!(true);
+         v["kept_now"] = kept.map(|k| json!(k.file_name().unwrap().to_string_lossy())).unwrap_or(Value::Null);
+         v["checked"] = checked;
+@@ -510,7 +617,7 @@ pub fn set_theme(store: &mut Store, key: &str) -> Result<Value> {
+ /// The document for a thread and structure: made the first time, brought up to date after. `to`: word, or pdf (slides as
+ /// PDF pages). new makes another alongside; force rebuilds even if nothing changed.
+ #[allow(clippy::too_many_arguments)]
+-pub fn make(bible: &Bible, store: &Store, out: &Path, thread: &str, to: &str, structure: Option<&str>, theme: Option<&str>, look_name: Option<&str>,
++pub fn make(bible: &Bible, store: &Store, folders: &ExportFolders, thread: &str, to: &str, structure: Option<&str>, theme: Option<&str>, look_name: Option<&str>,
+     dials: &[(String, String)], new: bool, force: bool) -> Result<Value> {
+     if !matches!(to, "word" | "pdf") {
+         return Err(bad("to: word, or pdf (slides as PDF pages; PowerPoint is made by the Python app until phase 5)."));
+@@ -532,11 +639,11 @@ pub fn make(bible: &Bible, store: &Store, out: &Path, thread: &str, to: &str, st
+         _ => json!({"id": new_id(store, &source, st.key, to), "source": source, "to": to, "structure": st.key}).as_object().unwrap().clone(),
+     };
+     let lk = look_for(store, &rec, look_name, dials)?;
+-    build(bible, store, out, rec, &theme, lk, force)
++    build(bible, store, folders, rec, &theme, lk, force)
+ }
+ 
+ /// One document by name, on its own theme unless given another.
+-pub fn update(bible: &Bible, store: &Store, out: &Path, name: &str, theme: Option<&str>, look_name: Option<&str>, dials: &[(String, String)], force: bool) -> Result<Value> {
++pub fn update(bible: &Bible, store: &Store, folders: &ExportFolders, name: &str, theme: Option<&str>, look_name: Option<&str>, dials: &[(String, String)], force: bool) -> Result<Value> {
+     let rec = find(store, name)?;
+     if rec.get("forgotten") == Some(&json!(true)) {
+         return Err(bad(format!("“{}” was forgotten, so it is left as it is. Remember it first (docs remember).", s(&rec, "name"))));
+@@ -554,18 +661,18 @@ pub fn update(bible: &Bible, store: &Store, out: &Path, name: &str, theme: Optio
+         None => s(&rec, "theme"),
+     };
+     let lk = look_for(store, &rec, look_name, dials)?;
+-    build(bible, store, out, rec, &theme, lk, force)
++    build(bible, store, folders, rec, &theme, lk, force)
+ }
+ 
+ /// Every document whose source has changed and whose file is still there, that this app makes. One that cannot be updated
+ /// does not stop the rest.
+-pub fn update_behind(bible: &Bible, store: &Store, out: &Path) -> Value {
++pub fn update_behind(bible: &Bible, store: &Store, folders: &ExportFolders) -> Value {
+     let (mut done, mut failed) = (vec![], vec![]);
+-    for d in listing(bible, store, out, None).as_array().unwrap() {
++    for d in listing(bible, store, folders, None).as_array().unwrap() {
+         if d["state"] != "behind" || d["to"] == "deck" {
+             continue;
+         }
+-        match update(bible, store, out, s_(d, "id"), None, None, &[], false) {
++        match update(bible, store, folders, s_(d, "id"), None, None, &[], false) {
+             Ok(v) => done.push(v),
+             Err(e) => failed.push(json!({"name": d["name"], "error": e.0})),
+         }
+@@ -582,17 +689,17 @@ pub fn forget(store: &Store, name: &str) -> Result<Value> {
+ }
+ 
+ /// Keep a forgotten document up to date again. → how it stands now.
+-pub fn remember(bible: &Bible, store: &Store, out: &Path, name: &str) -> Result<Value> {
++pub fn remember(bible: &Bible, store: &Store, folders: &ExportFolders, name: &str) -> Result<Value> {
+     let mut rec = find(store, name)?;
+     rec.shift_remove("forgotten");
+     save(store, &rec)?;
+-    Ok(status(bible, store, out, &rec))
++    Ok(status(bible, store, folders, &rec))
+ }
+ 
+ /// Take a document away: its file, its PDF and any kept versions are deleted from the disk (as the Python app does; they
+ /// are made files, not study work), and its record goes to the study folder's .trash (the rule for the study folder). A
+ /// file open in another program stops it before anything is deleted.
+-pub fn delete(store: &mut Store, out: &Path, name: &str) -> Result<Value> {
++pub fn delete(store: &mut Store, folders: &ExportFolders, name: &str) -> Result<Value> {
+     crate::store::guard(&store.root)?;
+     let rec = find(store, name)?;
+     let mut names = vec![s(&rec, "name")];
+@@ -600,7 +707,12 @@ pub fn delete(store: &mut Store, out: &Path, name: &str) -> Result<Value> {
+         names.push(p.into());
+     }
+     names.extend(rec.get("kept").and_then(|k| k.as_array()).map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect::<Vec<_>>()).unwrap_or_default());
+-    let files: Vec<PathBuf> = names.iter().filter(|n| !n.is_empty()).map(|n| out.join(n)).filter(|p| p.is_file()).collect();
++    let names = names.iter().filter(|n| !n.is_empty()).map(|n| checked_name(n)).collect::<Result<Vec<_>>>()?;
++    let files: Vec<PathBuf> = match folders.resolve(&rec)? {
++        Some(out) => names.iter().map(|n| out.join(n)).filter(|p| p.is_file()).collect(),
++        None if names.len() == 1 => Vec::new(), // there is only a missing primary, so remove just its record
++        None => return Err(missing("Restore the main export before deleting it so its PDF and kept copies can be located.")),
++    };
+     if let Some(f) = files.iter().find(|f| open_elsewhere(f)) {
+         return Err(busy(f, "delete it"));
+     }
+@@ -615,16 +727,39 @@ pub fn delete(store: &mut Store, out: &Path, name: &str) -> Result<Value> {
+ 
+ /// The plan a document would be made from now, for a thread: what goes where, and its fingerprint (for a person or an AI
+ /// checking a document, and for comparing with the Python app's).
+-pub fn plan_for(bible: &Bible, store: &Store, thread: &str, to: &str, structure: Option<&str>) -> Result<Value> {
++pub fn plan_for(bible: &Bible, store: &Store, thread: &str, to: &str, structure: Option<&str>, layout: Option<PdfLayout<'_>>) -> Result<Value> {
+     let st = plan::structure_of(if to == "deck" { "pdf" } else { to }, structure, "thread")?;
+     let mut margin = plan::Margin::new(bible, store)?;
+     let rec = json!({"source": {"kind": "thread", "id": thread}}).as_object().unwrap().clone();
+-    let (blocks, _) = read_source(bible, store, &rec, &mut margin).map_err(|e| match e {
++    let (blocks, title) = read_source(bible, store, &rec, &mut margin).map_err(|e| match e {
+         NoPlan::Gone => missing(format!("No thread “{thread}”.")),
+         NoPlan::Unreadable(why) | NoPlan::NotHere(why) => Error(why),
+     })?;
+     let p = plan::plan_of_blocks(to, st.key, &blocks, &mut margin)?;
+-    Ok(json!({"to": to, "structure": st.key, "fingerprint": plan::fingerprint(&p), "plan": p}))
++    let pages = layout.map(|options| pdf_plan_pages(store, &rec, to, &p, &title, options)).transpose()?;
++    let mut result = json!({"to": to, "structure": st.key, "fingerprint": plan::fingerprint(&p), "plan": p});
++    if let Some(pages) = pages {
++        result["pages"] = json!(pages);
++    }
++    Ok(result)
++}
++
++/// Settings for the read-only PDF layout used by Adjust.
++pub struct PdfLayout<'a> {
++    pub theme: Option<&'a str>,
++    pub look: Option<&'a str>,
++    pub dials: &'a [(String, String)],
++}
++
++fn pdf_plan_pages(store: &Store, rec: &Rec, to: &str, p: &[Value], title: &str, options: PdfLayout<'_>) -> Result<usize> {
++    if !matches!(to, "pdf" | "deck") {
++        return Err(bad("Page counts are available for PDF slides."));
++    }
++    let theme = options.theme.filter(|key| !key.is_empty()).map(String::from).unwrap_or_else(|| {
++        rec.get("theme").and_then(Value::as_str).map(String::from).unwrap_or_else(|| saved_theme(store))
++    });
++    let (_, lk) = look_for(store, rec, options.look, options.dials)?;
++    deck::page_count(p, plan::theme(&theme)?, &lk, title)
+ }
+ 
+ // ---- a document from a page (W6) ----------------------------------------------------------------------------------------
+@@ -714,12 +849,26 @@ pub fn page_parts(bible: &Bible, store: &Store, page: &str, on: &[String], off:
+     Ok(v)
+ }
+ 
++fn choose_page_parts(bible: &Bible, store: &Store, id: &str, rec: &mut Rec, version: Option<&str>, on: &[String], off: &[String]) -> Result<()> {
++    if !on.is_empty() || !off.is_empty() {
++        let sw = page::keep_switched(bible, store, id, on, off)?;
++        if sw.is_empty() { rec.shift_remove("switched") } else { rec.insert("switched".into(), Value::Object(sw)) };
++    }
++    if let Some(v) = version {
++        match check_version(v)? {
++            Some(v) => rec.insert("version".into(), json!(v)),
++            None => rec.shift_remove("version"),
++        };
++    }
++    Ok(())
++}
++
+ /// A document from a page (sheets W7.1–W7.3): `to` word makes its Speaker Script, pdf its Verse by Verse; made the first
+ /// time, brought up to date after, in the same file. `on`/`off` (rows' keys) set the switches anew (a row not named
+ /// takes its default); with neither, the switches it was last made with stay. `version`: kjv or ylt for every
+ /// scripture block, page for each block's own; none keeps the last.
+ #[allow(clippy::too_many_arguments)]
+-pub fn make_page(bible: &Bible, store: &Store, out: &Path, page: &str, to: &str, structure: Option<&str>, theme: Option<&str>,
++pub fn make_page(bible: &Bible, store: &Store, folders: &ExportFolders, page: &str, to: &str, structure: Option<&str>, theme: Option<&str>,
+     version: Option<&str>, on: &[String], off: &[String], look_name: Option<&str>, dials: &[(String, String)], force: bool) -> Result<Value> {
+     let key = page_structure(to, structure)?;
+     let id = page_id(store, page)?;
+@@ -731,76 +880,91 @@ pub fn make_page(bible: &Bible, store: &Store, out: &Path, page: &str, to: &str,
+         None => saved_theme(store),
+     };
+     rec.shift_remove("forgotten"); // asked for by name: kept up to date again
+-    if !on.is_empty() || !off.is_empty() {
+-        let sw = page::keep_switched(bible, store, &id, on, off)?;
+-        if sw.is_empty() { rec.shift_remove("switched") } else { rec.insert("switched".into(), Value::Object(sw)) };
+-    }
+-    if let Some(v) = version {
+-        match check_version(v)? {
+-            Some(v) => rec.insert("version".into(), json!(v)),
+-            None => rec.shift_remove("version"),
+-        };
+-    }
++    choose_page_parts(bible, store, &id, &mut rec, version, on, off)?;
++    // Resolve before saving changed switches, so a conflicting path cannot alter the record.
++    folders.build_in(&rec)?;
+     // a choice that changes nothing in the file is still kept, for the next time
+     if rec.contains_key("name") && rec != before {
+         save(store, &rec)?;
+     }
+     let lk = look_for(store, &rec, look_name, dials)?;
+-    build(bible, store, out, rec, &theme, lk, force)
++    build(bible, store, folders, rec, &theme, lk, force)
+ }
+ 
+-/// The plan a page's document would be made from now, with its last switches (`wb docs plan --page`).
+-pub fn plan_for_page(bible: &Bible, store: &Store, page: &str, to: &str) -> Result<Value> {
++/// The plan a page's document would be made from now, optionally with pending Make choices.
++#[allow(clippy::too_many_arguments)]
++pub fn plan_for_page(bible: &Bible, store: &Store, page: &str, to: &str, structure: Option<&str>, version: Option<&str>,
++    on: &[String], off: &[String], layout: Option<PdfLayout<'_>>) -> Result<Value> {
+     let to = if to == "deck" { "pdf" } else { to };
+-    let key = page_structure(to, None)?;
++    let key = page_structure(to, structure)?;
+     let id = page_id(store, page)?;
+-    let rec = page_record(store, &id, to, key);
+-    let (p, blocks, _) = plan_now(bible, store, &rec).map_err(|e| match e {
++    let mut rec = page_record(store, &id, to, key);
++    choose_page_parts(bible, store, &id, &mut rec, version, on, off)?;
++    let (p, blocks, title) = plan_now(bible, store, &rec).map_err(|e| match e {
+         NoPlan::Gone => gone(&rec["source"]),
+         NoPlan::Unreadable(why) | NoPlan::NotHere(why) => Error(why),
+     })?;
+-    Ok(json!({"to": to, "structure": key, "fingerprint": plan::fingerprint(&p), "verses": plan::source_refs(&blocks), "plan": p}))
++    let pages = layout.map(|options| pdf_plan_pages(store, &rec, to, &p, &title, options)).transpose()?;
++    let mut result = json!({"to": to, "structure": key, "fingerprint": plan::fingerprint(&p), "verses": plan::source_refs(&blocks), "plan": p});
++    if let Some(pages) = pages {
++        result["pages"] = json!(pages);
++    }
++    Ok(result)
+ }
+ 
+ /// A finished file as the window previews it (sheet W7.4). A Word document: its paragraphs with their styles, read from
+ /// the file itself. Slides as PDF pages: each page drawn in SVG by the same layout that made the PDF, while the document
+ /// is up to date (its plan's fingerprint is the file's, so the pages are the file's); one that has changed since says so
+ /// (`stale`) rather than show pages the file does not have.
+-pub fn preview(bible: &Bible, store: &Store, out: &Path, name: &str) -> Result<Value> {
++pub fn preview(bible: &Bible, store: &Store, folders: &ExportFolders, name: &str) -> Result<Value> {
+     let rec = find(store, name)?;
+-    let path = out.join(s(&rec, "name"));
+-    if !path.is_file() {
+-        return Err(missing(format!("{} is not there; docs update makes it again.", s(&rec, "name"))));
+-    }
++    let path = existing_file(folders, &rec)?;
+     let mut v = json!({"id": rec["id"], "name": rec["name"], "to": rec["to"], "path": path.to_string_lossy()});
+     match s(&rec, "to").as_str() {
+         "word" => v["paras"] = docx::paragraphs(&path)?,
+         "pdf" => {
+-            let st = status(bible, store, out, &rec);
++            let st = status_at(bible, store, path.parent(), &rec);
+             if st["state"] != "current" {
++                v["last_built_pages"] = st["pages"].clone();
+                 v["stale"] = json!("Its source has changed since this file was made, so it is not drawn here: Make again, or open the file as it is.");
+                 return Ok(v);
+             }
+             let (p, _, title) = plan_now(bible, store, &rec).map_err(|_| bad("Its source cannot be read now; open the file as it is."))?;
+-            v["slides"] = json!(deck::pages_svg(&p, plan::theme(&s(&rec, "theme"))?, &look_of_record(&rec), &title)?);
++            let slides = deck::pages_svg(&p, plan::theme(&s(&rec, "theme"))?, &look_of_record(&rec), &title)?;
++            v["pages"] = json!(slides.len());
++            v["slides"] = json!(slides);
+         }
+         _ => return Err(bad("A PowerPoint deck is previewed in PowerPoint (docs open).")),
+     }
+     Ok(v)
+ }
+ 
++fn existing_file(folders: &ExportFolders, rec: &Rec) -> Result<PathBuf> {
++    let name = s(rec, "name");
++    folders.resolve(rec)?.map(|dir| dir.join(&name)).filter(|path| path.is_file())
++        .ok_or_else(|| missing(format!("“{name}” is not there. Check its export folder or use docs update to rebuild it.")))
++}
++
++pub fn open(store: &Store, folders: &ExportFolders, name: &str) -> Result<Value> {
++    let rec = find(store, name)?;
++    let path = existing_file(folders, &rec)?;
++    open_file(&path)?;
++    Ok(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}))
++}
++
+ /// Show a document's file in its folder (Explorer, the Finder), picked out.
+-pub fn reveal(store: &Store, out: &Path, name: &str) -> Result<Value> {
++pub fn reveal(store: &Store, folders: &ExportFolders, name: &str) -> Result<Value> {
+     let rec = find(store, name)?;
+-    let path = out.join(s(&rec, "name"));
+-    let spawned = if !path.is_file() {
+-        return Err(missing(format!("{} is not there; docs update makes it again.", s(&rec, "name"))));
+-    } else if cfg!(windows) {
++    let path = existing_file(folders, &rec)?;
++    if std::env::var("WB_NO_OPEN").as_deref() == Ok("1") {
++        return Ok(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}));
++    }
++    let spawned = if cfg!(windows) {
+         std::process::Command::new("explorer.exe").arg(format!("/select,{}", path.display())).spawn()
+     } else if cfg!(target_os = "macos") {
+         std::process::Command::new("open").arg("-R").arg(&path).spawn()
+     } else {
+-        std::process::Command::new("xdg-open").arg(out).spawn()
++        std::process::Command::new("xdg-open").arg(path.parent().unwrap()).spawn()
+     };
+     spawned.map_err(|e| bad(format!("Could not show {} ({e}).", path.display())))?;
+     Ok(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}))
+@@ -811,6 +975,9 @@ pub fn open_file(path: &Path) -> Result<()> {
+     if !path.is_file() {
+         return Err(missing(format!("{} is not there; docs update makes it again.", path.file_name().unwrap_or_default().to_string_lossy())));
+     }
++    if std::env::var("WB_NO_OPEN").as_deref() == Ok("1") {
++        return Ok(());
++    }
+     let spawned = if cfg!(windows) {
+         std::process::Command::new("explorer.exe").arg(path).spawn()
+     } else if cfg!(target_os = "macos") {
+@@ -864,13 +1031,27 @@ mod tests {
+         let _ = fs::remove_dir_all(&dir);
+     }
+ 
++    #[test]
++    fn explicit_override_is_bound_to_the_original_directory() {
++        let root = std::env::temp_dir().join("h07-study");
++        let folders = ExportFolders { local: root.join("exports"), override_dir: Some(root.join("shared")), legacy: root.join("legacy") };
++        let mut rec = Rec::new();
++        assert_eq!(folders.build_in(&rec).unwrap(), root.join("shared"));
++        let shared = folders.preferred();
++        folders.remember(&mut rec, shared);
++        rec.insert("name".into(), json!("export.docx"));
++        assert_eq!(folders.build_in(&rec).unwrap(), shared);
++        let changed = ExportFolders { override_dir: Some(root.join("different")), ..folders };
++        assert!(changed.build_in(&rec).unwrap_err().0.contains("original WB_DOCS_DIR"));
++    }
++
+     #[test]
+     fn names_and_folders() {
+         assert_eq!(safe_stem("Lesson: Phinehas / 25:11"), "Lesson Phinehas 2511");
+         assert_eq!(slug("thread Phinehas echoes script pdf"), "thread-phinehas-echoes-script-pdf");
+         let scratch = std::env::temp_dir().join("x").join("study-scratch");
+         if std::env::var("WB_DOCS_DIR").is_err() {
+-            assert_eq!(folder_for(&scratch), std::env::temp_dir().join("x").join("study-scratch-documents"));
++            assert_eq!(ExportFolders::for_study(&scratch).unwrap().preferred(), scratch.join("exports"));
+         }
+     }
+ }
+diff --git a/measure/desk-r3.mjs b/measure/desk-r3.mjs
+index 04a94a9..7cfea53 100644
+--- a/measure/desk-r3.mjs
++++ b/measure/desk-r3.mjs
+@@ -17,14 +17,14 @@ const wbExe = file(`target/${release ? 'release' : 'debug'}/wb.exe`);
+ const shots = file('docs/phase2/');
+ const work = path.join(os.tmpdir(), 'bible-workbench-rs', 'desk-r3');
+ const study = path.join(work, 'study'), cache = path.join(work, 'cache'), profile = path.join(work, 'webview');
+-const docsDir = path.join(work, 'study-documents'); // beside this run's copy: never the person's Documents
++const docsDir = path.join(study, 'exports');
+ const sleep = ms => new Promise(r => setTimeout(r, ms));
+ 
+ rmSync(work, { recursive: true, force: true });
+ cpSync(path.join(os.tmpdir(), 'bible-workbench-rs', 'study-scratch'), study, { recursive: true });
+ rmSync(path.join(study, 'documents'), { recursive: true, force: true }); // this run's copy starts with no documents
+ mkdirSync(cache, { recursive: true });
+-const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: '9335' };
++const env = { ...process.env, WB_STUDY_DIR: study, WB_DOCS_DIR: '', WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: '9335' };
+ const proc = spawn(exe, [], { env, stdio: 'ignore' });
+ const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
+ const wbj = args => JSON.parse(execFileSync(wbExe, args, { env }).toString());
+diff --git a/measure/desk.mjs b/measure/desk.mjs
+index d08191a..b9c36b1 100644
+--- a/measure/desk.mjs
++++ b/measure/desk.mjs
+@@ -34,7 +34,7 @@ rmSync(path.join(study, 'settings', 'notebook.json'), { force: true });
+ // the Shelf's checks open two sets by name; the person's folder is not trusted to hold them, so this copy gets its own
+ shelfFixtures(study);
+ mkdirSync(cache, { recursive: true });
+-const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort, WB_NO_OPEN: '1' };
++const env = { ...process.env, WB_STUDY_DIR: study, WB_DOCS_DIR: '', WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort, WB_NO_OPEN: '1' };
+ const proc = spawn(exe, [], { env, stdio: 'ignore' });
+ const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
+ 
+@@ -1461,7 +1461,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
+   // W6, a document from a page (sheets W7.1–W7.4): a page with headings, scripture blocks, to-dos, and two pages inside
+   // it (one with scripture, one with a view) made into a Speaker Script and Verse by Verse. Every verse expected here
+   // comes from the database (wb text); the view's rows are wb view run's.
+-  const w6Docs = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
++  const w6Docs = path.join(study, 'exports');
+   const w6 = wbj('page', 'new', 'W6 Lesson: Phinehas').id;
+   for (const b of ['# Aim', 'Read Numbers 25 with the group, then Psalm 106 beside it.', '# Before Tuesday', '- [x] W6 read Numbers 25 twice\n- [ ] W6 print the verse deck', '```scripture\nNum 25:10-13\n```']) execFileSync(wbExe, ['block', 'add', w6, '-'], { env, input: b });
+   const w6a = wbj('page', 'new', 'W6 The passage', '--parent', w6).id;
+@@ -2298,7 +2298,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
+ 
+   // tier 4: documents from a thread. The Documents pane makes the Speaker Script (Word); the command field makes Verse by
+   // Verse (PDF pages); each is checked verse by verse before it is kept, listed with how it stands, and in its thread's pane
+-  const docsDir = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
++  const docsDir = path.join(study, 'exports');
+   // a lesson's PowerPoint, as the Python app records one (its file not made here): written into this run's own copy, so the
+   // check below does not depend on what the scratch folder holds
+   mkdirSync(path.join(study, 'documents'), { recursive: true });
+@@ -2312,7 +2312,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
+   const scriptRow = page.locator('.pane-documents .doc-row', { hasText: 'Speaker Script - Phinehas.docx' });
+   await scriptRow.waitFor({ timeout: 20000 });
+   const scriptRec = JSON.parse(execFileSync(wbExe, ['docs', 'show', 'thread-phinehas-script'], { env }).toString());
+-  check('Make writes the Speaker Script, checked, beside the scratch folder', existsSync(path.join(docsDir, 'Speaker Script - Phinehas.docx')) && scriptRec.state === 'current' && scriptRec.theme === 'olivet', scriptRec.state);
++  check('Make writes the Speaker Script, checked, inside the scratch folder', existsSync(path.join(docsDir, 'Speaker Script - Phinehas.docx')) && scriptRec.state === 'current' && scriptRec.theme === 'olivet', scriptRec.state);
+   check('the Speaker Script is listed Up to date', (await scriptRow.locator('.doc-state').innerText()) === 'Up to date');
+   // R3: Adjust… opens the dials beside a live page drawn from the thread's own plan; a Look, Ink and See it in grey
+   // change the page at once; Use these carries the dials back to the Make row (nothing is made until Make)
+diff --git a/ui/src/desk.css b/ui/src/desk.css
+index 043b1f7..8a6f067 100644
+--- a/ui/src/desk.css
++++ b/ui/src/desk.css
+@@ -617,6 +617,8 @@ button.question-pill:hover { text-decoration: line-through; }
+ .plan-summary-line { font: var(--type-small-strong); }
+ .plan-summary .bad { color: var(--jesus); }
+ .plan-modal-foot { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 6px; }
++.pd-parts-foot { flex-wrap: wrap; }
++.pd-part-previews { display: flex; flex-wrap: wrap; gap: 6px; margin-right: auto; }
+ .plan-modal-foot > span:empty { flex: 1; }
+ .plan-groups { display: flex; gap: 8px; flex-wrap: wrap; }
+ .plan-books { display: flex; gap: 8px; flex-wrap: wrap; }
+@@ -1041,6 +1043,8 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
+ .lk-body { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 20px; overflow: hidden; min-height: 0; flex: 1; }
+ .lk-side { overflow-y: auto; padding-right: 6px; display: flex; flex-direction: column; gap: 14px; }
+ .lk-stage { overflow: auto; background: var(--sunken); border-radius: 8px; padding: 20px; display: flex; justify-content: center; align-items: flex-start; }
++.lk-stage.lk-with-count { flex-direction: column; align-items: center; justify-content: flex-start; }
++.lk-with-count .lk-slide { flex-shrink: 0; }
+ .lk-dial { display: flex; flex-direction: column; gap: 6px; }
+ .lk-dial-name { font: var(--type-small); font-weight: 600; }
+ .lk-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; background: var(--sunken); border-radius: 8px; align-self: flex-start; }
+diff --git a/ui/src/documents.ts b/ui/src/documents.ts
+index ffaf696..6b7f882 100644
+--- a/ui/src/documents.ts
++++ b/ui/src/documents.ts
+@@ -149,7 +149,7 @@ function makeForm(threads: any[], fixed: string | null, themes: Record<string, a
+     const [to, st] = what.value.split('|');
+     const kind = to === 'word' ? 'word' : 'pdf';
+     const start: Chosen = { look: look.value, dials: [...extra, ...(ink.value ? [['ink', ink.value] as [string, string]] : [])] };
+-    const r = await adjust(kind, ['--thread', thread, '--to', to, '--structure', st], start, themes[theme.value]?.doc_accent || '8E1B14');
++    const r = await adjust(kind, ['--thread', thread, '--to', to, '--structure', st, '--theme', theme.value], start, themes[theme.value]?.doc_accent || '8E1B14');
+     if (!r) return;
+     look.value = r.look;
+     ink.value = r.dials.find(d => d[0] === 'ink')?.[1] || '';
+diff --git a/ui/src/looks.ts b/ui/src/looks.ts
+index ee9e334..fba0cf3 100644
+--- a/ui/src/looks.ts
++++ b/ui/src/looks.ts
+@@ -61,11 +61,15 @@ export async function adjust(kind: 'word' | 'pdf', planArgs: string[], start: Ch
+   let grey = false;
+ 
+   return new Promise(done => {
+-    const m = modal('Adjust the look');
++    const m = modal('Adjust the look', true, () => done(null));
+     m.box.classList.add('lk-modal');
+-    const finish = (r: Chosen | null) => { m.close(); done(r); };
++    const finish = (r: Chosen) => { done(r); m.close(); };
+     const side = h('div', 'lk-side');
+-    const stage = h('div', 'lk-stage');
++    const stage = h('div', kind === 'pdf' ? 'lk-stage lk-with-count' : 'lk-stage');
++    const pageCount = h('p', 'muted small lk-page-count');
++    pageCount.setAttribute('aria-live', 'polite');
++    let countKey = '';
++    let countTimer: ReturnType<typeof setTimeout> | undefined;
+     const body = h('div', 'lk-body');
+     body.append(side, stage);
+     const changed = (): [string, string][] => {
+@@ -73,6 +77,29 @@ export async function adjust(kind: 'word' | 'pdf', planArgs: string[], start: Ch
+       return Object.entries(vals).filter(([k, v]) => k !== 'name' && str(b[k]) !== v).map(([k, v]) => [k, v]);
+     };
+ 
++    const updatePageCount = () => {
++      const args = ['docs', 'plan', ...planArgs, '--pages', '--look', lookKey,
++        ...changed().flatMap(([k, v]) => ['--set', `${k}=${v}`])];
++      const key = JSON.stringify(args);
++      if (key === countKey) return;
++      countKey = key;
++      clearTimeout(countTimer);
++      pageCount.textContent = 'Counting PDF pages…';
++      pageCount.removeAttribute('title');
++      countTimer = setTimeout(async () => {
++        if (!m.box.isConnected) return;
++        try {
++          const result = await wb(args);
++          if (key === countKey) pageCount.textContent = `${result.pages} PDF page${result.pages === 1 ? '' : 's'}`;
++        } catch (x) {
++          if (key === countKey) {
++            pageCount.textContent = 'PDF page count unavailable';
++            pageCount.title = String((x as Error).message || x);
++          }
++        }
++      }, 160);
++    };
++
+     const seg = (d: Dial) => {
+       const row = h('div', 'lk-dial');
+       row.append(h('div', 'lk-dial-name', d.label));
+@@ -206,6 +233,10 @@ export async function adjust(kind: 'word' | 'pdf', planArgs: string[], start: Ch
+       );
+       side.append(acts);
+       stage.replaceChildren(live());
++      if (kind === 'pdf') {
++        stage.append(pageCount);
++        updatePageCount();
++      }
+     };
+     m.box.replaceChildren(m.head('Adjust the look', kind === 'pdf' ? 'Slides: the first verse of your source' : 'Word: the first page of your source'), body);
+     draw();
+diff --git a/ui/src/pagedocs.ts b/ui/src/pagedocs.ts
+index a22dec3..5ba8975 100644
+--- a/ui/src/pagedocs.ts
++++ b/ui/src/pagedocs.ts
+@@ -32,17 +32,30 @@ export function madeWhen(iso: string): string {
+ const size = (n: number) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+ 
+ /** The modal the three steps are drawn in (the plan modal's frame). */
+-export function modal(label: string) {
++export function modal(label: string, aboveCurrent = false, onClose?: () => void) {
+   const overlay = document.getElementById('overlay')!;
+-  overlay.querySelectorAll('.pd-wrap').forEach(x => x.remove());
++  const current = [...overlay.querySelectorAll<HTMLElement>('.pd-wrap')];
++  const previous = aboveCurrent ? current.at(-1) : undefined;
++  if (previous) previous.inert = true;
++  if (!aboveCurrent) current.forEach(x => x.remove());
+   const wrap = h('div', 'plan-modal-wrap pd-wrap');
+   const box = h('section', 'plan-modal pd-modal');
+   box.setAttribute('role', 'dialog');
+   box.setAttribute('aria-label', label);
+   wrap.append(box);
+   overlay.append(wrap);
+-  const key = (ev: KeyboardEvent) => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); } };
+-  const close = () => { wrap.remove(); document.removeEventListener('keydown', key, true); };
++  const key = (ev: KeyboardEvent) => {
++    if (ev.key === 'Escape' && wrap.isConnected && !wrap.inert) {
++      ev.stopPropagation();
++      close();
++    }
++  };
++  const close = () => {
++    wrap.remove();
++    if (previous) previous.inert = false;
++    document.removeEventListener('keydown', key, true);
++    onClose?.();
++  };
+   document.addEventListener('keydown', key, true);
+   wrap.onmousedown = ev => { if (ev.target === wrap) close(); };
+   const head = (title: string, sub: string) => {
+@@ -74,6 +87,18 @@ export async function makeFromPage(pageId: string) {
+   const themeName = () => designs.themes[theme]?.name || theme;
+   const versionName = () => version === 'page' ? 'each block’s version' : version;
+ 
++  const switchArgs = () => parts.rows.flatMap(r => [switches.get(r.key) ? '--on' : '--off', r.key]);
++  const pageArgs = () => ['--page', pageId, '--theme', theme, '--version', version, ...switchArgs()];
++  const adjustLook = async (to: 'word' | 'pdf') => {
++    const start: Chosen = { look: lookKey, dials: [...extra, ...(inkMode ? [['ink', inkMode] as [string, string]] : [])] };
++    const r = await adjust(to, [...pageArgs(), '--to', to, '--structure', to === 'word' ? 'script' : 'verse'], start,
++      designs.themes[theme]?.doc_accent || '8E1B14');
++    if (!r) return;
++    lookKey = r.look;
++    inkMode = r.dials.find(d => d[0] === 'ink')?.[1] || '';
++    extra = r.dials.filter(d => d[0] !== 'ink');
++  };
++
+   // ---- W7.1: what to make ----
+   const drawWhat = () => {
+     const cols = h('div', 'pd-cols');
+@@ -120,13 +145,7 @@ export async function makeFromPage(pageId: string) {
+     const ll = h('label', 'pd-field'); ll.append(h('span', 'pd-field-name', 'Look'), lf.look);
+     const li = h('label', 'pd-field'); li.append(h('span', 'pd-field-name', 'Ink'), lf.ink);
+     const adj = button('btn small pd-adjust', extra.length ? `Adjust… (${extra.length})` : 'Adjust…', async () => {
+-      const to = want.word ? 'word' : 'pdf';
+-      const start: Chosen = { look: lookKey, dials: [...extra, ...(inkMode ? [['ink', inkMode] as [string, string]] : [])] };
+-      const r = await adjust(to, ['--page', pageId, '--to', to], start, designs.themes[theme]?.doc_accent || '8E1B14');
+-      if (!r) return;
+-      lookKey = r.look;
+-      inkMode = r.dials.find(d => d[0] === 'ink')?.[1] || '';
+-      extra = r.dials.filter(d => d[0] !== 'ink');
++      await adjustLook(want.word ? 'word' : 'pdf');
+       lf.look.value = lookKey;
+       lf.ink.value = inkMode;
+       adj.textContent = extra.length ? `Adjust… (${extra.length})` : 'Adjust…';
+@@ -139,10 +158,14 @@ export async function makeFromPage(pageId: string) {
+   };
+ 
+   // ---- W7.2: what goes in ----
+-  const switchArgs = () => parts.rows.flatMap(r => [switches.get(r.key) ? '--on' : '--off', r.key]);
++  let partsRequest = 0;
+   const drawParts = async () => {
+-    try { parts = await wb(['craft', 'parts', '--page', pageId, '--version', version, ...switchArgs()]); }
+-    catch (x) { toast(String((x as Error).message || x)); return; }
++    const request = ++partsRequest;
++    try {
++      const next: Parts = await wb(['craft', 'parts', '--page', pageId, '--version', version, ...switchArgs()]);
++      if (request !== partsRequest || !m.box.isConnected) return;
++      parts = next;
++    } catch (x) { toast(String((x as Error).message || x)); return; }
+     const made = [want.word && WHAT.word, want.pdf && WHAT.pdf].filter(Boolean).join(' and ');
+     const list = h('div', 'pd-rows');
+     for (const r of parts.rows) {
+@@ -164,19 +187,24 @@ export async function makeFromPage(pageId: string) {
+     if (!parts.rows.length) list.append(h('p', 'muted small', 'The page has nothing under its title yet: the documents would hold its title only.'));
+     const note = h('div', 'pd-note muted small');
+     note.append(icon('file'), h('span', '', 'The document is planned from the page each time it is made, the way the Python app plans one from a thread; nothing is copied into the page, and scripture comes from the database only.'));
+-    const foot = h('div', 'plan-modal-foot');
++    const foot = h('div', 'plan-modal-foot pd-parts-foot');
+     const go = button('btn primary pd-make', 'Make them', () => void makeThem(go));
+-    foot.append(h('span'), button('btn pd-back', 'Back', drawWhat), go);
++    const previews = h('div', 'pd-part-previews');
++    for (const to of (['word', 'pdf'] as const).filter(t => want[t])) {
++      previews.append(button('btn small pd-parts-preview', to === 'word' ? 'Preview Word' : 'Preview PDF', () => void adjustLook(to)));
++    }
++    foot.append(previews, button('btn pd-back', 'Back', () => { partsRequest++; drawWhat(); }), go);
+     m.box.replaceChildren(m.head('What goes in', `${made} · ${themeName()} · ${versionName()}`), list, note, foot);
+   };
+ 
+   // ---- W7.3: made, and every verse checked ----
+   const makeThem = async (go: HTMLButtonElement) => {
++    partsRequest++;
+     go.disabled = true;
+     go.textContent = 'Making…';
+     const done: { to: string; r?: any; error?: string }[] = [];
+     for (const to of (['word', 'pdf'] as const).filter(t => want[t])) {
+-      try { done.push({ to, r: await wb(['craft', to === 'word' ? 'word' : 'deck', '--page', pageId, '--theme', theme, '--version', version, '--look', lookKey, ...(inkMode ? ['--set', `ink=${inkMode}`] : []), ...extra.flatMap(([k, v]) => ['--set', `${k}=${v}`]), ...switchArgs()]) }); }
++      try { done.push({ to, r: await wb(['craft', to === 'word' ? 'word' : 'deck', ...pageArgs(), '--look', lookKey, ...(inkMode ? ['--set', `ink=${inkMode}`] : []), ...extra.flatMap(([k, v]) => ['--set', `${k}=${v}`])]) }); }
+       catch (x) { done.push({ to, error: String((x as Error).message || x) }); }
+     }
+     app.changed('documents');
+@@ -350,6 +378,9 @@ export function previewDoc(d: { id: string; name: string }) {
+       body.append(bar, stage);
+       setTimeout(() => body.focus({ preventScroll: true }));
+     } else if (p.stale) {
++      if (typeof p.last_built_pages === 'number') {
++        body.append(h('p', 'muted small', `Last build · ${p.last_built_pages} page${p.last_built_pages === 1 ? '' : 's'}`));
++      }
+       body.append(h('p', 'muted pd-pv-stale', p.stale), button('btn small soft pd-again', 'Make again', async () => {
+         try { await wb(['docs', 'update', d.id]); app.changed('documents'); void dock.find(`doc:${d.id}`)?.refresh?.(); }
+         catch (x) { toast(String((x as Error).message || x)); }
