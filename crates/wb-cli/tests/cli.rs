@@ -30,7 +30,7 @@ impl Wb {
     /// Runs wb; → (exit code, stdout, stderr).
     fn run(&self, args: &[&str], stdin: Option<&str>) -> (i32, String, String) {
         let mut c = Command::new(env!("CARGO_BIN_EXE_wb"));
-        c.args(args).env("WB_STUDY_DIR", &self.dir).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        c.args(args).env("WB_STUDY_DIR", &self.dir).env_remove("WB_DOCS_DIR").env("WB_NO_OPEN", "1").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
         let mut child = c.spawn().unwrap();
         if let Some(text) = stdin {
             use std::io::Write;
@@ -62,14 +62,12 @@ impl Wb {
 impl Drop for Wb {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.dir);
-        let _ = std::fs::remove_dir_all(self.docs()); // the documents made from this scratch folder, beside it
     }
 }
 
 impl Wb {
-    /// Where documents from this scratch folder go: beside it, never the person's Documents folder.
     fn docs(&self) -> PathBuf {
-        self.dir.with_file_name(format!("{}-documents", self.dir.file_name().unwrap().to_string_lossy()))
+        self.dir.join("exports")
     }
 }
 
@@ -1410,6 +1408,8 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     let deck = wb.js(&["craft", "deck", "--page", &top]);
     assert_eq!(deck["id"].as_str().unwrap(), format!("page-{top}-verse"));
     assert!(deck["pages"].as_i64().unwrap() >= 5);
+    let planned = wb.js(&["docs", "plan", "--page", &top, "--to", "pdf", "--pages"]);
+    assert_eq!(planned["pages"], deck["pages"]);
     let file = wb.docs().join(word["name"].as_str().unwrap());
     let text = docx_text(&file);
     for v in verses.iter().chain(&ylt) {
@@ -1427,6 +1427,15 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     assert!(text.contains("To do: print it") && text.contains("Done: read it twice") && !text.contains("a to-do inside"));
     assert_eq!(wb.js(&["craft", "parts", "--page", &top])["rows"][2]["on"], true);
     assert!(wb.fails(&["craft", "word", "--page", &top, "--on", "b:nothing"]).contains("no row"));
+
+    // Pending switches and version are used by the preview without saving choices.
+    let scripture = parts["rows"][3]["key"].as_str().unwrap();
+    let pending = wb.js(&["docs", "plan", "--page", &top, "--to", "pdf", "--off", scripture, "--version", "kjv", "--pages", "--theme", "print"]);
+    assert_eq!(pending["verses"], json!(["Psalms 106:30 (KJV)"]));
+    assert_eq!(wb.js(&["docs", "plan", "--page", &top, "--to", "pdf"])["fingerprint"], planned["fingerprint"]);
+    let applied = wb.js(&["craft", "deck", "--page", &top, "--off", scripture, "--version", "kjv", "--theme", "print"]);
+    assert_eq!(applied["pages"], pending["pages"]);
+    assert_eq!(applied["checked"]["refs"], pending["verses"]);
 
     // one version for every block, in the documents only: the page keeps its own
     let all_kjv = wb.js(&["craft", "word", "--page", &top, "--version", "kjv"]);
@@ -1446,7 +1455,9 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     // change a deck of verses, a scripture block does
     assert!(wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].is_array());
     add(&top, "```scripture\nNum 25:9\n```");
-    assert!(wb.js(&["docs", "preview", &format!("page-{top}-verse")])["stale"].is_string());
+    let stale = wb.js(&["docs", "preview", &format!("page-{top}-verse")]);
+    assert!(stale["stale"].is_string());
+    assert_eq!(stale["last_built_pages"], applied["pages"]);
     let deck_now = wb.js(&["docs", "update", &format!("page-{top}-verse")]);
     let slides = wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].clone();
     assert_eq!(slides.as_array().unwrap().len() as i64, deck_now["pages"].as_i64().unwrap());
@@ -1456,6 +1467,55 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     assert!(wb.fails(&["craft", "deck", "--page", &top, "--structure", "pulpit"]).contains("phase 5"));
     wb.ok(&["inbox", "rm", &top]);
     assert_eq!(state(format!("page-{top}-verse")), "gone");
+}
+
+#[test]
+fn a_legacy_export_is_resolved_safely_for_open_preview_update_and_delete() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Export location", "--at", "Num 25:10"]);
+    let made = wb.js(&["craft", "word", "--thread", "Export location", "--structure", "script"]);
+    let id = made["id"].as_str().unwrap();
+    let name = made["name"].as_str().unwrap();
+    let record_file = wb.dir.join("documents").join(format!("{id}.json"));
+    let mut record: Value = serde_json::from_slice(&std::fs::read(&record_file).unwrap()).unwrap();
+    assert_eq!(record["export_location"], "study");
+    record.as_object_mut().unwrap().shift_remove("export_location");
+    record["pdf"] = json!("associated.pdf");
+    record["kept"] = json!(["kept.docx"]);
+    std::fs::write(&record_file, serde_json::to_vec(&record).unwrap()).unwrap();
+
+    let local_file = wb.docs().join(name);
+    let legacy = wb.dir.with_file_name(format!("{}-documents", wb.dir.file_name().unwrap().to_string_lossy()));
+    std::fs::create_dir_all(&legacy).unwrap();
+    let legacy_file = legacy.join(name);
+    std::fs::rename(&local_file, &legacy_file).unwrap();
+    std::fs::copy(&legacy_file, &local_file).unwrap();
+    for op in ["open", "preview", "reveal", "update", "delete"] {
+        assert!(wb.fails(&["docs", op, id]).contains("More than one export"));
+    }
+    assert!(record_file.is_file() && local_file.is_file() && legacy_file.is_file());
+    assert_eq!(wb.js(&["docs", "show", id])["state"], "unreadable");
+
+    std::fs::write(&local_file, "a different file with the same name").unwrap();
+    for op in ["show", "open", "preview", "reveal", "update"] {
+        assert_eq!(wb.js(&["docs", op, id])["path"], legacy_file.to_string_lossy().as_ref());
+    }
+    for dir in [&legacy, &wb.docs()] {
+        std::fs::write(dir.join("associated.pdf"), "test companion").unwrap();
+        std::fs::write(dir.join("kept.docx"), "test kept version").unwrap();
+    }
+    let deleted = wb.js(&["docs", "delete", id]);
+    assert_eq!(deleted["deleted"].as_array().unwrap().len(), 3);
+    assert!(local_file.is_file() && wb.docs().join("kept.docx").is_file() && wb.docs().join("associated.pdf").is_file());
+    assert!(!record_file.is_file());
+    std::fs::remove_dir(&legacy).unwrap();
+
+    std::fs::remove_file(local_file).unwrap();
+    std::fs::write(&record_file, serde_json::to_vec(&record).unwrap()).unwrap();
+    assert_eq!(wb.js(&["docs", "show", id])["state"], "missing");
+    assert!(wb.fails(&["docs", "update", id]).contains("set WB_DOCS_DIR"));
+    assert!(wb.fails(&["docs", "delete", id]).contains("Restore the main export"));
+    assert!(record_file.is_file() && wb.docs().join("associated.pdf").is_file());
 }
 
 #[test]

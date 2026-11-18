@@ -34,7 +34,7 @@ rmSync(path.join(study, 'settings', 'notebook.json'), { force: true });
 // the Shelf's checks open two sets by name; the person's folder is not trusted to hold them, so this copy gets its own
 shelfFixtures(study);
 mkdirSync(cache, { recursive: true });
-const env = { ...process.env, WB_STUDY_DIR: study, WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort, WB_NO_OPEN: '1' };
+const env = { ...process.env, WB_STUDY_DIR: study, WB_DOCS_DIR: '', WB_CACHE_DIR: cache, WEBVIEW2_USER_DATA_FOLDER: profile, WB_WINDOW: 'laptop-large', WB_CDP_PORT: cdpPort, WB_NO_OPEN: '1' };
 const proc = spawn(exe, [], { env, stdio: 'ignore' });
 const kill = () => { try { execFileSync('taskkill', ['/T', '/F', '/PID', String(proc.pid)], { stdio: 'ignore' }); } catch { /* gone */ } };
 
@@ -1461,7 +1461,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   // W6, a document from a page (sheets W7.1–W7.4): a page with headings, scripture blocks, to-dos, and two pages inside
   // it (one with scripture, one with a view) made into a Speaker Script and Verse by Verse. Every verse expected here
   // comes from the database (wb text); the view's rows are wb view run's.
-  const w6Docs = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
+  const w6Docs = path.join(study, 'exports');
   const w6 = wbj('page', 'new', 'W6 Lesson: Phinehas').id;
   for (const b of ['# Aim', 'Read Numbers 25 with the group, then Psalm 106 beside it.', '# Before Tuesday', '- [x] W6 read Numbers 25 twice\n- [ ] W6 print the verse deck', '```scripture\nNum 25:10-13\n```']) execFileSync(wbExe, ['block', 'add', w6, '-'], { env, input: b });
   const w6a = wbj('page', 'new', 'W6 The passage', '--parent', w6).id;
@@ -2298,7 +2298,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
 
   // tier 4: documents from a thread. The Documents pane makes the Speaker Script (Word); the command field makes Verse by
   // Verse (PDF pages); each is checked verse by verse before it is kept, listed with how it stands, and in its thread's pane
-  const docsDir = path.join(work, 'study-documents');  // beside the scratch folder: never the person's Documents
+  const docsDir = path.join(study, 'exports');
   // a lesson's PowerPoint, as the Python app records one (its file not made here): written into this run's own copy, so the
   // check below does not depend on what the scratch folder holds
   mkdirSync(path.join(study, 'documents'), { recursive: true });
@@ -2312,7 +2312,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const scriptRow = page.locator('.pane-documents .doc-row', { hasText: 'Speaker Script - Phinehas.docx' });
   await scriptRow.waitFor({ timeout: 20000 });
   const scriptRec = JSON.parse(execFileSync(wbExe, ['docs', 'show', 'thread-phinehas-script'], { env }).toString());
-  check('Make writes the Speaker Script, checked, beside the scratch folder', existsSync(path.join(docsDir, 'Speaker Script - Phinehas.docx')) && scriptRec.state === 'current' && scriptRec.theme === 'olivet', scriptRec.state);
+  check('Make writes the Speaker Script, checked, inside the scratch folder', existsSync(path.join(docsDir, 'Speaker Script - Phinehas.docx')) && scriptRec.state === 'current' && scriptRec.theme === 'olivet', scriptRec.state);
   check('the Speaker Script is listed Up to date', (await scriptRow.locator('.doc-state').innerText()) === 'Up to date');
   // R3: Adjust… opens the dials beside a live page drawn from the thread's own plan; a Look, Ink and See it in grey
   // change the page at once; Use these carries the dials back to the Make row (nothing is made until Make)

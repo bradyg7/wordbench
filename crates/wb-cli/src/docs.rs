@@ -5,7 +5,7 @@
 use crate::args::{Append, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Value};
-use std::path::PathBuf;
+use std::path::Path;
 use wb_core::docs;
 
 fn e(x: wb_core::Error) -> String {
@@ -16,8 +16,8 @@ fn j(v: Value) -> Res {
     Ok(Out::Json(v))
 }
 
-fn out_dir(c: &Ctx<'_>) -> Result<PathBuf, String> {
-    Ok(docs::folder_for(&c.root()?))
+fn out_dir(c: &Ctx<'_>) -> Result<docs::ExportFolders, String> {
+    docs::ExportFolders::for_study(&c.root()?).map_err(e)
 }
 
 fn thread_id(c: &Ctx<'_>, name: &str) -> Result<String, String> {
@@ -41,7 +41,7 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
         let r = docs::make_page(c.bible()?, &st, &out, &page, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(), a.opt("version").as_deref(),
             &a.list("on"), &a.list("off"), a.opt("look").as_deref(), &set, a.flag("force")).map_err(e)?;
         if a.flag("open") {
-            docs::open_file(&out.join(r["name"].as_str().unwrap_or(""))).map_err(e)?;
+            docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
         }
         return j(r);
     }
@@ -54,7 +54,7 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
     let st = c.study()?;
     let r = docs::make(c.bible()?, &st, &out, &id, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(), a.opt("look").as_deref(), &set, a.flag("new"), a.flag("force")).map_err(e)?;
     if a.flag("open") {
-        docs::open_file(&out.join(r["name"].as_str().unwrap_or(""))).map_err(e)?;
+        docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
     }
     j(r)
 }
@@ -100,16 +100,13 @@ pub fn commands() -> Vec<Command> {
             }
             let r = docs::update(c.bible()?, &st, &out, &name, a.opt("theme").as_deref(), a.opt("look").as_deref(), &set, a.flag("force")).map_err(e)?;
             if a.flag("open") {
-                docs::open_file(&out.join(r["name"].as_str().unwrap_or(""))).map_err(e)?;
+                docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
             }
             j(r)
         }),
         cmd("docs open", "Open a document in its app (Word, or the PDF viewer).", vec![Pos("name", N::Many)], |c, a| {
             let out = out_dir(c)?;
-            let rec = docs::find(&*c.study()?, &a.s("name")).map_err(e)?;
-            let path = out.join(rec["name"].as_str().unwrap_or(""));
-            docs::open_file(&path).map_err(e)?;
-            j(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}))
+            j(docs::open(&*c.study()?, &out, &a.s("name")).map_err(e)?)
         }),
         cmd("docs forget", "Stop keeping a document up to date. It stays listed and its file is left alone; docs remember takes it back.",
             vec![Pos("name", N::Many)], |c, a| j(docs::forget(&*c.study()?, &a.s("name")).map_err(e)?)),
@@ -125,11 +122,17 @@ pub fn commands() -> Vec<Command> {
         }),
         cmd("docs plan", "What a document from a thread would hold if made now, and its plan's fingerprint (the same as the Python app's):\n\
                           wb docs plan --thread phinehas --to word --structure script  |  --to deck --structure verse.\n\
-                          From a page, with the switches it was last made with: wb docs plan --page ID --to word|pdf (and the verses it holds).",
-            vec![Opt("thread", None), Opt("page", None), Opt("to", Some("word")), Opt("structure", None)], |c, a| {
+                          From a page: wb docs plan --page ID --to word|pdf [--version V] [--on KEY] [--off KEY]. For PDF, --pages lays out the selected plan with --theme, --look and --set.",
+            vec![Opt("thread", None), Opt("page", None), Opt("to", Some("word")), Opt("structure", None),
+                 Opt("version", None), Append("on"), Append("off"), Flag("pages"), Opt("theme", None), Opt("look", None), Append("set")], |c, a| {
+            let theme = a.opt("theme");
+            let look = a.opt("look");
+            let set = dials(a)?;
+            let layout = a.flag("pages").then_some(docs::PdfLayout { theme: theme.as_deref(), look: look.as_deref(), dials: &set });
             if let Some(p) = a.opt("page") {
                 let st = c.study()?;
-                return j(docs::plan_for_page(c.bible()?, &st, &p, &a.opt_or("to", "word")).map_err(e)?);
+                return j(docs::plan_for_page(c.bible()?, &st, &p, &a.opt_or("to", "word"), a.opt("structure").as_deref(),
+                    a.opt("version").as_deref(), &a.list("on"), &a.list("off"), layout).map_err(e)?);
             }
             let Some(t) = a.opt("thread") else { return Err("Give the thread (--thread NAME) or the page (--page ID).".into()) };
             let id = thread_id(c, &t)?;
@@ -138,7 +141,7 @@ pub fn commands() -> Vec<Command> {
                 return Err("--to: word, deck or pdf.".into());
             }
             let st = c.study()?;
-            j(docs::plan_for(c.bible()?, &st, &id, &to, a.opt("structure").as_deref()).map_err(e)?)
+            j(docs::plan_for(c.bible()?, &st, &id, &to, a.opt("structure").as_deref(), layout).map_err(e)?)
         }),
         cmd("craft word", "A Word document from a thread: wb craft word --thread phinehas --structure script [--theme olivet].\n\
                            Here: script (the Speaker Script); the other structures are made by the Python app until phase 5. --theme: otherwise your saved theme.\n\

@@ -78,9 +78,12 @@ uses that server: Playwright starts this checkout's own vite on a port picked fr
 port is taken, the run stops with "is already used" instead of testing another checkout. A new worktree needs
 `npm install` and `npm run fixtures` before the tests.
 
-Documents (Word files, PDF slides) go to `WB_DOCS_DIR`; with the person's real study folder, to the Python app's folder
-(Documents\Bible Workbench), where its documents already are; with any other study folder, to a folder beside it
-(`<study>-documents`), so tests and scratch copies never write the person's documents. After a document is made, every
-verse the source holds is checked in the finished file; one that fails is not kept.
+New Word and PDF exports go to `<study>/exports/` unless `WB_DOCS_DIR` explicitly selects another directory.
+Records stay in `<study>/documents/`. Earlier real-study records can resolve files from `BIBLE_WORKBENCH_PDF_DIR`
+or its historical default (`Documents/Bible Workbench`). Earlier scratch records can resolve files from the sibling
+`<study>-documents` directory. Existing files update in place. To keep both apps using one output directory during
+the Python transition, set Rust's `WB_DOCS_DIR` to the same absolute directory as Python's `BIBLE_WORKBENCH_PDF_DIR`
+(or to Python's default). Keep these overrides unset for scratch runs unless they explicitly point at that run's fixtures.
+Every verse the selected source holds is checked during export, and a file that fails the check is discarded.
 
 No remote yet: do not push anywhere without the person's go-ahead.
