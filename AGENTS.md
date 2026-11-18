@@ -1,6 +1,8 @@
 # Working on Bible Workbench (Rust) — for an AI assistant
 
-Read [the current spec](docs/SPEC.md) for branch status, remaining phases and the source map.
+Read [the Library map](design/LIBRARY.md) first: the app's objects, their words and the priority list. Every design
+uses its objects and words; a design that needs a new one changes the map first, with the person's go-ahead. Then read
+[How work is done](#how-work-is-done) below. [The spec](docs/SPEC.md) is older history and may be stale.
 
 This app (`bible-workbench-rs`) is the Bible Workbench. The Python app in the sibling `bible-workbench` checkout is its
 predecessor and is no longer a constraint (the person, 2026-11-12): nothing here has to stay readable by it, match it,
@@ -50,22 +52,40 @@ a change alters expected behavior, document the contract and verify it with Rust
 - **Never lose the reader's place.** Anything opened from the text returns to the verse it came from.
 - **Designed before it is built** (the person, 2026-11-11). Every general feature, button and command has a planned
   design in a folder under `design/features/` before it is built or changed in a way the person would see: dated
-  decisions, the sheets, and "what the build must satisfy". Building starts only from a folder the person marked
-  *accepted*. [`design/features/coverage.md`](design/features/coverage.md) lists every area of the app and the folder
-  that designs it; a new button or command gets a row there, and its folder, first. Bug fixes that keep the accepted
-  design need no new round.
-- **Each feature is built on its own branch** (the person, 2026-11-13). Building an accepted design folder starts a
-  branch from an up-to-date `main`, named `feature/<folder>` (`feature/trash`), and nothing else goes on it. It reaches
-  `main` by a pull request, after the tests, only with the person's go-ahead. Work found on the wrong branch moves to its
-  own before it is committed.
-- **Work found in a checkout that is not its own** (the person, 2026-11-16). Several sessions work at once, each in its
-  own worktree (`git worktree list`). Files changed or new in a checkout, outside the feature it is on, are someone
-  else's: never commit them there. Compare each with its folder's branch (`feature/<folder>`), by blob:
-  `git rev-parse -q --verify <branch>:<path>`. Identical: they are left-over copies, and may be cleared once checked.
-  Not on that branch: move them to it (in its worktree if it has one, never by switching that worktree's branch), or to
-  a new `feature/<folder>` from `main` if none exists. Say what was found, and where it went.
+  decisions, the sheets, the **interaction table** (below), and "what the build must satisfy". Building starts only from a
+  folder the person marked *accepted*. [`design/features/coverage.md`](design/features/coverage.md) lists every area of
+  the app and the folder that designs it; a new button or command gets a row there, and its folder, first. Bug fixes
+  that keep the accepted design need no new round.
+- **One checkout, one feature at a time** (the person, 2026-11-18; replaces the worktrees of 2026-11-16). Work happens in
+  this checkout, never in new worktrees. Building an accepted design folder starts a branch from an up-to-date `main`,
+  named `feature/<folder>`, and nothing else goes on it. A bug fix gets `fix/<what>`. It reaches `main` after the
+  tests, with the person's go-ahead (a pull request is optional). Files found changed in the checkout that are not this
+  feature's are never committed with it: say what they are and ask.
+- **Shipped means it is in the person's installed app** (the person, 2026-11-18). A feature is done when a release
+  carrying it is installed through the updater, not when it merges. A release: bump the version in `Cargo.toml` and
+  `app/src-tauri/tauri.conf.json`, write `docs/releases/<version>.md` (headings: Moved or removed, New, Changed, Fixed,
+  Your study folder), merge to `main`, and push a tag `v<version>` with the person's go-ahead;
+  `.github/workflows/release.yml` builds, signs and publishes it to `bradyg7/wordbench-releases`.
 - **Every core action is reachable from a `wb` command.** When wb-core gains an action, `wb` gains a command for it, so the
   person (or an AI) can do from a terminal anything the window does.
+
+## How work is done
+
+Decided by the person on 2026-11-18, after builds that missed parts of their designs, a build that never landed, and
+credits spent too fast.
+
+1. **The interaction table.** Every design folder has a table with one row per thing a person can do: where, the action
+   (every button, key and command), what they see, what changes on disk, the `wb` command, and the test that proves it.
+   Nothing a builder must guess is left out: if a row is missing, the builder stops and asks; it does not invent. The
+   person reviews the sheets; builders build from the table.
+2. **Small tickets.** A design is cut into tickets of a few rows each, every one buildable and testable on its own. A
+   ticket is done only when every one of its rows has a passing test; a feature is done only when every row of its table
+   is. The table records which rows are built.
+3. **Models by job.** Designing with the person, cutting tickets and the one review per feature: Opus at low effort.
+   Building a ticket: Sonnet, one ticket at a time. Mechanical checks (every row has a test, installing): Haiku. No
+   overseer runs in a loop.
+4. **Cohesion.** No feature invents an object or a word that is not in [the Library map](design/LIBRARY.md). Features
+   are designed one at a time, in the map's priority order, so designs do not drift apart.
 
 ## Layout
 
