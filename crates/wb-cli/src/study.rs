@@ -5,7 +5,7 @@ use crate::args::{Append, Args, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Value};
 use wb_core::store::{s, Store};
-use wb_core::{lookup, places, shelf, studyapi as sa};
+use wb_core::{lookup, marks, places, shelf, studyapi as sa};
 
 fn e(x: wb_core::Error) -> String {
     x.0
@@ -145,9 +145,40 @@ pub fn commands() -> Vec<Command> {
             };
             j(sa::highlight_list(c.bible()?, &st, a.opt("color").as_deref(), t.as_deref()).map_err(e)?)
         }),
-        cmd("marks", "What is drawn on a chapter: highlights, notes, colored-thread places.", vec![Pos("ref", N::Many)], |c, a| {
+        cmd("marks", "What is drawn on a chapter: highlights, notes, colored-thread places, and every mark (\"marks\": the drawn marks and the old highlights, by date made).", vec![Pos("ref", N::Many)], |c, a| {
             let sp = c.span(&a.s("ref"))?;
             j(sa::chapter_marks(&*c.study()?, &sp.book.code, sp.c1 as i64).map_err(e)?)
+        }),
+        cmd("mark add", "Draw a mark on a place: wb mark add John 3:16 --kind highlight|underline|circle|box|arrow --color yellow (or #rrggbb) [--lines 1|2|3, underline only] [--to PLACE, arrow only, in the same chapter]. Kept in marks/<BOOK>.json.",
+            vec![Pos("place", N::One), Opt("kind", None), Opt("color", None), Opt("lines", None), Opt("to", None)], |c, a| {
+                let kind = a.opt("kind").ok_or("Say the kind of mark: --kind highlight, underline, circle, box or arrow.")?;
+                let color = a.opt("color").ok_or("Say its color: --color yellow (or #rrggbb).")?;
+                let lines = match a.opt("lines") {
+                    Some(n) => Some(n.parse::<u8>().map_err(|_| "argument --lines: invalid int value")?),
+                    None => None,
+                };
+                let at = anchor(c, &a.s("place"))?;
+                let to = match a.opt("to") {
+                    Some(t) => Some(anchor(c, &t)?),
+                    None => None,
+                };
+                j(serde_json::to_value(marks::mark_add(c.bible()?, &*c.study()?, &at, &kind, &color, lines, to.as_deref()).map_err(e)?).unwrap())
+            }),
+        cmd("mark rm", "Delete a mark (any id from wb marks, an old highlight too): it goes to .trash for 7 days; wb mark restore puts it back.", vec![Pos("id", N::Many)], |c, a| {
+            let mut st = c.study()?;
+            let mut done = vec![];
+            for id in a.list("id") {
+                done.push(marks::mark_rm(&mut st, &id).map_err(e)?);
+            }
+            j(if done.len() == 1 { done.remove(0) } else { json!({"deleted": done}) })
+        }),
+        cmd("mark restore", "Put a deleted mark back: wb mark restore <id>.", vec![Pos("id", N::Many)], |c, a| {
+            let mut st = c.study()?;
+            let mut done = vec![];
+            for id in a.list("id") {
+                done.push(marks::mark_restore(&mut st, &id).map_err(e)?);
+            }
+            j(if done.len() == 1 { done.remove(0) } else { json!({"restored": done}) })
         }),
         cmd("palette", "Your saved custom colors (c1 .. c8).", vec![], |c, _| j(json!({"colors": c.study()?.palette()}))),
         cmd("palette rm", "Forget a saved color (highlights already made in it stay).", vec![Pos("color", N::One)], |c, a| {

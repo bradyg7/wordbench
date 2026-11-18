@@ -94,7 +94,8 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: i64) -> Result<Value> {
         }
     }
     let hidden: Vec<String> = crate::folders::colored(store).iter().filter(|f| !crate::folders::eye_on(store, f)).map(crate::folders::mark_id).collect();
-    let out = json!({"highlights": hls, "notes": notes, "threads": threads, "hidden": hidden});
+    let drawn = crate::marks::drawn_in_chapter(store, code, chapter.max(0) as u32);
+    let out = json!({"highlights": hls, "notes": notes, "threads": threads, "hidden": hidden, "marks": drawn});
     Ok(out)
 }
 

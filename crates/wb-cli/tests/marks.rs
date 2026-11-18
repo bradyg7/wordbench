@@ -191,3 +191,116 @@ fn the_study_check_still_lists_the_files_marks_rounds_1_to_6_wrote_and_writes_no
     assert_eq!(c["pencil"], json!({"files": 1}));
     assert_eq!(before, w.snapshot(), "the check writes nothing");
 }
+
+// ---- marks round 7, T1 (rows 4, 6, 7, 14, 54, 56): marks/<BOOK>.json, old highlights read, the trash ----
+
+fn on_chapter(w: &Wb, chapter: &str) -> Vec<Value> {
+    w.js(&["marks", chapter])["marks"].as_array().unwrap().clone()
+}
+
+#[test]
+fn mark_add_keeps_a_mark_in_the_books_file_with_every_kind() {
+    let Some(w) = Wb::new() else { return };
+    let h = w.js(&["mark", "add", "Num 25:11", "--kind", "highlight", "--color", "yellow"]);
+    assert_eq!(h["kind"], "highlight");
+    assert_eq!(h["at"], "NUM.25:11");
+    assert!(h["id"].as_str().unwrap().starts_with("m_") && h["created"].as_str().unwrap().ends_with('Z'));
+    let u = w.js(&["mark", "add", "Num 25:11", "--kind", "underline", "--color", "#e07b39", "--lines", "2"]);
+    assert_eq!((u["lines"].clone(), u["color"].clone()), (json!(2), json!("#e07b39")));
+    let plain = w.js(&["mark", "add", "Num 25:12", "--kind", "underline", "--color", "pink"]);
+    assert_eq!(plain["lines"], 1, "an underline with no --lines has one");
+    for kind in ["circle", "box"] {
+        let m = w.js(&["mark", "add", "NUM.25:11.2-25:11.4", "--kind", kind, "--color", "blue"]);
+        assert_eq!(m["at"], "NUM.25:11.2-25:11.4");
+        assert!(m.get("lines").is_none() && m.get("to").is_none());
+    }
+    // the disk form: {"marks": [{id, kind, color, lines?, at, to?, created, changed?}]} in marks/NUM.json
+    let file: Value = serde_json::from_str(&std::fs::read_to_string(w.dir.join("marks").join("NUM.json")).unwrap()).unwrap();
+    assert_eq!(file["marks"].as_array().unwrap().len(), 5);
+    assert_eq!(file["marks"][0], h);
+    assert_eq!(on_chapter(&w, "Num 25").len(), 5);
+    assert!(on_chapter(&w, "Num 26").is_empty());
+    assert!(!w.dir.join("tmp").exists() && !w.snapshot().keys().any(|k| k.ends_with(".tmp")), "writes are atomic: no temp file is left");
+}
+
+#[test]
+fn an_arrow_needs_a_target_in_the_same_chapter() {
+    let Some(w) = Wb::new() else { return };
+    let a = w.js(&["mark", "add", "Num 25:11", "--kind", "arrow", "--color", "blue", "--to", "Num 25:13"]);
+    assert_eq!((a["at"].clone(), a["to"].clone()), (json!("NUM.25:11"), json!("NUM.25:13")));
+    let refused = |args: &[&str], needle: &str| {
+        let (code, _, err) = w.run(args);
+        assert_ne!(code, 0, "{args:?}");
+        assert!(err.contains(needle), "{args:?}: {err}");
+    };
+    refused(&["mark", "add", "Num 25:11", "--kind", "arrow", "--color", "blue", "--to", "Num 26:1"], "same chapter");
+    refused(&["mark", "add", "Num 25:11", "--kind", "arrow", "--color", "blue", "--to", "Gen 1:1"], "same chapter");
+    refused(&["mark", "add", "Num 25:11", "--kind", "arrow", "--color", "blue"], "--to");
+    refused(&["mark", "add", "Num 25:11", "--kind", "box", "--color", "blue", "--to", "Num 25:12"], "arrow");
+    refused(&["mark", "add", "Num 25:11", "--kind", "box", "--color", "blue", "--lines", "2"], "underline");
+    refused(&["mark", "add", "Num 25:11", "--kind", "underline", "--color", "blue", "--lines", "4"], "1, 2 or 3");
+    refused(&["mark", "add", "Num 25:11", "--kind", "scribble", "--color", "blue"], "A mark is one of");
+    assert_eq!(on_chapter(&w, "Num 25").len(), 1, "a refused mark leaves nothing behind");
+}
+
+#[test]
+fn old_highlights_are_read_as_highlight_marks_and_never_rewritten() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["hl", "set", "Num 25:11", "green"]);
+    let old = std::fs::read_to_string(w.dir.join("highlights").join("NUM.json")).unwrap();
+    let before = w.snapshot();
+    let marks = on_chapter(&w, "Num 25");
+    assert_eq!(marks.len(), 1);
+    let (m, h): (&Value, Value) = (&marks[0], serde_json::from_str::<Value>(&old).unwrap()["highlights"][0].clone());
+    assert_eq!((m["kind"].clone(), m["color"].clone(), m["at"].clone()), (json!("highlight"), json!("green"), json!("NUM.25:11")));
+    assert_eq!((m["id"].clone(), m["created"].clone(), m["words"].clone()), (h["id"].clone(), h["created"].clone(), h["quote"].clone()));
+    assert_eq!(before, w.snapshot(), "reading a chapter writes nothing");
+    // beside a new mark, both are listed, by date made
+    w.ok(&["mark", "add", "Num 25:12", "--kind", "circle", "--color", "pink"]);
+    assert_eq!(on_chapter(&w, "Num 25").len(), 2);
+    assert_eq!(std::fs::read_to_string(w.dir.join("highlights").join("NUM.json")).unwrap(), old);
+}
+
+#[test]
+fn a_deleted_mark_waits_in_the_trash_for_seven_days_and_can_be_put_back() {
+    let Some(w) = Wb::new() else { return };
+    let m = w.js(&["mark", "add", "Num 25:11", "--kind", "box", "--color", "blue"]);
+    let id = m["id"].as_str().unwrap();
+    let kept = w.js(&["mark", "add", "Num 25:12", "--kind", "highlight", "--color", "yellow"]);
+    let gone = w.js(&["mark", "rm", id]);
+    assert_eq!(gone["deleted"], id);
+    assert_eq!(on_chapter(&w, "Num 25").len(), 1);
+    let t = w.js(&["trash"]);
+    assert_eq!(t["marks"].as_array().unwrap().len(), 1);
+    assert_eq!((t["marks"][0]["id"].clone(), t["marks"][0]["days_left"].clone()), (json!(id), json!(7)));
+    // the 7 days: a mark deleted 3 days ago waits; one deleted 8 days ago is erased by the window's sweep
+    assert_eq!(w.js(&["trash", "empty"])["erased"], json!([]));
+    let name = gone["trash"].as_str().unwrap().to_string();
+    let old = w.dir.join(".trash").join(format!("20000101-000000-{id}.json"));
+    std::fs::rename(w.dir.join(".trash").join(&name), &old).unwrap();
+    assert_eq!(w.js(&["trash", "empty"])["erased"], json!([format!("20000101-000000-{id}.json")]));
+    assert!(w.js(&["trash"])["marks"].as_array().unwrap().is_empty());
+    let (code, _, _) = w.run(&["mark", "restore", id]);
+    assert_ne!(code, 0, "erased for good");
+    // another delete, then restore
+    let kid = kept["id"].as_str().unwrap();
+    w.ok(&["mark", "rm", kid]);
+    assert!(on_chapter(&w, "Num 25").is_empty());
+    let back = w.js(&["mark", "restore", kid]);
+    assert_eq!(back, kept, "put back as it was, id and date kept");
+    assert_eq!(on_chapter(&w, "Num 25").len(), 1);
+    assert!(w.js(&["trash"])["marks"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn an_old_highlight_deleted_and_restored_is_the_same_highlight() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["hl", "set", "Num 25:11", "green"]);
+    let file = w.dir.join("highlights").join("NUM.json");
+    let old = std::fs::read_to_string(&file).unwrap();
+    let id = on_chapter(&w, "Num 25")[0]["id"].as_str().unwrap().to_string();
+    w.ok(&["mark", "rm", &id]);
+    assert!(on_chapter(&w, "Num 25").is_empty());
+    w.ok(&["mark", "restore", &id]);
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), old);
+}

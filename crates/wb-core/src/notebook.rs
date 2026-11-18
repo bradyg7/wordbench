@@ -388,7 +388,7 @@ pub fn edit_text(bible: &Bible, store: &mut Store, id: &str, text: &str) -> Resu
 
 /// The deleted notes and questions waiting in .trash, with how many days each has left.
 pub fn trash(store: &Store) -> Value {
-    json!({"days": crate::store::TRASH_DAYS, "notes": store.trashed()})
+    json!({"days": crate::store::TRASH_DAYS, "notes": store.trashed(), "marks": crate::marks::trashed_marks(store)})
 }
 
 /// A placed note or question by its id: (is it a question, its anchor).

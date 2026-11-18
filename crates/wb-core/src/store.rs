@@ -1398,7 +1398,7 @@ impl Store {
         let mut gone = vec![];
         for e in rd.flatten() {
             let name = e.file_name().to_string_lossy().into_owned();
-            if let (true, Some(at)) = (Self::is_note_file(&name), Self::trashed_at(&name)) {
+            if let (true, Some(at)) = (Self::is_note_file(&name) || crate::marks::is_trash_file(&name), Self::trashed_at(&name)) {
                 if (now - at).num_days() >= days {
                     fs::remove_file(e.path())?;
                     gone.push(name);

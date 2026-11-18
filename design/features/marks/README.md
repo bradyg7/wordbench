@@ -210,6 +210,8 @@ is not built; a builder that needs one stops and asks.
 | T14 | 57, 58 | Colors across the Bible |
 | T15 | 55 | the move of `highlights/` (and pencil lines) into `marks/`: dry run on a scratch copy, a hashed backup, then only with the person's go-ahead |
 
+T1 built (core and wb): rows 4, 6, 7, 14, 54, 56. Tests (`crates/wb-cli/tests/marks.rs`): `mark_add_keeps_a_mark_in_the_books_file_with_every_kind` (4, 6, 7), `an_arrow_needs_a_target_in_the_same_chapter` (14), `old_highlights_are_read_as_highlight_marks_and_never_rewritten` (54), `a_deleted_mark_waits_in_the_trash_for_seven_days_and_can_be_put_back` and `an_old_highlight_deleted_and_restored_is_the_same_highlight` (56); `every_action_has_a_command`. `--style` (T3) is not built.
+
 ## Disk (proposed)
 
 - **Drawn marks:** `marks/<BOOK>.json`, one file per book: each mark `{id, kind, color, lines?, at, to?, created, changed?}`,
