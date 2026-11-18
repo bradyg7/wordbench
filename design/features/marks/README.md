@@ -53,6 +53,8 @@ Library map, Later). The arrow here links two places on the text; it does not bu
 | MK7-27 | **A margin note covers verses of one chapter** for now (it is just a note); across chapters stays a maybe for a later round. | the person, open question 4 |
 | MK7-28 | **A margin note is text.** Scripture references and questions in it are found by themselves, as in pages; no headings or blocks; anything bigger grows into a page. Marks on a margin note's own words: deferred to a later round, if wanted. | the person, open question 5 |
 | MK7-29 | **The whole-Bible color view is designed here** (sheet F): where each legend style, and each folder's color, appears across the Bible, and its gaps. | the person, open question 6 |
+| MK7-30 | **The bar is icons only, one size everywhere** (supersedes the chips of MK7-9, the color row of MK7-10 and the two layouts of MK7-22): the six kinds, the Legend, Add to… (and, for a span, Open as a passage), about 360 px wide, so the same bar fits a phone. A tap on a kind opens a **small drop-down from that icon, on the side away from the selection** (upward when the bar is above it): its named styles (the most recent first, the person's quick styles pinned on top, at most 6 shown), then Any color…; for an underline, 1 / 2 / 3 lines at its top. The Legend icon opens the same drop-down for the whole legend, with a filter. Nothing in the bar grows with the legend. | the person, 2026-11-18 ("clunky and too large… would not migrate over to mobile") |
+| MK7-31 | **On a phone** the bar is the same icons (44 px targets) above the selection; the drop-down, the legend, a mark's card and a margin note open as a **bottom sheet**; the margin is always signs at the text's right edge. Keys are a desktop extra. | the person, 2026-11-18 (a mobile design) |
 | MK7-23 | **A verse's card is reachable from a page's scripture block** as well as from the reader. | the person, row 44 |
 
 ## The leading design (draft 2, for the person's review)
@@ -90,16 +92,16 @@ real app). `Built` is ticked only when the test passes.
 
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 1 | R | Select words in a verse | A browser-like selection; the mark bar above it: six kind icons (name on hover), up to 5 quick styles as named chips, the Legend icon, Add to… | nothing | | ui | [ ] |
+| 1 | R | Select words in a verse | A browser-like selection; the mark bar above it, icons only: six kinds (name on hover), the Legend, Add to… | nothing | | ui | [ ] |
 | 2 | R | Click a verse number | The whole verse selected, no handles; the bar appears | nothing | | ui | [ ] |
 | 3 | R | Click a verse number, then shift-click another | The span between is selected (across chapters within one book); the bar adds Open as a passage | nothing | | ui | [ ] |
-| 4 | B | Click a quick style | The mark is drawn at once; the bar closes; the selection clears | mark added to `marks/<BOOK>.json` | `wb mark add <ref> --style <legend name>` | wb, ui | [ ] |
-| 5 | B | Click a kind icon (Highlight, Underline, Circle, Box) | The color row: the 5 recent styles of that kind, each with its legend name; the rainbow picker. Underline adds single / double / triple | nothing | | ui | [ ] |
+| 4 | B | Click a style in a kind's drop-down | The mark is drawn at once; the bar closes; the selection clears | mark added to `marks/<BOOK>.json` | `wb mark add <ref> --style <legend name>` | wb, ui | [ ] |
+| 5 | B | Click a kind icon (Highlight, Underline, Circle, Box) | A small drop-down under the icon: that kind's styles by name (quick ones pinned, then recent; 6 at most), Any color…; Underline adds 1 / 2 / 3 at its top | nothing | | ui | [ ] |
 | 6 | B | Click a recent style | The mark is drawn in it; the bar closes | mark added | as 4 | wb, ui | [ ] |
 | 7 | B | Pick a color in the rainbow picker that no entry has | The mark is drawn; the bar keeps a name field, focused: "Name this pen" | mark added | `wb mark add <ref> --kind <k> --color <c> [--lines n]` | wb, ui | [ ] |
 | 8 | B | Type a name, Enter | The entry is added to the legend; the bar closes | entry in `settings/legend.json` | `wb legend add --kind --color --name` | wb, ui | [ ] |
 | 9 | B | Enter or Esc with no name | The bar closes; the legend lists it as "Unnamed <color> <kind>" | unnamed entry added | | ui | [ ] |
-| 10 | B | Click the Legend icon | The whole legend as a short list in the bar, with a filter field focused; a click or Enter applies an entry | nothing | | ui | [ ] |
+| 10 | B | Click the Legend icon | The same drop-down for the whole legend, a filter field focused; a click or Enter applies an entry | nothing | | ui | [ ] |
 | 11 | B | Click Add to… | A page, a folder or a save, as the reader's Add | as the reader's Add | `wb set add`, `wb page add` (existing) | ui | [ ] |
 | 12 | B | Click Open as a passage (a span) | The span opens in its own reader tab; Back returns to the verse | trail step | `wb text <span>` | ui | [ ] |
 | 13 | B | Click Arrow | "Select where it points"; the bar shrinks to Back and Cancel | nothing | | ui | [ ] |
@@ -110,7 +112,7 @@ real app). `Built` is ticked only when the test passes.
 | 18 | M | Click into the margin away from any verse | A note for the chapter, not tied to a verse | nothing until typed | | ui | [ ] |
 | 19 | M | Type, then click away or press Esc | The note is kept; its sign shows | `margin/<BOOK>/<chapter>.md` | `wb mark note <ref\|chapter> "text"` | wb, ui | [ ] |
 | 20 | B | Press H, U, C, B, A, N | As clicking that kind (Highlight, Underline, Circle, Box, Arrow, margin Note) | | | ui | [ ] |
-| 21 | B | Press 1 to 5 | As clicking that quick style | as 4 | | ui | [ ] |
+| 21 | B | Press 1 to 6 (a drop-down open) | As clicking that row of the drop-down | as 4 | | ui | [ ] |
 | 22 | B | Press a kind's key twice | Its last style is applied | as 4 | | ui | [ ] |
 | 23 | R | Select, then Ctrl+1 to Ctrl+9 | The style assigned to that key is applied, no bar needed | as 4 | | ui | [ ] |
 | 24 | B | Esc, or click outside | The bar closes; nothing is made | nothing | | ui | [ ] |
@@ -154,7 +156,17 @@ real app). `Built` is ticked only when the test passes.
 | 47 | R | Hover a mark | Its legend name | nothing | | ui | [ ] |
 | 48 | R | Click an arrow's end | The card for the arrow: its two verses, style, Change, Delete | nothing | `wb mark show <id>` | ui | [ ] |
 | 49 | R | A chapter with years of marks (generated) | Readable: layers in order, underlines thinning, no mark hides the words, arrows clear of the margin | nothing | | app | [ ] |
-| 50 | R | Narrow window | The bar's narrow layout (fixed size); the margin as signs; a sign opens its note in a popover beside the verse | nothing | | ui | [ ] |
+| 50 | R | Narrow window | The same bar (one size); the margin as signs; a sign opens its note in a popover beside the verse | nothing | | ui | [ ] |
+
+### On a phone (sheet G)
+
+| # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
+|---|---|---|---|---|---|---|---|
+| 59 | phone R | Long-press a word, drag to extend | The selection; the bar's icons (44 px) above it | nothing | | ui (phone) | [ ] |
+| 60 | phone B | Tap a kind or the Legend | A bottom sheet: the styles by name, Any color…, a filter for the Legend | nothing | | ui (phone) | [ ] |
+| 61 | phone sheet | Tap a style | The mark is drawn; the sheet and bar close | as 4 | as 4 | ui (phone) | [ ] |
+| 62 | phone R | Tap a mark | Its card as a bottom sheet: every mark there, Change, Delete | nothing | `wb mark at` | ui (phone) | [ ] |
+| 63 | phone R | Tap a margin sign | The note as a bottom sheet, editable; Grow into a page | as 29 | as 29 | ui (phone) | [ ] |
 
 ### Finding marks
 
@@ -194,4 +206,5 @@ None (all six answered 2026-11-18, MK7-24 to MK7-29).
 | 1 to 6 | to 2026-11-17 | see [archive](archive/rounds-1-6-README.md) | accepted, then built badly |
 | 7 | 2026-11-18 | fresh start: decisions MK7-1 to MK7-7, interaction table draft 1 | the person's notes on rows 1-44, 2026-11-18 |
 | 7, draft 2 | 2026-11-18 | notes folded in: MK7-8 to MK7-23, table draft 2, 6 open questions | answered: MK7-24 to MK7-29 |
-| 7, sheets | 2026-11-18 | sheets A to F drawn from the table (`python design/features/marks/marks.py`) | waiting for the person |
+| 7, sheets | 2026-11-18 | sheets A to F drawn from the table (`python design/features/marks/marks.py`) | the person: the bar too large for a phone |
+| 7, sheets 2 | 2026-11-18 | MK7-30, MK7-31: the bar icons only with a drop-down; sheet G, the phone | waiting for the person |

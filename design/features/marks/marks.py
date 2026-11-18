@@ -209,45 +209,76 @@ def vbar(parent):
     frame(parent, "divider", w=1, h=22, fill="line", W="fixed", H="fixed")
 
 
-def mark_bar(f, x, y, kind=None, quick=True, span=False, tip=None, w=None):
-    """The bar above the selection: kind icons, quick styles, the Legend icon, Add to… (and Open as a passage)."""
-    b = col(f, "mark bar", gap=8, pad=[6, 8, 6, 8], fill="surface", radius=12, stroke="line", sw=1, W="hug")
+def mark_bar(f, x, y, kind=None, span=False, tip=None, size=32, gap=4):
+    """MK7-30: the bar above the selection, icons only and one size everywhere: six kinds, the Legend, Add to… (and,
+    for a span, Open as a passage). Returns (bar, x of each icon by label) so a drop-down can hang under one."""
+    b = row(f, "mark bar", gap=gap, pad=[6, 8, 6, 8], fill="surface", radius=12, stroke="line", sw=1)
     Q.put(b, x, y)
     shadow(b, 6, 20, "#00000026")
-    top = row(b, "kinds and styles", gap=4)
-    for label, ic, _k in KINDS:
-        kind_btn(top, label, ic, on=(label == kind))
-    vbar(top)
-    if quick:
-        for e in LEGEND[:5]:
-            if e[5]:
-                style_chip(top, e)
-        vbar(top)
-    kind_btn(top, "Legend", "legend", on=(kind == "Legend"))
-    vbar(top)
-    P.button(top, "Add to…", "ghost", "plus", size="sm")
+    xs, cx = {}, x + 8
+    items = [(l, ic) for l, ic, _k in KINDS] + [("|", None), ("Legend", "legend"), ("|", None), ("Add to…", "plus")]
     if span:
-        P.button(top, "Open as a passage", "ghost", "book", size="sm")
+        items.append(("Open as a passage", "book"))
+    for label, ic in items:
+        if label == "|":
+            frame(b, "divider", w=1, h=size - 10, fill="line", W="fixed", H="fixed")
+            cx += 1 + gap
+            continue
+        bt = frame(b, f"icon/{label}", w=size, h=size, radius=8, fill="accentSoft" if label == kind else None,
+                   stroke="accent" if label == kind else None, sw=1, W="fixed", H="fixed", layout="horizontal",
+                   mainAlign="center", crossAlign="center")
+        icon(bt, ic, 18 if size < 40 else 22, "accent" if label in (kind, "Add to…", "Open as a passage") else "fg")
+        xs[label] = cx
+        cx += size + gap
     if tip:
         t = row(f, "tooltip", pad=[4, 8, 4, 8], fill="fg", radius=6)
-        Q.put(t, x + 8 + tip[1] * 36, y - 30)
-        text(t, tip[0], "caption", "bg")
-    return b
+        Q.put(t, xs[tip[0]] - 10, y - 30)
+        text(t, tip[1], "caption", "bg")
+    return b, xs
 
 
-def color_row(bar, kind, recent):
-    r = row(bar, "colors", gap=6)
-    text(r, "Recent", "caption", "muted")
-    for e in recent:
-        style_chip(r, e)
-    vbar(r)
-    pk = row(r, "picker", gap=6, pad=[4, 10, 4, 6], radius=999, stroke="line", sw=1)
+def entry_row(parent, e, on=False, key=None, big=False):
+    rr = row(parent, f"entry/{e[0]}", gap=10, pad=[10 if big else 6, 8, 10 if big else 6, 8], radius=6, W="fill",
+             fill="accentSoft" if on else None)
+    swatch(rr, e[1], e[2], e[3], 22 if big else 18)
+    text(rr, e[0], "body" if big else "small", "muted" if e[0].startswith("Unnamed") else "fg", W="fill")
+    if e[5]:
+        icon(rr, "check", 14, "muted")   # pinned as quick
+    if key:
+        P.kbd(rr, key)
+    return rr
+
+
+def any_color(parent):
+    pk = row(parent, "any color", gap=8, pad=[6, 8, 6, 8], radius=6, W="fill")
     icon(pk, "rainbow", 18, "accent")
-    text(pk, "Any color", "small")
-    if kind == "Underline":
-        vbar(r)
-        P.segmented(r, ["1", "2", "3"], "1", W="hug")
-    return r
+    text(pk, "Any color…", "small", "accent")
+
+
+def dropdown(f, x, y, entries, underline=False, legend=False, name=None, w=250):
+    """MK7-30: the small drop-down under one icon: named styles (quick pinned, then recent; 6 at most), Any color…"""
+    d = col(f, "drop-down", gap=2, pad=[6, 6, 6, 6], fill="surface", radius=10, stroke="line", sw=1, W="fixed")
+    Q.put(d, x, y, w)
+    shadow(d, 8, 22, "#00000030")
+    if underline:
+        P.segmented(d, ["1 line", "2", "3"], "1 line", W="fill")
+    if legend:
+        P.field(d, "Find a style", value=legend if isinstance(legend, str) else None, height=30)
+    for i, e in enumerate(entries):
+        entry_row(d, e, on=(i == 0 and bool(legend)), key=str(i + 1))
+    frame(d, "rule", w=10, h=1, fill="line", W="fill", H="fixed")
+    if legend:
+        nw = row(d, "new pen", gap=8, pad=[6, 8, 6, 8], W="fill")
+        icon(nw, "plus", 16, "accent")
+        text(nw, "New pen…", "small", "accent")
+    else:
+        any_color(d)
+    if name:
+        nm = row(d, "name this pen", gap=8, pad=[4, 4, 0, 4], W="fill")
+        swatch(nm, *name)
+        P.field(nm, "Name this pen", icon_name=None, height=30)
+        para(d, "Enter keeps the name; Esc leaves it Unnamed.", "caption", "muted")
+    return d
 
 
 def card(f, x, y, w=300):
@@ -297,55 +328,46 @@ def part(cv, s):
 def sheet_a(board):
     cv = Q.section(board, "A · Making a mark", 3200)
     Q.sheet_title(cv, "A · Making a mark", "Rows 1 to 12, 17 to 24. A selection looks like a browser's; the bar sits "
-                  "above it with the six kinds as icons, the person's quick styles, the Legend and Add to…. Picking a "
-                  "new kind and color is picking up a new pen, named on the spot.")
+                  "above it, icons only (MK7-30). A kind or the Legend opens a small drop-down under its icon. Picking "
+                  "a new kind and color is picking up a new pen, named on the spot.")
     r = row(cv, "A1-A2", gap=64, align="min")
-    f = win(r, "A1 · Words selected: the mark bar (rows 1, 4, 20, 21)",
-            "MK7-8, MK7-9, MK7-12, MK7-24: no handles on the selection; six kind icons (the name on hover, here "
-            "Circle), up to 5 quick styles named, the Legend icon, Add to…. A quick style is one click, or 1 to 5.")
+    f = win(r, "A1 · Words selected: the mark bar (rows 1, 20)",
+            "MK7-30, MK7-12, MK7-24: no handles on the selection. The bar is icons only and never grows: six kinds "
+            "(the name on hover, here Circle), the Legend, Add to…. The same bar is used on a phone (sheet G).")
     w = app(f)
     rd, tx, top = reader(f, w, W - w, V, marks=MARKS, sel=(12, 6, 9), margin="open")
-    y = verse_y(V, top, 12)
-    mark_bar(f, w + tx - 4, y - 74, tip=("Circle · C", 2))
-    K.note(f, "Quick styles are the person's choice (pinned in the Legend), the most used until they choose. The rest "
-           "of the legend is one click away under its icon, never all shown at once.", W - 470, H - 140)
+    mark_bar(f, w + tx - 4, verse_y(V, top, 12) - 66, tip=("Circle", "Circle · C"))
 
-    f = win(r, "A2 · A kind picked: recent styles with their names (rows 5, 6)",
-            "MK7-10: after Highlight, the 5 recent highlight styles, each with its legend name, and the rainbow "
-            "picker. No bare color dots: a color is never picked blindly.")
+    f = win(r, "A2 · A kind tapped: its small drop-down (rows 4, 5, 6, 21)",
+            "MK7-30, MK7-10: under Highlight, its styles by name (quick ones pinned with a tick, then recent; 6 at "
+            "most), keys 1 to 6, then Any color…. No bare color dots; the bar keeps its size.")
     w = app(f)
     rd, tx, top = reader(f, w, W - w, V, marks=MARKS, sel=(12, 6, 9), margin="open")
-    b = mark_bar(f, w + tx - 4, verse_y(V, top, 12) - 112, kind="Highlight")
-    color_row(b, "Highlight", [LEGEND[0], LEGEND[1], LEGEND[6]])
+    by = verse_y(V, top, 12) - 66
+    b, xs = mark_bar(f, w + tx - 4, by, kind="Highlight")
+    dropdown(f, xs["Highlight"] - 6, by - 142, [LEGEND[0], LEGEND[1], LEGEND[6]])
 
     r = row(cv, "A3-A4", gap=64, align="min")
     f = win(r, "A3 · A new pen: name it as it is made (rows 7, 8, 9)",
-            "MK7-11: a color no entry has. The mark is drawn at once; the bar keeps a name field, focused. Enter with a "
-            "name adds it to the legend; Enter or Esc with none leaves it Unnamed, nameable later.")
+            "MK7-11: Underline, 1 line, Any color… orange: no entry has it. The mark is drawn at once; the drop-down "
+            "keeps a name field, focused. Enter adds it to the legend; Esc leaves it Unnamed.")
     w = app(f)
     mk = dict(MARKS)
     mk[12] = {"ul": {i: (1, "orange") for i in range(6, 10)}}
     rd, tx, top = reader(f, w, W - w, V, marks=mk, margin="open")
-    b = mark_bar(f, w + tx - 4, verse_y(V, top, 12) - 150, kind="Underline")
-    color_row(b, "Underline", [LEGEND[2], LEGEND[5]])
-    nm = row(b, "name this pen", gap=8, W="fill")
-    swatch(nm, "underline", "orange", 1, 18)
-    P.field(nm, "Name this pen (Enter to keep, Esc for Unnamed)", icon_name=None, height=32)
+    by = verse_y(V, top, 12) - 66
+    b, xs = mark_bar(f, w + tx - 4, by, kind="Underline")
+    dropdown(f, xs["Underline"] - 6, by - 232, [LEGEND[2], LEGEND[5]], underline=True,
+             name=("underline", "orange", 1, 18))
 
     f = win(r, "A4 · The Legend icon: the whole legend, filtered (row 10)",
-            "MK7-9, MK7-16: the full legend as a short list in the bar, a filter focused; type to find any entry, "
-            "Enter applies it. This is how a person with many styles reaches the ones past the quick five.")
+            "MK7-30: the same drop-down for the whole legend, a filter focused; typing 'st' finds Study later; "
+            "Enter applies it. This is how a person with many styles reaches any of them, at any size of legend.")
     w = app(f)
     rd, tx, top = reader(f, w, W - w, V, marks=MARKS, sel=(12, 6, 9), margin="open")
-    b = mark_bar(f, w + tx - 4, verse_y(V, top, 12) - 74, kind="Legend")
-    lst = card(f, w + tx + 280, verse_y(V, top, 12) - 40, 300)
-    P.field(lst, "Find a style", value="st", height=32)
-    for i, e in enumerate([LEGEND[5], LEGEND[2]]):
-        rr = row(lst, f"entry/{e[0]}", gap=8, pad=[6, 8, 6, 8], radius=6, W="fill", fill="accentSoft" if i == 0 else None)
-        swatch(rr, e[1], e[2], e[3])
-        text(rr, e[0], "small", W="fill")
-        text(rr, e[4], "caption", "muted")
-    P.button(lst, "New pen…", "ghost", "plus", size="sm")
+    by = verse_y(V, top, 12) - 66
+    b, xs = mark_bar(f, w + tx - 4, by, kind="Legend")
+    dropdown(f, xs["Legend"] - 6, by - 152, [LEGEND[5], LEGEND[2]], legend="st")
 
     r = row(cv, "A5-A6", gap=64, align="min")
     f = win(r, "A5 · A span of verses (rows 2, 3, 11, 12)",
@@ -353,7 +375,7 @@ def sheet_a(board):
             "passage (its own reader) beside Add to… (a page, a folder, a save).")
     w = app(f)
     rd, tx, top = reader(f, w, W - w, V, marks=MARKS, sel=(8, 10), margin="open")
-    mark_bar(f, w + tx - 4, verse_y(V, top, 8) - 74, span=True)
+    mark_bar(f, w + tx - 4, verse_y(V, top, 8) - 66, span=True, tip=("Open as a passage", "Open as a passage"))
 
     f = win(r, "A6 · Keys, without the bar (rows 20 to 23)",
             "MK7-16: select, then Ctrl+7: the style given that key (Key word, a blue circle) is applied, no bar. With "
@@ -395,7 +417,7 @@ def sheet_b(board):
             "same words selected again: the bar, and a pick adds a fourth mark; nothing replaced.")
     w = app(f)
     rd, tx, top = reader(f, w, W - w, V, marks=mk, sel=(11, 0, 0), margin="open")
-    b = mark_bar(f, w + tx - 4, verse_y(V, top, 11) - 74)
+    mark_bar(f, w + tx - 4, verse_y(V, top, 11) - 66)
     K.note(f, "Two gestures, two results: Change (on the card) replaces; a new selection adds.", W - 470, H - 120)
 
     r = row(cv, "B3", gap=64, align="min")
@@ -570,25 +592,14 @@ def sheet_f(board):
         frame(rr, "on", w=14, h=14, radius=3, fill="accent", W="fixed", H="fixed")
     P.button(pnl, "Reading mode", "secondary", "eye", size="sm", W="fill")
 
-    f = win(r, "F2 · Narrow window (row 50)", "MK7-22: the bar's narrow layout, a fixed size (kinds above, styles "
-            "below), not stretched; the margin as signs; a sign opens its note in a popover.", w=760)
+    f = win(r, "F2 · Narrow window (row 50)", "MK7-30: the same bar, the same size, nothing wraps or "
+            "stretches; the margin as signs; a sign opens its note in a popover.", w=760)
     w = K.M.rail5(f)
     K.M.slim_bar(f, x=w, w=760 - w)
     rd, tx, top = reader(f, w, 760 - w, V, marks=MARKS, sel=(12, 6, 9), margin="signs", width=560)
     for v in (7, 11):
         sign(f, w + tx + 560 + 20, verse_y(V, top, v, cpl=58) - 11)
-    b = col(f, "mark bar (narrow)", gap=6, pad=[6, 8, 6, 8], fill="surface", radius=12, stroke="line", sw=1, W="hug")
-    Q.put(b, w + tx - 4, verse_y(V, top, 12, cpl=58) - 96)
-    shadow(b, 6, 20, "#00000026")
-    k1 = row(b, "kinds", gap=4)
-    for label, ic, _k in KINDS:
-        kind_btn(k1, label, ic)
-    vbar(k1)
-    kind_btn(k1, "Legend", "legend")
-    P.icon_button(k1, "plus", "accent", size=32, icon_size=18)
-    k2 = row(b, "quick", gap=4)
-    for e in LEGEND[:3]:
-        style_chip(k2, e)
+    mark_bar(f, w + tx - 4, verse_y(V, top, 12, cpl=58) - 66)
 
     r = row(cv, "F3", gap=64, align="min")
     f = win(r, "F3 · Colors across the Bible (rows 57, 58)",
@@ -618,6 +629,78 @@ def sheet_f(board):
            W - 470, H - 120)
 
 
+PV = [BYV[n] for n in range(10, 14)]   # the phone shows Numbers 25:10-13
+PX, PW_, PTOP = 20, 340, 118
+
+
+def phone(r, title, about, sel=None, marks=None, signs=True):
+    f = win(r, title, about, w=390, h=844)
+    P.status_bar(f)
+    bar = row(f, "top bar", gap=8, pad=[0, 12, 0, 12], W="fixed", H="fixed")
+    Q.put(bar, 0, 47, 390, 48)
+    P.icon_button(bar, "left", "fg", size=36, icon_size=20)
+    pl = row(bar, "place", gap=6, pad=[5, 10, 5, 10], radius=8, fill="surface", stroke="line", sw=1)
+    text(pl, "Numbers 25", "bodyStrong")
+    icon(pl, "down", 14, "muted")
+    spacer(bar)
+    P.icon_button(bar, "search", "fg", size=36, icon_size=20)
+    body = col(f, "text", gap=0, W="fixed", x=PX, y=PTOP)
+    S.do("node.set", {"ids": [body], "props": {"width": PW_}}, ref=False)
+    scripture(body, PV, marks if marks is not None else MARKS, sel, width=PW_)
+    if signs:
+        sign(f, 362, pv_y(11) - 11)
+    P.home_indicator(f)
+    return f
+
+
+def pv_y(v):
+    return verse_y(PV, PTOP, v, cpl=34)
+
+
+def sheet_g(board):
+    cv = Q.section(board, "G · On a phone", 3200)
+    Q.sheet_title(cv, "G · On a phone", "Rows 59 to 63. MK7-31: the same icon bar (44 px targets) above the "
+                  "selection; what a desktop drops down opens here as a bottom sheet; the margin is always signs at "
+                  "the text's right edge. Keys are a desktop extra.")
+    r = row(cv, "G1-G5", gap=48, align="min")
+    f = phone(r, "G1 · Words selected (row 59)", "Long-press a word, drag to extend. The bar above: six kinds, the "
+              "Legend, Add to…; 9 icons fit 390 px.", sel=(12, 6, 9))
+    mark_bar(f, 8, pv_y(12) - 72, size=34, gap=3)
+
+    f = phone(r, "G2 · A kind tapped: a bottom sheet (rows 60, 61)", "Highlight's styles by name, the same list "
+              "as the desktop's drop-down, with room for a thumb; Any color… at its foot.", sel=(12, 6, 9))
+    P.scrim(f)
+    sh = P.sheet(f, 470, "Highlight", subtitle="Pick a style")
+    for e in (LEGEND[0], LEGEND[1], LEGEND[6]):
+        entry_row(sh, e, big=True)
+    frame(sh, "rule", w=10, h=1, fill="line", W="fill", H="fixed")
+    any_color(sh)
+
+    f = phone(r, "G3 · The Legend icon: the whole legend (row 60)", "The legend as a taller sheet with a filter, "
+              "and New pen…. Any size of legend scrolls here, never in the bar.", sel=(12, 6, 9))
+    P.scrim(f)
+    sh = P.sheet(f, 250, "Legend", h=594)
+    P.field(sh, "Find a style", height=40)
+    for e in LEGEND:
+        entry_row(sh, e, big=True)
+    nw = row(sh, "new pen", gap=8, pad=[6, 8, 6, 8], W="fill")
+    icon(nw, "plus", 18, "accent")
+    text(nw, "New pen…", "body", "accent")
+
+    f = phone(r, "G4 · A mark tapped: its card (row 62)", "Every mark on those words, topmost first, each with "
+              "Change and Delete, as a sheet.")
+    P.scrim(f)
+    sh = P.sheet(f, 560, "On “Phinehas,”", subtitle="25:11 · 1 mark")
+    card_row(sh, LEGEND[0], "Person · 3 Sep 2024")
+
+    f = phone(r, "G5 · A margin sign tapped (row 63)", "The note as a sheet, editable, with Grow into a page; the "
+              "verse stays visible above it.")
+    P.scrim(f)
+    sh = P.sheet(f, 520, "Margin · 25:11")
+    stand_in(sh, (300, 260, 280, 140))
+    P.button(sh, "Grow into a page", "ghost", size="sm")
+
+
 def sheets(board):
     sheet_a(board)
     sheet_b(board)
@@ -625,6 +708,7 @@ def sheets(board):
     sheet_d(board)
     sheet_e(board)
     sheet_f(board)
+    sheet_g(board)
 
 
 if __name__ == "__main__":
