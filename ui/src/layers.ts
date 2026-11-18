@@ -1,4 +1,4 @@
-// Which marks the reader draws: the person's own highlights, every thread's underline (each can be hidden), or no
+// Which marks the reader draws: the person's own highlights, the underlines of folders with a color (each folder's eye is kept in the study's settings: wb folder shown), or no
 // highlights at all. Kept in this browser's storage; the study files are not touched by showing or hiding.
 
 const STORE = 'wb.layers.v1';
@@ -6,21 +6,18 @@ const STORE = 'wb.layers.v1';
 function load() {
   try {
     const x = JSON.parse(localStorage.getItem(STORE) || '{}');
-    return { mine: x.mine !== false, all: x.all !== false, margin: x.margin !== false, hidden: new Set<string>(x.hidden || []) };
+    return { mine: x.mine !== false, all: x.all !== false, margin: x.margin !== false };
   } catch {
-    return { mine: true, all: true, margin: true, hidden: new Set<string>() };
+    return { mine: true, all: true, margin: true };
   }
 }
 
 export const layers = {
   ...load(),
-  shown(threadId: string) {
-    return this.all && !this.hidden.has(threadId);
-  },
   highlightsShown() {
     return this.all && this.mine;
   },
   save() {
-    try { localStorage.setItem(STORE, JSON.stringify({ mine: this.mine, all: this.all, margin: this.margin, hidden: [...this.hidden] })); } catch { /* kept for this run */ }
+    try { localStorage.setItem(STORE, JSON.stringify({ mine: this.mine, all: this.all, margin: this.margin })); } catch { /* kept for this run */ }
   },
 };

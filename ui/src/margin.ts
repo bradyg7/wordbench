@@ -4,7 +4,7 @@
 // absolutely, so the reading column's width and line breaks are the same with the margin on and off.
 import { wb } from './api';
 import { h, popMenu } from './ui';
-import { toast } from './sheets';
+import { toast, toastUndo } from './sheets';
 import { layers } from './layers';
 
 interface Line { kind: 'note' | 'page'; id: string; text: string }
@@ -251,7 +251,11 @@ function menu(from: HTMLElement, n: MNote, done: () => void) {
   });
   item('Add to a page…', async () => { addTo(from, n, done); });
   item(n.question ? 'Make it a note' : 'Make it a question', async () => { await wb(['margin', 'question', n.id, ...(n.question ? ['--off'] : [])]); done(); });
-  item('Delete', async () => { await wb(['margin', 'rm', n.id]); toast('Margin note deleted'); done(); });
+  item('Delete', async () => {
+    await wb(['margin', 'rm', n.id]);
+    toastUndo('Margin note deleted', async () => { try { await wb(['margin', 'restore', n.id]); } catch (e) { toast(String(e)); } done(); });
+    done();
+  });
   const closeMenuNow = popMenu(from, box, { align: 'right', width: 220 });
 }
 

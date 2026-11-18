@@ -6,7 +6,7 @@ use std::fs;
 /// Public functions that are helpers of other actions, not actions of their own.
 const INTERNAL: &[&str] = &[
     // the library's storage pieces: reached through wb save, wb folder and wb page look (design/features/library)
-    "same_item", "set_parent", "shelf_saves", "shelf_add", "shelf_remove", "page_title", "parent_map", "children_of", "item_of", "dangling",
+    "same_item", "set_parent", "set_color", "hidden_keys", "eye_on", "mark_id", "colored", "thread_folders", "shelf_saves", "shelf_add", "shelf_remove", "page_title", "parent_map", "children_of", "item_of", "dangling",
     "is_strong", "is_word", "known_word", "strongs_brief", "plain", "text", "public", "set_view", "lesson_slug", "lesson_find",
     "lesson_parse", "lesson_listing", "open", "root", "notes", "highlights", "all_highlights", "edit_highlights", "use_palette_color",
     "threads", "thread", "trails", "sets", "find_set", "add_note", "update_note", "add_trail", "create_thread", "add_to_thread",
@@ -39,10 +39,12 @@ const INTERNAL: &[&str] = &[
     // scripture blocks (W4): a fence read and written, pieces of wb page scripture and wb block scripture
     "scripture_fence", "scripture_fence_text", "jot_fence",
     // marks (MK-17): the margin's file forms and places, the verse index and the pencil's list: pieces of wb margin, wb page overview and wb hl pencil
-    "from_place", "at_of", "all", "rows", "add_dots", "forget", "naming", "list", "kind", "covers", "each_highlight",
+    // (named by file, so a public `all` or `list` elsewhere cannot hide behind them)
+    "margin.rs:from_place", "margin.rs:at_of", "margin.rs:all", "margin.rs:rows", "margin.rs:add_dots", "margin.rs:kind", "margin.rs:covers", "margin.rs:held",
+    "pageindex.rs:all", "pageindex.rs:forget", "pageindex.rs:naming", "pencil.rs:list", "margin.rs:list", "store.rs:each_highlight",
     // views and templates (W5): a view's fence and line read (pieces of wb page views, wb view run, wb template save), a
     // place as a reference again, the blanks filled, and the Templates rows of wb notebook sidebar
-    "view_fence", "view_line", "span_ref", "fill", "rows",
+    "view_fence", "view_line", "span_ref", "fill", "templates.rs:rows",
     // a document from a page (W6): its words without Markdown, its rows and its blocks, pieces of wb craft parts and wb craft word|deck --page
     "plain_words", "parts", "source",
     // files attached to a finding (C1): the window's form of wb finding attach, for a dropped or pasted file, which has
@@ -73,9 +75,9 @@ fn every_action_has_a_command() {
     let cli = env!("CARGO_MANIFEST_DIR").to_string() + "/src/";
     let cli_src: String = ["lib.rs", "read.rs", "study.rs", "reading.rs", "notebook.rs", "docs.rs", "pages.rs", "library.rs", "margin.rs"].iter().map(|f| fs::read_to_string(cli.clone() + f).unwrap()).collect();
     let mut missing = vec![];
-    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "library.rs", "dictionary.rs", "docs/look.rs", "deletion.rs", "margin.rs", "overview.rs", "pencil.rs", "pageindex.rs"] {
+    for file in ["check.rs", "findings.rs", "plans.rs", "published.rs", "lookup.rs", "studyapi.rs", "store.rs", "scripture.rs", "reading.rs", "notebook.rs", "pages.rs", "pageviews.rs", "templates.rs", "guide.rs", "commands.rs", "relay.rs", "docs/mod.rs", "docs/page.rs", "threadpage.rs", "questions.rs", "shelf.rs", "library.rs", "folders.rs", "dictionary.rs", "docs/look.rs", "deletion.rs", "margin.rs", "overview.rs", "pencil.rs", "pageindex.rs"] {
         for f in public_fns(&fs::read_to_string(core.clone() + file).unwrap()) {
-            if INTERNAL.contains(&f.as_str()) || f.starts_with("py_") {
+            if INTERNAL.contains(&f.as_str()) || INTERNAL.contains(&format!("{file}:{f}").as_str()) || f.starts_with("py_") {
                 continue;
             }
             if !cli_src.contains(&format!("{f}(")) {

@@ -1,9 +1,10 @@
 //! The library (design/features/library): Save and the folders. `wb save` is K and the picker; `wb folder …` is the
 //! `wb shelf` folder commands under the library's name (as `wb page` is `wb note`). The model is in `wb_core::library`.
 
-use crate::args::{Append, Opt, Pos, N};
+use crate::args::{Append, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Out, Res};
 use serde_json::{json, Value};
+use wb_core::folders as fo;
 use wb_core::library as lib;
 use wb_core::store::s;
 use wb_core::{shelf, studyapi as sa};
@@ -33,6 +34,36 @@ pub fn commands() -> Vec<Command> {
                 let parent = match a.opt("in") { Some(p) => s(&st.find_set(&p).map_err(e)?, "id"), None => String::new() };
                 let t = shelf::new_folder(&mut st, &a.s("name"), &parent).map_err(e)?;
                 j(sa::set_view(c.bible()?, &st, &t).map_err(e)?)
+            }),
+        cmd("folder show", "A folder opened: its saves (a thread file's places, in the file's order) and its pages (a thread file's note is one page, thread:<slug>), with its color and eye. Writes nothing.",
+            vec![Pos("name", N::Many)], |c, a| {
+                let name = fo::find_folder(&*c.study()?, &a.s("name")).map_err(e)?.key;
+                j(fo::folder_view(c.bible()?, &*c.study()?, &name).map_err(e)?)
+            }),
+        cmd("folder color", "Give a folder a color, or take it off: wb folder color Phinehas yellow  |  wb folder color Phinehas none. A color is a name (yellow, green, blue, pink, orange) or #rrggbb. A folder with a color is what a thread was: its saved places are underlined in the text while its eye is on.",
+            vec![Pos("folder", N::One), Pos("color", N::One)], |c, a| j(fo::folder_color(&mut *c.study()?, &a.s("folder"), &a.s("color")).map_err(e)?)),
+        cmd("folder shown", "The eyes: which folders with a color the text shows. wb folder shown (list, shown first)  |  wb folder shown Phinehas on|off  |  --none (Hide all; prints was_shown)  |  --all  |  --restore KEY ... (exactly those shown; what Undo of Hide all does).",
+            vec![Pos("folder", N::Any), Flag("none"), Flag("all"), Append("restore")], |c, a| {
+                let mut words = a.list("folder");
+                let state = words.last().map(|w| w.to_lowercase()).filter(|w| w == "on" || w == "off");
+                if state.is_some() {
+                    words.pop();
+                }
+                let mut st = c.study()?;
+                if a.flag("none") {
+                    return j(fo::folder_shown_all(&mut st, "none", &[]).map_err(e)?);
+                }
+                if a.flag("all") {
+                    return j(fo::folder_shown_all(&mut st, "all", &[]).map_err(e)?);
+                }
+                if !a.list("restore").is_empty() {
+                    return j(fo::folder_shown_all(&mut st, "restore", &a.list("restore")).map_err(e)?);
+                }
+                match (words.is_empty(), state) {
+                    (true, _) => j(fo::eyes(&st)),
+                    (false, Some(on)) => j(fo::folder_shown(&mut st, &words.join(" "), on == "on").map_err(e)?),
+                    (false, None) => Err("Say on or off: wb folder shown Phinehas on.".to_string()),
+                }
             }),
         cmd("folder rename", "Rename a folder: wb folder rename \"Word study\" \"Hebrew words\".",
             vec![Pos("name", N::One), Pos("to", N::Many)], |c, a| {

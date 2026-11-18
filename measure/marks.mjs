@@ -108,6 +108,14 @@ try {
   check('the map counts every chapter of every book', map.json.books.length === 66 && allChapters && map.json.total === 3100 + 1, `${map.json.books.length} books, ${map.json.total} notes, ${Math.round(map.ms)} ms`);
   const big = await page.evaluate(() => { const a = [...document.querySelectorAll('.nb-block')]; return a.length; });
   void big;
+  // a page with 86 scriptures folds its overview to books with counts (M39), on the years study
+  const eightySix = JSON.parse(wb('page', 'new', 'Eighty-six readings
+
+' + Array.from({ length: 43 }, (_, i) => `Psalm ${i + 1}:1 and Isaiah ${i + 1}:2`).join('
+
+'), '--json')).id;
+  const ov = await invoke(['page', 'overview', eightySix]);
+  check('a page with 86 scriptures folds its overview to books with counts', ov.json.count === 86 && ov.json.folded === true && ov.json.books.length === 2 && ov.json.books[0].count === 43, `${ov.json.count} scriptures, ${ov.json.books.map(b => b.count)}; ${Math.round(ov.ms)} ms`);
   // a search answers inside the search budget, grouped by kind
   const times = [], rust = [];
   for (const q of ['Lesson 12', 'Thought 7', 'Note 2500', 'John 3:16', 'Lesson 300', 'Folder 9']) { const r = await invoke(['find', q, '--sort', 'edited']); times.push(r.ms); rust.push(r.rust_ms); out.search_kinds = r.json.groups.map(g => [g.kind, g.count]); }

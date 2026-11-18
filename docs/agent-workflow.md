@@ -10,7 +10,7 @@ Set 2026-11-17 (the person asked that builders work to completion). One page.
 
 ## Desk lines
 
-A checklist line that needs the real app (desk.mjs, `npm run measure`, "the reader's place is kept" in the running window) is marked `(desk)` in the README. Builders tick the other lines. One desk check step, run alone afterwards by the `installer` or another named agent, with no other build compiling, runs those checks on a scratch copy and ticks the `(desk)` lines. If desk.mjs lacks the case, the builder adds it as part of the build.
+A checklist line that needs the real app (desk.mjs, `npm run measure`, "the reader's place is kept" in the running window) is marked `(desk)` in the README. Builders tick the other lines. The builder runs them itself at the end, alone on the machine, on a scratch copy, and ticks the `(desk)` lines; if it cannot, the `installer` or another named agent runs them alone afterwards. If desk.mjs lacks the case, the builder adds it as part of the build.
 
 ## Review before merge
 
@@ -18,8 +18,23 @@ After each builder reports, the overseer starts a `reviewer` on the diff against
 
 ## Machine load
 
-At most 2 builders compile or run tests at once; start the rest when one finishes. Each uses `-j 2`.
+One builder at a time (the person, 2026-11-17: feature by feature, never many at once). A builder has the machine to itself, so it may build the Tauri app and run the desk and measure checks itself; start the next builder only when the last one has finished and passed review. Each uses `-j 2`. Never merge a partial build as a plan: a feature merges when every line is ticked, or when the one remaining blocker is named and is the person's.
 
 ## Open after merge
 
 If the person merges a partial build, the unticked lines are copied under an "Open after merge" heading in the folder's README (line text, the reason). A completion builder's brief is then the folder name: close the open lines. Remove the heading when empty.
+
+## After a pull request merges
+
+Each build lives in its own worktree and branch (`feature/<folder>`), and the worktree is removed once the work is on `main`. From the main checkout, in the person's terminal:
+
+```
+powershell -ExecutionPolicy Bypass -File scripts\finish-worktree.ps1           # dry run: says what it would remove
+powershell -ExecutionPolicy Bypass -File scripts\finish-worktree.ps1 -Apply    # removes them
+```
+
+A worktree and its local branch are removed only when its work is on `origin/main` (the branch is an ancestor, or its pull request is merged with the same last commit; a squash merge counts), nothing is uncommitted or untracked in it, it is not locked, and no process has it open. Otherwise it is kept, with the reason. A branch with no pull request that only sits on `main` (perhaps just made) is kept unless `-IncludeEmpty`; worktrees made by other tools (Codex, Gemini) are kept unless `-IncludeOtherTools`. Remote branches and the main checkout are never touched. The checklist ("What the build must satisfy") is checked before the pull request, by the builder and reviewer; the merge is the signal that it was accepted.
+
+## Waiting on a build
+
+Builders never wait with `timeout`/`until`/`sleep` loops. A long command is started with `run_in_background`, and the builder does other work or looks at its log once; one wait is at most 45 seconds. (2026-11-17: one builder made 347 such loops, and three runs were stopped by the 600 s stall watchdog.)

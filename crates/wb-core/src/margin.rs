@@ -182,18 +182,38 @@ fn parse_marker(line: &str) -> Option<(String, At, String, String)> {
 }
 
 fn parse_file(text: &str) -> Vec<Note> {
+    parse_full(text).1
+}
+
+/// A chapter file as a person may have left it by hand: the text above the first note (after the front matter and the title)
+/// is kept as the `preface`, and the notes with it. A note's body runs to the next note's heading, or, where that heading
+/// was deleted by hand, to the next note's marker: no body line is cut.
+fn parse_full(text: &str) -> (String, Vec<Note>) {
     let text = text.replace("\r\n", "\n");
     let lines: Vec<&str> = text.lines().collect();
     let marks: Vec<usize> = (0..lines.len()).filter(|&i| lines[i].trim_start().starts_with(MARKER) && parse_marker(lines[i]).is_some()).collect();
+    let heading_of = |i: usize| i > 0 && lines[i - 1].starts_with("## ");
     let mut out = vec![];
     for (k, &i) in marks.iter().enumerate() {
         let (id, at, written, words) = parse_marker(lines[i]).unwrap();
-        // the next note's heading is the line before its marker
-        let end = marks.get(k + 1).map(|n| n.saturating_sub(1)).unwrap_or(lines.len());
+        let end = marks.get(k + 1).map(|&n| if heading_of(n) { n - 1 } else { n }).unwrap_or(lines.len());
         let body = lines[i + 1..end.max(i + 1)].join("\n");
         out.push(Note { id, at, text: body.trim_matches('\n').trim_end().to_string(), written, words });
     }
-    out
+    // above the first note: front matter and the "# Book N" title are ours; anything else is the person's
+    let top = marks.first().map(|&i| if heading_of(i) { i - 1 } else { i }).unwrap_or(lines.len());
+    let mut head: Vec<&str> = lines[..top].to_vec();
+    if head.first().is_some_and(|l| l.trim() == "---") {
+        if let Some(close) = head.iter().skip(1).position(|l| l.trim() == "---") {
+            head.drain(..=close + 1);
+        }
+    }
+    if let Some(t) = head.iter().position(|l| !l.trim().is_empty()) {
+        if head[t].starts_with("# ") {
+            head.remove(t);
+        }
+    }
+    (head.join("\n").trim_matches('\n').trim_end().to_string(), out)
 }
 
 type Sig = (std::time::SystemTime, u64);
@@ -224,7 +244,8 @@ fn write_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, mut notes
     guard(root)?;
     forget_snapshot();
     let p = file(root, code, chapter);
-    if notes.is_empty() {
+    let preface = std::fs::read_to_string(&p).map(|t| parse_full(&t).0).unwrap_or_default();
+    if notes.is_empty() && preface.is_empty() {
         if p.exists() {
             std::fs::remove_file(&p)?;
         }
@@ -233,6 +254,9 @@ fn write_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, mut notes
     notes.sort_by(|a, b| (a.at.v1, a.at.v2, &a.written, &a.id).cmp(&(b.at.v1, b.at.v2, &b.written, &b.id)));
     let name = bible.books().iter().find(|b| b.code == code).map(|b| b.name.clone()).unwrap_or_else(|| code.into());
     let mut out = format!("---\nbook: \"{code}\"\nchapter: {chapter}\n---\n\n# {name} {chapter}\n\n");
+    if !preface.is_empty() {
+        out += &format!("{preface}\n\n");
+    }
     for n in &notes {
         out += &n.render(bible);
         out.push('\n');
@@ -258,35 +282,59 @@ fn chapter_files(root: &Path) -> Vec<(String, u32, PathBuf)> {
     out
 }
 
+/// What the margin's folder holds, for `wb study check`: (chapter files, notes). Reads only.
+pub fn held(root: &Path) -> (usize, usize) {
+    let files = chapter_files(root);
+    (files.len(), files.iter().map(|(_, _, p)| read_path(p).len()).sum())
+}
+
 fn book_order(bible: &Bible, code: &str) -> u32 {
     bible.books().iter().find(|b| b.code == code).map(|b| b.id).unwrap_or(999)
 }
 
-/// Every margin note, in the Bible's order, as the files were at most half a minute ago (a note this process writes, or any `wb margin` change from the window, drops it at once): the one search and the Library's counts
-/// go over all of them, and listing a thousand files is the slow part. A note this process writes drops the snapshot at once.
-static SNAP: std::sync::Mutex<Option<(std::time::Instant, PathBuf, std::sync::Arc<Vec<Note>>)>> = std::sync::Mutex::new(None);
+/// Every margin note, in the Bible's order, kept while the margin's folders and files are as they were (each one's time and size
+/// are looked at on every call, so another process's `wb margin` write is seen at once): the one search and the Library's counts
+/// go over all of them. A note this process writes drops it too.
+struct Snap {
+    root: PathBuf,
+    seen: Vec<(PathBuf, Option<Sig>)>,
+    notes: std::sync::Arc<Vec<Note>>,
+}
+static SNAP: std::sync::Mutex<Option<Snap>> = std::sync::Mutex::new(None);
 
 fn forget_snapshot() {
     *SNAP.lock().unwrap_or_else(|e| e.into_inner()) = None;
 }
 
+fn sig_of(p: &Path) -> Option<Sig> {
+    let m = std::fs::metadata(p).ok()?;
+    Some((m.modified().unwrap_or(std::time::UNIX_EPOCH), if m.is_dir() { 0 } else { m.len() }))
+}
+
 fn snapshot(bible: &Bible, store: &Store) -> std::sync::Arc<Vec<Note>> {
     {
         let g = SNAP.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some((at, root, notes)) = g.as_ref() {
-            if *root == store.root && at.elapsed() < std::time::Duration::from_secs(30) {
-                return notes.clone();
+        if let Some(sn) = g.as_ref() {
+            if sn.root == store.root && sn.seen.iter().all(|(p, s)| sig_of(p) == *s) {
+                return sn.notes.clone();
             }
+        }
+    }
+    let mut seen: Vec<(PathBuf, Option<Sig>)> = vec![(dir(&store.root), sig_of(&dir(&store.root)))];
+    if let Ok(rd) = std::fs::read_dir(dir(&store.root)) {
+        for b in rd.flatten() {
+            seen.push((b.path(), sig_of(&b.path())));
         }
     }
     let mut files = chapter_files(&store.root);
     files.sort_by_key(|(c, ch, _)| (book_order(bible, c), *ch));
     let mut out = vec![];
     for (_, _, p) in files {
+        seen.push((p.clone(), sig_of(&p)));
         out.extend(read_path(&p));
     }
     let out = std::sync::Arc::new(out);
-    *SNAP.lock().unwrap_or_else(|e| e.into_inner()) = Some((std::time::Instant::now(), store.root.clone(), out.clone()));
+    *SNAP.lock().unwrap_or_else(|e| e.into_inner()) = Some(Snap { root: store.root.clone(), seen, notes: out.clone() });
     out
 }
 
@@ -313,6 +361,17 @@ pub fn at_of(root: &Path, id: &str) -> Option<At> {
         }
     }
     None
+}
+
+/// The pages that show a note in a jot block name its place through the page index: when the note goes or comes back, their
+/// entries are worked out again.
+fn refresh_pages(store: &Store, id: &str) {
+    if let Some(pages) = jot_map(store).get(id) {
+        let mut idx = store.index.borrow_mut();
+        for (page, _) in pages {
+            idx.forget(page);
+        }
+    }
 }
 
 /// `m_` and the second it was written, then its millisecond (so notes of one second still sort in the order they were written), then two random bytes.
@@ -429,6 +488,7 @@ pub fn rm(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
     write_atomic(&store.root.join(".trash").join(format!("{stamp}-{}.md", found.id)), &found.render(bible))?;
     let notes: Vec<Note> = read_chapter(&store.root, &found.at.code, found.at.c).into_iter().filter(|n| n.id != found.id).collect();
     write_chapter(bible, &store.root, &found.at.code, found.at.c, notes)?;
+    refresh_pages(store, &found.id);
     Ok(json!({"removed": found.id, "at": found.at.id(), "undo": format!("wb margin restore {}", found.id)}))
 }
 
@@ -447,6 +507,7 @@ pub fn restore(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
     notes.push(n.clone());
     write_chapter(bible, &store.root, &n.at.code, n.at.c, notes)?;
     std::fs::remove_file(p)?;
+    refresh_pages(store, &n.id);
     Ok(note_json(bible, &n, &jot_map(store)))
 }
 

@@ -39,7 +39,7 @@ test('Search every page opens a thread page by touch', async ({ page }, info) =>
   const notebook = page.locator('.pane-notebook');
   await notebook.getByRole('textbox', { name: 'Search every page' }).fill('mulberries');
   const result = notebook.locator('.nb-item').filter({ hasText: thread.title });
-  await expect(result).toHaveText(/Phone test thread.*A note about mulberries.*Thread/);
+  await expect(result).toHaveText(/Phone test thread.*A note about mulberries.*Folder/);
   await result.tap();
   await expect(notebook.locator('.nb-title')).toHaveText(thread.title);
   await expect(notebook.locator('.nb-thread-places .ref-link')).toHaveText(fx.verses['11'].reference);

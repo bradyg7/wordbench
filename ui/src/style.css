@@ -276,7 +276,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .mg-pop { pointer-events: none; position: fixed; z-index: 60; max-width: 300px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 18px var(--scrim); font: var(--type-interface); }
 .mg-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mg-line.page { color: var(--muted); }
-.mg-panel { position: fixed; z-index: 40; right: 12px; width: 320px; max-height: 46vh; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 24px var(--scrim); font: var(--type-interface); box-sizing: border-box; }
+.mg-panel { position: fixed; z-index: 29; right: 12px; width: 320px; max-height: 46vh; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 24px var(--scrim); font: var(--type-interface); box-sizing: border-box; }
 .mg-panel.mg-sheet { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 60vh; border-radius: 14px 14px 0 0; }
 .mg-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .mg-close, .mg-more { border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; }
@@ -324,3 +324,16 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .mgl-chapter > summary { padding-left: 28px; }
 .mgl-note { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 3px 8px 3px 40px; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
 .mgl-verse { font-size: 13px; }
+/* A whole verse saved in a shown folder with a color: its color beside the verse number, the words untouched (threads TH-7) */
+.vn.vth { margin-left: 6px; }
+.eye-list { max-height: 260px; overflow: auto; }
+.eye-row .eye-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; text-align: left; }
+.eye-row { min-height: 32px; }
+.eye-group > summary { cursor: pointer; padding: 6px 8px; color: var(--muted, inherit); }
+.eye-search { width: calc(100% - 16px); margin: 4px 8px; }
+.toast-undo { pointer-events: auto !important; }
+@media (max-width: 600px) { .layers-menu .menu-item { min-height: 44px; } .eye-row { min-height: 44px; } }
+/* narrow: Shown on the text is a sheet over the bottom, not a small popover (threads T10) */
+@media (max-width: 600px) {
+  .menu:has(.layers-menu) { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: 100% !important; max-height: 80vh; overflow: auto; border-radius: 12px 12px 0 0; }
+}

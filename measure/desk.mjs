@@ -11,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { shelfChecks, shelfFixtures } from './shelf-checks.mjs';
 import { acquire, freePort } from './instance.mjs';
+import { threadChecks } from './threads-checks.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
@@ -2318,6 +2319,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await shelfChecks({ page, check, env, wbExe, study, shots, sleep });
 
   await settingsChecks(page);
+  await threadChecks({ page, check, env, wbExe, sleep });
 
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();

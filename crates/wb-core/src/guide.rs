@@ -43,14 +43,14 @@ const ENTRIES: &[(&str, &str, &[(&str, &str)])] = &[
     ),
     (
         "threads",
-        "Threads",
+        "Threads are folders with a color",
         &[
-            ("A thread is a page", "A thread opens as a page in the Notebook, in Pages with its color's dot. Its note is the page's text, written in blocks like any page. Under it are its places, in the thread's own order, and the pages written on it, and at its foot the documents made from it."),
-            ("Its places", "Drag a place by its grip to put it in order, × takes it out, + Place adds the place you are at, and the filter narrows a long list. Put it in Bible order sorts them. The color is the underline the reader draws for it; the eye hides it."),
-            ("Pages on a thread", "A page can be on several threads and shows under each. Write one under the thread's page, or drop a page onto a thread in Pages, or use + Thread on the page."),
-            ("A thread inside a page", "/ → Thread puts a thread's places inside another page, kept up to date, so a lesson can hold a thread without copying it. The file holds only the thread's id."),
-            ("Where it lives", "The thread file, threads/<name>.md, exactly as the Python app keeps it: name, color, note, places. Pinned is in settings/pages.json, which the Python app passes over."),
-            ("From a terminal", "wb thread page Phinehas · wb thread pin Phinehas · wb page threads <page id> · wb block thread <page id> 3 Phinehas · wb thread add|rm|order|sort as before."),
+            ("What changed", "What used to be a thread is now a folder with a color. Its places are the saves in the folder, in the folder's own order; its note is a page in the folder; pages written on it are pages in the folder. The word \"thread\" stays only here and in wb thread, which works as it did."),
+            ("The line on the text", "A folder with a color draws what you saved in it: a phrase or a word is underlined in its color (two lines at most under a run; hover names every folder), and a whole verse shows its color in a mark beside the verse number, the words untouched. A page, a search or a document saved in it draws nothing."),
+            ("Shown on the text", "In the Highlights menu: every folder with a color and its eye, the shown ones first, the rest folded under their parent folder, a search field and Hide all (with Undo). The eyes are kept in settings/folders.json, never in the folder's file."),
+            ("A folder inside a page", "A thread block already written in a page keeps working: it shows the folder's saves, kept up to date. The file holds only the folder's id."),
+            ("Where it lives", "A thread you made before is still the file threads/<name>.md and is read as a folder with a color; nothing was moved. A new folder's color is in its own file under sets/."),
+            ("From a terminal", "wb folder color Phinehas yellow · wb folder shown Phinehas on|off · wb folder shown --none · wb folder show Phinehas · wb thread … as before."),
         ],
     ),
     (

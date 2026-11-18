@@ -75,7 +75,26 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: i64) -> Result<Value> {
             }
         }
     }
-    let mut out = json!({"highlights": hls, "notes": notes, "threads": threads});
+    // a set folder with a color draws the places it saves, as a thread does (TH-1); an eye off hides a folder's marks
+    for t in store.sets() {
+        if s(&t, "color").is_empty() {
+            continue;
+        }
+        for i in t["items"].as_array().cloned().unwrap_or_default() {
+            if i["kind"] != "place" {
+                continue;
+            }
+            let p = py_parse(i["ref"].as_str().unwrap_or(""))?;
+            if p["kind"] != "lemma" && inside(&p, code, chapter) {
+                let mut m = coords(&p);
+                m.insert("thread".into(), json!(format!("folder:{}", s(&t, "id"))));
+                m.insert("color".into(), t["color"].clone());
+                threads.push(m);
+            }
+        }
+    }
+    let hidden: Vec<String> = crate::folders::colored(store).iter().filter(|f| !crate::folders::eye_on(store, f)).map(crate::folders::mark_id).collect();
+    let mut out = json!({"highlights": hls, "notes": notes, "threads": threads, "hidden": hidden});
     let pencil: Vec<Value> = crate::pencil::list(store, code)
         .into_iter()
         .filter_map(|p| {

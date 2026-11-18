@@ -125,3 +125,18 @@ export function toast(text: string) {
   overlay().append(t);
   setTimeout(() => t.remove(), 2200);
 }
+
+/** A toast with one Undo (Hide all of the eyes, TH-5); it stays 10 seconds. */
+export function toastUndo(text: string, undo: () => Promise<void>) {
+  overlay().querySelectorAll('.toast').forEach(x => x.remove());
+  const t = document.createElement('div');
+  t.className = 'toast toast-undo';
+  t.append(document.createTextNode(`${text} `));
+  const b = document.createElement('button');
+  b.className = 'btn small';
+  b.textContent = 'Undo';
+  b.onclick = () => { t.remove(); void undo(); };
+  t.append(b);
+  overlay().append(t);
+  setTimeout(() => t.remove(), 10000);
+}

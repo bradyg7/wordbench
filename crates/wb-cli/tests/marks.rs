@@ -96,6 +96,60 @@ fn no_place_a_page_is_tethered_by_its_own_text() {
 }
 
 #[test]
+fn a_scripture_block_and_a_word_block_tether_a_page_by_their_own_text() {
+    let Some(w) = Wb::new() else { return };
+    let block = w.page("Block page
+
+```scripture
+Num 25:11
+```");
+    assert!(!w.page_file(&block).contains("anchor"));
+    assert_eq!(ids(&w.js(&["anchor", "Num 25:11", "--pages"])), vec![block.clone()], "a scripture block names its verse");
+    // a word block holds a Strong's number, not a verse: the page is listed for that number, and for no verse
+    let word = w.page("Word page
+
+```word
+H7065
+```");
+    assert!(!w.page_file(&word).contains("anchor"));
+    assert_eq!(ids(&w.js(&["anchor", "H7065", "--pages"])), vec![word.clone()]);
+    assert_eq!(ids(&w.js(&["anchor", "Num 25:11", "--pages"])), vec![block.clone()]);
+    // taking the text out takes the page out of both lists, and no other file changes
+    let before = w.snapshot();
+    w.ok(&["note", "text", &block, "Block page
+
+No block now."]);
+    w.ok(&["note", "text", &word, "Word page
+
+No block now."]);
+    assert!(ids(&w.js(&["anchor", "Num 25:11", "--pages"])).is_empty());
+    assert!(ids(&w.js(&["anchor", "H7065", "--pages"])).is_empty());
+    let after = w.snapshot();
+    let changed: Vec<&String> = after.keys().filter(|k| before.get(*k) != after.get(*k)).collect();
+    assert_eq!(changed.len(), 2, "only the two pages changed: {changed:?}");
+}
+
+#[test]
+fn editing_a_page_keeps_no_earlier_version_anywhere() {
+    let Some(w) = Wb::new() else { return };
+    let id = w.page("A page
+
+First words.");
+    let keys_before: Vec<String> = w.snapshot().keys().cloned().collect();
+    w.ok(&["note", "text", &id, "A page
+
+Second words."]);
+    w.ok(&["note", "text", &id, "A page
+
+Third words."]);
+    let snap = w.snapshot();
+    let keys_after: Vec<String> = snap.keys().cloned().collect();
+    assert_eq!(keys_before, keys_after, "no file or folder appeared: {keys_after:?}");
+    assert!(keys_after.iter().all(|k| !k.contains("version") && !k.contains("history") && !k.contains("backup")));
+    assert!(snap.values().all(|t| !t.contains("First words.")), "the first words are not kept anywhere");
+}
+
+#[test]
 fn scripture_in_this_page_is_the_refs_of_its_text_and_blocks() {
     let Some(w) = Wb::new() else { return };
     let text = "Five readings\n\nSee Numbers 25:11 and Psalm 106:30.\n\n```scripture\nJohn 3:16\n```\n\nAlso Romans 10:2 and Exodus 20:3.";
@@ -362,7 +416,39 @@ fn old_placed_notes_are_read_and_nothing_is_rewritten() {
 fn every_new_command_is_in_the_help() {
     let Some(w) = Wb::new() else { return };
     let help = w.ok(&["help"]);
-    for c in ["margin", "margin add", "margin edit", "margin rm", "margin grow", "margin list", "page overview", "hl pencil", "study check"] {
-        assert!(help.lines().any(|l| l.trim_start().starts_with(c)), "{c}");
+    // each command by its whole name (a line is "  <name>  <what it does>"), so "margin" does not stand for "margin restore"
+    let names: Vec<&str> = help.lines().filter_map(|l| l.trim_start().split("  ").next()).collect();
+    for c in [
+        "margin", "margin add", "margin edit", "margin rm", "margin restore", "margin question", "margin grow", "margin targets", "margin list",
+        "page overview", "page jots", "hl pencil", "anchor", "refs", "block scripture", "page scripture", "page blocks", "find", "study check",
+    ] {
+        assert!(names.contains(&c), "wb help lists {c}");
     }
+}
+
+#[test]
+fn the_study_check_counts_the_margin_and_the_pencil_and_writes_nothing() {
+    let Some(w) = Wb::new() else { return };
+    w.note("Num 25:11", "one");
+    w.note("Num 25:12", "two");
+    w.note("Num 26:1", "three");
+    w.ok(&["hl", "pencil", "Num 25:11"]);
+    let before = w.snapshot();
+    let c = w.js(&["study", "check"]);
+    assert_eq!(c["margin"], json!({"files": 2, "notes": 3}));
+    assert_eq!(c["pencil"], json!({"files": 1, "lines": 1}));
+    assert_eq!(before, w.snapshot(), "the check writes nothing");
+}
+
+#[test]
+fn a_deleted_margin_note_is_not_listed_in_the_trash_and_restore_puts_it_back() {
+    let Some(w) = Wb::new() else { return };
+    let id = w.note("Num 25:11", "to be deleted");
+    w.ok(&["margin", "rm", &id]);
+    let trash = w.js(&["trash"]);
+    assert!(trash["notes"].as_array().unwrap().is_empty(), "the Trash view lists notes and questions, not margin notes: {trash}");
+    assert!(w.snapshot().keys().any(|k| k.starts_with(".trash/") && k.ends_with(&format!("{id}.md"))));
+    w.ok(&["trash", "empty", "--days", "0"]);
+    w.ok(&["margin", "restore", &id]);
+    assert!(w.snapshot()["margin/NUM/25.md"].contains(&id), "Empty trash leaves the copy, so Undo still works");
 }
