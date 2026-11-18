@@ -164,6 +164,22 @@ pub fn commands() -> Vec<Command> {
                 };
                 j(serde_json::to_value(marks::mark_add(c.bible()?, &*c.study()?, &at, &kind, &color, lines, to.as_deref()).map_err(e)?).unwrap())
             }),
+        cmd("mark show", "One mark: its kind, color, lines, at, to, created and changed (and the words of an old highlight).", vec![Pos("id", N::One)], |c, a| {
+            j(marks::mark_show(&*c.study()?, &a.s("id")).map_err(e)?)
+        }),
+        cmd("mark at", "Every mark on a place (a verse, words, a phrase), old highlights too, topmost first: arrows, underlines, circle and box, highlight; newest first within each. {\"place\", \"marks\"}.", vec![Pos("place", N::Many)], |c, a| {
+            let at = anchor(c, &a.s("place"))?;
+            j(marks::mark_at(&*c.study()?, &at).map_err(e)?)
+        }),
+        cmd("mark style", "Replace one mark's style: wb mark style <id> [--kind K] [--color C] [--lines 1|2|3]. Its id, place and date are kept; `changed` is set. An old highlight: color only.",
+            vec![Pos("id", N::One), Opt("kind", None), Opt("color", None), Opt("lines", None)], |c, a| {
+                let lines = match a.opt("lines") {
+                    Some(n) => Some(n.parse::<u8>().map_err(|_| "argument --lines: invalid int value")?),
+                    None => None,
+                };
+                let mut st = c.study()?;
+                j(marks::mark_style(&mut st, &a.s("id"), a.opt("kind").as_deref(), a.opt("color").as_deref(), lines).map_err(e)?)
+            }),
         cmd("mark rm", "Delete a mark (any id from wb marks, an old highlight too): it goes to .trash for 7 days; wb mark restore puts it back.", vec![Pos("id", N::Many)], |c, a| {
             let mut st = c.study()?;
             let mut done = vec![];

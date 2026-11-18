@@ -212,6 +212,8 @@ is not built; a builder that needs one stops and asks.
 
 T1 built (core and wb): rows 4, 6, 7, 14, 54, 56. Tests (`crates/wb-cli/tests/marks.rs`): `mark_add_keeps_a_mark_in_the_books_file_with_every_kind` (4, 6, 7), `an_arrow_needs_a_target_in_the_same_chapter` (14), `old_highlights_are_read_as_highlight_marks_and_never_rewritten` (54), `a_deleted_mark_waits_in_the_trash_for_seven_days_and_can_be_put_back` and `an_old_highlight_deleted_and_restored_is_the_same_highlight` (56); `every_action_has_a_command`. `--style` (T3) is not built.
 
+T2 built (core and wb): rows 25 to 28 (show, at, style). Tests (`crates/wb-cli/tests/marks.rs`): `mark_show_gives_one_mark_whole` (25), `marks_at_a_place_come_topmost_first_old_highlights_included` (26, 53 core), `mark_style_replaces_one_marks_style_and_keeps_its_id_and_date` and `an_old_highlight_changes_color_in_its_own_file_and_nothing_else` (27), `deleting_and_undoing_meets_row_28` (28; `rm`/`restore` are T1's). Rows 20 to 23 are keys: no core action, nothing added. The legend name in `show` is T3.
+
 ## Disk (proposed)
 
 - **Drawn marks:** `marks/<BOOK>.json`, one file per book: each mark `{id, kind, color, lines?, at, to?, created, changed?}`,

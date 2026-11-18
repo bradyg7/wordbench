@@ -184,7 +184,7 @@ fn legacy(h: &crate::store::Rec) -> Option<DrawnMark> {
         at,
         to: None,
         created: s(h, "created"),
-        changed: None,
+        changed: Some(s(h, "changed")).filter(|c| !c.is_empty()),
         words: (!words.is_empty()).then_some(words),
     })
 }
@@ -258,8 +258,9 @@ fn touches(m: &DrawnMark, code: &str, chapter: u32) -> bool {
 /// Every mark on a chapter: the ones in `marks/` and the old highlights, by date made. It reads the book's two small
 /// files, never a page.
 pub fn drawn_in_chapter(store: &Store, code: &str, chapter: u32) -> Vec<DrawnMark> {
-    let mut out: Vec<DrawnMark> = read_book(store, code).into_iter().filter(|m| touches(m, code, chapter)).collect();
-    out.extend(store.highlights(code).iter().filter_map(legacy).filter(|m| touches(m, code, chapter)));
+    // old highlights first: made in the same second, they are the older (the sort below is stable)
+    let mut out: Vec<DrawnMark> = store.highlights(code).iter().filter_map(legacy).filter(|m| touches(m, code, chapter)).collect();
+    out.extend(read_book(store, code).into_iter().filter(|m| touches(m, code, chapter)));
     out.sort_by(|a, b| a.created.cmp(&b.created));
     out
 }
@@ -282,6 +283,103 @@ fn find_mark(store: &Store, id: &str) -> Option<(String, DrawnMark, bool)> {
         }
     }
     None
+}
+
+/// One mark: {id, kind, color, lines?, at, to?, created, changed?, words?}. Its legend name is T3's.
+pub fn mark_show(store: &Store, id: &str) -> Result<Value> {
+    let (_, mark, _) = find_mark(store, id).ok_or_else(|| missing("No mark with that id."))?;
+    Ok(serde_json::to_value(&mark).unwrap())
+}
+
+/// A place as a span of (chapter, verse, word) points; a verse has no word, so it runs from word 0 to the last.
+fn span_of(a: &Anchor) -> ((u32, u32, u32), (u32, u32, u32)) {
+    let start = (a.c1, a.v1, a.i1.unwrap_or(0));
+    let end = match (a.c2, a.v2) {
+        (Some(c), Some(v)) => (c, v, a.i2.unwrap_or(u32::MAX)),
+        _ => (a.c1, a.v1, a.i1.unwrap_or(u32::MAX)),
+    };
+    (start, end)
+}
+
+fn layer(kind: &str) -> u8 {
+    match kind {
+        "arrow" => 0,
+        "underline" => 1,
+        "circle" | "box" => 2,
+        _ => 3,
+    }
+}
+
+/// Every mark covering a place (a verse, words, a phrase, verses), old highlights too, topmost first: arrows, then
+/// underlines, then circle and box, then highlight; within a layer, the newest first. A mark covers a place when its
+/// own words (`at`) share a word with it.
+pub fn mark_at(store: &Store, place: &str) -> Result<Value> {
+    let a = anchors::parse(place)?;
+    if a.kind == Kind::Lemma {
+        return Err(bad("Marks are on words, phrases or verses."));
+    }
+    let (s0, e0) = span_of(&a);
+    let mut out: Vec<DrawnMark> = Vec::new();
+    for ch in a.c1..=a.last_chapter() {
+        for m in drawn_in_chapter(store, &a.code, ch) {
+            let Ok(ma) = anchors::parse(&m.at) else { continue };
+            let (s1, e1) = span_of(&ma);
+            if s1 <= e0 && s0 <= e1 && !out.iter().any(|o| o.id == m.id) {
+                out.push(m);
+            }
+        }
+    }
+    // made in the same second: the one kept later (drawn_in_chapter lists in the order made) is the newer
+    out.reverse();
+    out.sort_by(|x, y| layer(&x.kind).cmp(&layer(&y.kind)).then_with(|| y.created.cmp(&x.created)));
+    Ok(json!({"place": a.id(), "marks": out}))
+}
+
+/// Replace one mark's style (kind, color, lines); its id, place and `created` stay and `changed` is set. It refuses what
+/// `mark_add` refuses. An old highlight keeps its highlights file: only its color may change, there.
+pub fn mark_style(store: &mut Store, id: &str, kind: Option<&str>, color: Option<&str>, lines: Option<u8>) -> Result<Value> {
+    guard(&store.root)?;
+    if kind.is_none() && color.is_none() && lines.is_none() {
+        return Err(bad("Say what to change: --kind, --color or --lines."));
+    }
+    let (code, old, is_old) = find_mark(store, id).ok_or_else(|| missing("No mark with that id."))?;
+    let kind = kind.unwrap_or(&old.kind).to_string();
+    if !MARK_KINDS.contains(&kind.as_str()) {
+        return Err(bad(format!("A mark is one of: {}.", MARK_KINDS.join(", "))));
+    }
+    let color = match color {
+        Some(c) if c.trim().is_empty() => return Err(bad("A mark needs a color.")),
+        Some(c) => check_color(Some(&c.to_lowercase()))?.unwrap(),
+        None => old.color.clone(),
+    };
+    let new_lines = match (kind.as_str(), lines) {
+        ("underline", Some(n)) if !(1..=3).contains(&n) => return Err(bad("An underline has 1, 2 or 3 lines.")),
+        ("underline", Some(n)) => Some(n),
+        ("underline", None) => Some(old.lines.unwrap_or(1)),
+        (_, Some(_)) => return Err(bad("Only an underline has lines.")),
+        _ => None,
+    };
+    if kind == "arrow" && old.to.is_none() {
+        return Err(bad("An arrow needs where it points: draw a new arrow with wb mark add --to."));
+    }
+    if is_old && (kind != "highlight") {
+        return Err(bad("An old highlight keeps its kind: only its color can change. Delete it and draw a new mark instead."));
+    }
+    let stamp = now();
+    let mut mark = DrawnMark { kind: kind.clone(), color: color.clone(), lines: new_lines, changed: Some(stamp.clone()), ..old };
+    if kind != "arrow" {
+        mark.to = None;
+    }
+    if is_old {
+        let mut h = store.highlights(&code).into_iter().find(|h| s(h, "id") == id).ok_or_else(|| missing("No mark with that id."))?;
+        h.insert("color".into(), json!(color));
+        h.insert("changed".into(), json!(stamp));
+        store.edit_highlights(&code, &[id.to_string()], vec![h])?;
+    } else {
+        let all: Vec<DrawnMark> = read_book(store, &code).into_iter().map(|m| if m.id == id { mark.clone() } else { m }).collect();
+        write_book(store, &code, &all)?;
+    }
+    Ok(serde_json::to_value(&mark).unwrap())
 }
 
 /// Delete a mark: it goes to `.trash/<stamp>-<id>.json` (kept the same 7 days as a note) and can be put back.

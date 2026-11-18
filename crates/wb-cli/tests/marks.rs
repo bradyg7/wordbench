@@ -304,3 +304,107 @@ fn an_old_highlight_deleted_and_restored_is_the_same_highlight() {
     w.ok(&["mark", "restore", &id]);
     assert_eq!(std::fs::read_to_string(&file).unwrap(), old);
 }
+
+// ---- marks round 7, T2 (rows 25 to 28): wb mark show, at, style ----
+
+#[test]
+fn mark_show_gives_one_mark_whole() {
+    let Some(w) = Wb::new() else { return };
+    let u = w.js(&["mark", "add", "Num 25:11", "--kind", "underline", "--color", "blue", "--lines", "3"]);
+    let shown = w.js(&["mark", "show", u["id"].as_str().unwrap()]);
+    assert_eq!(shown, u, "kind, color, lines, at, created; no `to` or `changed` yet");
+    w.ok(&["hl", "set", "Num 25:12", "green"]);
+    let old = on_chapter(&w, "Num 25").into_iter().find(|m| m["at"] == "NUM.25:12").unwrap();
+    let s = w.js(&["mark", "show", old["id"].as_str().unwrap()]);
+    assert_eq!((s["kind"].clone(), s["color"].clone(), s["created"].clone()), (json!("highlight"), json!("green"), old["created"].clone()));
+    let (code, _, err) = w.run(&["mark", "show", "m_nope"]);
+    assert_ne!(code, 0);
+    assert!(err.contains("No mark"), "{err}");
+}
+
+#[test]
+fn marks_at_a_place_come_topmost_first_old_highlights_included() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["hl", "set", "Num 25:11", "green"]);
+    let old_hl = on_chapter(&w, "Num 25")[0]["id"].as_str().unwrap().to_string();
+    let hl2 = w.js(&["mark", "add", "Num 25:11", "--kind", "highlight", "--color", "yellow"])["id"].as_str().unwrap().to_string();
+    let bx = w.js(&["mark", "add", "NUM.25:11.2-25:11.4", "--kind", "box", "--color", "blue"])["id"].as_str().unwrap().to_string();
+    let ci = w.js(&["mark", "add", "Num 25:11", "--kind", "circle", "--color", "pink"])["id"].as_str().unwrap().to_string();
+    let ul = w.js(&["mark", "add", "Num 25:11", "--kind", "underline", "--color", "blue"])["id"].as_str().unwrap().to_string();
+    let ar = w.js(&["mark", "add", "Num 25:11", "--kind", "arrow", "--color", "blue", "--to", "Num 25:13"])["id"].as_str().unwrap().to_string();
+    w.ok(&["mark", "add", "Num 25:12", "--kind", "box", "--color", "blue"]); // another verse: not listed
+    let got = |place: &str| -> Vec<String> { w.js(&["mark", "at", place])["marks"].as_array().unwrap().iter().map(|m| m["id"].as_str().unwrap().to_string()).collect() };
+    // arrow, underline, then circle and box (newest first: circle was made after the box), then highlights (newest first: the new one, then the old)
+    assert_eq!(got("Num 25:11"), vec![ar.clone(), ul.clone(), ci.clone(), bx.clone(), hl2.clone(), old_hl.clone()]);
+    // words 2 to 4 share words with all of them; word 9 is covered only by the whole-verse marks, not the box on words 2-4
+    assert_eq!(got("NUM.25:11.9"), vec![ar, ul, ci, hl2, old_hl]);
+    assert_eq!(w.js(&["mark", "at", "Num 25:11"])["place"], "NUM.25:11");
+    assert!(got("Num 25:20").is_empty());
+}
+
+#[test]
+fn mark_style_replaces_one_marks_style_and_keeps_its_id_and_date() {
+    let Some(w) = Wb::new() else { return };
+    let a = w.js(&["mark", "add", "Num 25:11", "--kind", "highlight", "--color", "yellow"]);
+    let other = w.js(&["mark", "add", "Num 25:11", "--kind", "box", "--color", "blue"]);
+    let id = a["id"].as_str().unwrap();
+    let b = w.js(&["mark", "style", id, "--color", "pink"]);
+    assert_eq!((b["id"].clone(), b["created"].clone(), b["at"].clone(), b["kind"].clone(), b["color"].clone()), (a["id"].clone(), a["created"].clone(), a["at"].clone(), json!("highlight"), json!("pink")));
+    assert!(b["changed"].as_str().unwrap().ends_with('Z'));
+    let u = w.js(&["mark", "style", id, "--kind", "underline", "--lines", "2"]);
+    assert_eq!((u["kind"].clone(), u["lines"].clone(), u["color"].clone()), (json!("underline"), json!(2), json!("pink")));
+    let back = w.js(&["mark", "style", id, "--kind", "circle"]);
+    assert!(back.get("lines").is_none(), "lines go when the kind is not an underline");
+    assert_eq!(w.js(&["mark", "show", id]), back);
+    assert_eq!(w.js(&["mark", "show", other["id"].as_str().unwrap()]), other, "no other mark changes");
+    assert_eq!(on_chapter(&w, "Num 25").len(), 2);
+    let refused = |args: &[&str], needle: &str| {
+        let before = w.snapshot();
+        let (code, _, err) = w.run(args);
+        assert_ne!(code, 0, "{args:?}");
+        assert!(err.contains(needle), "{args:?}: {err}");
+        assert_eq!(before, w.snapshot(), "a refused change writes nothing");
+    };
+    refused(&["mark", "style", id, "--lines", "2"], "underline");
+    refused(&["mark", "style", id, "--kind", "underline", "--lines", "4"], "1, 2 or 3");
+    refused(&["mark", "style", id, "--kind", "scribble"], "A mark is one of");
+    refused(&["mark", "style", id, "--kind", "arrow"], "arrow");
+    refused(&["mark", "style", id], "Say what to change");
+    refused(&["mark", "style", "m_nope", "--color", "orange"], "No mark");
+    // an arrow keeps its target
+    let ar = w.js(&["mark", "add", "Num 25:11", "--kind", "arrow", "--color", "blue", "--to", "Num 25:13"]);
+    let ar2 = w.js(&["mark", "style", ar["id"].as_str().unwrap(), "--color", "orange"]);
+    assert_eq!(ar2["to"], "NUM.25:13");
+}
+
+#[test]
+fn an_old_highlight_changes_color_in_its_own_file_and_nothing_else() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["hl", "set", "Num 25:11", "green"]);
+    let id = on_chapter(&w, "Num 25")[0]["id"].as_str().unwrap().to_string();
+    let created = on_chapter(&w, "Num 25")[0]["created"].clone();
+    let m = w.js(&["mark", "style", &id, "--color", "pink"]);
+    assert_eq!((m["id"].clone(), m["color"].clone(), m["created"].clone(), m["kind"].clone()), (json!(id), json!("pink"), created, json!("highlight")));
+    assert!(m["changed"].is_string());
+    assert!(!w.dir.join("marks").exists(), "no marks file made for it");
+    let h: Value = serde_json::from_str(&std::fs::read_to_string(w.dir.join("highlights").join("NUM.json")).unwrap()).unwrap();
+    assert_eq!((h["highlights"].as_array().unwrap().len(), h["highlights"][0]["color"].clone()), (1, json!("pink")));
+    assert_eq!(on_chapter(&w, "Num 25")[0]["color"], "pink");
+    let (code, _, err) = w.run(&["mark", "style", &id, "--kind", "box"]);
+    assert_ne!(code, 0);
+    assert!(err.contains("old highlight"), "{err}");
+    let (code, _, _) = w.run(&["mark", "style", &id, "--lines", "2"]);
+    assert_ne!(code, 0);
+}
+
+#[test]
+fn deleting_and_undoing_meets_row_28() {
+    let Some(w) = Wb::new() else { return };
+    let m = w.js(&["mark", "add", "Num 25:11", "--kind", "circle", "--color", "blue"]);
+    let id = m["id"].as_str().unwrap();
+    let changed = w.js(&["mark", "style", id, "--color", "orange"]);
+    w.ok(&["mark", "rm", id]);
+    assert!(w.js(&["mark", "at", "Num 25:11"])["marks"].as_array().unwrap().is_empty());
+    assert_eq!(w.js(&["mark", "restore", id]), changed, "Undo puts it back as it was, changed date included");
+    assert_eq!(w.js(&["mark", "at", "Num 25:11"])["marks"].as_array().unwrap().len(), 1);
+}
