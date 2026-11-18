@@ -28,28 +28,53 @@ recoverable (MK-21); every mark keeps the date it was made (MK-19).
 **Not a mark, kept for later:** a personal cross-reference graph, the person's own links between scriptures (the
 Library map, Later). The arrow here links two places on the text; it does not build that graph.
 
-## The leading design (proposed, for the person's review)
+**Round 7, draft 2 (the person's review notes, 2026-11-18):**
 
-- **Making a mark is one gesture.** Select words (or click a verse number for the whole verse; shift-click for a span),
-  and the **mark bar** appears just above the selection, never over the verse being read. It holds the six kinds, then
-  the legend's styles as named chips, the most used first. One click on a legend chip makes that mark. Keys do the same
-  with the bar open: H highlight, U underline, C circle, B box, A arrow, N margin note, 1 to 9 the legend's chips.
-- **The color is near-instant.** After a kind, the bar shows the last colors used and a full picker; the last style
-  used is one key (the same key again).
-- **The legend** is a short list the person keeps: each entry is a style and a name, optionally a line of meaning.
-  It is reached from the mark bar ("Legend…"), from Settings, and from the marks panel. Making a mark in a new style
-  offers "Name this style" in the bar, once, and never again for that style if dismissed.
-- **Layers stay readable.** The reader's marks panel shows or hides marks by kind, by legend entry, or all at once
-  (Reading mode: the plain text). Where marks overlap on the same words they are drawn in a fixed order: highlight
-  beneath, then box and circle, then underlines (one line per underline, up to three lines tall), then arrows above.
-- **The margin** shows, beside a verse, a small sign for each margin note that covers it; a click opens the note there.
-  A note covering a span draws a thin bracket beside its verses.
-- **An arrow** starts at a selection and ends at a second selection, in the same chapter (drawn) or another (drawn as a
-  short arrow to a label naming the place; a click follows it, and Back returns to the verse it came from).
-- **Every mark is findable:** the Library's one search finds marks by kind, color, legend entry, book or date; a verse's
-  card lists every mark on it.
+| # | Decision | From |
+|---|---|---|
+| MK7-8 | **Each kind has its own icon in the bar, its name on hover.** The six icons: highlighter (Highlight, H), underline (Underline, U), ring (Circle, C), square (Box, B), arrow (Arrow, A), notepad (Margin note, N). The Legend is its own icon and word in the bar. No kind is a long text button. | the person, row 1, 13 |
+| MK7-9 | **The bar does not show every legend chip.** It shows the person's **quick styles** (up to 5, chosen by the person, the most used until they choose), then the Legend icon, which opens the whole legend as a short searchable list right there. The legend grows from the bar: picking a kind and a color is "picking up a new pen", named on the spot. | the person, row 1, 8, 16 |
+| MK7-10 | **The legend is visible wherever a color is picked.** Recent styles show their legend names, never bare color dots, so nobody picks a color blindly or gives one a meaning by accident. The picker is a rainbow circle beside the 5 most recent styles. Organization is encouraged from the first mark. | the person, row 5, 8 |
+| MK7-11 | **A new style is named as it is made.** Picking a kind and color that no legend entry has puts a name field in the bar, focused. Enter with a name adds the entry; Enter or Esc with none leaves it **Unnamed** (listed in the legend as "Unnamed yellow highlight", nameable later). Unnamed is better than a lost mark. | the person, row 18, 32 |
+| MK7-12 | **The selection looks like a browser's text selection**: no handles at its ends, nothing artificial. | the person, row 2 |
+| MK7-13 | **A verse span:** click the first verse number, shift-click the last; it may cross chapters within a book. The bar for a span also offers **Open as a passage** (its own reader) and **Add to…** (a page, a folder, a save). | the person, row 3 |
+| MK7-14 | **Add to… is in the bar** for any selection: to a page, a folder or a save, as the reader's Add does today. | the person, row 1 |
+| MK7-15 | **Underlines thin as they stack:** one line is the thickest; double and triple are thinner lines, so a triple underline never looks heavy. A folder's color is never drawn on the words: it shows as a small tab in the gutter beside the verse (MK7-7), so an underline and a folder never look alike. | the person, row 7 |
+| MK7-16 | **Keys:** with the bar open, H U C B A N pick a kind; 1 to 5 the quick styles in bar order; any other style by typing its name in the Legend list. Anywhere in the reader, Ctrl+1 to Ctrl+9 apply styles the person assigns (in the Legend), so a selection and Ctrl+7 can circle it at once. A kind's key pressed twice repeats its last style; the colors stay open after one press, so a different one is one click. | the person, row 8, 15-17 |
+| MK7-17 | **The Legend has its own icon on the rail**, replacing today's highlight icon: the legend, each entry's count, and where each style is used. | the person, row 9, 27 |
+| MK7-18 | **The margin is a column always beside the text**, marked off by a thin line, like a Bible's margin. Click into it beside a verse to write there; a note may also sit in the chapter's margin without a verse, still shown, searched and read. The margin can be minimized to its **signs** (a small notepad beside each verse with a note); a click on a sign opens the note. The bar's notepad is a shortcut to the same place. | the person, row 13, 34, 41 |
+| MK7-19 | **Change replaces, a new mark adds.** On a mark's card, Change restyles that one mark (for a misclick). Selecting the same words again and picking a style adds another mark on top. These are two different gestures. | the person, row 22, 26 |
+| MK7-20 | **The mark's card is small and anchored** beside the mark, not draggable, closed by Esc or a click away. Toasts and cards take the person's theme. | the person, row 20, 23 |
+| MK7-21 | **A legend entry lists where it is used**, and marks can be removed from that list, one or many (recoverable, as any delete). | the person, row 32, 33 |
+| MK7-22 | **The bar keeps fixed sizes.** Two layouts only (wide, narrow), switched at one width; it never stretches or shrinks with each window change. | the person, row 41 |
+| MK7-23 | **A verse's card is reachable from a page's scripture block** as well as from the reader. | the person, row 44 |
 
-## Interaction table (draft 1)
+## The leading design (draft 2, for the person's review)
+
+- **Making a mark.** Select words, or click a verse number (shift-click a second for a span). The selection looks like
+  a browser's. The **mark bar** appears just above it: the six kind icons, the quick styles (named chips, up to 5), the
+  Legend icon, and Add to…. A quick style is one click. A kind icon opens the color row: the 5 recent styles with their
+  names, the rainbow picker; a new kind-plus-color asks for its name in the bar (Unnamed if skipped).
+- **The legend** lives on the rail (replacing the highlight icon), in the bar (its icon), and grows as pens are picked up.
+  Each entry: a sample, a name, an optional meaning, its key (Ctrl+n, optional), whether it is a quick style, its count,
+  and where it is used.
+- **Layers stay readable.** Drawn in a fixed order: highlight beneath, box and circle, underlines (thinning as they
+  stack), arrows on top. The marks panel hides or shows by kind or by legend entry; Reading mode shows plain text.
+  Folder colors stay in the gutter, never on the words.
+- **The margin** is an open column beside the text, minimizable to signs. Arrows never cross the margin: a cross-chapter
+  arrow is a label in the margin's edge, not a line.
+- **An arrow** goes from a selection to a second selection. Same chapter: drawn. Another chapter (ahead or behind): a
+  short arrow at the start to a label naming the target; a click follows it, Back returns. While choosing the target the
+  bar shows Back (a misclick) and Cancel. Arrow line styles (dotted, bold, heads) are later.
+- **Every mark is findable:** the Library's search by kind, color, legend entry, book or date; a verse's card lists every
+  mark on it, from the reader or a page's scripture block.
+
+**For the sheets to show** (the person asked to see these before accepting): a highlight from selection to legend chip,
+step by step; marks over marks (row 26); arrows in four scenarios (next verse, two chapters ahead, two behind, a misclick
+undone) beside margin notes, with crossing arrows; a chapter with years of marks (row 40); the narrow window with the
+margin as signs (row 41).
+
+## Interaction table (draft 2)
 
 Window tags (R = reader, B = mark bar, L = legend, P = marks panel, M = margin) are placeholders until the sheets are
 drawn. `Test` names the kind of test: **rust** (wb-core), **wb** (the command), **ui** (Playwright WebKit), **app** (the
@@ -59,102 +84,113 @@ real app). `Built` is ticked only when the test passes.
 
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 1 | R | Select words in a verse | The mark bar above the selection: six kinds, the legend's chips, "Legend…" | nothing | | ui | [ ] |
-| 2 | R | Click a verse number | The whole verse is selected; the bar appears | nothing | | ui | [ ] |
-| 3 | R | Shift-click a second verse number | The span between is selected (across chapters within one book); the bar appears | nothing | | ui | [ ] |
-| 4 | B | Click a legend chip | The mark is drawn at once in that style; the bar closes; the selection clears | mark added to `marks/<BOOK>.json` | `wb mark add <ref> --style <legend name>` | wb, ui | [ ] |
-| 5 | B | Click Highlight | The bar shows the last colors and the picker | nothing | | ui | [ ] |
-| 6 | B | Pick a color | The highlight is drawn; the bar closes | mark added | `wb mark add <ref> --kind highlight --color <c>` | wb, ui | [ ] |
-| 7 | B | Click Underline | As 5, plus single / double / triple | nothing | | ui | [ ] |
-| 8 | B | Pick lines and color | The underline is drawn | mark added | `wb mark add <ref> --kind underline --lines 2 --color <c>` | wb, ui | [ ] |
-| 9 | B | Click Circle or Box, pick a color | A ring or box around the selected words | mark added | `--kind circle\|box` | wb, ui | [ ] |
-| 10 | B | Click Arrow | "Now select where it points"; the bar shrinks to Cancel | nothing | | ui | [ ] |
-| 11 | R | Select the target (same chapter) | The arrow is drawn between the two | mark added (from, to) | `wb mark add <from> --kind arrow --to <ref>` | wb, ui | [ ] |
-| 12 | R | Go to another chapter and select the target | The arrow is drawn at the start as a short arrow to a label naming the target; the reader returns to the start | mark added | as 11 | ui | [ ] |
-| 13 | B | Click Margin note | The margin opens beside the selected verse(s) with an empty note, the cursor in it | nothing until text is typed | | ui | [ ] |
-| 14 | M | Type, then click away or press Esc | The note is kept; its sign shows beside the verse(s) | note written to `margin/<BOOK>/<chapter>.md` | `wb mark note <ref> "text"` | wb, ui | [ ] |
-| 15 | B | Press H, U, C, B, A, N | As clicking that kind | | | ui | [ ] |
-| 16 | B | Press 1 to 9 | As clicking that legend chip | as 4 | | ui | [ ] |
-| 17 | B | Press the kind's key again | The last style used for that kind is applied | as 4 | | ui | [ ] |
-| 18 | B | A mark in a style with no legend entry | One line in the bar: "Name this style?" with a field; Esc dismisses it for that style for good | legend entry if named | `wb legend add` | ui | [ ] |
-| 19 | B | Esc, or click outside | The bar closes; nothing is made | nothing | | ui | [ ] |
+| 1 | R | Select words in a verse | A browser-like selection; the mark bar above it: six kind icons (name on hover), up to 5 quick styles as named chips, the Legend icon, Add to… | nothing | | ui | [ ] |
+| 2 | R | Click a verse number | The whole verse selected, no handles; the bar appears | nothing | | ui | [ ] |
+| 3 | R | Click a verse number, then shift-click another | The span between is selected (across chapters within one book); the bar adds Open as a passage | nothing | | ui | [ ] |
+| 4 | B | Click a quick style | The mark is drawn at once; the bar closes; the selection clears | mark added to `marks/<BOOK>.json` | `wb mark add <ref> --style <legend name>` | wb, ui | [ ] |
+| 5 | B | Click a kind icon (Highlight, Underline, Circle, Box) | The color row: the 5 recent styles of that kind, each with its legend name; the rainbow picker. Underline adds single / double / triple | nothing | | ui | [ ] |
+| 6 | B | Click a recent style | The mark is drawn in it; the bar closes | mark added | as 4 | wb, ui | [ ] |
+| 7 | B | Pick a color in the rainbow picker that no entry has | The mark is drawn; the bar keeps a name field, focused: "Name this pen" | mark added | `wb mark add <ref> --kind <k> --color <c> [--lines n]` | wb, ui | [ ] |
+| 8 | B | Type a name, Enter | The entry is added to the legend; the bar closes | entry in `settings/legend.json` | `wb legend add --kind --color --name` | wb, ui | [ ] |
+| 9 | B | Enter or Esc with no name | The bar closes; the legend lists it as "Unnamed <color> <kind>" | unnamed entry added | | ui | [ ] |
+| 10 | B | Click the Legend icon | The whole legend as a short list in the bar, with a filter field focused; a click or Enter applies an entry | nothing | | ui | [ ] |
+| 11 | B | Click Add to… | A page, a folder or a save, as the reader's Add | as the reader's Add | `wb set add`, `wb page add` (existing) | ui | [ ] |
+| 12 | B | Click Open as a passage (a span) | The span opens in its own reader tab; Back returns to the verse | trail step | `wb text <span>` | ui | [ ] |
+| 13 | B | Click Arrow | "Select where it points"; the bar shrinks to Back and Cancel | nothing | | ui | [ ] |
+| 14 | R | Select the target in the same chapter | The arrow is drawn between them, above the text, never across the margin | mark added (from, to) | `wb mark add <from> --kind arrow --to <ref>` | wb, ui | [ ] |
+| 15 | R | Go to another chapter (ahead or behind) and select the target | At the start, a short arrow to a label naming the target; the reader returns to the start | mark added | as 14 | ui | [ ] |
+| 16 | B | Back while choosing a target | The reader returns to the start, the selection kept, the bar open | nothing | | ui | [ ] |
+| 17 | M | Click into the margin beside a verse, or press N / the notepad icon | An empty note there, the cursor in it | nothing until typed | | ui | [ ] |
+| 18 | M | Click into the margin away from any verse | A note for the chapter, not tied to a verse | nothing until typed | | ui | [ ] |
+| 19 | M | Type, then click away or press Esc | The note is kept; its sign shows | `margin/<BOOK>/<chapter>.md` | `wb mark note <ref\|chapter> "text"` | wb, ui | [ ] |
+| 20 | B | Press H, U, C, B, A, N | As clicking that kind (Highlight, Underline, Circle, Box, Arrow, margin Note) | | | ui | [ ] |
+| 21 | B | Press 1 to 5 | As clicking that quick style | as 4 | | ui | [ ] |
+| 22 | B | Press a kind's key twice | Its last style is applied | as 4 | | ui | [ ] |
+| 23 | R | Select, then Ctrl+1 to Ctrl+9 | The style assigned to that key is applied, no bar needed | as 4 | | ui | [ ] |
+| 24 | B | Esc, or click outside | The bar closes; nothing is made | nothing | | ui | [ ] |
 
 ### Changing and removing
 
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 20 | R | Click a mark | A small card: its style, legend name, date, and Change style, Delete; for a note, its text | nothing | `wb mark show <id>` | wb, ui | [ ] |
-| 21 | R | Click words with several marks | The card lists every mark there, topmost first | nothing | `wb mark at <ref>` | wb, ui | [ ] |
-| 22 | card | Change style | The bar opens on that mark; a pick restyles it | mark updated, date kept, `changed` added | `wb mark style <id> ...` | wb, ui | [ ] |
-| 23 | card | Delete | The mark goes; "Mark deleted · Undo" for 10 seconds | mark moved to the trash, recoverable | `wb mark rm <id>`, `wb mark restore <id>` | wb, ui | [ ] |
-| 24 | M | Edit a note's text | Saved as typed | note rewritten, `changed` date | `wb mark note <id> --text` | wb, ui | [ ] |
-| 25 | M | Note menu: Grow into a page | A page opens holding the note; the note stays, with "grew into <page>" | page made; note gains its link | `wb mark grow <id>` | wb, ui | [ ] |
-| 26 | R | Select words over existing marks | The bar as in 1; a new mark is added on top, nothing replaced | | | ui | [ ] |
+| 25 | R | Click a mark | A small card anchored beside it (not draggable): its style, legend name, date, Change, Delete; for a note, its text | nothing | `wb mark show <id>` | wb, ui | [ ] |
+| 26 | R | Click words with several marks | The card lists every mark there, topmost first, each with Change and Delete | nothing | `wb mark at <ref>` | wb, ui | [ ] |
+| 27 | card | Change | The color row for that mark; a pick replaces its style (that mark only) | mark updated, date kept, `changed` added | `wb mark style <id> ...` | wb, ui | [ ] |
+| 28 | card | Delete | The mark goes; a toast in the theme's colors: "Mark deleted · Undo", 10 seconds | moved to the trash, recoverable | `wb mark rm <id>`, `wb mark restore <id>` | wb, ui | [ ] |
+| 29 | M | Edit a note's text | Saved as typed | note rewritten, `changed` date | `wb mark note <id> --text` | wb, ui | [ ] |
+| 30 | M | Note menu: Grow into a page | A page opens holding the note; the note stays, with "grew into <page>" | page made; note gains its link | `wb mark grow <id>` | wb, ui | [ ] |
+| 31 | R | Select words that already have marks, pick a style | A new mark is added on top; nothing replaced | mark added | as 4 | ui | [ ] |
 
 ### The legend
 
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 27 | B, Settings, P | Open Legend… | The list of entries: a sample of each style, its name, its meaning, how many marks use it | nothing | `wb legend` | wb, ui | [ ] |
-| 28 | L | Add | A row: pick kind, color (and lines), type a name | `settings/legend.json` | `wb legend add --kind --color --name` | wb, ui | [ ] |
-| 29 | L | Rename or edit meaning | Saved as typed; every mark in that style now shows the new name | legend entry updated | `wb legend set` | wb, ui | [ ] |
-| 30 | L | Change an entry's color | Asks: "Change the 40 marks in this style too?" Yes restyles them; No keeps them and the entry only | entry (and marks) updated | `wb legend set --restyle` | wb, ui | [ ] |
-| 31 | L | Drag to reorder | The bar's chips follow the order | entry order | `wb legend move` | ui | [ ] |
-| 32 | L | Remove an entry | Its marks stay, as an unnamed style | entry removed | `wb legend rm` | wb, ui | [ ] |
-| 33 | L | Click an entry's count | The Library's search opens on marks in that style | nothing | `wb find --style` | ui | [ ] |
+| 32 | rail | Click the Legend icon (replaces the highlight icon) | The legend: each entry's sample, name, meaning, key, quick-style pin, count | nothing | `wb legend` | wb, ui | [ ] |
+| 33 | L | Add | A row: pick kind, color (and lines), type a name | `settings/legend.json` | `wb legend add` | wb, ui | [ ] |
+| 34 | L | Rename or edit meaning | Every mark in that style shows the new name | entry updated | `wb legend set` | wb, ui | [ ] |
+| 35 | L | Change an entry's color | "Change the 40 marks in this style too?" Yes restyles them; No changes the entry only | entry (and marks) | `wb legend set --restyle` | wb, ui | [ ] |
+| 36 | L | Pin or unpin as a quick style | The bar's quick styles follow (5 at most; a sixth asks which to replace) | entry | `wb legend set --quick` | ui | [ ] |
+| 37 | L | Assign a key (Ctrl+1 to 9) | Shown on the entry; a key already used asks to move it | entry | `wb legend set --key` | ui | [ ] |
+| 38 | L | Drag to reorder | Order of the list and the quick styles | entry order | `wb legend move` | ui | [ ] |
+| 39 | L | Remove an entry | Its marks stay, listed as Unnamed | entry removed | `wb legend rm` | wb, ui | [ ] |
+| 40 | L | Click an entry's count | Where it is used: each mark with its words and reference; a click opens the reader there | nothing | `wb find --kind mark --style <name>` | wb, ui | [ ] |
+| 41 | L | In that list, select marks and Delete | They go, recoverable; one toast with Undo | moved to the trash | `wb mark rm <id>...` | wb, ui | [ ] |
 
 ### Seeing marks
 
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 34 | R | Open a chapter | Every shown mark drawn in the fixed layer order; margin signs beside verses | nothing (no page files read) | `wb marks <chapter>` | rust, app (speed) | [ ] |
-| 35 | P | Toggle a kind | Marks of that kind hide or show | `settings/marks.json` | `wb settings marks` | ui | [ ] |
-| 36 | P | Toggle a legend entry | Marks in that style hide or show | as 35 | as 35 | ui | [ ] |
-| 37 | P | Reading mode | Only the text; one line says marks are hidden, with Show | as 35 | as 35 | ui | [ ] |
-| 38 | R | Hover a mark | Its legend name, if any | nothing | | ui | [ ] |
-| 39 | R | Click an arrow's label | The reader goes to the target; Back returns to the arrow's verse | trail step | | ui | [ ] |
-| 40 | R | A chapter with years of marks (generated) | Readable: layers in order, underlines stacked, no mark hides the words | nothing | | app | [ ] |
-| 41 | R | Narrow window | The bar wraps to two rows; the margin opens as a sheet below the verse | nothing | | ui | [ ] |
+| 42 | R | Open a chapter | Marks in the fixed layer order; the margin open beside the text (or as signs, as last left); folder colors as gutter tabs | nothing (no page files read) | `wb marks <chapter>` | rust, app (speed) | [ ] |
+| 43 | M | Minimize or open the margin | Signs only, or the notes in full | `settings/marks.json` | `wb settings marks` | ui | [ ] |
+| 44 | P | Toggle a kind | Marks of that kind hide or show | as 43 | as 43 | ui | [ ] |
+| 45 | P | Toggle a legend entry | Marks in that style hide or show | as 43 | as 43 | ui | [ ] |
+| 46 | P | Reading mode | Only the text; one line says marks are hidden, with Show | as 43 | as 43 | ui | [ ] |
+| 47 | R | Hover a mark | Its legend name | nothing | | ui | [ ] |
+| 48 | R | Click an arrow's label | The reader goes to the target; Back returns to the arrow's verse | trail step | | ui | [ ] |
+| 49 | R | A chapter with years of marks (generated) | Readable: layers in order, underlines thinning, no mark hides the words, arrows clear of the margin | nothing | | app | [ ] |
+| 50 | R | Narrow window | The bar's narrow layout (fixed size); the margin as signs; a sign opens its note in a popover beside the verse | nothing | | ui | [ ] |
 
 ### Finding marks
 
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 42 | Library search | Filter by mark: kind, color, legend entry, book, date | Matching marks, each with its words and reference; a click opens the reader there | nothing | `wb find --kind mark --style <name> --book <b>` | wb, ui | [ ] |
-| 43 | Library search | Type words | Margin notes' text is searched with pages | nothing | `wb find <words>` | wb | [ ] |
-| 44 | verse card | Open a verse's card | Every mark on that verse, and the margin notes covering it | nothing | `wb mark at <ref>` | wb, ui | [ ] |
+| 51 | Library search | Filter by mark: kind, color, legend entry, book, date | Matching marks, each with its words and reference; a click opens the reader there | nothing | `wb find --kind mark --style <name> --book <b>` | wb, ui | [ ] |
+| 52 | Library search | Type words | Margin notes' text is searched with pages | nothing | `wb find <words>` | wb | [ ] |
+| 53 | verse card | Open a verse's card, from the reader or a page's scripture block | Every mark on that verse, and the margin notes covering it | nothing | `wb mark at <ref>` | wb, ui | [ ] |
 
 ### Disk and moving forward
 
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 45 | | Open a study folder with `highlights/*.json` | Every old highlight shows as a highlight in its color | nothing until the move | | rust | [ ] |
-| 46 | | The move (once, after a backup, with the person's go-ahead) | `wb study check` lists what will move first; afterwards every old highlight is a mark with its id, color, words and date | `highlights/` read into `marks/`; old files kept in `.archive/` | `wb study move-marks --dry-run` then `--go` | rust, wb | [ ] |
-| 47 | | Delete a mark, then Empty trash after 7 days | Gone for good only then | | `wb trash` | rust | [ ] |
+| 54 | | Open a study folder with `highlights/*.json` | Every old highlight shows as a highlight in its color | nothing until the move | | rust | [ ] |
+| 55 | | The move (once, after a backup, with the person's go-ahead) | `wb study check` lists what will move first; afterwards every old highlight is a mark with its id, color, words and date | `highlights/` read into `marks/`; old files kept in `.archive/` | `wb study move-marks --dry-run` then `--go` | rust, wb | [ ] |
+| 56 | | Delete a mark, then Empty trash after 7 days | Gone for good only then | | `wb trash` | rust | [ ] |
 
 ## Disk (proposed)
 
 - **Drawn marks:** `marks/<BOOK>.json`, one file per book: each mark `{id, kind, color, lines?, at, to?, created, changed?}`,
   where `at` and `to` are anchors (`NUM.25:11.3-25:11.9`: verse and word positions, as highlights use today).
-- **Margin notes:** `margin/<BOOK>/<chapter>.md`, readable Markdown, each note under a line naming its verse or span,
-  with its id and dates. A span across chapters is kept in the chapter where it starts.
-- **The legend:** `settings/legend.json`, entries in order: `{kind, color, lines?, name, meaning?}`.
-- **Today's 26 highlight files** are read as they are until the move (row 46).
+- **Margin notes:** `margin/<BOOK>/<chapter>.md`, readable Markdown, each note under a line naming its verse, span or
+  the chapter, with its id and dates. A span across chapters is kept in the chapter where it starts.
+- **The legend:** `settings/legend.json`, entries in order: `{kind, color, lines?, name?, meaning?, quick?, key?}`.
+- **Today's 26 highlight files** are read as they are until the move (row 55).
 
 ## Open questions (for the person)
 
 1. **The mark bar's place.** Above the selection (proposed), or fixed at the top of the reader?
-2. **Arrow across chapters.** Drawn as a short arrow to a label (proposed), or not allowed until the cross-reference
-   graph is designed?
-3. **Colors.** Any color from a full picker (decided), but should the bar offer a fixed starter set of, say, 8 colors
-   first, so no one has to choose from millions?
-4. **Margin notes across chapters.** Allowed (kept where they start, proposed), or one chapter at most as before
-   (MK-20)?
-5. **The whole-Bible color view** (Library map): part of this folder, or its own later folder?
+2. **Arrows across chapters.** A label in the margin's edge (proposed). You said the cross-reference graph would be the
+   better tool, especially across books: keep cross-chapter arrows in this build, or leave them for the graph?
+3. **Starter legend.** Should a new Library begin with a few named pens (say, 5 highlight colors, unnamed but ready),
+   or empty?
+4. **Margin notes across chapters.** Allowed (kept where they start, proposed), or one chapter at most?
+5. **What a margin note is.** Proposed: plain text in which scripture references and questions are found by itself (as in
+   pages), no headings or blocks; anything bigger grows into a page. Marks on a margin note's own words: no (proposed).
+6. **The whole-Bible color view** (Library map): part of this folder, or its own later folder?
 
 ## Rounds
 
 | Round | Date | What | Review |
 |---|---|---|---|
 | 1 to 6 | to 2026-11-17 | see [archive](archive/rounds-1-6-README.md) | accepted, then built badly |
-| 7 | 2026-11-18 | fresh start: decisions MK7-1 to MK7-7, interaction table draft 1 | waiting for the person |
+| 7 | 2026-11-18 | fresh start: decisions MK7-1 to MK7-7, interaction table draft 1 | the person's notes on rows 1-44, 2026-11-18 |
+| 7, draft 2 | 2026-11-18 | notes folded in: MK7-8 to MK7-23, table draft 2 (56 rows), 6 open questions | waiting for the person; then the sheets |
