@@ -62,6 +62,40 @@ fn start_day(a: &crate::args::Args) -> Result<chrono::NaiveDate, String> {
     }
 }
 
+/// `plan start --kind horner`: Horner's ten lists, a chapter of each a day, no end (RP-9). --days-off and --start apply; the
+/// lists are the plan's own and are not typed.
+fn horner(c: &crate::Ctx<'_>, a: &crate::args::Args) -> Res {
+    let b = c.bible()?;
+    let mut imp = wb_core::published::horner_kind(b).map_err(e)?;
+    if let Some(off) = a.opt("days_off") {
+        let off = pl::parse_days_off(&off).map_err(e)?;
+        if !off.is_empty() {
+            imp.extra["days_off"] = json!(off);
+        }
+    }
+    let start = start_day(a)?;
+    if a.flag("dry_run") {
+        return j(wb_core::published::summarize(b, &a.s("name"), start, &imp));
+    }
+    let p = rd::start_plan_with(&c.root()?, &a.s("name"), imp.kind, a.opt("start").as_deref(), imp.days, imp.extra).map_err(e)?;
+    j(summary(&rd::progress(b, &c.root()?, &p, rd::today()).map_err(e)?))
+}
+
+/// The builder's view of Horner's lists: each list's books and its first chapters, side by side as columns.
+fn horner_layout(c: &crate::Ctx<'_>, a: &crate::args::Args) -> Res {
+    let b = c.bible()?;
+    let imp = wb_core::published::horner_kind(b).map_err(e)?;
+    let mut v = wb_core::published::summarize(b, &a.opt("name").unwrap_or_default(), start_day(a)?, &imp);
+    let lists: Vec<Value> = imp.extra["lists"].as_array().unwrap().iter().zip(wb_core::published::HORNER_LISTS).map(|(l, name)| {
+        let chs: Vec<&str> = l.as_array().unwrap().iter().filter_map(|x| x.as_str()).collect();
+        json!({"books": name, "chapters": chs.len(), "first": chs.iter().take(7).map(|e| rd::label(b, std::slice::from_ref(&e.to_string()))).collect::<Vec<_>>()})
+    }).collect();
+    v["lists"] = json!(lists);
+    v["rows"] = json!(imp.days.iter().take(7).enumerate().map(|(k, d)| json!({"day": k + 1, "label": rd::label(b, d), "chips": d.iter().map(|e| json!({"entry": e, "label": rd::label(b, std::slice::from_ref(e))})).collect::<Vec<_>>(), "kept": false})).collect::<Vec<_>>());
+    v["kept"] = json!([]);
+    j(v)
+}
+
 /// An arrangement from a file, or from the input with `-`: {"days": [["MAT.1", "MAT.2"], …], "kept": [2]}.
 fn arranged(c: &crate::Ctx<'_>, from: &str) -> Result<pl::Arranged, String> {
     let text = if from == "-" { c.stdin()? } else { std::fs::read_to_string(from).map_err(|x| format!("{from}: {x}"))? };
@@ -74,15 +108,18 @@ pub fn commands() -> Vec<Command> {
         cmd("plan kinds", "The built-in reading plans: the Bible's own order, spread over a number of days. (A chronological or other plan is imported: wb plan import.)",
             vec![], |_, _| j(json!(rd::KINDS.iter().map(|(k, what, days)| json!({"kind": k, "reads": what, "days": days})).collect::<Vec<_>>()))),
         cmd("plan start", "Start a reading plan: wb plan start \"Bible in a year\" --kind canonical [--days 365] [--start 2026-11-03]  |  --books gospels,rom --days 30.\n\
-                           What to read: --kind (a preset: canonical, ot-nt, nt, psalms-proverbs) or --books (gospels, rom, MAT,MRK, Gen-Deut) and --passages \"Ps 23; Isa 53\".\n\
+                           What to read: --kind (a preset: canonical, ot-nt, nt, psalms-proverbs, horner: Horner's ten lists, a chapter of each a day, no end) or --books (gospels, rom, MAT,MRK, Gen-Deut) and --passages \"Ps 23; Isa 53\".\n\
                            --order bible (default) | listed (the books as you list them) | side-by-side (Old and New together).\n\
                            --pace own (no dates) | days:90 | by:2027-01-01 | chapters:3  (--days 90 is days:90).  --days-off sun,sat.\n\
                            Each day is whole chapters, about the same number of words. --dry-run shows the plan without starting it.\n\
                            --arranged FILE or - : the days exactly as a file gives them ({\"days\": [[\"MAT.1\",\"MAT.2\"], …], \"kept\": [2]}), as the builder makes them.",
             vec![Pos("name", N::One), Opt("kind", None), Opt("days", None), Opt("books", None), Opt("passages", None), Opt("order", None), Opt("pace", None),
                  Opt("days_off", None), Opt("start", None), Opt("arranged", None), Flag("dry_run")], |c, a| {
-                let (spec, kind) = spec_of(a)?;
                 let b = c.bible()?;
+                if a.opt("kind").as_deref() == Some("horner") {
+                    return horner(c, a);
+                }
+                let (spec, kind) = spec_of(a)?;
                 let by_hand = a.opt("arranged").map(|f| arranged(c, &f)).transpose()?;
                 if a.flag("dry_run") {
                     let start = start_day(a)?;
@@ -98,6 +135,9 @@ pub fn commands() -> Vec<Command> {
         cmd("plan layout", "The days a plan would have, each chapter on its own, for arranging them: the options of plan start, and --arranged FILE or - for days you set by hand (their \"kept\" day numbers stay as they are; every other chapter is laid out again by the pace). Nothing is started.",
             vec![Opt("kind", None), Opt("days", None), Opt("books", None), Opt("passages", None), Opt("order", None), Opt("pace", None),
                  Opt("days_off", None), Opt("start", None), Opt("arranged", None), Opt("name", None)], |c, a| {
+                if a.opt("kind").as_deref() == Some("horner") {
+                    return horner_layout(c, a);
+                }
                 let (spec, kind) = spec_of(a)?;
                 let b = c.bible()?;
                 let held = a.opt("arranged").map(|f| arranged(c, &f)).transpose()?;
@@ -256,31 +296,53 @@ pub fn commands() -> Vec<Command> {
             let p = pl::move_day(&r, p["id"].as_str().unwrap(), n("day")?, n("to")?).map_err(e)?;
             j(summary(&rd::progress(b, &r, &p, rd::today()).map_err(e)?))
         }),
-        cmd("read mark", "Record that you read chapters: wb read mark \"Num 25\"  |  \"Num 24-26\" [--plan \"Bible in a year\"].", vec![Pos("place", N::Many), Opt("plan", None)], |c, a| {
-            let r = c.root()?;
-            let chs = rd::chapters_of(c.bible()?, &a.s("place")).map_err(e)?;
+        cmd("read mark", "Record that you read chapters, or verses: wb read mark \"Num 25\"  |  \"Num 24-26\"  |  \"Gen 2:1-9\" (one log line with the verses) [--plan \"Bible in a year\"] [--to-here] (--to-here: Gen 2:9 marks what is not yet read from the start of the chapter to verse 9).",
+            vec![Pos("place", N::Many), Opt("plan", None), Flag("to_here")], |c, a| {
+            let (r, b) = (c.root()?, c.bible()?);
             let plan = match a.opt("plan") {
                 Some(n) => rd::find_plan(&r, &n).map_err(e)?["id"].as_str().unwrap().to_string(),
                 None => String::new(),
             };
-            j(json!(rd::mark(&r, &chs, &plan).map_err(e)?))
+            if a.flag("to_here") {
+                return j(json!(rd::read_to_here(b, &r, &a.s("place"), &plan).map_err(e)?));
+            }
+            j(json!(rd::mark_place(b, &r, &a.s("place"), &plan).map_err(e)?))
         }),
         cmd("read when", "When you last read chapters: wb read when \"Num 25\"  |  \"Num 24-26\" → {\"NUM.25\": time, ...}; a chapter never read is left out.",
             vec![Pos("place", N::Many)], |c, a| {
             let chs = rd::chapters_of(c.bible()?, &a.s("place")).map_err(e)?;
-            j(rd::last_read(&c.root()?, &chs))
+            j(rd::last_read(c.bible()?, &c.root()?, &chs))
         }),
-        cmd("read times", "How many times chapters were read, and when last: wb read times \"Num 25\" → {\"NUM.25\": {\"times\": 2, \"last\": time}}; a chapter never read is left out.",
+        cmd("read times", "How many times chapters were read, when last, and which verses: wb read times \"Num 25\" → {\"NUM.25\": {\"times\": 2, \"last\": time, \"verses\": \"1-9\", \"read_to\": 9, \"whole\": false}}. A time counts when the chapter is read through; a chapter never read is left out.",
             vec![Pos("place", N::Many)], |c, a| {
             let chs = rd::chapters_of(c.bible()?, &a.s("place")).map_err(e)?;
-            j(rd::read_times(&c.root()?, &chs))
+            j(rd::read_times(c.bible()?, &c.root()?, &chs))
         }),
-        cmd("read unmark", "Mark unread: the latest mark of each chapter comes off the log (kept in .trash/reading-unmarked.jsonl): wb read unmark \"Num 25\".",
+        cmd("read unmark", "Mark unread: the latest mark of the place comes off the log (kept in .trash/reading-unmarked.jsonl): wb read unmark \"Num 25\"  |  \"Gen 2:1-9\" (the part line of exactly those verses).",
             vec![Pos("place", N::Many)], |c, a| {
-            let chs = rd::chapters_of(c.bible()?, &a.s("place")).map_err(e)?;
-            j(rd::unmark(&c.root()?, &chs).map_err(e)?)
+            j(rd::unmark(c.bible()?, &c.root()?, &a.s("place")).map_err(e)?)
         }),
-        cmd("read progress", "How much of the Bible you have read: chapters read at least once, by book.", vec![], |c, _| {
+        cmd("read map", "The whole Bible as a map: each book's chapters read (chapter, times, how much of it, 0 to 1) and the chapters written about (chapter, how many references: pages, places in pages, questions, highlights, folders).",
+            vec![], |c, _| {
+            let (b, r) = (c.bible()?, c.root()?);
+            let st = c.study()?;
+            j(wb_core::readmap::map(b, &r, &st).map_err(e)?)
+        }),
+        cmd("read about", "What refers to a chapter in your own work: wb read about \"Num 25\" (pages, places in pages, questions, highlights, folders).",
+            vec![Pos("place", N::Many)], |c, a| {
+            let b = c.bible()?;
+            let chs = rd::chapters_of(b, &a.s("place")).map_err(e)?;
+            let st = c.study()?;
+            let mut out = vec![];
+            for ch in chs {
+                for mut x in wb_core::readmap::about(b, &st, &ch) {
+                    x["chapter"] = json!(ch);
+                    out.push(x);
+                }
+            }
+            j(json!(out))
+        }),
+        cmd("read progress", "How much of the Bible you have read: chapters read at least once, by book, and the chapters read in part (with how far).", vec![], |c, _| {
             j(rd::overall(c.bible()?, &c.root()?).map_err(e)?)
         }),
         cmd("read log", "The reading log, newest last (--last N lines).", vec![Opt("last", Some("50"))], |c, a| {

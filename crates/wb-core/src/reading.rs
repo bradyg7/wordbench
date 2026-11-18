@@ -3,14 +3,17 @@
 //!
 //! ```text
 //! reading/log.jsonl          one line per chapter read: {"t": time, "ch": "NUM.25", "plan": "" or a plan's id}
-//!                            (append-only, so two devices merge it by keeping both sides' lines)
+//!                            (append-only, so two devices merge it by keeping both sides' lines). A part of a chapter read adds
+//!                            "v": "1-9" (verses); a line without it is the whole chapter. Old lines are never rewritten.
 //! reading/plans/<id>.json    a plan the person started: its name, kind, first day and every day's readings, written
 //!                            out in full when it starts, so the plan never changes under the person
 //! ```
 //!
-//! Built-in plans are only those whose order needs no judgment: the books in the Bible's own order, spread over a number
+//! Built-in plans are those whose order needs no judgment: the books in the Bible's own order, spread over a number
 //! of days with each day's words balanced. An order such as a chronological one is an editorial choice that published
 //! plans make differently, so the app does not ship its own; the person imports the plan they choose (`plan_import`).
+//! One editorial order ships, because the person asked for it (reading-plans RP-9, 2026-11-11): Horner's ten lists, ten
+//! ranges of books each read in its own order, a chapter of each a day, with no end (`published::horner_kind`).
 //! Nothing here reminds, nags or counts streaks: it says where the person is, and how far behind or ahead.
 
 use crate::bible::Bible;
@@ -29,6 +32,7 @@ pub const KINDS: &[(&str, &str, u32)] = &[
     ("nt", "The New Testament, Matthew to Revelation", 90),
     ("psalms-proverbs", "Psalms and Proverbs", 31),
     ("books", "The books you choose, in the Bible's order", 30),
+    ("horner", "Horner's ten lists: a chapter of each of ten lists a day, each list starting again when it is done, no end date", 0),
 ];
 
 pub(crate) fn folder(root: &Path) -> PathBuf {
@@ -473,60 +477,203 @@ pub fn log(root: &Path) -> Vec<Value> {
 /// Record readings: one log line each (`entries` are chapters, NUM.25, or plan entries).
 pub fn mark(root: &Path, entries: &[String], plan: &str) -> Result<Vec<Value>> {
     crate::store::guard(root)?;
-    if entries.is_empty() {
-        return Err(bad("Name what was read."));
+    append(root, entries.iter().map(|e| (e.clone(), None)).collect(), plan)
+}
+
+// ---- what the log says is read: whole chapters and parts of them (RP-5, RP-6) -----------------------------------------
+
+/// Verse ranges, sorted and merged (1-5 and 6-9 are 1-9).
+pub type Ranges = Vec<(u32, u32)>;
+
+pub fn add_range(r: &mut Ranges, a: u32, b: u32) {
+    r.push((a.min(b), a.max(b)));
+    r.sort();
+    let mut out: Ranges = vec![];
+    for (x, y) in r.drain(..) {
+        match out.last_mut() {
+            Some(l) if x <= l.1.saturating_add(1) => l.1 = l.1.max(y),
+            _ => out.push((x, y)),
+        }
     }
-    let path = folder(root).join("log.jsonl");
-    fs::create_dir_all(path.parent().unwrap())?;
-    let t = now();
-    let lines: Vec<Value> = entries.iter().map(|e| json!({"t": t, "ch": e, "plan": plan})).collect();
-    use std::io::Write;
-    let mut f = fs::OpenOptions::new().create(true).append(true).open(&path)?;
-    for l in &lines {
-        f.write_all((py_dumps(l) + "\n").as_bytes())?;
+    *r = out;
+}
+
+pub fn covers(r: &Ranges, a: u32, b: u32) -> bool {
+    r.iter().any(|x| x.0 <= a && x.1 >= b)
+}
+
+/// "1-5, 20-25"; a single verse as "7".
+pub fn ranges_text(r: &Ranges) -> String {
+    r.iter().map(|(a, b)| if a == b { a.to_string() } else { format!("{a}-{b}") }).collect::<Vec<_>>().join(", ")
+}
+
+/// "1-9", "7", "1-5, 20-25" → ranges; None when it is not that.
+pub fn parse_ranges(s: &str) -> Option<Ranges> {
+    let mut out = vec![];
+    for part in s.split(',').map(str::trim).filter(|p| !p.is_empty()) {
+        let (a, b) = part.split_once('-').unwrap_or((part, part));
+        let (a, b): (u32, u32) = (a.trim().parse().ok()?, b.trim().parse().ok()?);
+        if a == 0 || b == 0 {
+            return None;
+        }
+        add_range(&mut out, a, b);
     }
-    Ok(lines)
+    (!out.is_empty()).then_some(out)
+}
+
+/// The verses of a chapter read from verse 1 without a gap (the highest verse of the run that starts at verse 1).
+pub fn read_to_of(r: &Ranges) -> Option<u32> {
+    r.first().filter(|x| x.0 == 1).map(|x| x.1)
+}
+
+/// What the log holds of one chapter.
+#[derive(Clone, Debug, Default)]
+pub struct Cover {
+    /// The union of every line's verses (a line with no `v` is the whole chapter).
+    pub ranges: Ranges,
+    /// Times read: a whole-chapter line, or parts that together cover the chapter, count one each.
+    pub times: u32,
+    pub last: String,
+    /// The verses of the chapter (0 when the chapter is not known).
+    pub verses: u32,
+}
+
+impl Cover {
+    pub fn whole(&self) -> bool {
+        self.verses > 0 && covers(&self.ranges, 1, self.verses)
+    }
+    /// How much of the chapter is read, 0 to 1.
+    pub fn fraction(&self) -> f64 {
+        if self.verses == 0 {
+            return 0.0;
+        }
+        let n: u32 = self.ranges.iter().map(|(a, b)| b.min(&self.verses).saturating_sub(*a) + 1).sum();
+        (n as f64 / self.verses as f64).min(1.0)
+    }
+    pub fn to_json(&self) -> Value {
+        json!({"times": self.times, "last": self.last, "verses": ranges_text(&self.ranges), "read_to": read_to_of(&self.ranges), "whole": self.whole()})
+    }
+}
+
+/// One log line as the chapter it is about and the verses it holds (None: the whole chapter). A plan entry that is a part of
+/// a chapter (`PSA.119:1-119:88`) is that chapter's verses; one that runs across chapters is not a part of any one.
+fn line_part(l: &Value) -> Option<(String, Option<(u32, u32)>)> {
+    let ch = l["ch"].as_str()?;
+    if let Some((c, rest)) = ch.split_once(':') {
+        let (v1, end) = rest.split_once('-')?;
+        let (c2, v2) = end.split_once(':')?;
+        let base = c.rsplit_once('.')?.1;
+        if base != c2 {
+            return None;
+        }
+        return Some((c.to_string(), Some((v1.parse().ok()?, v2.parse().ok()?))));
+    }
+    match l["v"].as_str().and_then(parse_ranges) {
+        Some(r) if r.len() == 1 => Some((ch.to_string(), Some(r[0]))),
+        Some(r) => Some((ch.to_string(), Some((r[0].0, r.last().unwrap().1)))), // one line, a gap inside: kept by `lines_ranges`
+        None => Some((ch.to_string(), None)),
+    }
+}
+
+fn line_ranges(l: &Value) -> Option<Ranges> {
+    if l["ch"].as_str()?.contains(':') {
+        return line_part(l).and_then(|(_, r)| r.map(|r| vec![r]));
+    }
+    l["v"].as_str().and_then(parse_ranges)
+}
+
+/// What is read of each chapter in these lines of the log, with the number of verses of each chapter.
+pub fn coverage_of(bible: &Bible, lines: &[Value]) -> std::collections::BTreeMap<String, Cover> {
+    let mut out: std::collections::BTreeMap<String, Cover> = Default::default();
+    let mut pending: std::collections::HashMap<String, Ranges> = Default::default();
+    for l in lines {
+        let Some((ch, part)) = line_part(l) else { continue };
+        let Some(t) = l["t"].as_str() else { continue };
+        let c = out.entry(ch.clone()).or_default();
+        if c.verses == 0 {
+            c.verses = ch.split_once('.').and_then(|(code, n)| last_verse(bible, code, n.parse().unwrap_or(0)).ok()).unwrap_or(0);
+        }
+        let top = if c.verses == 0 { 999 } else { c.verses };
+        c.last = t.to_string();
+        match part {
+            None => {
+                add_range(&mut c.ranges, 1, top);
+                c.times += 1;
+                pending.remove(&ch);
+            }
+            Some(_) => {
+                let p = pending.entry(ch.clone()).or_default();
+                for (a, b) in line_ranges(l).unwrap_or_default() {
+                    let b = b.min(top);
+                    if a > b {
+                        continue;
+                    }
+                    add_range(&mut c.ranges, a, b);
+                    add_range(p, a, b);
+                }
+                if c.verses > 0 && covers(p, 1, c.verses) {
+                    c.times += 1;
+                    pending.remove(&ch);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// What the whole log says is read, chapter by chapter (the one place `read_times`, `last_read`, `overall` and `progress` ask).
+pub fn coverage(bible: &Bible, root: &Path) -> std::collections::BTreeMap<String, Cover> {
+    coverage_of(bible, &log(root))
 }
 
 /// When each chapter was last read, from the log: `{"NUM.25": "2026-11-03T21:53:49Z", ...}`; a chapter never read is left out.
-pub fn last_read(root: &Path, chapters: &[String]) -> Value {
+pub fn last_read(bible: &Bible, root: &Path, chapters: &[String]) -> Value {
+    let cov = coverage(bible, root);
     let mut out = serde_json::Map::new();
-    for l in log(root) {
-        if let (Some(ch), Some(t)) = (l["ch"].as_str(), l["t"].as_str()) {
-            if chapters.iter().any(|c| c == ch) {
-                out.insert(ch.to_string(), json!(t));
-            }
+    for ch in chapters {
+        if let Some(c) = cov.get(ch) {
+            out.insert(ch.clone(), json!(c.last));
         }
     }
     Value::Object(out)
 }
 
-/// How many times each chapter was read, and when last: `{"NUM.25": {"times": 3, "last": "2026-11-03T21:53:49Z"}}`; a
-/// chapter never read is left out.
-pub fn read_times(root: &Path, chapters: &[String]) -> Value {
+/// How many times each chapter was read, when last, and which verses:
+/// `{"NUM.25": {"times": 3, "last": "2026-11-03T21:53:49Z", "verses": "1-9", "read_to": 9, "whole": false}}`. A chapter never read
+/// (not even in part) is left out. A time is counted only when the chapter is read through.
+pub fn read_times(bible: &Bible, root: &Path, chapters: &[String]) -> Value {
+    let cov = coverage(bible, root);
     let mut out = serde_json::Map::new();
-    for l in log(root) {
-        if let (Some(ch), Some(t)) = (l["ch"].as_str(), l["t"].as_str()) {
-            if chapters.iter().any(|c| c == ch) {
-                let n = out.get(ch).and_then(|v| v["times"].as_i64()).unwrap_or(0);
-                out.insert(ch.to_string(), json!({"times": n + 1, "last": t}));
-            }
+    for ch in chapters {
+        if let Some(c) = cov.get(ch) {
+            out.insert(ch.clone(), c.to_json());
         }
     }
     Value::Object(out)
 }
 
-/// Mark unread: the latest mark of each chapter comes off the log (the person's choice on the chapter's end, note c419).
-/// Nothing is erased: each line taken off is kept in `.trash/reading-unmarked.jsonl`, as it was. A chapter not in the log
+/// Mark unread: the latest mark of each place comes off the log (the person's choice on the chapter's end, note c419). A place
+/// with verses takes off the latest line holding exactly those verses (`Gen 2:1-9`); a chapter, its latest line.
+/// Nothing is erased: each line taken off is kept in `.trash/reading-unmarked.jsonl`, as it was. A place not in the log
 /// is passed over. Returns the lines taken off and what the log says now.
-pub fn unmark(root: &Path, chapters: &[String]) -> Result<Value> {
+pub fn unmark(bible: &Bible, root: &Path, place: &str) -> Result<Value> {
     crate::store::guard(root)?;
+    let items = place_parts(bible, place)?;
     let path = folder(root).join("log.jsonl");
     let text = fs::read_to_string(&path).unwrap_or_default();
     let mut lines: Vec<&str> = text.lines().collect();
     let mut off: Vec<String> = vec![];
-    for ch in chapters {
-        let at = lines.iter().rposition(|l| serde_json::from_str::<Value>(l).ok().is_some_and(|v| v["ch"].as_str() == Some(ch.as_str())));
+    for (ch, part) in &items {
+        let at = lines.iter().rposition(|l| {
+            let Ok(v) = serde_json::from_str::<Value>(l) else { return false };
+            if v["ch"].as_str() != Some(ch.as_str()) {
+                return false;
+            }
+            match part {
+                None => true,
+                Some((a, b)) => v["v"].as_str().and_then(parse_ranges) == Some(vec![(*a, *b)]),
+            }
+        });
         if let Some(i) = at {
             off.push(lines.remove(i).to_string());
         }
@@ -543,7 +690,8 @@ pub fn unmark(root: &Path, chapters: &[String]) -> Result<Value> {
         write_atomic(&path, &body)?;
     }
     let taken: Vec<Value> = off.iter().filter_map(|l| serde_json::from_str(l).ok()).collect();
-    Ok(json!({"unmarked": taken, "now": read_times(root, chapters)}))
+    let chs: Vec<String> = items.iter().map(|i| i.0.clone()).collect();
+    Ok(json!({"unmarked": taken, "now": read_times(bible, root, &chs)}))
 }
 
 /// A place as typed → the chapters it covers (whole chapters; a verse range counts its chapters).
@@ -555,9 +703,101 @@ pub fn chapters_of(bible: &Bible, place: &str) -> Result<Vec<String>> {
     Ok(out)
 }
 
+/// A place as typed → each chapter it names with the verses asked for: None for a whole chapter (a place without verses),
+/// else the verses of that chapter (`Gen 2:1-9` is GEN.2 verses 1 to 9; `Gen 1:5-2:3` is GEN.1 5 to its end and GEN.2 1 to 3).
+pub fn place_parts(bible: &Bible, place: &str) -> Result<Vec<(String, Option<(u32, u32)>)>> {
+    let mut out = vec![];
+    for s in parse_spans(place, bible.books())? {
+        for c in s.c1..=s.c2 {
+            let ch = format!("{}.{c}", s.book.code);
+            if s.v1 == 0 {
+                out.push((ch, None));
+                continue;
+            }
+            let from = if c == s.c1 { s.v1 } else { 1 };
+            let to = if c == s.c2 {
+                if s.v2 == 0 { if s.c1 == s.c2 { s.v1 } else { last_verse(bible, &s.book.code, c)? } } else { s.v2 }
+            } else {
+                last_verse(bible, &s.book.code, c)?
+            };
+            out.push((ch, Some((from, to.max(from)))));
+        }
+    }
+    Ok(out)
+}
+
+/// Record places as read: a place without verses writes whole chapters (one line each); a place with verses writes one line
+/// with `v` for the verses (`{"ch": "GEN.2", "v": "1-9"}`). Returns the lines written.
+pub fn mark_place(bible: &Bible, root: &Path, place: &str, plan: &str) -> Result<Vec<Value>> {
+    crate::store::guard(root)?;
+    let items = place_parts(bible, place)?;
+    append(root, items.iter().map(|(ch, part)| (ch.clone(), part.map(|(a, b)| ranges_text(&vec![(a, b)])))).collect(), plan)
+}
+
+/// Mark read to here: the verses from the end of what is read from verse 1 up to this verse (`Gen 2:9`). A verse already read
+/// changes nothing (nothing is written).
+pub fn read_to_here(bible: &Bible, root: &Path, place: &str, plan: &str) -> Result<Vec<Value>> {
+    crate::store::guard(root)?;
+    let mut out = vec![];
+    let cov = coverage(bible, root);
+    for s in parse_spans(place, bible.books())? {
+        if s.v1 == 0 {
+            return Err(bad("Mark read to here needs a verse, like Gen 2:9."));
+        }
+        let (c, v) = (s.c2, if s.v2 == 0 { s.v1 } else { s.v2 });
+        let ch = format!("{}.{c}", s.book.code);
+        let have = cov.get(&ch).map(|c| c.ranges.clone()).unwrap_or_default();
+        let from = read_to_of(&have).map_or(1, |n| n + 1);
+        if from > v {
+            continue; // already read
+        }
+        out.extend(append(root, vec![(ch, Some(ranges_text(&vec![(from, v)])))], plan)?);
+    }
+    Ok(out)
+}
+
+fn append(root: &Path, items: Vec<(String, Option<String>)>, plan: &str) -> Result<Vec<Value>> {
+    if items.is_empty() {
+        return Err(bad("Name what was read."));
+    }
+    let path = folder(root).join("log.jsonl");
+    fs::create_dir_all(path.parent().unwrap())?;
+    let t = now();
+    let lines: Vec<Value> = items
+        .into_iter()
+        .map(|(ch, v)| match v {
+            Some(v) => json!({"t": t, "ch": ch, "plan": plan, "v": v}),
+            None => json!({"t": t, "ch": ch, "plan": plan}),
+        })
+        .collect();
+    use std::io::Write;
+    let mut f = fs::OpenOptions::new().create(true).append(true).open(&path)?;
+    for l in &lines {
+        f.write_all((py_dumps(l) + "\n").as_bytes())?;
+    }
+    Ok(lines)
+}
+
 /// The person's own day of a log time (the log is in UTC; a plan's days are the person's local days).
 fn local_day(t: &str) -> Option<NaiveDate> {
     chrono::DateTime::parse_from_rfc3339(t).ok().map(|d| d.with_timezone(&chrono::Local).date_naive())
+}
+
+/// A plan entry as its chapter and the verses it names (None: the whole chapter); None for one that runs across chapters.
+fn entry_verses(e: &str) -> Option<(String, Option<(u32, u32)>)> {
+    if !e.contains(':') {
+        return Some((e.to_string(), None));
+    }
+    line_part(&json!({"ch": e}))
+}
+
+/// What is read of an entry's chapter: `{"read_to": 9 or null, "parts": "20-25", "verses": "1-9, 20-25"}` (parts are the ranges after
+/// the run from verse 1). A chapter nothing of is read gives nulls.
+fn entry_parts(cov: &std::collections::BTreeMap<String, Cover>, e: &str) -> Value {
+    let Some(c) = entry_verses(e).and_then(|(ch, _)| cov.get(&ch)) else { return json!({"read_to": null, "parts": "", "verses": "", "fraction": 0.0, "whole": false}) };
+    let to = read_to_of(&c.ranges);
+    let rest: Ranges = c.ranges.iter().filter(|r| !(r.0 == 1)).cloned().collect();
+    json!({"read_to": to, "parts": ranges_text(&rest), "verses": ranges_text(&c.ranges), "fraction": (c.fraction() * 100.0).round() / 100.0, "whole": c.whole()})
 }
 
 /// What is done of a plan: each day's entries are done when the log has each of them, marked for this plan, or marked
@@ -573,14 +813,26 @@ pub fn progress(bible: &Bible, root: &Path, plan: &Value, on: NaiveDate) -> Resu
     };
     let start = parse_day(plan["start"].as_str().unwrap_or(""))?;
     let id = plan["id"].as_str().unwrap_or("");
-    let read: std::collections::HashSet<String> = log(root)
+    let lines: Vec<Value> = log(root)
         .into_iter()
         .filter(|l| {
             let p = l["plan"].as_str().unwrap_or("");
             p == id || (p.is_empty() && l["t"].as_str().and_then(local_day).is_some_and(|d| d >= start))
         })
-        .filter_map(|l| l["ch"].as_str().map(String::from))
         .collect();
+    // an entry is read when a whole-chapter line names it as it is written, or the verses logged cover it (RP-6)
+    let exact: std::collections::HashSet<String> = lines.iter().filter(|l| l.get("v").is_none()).filter_map(|l| l["ch"].as_str().map(String::from)).collect();
+    let cov = coverage_of(bible, &lines);
+    let is_read = |e: &str| -> bool {
+        if exact.contains(e) {
+            return true;
+        }
+        match entry_verses(e) {
+            Some((ch, Some((a, b)))) => cov.get(&ch).is_some_and(|c| covers(&c.ranges, a, b.min(c.verses.max(a)))),
+            Some((ch, None)) => cov.get(&ch).is_some_and(|c| c.whole()),
+            None => false,
+        }
+    };
     let days = plan["days"].as_array().cloned().unwrap_or_default();
     // new fields of tier 3, all optional: days_off (weekdays with no reading), dated (false for "my own pace"), skipped
     // (day numbers marked skipped, not read), stopped (the day it was stopped)
@@ -594,13 +846,14 @@ pub fn progress(bible: &Bible, root: &Path, plan: &Value, on: NaiveDate) -> Resu
     let (mut done_days, mut settled_days) = (0, 0);
     for (k, d) in days.iter().enumerate() {
         let es: Vec<String> = d.as_array().unwrap_or(&vec![]).iter().filter_map(|e| e.as_str().map(String::from)).collect();
-        let done: Vec<bool> = es.iter().map(|e| read.contains(e)).collect();
+        let done: Vec<bool> = es.iter().map(|e| is_read(e)).collect();
+        let parts: Vec<Value> = es.iter().map(|e| entry_parts(&cov, e)).collect();
         let all = done.iter().all(|x| *x);
         let skip = skipped.contains(&(k as u64 + 1)) && !all;
         done_days += all as usize;
         settled_days += (all || skip) as usize;
         let date = dates.get(k).map(|d| json!(d.format("%Y-%m-%d").to_string())).unwrap_or(json!(null));
-        rows.push(json!({"day": k + 1, "date": date, "label": label(bible, &es), "entries": es, "read": done, "done": all, "skipped": skip, "kept": kept.contains(&(k as u64 + 1))}));
+        rows.push(json!({"day": k + 1, "date": date, "label": label(bible, &es), "entries": es, "read": done, "parts": parts, "done": all, "skipped": skip, "kept": kept.contains(&(k as u64 + 1))}));
     }
     let due = dates.iter().filter(|d| **d <= on).count(); // the days whose date has come
     let today_n = dates.iter().position(|d| *d == on).map(|i| i + 1); // which day of the plan it is (none on a day off)
@@ -638,19 +891,21 @@ pub fn today_view(bible: &Bible, root: &Path, on: NaiveDate) -> Result<Value> {
 /// How much of the Bible the log shows read: chapters read at least once, by book and in all.
 pub fn overall(bible: &Bible, root: &Path) -> Result<Value> {
     let lines = log(root);
-    let read: std::collections::HashSet<String> = lines.iter().filter_map(|l| l["ch"].as_str()).filter(|c| !c.contains(':')).map(String::from).collect();
+    let cov = coverage_of(bible, &lines);
     let mut books = vec![];
     let (mut total, mut got) = (0u32, 0u32);
     for b in bible.books() {
-        let n = (1..=b.chapters).filter(|c| read.contains(&format!("{}.{c}", b.code))).count() as u32;
+        let n = (1..=b.chapters).filter(|c| cov.get(&format!("{}.{c}", b.code)).is_some_and(|x| x.times > 0)).count() as u32;
         total += b.chapters;
         got += n;
         if n > 0 {
             books.push(json!({"book": b.name, "read": n, "of": b.chapters}));
         }
     }
+    // chapters read in part and not through: what is read of each
+    let partial: Vec<Value> = cov.iter().filter(|(_, c)| c.times == 0).map(|(ch, c)| json!({"ch": ch, "read_to": read_to_of(&c.ranges), "parts": ranges_text(&c.ranges), "last": c.last})).collect();
     let last = lines.last().map(|l| json!({"t": l["t"], "ch": l["ch"]}));
-    Ok(json!({"chapters": got, "of": total, "percent": (got as f64 * 1000.0 / total as f64).round() / 10.0, "books": books, "last": last, "lines": lines.len()}))
+    Ok(json!({"chapters": got, "of": total, "percent": (got as f64 * 1000.0 / total as f64).round() / 10.0, "books": books, "partial": partial, "last": last, "lines": lines.len()}))
 }
 
 
@@ -670,5 +925,32 @@ mod tests {
         assert_eq!(sp.concat(), chs.iter().map(|c| c.0.clone()).collect::<Vec<_>>()); // in order, each chapter once
         let one: Vec<(String, u32)> = (1..=3).map(|c| (format!("JUD.{c}"), 1)).collect();
         assert_eq!(spread(&one, 3), vec![vec!["JUD.1"], vec!["JUD.2"], vec!["JUD.3"]]);
+    }
+
+    #[test]
+    fn verse_ranges_merge_and_say_where_the_run_from_verse_one_stops() {
+        let mut r: Ranges = vec![];
+        add_range(&mut r, 20, 25);
+        add_range(&mut r, 1, 5);
+        assert_eq!(r, vec![(1, 5), (20, 25)]);
+        assert_eq!((read_to_of(&r), ranges_text(&r)), (Some(5), "1-5, 20-25".to_string()));
+        add_range(&mut r, 6, 19);
+        assert_eq!(r, vec![(1, 25)]);
+        assert!(covers(&r, 1, 25) && !covers(&r, 1, 26));
+        let late: Ranges = vec![(20, 25)];
+        assert_eq!(read_to_of(&late), None);
+        assert_eq!(parse_ranges("1-5, 20-25"), Some(vec![(1, 5), (20, 25)]));
+        assert_eq!(parse_ranges("7"), Some(vec![(7, 7)]));
+        assert_eq!(parse_ranges("0-3"), None);
+        assert_eq!(parse_ranges("x"), None);
+    }
+
+    #[test]
+    fn a_log_line_with_a_plan_part_entry_is_that_chapters_verses() {
+        let l = json!({"ch": "PSA.119:1-119:88"});
+        assert_eq!(line_part(&l), Some(("PSA.119".to_string(), Some((1, 88)))));
+        assert_eq!(line_part(&json!({"ch": "GEN.2"})), Some(("GEN.2".to_string(), None)));
+        assert_eq!(line_part(&json!({"ch": "GEN.2", "v": "1-9"})), Some(("GEN.2".to_string(), Some((1, 9)))));
+        assert_eq!(line_part(&json!({"ch": "GEN.1:5-2:3"})), None, "across chapters is no part of one");
     }
 }

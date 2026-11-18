@@ -129,6 +129,21 @@ pub fn import(bible: &Bible, text: &str, format: Option<Format>, source: Option<
     Ok(out)
 }
 
+/// Horner's ten lists as a kind of plan that ships (RP-9): ten ranges of books, each read in its own order, a chapter of each a
+/// day, no end date. The same plan `import` makes from a pasted copy, with no typing.
+pub const HORNER_LISTS: [&str; 10] = [
+    "Matthew-John", "Genesis-Deuteronomy", "Romans-Colossians", "1 Thessalonians-Revelation", "Job, Ecclesiastes, Song of Solomon",
+    "Psalms", "Proverbs", "Joshua-Esther", "Isaiah-Malachi", "Acts",
+];
+
+pub fn horner_kind(bible: &Bible) -> Result<Imported> {
+    let text: String = HORNER_LISTS.iter().enumerate().map(|(k, l)| format!("List {}: {l}
+", k + 1)).collect();
+    let mut imp = import(bible, &text, Some(Format::Horner), Some("Horner"))?;
+    imp.extra["lists_named"] = json!(HORNER_LISTS);
+    Ok(imp)
+}
+
 /// What the person sees before an import starts: the same summary as the form's, and what was found.
 pub fn summarize(bible: &Bible, name: &str, start: NaiveDate, imp: &Imported) -> Value {
     let built = Built { readings: imp.days.iter().map(|d| d.len()).sum(), days: imp.days.clone(), extra: imp.extra.clone(), kept: vec![] };

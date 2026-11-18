@@ -145,7 +145,7 @@ fn read_mark(app: State<App>, place: String) -> Result<Value, String> {
     let st = st.as_ref().unwrap();
     let bible = bible_of(&app)?;
     let bible = bible.as_ref().unwrap();
-    timed(|| wb_core::reading::mark(&st.root, &wb_core::reading::chapters_of(bible, &place)?, ""))
+    timed(|| wb_core::reading::mark_place(bible, &st.root, &place, ""))
 }
 
 /// Color a place (or clear it with no color), by the no-overlap rule; the same as `wb hl set` / `wb hl clear`.
