@@ -18,7 +18,9 @@ a change alters expected behavior, document the contract and verify it with Rust
 - **The study folder is the person's real work.** `C:\Users\brady\github\bible-study-data` (notes, highlights, threads,
   trails, lessons) is never written to by tests, spikes or experiments. Use a scratch copy: `scripts/scratch-study.ps1`
   copies it to `%TEMP%\bible-workbench-rs\study-scratch`, and `WB_STUDY_DIR` points the app and `wb` there. wb-core
-  refuses to open the real folder unless `WB_ALLOW_REAL_STUDY=1` is set, and nothing in this repo sets it.
+  refuses to open the real folder unless `WB_ALLOW_REAL_STUDY=1` is set, and nothing in this repo sets it. The one
+  exception is an installed release (the `installed` feature, on only in the updater build the release workflow makes):
+  it opens the folder the person chooses (the person, 2026-11-18). Tests, spikes and `cargo test` never build with it.
 - **The study folder's formats are this app's to shape** (the person, 2026-11-12). They need not stay readable by the
   Python app. What the person already wrote must never be lost: a change of format reads the old form, and moving the
   person's files to a new form happens once, designed first, tried on a scratch copy, after a hashed backup

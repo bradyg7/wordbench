@@ -7,6 +7,9 @@ publish.workspace = true
 
 [features]
 distribution = ["dep:wb-license"]
+# A release installed by the person or a tester (the updater build): the study folder the person chooses is opened,
+# whatever it is. Development builds and tests never have it, so they keep refusing the real study folder.
+installed = []
 
 [dependencies]
 wb-license = { path = "../wb-license", optional = true }

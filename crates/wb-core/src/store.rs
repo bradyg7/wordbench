@@ -334,7 +334,9 @@ pub fn guard(root: &Path) -> Result<()> {
         (Ok(a), Ok(b)) => a == b,
         _ => false,
     };
-    if same && std::env::var("WB_ALLOW_REAL_STUDY").as_deref() != Ok("1") {
+    // An installed release opens the folder the person chose (the person, 2026-11-18); only builds without the
+    // `installed` feature, every test among them, refuse the real one.
+    if same && !cfg!(feature = "installed") && std::env::var("WB_ALLOW_REAL_STUDY").as_deref() != Ok("1") {
         return Err(bad(format!("{} is the person's real study folder; use a scratch copy", root.display())));
     }
     Ok(())
