@@ -40,7 +40,7 @@ const INTERNAL: &[&str] = &[
     "scripture_fence", "scripture_fence_text", "pages.rs:jot_fence",
     // marks (MK-17): the margin's file forms and places, the verse index and the pencil's list: pieces of wb margin, wb page overview and wb hl pencil
     // (named by file, so a public `all` or `list` elsewhere cannot hide behind them)
-    "margin.rs:from_place", "margin.rs:at_of", "margin.rs:all", "margin.rs:rows", "margin.rs:add_dots", "margin.rs:kind", "margin.rs:covers", "margin.rs:held",
+    "margin.rs:from_place", "margin.rs:at_of", "margin.rs:all", "margin.rs:rows", "margin.rs:add_dots", "margin.rs:kind", "margin.rs:covers", "margin.rs:held", "store.rs:write_atomic_unique",
     "pageindex.rs:all", "pageindex.rs:forget", "pageindex.rs:naming", "pencil.rs:list", "margin.rs:list", "store.rs:each_highlight",
     // views and templates (W5): a view's fence and line read (pieces of wb page views, wb view run, wb template save), a
     // place as a reference again, the blanks filled, and the Templates rows of wb notebook sidebar

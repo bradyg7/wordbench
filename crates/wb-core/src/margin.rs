@@ -251,12 +251,48 @@ fn read_chapter(root: &Path, code: &str, chapter: u32) -> Vec<Note> {
     read_path(&file(root, code, chapter))
 }
 
-/// Change one chapter's file: read its text, let `f` change the notes, write the result. Two writers (the window and a `wb`
-/// call, or two calls) may both have read the file: the text is hashed again just before the write, and when it is no longer
-/// what `f` was given, the edit is made again on the new text (five tries), so neither writer's note is dropped.
+/// A chapter file's lock while one writer changes it: a file made only if it is not there, taken away when the writer is done
+/// (or found older than ten seconds, a writer that died). Two writers of one chapter wait for each other, so neither's note is
+/// dropped.
+struct ChapterLock(PathBuf);
+
+impl ChapterLock {
+    fn take(chapter_file: &Path) -> Result<ChapterLock> {
+        let lock = chapter_file.with_extension("md.lock");
+        if let Some(d) = lock.parent() {
+            std::fs::create_dir_all(d)?;
+        }
+        for _ in 0..600 {
+            match std::fs::OpenOptions::new().write(true).create_new(true).open(&lock) {
+                Ok(_) => return Ok(ChapterLock(lock)),
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                    let old = std::fs::metadata(&lock).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|d| d > std::time::Duration::from_secs(10));
+                    if old {
+                        let _ = std::fs::remove_file(&lock);
+                    } else {
+                        std::thread::sleep(std::time::Duration::from_millis(5));
+                    }
+                }
+                Err(e) => return Err(e.into()),
+            }
+        }
+        Err(bad("Another writer is changing this margin file. Nothing was lost; try again."))
+    }
+}
+
+impl Drop for ChapterLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
+/// Change one chapter's file: take its lock, read its text, let `f` change the notes, write the result. The window and a `wb`
+/// call, or two calls, wait for one another. The text is also hashed again just before the write: if an editor (not this app)
+/// changed the file meanwhile, the edit is made again on the new text (five tries).
 fn update_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, f: &mut dyn FnMut(&mut Vec<Note>) -> Result<()>) -> Result<()> {
     guard(root)?;
     let p = file(root, code, chapter);
+    let _lock = ChapterLock::take(&p)?;
     for _ in 0..5 {
         let text = std::fs::read_to_string(&p).unwrap_or_default();
         let seen = hash_of(&text);

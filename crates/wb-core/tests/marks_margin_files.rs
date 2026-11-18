@@ -153,7 +153,7 @@ fn two_writers_editing_different_notes_of_one_chapter_lose_neither() {
                 let text = format!("{tag} edit {i}");
                 match margin::edit(&b, &mut st, &id, &text) {
                     Ok(_) => last = text,
-                    Err(e) => assert!(e.to_string().contains("kept changing"), "a clear refusal, not a loss: {e}"),
+                    Err(e) => assert!(e.to_string().contains("kept changing") || e.to_string().contains("Another writer"), "a clear refusal, not a loss: {e}"),
                 }
             }
             last
