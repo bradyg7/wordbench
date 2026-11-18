@@ -147,35 +147,34 @@ fn two_writers_editing_different_notes_of_one_chapter_lose_neither() {
     let b = need_bible();
     let t = Scratch::new();
     let mut st = Store::open(t.path()).unwrap();
-    let a = margin::add(&b, &mut st, "Num 25:11", "start a", false, "").unwrap()["id"].as_str().unwrap().to_string();
-    let c = margin::add(&b, &mut st, "Num 25:12", "start c", false, "").unwrap()["id"].as_str().unwrap().to_string();
+    let ids: Vec<String> = (0..4).map(|k| margin::add(&b, &mut st, &format!("Num 25:{}", 11 + k), &format!("start {k}"), false, "").unwrap()["id"].as_str().unwrap().to_string()).collect();
     let root = t.path().to_path_buf();
-    let mut handles = vec![];
-    for (id, tag) in [(a.clone(), "a"), (c.clone(), "c")] {
-        let root = root.clone();
-        handles.push(std::thread::spawn(move || {
-            let b = need_bible();
-            let mut st = Store::open(&root).unwrap();
-            let mut last = String::new();
-            for i in 0..25 {
-                let text = format!("{tag} edit {i}");
-                match margin::edit(&b, &mut st, &id, &text) {
-                    Ok(_) => last = text,
-                    Err(e) => assert!(e.to_string().contains("kept changing") || e.to_string().contains("Another writer"), "a clear refusal, not a loss: {e}"),
+    let go = std::sync::Arc::new(std::sync::Barrier::new(ids.len()));
+    let handles: Vec<_> = ids
+        .iter()
+        .enumerate()
+        .map(|(k, id)| {
+            let (root, id, go) = (root.clone(), id.clone(), go.clone());
+            std::thread::spawn(move || {
+                let b = need_bible();
+                let mut st = Store::open(&root).unwrap();
+                go.wait();
+                for i in 0..40 {
+                    // every edit must be taken: the writers wait for one another, and none is refused or lost
+                    margin::edit(&b, &mut st, &id, &format!("writer {k} edit {i}")).unwrap_or_else(|e| panic!("writer {k} edit {i} refused: {e}"));
                 }
-            }
-            last
-        }));
+            })
+        })
+        .collect();
+    for h in handles {
+        h.join().unwrap();
     }
-    let lasts: Vec<String> = handles.into_iter().map(|h| h.join().unwrap()).collect();
     let file = std::fs::read_to_string(chapter_file(&t, "NUM", 25)).unwrap();
-    for last in &lasts {
-        assert!(file.contains(last.as_str()), "{last} is in the file:
+    for k in 0..4 {
+        assert!(file.contains(&format!("writer {k} edit 39")), "writer {k}'s last edit is in the file:
 {file}");
     }
-    assert!(lasts.iter().all(|l| !l.is_empty()));
 }
-
 #[test]
 fn a_file_that_cannot_be_read_is_never_written_over() {
     let b = need_bible();
