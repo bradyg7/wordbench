@@ -3,6 +3,7 @@
 import { wb, type Book, type Chapter } from './api';
 import type { Drawn } from './reader';
 import { button, h } from './ui';
+import { markReading } from './planreading';
 
 export interface ListenSpan { book: string; c1: number; v1: number; c2: number; v2: number }
 export interface ListenCommand { action: string; span?: ListenSpan; rate?: number; name?: string }
@@ -321,7 +322,7 @@ async function offerMarkRead(book: Book, ch: number) {
   row.setAttribute('role', 'status');
   const place = `${book.name} ${ch}`;
   row.append(h('span', '', `Listened to ${place}. `), button('btn small', 'Mark read', async () => {
-    try { await wb(['read', 'mark', place, '--plan', plan.plan]); row.replaceChildren(h('span', '', `${place} marked read`)); setTimeout(() => row.remove(), 2500); }
+    try { await markReading(plan.id, `${book.code}.${ch}`); row.replaceChildren(h('span', '', `${place} marked read`)); setTimeout(() => row.remove(), 2500); }
     catch (x) { row.replaceChildren(h('span', '', String(x))); }
   }), button('btn small ghost', 'Not now', () => row.remove()));
   rail.append(row);

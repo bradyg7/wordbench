@@ -2425,3 +2425,215 @@ fn make_another_like_this_keeps_look_and_choice_per_kind_and_leaves_the_first_al
     let by_folder = wb.js(&["docs", "plan", "--folder", "Phinehas folder", "--to", "word", "--structure", "script"]);
     assert_eq!(by_thread["fingerprint"], by_folder["fingerprint"]);
 }
+
+// ---- reading plans: parts of chapters, Horner's lists, the counter (reading-plans RP-5 to RP-11) ----
+
+fn verses_in(wb: &Wb, place: &str) -> u32 {
+    wb.js(&["text", place, "--json"])["verses"].as_array().unwrap().len() as u32
+}
+
+fn log_lines(wb: &Wb) -> Vec<Value> {
+    std::fs::read_to_string(wb.dir.join("reading").join("log.jsonl")).unwrap_or_default().lines().map(|l| serde_json::from_str(l).unwrap()).collect()
+}
+
+#[test]
+fn a_part_of_a_chapter_is_a_log_line_with_verses_and_a_whole_chapter_stays_whole() {
+    // RP-5
+    let Some(wb) = Wb::new() else { return };
+    let m = wb.js(&["read", "mark", "Num 25:1-5"]);
+    assert_eq!((m[0]["ch"].clone(), m[0]["v"].clone()), (json!("NUM.25"), json!("1-5")));
+    wb.js(&["read", "mark", "Num 24"]);
+    wb.js(&["read", "mark", "Num 25:7"]);
+    let lines = log_lines(&wb);
+    assert_eq!(lines.len(), 3);
+    assert_eq!(lines[1].get("v"), None, "a place without verses writes a whole chapter, no v");
+    assert_eq!(lines[2]["v"], json!("7"));
+    // a place across chapters: each chapter's own verses
+    let last = verses_in(&wb, "Num 24");
+    let m = wb.js(&["read", "mark", &format!("Num 24:{last}-25:2")]);
+    assert_eq!((m[0]["ch"].clone(), m[0]["v"].clone(), m[1]["ch"].clone(), m[1]["v"].clone()), (json!("NUM.24"), json!(last.to_string()), json!("NUM.25"), json!("1-2")));
+    // old lines are never rewritten
+    assert_eq!(log_lines(&wb)[..3], lines[..]);
+}
+
+#[test]
+fn what_is_read_of_a_chapter_is_the_union_of_its_parts() {
+    // RP-6 and RP-7: in order, out of order, repeated, a whole chapter after parts
+    let Some(wb) = Wb::new() else { return };
+    let l = verses_in(&wb, "Num 25");
+    assert!(l > 12);
+    let times = |wb: &Wb| wb.js(&["read", "times", "Num 25"])["NUM.25"].clone();
+    wb.js(&["read", "mark", "Num 25:1-5"]);
+    let t = times(&wb);
+    assert_eq!((t["times"].clone(), t["verses"].clone(), t["read_to"].clone(), t["whole"].clone()), (json!(0), json!("1-5"), json!(5), json!(false)));
+    wb.js(&["read", "mark", "Num 25:1-5"]); // repeated: the same verses, still not a chapter read
+    assert_eq!(times(&wb)["times"], json!(0));
+    wb.js(&["read", "mark", &format!("Num 25:{}-{l}", l - 4)]); // out of order: the end before the middle
+    let t = times(&wb);
+    assert_eq!((t["verses"].clone(), t["read_to"].clone(), t["times"].clone()), (json!(format!("1-5, {}-{l}", l - 4)), json!(5), json!(0)));
+    wb.js(&["read", "mark", &format!("Num 25:6-{}", l - 5)]); // the gap closes: one time read
+    let t = times(&wb);
+    assert_eq!((t["times"].clone(), t["verses"].clone(), t["whole"].clone(), t["read_to"].clone()), (json!(1), json!(format!("1-{l}")), json!(true), json!(l)));
+    wb.js(&["read", "mark", "Num 25"]); // a whole-chapter line after parts: a second time
+    assert_eq!(times(&wb)["times"], json!(2));
+    // the whole Bible's count: a chapter read through counts once, however it was read
+    let p = wb.js(&["read", "progress"]);
+    assert_eq!(p["chapters"], json!(1));
+    assert_eq!(p["partial"], json!([]));
+    // a part alone is listed as partial, and never counts as a chapter
+    wb.js(&["read", "mark", "Num 26:1-3"]);
+    let p = wb.js(&["read", "progress"]);
+    assert_eq!(p["chapters"], json!(1));
+    assert_eq!((p["partial"][0]["ch"].clone(), p["partial"][0]["read_to"].clone()), (json!("NUM.26"), json!(3)));
+    assert!(wb.js(&["read", "when", "Num 26"])["NUM.26"].as_str().is_some());
+}
+
+#[test]
+fn a_plan_day_with_a_chapter_read_in_part_is_not_done_and_says_where_it_stopped() {
+    let Some(wb) = Wb::new() else { return };
+    let l = verses_in(&wb, "Num 25");
+    let (code, _, err) = wb.run(&["plan", "import", "Mine", "--start", "2026-01-01", "--format", "plain"], Some("Num 25; Num 26\nNum 27\n"));
+    assert_eq!(code, 0, "{err}");
+    wb.js(&["read", "mark", "Num 25:1-9", "--plan", "mine"]);
+    wb.js(&["read", "mark", "Num 26", "--plan", "mine"]);
+    let day = &wb.js(&["plan", "show", "mine", "--on", "2026-01-01"])["schedule"][0];
+    assert_eq!(day["done"], json!(false), "a chapter read in part is not read");
+    assert_eq!(day["read"], json!([false, true]));
+    assert_eq!((day["parts"][0]["read_to"].clone(), day["parts"][0]["parts"].clone()), (json!(9), json!("")));
+    // out of order: the end is read, the start is not
+    wb.js(&["read", "mark", &format!("Num 25:{}-{l}", l - 3), "--plan", "mine"]);
+    let day = &wb.js(&["plan", "show", "mine", "--on", "2026-01-01"])["schedule"][0];
+    assert_eq!((day["parts"][0]["read_to"].clone(), day["parts"][0]["parts"].clone()), (json!(9), json!(format!("{}-{l}", l - 3))));
+    assert_eq!(day["done"], json!(false));
+    wb.js(&["read", "mark", &format!("Num 25:10-{}", l - 4), "--plan", "mine"]);
+    assert_eq!(wb.js(&["plan", "show", "mine", "--on", "2026-01-01"])["schedule"][0]["done"], json!(true));
+}
+
+#[test]
+fn mark_read_to_here_marks_the_gap_and_a_verse_already_read_changes_nothing() {
+    // RP-8
+    let Some(wb) = Wb::new() else { return };
+    let m = wb.js(&["read", "mark", "Num 25:9", "--to-here"]);
+    assert_eq!((m[0]["v"].clone(), m.as_array().unwrap().len()), (json!("1-9"), 1));
+    assert_eq!(wb.js(&["read", "mark", "Num 25:9", "--to-here"]), json!([]));
+    assert_eq!(wb.js(&["read", "mark", "Num 25:4", "--to-here"]), json!([]));
+    let m = wb.js(&["read", "mark", "Num 25:12", "--to-here"]);
+    assert_eq!(m[0]["v"], json!("10-12"));
+    assert_eq!(wb.js(&["read", "times", "Num 25"])["NUM.25"]["read_to"], json!(12));
+    assert_eq!(log_lines(&wb).len(), 2);
+    // taking a part off: exactly that line, kept in the trash
+    let off = wb.js(&["read", "unmark", "Num 25:10-12"]);
+    assert_eq!(off["unmarked"].as_array().unwrap().len(), 1);
+    assert_eq!(wb.js(&["read", "times", "Num 25"])["NUM.25"]["read_to"], json!(9));
+    assert!(std::fs::read_to_string(wb.dir.join(".trash").join("reading-unmarked.jsonl")).unwrap().contains("\"v\": \"10-12\""));
+    assert_eq!(wb.js(&["read", "unmark", "Num 25:10-12"])["unmarked"], json!([]), "a part not in the log is passed over");
+}
+
+#[test]
+fn horners_ten_lists_ship_as_a_kind_a_chapter_of_each_list_a_day() {
+    // RP-9, RP-10
+    let Some(wb) = Wb::new() else { return };
+    let kinds = wb.js(&["plan", "kinds"]);
+    assert!(kinds.as_array().unwrap().iter().any(|k| k["kind"] == "horner"));
+    assert!(!kinds.as_array().unwrap().iter().any(|k| k["kind"].as_str().unwrap().contains("chronolog")), "no chronological kind (RP-4, RP-10)");
+    let dry = wb.js(&["plan", "start", "Horner", "--kind", "horner", "--start", "2026-11-02", "--dry-run"]);
+    assert_eq!((dry["cycle"].clone(), dry["lists"].clone(), dry["finish"].clone()), (json!(true), json!(10), json!(null)));
+    let p = wb.js(&["plan", "start", "Horner", "--kind", "horner", "--start", "2026-11-02"]);
+    assert_eq!((p["kind"].clone(), p["cycle"].clone(), p["finish"].clone()), (json!("horner"), json!(true), json!(null)));
+    let show = wb.js(&["plan", "show", "horner", "--on", "2026-11-03"]);
+    let day2: Vec<&str> = show["schedule"][1]["entries"].as_array().unwrap().iter().map(|e| e.as_str().unwrap()).collect();
+    assert_eq!(day2, vec!["MAT.2", "GEN.2", "ROM.2", "1TH.2", "JOB.2", "PSA.2", "PRO.2", "JOS.2", "ISA.2", "ACT.2"]);
+    // the lists are the plan's own, and between them they hold every chapter once
+    let file = plan_file(&wb, "horner");
+    let all: Vec<String> = file["lists"].as_array().unwrap().iter().flat_map(|l| l.as_array().unwrap().iter().map(|e| e.as_str().unwrap().to_string())).collect();
+    let chapters: u32 = wb.js(&["books"])["books"].as_array().unwrap().iter().map(|b| b["chapters"].as_u64().unwrap() as u32).sum();
+    assert_eq!(all.len() as u32, chapters);
+    let mut sorted = all.clone();
+    sorted.sort();
+    sorted.dedup();
+    assert_eq!(sorted.len(), all.len());
+    // the builder's view of the lists, side by side
+    let lay = wb.js(&["plan", "layout", "--kind", "horner"]);
+    assert_eq!(lay["lists"].as_array().unwrap().len(), 10);
+}
+
+#[test]
+fn the_counter_is_the_days_come_and_not_read_and_a_day_off_is_not_a_day() {
+    // RP-11 (and RP-1)
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["plan", "start", "Year", "--start", "2026-11-02", "--days-off", "wed"]);
+    let behind = |on: &str| wb.js(&["plan", "today", "--on", on])["plans"][0].clone();
+    assert_eq!(behind("2026-11-01")["behind"], json!(0));
+    assert_eq!(behind("2026-11-03")["behind"], json!(2)); // Monday and Tuesday
+    assert_eq!(behind("2026-11-04")["behind"], json!(2), "Wednesday is a day off, not a day of the plan");
+    wb.js(&["plan", "done", "year", "--day", "1"]);
+    assert_eq!(behind("2026-11-03")["behind"], json!(1));
+    wb.js(&["plan", "done", "year", "--day", "4"]); // Thursday, read ahead: it is not behind, and it does not settle Tuesday
+    let t = behind("2026-11-03");
+    assert_eq!((t["behind"].clone(), t["ahead"].clone()), (json!(1), json!(0)));
+    wb.js(&["plan", "done", "year", "--day", "2"]);
+    let t = behind("2026-11-03");
+    assert_eq!((t["behind"].clone(), t["ahead"].clone()), (json!(0), json!(1)), "two days come, three are read: one ahead");
+}
+
+#[test]
+fn the_map_has_what_was_read_and_what_was_written_about() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["read", "mark", "Num 25:1-3"]);
+    wb.js(&["read", "mark", "Num 26"]);
+    wb.js(&["note", "add", "Num 26:5", "A note of mine"]);
+    wb.js(&["hl", "set", "Num 26:1", "yellow"]);
+    let map = wb.js(&["read", "map"]);
+    let num = map["books"].as_array().unwrap().iter().find(|b| b["code"] == "NUM").unwrap();
+    let read = num["read"].as_array().unwrap();
+    assert_eq!(read[0][0], json!(25));
+    assert!(read[0][2].as_f64().unwrap() > 0.0 && read[0][2].as_f64().unwrap() < 1.0, "a chapter read in part is part filled");
+    assert_eq!((read[1][0].clone(), read[1][1].clone(), read[1][2].clone()), (json!(26), json!(1), json!(1.0)));
+    let about = wb.js(&["read", "about", "Num 26"]);
+    let kinds: Vec<&str> = about.as_array().unwrap().iter().map(|x| x["kind"].as_str().unwrap()).collect();
+    assert!(kinds.contains(&"page") && kinds.contains(&"highlight"), "{kinds:?}");
+    assert_eq!(num["written"][0][0], json!(26));
+}
+
+#[test]
+fn what_refers_to_a_chapter_counts_pages_places_in_pages_questions_folders_days_and_highlights() {
+    // RP-19: Written about counts every reference to a chapter
+    let Some(wb) = Wb::new() else { return };
+    let kinds = |wb: &Wb| -> Vec<String> { wb.js(&["read", "about", "Num 26"]).as_array().unwrap().iter().map(|x| x["kind"].as_str().unwrap().to_string()).collect() };
+    assert!(kinds(&wb).is_empty());
+    wb.js(&["note", "jot", "check where else this is used; see Num 26:3"]); // a place written in a page
+    wb.js(&["note", "jot", "how do the two numbers relate; Num 26:5", "--question"]);
+    wb.js(&["note", "add", "Num 26:9", "A note at a verse"]);
+    wb.js(&["hl", "set", "Num 26:1", "yellow"]);
+    wb.js(&["thread", "new", "Census", "--at", "Num 26:2"]);
+    wb.js(&["day", "add", "Read Numbers 26:4 today"]);
+    let k = kinds(&wb);
+    for want in ["place in a page", "question", "page", "highlight", "folder"] {
+        assert!(k.iter().any(|x| x == want), "{want} missing: {k:?}");
+    }
+    let places = wb.js(&["read", "about", "Num 26"]).as_array().unwrap().iter().filter(|x| x["kind"] == "place in a page").count();
+    assert_eq!(places, 2, "a place in the inbox page and one in today's page");
+    assert_eq!(wb.js(&["read", "about", "Num 25"]), json!([]), "another chapter has none");
+}
+
+#[test]
+fn the_builders_old_abilities_and_pasting_a_published_plan_still_work() {
+    // RP-18: move days, set the start, days off, a pasted published plan, and Horner with days off
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["plan", "start", "Gospels", "--books", "gospels", "--days", "10", "--start", "2026-11-02", "--days-off", "sun,sat"]);
+    let shown = wb.js(&["plan", "show", "gospels"]);
+    assert_eq!(shown["days_off"], json!(["sat", "sun"]));
+    let first: Vec<String> = day_entries(&shown)[0].clone();
+    wb.js(&["plan", "move-day", "gospels", "--day", "1", "--to", "3"]);
+    assert_eq!(day_entries(&wb.js(&["plan", "show", "gospels"]))[2], first);
+    assert_eq!(wb.js(&["plan", "edit", "gospels", "--start", "2026-12-01"])["start"], json!("2026-12-01"));
+    let (code, _, err) = wb.run(&["plan", "import", "Guth", "--format", "guthrie", "--start", "2026-11-02"], Some("Week 1\nDay 1: Genesis 1; Matthew 1\nDay 2: Genesis 2; Matthew 2\n"));
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(wb.js(&["plan", "show", "guth"])["source"], json!("Guthrie"));
+    let h = wb.js(&["plan", "start", "Horner", "--kind", "horner", "--start", "2026-11-02", "--days-off", "sun"]);
+    assert_eq!(h["days_off"], json!(["sun"]));
+    assert_eq!(h["cycle"], json!(true));
+    // 2026-11-08 is a Sunday: day 7 falls on the Monday after
+    let s = wb.js(&["plan", "show", "horner", "--on", "2026-11-09"]);
+    assert_eq!(s["schedule"][6]["date"], json!("2026-11-09"));
+}

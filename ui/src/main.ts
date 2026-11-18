@@ -38,6 +38,7 @@ import { canReopen, parse, reopen, runLine, written } from './actions';
 import { setupIfNeeded } from './setup';
 import { createReadAloud } from './listen';
 import { refreshInks } from './hlink';
+import * as planReading from './planreading';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const reader = $('reader'), scroller = $('scroller');
@@ -122,6 +123,8 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   placeButton(`${data.chapter.name} ${chapter}`);
   readerStep(`${data.chapter.name} ${chapter}`);
   readerMoved();
+  planReading.moved();
+  void planReading.paintRead(drawn, reader);
   setVersionLabel(data.chapter.version || 'KJV');
   const t2 = performance.now();
   await afterPaint();
@@ -130,7 +133,7 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   const d = drawn;
   const rest = () => {
     if (seq === drawSeq && d.more()) setTimeout(rest, 0);
-    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); if (finding) findInChapter(finding); }
+    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); void planReading.paintRead(d, reader); if (finding) findInChapter(finding); }
   };
   setTimeout(rest, 0);
   savePlace();
@@ -595,11 +598,18 @@ function verseMenu(vw: View, v: number, x: number, y: number) {
     b.append(icon(ico, 14), document.createTextNode(` ${label}`));
     b.onclick = () => { close(); fn(); };
     box.append(b);
+    return b;
   };
   item('Open in a new tab', 'float', () => openSecondReader(at.anchor, d.chapter.version || 'KJV'));
   if (!vw.main) item('Go to in the reader', 'book', () => void jump(d.chapter.code, d.chapter.chapter, v));
   if (!d.chapter.version) item('Select the verse', 'pen', () => { const vn = vw.root.querySelector<HTMLElement>(`.vn[data-v="${v}"]`); if (vn) selectVerse(vw, v, vn, performance.now()); });
   item('Notes & lookup', 'notebook', () => openPlace(at.anchor, at.label));
+  if (!d.chapter.version) {
+    // Mark read to here (R18): the verses of the chapter up to this one, one log line; the margin line follows
+    const first = item('Mark read to here', 'check', () => void planReading.readToHere(d, v, vw.root));
+    first.dataset.act = 'read-to-here';
+    item(`Mark ${d.chapter.name} ${d.chapter.chapter} read`, 'check', () => void planReading.readChapter(d, vw.root)).dataset.act = 'read-chapter';
+  }
   item('Copy', 'copy', () => {
     const a = d.v.indexOf(v), b = d.v.lastIndexOf(v);
     copy(`${textOf(d, a, b)} (${at.label} ${d.chapter.version || 'KJV'})`);
@@ -971,7 +981,7 @@ const PRESETS = [['phone', 'Phone 390×844'], ['phone-landscape', 'Phone landsca
 // says how many times it was read and when last (wb read times), so coming back to the chapter shows it; Mark unread
 // takes the latest mark off (wb read unmark; the line is kept in .trash). Note c419.
 function chapterEnd(d: Drawn) {
-  if (!inApp) return;
+  planReading.endCard(d, reader);   // the day's card (R3): a reading of the open plan day, one step, never marked by itself
   const place = `${d.chapter.name} ${d.chapter.chapter}`;
   const end = h('div', 'chapter-end');
   const said = h('span', 'chapter-read');
@@ -980,14 +990,14 @@ function chapterEnd(d: Drawn) {
   unread.title = 'Take the latest mark off the reading log';
   const show = (r: { times: number; last: string } | undefined) => {
     const when = r ? new Date(r.last).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
-    said.textContent = r ? `${place}: read ${r.times === 1 ? 'once' : `${r.times} times`} · last ${when}` : '';
-    btn.textContent = r ? 'Read again' : `Mark ${place} read`;
+    said.textContent = r ? `${place}: ${r.times === 0 ? 'read in part' : `read ${r.times === 1 ? 'once' : `${r.times} times`}`} · last ${when}` : '';
+    btn.textContent = r && r.times > 0 ? 'Read again' : `Mark ${place} read`;
     unread.hidden = !r;
   };
   const times = async () => show(Object.values((await wb(['read', 'times', place])) ?? {})[0] as any);
   btn.onclick = async () => {
     try {
-      await api.readMark(place);
+      await wb(['read', 'mark', place]);
       await times();
       app.changed('plans');
     } catch (e) { toast(String(e)); }
@@ -1256,6 +1266,6 @@ async function start() {
   }
 }
 
-(window as any).__wb = { open, concordance: openConcordance, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
+(window as any).__wb = { open, plans: openPlans, concordance: openConcordance, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
 start().catch(e => { reader.innerHTML = `<p class="error">${String(e)}</p>`; });
 void here;

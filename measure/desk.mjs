@@ -12,6 +12,7 @@ import path from 'node:path';
 import { shelfChecks, shelfFixtures } from './shelf-checks.mjs';
 import { acquire, freePort } from './instance.mjs';
 import { threadChecks } from './threads-checks.mjs';
+import { readingPlansChecks } from './reading-plans-checks.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
@@ -130,6 +131,15 @@ try {
   await page.waitForFunction(() => window.__wbReady, null, { timeout: 30000 });
   await page.waitForSelector('.pane-notebook .nb-sections', { timeout: 15000 });
   const size = await page.evaluate(() => [innerWidth, innerHeight, document.documentElement.dataset.size]);
+  if (process.argv.includes('--reading-plans')) {
+    await readingPlansChecks({ page, check, env, wbExe, sleep });
+    await browser.close().catch(() => {});
+    kill();
+    const bad = results.filter(r => !r.ok);
+    console.log(`
+${results.length - bad.length} of ${results.length} checks passed`);
+    process.exit(bad.length ? 1 : 0);
+  }
   if (process.argv.includes('--settings')) {
     await settingsChecks(page);
     await browser.close().catch(() => {});
@@ -2320,6 +2330,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
 
   await settingsChecks(page);
   await threadChecks({ page, check, env, wbExe, sleep });
+  await readingPlansChecks({ page, check, env, wbExe, sleep });
 
   // wb do from a terminal reaches this window
   const said = execFileSync(wbExe, ['do', 'open John 3:16-18'], { env }).toString().trim();

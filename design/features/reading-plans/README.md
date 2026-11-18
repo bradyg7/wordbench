@@ -1,7 +1,7 @@
 # Reading plans
 
-**State:** exploring · **Sheets:** `python design/features/reading-plans/reading-plans.py` writes
-`reading-plans.figcraft` and `reading-plans.pdf` (the board, one vector page) · Nothing here is built yet.
+**State:** accepted to build (the person, 2026-11-17: answers taken as the overseer recommended, build started) · **Sheets:** `python design/features/reading-plans/reading-plans.py` writes
+`reading-plans.figcraft` and `reading-plans.pdf` (the board, one vector page) · Building on `feature/reading-plans`.
 
 Reading plans and the reading log were built before `design/features/` existed. This folder designs them for the first
 time, inside the evolving app: the rail and trail come from [minimize](../minimize/README.md), and the reader and its right click come from
@@ -14,11 +14,11 @@ The board and its PDF hold only these windows. Superseded ones are left off the 
 | Part | Leading | Superseded (and by what) |
 |---|---|---|
 | Today | R1 |  |
-| The plan leading the reader, the day as a checklist | R8 (A and B together, C in them), R3 (the end of a reading) | R2, R4, R6 (by R8) |
-| A part of a chapter | R9, R10 (still to choose) | R7 (by R9, R10) |
-| Missed days | to be redrawn as a counter | R11 (its choices dropped in review) |
+| The plan leading the reader, the day as a checklist | R8 (A and B together, C in them), R3 (the end of a reading), R19 (the end of the day) | R2, R4, R6 (by R8) |
+| A part of a chapter | R9 (the log), R18 (marking it and going on) | R7 (by R9), R10 (by R9, the person 2026-11-17) |
+| Missed days | R17 (a counter) | R11 (by R17) |
 | Starting and building a plan | R12, R14 | R5 (by R14) |
-| Reading in the Library | R13 (not clear yet; round 3 redraws the path) |  |
+| Reading in the Library | R13, reached from the plan pane by R15 and R16 (a placeholder until the Library is a directory) |  |
 
 ## What exists today (in code, 2026-11-11)
 
@@ -107,15 +107,113 @@ A and B can go together: the strip while reading, the checklist in the pane. C s
   the plan pane, the strip) and how the plan and the Library are one.
 - Still open: R9 (log) or R10 (plan only) for a part read.
 
-## Open questions
+## Decisions (the person, 2026-11-17)
 
-- Round 2: should a part read be kept in the log (R9) or only in the plan (R10)?
-- Which chronological plan should ship? Many published ones are copyrighted. The choice needs a source whose order may
-  be shipped, or an order drawn from public-domain references, and the person decides it either way.
-- "Read them alongside" (R11) is a new choice. Is it wanted?
-- Should the Reading place in the Library replace the plan pane's Past plans entirely?
+- **A part of a chapter read goes in the log (R9).** A log line gains `v` (`{"ch": "GEN.2", "v": "1-9"}`); R10 is dropped.
+- **The Library should become a directory, and that is not designed yet** (it belongs in the [library](../library/README.md)
+  folder). Until then Reading is reached from the plan pane (R15, R16), which is a placeholder.
+- **The chronological plan is Blue Letter Bible's.** Not yet checked: whether its order may be shipped (a licence
+  question; the person asked on 2026-11-11 for a plan that is not copyrighted). The build waits for that check; until
+  then the kind is drawn, not built.
+- **"Read them alongside" is not wanted** (not important, the person); it goes with R11.
+- **The one step at the end of a reading stands, as the overseer recommended:** Mark read · next is one step (R3), nothing
+  is marked without a click (not at the last verse, not when Listen stops), and on the day's last reading the step is
+  Mark read (R19). Nothing follows the day: no streak, no cheer.
+- **"What the build must satisfy" is written after round 3 is reviewed**, not before.
 
-Round 1's questions:
+## Round 3 (2026-11-17)
+
+- **R15:** the plan pane's foot has one row, Reading, that opens the Library's Reading place; the pane no longer holds Past
+  plans or What you have read. The strip's label, Horner · Day 2, opens the pane.
+- **R16:** Reading opens on the plan going now, with ‹ Plan to go back, then Past plans with Use again, then the map.
+  Plan and Reading are one thing seen two ways, the day and everything.
+- **R17:** missed days are a count in the line under the title ("2 days behind"), quiet, never red, never a prompt. The plan
+  does not move; the count falls as days are read ahead. To move the dates, Start day… under ⋯, as now.
+- **R18:** a part read, as R9: Mark read to here in the verse's right click, a margin line to the last verse marked, the
+  menu on a later verse moves it, the plan's row says where it stopped, the map shows the chapter part filled.
+- **R19:** the end of the day: one step, no follow-up.
+
+## Answers (the person asked for the overseer's recommendations, 2026-11-17)
+
+- **RP-1 What the counter counts.** The plan's own `behind` (`reading::progress`): days whose date has come that are
+  neither done nor skipped. Days off are not days of the plan, so they never count; reading a day ahead lowers it
+  (`ahead` is the other side); a plan "at my own pace" has no dates and shows no counter.
+- **RP-2 Parts out of order.** The log keeps each line as written. What is read of a chapter is the union of its lines'
+  verses (a line with no `v` is the whole chapter). The row says `read to v. N` while verses 1 to N are all covered, and
+  `read vv. 20-25` (the union, as ranges) when verse 1 is not. A chapter adds a time read only when the union covers it
+  all; until then the map fills the chapter in proportion to the verses read. Mark read to here on a verse already
+  covered changes nothing.
+- **RP-3 The plan pane's Reading row** stays when the Library becomes a directory, as the shortcut.
+- **RP-4 Blue Letter Bible's order.** Not shipped until the person has confirmed it may be (a licence question the app
+  cannot answer). The build adds no Chronological kind; a published plan is still pasted (`wb plan import`). When
+  confirmed, adding the kind is a small change under this folder's "Open after merge".
+
+- **RP-22 Horner's ranges as shipped.** The first sheets named Romans-Hebrews and 1 Thessalonians-Revelation (they overlap) and Joshua-2 Chronicles (Ezra, Nehemiah and Esther would never be read). The build ships ten lists that partition the Bible: Matthew-John; Genesis-Deuteronomy; Romans-Colossians; 1 Thessalonians-Revelation; Job, Ecclesiastes, Song of Solomon; Psalms; Proverbs; Joshua-Esther; Isaiah-Malachi; Acts. A Rust test checks that every chapter is in exactly one list. Whether these are Horner's own ranges is the person's to confirm.
+- **`wb read mark` and `unmark` (RP-5, RP-7).** `wb read mark "Num 25:3"` now writes a part line (`"v": "3"`), where before it marked the whole chapter; only a place without verses marks whole chapters. `wb read unmark "Num 25"` takes off the latest line of that chapter, part or whole; `wb read unmark "Num 25:1-5"` takes off the part line of exactly those verses.
+
+## What the build must satisfy
+
+Lines marked `(desk)` are ticked by the desk check. Each is built or mapped to what exists, with a test.
+
+### The reading log and the map (wb-core)
+
+- [x] **RP-5** A log line may carry `v`, a verse range string (`{"t","ch":"GEN.2","plan","v":"1-9"}`). Lines without `v` read
+  as before; old lines are never rewritten. `wb read mark "Gen 2:1-9"` writes one line with `v` for the verses of
+  a place given with verses; a place given without verses still writes whole chapters.
+- [x] **RP-6** One function returns, per chapter, the verses read (the union, as ranges), `times` (a time is counted only when the
+  union covers the chapter) and `last`; `read_times`, `last_read`, `overall` and `progress` use it, so a part read
+  never counts a chapter as read twice or as done. Rust tests: parts in order, out of order (1-5, 20-25, 6-19), repeated,
+  a whole-chapter line after parts, and a plan day with a chapter read in part is not done.
+- [x] **RP-7** `wb read progress` / `wb plan show` give each plan entry `read_to` (the highest verse of the run from verse 1) and `parts`
+  (the union as ranges), and `wb read times` gives `verses`; a command for marking to a verse exists (`wb read mark "Gen 2:1-9"`)
+  and `wb read unmark "Gen 2:1-9"` takes that part line off (Trash rule: kept in `.trash/reading-unmarked.jsonl`).
+- [x] **RP-8** Mark read to here is a core action: `read_to_here(place)` is what the verse's right click calls and `wb read mark` shares.
+
+### What ships (wb-core, wb)
+
+- [x] **RP-9** Horner's ten lists is a kind in `reading::KINDS` and `wb plan kinds`: the ten book ranges in their own order, a chapter of each
+  list a day, no end date (cycle), built without typing lists (7cef). The old rule that no editorial order ships is lifted for it,
+  and the module's comment says so. `wb plan start "Horner" --kind horner` starts it; a Rust test shows day 2 as the ten lists' chapter 2.
+- [x] **RP-10** No Chronological kind is added (RP-4).
+- [x] **RP-11** The plan JSON's reading `behind` and `ahead` reach `wb plan today` and the UI unchanged; a test pins the counter at 0,
+  2 behind, and fewer after a day is read ahead, with a day off between.
+
+### The window (ui)
+
+- [x] **RP-12** The strip (R2, R3, R8, R19): Read opens the day in the reader with a strip under the bar holding the day's readings, which
+  tick as each is marked; the open one is marked; a click goes to any; `+N` for the rest; `n of N`. The pane may stay closed.
+  The strip's label opens the plan pane (R15).
+- [x] **RP-13** The end of a reading (R3, R19): a card at the chapter's end, `Mark read · next: <reading>` (one step; the next reading opens),
+  `Mark read`, `Not now`. On the day's last reading only `Mark read` and `Not now`. Nothing is marked without a click (the last verse
+  and Listen stopping do not mark). Nothing follows the last reading: no streak, no cheer, no prompt for the next day.
+- [x] **RP-14** After Listen reads a chapter through, the question comes as today (2dcf) and shares the same Mark read.
+- [x] **RP-15** The pane's checklist (R8): one row per reading with a box, the ten-part bar, `read to v. N` on a reading read in part; Days, Rename…, Start day…, Edit as text…, Stop under ⋯ (in that order); `Go on: <reading>` and `Mark the day read`. Under it, the chapter you are in: read times,
+  last read, what refers to it (pages, questions, highlights) as links.
+- [x] **RP-16** Mark read to here is in a verse number's right click; the verses read have a thin margin line (to the last verse of the run from
+  verse 1; further ranges each a line); the pane, the strip and the map update at once (R18). Mark the chapter read is the line under it.
+- [x] **RP-17** The counter (R17): `Day N · k days behind` in the quiet type of its line, shown only when behind > 0; never red, no prompt,
+  no choices. The five missed-day choices are no longer in the pane. (`wb plan missed` and the core stay as commands: every core action keeps its `wb` command.)
+- [x] **RP-18** Starting a plan (R14, R12): the kinds as cards (Bible in its order, Some books, Horner's ten lists, a published plan to paste); a chosen
+  kind shows its first days before Start; the builder opens in the reader's place, by kind: Horner's lists side by side as columns, a plan in days a row a day;
+  the text form stays under ⋯. Existing builder abilities (move days, set start, days off) stay.
+- [x] **RP-19** Reading (R13, R15, R16): the pane's foot has one row, Reading, that opens the Library's Reading place (R13) with `‹ Plan` back to the plan pane.
+  Reading holds the plan going now, Past plans (how far each got, Use again), and the map with its two layers (Read, Written about;
+  Written about counts every reference to a chapter: pages, places in pages, questions, highlights, folders); a click on a chapter lists them,
+  and opens the chapter. A part-read chapter is drawn part filled. The pane no longer has Past plans or What you have read.
+- [x] **RP-20** Rust and WebKit tests for each line above (`cargo test -j 2 --no-fail-fast`; `npm run test:webkit`), and a desk case (`measure/desk.mjs`) that
+  marks a part, reads on from the strip, and sees the counter. (desk)
+- [x] **RP-21** The reader's place is kept: Read, the strip, Mark read · next and Reading each return to the verse the reader was on. (desk)
+
+## Evidence (2026-11-17)
+
+`node measure/desk.mjs --reading-plans` on a scratch copy (debug app): 7 of 7 checks passed: part marked from the verse right click (read_to 9, margin line), `Day 4 of 12 · 4 days behind`, `read to v. 9` in the checklist, Read opened Numbers 8 with the strip, `Mark read · next: Numbers 9` arrived at Numbers 9, the strip chip went to Numbers 8, Reading and ‹ Plan left the reader at Numbers 25 (same scroll).
+
+## Open after merge
+
+- **Horner's ranges (RP-22) wait for the person to confirm.** The build ships them as in RP-22; the sheets (R5, R12, R14) were corrected to match.
+
+## Earlier questions (round 1, answered above or by the decisions)
+
 
 - A or B, or both? Should the strip show while no pane is open, and hide when the day is read?
 - Should "Mark read · next" be one step, or should reading the last verse count as read without a click? (So far
@@ -135,6 +233,7 @@ Round 1's questions:
 |---|---|---|---|---|
 | 1 | 2026-11-11 | R1-R7 | Today; A the plan leads the reader; B the day as a checklist, starting from a kind; C what was read as a whole, part of a chapter | A and B together with C; Horner and a chronological plan ship; part-read both ways; written about = any reference, in the Library; missed days, builder, past plans next (2026-11-11) |
 | 2 | 2026-11-11 | R8-R14 | A+B+C together; part read in the log or the plan; missed days; builder by kind; Reading in the Library; starting with what ships | non-copyrighted chronological plans to find; missed days a counter; R13 needs its path and integration (round 3); R9/R10 open (2026-11-11) |
+| 3 | 2026-11-17 | R15-R19 | The way to Reading and back; missed days as a counter; a part read in the log, marked and moved; the end of the day | (to be reviewed) |
 
 ## Data the sheets show
 
@@ -147,10 +246,6 @@ Round 1's questions:
 
 Scripture is fetched from the database, never typed. The top bar's place button reads "Numbers 25" because
 `minimize.slim_bar` draws it fixed, so the sheets cannot change it.
-
-## What the build must satisfy
-
-Written once the person accepts a direction.
 
 ## Out of scope / later
 

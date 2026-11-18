@@ -27,6 +27,7 @@ pub mod places;
 pub mod plans;
 pub mod published;
 pub mod questions;
+pub mod readmap;
 pub mod reading;
 pub mod relay;
 pub mod runtime;

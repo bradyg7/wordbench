@@ -130,13 +130,13 @@ def today(cv):
 
 # ---- A: the plan leads the reader -------------------------------------------------------------------------------------
 
-def strip(f, x, w, current=DONE):
+def strip(f, x, w, current=DONE, done=DONE):
     s = row(f, "today's reading", gap=6, pad=[8, 16, 8, 16], fill="surface", W="fixed", stroke="line",
             strokeBottomWeight=1, strokeTopWeight=0, strokeLeftWeight=0, strokeRightWeight=0)
     Q.put(s, x, TB, w)
     text(s, "Horner · Day 2", "smallStrong", "muted")
     for i, ref in enumerate(DAY2):
-        if i < DONE:
+        if i < done:
             P.chip(s, ref.replace("1 Thessalonians", "1 Thess"), "quiet", icon_name="check")
         elif i == current:
             P.chip(s, ref, "selected")
@@ -146,7 +146,7 @@ def strip(f, x, w, current=DONE):
             text(s, "+4", "caption", "muted")
             break
     frame(s, "space", w=8, h=8, W="fill", H="fixed")
-    text(s, f"{DONE} of 10", "caption", "muted")
+    text(s, f"{done} of 10", "caption", "muted")
     return s
 
 
@@ -230,8 +230,8 @@ def direction_b(cv):
     for name, what, on in (
             ("The Bible in its order", "Genesis to Revelation · 365 days, balanced by words", False),
             ("Some books", "Choose books (the Gospels, Romans…) · you set the days", False),
-            ("Ten lists at once (Horner)", "Gospels; Genesis–Deuteronomy; Romans–Hebrews; 1 Thess–Revelation; "
-             "Job, Ecclesiastes, Song; Psalms; Proverbs; Joshua–2 Chronicles; Isaiah–Malachi; Acts · a chapter of each "
+            ("Ten lists at once (Horner)", "Gospels; Genesis–Deuteronomy; Romans–Colossians; 1 Thess–Revelation; "
+             "Job, Ecclesiastes, Song; Psalms; Proverbs; Joshua–Esther; Isaiah–Malachi; Acts · a chapter of each "
              "a day, no end date", True),
             ("A published plan", "Paste it, one day to a line", False)):
         c = col(b, f"kind/{name}", gap=4, pad=[12, 14, 12, 14], radius=10, W="fill",
@@ -513,8 +513,8 @@ def start2(cv):
     r = row(cv, "start2", gap=64, align="min")
     f = Q.win(r, PG, "R14 · Starting a plan, with what ships",
               "The kinds that ship: the Bible in its order, some books, Horner's ten lists, and a chronological plan "
-              "(which one is still to be chosen). A published plan can still be pasted. Choosing a kind shows its "
-              "first days before Start.")
+              "(Blue Letter Bible's, the person's choice 2026-11-17; its licence is still to be checked). A published "
+              "plan can still be pasted. Choosing a kind shows its first days before Start.")
     w = M.rail5(f)
     M.slim_bar(f, x=w, w=W - w)
     reader(f, w, W - w - PW)
@@ -524,14 +524,14 @@ def start2(cv):
             ("The Bible in its order", "365 days, balanced by words", False),
             ("Some books", "Choose books · you set the days", False),
             ("Horner's ten lists", "A chapter of each list a day, no end date", False),
-            ("Chronological", "The events in the order they happened · 365 days · source still to be chosen", True),
+            ("Chronological", "The events in the order they happened · 365 days · from Blue Letter Bible's plan", True),
             ("A published plan", "Paste it, one day to a line", False)):
         c = col(b, f"kind/{name}", gap=4, pad=[10, 14, 10, 14], radius=10, W="fill",
                 stroke="accent" if on else "line", sw=1.5 if on else 1, fill="accentSoft" if on else None)
         text(c, name, "bodyStrong")
         text(c, what, "small", "muted", W="fill")
     text(b, "FIRST DAYS", "caption", "muted")
-    text(b, "Shown here from the chosen source, once one is chosen.", "small", "muted", W="fill")
+    text(b, "Shown here from the plan's own list, once its licence is checked.", "small", "muted", W="fill")
     a = row(b, "acts", gap=8)
     P.button(a, "Start · today", "primary", size="sm")
     P.button(a, "Arrange…", "secondary", size="sm")
@@ -551,8 +551,163 @@ def sheets2(board):
     start2(cv)
 
 
+# ---- round 3: the path to Reading, missed days as a counter, a part read, the end of the day ----------------------------
+
+GEN2_LONG = chapter("Gen 2:1-14")
+ACTS2_END = chapter("Acts 2:45-47")
+
+
+def reading_link(b, hot=True):
+    P.divider(b)
+    it = row(b, "Reading", gap=10, pad=[10, 12, 10, 12], radius=10, W="fill", stroke="accent" if hot else "line",
+             sw=1.5 if hot else 1, fill="accentSoft" if hot else None)
+    icon(it, "list", 16, "accent")
+    t = col(it, "t", gap=0, W="fill")
+    text(t, "Reading", "bodyStrong", "accent")
+    text(t, "Past plans and what you have read", "caption", "muted")
+    icon(it, "right", 14, "accent")
+
+
+def path(cv):
+    r = row(cv, "path", gap=64, align="min")
+    f = Q.win(r, PG, "R15 · The way to Reading: from the plan pane",
+              "For now the plan pane is the way in. Its foot has one row, Reading, that opens the Library's Reading "
+              "place (R13) in the pane's place; there is no Past plans or What you have read in the pane any more. "
+              "The strip's label, Horner · Day 2, opens the pane. The Library as a directory is not designed yet; "
+              "when it is, Reading is listed there and this row stays as the shortcut.")
+    w = M.rail5(f)
+    M.slim_bar(f, x=w, w=W - w)
+    strip(f, w, W - w - PW)
+    reader(f, w, W - w - PW, top=TB + 46)
+    b = plan_pane(f)
+    checklist(b)
+    reading_link(b)
+
+    f = Q.win(r, PG, "R16 · Reading, opened from the plan",
+              "Reading is the same pane with the Library's tabs. It opens on the plan going now, with a way back to "
+              "the plan (‹ Plan), then Past plans with Use again, then the map (Read, or Written about). Plan and "
+              "Reading are one thing seen two ways: the day, and everything. A past plan is not a separate place.")
+    w = M.rail5(f)
+    M.slim_bar(f, x=w, w=W - w)
+    pw = 820
+    reader(f, w, W - w - pw)
+    d = M.pane(f, W - pw, TB, pw, H - TB, ["Library", "Reading"], "Reading")
+    hd = row(d, "head", gap=10, W="fill")
+    text(hd, "‹ Plan", "smallStrong", "accent")
+    text(hd, "Reading", "title", W="fill")
+    P.segmented(hd, ["Read", "Written about"], "Read", W="hug")
+    pl = col(d, "plans", gap=4, W="fill")
+    for nm, what, going, dn, of in (("Horner's Reading System", "Day 2 · 1 of 10 today", True, 1, 250),
+                                    ("The Gospels in 30 days", "Stopped at day 18 of 30", False, 18, 30),
+                                    ("The Bible in its order", "Finished · 365 days", False, 365, 365)):
+        it = row(pl, nm, gap=10, pad=[6, 8, 6, 8], radius=8, W="fill", fill="accentSoft" if going else None)
+        text(it, nm, "bodyStrong" if going else "body", width=220)
+        bar(it, dn, of, w=120)
+        text(it, what, "small", "muted", W="fill")
+        text(it, "Open" if going else "Use again", "smallStrong", "accent")
+    m = row(d, "map", gap=20, W="fill", align="min")
+    bible_map(m, pw)
+
+
+def behind(cv):
+    r = row(cv, "behind", gap=64, align="min")
+    f = Q.win(r, PG, "R17 · Missed days, a counter",
+              "Days not read are a count, not a choice: 'Day 2 · 2 days behind', in the quiet type of the line it "
+              "sits on, never red and never a prompt. The plan does not move: today's reading is still the next "
+              "unread one. It drops as days are read ahead and goes away when caught up. To move the dates, Start "
+              "day… under ⋯, as now. No streaks, no reminders.")
+    w = M.rail5(f)
+    M.slim_bar(f, x=w, w=W - w)
+    strip(f, w, W - w - PW, current=0, done=0)
+    reader(f, w, W - w - PW, top=TB + 46)
+    b = plan_pane(f)
+    hd = row(b, "head", gap=8, W="fill")
+    text(hd, "Horner's Reading System", "title", W="fill")
+    P.icon_button(hd, "more", "muted", size=32, icon_size=18)
+    ln =row(b, "state", gap=8, W="fill")
+    text(ln, "Day 2 · 0 of 10 read", "small", "muted")
+    pill = row(ln, "behind", gap=4, pad=[2, 8, 2, 8], radius=999, fill="sunken")
+    text(pill, "2 days behind", "caption", "muted")
+    bar(b, 0, 10, segmented=True)
+    lst = col(b, "readings", gap=2, W="fill")
+    for i, ref in enumerate(DAY2):
+        it = row(lst, f"reading/{ref}", gap=10, pad=[7, 10, 7, 10], radius=8, W="fill", fill="accentSoft" if i == 0 else None)
+        frame(it, "box", w=18, h=18, radius=5, stroke="line", sw=1.5, W="fixed", H="fixed")
+        text(it, ref, "body", W="fill")
+    reading_link(b, hot=False)
+
+
+def part_read(cv):
+    r = row(cv, "part", gap=64, align="min")
+    f = Q.win(r, PG, "R18 · A part read: marking it, and going on",
+              "R9 is the way (the person, 2026-11-17): the verses go in the log. Mark read to here is in the verse "
+              "number's right click; the thin line in the margin runs from the top to the last verse marked, and the "
+              "menu on a later verse moves it, here from verse 5 to 9 ({\"ch\": \"GEN.2\", \"v\": \"1-9\"}). Mark the "
+              "chapter read is one line below it. The plan's row says read to v. 5 until then; the map shows the "
+              "chapter part filled.")
+    w = M.rail5(f)
+    M.slim_bar(f, x=w, w=W - w)
+    strip(f, w, W - w - PW)
+    reader(f, w, W - w - PW, top=TB + 46, vs=GEN2_LONG, sel=(9, 0, 999))
+    line = frame(f, "read line", w=3, h=330, radius=2, fill="ok", W="fixed", H="fixed")
+    Q.put(line, w + (W - w - PW - 680) // 2 - 14, TB + 140, 3, 330)
+    m = floating(f, "right click", w + 330, TB + 700, 280, pad=(6, 6, 6, 6), gap=2)
+    for lbl, ic, key, on in (("Mark read to here", "check", None, True), ("Mark the chapter read", "check", None, False),
+                             ("Interlinear", "interlinear", "I", False), ("Copy with reference", "copy", "C", False)):
+        it = row(m, f"menu/{lbl}", gap=10, pad=[6, 8, 6, 8], radius=6, W="fill", fill="accentSoft" if on else None)
+        icon(it, ic, 16, "fg")
+        text(it, lbl, "small", W="fill")
+        if key:
+            P.kbd(it, key)
+    b = plan_pane(f)
+    checklist(b, part="read to v. 5")
+    P.divider(b)
+    mrow = row(b, "on the map", gap=8, W="fill")
+    text(mrow, "Genesis", "caption", width=60)
+    cells = row(mrow, "chapters", gap=1, W="fill", wrap=True)
+    for c_ in range(1, 51):
+        cl = frame(cells, f"GEN.{c_}", w=6, h=10, radius=1, fill="ok" if c_ == 1 else "sunken", W="fixed", H="fixed",
+                   layout="vertical", clip=True)
+        if c_ == 2:
+            frame(cl, "half", w=6, h=5, fill="ok", W="fixed", H="fixed")
+    text(b, "Genesis 2: verses 1-5 read", "caption", "muted")
+
+
+def day_end(cv):
+    r = row(cv, "dayend", gap=64, align="min")
+    f = Q.win(r, PG, "R19 · The end of the day, and the one step",
+              "Decided as drawn in R3, and the day closes the same way (the person, 2026-11-17, my recommendation): "
+              "one step, Mark read · next, and nothing is marked without a click, not at the last verse and not "
+              "when Listen stops. On the day's last reading the step is Mark read, and the strip ticks to 10 of 10. "
+              "Nothing follows: no streak, no cheer, no next day pushed; day 3 is there when you open the plan.")
+    w = M.rail5(f)
+    M.slim_bar(f, x=w, w=W - w)
+    strip(f, w, W - w, current=9, done=9)
+    rd, inner = reader(f, w, W - w, title="Acts 2", vs=ACTS2_END, top=TB + 46)
+    end = col(inner, "end of reading", gap=10, pad=[16, 18, 16, 18], radius=12, stroke="line", sw=1, W="fill")
+    text(end, "End of Acts 2 · the last reading of day 2", "caption", "muted")
+    a = row(end, "acts", gap=10, W="fill")
+    P.button(a, "Mark read", "primary", "check", size="md")
+    frame(a, "space", w=8, h=8, W="fill", H="fixed")
+    text(a, "Not now", "smallStrong", "muted")
+
+
+def sheets3(board):
+    cv = Q.section(board, "Round 3", 3200)
+    Q.sheet_title(cv, "Reading plans, round 3",
+                  "Decided after round 2 (the person, 2026-11-17): a part read goes in the log (R9); the Library as a "
+                  "directory is not designed, so Reading is reached from the plan pane for now; the chronological "
+                  "plan's source is Blue Letter Bible's; the one step at the end of a reading stands. This round "
+                  "draws the way to Reading and back (R15, R16), missed days as a counter (R17), a part read marked "
+                  "and moved (R18), and the end of the day (R19).")
+    path(cv)
+    behind(cv)
+    part_read(cv)
+    day_end(cv)
+
+
 # windows that no longer lead (see the README's Leading design table)
-DROP = ['R2', 'R4', 'R5', 'R6', 'R7', 'R11']
+DROP = ['R2', 'R4', 'R5', 'R6', 'R7', 'R10', 'R11']
 
 
 def main():
@@ -565,7 +720,8 @@ def main():
     board = frame(None, BOARD, x=0, y=0, w=100, h=100, fill="sunken", layout="vertical", gap=96, pad=96, W="hug", H="hug")
     sheets(board)
     sheets2(board)
-    build = LIB / "build"
+    sheets3(board)
+    build =LIB / "build"
     build.mkdir(exist_ok=True)
     script = build / "reading-plans.json"
     script.write_text(json.dumps(S.steps, ensure_ascii=False), encoding="utf-8")

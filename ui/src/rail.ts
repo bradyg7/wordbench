@@ -53,7 +53,7 @@ function named(): boolean {
 /** Which rail icon holds a minimized tab of this kind; the rest wait under Minimized (R2a). */
 const HOLDS: Record<string, string> = {
   concordance: 'concordance', notebook: 'notebook', note: 'notebook', thread: 'notebook', threads: 'notebook', today: 'notebook',
-  shelf: 'shelf', plans: 'plans', findings: 'findings', documents: 'documents', docpreview: 'documents', lesson: 'documents', doc: 'documents',
+  shelf: 'shelf', plans: 'plans', reading: 'plans', findings: 'findings', documents: 'documents', docpreview: 'documents', lesson: 'documents', doc: 'documents',
 };
 const holder = (l: MinLink) => HOLDS[l.kind] ?? 'minimized';
 /** Inside Minimized, grouped by kind (R2a). */

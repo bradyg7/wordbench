@@ -873,7 +873,7 @@ const HELP_GROUP: Record<string, string> = {
   uses: 'looking up', search: 'looking up', find: 'looking up', interlinear: 'looking up', strong: 'looking up', bdb: 'looking up',
   def: 'looking up', lexiconc: 'looking up', forms: 'looking up', count: 'looking up', near: 'looking up', versecard: 'looking up', wordcard: 'looking up',
   documents: 'making', doc: 'making', lesson: 'making',
-  passage: 'reading', reader2: 'reading', place: 'reading', plans: 'reading',
+  passage: 'reading', reader2: 'reading', place: 'reading', plans: 'reading', reading: 'reading',
 };
 
 export function openKeys() {
