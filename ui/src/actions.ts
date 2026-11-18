@@ -16,6 +16,9 @@ import { setHover } from './ui';
 import { hooks } from './toolbar';
 import { addFinding, openFindings } from './findings';
 import { KINDS, makeDoc, openDocuments } from './documents';
+import { canonicalKey, readLayout } from './layout-state';
+import { openCardPane } from './verses';
+import { openSettings } from './settings';
 
 // The last write, so `undo` can take it back.
 type Undo = { kind: 'note'; id: string } | { kind: 'hl'; record: unknown } | { kind: 'trail'; id: string } | { kind: 'thread'; name: string; anchor: string } | { kind: 'jot'; id: string };
@@ -392,27 +395,59 @@ async function changeSet(a: any): Promise<string> {
   return `Set ${a.name}: ${a.action}`;
 }
 
-async function layout(a: any): Promise<string> {
+let layoutQueue: Promise<unknown> = Promise.resolve();
+function layout(a: any): Promise<string> {
+  const next = layoutQueue.then(() => applyLayout(a));
+  layoutQueue = next.catch(() => {});
+  return next;
+}
+async function applyLayout(a: any): Promise<string> {
   if (a.action === 'list') return `Layouts: ${(await wb(['layout', 'list'])).map((l: any) => l.name ?? l).join(', ') || 'none'}`;
   if (a.action === 'save') {
     // kept as the Rust window's own description of its panes (the Python app's dockview layouts are not read)
-    const panes = dock.describe();
-    await wb(['layout', 'save', a.name], JSON.stringify({ app: 'bible-workbench-rs', panes }));
-    return `Layout ${a.name}: ${panes.length} panes`;
+    const saved = dock.snapshot();
+    await wb(['layout', 'save', a.name], JSON.stringify(saved));
+    return `Layout ${a.name}: ${saved.panes.length} panes`;
   }
   const shown = await wb(['layout', 'show', a.name]);
-  const l = shown.layout ?? shown;   // the file holds {name, saved, layout}
-  if (l.app !== 'bible-workbench-rs') return `${a.name} is a layout from the Python app; this window cannot read it yet.`;
-  // a layout is the whole arrangement: panes not in it close (Settings stays, so a layout can be applied from there)
-  const want = new Set<string>(l.panes.map((p: any) => p.key));
-  for (const p of [...dock.panes]) if (p.key !== 'settings' && !want.has(p.key)) dock.close(p);
-  for (const p of l.panes) await reopen(p.key);
+  const l = readLayout(shown.layout ?? shown);
+  if (dock.find('notebook')?.el.querySelector('.nb-input, .nb-title-input')) throw new Error('Finish editing the current page before opening a layout. Your arrangement is unchanged.');
+  const unavailable = new Map<string, string>();
+  for (const p of l.panes) {
+    try {
+      if (!canReopen(p.key)) throw new Error('unsupported pane');
+      const [kind, value] = p.key.startsWith('doc:') ? ['doc', p.key.slice(4)] : p.key.split('|');
+      if (kind === 'note' || kind === 'thread') throw new Error('This older page pane now belongs to the Notebook; separate page tabs are not supported yet.');
+      if (kind === 'doc') await wb(['docs', 'preview', value]);
+      else if (kind === 'lesson') await wb(['lesson', 'show', value]);
+    } catch (e) { unavailable.set(p.key, `${p.title || p.key}: ${String(e)}`); }
+  }
+  if (unavailable.size && !confirm(`Some panes cannot be restored:\n${[...unavailable.values()].join('\n')}\n\nOpen the remaining layout? Cancel keeps this arrangement.`)) return 'Layout unchanged';
+  l.panes = l.panes.filter(p => !unavailable.has(p.key));
+  l.groups = l.groups.map(g => ({ ...g, keys: g.keys.filter(k => !unavailable.has(k)) })).filter(g => g.keys.length);
+  for (const g of l.groups) if (!g.keys.includes(g.front!)) g.front = g.keys[0];
+  if (l.active && unavailable.has(l.active)) l.active = undefined;
+  const before = dock.snapshot();
+  try {
+    for (const p of l.panes) { await reopen(p.key); await dock.find(p.key)?.ready; }
+    await dock.restore(l);
+  } catch (e) {
+    // Opening failed before old panes were removed. Restore their arrangement and discard only newly opened panes.
+    await dock.restore(before);
+    throw e;
+  }
   return `Layout ${a.name}`;
 }
 
+const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'marked', 'plans', 'settings']);
+function canReopen(key: string) { return reopenKinds.has(key.startsWith('doc:') ? 'doc' : key.split('|')[0]); }
+
 /** A pane brought back from its key (layouts, and a Shelf folder's Open all, whose keys wb set open gives). */
 export async function reopen(key: string) {
-  const [kind, ...x] = key.split('|');
+  key = canonicalKey(key);
+  const existing = dock.find(key);
+  if (existing) { dock.show(existing); await existing.ready; return existing; }
+  const [kind, ...x] = key.startsWith('doc:') ? ['doc', key.slice(4)] : key.split('|');
   const f: Record<string, () => unknown> = {
     search: () => openSearch(x[0], x[1]), uses: () => openUses(x[0], x[1], x[2], x[3] ? { rendering: x[3] } : {}), def: () => openDefine(x[0]), strong: () => openStrong(x[0]),
     bdb: () => openBdb(x[0]), count: () => openCount(x[0]), forms: () => openForms(x[0]), lexiconc: () => openLexiconc(x[0]),
@@ -422,13 +457,24 @@ export async function reopen(key: string) {
     passage: () => openPassage(x[0].split(';'), x[1], x[0]), reader2: () => app.secondReader(x[0], x[1]), today: () => openToday(x[0]), lesson: () => openLesson(x[0]), findings: () => openFindings(),
     documents: () => openDocuments(),
     note: () => openNote(x[0]), doc: () => previewDoc({ id: x[0], name: x[1] || x[0] }),
+    versecard: () => openCardPane(x[0], x[0]), near: () => openNear(x[0], x[1], +x[2], x[3]),
+    marked: () => openMarked(x[0], x[1], x[2]), plans: () => openPlans(), settings: () => openSettings(),
   };
-  await f[kind]?.();
+  if (!f[kind]) throw new Error(`This pane cannot be reopened: ${key}`);
+  await f[kind]();
+  const p = dock.find(key);
+  await p?.ready;
+  return p;
 }
 
 function paneAction(a: any): string {
+  if (a.action === 'unfocus') { dock.exitFocus(); return 'Returned to layout'; }
   const ps = a.target.toLowerCase() === 'minimized' ? dock.panes.filter(p => dock.isMinimized(p)) : dock.named(a.target);
   if (!ps.length) return `No pane called “${a.target}” is open.`;
+  if (a.action === 'focus') {
+    if (ps.length !== 1) return `Choose one pane to focus: ${ps.map(p => p.title).join(' · ')}`;
+    dock.focusPane(ps[0]); return `Focused ${ps[0].title}`;
+  }
   for (const p of ps) {
     if (a.action === 'close') dock.close(p);
     else if (a.action === 'float') dock.move(p, 'float');

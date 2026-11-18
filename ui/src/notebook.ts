@@ -153,6 +153,17 @@ export function openNotebook(v?: 'journal' | 'inbox' | 'all' | 'trash' | Group, 
   const was = dock.find('notebook');
   pane = dock.open('notebook', 'Notebook', 'notebook', 'right', el => draw(el));
   pane.onClose = () => { pane = null; };
+  pane.captureView = () => ({ openId, group, showTrash, editorShown, mainList });
+  pane.restoreView = async state => {
+    if (!state || typeof state !== 'object') return;
+    if (typeof state.openId === 'string') openId = state.openId;
+    else if (state.openId === null) openId = null;
+    if (['day', 'chapter', 'thread', 'none', 'pages', 'questions', null].includes(state.group)) group = state.group;
+    showTrash = state.showTrash === true; editorShown = state.editorShown === true;
+    mainList = state.mainList && ['chapter', 'view', 'templates'].includes(state.mainList.kind) ? state.mainList : null;
+    draft = null;
+    await pane?.refresh?.();
+  };
   if (was && (v || opts.questions !== undefined)) void pane.refresh?.();
   return pane;
 }

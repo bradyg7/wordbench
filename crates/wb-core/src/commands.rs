@@ -303,7 +303,7 @@ pub fn find_doc(topic: &str) -> Option<&'static Value> {
 /// The commands' names, in the manual's order, then the ones new in the Rust app.
 pub fn command_names() -> Vec<String> {
     let mut v: Vec<String> = manual()["commands"].as_array().map(|a| a.iter().filter_map(|c| c["name"].as_str().map(String::from)).collect()).unwrap_or_default();
-    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version", "plans", "findings", "finding"].map(String::from));
+    v.extend(["jot", "place", "journal", "inbox", "notebook", "window", "version", "plans", "findings", "finding", "focus", "unfocus"].map(String::from));
     v
 }
 
@@ -1467,7 +1467,8 @@ pub fn parse(input: &str, books: &[Book]) -> Result<Action, String> {
         },
         "findpage" => Action::Findpage { q: a.into() },
         "panes" => Action::Panes,
-        "close" | "minimize" | "restore" | "dock" | "float" => {
+        "unfocus" if a.is_empty() => Action::Pane { action: "unfocus".into(), target: "all".into() },
+        "close" | "minimize" | "restore" | "dock" | "float" | "focus" => {
             if a.is_empty() {
                 let more = if head == "close" || head == "restore" { format!("all  or  {head} ") } else { String::new() };
                 return Err(format!("Which pane? Try: {head} {more}occurrences  (panes lists what is open)"));
@@ -1704,6 +1705,9 @@ mod tests {
         assert_eq!(p("version ylt"), serde_json::json!({"cmd": "version", "version": "YLT"}));
         assert_eq!(p("version"), serde_json::json!({"cmd": "version", "version": ""}));
         assert_eq!(p("plans"), serde_json::json!({"cmd": "plans"}));
+        assert_eq!(p("focus notebook"), serde_json::json!({"cmd": "pane", "action": "focus", "target": "notebook"}));
+        assert_eq!(p("unfocus"), serde_json::json!({"cmd": "pane", "action": "unfocus", "target": "all"}));
+        assert!(parse("focus", &bs).is_err());
         assert_eq!(p("findings"), serde_json::json!({"cmd": "findings"}));
         assert_eq!(p("finding Ctrl+F finds only in the reader"), serde_json::json!({"cmd": "finding", "text": "Ctrl+F finds only in the reader"}));
         assert!(parse("jot", &bs).is_err());

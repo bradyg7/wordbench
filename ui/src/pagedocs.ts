@@ -272,7 +272,7 @@ export async function pageDocuments(pageId: string, into: HTMLElement) {
  * the PDF's pages. */
 export function previewDoc(d: { id: string; name: string }) {
   if (!dock.find(`doc:${d.id}`)) dock.apart();
-  return dock.open('docpreview', d.name, `doc:${d.id}`, 'left', async el => {
+  return dock.open('docpreview', d.name, `doc:${d.id}`, 'left', async (el, pane) => {
     const head = h('header', 'pane-head pd-pv-head');
     const acts = h('div', 'pd-pv-acts');
     acts.append(button('btn small pd-pv-open', 'Open', () => void wb(['docs', 'open', d.id]).catch(x => toast(String(x)))),
@@ -347,6 +347,13 @@ export function previewDoc(d: { id: string; name: string }) {
         } else if (single && (ev.key === 'Home' || ev.key === 'End')) { ev.preventDefault(); go(ev.key === 'Home' ? 0 : n - 1); }
       });
       show();
+      pane.captureView = () => ({ slide: cur, single });
+      pane.restoreView = state => {
+        if (!state || typeof state !== 'object') return;
+        if (typeof state.single === 'boolean') single = state.single;
+        if (Number.isInteger(state.slide)) cur = Math.max(0, Math.min(n - 1, state.slide));
+        show();
+      };
       body.append(bar, stage);
       setTimeout(() => body.focus({ preventScroll: true }));
     } else if (p.stale) {

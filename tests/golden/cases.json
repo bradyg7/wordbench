@@ -1,5 +1,9 @@
 [
  {
+  "name": "known difference: Rust-only focus and unfocus pane relay commands; covered by the Rust command parser tests",
+  "steps": []
+ },
+ {
   "name": "books",
   "steps": [
    [

@@ -995,31 +995,18 @@ pub fn set_setting(store: &mut Store, key: &str, value: &str) -> Result<Value> {
     } else {
         Some(json!(capture_key(v)?))
     };
+    if key == "capture" {
+        crate::mycommands::check_key(store, new.as_ref().and_then(Value::as_str).unwrap_or("Ctrl+J"), None, true)?;
+    }
     store.set_setting("notebook", key, new)?;
     Ok(settings(store))
 }
 
 /// A key as the window reads it: Ctrl or Alt (and Shift) with one letter or digit: "Ctrl+J", "Ctrl+Shift+K", "Alt+N".
 fn capture_key(v: &str) -> Result<String> {
-    let parts: Vec<&str> = v.split('+').map(str::trim).collect();
-    let (last, mods) = parts.split_last().ok_or_else(|| bad("Give a key like Ctrl+J."))?;
-    let mut have = vec![];
-    for m in mods {
-        let m = match m.to_lowercase().as_str() {
-            "ctrl" | "control" => "Ctrl",
-            "alt" => "Alt",
-            "shift" => "Shift",
-            _ => return Err(bad("A key's modifiers are Ctrl, Alt and Shift: Ctrl+J.")),
-        };
-        have.push(m);
-    }
-    let one = last.chars().count() == 1 && last.chars().all(|c| c.is_ascii_alphanumeric());
-    if !one || !have.iter().any(|m| *m == "Ctrl" || *m == "Alt") {
-        return Err(bad("Give a key with Ctrl or Alt and a letter or digit, like Ctrl+J."));
-    }
-    let mut out: Vec<String> = ["Ctrl", "Alt", "Shift"].iter().filter(|m| have.contains(m)).map(|m| m.to_string()).collect();
-    out.push(last.to_uppercase());
-    Ok(out.join("+"))
+    let normalized = crate::mycommands::normalize_key(v)?;
+    if normalized.is_empty() { return Err(bad("Give a key like Ctrl+J.")); }
+    Ok(normalized)
 }
 
 #[cfg(test)]

@@ -1024,6 +1024,12 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .shelf-bar-head .ico { color: var(--accent); }
 .shelf-bar-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shelf-bar-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.dock-focus { position: fixed; inset: 56px 0 0; z-index: 25; display: flex; flex-direction: column; background: var(--paper, Canvas); }
+.dock-focus[hidden] { display: none; }
+.dock-focus > .pane { display: block; flex: 1; min-height: 0; overflow: auto; }
+.dock-focus-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--sunken); }
+.dock-focus-button { width: auto; padding-inline: 6px; }
+@media (max-width: 599px) { .shelf-open-all, .dock-focus-button { display: none; } }
 .shelf-empty { padding: 8px 4px; }
 .shelf-menu { display: flex; flex-direction: column; gap: 2px; padding: 6px; }
 .shelf-menu .label { margin: 4px 6px 6px; }
