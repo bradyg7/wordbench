@@ -3,7 +3,7 @@
 import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
-export const marksPage: { id: string; note: string } = JSON.parse(readFileSync(new URL('../public/fixtures/wb/marks-page.json', import.meta.url), 'utf8'));
+export const marksPage: { id: string } = JSON.parse(readFileSync(new URL('../public/fixtures/wb/marks-page.json', import.meta.url), 'utf8'));
 
 const quiet: Record<string, unknown> = {
   'settings-notebook.json': {},

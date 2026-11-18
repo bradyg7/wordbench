@@ -39,7 +39,6 @@ import { setupIfNeeded } from './setup';
 import { createReadAloud } from './listen';
 import { refreshInks } from './hlink';
 import * as planReading from './planreading';
-import { drawMargin, initMargin, placeMargin } from './margin';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const reader = $('reader'), scroller = $('scroller');
@@ -134,14 +133,11 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   const d = drawn;
   const rest = () => {
     if (seq === drawSeq && d.more()) setTimeout(rest, 0);
-    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); void planReading.paintRead(d, reader); if (finding) findInChapter(finding); placeMargin(); }
+    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); void planReading.paintRead(d, reader); if (finding) findInChapter(finding); }
   };
-  if (!version || version === 'KJV') void drawMargin(reader, scroller, code, chapter);
   setTimeout(rest, 0);
   savePlace();
 }
-
-initMargin({ openPage: id => openNote(id) });
 
 const readAloud = createReadAloud({
   books: () => books,
@@ -192,7 +188,6 @@ function step(n: number) {
 // Visibility changes use the marks already loaded in each reader.
 function repaintLayers() {
   if (drawn) paint(reader, drawn);
-  placeMargin();
   for (const { view } of readers2.values()) {
     if (view.drawn) paint(view.root, view.drawn);
   }
@@ -208,34 +203,6 @@ async function refreshMarks() {
   d.questions.clear();
   for (const q of data.questions || []) d.questions.add(q.v);
   paint(reader, d);
-}
-
-/** U on a selection draws the pencil under it; U again takes it off (marks M14). The color is not touched. */
-async function togglePencil() {
-  const d = barView?.drawn;
-  const at = app.picked;
-  if (!d || !at) return;
-  const touches = (m: Mark) => anchorOf(m) === at.anchor;
-  const on = (d.marks.pencil || []).some(touches);
-  if (!inApp) {
-    // In the WebKit tests there is no Rust: drawn for this session only, as a highlight is.
-    if (on) d.marks.pencil = (d.marks.pencil || []).filter(m => !touches(m));
-    else {
-      const m = /^\w+\.(\d+):(\d+)\.(\d+)(?:-(\d+):(\d+)\.(\d+))?$/.exec(at.anchor);
-      if (m) {
-        const n = m.slice(1).map(x => (x === undefined ? null : +x));
-        (d.marks.pencil ||= []).push({ kind: n[3] === null ? 'word' : 'phrase', code: d.chapter.code, c1: n[0]!, v1: n[1]!, i1: n[2], c2: n[3], v2: n[4], i2: n[5], id: `session_${Date.now()}` } as Mark);
-      }
-    }
-    paint(reader, d);
-    barView?.selector.clear();
-    return;
-  }
-  try {
-    await wb(['hl', 'pencil', ...(on ? ['--clear'] : []), at.anchor]);
-    barView?.selector.clear();
-    await refreshMarks();
-  } catch (e) { toast(String(e)); }
 }
 
 // ---- sheets and cards -----------------------------------------------------------------------------------------------
@@ -955,7 +922,6 @@ async function highlightsMenu(from: HTMLElement) {
   box.append(h('p', 'layers-hint', 'Controls highlight fills and the lines of folders with a color. Notes, questions and verse markers stay visible.'));
   toggle('All highlights and folder lines', layers.all, () => { layers.all = !layers.all; });
   toggle('Your highlights', layers.mine, () => { layers.mine = !layers.mine; });
-  toggle('The margin', layers.margin, () => { layers.margin = !layers.margin; });
   // Shown on the text (T1, T10, T11): the folders with a color, the shown ones first, the rest folded under their parent
   let ts: any[] = [], where: any[] = [];
   try { [ts, where] = await Promise.all([wb(['folder', 'shown']), wb(['folder', 'list'])]); } catch { /* outside the app */ }
@@ -1208,8 +1174,6 @@ document.addEventListener('keydown', e => {
     barPick(e.key === '0' ? null : COLORS[+e.key - 1]);
     return;
   }
-  // U: the pencil under the selection, again to take it off
-  if (bar && barView?.selector.sel && (e.key === 'u' || e.key === 'U') && !e.ctrlKey && !e.altKey && !e.metaKey) { e.preventDefault(); void togglePencil(); return; }
   // ← → turn the chapter of the reader the key was pressed in: a second reader turns its own, never the main reader's
   const in2 = (e.target as HTMLElement).closest<HTMLElement>('.reader2-pane');
   const turn2 = in2 && turners.get(in2);
@@ -1228,7 +1192,7 @@ window.addEventListener('resize', () => {
   document.documentElement.dataset.size = sizeClass();
   const p = { ...place };
   cancelAnimationFrame(resizing);
-  resizing = requestAnimationFrame(() => { if (drawn && p.code === drawn.chapter.code && p.chapter === drawn.chapter.chapter) backTo(p); selector.placeHandles(); placeBar(); placeMargin(); });
+  resizing = requestAnimationFrame(() => { if (drawn && p.code === drawn.chapter.code && p.chapter === drawn.chapter.chapter) backTo(p); selector.placeHandles(); placeBar(); });
 });
 
 // ---- the hub ----------------------------------------------------------------------------------------------------------

@@ -35,29 +35,28 @@ const STEP = 500;    // words per later part
 // Where drawing time goes (read by open() for the budgets).
 export const drawTimes = { html_ms: 0, refs_ms: 0, first_words: 0 };
 
-interface Look { hl?: string; th: string[]; names: string[]; note: boolean; pen: boolean }
+interface Look { hl?: string; th: string[]; names: string[]; note: boolean }
 
 function look(c: Computed, k: number): Look {
   const th = c.threads[k];
   // at most two lines under a run (TH-6); the hover names every folder
-  return { hl: c.hl[k], th: th ? th.slice(0, 2).map(threadColor) : [], names: th ? th.map(t => c.names[t.id] || '') : [], note: c.noted[k] === 1, pen: c.pencil[k] === 1 };
+  return { hl: c.hl[k], th: th ? th.slice(0, 2).map(threadColor) : [], names: th ? th.map(t => c.names[t.id] || '') : [], note: c.noted[k] === 1 };
 }
 
 function gapLook(c: Computed, k: number, n: number): Look {
-  if (k + 1 >= n) return { th: [], names: [], note: false, pen: false };
+  if (k + 1 >= n) return { th: [], names: [], note: false };
   const a = look(c, k), b = look(c, k + 1);
-  return { hl: a.hl && a.hl === b.hl ? a.hl : undefined, th: a.th.filter(x => b.th.includes(x)), names: a.names, note: false, pen: a.pen && b.pen };
+  return { hl: a.hl && a.hl === b.hl ? a.hl : undefined, th: a.th.filter(x => b.th.includes(x)), names: a.names, note: false };
 }
 
-const marked = (m: Look) => !!m.hl || m.th.length > 0 || m.note || m.pen;
+const marked = (m: Look) => !!m.hl || m.th.length > 0 || m.note;
 
 // Stacked thread underlines are background lines in the span's bottom padding (padding on an inline box widens its
 // background without moving the text); a highlight is the background color.
 function styleOf(m: Look, gap = false): string {
   let s = '';
   if (m.hl) s += hlStyle(m.hl, gap);
-  // the pencil is one more line, grey and thin, under the thread lines; it runs through the spaces between words like them
-  const lines = [...m.th, ...(m.pen ? ['var(--pencil)'] : [])];
+  const lines = m.th;
   if (lines.length) {
     s += `background-image:${lines.map(col => `linear-gradient(${col},${col})`).join(',')};`;
     s += `background-position:${lines.map((_, j) => `0 calc(100% - ${j * 4}px)`).join(',')};padding-bottom:${lines.length * 4}px;`;
@@ -68,7 +67,6 @@ function styleOf(m: Look, gap = false): string {
 function apply(e: HTMLElement, m: Look, gap = false) {
   e.classList.toggle('hl', !!m.hl);
   e.classList.toggle('noted', m.note);
-  e.classList.toggle('pencil', m.pen);
   e.style.cssText = styleOf(m, gap);
   if (!gap) { if (m.names.length) e.title = m.names.join(', '); else e.removeAttribute('title'); }
 }
@@ -132,7 +130,7 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
       const c = now.c;
       if (w.first) out.push(`<span class="vn${c.verses.has(v[k]) ? ' vnote' : ''}${questions.has(v[k]) ? ' vq' : ''}${c.margin.has(v[k]) ? ' vth' : ''}" data-v="${v[k]}"${c.margin.has(v[k]) ? ` style="box-shadow:${marginStyle(c, v[k])}" title="${esc(marginTitle(c, v[k]))}"` : ''}>${v[k]}</span>`);
       const m = look(c, k);
-      out.push(`<span class="${w.cls}${m.hl ? ' hl' : ''}${m.note ? ' noted' : ''}${m.pen ? ' pencil' : ''}" data-k="${k}"${m.names.length ? ` title="${esc(m.names.join(', '))}"` : ''}${marked(m) ? ` style="${styleOf(m)}"` : ''}>${esc(text[k])}</span>`);
+      out.push(`<span class="${w.cls}${m.hl ? ' hl' : ''}${m.note ? ' noted' : ''}" data-k="${k}"${m.names.length ? ` title="${esc(m.names.join(', '))}"` : ''}${marked(m) ? ` style="${styleOf(m)}"` : ''}>${esc(text[k])}</span>`);
       const g = gapLook(c, k, n);
       out.push(!w.last && marked(g) ? `<span class="g" data-k="${k}" style="${styleOf(g, true)}">${esc(gapText[k])}</span>` : esc(gapText[k]));
     }

@@ -8,7 +8,6 @@
 mod args;
 mod docs;
 mod library;
-mod margin;
 mod mycommands;
 mod notebook;
 mod pages;
@@ -142,7 +141,6 @@ fn commands() -> Vec<Command> {
     all.extend(notebook::commands());
     all.extend(pages::commands());
     all.extend(library::commands());
-    all.extend(margin::commands());
     all.extend(docs::commands());
     all.extend(setup::commands());
     all.extend(tether::commands());

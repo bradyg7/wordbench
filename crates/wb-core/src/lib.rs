@@ -23,8 +23,6 @@ pub mod mycommands;
 pub mod notebook;
 pub mod pageindex;
 pub mod pages;
-pub mod margin;
-pub mod pencil;
 pub mod overview;
 pub mod pageviews;
 pub mod places;

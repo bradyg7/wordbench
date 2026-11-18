@@ -1011,9 +1011,6 @@ pub fn scripture(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
                 Ok(p) => {
                     v["label"] = p["label"].clone();
                     v["verses"] = p["verses"].clone();
-                    if f.marks {
-                        crate::margin::add_dots(bible, store, &mut v["verses"], &id)?;
-                    }
                 }
                 Err(e) => v["error"] = json!(e.0),
             }
@@ -1065,11 +1062,6 @@ pub fn thread_fence(block: &str) -> Option<String> {
 /// A block's Markdown → the Strong's number it holds, when it is a word block (```` ```word ````).
 pub fn word_fence(block: &str) -> Option<String> {
     value_fence(block, "word")
-}
-
-/// A block's Markdown → the margin note's id it holds, when it is a jot block (```` ```jot ````; marks MK-8, MK-17).
-pub fn jot_fence(block: &str) -> Option<String> {
-    value_fence(block, "jot")
 }
 
 /// A thread or word block as it is written.

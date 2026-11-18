@@ -25,7 +25,6 @@ export interface Computed {
   margin: Map<number, Mark[]>;         // shown folders' whole verses, by verse: a mark in the left margin, the words untouched (TH-7)
   names: Record<string, string>;       // folder id -> name, for what a hover lists
   noted: Uint8Array;                   // 1 when a note on words covers it
-  pencil: Uint8Array;                  // 1 when the pencil's line runs under it (marks M14)
   verses: Set<number>;                 // verses a whole-verse note touches (a dot after the verse number)
   wide: number;                        // notes on the whole chapter or its book (a dot by the chapter's title, not on every verse)
 }
@@ -48,11 +47,10 @@ export function computeMarks(keys: number[], m: Marks, ch: number, shown: (id: s
   };
   const margin = new Map<number, Mark[]>();
   const hl: (string | undefined)[] = new Array(n), threads: (Mark[] | undefined)[] = new Array(n);
-  const noted = new Uint8Array(n), pencil = new Uint8Array(n), verses = new Set<number>();
+  const noted = new Uint8Array(n), verses = new Set<number>();
   const lastV = n ? Math.floor(keys[n - 1] / WIDE) : 0;
   let wide = 0;
   for (const h of m.highlights) each(h, k => { hl[k] = h.color; });
-  for (const p of m.pencil || []) each(p, k => { pencil[k] = 1; });
   for (const t of m.threads) {
     if (!shown(t.id)) continue;
     if (t.kind === 'verse' || t.kind === 'verses') {
@@ -74,5 +72,5 @@ export function computeMarks(keys: number[], m: Marks, ch: number, shown: (id: s
     const onWords = nt.kind === 'word' || nt.kind === 'phrase';
     each(nt, k => { if (onWords) noted[k] = 1; else verses.add(Math.floor(keys[k] / WIDE)); });
   }
-  return { hl, threads, margin, names: m.thread_names || {}, noted, pencil, verses, wide };
+  return { hl, threads, margin, names: m.thread_names || {}, noted, verses, wide };
 }

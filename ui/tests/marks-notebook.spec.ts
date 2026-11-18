@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { marksPage, notebookRoutes, openMarksPage } from './notebook-fixtures';
 
-// design/features/marks in the Notebook: Scripture in this page (M22, M23, M39), a passage with my marks (M6, M7), a margin
-// note shown in a page, Margin notes in the Library (M30, M31) and the search's kinds (M21). Every answer is what `wb`
+// design/features/marks in the Notebook: Scripture in this page (M22, M23, M39), and the search's kinds (M21). Every answer is what `wb`
 // said on the generated study (npm run fixtures); no scripture is typed here.
 const fx = (name: string) => JSON.parse(readFileSync(new URL(`../public/fixtures/wb/${name}.json`, import.meta.url), 'utf8'));
 const overview = fx(`page-overview-${marksPage.id.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
@@ -66,77 +65,6 @@ test('a page naming more than 30 scriptures folds to books with counts', async (
   await expect(box.locator('.ov-book').first().locator('.ov-row')).toHaveCount(40);
 });
 
-test('a passage with my marks: the switch, one dot per verse that has something, a card in place that does not scroll the page', async ({ page }, info) => {
-  test.skip(info.project.name !== 'webkit-desktop', 'desktop');
-  const calls: string[] = [];
-  await notebookRoutes(page);
-  await page.route('**/fixtures/wb/block-scripture-*', r => { calls.push(new URL(r.request().url()).pathname.split('/').at(-1)!); return r.fulfill({ json: {} }); });
-  await openMarksPage(page);
-  const block = page.locator('.nb-scripture');
-  await expect(block).toBeVisible();
-  await expect(block.getByRole('button', { name: 'With my marks' })).toHaveClass(/on/);
-  await expect(block.getByRole('button', { name: 'Just the text' })).not.toHaveClass(/on/);
-  const dots = block.locator('.sv-dot');
-  const wanted = (fx(`page-scripture-${marksPage.id.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`).blocks[0].verses as any[]).filter(v => v.dot).map(v => String(v.v));
-  expect(wanted.length).toBeGreaterThan(0);
-  expect(await dots.evaluateAll(ds => ds.map(d => (d as HTMLElement).dataset.v))).toEqual(wanted);
-  const scroller = page.locator('.pane-notebook .nb-scroll, .pane-notebook .nb-editor, .pane-notebook').first();
-  const scrolled = () => page.evaluate(() => [...document.querySelectorAll('*')].reduce((n, e) => n + (e as HTMLElement).scrollTop, 0));
-  const before = await scrolled();
-  await block.locator('.sv-dot[data-v="11"]').click();
-  const card = block.locator('.sv-dotcard');
-  await expect(card).toBeVisible();
-  await expect(card).toContainText('Seed note (synthetic).');
-  expect(await scrolled()).toBe(before);
-  void scroller;
-  // switched back, the fence holds the reference and the switch only
-  await block.getByRole('button', { name: 'Just the text' }).click();
-  await expect.poll(() => calls.some(c => c.endsWith('-no-marks.json'))).toBe(true);
-  // the verse is the database's
-  await expect(block.locator('.sv-t').first()).toContainText(num25.verses['10'].text.slice(0, 20));
-});
-
-test('a margin note shown in a page is one jot block holding the note', async ({ page }, info) => {
-  test.skip(info.project.name !== 'webkit-desktop', 'desktop');
-  await notebookRoutes(page);
-  await openMarksPage(page);
-  const jot = page.locator('.nb-jotblock');
-  await expect(jot.locator('.nbj-text')).toHaveText('Seed note (synthetic).');
-  await expect(jot.locator('.nbj-head')).toContainText('From the margin at Numbers 25:11');
-});
-
-test('Margin notes in the Library: a folded row, books then chapters with counts, a note under its verse’s first words, a click opens the reader with its margin, Back keeps the row', async ({ page }, info) => {
-  test.skip(info.project.name !== 'webkit-desktop', 'desktop');
-  const list = fx('margin-list');
-  await notebookRoutes(page, { 'notebook-sidebar-at-num-24.json': fx('notebook-sidebar-at-num-25') });
-  await page.goto('/?at=NUM.24');
-  await page.waitForFunction(() => (window as any).__wbReady);
-  await page.getByRole('button', { name: 'Notebook', exact: true }).first().click({ force: true });
-  const row = page.locator('.mgl');
-  await expect(row).toBeVisible();
-  await expect(row.locator('.mgl-sum')).toContainText('Margin notes');
-  await expect(row.locator('.mgl-sum .nb-count')).toHaveText(String(list.total));
-  await expect(row).not.toHaveAttribute('open', '');
-  await row.locator('.mgl-sum').click();
-  const book = row.locator('.mgl-book[data-code="NUM"]');
-  await expect(book.locator('summary').first()).toHaveText(`Numbers · ${list.books[0].count}`);
-  await book.locator('summary').first().click();
-  const chapter = book.locator('.mgl-chapter[data-chapter="25"]');
-  await expect(chapter.locator('summary')).toContainText('Numbers 25 ·');
-  await chapter.locator('summary').click();
-  const note = chapter.locator('.mgl-note').filter({ hasText: 'First margin note' });
-  await expect(note.locator('.mgl-verse')).toHaveText(new RegExp('^' + num25.verses['11'].text.split(' ')[0]));
-  // a margin note is never dragged into a folder or pinned
-  expect(await note.getAttribute('draggable')).toBeNull();
-  await note.click();
-  await expect(page.locator('.mg-panel')).toBeVisible();
-  await expect(page.locator('.ch-title')).toContainText('Numbers 25');
-  // Back returns to where the reader was, and the row is still where it was
-  await page.evaluate(() => (window as any).__wb.run('back'));
-  await expect(page.locator('.ch-title')).toContainText('Numbers 24');
-  await expect(chapter.locator('.mgl-note').filter({ hasText: 'First margin note' })).toBeVisible();
-});
-
 test('the search’s kinds are one menu at the start of the field, with counts, narrowing to one line of text, no chips and no side list', async ({ page }, info) => {
   test.skip(info.project.name !== 'webkit-desktop', 'desktop');
   await notebookRoutes(page);
@@ -147,15 +75,15 @@ test('the search’s kinds are one menu at the start of the field, with counts, 
   await expect(kind).toHaveText('Everything ▾');
   await kind.click();
   const menu = page.locator('.nb-kinds');
-  await expect(menu.locator('.menu-item')).toHaveCount(6);
+  await expect(menu.locator('.menu-item')).toHaveCount(5);
   const names = await menu.locator('.menu-item').allTextContents();
-  expect(names.map(n => n.split(' ·')[0])).toEqual(['Everything', 'Pages', 'Saves', 'Questions', 'Margin notes', 'Highlights']);
+  expect(names.map(n => n.split(' ·')[0])).toEqual(['Everything', 'Pages', 'Saves', 'Questions', 'Highlights']);
   const all = fx('find-sort-edited');
-  const margin = all.groups.find((g: any) => g.kind === 'margin').count;
-  expect(names[4]).toBe(`Margin notes · ${margin}`);
-  await menu.locator('[data-kind="margin"]').click();
-  await expect(kind).toHaveText('Margin notes ▾');
-  await expect(page.locator('.nb-kind-line')).toHaveText(new RegExp(`^Margin notes · ${margin}`));
-  await expect(page.locator('.nb-kind-results .nb-item')).toHaveCount(margin);
+  const pages = all.groups.find((g: any) => g.kind === 'page').count;
+  expect(names[1]).toBe(`Pages · ${pages}`);
+  await menu.locator('[data-kind="page"]').click();
+  await expect(kind).toHaveText('Pages ▾');
+  await expect(page.locator('.nb-kind-line')).toHaveText(new RegExp(`^Pages · ${pages}`));
+  await expect(page.locator('.nb-kind-results .nb-item')).toHaveCount(pages);
   await expect(page.locator('.pane-notebook .chip, .pane-notebook .nb-kind-list')).toHaveCount(0);
 });

@@ -205,7 +205,7 @@ fn cheap_label(bible: &Bible, titles: &std::collections::HashMap<String, String>
 
 // ---- the one search (S21) and the filter line (S27) ----------------------------------------------------------------------
 
-/// What `wb find` asks when it is given more than words. `kind`: "" (all), page, folder, save, question or margin.
+/// What `wb find` asks when it is given more than words. `kind`: "" (all), page, folder, save, question or highlight.
 #[derive(Default)]
 pub struct Find<'a> {
     pub words: &'a str,
@@ -230,10 +230,10 @@ fn since(text: &str) -> Result<String> {
 }
 
 /// Pages, folders, saves and questions in one list, grouped by kind: `{q, count, total, groups: [{kind, count, results}]}`.
-/// `total` is how many there were before the words and filters, for "23 of 412". Margin notes and highlights are groups too.
+/// `total` is how many there were before the words and filters, for "23 of 412". Highlights are a group too.
 pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
-    if !["", "page", "folder", "save", "question", "margin", "highlight"].contains(&f.kind) {
-        return Err(bad("--kind is page, folder, save, question, margin or highlight."));
+    if !["", "page", "folder", "save", "question", "highlight"].contains(&f.kind) {
+        return Err(bad("--kind is page, folder, save, question or highlight."));
     }
     if !["", "edited", "title"].contains(&f.sort) {
         return Err(bad("--sort is edited or title."));
@@ -320,21 +320,10 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         let rows = qs
             .into_iter()
             .filter(|e| has(&format!("{} {}", e["title"].as_str().unwrap_or(""), e["text"].as_str().unwrap_or(""))))
-            .filter(|e| cutoff.is_none() && in_folder.is_none())
+            .filter(|_e| cutoff.is_none() && in_folder.is_none())
             .map(|e| json!({"kind": "question", "id": e["id"], "title": e["title"], "snippet": e["text"], "updated": e["updated"]}))
             .collect();
         out_groups.push(("question".into(), rows));
-    }
-    lap("before margin");
-    if want("margin") {
-        let (rows, n) = crate::margin::rows(bible, store, |label, text, written| {
-            in_folder.is_none()
-                && has(&format!("{label} {text}"))
-                && (!f.has_question || crate::questions::question_of(text).is_some())
-                && cutoff.as_ref().is_none_or(|c| written >= c.as_str())
-        });
-        all_total += n;
-        out_groups.push(("margin".into(), rows));
     }
     lap("before highlight");
     if want("highlight") {

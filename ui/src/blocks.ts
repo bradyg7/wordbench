@@ -53,11 +53,10 @@ export interface BlockEditorState {
   views: BlockData;
   threads: BlockData;
   words: BlockData;
-  jots: BlockData;
 }
 export const createBlockEditorState = (): BlockEditorState => ({
   focus: null, pending: null, menuKey: null, menuClose: null,
-  scripture: null, views: null, threads: null, words: null, jots: null,
+  scripture: null, views: null, threads: null, words: null,
 });
 
 
@@ -155,8 +154,6 @@ export function drawBlocks(data: Blocks, host: Host): HTMLElement {
   host.state.threads?.got.catch(() => {});
   host.state.words = data.blocks.some(isWord) ? { id: data.id, got: wb(['page', 'words', data.id]) } : null;
   host.state.words?.got.catch(() => {});
-  host.state.jots = data.blocks.some(isJot) ? { id: data.id, got: wb(['page', 'jots', data.id]) } : null;
-  host.state.jots?.got.catch(() => {});
   for (const b of data.blocks) wrap.append(blockEl(data, b, host));
   const add = h('button', 'link-btn nb-block-add muted', data.blocks.length ? 'Write here, or type / for a block' : 'Write the page here, or type / for a block');
   add.onclick = () => startNew(data, host, add, data.blocks.length ? data.blocks[data.blocks.length - 1].n : 0, '');
@@ -258,7 +255,6 @@ function drawn(b: Blk, host: Host, id: string): Node {
   if (isView(b)) return viewBlock(b, id, host);
   if (isThread(b)) return threadBlock(b, id, host);
   if (isWord(b)) return wordBlock(b, id, host);
-  if (isJot(b)) return jotBlock(b, id, host);
   if (b.kind === 'quote' && b.question) return questionBlock(b, id, host);
   if (b.kind === 'fence') return fence(b);
   const f = host.render(b.text, refs, links);
@@ -554,7 +550,7 @@ function scriptureBlock(b: Blk, id: string, host: Host): HTMLElement {
       if (!mine) return;
       if (mine.error) { text.textContent = mine.error; return; }
       label.textContent = mine.label;
-      text.replaceWith(drawVerses(mine.verses as MarkedVerse[], !!mine.lines, { dots: !!mine.marks }));
+      text.replaceWith(drawVerses(mine.verses as MarkedVerse[], !!mine.lines));
     }).catch(x => { text.textContent = String(x); });
   }
   return box;
@@ -602,7 +598,6 @@ function viewBlock(b: Blk, id: string, host: Host): HTMLElement {
 const fenceLang = (b: Blk) => (b.kind === 'fence' ? (b.lang || '').split(/\s/)[0].toLowerCase() : '');
 const isThread = (b: Blk) => fenceLang(b) === 'thread';
 const isWord = (b: Blk) => fenceLang(b) === 'word';
-const isJot = (b: Blk) => fenceLang(b) === 'jot';
 /** What a thread or word block holds: the first line inside its fence. */
 const heldIn = (b: Blk) => (b.text.split('\n').slice(1).find(l => l.trim() && !/^(```|~~~)/.test(l.trim())) || '').trim();
 
@@ -631,36 +626,6 @@ function threadBlock(b: Blk, id: string, host: Host): HTMLElement {
       refs.replaceChildren(...(mine.refs as string[]).map(r => h('span', 'pill nbt-ref', r)));
       if (mine.count > mine.refs.length) refs.append(h('span', 'pill unplaced', `+ ${mine.count - mine.refs.length} more`));
     }).catch(x => { refs.replaceChildren(h('p', 'small nbv-note nbv-error', String(x))); });
-  }
-  return box;
-}
-
-/** A jot block (marks MK-8, M33): a margin note shown in the page. The file holds only the note's id; its words are the one
- * note's, so editing them here edits it in the margin too. */
-function jotBlock(b: Blk, id: string, host: Host): HTMLElement {
-  const box = h('div', 'nb-jotblock');
-  const head = h('div', 'nbj-head');
-  const where = h('span', 'nbj-where', 'From the margin');
-  head.append(icon('pen', 14), where);
-  const body = h('div', 'nbj-text', 'Reading the note…');
-  box.append(head, body);
-  box.onclick = ev => ev.stopPropagation();
-  if (host.state.jots?.id === id) {
-    void host.state.jots.got.then(d => {
-      const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
-      if (!mine) return;
-      if (mine.error) { body.textContent = mine.error; return; }
-      const n = mine.note;
-      where.textContent = `From the margin at ${n.label}`;
-      body.textContent = n.question ? n.first_line : n.text;
-      body.contentEditable = 'true';
-      body.onblur = async () => {
-        const t = body.innerText.trim();
-        if (!t || t === (n.question ? n.first_line : n.text)) return;
-        try { await wb(['margin', 'edit', n.id, t]); } catch (x) { toast(String(x)); }
-      };
-      head.append(h('span', 'muted small', ` · ${n.written}`));
-    }).catch(x => { body.textContent = String(x); });
   }
   return box;
 }

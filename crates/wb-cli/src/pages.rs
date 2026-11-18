@@ -158,10 +158,8 @@ pub fn commands() -> Vec<Command> {
                 }
                 j(pg::set_scripture(c.bible()?, &mut *c.study()?, &a.s("id"), n, lines, ylt, marks).map_err(e)?)
             }),
-        cmd("page overview", "Scripture in this page: every scripture the page names (in its text, its scripture blocks and the place of a margin note it shows), in the Bible's order, each with where it is named (a block number, or ¶n); with books and counts, and folded (true) past 30. The same as wb refs on the page's text plus its blocks.",
+        cmd("page overview", "Scripture in this page: every scripture the page names (in its text, its scripture blocks), in the Bible's order, each with where it is named (a block number, or ¶n); with books and counts, and folded (true) past 30. The same as wb refs on the page's text plus its blocks.",
             vec![Pos("id", N::One)], |c, a| j(wb_core::overview::page(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
-        cmd("page jots", "A page's jot blocks (a margin note shown in the page): the block's number and the note it holds with its place, words and date. The file holds only the note's id.",
-            vec![Pos("id", N::One)], |c, a| j(wb_core::margin::page_jots(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
         cmd("page threads", "A page's thread blocks (/~) with what each shows: the block's number, the thread, its color, how many places and its first places' references; a thread that is gone says so.",
             vec![Pos("id", N::One)], |c, a| j(pg::threads(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
         cmd("page words", "A page's word blocks (/word) with the lexicon's entry for each: the number, the word, its sound, Strong's own words, the KJV's renderings and how often. The file holds only the number.",
