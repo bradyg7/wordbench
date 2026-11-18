@@ -154,47 +154,47 @@ Lines marked `(desk)` are ticked by the desk check. Each is built or mapped to w
 
 ### The reading log and the map (wb-core)
 
-- [ ] **RP-5** A log line may carry `v`, a verse range string (`{"t","ch":"GEN.2","plan","v":"1-9"}`). Lines without `v` read
+- [x] **RP-5** A log line may carry `v`, a verse range string (`{"t","ch":"GEN.2","plan","v":"1-9"}`). Lines without `v` read
   as before; old lines are never rewritten. `wb read mark "Gen 2:1-9"` writes one line with `v` for the verses of
   a place given with verses; a place given without verses still writes whole chapters.
-- [ ] **RP-6** One function returns, per chapter, the verses read (the union, as ranges), `times` (a time is counted only when the
+- [x] **RP-6** One function returns, per chapter, the verses read (the union, as ranges), `times` (a time is counted only when the
   union covers the chapter) and `last`; `read_times`, `last_read`, `overall` and `progress` use it, so a part read
   never counts a chapter as read twice or as done. Rust tests: parts in order, out of order (1-5, 20-25, 6-19), repeated,
   a whole-chapter line after parts, and a plan day with a chapter read in part is not done.
-- [ ] **RP-7** `wb read progress` / `wb plan show` give each plan entry `read_to` (the highest verse of the run from verse 1) and `parts`
+- [x] **RP-7** `wb read progress` / `wb plan show` give each plan entry `read_to` (the highest verse of the run from verse 1) and `parts`
   (the union as ranges), and `wb read times` gives `verses`; a command for marking to a verse exists (`wb read mark "Gen 2:1-9"`)
   and `wb read unmark "Gen 2:1-9"` takes that part line off (Trash rule: kept in `.trash/reading-unmarked.jsonl`).
-- [ ] **RP-8** Mark read to here is a core action: `read_to_here(place)` is what the verse's right click calls and `wb read mark` shares.
+- [x] **RP-8** Mark read to here is a core action: `read_to_here(place)` is what the verse's right click calls and `wb read mark` shares.
 
 ### What ships (wb-core, wb)
 
-- [ ] **RP-9** Horner's ten lists is a kind in `reading::KINDS` and `wb plan kinds`: the ten book ranges in their own order, a chapter of each
+- [x] **RP-9** Horner's ten lists is a kind in `reading::KINDS` and `wb plan kinds`: the ten book ranges in their own order, a chapter of each
   list a day, no end date (cycle), built without typing lists (7cef). The old rule that no editorial order ships is lifted for it,
   and the module's comment says so. `wb plan start "Horner" --kind horner` starts it; a Rust test shows day 2 as the ten lists' chapter 2.
-- [ ] **RP-10** No Chronological kind is added (RP-4).
-- [ ] **RP-11** The plan JSON's reading `behind` and `ahead` reach `wb plan today` and the UI unchanged; a test pins the counter at 0,
+- [x] **RP-10** No Chronological kind is added (RP-4).
+- [x] **RP-11** The plan JSON's reading `behind` and `ahead` reach `wb plan today` and the UI unchanged; a test pins the counter at 0,
   2 behind, and fewer after a day is read ahead, with a day off between.
 
 ### The window (ui)
 
-- [ ] **RP-12** The strip (R2, R3, R8, R19): Read opens the day in the reader with a strip under the bar holding the day's readings, which
+- [x] **RP-12** The strip (R2, R3, R8, R19): Read opens the day in the reader with a strip under the bar holding the day's readings, which
   tick as each is marked; the open one is marked; a click goes to any; `+N` for the rest; `n of N`. The pane may stay closed.
   The strip's label opens the plan pane (R15).
-- [ ] **RP-13** The end of a reading (R3, R19): a card at the chapter's end, `Mark read · next: <reading>` (one step; the next reading opens),
+- [x] **RP-13** The end of a reading (R3, R19): a card at the chapter's end, `Mark read · next: <reading>` (one step; the next reading opens),
   `Mark read`, `Not now`. On the day's last reading only `Mark read` and `Not now`. Nothing is marked without a click (the last verse
   and Listen stopping do not mark). Nothing follows the last reading: no streak, no cheer, no prompt for the next day.
-- [ ] **RP-14** After Listen reads a chapter through, the question comes as today (2dcf) and shares the same Mark read.
-- [ ] **RP-15** The pane's checklist (R8): one row per reading with a box, the ten-part bar, `read to v. N` on a reading read in part; Rename,
+- [x] **RP-14** After Listen reads a chapter through, the question comes as today (2dcf) and shares the same Mark read.
+- [x] **RP-15** The pane's checklist (R8): one row per reading with a box, the ten-part bar, `read to v. N` on a reading read in part; Rename,
   Start day, Edit as text, Days, Stop under ⋯; `Go on: <reading>` and `Mark the day read`. Under it, the chapter you are in: read times,
   last read, what refers to it (pages, questions, highlights) as links.
-- [ ] **RP-16** Mark read to here is in a verse number's right click; the verses read have a thin margin line (to the last verse of the run from
+- [x] **RP-16** Mark read to here is in a verse number's right click; the verses read have a thin margin line (to the last verse of the run from
   verse 1; further ranges each a line); the pane, the strip and the map update at once (R18). Mark the chapter read is the line under it.
-- [ ] **RP-17** The counter (R17): `Day N · k days behind` in the quiet type of its line, shown only when behind > 0; never red, no prompt,
+- [x] **RP-17** The counter (R17): `Day N · k days behind` in the quiet type of its line, shown only when behind > 0; never red, no prompt,
   no choices. The five missed-day choices are no longer in the pane. (`wb plan missed` and the core stay as commands: every core action keeps its `wb` command.)
-- [ ] **RP-18** Starting a plan (R14, R12): the kinds as cards (Bible in its order, Some books, Horner's ten lists, a published plan to paste); a chosen
+- [x] **RP-18** Starting a plan (R14, R12): the kinds as cards (Bible in its order, Some books, Horner's ten lists, a published plan to paste); a chosen
   kind shows its first days before Start; the builder opens in the reader's place, by kind: Horner's lists side by side as columns, a plan in days a row a day;
   the text form stays under ⋯. Existing builder abilities (move days, set start, days off) stay.
-- [ ] **RP-19** Reading (R13, R15, R16): the pane's foot has one row, Reading, that opens the Library's Reading place (R13) with `‹ Plan` back to the plan pane.
+- [x] **RP-19** Reading (R13, R15, R16): the pane's foot has one row, Reading, that opens the Library's Reading place (R13) with `‹ Plan` back to the plan pane.
   Reading holds the plan going now, Past plans (how far each got, Use again), and the map with its two layers (Read, Written about;
   Written about counts every reference to a chapter: pages, places in pages, questions, highlights, folders); a click on a chapter lists them,
   and opens the chapter. A part-read chapter is drawn part filled. The pane no longer has Past plans or What you have read.
