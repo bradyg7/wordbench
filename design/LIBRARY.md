@@ -30,7 +30,7 @@ link is always readable from both ends.
 | **Library** | the whole workbench | the study folder plus the read-only database | everything | keep; **change**: must become syncable |
 | **Bible** | the KJV text | read-only DB; `bible`, `lookup` | verses ← marks, pages, saves, words | keep |
 | **Reference works** | the curated books: Strong's concordance, BDB, Webster's 1913, the interlinear. Separate books, reached through one smooth way in (open: one "book" with every feature at hand, or a shelf of books; never clunky) | DB and `dictionary.db` | words ↔ verses; any entry ↔ pages | keep; **change**: any entry can be saved, and so referenced in a page (books K5) |
-| **Notebook** | the person's one notebook. Fast, good-looking, never annoying; Notion is the model to learn from | `notes/`, `notebook`, `library` | holds folders and pages | keep; **change**: redesign for feel and speed |
+| **Notebook** | the person's one notebook. Fast, good-looking, never annoying; Notion is the model to learn from, through a written feature inventory (below), not a vague likeness | `notes/`, `notebook`, `library` | holds folders and pages | keep; **change**: redesign for feel and speed |
 | **Folder** | a group of pages and saves, which may keep a color. The color shows quietly wherever the folder's things appear (a page, a verse, a Strong's entry), and its name on hover or click. There is no separate "thread" | `sets/`, legacy `threads/` | pages, saves; a page may be in several | keep; **change**: "thread" is retired and its files are archived into colored folders (TH-2, a backed-up move with the person's go-ahead) |
 | **Page** | anything written: study, lesson, sermon, prayer, thought | `notes/**.md` | anything in the Library: verses, words, entries, pages, folders, saves | keep; **change**: anything in the Library can be referenced (a `/` command or the page's properties); every reference links both ways, found by itself as it is written (no manual linking); the text is searchable |
 | **Question** | a question the person wrote anywhere (a page or a margin note), open or done | today a callout line only | where it was written, the verses near it | **change**: found by itself in what is written, as scripture references are, so a question asked without the command is not lost; the callout stays as a way to mark one explicitly |
@@ -48,9 +48,9 @@ link is always readable from both ends.
 
 ## Open (from round 1)
 
-1. **Shelf or no Shelf.** If every save lives in a folder of the Notebook, the Shelf may go. What must hold: the person
-   can always see clearly where a saved thing went. Proposal: no Shelf; a save not put in a folder lands in one fixed
-   place in the Notebook ("Unfiled"), shown like any folder.
+1. ~~**Shelf or no Shelf.**~~ **Decided (the person, 2026-11-18):** no Shelf. A save put in no folder lands in one fixed
+   folder, **Unfiled**: a catch-all shown like any folder, its saves searchable as any. A save can be filed from there,
+   and any save can be moved or copied between folders.
 2. **Marks in layers.** Over years, marks pile up: highlights, underlines, circles, folder colors. Needed: a mark's
    kind and color are separate (an underline may be any color, a highlight any color), layers can be shown or hidden
    by kind, by color or by legend entry, and a chapter with years of marks stays readable. This also settles what an
@@ -59,6 +59,10 @@ link is always readable from both ends.
 3. **Reference works: one book or several.** Decided in books.
 4. **Search in pages.** Where it lives (the Library's one search, a Notebook search, or both) is decided in search;
    what must hold: anything written or saved, the person's or a source's, is found by a word, topic or verse.
+
+5. **The Notebook's feature inventory.** Before the Notebook is redesigned, a written list of what Notion's pages and
+   databases do (from its own help pages, and screenshots the person takes of what they like), each line marked
+   *adopt*, *adapt* or *skip*, with the reason. The redesign's interaction table is built from the adopted lines.
 
 ## The words
 
@@ -71,7 +75,7 @@ One word per thing. A builder never uses a retired word in the window.
 | **trail** = back/forward history only | trail for questions to follow up | the person, 2026-11-18 |
 | **mark** = the umbrella for anything on the Bible text | mark for anything else (a lexicon entry is *saved*, not marked) | the person, 2026-11-18 |
 | save | place (as a set item) | 2026-11-17 |
-| Shelf | Unsorted | L-5 |
+| Unfiled (a folder) | Shelf, Unsorted | the person, 2026-11-18 (supersedes L-5) |
 | saved list | view | settings S5 |
 | folder (with a color) | thread | the person, 2026-11-18 |
 
