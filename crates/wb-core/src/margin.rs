@@ -297,7 +297,7 @@ fn book_order(bible: &Bible, code: &str) -> u32 {
 /// go over all of them. A note this process writes drops it too.
 struct Snap {
     root: PathBuf,
-    seen: Vec<(PathBuf, Option<Sig>)>,
+    seen: Vec<(PathBuf, Sig)>,
     notes: std::sync::Arc<Vec<Note>>,
 }
 static SNAP: std::sync::Mutex<Option<Snap>> = std::sync::Mutex::new(None);
@@ -306,35 +306,45 @@ fn forget_snapshot() {
     *SNAP.lock().unwrap_or_else(|e| e.into_inner()) = None;
 }
 
-fn sig_of(p: &Path) -> Option<Sig> {
-    let m = std::fs::metadata(p).ok()?;
-    Some((m.modified().unwrap_or(std::time::UNIX_EPOCH), if m.is_dir() { 0 } else { m.len() }))
-}
-
-fn snapshot(bible: &Bible, store: &Store) -> std::sync::Arc<Vec<Note>> {
-    {
-        let g = SNAP.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some(sn) = g.as_ref() {
-            if sn.root == store.root && sn.seen.iter().all(|(p, s)| sig_of(p) == *s) {
-                return sn.notes.clone();
+/// Every book folder and chapter file of the margin with its time and size, from the directory listings themselves (no file is
+/// opened: one listing per book folder).
+fn scan(root: &Path) -> Vec<(PathBuf, Sig)> {
+    let sig = |m: std::io::Result<std::fs::Metadata>| m.ok().map(|m| (m.modified().unwrap_or(std::time::UNIX_EPOCH), if m.is_dir() { 0 } else { m.len() }));
+    let mut out = vec![];
+    let Ok(rd) = std::fs::read_dir(dir(root)) else { return out };
+    for b in rd.flatten() {
+        if let Some(s) = sig(b.metadata()) {
+            out.push((b.path(), s));
+        }
+        let Ok(files) = std::fs::read_dir(b.path()) else { continue };
+        for f in files.flatten() {
+            if let Some(s) = sig(f.metadata()) {
+                out.push((f.path(), s));
             }
         }
     }
-    let mut seen: Vec<(PathBuf, Option<Sig>)> = vec![(dir(&store.root), sig_of(&dir(&store.root)))];
-    if let Ok(rd) = std::fs::read_dir(dir(&store.root)) {
-        for b in rd.flatten() {
-            seen.push((b.path(), sig_of(&b.path())));
+    out.sort();
+    out
+}
+
+fn snapshot(bible: &Bible, store: &Store) -> std::sync::Arc<Vec<Note>> {
+    let now = scan(&store.root);
+    {
+        let g = SNAP.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(sn) = g.as_ref() {
+            if sn.root == store.root && sn.seen == now {
+                return sn.notes.clone();
+            }
         }
     }
     let mut files = chapter_files(&store.root);
     files.sort_by_key(|(c, ch, _)| (book_order(bible, c), *ch));
     let mut out = vec![];
     for (_, _, p) in files {
-        seen.push((p.clone(), sig_of(&p)));
         out.extend(read_path(&p));
     }
     let out = std::sync::Arc::new(out);
-    *SNAP.lock().unwrap_or_else(|e| e.into_inner()) = Some(Snap { root: store.root.clone(), seen, notes: out.clone() });
+    *SNAP.lock().unwrap_or_else(|e| e.into_inner()) = Some(Snap { root: store.root.clone(), seen: now, notes: out.clone() });
     out
 }
 

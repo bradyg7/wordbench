@@ -35,6 +35,7 @@ const wb = (...argv) => execFileSync(wbExe, argv, { env, maxBuffer: 1 << 28 }).t
 // what the place-kept path needs: a page that names Numbers 25:11 and Psalms 106:30, and a margin note at the verse
 const placePage = JSON.parse(wb('page', 'new', 'Reader place check\n\nSee Numbers 25:11 and Psalm 106:30.', '--json')).id;
 wb('margin', 'add', 'Numbers 25:11', 'A note for the place check.');
+const eightySix = JSON.parse(wb('page', 'new', 'Eighty-six readings\n\n' + Array.from({ length: 43 }, (_, i) => `Psalm ${i + 1}:1 and Isaiah ${i + 1}:2`).join('\n\n'), '--json')).id;
 
 const proc = spawn(exe, [], { env: { ...env, WB_FIND_TIMES: '1' }, stdio: ['ignore', 'ignore', openSync(path.join(work, 'app-stderr.log'), 'w')] });
 proc.on('exit', code => console.log('APP EXITED', code));
@@ -109,11 +110,6 @@ try {
   const big = await page.evaluate(() => { const a = [...document.querySelectorAll('.nb-block')]; return a.length; });
   void big;
   // a page with 86 scriptures folds its overview to books with counts (M39), on the years study
-  const eightySix = JSON.parse(wb('page', 'new', 'Eighty-six readings
-
-' + Array.from({ length: 43 }, (_, i) => `Psalm ${i + 1}:1 and Isaiah ${i + 1}:2`).join('
-
-'), '--json')).id;
   const ov = await invoke(['page', 'overview', eightySix]);
   check('a page with 86 scriptures folds its overview to books with counts', ov.json.count === 86 && ov.json.folded === true && ov.json.books.length === 2 && ov.json.books[0].count === 43, `${ov.json.count} scriptures, ${ov.json.books.map(b => b.count)}; ${Math.round(ov.ms)} ms`);
   // a search answers inside the search budget, grouped by kind
