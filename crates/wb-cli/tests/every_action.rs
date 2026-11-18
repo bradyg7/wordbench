@@ -23,6 +23,8 @@ const INTERNAL: &[&str] = &[
     "chapters_of", "progress", "today_view", "overall", "start_plan_with", "days_off_of", "next_reading_day", "plan_dates", "reading_days_between", "start_for", "build", "apply_missed",
     // the builder and the published plans: pieces of wb plan layout, start, arrange and import
     "lay_out", "exact", "layout", "extended", "detect",
+    // the log's verses (RP-5, RP-6): the pieces of wb read mark, times, unmark and progress
+    "add_range", "covers", "ranges_text", "parse_ranges", "read_to_of", "whole", "fraction", "to_json", "coverage_of", "coverage", "place_parts",
     // the Notebook and the command language: pieces of the commands that reach them (note place finds and places;
     // the reader draws the questions)
     "place_jot", "replace_placed", "set_jot_status", "named_place",
