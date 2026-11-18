@@ -1,6 +1,6 @@
 # Marks
 
-**State:** exploring, round 7 (a fresh start, 2026-11-18). Table first, then sheets. Rounds 1 to 6 (accepted
+**State:** accepted (the person, 2026-11-18: "it looks really good… ready to get down to implementation"), round 7 (a fresh start, 2026-11-18). Table first, then sheets. Rounds 1 to 6 (accepted
 2026-11-17, built badly) are kept for history in [archive/](archive/rounds-1-6-README.md); what still holds is carried
 into the decisions below by name. Objects and words: [the Library map](../../LIBRARY.md).
 
@@ -186,6 +186,30 @@ real app). `Built` is ticked only when the test passes.
 | 55 | | The move (once, after a backup, with the person's go-ahead) | `wb study check` lists what will move first; afterwards every old highlight is a mark with its id, color, words and date | `highlights/` read into `marks/`; old files kept in `.archive/` | `wb study move-marks --dry-run` then `--go` | rust, wb | [ ] |
 | 56 | | Delete a mark, then Empty trash after 7 days | Gone for good only then | | `wb trash` | rust | [ ] |
 
+## Tickets (built in order on `feature/marks`, one at a time)
+
+Each ticket is done when every row it names has a passing test and its `Built` box is ticked. A row not in the table
+is not built; a builder that needs one stops and asks.
+
+| Ticket | Rows | What |
+|---|---|---|
+| T0 | (MK7-5) | Remove the round 1-6 marks code from the app: the pencil and margin UI and their wb-core/wb-cli/Tauri paths. Files the person wrote (`pencil/`, `margin/`, `highlights/`) are left untouched on disk and still listed by `wb study check`. `cargo test` and `npm run test:webkit` pass. |
+| T1 | 4, 6, 7, 14, 54, 56 (core and `wb` parts) | wb-core `marks`: `marks/<BOOK>.json`, anchors, kinds, styles; old `highlights/` read as highlights; `wb mark add`, `wb marks <chapter>`; delete to the trash and restore |
+| T2 | 20-23 core, 25-28 `wb` | `wb mark show`, `wb mark at`, `wb mark style`, `wb mark rm`, `wb mark restore` |
+| T3 | 8, 9, 33-39 `wb` | the legend: `settings/legend.json`, Unnamed entries, quick and key, `wb legend …`, restyle |
+| T4 | 19, 29, 30, 52 core | margin notes (one chapter, MK7-27): `margin/<BOOK>/<chapter>.md`, chapter notes, references and questions found, Grow into a page, `wb mark note`, `wb mark grow` |
+| T5 | 42, 44-47, 49 | the reader draws marks in layer order (thinning underlines, folder tabs in the gutter); marks panel; Reading mode; speed (no page files read) |
+| T6 | 1, 4-10, 20-22, 24 | the icon bar and its drop-down, new pen naming, Legend drop-down, bar keys |
+| T7 | 2, 3, 11, 12, 23 | verse-number selection, spans, Add to…, Open as a passage, Ctrl+1-9 |
+| T8 | 25-28, 31 | the mark card: Change, Delete with Undo toast, marks on top |
+| T9 | 13-16, 48 | arrows in the gutter, within a chapter |
+| T10 | 17-19, 29, 30, 43, 50 | the margin column, signs, popover, narrow window |
+| T11 | 32-41 | the Legend on the rail (replacing Highlights), where used, bulk delete |
+| T12 | 51-53 | finding marks in the Library's search; the verse card from a page's scripture block |
+| T13 | 59-63 | the phone |
+| T14 | 57, 58 | Colors across the Bible |
+| T15 | 55 | the move of `highlights/` (and pencil lines) into `marks/`: dry run on a scratch copy, a hashed backup, then only with the person's go-ahead |
+
 ## Disk (proposed)
 
 - **Drawn marks:** `marks/<BOOK>.json`, one file per book: each mark `{id, kind, color, lines?, at, to?, created, changed?}`,
@@ -207,4 +231,4 @@ None (all six answered 2026-11-18, MK7-24 to MK7-29).
 | 7 | 2026-11-18 | fresh start: decisions MK7-1 to MK7-7, interaction table draft 1 | the person's notes on rows 1-44, 2026-11-18 |
 | 7, draft 2 | 2026-11-18 | notes folded in: MK7-8 to MK7-23, table draft 2, 6 open questions | answered: MK7-24 to MK7-29 |
 | 7, sheets | 2026-11-18 | sheets A to F drawn from the table (`python design/features/marks/marks.py`) | the person: the bar too large for a phone |
-| 7, sheets 2 | 2026-11-18 | MK7-30, MK7-31: the bar icons only with a drop-down; sheet G, the phone | waiting for the person |
+| 7, sheets 2 | 2026-11-18 | MK7-30, MK7-31: the bar icons only with a drop-down; sheet G, the phone | **accepted**, 2026-11-18; tickets T0-T15 |
