@@ -1,0 +1,108 @@
+[
+  {
+    "id": "chapter-print-pdf",
+    "title": "Save a chapter for printing",
+    "category": "Documents",
+    "description": "Use the reader menu to save the current chapter as a local PDF.",
+    "steps": [
+      "Open More and choose Save chapter PDF.",
+      "Wait for the saved-file confirmation.",
+      "The external PDF viewer is not shown in this recording."
+    ],
+    "featureIds": [
+      "chapter-pdf"
+    ],
+    "duration": "13 sec"
+  },
+  {
+    "id": "ordered-pdf-packet",
+    "title": "Save an ordered PDF packet",
+    "category": "Documents",
+    "description": "Use the app�s command field to combine two existing chapter PDFs in a chosen order.",
+    "steps": [
+      "Start with two chapter PDFs already saved.",
+      "Type their names in order using the packet command.",
+      "Save the combined PDF; the external viewer is not shown."
+    ],
+    "featureIds": [
+      "pdf-packets"
+    ],
+    "duration": "14 sec"
+  },
+  {
+    "id": "document-reading-sheet",
+    "title": "Make a Word reading sheet",
+    "category": "Documents",
+    "description": "Choose a passage, create a Word reading sheet, and preview the saved file inside the workbench.",
+    "steps": [
+      "Open Documents and choose Passage as the source.",
+      "Type a reference and make a Reading Sheet.",
+      "Open the saved document’s in-app preview."
+    ],
+    "featureIds": [
+      "word-export",
+      "saved-documents"
+    ],
+    "duration": "29 sec"
+  },
+  {
+    "id": "document-looks",
+    "title": "Preview a document Look",
+    "category": "Documents",
+    "description": "Adjust type size and spacing while viewing a preview of the source-backed document.",
+    "steps": [
+      "Choose a passage and open Adjust.",
+      "Change the type size and line spacing.",
+      "Apply the appearance choices to the export."
+    ],
+    "featureIds": [
+      "document-looks"
+    ],
+    "duration": "35 sec"
+  },
+  {
+    "id": "document-slides",
+    "title": "Make PDF and PowerPoint slides",
+    "category": "Documents",
+    "description": "Export an existing passage as PDF slides, inspect a slide, and make an editable PowerPoint copy.",
+    "steps": [
+      "Choose a passage and the Reader structure.",
+      "Make PDF slides and preview the next slide.",
+      "Choose PowerPoint with PDF preview and make the editable file."
+    ],
+    "featureIds": [
+      "slides-export"
+    ],
+    "duration": "49 sec"
+  },
+  {
+    "id": "document-content",
+    "title": "Choose the content to export",
+    "category": "Documents",
+    "description": "Inspect the existing blocks in a sample page, turn one off, and preview the selected content.",
+    "steps": [
+      "Choose a sample page in Documents.",
+      "Review what goes in and turn off a paragraph.",
+      "Open the Word preview for the selected content."
+    ],
+    "featureIds": [
+      "export-content"
+    ],
+    "duration": "24 sec"
+  },
+  {
+    "id": "document-tracking",
+    "title": "Keep a saved document up to date",
+    "category": "Documents",
+    "description": "Stop tracking a sample export, resume tracking, and remake it from the source.",
+    "steps": [
+      "Open the saved document’s actions.",
+      "Stop keeping it up to date, then resume.",
+      "Make the document again from its source."
+    ],
+    "featureIds": [
+      "saved-documents"
+    ],
+    "duration": "28 sec"
+  }
+]

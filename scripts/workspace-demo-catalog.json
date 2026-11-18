@@ -1,0 +1,160 @@
+[
+  {
+    "id": "workspace-layout",
+    "title": "Save your reading desk",
+    "category": "Workspace",
+    "description": "Resize the study column and keep a named arrangement with a shortcut.",
+    "steps": [
+      "Open Notebook and Shelf.",
+      "Drag the column edge to resize the workspace.",
+      "Save Reading desk and assign a keyboard shortcut."
+    ],
+    "featureIds": [
+      "tabs-panes",
+      "saved-layouts"
+    ]
+  },
+  {
+    "id": "workspace-shelf",
+    "title": "Keep passages in a Shelf folder",
+    "category": "Workspace",
+    "description": "Collect two references and open their reading tabs together.",
+    "steps": [
+      "Create a named Shelf folder.",
+      "Add John 1 and Psalm 119 by reference.",
+      "Open all of the folder’s passages, then close its tabs."
+    ],
+    "featureIds": [
+      "shelf",
+      "shelf-open-all"
+    ]
+  },
+  {
+    "id": "workspace-toolbar",
+    "title": "Arrange your toolbar",
+    "category": "Workspace",
+    "description": "Add a reading control and drag existing buttons into a new order.",
+    "steps": [
+      "Open Customize toolbar.",
+      "Find and add Text size.",
+      "Drag Shelf before Notebook and save the toolbar."
+    ],
+    "featureIds": [
+      "toolbar"
+    ]
+  },
+  {
+    "id": "workspace-theme",
+    "title": "Make a custom reading theme",
+    "category": "Workspace",
+    "description": "Increase Scripture text size and give a custom theme a warmer page color.",
+    "steps": [
+      "Increase text size in Settings.",
+      "Create and name a theme.",
+      "Edit the page color and see the reader change."
+    ],
+    "featureIds": [
+      "custom-appearance"
+    ]
+  },
+  {
+    "id": "workspace-preferences",
+    "title": "Choose how cards appear",
+    "category": "Workspace",
+    "description": "Save reference-hover behavior and inspect Notebook preferences.",
+    "steps": [
+      "Open Hover and cards in Settings.",
+      "Choose reference-only hover cards.",
+      "Open Notebook preferences."
+    ],
+    "featureIds": [
+      "preferences"
+    ]
+  },
+  {
+    "id": "workspace-shortcut",
+    "title": "Keep a frequently used action",
+    "category": "Workspace",
+    "description": "Save a named action with the current-chapter placeholder and a keyboard shortcut.",
+    "steps": [
+      "Create a toolbar command.",
+      "Name it and enter compare {chapter} ylt.",
+      "Review the filled preview, assign a shortcut, and keep it."
+    ],
+    "featureIds": [
+      "saved-commands"
+    ]
+  },
+  {
+    "id": "plan-create",
+    "title": "Start reading at your own pace",
+    "category": "Reading plans",
+    "description": "Choose John, start an undated plan, open its reading, and mark the first day read.",
+    "steps": [
+      "Name a plan and choose John.",
+      "Choose My own pace, no dates.",
+      "Start, open the reading, and mark it read."
+    ],
+    "featureIds": [
+      "build-plan",
+      "today-reading",
+      "reading-progress"
+    ]
+  },
+  {
+    "id": "plan-arrange",
+    "title": "Arrange reading days by hand",
+    "category": "Reading plans",
+    "description": "Move a chapter between days and retain the manually arranged schedule.",
+    "steps": [
+      "Create a three-day reference plan.",
+      "Open the day builder.",
+      "Drag a chapter between days and start the arranged plan."
+    ],
+    "featureIds": [
+      "arrange-plan"
+    ]
+  },
+  {
+    "id": "plan-import",
+    "title": "Import your own reading list",
+    "category": "Reading plans",
+    "description": "Enter a short sample list and review detected readings before starting.",
+    "steps": [
+      "Open the plan importer.",
+      "Enter one reference per day and identify the source.",
+      "Review the detected schedule and start it."
+    ],
+    "featureIds": [
+      "import-plan"
+    ]
+  },
+  {
+    "id": "plan-revise",
+    "title": "Resume after missed reading days",
+    "category": "Reading plans",
+    "description": "Review missed-day choices, shift unfinished readings, and rename the plan.",
+    "steps": [
+      "Open an existing sample plan with missed days.",
+      "Review the consequences and choose to pick up where you left off.",
+      "Rename the plan."
+    ],
+    "featureIds": [
+      "revise-plan"
+    ]
+  },
+  {
+    "id": "plan-past",
+    "title": "Return to a past plan",
+    "category": "Reading plans",
+    "description": "Stop a sample plan while preserving its reading log, then use it again.",
+    "steps": [
+      "Stop an active sample plan.",
+      "Inspect Past plans and its recorded progress.",
+      "Use the plan again with a new start date."
+    ],
+    "featureIds": [
+      "past-plans"
+    ]
+  }
+]

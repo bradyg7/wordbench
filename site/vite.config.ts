@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
 
-const pages = ['index', 'download/index', 'releases/index', 'support/index', 'license/index', 'privacy/index', '404'];
+const pages = ['index', 'demos/index', 'download/index', 'releases/index', 'support/index', 'license/index', 'privacy/index', '404'];
 export default defineConfig({
   appType: 'mpa',
   root: fileURLToPath(new URL('.', import.meta.url)),
