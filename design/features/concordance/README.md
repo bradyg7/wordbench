@@ -277,3 +277,11 @@ a letter, a number or a reference, and a word picked from the box opens alone. C
   word or verse; after that it does not follow the reader, and the person may go to any other verse or word in it.
 - **C14: b, the book stays open beside the reader.** Back to the verse puts the reader on the verse; the book stays
   on its page.
+
+## Readiness branch (merged 2026-11-17, unreconciled)
+
+The branch `feature/concordance-readiness` (real-conditions windows C11-C14, Save mark, per-occurrence counts) was merged
+into main after the Concordance was accepted and built, so its worktree could be cleared. Its README and sheet script are kept beside this
+one as `readiness-branch-README.md` and `readiness-branch-concordance.py`; its data files (`interlinear-num5-14.json`,
+`text-num5-*.json`, `uses-heart.json`, `uses-small-words.json`) were added as they were. This README, `concordance.py` and
+`concordance.figcraft` are main's. A later session reconciles the two: read the branch's README for what it drew that main's does not, and fold it in.
