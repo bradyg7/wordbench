@@ -17,7 +17,7 @@ A new button or command gets a row here, and its folder, before it is built.
 | The side rail | one icon per kind of pane, its menus, Show names | [minimize](minimize/README.md) | building (the rail; its menus exploring) |
 | The trail (history of tabs) | drawer, line under the top bar | [minimize](minimize/README.md), [command](command/README.md) C13-C16 | building |
 | The Concordance | English, Hebrew, Greek, Interlinear; the box's picked word, letters, numbers and sounds | [concordance](concordance/README.md) | exploring |
-| Going back inside a tab | a back button in every tab that goes back through the tab's own history; a new tab copies it | [tab-history](tab-history/README.md) | exploring (seeded 2026-11-16; nothing drawn) |
+| Going back inside a tab | a back button in every tab that goes back through the tab's own history; a new tab copies it | [tab-history](tab-history/README.md) | exploring (round 1 drawn 2026-11-16) |
 | BDB and Webster's 1913 as books | paging, the index, one card with three sources | [books](books/README.md) | exploring |
 | Top bar and the command box | the box keeps its line and pops off, the reader's tools at its end, More; suggestions (round 1) | [command](command/README.md) | round 2 merged; round 3 (⋯ into Settings, kept commands on the rail, suggestions) to draw |
 | Reader | verses, versions, marks, selection | [reader](reader/README.md) | exploring |

@@ -1,79 +1,88 @@
 # Going back inside a tab
 
-**State:** exploring · **Sheets:** none yet (`python design/features/tab-history/tab-history.py` will write `tab-history.figcraft` and `tab-history.pdf`, the board) · Nothing here is built yet. What other tools get wrong, and so what this folder avoids: [bible-software-complaints](../../research/bible-software-complaints.md).
+**State:** exploring · **Shots:** `node design/features/tab-history/scene.mjs` draws them in the app as built, mid-study,
+into `scenes/t*.png` · Nothing here is built yet.
 
-**Readiness: unfinished** (2026-11-16, seeded the same day by the overseer from the concordance folder's round 3 and round 4 reviews, by [ready-criteria](../ready-criteria.md); never "accepted", which is the person's word). Nothing is drawn and there is no "what the build must satisfy" yet: checks 1, 3, 4 and 8 fail by construction. This folder holds only what the person has already said; no feature has been invented to fill it.
-
-A back button in a tab that goes back through that tab's own history, in every tab, not only in the Concordance: the person's request in the [concordance](../concordance/README.md) round 4 review (2026-11-16). It touches every pane's top and the trail ([minimize](../minimize/README.md), [command](../command/README.md) C13-C16 for the line under the top bar).
-
-## What the person has said
-
-All of it is quoted from the concordance README's reviews; nothing is added.
-
-- **Round 3 review (the person, 2026-11-16), a move inside a tab is a step on the trail:** "Moving inside a tab is a step on the trail: inside the Concordance, a dictionary, the reader or any other tab, each move is its own step."
-- **Round 4 review, shot 1 (the person, 2026-11-16), picking a word:** the picked word opens in a new tab; "The new tab is a copy of the tab it came from, with that tab's history, and a back button in the tab goes back through it."
-- **Round 4 review, shot 1 (the person, 2026-11-16), where it belongs:** "Going back inside a tab is wanted in every tab, not only here, so it is designed as an app-wide feature of its own (with the trail rule above), not in this folder."
-- **The way back is a different thing.** [panels](../panels/README.md) (accepted) already has "the way back": `‹ From Numbers 25:11`, shown only when a tab was opened from the text and a link to the verse. This folder's back button goes back through the tab's own steps. They must not be confused on a sheet.
-- The Concordance's [C21-C23](../concordance/README.md) draw one place for the button (left of the box, in the new tab) and what it does for one step; they are that folder's drawing of this feature and are not binding on the other tabs until this design is accepted.
-
-## Leading design
-
-Nothing drawn yet.
-
-| Part | Leading | Superseded (and by what) |
-|---|---|---|
-| The back button in a tab's top | | |
-| A tab's history | | |
+Every tab keeps its own history and has a back button that goes back through it: the reader, the Concordance, the
+dictionaries (BDB, Webster's), the Notebook and every docked pane. It came out of the Concordance's round 4 review
+(the person, 2026-11-16, [concordance](../concordance/README.md), shot 1): a word picked there opens in a new tab that
+is a copy of the old one with its history, and back in the new tab goes back through where it came from. "This is
+useful across all tabs", so it is designed here, app-wide, beside the trail ([minimize](../minimize/README.md)).
 
 ## Decisions (the person, 2026-11-16)
 
-- **App-wide, not Concordance-only.** Every tab has its own history and a back button that goes back through it (round 4).
-- **A move inside a tab is a step on the trail** (round 3), so the tab's history and the trail are kept in step; which of the two a button reads is to be designed.
-- **A new tab made from a tab copies its history** (round 4, the picked word).
+- **Its own folder**, `tab-history/`, not a round in minimize (asked and answered 2026-11-16): the trail there is
+  accepted and building; this links to it.
+- **Moving inside a tab is a step on the trail** (concordance round 3 review): a new page in the Concordance, an entry
+  opened in a dictionary, the reader going to another chapter, a page opened in the Notebook. Each move is its own step.
+- **Each tab has a back button** that goes back through that tab's own history, not the whole trail.
+- **A tab opened from another is a copy of it, with its history.** Back in the new tab goes back through where it came
+  from; the tab it came from keeps its own place.
 
-## Open questions
+## How the two histories sit together (as drawn)
 
-Raised by the quotes above, not answered by any decision; each is for a first round of sheets, with the person's own words where a recommendation can be built on them.
+The **trail** is the whole sitting across tabs (the line under the top bar); **a tab's history** is the part of the
+trail that happened inside one tab. They are the same steps seen two ways, so nothing is recorded twice:
 
-- Where the button sits in a tab's top: [panels](../panels/README.md) P1/P2a say what a tab's top holds (the way back, the kind label, the title, at most two icon buttons, then More); the back button must fit it and not be the way back.
-- How a tab's history and the [trail](../minimize/README.md) relate: the person says each move is a step on the trail and that the new tab copies the history. Whether the two are one list read two ways, or the tab's history is the trail filtered to that tab, is to be drawn.
-- What happens at the first step (the button's state), and whether a step forward is wanted: the person has asked only for going back.
-- The `wb` command for it (every core action has one): `wb history` exists for the trail (`add`, `list`, `sittings`), so the command is probably an extension of it; to be named when the design is drawn.
+- A move inside a tab adds a step on the trail whose `from` is the step before it in that tab.
+- A copy is a fork on the trail: its first step's `from` is the step it was copied at (the dot after H7068 in
+  `t03-copy-on-the-trail`). Its back list is its own steps, then the steps of the tab it came from up to the fork.
+- Back moves the tab, but adds no new step (as a browser's back does not add history); the trail's front step moves
+  back with it. Forward is there until a new move is made, which drops the forward steps from the tab (not the trail:
+  the trail keeps them as a side trip, and its drawer still shows them).
 
-## Rounds
+## Shots (drawn 2026-11-16 on the 14:19 release build)
 
-| Round | Date | Windows | What it tried | Review |
-|---|---|---|---|---|
-| none | | | | |
+The app's own window: the rail, the top bar, the trail line, the dock and the Notebook. The study is a copy of the
+scratch folder; a lookup was made (H7068) and the reader is on Numbers 25. The Concordance is a stand-in pane, its
+words `wb` answers; the back buttons, the history menu, the copy and the extra trail steps are drawn on top.
 
-## Data the sheets show
-
-| File | Made by |
+| Shot | What it shows |
 |---|---|
-| none | |
+| `t01-a-back-in-the-strip` | **A:** ‹ › at the head of each tab strip, for the front tab. Hover: "Back to zeal · Alt+←" |
+| `t01-b-back-in-the-tab` | **B:** a ‹ inside the front tab, before its name |
+| `t01-c-back-on-the-trail-line` | **C:** one ‹ › pair at the start of the trail line, for whichever tab is in front |
+| `t02-the-tabs-history` | Held or right-clicked, back lists the tab's history, newest first, the place now marked; Show on the trail |
+| `t03-copy-opened` | zealous picked in the Concordance opens as a copy, beside it (marked with a line on top); back goes to H7068 |
+| `t03-copy-history` | The copy's back list: zealous, then "Before it: copied from Concordance" and that tab's steps |
+| `t03-copy-on-the-trail` | The trail line: the fork dot at H7068, zealous after it as its own tab |
+| `t04-a-reader-back-on-the-trail-line` | The reader as a tab: moved Numbers 25 → Psalms 69 → John 2; C's pair at the line's start goes back to Psalms 69 |
+| `t04-b-reader-back-at-its-head` | The reader's back at the head of the reader instead, the way a docked pane has it in A |
 
-## The real conditions
+Found while drawing: the top bar's ‹ › beside the book name are already the chapter before and the next chapter. A
+back button for the reader must not look like them or sit beside them, or they will be confused (one reason for C or a
+reader head, not the top bar).
 
-The board will show the part among other tabs, as a floating tab, narrow, and with years of study (see the [index](../README.md)).
+## Open questions (2026-11-16)
 
-| Condition | Window |
-|---|---|
-| Among other tabs | to draw |
-| Floating | to draw |
-| Narrow | to draw |
-| Years of study | to draw |
+1. **Where does back sit?** A (the head of each tab strip, for the front tab), B (inside the front tab), or C (one pair
+   on the trail line, for whichever tab is in front). A and B give a floating window its own back; C keeps one place to
+   look. The reader has no tab strip: under A or B it needs a head of its own (t04-b).
+2. **Forward too, or back only?** Drawn with forward, greyed until back has been used.
+3. **The history list:** held or right-clicked on back (t02), or always a small ▾ beside it?
+4. **Does every tab copy when it opens another, or only some moves?** The decision names a word picked in the
+   Concordance. Is a reference clicked in a Notebook page a move inside the Notebook (back returns to the page) or a copy?
+   And a verse opened from a pane into the reader: the reader moves (its own history), the pane stays.
+5. **Keys:** Alt+← and Alt+→ (as browsers), and the mouse's back and forward buttons, for the tab in front (or the tab
+   under the mouse)?
+6. **What a move is, kind by kind.** The Concordance: a new word, entry, tab (English, Hebrew, Greek, Interlinear),
+   grouping or Near? The reader: each chapter, or each verse gone to? Scrolling is never a step. A tab's own small
+   controls (All forms / This word, Expand all) are part of the step, not steps of their own?
+7. **After the window reopens:** does each tab keep its history (from `history/<day>.jsonl`, which already holds every
+   step and its `from`), or start fresh?
+8. **The way back of panels** (`‹ From Numbers 25:11`, [panels](../panels/README.md) P1): it returns to the verse in the
+   reader. Does it stay as it is beside the tab's back (which stays inside the tab), or become the oldest entry of the
+   tab's history list?
 
 ## What the build must satisfy
 
-Written once the person accepts a direction. Known now, from the person's words:
+Not written yet: the person has not chosen where back sits.
 
-- [ ] In every tab, a back button goes back through that tab's own history, one step at a time.
-- [ ] A tab opened from another tab (a picked word in the Concordance) starts with a copy of that tab's history, and going back in either does not change the other.
-- [ ] A move inside a tab is its own step on the trail.
-- [ ] The `wb` command that reaches the same action (to be named).
-- [ ] No study file changes unless the design says so; the reader's place is kept.
+To be settled with it: the `wb` command for the same action (likely `wb history back <tab>` and a `from` on
+`wb history add` for a copy), and that the study folder's `history/` lines need no new field (a tab's history is read
+from the steps' `from`; to be confirmed when the build is planned).
 
 ## Out of scope / later
 
-- The way back to the verse (`‹ From Numbers 25:11`): [panels](../panels/README.md).
-- How the trail is shown and cut into sittings: [minimize](../minimize/README.md).
+- The trail itself (its line, drawer, sittings): [minimize](../minimize/README.md), building.
+- What the Concordance shows on each page: [concordance](../concordance/README.md).
