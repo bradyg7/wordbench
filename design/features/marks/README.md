@@ -47,6 +47,12 @@ Library map, Later). The arrow here links two places on the text; it does not bu
 | MK7-20 | **The mark's card is small and anchored** beside the mark, not draggable, closed by Esc or a click away. Toasts and cards take the person's theme. | the person, row 20, 23 |
 | MK7-21 | **A legend entry lists where it is used**, and marks can be removed from that list, one or many (recoverable, as any delete). | the person, row 32, 33 |
 | MK7-22 | **The bar keeps fixed sizes.** Two layouts only (wide, narrow), switched at one width; it never stretches or shrinks with each window change. | the person, row 41 |
+| MK7-24 | **The mark bar sits above the selection.** | the person, 2026-11-18, open question 1 |
+| MK7-25 | **Arrows stay within one chapter.** Linking places across chapters or books is the cross-reference graph's (the Library map, Later), not a mark. While choosing an arrow's target the reader stays in its chapter. | the person, open question 2 |
+| MK7-26 | **A new Library starts with an empty legend.** Every entry is the person's own. | the person, open question 3 |
+| MK7-27 | **A margin note covers verses of one chapter** for now (it is just a note); across chapters stays a maybe for a later round. | the person, open question 4 |
+| MK7-28 | **A margin note is text.** Scripture references and questions in it are found by themselves, as in pages; no headings or blocks; anything bigger grows into a page. Marks on a margin note's own words: deferred to a later round, if wanted. | the person, open question 5 |
+| MK7-29 | **The whole-Bible color view is designed here** (sheet F): where each legend style, and each folder's color, appears across the Bible, and its gaps. | the person, open question 6 |
 | MK7-23 | **A verse's card is reachable from a page's scripture block** as well as from the reader. | the person, row 44 |
 
 ## The leading design (draft 2, for the person's review)
@@ -63,15 +69,15 @@ Library map, Later). The arrow here links two places on the text; it does not bu
   Folder colors stay in the gutter, never on the words.
 - **The margin** is an open column beside the text, minimizable to signs. Arrows never cross the margin: a cross-chapter
   arrow is a label in the margin's edge, not a line.
-- **An arrow** goes from a selection to a second selection. Same chapter: drawn. Another chapter (ahead or behind): a
-  short arrow at the start to a label naming the target; a click follows it, Back returns. While choosing the target the
-  bar shows Back (a misclick) and Cancel. Arrow line styles (dotted, bold, heads) are later.
+- **An arrow** goes from a selection to a second selection in the same chapter, drawn in the gutter beside the verse
+  numbers so it never crosses the words or the margin. While choosing the target the bar shows Back (a misclick) and
+  Cancel. Across chapters is the cross-reference graph's, later. Arrow line styles (dotted, bold, heads) are later.
 - **Every mark is findable:** the Library's search by kind, color, legend entry, book or date; a verse's card lists every
   mark on it, from the reader or a page's scripture block.
 
 **For the sheets to show** (the person asked to see these before accepting): a highlight from selection to legend chip,
-step by step; marks over marks (row 26); arrows in four scenarios (next verse, two chapters ahead, two behind, a misclick
-undone) beside margin notes, with crossing arrows; a chapter with years of marks (row 40); the narrow window with the
+step by step; marks over marks (row 26); arrows (next verse, several verses away, crossing, a misclick undone) beside
+margin notes; a chapter with years of marks (row 40); the narrow window with the
 margin as signs (row 41).
 
 ## Interaction table (draft 2)
@@ -98,7 +104,7 @@ real app). `Built` is ticked only when the test passes.
 | 12 | B | Click Open as a passage (a span) | The span opens in its own reader tab; Back returns to the verse | trail step | `wb text <span>` | ui | [ ] |
 | 13 | B | Click Arrow | "Select where it points"; the bar shrinks to Back and Cancel | nothing | | ui | [ ] |
 | 14 | R | Select the target in the same chapter | The arrow is drawn between them, above the text, never across the margin | mark added (from, to) | `wb mark add <from> --kind arrow --to <ref>` | wb, ui | [ ] |
-| 15 | R | Go to another chapter (ahead or behind) and select the target | At the start, a short arrow to a label naming the target; the reader returns to the start | mark added | as 14 | ui | [ ] |
+| 15 | R | While choosing a target, try to leave the chapter | The reader stays; the bar says arrows stay in one chapter | nothing | | ui | [ ] |
 | 16 | B | Back while choosing a target | The reader returns to the start, the selection kept, the bar open | nothing | | ui | [ ] |
 | 17 | M | Click into the margin beside a verse, or press N / the notepad icon | An empty note there, the cursor in it | nothing until typed | | ui | [ ] |
 | 18 | M | Click into the margin away from any verse | A note for the chapter, not tied to a verse | nothing until typed | | ui | [ ] |
@@ -146,7 +152,7 @@ real app). `Built` is ticked only when the test passes.
 | 45 | P | Toggle a legend entry | Marks in that style hide or show | as 43 | as 43 | ui | [ ] |
 | 46 | P | Reading mode | Only the text; one line says marks are hidden, with Show | as 43 | as 43 | ui | [ ] |
 | 47 | R | Hover a mark | Its legend name | nothing | | ui | [ ] |
-| 48 | R | Click an arrow's label | The reader goes to the target; Back returns to the arrow's verse | trail step | | ui | [ ] |
+| 48 | R | Click an arrow's end | The card for the arrow: its two verses, style, Change, Delete | nothing | `wb mark show <id>` | ui | [ ] |
 | 49 | R | A chapter with years of marks (generated) | Readable: layers in order, underlines thinning, no mark hides the words, arrows clear of the margin | nothing | | app | [ ] |
 | 50 | R | Narrow window | The bar's narrow layout (fixed size); the margin as signs; a sign opens its note in a popover beside the verse | nothing | | ui | [ ] |
 
@@ -156,6 +162,8 @@ real app). `Built` is ticked only when the test passes.
 |---|---|---|---|---|---|---|---|
 | 51 | Library search | Filter by mark: kind, color, legend entry, book, date | Matching marks, each with its words and reference; a click opens the reader there | nothing | `wb find --kind mark --style <name> --book <b>` | wb, ui | [ ] |
 | 52 | Library search | Type words | Margin notes' text is searched with pages | nothing | `wb find <words>` | wb | [ ] |
+| 57 | Library search | Open Colors across the Bible | Every book as a row of chapter cells; each cell shows the styles and folder colors in it; a filter picks one style or folder, and the empty cells are its gaps | nothing | `wb marks map [--style <name>|--folder <name>]` | wb, ui | [ ] |
+| 58 | color view | Click a cell | The reader opens that chapter with the chosen style shown | trail step | | ui | [ ] |
 | 53 | verse card | Open a verse's card, from the reader or a page's scripture block | Every mark on that verse, and the margin notes covering it | nothing | `wb mark at <ref>` | wb, ui | [ ] |
 
 ### Disk and moving forward
@@ -175,17 +183,9 @@ real app). `Built` is ticked only when the test passes.
 - **The legend:** `settings/legend.json`, entries in order: `{kind, color, lines?, name?, meaning?, quick?, key?}`.
 - **Today's 26 highlight files** are read as they are until the move (row 55).
 
-## Open questions (for the person)
+## Open questions
 
-1. **The mark bar's place.** Above the selection (proposed), or fixed at the top of the reader?
-2. **Arrows across chapters.** A label in the margin's edge (proposed). You said the cross-reference graph would be the
-   better tool, especially across books: keep cross-chapter arrows in this build, or leave them for the graph?
-3. **Starter legend.** Should a new Library begin with a few named pens (say, 5 highlight colors, unnamed but ready),
-   or empty?
-4. **Margin notes across chapters.** Allowed (kept where they start, proposed), or one chapter at most?
-5. **What a margin note is.** Proposed: plain text in which scripture references and questions are found by itself (as in
-   pages), no headings or blocks; anything bigger grows into a page. Marks on a margin note's own words: no (proposed).
-6. **The whole-Bible color view** (Library map): part of this folder, or its own later folder?
+None (all six answered 2026-11-18, MK7-24 to MK7-29).
 
 ## Rounds
 
@@ -193,4 +193,5 @@ real app). `Built` is ticked only when the test passes.
 |---|---|---|---|
 | 1 to 6 | to 2026-11-17 | see [archive](archive/rounds-1-6-README.md) | accepted, then built badly |
 | 7 | 2026-11-18 | fresh start: decisions MK7-1 to MK7-7, interaction table draft 1 | the person's notes on rows 1-44, 2026-11-18 |
-| 7, draft 2 | 2026-11-18 | notes folded in: MK7-8 to MK7-23, table draft 2 (56 rows), 6 open questions | waiting for the person; then the sheets |
+| 7, draft 2 | 2026-11-18 | notes folded in: MK7-8 to MK7-23, table draft 2, 6 open questions | answered: MK7-24 to MK7-29 |
+| 7, sheets | 2026-11-18 | sheets A to F drawn from the table (`python design/features/marks/marks.py`) | waiting for the person |
