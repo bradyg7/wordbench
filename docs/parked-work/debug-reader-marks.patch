@@ -1,0 +1,165 @@
+diff --git a/ui/src/actions.ts b/ui/src/actions.ts
+index b8b361e..bc58285 100644
+--- a/ui/src/actions.ts
++++ b/ui/src/actions.ts
+@@ -183,7 +183,7 @@ export async function perform(a: any, line: string): Promise<string> {
+     }
+     // ---- the window ----
+     case 'layers': return changeLayers(a);
+-    case 'highlights': layers.all = a.on; layers.save(); app.refreshMarks(); return a.on ? 'Highlights shown' : 'Highlights hidden';
++    case 'highlights': layers.all = a.on; layers.save(); app.repaintLayers(); return a.on ? 'Highlights shown' : 'Highlights hidden';
+     case 'size': {
+       const p = a.percent ?? app.size() + a.step * 10;
+       app.setSize(p);
+@@ -335,14 +335,14 @@ async function changeLayers(a: any): Promise<string> {
+       if (!t) return `No thread called “${a.name}”.`;
+       if (a.action === 'show') { layers.hidden.delete(t.id); layers.all = true; } else layers.hidden.add(t.id);
+       layers.save();
+-      app.refreshMarks();
++      app.repaintLayers();
+       return `${a.action === 'show' ? 'Showing' : 'Hiding'} “${t.name}”`;
+     }
+     case 'panel': { const b = document.getElementById('hl-menu') ?? document.getElementById('more'); if (document.getElementById('hl-menu')) b!.click(); else hooks.highlights(b!); return 'The layers'; }
+     default: return `Drawn: ${layers.highlightsShown() ? 'your highlights' : 'no highlights'}; threads: ${ts.filter(t => layers.shown(t.id)).map(t => t.name).join(', ') || 'none'}`;
+   }
+   layers.save();
+-  app.refreshMarks();
++  app.repaintLayers();
+   return 'Layers changed';
+ }
+ 
+diff --git a/ui/src/app.ts b/ui/src/app.ts
+index 3ec5508..506a025 100644
+--- a/ui/src/app.ts
++++ b/ui/src/app.ts
+@@ -16,6 +16,8 @@ export const app = {
+   back: () => false as boolean,
+   /** Reads the chapter's marks again (after a note, highlight or thread change) and draws them. */
+   refreshMarks: async () => {},
++  /** Applies layer visibility to all open readers using their loaded marks. */
++  repaintLayers: () => {},
+   topVerse: () => 1,
+   /** The reader's version (KJV, YLT); setting it redraws the chapter with the same verse at the top. */
+   version: () => 'KJV',
+diff --git a/ui/src/main.ts b/ui/src/main.ts
+index ec1a49c..c46b665 100644
+--- a/ui/src/main.ts
++++ b/ui/src/main.ts
+@@ -167,6 +167,15 @@ async function refreshMarks() {
+   paint(reader, d);
+ }
+ 
++/** Visibility changes use the marks already loaded in each reader, including panes behind another tab. */
++function repaintLayers() {
++  if (drawn) paint(reader, drawn);
++  for (const pane of dock.panes) {
++    const view = secondReaderViews.get(pane);
++    if (view?.drawn) paint(view.root, view.drawn);
++  }
++}
++
+ // ---- sheets and cards -----------------------------------------------------------------------------------------------
+ function lexiconBody(w: WordView, card = false): HTMLElement {
+   const b = h('div', 'lex');
+@@ -706,6 +715,7 @@ async function openSecondReader(ref: string, version = 'KJV') {
+       el.addEventListener('pointerdown', ev => { if (!(ev.target as HTMLElement).closest('input, textarea, [contenteditable]')) el.focus({ preventScroll: true }); });
+       turners.set(el, n => void turn(el, p, n));
+       vw = { root, scroller: el, drawn: null, selector: null as unknown as Selector, main: false, pane: p };
++      secondReaderViews.set(p, vw);
+       vw.selector = new Selector(root, el, handlersFor(vw));
+       wireView(vw);
+       el.addEventListener('scroll', () => { if (vw!.selector.sel) vw!.selector.placeHandles(); if (barView === vw) placeBar(); hideCard(); }, { passive: true });
+@@ -728,6 +738,7 @@ async function openSecondReader(ref: string, version = 'KJV') {
+ 
+ /** A second reader's own chapter turn, by its scroll element: ← → in a pane turn that pane (note b59b). */
+ const turners = new WeakMap<HTMLElement, (n: number) => void>();
++const secondReaderViews = new WeakMap<Pane, View>();
+ 
+ /** The second readers open, by pane: the chapter each shows (app.readers). */
+ const readers2 = new Map<string, { pane: string; code: string; chapter: number; label: string }>();
+@@ -889,7 +900,7 @@ async function highlightsMenu(from: HTMLElement) {
+     b.append(icon(on ? 'eye' : 'eyeoff', 14));
+     if (dot) b.append(dot);
+     b.append(document.createTextNode(` ${label}`));
+-    b.onclick = () => { flip(); layers.save(); refreshMarks(); close(); highlightsMenu(from); };
++    b.onclick = () => { flip(); layers.save(); repaintLayers(); close(); highlightsMenu(from); };
+     box.append(b);
+   };
+   box.append(h('div', 'label', 'Drawn in the reader'));
+@@ -1101,6 +1112,7 @@ Object.assign(app, {
+   step,
+   back,
+   refreshMarks,
++  repaintLayers,
+   topVerse: () => topVerse().verse,
+   setSize,
+   size: () => sizePct,
+diff --git a/ui/tests/reader.spec.ts b/ui/tests/reader.spec.ts
+index 43dbccb..7263214 100644
+--- a/ui/tests/reader.spec.ts
++++ b/ui/tests/reader.spec.ts
+@@ -50,6 +50,64 @@ test('draws Numbers 25 with the marks, in Literata', async ({ page }, info) => {
+   await page.screenshot({ path: `${shots}/${info.project.name}-reader.png` });
+ });
+ 
++test('layer visibility repaints the main reader and every open reader tab', async ({ page }, info) => {
++  test.skip(info.project.name !== 'webkit-desktop', 'desktop reader tabs');
++  await page.route('**/fixtures/wb/thread-list.json', route => route.fulfill({ json: [
++    { id: 'phinehas', name: 'Phinehas', color: 'orange' },
++    { id: 'phinehas-echoes', name: 'Phinehas echoes', color: 'blue' },
++  ] }));
++  await page.route(/\/fixtures\/wb\/text-num-25-(8|11)-version-kjv-json\.json$/, route => {
++    const v = Number(/text-num-25-(\d+)/.exec(route.request().url())![1]);
++    return route.fulfill({ json: { verses: [{ book: fx.reader.chapter.name, c: fx.reader.chapter.chapter, v }] } });
++  });
++  await page.route(/\/fixtures\/wb\/parse-highlights-(on|off)\.json$/, route => route.fulfill({
++    json: { action: { cmd: 'highlights', on: route.request().url().endsWith('-on.json') } },
++  }));
++  await ready(page);
++  for (const v of [8, 11]) {
++    await page.locator(`#reader .vn[data-v="${v}"]`).click({ button: 'right' });
++    await page.getByRole('button', { name: 'Open in a new tab' }).click();
++    await expect(page.locator(`.reader2 .vn-asked[data-v="${v}"]`)).toHaveCount(1);
++  }
++
++  const marks = () => page.locator('#reader, .reader2').evaluateAll(roots => roots.map(root => ({
++    fills: root.querySelectorAll('.w.hl').length,
++    lines: root.querySelectorAll('.w[style*="linear-gradient"]').length,
++    notes: root.querySelectorAll('.w.noted, .vn.vnote').length,
++    asked: root.querySelector('.vn-asked')?.getAttribute('data-v'),
++  })));
++  const initial = await marks();
++  expect(initial).toHaveLength(3);
++  for (const { fills, lines, notes } of initial) {
++    expect(fills).toBeGreaterThan(0);
++    expect(lines).toBeGreaterThan(0);
++    expect(notes).toBeGreaterThan(0);
++  }
++
++  const preservedPlace = await page.evaluate(async () => {
++    const wb = (window as any).__wb;
++    const pane = [...document.querySelectorAll<HTMLElement>('.reader2-pane')].find(el => !el.hidden && el.offsetHeight)!;
++    pane.focus({ preventScroll: true });
++    const top = pane.scrollTop;
++    const verse = pane.querySelector('.vn-asked');
++    const reply = await wb.run('highlights off');
++    return { reply, scroll: pane.scrollTop === top, focus: document.activeElement === pane, marker: pane.querySelector('.vn-asked') === verse };
++  });
++  expect(preservedPlace).toEqual({ reply: { ok: true, said: 'Highlights hidden' }, scroll: true, focus: true, marker: true });
++  expect(await marks()).toEqual(initial.map(m => ({ ...m, fills: 0, lines: 0 })));
++  await page.evaluate(() => (window as any).__wb.run('highlights on'));
++  expect(await marks()).toEqual(initial);
++
++  await page.locator('#hl-menu').click();
++  await page.getByRole('button', { name: 'Your highlights', exact: true }).click();
++  expect(await marks()).toEqual(initial.map(m => ({ ...m, fills: 0 })));
++  await page.getByRole('button', { name: 'Phinehas', exact: true }).click();
++  for (const [i, mark] of (await marks()).entries()) {
++    expect(mark.lines).toBeGreaterThan(0);
++    expect(mark.lines).toBeLessThan(initial[i].lines);
++  }
++});
++
+ test('tap a word: the word sheet', async ({ page }, info) => {
+   test.skip(info.project.name === 'webkit-desktop', 'phone');
+   await ready(page);
