@@ -785,22 +785,62 @@ async function guideEntries(): Promise<any[]> {
   return guideCache.entries;
 }
 
-/** Help (W5, sheet W6.3): Guide (how the parts of the Notebook work: `wb guide`), Commands (everything the command
- * field understands: the manual) and Keys. A topic that names a Guide entry opens the Guide at it. */
+type HelpTab = 'guide' | 'commands' | 'keys';
+
+const HELP_TASKS: [string, [string, HelpTab, string][]][] = [
+  ['Find and open', [
+    ['Show a live list of Notebook pages', 'guide', 'views'],
+  ]],
+  ['Write and organize', [
+    ['Start a page from a template', 'guide', 'templates'],
+    ['Keep related places together', 'guide', 'threads'],
+    ['Write and track questions', 'guide', 'questions'],
+  ]],
+  ['Arrange the window', [
+    ['Save and restore pane layouts', 'commands', 'layout'],
+  ]],
+  ['Commands and keys', [
+    ['Find a command', 'commands', ''],
+    ['Find a keyboard shortcut', 'keys', ''],
+  ]],
+  ['More Guide topics', [
+    ['The Shelf', 'guide', 'shelf'],
+    ['Word blocks', 'guide', 'words'],
+  ]],
+];
+
+/** Typed Help arrives resolved by the parser, which checks the manual before the Guide. */
 export function openHelp(topic = '') {
-  return dock.open('help', 'Help', 'help', MINE, async (el, pane) => {
-    el.replaceChildren();
+  const existing = dock.find('help');
+  const fill = async (el: HTMLElement) => {
     const [m, guide] = await Promise.all([manual(), guideEntries().catch(() => [])]);
-    const t0 = topic.trim().toLowerCase();
-    let tab: 'guide' | 'commands' | 'keys' = t0 && guide.some((g: any) => g.name.startsWith(t0) || g.title.toLowerCase().startsWith(t0)) ? 'guide' : t0 ? 'commands' : 'guide';
+    if (dock.find('help')?.refresh !== refresh) return;
+    let selected = topic;
+    let tab: HelpTab = topic && m.docs.some((d: any) => d.name === topic) ? 'commands' : 'guide';
     const tabs = h('div', 'seg small help-tabs');
     tabs.setAttribute('role', 'tablist');
     const filter = h('input', 'field help-filter') as HTMLInputElement;
-    filter.value = topic;
+    filter.setAttribute('aria-label', 'Search Help');
+    filter.value = selected;
     const body = h('div', 'help-body');
-    el.append(tabs, filter, body);
-    const tabBtn = (k: typeof tab, label: string) => {
-      const b = button(`help-tab-${k}${tab === k ? ' on' : ''}`, label, () => { tab = k; for (const x of tabs.children) x.classList.toggle('on', x === b); draw(); });
+    body.tabIndex = -1;
+    el.replaceChildren(tabs, filter, body);
+    const selectTopic = (next: HelpTab, name: string) => {
+      tab = next;
+      selected = name;
+      filter.value = name;
+      draw();
+      body.focus();
+    };
+    const tabBtn = (k: HelpTab, label: string) => {
+      const b = button(`help-tab-${k}`, label, () => {
+        if (tab === k) return;
+        tab = k;
+        if (selected) filter.value = '';
+        selected = '';
+        draw();
+      });
+      b.dataset.tab = k;
       b.setAttribute('role', 'tab');
       tabs.append(b);
     };
@@ -809,11 +849,35 @@ export function openHelp(topic = '') {
     tabBtn('keys', 'Keys');
     const has = (o: any, f: string) => JSON.stringify(o).toLowerCase().includes(f);
     const draw = () => {
+      for (const b of tabs.children) {
+        const active = (b as HTMLElement).dataset.tab === tab;
+        b.classList.toggle('on', active);
+        b.setAttribute('aria-selected', String(active));
+      }
       const f = filter.value.trim().toLowerCase();
-      filter.placeholder = tab === 'guide' ? 'A part of the Notebook, or a word' : tab === 'commands' ? 'A command or a word' : 'A key or a word';
+      filter.placeholder = tab === 'guide' ? 'A task, topic, or word' : tab === 'commands' ? 'A command or a word' : 'A key or a word';
       body.replaceChildren();
+      if (selected || tab !== 'guide') {
+        body.append(button('link-btn', 'Browse Help tasks', () => selectTopic('guide', '')));
+      }
       if (tab === 'guide') {
-        const hits = guide.filter((g: any) => !f || g.name.startsWith(f) || has(g, f));
+        if (!f) {
+          const index = h('nav', 'help-index');
+          index.setAttribute('aria-label', 'Browse Help by task');
+          for (const [group, tasks] of HELP_TASKS) {
+            const links = h('div', 'wrap');
+            for (const [label, next, name] of tasks) {
+              if (next === 'guide' && !guide.some(g => g.name === name)) continue;
+              links.append(button('btn small', label, () => selectTopic(next, name)));
+            }
+            if (links.childElementCount) index.append(h('h3', 'label', group), links);
+          }
+          body.append(index);
+          return;
+        }
+        const hits = guide.filter(g => selected ? g.name === selected :
+          has(g, f) || HELP_TASKS.some(([, tasks]) => tasks.some(([label, next, name]) =>
+            next === 'guide' && name === g.name && label.toLowerCase().includes(f))));
         for (const g of hits) {
           const sec = h('section', 'guide-entry');
           sec.dataset.name = g.name;
@@ -821,21 +885,25 @@ export function openHelp(topic = '') {
           for (const p of g.parts) sec.append(h('div', 'guide-head', p.head), h('p', 'small guide-text', p.text));
           body.append(sec);
         }
-        if (!hits.length) body.append(h('p', 'muted', 'No part of the Guide has that word. Commands lists everything the command field understands.'));
+        if (!hits.length) body.append(h('p', 'muted', 'No Guide topics match your search.'));
         return;
       }
       if (tab === 'keys') {
-        for (const [k, what] of KEYS.filter(([k, w]) => !f || (k + ' ' + w).toLowerCase().includes(f))) {
+        const hits = KEYS.filter(([k, w]) => (k + ' ' + w).toLowerCase().includes(f));
+        for (const [k, what] of hits) {
           const r = h('div', 'key-row');
           r.append(h('kbd', '', k), h('span', '', what));
           body.append(r);
         }
+        if (!hits.length) body.append(h('p', 'muted', 'No keyboard shortcuts match your search.'));
         return;
       }
-      body.append(h('p', 'muted small', 'Everything the command field understands. Backtick (`) opens it.'));
+      body.append(h('p', 'muted small', 'Commands for the command field. Backtick (`) opens it. In a terminal, use wb help for the terminal command list.'));
+      let found = false;
       for (const [sec, title] of m.sections) {
-        const docs = m.docs.filter((d: any) => d.section === sec && (!f || d.name.startsWith(f) || has(d, f)));
+        const docs = m.docs.filter((d: any) => d.section === sec && (selected ? d.name === selected : !f || has(d, f)));
         if (!docs.length) continue;
+        found = true;
         body.append(h('div', 'label', title));
         for (const d of docs) {
           const det = h('details', 'doc');
@@ -853,11 +921,21 @@ export function openHelp(topic = '') {
           body.append(det);
         }
       }
+      if (!found) body.append(h('p', 'muted', 'No command topics match your search.'));
     };
-    filter.oninput = draw;
+    filter.oninput = () => { selected = ''; draw(); };
     draw();
-    void pane;
-  });
+  };
+  const refresh = (): Promise<void> | undefined => {
+    const pane = dock.find('help');
+    if (pane) return fill(pane.el).catch(e => {
+      if (pane.refresh === refresh) pane.el.replaceChildren(h('p', 'error', String(e)));
+    });
+  };
+  const pane = dock.open('help', 'Help', 'help', MINE, fill);
+  pane.refresh = refresh;
+  if (existing) void refresh();
+  return pane;
 }
 
 export function openKeys() {

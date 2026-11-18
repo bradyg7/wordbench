@@ -11,3 +11,13 @@ for (const [book, ch] of [['NUM', 25], ['NUM', 24], ['NUM', 26], ['PSA', 119]]) 
   console.log('fixture', book, ch);
 }
 writeFileSync(new URL('books.json', out), JSON.stringify({ data: JSON.parse(wb('books')) }.data));
+
+const help = new URL('wb/', out);
+mkdirSync(help, { recursive: true });
+for (const args of [
+  ['guide', '--json'], ['manual'],
+  ...['help', 'help view', 'help threads', 'help The Shelf', 'help vie', 'help t', 'help layout'].map(line => ['parse', line]),
+]) {
+  const name = args.join(' ').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  writeFileSync(new URL(`${name}.json`, help), wb(...args));
+}
