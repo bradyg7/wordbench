@@ -214,6 +214,8 @@ T1 built (core and wb): rows 4, 6, 7, 14, 54, 56. Tests (`crates/wb-cli/tests/ma
 
 T2 built (core and wb): rows 25 to 28 (show, at, style). Tests (`crates/wb-cli/tests/marks.rs`): `mark_show_gives_one_mark_whole` (25), `marks_at_a_place_come_topmost_first_old_highlights_included` (26, 53 core), `mark_style_replaces_one_marks_style_and_keeps_its_id_and_date` and `an_old_highlight_changes_color_in_its_own_file_and_nothing_else` (27), `deleting_and_undoing_meets_row_28` (28; `rm`/`restore` are T1's). Rows 20 to 23 are keys: no core action, nothing added. The legend name in `show` is T3.
 
+T3 built (core and wb): rows 4 (--style), 8, 9, 33 to 39. Tests (`crates/wb-cli/tests/marks.rs`): `a_mark_takes_an_entrys_style_and_shows_its_legend_name` (4 --style, `legend` in show and at), `legend_add_makes_named_and_unnamed_entries_and_refuses_the_same_style_twice` (8, 9, 33), `a_new_library_has_an_empty_legend_and_marks_in_no_entry_are_listed_as_unnamed` (9, MK7-26, 32 core), `a_new_name_shows_on_every_mark_in_the_style` (34), `changing_an_entrys_color_restyles_its_marks_or_only_the_entry` (35), `quick_styles_are_five_at_most_and_a_key_is_unique_unless_moved` (36, 37), `entries_move_and_removing_one_keeps_its_marks_as_unnamed` (38, 39), `the_legend_file_is_kept_whole_and_a_bad_one_is_an_empty_legend`.
+
 ## Disk (proposed)
 
 - **Drawn marks:** `marks/<BOOK>.json`, one file per book: each mark `{id, kind, color, lines?, at, to?, created, changed?}`,

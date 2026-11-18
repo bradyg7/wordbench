@@ -71,6 +71,12 @@ impl Drop for Wb {
     }
 }
 
+/// A mark as `show` gives it, without the legend name `add` and `style` do not give.
+fn bare(mut v: Value) -> Value {
+    v.as_object_mut().unwrap().remove("legend");
+    v
+}
+
 fn ids(v: &Value) -> Vec<String> {
     v["pages"].as_array().unwrap().iter().map(|p| p["id"].as_str().unwrap().to_string()).collect()
 }
@@ -312,7 +318,9 @@ fn mark_show_gives_one_mark_whole() {
     let Some(w) = Wb::new() else { return };
     let u = w.js(&["mark", "add", "Num 25:11", "--kind", "underline", "--color", "blue", "--lines", "3"]);
     let shown = w.js(&["mark", "show", u["id"].as_str().unwrap()]);
-    assert_eq!(shown, u, "kind, color, lines, at, created; no `to` or `changed` yet");
+    let mut plain = shown.clone();
+    assert_eq!(plain.as_object_mut().unwrap().remove("legend"), Some(json!("Unnamed blue triple underline")));
+    assert_eq!(plain, u, "kind, color, lines, at, created; no `to` or `changed` yet");
     w.ok(&["hl", "set", "Num 25:12", "green"]);
     let old = on_chapter(&w, "Num 25").into_iter().find(|m| m["at"] == "NUM.25:12").unwrap();
     let s = w.js(&["mark", "show", old["id"].as_str().unwrap()]);
@@ -355,8 +363,8 @@ fn mark_style_replaces_one_marks_style_and_keeps_its_id_and_date() {
     assert_eq!((u["kind"].clone(), u["lines"].clone(), u["color"].clone()), (json!("underline"), json!(2), json!("pink")));
     let back = w.js(&["mark", "style", id, "--kind", "circle"]);
     assert!(back.get("lines").is_none(), "lines go when the kind is not an underline");
-    assert_eq!(w.js(&["mark", "show", id]), back);
-    assert_eq!(w.js(&["mark", "show", other["id"].as_str().unwrap()]), other, "no other mark changes");
+    assert_eq!(bare(w.js(&["mark", "show", id])), back);
+    assert_eq!(bare(w.js(&["mark", "show", other["id"].as_str().unwrap()])), other, "no other mark changes");
     assert_eq!(on_chapter(&w, "Num 25").len(), 2);
     let refused = |args: &[&str], needle: &str| {
         let before = w.snapshot();
@@ -407,4 +415,193 @@ fn deleting_and_undoing_meets_row_28() {
     assert!(w.js(&["mark", "at", "Num 25:11"])["marks"].as_array().unwrap().is_empty());
     assert_eq!(w.js(&["mark", "restore", id]), changed, "Undo puts it back as it was, changed date included");
     assert_eq!(w.js(&["mark", "at", "Num 25:11"])["marks"].as_array().unwrap().len(), 1);
+}
+
+// ---- the legend (T3: rows 4 --style, 8, 9, 33 to 39) ---------------------------------------------------------------
+
+fn labels(w: &Wb) -> Vec<(String, u64)> {
+    w.js(&["legend"])["entries"].as_array().unwrap().iter().map(|e| (e["label"].as_str().unwrap().to_string(), e["count"].as_u64().unwrap())).collect()
+}
+
+#[test]
+fn a_new_library_has_an_empty_legend_and_marks_in_no_entry_are_listed_as_unnamed() {
+    let Some(w) = Wb::new() else { return };
+    let l = w.js(&["legend"]);
+    assert_eq!((l["entries"].clone(), l["unlisted"].clone()), (json!([]), json!([])));
+    assert!(!w.dir.join("settings").join("legend.json").exists(), "reading writes nothing");
+    w.ok(&["mark", "add", "Num 25:11", "--kind", "highlight", "--color", "yellow"]); // row 9: a mark with no entry
+    w.ok(&["hl", "set", "Num 25:12", "yellow"]); // an old highlight counts too
+    w.ok(&["mark", "add", "Num 25:13", "--kind", "underline", "--color", "orange", "--lines", "2"]);
+    let l = w.js(&["legend"]);
+    assert_eq!(l["entries"], json!([]));
+    assert_eq!((l["unlisted"][0]["label"].clone(), l["unlisted"][0]["count"].clone()), (json!("Unnamed yellow highlight"), json!(2)));
+    assert_eq!(l["unlisted"][1]["label"], "Unnamed orange double underline");
+}
+
+#[test]
+fn legend_add_makes_named_and_unnamed_entries_and_refuses_the_same_style_twice() {
+    let Some(w) = Wb::new() else { return };
+    let e = w.js(&["legend", "add", "--kind", "highlight", "--color", "yellow", "--name", "Promise", "--meaning", "a promise made"]);
+    assert_eq!((e["label"].clone(), e["style"].clone(), e["position"].clone(), e["count"].clone()), (json!("Promise"), json!("highlight:yellow"), json!(1), json!(0)));
+    let u = w.js(&["legend", "add", "--kind", "underline", "--color", "orange", "--lines", "2"]); // row 9: no name
+    assert_eq!((u["label"].clone(), u["style"].clone()), (json!("Unnamed orange double underline"), json!("underline:orange:2")));
+    assert!(u.get("name").is_none(), "no stored name");
+    let file: Value = serde_json::from_str(&w.snapshot()["settings/legend.json"]).unwrap();
+    assert_eq!(
+        file,
+        json!({"entries": [
+            {"kind": "highlight", "color": "yellow", "name": "Promise", "meaning": "a promise made"},
+            {"kind": "underline", "color": "orange", "lines": 2}]})
+    );
+    for args in [
+        vec!["legend", "add", "--kind", "highlight", "--color", "YELLOW", "--name", "Other"],
+        vec!["legend", "add", "--kind", "underline", "--color", "orange", "--lines", "2"],
+        vec!["legend", "add", "--kind", "box", "--color", "blue", "--name", "promise"],
+        vec!["legend", "add", "--kind", "box", "--color", "blue", "--lines", "2"],
+        vec!["legend", "add", "--kind", "wiggle", "--color", "blue"],
+    ] {
+        let (code, _, err) = w.run(&args);
+        assert_ne!(code, 0, "{args:?}");
+        assert!(!err.is_empty());
+    }
+    assert!(w.run(&["legend", "add", "--kind", "highlight", "--color", "yellow"]).2.contains("already has"));
+    assert_eq!(labels(&w).len(), 2);
+}
+
+#[test]
+fn a_mark_takes_an_entrys_style_and_shows_its_legend_name() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["legend", "add", "--kind", "underline", "--color", "orange", "--lines", "2", "--name", "Warning"]);
+    let m = w.js(&["mark", "add", "Num 25:11", "--style", "Warning"]);
+    assert_eq!((m["kind"].clone(), m["color"].clone(), m["lines"].clone()), (json!("underline"), json!("orange"), json!(2)));
+    let by_style = w.js(&["mark", "add", "Num 25:12", "--style", "underline:orange:2"]);
+    assert_eq!(by_style["lines"], 2);
+    assert_eq!(w.js(&["mark", "show", m["id"].as_str().unwrap()])["legend"], "Warning");
+    assert_eq!(w.js(&["mark", "at", "Num 25:11"])["marks"][0]["legend"], "Warning");
+    assert_eq!(labels(&w), vec![("Warning".to_string(), 2)]);
+    let o = w.js(&["mark", "add", "Num 25:11", "--kind", "box", "--color", "blue"]);
+    assert_eq!(w.js(&["mark", "show", o["id"].as_str().unwrap()])["legend"], "Unnamed blue box");
+    assert_ne!(w.run(&["mark", "add", "Num 25:11", "--style", "Nothing"]).0, 0);
+    assert_ne!(w.run(&["mark", "add", "Num 25:11", "--style", "Warning", "--color", "blue"]).0, 0);
+}
+
+#[test]
+fn a_new_name_shows_on_every_mark_in_the_style() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["legend", "add", "--kind", "highlight", "--color", "yellow"]);
+    let id = w.js(&["mark", "add", "Num 25:11", "--style", "Unnamed yellow highlight"])["id"].as_str().unwrap().to_string();
+    assert_eq!(w.js(&["mark", "show", &id])["legend"], "Unnamed yellow highlight");
+    let r = w.js(&["legend", "set", "highlight:yellow", "--name", "Promise", "--meaning", "kept"]); // row 34
+    assert_eq!((r["entry"]["label"].clone(), r["entry"]["meaning"].clone(), r["restyled"].clone()), (json!("Promise"), json!("kept"), json!(0)));
+    assert_eq!(w.js(&["mark", "show", &id])["legend"], "Promise");
+    w.ok(&["legend", "set", "Promise", "--name", ""]);
+    assert_eq!(w.js(&["mark", "show", &id])["legend"], "Unnamed yellow highlight");
+    assert_ne!(w.run(&["legend", "set", "highlight:yellow"]).0, 0, "nothing to change");
+}
+
+#[test]
+fn changing_an_entrys_color_restyles_its_marks_or_only_the_entry() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["legend", "add", "--kind", "highlight", "--color", "yellow", "--name", "Promise"]);
+    let a = w.js(&["mark", "add", "Num 25:11", "--style", "Promise"])["id"].as_str().unwrap().to_string();
+    w.ok(&["hl", "set", "Num 25:12", "yellow"]);
+    let old = on_chapter(&w, "Num 25").into_iter().find(|m| m["at"] == "NUM.25:12").unwrap()["id"].as_str().unwrap().to_string();
+    w.ok(&["mark", "add", "Num 25:13", "--kind", "box", "--color", "yellow"]); // another kind: stays
+    let hl_count = w.snapshot().keys().filter(|k| k.starts_with("highlights/")).count();
+    // marks use the style: one of the two flags is needed
+    let (code, _, err) = w.run(&["legend", "set", "Promise", "--color", "green"]);
+    assert_ne!(code, 0);
+    assert!(err.contains("--restyle"), "{err}");
+    assert_eq!(labels(&w), vec![("Promise".to_string(), 2)], "nothing changed");
+    // --no-restyle: the entry only; the marks then show as Unnamed
+    let r = w.js(&["legend", "set", "Promise", "--color", "green", "--no-restyle"]);
+    assert_eq!((r["entry"]["color"].clone(), r["restyled"].clone(), r["entry"]["count"].clone()), (json!("green"), json!(0), json!(0)));
+    assert_eq!(w.js(&["mark", "show", &a])["color"], "yellow");
+    assert_eq!(w.js(&["mark", "show", &a])["legend"], "Unnamed yellow highlight");
+    // back, then --restyle
+    w.ok(&["legend", "set", "Promise", "--color", "yellow", "--no-restyle"]);
+    let r = w.js(&["legend", "set", "Promise", "--color", "green", "--restyle"]);
+    assert_eq!((r["restyled"].clone(), r["entry"]["count"].clone()), (json!(2), json!(2)));
+    let m = w.js(&["mark", "show", &a]);
+    assert_eq!((m["color"].clone(), m["legend"].clone()), (json!("green"), json!("Promise")));
+    assert!(m["changed"].is_string());
+    assert_eq!(w.js(&["mark", "show", &old])["color"], "green");
+    // the old highlight took it in its own file, which gained nothing else
+    let hl: Vec<String> = w.snapshot().into_iter().filter(|(k, _)| k.starts_with("highlights/")).map(|(_, v)| v).collect();
+    assert_eq!(hl.len(), hl_count);
+    assert!(hl[0].contains("green") && !hl[0].contains("yellow"));
+    assert!(on_chapter(&w, "Num 25").iter().any(|m| m["kind"] == "box" && m["color"] == "yellow"), "the box stayed");
+    // a color another entry has is refused
+    w.ok(&["legend", "add", "--kind", "highlight", "--color", "pink", "--name", "Pink"]);
+    assert_ne!(w.run(&["legend", "set", "Pink", "--color", "green", "--restyle"]).0, 0);
+}
+
+#[test]
+fn quick_styles_are_five_at_most_and_a_key_is_unique_unless_moved() {
+    let Some(w) = Wb::new() else { return };
+    let colors = ["yellow", "green", "blue", "pink", "orange", "#8040c0"];
+    for (i, c) in colors.iter().enumerate() {
+        w.ok(&["legend", "add", "--kind", "highlight", "--color", c, "--name", &format!("E{}", i + 1)]);
+    }
+    for i in 1..=5 {
+        let r = w.js(&["legend", "set", &format!("E{i}"), "--quick", "on"]); // row 36
+        assert_eq!(r["entry"]["quick"], true);
+    }
+    let (code, _, err) = w.run(&["legend", "set", "E6", "--quick", "on"]);
+    assert_ne!(code, 0);
+    assert!(err.contains("5 quick styles"), "{err}");
+    w.ok(&["legend", "set", "E1", "--quick", "off"]);
+    w.ok(&["legend", "set", "E6", "--quick", "on"]);
+    w.ok(&["legend", "set", "E6", "--quick", "on"]); // already on: fine
+    assert_ne!(w.run(&["legend", "set", "E6", "--quick", "maybe"]).0, 0);
+    // keys (row 37)
+    assert_eq!(w.js(&["legend", "set", "E1", "--key", "ctrl+7"])["entry"]["key"], "Ctrl+7");
+    let (code, _, err) = w.run(&["legend", "set", "E2", "--key", "Ctrl+7"]);
+    assert_ne!(code, 0);
+    assert!(err.contains("--move-key") && err.contains("E1"), "{err}");
+    for bad in ["Ctrl+0", "Ctrl+10", "Alt+1", "7"] {
+        assert_ne!(w.run(&["legend", "set", "E2", "--key", bad]).0, 0, "{bad}");
+    }
+    w.ok(&["legend", "set", "E1", "--key", "Ctrl+7"]); // its own key again: fine
+    w.ok(&["legend", "set", "E2", "--key", "Ctrl+7", "--move-key"]);
+    let l = w.js(&["legend"]);
+    let key_of = |n: &str| l["entries"].as_array().unwrap().iter().find(|e| e["label"] == n).unwrap().get("key").cloned();
+    assert_eq!((key_of("E1"), key_of("E2")), (None, Some(json!("Ctrl+7"))));
+    w.ok(&["legend", "set", "E2", "--key", "none"]);
+    assert!(w.js(&["legend"])["entries"][1].get("key").is_none());
+}
+
+#[test]
+fn entries_move_and_removing_one_keeps_its_marks_as_unnamed() {
+    let Some(w) = Wb::new() else { return };
+    for (n, c) in [("A", "yellow"), ("B", "green"), ("C", "blue")] {
+        w.ok(&["legend", "add", "--kind", "highlight", "--color", c, "--name", n]);
+    }
+    let order = |l: &Value| -> Vec<String> { l["entries"].as_array().unwrap().iter().map(|e| e["label"].as_str().unwrap().to_string()).collect() };
+    assert_eq!(order(&w.js(&["legend", "move", "C", "--to", "1"])), ["C", "A", "B"]); // row 38
+    assert_eq!(order(&w.js(&["legend", "move", "C", "--to", "3"])), ["A", "B", "C"]);
+    assert_eq!(order(&w.js(&["legend", "move", "highlight:green", "--to", "1"])), ["B", "A", "C"]);
+    for to in ["0", "4"] {
+        assert_ne!(w.run(&["legend", "move", "A", "--to", to]).0, 0);
+    }
+    assert_ne!(w.run(&["legend", "move", "Nope", "--to", "1"]).0, 0);
+    // row 39
+    w.ok(&["mark", "add", "Num 25:11", "--style", "A"]);
+    let r = w.js(&["legend", "rm", "A"]);
+    assert_eq!((r["removed"]["label"].clone(), r["marks_kept"].clone()), (json!("A"), json!(1)));
+    assert_eq!(order(&w.js(&["legend"])), ["B", "C"]);
+    assert_eq!(w.js(&["legend"])["unlisted"][0]["label"], "Unnamed yellow highlight");
+    assert_eq!(w.js(&["mark", "at", "Num 25:11"])["marks"][0]["legend"], "Unnamed yellow highlight");
+    assert_eq!(on_chapter(&w, "Num 25").len(), 1, "the mark stays");
+}
+
+#[test]
+fn the_legend_file_is_kept_whole_and_a_bad_one_is_an_empty_legend() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["legend", "add", "--kind", "circle", "--color", "#E07B39", "--name", "Orange ring"]);
+    let s = w.snapshot();
+    assert!(s["settings/legend.json"].contains("#e07b39"));
+    assert!(!s.keys().any(|k| k.contains("legend") && k.ends_with(".tmp")), "no temp file left");
+    std::fs::write(w.dir.join("settings").join("legend.json"), "not json").unwrap();
+    assert_eq!(w.js(&["legend"])["entries"], json!([]));
 }

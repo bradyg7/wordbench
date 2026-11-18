@@ -149,13 +149,25 @@ pub fn commands() -> Vec<Command> {
             let sp = c.span(&a.s("ref"))?;
             j(sa::chapter_marks(&*c.study()?, &sp.book.code, sp.c1 as i64).map_err(e)?)
         }),
-        cmd("mark add", "Draw a mark on a place: wb mark add John 3:16 --kind highlight|underline|circle|box|arrow --color yellow (or #rrggbb) [--lines 1|2|3, underline only] [--to PLACE, arrow only, in the same chapter]. Kept in marks/<BOOK>.json.",
-            vec![Pos("place", N::One), Opt("kind", None), Opt("color", None), Opt("lines", None), Opt("to", None)], |c, a| {
-                let kind = a.opt("kind").ok_or("Say the kind of mark: --kind highlight, underline, circle, box or arrow.")?;
-                let color = a.opt("color").ok_or("Say its color: --color yellow (or #rrggbb).")?;
-                let lines = match a.opt("lines") {
+        cmd("mark add", "Draw a mark on a place: wb mark add John 3:16 --kind highlight|underline|circle|box|arrow --color yellow (or #rrggbb) [--lines 1|2|3, underline only] [--to PLACE, arrow only, in the same chapter]; or --style <legend entry> (its name, or its style kind:color[:lines]) instead of --kind, --color and --lines. Kept in marks/<BOOK>.json.",
+            vec![Pos("place", N::One), Opt("kind", None), Opt("color", None), Opt("lines", None), Opt("to", None), Opt("style", None)], |c, a| {
+                let mut lines = match a.opt("lines") {
                     Some(n) => Some(n.parse::<u8>().map_err(|_| "argument --lines: invalid int value")?),
                     None => None,
+                };
+                let (kind, color) = match a.opt("style") {
+                    Some(st) => {
+                        if a.opt("kind").is_some() || a.opt("color").is_some() || lines.is_some() {
+                            return Err("--style gives the kind, color and lines: do not also say --kind, --color or --lines.".into());
+                        }
+                        let (k, col, l) = marks::legend_style(&*c.study()?, &st).map_err(e)?;
+                        lines = l;
+                        (k, col)
+                    }
+                    None => (
+                        a.opt("kind").ok_or("Say the kind of mark: --kind highlight, underline, circle, box or arrow (or --style a legend entry).")?,
+                        a.opt("color").ok_or("Say its color: --color yellow (or #rrggbb).")?,
+                    ),
                 };
                 let at = anchor(c, &a.s("place"))?;
                 let to = match a.opt("to") {
@@ -164,10 +176,10 @@ pub fn commands() -> Vec<Command> {
                 };
                 j(serde_json::to_value(marks::mark_add(c.bible()?, &*c.study()?, &at, &kind, &color, lines, to.as_deref()).map_err(e)?).unwrap())
             }),
-        cmd("mark show", "One mark: its kind, color, lines, at, to, created and changed (and the words of an old highlight).", vec![Pos("id", N::One)], |c, a| {
+        cmd("mark show", "One mark: its kind, color, lines, at, to, created and changed (and the words of an old highlight), and its legend name (or \"Unnamed <color> <kind>\").", vec![Pos("id", N::One)], |c, a| {
             j(marks::mark_show(&*c.study()?, &a.s("id")).map_err(e)?)
         }),
-        cmd("mark at", "Every mark on a place (a verse, words, a phrase), old highlights too, topmost first: arrows, underlines, circle and box, highlight; newest first within each. {\"place\", \"marks\"}.", vec![Pos("place", N::Many)], |c, a| {
+        cmd("mark at", "Every mark on a place (a verse, words, a phrase), old highlights too, topmost first: arrows, underlines, circle and box, highlight; newest first within each, each with its legend name. {\"place\", \"marks\"}.", vec![Pos("place", N::Many)], |c, a| {
             let at = anchor(c, &a.s("place"))?;
             j(marks::mark_at(&*c.study()?, &at).map_err(e)?)
         }),
@@ -195,6 +207,45 @@ pub fn commands() -> Vec<Command> {
                 done.push(marks::mark_restore(&mut st, &id).map_err(e)?);
             }
             j(if done.len() == 1 { done.remove(0) } else { json!({"restored": done}) })
+        }),
+        cmd("legend", "The legend (settings/legend.json): its entries in order, each with its label (its name, or \"Unnamed <color> <kind>\"), style, quick pin, key and the count of marks in the style (old highlights too); \"unlisted\" are styles marks use that no entry names, shown as Unnamed. Name an entry by its name or by its style written kind:color[:lines] (highlight:yellow, underline:red:2).", vec![], |c, _| {
+            j(marks::legend(&*c.study()?))
+        }),
+        cmd("legend add", "Add an entry: wb legend add --kind highlight|underline|circle|box|arrow --color yellow [--lines 1|2|3, underline only] [--name \"Promise\"] [--meaning \"...\"]. With no name it is Unnamed. The same style twice is refused.",
+            vec![Opt("kind", None), Opt("color", None), Opt("lines", None), Opt("name", None), Opt("meaning", None)], |c, a| {
+                let kind = a.opt("kind").ok_or("Say the kind: --kind highlight, underline, circle, box or arrow.")?;
+                let color = a.opt("color").ok_or("Say its color: --color yellow (or #rrggbb).")?;
+                let lines = match a.opt("lines") {
+                    Some(n) => Some(n.parse::<u8>().map_err(|_| "argument --lines: invalid int value")?),
+                    None => None,
+                };
+                j(marks::legend_add(&*c.study()?, &kind, &color, lines, a.opt("name").as_deref(), a.opt("meaning").as_deref()).map_err(e)?)
+            }),
+        cmd("legend set", "Change an entry (by its name, or its style kind:color[:lines]): wb legend set NAME [--name N] [--meaning M] [--color C --restyle | --no-restyle] [--quick on|off] [--key Ctrl+1..Ctrl+9 | none] [--move-key]. --restyle gives every mark in the old style the new color; --no-restyle changes the entry only (one is needed when marks use the style). At most 5 quick styles. A key already used is refused unless --move-key moves it here.",
+            vec![Pos("entry", N::Many), Opt("name", None), Opt("meaning", None), Opt("color", None), Flag("restyle"), Flag("no_restyle"), Opt("quick", None), Opt("key", None), Flag("move_key")], |c, a| {
+                let restyle = match (a.flag("restyle"), a.flag("no_restyle")) {
+                    (true, true) => return Err("Say --restyle or --no-restyle, not both.".into()),
+                    (true, false) => Some(true),
+                    (false, true) => Some(false),
+                    _ => None,
+                };
+                let quick = match a.opt("quick").map(|q| q.to_lowercase()).as_deref() {
+                    None => None,
+                    Some("on" | "true" | "yes") => Some(true),
+                    Some("off" | "false" | "no") => Some(false),
+                    Some(_) => return Err("--quick is on or off.".into()),
+                };
+                let (name, meaning, color, key) = (a.opt("name"), a.opt("meaning"), a.opt("color"), a.opt("key"));
+                let ch = marks::LegendChange { name: name.as_deref(), meaning: meaning.as_deref(), color: color.as_deref(), restyle, quick, key: key.as_deref(), move_key: a.flag("move_key") };
+                let mut st = c.study()?;
+                j(marks::legend_set(&mut st, &a.s("entry"), &ch).map_err(e)?)
+            }),
+        cmd("legend move", "Move an entry in the order: wb legend move NAME --to 1 (1 is first). The quick styles follow the order. Prints the legend.", vec![Pos("entry", N::Many), Opt("to", None)], |c, a| {
+            let to = a.opt("to").ok_or("Say the place: --to 1 (1 is first).")?.parse::<usize>().map_err(|_| "argument --to: invalid int value")?;
+            j(marks::legend_move(&*c.study()?, &a.s("entry"), to).map_err(e)?)
+        }),
+        cmd("legend rm", "Remove an entry: wb legend rm NAME. Its marks stay, and then show as Unnamed.", vec![Pos("entry", N::Many)], |c, a| {
+            j(marks::legend_rm(&*c.study()?, &a.s("entry")).map_err(e)?)
         }),
         cmd("palette", "Your saved custom colors (c1 .. c8).", vec![], |c, _| j(json!({"colors": c.study()?.palette()}))),
         cmd("palette rm", "Forget a saved color (highlights already made in it stay).", vec![Pos("color", N::One)], |c, a| {
