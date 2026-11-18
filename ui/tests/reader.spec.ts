@@ -50,6 +50,64 @@ test('draws Numbers 25 with the marks, in Literata', async ({ page }, info) => {
   await page.screenshot({ path: `${shots}/${info.project.name}-reader.png` });
 });
 
+test('layer visibility repaints the main reader and every open reader tab', async ({ page }, info) => {
+  test.skip(info.project.name !== 'webkit-desktop', 'desktop reader tabs');
+  await page.route('**/fixtures/wb/thread-list.json', route => route.fulfill({ json: [
+    { id: 'phinehas', name: 'Phinehas', color: 'orange' },
+    { id: 'phinehas-echoes', name: 'Phinehas echoes', color: 'blue' },
+  ] }));
+  await page.route(/\/fixtures\/wb\/text-num-25-(8|11)-version-kjv-json\.json$/, route => {
+    const v = Number(/text-num-25-(\d+)/.exec(route.request().url())![1]);
+    return route.fulfill({ json: { verses: [{ book: fx.reader.chapter.name, c: fx.reader.chapter.chapter, v }] } });
+  });
+  await page.route(/\/fixtures\/wb\/parse-highlights-(on|off)\.json$/, route => route.fulfill({
+    json: { action: { cmd: 'highlights', on: route.request().url().endsWith('-on.json') } },
+  }));
+  await ready(page);
+  for (const v of [8, 11]) {
+    await page.locator(`#reader .vn[data-v="${v}"]`).click({ button: 'right' });
+    await page.getByRole('button', { name: 'Open in a new tab' }).click();
+    await expect(page.locator(`.reader2 .vn-asked[data-v="${v}"]`)).toHaveCount(1);
+  }
+
+  const marks = () => page.locator('#reader, .reader2').evaluateAll(roots => roots.map(root => ({
+    fills: root.querySelectorAll('.w.hl').length,
+    lines: root.querySelectorAll('.w[style*="linear-gradient"]').length,
+    notes: root.querySelectorAll('.w.noted, .vn.vnote').length,
+    asked: root.querySelector('.vn-asked')?.getAttribute('data-v'),
+  })));
+  const initial = await marks();
+  expect(initial).toHaveLength(3);
+  for (const { fills, lines, notes } of initial) {
+    expect(fills).toBeGreaterThan(0);
+    expect(lines).toBeGreaterThan(0);
+    expect(notes).toBeGreaterThan(0);
+  }
+
+  const preservedPlace = await page.evaluate(async () => {
+    const wb = (window as any).__wb;
+    const pane = [...document.querySelectorAll<HTMLElement>('.reader2-pane')].find(el => !el.hidden && el.offsetHeight)!;
+    pane.focus({ preventScroll: true });
+    const top = pane.scrollTop;
+    const verse = pane.querySelector('.vn-asked');
+    const reply = await wb.run('highlights off');
+    return { reply, scroll: pane.scrollTop === top, focus: document.activeElement === pane, marker: pane.querySelector('.vn-asked') === verse };
+  });
+  expect(preservedPlace).toEqual({ reply: { ok: true, said: 'Highlights hidden' }, scroll: true, focus: true, marker: true });
+  expect(await marks()).toEqual(initial.map(m => ({ ...m, fills: 0, lines: 0 })));
+  await page.evaluate(() => (window as any).__wb.run('highlights on'));
+  expect(await marks()).toEqual(initial);
+
+  await page.locator('#hl-menu').click();
+  await page.getByRole('button', { name: 'Your highlights', exact: true }).click();
+  expect(await marks()).toEqual(initial.map(m => ({ ...m, fills: 0 })));
+  await page.getByRole('button', { name: 'Phinehas', exact: true }).click();
+  for (const [i, mark] of (await marks()).entries()) {
+    expect(mark.lines).toBeGreaterThan(0);
+    expect(mark.lines).toBeLessThan(initial[i].lines);
+  }
+});
+
 test('tap a word: the word sheet', async ({ page }, info) => {
   test.skip(info.project.name === 'webkit-desktop', 'phone');
   await ready(page);

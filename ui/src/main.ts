@@ -167,6 +167,15 @@ async function refreshMarks() {
   paint(reader, d);
 }
 
+/** Visibility changes use the marks already loaded in each reader, including panes behind another tab. */
+function repaintLayers() {
+  if (drawn) paint(reader, drawn);
+  for (const pane of dock.panes) {
+    const view = secondReaderViews.get(pane);
+    if (view?.drawn) paint(view.root, view.drawn);
+  }
+}
+
 // ---- sheets and cards -----------------------------------------------------------------------------------------------
 function lexiconBody(w: WordView, card = false): HTMLElement {
   const b = h('div', 'lex');
@@ -706,6 +715,7 @@ async function openSecondReader(ref: string, version = 'KJV') {
       el.addEventListener('pointerdown', ev => { if (!(ev.target as HTMLElement).closest('input, textarea, [contenteditable]')) el.focus({ preventScroll: true }); });
       turners.set(el, n => void turn(el, p, n));
       vw = { root, scroller: el, drawn: null, selector: null as unknown as Selector, main: false, pane: p };
+      secondReaderViews.set(p, vw);
       vw.selector = new Selector(root, el, handlersFor(vw));
       wireView(vw);
       el.addEventListener('scroll', () => { if (vw!.selector.sel) vw!.selector.placeHandles(); if (barView === vw) placeBar(); hideCard(); }, { passive: true });
@@ -728,6 +738,7 @@ async function openSecondReader(ref: string, version = 'KJV') {
 
 /** A second reader's own chapter turn, by its scroll element: ← → in a pane turn that pane (note b59b). */
 const turners = new WeakMap<HTMLElement, (n: number) => void>();
+const secondReaderViews = new WeakMap<Pane, View>();
 
 /** The second readers open, by pane: the chapter each shows (app.readers). */
 const readers2 = new Map<string, { pane: string; code: string; chapter: number; label: string }>();
@@ -889,7 +900,7 @@ async function highlightsMenu(from: HTMLElement) {
     b.append(icon(on ? 'eye' : 'eyeoff', 14));
     if (dot) b.append(dot);
     b.append(document.createTextNode(` ${label}`));
-    b.onclick = () => { flip(); layers.save(); refreshMarks(); close(); highlightsMenu(from); };
+    b.onclick = () => { flip(); layers.save(); repaintLayers(); close(); highlightsMenu(from); };
     box.append(b);
   };
   box.append(h('div', 'label', 'Drawn in the reader'));
@@ -1101,6 +1112,7 @@ Object.assign(app, {
   step,
   back,
   refreshMarks,
+  repaintLayers,
   topVerse: () => topVerse().verse,
   setSize,
   size: () => sizePct,
