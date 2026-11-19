@@ -98,6 +98,103 @@ function svg(path: string, size = 18): SVGSVGElement {
   return s;
 }
 
+/** The legend as the bar and the mark card read it. */
+async function readLegend(): Promise<Legend> {
+  try { const l = await wb(['legend']); return { entries: l?.entries || [], unlisted: l?.unlisted || [] }; } catch { return { entries: [], unlisted: [] }; }
+}
+
+/** The styles of a kind, newest used first: the reader's own storage, then the chapter's marks. */
+function recentOf(kind: Kind, data: Legend, chapterMarks: DrawnMark[]): Style[] {
+  const known = new Map<string, Style>();
+  for (const e of [...data.unlisted, ...data.entries]) known.set(e.style || styleKey(e.kind, e.color, e.lines), fromEntry(e));
+  const seen: string[] = [];
+  for (const s of recents()) if (!seen.includes(s)) seen.push(s);
+  const fromChapter = [...chapterMarks].filter(m => m.kind !== 'arrow').sort((a, b) => (a.created < b.created ? 1 : -1)).map(m => m.style || styleKey(m.kind, m.color, m.lines));
+  for (const s of fromChapter) if (!seen.includes(s)) seen.push(s);
+  return seen.filter(s => s.startsWith(`${kind}:`)).map(s => known.get(s) || parseStyle(s)).filter((s): s is Style => !!s);
+}
+
+function rowOf(s: Style, n: number | undefined, pick: (s: Style) => void): HTMLButtonElement {
+  const r = h('button', 'mb-row');
+  r.type = 'button';
+  r.dataset.style = s.style;
+  r.append(sample(s), h('span', 'mb-name', s.label));
+  if (s.quick) { const t = h('span', 'mb-tick'); t.title = 'A quick style'; t.append(svg('M3 8.5l3.5 3.5L13 4.5', 14)); r.append(t); }
+  if (n) r.append(h('kbd', 'mb-n', String(n)));
+  r.onclick = () => pick(s);
+  return r;
+}
+
+function anyColorOf(label: string, onColor: (color: string) => void): HTMLElement {
+  const a = h('label', 'mb-any');
+  const ring = h('i', 'mb-rainbow');
+  const input = h('input') as HTMLInputElement;
+  input.type = 'color';
+  input.value = '#d9822b';
+  input.setAttribute('aria-label', label);
+  input.onchange = () => onColor(input.value.toLowerCase());
+  a.append(ring, h('span', 'mb-name', label), input);
+  return a;
+}
+
+function linesOf(get: () => number, set: (n: number) => void): HTMLElement {
+  const g = h('div', 'mb-lines');
+  g.setAttribute('role', 'group');
+  [1, 2, 3].forEach(n => {
+    const b = h('button', 'mb-line', n === 1 ? '1 line' : String(n));
+    b.type = 'button';
+    b.dataset.lines = String(n);
+    b.setAttribute('aria-pressed', String(n === get()));
+    b.onclick = () => { set(n); g.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); };
+    g.append(b);
+  });
+  return g;
+}
+
+interface KindEnv {
+  legend(): Promise<Legend>;
+  chapterMarks(): DrawnMark[];
+  pick(s: Style): void;
+  anyPick(kind: Kind, color: string, lines: number | undefined): void;
+  getLines(): number;
+  setLines(n: number): void;
+  setRows?(r: Style[]): void;
+}
+
+/** A kind's styles as rows: the person's quick ones pinned with a tick, then the recent ones, six at most, numbered, then Any color…. */
+async function kindMenu(kind: Kind, env: KindEnv): Promise<HTMLElement> {
+  const data = await env.legend();
+  const entries = data.entries.filter(e => e.kind === kind).map(fromEntry);
+  const pinned = entries.filter(s => s.quick);
+  const have = new Set(pinned.map(s => s.style));
+  const recent = recentOf(kind, data, env.chapterMarks()).filter(s => !have.has(s.style));
+  recent.forEach(s => have.add(s.style));
+  const rest = entries.filter(s => !have.has(s.style));
+  const rows = [...pinned, ...recent, ...rest].slice(0, 6);
+  env.setRows?.(rows);
+  const m = h('div');
+  m.dataset.menu = kind;
+  if (kind === 'underline') m.append(linesOf(env.getLines, env.setLines));
+  rows.forEach((s, i) => m.append(rowOf(s, i + 1, env.pick)));
+  if (rows.length) m.append(h('hr', 'mb-rule'));
+  m.append(anyColorOf('Any color…', c => env.anyPick(kind, c, kind === 'underline' ? env.getLines() : undefined)));
+  return m;
+}
+
+/** What the mark card's Change shows (row 27): the same drop-down as the bar's for that kind; a pick is handed back as a kind, color and lines. */
+export async function changeMenu(kind: Kind, chapterMarks: () => DrawnMark[], pick: (s: { kind: Kind; color: string; lines?: number }) => void): Promise<HTMLElement> {
+  let lines = 1;
+  return kindMenu(kind, {
+    legend: readLegend, chapterMarks,
+    pick: s => pick({ kind: s.kind, color: s.color, lines: s.kind === 'underline' ? s.lines ?? 1 : undefined }),
+    anyPick: (k, c, l) => pick({ kind: k, color: c, lines: l }),
+    getLines: () => lines, setLines: n => { lines = n; },
+  });
+}
+
+/** The same small drawing the bar's rows have: a style's sample, for the mark card. */
+export const sampleOf = (kind: Kind, color: string, lines?: number): HTMLElement => sample({ kind, color, lines, label: '', style: styleKey(kind, color, lines) });
+
 export interface MarkBar {
   el: HTMLElement;
   /** A key pressed while the bar is open; true when the bar took it. */
@@ -120,7 +217,7 @@ export function createBar(ctx: BarContext, hooks: BarHooks): MarkBar {
   let busy = false;
   let legendP: Promise<Legend> | null = null;
   let legendData: Legend | null = null;
-  const legend = () => legendP ||= (wb(['legend']) as Promise<Legend>).then(l => ({ entries: l?.entries || [], unlisted: l?.unlisted || [] })).catch(() => ({ entries: [], unlisted: [] })).then(l => (legendData = l));
+  const legend = () => legendP ||= readLegend().then(l => (legendData = l));
   void legend();   // read at once, so Ctrl+1 to Ctrl+9 know their styles
 
   type Id = Kind | 'legend' | 'add' | 'copy' | 'tab' | 'more';
@@ -206,73 +303,17 @@ export function createBar(ctx: BarContext, hooks: BarHooks): MarkBar {
   }
 
   // ---- styles --------------------------------------------------------------------------------------------------------
-  function recentOf(kind: Kind, data: Legend): Style[] {
-    const known = new Map<string, Style>();
-    for (const e of [...data.unlisted, ...data.entries]) known.set(e.style || styleKey(e.kind, e.color, e.lines), fromEntry(e));
-    const seen: string[] = [];
-    for (const s of recents()) if (!seen.includes(s)) seen.push(s);
-    const fromChapter = [...hooks.chapterMarks()].filter(m => m.kind !== 'arrow').sort((a, b) => (a.created < b.created ? 1 : -1)).map(m => m.style || styleKey(m.kind, m.color, m.lines));
-    for (const s of fromChapter) if (!seen.includes(s)) seen.push(s);
-    return seen.filter(s => s.startsWith(`${kind}:`)).map(s => known.get(s) || parseStyle(s)).filter((s): s is Style => !!s);
-  }
+  async function lastStyle(kind: Kind): Promise<Style | undefined> { return recentOf(kind, await legend(), hooks.chapterMarks())[0]; }
 
-  async function lastStyle(kind: Kind): Promise<Style | undefined> { return recentOf(kind, await legend())[0]; }
-
-  function row(s: Style, n?: number): HTMLButtonElement {
-    const r = h('button', 'mb-row');
-    r.type = 'button';
-    r.dataset.style = s.style;
-    r.append(sample(s), h('span', 'mb-name', s.label));
-    if (s.quick) { const t = h('span', 'mb-tick'); t.title = 'A quick style'; t.append(svg('M3 8.5l3.5 3.5L13 4.5', 14)); r.append(t); }
-    if (n) r.append(h('kbd', 'mb-n', String(n)));
-    r.onclick = () => void applyStyle(s);
-    return r;
-  }
-
-  function anyColor(kind: Kind, label = 'Any color…'): HTMLElement {
-    const a = h('label', 'mb-any');
-    const ring = h('i', 'mb-rainbow');
-    const input = h('input') as HTMLInputElement;
-    input.type = 'color';
-    input.value = '#d9822b';
-    input.setAttribute('aria-label', label);
-    input.onchange = () => void newPen(kind, input.value.toLowerCase());
-    a.append(ring, h('span', 'mb-name', label), input);
-    return a;
-  }
-
-  function linesChoice(): HTMLElement {
-    const g = h('div', 'mb-lines');
-    g.setAttribute('role', 'group');
-    [1, 2, 3].forEach(n => {
-      const b = h('button', 'mb-line', n === 1 ? '1 line' : String(n));
-      b.type = 'button';
-      b.dataset.lines = String(n);
-      b.setAttribute('aria-pressed', String(n === lines));
-      b.onclick = () => { lines = n; g.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); };
-      g.append(b);
-    });
-    return g;
-  }
+  const row = (s: Style, n?: number) => rowOf(s, n, s2 => void applyStyle(s2));
+  const anyColor = (kind: Kind, label = 'Any color…') => anyColorOf(label, c => void newPen(kind, c));
+  const linesChoice = () => linesOf(() => lines, n => { lines = n; });
 
   /** A kind's styles as rows (also the right-click menu's submenu). `rows` is left holding them, for the number keys. */
-  async function buildKind(kind: Kind): Promise<HTMLElement> {
-    const data = await legend();
-    const entries = data.entries.filter(e => e.kind === kind).map(fromEntry);
-    const pinned = entries.filter(s => s.quick);
-    const have = new Set(pinned.map(s => s.style));
-    const recent = recentOf(kind, data).filter(s => !have.has(s.style));
-    recent.forEach(s => have.add(s.style));
-    const rest = entries.filter(s => !have.has(s.style));
-    rows = [...pinned, ...recent, ...rest].slice(0, 6);
-    const m = h('div');
-    m.dataset.menu = kind;
-    if (kind === 'underline') m.append(linesChoice());
-    rows.forEach((s, i) => m.append(row(s, i + 1)));
-    if (rows.length) m.append(h('hr', 'mb-rule'));
-    m.append(anyColor(kind));
-    return m;
-  }
+  const buildKind = (kind: Kind): Promise<HTMLElement> => kindMenu(kind, {
+    legend, chapterMarks: hooks.chapterMarks, pick: s => void applyStyle(s), anyPick: (k, c) => void newPen(k, c),
+    getLines: () => lines, setLines: n => { lines = n; }, setRows: r => { rows = r; },
+  });
 
   async function showKind(kind: Kind) {
     open = { kind };

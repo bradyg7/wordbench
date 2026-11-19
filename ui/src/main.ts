@@ -10,7 +10,8 @@ import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/noto-sans-hebrew/400.css';
 import { api, inApp, onDo, wb, type WordView, type VerseView, type Book, type Mark } from './api';
-import { draw, drawTimes, paint, textOf, labelOf, type Drawn } from './reader';
+import { draw, drawTimes, paint, textOf, labelOf, marksOnWord, type Drawn } from './reader';
+import { openMarkCard } from './markcard';
 import { Selector, type InputMode } from './select';
 import { openSheet, closeSheet, showCard, hideCard, toast, toastUndo, compact } from './sheets';
 import { perf, afterPaint, record } from './perf';
@@ -580,6 +581,24 @@ async function openWord(vw: View, k: number, el: HTMLElement, at: number) {
   record('word-sheet', performance.now() - at, { word: data.text, rust_ms, call_ms: t1 - at });
 }
 
+/** A click on a word (marks T8, rows 25 and 26): with a mark on it, the mark card (its Look up is the word's own card); with none, the word's card as always. */
+async function tapWord(vw: View, k: number, el: HTMLElement, at: number) {
+  const d = vw.drawn!;
+  const local = d.chapter.version ? [] : marksOnWord(d, k);
+  if (!local.length) return openWord(vw, k, el, at);
+  app.picked = selectionAt(vw, k, k);
+  const sync = (apply: () => void) => { apply(); paint(vw.root, d); if (inApp) written('highlights'); };
+  await openMarkCard(el, {
+    place: app.picked.anchor,
+    local,
+    chapterMarks: () => d.marks.marks || [],
+    restyled: m => sync(() => { d.marks.marks = (d.marks.marks || []).map(x => (x.id === m.id ? m : x)); }),
+    removed: id => sync(() => { d.marks.marks = (d.marks.marks || []).filter(x => x.id !== id); }),
+    restored: m => sync(() => { if (!(d.marks.marks || []).some(x => x.id === m.id)) (d.marks.marks ||= []).push(m); }),
+    lookup: () => void openWord(vw, k, el, performance.now()),
+  });
+}
+
 async function openVerse(vw: View, v: number, el: HTMLElement, at: number) {
   const d = vw.drawn!;
   app.picked = verseAt(d, v);
@@ -597,7 +616,7 @@ let hoverSeq = 0;
 /** What a reader does with clicks, hovers and selections. */
 function handlersFor(vw: View) {
   return {
-    tapWord: (k: number, el: HTMLElement, at: number) => openWord(vw, k, el, at),
+    tapWord: (k: number, el: HTMLElement, at: number) => tapWord(vw, k, el, at),
     tapVerse: (v: number, el: HTMLElement, at: number, shift?: boolean) => selectVerse(vw, v, el, at, shift),
     hoverWord: async (k: number, el: HTMLElement) => {
       if (hoverMode() !== 'on') return;

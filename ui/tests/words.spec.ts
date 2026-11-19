@@ -9,6 +9,8 @@ const zeal = fx.words['11.24'];
 async function ready(page: Page) {
   await page.goto('/?at=NUM.25');
   await page.waitForFunction(() => (window as any).__wbReady);
+  // the fixture chapter holds marks on verse 11; a click on a marked word opens the mark card (marks T8), so these word-card tests read it unmarked
+  await page.evaluate(() => { const w = (window as any).__wb; w.drawn.marks.marks = []; w.repaint(); });
 }
 
 async function wordBox(page: Page, v: number, i: number) {

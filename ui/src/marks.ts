@@ -5,7 +5,7 @@ import type { DrawnMark, Mark, Marks } from './api';
 const WIDE = 65536;
 export const key = (v: number, i: number) => v * WIDE + i;
 
-function span(a: Mark, ch: number): [number, number] | null {
+export function span(a: Mark, ch: number): [number, number] | null {
   switch (a.kind) {
     case 'word': return a.c1 === ch ? [key(a.v1, a.i1!), key(a.v1, a.i1!)] : null;
     case 'verse': return a.c1 === ch ? [key(a.v1, 0), key(a.v1, WIDE - 1)] : null;

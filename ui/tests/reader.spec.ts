@@ -55,6 +55,7 @@ test('draws Numbers 25 with the marks, in Literata', async ({ page }, info) => {
 test('tap a word: the word sheet', async ({ page }, info) => {
   test.skip(info.project.name === 'webkit-desktop', 'phone');
   await ready(page);
+  await page.evaluate(() => { const w = (window as any).__wb; w.drawn.marks.marks = []; w.repaint(); });   // a marked word opens the mark card (marks T8)
   const zeal = fx.words['11.24'];
   const box = await wordBox(page, 11, 24);
   await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);

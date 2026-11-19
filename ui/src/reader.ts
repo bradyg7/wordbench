@@ -5,7 +5,8 @@
 // Long chapters are drawn in parts: the blocks up to the place being opened plus about a screen more at once, the rest
 // added in small steps after the first frame (appending below never moves what is on screen).
 import type { Chapter, Marks, Mark } from './api';
-import { computeMarks, key, type Computed } from './marks';
+import { computeMarks, key, parseAt, span, type Computed } from './marks';
+import type { DrawnMark } from './api';
 import { layers } from './layers';
 
 export interface Drawn {
@@ -81,6 +82,17 @@ function compute(keys: number[], m: Marks, ch: number): Computed {
   // Reading mode shows only the text: no mark and no folder tab. A kind or an entry switched off hides its marks only.
   return computeMarks(keys, m, ch, id => layers.all && !panel.reading && !off.includes(id),
     x => panel.shows(x) && (x.kind !== 'highlight' || layers.highlightsShown()));
+}
+
+/** The marks drawn on word k (a highlight, underline, circle or box that is shown), in the order the reader holds them (oldest first). Arrows are in the gutter and never on a word. */
+export function marksOnWord(d: Drawn, k: number): DrawnMark[] {
+  if (!layers.all || panel.reading) return [];
+  const off = d.marks.hidden || [], at = key(d.v[k], d.i[k]);
+  return (d.marks.marks || []).filter(x => {
+    if (x.kind === 'arrow' || off.includes(x.id) || !panel.shows(x) || (x.kind === 'highlight' && !layers.highlightsShown())) return false;
+    const a = parseAt(x.at), s = a && span(a, d.chapter.chapter);
+    return !!s && at >= s[0] && at <= s[1];
+  });
 }
 
 export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVerse = 1, questions = new Set<number>()): Drawn {
