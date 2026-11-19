@@ -57,7 +57,7 @@ None.
 | 1 | site Download | **Download for Mac** | the browser downloads `Wordbench-mac.dmg` | none | none | site.spec | [x] |
 | 2 | site Download | read the Mac guide | steps M-3 with pictures, and "Not yet tried on a real Mac" (M-6) | none | none | site.spec | [x] |
 | 3 | Finder | open the dmg, drag to Applications, open, Open Anyway | the app's setup screen | app data folder made | none | a real Mac (open question 1) | [ ] |
-| 4 | the app on a Mac | everything Windows does | the same app | the same files | `wb` (built for Mac) | `cargo test` and the webkit tests on GitHub's Mac machine | [ ] |
+| 4 | the app on a Mac | everything Windows does | the same app | the same files | `wb` (built for Mac) | `cargo test` and the webkit tests on GitHub's Mac machine | [x] |
 | 5 | the app on a Mac | Show in folder (documents, findings) | Finder with the file selected | none | none | a Rust test of the command line built | [x] |
 | 6 | the app on a Mac | opens when a newer release exists | the update offer; after it, the new version | the app replaced | none | a real Mac, across two releases | [ ] |
 | 7 | GitHub | push a tag `v*` | both platforms built and published; `latest.json` lists both | releases repo | none | the release run | [ ] |
