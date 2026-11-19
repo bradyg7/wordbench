@@ -54,8 +54,8 @@ None.
 
 | # | Where | Action | What the person sees | What changes | Command | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 1 | site Download | **Download for Mac** | the browser downloads `Wordbench-mac.dmg` | none | none | site.spec | [ ] |
-| 2 | site Download | read the Mac guide | steps M-3 with pictures, and "Not yet tried on a real Mac" (M-6) | none | none | site.spec | [ ] |
+| 1 | site Download | **Download for Mac** | the browser downloads `Wordbench-mac.dmg` | none | none | site.spec | [x] |
+| 2 | site Download | read the Mac guide | steps M-3 with pictures, and "Not yet tried on a real Mac" (M-6) | none | none | site.spec | [x] |
 | 3 | Finder | open the dmg, drag to Applications, open, Open Anyway | the app's setup screen | app data folder made | none | a real Mac (open question 1) | [ ] |
 | 4 | the app on a Mac | everything Windows does | the same app | the same files | `wb` (built for Mac) | `cargo test` and the webkit tests on GitHub's Mac machine | [ ] |
 | 5 | the app on a Mac | Show in folder (documents, findings) | Finder with the file selected | none | none | a Rust test of the command line built | [x] |
@@ -70,6 +70,7 @@ None.
   `latest.json` for both, the stable `Wordbench-mac.dmg` (row 7).
   M2 built (row 7 proven by the first release run).
 - **M3** The site: the Mac button and the guide (rows 1, 2), pictures drawn as the Windows warning is.
+  M3 built (rows 1, 2; site.spec, mac button only when release.json has `mac: true`).
 - **M4** The first real-Mac check (rows 3, 6), with the person or a tester.
 
 ## Out of scope / later

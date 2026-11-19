@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+const MAC_DMG = 'https://github.com/bradyg7/wordbench-releases/releases/latest/download/Wordbench-mac.dmg';
 const STABLE = 'https://github.com/bradyg7/wordbench-releases/releases/latest/download/Bible-Workbench-setup.exe';
 
 test('overview: Wordbench, the text, the download button (rows 1, 3)', async ({ page }) => {
@@ -12,7 +13,7 @@ test('overview: Wordbench, the text, the download button (rows 1, 3)', async ({ 
   await expect(page.locator('h1')).toHaveText('Wordbench');
   await expect(page.getByText('Study the text for yourself.')).toBeVisible();
   await expect(page.getByText('Read the King James Bible, look closely at its words, and keep your own work beside it.')).toBeVisible();
-  await expect(page.getByText('Free. Mac coming soon.')).toBeVisible();
+  await expect(page.getByText('Free, for Windows and Mac.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Download for Windows' })).toHaveAttribute('href', STABLE);
   await expect(page.getByText('The conclusions are yours.')).toBeVisible();
   const body = await page.locator('body').innerText();
@@ -54,6 +55,36 @@ test('download: the release box comes from release.json (row 4)', async ({ page 
   await expect(page.getByText('More info').first()).toBeVisible();
   await expect(page.getByText('Run anyway').first()).toBeVisible();
   await expect(page.getByText('An example of the warning, drawn here.')).toBeVisible();
+});
+
+const withMac = { schemaVersion: 2, status: 'published', version: '0.3.0', publishedAt: '2026-11-20T00:00:00Z', minimumWindows: '10', downloadUrl: STABLE, mac: true };
+
+test('download: with a Mac build, the Mac button, the note and the guide (rows 1, 2)', async ({ page }) => {
+  await page.route('**/release.json', route => route.fulfill({ json: withMac }));
+  await page.goto('/download/');
+  await expect(page.getByRole('link', { name: 'Download for Mac' })).toHaveAttribute('href', MAC_DMG);
+  await expect(page.getByText('macOS 11 or newer · Apple silicon and Intel')).toBeVisible();
+  await expect(page.getByText('Not yet tried on a real Mac.')).toBeVisible();
+  await expect(page.locator('.mac-guide > li')).toHaveCount(4);
+  await expect(page.getByText('macOS says it could not verify it: choose')).toBeVisible();
+  await expect(page.getByText('(On macOS 15 and later, right-click → Open no longer skips this.)')).toBeVisible();
+  await expect(page.getByText('Updates arrive inside the app and need none of this.')).toBeVisible();
+  await expect(page.locator('.mac-art .hot')).toHaveText(['Done', 'Open Anyway']);
+  await expect(page.getByText('An example, drawn here.')).toHaveCount(2);
+  await expect(page.getByText('The Mac version is coming with the next release.')).toHaveCount(0);
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Download for Mac' })).toHaveAttribute('href', MAC_DMG);
+});
+
+test('download: without a Mac build, no Mac button, the coming line (row 1)', async ({ page }) => {
+  await page.goto('/download/');
+  await expect(page.getByRole('heading', { name: 'Version 0.2.0' })).toBeVisible();
+  await expect(page.getByText('The Mac version is coming with the next release.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Download for Mac' })).toHaveCount(0);
+  await expect(page.getByText('Not yet tried on a real Mac.')).toHaveCount(0);
+  await page.goto('/');
+  await expect(page.getByText('Free, for Windows and Mac.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Download for Mac' })).toBeHidden();
 });
 
 test('download: no release found shows no button (row 5)', async ({ page }) => {
