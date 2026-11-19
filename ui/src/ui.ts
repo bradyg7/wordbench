@@ -20,6 +20,7 @@ const PATHS: Record<string, string> = {
   threads: 'M4 2v4a3 3 0 0 0 3 3h2a3 3 0 0 1 3 3v2M12 2v4M4 9v5M4 2a1 1 0 1 0 0 .01M12 2a1 1 0 1 0 0 .01',
   shelf: 'M2 4h12M2 8h12M2 12h8',
   folder: 'M1.5 4.5a1 1 0 0 1 1-1h3.3l1.5 1.5h6.2a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z',
+  colors: 'M2.5 2.5h4v4h-4zM9.5 2.5h4v4h-4zM2.5 9.5h4v4h-4zM9.5 9.5h4v4h-4z',
   legend: 'M2.5 3h3v3h-3zM7.5 4.5h6M2.5 10h3v3h-3zM7.5 11.5h6',
   pen: 'M10.5 2.5l3 3L6 13H3v-3zM9 4l3 3M2 15h12',
   more: 'M3 8h.01M8 8h.01M13 8h.01',

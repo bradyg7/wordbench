@@ -8,6 +8,7 @@ import { wb } from './api';
 import { app, goTo } from './app';
 import { sampleOf, type Kind } from './markbar';
 import { toast } from './sheets';
+import { openColormap } from './colormap';
 import { button, h, popMenu } from './ui';
 
 export const KINDS: [string, string][] = [['', 'Everything'], ['page', 'Pages'], ['save', 'Saves'], ['question', 'Questions'], ['margin', 'Margin notes'], ['highlight', 'Highlights'], ['mark', 'Marks']];
@@ -136,7 +137,10 @@ async function markResults(words: string): Promise<HTMLElement> {
     select('Legend entry', styles, markFilter.style, v => { markFilter.style = v; }),
     book, names, date('Since', 'since'), date('Until', 'until'),
   );
-  scroll.append(filters, line, list);
+  const colors = h('button', 'btn small nb-colors', 'Colors across the Bible') as HTMLButtonElement;
+  colors.type = 'button';
+  colors.onclick = () => void openColormap();
+  scroll.append(colors, filters, line, list);
 
   async function load() {
     // the order is fixed, so the same filters are the same `wb` line: find [words] --kind mark [--style] [--mark-kind] [--book] [--since] [--until]

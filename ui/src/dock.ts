@@ -22,7 +22,7 @@ export const CHANGES: Change[] = ['notes', 'threads', 'highlights', 'plans', 'se
 /** What each kind of pane shows from the study folder. A write draws again only the panes that show what it changed;
  * the other kinds show the Bible database alone and are never drawn again by a write. */
 const SHOWS: Record<string, Change[]> = {
-  legend: ['highlights'], notebook: ['notes', 'threads', 'documents'], threads: ['threads'], thread: ['threads', 'notes', 'highlights', 'documents'], place: ['notes', 'highlights', 'threads'],
+  legend: ['highlights'], colormap: ['highlights', 'threads', 'sets'], notebook: ['notes', 'threads', 'documents'], threads: ['threads'], thread: ['threads', 'notes', 'highlights', 'documents'], place: ['notes', 'highlights', 'threads'],
   reader2: ['notes', 'highlights', 'threads'], versecard: ['highlights'], wordcard: [], find: ['notes', 'threads'], marked: ['highlights', 'threads'], plans: ['plans'], reading: ['plans', 'notes', 'highlights', 'threads'], findings: ['findings'], shelf: ['sets', 'threads', 'notes', 'documents'],
   // a document's state follows its thread, the notes and highlights in it, and the documents themselves
   documents: ['documents', 'threads', 'notes', 'highlights'],

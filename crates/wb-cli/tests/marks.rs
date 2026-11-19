@@ -769,3 +769,93 @@ fn refused_text(w: &Wb, args: &[&str]) -> String {
     assert_ne!(code, 0, "{args:?} should be refused: {out}");
     format!("{out}{err}")
 }
+
+// ---- Colors across the Bible (row 57) -------------------------------------------------------------------------------
+
+fn map_cell(m: &Value, code: &str, chapter: u32) -> Value {
+    let b = m["books"].as_array().unwrap().iter().find(|b| b["code"] == code).unwrap();
+    b["cells"][chapter as usize - 1].clone()
+}
+
+#[test]
+fn marks_map_gives_every_book_with_its_chapters_the_styles_and_the_folder_colors_in_each() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["legend", "add", "--kind", "highlight", "--color", "yellow", "--name", "Promise"]);
+    w.ok(&["mark", "add", "Num 25:11", "--style", "Promise"]);
+    w.ok(&["mark", "add", "Num 25:13", "--style", "Promise"]);
+    w.ok(&["mark", "add", "Gen 1:1", "--style", "Promise"]);
+    w.ok(&["mark", "add", "Num 26:1", "--kind", "box", "--color", "blue"]); // a style no entry names
+    w.ok(&["mark", "add", "NUM.25:11-26:2", "--kind", "underline", "--color", "pink"]); // over two chapters
+    w.ok(&["folder", "new", "Phinehas"]);
+    w.ok(&["save", "Num 25:12", "--folder", "Phinehas"]);
+    w.ok(&["folder", "color", "Phinehas", "green"]);
+    w.ok(&["folder", "new", "Plain"]);
+    w.ok(&["save", "Num 27:1", "--folder", "Plain"]); // no color: not on the map
+    let m = w.js(&["marks", "map"]);
+    // every book in order, each with all its chapters
+    let books = m["books"].as_array().unwrap();
+    assert_eq!(books.len(), 66);
+    assert_eq!((books[0]["code"].clone(), books[0]["chapters"].clone(), books[0]["cells"].as_array().unwrap().len()), (json!("GEN"), json!(50), 50));
+    assert_eq!(books.iter().find(|b| b["code"] == "PSA").unwrap()["cells"].as_array().unwrap().len(), 150);
+    let n25 = map_cell(&m, "NUM", 25);
+    let st = |c: &Value| c["styles"].as_array().unwrap().iter().map(|s| (s["style"].as_str().unwrap().to_string(), s["count"].as_u64().unwrap())).collect::<Vec<_>>();
+    assert_eq!(st(&n25), [("highlight:yellow".to_string(), 2), ("underline:pink:1".to_string(), 1)], "the legend's entries first, a mark over two chapters counts in each");
+    assert_eq!(n25["styles"][0]["color"], "yellow");
+    assert_eq!(n25["folders"], json!([{"key": n25["folders"][0]["key"], "name": "Phinehas", "color": "green", "count": 1}]));
+    let n26 = map_cell(&m, "NUM", 26);
+    assert_eq!(st(&n26), [("underline:pink:1".to_string(), 1), ("box:blue".to_string(), 1)]);
+    assert_eq!(map_cell(&m, "GEN", 1)["styles"].as_array().unwrap().len(), 1);
+    // a chapter with nothing is empty; the uncolored folder is nowhere
+    let empty = map_cell(&m, "NUM", 27);
+    assert_eq!((empty["styles"].clone(), empty["folders"].clone()), (json!([]), json!([])));
+    assert_eq!(m["folders"].as_array().unwrap().len(), 1);
+    assert_eq!(m["filter"], Value::Null);
+    // the legend styles offered: the entry, then the styles in use that none names
+    let labels: Vec<&str> = m["styles"].as_array().unwrap().iter().map(|s| s["label"].as_str().unwrap()).collect();
+    assert_eq!(labels, ["Promise", "Unnamed pink underline", "Unnamed blue box"], "then the styles in use no entry names, in Bible order");
+    assert_eq!(m["chapters_with"], 3); // GEN 1, NUM 25, NUM 26
+}
+
+#[test]
+fn marks_map_with_a_style_or_a_folder_counts_each_chapter_and_the_empty_ones_are_the_gaps() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["legend", "add", "--kind", "highlight", "--color", "yellow", "--name", "Promise"]);
+    w.ok(&["mark", "add", "Num 25:11", "--style", "Promise"]);
+    w.ok(&["mark", "add", "Num 25:13", "--style", "Promise"]);
+    w.ok(&["mark", "add", "Gen 1:1", "--style", "Promise"]);
+    w.ok(&["mark", "add", "Num 26:1", "--kind", "box", "--color", "blue"]);
+    w.ok(&["folder", "new", "Phinehas"]);
+    w.ok(&["save", "Num 25:12", "--folder", "Phinehas"]);
+    w.ok(&["save", "Gen 2:3", "--folder", "Phinehas"]);
+    w.ok(&["folder", "color", "Phinehas", "green"]);
+    w.ok(&["thread", "new", "Zeal", "--at", "Psa 119:1"]);
+    w.ok(&["thread", "edit", "Zeal", "--color", "pink"]);
+    let counts = |m: &Value| -> Vec<(String, u64)> {
+        m["books"].as_array().unwrap().iter().flat_map(|b| b["cells"].as_array().unwrap().iter().filter(|c| c["count"] != 0).map(|c| (format!("{}{}", b["code"].as_str().unwrap(), c["chapter"]), c["count"].as_u64().unwrap())).collect::<Vec<_>>()).collect()
+    };
+    // a style by its entry's name, or by kind:color: every book is still there, each with all its chapters
+    let p = w.js(&["marks", "map", "--style", "Promise"]);
+    assert_eq!(p["books"].as_array().unwrap().len(), 66);
+    assert_eq!(counts(&p), [("GEN1".to_string(), 1), ("NUM25".to_string(), 2)]);
+    assert_eq!(p["styles"], w.js(&["marks", "map"])["styles"], "the filter row offers every style whatever is chosen");
+    assert_eq!((p["total"].clone(), p["chapters_with"].clone(), p["filter"]["label"].clone()), (json!(3), json!(2), json!("Promise")));
+    let gaps = p["books"].as_array().unwrap().iter().flat_map(|b| b["cells"].as_array().unwrap().clone()).filter(|c| c["count"] == 0).count();
+    assert_eq!(gaps, 1189 - 2, "the empty chapters are the gaps");
+    assert_eq!(counts(&w.js(&["marks", "map", "--style", "box:blue"])), [("NUM26".to_string(), 1)]);
+    assert_eq!(w.js(&["marks", "map", "--style", "box:blue"])["filter"]["label"], "Unnamed blue box");
+    // a style nobody used: all gaps
+    assert_eq!(w.js(&["marks", "map", "--style", "circle:pink"])["chapters_with"], 0);
+    // a folder (a set with a color, and a thread file with one)
+    assert_eq!(counts(&w.js(&["marks", "map", "--folder", "Phinehas"])), [("GEN2".to_string(), 1), ("NUM25".to_string(), 1)]);
+    let z = w.js(&["marks", "map", "--folder", "Zeal"]);
+    assert_eq!(counts(&z), [("PSA119".to_string(), 1)]);
+    assert_eq!((z["filter"]["label"].clone(), z["filter"]["color"].clone()), (json!("Zeal"), json!("pink")));
+    // refusals say what to do
+    assert!(refused_text(&w, &["marks", "map", "--style", "Nothing"]).contains("No legend entry"));
+    assert!(refused_text(&w, &["marks", "map", "--folder", "Nowhere"]).contains("No folder"));
+    assert!(refused_text(&w, &["marks", "map", "--style", "Promise", "--folder", "Zeal"]).contains("Choose one"));
+    // reading it writes nothing
+    let before = w.snapshot();
+    w.ok(&["marks", "map"]);
+    assert_eq!(w.snapshot(), before);
+}

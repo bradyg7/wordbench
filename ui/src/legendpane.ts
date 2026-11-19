@@ -8,6 +8,7 @@ import { wb } from './api';
 import { dock } from './panes';
 import type { Pane } from './dock';
 import { sampleOf, type Kind } from './markbar';
+import { openColormap } from './colormap';
 import { toast, toastUndo } from './sheets';
 import { h, icon, popMenu } from './ui';
 
@@ -75,7 +76,13 @@ class LegendPane {
     add.append(icon('plus', 14), document.createTextNode(' New pen'));
     add.setAttribute('aria-expanded', String(this.view.adding));
     add.onclick = () => { this.view.adding = !this.view.adding; this.list(); };
-    hd.append(add);
+    const map = h('button', 'icon-btn lg-colors');
+    map.type = 'button';
+    map.title = 'Colors across the Bible';
+    map.setAttribute('aria-label', 'Colors across the Bible');
+    map.append(icon('colors', 16));
+    map.onclick = () => void openColormap();
+    hd.append(add, map);
     el.append(hd);
     if (this.view.adding) el.append(this.newPen());
     const box = h('div', 'lg-list');

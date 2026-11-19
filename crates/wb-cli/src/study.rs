@@ -149,6 +149,10 @@ pub fn commands() -> Vec<Command> {
             let sp = c.span(&a.s("ref"))?;
             j(sa::chapter_marks(&*c.study()?, &sp.book.code, sp.c1 as i64).map_err(e)?)
         }),
+        cmd("marks map", "Colors across the Bible: wb marks map [--style ENTRY|kind:color[:lines]] [--folder NAME]. Every book in order with its chapters. With no filter each chapter lists its styles (style, kind, color, count) and the colored folders with saves there; with a style or a folder, each chapter has only its count, and a chapter with 0 is a gap. Also {styles, folders, filter, total, chapters_with}.",
+            vec![Opt("style", None), Opt("folder", None)], |c, a| {
+                j(marks::marks_map(c.bible()?, &*c.study()?, a.opt("style").as_deref(), a.opt("folder").as_deref()).map_err(e)?)
+            }),
         cmd("mark add", "Draw a mark on a place: wb mark add John 3:16 --kind highlight|underline|circle|box|arrow --color yellow (or #rrggbb) [--lines 1|2|3, underline only] [--to PLACE, arrow only, in the same chapter]; or --style <legend entry> (its name, or its style kind:color[:lines]) instead of --kind, --color and --lines. Kept in marks/<BOOK>.json.",
             vec![Pos("place", N::One), Opt("kind", None), Opt("color", None), Opt("lines", None), Opt("to", None), Opt("style", None)], |c, a| {
                 let mut lines = match a.opt("lines") {

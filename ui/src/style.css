@@ -354,10 +354,10 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-n { flex: none; min-width: 16px; text-align: center; font: var(--type-caption); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 3px; }
 :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-tick { flex: none; color: var(--muted); display: inline-flex; }
 :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-rule { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
-:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample { flex: none; width: 22px; height: 14px; display: inline-flex; flex-direction: column; justify-content: center; gap: 1px; box-sizing: border-box; border-radius: 3px; font-style: normal; font-size: 12px; line-height: 14px; text-align: center; }
-:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample b { display: block; border-radius: 1px; }
-:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample.s-circle { border: 1.5px solid; border-radius: 9999px; }
-:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample.s-box { border: 1.5px solid; border-radius: 2px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow, .colormap) .mb-sample { flex: none; width: 22px; height: 14px; display: inline-flex; flex-direction: column; justify-content: center; gap: 1px; box-sizing: border-box; border-radius: 3px; font-style: normal; font-size: 12px; line-height: 14px; text-align: center; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow, .colormap) .mb-sample b { display: block; border-radius: 1px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow, .colormap) .mb-sample.s-circle { border: 1.5px solid; border-radius: 9999px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow, .colormap) .mb-sample.s-box { border: 1.5px solid; border-radius: 2px; }
 :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-rainbow { flex: none; width: 16px; height: 16px; border-radius: 50%; background: conic-gradient(#e5484d, #f5a524, #f5d90a, #46a758, #3e63dd, #8e4ec6, #e5484d); }
 :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-lines, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-kinds { display: flex; gap: 2px; padding: 2px; margin-bottom: 4px; background: var(--sunken); border-radius: 8px; }
@@ -486,3 +486,29 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .lg-text { min-width: 60px; }
 .lg-count { flex: none; white-space: nowrap; }
 
+
+/* Colors across the Bible (marks T14, rows 57 and 58): a book a row of chapter cells; a style as small bars, a folder as a tab */
+.colormap { padding: 12px 14px; box-sizing: border-box; }
+.cm-head { display: flex; align-items: center; gap: 8px; }
+.cm-sub { margin: 4px 0 10px; }
+.cm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.cm-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 9999px; background: var(--surface, none); color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.cm-chip:hover { background: var(--sunken); }
+.cm-chip.on, .cm-chip[aria-pressed="true"] { background: var(--sunken); border-color: var(--ink, currentColor); font-weight: 600; }
+.cm-dot { display: inline-block; width: 10px; height: 10px; border-radius: 9999px; }
+.cm-where { margin: 0 0 8px; }
+.cm-grid { overflow: auto; max-width: 100%; padding-bottom: 6px; }
+.cm-row { display: flex; align-items: center; gap: 8px; min-width: max-content; height: 20px; }
+.cm-book { position: sticky; left: 0; z-index: 1; flex: none; width: 104px; background: var(--surface, var(--bg)); font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm-cells { display: inline-flex; gap: 2px; }
+.cm-cell { position: relative; display: flex; flex-direction: row; justify-content: center; gap: 1px; flex: none; width: 9px; height: 16px; padding: 0 1px; box-sizing: border-box; border: 0; border-radius: 2px; background: var(--sunken); overflow: hidden; cursor: pointer; }
+.cm-cell:hover, .cm-cell:focus-visible { outline: 2px solid var(--ink, currentColor); outline-offset: 0; z-index: 2; }
+.cm-bar { flex: 1; min-width: 0; border-radius: 1px; }
+.cm-tab { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; }
+@media (pointer: coarse), (max-width: 600px) {
+  .cm-row { height: 34px; }
+  .cm-cells { gap: 3px; }
+  .cm-cell { width: 28px; height: 30px; }
+  .cm-book { width: 92px; }
+  .cm-chip { min-height: 44px; }
+}

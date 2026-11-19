@@ -870,6 +870,11 @@ fn words_under(bible: &Bible, a: &anchors::Anchor) -> String {
 /// `chapter`, `verse`, `label` (its reference), `words` (from the Bible, or the old highlight's own), `created`, `old`.
 /// The one scanner behind `legend_uses` (row 40) and `find_marks` (row 51).
 fn mark_rows(bible: &Bible, store: &Store, keep: impl Fn(&DrawnMark) -> bool) -> Vec<Value> {
+    mark_rows_with(bible, store, keep, true)
+}
+
+/// `mark_rows`, with or without the words under each mark (`with_words: false` reads no verse text: the whole-Bible map, row 57).
+fn mark_rows_with(bible: &Bible, store: &Store, keep: impl Fn(&DrawnMark) -> bool, with_words: bool) -> Vec<Value> {
     let legacy_ids: std::collections::HashSet<String> = store.all_highlights().iter().map(|h| s(h, "id")).collect();
     let mut found: Vec<(usize, u32, u32, u32, String, Value)> = vec![];
     for m in all_marks(store).into_iter().filter(|m| keep(m)) {
@@ -877,8 +882,8 @@ fn mark_rows(bible: &Bible, store: &Store, keep: impl Fn(&DrawnMark) -> bool) ->
         let Some(bi) = bible.books().iter().position(|b| b.code == a.code) else { continue };
         let book = &bible.books()[bi];
         let label = crate::places::span_label(&crate::places::Span { book: book.clone(), c1: a.c1, v1: a.v1, c2: a.c2.unwrap_or(a.c1), v2: a.v2.unwrap_or(a.v1) });
-        let mut words = words_under(bible, &a);
-        if words.is_empty() {
+        let mut words = if with_words { words_under(bible, &a) } else { String::new() };
+        if words.is_empty() && with_words {
             words = m.words.clone().unwrap_or_default();
         }
         let mut v = json!({"id": m.id, "kind": m.kind, "color": m.color, "at": m.at, "code": a.code, "book": book.name, "chapter": a.c1,
@@ -893,6 +898,173 @@ fn mark_rows(bible: &Bible, store: &Store, keep: impl Fn(&DrawnMark) -> bool) ->
     }
     found.sort_by(|x, y| (x.0, x.1, x.2, x.3, &x.4).cmp(&(y.0, y.1, y.2, y.3, &y.4)));
     found.into_iter().map(|f| f.5).collect()
+}
+
+type Grid = std::collections::BTreeMap<String, std::collections::BTreeMap<u32, u32>>;
+
+fn tally(g: &mut Grid, a: &Anchor) {
+    let b = g.entry(a.code.clone()).or_default();
+    for c in a.c1..=a.last_chapter().max(a.c1) {
+        *b.entry(c).or_insert(0) += 1;
+    }
+}
+
+fn count_of(g: &Grid, code: &str, c: u32) -> u32 {
+    g.get(code).and_then(|b| b.get(&c)).copied().unwrap_or(0)
+}
+
+fn style_json(k: &str) -> Value {
+    let p: Vec<&str> = k.split(':').collect();
+    let mut v = json!({"style": k, "kind": p[0], "color": p[1]});
+    if let Some(l) = p.get(2).and_then(|n| n.parse::<u8>().ok()) {
+        v["lines"] = json!(l);
+    }
+    v
+}
+
+/// Colors across the Bible (MK7-29, row 57): every book in order, each with its chapters.
+///
+/// With no filter each chapter holds `styles` (the styles with marks there: `style`, `kind`, `color`, `lines?`, `count`, in
+/// the legend's order) and `folders` (the colored folders with saves or places there: `key`, `name`, `color`, `count`). With
+/// `style` (a legend entry, or `kind:color[:lines]`) or `folder`, each chapter holds only `count`; a chapter with 0 is a gap.
+/// A mark or a place that runs over chapters counts in each. One pass over `marks/` and `highlights/`; no page file and no
+/// verse text is read. Top level: `books`, `styles` (the legend's entries in order, then the styles in use that none names,
+/// each with `label`), `folders` (colored folders), `filter`, `total` and `chapters_with` (chapters with any count).
+pub fn marks_map(bible: &Bible, store: &Store, style: Option<&str>, folder: Option<&str>) -> Result<Value> {
+    if style.is_some() && folder.is_some() {
+        return Err(bad("Choose one: --style or --folder."));
+    }
+    let entries = read_legend(store);
+    let want_style = match style {
+        Some(t) => Some(match find_entry(&entries, t) {
+            Some(i) => entry_style(&entries[i]),
+            None => parse_style(t).ok_or_else(|| missing(format!("No legend entry “{}”. Name one, or write its style as kind:color[:lines] (wb legend lists them).", t.trim())))?,
+        }),
+        None => None,
+    };
+    let want_folder = match folder {
+        Some(f) => Some(crate::folders::find_folder(store, f)?),
+        None => None,
+    };
+    let mut by_style: std::collections::BTreeMap<String, Grid> = Default::default();
+    // every style in use is listed (the filter row offers them all); only the chosen one, or all, is counted per chapter
+    let mut used: Vec<String> = vec![];
+    {
+        let rows = mark_rows_with(bible, store, |_| true, false);
+        for r in &rows {
+            let Ok(a) = anchors::parse(r["at"].as_str().unwrap_or("")) else { continue };
+            let st = style_key(r["kind"].as_str().unwrap_or(""), r["color"].as_str().unwrap_or(""), r["lines"].as_u64().map(|n| n as u8));
+            if !used.contains(&st) {
+                used.push(st.clone());
+            }
+            if want_folder.is_none() && want_style.as_ref().is_none_or(|s| *s == st) {
+                tally(by_style.entry(st).or_default(), &a);
+            }
+        }
+    }
+    // the places a colored folder saves: a set's `place` items, a thread file's members
+    let mut by_folder: Vec<(crate::folders::Folder, Grid)> = vec![];
+    if want_style.is_none() {
+        let every = match &want_folder {
+            Some(f) => vec![f.clone()],
+            None => crate::folders::colored(store),
+        };
+        for f in every {
+            let places: Vec<String> = if f.thread {
+                store.thread(&f.id).ok().map(|t| t["members"].as_array().cloned().unwrap_or_default().iter().map(|m| m["anchor"].as_str().unwrap_or("").to_string()).collect()).unwrap_or_default()
+            } else {
+                store.find_set(&f.id).ok().map(|t| t["items"].as_array().cloned().unwrap_or_default().iter().filter(|i| i["kind"] == "place").map(|i| i["ref"].as_str().unwrap_or("").to_string()).collect()).unwrap_or_default()
+            };
+            let mut g = Grid::new();
+            for p in places {
+                if let Ok(a) = anchors::parse(&p) {
+                    if a.kind != Kind::Lemma {
+                        tally(&mut g, &a);
+                    }
+                }
+            }
+            by_folder.push((f, g));
+        }
+    }
+    // the styles in the legend's order, then those in use that no entry names
+    let mut keys: Vec<String> = entries.iter().map(entry_style).collect();
+    for k in &used {
+        if !keys.contains(k) {
+            keys.push(k.clone());
+        }
+    }
+    let filtered = want_style.is_some() || want_folder.is_some();
+    let (mut total, mut with) = (0u64, 0u64);
+    let mut books = vec![];
+    for b in bible.books() {
+        let mut cells = vec![];
+        for c in 1..=b.chapters {
+            if filtered {
+                let n = match (&want_style, by_folder.first()) {
+                    (Some(st), _) => by_style.get(st).map(|g| count_of(g, &b.code, c)).unwrap_or(0),
+                    (None, Some((_, g))) => count_of(g, &b.code, c),
+                    _ => 0,
+                };
+                total += n as u64;
+                with += (n > 0) as u64;
+                cells.push(json!({"chapter": c, "count": n}));
+            } else {
+                let mut styles: Vec<Value> = vec![];
+                for k in &keys {
+                    let n = by_style.get(k).map(|g| count_of(g, &b.code, c)).unwrap_or(0);
+                    if n > 0 {
+                        let mut v = style_json(k);
+                        v["count"] = json!(n);
+                        total += n as u64;
+                        styles.push(v);
+                    }
+                }
+                let mut folders: Vec<Value> = vec![];
+                for (f, g) in &by_folder {
+                    let n = count_of(g, &b.code, c);
+                    if n > 0 {
+                        total += n as u64;
+                        folders.push(json!({"key": f.key, "name": f.name, "color": f.color, "count": n}));
+                    }
+                }
+                with += (!styles.is_empty() || !folders.is_empty()) as u64;
+                cells.push(json!({"chapter": c, "styles": styles, "folders": folders}));
+            }
+        }
+        books.push(json!({"code": b.code, "name": b.name, "chapters": b.chapters, "cells": cells}));
+    }
+    // what the filter row offers: every legend entry and used style, every colored folder
+    let legend_styles: Vec<Value> = keys
+        .iter()
+        .map(|k| {
+            let e = entries.iter().find(|e| entry_style(e) == *k);
+            let mut v = style_json(k);
+            v["label"] = json!(match e {
+                Some(e) => entry_label(e),
+                None => {
+                    let p: Vec<&str> = k.split(':').collect();
+                    unnamed_words(p[0], p[1], p.get(2).and_then(|n| n.parse::<u8>().ok()))
+                }
+            });
+            v["listed"] = json!(e.is_some());
+            v
+        })
+        .collect();
+    let folders: Vec<Value> = crate::folders::colored(store).iter().map(|f| json!({"key": f.key, "name": f.name, "color": f.color})).collect();
+    let filter = match (&want_style, &want_folder) {
+        (Some(st), _) => {
+            let label = legend_styles.iter().find(|v| v["style"] == json!(st)).map(|v| v["label"].clone()).unwrap_or_else(|| {
+                let p: Vec<&str> = st.split(':').collect();
+                json!(unnamed_words(p[0], p[1], p.get(2).and_then(|n| n.parse::<u8>().ok())))
+            });
+            let mut f = style_json(st);
+            f["label"] = label;
+            f
+        }
+        (None, Some(f)) => json!({"folder": f.key, "label": f.name, "color": f.color}),
+        _ => Value::Null,
+    };
+    Ok(json!({"books": books, "styles": legend_styles, "folders": folders, "filter": filter, "total": total, "chapters_with": with}))
 }
 
 /// What finds marks (row 51). Every filter that is set must hold. `style` is a legend entry (its name) or `kind:color[:lines]`;
