@@ -55,9 +55,9 @@ Library map, Later). The arrow here links two places on the text; it does not bu
 | MK7-29 | **The whole-Bible color view is designed here** (sheet F): where each legend style, and each folder's color, appears across the Bible, and its gaps. | the person, open question 6 |
 | MK7-30 | **The bar is icons only, one size everywhere** (supersedes the chips of MK7-9, the color row of MK7-10 and the two layouts of MK7-22): the six kinds, the Legend, Add to… (and, for a span, Open as a passage), about 360 px wide, so the same bar fits a phone. A tap on a kind opens a **small drop-down from that icon, on the side away from the selection** (upward when the bar is above it): its named styles (the most recent first, the person's quick styles pinned on top, at most 6 shown), then Any color…; for an underline, 1 / 2 / 3 lines at its top. The Legend icon opens the same drop-down for the whole legend, with a filter. Nothing in the bar grows with the legend. | the person, 2026-11-18 ("clunky and too large… would not migrate over to mobile") |
 | MK7-31 | **On a phone** the bar is the same icons (44 px targets) above the selection; the drop-down, the legend, a mark's card and a margin note open as a **bottom sheet**; the margin is always signs at the text's right edge. Keys are a desktop extra. | the person, 2026-11-18 (a mobile design) |
-| MK7-32 | **Copy and Open as a tab are icons in the bar**, after Add to…, each with its name on hover: 10 icons, about 420 px on a desktop. On a phone (390 px) they sit behind a ⋯ icon at the bar's end, so its 44 px targets fit. *(proposed, for review)* | the person, 2026-11-19 |
+| MK7-32 | **Copy and Open as a tab are icons in the bar**, after Add to…, each with its name on hover: 10 icons, about 420 px on a desktop. On a phone (390 px) they sit behind a ⋯ icon at the bar's end, so its 44 px targets fit. | the person, 2026-11-19 |
 | MK7-33 | **Look up, Notes & lookup and Question leave the selection.** A word is looked up by clicking it or in the interlinear; a question is found by itself in what is written (MK7-28); recent-folder chips are reached through Add to…. | the person, 2026-11-19 |
-| MK7-34 | **Right-click on a selection opens a menu with the same actions as the bar**, as named rows with their keys: the six kinds (each opening its styles), Legend…, Add to…, Copy, Open as a tab. It is an alternative to the bar, not a replacement; on a phone there is no right-click. *(proposed, for review)* | the person, 2026-11-19 |
+| MK7-34 | **Right-click on a selection opens a menu with the same actions as the bar**, as named rows with their keys: the six kinds (each opening its styles), Legend…, Add to…, Copy, Open as a tab. It is an alternative to the bar, not a replacement; on a phone there is no right-click. | the person, 2026-11-19 |
 | MK7-23 | **A verse's card is reachable from a page's scripture block** as well as from the reader. | the person, row 44 |
 
 ## The leading design (draft 2, for the person's review)
@@ -216,7 +216,7 @@ is not built; a builder that needs one stops and asks.
 | T5 | 42, 44-47, 49 | the reader draws marks in layer order (thinning underlines, folder tabs in the gutter); marks panel; Reading mode; speed (no page files read) |
 | T6 | 1, 4-10, 20-22, 24 | the icon bar and its drop-down, new pen naming, Legend drop-down, bar keys |
 | T7 | 2, 3, 11, 12, 23 | verse-number selection, spans, Add to…, Open as a passage, Ctrl+1-9 |
-| T7b | 64-70 | Copy and Open as a tab icons, the right-click menu, the phone ⋯, no selection handles (after the person accepts MK7-32 to MK7-34) |
+| T7b | 64-70 | Copy and Open as a tab icons, the right-click menu, the phone ⋯, no selection handles (accepted 2026-11-19) |
 | T8 | 25-28, 31 | the mark card: Change, Delete with Undo toast, marks on top |
 | T9 | 13-16, 48 | arrows in the gutter, within a chapter |
 | T10 | 17-19, 29, 30, 43, 50 | the margin column, signs, popover, narrow window |
@@ -260,4 +260,4 @@ None (all six answered 2026-11-18, MK7-24 to MK7-29).
 | 7, draft 2 | 2026-11-18 | notes folded in: MK7-8 to MK7-23, table draft 2, 6 open questions | answered: MK7-24 to MK7-29 |
 | 7, sheets | 2026-11-18 | sheets A to F drawn from the table (`python design/features/marks/marks.py`) | the person: the bar too large for a phone |
 | 7, sheets 2 | 2026-11-18 | MK7-30, MK7-31: the bar icons only with a drop-down; sheet G, the phone | **accepted**, 2026-11-18; tickets T0-T15 |
-| 7, round 8 | 2026-11-19 | after T6: what the old bar held (MK7-32 to MK7-34, rows 64-70); A1, A7, G1 redrawn | waiting for the person |
+| 7, round 8 | 2026-11-19 | after T6: what the old bar held (MK7-32 to MK7-34, rows 64-70); A1, A7, G1 redrawn | **accepted**, 2026-11-19; ticket T7b |
