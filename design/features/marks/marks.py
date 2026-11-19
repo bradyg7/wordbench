@@ -27,6 +27,7 @@ F.ICONS.update({
     "legend": "M4 6h3M4 12h3M4 18h3M10 6h10M10 12h10M10 18h10",
     "rainbow": "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10z",
     "grid": "M4 4h16v16H4zM4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16",
+    "tab": "M3 7h7l2 3h9v10H3zM14 4h7v6",
 })
 K.M.TOOLS5[-1] = ("Legend", "legend")   # MK7-17: the Legend replaces the rail's highlight icon
 
@@ -209,7 +210,7 @@ def vbar(parent):
     frame(parent, "divider", w=1, h=22, fill="line", W="fixed", H="fixed")
 
 
-def mark_bar(f, x, y, kind=None, span=False, tip=None, size=32, gap=4):
+def mark_bar(f, x, y, kind=None, span=False, tip=None, size=32, gap=4, phone=False):
     """MK7-30: the bar above the selection, icons only and one size everywhere: six kinds, the Legend, Add to… (and,
     for a span, Open as a passage). Returns (bar, x of each icon by label) so a drop-down can hang under one."""
     b = row(f, "mark bar", gap=gap, pad=[6, 8, 6, 8], fill="surface", radius=12, stroke="line", sw=1)
@@ -217,8 +218,8 @@ def mark_bar(f, x, y, kind=None, span=False, tip=None, size=32, gap=4):
     shadow(b, 6, 20, "#00000026")
     xs, cx = {}, x + 8
     items = [(l, ic) for l, ic, _k in KINDS] + [("|", None), ("Legend", "legend"), ("|", None), ("Add to…", "plus")]
-    if span:
-        items.append(("Open as a passage", "book"))
+    # MK7-32: Copy and Open as a tab; on a phone behind ⋯
+    items += [("More", "more")] if phone else [("Copy", "copy"), ("Open as a tab", "tab")]
     for label, ic in items:
         if label == "|":
             frame(b, "divider", w=1, h=size - 10, fill="line", W="fixed", H="fixed")
@@ -227,7 +228,7 @@ def mark_bar(f, x, y, kind=None, span=False, tip=None, size=32, gap=4):
         bt = frame(b, f"icon/{label}", w=size, h=size, radius=8, fill="accentSoft" if label == kind else None,
                    stroke="accent" if label == kind else None, sw=1, W="fixed", H="fixed", layout="horizontal",
                    mainAlign="center", crossAlign="center")
-        icon(bt, ic, 18 if size < 40 else 22, "accent" if label in (kind, "Add to…", "Open as a passage") else "fg")
+        icon(bt, ic, 18 if size < 40 else 22, "accent" if label in (kind, "Add to…") else "fg")
         xs[label] = cx
         cx += size + gap
     if tip:
@@ -333,10 +334,11 @@ def sheet_a(board):
     r = row(cv, "A1-A2", gap=64, align="min")
     f = win(r, "A1 · Words selected: the mark bar (rows 1, 20)",
             "MK7-30, MK7-12, MK7-24: no handles on the selection. The bar is icons only and never grows: six kinds "
-            "(the name on hover, here Circle), the Legend, Add to…. The same bar is used on a phone (sheet G).")
+            "(the name on hover, here Copy), the Legend, Add to…, Copy and Open as a tab (MK7-32). On a phone Copy and Open as "
+            "a tab sit behind More (sheet G).")
     w = app(f)
     rd, tx, top = reader(f, w, W - w, V, marks=MARKS, sel=(12, 6, 9), margin="open")
-    mark_bar(f, w + tx - 4, verse_y(V, top, 12) - 66, tip=("Circle", "Circle · C"))
+    mark_bar(f, w + tx - 4, verse_y(V, top, 12) - 66, tip=("Copy", "Copy"))
 
     f = win(r, "A2 · A kind tapped: its small drop-down (rows 4, 5, 6, 21)",
             "MK7-30, MK7-10: under Highlight, its styles by name (quick ones pinned with a tick, then recent; 6 at "
@@ -371,11 +373,11 @@ def sheet_a(board):
 
     r = row(cv, "A5-A6", gap=64, align="min")
     f = win(r, "A5 · A span of verses (rows 2, 3, 11, 12)",
-            "MK7-13: click 8, shift-click 10. Whole verses, selected as a browser would. The bar adds Open as a "
-            "passage (its own reader) beside Add to… (a page, a folder, a save).")
+            "MK7-13, MK7-32: click 8, shift-click 10. Whole verses, selected as a browser would. Open as a tab opens "
+            "them in their own reader; Add to… puts them in a page, a folder or a save.")
     w = app(f)
     rd, tx, top = reader(f, w, W - w, V, marks=MARKS, sel=(8, 10), margin="open")
-    mark_bar(f, w + tx - 4, verse_y(V, top, 8) - 66, span=True, tip=("Open as a passage", "Open as a passage"))
+    mark_bar(f, w + tx - 4, verse_y(V, top, 8) - 66, span=True, tip=("Open as a tab", "Open as a tab"))
 
     f = win(r, "A6 · Keys, without the bar (rows 20 to 23)",
             "MK7-16: select, then Ctrl+7: the style given that key (Key word, a blue circle) is applied, no bar. With "
@@ -392,6 +394,40 @@ def sheet_a(board):
         kr = row(keys, k_, gap=10, W="fill")
         P.kbd(kr, k_)
         text(kr, s_, "small", "muted")
+    sheet_a7(cv)
+
+
+def context_menu(f, x, y, w=250, open_kind="Highlight"):
+    m = col(f, "right-click menu", gap=0, pad=[6, 6, 6, 6], fill="surface", radius=10, stroke="line", sw=1, W="fixed")
+    Q.put(m, x, y, w)
+    shadow(m, 8, 22, "#00000030")
+    rows = [(l, ic, k) for l, ic, k in KINDS] + [("|", None, None), ("Legend…", "legend", ""), ("Add to…", "plus", ""),
+                                                ("|", None, None), ("Copy", "copy", "Ctrl+C"), ("Open as a tab", "tab", "")]
+    for label, ic, k in rows:
+        if label == "|":
+            frame(m, "rule", w=10, h=1, fill="line", W="fill", H="fixed")
+            continue
+        on = label == open_kind
+        rr = row(m, f"item/{label}", gap=10, pad=[6, 8, 6, 8], radius=6, W="fill", fill="accentSoft" if on else None)
+        icon(rr, ic, 16, "accent" if on else "fg")
+        text(rr, label, "small", W="fill")
+        if k:
+            text(rr, k, "caption", "muted")
+        if label in [x_[0] for x_ in KINDS[:4]]:
+            icon(rr, "right", 12, "muted")
+    return m
+
+
+def sheet_a7(cv):
+    r = row(cv, "A7", gap=64, align="min")
+    f = win(r, "A7 · Right-click a selection: the same actions as a menu (rows 66 to 68)",
+            "MK7-34: beside the pointer, the six kinds, Legend…, Add to…, Copy and Open as a tab, with their keys. A kind "
+            "opens its styles as a submenu, the same rows as the bar's drop-down. The bar hides while the menu is open.")
+    w = app(f)
+    rd, tx, top = reader(f, w, W - w, V, marks=MARKS, sel=(12, 6, 9), margin="open")
+    y = verse_y(V, top, 12)
+    cm = context_menu(f, w + tx + 300, y - 300)
+    dropdown(f, w + tx + 300 + 254, y - 294, [LEGEND[0], LEGEND[1], LEGEND[6]])
 
 
 def sheet_b(board):
@@ -664,8 +700,8 @@ def sheet_g(board):
                   "the text's right edge. Keys are a desktop extra.")
     r = row(cv, "G1-G5", gap=48, align="min")
     f = phone(r, "G1 · Words selected (row 59)", "Long-press a word, drag to extend. The bar above: six kinds, the "
-              "Legend, Add to…; 9 icons fit 390 px.", sel=(12, 6, 9))
-    mark_bar(f, 8, pv_y(12) - 72, size=34, gap=3)
+              "Legend, Add to…, and More (Copy, Open as a tab: MK7-32).", sel=(12, 6, 9))
+    mark_bar(f, 8, pv_y(12) - 72, size=36, gap=2, phone=True)
 
     f = phone(r, "G2 · A kind tapped: a bottom sheet (rows 60, 61)", "Highlight's styles by name, the same list "
               "as the desktop's drop-down, with room for a thumb; Any color… at its foot.", sel=(12, 6, 9))
