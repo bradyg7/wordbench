@@ -68,6 +68,7 @@ None.
   **M1 built** (2026-11-19): `platform.rs` (data folder, Show in folder commands, test `show_commands_per_platform`), `.github/workflows/mac-tests.yml`. Row 5 ticked; row 4 stays open until that workflow's first green run.
 - **M2** The release: a macOS job in `release.yml` (universal dmg and `.app.tar.gz`), `publish.mjs` writing one
   `latest.json` for both, the stable `Wordbench-mac.dmg` (row 7).
+  M2 built (row 7 proven by the first release run).
 - **M3** The site: the Mac button and the guide (rows 1, 2), pictures drawn as the Windows warning is.
 - **M4** The first real-Mac check (rows 3, 6), with the person or a tester.
 

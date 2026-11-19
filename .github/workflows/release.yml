@@ -1,7 +1,10 @@
-# A release: push a tag v<version> (the version in Cargo.toml and tauri.conf.json). GitHub's Windows machine builds the
-# installer with the updater switched on, signs it with the update key (secrets TAURI_SIGNING_PRIVATE_KEY and
-# TAURI_SIGNING_PRIVATE_KEY_PASSWORD), and publishes it with latest.json to the public bradyg7/wordbench-releases
-# (secret RELEASES_TOKEN), where the installed apps and the website look. Design: design/features/updates (U-17).
+# A release: push a tag v<version> (the version in Cargo.toml and tauri.conf.json). Three jobs. `windows` (GitHub's
+# Windows machine) builds the installer and `mac` (a macOS machine) builds one universal app (Apple silicon and Intel)
+# as a .dmg and an updater .app.tar.gz, both with the updater switched on and signed with the update key (secrets
+# TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD); each uploads its files as a workflow artifact.
+# `publish` then makes ONE release with ONE latest.json (windows-x86_64, darwin-aarch64, darwin-x86_64) on the public
+# bradyg7/wordbench-releases (secret RELEASES_TOKEN), where the installed apps and the website look, and rebuilds the
+# website. The Mac app is not Apple-signed (design/features/mac M-1). Design: design/features/updates (U-17), mac (M-5).
 name: release
 
 on:
@@ -55,17 +58,107 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npx tauri build --config app/src-tauri/tauri.release.conf.json --features updater
+        run: npx tauri build --config app/src-tauri/tauri.release.conf.json --features updater --bundles nsis
 
-      - name: Publish to bradyg7/wordbench-releases
+      - name: Stage what publish needs
+        shell: bash
+        run: |
+          mkdir -p stage
+          cp target/release/bundle/nsis/*-setup.exe target/release/bundle/nsis/*-setup.exe.sig stage/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: stage/*
+          if-no-files-found: error
+
+  mac:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          # the same key as warm-cache.yml on main, whose cache a tag's run can read
+          shared-key: mac-release
+          save-if: false
+
+      - name: The tag matches the app's version
+        shell: bash
+        run: |
+          v=$(node -p "require('./app/src-tauri/tauri.conf.json').version")
+          test "v$v" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME but the app is $v"; exit 1; }
+          test -f "docs/releases/$v.md" || { echo "No docs/releases/$v.md"; exit 1; }
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+
+      - name: The Bible database (data-v1 of the public releases repository)
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: node scripts/release/publish.mjs
+        run: |
+          mkdir -p datasets
+          gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
+          echo "fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c  datasets/workbench.db" | shasum -a 256 -c
+
+      - run: npm ci
+
+      - name: Build and sign the universal app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --config app/src-tauri/tauri.release.conf.json --features updater --target universal-apple-darwin --bundles app,dmg
+
+      - name: Stage what publish needs
+        shell: bash
+        run: |
+          b=target/universal-apple-darwin/release/bundle
+          mkdir -p stage
+          cp "$b"/dmg/*.dmg "$b"/macos/*.app.tar.gz "$b"/macos/*.app.tar.gz.sig stage/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: stage/*
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish to bradyg7/wordbench-releases
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: node scripts/release/publish.mjs artifacts
 
       # the website's Download page shows the newest release (design/features/site S-5)
       - name: Rebuild the website
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site.yml -R ${{ github.repository }} --ref main
