@@ -388,13 +388,7 @@ fn attachment(root: &Path, id: &str, name: &str) -> Result<(String, PathBuf)> {
 pub fn open_attachment(root: &Path, id: &str, name: &str) -> Result<Value> {
     let (name, path) = attachment(root, id, name)?;
     if runs_code(&name) {
-        let spawned = if cfg!(windows) {
-            std::process::Command::new("explorer.exe").arg(format!("/select,{}", path.display())).spawn()
-        } else if cfg!(target_os = "macos") {
-            std::process::Command::new("open").arg("-R").arg(&path).spawn()
-        } else {
-            std::process::Command::new("xdg-open").arg(path.parent().unwrap()).spawn()
-        };
+        let spawned = crate::platform::show(&path, true);
         spawned.map_err(|e| bad(format!("Could not show {} ({e}).", path.display())))?;
         return Ok(json!({"ok": true, "name": name, "path": path.to_string_lossy(), "shown_in_folder": true}));
     }

@@ -27,6 +27,7 @@ pub mod pages;
 pub mod overview;
 pub mod pageviews;
 pub mod places;
+pub mod platform;
 pub mod plans;
 pub mod published;
 pub mod questions;
