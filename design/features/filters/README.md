@@ -63,6 +63,8 @@ This is what the code does today. Labels in quotation marks are current window l
 |---|---|---|---|---|
 | 1 | 2026-11-19 | None | Survey and three directions | Choice pending |
 
+## Directions
+
 ### A. One typed line with editable choices
 
 Desktop puts `kind:mark style:Promise book:John` beside the words. Click the line or reach it with Tab. Enter accepts a typed choice or a suggestion. Accepted choices become small labeled buttons. Click a label to edit it or use its × to remove it. Tab and Enter reach both. Clear removes the choices. On a phone, tap the line to edit it in a bottom sheet. Applied choices can wrap under the search.

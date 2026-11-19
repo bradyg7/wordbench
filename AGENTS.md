@@ -78,6 +78,11 @@ credits spent too fast.
    (every button, key and command), what they see, what changes on disk, the `wb` command, and the test that proves it.
    Nothing a builder must guess is left out: if a row is missing, the builder stops and asks; it does not invent. The
    person reviews the sheets; builders build from the table.
+   **Every round ends with the review page** (the person, 2026-11-19: no design decision is made without it):
+   `node design/review.mjs <folder>` writes `design/features/<folder>/review.html`, the sheet beside the interaction
+   table with a notes box per row. A round is not handed to the person until that page is written and committed with
+   the README; directions go under a `## Directions` heading so the page shows them. This holds for every agent
+   (Claude, Codex or any other) that drafts or changes a design folder.
 2. **Small tickets.** A design is cut into tickets of a few rows each, every one buildable and testable on its own. A
    ticket is done only when every one of its rows has a passing test; a feature is done only when every row of its table
    is. The table records which rows are built.

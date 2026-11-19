@@ -1,7 +1,7 @@
 # <Feature name>
 
 **State:** exploring · **Sheets:** `python design/features/<feature>/<feature>.py` writes `<feature>.figcraft` and
-`<feature>.pdf` (the board, one vector page) · Nothing here is built yet.
+`<feature>.pdf` (the board, one vector page) · Nothing here is built yet. · **Review page:** `node design/review.mjs <feature>` writes `review.html`; every round ends with it (AGENTS.md, How work is done).
 
 One paragraph: what the feature is for, in the person's words, and which part of the app it touches.
 
@@ -25,6 +25,10 @@ Dated, newest round last. Each says what was chosen and what was rejected, so th
 | Finding | In short |
 |---|---|
 |  |  |
+
+## Directions
+
+While no direction is accepted: each direction as a `###` heading (how it looks, how it is reached, its costs), then `### Recommendation`. The review page shows this section.
 
 ## Open questions
 

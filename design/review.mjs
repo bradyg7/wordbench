@@ -48,6 +48,8 @@ const prose = name => {
     if (/^\s*(-|\d+\.)\s/.test(l)) { if (!list) { html += '<ul>'; list = true; } html += `<li>${inline(l.replace(/^\s*(-|\d+\.)\s/, ''))}</li>`; continue; }
     if (/^\s{2,}\S/.test(l) && list) { html = html.replace(/<\/li>$/, ' ' + inline(l.trim()) + '</li>'); continue; }
     if (list) { html += '</ul>'; list = false; }
+    const sub = /^###\s+(.+)/.exec(l);
+    if (sub) { html += `<h3>${inline(sub[1])}</h3>`; continue; }
     if (l.trim().startsWith('|') && !/^\|\s*-/.test(l.trim())) html += `<div class="drow">${cells(l).map(inline).join(' · ')}</div>`;
     else if (l.trim() && !/^\|/.test(l.trim())) html += `<p>${inline(l)}</p>`;
   }
@@ -88,6 +90,7 @@ ${pdf ? `<div class="sheet"><embed src="${pdf}" type="application/pdf"></div>` :
 ${pdf ? '' : '<p class="state">No sheet drawn yet: the table comes first (this folder\'s decision).</p>'}
 <details><summary>Decisions</summary>${prose('Decisions')}</details>
 <details open><summary>Leading design</summary>${prose('The leading design') || prose('Leading design')}</details>
+${sections[Object.keys(sections).find(k => k.startsWith('Directions')) ?? ''] ? `<details open><summary>Directions</summary>${prose('Directions')}</details>` : ''}
 <details open><summary>Open questions</summary>${prose('Open questions')}</details>
 <h2>Interaction table</h2>
 ${groups.map(g => `<h3>${inline(g.name)}</h3><table><tr>${header.map(h => `<th>${inline(h)}</th>`).join('')}<th>Your note</th></tr>
