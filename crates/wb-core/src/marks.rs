@@ -127,7 +127,7 @@ pub fn verse_level(m: ChapterMarks) -> ChapterMarks {
 //
 // `marks/<BOOK>.json`: `{"marks": [{id, kind, color, lines?, at, to?, created, changed?}, ...]}`, one file per book,
 // written whole and atomically. `at` and `to` are anchors as the highlights use them (NUM.25:11.3-25:11.9). The old
-// `highlights/<BOOK>.json` files are read as highlight marks and never rewritten here (row 54); the move is T15.
+// `highlights/<BOOK>.json` files are read as highlight marks and never rewritten here (row 54); the move is at the end of this file (row 55).
 
 use crate::bible::Bible;
 use crate::store::{bad, check_color, guard, missing, new_id, now, write_atomic};
@@ -150,7 +150,7 @@ pub struct DrawnMark {
     pub created: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub changed: Option<String>,
-    /// The words of an old highlight (its `quote`); not kept in `marks/`.
+    /// The words of an old highlight (its `quote`); kept in `marks/` once the move has written it there (row 55).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub words: Option<String>,
 }
@@ -1234,4 +1234,193 @@ pub fn panel_margin(store: &mut Store, how: &str) -> Result<Value> {
     }
     store.set_setting("marks", "margin", Some(json!(how)))?;
     Ok(panel_settings(store))
+}
+
+// ---- the move of `highlights/` and `pencil/` into `marks/` (row 55, T15) -------------------------------------------
+//
+// Done once, after a hashed backup and with the person's go-ahead. `move_marks(store, false)` is the dry run (and what
+// `wb study check` lists): it reads the old files raw, writes nothing, and says what would become marks, what cannot be
+// read and which ids collide. `move_marks(store, true)` refuses while the dry run has any problem, then writes
+// `marks/<BOOK>.json` atomically and moves each old file whole into `.archive/highlights/` or `.archive/pencil/`.
+// An old highlight keeps its id, color, `at`, `created`, `changed` and its words (`quote`, as `words`); a pencil line
+// becomes a 1-line underline in grey with its id, date and place. A second run finds nothing to move.
+
+/// The grey a pencil line becomes an underline in (the pencil's own was a muted grey, `--pencil`).
+pub const PENCIL_COLOR: &str = "#888888";
+
+fn move_files(dir: &std::path::Path) -> Vec<PathBuf> {
+    let mut v: Vec<PathBuf> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_file() && p.extension().is_some_and(|x| x == "json"))
+        .collect();
+    v.sort();
+    v
+}
+
+/// One old record as a mark, or why it cannot be read.
+fn move_one(r: &Value, pencil: bool) -> std::result::Result<DrawnMark, String> {
+    let o = r.as_object().ok_or("the record is not an object")?;
+    let text = |k: &str| -> std::result::Result<Option<String>, String> {
+        match o.get(k) {
+            None | Some(Value::Null) => Ok(None),
+            Some(Value::String(v)) => Ok(Some(v.clone())),
+            Some(_) => Err(format!("`{k}` is not text")),
+        }
+    };
+    let id = text("id")?.filter(|i| !i.is_empty()).ok_or("it has no id")?;
+    let a = anchors::parse(&text("anchor")?.ok_or("it has no anchor")?).map_err(|e| format!("its place cannot be read ({e})"))?;
+    if a.kind == Kind::Lemma {
+        return Err("its place is a word number, not words or verses".into());
+    }
+    let created = text("created")?.unwrap_or_default();
+    if pencil {
+        return Ok(DrawnMark { id, kind: "underline".into(), color: PENCIL_COLOR.into(), lines: Some(1), at: a.id(), to: None, created, changed: None, words: None });
+    }
+    let color = text("color")?.filter(|c| !c.is_empty()).ok_or("it has no color")?;
+    let quote = text("quote")?.unwrap_or_default();
+    let changed = text("changed")?.filter(|c| !c.is_empty());
+    Ok(DrawnMark { id, kind: "highlight".into(), color, lines: None, at: a.id(), to: None, created, changed, words: (!quote.is_empty()).then_some(quote) })
+}
+
+/// The dry run (`go` false) or the move (`go` true). → {dry_run, books: [{book, highlights, pencil, marks}], unreadable,
+/// collisions, conflicts, totals, can_go[, moved, archived]}.
+pub fn move_marks(store: &mut Store, go: bool) -> Result<Value> {
+    let root = store.root.clone();
+    // what the old files hold: (book code, mark, from pencil?, source file)
+    let mut found: Vec<(String, DrawnMark, bool, PathBuf)> = vec![];
+    let mut unreadable: Vec<Value> = vec![];
+    let mut sources: Vec<(PathBuf, &str)> = vec![];
+    let rel = |p: &std::path::Path| p.strip_prefix(&root).unwrap_or(p).to_string_lossy().replace('\\', "/");
+    for (folder, pencil) in [("highlights", false), ("pencil", true)] {
+        let key = folder;
+        for path in move_files(&root.join(folder)) {
+            sources.push((path.clone(), folder));
+            let Some(v) = std::fs::read_to_string(&path).ok().and_then(|t| serde_json::from_str::<Value>(&t).ok()) else {
+                unreadable.push(json!({"file": rel(&path), "id": null, "why": "the file is not readable JSON"}));
+                continue;
+            };
+            let Some(items) = v.get(key).and_then(|a| a.as_array()) else {
+                unreadable.push(json!({"file": rel(&path), "id": null, "why": format!("the file has no `{key}` list")}));
+                continue;
+            };
+            for r in items {
+                match move_one(r, pencil) {
+                    Ok(m) => {
+                        let code = anchors::parse(&m.at).map(|a| a.code).unwrap_or_default();
+                        found.push((code, m, pencil, path.clone()));
+                    }
+                    Err(why) => unreadable.push(json!({"file": rel(&path), "id": r.get("id").cloned().unwrap_or(Value::Null), "why": why})),
+                }
+            }
+        }
+    }
+    // what `marks/` holds already: a file that cannot be read would be overwritten by a write, so it blocks the move
+    let mut existing: std::collections::BTreeMap<String, Vec<DrawnMark>> = Default::default();
+    for path in move_files(&root.join("marks")) {
+        let code = path.file_stem().unwrap().to_string_lossy().into_owned();
+        let parsed = std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+            .and_then(|v| v.get("marks").cloned())
+            .and_then(|m| serde_json::from_value::<Vec<DrawnMark>>(m).ok());
+        match parsed {
+            Some(m) => {
+                existing.insert(code, m);
+            }
+            None => unreadable.push(json!({"file": rel(&path), "id": null, "why": "a marks file the move would write into cannot be read"})),
+        }
+    }
+    // ids: the same id twice among the old records, or an existing mark that is not the same mark, collide
+    let mut collisions: Vec<Value> = vec![];
+    let mut already = 0usize;
+    let mut seen: std::collections::HashMap<String, String> = Default::default();
+    let mut fresh: Vec<(String, DrawnMark, bool, PathBuf)> = vec![];
+    for (code, m, pencil, path) in found {
+        if let Some(first) = seen.get(&m.id) {
+            collisions.push(json!({"id": m.id, "file": rel(&path), "with": first}));
+            continue;
+        }
+        seen.insert(m.id.clone(), rel(&path));
+        let held = existing.values().flatten().find(|e| e.id == m.id);
+        match held {
+            Some(e) if *e == m => already += 1, // an earlier run wrote it and stopped before archiving: nothing to write
+            Some(_) => collisions.push(json!({"id": m.id, "file": rel(&path), "with": "a mark in marks/"})),
+            None => fresh.push((code, m, pencil, path)),
+        }
+    }
+    // where each old file goes; a different file already in the archive is never overwritten
+    let mut conflicts: Vec<Value> = vec![];
+    let mut moves: Vec<(PathBuf, PathBuf)> = vec![];
+    for (path, folder) in &sources {
+        let dest = root.join(".archive").join(folder).join(path.file_name().unwrap());
+        if dest.exists() && std::fs::read(&dest).ok() != std::fs::read(path).ok() {
+            conflicts.push(json!({"file": rel(path), "archive": rel(&dest), "why": "the archive already holds a different file of that name"}));
+        } else {
+            moves.push((path.clone(), dest));
+        }
+    }
+    let mut books: std::collections::BTreeMap<String, (usize, usize)> = Default::default();
+    for (code, _, pencil, _) in &fresh {
+        let e = books.entry(code.clone()).or_default();
+        if *pencil {
+            e.1 += 1
+        } else {
+            e.0 += 1
+        }
+    }
+    let (hl, pen) = (fresh.iter().filter(|f| !f.2).count(), fresh.iter().filter(|f| f.2).count());
+    let can_go = unreadable.is_empty() && collisions.is_empty() && conflicts.is_empty();
+    let mut out = json!({
+        "dry_run": !go,
+        "books": books.iter().map(|(b, (h, p))| json!({"book": b, "highlights": h, "pencil": p, "marks": h + p})).collect::<Vec<_>>(),
+        "unreadable": unreadable,
+        "collisions": collisions,
+        "conflicts": conflicts,
+        "totals": {"highlights": hl, "pencil": pen, "marks": hl + pen, "already_in_marks": already, "unreadable": unreadable.len(),
+                   "collisions": collisions.len(), "files": sources.len()},
+        "can_go": can_go,
+    });
+    if !go {
+        return Ok(out);
+    }
+    if !can_go {
+        return Err(bad(format!(
+            "Nothing was moved: {} record(s) cannot be read, {} id(s) collide, {} archive conflict(s). Run `wb study move-marks --dry-run` to see them.",
+            unreadable.len(),
+            collisions.len(),
+            conflicts.len()
+        )));
+    }
+    guard(&root)?;
+    // the marks first (each book's file whole and atomic), then the old files, whole, into the archive
+    for code in books.keys() {
+        let mut all: Vec<DrawnMark> = fresh.iter().filter(|f| &f.0 == code && !f.2).map(|f| f.1.clone()).collect();
+        all.extend(existing.get(code).cloned().unwrap_or_default());
+        all.extend(fresh.iter().filter(|f| &f.0 == code && f.2).map(|f| f.1.clone()));
+        all.sort_by(|a, b| a.created.cmp(&b.created)); // stable: highlights, then marks already there, then pencil lines
+        write_book(store, code, &all)?;
+    }
+    let mut archived = vec![];
+    for (src, dest) in moves {
+        if let Some(d) = dest.parent() {
+            std::fs::create_dir_all(d)?;
+        }
+        if dest.exists() {
+            std::fs::remove_file(&src)?; // the same bytes are already there
+        } else {
+            std::fs::rename(&src, &dest)?;
+        }
+        archived.push(rel(&dest));
+    }
+    for folder in ["highlights", "pencil"] {
+        let _ = std::fs::remove_dir(root.join(folder)); // only if empty
+    }
+    store.look_again();
+    store.refresh()?;
+    out["moved"] = out["totals"].clone();
+    out["archived"] = json!(archived);
+    Ok(out)
 }

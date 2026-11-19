@@ -282,10 +282,18 @@ pub fn commands() -> Vec<Command> {
         }),
         cmd("study check", "What the study folder holds, as this app reads it, and which files the next change would write (none). Reads only.",
             vec![], |c, _| {
-                let st = c.study()?;
-                let mut v = wb_core::check::study_check(&st).map_err(e)?;
+                let mut st = c.study()?;
+                let mut v = wb_core::check::study_check(&mut st).map_err(e)?;
                 v["library"] = wb_core::check::library_check(c.bible()?, &st).map_err(e)?;
                 j(v)
+            }),
+        cmd("study move-marks", "Move the old highlights/ and pencil/ files into marks/ (once, after a backup). --dry-run writes nothing and says, per book, what would become marks, any record it cannot read and any id that collides, with totals. --go refuses if the dry run reports any problem; otherwise it writes marks/<BOOK>.json (an old highlight keeps its id, color, place, dates and words; a pencil line becomes a 1-line grey underline) and moves the old files whole into .archive/. A second --go finds nothing to move.",
+            vec![Flag("dry_run"), Flag("go")], |c, a| {
+                if a.flag("go") == a.flag("dry_run") {
+                    return Err("Say one of --dry-run or --go.".into());
+                }
+                let mut st = c.study()?;
+                j(marks::move_marks(&mut st, a.flag("go")).map_err(e)?)
             }),
         cmd("thread list", "Your threads, newest first; with words, only those whose name or note has them all.", vec![Pos("words", N::Any)], |c, a| {
             j(sa::thread_list(&*c.study()?, Some(&a.s("words"))).map_err(e)?)

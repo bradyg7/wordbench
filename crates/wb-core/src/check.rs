@@ -21,7 +21,8 @@ fn count_files(dir: &Path) -> usize {
 
 /// What the study folder holds, and what a build of R1 would write to it (nothing it does not already write: the new
 /// settings file appears only when a thread is first pinned).
-pub fn study_check(store: &Store) -> Result<Value> {
+pub fn study_check(store: &mut Store) -> Result<Value> {
+    let to_move = crate::marks::move_marks(store, false)?;
     let placed = store.notes();
     let words = placed.iter().filter(|n| matches!(s(n, "anchor").chars().next(), Some('H' | 'G')) && s(n, "anchor").len() > 1 && s(n, "anchor")[1..].chars().all(|c| c.is_ascii_digit())).count();
     let threads = store.threads();
@@ -47,6 +48,8 @@ pub fn study_check(store: &Store) -> Result<Value> {
         // the files marks rounds 1 to 6 wrote (marks MK7-5): only listed, never read or changed
         "margin": {"files": margin_files},
         "pencil": {"files": files_in(&root.join("pencil"), ".json")},
+        // what `wb study move-marks --go` would turn into marks (marks row 55): the same read-only dry run
+        "would_move_to_marks": to_move,
         // what the Python app reads of it: a note only with a place, and the rest as they are
         "python_reads": {"notes": placed.len(), "threads": threads.len(), "thread_places": places, "trails": trails.len(), "sets": store.sets().len()},
         "pages_file": root.join("settings").join("pages.json").exists(),

@@ -44,8 +44,8 @@ fn study_check_projects_python_readable_records() {
         "---\nname: \"Synthetic set\"\n---\n\nSynthetic set note.\n",
     );
 
-    let store = Store::open(scratch.path()).unwrap();
-    let check = study_check(&store).unwrap();
+    let mut store = Store::open(scratch.path()).unwrap();
+    let check = study_check(&mut store).unwrap();
     assert_eq!(
         check.get("python_reads").unwrap(),
         &json!({"notes": 1, "threads": 1, "thread_places": 2, "trails": 1, "sets": 1})
