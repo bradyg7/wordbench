@@ -257,7 +257,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
 
   // a verse picked by its number can be a tab (a second reader); so can a word
   await page.locator('#reader .vn[data-v="6"]').click();
-  await page.locator('.colorbar .act', { hasText: 'Open as a tab' }).click();
+  await page.locator('.markbar .mb-tab').click();
   check('Open as a tab on a verse opens it in a second reader', await page.locator('.pane-reader2 .vn-asked[data-v="6"]').waitFor({ timeout: 5000 }).then(() => true, () => false));
   const zeal = await page.evaluate(() => {   // "zealous" in Num 25:11, a word with a Strong's number
     const d = window.__wb.drawn, k = d.v.findIndex((v, k) => v === 11 && String(d.strong[k]).includes('7065'));
@@ -274,62 +274,45 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await page.keyboard.press('Escape');
   await page.evaluate(() => { const d = window.__wb.dock(); for (const p of d.panes.filter(p => ['passage', 'reader2', 'strong'].includes(p.kind))) d.close(p); });
 
-  // a question from the verse's bar: a new question in the Notebook's editor (one writing box), with the place chosen
-  await page.locator('#reader .vn[data-v="9"]').click();
-  await page.locator('.colorbar .act', { hasText: 'Question' }).click();
-  await page.waitForFunction(() => document.activeElement?.classList.contains('nb-input'), null, { timeout: 10000 });
-  const boxes = await page.evaluate(() => [...document.querySelectorAll('textarea')].filter(t => t.offsetWidth).map(t => t.placeholder));
-  check('Question on a verse writes in the Notebook’s editor, the only box shown', boxes.length === 1 && boxes[0] === 'Your question on Numbers 25:9…', boxes.join(' | '));
-  await page.keyboard.type('How do the two numbers relate?');
-  await done();
+  // a question on a verse: Question left the selection (MK7-33); a question is written in the Notebook or with wb, and found by itself
+  execFileSync(wbExe, ['trail', 'add', 'NUM.25:9', 'How do the two numbers relate?'], { env });
+  await page.evaluate(() => window.__wb.changed());
   await page.waitForSelector('#reader .vn[data-v="9"].vq', { timeout: 10000 });
   check('a question puts a ? on its verse number', true);
-  check('the Notebook has no second writing box', await page.locator('.pane-notebook textarea').count() <= 1);
-  await nbBack();
 
-  // the color bar: select words with the mouse, 2 colors them green, the recent threads are chips, 0 removes the color
-  const anchorOf = () => page.evaluate(() => {
-    const d = window.__wb.drawn, s = window.__wb.selector.sel;
-    return `NUM.25:${d.v[s.a]}.${d.i[s.a]}-25:${d.v[s.b]}.${d.i[s.b]}`;
-  });
-  const boxOf = async (v, i) => page.evaluate(([v, i]) => {
-    const d = window.__wb.drawn, k = d.v.findIndex((x, n) => x === v && d.i[n] === i);
-    const e = d.el[k]; e.scrollIntoView({ block: 'center' });
-    const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-  }, [v, i]);
+  // the mark bar: select words with the mouse; a Highlight style makes a mark (wb mark at lists it); a click away closes the bar
   const w1 = await boxOf(16, 2), w2 = await boxOf(16, 5);
-  await page.mouse.move(w1.x, w1.y); await page.mouse.down();
-  for (let k = 1; k <= 6; k++) await page.mouse.move(w1.x + (w2.x - w1.x) * k / 6, w1.y + (w2.y - w1.y) * k / 6);
-  await page.mouse.up();
-  await page.waitForSelector('.colorbar', { timeout: 5000 });
+  const dragWords = async () => {
+    await page.mouse.move(w1.x, w1.y); await page.mouse.down();
+    for (let k = 1; k <= 6; k++) await page.mouse.move(w1.x + (w2.x - w1.x) * k / 6, w1.y + (w2.y - w1.y) * k / 6);
+    await page.mouse.up();
+    await page.waitForSelector('.markbar', { timeout: 5000 });
+  };
+  await dragWords();
   const sel = await anchorOf();
-  await page.waitForSelector('.colorbar .cb-chip', { timeout: 5000 }).catch(() => {});
-  check('the color bar has ×, and chips for recent threads', await page.locator('.colorbar .swatch.clear').count() === 1 && await page.locator('.colorbar .cb-chip').count() > 0);
-  await page.screenshot({ path: shots + '1440-color-bar.png' });
-  await page.keyboard.press('2');
+  check('the mark bar has the six kinds, the Legend, Add to…, Copy and Open as a tab', (await page.locator('.markbar button').evaluateAll(els => els.map(e => e.title.replace(/ \(.\)$/, '')))).join(',') === 'Highlight,Underline,Circle,Box,Arrow,Margin note,Legend,Add to…,Copy,Open as a tab');
+  check('no round handles after a mouse drag', await page.locator('#reader .handle:not([hidden])').count() === 0);
+  await page.screenshot({ path: shots + '1440-mark-bar.png' });
+  await page.locator('.markbar .mb-highlight').click();
+  await page.locator('.markbar .mb-menu .mb-row').first().click();
   await sleep(800);
-  const hl = () => JSON.parse(execFileSync(wbExe, ['anchor', sel], { env }).toString()).highlight;
-  check('2 colors the selection green', hl() === 'green', sel);
-  // the same words again, then 0
-  await page.mouse.move(w1.x, w1.y); await page.mouse.down();
-  for (let k = 1; k <= 6; k++) await page.mouse.move(w1.x + (w2.x - w1.x) * k / 6, w1.y + (w2.y - w1.y) * k / 6);
-  await page.mouse.up();
-  await page.waitForSelector('.colorbar', { timeout: 5000 });
-  await page.keyboard.press('0');
-  await sleep(800);
-  check('0 removes the highlight', hl() === null);
-  // a click away from the color bar closes it and clears the selection (note c35b)
-  await page.mouse.move(w1.x, w1.y); await page.mouse.down();
-  for (let k = 1; k <= 6; k++) await page.mouse.move(w1.x + (w2.x - w1.x) * k / 6, w1.y + (w2.y - w1.y) * k / 6);
-  await page.mouse.up();
-  await page.waitForSelector('.colorbar', { timeout: 5000 });
+  const marksAt = () => JSON.parse(execFileSync(wbExe, ['mark', 'at', sel.split('-')[0]], { env }).toString()).marks;
+  check('a style from the Highlight drop-down makes a highlight mark on the selection', marksAt().some(m => m.kind === 'highlight' && m.at === sel), sel);
+  // a click away from the bar closes it and clears the selection (note c35b)
+  await dragWords();
   await page.locator('.dock-right .pane:visible').first().click({ position: { x: 60, y: 8 } });
   await sleep(200);
-  check('a click away from the color bar closes it and clears the selection', await page.locator('.colorbar').count() === 0 && await page.evaluate(() => !window.__wb.selector.sel && !document.querySelector('.w.sel')));
+  check('a click away from the mark bar closes it and clears the selection', await page.locator('.markbar').count() === 0 && await page.evaluate(() => !window.__wb.selector.sel && !document.querySelector('.w.sel')));
+  // right-click the selection: the same actions as a menu
+  await dragWords();
+  await page.mouse.click(w1.x + 8, w1.y, { button: 'right' });
+  check('right-click on a selection opens the mark menu', await page.locator('.mb-ctx').waitFor({ timeout: 5000 }).then(() => true, () => false));
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
 
   // Notes & lookup for a verse: color it, write a note there, and take the color off again
-  await page.locator('#reader .vn[data-v="4"]').click();
-  await page.locator('.colorbar .act', { hasText: 'Notes & lookup' }).click();
+  await page.locator('#reader .vn[data-v="4"]').click({ button: 'right' });
+  await page.locator('.verse-menu .menu-item', { hasText: 'Notes & lookup' }).click();
   await page.waitForSelector('.pane-place:visible .place-quote', { timeout: 10000 });
   const v4 = JSON.parse(execFileSync(wbExe, ['text', 'Num 25:4', '--json'], { env }).toString()).verses[0].text;
   check('Notes & lookup shows the verse verbatim', (await page.locator('.pane-place:visible .place-quote').textContent()) === v4);
@@ -494,10 +477,10 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   check('Ctrl+J from the command field does too', await capturing());
   await page.keyboard.press('Escape');
   await page.locator('#reader .vn[data-v="7"]').click();
-  await page.waitForSelector('.colorbar', { timeout: 5000 });
+  await page.waitForSelector('.markbar', { timeout: 5000 });
   await page.keyboard.press('Escape');
   await sleep(300);
-  check('Esc clears the verse picked and its bar', await page.locator('.colorbar').count() === 0 && await page.locator('#reader .w.sel').count() === 0, await page.evaluate(() => document.getElementById('overlay').innerHTML.slice(0, 300)));
+  check('Esc clears the verse picked and its bar', await page.locator('.markbar').count() === 0 && await page.locator('#reader .w.sel').count() === 0, await page.evaluate(() => document.getElementById('overlay').innerHTML.slice(0, 300)));
   await page.keyboard.press('Control+j');
   await capturing();
   check('quick capture is on the verse last clicked', (await page.locator('.capture .place-pill').textContent()).includes('Numbers 25:7'));
@@ -576,8 +559,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await page.evaluate(() => window.__wb.open('NUM', 25, 11));
   await sleep(400);
   check('no pen over the reader at desktop sizes (note e3fe)', !(await page.locator('#pen').isVisible()));
-  await page.locator('#reader .vn[data-v="11"]').click();
-  await page.locator('.colorbar .act', { hasText: /^Note$/ }).click();
+  // Note left the selection's bar (MK7-33): a new note on the verse is asked of the command language
+  await page.evaluate(() => window.__wb.run('note @Num 25:11'));
   await page.waitForFunction(() => document.activeElement?.classList.contains('nb-input'), null, { timeout: 10000 });
   await page.keyboard.type('zeal in more than one place');
   await done();
@@ -1834,7 +1817,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   const w11 = await page.evaluate(() => { const d = window.__wb.drawn, k = d.v.indexOf(11) + 2; d.el[k].scrollIntoView({ block: 'center' }); const r = d.el[k].getBoundingClientRect(), e = d.el[k + 3].getBoundingClientRect(); return [r.x + 3, r.y + r.height / 2, e.right - 3, e.y + e.height / 2]; });
   await page.mouse.move(w11[0], w11[1]); await page.mouse.down(); await page.mouse.move(w11[2], w11[3], { steps: 6 }); await page.mouse.up();
   await sleep(300);
-  check('words cannot be selected in the YLT (no color bar)', await page.locator('.colorbar').count() === 0);
+  check('words cannot be selected in the YLT (no mark bar)', await page.locator('.markbar').count() === 0);
   await page.mouse.click(w11[0], w11[1]);
   check('a word in the YLT opens its verse, in the YLT', await page.locator('.popover', { hasText: ylt11 }).waitFor({ timeout: 5000 }).then(async () => (await page.locator('.popover .sheet-sub').textContent()) === 'YLT', () => false));
   await page.keyboard.press('Escape');
@@ -1966,21 +1949,29 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     const wordAt = v => page.evaluate(v => { const d = window.__wb.drawn, k = d.v.indexOf(v); d.el[k].scrollIntoView({ block: 'center' }); const r = d.el[k].getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, v);
     await page.evaluate(() => window.__wb.open('NUM', 25, 10));
     await sleep(500);
-    // 4b90: a click on a verse number selects the whole verse with the color bar; a color colors the verse; a click away clears
+    // 4b90: a click on a verse number selects the whole verse with the mark bar; a style marks the verse; a click away clears
     await page.locator('#reader .vn[data-v="12"]').click();
-    await page.waitForSelector('.colorbar.verse-bar', { timeout: 5000 });
+    await page.waitForSelector('.markbar.verse-bar', { timeout: 5000 });
     const v12 = await page.evaluate(() => { const d = window.__wb.drawn; return { words: d.v.filter(v => v === 12).length, sel: document.querySelectorAll('#reader .w.sel').length, vsel: !!document.querySelector('#reader .vn.vsel[data-v="12"]') }; });
-    check('a click on a verse number selects the whole verse, with the color bar (note 4b90)', v12.sel === v12.words && v12.vsel, `${v12.sel} of ${v12.words} words`);
-    check('the verse’s bar has the verse’s actions', (await page.locator('.colorbar .act').allTextContents()).join(',') === 'Note,Question,Thread,Copy,Notes & lookup,Open as a tab');
+    check('a click on a verse number selects the whole verse, with the mark bar (note 4b90)', v12.sel === v12.words && v12.vsel, `${v12.sel} of ${v12.words} words`);
+    check('the verse’s bar is the words’ bar', (await page.locator('.markbar button').count()) === 10);
     await page.screenshot({ path: shots + '1440-a-verse-picked.png' });
-    await page.keyboard.press('3');
+    await page.locator('.markbar .mb-highlight').click();
+    await page.locator('.markbar .mb-menu .mb-row').first().click();
     await sleep(800);
-    check('a color on the verse’s bar colors the whole verse', JSON.parse(execFileSync(wbExe, ['anchor', 'Num 25:12'], { env }).toString()).highlight === 'blue');
+    check('a style on the verse’s bar marks the whole verse', JSON.parse(execFileSync(wbExe, ['mark', 'at', 'Num 25:12'], { env }).toString()).marks.some(m => m.kind === 'highlight'));
     await page.locator('#reader .vn[data-v="13"]').click();
-    await page.waitForSelector('.colorbar.verse-bar', { timeout: 5000 });
+    await page.waitForSelector('.markbar.verse-bar', { timeout: 5000 });
     await page.locator('.dock-right .pane:visible').first().click({ position: { x: 60, y: 8 } });
     await sleep(200);
-    check('a click away clears the verse picked and its bar', await page.locator('.colorbar').count() === 0 && await page.locator('#reader .w.sel, #reader .vn.vsel').count() === 0);
+    check('a click away clears the verse picked and its bar', await page.locator('.markbar').count() === 0 && await page.locator('#reader .w.sel, #reader .vn.vsel').count() === 0);
+    // a span: the first verse number, then shift-click the last
+    await page.locator('#reader .vn[data-v="13"]').click();
+    await page.locator('#reader .vn[data-v="15"]').click({ modifiers: ['Shift'] });
+    await page.waitForSelector('.markbar', { timeout: 5000 });
+    check('shift-click on a second verse number selects the span between', JSON.stringify(await page.evaluate(() => { const d = window.__wb.drawn, s = window.__wb.selector.sel; return [...new Set(d.v.slice(s.a, s.b + 1))]; })) === '[13,14,15]');
+    await page.keyboard.press('Escape');
+    await sleep(200);
 
     // 0cf1: right-click a verse: Open in a new tab (a second reader at it)
     let [x, y] = await wordAt(14);
@@ -1993,7 +1984,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     // 9587: the second reader draws what the reader draws, and nothing in it moves the reader
     check('the second reader draws the highlights (note 9587)', await page.evaluate(() => [...document.querySelectorAll('.pane-reader2 .vn[data-v="12"]')].some(v => v.nextElementSibling?.classList.contains('hl'))));
     await r2.locator('.vn[data-v="15"]').click();
-    await page.waitForSelector('.colorbar.verse-bar', { timeout: 5000 });
+    await page.waitForSelector('.markbar.verse-bar', { timeout: 5000 });
     check('a verse picked in the second reader has its own bar; the reader’s selection and place stay', await r2.locator('.w.sel').count() > 0 && await page.evaluate(() => !window.__wb.selector.sel) && (await top()) === at0);
     await page.screenshot({ path: shots + '1440-a-second-reader.png' });
     await page.keyboard.press('1');
@@ -2082,7 +2073,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     await page.mouse.move(q1.x, q1.y); await page.mouse.down();
     for (let k = 1; k <= 6; k++) await page.mouse.move(q1.x + (q2.x - q1.x) * k / 6, q1.y + (q2.y - q1.y) * k / 6);
     await page.mouse.up();
-    await page.waitForSelector('.colorbar', { timeout: 5000 });
+    await page.waitForSelector('.markbar', { timeout: 5000 });
     await page.keyboard.press('Escape');
     await page.evaluate(() => window.__wb.run('?Why these words here?'));
     const asked = JSON.parse(execFileSync(wbExe, ['trail', 'list', '--status', 'all', '--at', 'Num 25:13'], { env }).toString()).trails.find(t => t.text === 'Why these words here?');
@@ -2247,10 +2238,10 @@ ${results.length - bad.length} of ${results.length} checks passed`);
     await page.locator('#reader .vn[data-v="16"]').scrollIntoViewIfNeeded();
     const vt = await page.locator('#reader .vn[data-v="16"]').boundingBox();
     await tap(vt.x + vt.width / 2, vt.y + vt.height / 2);
-    await page.waitForSelector('.colorbar', { timeout: 5000 }).catch(() => {});
-    // (the bar widens once its thread chips are in: Note is measured where it settles)
+    await page.waitForSelector('.sheet .acts, .popover .acts', { timeout: 5000 }).catch(() => {});
+    // on touch a verse's number opens its card (Note, Question, Thread, Copy); Note is measured where it settles
     await sleep(600);
-    const nb = await page.locator('.colorbar .act', { hasText: /^Note$/ }).boundingBox();
+    const nb = await page.locator('.sheet .act, .popover .act', { hasText: /^Note$/ }).first().boundingBox();
     await watchBlur();
     if (nb) await tap(nb.x + nb.width / 2, nb.y + nb.height / 2);
     const s2 = await keptWriting();

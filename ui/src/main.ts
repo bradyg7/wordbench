@@ -353,7 +353,6 @@ function writeNote(from: HTMLElement, at: At, kind: 'note' | 'question') {
 }
 
 function addToThread(from: HTMLElement, at: At) {
-  if (!inApp) return toast('Threads are changed in the app');
   threadChooser(from, async name => {
     try {
       await wb(['thread', 'add', name, at.anchor]);
@@ -363,6 +362,75 @@ function addToThread(from: HTMLElement, at: At) {
       written('threads');
     } catch (e) { toast(String(e)); }
   });
+}
+
+/** Add to… (marks row 11): a page, a folder or a save, each by the commands the app already has. */
+function addTo(from: HTMLElement, at: At) {
+  const box = h('div', 'menu-list add-to');
+  box.append(h('div', 'muted small nb-menu-note', at.label));
+  const item = (act: string, label: string, ico: string, fn: () => void) => {
+    const b = h('button', 'menu-item');
+    b.dataset.act = act;
+    b.append(icon(ico, 14), document.createTextNode(` ${label}`));
+    b.onclick = () => { shut(); fn(); };
+    box.append(b);
+  };
+  item('page', 'A page…', 'notebook', () => pageChooser(from, at));
+  item('folder', 'A folder…', 'threads', () => addToThread(from, at));
+  item('save', 'A save (the Shelf)', 'shelf', async () => {
+    try { await wb(['save', at.anchor]); clearSelection(); toast(`${at.label} saved`); written('threads'); } catch (e) { toast(String(e)); }
+  });
+  const shut = popMenu(from, box, { width: 240 });
+}
+
+/** A page for the selection: its verses go in as a scripture block (the file holds only the reference), last in the page. */
+function pageChooser(from: HTMLElement, at: At) {
+  const box = h('div', 'chooser');
+  const input = h('input', 'field') as HTMLInputElement;
+  input.placeholder = 'Find a page';
+  input.setAttribute('aria-label', 'Find a page');
+  const list = h('div', 'chooser-list');
+  box.append(input, list);
+  const close = popMenu(from, box, { width: 280 });
+  const flat = (ps: any[]): any[] => ps.flatMap(p => [p, ...flat(p.children || [])]);
+  wb(['page', 'tree']).then((t: any) => {
+    const pages = flat(t.pages || []);
+    const draw = () => {
+      const f = input.value.trim().toLowerCase();
+      list.replaceChildren(...pages.filter(p => (p.title || '').toLowerCase().includes(f)).slice(0, 12).map(p => {
+        const b = h('button', 'chooser-row');
+        b.dataset.page = p.id;
+        b.append(document.createTextNode(p.title || p.id));
+        b.onclick = async () => {
+          close();
+          try {
+            await wb(['block', 'add', p.id, '```scripture\n' + at.label.replace('–', '-') + '\n```']);
+            clearSelection();
+            toast(`${at.label} added to ${p.title}`);
+            written('notes');
+          } catch (e) { toast(String(e)); }
+        };
+        return b;
+      }));
+    };
+    input.oninput = draw;
+    draw();
+  }).catch(() => {});
+  input.focus();
+}
+
+/** Copy: the selected words with their reference, as the verse menu's Copy does (the words are the ones drawn; a span that reaches into another chapter is asked of `wb text`). */
+async function copySelection(vw: View, at: At): Promise<boolean> {
+  const d = vw.drawn, sel = vw.selector.sel;
+  if (!d || !sel) return false;
+  try {
+    const [first, last] = at.anchor.split('-');
+    const cross = !!last && /^\d+:\d+$/.test(last) && last.split(':')[0] !== first.split(':')[0].split('.').pop();
+    const text = cross ? String(await wb(['text', at.anchor, ...(d.chapter.version ? ['--version', d.chapter.version] : [])])).trim()
+      : `${textOf(d, sel.a, sel.b)} (${at.label} ${d.chapter.version || 'KJV'})`;
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch { toast('Copy is not allowed here'); return false; }
 }
 
 const anchorOf = (m: Mark) => {
@@ -412,18 +480,38 @@ const verseAt = (d: Drawn, v: number): At => ({ anchor: `${d.chapter.code}.${d.c
 
 /** A click on a verse number selects the whole verse and shows the color bar for it; a click away clears both (note
  * 4b90). On a phone, and in another version, the verse's card opens as before. */
-function selectVerse(vw: View, v: number, el: HTMLElement, at: number) {
+function selectVerse(vw: View, v: number, el: HTMLElement, at: number, shift = false) {
   const d = vw.drawn;
-  if (!d || compact() || d.chapter.version) return void openVerse(vw, v, el, at);
-  const a = d.v.indexOf(v), b = d.v.lastIndexOf(v);
-  if (a < 0) return;
+  // On a phone, and in another version, a tap on a verse number still opens the verse's card (it holds Note, Question, Thread
+  // and Copy there; the bar's More holds Copy and Open as a tab). On a desktop the click selects (marks rows 2 and 3).
+  if (!d || compact() || d.chapter.version) { vw.selector.clear(); return void openVerse(vw, v, el, at); }
+  const code = d.chapter.code, ch = d.chapter.chapter;
+  const here = { code, chapter: ch, verse: v };
+  // A verse span (MK7-13): the first verse number clicked is kept, also across a turned chapter of the same book; shift-click the last.
+  const from = shift && spanFrom && spanFrom.code === code ? spanFrom : null;
+  if (!from) spanFrom = here;
+  const lo = from && (from.chapter < ch || (from.chapter === ch && from.verse <= v)) ? from : here;
+  const hi = lo === here ? from ?? here : here;
+  const a = lo.chapter === ch ? d.v.indexOf(lo.verse) : 0;
+  let b = hi.chapter === ch ? d.v.lastIndexOf(hi.verse) : d.v.length - 1;
+  if (a < 0 || b < 0) return;
   while (!d.el[b] && d.more()) { /* the rest of the verse drawn first */ }
-  barVerse = v;
+  if (hi.chapter !== ch) b = d.v.length - 1;
+  const one = lo.chapter === hi.chapter && lo.verse === hi.verse;
+  barVerse = one ? v : 0;
+  if (!one) {
+    const ref = lo.chapter === hi.chapter ? `${d.chapter.name} ${lo.chapter}:${lo.verse}–${hi.verse}` : `${d.chapter.name} ${lo.chapter}:${lo.verse}–${hi.chapter}:${hi.verse}`;
+    barAt = { anchor: `${code}.${lo.chapter}:${lo.verse}-${hi.chapter}:${hi.verse}`, label: ref };
+  }
   vw.root.querySelectorAll('.vn.vsel').forEach(e => e.classList.remove('vsel'));
   vw.selector.set(a, b);
-  vw.root.querySelector(`.vn[data-v="${v}"]`)?.classList.add('vsel');
+  for (let k = a; k <= b; k++) vw.root.querySelector(`.vn[data-v="${d.v[k]}"]`)?.classList.add('vsel');
   showBar(vw, a, b, false);
 }
+/** The first verse number clicked, kept for the shift-click that ends a span. */
+let spanFrom: { code: string; chapter: number; verse: number } | null = null;
+/** What a verse span's bar stands for (its anchor and name), when the words alone do not say it. */
+let barAt: At | null = null;
 
 function showBar(vw: View, a: number, b: number, touch: boolean) {
   bar?.remove();
@@ -434,14 +522,17 @@ function showBar(vw: View, a: number, b: number, touch: boolean) {
   const verse = barVerse && d.v[a] === barVerse && d.v[b] === barVerse && (a === 0 || d.v[a - 1] !== barVerse) && (b === d.v.length - 1 || d.v[b + 1] !== barVerse) ? barVerse : 0;
   barVerse = 0;
   barView = vw;
-  const at = verse ? verseAt(d, verse) : selectionAt(vw, a, b);
+  const at = barAt ?? (verse ? verseAt(d, verse) : selectionAt(vw, a, b));
+  barAt = null;
   app.picked = at;
   markBar?.dispose();
   const mb = createBar({ anchor: at.anchor, label: at.label }, {
     chapterMarks: () => d.marks.marks || [],
     drawn: made => markDrawn(vw, made),
     finish: () => vw.selector.clear(),
-    addTo: from => addToThread(from, at),   // Add to… is the reader's own Add until T7
+    addTo: from => addTo(from, at),
+    copy: () => copySelection(vw, at),
+    openTab: () => { void openSecondReader(at.anchor, d.chapter.version || 'KJV'); vw.selector.clear(); },
   });
   markBar = mb;
   bar = mb.el;
@@ -507,7 +598,7 @@ let hoverSeq = 0;
 function handlersFor(vw: View) {
   return {
     tapWord: (k: number, el: HTMLElement, at: number) => openWord(vw, k, el, at),
-    tapVerse: (v: number, el: HTMLElement, at: number) => selectVerse(vw, v, el, at),
+    tapVerse: (v: number, el: HTMLElement, at: number, shift?: boolean) => selectVerse(vw, v, el, at, shift),
     hoverWord: async (k: number, el: HTMLElement) => {
       if (hoverMode() !== 'on') return;
       const seq = ++hoverSeq, t0 = performance.now(), d = vw.drawn!;
@@ -543,7 +634,7 @@ wireView(mainView);
 document.addEventListener('pointerdown', e => {
   if (!bar || !barView?.selector.sel) return;
   const t = e.target as HTMLElement;
-  if (barView.root.contains(t) || t.closest('.menu, .popover, .sheet, .hovercard')) return;
+  if (barView.root.contains(t) || t.closest('.menu, .popover, .sheet, .hovercard, .mb-ctx')) return;
   barView.selector.clear();
 });
 document.getElementById('overlay')!.addEventListener('pointerleave', e => { if ((e.target as HTMLElement).classList?.contains('hovercard')) hideCard(); }, true);
@@ -565,6 +656,12 @@ function wireView(vw: View) {
   vw.root.addEventListener('contextmenu', e => {
     const d = vw.drawn;
     if (!d || lastPointer === 'touch' || compact()) return;
+    // a right-click on the selected words: the same actions as the bar, as a menu at the pointer (MK7-34)
+    if (markBar && barView === vw && vw.selector.sel && (e.target as HTMLElement).closest('.sel, .sj')) {
+      e.preventDefault();
+      markBar.openContext(e.clientX, e.clientY);
+      return;
+    }
     const t = (e.target as HTMLElement).closest<HTMLElement>('.w, .g, .vn');
     if (!t) return;
     const v = t.classList.contains('vn') ? +t.dataset.v! : d.v[+t.dataset.k!];

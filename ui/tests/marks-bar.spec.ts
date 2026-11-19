@@ -72,20 +72,21 @@ async function pickColor(page: Page, color: string) {
 
 const KINDS = ['Highlight (H)', 'Underline (U)', 'Circle (C)', 'Box (B)', 'Arrow (A)', 'Margin note (N)'];
 
-test('row 1: words selected: the bar is icons only, just above them, six kinds, the Legend and Add to…', async ({ page }) => {
+test('row 1: words selected: the bar is icons only, just above them, six kinds, the Legend and Add to…, then Copy and Open as a tab (or ⋯ on a phone)', async ({ page }, info) => {
+  const phone = info.project.name === 'webkit-phone';
   const run = await ready(page);
   await select(page, run);
   const titles = await bar(page).locator('button').evaluateAll(els => els.map(e => e.getAttribute('title')));
-  expect(titles).toEqual([...KINDS, 'Legend', 'Add to…']);
+  expect(titles).toEqual([...KINDS, 'Legend', 'Add to…', ...(phone ? ['More'] : ['Copy', 'Open as a tab'])]);
   // icons only: no text in any button
-  expect(await bar(page).locator('button').evaluateAll(els => els.map(e => (e.textContent || '').trim()))).toEqual(Array(8).fill(''));
-  await expect(bar(page).locator('button svg')).toHaveCount(8);
-  await expect(bar(page).locator('.mb-sep')).toHaveCount(2);
+  expect(await bar(page).locator('button').evaluateAll(els => els.map(e => (e.textContent || '').trim()))).toEqual(Array(phone ? 9 : 10).fill(''));
+  await expect(bar(page).locator('button svg')).toHaveCount(phone ? 9 : 10);
+  await expect(bar(page).locator('.mb-sep')).toHaveCount(3);
   // just above the selection, the same words
   const sel = (await page.locator('.w.sel').first().boundingBox())!, b = (await bar(page).boundingBox())!;
   expect(b.y + b.height).toBeLessThanOrEqual(sel.y + 1);
   expect(sel.y - (b.y + b.height)).toBeLessThan(40);
-  expect(b.width).toBeLessThanOrEqual(361);
+  expect(b.width).toBeLessThanOrEqual(phone ? 374 : 425);
   // the old color bar and its chips are gone
   await expect(page.locator('.colorbar, .selbar, .swatch')).toHaveCount(0);
 });
@@ -332,7 +333,7 @@ test('phone: the same bar with 44 px targets above the selection; a tap opens th
   await expect(bar(page)).toBeVisible();
   run.at = await page.evaluate(() => { const s = (window as any).__wb.selector.sel, d = (window as any).__wb.drawn; return `${d.chapter.code}.${d.chapter.chapter}:${d.v[s.a]}.${d.i[s.a]}-${d.chapter.chapter}:${d.v[s.b]}.${d.i[s.b]}`; });
   const boxes = await bar(page).locator('button').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height }; }));
-  expect(boxes).toHaveLength(8);
+  expect(boxes).toHaveLength(9);
   for (const b of boxes) expect(b.h).toBeGreaterThanOrEqual(44);
   const bb = (await bar(page).boundingBox())!;
   expect(bb.x).toBeGreaterThanOrEqual(0);

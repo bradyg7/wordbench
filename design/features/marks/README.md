@@ -96,8 +96,8 @@ real app). `Built` is ticked only when the test passes.
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
 | 1 | R | Select words in a verse | A browser-like selection; the mark bar above it, icons only: six kinds (name on hover), the Legend, Add to… | nothing | | ui | [x] |
-| 2 | R | Click a verse number | The whole verse selected, no handles; the bar appears | nothing | | ui | [ ] |
-| 3 | R | Click a verse number, then shift-click another | The span between is selected (across chapters within one book); the bar adds Open as a passage | nothing | | ui | [ ] |
+| 2 | R | Click a verse number | The whole verse selected, no handles; the bar appears | nothing | | ui | [x] |
+| 3 | R | Click a verse number, then shift-click another | The span between is selected (across chapters within one book); the bar adds Open as a passage | nothing | | ui | [x] |
 | 4 | B | Click a style in a kind's drop-down | The mark is drawn at once; the bar closes; the selection clears | mark added to `marks/<BOOK>.json` | `wb mark add <ref> --style <legend name>` | wb, ui | [x] |
 | 5 | B | Click a kind icon (Highlight, Underline, Circle, Box) | A small drop-down under the icon: that kind's styles by name (quick ones pinned, then recent; 6 at most), Any color…; Underline adds 1 / 2 / 3 at its top | nothing | | ui | [x] |
 | 6 | B | Click a recent style | The mark is drawn in it; the bar closes | mark added | as 4 | wb, ui | [x] |
@@ -105,8 +105,8 @@ real app). `Built` is ticked only when the test passes.
 | 8 | B | Type a name, Enter | The entry is added to the legend; the bar closes | entry in `settings/legend.json` | `wb legend add --kind --color --name` | wb, ui | [x] |
 | 9 | B | Enter or Esc with no name | The bar closes; the legend lists it as "Unnamed <color> <kind>" | unnamed entry added | | ui | [x] |
 | 10 | B | Click the Legend icon | The same drop-down for the whole legend, a filter field focused; a click or Enter applies an entry | nothing | | ui | [x] |
-| 11 | B | Click Add to… | A page, a folder or a save, as the reader's Add | as the reader's Add | `wb set add`, `wb page add` (existing) | ui | [ ] |
-| 12 | B | Click Open as a passage (a span) | The span opens in its own reader tab; Back returns to the verse | trail step | `wb text <span>` | ui | [ ] |
+| 11 | B | Click Add to… | A page, a folder or a save, as the reader's Add | as the reader's Add | `wb set add`, `wb page add` (existing) | ui | [x] |
+| 12 | B | Click Open as a passage (a span) | The span opens in its own reader tab; Back returns to the verse | trail step | `wb text <span>` | ui | [x] |
 | 13 | B | Click Arrow | "Select where it points"; the bar shrinks to Back and Cancel | nothing | | ui | [ ] |
 | 14 | R | Select the target in the same chapter | The arrow is drawn between them, above the text, never across the margin | mark added (from, to) | `wb mark add <from> --kind arrow --to <ref>` | wb, ui | [ ] |
 | 15 | R | While choosing a target, try to leave the chapter | The reader stays; the bar says arrows stay in one chapter | nothing | | ui | [ ] |
@@ -117,20 +117,20 @@ real app). `Built` is ticked only when the test passes.
 | 20 | B | Press H, U, C, B, A, N | As clicking that kind (Highlight, Underline, Circle, Box, Arrow, margin Note) | | | ui | [x] |
 | 21 | B | Press 1 to 6 (a drop-down open) | As clicking that row of the drop-down | as 4 | | ui | [x] |
 | 22 | B | Press a kind's key twice | Its last style is applied | as 4 | | ui | [x] |
-| 23 | R | Select, then Ctrl+1 to Ctrl+9 | The style assigned to that key is applied, no bar needed | as 4 | | ui | [ ] |
+| 23 | R | Select, then Ctrl+1 to Ctrl+9 | The style assigned to that key is applied, no bar needed | as 4 | | ui | [x] |
 | 24 | B | Esc, or click outside | The bar closes; nothing is made | nothing | | ui | [x] |
 
 ### Copy, Open as a tab, the right-click menu (MK7-32 to MK7-34)
 
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 64 | B | Click Copy | The selected words are copied with their reference; "Copied" on hover for a moment; the bar stays | nothing | `wb text <ref>` | ui | [ ] |
-| 65 | B | Click Open as a tab | The selection's verses open in a new tab; Back returns to the verse | trail step | `wb text <ref>` | ui | [ ] |
-| 66 | R | Right-click a selection | A menu beside the pointer: the six kinds, Legend…, Add to…, Copy, Open as a tab, each with its key; the bar hides while it is open | nothing | | ui | [ ] |
-| 67 | menu | Hover or arrow to a kind | Its styles open as a submenu, the same rows as the bar's drop-down | nothing | | ui | [ ] |
-| 68 | menu | Pick a row, or Esc | As the bar's action; Esc closes, nothing made | as that action | | ui | [ ] |
-| 69 | phone B | Tap ⋯ | Copy and Open as a tab, as a small sheet | nothing | | ui (phone) | [ ] |
-| 70 | R | Select with the mouse | No round handles at the selection's ends (MK7-12) | nothing | | ui | [ ] |
+| 64 | B | Click Copy | The selected words are copied with their reference; "Copied" on hover for a moment; the bar stays | nothing | `wb text <ref>` | ui | [x] |
+| 65 | B | Click Open as a tab | The selection's verses open in a new tab; Back returns to the verse | trail step | `wb text <ref>` | ui | [x] |
+| 66 | R | Right-click a selection | A menu beside the pointer: the six kinds, Legend…, Add to…, Copy, Open as a tab, each with its key; the bar hides while it is open | nothing | | ui | [x] |
+| 67 | menu | Hover or arrow to a kind | Its styles open as a submenu, the same rows as the bar's drop-down | nothing | | ui | [x] |
+| 68 | menu | Pick a row, or Esc | As the bar's action; Esc closes, nothing made | as that action | | ui | [x] |
+| 69 | phone B | Tap ⋯ | Copy and Open as a tab, as a small sheet | nothing | | ui (phone) | [x] |
+| 70 | R | Select with the mouse | No round handles at the selection's ends (MK7-12) | nothing | | ui | [x] |
 
 ### Changing and removing
 
@@ -237,6 +237,8 @@ T4 built (core and wb): rows 17 to 19, 29, 30, 52. Tests (`crates/wb-cli/tests/m
 T5 built: rows 44, 45, 46, 47 (ui); row 42 in part (rust only: no page file read; the app speed run is not done); row 49 not ticked (WebKit stand-in only, no real-app check). Tests: `ui/tests/marks-draw.spec.ts`: `the fixture has a mark of every kind, and the reader draws each in its own layer, in the fixed order`, `a folder color is a tab by the verse number, never a line on the words`, `hovering a mark names its legend entry, an Unnamed one by its style` (47), `the marks panel › each kind hides and shows` (44), `… a legend entry hides and shows only the marks in its style` (45), `… Reading mode shows only the text …` (46), `a chapter with a hundred overlapping marks keeps every word readable` (49, WebKit), `narrowing the window places the layers again on the words`; Rust: `a_chapters_marks_carry_each_marks_legend_name_and_style_once_each`, `the_marks_panel_keeps_kinds_entries_and_reading_mode_in_settings_marks_json` (crates/wb-cli/tests/marks.rs), `opening_a_chapters_marks_reads_no_page_file` (crates/wb-core/tests/store_cache.rs). Screenshot: `build/t5.png`.
 
 T6 built: rows 1, 4 to 10, 20, 21, 22, 24 (ui; the `wb` side of 4, 7 and 8 is T1 and T3). Tests (`ui/tests/marks-bar.spec.ts`, desktop and one phone case): `row 1: words selected: the bar is icons only, just above them, six kinds, the Legend and Add to…`, `row 1: the bar is the same width whatever the legend holds` (an empty legend, and the fixture's eight entries), `row 5: a kind opens its drop-down away from the selection: quick styles pinned with a tick, then recent, at most six, numbered, Any color…`, `rows 4 and 6: a click on a style makes the mark at once, by --style or by kind and color; the bar closes and the selection clears`, `rows 7 and 8: a color no entry has is drawn at once and asks for its name; Enter adds the entry`, `row 9: Enter or Esc with no name leaves the new pen Unnamed in the legend`, `row 10: the Legend icon lists the whole legend with a filter focused; typing filters, Enter or a click applies; it ends with New pen…`, `row 20: H U C B pick a kind; A and N do nothing yet`, `row 21: 1 to 6 apply that row of an open drop-down`, `row 22: a kind's key pressed twice applies its last style`, `row 24: Esc, or a click outside, closes the bar and makes nothing`, `phone: the same bar with 44 px targets above the selection; a tap opens the drop-down and a row makes the mark`. Recent styles are kept in the reader's own storage (`wb.markRecent`) and filled from the chapter's marks. Arrow and Margin note are icons with `kindHooks` (T9, T10); Add to… is the reader's thread chooser until T7. The old color bar and selection bar are replaced (Copy, Look up, Notes & lookup, Question and the recent-folder chips went with them). Screenshot: `build/t6.png`.
+
+T7 and T7b built: rows 2, 3, 11, 12, 23 and 64 to 70 (ui). Tests (`ui/tests/marks-select.spec.ts`, desktop unless named; the bar's own `ui/tests/marks-bar.spec.ts` row 1 and phone cases now count Copy, Open as a tab and ⋯): `row 2: a click on a verse number selects the whole verse, like a browser selection with no handles, and the bar appears above it`, `row 2 (phone): a tap on a verse number still opens the verse card, with Note, Question, Thread and Copy` (phone), `row 3: a click on a verse number then a shift-click on another selects the span between, the bar for it`, `row 3: the span may cross a chapter of the same book`, `row 11: Add to… offers a page, a folder or a save, each by the commands the reader already has`, `row 12 and 65: Open as a tab opens the selection in a new reader tab, a step on the trail, and the reader keeps its place`, `row 23: with words selected, Ctrl+1 to Ctrl+9 apply the legend entry that holds that key`, `row 64: Copy and Open as a tab follow Add to…, each named on hover; Copy writes the words with their reference and says Copied`, `row 66: right-click on a selection opens a menu beside the pointer …`, `row 67: hovering or arrowing to a kind opens its styles as a submenu …`, `row 68: a row does the bar's action; Esc closes the menu and makes nothing; Arrow and Margin note are inert`, `row 69 (phone): Copy and Open as a tab sit behind a ⋯ icon …` (phone), `row 70: a selection made with the mouse has no round handles at its ends; a touch selection keeps them` (both). Choices: on a phone (under 600 px) a tap on a verse number still opens the verse card (Note, Question, Thread, Copy), as does a click in another version; the desktop click selects. The span's first verse number is kept across a chapter turn within the book, so the shift-click may be in the next chapter (`wb mark add NUM.25:18-26:1`). Add to… is a small menu of A page… (the page list, then `wb block add <page>` with a scripture block), A folder… (the existing thread chooser, `wb thread add`) and A save (`wb save <place>`, the Shelf); the page chooser is new, the other two existed. Copy writes `<words> (<reference> KJV)`, the verse menu's format; Ctrl+C with a selection also copies. Round handles are the touch selection's way to extend it by hand and remain on a phone; a mouse selection has none. `measure/desk.mjs` now looks for `.markbar`; its Note, Question and Notes & lookup steps (which left the selection with MK7-33) are reached another way and have not been run. Screenshot: `build/t7.png`.
 
 ## Disk (proposed)
 
