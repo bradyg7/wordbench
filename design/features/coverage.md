@@ -69,3 +69,9 @@ The terminal side of each area above; a command is designed with the area whose 
 | `settings`, `layout`, `view` | Settings, layout, views | [settings](settings/README.md) |
 | `help`, `guide`, `manual`, `commands` | Help ([command](command/README.md) for kept `commands`) | [help](help/README.md) |
 | `status`, `study`, `do` | Not shown in the window (checks and the relay) | not needed |
+
+## Outside the app
+
+| Area | Buttons and parts | Design | State |
+|---|---|---|---|
+| The website | Overview, Download, Releases, Help, Privacy; its deploy | [site](site/README.md) | accepted (2026-11-19) |
