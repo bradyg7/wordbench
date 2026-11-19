@@ -40,6 +40,7 @@ import { createReadAloud } from './listen';
 import { refreshInks } from './hlink';
 import { KIND_NAMES, panel } from './markpanel';
 import { inkOf } from './markdraw';
+import { createBar, type MarkBar } from './markbar';
 import * as planReading from './planreading';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -390,6 +391,7 @@ async function addHighlight(m: Mark) {
 
 // ---- selection bar (touch) and color bar (mouse) --------------------------------------------------------------------
 let bar: HTMLElement | null = null;
+let markBar: MarkBar | null = null;
 /** The reader the bar belongs to, and the verse when a whole verse was picked by its number (note 4b90). */
 let barView: View | null = null;
 let barVerse = 0;
@@ -434,60 +436,29 @@ function showBar(vw: View, a: number, b: number, touch: boolean) {
   barView = vw;
   const at = verse ? verseAt(d, verse) : selectionAt(vw, a, b);
   app.picked = at;
-  bar = h('div', touch ? 'selbar' : 'colorbar');
+  markBar?.dispose();
+  const mb = createBar({ anchor: at.anchor, label: at.label }, {
+    chapterMarks: () => d.marks.marks || [],
+    drawn: made => markDrawn(vw, made),
+    finish: () => vw.selector.clear(),
+    addTo: from => addToThread(from, at),   // Add to… is the reader's own Add until T7
+  });
+  markBar = mb;
+  bar = mb.el;
   if (verse) bar.classList.add('verse-bar');
-  const pick = (c: string | null) => {
-    if (verse) addHighlight({ kind: 'verse', code: d.chapter.code, c1: d.chapter.chapter, v1: verse, i1: null, c2: null, v2: null, i2: null, id: `session_${Date.now()}`, color: c ?? undefined });
-    else addHighlight({ kind: a === b ? 'word' : 'phrase', code: d.chapter.code, c1: d.chapter.chapter, v1: d.v[a], i1: d.i[a], c2: a === b ? null : d.chapter.chapter, v2: a === b ? null : d.v[b], i2: a === b ? null : d.i[b], id: `session_${Date.now()}`, color: c ?? undefined });
-    vw.selector.clear();
-  };
-  barPick = pick;
-  // a whole verse: its own color shows on the bar
-  const current = verse ? [...(d.marks.marks || [])].reverse().find(m => m.kind === 'highlight' && m.at === `${d.chapter.code}.${d.chapter.chapter}:${verse}`)?.color : undefined;
-  bar.append(colorRow(current, pick, true));
-  if (!touch) bar.append(threadChips(at));
-  const names = touch ? ['Note', 'Thread', 'Look up', 'Copy'] : verse ? ['Note', 'Question', 'Thread', 'Copy', 'Notes & lookup', 'Open as a tab'] : ['Note', 'Thread', 'Copy', 'Notes & lookup'];
-  bar.append(actions(names, (act, el) => {
-    if (act === 'Copy') copy(`${textOf(d, a, b)} (${at.label} KJV)`);
-    else if (act === 'Notes & lookup') { vw.selector.clear(); openPlace(at.anchor, at.label); }
-    else if (act === 'Open as a tab') { vw.selector.clear(); openSecondReader(at.anchor, 'KJV'); }
-    else if (act === 'Look up') {
-      const k = [...Array(b - a + 1).keys()].map(n => a + n).find(k => d.strong[k]);
-      if (k !== undefined) openWord(vw, k, d.el[k], performance.now());
-    } else if (act === 'Thread') addToThread(el, at);
-    else writeNote(el, at, act === 'Question' ? 'question' : 'note');
-  }));
   bar.addEventListener('pointerdown', e => e.stopPropagation());
   document.getElementById('overlay')!.append(bar);
   placeBar();
 }
 
-// On the color bar: your three most recently changed threads, one click to add the selection (again to take it out).
-let barPick: ((c: string | null) => void) | null = null;
-function threadChips(at: At): HTMLElement {
-  const box = h('span', 'cb-chips');
-  if (!inApp) return box;
-  Promise.all([wb(['thread', 'list']), wb(['anchor', at.anchor]).catch(() => ({ threads: [] }))]).then(([ts, here]) => {
-    const holding = new Set((here.threads || []).map((t: any) => t.id));
-    for (const t of (ts as any[]).slice(0, 3)) {
-      const chip = h('button', `cb-chip${holding.has(t.id) ? ' in' : ''}`);
-      chip.append(h('i', `dot c-${t.color}`), document.createTextNode(` ${t.name}`));
-      chip.title = holding.has(t.id) ? `In ${t.name}: click to take it out` : `Add to ${t.name}`;
-      chip.onclick = async () => {
-        const inIt = chip.classList.contains('in');
-        try {
-          await wb(['thread', inIt ? 'rm' : 'add', t.name, at.anchor]);
-          chip.classList.toggle('in', !inIt);
-          chip.title = !inIt ? `In ${t.name}: click to take it out` : `Add to ${t.name}`;
-          toast(inIt ? `Taken out of ${t.name}` : `${at.label} added to ${t.name}`);
-          written('threads');
-        } catch (e) { toast(String(e)); }
-      };
-      box.append(chip);
-    }
-    placeBar();
-  }).catch(() => {});
-  return box;
+/** A mark was made from the bar: the core's reader read again in the app; outside it (the WebKit tests) the mark the command answered is drawn for the session. */
+async function markDrawn(vw: View, made: any) {
+  const d = vw.drawn;
+  if (inApp) { written('highlights'); return; }
+  if (!d || !made?.at || !made.kind) return;
+  const style = made.style || (made.kind === 'underline' ? `underline:${made.color}:${made.lines ?? 1}` : `${made.kind}:${made.color}`);
+  (d.marks.marks ||= []).push({ ...made, legend: made.legend || `Unnamed ${made.color} ${made.kind}`, style });
+  paint(vw.root, d);
 }
 
 function placeBar() {
@@ -499,6 +470,7 @@ function placeBar() {
   const w = bar.offsetWidth, hgt = bar.offsetHeight;
   const top = first.top - hgt - 14 > 60 ? first.top - hgt - 14 : Math.min(last.bottom + 18, window.innerHeight - hgt - 8);
   bar.style.top = `${top}px`;
+  bar.dataset.side = top < first.top ? 'above' : 'below';   // the drop-down opens away from the selection
   bar.style.left = `${Math.max(8, Math.min((first.left + last.right) / 2 - w / 2, window.innerWidth - w - 8))}px`;
 }
 
@@ -556,7 +528,8 @@ function handlersFor(vw: View) {
     cleared: () => {
       vw.root.querySelectorAll('.vn.vsel').forEach(e => e.classList.remove('vsel'));
       if (barView !== vw && barView) return;
-      bar?.remove(); bar = null; barPick = null; barView = null;
+      markBar?.dispose(); markBar = null;
+      bar?.remove(); bar = null; barView = null;
     },
   };
 }
@@ -1198,6 +1171,11 @@ document.addEventListener('scroll', e => {
   scrollTimers.set(el, window.setTimeout(() => el.classList.remove('scrolling'), 800));
 }, { capture: true, passive: true });
 
+// The mark bar's keys (H U C B A N, 1 to 6, a kind's key twice): taken before anything else while the bar is open.
+document.addEventListener('keydown', e => {
+  if (markBar && barView?.selector.sel && markBar.onKey(e)) { e.preventDefault(); e.stopPropagation(); }
+}, true);
+
 document.addEventListener('keydown', e => {
   const typing = !!(e.target as HTMLElement).closest('input, textarea, [contenteditable]');
   if (e.key === 'Escape') { closeSheet(); clearSelection(); hideCard(); }
@@ -1214,12 +1192,6 @@ document.addEventListener('keydown', e => {
   // quick capture (Ctrl+J unless set otherwise in the Notebook's settings): a small box at the verse, from anywhere
   if (isCaptureKey(e)) { e.preventDefault(); quickCapture(); return; }
   if (typing) return;
-  // a selection with its bar: 1–5 color it, 0 removes the highlight
-  if (bar && barView?.selector.sel && barPick && /^[0-5]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
-    e.preventDefault();
-    barPick(e.key === '0' ? null : COLORS[+e.key - 1]);
-    return;
-  }
   // ← → turn the chapter of the reader the key was pressed in: a second reader turns its own, never the main reader's
   const in2 = (e.target as HTMLElement).closest<HTMLElement>('.reader2-pane');
   const turn2 = in2 && turners.get(in2);

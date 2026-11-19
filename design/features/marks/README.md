@@ -92,16 +92,16 @@ real app). `Built` is ticked only when the test passes.
 
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 1 | R | Select words in a verse | A browser-like selection; the mark bar above it, icons only: six kinds (name on hover), the Legend, Add to… | nothing | | ui | [ ] |
+| 1 | R | Select words in a verse | A browser-like selection; the mark bar above it, icons only: six kinds (name on hover), the Legend, Add to… | nothing | | ui | [x] |
 | 2 | R | Click a verse number | The whole verse selected, no handles; the bar appears | nothing | | ui | [ ] |
 | 3 | R | Click a verse number, then shift-click another | The span between is selected (across chapters within one book); the bar adds Open as a passage | nothing | | ui | [ ] |
-| 4 | B | Click a style in a kind's drop-down | The mark is drawn at once; the bar closes; the selection clears | mark added to `marks/<BOOK>.json` | `wb mark add <ref> --style <legend name>` | wb, ui | [ ] |
-| 5 | B | Click a kind icon (Highlight, Underline, Circle, Box) | A small drop-down under the icon: that kind's styles by name (quick ones pinned, then recent; 6 at most), Any color…; Underline adds 1 / 2 / 3 at its top | nothing | | ui | [ ] |
-| 6 | B | Click a recent style | The mark is drawn in it; the bar closes | mark added | as 4 | wb, ui | [ ] |
-| 7 | B | Pick a color in the rainbow picker that no entry has | The mark is drawn; the bar keeps a name field, focused: "Name this pen" | mark added | `wb mark add <ref> --kind <k> --color <c> [--lines n]` | wb, ui | [ ] |
-| 8 | B | Type a name, Enter | The entry is added to the legend; the bar closes | entry in `settings/legend.json` | `wb legend add --kind --color --name` | wb, ui | [ ] |
-| 9 | B | Enter or Esc with no name | The bar closes; the legend lists it as "Unnamed <color> <kind>" | unnamed entry added | | ui | [ ] |
-| 10 | B | Click the Legend icon | The same drop-down for the whole legend, a filter field focused; a click or Enter applies an entry | nothing | | ui | [ ] |
+| 4 | B | Click a style in a kind's drop-down | The mark is drawn at once; the bar closes; the selection clears | mark added to `marks/<BOOK>.json` | `wb mark add <ref> --style <legend name>` | wb, ui | [x] |
+| 5 | B | Click a kind icon (Highlight, Underline, Circle, Box) | A small drop-down under the icon: that kind's styles by name (quick ones pinned, then recent; 6 at most), Any color…; Underline adds 1 / 2 / 3 at its top | nothing | | ui | [x] |
+| 6 | B | Click a recent style | The mark is drawn in it; the bar closes | mark added | as 4 | wb, ui | [x] |
+| 7 | B | Pick a color in the rainbow picker that no entry has | The mark is drawn; the bar keeps a name field, focused: "Name this pen" | mark added | `wb mark add <ref> --kind <k> --color <c> [--lines n]` | wb, ui | [x] |
+| 8 | B | Type a name, Enter | The entry is added to the legend; the bar closes | entry in `settings/legend.json` | `wb legend add --kind --color --name` | wb, ui | [x] |
+| 9 | B | Enter or Esc with no name | The bar closes; the legend lists it as "Unnamed <color> <kind>" | unnamed entry added | | ui | [x] |
+| 10 | B | Click the Legend icon | The same drop-down for the whole legend, a filter field focused; a click or Enter applies an entry | nothing | | ui | [x] |
 | 11 | B | Click Add to… | A page, a folder or a save, as the reader's Add | as the reader's Add | `wb set add`, `wb page add` (existing) | ui | [ ] |
 | 12 | B | Click Open as a passage (a span) | The span opens in its own reader tab; Back returns to the verse | trail step | `wb text <span>` | ui | [ ] |
 | 13 | B | Click Arrow | "Select where it points"; the bar shrinks to Back and Cancel | nothing | | ui | [ ] |
@@ -111,11 +111,11 @@ real app). `Built` is ticked only when the test passes.
 | 17 | M | Click into the margin beside a verse, or press N / the notepad icon | An empty note there, the cursor in it | nothing until typed | | ui | [ ] |
 | 18 | M | Click into the margin away from any verse | A note for the chapter, not tied to a verse | nothing until typed | | ui | [ ] |
 | 19 | M | Type, then click away or press Esc | The note is kept; its sign shows | `margin/<BOOK>/<chapter>.md` | `wb mark note <ref\|chapter> "text"` | wb, ui | [ ] |
-| 20 | B | Press H, U, C, B, A, N | As clicking that kind (Highlight, Underline, Circle, Box, Arrow, margin Note) | | | ui | [ ] |
-| 21 | B | Press 1 to 6 (a drop-down open) | As clicking that row of the drop-down | as 4 | | ui | [ ] |
-| 22 | B | Press a kind's key twice | Its last style is applied | as 4 | | ui | [ ] |
+| 20 | B | Press H, U, C, B, A, N | As clicking that kind (Highlight, Underline, Circle, Box, Arrow, margin Note) | | | ui | [x] |
+| 21 | B | Press 1 to 6 (a drop-down open) | As clicking that row of the drop-down | as 4 | | ui | [x] |
+| 22 | B | Press a kind's key twice | Its last style is applied | as 4 | | ui | [x] |
 | 23 | R | Select, then Ctrl+1 to Ctrl+9 | The style assigned to that key is applied, no bar needed | as 4 | | ui | [ ] |
-| 24 | B | Esc, or click outside | The bar closes; nothing is made | nothing | | ui | [ ] |
+| 24 | B | Esc, or click outside | The bar closes; nothing is made | nothing | | ui | [x] |
 
 ### Changing and removing
 
@@ -219,6 +219,8 @@ T3 built (core and wb): rows 4 (--style), 8, 9, 33 to 39. Tests (`crates/wb-cli/
 T4 built (core and wb): rows 17 to 19, 29, 30, 52. Tests (`crates/wb-cli/tests/margin_notes.rs`): `a_margin_note_is_kept_in_its_chapters_file_at_a_verse_a_span_or_the_chapter` (17, 18, 19), `rewriting_a_note_sets_changed_and_keeps_its_id_place_and_created` (29), `growing_a_note_makes_a_page_and_the_note_stays_with_a_link` (30), `references_and_questions_in_a_note_are_found_by_themselves` (52, MK-11), `a_deleted_note_waits_in_the_trash_and_can_be_put_back` (MK-21), `old_margin_files_are_read_as_they_are_and_never_rewritten_by_reading`, `the_study_check_counts_margin_note_files`; `every_action_has_a_command`.
 
 T5 built: rows 44, 45, 46, 47 (ui); row 42 in part (rust only: no page file read; the app speed run is not done); row 49 not ticked (WebKit stand-in only, no real-app check). Tests: `ui/tests/marks-draw.spec.ts`: `the fixture has a mark of every kind, and the reader draws each in its own layer, in the fixed order`, `a folder color is a tab by the verse number, never a line on the words`, `hovering a mark names its legend entry, an Unnamed one by its style` (47), `the marks panel › each kind hides and shows` (44), `… a legend entry hides and shows only the marks in its style` (45), `… Reading mode shows only the text …` (46), `a chapter with a hundred overlapping marks keeps every word readable` (49, WebKit), `narrowing the window places the layers again on the words`; Rust: `a_chapters_marks_carry_each_marks_legend_name_and_style_once_each`, `the_marks_panel_keeps_kinds_entries_and_reading_mode_in_settings_marks_json` (crates/wb-cli/tests/marks.rs), `opening_a_chapters_marks_reads_no_page_file` (crates/wb-core/tests/store_cache.rs). Screenshot: `build/t5.png`.
+
+T6 built: rows 1, 4 to 10, 20, 21, 22, 24 (ui; the `wb` side of 4, 7 and 8 is T1 and T3). Tests (`ui/tests/marks-bar.spec.ts`, desktop and one phone case): `row 1: words selected: the bar is icons only, just above them, six kinds, the Legend and Add to…`, `row 1: the bar is the same width whatever the legend holds` (an empty legend, and the fixture's eight entries), `row 5: a kind opens its drop-down away from the selection: quick styles pinned with a tick, then recent, at most six, numbered, Any color…`, `rows 4 and 6: a click on a style makes the mark at once, by --style or by kind and color; the bar closes and the selection clears`, `rows 7 and 8: a color no entry has is drawn at once and asks for its name; Enter adds the entry`, `row 9: Enter or Esc with no name leaves the new pen Unnamed in the legend`, `row 10: the Legend icon lists the whole legend with a filter focused; typing filters, Enter or a click applies; it ends with New pen…`, `row 20: H U C B pick a kind; A and N do nothing yet`, `row 21: 1 to 6 apply that row of an open drop-down`, `row 22: a kind's key pressed twice applies its last style`, `row 24: Esc, or a click outside, closes the bar and makes nothing`, `phone: the same bar with 44 px targets above the selection; a tap opens the drop-down and a row makes the mark`. Recent styles are kept in the reader's own storage (`wb.markRecent`) and filled from the chapter's marks. Arrow and Margin note are icons with `kindHooks` (T9, T10); Add to… is the reader's thread chooser until T7. The old color bar and selection bar are replaced (Copy, Look up, Notes & lookup, Question and the recent-folder chips went with them). Screenshot: `build/t6.png`.
 
 ## Disk (proposed)
 

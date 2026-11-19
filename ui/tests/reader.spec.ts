@@ -98,14 +98,14 @@ test('press and hold, drag across verses, then a handle', async ({ page }, info)
   await touch(page, 'pointerup', b.x + 4, b.y + b.height / 2);
   const sel = await page.evaluate(() => { const s = (window as any).__wb.selector.sel, d = (window as any).__wb.drawn; return { a: [d.v[s.a], d.i[s.a]], b: [d.v[s.b], d.i[s.b]] }; });
   expect(sel).toEqual({ a: [7, 2], b: [8, 3] });
-  await expect(page.locator('.selbar')).toBeVisible();
+  await expect(page.locator('.markbar')).toBeVisible();
   await expect(page.locator('.handle-a')).toBeVisible();
   await page.screenshot({ path: `${shots}/${info.project.name}-selection.png` });
   // Drag the end handle on to verse 9.
   const hb = (await page.locator('.handle-b i').boundingBox())!;
   const line = (await page.locator('.handle-b').boundingBox())!;
   const grip = hb.y + hb.height / 2 - (line.y + line.height / 2);   // the finger holds the knob, below the line
-  await page.evaluate(() => (document.querySelector('.selbar') as HTMLElement).style.display = 'none');
+  await page.evaluate(() => (document.querySelector('.markbar') as HTMLElement).style.display = 'none');
   await touch(page, 'pointerdown', hb.x + hb.width / 2, hb.y + hb.height / 2);
   const c = await wordBox(page, 9, 4);
   await page.evaluate(([x, y]) => {
@@ -114,9 +114,6 @@ test('press and hold, drag across verses, then a handle', async ({ page }, info)
   }, [c.x + c.width - 2, c.y + c.height / 2 + grip]);
   const end = await page.evaluate(() => { const s = (window as any).__wb.selector.sel, d = (window as any).__wb.drawn; return [d.v[s.b], d.i[s.b]]; });
   expect(end[0]).toBe(9);
-  // A color from the bar highlights the words (in the spike, for this session only).
-  await page.locator('.selbar .swatch.c-green').tap();
-  expect(await page.locator('.w.hl[style*="hl-green"]').count()).toBeGreaterThan(5);
 });
 
 test('mouse: hover card and the color bar', async ({ page }, info) => {
@@ -133,7 +130,7 @@ test('mouse: hover card and the color bar', async ({ page }, info) => {
   await page.mouse.down();
   await page.mouse.move(b.x + b.width - 3, b.y + b.height / 2, { steps: 6 });
   await page.mouse.up();
-  await expect(page.locator('.colorbar')).toBeVisible();
+  await expect(page.locator('.markbar')).toBeVisible();
   await page.screenshot({ path: `${shots}/${info.project.name}-color-bar.png` });
 });
 
@@ -243,12 +240,12 @@ test('desktop: a click on a verse number selects the verse with the color bar; a
   const vn = page.locator('#reader .vn[data-v="7"]');
   await vn.scrollIntoViewIfNeeded();
   await vn.click();
-  await expect(page.locator('.colorbar.verse-bar')).toBeVisible();
+  await expect(page.locator('.markbar.verse-bar')).toBeVisible();
   const words = await page.evaluate(() => (window as any).__wb.drawn.v.filter((v: number) => v === 7).length);
   await expect(page.locator('#reader .w.sel')).toHaveCount(words);
   await expect(page.locator('#reader .vn.vsel')).toHaveCount(1);
   await page.locator('.ch-title').click();
-  await expect(page.locator('.colorbar')).toHaveCount(0);
+  await expect(page.locator('.markbar')).toHaveCount(0);
   await expect(page.locator('#reader .w.sel, #reader .vn.vsel')).toHaveCount(0);
 });
 

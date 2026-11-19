@@ -19,6 +19,12 @@ try {
   // every kind of mark and a legend (design/features/marks T5); the places are anchors, no scripture is typed
   wb('legend', 'add', '--kind', 'underline', '--color', 'blue', '--lines', '2', '--name', 'Fixture double');
   wb('legend', 'add', '--kind', 'box', '--color', '#cc3322', '--name', 'Fixture box');
+  // six more entries, so the mark bar's drop-downs and the Legend are tried with eight (marks T6); none is a style a mark above uses
+  for (const [kind, color, name, lines] of [['highlight', 'pink', 'Fixture promise'], ['highlight', 'blue', 'Fixture later'], ['underline', '#7a1f1f', 'Fixture repeated', '1'], ['circle', 'green', 'Fixture person'], ['circle', 'blue', 'Fixture place'], ['box', 'orange', 'Fixture orange box']]) {
+    wb('legend', 'add', '--kind', kind, '--color', color, '--name', name, ...(lines ? ['--lines', lines] : []));
+  }
+  wb('legend', 'set', 'Fixture promise', '--quick', 'on');
+  wb('legend', 'set', 'Fixture repeated', '--quick', 'on');
   for (const args of [
     ['NUM.25:7', '--kind', 'highlight', '--color', 'yellow'],
     ['NUM.25:6.1-25:6.4', '--kind', 'underline', '--color', '#cc3322', '--lines', '1'],
