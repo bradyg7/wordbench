@@ -75,3 +75,4 @@ The terminal side of each area above; a command is designed with the area whose 
 | Area | Buttons and parts | Design | State |
 |---|---|---|---|
 | The website | Overview, Download, Releases, Help, Privacy; its deploy | [site](site/README.md) | accepted (2026-11-19) |
+| Wordbench on a Mac | the Mac build, its release and the install guide | [mac](mac/README.md) | accepted (2026-11-19) |
