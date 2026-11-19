@@ -1,6 +1,6 @@
 # Keeps the release build's Rust cache warm on main. A tag's run can read caches saved on the default branch but not
 # those of other tags, so without this every release compiled everything from nothing (about 27 minutes). This compiles
-# the same release program the tag does (no signing, no installer, nothing published) and saves the cache under the
+# the same release program the tag does, for Windows and for both Mac architectures (no signing, no installer, nothing published) and saves the cache under the
 # shared key the release workflow reads. GitHub drops a cache unused for 7 days, hence the weekly run.
 name: warm-cache
 
@@ -38,3 +38,34 @@ jobs:
 
       - name: Compile what the release compiles
         run: cargo build --release -p bible-workbench --features updater,tauri/custom-protocol
+
+  # the Mac release builds one universal app: both architectures' programs, under the key release.yml reads
+  mac:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          shared-key: mac-release
+
+      - name: Compile what the release compiles, for Apple silicon
+        run: cargo build --release -p bible-workbench --features updater,tauri/custom-protocol --target aarch64-apple-darwin
+
+      - name: Compile what the release compiles, for Intel
+        run: cargo build --release -p bible-workbench --features updater,tauri/custom-protocol --target x86_64-apple-darwin

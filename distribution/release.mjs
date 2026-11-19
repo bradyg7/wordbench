@@ -1,6 +1,7 @@
 // Public release contract shared by the website and release preflight. No secrets belong here.
 export const DOWNLOAD_PREFIX = 'https://github.com/bradyg7/wordbench-releases/releases/';
 export const STABLE_DOWNLOAD = `${DOWNLOAD_PREFIX}latest/download/Bible-Workbench-setup.exe`;
+export const STABLE_MAC_DOWNLOAD = `${DOWNLOAD_PREFIX}latest/download/Wordbench-mac.dmg`;
 export function parseRelease(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || value.schemaVersion !== 2) {
     throw new Error('Unsupported release metadata.');
@@ -17,7 +18,9 @@ export function parseRelease(value) {
   if (value.bytes !== undefined && (!Number.isSafeInteger(value.bytes) || value.bytes <= 0)) throw new Error('Invalid installer size.');
   if (value.downloadUrl !== STABLE_DOWNLOAD
     && value.downloadUrl !== `${DOWNLOAD_PREFIX}download/v${value.version}/Bible-Workbench-setup.exe`) throw new Error('Invalid download link.');
+  if (value.mac !== undefined && typeof value.mac !== 'boolean') throw new Error('Invalid Mac flag.');
+  if (value.macBytes !== undefined && (!Number.isSafeInteger(value.macBytes) || value.macBytes <= 0)) throw new Error('Invalid Mac installer size.');
   const out = {};
-  for (const key of ['schemaVersion', 'status', 'version', 'publishedAt', 'bytes', 'downloadUrl', 'minimumWindows']) if (value[key] !== undefined) out[key] = value[key];
+  for (const key of ['schemaVersion', 'status', 'version', 'publishedAt', 'bytes', 'downloadUrl', 'minimumWindows', 'mac', 'macBytes']) if (value[key] !== undefined) out[key] = value[key];
   return out;
 }

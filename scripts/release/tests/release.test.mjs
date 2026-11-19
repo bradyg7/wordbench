@@ -18,6 +18,13 @@ test('public release accepts unavailable and strips non-public data', () => {
   assert.equal(parseRelease({ ...release, bytes: undefined }).bytes, undefined);
   assert.equal(parseRelease({ ...release, downloadUrl: 'https://github.com/bradyg7/wordbench-releases/releases/download/v0.0.1/Bible-Workbench-setup.exe' }).version, '0.0.1');
 });
+test('public release accepts the optional Mac fields', () => {
+  assert.equal(parseRelease(release).mac, undefined);
+  assert.equal(parseRelease({ ...release, mac: true, macBytes: 2048 }).mac, true);
+  assert.equal(parseRelease({ ...release, mac: false }).mac, false);
+  assert.equal(parseRelease({ ...release, mac: true, macBytes: 2048 }).macBytes, 2048);
+  for (const delta of [{ mac: 'yes' }, { mac: 1 }, { macBytes: -1 }, { macBytes: 1.5 }]) assert.throws(() => parseRelease({ ...release, ...delta }));
+});
 test('staged and withdrawn releases never become downloads', () => {
   for (const status of ['staged', 'withdrawn', 'pending', undefined]) assert.throws(() => parseRelease({ ...release, status }));
   assert.throws(() => parseRelease({ ...release, schemaVersion: 1 }));

@@ -36,9 +36,9 @@ fn bad(message: impl Into<String>) -> Error { Error(message.into()) }
 fn hex(bytes: &[u8]) -> String { bytes.iter().map(|b| format!("{b:02x}")).collect() }
 
 pub fn initialize(resources: PathBuf) -> Result<&'static Roots> {
-    // Windows pilot: shared location for GUI and CLI, independent of working directory.
-    let local = std::env::var_os("LOCALAPPDATA").ok_or_else(|| bad("Windows local application data is unavailable."))?;
-    ROOTS.set(Roots { resources, config: PathBuf::from(local).join("bible-workbench-rs").join("installation") })
+    // Shared location for GUI and CLI, independent of working directory.
+    let local = crate::platform::local_data_dir().ok_or_else(|| bad("This computer's local application data folder is unavailable."))?;
+    ROOTS.set(Roots { resources, config: local.join("bible-workbench-rs").join("installation") })
         .map_err(|_| bad("Installation paths were already initialized."))?;
     Ok(ROOTS.get().unwrap())
 }

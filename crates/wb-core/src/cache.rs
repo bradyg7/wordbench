@@ -11,9 +11,7 @@ pub fn dir() -> PathBuf {
     if let Ok(d) = std::env::var("WB_CACHE_DIR") {
         return PathBuf::from(d);
     }
-    let base = std::env::var_os("LOCALAPPDATA")
-        .or_else(|| std::env::var_os("XDG_CACHE_HOME"))
-        .map(PathBuf::from)
+    let base = crate::platform::local_data_dir()
         .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache")))
         .unwrap_or_else(std::env::temp_dir);
     base.join("bible-workbench-rs").join("cache")

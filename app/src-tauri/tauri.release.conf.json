@@ -2,10 +2,13 @@
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": ["nsis", "app", "dmg"],
     "createUpdaterArtifacts": true,
     "resources": {
       "../../datasets/workbench.db": "datasets/workbench.db"
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0"
     },
     "windows": {
       "nsis": {

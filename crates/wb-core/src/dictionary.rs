@@ -40,8 +40,7 @@ pub fn default_path() -> std::path::PathBuf {
     if let Ok(p) = std::env::var("WB_DICT_DB") {
         return p.into();
     }
-    let base = std::env::var_os("LOCALAPPDATA")
-        .map(std::path::PathBuf::from)
+    let base = crate::platform::local_data_dir()
         .unwrap_or_else(|| crate::default_study_dir().parent().map(|p| p.to_path_buf()).unwrap_or_default());
     base.join("bible-workbench-rs").join("dictionary.db")
     }

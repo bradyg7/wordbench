@@ -1208,13 +1208,7 @@ pub fn reveal(store: &Store, folders: &ExportFolders, name: &str) -> Result<Valu
     if std::env::var("WB_NO_OPEN").as_deref() == Ok("1") {
         return Ok(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}));
     }
-    let spawned = if cfg!(windows) {
-        std::process::Command::new("explorer.exe").arg(format!("/select,{}", path.display())).spawn()
-    } else if cfg!(target_os = "macos") {
-        std::process::Command::new("open").arg("-R").arg(&path).spawn()
-    } else {
-        std::process::Command::new("xdg-open").arg(path.parent().unwrap()).spawn()
-    };
+    let spawned = crate::platform::show(&path, true);
     spawned.map_err(|e| bad(format!("Could not show {} ({e}).", path.display())))?;
     Ok(json!({"ok": true, "name": rec["name"], "path": path.to_string_lossy()}))
 }
@@ -1227,13 +1221,7 @@ pub fn open_file(path: &Path) -> Result<()> {
     if std::env::var("WB_NO_OPEN").as_deref() == Ok("1") {
         return Ok(());
     }
-    let spawned = if cfg!(windows) {
-        std::process::Command::new("explorer.exe").arg(path).spawn()
-    } else if cfg!(target_os = "macos") {
-        std::process::Command::new("open").arg(path).spawn()
-    } else {
-        std::process::Command::new("xdg-open").arg(path).spawn()
-    };
+    let spawned = crate::platform::show(path, false);
     spawned.map(|_| ()).map_err(|e| bad(format!("Could not open {} ({e}).", path.display())))
 }
 

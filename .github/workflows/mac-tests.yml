@@ -1,0 +1,45 @@
+# The tests on GitHub's Mac machine (design/features/mac, row 4): the code runs on macOS as it does on Windows.
+name: Mac tests
+
+on:
+  push:
+    branches: [main, feature/mac]
+  workflow_dispatch:
+
+jobs:
+  mac-tests:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          shared-key: macos-tests
+
+      - name: The Bible database (data-v1 of the public releases repository)
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          mkdir -p datasets
+          gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
+          echo "fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c  datasets/workbench.db" | shasum -a 256 -c
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Tests
+        run: cargo test -j 8 --no-fail-fast -p wb-core -p wb-cli -p wb-license
+
+      - name: The app builds
+        run: cargo build -p bible-workbench
