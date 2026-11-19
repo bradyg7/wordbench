@@ -3,63 +3,76 @@ import '@fontsource/inter/latin-600.css';
 import '@fontsource/literata/latin-400.css';
 import '@fontsource/literata/latin-500.css';
 import './style.css';
-import { parseRelease } from '../../distribution/release.mjs';
+import { parseRelease, STABLE_DOWNLOAD } from '../../distribution/release.mjs';
+import { markdownToHtml, compareVersions } from './markdown';
 
-const page = location.pathname.replace(/\/index\.html$/, '/').replace(/\/$/, '') || '/';
+const notes = import.meta.glob('../../docs/releases/*.md', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+
+// the site may live under a sub-path (GitHub Pages of wordbench-releases: /wordbench-releases/)
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const at = (url: string) => BASE + url;
+const page = location.pathname.slice(location.pathname.startsWith(BASE) ? BASE.length : 0).replace(/\/index\.html$/, '/').replace(/\/$/, '') || '/';
 const links = [['/', 'Overview'], ['/download/', 'Download'], ['/releases/', 'Releases'], ['/support/', 'Help']];
-const titles: Record<string, string> = { '/': 'A place for your study.', '/download': 'Get Bible Workbench.', '/releases': 'Follow the work.', '/support': 'Help with your workbench.', '/license': 'Your pilot license.', '/privacy': 'Your study stays yours.' };
+const titles: Record<string, string> = { '/': 'Wordbench', '/download': 'Get Wordbench.', '/releases': 'Releases', '/support': 'Help', '/privacy': 'Privacy' };
 const title = titles[page] ?? 'Page not found.';
-document.title = `${page === '/' ? 'Personal Bible study' : title} — Bible Workbench`;
+document.title = page === '/' ? 'Wordbench — Study the text for yourself.' : `${title.replace(/\.$/, '')} — Wordbench`;
 
 const root = document.querySelector<HTMLElement>('#app')!;
 root.innerHTML = `
   <a class="skip" href="#main">Skip to content</a>
-  <header class="wrap masthead"><a class="brand" href="/">Bible Workbench<span>PERSONAL STUDY, IN YOUR HANDS</span></a>
-    <nav aria-label="Main navigation">${links.map(([url, label]) => `<a href="${url}" ${page === (url.replace(/\/$/, '') || '/') ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
+  <header class="wrap masthead"><a class="brand" href="${at('/')}">Wordbench</a>
+    <nav aria-label="Main navigation">${links.map(([url, label]) => `<a href="${at(url)}" ${page === (url.replace(/\/$/, '') || '/') ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
   </header>
-  <main id="main" class="wrap"><div class="eyebrow">BIBLE WORKBENCH · PRIVATE PILOT</div><h1>${title}</h1><div id="content"></div></main>
-  <footer class="wrap"><p>Bible Workbench<span>A personal place to read, look closely, and keep your work.</span></p><nav aria-label="Footer"><a href="/license/">Pilot license</a><a href="/privacy/">Privacy</a><a href="/support/">Help</a></nav></footer>`;
+  <main id="main" class="wrap"><h1>${title}</h1><div id="content"></div></main>
+  <footer class="wrap"><p>Wordbench<span>Read, look closely, and keep your own work.</span></p><nav aria-label="Footer"><a href="${at('/privacy/')}">Privacy</a><a href="${at('/support/')}">Help</a></nav></footer>`;
 
 const content = document.querySelector<HTMLElement>('#content')!;
-const releasePanel = `<section class="release-panel" aria-labelledby="release-heading"><div><div class="eyebrow">WINDOWS · PRIVATE PILOT</div><h2 id="release-heading">Release availability</h2></div><div id="release" aria-live="polite"><p>Checking release availability…</p></div></section>`;
+const downloadButton = `<a class="button" href="${STABLE_DOWNLOAD}">Download for Windows</a>`;
+
+function releasesHtml(): string {
+  const versions = Object.entries(notes)
+    .map(([path, text]) => ({ version: /([^/]+)\.md$/.exec(path)![1], text }))
+    .sort((a, b) => compareVersions(b.version, a.version));
+  return `<p class="lead">Each version's notes, newest first.</p><section class="release-notes-page">${versions.map(({ version, text }, i) =>
+    `<details id="v${version}"${i === 0 ? ' open' : ''}><summary><h2>${version}</h2></summary>${markdownToHtml(text)}</details>`).join('')}</section>`;
+}
+
 const pages: Record<string, string> = {
-  '/': `<section class="intro"><p class="lead">Read the text. Explore its words.<br>Keep your own notes beside it.</p><div class="actions"><a class="button" href="/download/">Check pilot availability <span aria-hidden="true">↗</span></a><a class="text-link" href="#workbench">Explore the workbench ↓</a></div><p class="quiet">A desktop app in development. Public downloads are not yet available.</p></section>
-    <section id="workbench" class="features" aria-label="Inside the workbench"><div class="section-heading"><span class="eyebrow">ONE WORKSPACE, YOUR OWN WORK</span><h2>Room to read.<br>Room to return.</h2></div><div class="feature-list"><article><span class="number">01</span><div><h3>Read and look closely</h3><p>The reader brings KJV and YLT text together with search, word lookups, and interlinear views.</p></div></article><article><span class="number">02</span><div><h3>Keep the connections</h3><p>Pages, highlights, and threads give your notes a place beside the passages you are studying.</p></div></article><article><span class="number">03</span><div><h3>Keep your files</h3><p>Your study uses local Markdown and JSON files. Your notes remain your own work, in your own folder.</p></div></article></div></section>
-    <section class="ownership"><span class="eyebrow">BUILT FOR PERSONAL STUDY</span><h2>The sources in view.<br>The conclusions are yours.</h2><p>A workspace for source text, lookups, and the notes you write. The app does not supply doctrinal conclusions.</p></section>${releasePanel}`,
-  '/download': `<p class="lead">The first release is a private Windows pilot.</p><p class="measure">Pilot licenses will be issued manually. Once activated, a licensed copy can be used permanently offline. Pricing and future update terms have not been set.</p>${releasePanel}<section class="prose"><h2>Before a download is offered</h2><p>The installer must pass packaging, signing, and clean-machine checks. The download listing will show its Windows requirements, version, file size, and checksum.</p><h2>Using another platform?</h2><p>No macOS, Linux, iPhone, iPad, or Android release is available here yet.</p><a href="/license/">Read the pilot license policy →</a></section>`,
-  '/releases': `<p class="lead">Version details and release notes, in one place.</p>${releasePanel}<p class="measure">A development version number is not a released installer. Only published pilot builds will appear here.</p>`,
-  '/license': `<p class="lead">Manually issued. Permanently offline after activation.</p><section class="prose"><h2>The approved pilot approach</h2><p>The pilot uses manually issued licenses. After activation, a licensed copy will not need recurring online renewal to keep working.</p><h2>What is still being decided</h2><p>Device allowances, transfer arrangements, future update entitlement, and pricing are not yet set. Final application terms will be provided before distribution.</p><h2>Your own work remains yours</h2><p>Study files are separate from the installed app. Licensing must not encrypt or delete your notes, or prevent you from recovering your files.</p><h2>Release status</h2><p>License activation is not available on this preview website. No payments or license keys are collected here.</p></section>`,
-  '/privacy': `<p class="lead">Local study files. Clear boundaries.</p><section class="prose"><h2>This website preview</h2><p>This page has no account, payment, analytics, or email sign-up integration. It requests release availability from the same website. Hosting infrastructure may process ordinary request information; the final hosting details and privacy notice will be supplied before launch.</p><h2>The desktop design</h2><p>Notes and highlights live in your study folder. Activation and update services will need limited license and device information; they must not receive your study content.</p><h2>Before the pilot launches</h2><p>The privacy notice will identify the service provider, information retained, retention periods, and a working contact route.</p></section>`,
-  '/support': `<p class="lead">Keep your study files safe and within reach.</p><section class="prose"><h2>For pilot participants</h2><p>Use the contact route included with your pilot invitation. Public support and activation recovery are not open yet.</p><h2>Back up your study folder</h2><p>Keep a separate backup of your personal study files before installing an update. Your study folder is separate from the app installer.</p><h2>When reporting a problem</h2><p>Include the app version, Windows version, and what you were doing. Do not include a license key or private study content.</p><a href="/releases/">Check release availability →</a></section>`,
+  '/': `<section class="intro"><p class="lead"><em>Study the text for yourself.</em></p><p class="measure">Read the King James Bible, look closely at its words, and keep your own work beside it.</p><div class="actions">${downloadButton}</div><p class="quiet">Free. Mac coming soon.</p></section>
+    <section class="features" aria-label="What Wordbench does"><div class="feature-list"><article><span class="number">01</span><div><h3>Read and look closely.</h3><p>Search, the Strong's concordance, the interlinear and word lookups, one click from the text.</p></div></article><article><span class="number">02</span><div><h3>Mark the text as you would on paper.</h3><p>Highlights, underlines, circles, arrows and margin notes, with your own legend for what each means.</p></div></article><article><span class="number">03</span><div><h3>Your work stays yours.</h3><p>Pages, folders and marks are plain files in a folder you choose. Nothing is uploaded.</p></div></article></div></section>
+    <section class="ownership"><h2><em>The sources in view.<br>The conclusions are yours.</em></h2><p>The app shows the text, its words and what you write. It never supplies interpretation.</p></section>`,
+  '/download': `<div id="release" class="release-box" aria-live="polite"><p>Checking the newest version…</p></div>
+    <section class="prose"><h2>Installing</h2><p>Run the file. Windows may say “Windows protected your PC”: choose <strong>More info</strong>, then <strong>Run anyway</strong>. This appears because the app is new and not yet signed.</p>
+    <div class="warning-art" role="img" aria-label="Example of the Windows warning: the More info link, then the Run anyway button"><div class="bar">Windows protected your PC</div><div class="body">Microsoft Defender SmartScreen prevented an unrecognized app from starting. <span class="more hot">More info</span></div><div class="row"><span class="hot">Run anyway</span><span>Don't run</span></div></div><p class="release-note">An example of the warning, drawn here.</p>
+    <h2>Updates</h2><p>The app checks when it opens and offers each new version. Your study folder is never touched by an update.</p>
+    <h2>Mac</h2><p>Coming soon, with its own guide.</p></section>`,
+  '/releases': releasesHtml(),
+  '/privacy': `<section class="prose"><p>The app sends nothing about your study anywhere. It asks GitHub for the newest version when it opens, which sends what any web request sends (your address), and nothing else.</p><p>This website has no accounts, analytics or cookies; it is hosted by GitHub Pages, which keeps ordinary request logs.</p></section>`,
+  '/support': `<section class="prose"><h2>Back up your study folder</h2><p>Your study is a folder you chose when you set the app up. Copy that whole folder to another disk or a cloud drive now and then, and before you install an update. The installer and updates never touch it.</p><h2>When you report a problem</h2><p>Say which version of Wordbench you have, which version of Windows, and what you were doing. Never send your study files.</p><h2>To reach someone</h2><p>Ask the person who sent you the link.</p></section>`,
 };
-content.innerHTML = pages[page] ?? '<p>This page does not exist. <a href="/">Return to the overview.</a></p>';
+content.innerHTML = pages[page] ?? `<p>This page does not exist. <a href="${at('/')}">Return to the overview.</a></p>`;
+
+const size = (bytes: number) => `${Math.round(bytes / 1048576)} MB`;
+const dateText = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 async function loadRelease() {
-  const panel = document.querySelector<HTMLElement>('#release');
-  if (!panel) return;
-  panel.textContent = 'Checking release availability…';
+  const box = document.querySelector<HTMLElement>('#release');
+  if (!box) return;
+  const unavailable = () => { box.innerHTML = '<h2>Not available right now</h2><p>Please try again later.</p>'; };
   try {
-    const response = await fetch('/release.json', { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+    const response = await fetch(at('/release.json'), { cache: 'no-store', signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error('Release information unavailable.');
     const release = parseRelease(await response.json());
-    if (release.status === 'unavailable') {
-      panel.innerHTML = '<h3>Not available yet</h3><p>The pilot installer is being prepared. No download or purchase is available at this time.</p>';
-      return;
-    }
-    const heading = document.createElement('h3');
+    if (release.status === 'unavailable') return unavailable();
+    const heading = document.createElement('h2');
     heading.textContent = `Version ${release.version}`;
     const detail = document.createElement('p');
-    detail.textContent = `Windows ${release.minimumWindows} · x86_64 · ${(release.bytes / 1048576).toFixed(1)} MB · ${release.publishedAt.slice(0, 10)}`;
-    const notes = document.createElement('p');
-    notes.className = 'release-notes'; notes.textContent = release.notes;
+    detail.textContent = [`Windows ${release.minimumWindows} or 11, 64-bit`, release.bytes ? size(release.bytes) : "", dateText(release.publishedAt)].filter(Boolean).join(" · ");
     const download = document.createElement('a');
-    download.className = 'button'; download.href = release.downloadPath; download.textContent = 'Download for Windows';
-    const hash = document.createElement('p');
-    hash.className = 'checksum'; hash.textContent = `SHA-256: ${release.sha256}`;
-    panel.replaceChildren(heading, detail, notes, download, hash);
+    download.className = 'button'; download.href = release.downloadUrl; download.textContent = 'Download for Windows';
+    box.replaceChildren(heading, detail, download);
   } catch {
-    panel.innerHTML = '<h3>Could not check availability</h3><p>Please try again. No download is offered until its release details can be verified.</p><button type="button" class="button">Try again</button>';
-    panel.querySelector('button')!.addEventListener('click', loadRelease);
+    unavailable();
   }
 }
 void loadRelease();

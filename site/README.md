@@ -1,12 +1,16 @@
-# The landing page
+# The website
 
-A single static page for Bible Workbench, in the app's own tokens (`../ui/tokens.css`): warm paper, Literata for the
-large type, Inter for the interface, light and dark from the system.
+The public site for Wordbench, deployed to `https://bradyg7.github.io/` (design: [../design/features/site/](../design/features/site/README.md)).
+A small Vite site (TypeScript, no framework) in the app's own look: warm paper, Literata and Inter, light and dark from the system.
 
 ```
-python -m http.server 3000 --directory site
+npm run site:dev      # http://127.0.0.1:4175
+npm run site:build    # site/dist
+npm run test:site     # Playwright, desktop and phone
 ```
 
-Then open http://localhost:3000. There is no build step and no dependency. The screenshots in `assets/` are the app in
-WebView2, copied from [../docs/phase2/](../docs/phase2/); the numbers on the page are the phase 2 measurements
-([../docs/phase2-results.md](../docs/phase2-results.md), section 7). Nothing on the page quotes scripture.
+- The Download page's release box reads `public/release.json`, written at build time by
+  `node scripts/site/fetch-release.mjs` from the newest release's `latest.json` (the checked-in file is a 0.2.0 fixture).
+  `distribution/release.mjs` checks its shape; a bad or missing file shows "Not available right now" and no button.
+- The Releases page is built from `../docs/releases/*.md`, newest first.
+- The screenshots in `assets/` are older than marks and are not shown on the pages. Nothing on the site quotes scripture.

@@ -1,1 +1,9 @@
-{ "schemaVersion": 1, "status": "unavailable" }
+{
+  "schemaVersion": 2,
+  "status": "published",
+  "version": "0.2.0",
+  "publishedAt": "2026-11-19T00:00:00Z",
+  "bytes": 42004648,
+  "downloadUrl": "https://github.com/bradyg7/wordbench-releases/releases/latest/download/Bible-Workbench-setup.exe",
+  "minimumWindows": "10"
+}
