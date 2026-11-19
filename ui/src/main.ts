@@ -41,7 +41,9 @@ import { createReadAloud } from './listen';
 import { refreshInks } from './hlink';
 import { KIND_NAMES, panel } from './markpanel';
 import { inkOf } from './markdraw';
-import { createBar, type MarkBar } from './markbar';
+import { createBar, kindHooks, type MarkBar } from './markbar';
+import { createArrowBar, arrowColor, rememberArrowColor, STAY, type ArrowBar } from './arrowbar';
+import { parseAt } from './marks';
 import * as planReading from './planreading';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -120,6 +122,7 @@ async function setVersion(v: string): Promise<string> {
 // ---- drawing ----------------------------------------------------------------------------------------------------------
 let drawSeq = 0;
 async function open(code: string, chapter: number, verse = 1, offset = 0) {
+  if (arrowStays(code, chapter)) return;
   const t0 = performance.now(), seq = ++drawSeq;
   const { data, rust_ms } = await api.reader(code, chapter, version);
   if (seq !== drawSeq) return;
@@ -174,6 +177,7 @@ function rememberPlace() {
 
 /** A jump elsewhere: the place left is kept for back. */
 async function jump(code: string, chapter: number, verse = 1) {
+  if (arrowStays(code, chapter)) return;
   readAloud.stopForNavigation();
   rememberPlace();
   app.picked = verse > 1 ? { anchor: `${code}.${chapter}:${verse}`, label: `${books.find(b => b.code === code)?.name ?? code} ${chapter}:${verse}` } : null;
@@ -181,6 +185,7 @@ async function jump(code: string, chapter: number, verse = 1) {
 }
 
 function back(): boolean {
+  if (arrow && backStack.length && arrowStays(backStack[backStack.length - 1].code, backStack[backStack.length - 1].chapter)) return true;
   readAloud.stopForNavigation();
   const p = backStack.pop();
   if (!p) return false;
@@ -189,6 +194,7 @@ function back(): boolean {
 }
 
 function step(n: number) {
+  if (arrow) { arrow.bar.say(STAY); arrow.place(); return; }   // a step is always another chapter (row 15)
   readAloud.stopForNavigation();
   if (!drawn) return;
   const c = drawn.chapter;
@@ -525,6 +531,10 @@ function showBar(vw: View, a: number, b: number, touch: boolean) {
   barView = vw;
   const at = barAt ?? (verse ? verseAt(d, verse) : selectionAt(vw, a, b));
   barAt = null;
+  if (arrow) {
+    if (arrow.vw === vw) { void pickArrowTarget(vw, at, a, b); return; }
+    endArrow();   // a selection in another reader: arrow mode is over
+  }
   app.picked = at;
   markBar?.dispose();
   const mb = createBar({ anchor: at.anchor, label: at.label }, {
@@ -551,6 +561,120 @@ async function markDrawn(vw: View, made: any) {
   const style = made.style || (made.kind === 'underline' ? `underline:${made.color}:${made.lines ?? 1}` : `${made.kind}:${made.color}`);
   (d.marks.marks ||= []).push({ ...made, legend: made.legend || `Unnamed ${made.color} ${made.kind}`, style });
   paint(vw.root, d);
+}
+
+// ---- arrows (marks T9, rows 13 to 16 and 48; MK7-25) ------------------------------------------------------------------
+// Arrow (its icon, A, or the right-click menu's row): the mark bar shrinks to "Select where it points" with Back and Cancel, the
+// start words stay outlined, and the next selection in the same chapter (words, or a verse number) is the target. The arrow is
+// then made with `wb mark add <from> --kind arrow --color <c> --to <ref>` and drawn in the gutter. A chapter change is refused
+// while choosing (`arrowStays`, asked by open, jump, step and back).
+interface ArrowMode { vw: View; start: At; a: number; b: number; code: string; chapter: number; bar: ArrowBar; busy: boolean; place: () => void }
+let arrow: ArrowMode | null = null;
+
+function startArrow(ctx: At) {
+  const vw = barView, sel = vw?.selector.sel, d = vw?.drawn;
+  if (!vw || !sel || !d) return;
+  const { a, b } = sel;
+  const start = { anchor: ctx.anchor, label: ctx.label };
+  endArrow();
+  const ab = createArrowBar({ back: () => arrowBack(), cancel: () => endArrow() });
+  const mode: ArrowMode = { vw, start, a, b, code: d.chapter.code, chapter: d.chapter.chapter, bar: ab, busy: false, place: () => {} };
+  mode.place = () => {
+    const first = d.el[a]?.getClientRects()[0];
+    if (!first) return;
+    const w = ab.el.offsetWidth, hgt = ab.el.offsetHeight;
+    const top = first.top - hgt - 14 > 60 ? first.top - hgt - 14 : Math.min(first.bottom + 18, window.innerHeight - hgt - 8);
+    ab.el.style.top = `${top}px`;
+    ab.el.style.left = `${Math.max(8, Math.min(first.left, window.innerWidth - w - 8))}px`;
+  };
+  // the mark bar goes; the start words keep an outline instead of the selection
+  vw.selector.clear();
+  for (let k = a; k <= b; k++) { d.el[k]?.classList.add('arrow-from'); d.gap[k]?.classList.add('arrow-from'); }
+  arrow = mode;
+  document.getElementById('overlay')!.append(ab.el);
+  mode.place();
+  vw.scroller.addEventListener('scroll', mode.place, { passive: true });
+  window.addEventListener('resize', mode.place);
+}
+kindHooks.arrow = ctx => startArrow(ctx);
+
+/** Arrow mode is over: nothing is made. */
+function endArrow() {
+  const m = arrow;
+  if (!m) return;
+  arrow = null;
+  m.bar.el.remove();
+  m.vw.scroller.removeEventListener('scroll', m.place);
+  window.removeEventListener('resize', m.place);
+  m.vw.root.querySelectorAll('.arrow-from').forEach(e => e.classList.remove('arrow-from'));
+}
+
+/** Back (row 16): the start selection, with the bar open again. */
+function arrowBack() {
+  const m = arrow;
+  if (!m) return;
+  endArrow();
+  const d = m.vw.drawn;
+  if (!d) return;
+  barAt = m.start;
+  const verses = !/:\d+\.\d/.test(m.start.anchor);   // a whole verse (or span), picked by its number, keeps its number marked
+  m.vw.selector.set(m.a, m.b);
+  if (verses) for (let k = m.a; k <= m.b; k++) m.vw.root.querySelector(`.vn[data-v="${d.v[k]}"]`)?.classList.add('vsel');
+  showBar(m.vw, m.a, m.b, false);
+}
+
+/** Row 15: the reader is asked to go to another chapter while an arrow's target is chosen: it stays, and the bar says why. */
+function arrowStays(code: string, chapter: number): boolean {
+  if (!arrow || (code === arrow.code && chapter === arrow.chapter)) return false;
+  arrow.bar.say(STAY);
+  arrow.place();
+  return true;
+}
+
+/** The target was chosen (row 14). */
+async function pickArrowTarget(vw: View, to: At, a: number, b: number) {
+  const m = arrow;
+  if (!m || m.busy) return;
+  const d = vw.drawn!;
+  const end = /-(\d+):\d+(?:\.\d+)?$/.exec(to.anchor);
+  vw.selector.clear();
+  if (end && +end[1] !== m.chapter) { m.bar.say(STAY); m.place(); return; }
+  if (d.v[a] === d.v[m.a]) { toast('An arrow joins two different verses'); return; }
+  m.busy = true;
+  try {
+    const pick = await arrowColor();
+    const made = await wb(['mark', 'add', m.start.anchor, '--kind', 'arrow', '--color', pick.color, '--to', to.anchor]);
+    rememberArrowColor(pick.color);
+    endArrow();
+    await markDrawn(vw, made);
+    toast(`Arrow from ${m.start.label} to ${to.label.replace(/^.* (\d+:)/, '$1')} in ${pick.name ?? pick.color}: ${pick.why}`);
+  } catch (e) {
+    m.busy = false;
+    toast(String((e as Error)?.message ?? e));
+  }
+}
+
+/** A click on an arrow's end in the gutter (row 48): the arrow's card. */
+function wireArrowEnds(vw: View) {
+  vw.root.addEventListener('click', e => {
+    const end = (e.target as Element).closest?.('.mk-end');
+    const d = vw.drawn;
+    if (!end || !d || arrow) return;
+    const m = (d.marks.marks || []).find(x => x.id === (end as SVGElement).dataset.mark);
+    if (!m) return;
+    const book = d.chapter.name;
+    const verseOf = (at: string | undefined) => { const p = at ? parseAt(at) : null; return p ? `${p.c1}:${p.v1}` : '?'; };
+    const sync = (apply: () => void) => { apply(); paint(vw.root, d); if (inApp) written('highlights'); };
+    void openMarkCard(end as unknown as HTMLElement, {
+      place: m.at, local: [], arrows: [m],
+      verses: x => `${book} ${verseOf(x.at)} to ${verseOf(x.to)}`,
+      chapterMarks: () => d.marks.marks || [],
+      restyled: n => sync(() => { d.marks.marks = (d.marks.marks || []).map(x => (x.id === n.id ? n : x)); }),
+      removed: id => sync(() => { d.marks.marks = (d.marks.marks || []).filter(x => x.id !== id); }),
+      restored: n => sync(() => { if (!(d.marks.marks || []).some(x => x.id === n.id)) (d.marks.marks ||= []).push(n); }),
+      lookup: () => {},
+    });
+  });
 }
 
 function placeBar() {
@@ -584,6 +708,7 @@ async function openWord(vw: View, k: number, el: HTMLElement, at: number) {
 /** A click on a word (marks T8, rows 25 and 26): with a mark on it, the mark card (its Look up is the word's own card); with none, the word's card as always. */
 async function tapWord(vw: View, k: number, el: HTMLElement, at: number) {
   const d = vw.drawn!;
+  if (arrow && arrow.vw === vw && !d.chapter.version) { vw.selector.set(k, k); return void showBar(vw, k, k, false); }   // choosing a target: a click on a word is the target
   const local = d.chapter.version ? [] : marksOnWord(d, k);
   if (!local.length) return openWord(vw, k, el, at);
   app.picked = selectionAt(vw, k, k);
@@ -647,6 +772,7 @@ const mainView = { root: reader, scroller, main: true, get drawn() { return draw
 const selector = new Selector(reader, scroller, handlersFor(mainView));
 mainView.selector = selector;
 wireView(mainView);
+wireArrowEnds(mainView);
 
 // A click or tap away from the color bar closes it and clears the selection: anywhere but the bar itself (its presses
 // stop at it) and the menus or cards opened from it. In a reader the selector does the same on a tap.
@@ -1289,6 +1415,7 @@ document.addEventListener('scroll', e => {
 
 // The mark bar's keys (H U C B A N, 1 to 6, a kind's key twice): taken before anything else while the bar is open.
 document.addEventListener('keydown', e => {
+  if (arrow && e.key === 'Escape') { endArrow(); e.preventDefault(); e.stopPropagation(); return; }   // Cancel (row 16)
   if (markBar && barView?.selector.sel && markBar.onKey(e)) { e.preventDefault(); e.stopPropagation(); }
 }, true);
 

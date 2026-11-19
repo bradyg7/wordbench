@@ -64,7 +64,7 @@ test('the fixture has a mark of every kind, and the reader draws each in its own
   // 4. an arrow is a curve with a head, in the gutter
   const arrow = page.locator('.mk-arrow').first();
   await expect(arrow.locator('path')).toHaveCount(2);
-  await expect(arrow.locator('circle')).toHaveCount(1);
+  await expect(arrow.locator('circle:not(.mk-end)')).toHaveCount(1);
   expect(await arrow.locator('path').first().getAttribute('stroke')).toBe('#3b79c4');
   // drawn once each: the fixture's old highlight (made with hl set) is one mark, not two
   const marks = await page.evaluate(() => (window as any).__wb.drawn.marks.marks.length);

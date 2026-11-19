@@ -4,7 +4,7 @@
 // the side away from the selection: that kind's styles by name (the person's quick ones pinned with a tick, then the
 // recent ones, six at most, numbered), then Any color…. A color no legend entry has is drawn at once and asks for its
 // name in the drop-down ("New pen", MK7-11). The Legend icon opens the whole legend with a filter. The bar never grows
-// with the legend. Arrow and Margin note are tickets T9 and T10: their icons are here and `kindHooks` is where they plug in.
+// with the legend. Arrow is T9 (main.ts plugs it into `kindHooks`); Margin note is T10.
 //
 // Marks are made with `wb mark add` (--style for a legend entry, or --kind, --color and --lines) and entries with
 // `wb legend add`; this file draws nothing itself, it asks `hooks.drawn` to show the mark that came back.

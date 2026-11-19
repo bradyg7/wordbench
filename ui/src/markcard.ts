@@ -20,6 +20,10 @@ export interface CardEnv {
   restored(m: DrawnMark): void;
   /** Look up the word (its card, or the Concordance, as a plain click does with no mark there). */
   lookup(): void;
+  /** The card is for these arrows only (a click on an arrow's end, T9): no `wb mark at`, no Look up link. */
+  arrows?: DrawnMark[];
+  /** An arrow's two verses as words, e.g. `Numbers 25:11 to 25:13`. */
+  verses?(m: DrawnMark): string;
 }
 
 const LAYER: Record<string, number> = { arrow: 0, underline: 1, circle: 2, box: 2, highlight: 3 };
@@ -29,8 +33,8 @@ const day = (s: string) => s.slice(0, 10);
 
 export async function openMarkCard(from: HTMLElement, env: CardEnv): Promise<void> {
   hideCard();
-  let list: DrawnMark[] = env.local.length ? topmost(env.local) : [];
-  try {
+  let list: DrawnMark[] = env.arrows ? [...env.arrows] : env.local.length ? topmost(env.local) : [];
+  if (!env.arrows) try {
     const at = await wb(['mark', 'at', env.place]);
     if (Array.isArray(at?.marks) && at.marks.length) list = at.marks.filter((m: DrawnMark) => m.kind !== 'arrow');
   } catch { /* the reader's own marks stand */ }
@@ -44,7 +48,7 @@ export async function openMarkCard(from: HTMLElement, env: CardEnv): Promise<voi
     const look = h('button', 'mc-look', 'Look up the word');
     look.type = 'button';
     look.onclick = () => { shut(); env.lookup(); };
-    body.append(h('hr', 'mc-rule'), look);
+    if (!env.arrows) body.append(h('hr', 'mc-rule'), look);
   };
 
   function entry(m: DrawnMark): HTMLElement {
@@ -66,6 +70,10 @@ export async function openMarkCard(from: HTMLElement, env: CardEnv): Promise<voi
     del.append(icon('trash', 16));
     head.append(sam, text, change, del);
     box.append(head);
+    if (m.kind === 'arrow') {
+      box.append(h('div', 'mc-verses', env.verses?.(m) ?? ''));
+      box.append(h('div', 'mc-hint muted small', 'An arrow: only its color can change.'));
+    }
     if (m.words !== undefined) box.append(h('div', 'mc-hint muted small', 'An old highlight: only its color can change.'));
 
     let drop: HTMLElement | null = null;
@@ -85,7 +93,7 @@ export async function openMarkCard(from: HTMLElement, env: CardEnv): Promise<voi
   async function restyle(m: DrawnMark, s: { kind: Kind; color: string; lines?: number }) {
     try {
       // an old highlight keeps its kind (the core says so): only its color goes
-      const args = m.words !== undefined ? ['--color', s.color] : ['--kind', s.kind, '--color', s.color, ...(s.kind === 'underline' ? ['--lines', String(s.lines ?? 1)] : [])];
+      const args = m.words !== undefined || m.kind === 'arrow' ? ['--color', s.color] : ['--kind', s.kind, '--color', s.color, ...(s.kind === 'underline' ? ['--lines', String(s.lines ?? 1)] : [])];
       const out = await wb(['mark', 'style', m.id, ...args]);
       const now = { ...m, ...out } as DrawnMark;
       now.style = now.kind === 'underline' ? `underline:${now.color}:${now.lines ?? 1}` : `${now.kind}:${now.color}`;

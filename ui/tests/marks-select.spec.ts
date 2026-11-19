@@ -262,7 +262,7 @@ test('row 67: hovering or arrowing to a kind opens its styles as a submenu, the 
   if (process.env.WB_T7_SHOT) await page.screenshot({ path: process.env.WB_T7_SHOT });
 });
 
-test('row 68: a row does the bar\'s action; Esc closes the menu and makes nothing; Arrow and Margin note are inert', async ({ page }, info) => {
+test('row 68: a row does the bar\'s action; Esc closes the menu and makes nothing; Margin note is inert', async ({ page }, info) => {
   desktopOnly(info);
   const run = await ready(page);
   await dragWords(page);
@@ -283,10 +283,9 @@ test('row 68: a row does the bar\'s action; Esc closes the menu and makes nothin
   await expect.poll(() => run.calls).toEqual(['mark-add-num-25-11-2-25-11-5-style-fixture-promise']);
   await expect(ctx(page)).toHaveCount(0);
   await expect(bar(page)).toHaveCount(0);
-  // Arrow and Margin note do nothing yet
+  // Margin note does nothing yet (T10); Arrow starts choosing a target (T9, ui/tests/marks-arrows.spec.ts)
   await dragWords(page);
   await open();
-  await ctx(page).locator('[data-act="arrow"]').click();
   await ctx(page).locator('[data-act="note"]').click();
   await expect(ctx(page)).toBeVisible();
   expect(run.calls).toHaveLength(1);

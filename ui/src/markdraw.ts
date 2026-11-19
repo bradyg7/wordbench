@@ -3,7 +3,7 @@
 //   1. boxes and circles: a thin outline around the words, nothing inside it;
 //   2. underlines: one line is the thickest, two and three are thinner, so a triple never looks heavy;
 //   3. arrows: a curve in the left gutter, between the text and the window's edge, so it never crosses a word or the margin.
-// The layers take no pointer: the words stay selectable and a click goes to the word. Nothing here fills a word. A layer
+// The layers take no pointer, except the small hit circle at each arrow's two ends (marks T9): the words stay selectable and a click goes to the word. Nothing here fills a word. A layer
 // is placed from where the words are, so it is placed again after a part is drawn and when the width changes.
 import type { Drawn } from './reader';
 
@@ -161,6 +161,13 @@ function place(root: HTMLElement, d: Drawn) {
     const title = document.createElementNS(SVG, 'title');
     title.textContent = a.m.legend || '';
     g.append(title, curve, head, dot);
+    // each end has a hit area of its own (row 48): the layers otherwise take no pointer, so a word is never covered
+    for (const [end, y] of [['from', y1], ['to', y2]] as const) {
+      const hit = document.createElementNS(SVG, 'circle');
+      hit.setAttribute('class', 'mk-end'); hit.setAttribute('data-end', end); hit.setAttribute('data-mark', a.m.id);
+      hit.setAttribute('cx', String(x0 - 4)); hit.setAttribute('cy', String(y)); hit.setAttribute('r', '5');   // ends inside the gutter: never over a word
+      g.append(hit);
+    }
     ar.append(g);
   }
 }

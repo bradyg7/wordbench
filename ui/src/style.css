@@ -299,6 +299,18 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .mk-shape.mk-circle { border-radius: 9999px; }
 .mk-line { position: absolute; border-radius: 1px; }
 .mk-arrow path:first-of-type { pointer-events: stroke; stroke-linecap: round; }
+/* an arrow's two ends are the only part that takes a click (marks T9, row 48): a small hit area of their own in the gutter */
+.mk-arrow .mk-end { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; }
+.mk-arrow .mk-end:hover { fill: var(--accent-soft); }
+/* the arrow's start words while the target is chosen (marks T9, row 13) */
+.w.arrow-from, .g.arrow-from { outline: 1.5px solid var(--accent); outline-offset: 1px; border-radius: 3px; }
+.markbar.arrow-bar { width: auto; max-width: min(560px, calc(100vw - 16px)); gap: 10px; padding: 6px 10px; font: var(--type-caption); }
+.arrow-bar .ab-text { white-space: normal; }
+.arrow-bar button { display: inline-flex; align-items: center; gap: 2px; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; padding: 6px 4px; border-radius: 6px; }
+.arrow-bar button:hover { background: var(--sunken); }
+.arrow-bar button[hidden] { display: none; }
+.mark-card .mc-verses { padding: 2px 0 0 30px; color: var(--fg); }
+@media (max-width: 600px) { .arrow-bar button { min-height: 44px; min-width: 44px; } }
 /* Reading mode: one line says the marks are hidden, with Show */
 .reading-note { display: flex; align-items: center; gap: 10px; max-width: 700px; margin: 6px auto 0; padding: 6px 20px; font: var(--type-caption); color: var(--muted); }
 .reading-note[hidden] { display: none; }
