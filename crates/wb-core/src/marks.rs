@@ -873,10 +873,12 @@ fn names_in(v: Option<&Value>) -> Vec<String> {
     v.and_then(|x| x.as_array()).map(|a| a.iter().filter_map(|s| s.as_str().map(String::from)).collect()).unwrap_or_default()
 }
 
-/// What the panel has switched: `{"hidden_kinds": [...], "hidden_styles": [...], "reading": false}`.
+/// What the panel has switched: `{"hidden_kinds": [...], "hidden_styles": [...], "reading": false, "margin": "open"}`.
+/// `margin` is `open` (the notes in full beside the text) or `signs` (only a notepad sign beside each verse with a note).
 pub fn panel_settings(store: &Store) -> Value {
     let all = store.settings("marks");
-    json!({"hidden_kinds": names_in(all.get("hidden_kinds")), "hidden_styles": names_in(all.get("hidden_styles")), "reading": all.get("reading").and_then(|r| r.as_bool()).unwrap_or(false)})
+    let margin = if all.get("margin").and_then(|m| m.as_str()) == Some("signs") { "signs" } else { "open" };
+    json!({"hidden_kinds": names_in(all.get("hidden_kinds")), "hidden_styles": names_in(all.get("hidden_styles")), "reading": all.get("reading").and_then(|r| r.as_bool()).unwrap_or(false), "margin": margin})
 }
 
 fn hide(store: &mut Store, key: &str, item: String, hidden: bool) -> Result<()> {
@@ -914,5 +916,17 @@ pub fn panel_set(store: &mut Store, what: &str, target: &str, on: bool) -> Resul
         }
         _ => return Err(bad("Switch a kind, an entry or reading: wb settings marks kind underline off | entry Warning off | reading on.")),
     }
+    Ok(panel_settings(store))
+}
+
+/// The margin beside the text: `open` (the notes in full) or `signs` (only a sign beside each verse with a note), kept in
+/// `settings/marks.json` and restored when a chapter opens (`wb settings marks margin open|signs`).
+pub fn panel_margin(store: &mut Store, how: &str) -> Result<Value> {
+    guard(&store.root)?;
+    let how = how.trim().to_lowercase();
+    if how != "open" && how != "signs" {
+        return Err(bad("The margin is open or signs: wb settings marks margin open | signs."));
+    }
+    store.set_setting("marks", "margin", Some(json!(how)))?;
     Ok(panel_settings(store))
 }

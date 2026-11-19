@@ -458,6 +458,7 @@ pub fn jot(bible: &Bible, store: &mut Store, text: &str, question: bool) -> Resu
 pub fn chapter_questions(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
     let mut out = trail_questions(store, code, chapter);
     out.extend(crate::questions::in_chapter(store, code, chapter));
+    out.extend(crate::margin::chapter_questions(store, code, chapter));
     out
 }
 

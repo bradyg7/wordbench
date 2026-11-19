@@ -486,6 +486,27 @@ pub fn chapter(bible: &Bible, store: &Store, place: &str) -> Result<Value> {
     Ok(json!({"place": format!("{} {}", sp.book.name, sp.c1), "book": sp.book.code, "chapter": sp.c1, "count": notes.len(), "notes": notes}))
 }
 
+/// The open questions written in a chapter's margin notes, by verse (a span's first; the chapter's own note, none): `{id, v, text}`.
+/// Reads the chapter's one file, so the reader's ? marker can include them (MK-11).
+pub fn chapter_questions(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
+    let Ok(text) = read_text(&file(&store.root, code, chapter)) else { return vec![] };
+    let mut out = vec![];
+    for n in parse_full(&text).1 {
+        if n.at.v1 == 0 || !n.text.contains("[!") {
+            continue;
+        }
+        let c = chars(&n.text);
+        for b in split(&n.text, false).1.iter().filter(|b| b.kind == "quote") {
+            if let Some(q) = question_of(&sub(&c, b.start, b.end)) {
+                if !q.done {
+                    out.push(json!({"id": n.id, "v": n.at.v1, "text": q.text}));
+                }
+            }
+        }
+    }
+    out
+}
+
 /// The notes as the one search lists them (`wb find`): `{kind, id, title, snippet, updated, at, question}`; also how many there are.
 pub fn rows(bible: &Bible, store: &Store, mut keep: impl FnMut(&str, &str, &str) -> bool) -> (Vec<Value>, usize) {
     let all = all(bible, store);

@@ -42,6 +42,7 @@ import { refreshInks } from './hlink';
 import { KIND_NAMES, panel } from './markpanel';
 import { inkOf } from './markdraw';
 import { createBar, kindHooks, type MarkBar } from './markbar';
+import { createMargin } from './margin';
 import { createArrowBar, arrowColor, rememberArrowColor, STAY, type ArrowBar } from './arrowbar';
 import { parseAt } from './marks';
 import * as planReading from './planreading';
@@ -63,6 +64,17 @@ readingNote.hidden = true;
 }
 
 let drawn: Drawn | null = null;
+
+/** The margin beside the main reader's text (marks T10): notes, signs, the popover. */
+const margin = createMargin({
+  scroller, reader,
+  openPage: id => void openNote(id),
+  questionsChanged: (v, on) => {
+    const d = drawn;
+    if (!d || v < 1) return;
+    if (on) { d.questions.add(v); paint(reader, d); } else if (inApp) void refreshMarks();
+  },
+});
 let books: Book[] = [];
 
 /** A reader on screen: the main one, or a second reader in a pane (notes 9587, 21bd). Each has what it draws, its own
@@ -137,6 +149,7 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
     const vn = reader.querySelector<HTMLElement>(`.vn[data-v="${verse}"]`);
     if (vn) scroller.scrollTop = reader.offsetTop + vn.offsetTop - 12 + offset;
   }
+  void margin.load(drawn);
   placeButton(`${data.chapter.name} ${chapter}`);
   readerStep(`${data.chapter.name} ${chapter}`);
   readerMoved();
@@ -150,7 +163,7 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   const d = drawn;
   const rest = () => {
     if (seq === drawSeq && d.more()) setTimeout(rest, 0);
-    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); void planReading.paintRead(d, reader); if (finding) findInChapter(finding); }
+    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); margin.layout(); void planReading.paintRead(d, reader); if (finding) findInChapter(finding); }
   };
   setTimeout(rest, 0);
   savePlace();
@@ -208,6 +221,7 @@ function step(n: number) {
 // Visibility changes use the marks already loaded in each reader.
 function repaintLayers() {
   readingNote.hidden = !panel.reading;
+  margin.refresh();
   if (drawn) paint(reader, drawn);
   for (const { view } of readers2.values()) {
     if (view.drawn) paint(view.root, view.drawn);
@@ -597,6 +611,18 @@ function startArrow(ctx: At) {
   window.addEventListener('resize', mode.place);
 }
 kindHooks.arrow = ctx => startArrow(ctx);
+// Margin note (T10, rows 17 and 18; MK7-27): the selection's verse or span, within one chapter, opens an empty note in the margin.
+kindHooks.note = ctx => {
+  const vw = barView;
+  if (!vw || !vw.drawn) return;
+  if (vw !== mainView) { toast('Margin notes are written beside the main reader'); return; }
+  const m = /^[A-Z0-9]+\.(\d+):(\d+)(?:\.\d+)?(?:-(\d+):(\d+)(?:\.\d+)?)?$/.exec(ctx.anchor);
+  if (!m) return;
+  const c1 = +m[1], c2 = m[3] ? +m[3] : c1, v1 = +m[2], v2 = m[4] ? +m[4] : v1;
+  if (c1 !== c2) { toast('A margin note covers verses of one chapter'); return; }
+  vw.selector.clear();
+  margin.startNote(Math.min(v1, v2), Math.max(v1, v2));
+};
 
 /** Arrow mode is over: nothing is made. */
 function endArrow() {

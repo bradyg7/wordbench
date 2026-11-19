@@ -173,7 +173,7 @@ fn notebook_commands() -> Vec<Command> {
             }),
         cmd("day rm", "Delete a day's page with timed Undo.",
             vec![Pos("day", N::Opt)], |c, a| j(nb::delete_day_with_undo(c.bible()?, &mut *c.study()?, day_of(a).as_deref()).map_err(e)?)),
-        cmd("settings", "The window's settings for a part (notebook): wb settings notebook; the marks panel: wb settings marks [kind <kind> on|off | entry <name or style> on|off | reading on|off]; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
+        cmd("settings", "The window's settings for a part (notebook): wb settings notebook; the marks panel: wb settings marks [kind <kind> on|off | entry <name or style> on|off | reading on|off | margin open|signs]; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
             vec![Pos("part", N::One), Pos("key", N::Opt), Pos("value", N::Any), Flag("about")], |c, a| {
                 if a.s("part") == "marks" {
                     // the marks panel (rows 44 to 46): wb settings marks | kind <kind> on|off | entry <name or style> on|off | reading on|off
@@ -183,6 +183,9 @@ fn notebook_commands() -> Vec<Command> {
                         return j(wb_core::marks::panel_settings(&st));
                     }
                     let rest = rest.trim();
+                    if key == "margin" {
+                        return j(wb_core::marks::panel_margin(&mut st, rest).map_err(e)?);
+                    }
                     let (target, state) = if key == "reading" { ("", rest) } else { rest.rsplit_once(char::is_whitespace).map(|(t, s)| (t.trim(), s)).unwrap_or(("", rest)) };
                     let on = match state {
                         "on" => true,

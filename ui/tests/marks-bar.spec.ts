@@ -136,12 +136,13 @@ test('row 5: a kind opens its drop-down away from the selection: quick styles pi
   await expect(menu(page).locator('.mb-line')).toHaveText(['1 line', '2', '3']);
   const first = await menu(page).locator('> *').first().evaluate(e => e.className);
   expect(first).toContain('mb-lines');
-  // a second click on the same icon closes it; Arrow and Margin note do nothing yet
+  // a second click on the same icon closes it
   await bar(page).locator('.mb-underline').click();
   await expect(menu(page)).toHaveCount(0);
+  // Margin note (T10) opens an empty note in the margin and ends the selection; nothing is written until text is typed
   await bar(page).locator('.mb-note').click();
-  await expect(menu(page)).toHaveCount(0);
-  await expect(bar(page)).toBeVisible();
+  await expect(page.locator('textarea.mg-edit')).toBeVisible();
+  await expect(bar(page)).toHaveCount(0);
   expect(run.calls).toEqual([]);
 });
 
@@ -249,7 +250,7 @@ test('row 10: the Legend icon lists the whole legend with a filter focused; typi
   await expect.poll(() => run.calls.at(-1)).toBe(`mark-add-${slug(run.at)}-kind-circle-color-334455`);
 });
 
-test('row 20: H U C B pick a kind; N does nothing yet (A starts an arrow: marks-arrows.spec.ts)', async ({ page }) => {
+test('row 20: H U C B pick a kind (A starts an arrow: marks-arrows.spec.ts; N a margin note: marks-margin.spec.ts)', async ({ page }) => {
   const run = await ready(page);
   await select(page, run);
   for (const [key, kind] of [['u', 'underline'], ['c', 'circle'], ['b', 'box'], ['h', 'highlight']] as const) {
@@ -258,8 +259,7 @@ test('row 20: H U C B pick a kind; N does nothing yet (A starts an arrow: marks-
     await expect(bar(page).locator(`.mb-${kind}`)).toHaveClass(/on/);
   }
   await page.keyboard.press('Shift+C');
-  await page.keyboard.press('n');
-  await expect(menu(page)).toHaveAttribute('data-menu', 'circle');   // Shift+C is C; N changed nothing
+  await expect(menu(page)).toHaveAttribute('data-menu', 'circle');   // Shift+C is C
   expect(run.calls).toEqual([]);
   await expect(bar(page)).toBeVisible();
 });

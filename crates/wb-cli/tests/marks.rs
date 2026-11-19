@@ -630,7 +630,7 @@ fn a_chapters_marks_carry_each_marks_legend_name_and_style_once_each() {
 fn the_marks_panel_keeps_kinds_entries_and_reading_mode_in_settings_marks_json() {
     let Some(w) = Wb::new() else { return };
     w.ok(&["legend", "add", "--kind", "underline", "--color", "#cc3322", "--lines", "2", "--name", "Warning"]);
-    assert_eq!(w.js(&["settings", "marks"]), json!({"hidden_kinds": [], "hidden_styles": [], "reading": false}));
+    assert_eq!(w.js(&["settings", "marks"]), json!({"hidden_kinds": [], "hidden_styles": [], "reading": false, "margin": "open"}));
     let s = w.js(&["settings", "marks", "kind", "underline", "off"]);
     assert_eq!(s["hidden_kinds"], json!(["underline"]));
     let s = w.js(&["settings", "marks", "entry", "Warning", "off"]);
@@ -643,6 +643,14 @@ fn the_marks_panel_keeps_kinds_entries_and_reading_mode_in_settings_marks_json()
     assert_eq!(s["hidden_styles"], json!(["underline:#cc3322:2"]), "the other switches stay");
     let s = w.js(&["settings", "marks", "entry", "underline:#cc3322:2", "on"]);
     assert_eq!(s["hidden_styles"], json!([]));
+    // row 43: the margin open or as signs, kept in the same file, the other switches staying
+    let s = w.js(&["settings", "marks", "margin", "signs"]);
+    assert_eq!(s["margin"], json!("signs"));
+    assert_eq!(s["reading"], json!(true));
+    assert!(w.snapshot()["settings/marks.json"].contains("\"margin\": \"signs\"") || w.snapshot()["settings/marks.json"].contains("\"margin\":\"signs\""));
+    assert_eq!(w.js(&["settings", "marks"])["margin"], json!("signs"));
+    assert_eq!(w.js(&["settings", "marks", "margin", "open"])["margin"], json!("open"));
+    assert_ne!(w.run(&["settings", "marks", "margin", "wide"]).0, 0);
     assert_ne!(w.run(&["settings", "marks", "kind", "pencil", "off"]).0, 0);
     assert_ne!(w.run(&["settings", "marks", "entry", "Nope", "off"]).0, 0);
     assert_ne!(w.run(&["settings", "marks", "kind", "box", "maybe"]).0, 0);

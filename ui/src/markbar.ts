@@ -4,7 +4,7 @@
 // the side away from the selection: that kind's styles by name (the person's quick ones pinned with a tick, then the
 // recent ones, six at most, numbered), then Any color…. A color no legend entry has is drawn at once and asks for its
 // name in the drop-down ("New pen", MK7-11). The Legend icon opens the whole legend with a filter. The bar never grows
-// with the legend. Arrow is T9 (main.ts plugs it into `kindHooks`); Margin note is T10.
+// with the legend. Arrow (T9) and Margin note (T10) are plugged into `kindHooks` by main.ts.
 //
 // Marks are made with `wb mark add` (--style for a legend entry, or --kind, --color and --lines) and entries with
 // `wb legend add`; this file draws nothing itself, it asks `hooks.drawn` to show the mark that came back.
@@ -30,7 +30,7 @@ const TAB_PATH = 'M2.5 4.5h4l1.5 1.5h5.5v7.5h-11zM9 2.5h4.5V7';
 const MORE_PATH = 'M3 8h.01M8 8h.01M13 8h.01';
 const CHEV_PATH = 'M6 3.5L10.5 8 6 12.5';
 
-/** Where Arrow (T9) and Margin note (T10) plug in. Nothing is set yet: clicking those icons or pressing A or N does nothing. */
+/** Where Arrow (T9) and Margin note (T10) plug in (main.ts sets both): the icons, the keys A and N and the right-click menu's rows call them. */
 export const kindHooks: { arrow?: (ctx: BarContext) => void; note?: (ctx: BarContext) => void } = {};
 
 export interface BarContext { anchor: string; label: string }
@@ -499,7 +499,7 @@ export function createBar(ctx: BarContext, hooks: BarHooks): MarkBar {
 
   // ---- the right-click menu (MK7-34) ---------------------------------------------------------------------------------
   // The same actions as the bar, as named rows with their keys. A kind opens its styles as a submenu (the bar's own rows,
-  // built by buildKind). Arrow and Margin note are inert until T9 and T10, like the bar's icons. The bar hides while it is open.
+  // built by buildKind). The bar hides while it is open.
   interface Cm { box: HTMLElement; rows: HTMLElement[]; cur: number; sub: HTMLElement | null; subKind: Kind | null; subCur: number; seq: number; off: () => void }
   let cm: Cm | null = null;
 

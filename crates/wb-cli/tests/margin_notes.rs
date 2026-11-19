@@ -279,3 +279,16 @@ fn the_study_check_counts_margin_note_files() {
     w.js(&["mark", "note", "Psa 1:1", "Three."]);
     assert_eq!(w.js(&["study", "check"])["margin"], json!({"files": 3}));
 }
+
+#[test]
+fn the_readers_question_marker_includes_questions_written_in_a_margin_note() {
+    let Some(w) = Wb::new() else { return };
+    w.js(&["mark", "note", "Num 25:11", "> [!question] Why here?"]);
+    w.js(&["mark", "note", "Num 25:12", "A plain thought."]);
+    w.js(&["mark", "note", "Num 25", "> [!question] A chapter question."]);
+    let store = wb_core::store::Store::open(&w.dir).unwrap();
+    let qs = wb_core::notebook::chapter_questions(&store, "NUM", 25);
+    let verses: Vec<u64> = qs.iter().map(|q| q["v"].as_u64().unwrap()).collect();
+    assert_eq!(verses, vec![11], "{qs:?}");
+    assert_eq!(qs[0]["text"], "Why here?");
+}
