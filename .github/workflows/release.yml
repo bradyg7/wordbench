@@ -12,6 +12,9 @@ jobs:
   windows:
     runs-on: windows-latest
     timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/checkout@v4
 
@@ -59,3 +62,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
         run: node scripts/release/publish.mjs
+
+      # the website's Download page shows the newest release (design/features/site S-5)
+      - name: Rebuild the website
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml -R ${{ github.repository }} --ref main

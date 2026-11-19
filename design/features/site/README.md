@@ -16,6 +16,12 @@ Today's `site/` text was written for a paid, licensed private pilot that never h
 - **S-10 The name is Wordbench** (the person, 2026-11-19), on the site and in the app. The site says Wordbench from W1.
   The app is renamed in a later release (window title, installer and Start menu names), designed on its own; the
   updater's link and the releases repository keep their names, so installed copies still update.
+- **S-1 amended (the person, 2026-11-19): the releases repository first.** The site is served by GitHub Pages of the
+  public `wordbench-releases`, from its `gh-pages` branch, at `https://bradyg7.github.io/wordbench-releases/`; it is
+  built with `SITE_BASE=/wordbench-releases/` and every link goes through that base. `RELEASES_TOKEN` pushes it, so
+  no new token or repository is needed. A move to `bradyg7.github.io` later is only a change of base and target.
+- **S-11 Release notes fold** (the person, 2026-11-19). On Releases each version's notes fold under its number; the
+  newest starts open.
 - **S-2 Text first.** Nothing goes live until the text below is accepted. Rejected: publishing today's text (it claims
   licenses, pricing and a pilot that are not true).
 

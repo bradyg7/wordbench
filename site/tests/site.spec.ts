@@ -75,6 +75,12 @@ test('releases: every version, newest first (row 6)', async ({ page }) => {
   await expect(page.locator('.release-notes-page h2')).toHaveText(['0.2.0', '0.1.1', '0.1.0']);
   await expect(page.getByText('The legend: what each of your styles means')).toBeVisible();
   await expect(page.locator('.release-notes-page code').first()).toBeVisible();
+  // each version folds; only the newest starts open
+  await expect(page.locator('[id="v0.2.0"]')).toHaveAttribute('open', '');
+  const older = page.locator('[id="v0.1.1"]');
+  await expect(older).not.toHaveAttribute('open', '');
+  await older.locator('summary').click();
+  await expect(older).toHaveAttribute('open', '');
 });
 
 test('keyboard skip link reaches main content', async ({ page }) => {
