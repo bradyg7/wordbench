@@ -1,5 +1,5 @@
 // Draws a chapter: one span per word (with its punctuation), verse numbers, and the marks over them (highlight fills,
-// thread underlines, note marks), put straight into the markup. A space gets its own span only when it carries a mark,
+// then boxes and circles, underlines and arrows in their own layers, folder tabs by the verse numbers), put straight into the markup. A space gets its own span only when it carries a mark,
 // so a fill or a line runs unbroken through a phrase. The text itself is never changed.
 //
 // Long chapters are drawn in parts: the blocks up to the place being opened plus about a screen more at once, the rest
@@ -20,12 +20,16 @@ export interface Drawn {
   el: HTMLElement[];             // filled as parts are drawn
   gap: (HTMLElement | null)[];   // the space after word k, when it has a span
   c: Computed;
+  /** Puts the box, circle, underline and arrow layers where the words are now (after a part is drawn or the width changes). */
+  layout: () => void;
   /** Verses with an open question: a ? on the verse number. */
   questions: Set<number>;
   more: () => boolean;           // draws the next part; false when the chapter is complete
 }
 
 import { hlStyle } from './hlink';
+import { panel } from './markpanel';
+import { layout as layOut } from './markdraw';
 const COLORS = new Set(['yellow', 'green', 'blue', 'pink', 'orange']);
 const esc = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const threadColor = (t: Mark) => (COLORS.has(t.color || '') ? `var(--thread-${t.color})` : t.color || 'var(--thread-a)');
@@ -35,33 +39,25 @@ const STEP = 500;    // words per later part
 // Where drawing time goes (read by open() for the budgets).
 export const drawTimes = { html_ms: 0, refs_ms: 0, first_words: 0 };
 
-interface Look { hl?: string; th: string[]; names: string[]; note: boolean }
+interface Look { hl?: string; names: string[]; note: boolean }
 
 function look(c: Computed, k: number): Look {
-  const th = c.threads[k];
-  // at most two lines under a run (TH-6); the hover names every folder
-  return { hl: c.hl[k], th: th ? th.slice(0, 2).map(threadColor) : [], names: th ? th.map(t => c.names[t.id] || '') : [], note: c.noted[k] === 1 };
+  // the hover names the legend entry of every mark over the word (row 47)
+  return { hl: c.hl[k], names: c.said[k] || [], note: c.noted[k] === 1 };
 }
 
 function gapLook(c: Computed, k: number, n: number): Look {
-  if (k + 1 >= n) return { th: [], names: [], note: false };
+  if (k + 1 >= n) return { names: [], note: false };
   const a = look(c, k), b = look(c, k + 1);
-  return { hl: a.hl && a.hl === b.hl ? a.hl : undefined, th: a.th.filter(x => b.th.includes(x)), names: a.names, note: false };
+  return { hl: a.hl && a.hl === b.hl ? a.hl : undefined, names: a.names, note: false };
 }
 
-const marked = (m: Look) => !!m.hl || m.th.length > 0 || m.note;
+const marked = (m: Look) => !!m.hl || m.note;
 
-// Stacked thread underlines are background lines in the span's bottom padding (padding on an inline box widens its
-// background without moving the text); a highlight is the background color.
+// A highlight is the span's background color (the layer beneath the words); the other kinds are drawn over it by
+// markdraw.ts, in their own layers, and never change the words.
 function styleOf(m: Look, gap = false): string {
-  let s = '';
-  if (m.hl) s += hlStyle(m.hl, gap);
-  const lines = m.th;
-  if (lines.length) {
-    s += `background-image:${lines.map(col => `linear-gradient(${col},${col})`).join(',')};`;
-    s += `background-position:${lines.map((_, j) => `0 calc(100% - ${j * 4}px)`).join(',')};padding-bottom:${lines.length * 4}px;`;
-  }
-  return s;
+  return m.hl ? hlStyle(m.hl, gap) : '';
 }
 
 function apply(e: HTMLElement, m: Look, gap = false) {
@@ -81,9 +77,10 @@ const marginTitle = (c: Computed, v: number) => (c.margin.get(v) || []).map(t =>
 
 // The marks the layers let through: no highlights when they are hidden, and only the threads shown.
 function compute(keys: number[], m: Marks, ch: number): Computed {
-  const shown = layers.highlightsShown() ? m : { ...m, highlights: [] };
   const off = m.hidden || [];
-  return computeMarks(keys, shown, ch, id => layers.all && !off.includes(id));
+  // Reading mode shows only the text: no mark and no folder tab. A kind or an entry switched off hides its marks only.
+  return computeMarks(keys, m, ch, id => layers.all && !panel.reading && !off.includes(id),
+    x => panel.shows(x) && (x.kind !== 'highlight' || layers.highlightsShown()));
 }
 
 export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVerse = 1, questions = new Set<number>()): Drawn {
@@ -151,6 +148,7 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
 
   const d: Drawn = {
     chapter, marks, v, i, strong, text, gapText, el, gap, questions,
+    layout: () => layOut(root, d),
     get c() { return now.c; },
     set c(x) { now.c = x; },
     more: () => {
@@ -159,9 +157,11 @@ export function draw(root: HTMLElement, chapter: Chapter, marks: Marks, untilVer
       t.innerHTML = part(STEP);
       refs(t.content);
       root.append(t.content);
+      d.layout();
       return next < n;
     },
   };
+  d.layout();
   return d;
 }
 
@@ -195,6 +195,7 @@ export function paint(root: HTMLElement, d: Drawn) {
     e.style.boxShadow = marginStyle(d.c, v);
     if (d.c.margin.has(v)) e.title = marginTitle(d.c, v); else e.removeAttribute('title');
   });
+  d.layout();
 }
 
 // The words of keys a..b, verbatim as the database has them, for copying.

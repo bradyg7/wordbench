@@ -164,3 +164,16 @@ fn a_note_that_moves_to_another_book_stays_in_memory() {
     assert!(st.notes().is_empty());
     assert_eq!(st.inbox().iter().map(|x| s(x, "id")).collect::<Vec<_>>(), vec![n]);
 }
+
+#[test]
+fn opening_a_chapters_marks_reads_no_page_file() {
+    // marks round 7, row 42: the reader's marks come from memory and the book's one small marks file, never a page
+    let t = Scratch::new();
+    let mut st = Store::open(t.path()).unwrap();
+    many_notes(&mut st, 60);
+    st.set_highlight("PSA.1:2", Some("yellow"), "").unwrap();
+    st.loads = 0;
+    let m = wb_core::marks::chapter_marks(&st, "PSA", 1).unwrap();
+    assert_eq!(m.marks.len(), 1, "the old highlight, once");
+    assert_eq!(st.loads, 0, "no page file read");
+}

@@ -43,7 +43,7 @@ const INTERNAL: &[&str] = &[
     // marks (MK-17): the margin's file forms and places, the verse index and the pencil's list: pieces of wb margin, wb page overview and wb hl pencil
     // (named by file, so a public `all` or `list` elsewhere cannot hide behind them)
     "store.rs:write_atomic_unique",
-    "margin.rs:all", "margin.rs:has", "margin.rs:rows", "margin.rs:trashed", "margin.rs:trashed_has", "margin.rs:is_trash_file", "margin.rs:question_entries", "margin.rs:naming", "margin.rs:naming_row", "margin.rs:matching", "pageindex.rs:all", "pageindex.rs:forget", "pageindex.rs:naming", "store.rs:each_highlight", "marks.rs:verse_level", "marks.rs:is_trash_file", "marks.rs:drawn_in_chapter", "marks.rs:trashed_marks",
+    "margin.rs:all", "margin.rs:has", "margin.rs:rows", "margin.rs:trashed", "margin.rs:trashed_has", "margin.rs:is_trash_file", "margin.rs:question_entries", "margin.rs:naming", "margin.rs:naming_row", "margin.rs:matching", "pageindex.rs:all", "pageindex.rs:forget", "pageindex.rs:naming", "store.rs:each_highlight", "marks.rs:verse_level", "marks.rs:is_trash_file", "marks.rs:drawn_in_chapter", "marks.rs:chapter_drawn", "marks.rs:trashed_marks",
     // views and templates (W5): a view's fence and line read (pieces of wb page views, wb view run, wb template save), a
     // place as a reference again, the blanks filled, and the Templates rows of wb notebook sidebar
     "view_fence", "view_line", "span_ref", "fill", "templates.rs:rows",

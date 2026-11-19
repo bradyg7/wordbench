@@ -148,12 +148,12 @@ real app). `Built` is ticked only when the test passes.
 
 | # | Where | Action | What the person sees | On disk | `wb` | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 42 | R | Open a chapter | Marks in the fixed layer order; the margin open beside the text (or as signs, as last left); folder colors as gutter tabs | nothing (no page files read) | `wb marks <chapter>` | rust, app (speed) | [ ] |
+| 42 | R | Open a chapter | Marks in the fixed layer order; the margin open beside the text (or as signs, as last left); folder colors as gutter tabs | nothing (no page files read) | `wb marks <chapter>` | rust, app (speed) | [ ] (rust built: opening_a_chapters_marks_reads_no_page_file; the app speed check not run) |
 | 43 | M | Minimize or open the margin | Signs only, or the notes in full | `settings/marks.json` | `wb settings marks` | ui | [ ] |
-| 44 | P | Toggle a kind | Marks of that kind hide or show | as 43 | as 43 | ui | [ ] |
-| 45 | P | Toggle a legend entry | Marks in that style hide or show | as 43 | as 43 | ui | [ ] |
-| 46 | P | Reading mode | Only the text; one line says marks are hidden, with Show | as 43 | as 43 | ui | [ ] |
-| 47 | R | Hover a mark | Its legend name | nothing | | ui | [ ] |
+| 44 | P | Toggle a kind | Marks of that kind hide or show | as 43 | as 43 | ui | [x] |
+| 45 | P | Toggle a legend entry | Marks in that style hide or show | as 43 | as 43 | ui | [x] |
+| 46 | P | Reading mode | Only the text; one line says marks are hidden, with Show | as 43 | as 43 | ui | [x] |
+| 47 | R | Hover a mark | Its legend name | nothing | | ui | [x] |
 | 48 | R | Click an arrow's end | The card for the arrow: its two verses, style, Change, Delete | nothing | `wb mark show <id>` | ui | [ ] |
 | 49 | R | A chapter with years of marks (generated) | Readable: layers in order, underlines thinning, no mark hides the words, arrows clear of the margin | nothing | | app | [ ] |
 | 50 | R | Narrow window | The same bar (one size); the margin as signs; a sign opens its note in a popover beside the verse | nothing | | ui | [ ] |
@@ -217,6 +217,8 @@ T2 built (core and wb): rows 25 to 28 (show, at, style). Tests (`crates/wb-cli/t
 T3 built (core and wb): rows 4 (--style), 8, 9, 33 to 39. Tests (`crates/wb-cli/tests/marks.rs`): `a_mark_takes_an_entrys_style_and_shows_its_legend_name` (4 --style, `legend` in show and at), `legend_add_makes_named_and_unnamed_entries_and_refuses_the_same_style_twice` (8, 9, 33), `a_new_library_has_an_empty_legend_and_marks_in_no_entry_are_listed_as_unnamed` (9, MK7-26, 32 core), `a_new_name_shows_on_every_mark_in_the_style` (34), `changing_an_entrys_color_restyles_its_marks_or_only_the_entry` (35), `quick_styles_are_five_at_most_and_a_key_is_unique_unless_moved` (36, 37), `entries_move_and_removing_one_keeps_its_marks_as_unnamed` (38, 39), `the_legend_file_is_kept_whole_and_a_bad_one_is_an_empty_legend`.
 
 T4 built (core and wb): rows 17 to 19, 29, 30, 52. Tests (`crates/wb-cli/tests/margin_notes.rs`): `a_margin_note_is_kept_in_its_chapters_file_at_a_verse_a_span_or_the_chapter` (17, 18, 19), `rewriting_a_note_sets_changed_and_keeps_its_id_place_and_created` (29), `growing_a_note_makes_a_page_and_the_note_stays_with_a_link` (30), `references_and_questions_in_a_note_are_found_by_themselves` (52, MK-11), `a_deleted_note_waits_in_the_trash_and_can_be_put_back` (MK-21), `old_margin_files_are_read_as_they_are_and_never_rewritten_by_reading`, `the_study_check_counts_margin_note_files`; `every_action_has_a_command`.
+
+T5 built: rows 44, 45, 46, 47 (ui); row 42 in part (rust only: no page file read; the app speed run is not done); row 49 not ticked (WebKit stand-in only, no real-app check). Tests: `ui/tests/marks-draw.spec.ts`: `the fixture has a mark of every kind, and the reader draws each in its own layer, in the fixed order`, `a folder color is a tab by the verse number, never a line on the words`, `hovering a mark names its legend entry, an Unnamed one by its style` (47), `the marks panel › each kind hides and shows` (44), `… a legend entry hides and shows only the marks in its style` (45), `… Reading mode shows only the text …` (46), `a chapter with a hundred overlapping marks keeps every word readable` (49, WebKit), `narrowing the window places the layers again on the words`; Rust: `a_chapters_marks_carry_each_marks_legend_name_and_style_once_each`, `the_marks_panel_keeps_kinds_entries_and_reading_mode_in_settings_marks_json` (crates/wb-cli/tests/marks.rs), `opening_a_chapters_marks_reads_no_page_file` (crates/wb-core/tests/store_cache.rs). Screenshot: `build/t5.png`.
 
 ## Disk (proposed)
 

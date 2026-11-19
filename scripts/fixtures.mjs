@@ -16,6 +16,18 @@ const wb = (...args) => execFileSync('cargo', ['run', '-q', '--release', '-p', '
 try {
   wb('hl', 'set', 'Numbers 25:11', 'green');
   wb('note', 'add', 'NUM.25:11.24', 'Synthetic reader fixture note.');
+  // every kind of mark and a legend (design/features/marks T5); the places are anchors, no scripture is typed
+  wb('legend', 'add', '--kind', 'underline', '--color', 'blue', '--lines', '2', '--name', 'Fixture double');
+  wb('legend', 'add', '--kind', 'box', '--color', '#cc3322', '--name', 'Fixture box');
+  for (const args of [
+    ['NUM.25:7', '--kind', 'highlight', '--color', 'yellow'],
+    ['NUM.25:6.1-25:6.4', '--kind', 'underline', '--color', '#cc3322', '--lines', '1'],
+    ['NUM.25:8.1-25:8.5', '--style', 'Fixture double'],
+    ['NUM.25:9.1-25:9.5', '--kind', 'underline', '--color', 'green', '--lines', '3'],
+    ['NUM.25:11.2-25:11.5', '--kind', 'circle', '--color', 'orange'],
+    ['NUM.25:12.1-25:12.4', '--style', 'Fixture box'],
+    ['NUM.25:6', '--kind', 'arrow', '--color', 'blue', '--to', 'NUM.25:11'],
+  ]) wb('mark', 'add', ...args);
   wb('thread', 'new', 'Fixture thread', '--at', 'Numbers 25:12', '--color', '#654321');
   for (const [book, ch] of [['NUM', 25], ['NUM', 24], ['NUM', 26], ['PSA', 119]]) {
     writeFileSync(new URL(`${book}.${ch}.json`, out), wb('fixture', book, String(ch)));
@@ -52,6 +64,7 @@ Names Numbers 25:11 here.`);
   for (const argv of [
     ['page', 'overview', marksPage], ['page', 'blocks', marksPage], ['page', 'scripture', marksPage], ['note', 'show', marksPage],
     ['page', 'tree'], ['notebook', 'sidebar', '--at', 'NUM 25'], ['parse', 'go Psalms 119:105'], ['find', '--sort', 'edited'], ['find', '--kind', 'page'],
+    ['legend'], ['settings', 'marks'],
     ['concordance', 'letters'], ['settings', 'concordance'],
     ['concordance', 'zeal', '--forms', 'all'], ['concordance', 'zeal', '--forms', 'one'], ['concordance', 'zealous', '--forms', 'one'],
     ['concordance', 'heart', '--forms', 'one'], ['concordance', 'heart', '--forms', 'one', '--book', 'PSA'], ['concordance', 'and', '--forms', 'all'], ['concordance', 'and', '--forms', 'one'],

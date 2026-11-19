@@ -38,6 +38,8 @@ import { canReopen, parse, reopen, runLine, written } from './actions';
 import { setupIfNeeded } from './setup';
 import { createReadAloud } from './listen';
 import { refreshInks } from './hlink';
+import { KIND_NAMES, panel } from './markpanel';
+import { inkOf } from './markdraw';
 import * as planReading from './planreading';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -45,6 +47,16 @@ const reader = $('reader'), scroller = $('scroller');
 const COLORS = ['yellow', 'green', 'blue', 'pink', 'orange'];
 const STORE = 'wb.place.v1';
 const SIZE_STORE = 'wb.size.v1';
+
+// Reading mode (row 46): the marks are not drawn, and one line says so.
+const readingNote = h('div', 'reading-note');
+readingNote.hidden = true;
+{
+  const show = h('button', 'btn soft', 'Show');
+  show.onclick = () => { void panel.setReading(false).catch(x => toast(String(x))); repaintLayers(); };
+  readingNote.append(h('span', '', 'Marks are hidden (Reading mode).'), show);
+  scroller.insertBefore(readingNote, reader);
+}
 
 let drawn: Drawn | null = null;
 let books: Book[] = [];
@@ -187,6 +199,7 @@ function step(n: number) {
 
 // Visibility changes use the marks already loaded in each reader.
 function repaintLayers() {
+  readingNote.hidden = !panel.reading;
   if (drawn) paint(reader, drawn);
   for (const { view } of readers2.values()) {
     if (view.drawn) paint(view.root, view.drawn);
@@ -360,7 +373,7 @@ async function addHighlight(m: Mark) {
   if (!inApp && !m.color) return toast('Removed (this session only)');
   if (!inApp) {
     // In the WebKit tests there is no Rust: the mark is drawn for this session only.
-    drawn!.marks.highlights.push(m);
+    (drawn!.marks.marks ||= []).push({ id: m.id, kind: 'highlight', color: m.color!, at: anchorOf(m), created: new Date().toISOString(), legend: `Unnamed ${m.color} highlight`, style: `highlight:${m.color}` });
     paint(reader, drawn!);
     toast('Highlighted (this session only)');
     return;
@@ -430,7 +443,7 @@ function showBar(vw: View, a: number, b: number, touch: boolean) {
   };
   barPick = pick;
   // a whole verse: its own color shows on the bar
-  const current = verse ? d.marks.highlights.find(m => m.kind === 'verse' && m.c1 === d.chapter.chapter && m.v1 === verse && m.c2 === null)?.color : undefined;
+  const current = verse ? [...(d.marks.marks || [])].reverse().find(m => m.kind === 'highlight' && m.at === `${d.chapter.code}.${d.chapter.chapter}:${verse}`)?.color : undefined;
   bar.append(colorRow(current, pick, true));
   if (!touch) bar.append(threadChips(at));
   const names = touch ? ['Note', 'Thread', 'Look up', 'Copy'] : verse ? ['Note', 'Question', 'Thread', 'Copy', 'Notes & lookup', 'Open as a tab'] : ['Note', 'Thread', 'Copy', 'Notes & lookup'];
@@ -906,6 +919,38 @@ function setEyes(markIds: string[], hide: boolean) {
   repaintLayers();
 }
 
+// ---- the marks panel (rows 44 to 46): what is drawn, by kind and by legend entry, and Reading mode ----------------------
+async function marksPanel(box: HTMLElement, again: () => void) {
+  const wrap = h('div', 'marks-panel');
+  const row = (label: string, on: boolean, flip: () => Promise<void>, sample?: HTMLElement) => {
+    const b = h('button', `menu-item check${on ? ' on' : ''}`);
+    b.setAttribute('aria-pressed', String(on));
+    b.append(icon(on ? 'eye' : 'eyeoff', 14));
+    if (sample) b.append(sample);
+    b.append(document.createTextNode(` ${label}`));
+    b.onclick = async () => { try { await flip(); } catch (x) { toast(String(x)); } repaintLayers(); again(); };
+    wrap.append(b);
+  };
+  wrap.append(h('div', 'label', 'Marks'));
+  row('Reading mode (only the text)', panel.reading, () => panel.setReading(!panel.reading));
+  wrap.append(h('div', 'label', 'Kinds'));
+  for (const [k, name] of KIND_NAMES) row(name, !panel.kinds.has(k), () => panel.setKind(k, panel.kinds.has(k)));
+  let legend: { entries: any[]; unlisted: any[] } = { entries: [], unlisted: [] };
+  try { legend = await wb(['legend']); } catch { /* outside the app: no legend */ }
+  const listed = [...(legend.entries || []), ...(legend.unlisted || [])];
+  if (listed.length) {
+    wrap.append(h('div', 'label', 'Legend'));
+    for (const e of listed) {
+      const sample = h('i', 'sample');
+      const color = e.color as string;
+      sample.style.background = e.kind === 'highlight' ? (['yellow', 'green', 'blue', 'pink', 'orange'].includes(color) ? `var(--hl-${color})` : color) : inkOf(color);
+      sample.dataset.kind = e.kind;
+      row(`${e.label} (${e.count})`, !panel.styles.has(e.style), () => panel.setStyle(e.style, panel.styles.has(e.style)), sample);
+    }
+  }
+  box.append(wrap);
+}
+
 // ---- the Highlights menu: layers -------------------------------------------------------------------------------------
 async function highlightsMenu(from: HTMLElement) {
   const box = h('div', 'menu-list layers-menu');
@@ -919,7 +964,7 @@ async function highlightsMenu(from: HTMLElement) {
     box.append(b);
   };
   box.append(h('div', 'label', 'In all readers'));
-  box.append(h('p', 'layers-hint', 'Controls highlight fills and the lines of folders with a color. Notes, questions and verse markers stay visible.'));
+  box.append(h('p', 'layers-hint', 'Controls highlight fills and the tabs of folders with a color. Notes, questions and verse markers stay visible.'));
   toggle('All highlights and folder lines', layers.all, () => { layers.all = !layers.all; });
   toggle('Your highlights', layers.mine, () => { layers.mine = !layers.mine; });
   // Shown on the text (T1, T10, T11): the folders with a color, the shown ones first, the rest folded under their parent
@@ -968,6 +1013,7 @@ async function highlightsMenu(from: HTMLElement) {
     };
     box.append(search, hideAll, list);
   }
+  await marksPanel(box, () => { close(); void highlightsMenu(from); });
   const list = h('button', 'menu-item', 'Your highlights, listed…');
   list.onclick = () => { close(); openMarked('', 'all'); };
   box.append(list);
@@ -1260,6 +1306,7 @@ async function start() {
   if (inApp) {
     void readSettings();
     void loadWindowSettings();
+    void panel.load().then(() => repaintLayers());
     void loadKept();
     loadPalette();
     if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') { openNotebook(); focusReader(); }

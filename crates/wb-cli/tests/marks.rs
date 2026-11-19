@@ -605,3 +605,50 @@ fn the_legend_file_is_kept_whole_and_a_bad_one_is_an_empty_legend() {
     std::fs::write(w.dir.join("settings").join("legend.json"), "not json").unwrap();
     assert_eq!(w.js(&["legend"])["entries"], json!([]));
 }
+
+// ---- marks round 7, T5 (rows 42, 44 to 46): the reader's marks and the marks panel ----
+
+#[test]
+fn a_chapters_marks_carry_each_marks_legend_name_and_style_once_each() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["legend", "add", "--kind", "underline", "--color", "#cc3322", "--lines", "2", "--name", "Warning"]);
+    w.ok(&["hl", "set", "Num 25:10", "green"]); // an old highlight
+    w.ok(&["mark", "add", "Num 25:11", "--style", "Warning"]);
+    w.ok(&["mark", "add", "Num 25:12", "--kind", "box", "--color", "#336699"]);
+    let m = on_chapter(&w, "Num 25");
+    assert_eq!(m.len(), 3, "the old highlight is one mark, drawn once");
+    let named: Vec<(String, String)> = m.iter().map(|x| (x["legend"].as_str().unwrap().into(), x["style"].as_str().unwrap().into())).collect();
+    assert!(named.contains(&("Warning".into(), "underline:#cc3322:2".into())));
+    assert!(named.contains(&("Unnamed green highlight".into(), "highlight:green".into())));
+    assert!(named.contains(&("Unnamed #336699 box".into(), "box:#336699".into())));
+    // `fixture` is what the reader is given in the browser tests: the same marks
+    let f: Value = serde_json::from_str(&w.ok(&["fixture", "NUM", "25"])).unwrap();
+    assert_eq!(f["reader"]["marks"]["marks"].as_array().unwrap().len(), 3);
+}
+
+#[test]
+fn the_marks_panel_keeps_kinds_entries_and_reading_mode_in_settings_marks_json() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["legend", "add", "--kind", "underline", "--color", "#cc3322", "--lines", "2", "--name", "Warning"]);
+    assert_eq!(w.js(&["settings", "marks"]), json!({"hidden_kinds": [], "hidden_styles": [], "reading": false}));
+    let s = w.js(&["settings", "marks", "kind", "underline", "off"]);
+    assert_eq!(s["hidden_kinds"], json!(["underline"]));
+    let s = w.js(&["settings", "marks", "entry", "Warning", "off"]);
+    assert_eq!(s["hidden_styles"], json!(["underline:#cc3322:2"]));
+    let s = w.js(&["settings", "marks", "reading", "on"]);
+    assert_eq!(s["reading"], json!(true));
+    assert!(w.snapshot()["settings/marks.json"].contains("underline:#cc3322:2"));
+    let s = w.js(&["settings", "marks", "kind", "underline", "on"]);
+    assert_eq!(s["hidden_kinds"], json!([]));
+    assert_eq!(s["hidden_styles"], json!(["underline:#cc3322:2"]), "the other switches stay");
+    let s = w.js(&["settings", "marks", "entry", "underline:#cc3322:2", "on"]);
+    assert_eq!(s["hidden_styles"], json!([]));
+    assert_ne!(w.run(&["settings", "marks", "kind", "pencil", "off"]).0, 0);
+    assert_ne!(w.run(&["settings", "marks", "entry", "Nope", "off"]).0, 0);
+    assert_ne!(w.run(&["settings", "marks", "kind", "box", "maybe"]).0, 0);
+    // hiding changes no mark
+    w.ok(&["mark", "add", "Num 25:11", "--kind", "box", "--color", "#cc3322"]);
+    let before = w.snapshot().into_iter().filter(|(k, _)| k.starts_with("marks/")).collect::<BTreeMap<_, _>>();
+    w.ok(&["settings", "marks", "kind", "box", "off"]);
+    assert_eq!(before, w.snapshot().into_iter().filter(|(k, _)| k.starts_with("marks/")).collect::<BTreeMap<_, _>>());
+}

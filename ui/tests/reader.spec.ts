@@ -33,8 +33,9 @@ test('draws Numbers 25 with the marks, in Literata', async ({ page }, info) => {
   expect(await page.evaluate(() => document.fonts.check('18px Literata'))).toBe(true);
   expect(await page.locator('.w.hl').count()).toBeGreaterThan(0);
   expect(await page.locator('.w.noted').count()).toBeGreaterThan(0);
-  // folder lines: under a phrase or word; a whole verse is a mark by its number (threads TH-7)
-  expect(await page.locator('.w[style*="linear-gradient"]').count() + await page.locator('.vn.vth').count()).toBeGreaterThan(0);
+  // a folder's color is a tab by the verse number, never a line on the words (MK7-7, MK7-15)
+  expect(await page.locator('.vn.vth').count()).toBeGreaterThan(0);
+  expect(await page.locator('.w[style*="linear-gradient"]').count()).toBe(0);
   // The words on screen are the database's words, in order.
   const v11 = fx.reader.chapter.verses.find((v: any) => v.v === 11);
   const shown = await page.$$eval('.w', els => els.map(e => e.textContent));
@@ -149,7 +150,7 @@ test('a mark made while a long chapter is still being drawn reaches its last ver
     const wb = (window as any).__wb;
     await wb.open('PSA', 119);
     const d = wb.drawn;
-    d.marks.highlights.push({ kind: 'verse', code: 'PSA', c1: 119, v1: 170, i1: null, c2: null, v2: null, i2: null, id: 't', color: 'green' });
+    d.marks.marks = [...(d.marks.marks || []), { id: 't', kind: 'highlight', color: 'green', at: 'PSA.119:170', created: '2026-01-01T00:00:00Z', legend: 'Unnamed green highlight', style: 'highlight:green' }];
     wb.repaint();
   });
   await page.waitForFunction(() => { const d = (window as any).__wb.drawn; return d.el.filter(Boolean).length === d.v.length; });
@@ -308,11 +309,12 @@ test('desktop: layer menu and commands repaint both readers in place and persist
   const mark = (v: number, id: string, color?: string) => ({
     kind: 'verse', code: 'NUM', c1: 25, v1: v, i1: null, c2: null, v2: null, i2: null, id, color,
   });
+  const drawnMark = (v: number, id: string, color: string) => ({ id, kind: 'highlight', color, at: `NUM.25:${v}`, created: '2026-01-01T00:00:00Z', legend: `Unnamed ${color} highlight`, style: `highlight:${color}` });
   const chapter = {
     ...fx,
     reader: {
       ...fx.reader,
-      marks: { highlights: [mark(10, 'fill', 'yellow')], threads: [mark(10, 'trial', 'green')],
+      marks: { highlights: [], marks: [drawnMark(10, 'fill', 'yellow')], threads: [mark(10, 'trial', 'green')],
         notes: [mark(11, 'note')], thread_names: { trial: 'Trial thread' } },
       questions: [{ id: 'question', v: 12, text: 'Test question' }],
     },
@@ -423,7 +425,7 @@ test('a highlight is continuous between words', async ({ page }) => {
   await ready(page);
   const r = await page.evaluate(() => {
     const w = (window as any).__wb, d = w.drawn;
-    d.marks.highlights.push({ kind: 'phrase', code: 'NUM', c1: 25, v1: 5, i1: 1, c2: 25, v2: 5, i2: 40, id: 'cont', color: '#7a1f1f' });
+    d.marks.marks = [...(d.marks.marks || []), { id: 'cont', kind: 'highlight', color: '#7a1f1f', at: 'NUM.25:5.1-25:5.40', created: '2026-01-01T00:00:00Z', legend: 'Unnamed #7a1f1f highlight', style: 'highlight:#7a1f1f' }];
     w.repaint();
     const ws = [...document.querySelectorAll<HTMLElement>('.w.hl')].filter(e => d.v[+e.dataset.k!] === 5);
     return ws.slice(0, -1).map(e => {

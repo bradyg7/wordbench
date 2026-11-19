@@ -25,6 +25,9 @@ pub struct ChapterMarks {
     pub thread_names: std::collections::BTreeMap<String, String>,
     /// Ids (as in `threads`) of colored folders whose eye is off: the reader draws none of their marks (TH-5).
     pub hidden: Vec<String>,
+    /// Every drawn mark on the chapter, old highlights included, by date made, each with its legend name and style
+    /// (`chapter_drawn`). The reader draws these, not `highlights`.
+    pub marks: Vec<Value>,
 }
 
 fn inside(a: &Anchor, code: &str, chapter: u32) -> bool {
@@ -87,6 +90,7 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: u32) -> Result<ChapterM
             }
         }
     }
+    m.marks = chapter_drawn(store, code, chapter);
     Ok(m)
 }
 
@@ -115,7 +119,8 @@ pub fn verse_level(m: ChapterMarks) -> ChapterMarks {
         .collect();
     let threads: Vec<Mark> = m.threads.into_iter().filter(whole).collect();
     let thread_names = m.thread_names.into_iter().filter(|(id, _)| threads.iter().any(|t| &t.id == id)).collect();
-    ChapterMarks { highlights: m.highlights.into_iter().filter(whole).collect(), notes, threads, thread_names, hidden: m.hidden }
+    let marks = m.marks.into_iter().filter(|x| x["at"].as_str().and_then(|a| anchors::parse(a).ok()).is_some_and(|a| matches!(a.kind, Kind::Verse | Kind::Verses))).collect();
+    ChapterMarks { highlights: m.highlights.into_iter().filter(whole).collect(), notes, threads, thread_names, hidden: m.hidden, marks }
 }
 
 // ---- the drawn marks (design/features/marks, round 7, T1) ----------------------------------------------------------
@@ -842,4 +847,72 @@ fn with_legend(entries: &[LegendEntry], m: &DrawnMark) -> Value {
     let st = style_of(m);
     v["legend"] = json!(entries.iter().find(|e| entry_style(e) == st).map(entry_label).unwrap_or_else(|| unnamed_words(&m.kind, &m.color, m.lines)));
     v
+}
+
+/// Every mark on a chapter as the reader draws it: `drawn_in_chapter` with each mark's `legend` name and `style`
+/// (`kind:color[:lines]`, what the marks panel switches by). Reads the legend and the book's marks file, never a page.
+pub fn chapter_drawn(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
+    let entries = read_legend(store);
+    drawn_in_chapter(store, code, chapter)
+        .iter()
+        .map(|m| {
+            let mut v = with_legend(&entries, m);
+            v["style"] = json!(style_of(m));
+            v
+        })
+        .collect()
+}
+
+// ---- the marks panel (design/features/marks, rows 44 to 46) --------------------------------------------------------
+//
+// `settings/marks.json`: `hidden_kinds` (kinds not drawn), `hidden_styles` (legend entries not drawn, each as its style
+// `kind:color[:lines]`) and `reading` (Reading mode: only the text). Hiding draws nothing different on disk: no mark is
+// changed. Other keys in the file (the margin's, later) are kept as they are.
+
+fn names_in(v: Option<&Value>) -> Vec<String> {
+    v.and_then(|x| x.as_array()).map(|a| a.iter().filter_map(|s| s.as_str().map(String::from)).collect()).unwrap_or_default()
+}
+
+/// What the panel has switched: `{"hidden_kinds": [...], "hidden_styles": [...], "reading": false}`.
+pub fn panel_settings(store: &Store) -> Value {
+    let all = store.settings("marks");
+    json!({"hidden_kinds": names_in(all.get("hidden_kinds")), "hidden_styles": names_in(all.get("hidden_styles")), "reading": all.get("reading").and_then(|r| r.as_bool()).unwrap_or(false)})
+}
+
+fn hide(store: &mut Store, key: &str, item: String, hidden: bool) -> Result<()> {
+    let mut now = names_in(store.settings("marks").get(key));
+    now.retain(|x| x != &item);
+    if hidden {
+        now.push(item);
+    }
+    store.set_setting("marks", key, Some(json!(now))).map(|_| ())
+}
+
+/// Switch one thing: `what` is `kind` (target: highlight, underline, circle, box, arrow), `entry` (target: a legend entry's
+/// name, its "Unnamed …" label or its style) or `reading` (no target). `on` shows it (Reading mode on hides every mark).
+pub fn panel_set(store: &mut Store, what: &str, target: &str, on: bool) -> Result<Value> {
+    guard(&store.root)?;
+    match what {
+        "kind" => {
+            let k = target.trim().to_lowercase();
+            if !MARK_KINDS.contains(&k.as_str()) {
+                return Err(bad(format!("A kind is one of: {}.", MARK_KINDS.join(", "))));
+            }
+            hide(store, "hidden_kinds", k, !on)?;
+        }
+        "entry" => {
+            let entries = read_legend(store);
+            let style = match find_entry(&entries, target) {
+                Some(i) => entry_style(&entries[i]),
+                // a style marks use that no entry names (shown as Unnamed)
+                None => parse_style(target).ok_or_else(|| missing(format!("No legend entry “{}”. Name one, or write its style as kind:color[:lines] (wb legend lists them).", target.trim())))?,
+            };
+            hide(store, "hidden_styles", style, !on)?;
+        }
+        "reading" => {
+            store.set_setting("marks", "reading", Some(json!(on)))?;
+        }
+        _ => return Err(bad("Switch a kind, an entry or reading: wb settings marks kind underline off | entry Warning off | reading on.")),
+    }
+    Ok(panel_settings(store))
 }
