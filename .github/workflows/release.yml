@@ -25,6 +25,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: '. -> target'
+          # the same key as warm-cache.yml on main, whose cache a tag's run can read
+          shared-key: windows-release
+          save-if: false
 
       - name: The tag matches the app's version
         shell: bash

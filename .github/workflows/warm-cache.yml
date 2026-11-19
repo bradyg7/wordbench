@@ -1,0 +1,40 @@
+# Keeps the release build's Rust cache warm on main. A tag's run can read caches saved on the default branch but not
+# those of other tags, so without this every release compiled everything from nothing (about 27 minutes). This compiles
+# the same release program the tag does (no signing, no installer, nothing published) and saves the cache under the
+# shared key the release workflow reads. GitHub drops a cache unused for 7 days, hence the weekly run.
+name: warm-cache
+
+on:
+  push:
+    branches: [main]
+    paths: ['Cargo.lock', 'Cargo.toml', '**/Cargo.toml', '.github/workflows/warm-cache.yml']
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # the app embeds the built UI when it compiles, as `tauri build` does
+      - run: npm run build
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          shared-key: windows-release
+
+      - name: Compile what the release compiles
+        run: cargo build --release -p bible-workbench --features updater,tauri/custom-protocol
