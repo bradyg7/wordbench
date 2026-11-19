@@ -454,8 +454,11 @@ export function createMargin(env: MarginEnv): Margin {
     const bodyEl = h('div', 'mg-pop');
     fillSheet(bodyEl, v);
     sheetNote = { v, body: bodyEl };
+    const was = scroller.scrollTop;
+    let moved = false;
     const panelEl = openSheet(bodyEl, target, {
       closed: () => {
+        if (moved) scroller.scrollTop = was;   // the reader goes back to where it was (T13: it only moved to keep the verse above the sheet)
         // a note being written is kept when the popover closes (the scrim swallows the click, so no blur is heard)
         const cards = [...bodyEl.querySelectorAll<HTMLElement>('.mg-card')];
         sheetNote = null;
@@ -463,6 +466,20 @@ export function createMargin(env: MarginEnv): Margin {
       },
     });
     panelEl.classList.add('mg-popover');
+    // a phone (sheet G5): the note's sheet is as tall as the note, and the verse stays visible above it
+    if (compact()) {
+      panelEl.classList.remove('half');
+      panelEl.style.height = 'auto';
+      panelEl.style.maxHeight = '62vh';
+      const keep = () => {
+        const t = target as HTMLElement, top = panelEl.getBoundingClientRect().top, r = t.getBoundingClientRect();
+        if (v === 0 || !t.isConnected || r.bottom <= top - 8) return;
+        scroller.scrollTop += r.bottom - (top - 12);
+        moved = true;
+      };
+      keep();
+      panelEl.addEventListener('focusin', () => setTimeout(keep));
+    }
     // the popover sits beside the verse: left of the margin's signs, level with the verse, when there is room
     if (!compact()) {
       const r = (target as HTMLElement).getBoundingClientRect();

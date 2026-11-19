@@ -10,7 +10,7 @@
 // `wb legend add`; this file draws nothing itself, it asks `hooks.drawn` to show the mark that came back.
 import { wb, type DrawnMark } from './api';
 import { h } from './ui';
-import { toast, compact } from './sheets';
+import { toast, compact, openSheet, closeSheet } from './sheets';
 import { inkOf } from './markdraw';
 
 export type Kind = 'highlight' | 'underline' | 'circle' | 'box' | 'arrow' | 'note';
@@ -264,7 +264,12 @@ export function createBar(ctx: BarContext, hooks: BarHooks): MarkBar {
     setTimeout(() => { f.remove(); b.title = t; }, 1400);
   }
 
+  /** On a phone (MK7-31) what a desktop drops down opens as a bottom sheet; `sheetFor` is the menu the sheet holds. */
+  let sheetFor: HTMLElement | null = null;
+  function dropSheet() { if (sheetFor) { sheetFor = null; closeSheet(); } }
+
   function closeMenu() {
+    dropSheet();
     menu?.remove();
     menu = null;
     open = null;
@@ -274,9 +279,11 @@ export function createBar(ctx: BarContext, hooks: BarHooks): MarkBar {
 
   function showMenu(id: Kind | 'legend' | 'more', m: HTMLElement) {
     menu?.remove();
+    dropSheet();
     menu = m;
     open = { kind: id };
     for (const [k, b] of buttons) b.classList.toggle('on', k === id);
+    if (compact()) { showSheet(id, m); return; }
     m.classList.add('mb-menu');
     m.addEventListener('pointerdown', e => e.stopPropagation());
     el.append(m);
@@ -289,6 +296,27 @@ export function createBar(ctx: BarContext, hooks: BarHooks): MarkBar {
     // if it would leave the window on that side it opens on the other
     const r = m.getBoundingClientRect();
     m.classList.toggle('mb-flip', r.top < 8 || r.bottom > window.innerHeight - 8);
+  }
+
+  const SHEET_TITLE: Record<string, [string, string]> = {
+    highlight: ['Highlight', 'Pick a style'], underline: ['Underline', 'Pick a style'], circle: ['Circle', 'Pick a style'], box: ['Box', 'Pick a style'],
+    legend: ['Legend', ''], more: ['More', ''],
+  };
+  function showSheet(id: Kind | 'legend' | 'more', m: HTMLElement) {
+    const [title, sub] = m.dataset.menu === 'naming' ? ['New pen', ''] : m.dataset.menu === 'newpen' ? ['New pen…', ''] : SHEET_TITLE[id] || [id, ''];
+    const body = h('div', 'mb-sheet');
+    body.addEventListener('pointerdown', e => e.stopPropagation());
+    body.append(h('h2', 'sheet-title', title), ...(sub ? [h('div', 'sheet-sub', sub)] : []), m);
+    sheetFor = m;
+    const panel = openSheet(body, buttons.get(id) ?? null, {
+      closed: () => {
+        if (sheetFor !== m) return;   // another menu took the sheet, or the bar closed it
+        sheetFor = null;
+        if (menu === m) { menu = null; open = null; rows = []; for (const b of buttons.values()) b.classList.remove('on'); }
+        if (naming) void settle('');
+      },
+    });
+    if (id !== 'legend') { panel.classList.remove('half'); panel.style.height = 'auto'; panel.style.maxHeight = 'calc(100vh - 24px)'; }
   }
 
   function toggle(id: Kind | 'legend' | 'more') {
@@ -372,7 +400,7 @@ export function createBar(ctx: BarContext, hooks: BarHooks): MarkBar {
     m.append(input, list, h('hr', 'mb-rule'), fresh);
     draw();
     showMenu('legend', m);
-    input.focus();
+    if (!phone) input.focus();   // on a phone the keyboard would cover half the sheet
   }
 
   /** New pen… from the Legend: a kind, then Any color…. */
@@ -620,5 +648,5 @@ export function createBar(ctx: BarContext, hooks: BarHooks): MarkBar {
     return true;   // the menu is modal: no other key reaches the reader while it is open
   }
 
-  return { el, onKey, openContext, dispose: () => { closeCtx(); void settle('', false); } };
+  return { el, onKey, openContext, dispose: () => { closeCtx(); dropSheet(); void settle('', false); } };
 }

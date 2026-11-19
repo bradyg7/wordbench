@@ -311,7 +311,7 @@ test('row 68: a row does the bar\'s action; Esc closes the menu and makes nothin
   await expect(bar(page).locator('.mb-menu[data-menu="legend"]')).toBeVisible();
 });
 
-test('row 69 (phone): Copy and Open as a tab sit behind a ⋯ icon at the bar\'s end, in a small menu with 44 px rows', async ({ page }, info) => {
+test('row 69 (phone): Copy and Open as a tab sit behind a ⋯ icon at the bar\'s end, in a small sheet with 44 px rows', async ({ page }, info) => {
   phoneOnly(info);
   await ready(page);
   const x = await (async () => { const el = page.locator('#reader .w[data-k="12"]'); await el.scrollIntoViewIfNeeded(); return (await el.boundingBox())!; })();
@@ -332,7 +332,7 @@ test('row 69 (phone): Copy and Open as a tab sit behind a ⋯ icon at the bar\'s
   expect(bb.x + bb.width).toBeLessThanOrEqual(390);
   const words = await selectedWords(page);
   await bar(page).locator('.mb-more').tap();
-  const menu = bar(page).locator('.mb-menu[data-menu="more"]');
+  const menu = page.locator('.sheet [data-menu="more"]');   // a small sheet (T13)
   await expect(menu.locator('.mb-row')).toHaveText(['Copy', 'Open as a tab']);
   expect(await menu.locator('.mb-row').evaluateAll(els => els.every(e => e.getBoundingClientRect().height >= 44))).toBe(true);
   await menu.locator('.mb-row', { hasText: 'Copy' }).tap();

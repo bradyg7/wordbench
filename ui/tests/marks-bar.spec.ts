@@ -54,7 +54,7 @@ async function select(page: Page, run: Run, v = 11, a = 2, b = 5) {
 
 const markCount = (page: Page) => page.evaluate(() => (window as any).__wb.drawn.marks.marks.length);
 const bar = (page: Page) => page.locator('.markbar');
-const menu = (page: Page) => page.locator('.markbar .mb-menu');
+const menu = (page: Page) => page.locator('.markbar .mb-menu, .mb-sheet > [data-menu]');   // a drop-down on a desktop, a sheet on a phone
 const nameOf = (label: string) => slug(label);
 /** The `mark add` call that a row stands for: a named entry by --style, an unnamed one by kind and color. */
 const callOf = (style: string, label: string) => {
@@ -112,6 +112,7 @@ test('row 1: the bar is the same width whatever the legend holds', async ({ page
 });
 
 test('row 5: a kind opens its drop-down away from the selection: quick styles pinned with a tick, then recent, at most six, numbered, Any color…', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'a desktop drop-down; the phone sheet is in marks-phone.spec.ts (T13)');
   const run = await ready(page);
   await select(page, run, 12, 1, 4);
   await bar(page).locator('.mb-highlight').click();
@@ -220,7 +221,8 @@ test('row 9: Enter or Esc with no name leaves the new pen Unnamed in the legend'
   await expect(bar(page)).toHaveCount(0);
 });
 
-test('row 10: the Legend icon lists the whole legend with a filter focused; typing filters, Enter or a click applies; it ends with New pen…', async ({ page }) => {
+test('row 10: the Legend icon lists the whole legend with a filter focused; typing filters, Enter or a click applies; it ends with New pen…', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'a desktop drop-down; the phone sheet is in marks-phone.spec.ts (T13)');
   const run = await ready(page);
   await select(page, run);
   await bar(page).locator('.mb-legend').click();
@@ -337,11 +339,12 @@ test('phone: the same bar with 44 px targets above the selection; a tap opens th
   expect(bb.x).toBeGreaterThanOrEqual(0);
   expect(bb.x + bb.width).toBeLessThanOrEqual(390);
   await bar(page).locator('.mb-highlight').tap();
-  await expect(menu(page)).toBeVisible();
-  const mb = (await menu(page).boundingBox())!;
+  const sheet = page.locator('.sheet [data-menu="highlight"]');   // a bottom sheet on a phone (MK7-31, T13)
+  await expect(sheet).toBeVisible();
+  const mb = (await page.locator('.sheet').boundingBox())!;
   expect(mb.x).toBeGreaterThanOrEqual(0);
   expect(mb.x + mb.width).toBeLessThanOrEqual(390);
-  await menu(page).locator('.mb-row', { hasText: 'Fixture promise' }).tap();
+  await sheet.locator('.mb-row', { hasText: 'Fixture promise' }).tap();
   await expect.poll(() => run.calls).toEqual([`mark-add-${slug(run.at)}-style-fixture-promise`]);
   await expect(bar(page)).toHaveCount(0);
 });

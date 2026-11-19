@@ -346,30 +346,33 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .markbar .mb-menu { position: absolute; width: 236px; box-sizing: border-box; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, .18); font: var(--type-caption); }
 .markbar[data-side="above"] .mb-menu { bottom: calc(100% + 6px); }
 .markbar[data-side="below"] .mb-menu { top: calc(100% + 6px); }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-row, :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-any { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; min-height: 32px; padding: 4px 8px; border: 0; border-radius: 7px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-@media (pointer: coarse), (max-width: 600px) { :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-row, :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-any { min-height: 44px; } }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-row:hover, :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-row.cur, :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-any:hover { background: var(--sunken); }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-fixed { cursor: default; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-n { flex: none; min-width: 16px; text-align: center; font: var(--type-caption); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 3px; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-tick { flex: none; color: var(--muted); display: inline-flex; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-rule { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample { flex: none; width: 22px; height: 14px; display: inline-flex; flex-direction: column; justify-content: center; gap: 1px; box-sizing: border-box; border-radius: 3px; font-style: normal; font-size: 12px; line-height: 14px; text-align: center; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample b { display: block; border-radius: 1px; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample.s-circle { border: 1.5px solid; border-radius: 9999px; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample.s-box { border: 1.5px solid; border-radius: 2px; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-rainbow { flex: none; width: 16px; height: 16px; border-radius: 50%; background: conic-gradient(#e5484d, #f5a524, #f5d90a, #46a758, #3e63dd, #8e4ec6, #e5484d); }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-lines, :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-kinds { display: flex; gap: 2px; padding: 2px; margin-bottom: 4px; background: var(--sunken); border-radius: 8px; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-line, :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-kindpick { flex: 1; min-height: 26px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-line[aria-pressed="true"], :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-kindpick[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-filter, :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-pen { width: 100%; box-sizing: border-box; min-height: 30px; padding: 4px 8px; margin: 0 0 4px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: inherit; font: inherit; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-list { max-height: 220px; overflow-y: auto; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-empty, :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-hint { padding: 4px 8px; color: var(--muted); }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-row, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-any { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; min-height: 32px; padding: 4px 8px; border: 0; border-radius: 7px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+@media (pointer: coarse), (max-width: 600px) { :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-row, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-any { min-height: 44px; } }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-row:hover, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-row.cur, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-any:hover { background: var(--sunken); }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-fixed { cursor: default; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-n { flex: none; min-width: 16px; text-align: center; font: var(--type-caption); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 3px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-tick { flex: none; color: var(--muted); display: inline-flex; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-rule { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample { flex: none; width: 22px; height: 14px; display: inline-flex; flex-direction: column; justify-content: center; gap: 1px; box-sizing: border-box; border-radius: 3px; font-style: normal; font-size: 12px; line-height: 14px; text-align: center; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample b { display: block; border-radius: 1px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample.s-circle { border: 1.5px solid; border-radius: 9999px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample.s-box { border: 1.5px solid; border-radius: 2px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-rainbow { flex: none; width: 16px; height: 16px; border-radius: 50%; background: conic-gradient(#e5484d, #f5a524, #f5d90a, #46a758, #3e63dd, #8e4ec6, #e5484d); }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-lines, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-kinds { display: flex; gap: 2px; padding: 2px; margin-bottom: 4px; background: var(--sunken); border-radius: 8px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-line, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-kindpick { flex: 1; min-height: 26px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-line[aria-pressed="true"], :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-kindpick[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-filter, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-pen { width: 100%; box-sizing: border-box; min-height: 30px; padding: 4px 8px; margin: 0 0 4px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: inherit; font: inherit; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-list { max-height: 220px; overflow-y: auto; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-empty, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-hint { padding: 4px 8px; color: var(--muted); }
 .markbar[data-side="above"] .mb-menu.mb-flip { bottom: auto; top: calc(100% + 6px); }
 .markbar[data-side="below"] .mb-menu.mb-flip { top: auto; bottom: calc(100% + 6px); }
 
 /* Copy, Open as a tab, the right-click menu and the phone's ⋯ (marks T7b, MK7-32 to MK7-34) */
+.mb-sheet .mb-list { max-height: none; }
+.mb-sheet .mb-n { display: none; }   /* keys are a desktop extra (MK7-31) */
+.mb-sheet .mb-row, .mb-sheet .mb-any { font: var(--type-body); }
 .markbar .mb-flash { position: absolute; top: -26px; transform: translateX(-50%); padding: 2px 8px; border-radius: 6px; background: var(--fg); color: var(--bg); font: var(--type-caption); white-space: nowrap; pointer-events: none; }
 .markbar[data-side="above"] .mb-flash { top: auto; bottom: calc(100% + 4px); }
 .markbar[data-side="below"] .mb-flash { top: calc(100% + 4px); }
