@@ -16,7 +16,7 @@ test('the rail sits left of everything, and Show names opens it out and is remem
   await ready(page);
   const rail = page.locator('#rail');
   await expect(rail).toBeVisible();
-  for (const name of ['Notebook', 'Shelf', 'Highlights', 'Trail', 'Reading plans', 'Findings', 'Documents', 'Concordance', 'Help', 'Settings']) {
+  for (const name of ['Notebook', 'Shelf', 'Legend', 'Trail', 'Reading plans', 'Findings', 'Documents', 'Concordance', 'Help', 'Settings']) {
     await expect(rail.getByRole('button', { name, exact: true })).toBeVisible();
   }
   const w = (await rail.boundingBox())!.width;

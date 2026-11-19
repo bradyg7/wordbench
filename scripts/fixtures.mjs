@@ -70,7 +70,7 @@ Names Numbers 25:11 here.`);
   for (const argv of [
     ['page', 'overview', marksPage], ['page', 'blocks', marksPage], ['page', 'scripture', marksPage], ['note', 'show', marksPage],
     ['page', 'tree'], ['notebook', 'sidebar', '--at', 'NUM 25'], ['parse', 'go Psalms 119:105'], ['find', '--sort', 'edited'], ['find', '--kind', 'page'],
-    ['legend'], ['settings', 'marks'],
+    ['legend'], ['settings', 'marks'], ['legend', 'uses', 'underline:blue:2'], ['legend', 'uses', 'box:#cc3322'], ['legend', 'uses', 'highlight:yellow'],
     ['concordance', 'letters'], ['settings', 'concordance'],
     ['concordance', 'zeal', '--forms', 'all'], ['concordance', 'zeal', '--forms', 'one'], ['concordance', 'zealous', '--forms', 'one'],
     ['concordance', 'heart', '--forms', 'one'], ['concordance', 'heart', '--forms', 'one', '--book', 'PSA'], ['concordance', 'and', '--forms', 'all'], ['concordance', 'and', '--forms', 'one'],

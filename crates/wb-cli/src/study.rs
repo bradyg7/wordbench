@@ -270,6 +270,8 @@ pub fn commands() -> Vec<Command> {
         cmd("legend rm", "Remove an entry: wb legend rm NAME. Its marks stay, and then show as Unnamed.", vec![Pos("entry", N::Many)], |c, a| {
             j(marks::legend_rm(&*c.study()?, &a.s("entry")).map_err(e)?)
         }),
+        cmd("legend uses", "Where a style is used: wb legend uses NAME (an entry by its name, or any style kind:color[:lines]). {\"entry\", \"count\", \"marks\"}: each mark with its id, kind, color, lines, at, to, book, chapter, verse, label (its reference), words (from the Bible; an old highlight's own if none), created and old, in Bible order. Delete some with wb mark rm.",
+            vec![Pos("entry", N::Many)], |c, a| j(marks::legend_uses(c.bible()?, &*c.study()?, &a.s("entry")).map_err(e)?)),
         cmd("palette", "Your saved custom colors (c1 .. c8).", vec![], |c, _| j(json!({"colors": c.study()?.palette()}))),
         cmd("palette rm", "Forget a saved color (highlights already made in it stay).", vec![Pos("color", N::One)], |c, a| {
             j(json!({"colors": c.study()?.drop_palette_color(Some(&a.s("color"))).map_err(e)?}))

@@ -660,3 +660,39 @@ fn the_marks_panel_keeps_kinds_entries_and_reading_mode_in_settings_marks_json()
     w.ok(&["settings", "marks", "kind", "box", "off"]);
     assert_eq!(before, w.snapshot().into_iter().filter(|(k, _)| k.starts_with("marks/")).collect::<BTreeMap<_, _>>());
 }
+
+// ---- where a style is used (T11: rows 40, 41) ----------------------------------------------------------------------
+
+#[test]
+fn a_style_lists_where_it_is_used_with_the_words_from_the_bible_and_marks_go_to_the_trash_together() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["legend", "add", "--kind", "highlight", "--color", "yellow", "--name", "Promise"]);
+    w.ok(&["mark", "add", "NUM.25:11.0-25:11.1", "--style", "Promise"]); // words
+    w.ok(&["mark", "add", "Num 25:13", "--style", "Promise"]); // a verse
+    w.ok(&["mark", "add", "Gen 1:1", "--style", "Promise"]);
+    w.ok(&["mark", "add", "Num 25:12", "--kind", "box", "--color", "blue"]); // another style: not listed
+    let u = w.js(&["legend", "uses", "Promise"]);
+    assert_eq!((u["count"].clone(), u["entry"]["label"].clone(), u["entry"]["listed"].clone()), (json!(3), json!("Promise"), json!(true)));
+    let ms = u["marks"].as_array().unwrap();
+    assert_eq!(ms.iter().map(|m| m["label"].as_str().unwrap()).collect::<Vec<_>>(), ["Genesis 1:1", "Numbers 25:11", "Numbers 25:13"], "Bible order, with the reference");
+    // the words are the Bible's own: a verse mark gives the verse, a phrase mark the words under it
+    let verse = |r: &str| w.ok(&["text", r]).lines().nth(1).unwrap().trim_start_matches(|c: char| c.is_ascii_digit() || c == ' ').to_string();
+    assert_eq!(ms[2]["words"].as_str().unwrap(), verse("Num 25:13"));
+    let phrase = ms[1]["words"].as_str().unwrap();
+    assert!(!phrase.is_empty() && verse("Num 25:11").starts_with(phrase), "{phrase}");
+    assert_eq!((ms[1]["code"].clone(), ms[1]["chapter"].clone(), ms[1]["verse"].clone(), ms[1]["book"].clone()), (json!("NUM"), json!(25), json!(11), json!("Numbers")));
+    // a style no entry names is listed too, by its style
+    let b = w.js(&["legend", "uses", "box:blue"]);
+    assert_eq!((b["count"].clone(), b["entry"]["listed"].clone(), b["entry"]["label"].clone()), (json!(1), json!(false), json!("Unnamed blue box")));
+    assert_ne!(w.run(&["legend", "uses", "Nothing"]).0, 0);
+    // row 41: several marks go to the trash in one command, and come back together
+    let ids: Vec<String> = ms.iter().take(2).map(|m| m["id"].as_str().unwrap().to_string()).collect();
+    let mut rm = vec!["mark", "rm"];
+    rm.extend(ids.iter().map(String::as_str));
+    assert_eq!(w.js(&rm)["deleted"].as_array().unwrap().len(), 2);
+    assert_eq!(w.js(&["legend", "uses", "Promise"])["count"], 1);
+    let mut back = vec!["mark", "restore"];
+    back.extend(ids.iter().map(String::as_str));
+    w.ok(&back);
+    assert_eq!(w.js(&["legend", "uses", "Promise"])["count"], 3);
+}

@@ -834,6 +834,79 @@ pub fn legend_rm(store: &Store, target: &str) -> Result<Value> {
     Ok(json!({"removed": entry_json(&e, i + 1, n), "marks_kept": n}))
 }
 
+/// The words a mark covers, as the Bible gives them: a word or phrase from the chapter's words, a verse or run of
+/// verses as the verse text, verbatim. Empty when the Bible has no such place.
+fn words_under(bible: &Bible, a: &anchors::Anchor) -> String {
+    use anchors::Kind;
+    match a.kind {
+        Kind::Verse | Kind::Verses => {
+            let (c2, v2) = (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1));
+            bible.verses(&a.code, a.c1, a.v1, c2, v2).map(|v| v.into_iter().map(|(_, _, t)| t).collect::<Vec<_>>().join(" ")).unwrap_or_default()
+        }
+        Kind::Word | Kind::Phrase => {
+            let (c2, v2, i2) = (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1), a.i2.or(a.i1).unwrap_or(0));
+            let i1 = a.i1.unwrap_or(0);
+            let mut out = String::new();
+            for c in a.c1..=c2 {
+                let Ok(ch) = bible.chapter(&a.code, c) else { continue };
+                for v in ch.verses.iter().filter(|v| (c, v.v) >= (a.c1, a.v1) && (c, v.v) <= (c2, v2)) {
+                    for w in v.words.iter().filter(|w| (c, v.v, w.i) >= (a.c1, a.v1, i1) && (c, v.v, w.i) <= (c2, v2, i2)) {
+                        if !out.is_empty() && !out.ends_with(' ') {
+                            out.push(' ');
+                        }
+                        out.push_str(&format!("{}{}{}", w.lead, w.text, w.trail));
+                    }
+                }
+            }
+            out.trim().to_string()
+        }
+        Kind::Lemma => String::new(),
+    }
+}
+
+/// Where a style is used (MK7-21, row 40): `{"entry": {label, style, kind, color, lines?, listed, count}, "count", "marks": [...]}`.
+/// `target` is an entry (its name or style) or any style marks use, listed or not. Each mark has its id, kind, color,
+/// lines, `at`, `to`, `code`, `book`, `chapter`, `verse`, `label` (its reference), `words` (from the Bible, or the old
+/// highlight's own), `created`, `old` (an old highlight); in Bible order.
+pub fn legend_uses(bible: &Bible, store: &Store, target: &str) -> Result<Value> {
+    let entries = read_legend(store);
+    let (style, entry) = match find_entry(&entries, target) {
+        Some(i) => (entry_style(&entries[i]), Some(entries[i].clone())),
+        None => (parse_style(target).ok_or_else(|| missing(format!("No legend entry “{}”. Name one, or write its style as kind:color[:lines] (wb legend lists them).", target.trim())))?, None),
+    };
+    let legacy_ids: std::collections::HashSet<String> = store.all_highlights().iter().map(|h| s(h, "id")).collect();
+    let mut found: Vec<(usize, u32, u32, u32, String, Value)> = vec![];
+    for m in all_marks(store).into_iter().filter(|m| style_of(m) == style) {
+        let Ok(a) = anchors::parse(&m.at) else { continue };
+        let Some(bi) = bible.books().iter().position(|b| b.code == a.code) else { continue };
+        let book = &bible.books()[bi];
+        let label = crate::places::span_label(&crate::places::Span { book: book.clone(), c1: a.c1, v1: a.v1, c2: a.c2.unwrap_or(a.c1), v2: a.v2.unwrap_or(a.v1) });
+        let mut words = words_under(bible, &a);
+        if words.is_empty() {
+            words = m.words.clone().unwrap_or_default();
+        }
+        let mut v = json!({"id": m.id, "kind": m.kind, "color": m.color, "at": m.at, "code": a.code, "book": book.name, "chapter": a.c1,
+            "verse": a.v1, "label": label, "words": words, "created": m.created, "old": legacy_ids.contains(&m.id)});
+        if let Some(n) = m.lines {
+            v["lines"] = json!(n);
+        }
+        if let Some(t) = &m.to {
+            v["to"] = json!(t);
+        }
+        found.push((bi, a.c1, a.v1, a.i1.unwrap_or(0), m.created.clone(), v));
+    }
+    found.sort_by(|x, y| (x.0, x.1, x.2, x.3, &x.4).cmp(&(y.0, y.1, y.2, y.3, &y.4)));
+    let marks: Vec<Value> = found.into_iter().map(|f| f.5).collect();
+    let p: Vec<&str> = style.split(':').collect();
+    let lines = p.get(2).and_then(|n| n.parse::<u8>().ok());
+    let label = entry.as_ref().map(entry_label).unwrap_or_else(|| unnamed_words(p[0], p[1], lines));
+    let mut e = json!({"label": label, "style": style, "kind": p[0], "color": p[1], "listed": entry.is_some(), "count": marks.len()});
+    if let Some(n) = lines {
+        e["lines"] = json!(n);
+    }
+    Ok(json!({"entry": e, "count": marks.len(), "marks": marks}))
+}
+
 /// The style a legend entry gives a new mark: (kind, color, lines).
 pub fn legend_style(store: &Store, target: &str) -> Result<(String, String, Option<u8>)> {
     let entries = read_legend(store);
