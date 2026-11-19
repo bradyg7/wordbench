@@ -132,6 +132,70 @@ notes and the names of pages are a drawn sample; no such release exists.
 | `wb update back` | Puts back the version before (U-13); refuses, saying why, when there is none or the study folder's form was moved. | Go back to 0.2.4 |
 | `wb settings updates [open\|ask]` | Prints or sets "Look for updates" (U-3). | the setting |
 
+## Interaction table
+
+Added 2026-11-19 (the person asked that updates move into the window and the system dialog go). It is cut from U-1 to
+U-19 and the build list below; nothing in it is new. Today the installed release runs only slice 1: `check_for_update`
+in `app/src-tauri/src/main.rs` shows the system dialog. **Ticket UP1 removes that dialog.** Tests use `WB_UPDATE_FEED`
+(a release served from this computer and signed with a test key), a scratch study and a scratch app folder.
+
+### The notice
+
+| # | Where (window tag) | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
+|---|---|---|---|---|---|---|---|
+| 1 | U1 | The app opens; ten seconds after the reader has drawn it looks by itself (setting *When the app opens*, not looked in 24 h) | Nothing while it looks. If 0.3.0 is newer: a dot on the rail's Settings gear, and nothing else. No dialog, toast or tab | `updates\state.json` beside the app: last look, newest version known | `wb update status` | Rust: no system dialog is created (the `dialog().message` call is gone); WebKit: after a feed with 0.3.0, the gear has the dot, scroll, selection and tabs unchanged | [ ] |
+| 2 | U1 | A look fails (no network, site down) by itself | Nothing | last look time not changed | `wb update status` | Rust: a dead feed leaves state unchanged and emits nothing to the window | [ ] |
+| 3 | U1 | Rest on the gear with the dot | Tooltip "Bible Workbench 0.3.0 is ready" | none | | WebKit: tooltip text | [ ] |
+| 4 | U2 | Open Settings on any other section while an update is ready | One line at the top: "Bible Workbench 0.3.0 is ready"; clicking it opens Updates | none | | WebKit | [ ] |
+
+### The Updates section
+
+| # | Where (window tag) | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
+|---|---|---|---|---|---|---|---|
+| 5 | U2 | Open Settings → Updates | Installed version; when it last looked; "Look for updates" with its two choices; Check now; U-4's line; when newer is known, the card (version, date, size, first Moved or removed line, Your study folder line, What changed, Install, Not this version). One filled button | none | `wb update status` | WebKit: every part present, at 390 wide stacked and whole (U13) | [ ] |
+| 6 | U7 | Check now | "Looking…", then the card, or "Bible Workbench 0.2.4 is the newest" | last look | `wb update check` (exit 0) | Rust + WebKit with the test feed | [ ] |
+| 7 | U8 | Check now with no network | "Could not reach the update site. Bible Workbench works as it is." Check now stays; no Try again | none | `wb update check` (exit 1) | Rust: exit code and words | [ ] |
+| 8 | U7 | Change "Look for updates" to *Only when I ask* (or back) | The choice shown | the setting in `updates\` beside the app | `wb settings updates ask\|open` | Rust: ten starts with *ask* make no request; `WB_NO_UPDATE_CHECK=1` makes none under either | [ ] |
+| 9 | U3 | What changed | Every newer release, newest first, under Moved or removed, New, Changed, Fixed, then Your study folder; older folded to version and date (one that moved something keeps that line); plain text only | none | `wb update notes [version]` | Rust: heading order, "Nothing was moved or removed.", markup shown as text; WebKit: fourteen behind folds (U14) | [ ] |
+| 10 | U2 | Not this version | Dot goes; version still listed with Install; a newer one brings the dot back | the set-aside version | `wb update skip [version]`, `--clear` | Rust | [ ] |
+
+### Installing and restarting
+
+| # | Where (window tag) | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
+|---|---|---|---|---|---|---|---|
+| 11 | U4 | Install | Download starts; "You can close Settings and keep reading."; the gear's dot becomes a ring that fills; a page can be opened and saved meanwhile | the downloaded file in `updates\` | `wb update install` | WebKit: ring; Rust: download returns at once | [ ] |
+| 12 | U4 | Stop | Download given up; dot returns | partial file removed | `wb update stop` | Rust | [ ] |
+| 13 | U8 | A download that stops partway | "The download of 0.3.0 stopped at 31 of 84 MB. Bible Workbench 0.2.4 works as it is." with Try again; the gear's dot shows until Updates is opened | partial file removed | `wb update install` again | Rust: cut-off feed | [ ] |
+| 14 | U9 | The signature does not match, the version is not newer, or the address is not HTTPS | "This update was not installed: it was not signed by Bible Workbench. Nothing was changed." No button that installs | file removed | `wb update install` (refuses) | Rust: other key, changed byte, 0.2.3/0.2.4, http address | [ ] |
+| 15 | U5 | The file is whole and checked | Restart now (filled) and When I close the app | file kept | | WebKit | [ ] |
+| 16 | U5 | Restart now | Every open page saved by the ordinary save; the app restarts into 0.3.0 at the same verse, panes, tabs, tab in front and floating tabs; Settings closed; no trail step | program files only | `wb update install` with the window open (through the relay) | Return case below; `wb history list` unchanged | [ ] |
+| 17 | U5 | Restart now when a page cannot be saved | "Phinehas could not be saved, so Bible Workbench was not restarted"; "0.3.0 is still waiting." with the same two buttons; the writing still in the editor | none | | Rust + WebKit: unwritable page file | [ ] |
+| 18 | U5 | When I close the app (or neither button) | Nothing more; closing the window installs; the next opening is 0.3.0 | program files on close | `wb update install --when-closed` | Rust | [ ] |
+| 19 | U6 | After the restart | No dot, nothing over the reader; the section reads "You have 0.3.0, updated today from 0.2.4" with its notes, offline too | the version before kept once in `updates\` | `wb update notes 0.3.0` offline | WebKit + Rust | [ ] |
+| 20 | U6 | Go back to 0.2.4 | Restarts into 0.2.4, place kept; not offered when the notes say the study folder's form moved | program files | `wb update back` (refuses saying why) | Rust | [ ] |
+| 21 | U10 | A copy built from source opens Updates | Only "This copy was built from source (<commit>). It does not update itself." | none | `wb update status`; `wb update check` makes no request | Rust: built without `updater` | [ ] |
+
+## Directions
+
+- 2026-11-19, for the person to confirm: build UP1 and UP2 first, in one release, so no user sees the system dialog
+  again. Until UP4, Install on the card runs today's download and installer and then restarts (after saving, U-8).
+  The one new choice here is that interim Install; everything else is U-1 to U-19 as accepted.
+
+## Tickets
+
+| Ticket | Rows | First proof |
+|---|---|---|
+| UP1 | 1–3 | The system dialog is gone. A look found by itself puts the dot on the gear; nothing else in the window changes. |
+| UP2 | 4–8 | The Updates section in Settings, Check now, the setting, and `wb update status\|check`, `wb settings updates`. |
+| UP3 | 9–10 | What changed under the four headings, and Not this version. |
+| UP4 | 11–15 | Install in the background, Stop, the ring, failures and refusals. |
+| UP5 | 16–19 | Restart now with saving and the place kept; When I close the app; After. |
+| UP6 | 20–21 | Go back, and the built-from-source copy. |
+
+UP1 alone already takes the system message away from users; UP2 has to ship in the same release, or the dot leads
+nowhere. So **UP1 and UP2 ship together**; until UP4 is built, the card's Install opens the same download and
+installer the dialog uses today, then restarts (U-8's save first).
+
 ## What the build must satisfy
 
 The folder is not accepted. Each line names what is done and what must be seen. Tests use a release served from this
