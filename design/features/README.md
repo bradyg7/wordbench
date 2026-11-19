@@ -14,6 +14,7 @@ is written so that a person or an AI can build the feature from it without the c
 | [reader](reader/README.md) | The Reader: click, right click and selection; marks over the text or in a margin; a second reader; a verse alone | Round 2 drawn; exploring | 2026-11-11 | not assessed |
 | [reading-plans](reading-plans/README.md) | Reading plans: the plan leading the reader, the day as a checklist, starting from a kind, what was read as a whole | Accepted to build (2026-11-17, rounds 1-3); building | 2026-11-17 | not assessed |
 | [search](search/README.md) | Search: filters you click, one box for everything, counts by book as the filter | Round 2 drawn; exploring | 2026-11-11 | not assessed |
+| [filters](filters/README.md) | One Filters panel across the Notebook, Library, Bible and reference-work results, marks and Findings | Direction B chosen; round 3 exploring | 2026-11-19 | [review page](filters/review.html) |
 | [highlights](highlights/README.md) | Highlights and the palette: colors with names, layers by year with an eye each, a light and a dark form for every color; when everything is colored | Rounds 1-2 drawn; exploring | 2026-11-12 | not assessed |
 | [books](books/README.md) | BDB and Webster's 1913 as books: paging, an index, one card with three sources | Round 1 drawn; exploring | 2026-11-12 | not assessed |
 | [command](command/README.md) | The top bar and the command box: the trail under the bar, the box keeps its line; suggestions | Round 2 accepted; building | 2026-11-13 | not assessed |

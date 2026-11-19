@@ -1,4 +1,4 @@
-"""Filters round 2. The entries and result counts on these screens are fictional."""
+"""Filters round 3. The entries and result counts on these screens are fictional."""
 import sys
 from pathlib import Path
 
@@ -8,7 +8,7 @@ sys.path.insert(0, str(HERE.parent))
 import kit as K
 from kit import P, Q, col, frame, icon, para, row, spacer, text
 
-BOARD = "Filters round 2"
+BOARD = "Filters round 3"
 ENTRIES = (
     ("Covenant", "hlYellow"),
     ("Covenant promises", "hlGreen"),
@@ -47,7 +47,7 @@ def entry_list(parent, query, window_rows):
         frame(track, "Scroll thumb", w=6, h=20, fill="line", radius=3, W="fixed", H="fixed")
 
 
-def filters(parent, x, y, width, height, *, query="", colors=False):
+def filter_panel(parent, x, y, width, height):
     panel = frame(parent, "Filters panel", x=x, y=y, w=width, h=height, fill="surface", stroke="line", sw=1, radius=10, clip=True)
     head = row(panel, "Filters heading", W="fixed", w=width - 2, pad=[8, 14], fill="surface")
     Q.put(head, 1, 1)
@@ -57,6 +57,16 @@ def filters(parent, x, y, width, height, *, query="", colors=False):
 
     body = col(panel, "Filter controls", W="fixed", H="fixed", w=width - 2, h=height - 107, gap=6, pad=[4, 14], clip=True)
     Q.put(body, 1, 50)
+    footer = row(panel, "Filter actions", W="fixed", w=width - 2, pad=[8, 12], fill="sunken")
+    Q.put(footer, 1, height - 48)
+    P.button(footer, "Clear filters", size="sm")
+    spacer(footer)
+    P.button(footer, "Apply", "primary", size="sm")
+    return body
+
+
+def filters(parent, x, y, width, height, *, query="", colors=False):
+    body = filter_panel(parent, x, y, width, height)
     if colors:
         control(body, "Folder", "Any folder")
         text(body, "Legend entry", "smallStrong")
@@ -71,29 +81,26 @@ def filters(parent, x, y, width, height, *, query="", colors=False):
         control(body, "Book and place", "Any place")
         control(body, "Made", "Any date")
 
-    footer = row(panel, "Filter actions", W="fixed", w=width - 2, pad=[8, 12], fill="sunken")
-    Q.put(footer, 1, height - 48)
-    P.button(footer, "Clear filters", size="sm")
-    spacer(footer)
-    P.button(footer, "Apply", "primary", size="sm")
+def applied_rows(parent, values):
+    for label, value in values:
+        applied = row(parent, label, W="fill", pad=[4, 8], fill="sunken", radius=6)
+        para(applied, f"{label} · {value}", "small")
+        P.icon_button(applied, "close", size=24, icon_size=12)
 
 
 def results(parent, x, y, width, height, *, empty=False, phone=False):
-    pane = col(parent, "Notebook search", W="fixed", H="fixed", w=width, h=height, pad=14, gap=12, fill="surface", clip=True)
+    pane = col(parent, "Find in study", W="fixed", H="fixed", w=width, h=height, pad=14, gap=12, fill="surface", clip=True)
     Q.put(pane, x, y)
     if not phone:
         text(pane, "Notebook     ·     Questions", "caption", "muted")
     head = row(pane, "Results heading", W="fill")
-    text(head, "Notebook search", "heading")
+    text(head, "Find in study", "heading")
     spacer(head)
     P.button(head, "Filters · 4" if empty else "Filters", icon_name="filter", size="sm")
-    text(pane, "Search the Notebook", "small", "muted")
+    text(pane, "Search your study", "small", "muted")
     K.rule(pane)
     if empty:
-        for label, value in (("Kind", "Marks"), ("Kind of mark", "Highlight"), ("Legend entry", SELECTED), ("Book", "John")):
-            applied = row(pane, label, W="fill", pad=[4, 8], fill="sunken", radius=6)
-            para(applied, f"{label} · {value}", "small")
-            P.icon_button(applied, "close", size=24, icon_size=12)
+        applied_rows(pane, (("Result kind", "Marks"), ("Kind of mark", "Highlight"), ("Legend entry", SELECTED), ("Book", "John")))
         text(pane, "No marks match these filters", "bodyStrong")
     else:
         text(pane, "Marks", "smallStrong")
@@ -122,9 +129,123 @@ def color_grid(parent):
                 frame(bar, "Second highlight sample", h=4, fill="hlBlue", W="fill", H="fixed")
 
 
+NB_CHOICES = (
+    ("Page kind", "Any page kind"),
+    ("Pages with questions", "Open"),
+    ("Book and place", "Any place"),
+    ("Folder", "Acts study"),
+    ("Written", "Any date"),
+)
+NB_APPLIED = (("Pages with questions", "Open"), ("Folder", "Acts study"))
+NB_ROWS = (
+    ("Prayer in the upper room", "Acts study · 1 open question"),
+    ("Prayer at the temple", "Acts study · 2 open questions"),
+    ("Prayer after the council", "Acts study · 1 open question"),
+)
+
+
+def result_pane(parent, title, width, height, *, context=None, words=None, applied=(), count=None,
+                items=(), notebook=False, selected="All", forms=False):
+    pane = col(parent, title, W="fixed", H="fixed", w=width, h=height, pad=16, gap=12, fill="surface", clip=True)
+    head = row(pane, "Results heading", W="fill")
+    para(head, title, "heading")
+    P.button(head, f"Filters · {len(applied)}" if applied else "Filters", icon_name="filter", size="sm")
+    if notebook:
+        tabs = row(pane, "Notebook sections", W="fill", gap=4)
+        for name in ("Days", "Pages", "Places", "Questions", "All"):
+            tab = row(tabs, name, pad=[4, 6], radius=5, fill="accentSoft" if name == selected else "surface")
+            text(tab, name, "caption", "accent" if name == selected else "muted")
+    if context:
+        para(pane, context, "small", "muted")
+    if forms:
+        P.button(pane, "Other forms included", size="sm")
+    if words is not None:
+        search = row(pane, "Search and scope", W="fill")
+        field = row(search, "Search field", W="fill", pad=[7, 10], stroke="line", sw=1, radius=7)
+        icon(field, "search", 14, "muted")
+        para(field, words, "small")
+        if notebook:
+            P.button(search, "Find in study", size="sm")
+    applied_rows(pane, applied)
+    K.rule(pane)
+    if count:
+        text(pane, count, "smallStrong")
+    for name, details in items:
+        K.line(pane, name, details)
+    return pane
+
+
+def standard_window(parent, tag, caption, title, choices, *, width=735, height=530, phone=False, **result):
+    f = Q.win(parent, BOARD, tag, caption, w=width, h=height)
+    result_pane(f, title, width if phone or not choices else width - 324, height, **result)
+    if choices:
+        panel_height = min(420, height - 105) if phone else height - 20
+        body = filter_panel(f, 0 if phone else width - 324, height - panel_height if phone else 10,
+                            width if phone else 314, panel_height)
+        for label, value in choices:
+            control(body, label, value)
+
+
+def app_wide(board):
+    sheet = Q.section(board, "Notebook and other lists", 1580)
+    title = Q.sheet_title(sheet, "Filters everywhere · Round 3", "Follow B6–B8 to see words, pending choices, and applied filters in the same Notebook list.")
+    Q.put(title, 0, 0, 1440)
+
+    pair = row(sheet, "Notebook before Apply", gap=32, align="min")
+    standard_window(pair, "B6 · Notebook All / words", "The search field narrows the current section. There are 23 pages with ‘prayer’.",
+                    "Notebook", (), notebook=True, words="prayer", count="23 pages",
+                    items=(NB_ROWS[0], ("Prayers and requests", "Day page · November 14"), NB_ROWS[1]))
+    standard_window(pair, "B7 · Notebook All / pending choices", "Folder and open questions are selected in the panel. The list still has 23 pages until Apply.",
+                    "Notebook", NB_CHOICES, notebook=True, words="prayer", count="23 pages",
+                    items=(NB_ROWS[0], ("Prayers and requests", "Day page · November 14"), NB_ROWS[1]))
+
+    pair = row(sheet, "Notebook after Apply and Questions", gap=32, align="min")
+    standard_window(pair, "B8 · Notebook All / applied choices", "Five pages match all three conditions. Removing a filter keeps the words and the other condition.",
+                    "Notebook", (), notebook=True, words="prayer", applied=NB_APPLIED, count="5 pages", items=NB_ROWS)
+    standard_window(pair, "B9 · Questions on the phone", "Status applies to question rows. The panel offers the same place choice as the Notebook.",
+                    "Notebook", (("Status", "Open"), ("Book and place", "Acts")), width=390, height=635, phone=True,
+                    notebook=True, selected="Questions", count="18 questions", items=(("Question about the gathering", "Acts 2"),))
+
+    pair = row(sheet, "Notebook Places and Bible Search", gap=32, align="min")
+    standard_window(pair, "B10 · Notebook Places", "A fixed reference overrides Follow the reader. Clear restores the configured default.",
+                    "Notebook", (("Page kind", "Any page kind"), ("Pages with questions", "Any status"),
+                                 ("Book and place", "Specific place · Acts 2"), ("Folder", "Any folder"), ("Written", "Any date")),
+                    notebook=True, selected="Places", context="Following the reader · John 3", count="3 pages",
+                    items=(("The conversation in John 3", "John 3"),))
+    standard_window(pair, "B11 · Bible Search", "Apply a place or match option and start from the first results page with the same words.",
+                    "Bible Search", (("Book and place", "Acts"), ("Match case", "Off"), ("Regular expression", "Off")),
+                    context="Search words · prayer", count="Whole Bible · page 1", items=(("Acts 1:14", None), ("Acts 6:4", None)))
+
+    pair = row(sheet, "Study search and folders", gap=32, align="min")
+    standard_window(pair, "B12 · Find in study", "Selecting Pages reveals page choices. The same words stay in the search field.",
+                    "Find in study", (("Result kind", "Pages"), ("Pages with questions", "Open"),
+                                      ("Book and place", "Any place"), ("Folder", "Any folder"), ("Changed", "Any date")),
+                    words="prayer", count="31 results", items=(("Prayer in the upper room", "Page · Acts study"), ("Prayer", "Folder")))
+    standard_window(pair, "B13 · Opened folder", "Words and place combine within the opened folder. Its saves retain their folder order.",
+                    "Acts study", (("Result kind", "Saves"), ("Book and place", "Acts 2")),
+                    words="prayer", count="7 matches", items=(("Acts 2:42", "Save · prayer"), ("Acts 1:14", "Save · prayer")))
+
+    pair = row(sheet, "Concordance and Findings", gap=32, align="min")
+    standard_window(pair, "B14 · Concordance", "Book narrows occurrences. The forms control stays with the chosen word.",
+                    "Concordance", (("Book", "Acts"),), context="English word · prayer", forms=True,
+                    items=(("Acts 6:4", None), ("Acts 12:5", None)))
+    standard_window(pair, "B15 · Findings", "Choose a tag from the list and decide whether to include handled findings.",
+                    "Findings", (("Status", "Include handled"), ("Tag", "notebook")), context="Open findings",
+                    count="12 findings", items=(("Notebook remembers the wrong section", "notebook · Open"),))
+
+    pair = row(sheet, "Legend and Highlights", gap=32, align="min")
+    standard_window(pair, "B16 · Legend Where used", "Clear returns to every use of the entry that opened the list.",
+                    "Where used", (("Book and place", "John"),), context=SELECTED,
+                    count="46 uses", items=(("John 3:16", None), ("Acts 2:39", None)))
+    standard_window(pair, "B17 · Highlights", "Color, place and folder narrow the existing highlights list.",
+                    "Your highlights", (("Color", "Yellow"), ("Book and place", "Acts"), ("Folder", "Any folder")),
+                    count="82 highlights", items=(("John 3:16", "Yellow"), ("Acts 2:42", "Green")))
+
+
 def sheets(board):
-    sheet = Q.section(board, BOARD, 1580)
-    title = Q.sheet_title(sheet, "Filters everywhere · Round 2", "Direction B with a searchable Legend, kind filtering and one choice per row.")
+    app_wide(board)
+    sheet = Q.section(board, "Marks and colors", 1580)
+    title = Q.sheet_title(sheet, "Marks and colors", "Search hundreds of Legend entries and browse by kind at every pane width.")
     Q.put(title, 0, 0, 1440)
 
     f = Q.win(sheet, BOARD, "B1 · Notebook Marks among other tabs", "Kind scopes the Legend and can be applied on its own. The list scrolls while the footer stays visible.", w=1440, h=750)
