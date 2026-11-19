@@ -267,6 +267,14 @@ T14 built: rows 57, 58 (the core and `wb`, and the UI). Rust (`crates/wb-cli/tes
 
 None (all six answered 2026-11-18, MK7-24 to MK7-29).
 
+## Out of scope / later
+
+- **Colors across the Bible needs organizing** (the person, 2026-11-19, after T14): not loose clickable chips on a page, but grouped controls and a clear layout around the grid. A secondary view, so it does not hold up shipping; redrawn after the filters folder (the Library map, Open 6) decides how filters look everywhere.
+- **The Marks filter in the Notebook search** (T12): the person does not like it; revisited by the filters folder and the Library redesign.
+- **References in a margin note as links** (T10 left them plain text: `wb mark notes` does not return found references).
+- **A hover on a scripture block's verse number** (T12 made a click open the verse card; a hover was left out as unclear).
+- **Drawing an arrow on a phone** works by tapping Arrow, then long-pressing the target word (T13); no gesture was designed for it.
+
 ## Rounds
 
 | Round | Date | What | Review |
