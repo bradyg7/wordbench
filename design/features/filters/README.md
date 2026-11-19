@@ -1,20 +1,27 @@
 # Filters, everywhere
 
-**State:** exploring · **Round:** 1 · **Date:** 2026-11-19 · **Sheets:** none yet. FigCraft sheets follow the person's choice.
+**State:** exploring · **Round:** 2 · **Date:** 2026-11-19 · **Sheets:** `python -B design/features/filters/filters.py` writes `filters.figcraft` and `filters.pdf`.
 
 Design one way to narrow a list or a search, then use it across the Library. The same action should feel familiar in the Notebook, in the Legend's where used list, and in Colors across the Bible. Each part offers the choices that make sense for what it shows.
 
 ## Leading design
 
-B is the Round 1 recommendation. No direction has been accepted.
+Direction B opens an in-tab panel on a wide pane and a bottom sheet in a narrow pane, including a narrow floating tab. Both use the same single-column controls and keep Apply and Clear filters within reach while the body scrolls.
+
+In Notebook Marks, Kind of mark can be used on its own. The Legend entry section has a search field and one entry per row, with the mark sample, name and kind. Entries stay in name order as the pane changes width. A specific kind limits the entries to that kind. A person can browse the list or type part of a name, even with hundreds of entries. Long names wrap within their own row.
+
+The search only narrows the chooser. The selected entry stays visible in the Legend entry section when the search hides its row. Changing to an incompatible kind clears the pending entry and shows why. Applying the kind alone finds every style of that kind. Applied values appear under the results heading as one labeled row per filter, each with a removal button.
+
+For Colors across the Bible, the same panel puts Folder and Legend entry on separate labeled rows alongside the grid. The Legend entry chooser can be browsed by kind there too. That kind limits the chooser only. Apply still sends a single style or folder to the grid.
 
 ## Decisions
 
 - **2026-11-19, the person.** Design filtering once for the whole app. Keep the existing controls in place until this design is settled. Revisit the Notebook's Marks filter and group the controls around Colors across the Bible. [Library map, Open 4 and 6](../../LIBRARY.md) · [Marks, Out of scope / later](../marks/README.md#out-of-scope--later)
+- **2026-11-19, the person.** Go with Direction B. With hundreds of choices, wrapping bubbles are hard to remember, locate or narrow to a kind of mark. Their positions also change with the pane width.
 
 ## The person's findings that touch it
 
-The Library map records that the person “really don't like” the T12 Marks filter. The marks design also records the request after T14 for grouped controls and a clear layout around the grid. The reason for disliking T12 is still open. [Library map](../../LIBRARY.md#open-from-round-1) · [Marks](../marks/README.md#out-of-scope--later)
+The Library map records the feedback on the T12 Marks filter. The marks design also records the request after T14 for grouped controls and a clear layout around the grid. Round 2 addresses both concerns through the same filter panel. [Library map](../../LIBRARY.md#open-from-round-1) · [Marks](../marks/README.md#out-of-scope--later)
 
 ## Survey of today's filters
 
@@ -44,50 +51,38 @@ This is what the code does today. Labels in quotation marks are current window l
 
 - A book is a field under Marks, part of a book string in Legend where used, and part of a typed scope in Bible Search. Someone learns three ways to ask for the same book.
 - A choice can take effect on typing, on changing a field, on clicking a color, or on Apply. Leaving the controls does not always leave a clear record of what is active.
-- T12 puts five controls under a kind menu. The separate Notebook Filters form uses a different layout and gives its results a separate place. T14 puts every style and folder choice above the grid. These are observations about the controls. What bothered the person most in T12 is open.
+- T12 puts its controls under a kind menu, and T14 puts every style and folder choice above the grid. The person wants choices that stay organized and easy to narrow as the list grows and the pane changes width.
 
 ## Open questions
 
-1. Which direction should get sheets, A, B or C?
-2. What bothered you most in T12?
-3. Should changes wait for Apply or take effect as you choose?
-4. Should clearing filters in where used keep the Legend entry you opened?
-5. Should Colors across the Bible keep one style or folder at a time?
-6. Should filters reset when a tab closes, or reopen as last left?
-7. Should the first saved lists cover just the Notebook, or also search results?
-8. Can the shared button say “Filters”, and should a mark's date say “Made”?
+- Should changes wait for Apply or take effect as you choose? Round 2 shows Apply.
+- When changing kind excludes the selected entry, is clearing the entry with a notice the right behavior?
+- Should clearing filters in Where used keep the Legend entry you opened?
+- Should Colors across the Bible keep one style or folder at a time?
+- Should filters reset when a tab closes, or reopen as last left?
+- Should the first saved lists cover just the Notebook, or also search results?
+- Can the shared button say “Filters”, and should a mark's date say “Made”?
 
 ## Rounds
 
 | Round | Date | Windows | What it tried | Review |
 |---|---|---|---|---|
-| 1 | 2026-11-19 | None | Survey and three directions | Choice pending |
+| 1 | 2026-11-19 | None | Survey and three directions | B chosen |
+| 2 | 2026-11-19 | B1–B5 | Search and kind for a large Legend, stable rows at different widths, applied values and the color grid | Ready for review |
 
 ## Directions
-
-### A. One typed line with editable choices
-
-Desktop puts `kind:mark style:Promise book:John` beside the words. Click the line or reach it with Tab. Enter accepts a typed choice or a suggestion. Accepted choices become small labeled buttons. Click a label to edit it or use its × to remove it. Tab and Enter reach both. Clear removes the choices. On a phone, tap the line to edit it in a bottom sheet. Applied choices can wrap under the search.
-
-Each accepted choice becomes the corresponding shared flag below. For example, this line runs `wb find --kind mark --style Promise --book John`. It is quick to type and easy to copy. People must learn the syntax or use suggestions, including how names with spaces work. On a phone, the keyboard leaves less room for the results.
 
 ### B. One Filters button
 
 Desktop opens a side panel within the current tab. A narrow tab or phone opens a bottom sheet with the same sections. Click or tap Filters, or reach it with Tab and press Enter or Space. Book and place, folder, dates and other sections keep the same order wherever they appear. Only applicable sections appear.
 
-Choose values and press Apply. The button shows the active count. Beneath it, each applied value has a labeled removal button. Remove one there or use Clear filters in the panel. The panel shows pending edits until Apply. Escape or Close discards pending edits. The Bible reader stays where it is.
+Choose values and press Apply. The button shows the active count. Beneath it, each applied value has a labeled removal button on its own row in the panel's section order. Remove one there or use Clear filters in the panel. The panel shows pending edits until Apply. Escape or Close discards pending edits. The Bible reader stays where it is.
 
 Apply sends the shared flags for that list. Marks, where used, and the color grid keep their own commands and result shapes. This adds a click for a single filter and temporarily covers part of a phone screen. It groups long sets of choices and gives each value a visible label.
 
-### C. One row where choices are added
+### In a large Legend
 
-Desktop keeps a short row beside the list heading. Click or Tab to Filters and press Enter or Space to pick a dimension and then a value. Each choice takes effect immediately and appears as a labeled button with ×. Clear filters empties the row. On a phone, the picker opens as a short bottom sheet for one choice at a time. The row wraps below the heading.
-
-Each choice or removal reruns the same command with the shared flags. This keeps a small result list visible while adding a filter. Combining several values takes several trips through the picker. A long row can crowd the result heading, and immediate changes can make the list move while someone is still choosing.
-
-### Recommendation
-
-Start with B. A person can see the available choices without learning a query format. The same layout holds five Marks controls or a long list of Legend entries. Apply gives the person one point to review several choices, and the active values stay visible beside the results. A favors repeat typing. C favors changing one value at a time.
+The chooser shows the count of matching entries and a bounded, scrollable list. Search matches part of the displayed name without regard to case. The order is by name, with ties broken by kind and the stable style identifier. Each row is reachable by keyboard. Display the kind even when the list has been narrowed. Closing and reopening the panel starts the chooser with an empty name search and the applied choices loaded.
 
 ### Shared choices and command flags
 
@@ -107,15 +102,21 @@ In where used, a visible heading keeps the Legend entry in view. Clear removes a
 
 ## Data the sheets show
 
-No sheet data yet. Use a scratch study folder and fetch any Scripture and lookups through `wb` when drawing the sheets.
+The board uses fictional Legend entries, folders and counts to show a study with 240 Legend entries. It shows references without quoting Scripture.
 
 ## The real conditions
 
-Draw B among other tabs, in a floating tab, and as a phone sheet. Use a Library with years of study. Show long names, many Legend entries, no matches, and a chapter with marks in more than one style.
+| Window | What it shows |
+|---|---|
+| B1 | Notebook Marks among other tabs, with a kind selected and 68 of 240 entries available in the scrolling chooser |
+| B2 | Narrow floating tab, with the same controls and a long name on its own row |
+| B3 | Phone sheet, with a name search narrowed to three entries |
+| B4 | Applied values in stable rows and a results area with no matches |
+| B5 | Colors across the Bible, with the Legend entry and Folder controls grouped in the panel and the chapter grid in view |
 
 ## Interaction table
 
-Draft for B. One row describes the shared action wherever it is available. Use the listed command for that part. If removing Kind makes other choices unavailable, remove those choices too. Keep the words and any remaining applicable choices. Flags added to existing commands and the saved-list line are proposals.
+Round 2 draft for B. One row describes the shared action wherever it is available. Use the listed command for that part. If removing the result kind makes other choices unavailable, remove those choices too. Keep the words and any remaining applicable choices. Flags added to existing commands and the saved-list line are proposals.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
@@ -136,6 +137,10 @@ Draft for B. One row describes the shared action wherever it is available. Use t
 | 15 | Page chooser | Confirm the page | The page receives a saved list that runs the applied line. | One block with the line in the chosen page. | `wb block add PAGE BLOCK` with a `view` fence holding the line from row 12. | `saved_list_keeps_line_and_refreshes_results` | [ ] |
 | 16 | Page chooser | Cancel or press Escape | The chooser closes and focus returns to the list menu. | Nothing | Window only | `saved_list_cancel_keeps_page_untouched` | [ ] |
 | 17 | Filtered results | Open a result or a chapter cell, then go Back | The reader opens at the result. Back restores the reader's prior place and the originating list keeps its choices. | Ordinary trail step from opening the result. | Existing open and back commands for that result. | `filtered_result_back_keeps_reader_place` | [ ] |
+| 18 | Notebook Marks, B1–B3 | Choose Any kind or a kind of mark | The Legend entries narrow to the kind, in the same name order. If the pending entry belongs to another kind, it clears with a notice. The kind can be applied by itself. | Nothing | Apply uses `wb find --kind mark --mark-kind KIND` with any remaining flags. | `marks_kind_scopes_entries_and_can_apply_alone` | [ ] |
+| 19 | Legend entry, B1–B3 and B5 | Type or clear a name search | Only the chooser changes. The count updates, and a zero-match search says no Legend entries match. The selected entry remains visible above the list. | Nothing | The chooser reads `wb legend`. | `legend_name_search_keeps_pending_selection` | [ ] |
+| 20 | Legend entry, B1–B3 and B5 | Scroll or move through the list with the keyboard, then choose an entry or Any entry | Each option stays on its own row with a sample, name and kind. The pending choice appears above the list and the result set stays in place until Apply. | Nothing | Apply uses `--style` for a specific entry. Any entry omits the flag. | `legend_rows_keep_order_and_selection_across_widths` | [ ] |
+| 21 | Colors across the Bible, B5 | Pick a kind within the Legend entry chooser | The chooser shows only entries of that kind. The chosen style or folder and the grid stay in place. | Nothing | The chooser reads `wb legend`. | `colors_kind_browses_styles_without_filtering_grid` | [ ] |
 
 ## What the build must satisfy
 
@@ -144,6 +149,8 @@ Draft for B. One row describes the shared action wherever it is available. Use t
 - [ ] Applying one tab's choices leaves other tabs' filters as they were. Ordinary filtering writes no study files. Keeping a saved list writes only the chosen page block.
 - [ ] Where used holds its entry. Colors across the Bible keeps gaps and offers the same chapter navigation. Returning from any result keeps the reader's place.
 - [ ] Bad values show an error. Valid empty results show the active choices so the person can remove them.
+- [ ] With 240 Legend entries, a person can browse by kind, search by name, and apply a kind alone in Notebook Marks. The order and selected label stay stable from a docked pane to a floating tab to a phone. (B1–B3)
+- [ ] Applied values remain in the same order at all widths, with one removal button per row. A long name wraps within its row. (B2–B4)
 
 ## Tickets
 
@@ -151,10 +158,11 @@ Draft for B. One row describes the shared action wherever it is available. Use t
 |---|---|---|
 | F1 | 1–4 | One panel on Marks. Desktop, phone and marks command tests agree. |
 | F2 | 5–8 | Marks supports closing, removing, clearing and empty or invalid results. |
-| F3 | 9–10 | Legend and color grid use the same controls and preserve their starting scope and gaps. |
+| F3 | 9–10, 21 | Legend and color grid use the same controls and preserve their starting scope and gaps. |
 | F4 | 11–12 | Bible Search, Notebook lists and Questions use the shared place and list choices. |
 | F5 | 13, 17 | Library lists retain their folder context. Check Back across all adopted parts. |
 | F6 | 14–16 | Keep the Notebook's applied line as a saved list in a page, using the name in the Library map. |
+| F7 (after F1, before F3) | 18–20 | Marks finds a kind or a named Legend entry in a long list. Reuse the chooser for the color grid. |
 
 ## Out of scope / later
 
