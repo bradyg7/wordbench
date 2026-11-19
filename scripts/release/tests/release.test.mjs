@@ -8,20 +8,23 @@ import { checkStaging, digest } from '../check.mjs';
 import { prepare } from '../prepare.mjs';
 
 const release = {
-  schemaVersion: 1, status: 'published', version: '0.0.1', publishedAt: '2026-11-09T12:00:00Z',
-  minimumWindows: '11', notes: '<script>untrusted notes</script>', downloadPath: '/downloads/pilot-0.0.1',
-  sha256: 'a'.repeat(64), platform: 'windows', architecture: 'x86_64', channel: 'pilot', bytes: 1024,
+  schemaVersion: 2, status: 'published', version: '0.0.1', publishedAt: '2026-11-09T12:00:00Z',
+  minimumWindows: '10', bytes: 1024,
+  downloadUrl: 'https://github.com/bradyg7/wordbench-releases/releases/latest/download/Bible-Workbench-setup.exe',
 };
 test('public release accepts unavailable and strips non-public data', () => {
-  assert.deepEqual(parseRelease({ schemaVersion: 1, status: 'unavailable', secret: 'hidden' }), { schemaVersion: 1, status: 'unavailable' });
+  assert.deepEqual(parseRelease({ schemaVersion: 2, status: 'unavailable', secret: 'hidden' }), { schemaVersion: 2, status: 'unavailable' });
   assert.equal(parseRelease({ ...release, secret: 'hidden' }).secret, undefined);
+  assert.equal(parseRelease({ ...release, bytes: undefined }).bytes, undefined);
+  assert.equal(parseRelease({ ...release, downloadUrl: 'https://github.com/bradyg7/wordbench-releases/releases/download/v0.0.1/Bible-Workbench-setup.exe' }).version, '0.0.1');
 });
 test('staged and withdrawn releases never become downloads', () => {
   for (const status of ['staged', 'withdrawn', 'pending', undefined]) assert.throws(() => parseRelease({ ...release, status }));
+  assert.throws(() => parseRelease({ ...release, schemaVersion: 1 }));
 });
-test('rejects external or executable download links and invalid metadata', () => {
-  for (const downloadPath of ['javascript:alert(1)', '//evil.example/app', 'https://evil.example/app', '/downloads/../secret', '/downloads/app?key=secret', '/downloads/app#secret', '/downloads/%2fsecret']) assert.throws(() => parseRelease({ ...release, downloadPath }));
-  for (const delta of [{ bytes: -1 }, { bytes: 1.2 }, { sha256: 'bad' }, { version: 'latest' }, { publishedAt: 'yesterday' }, { architecture: 'aarch64' }]) assert.throws(() => parseRelease({ ...release, ...delta }));
+test('rejects other download links and invalid metadata', () => {
+  for (const downloadUrl of ['javascript:alert(1)', '//evil.example/app', 'https://evil.example/app', '/downloads/app', 'https://github.com/bradyg7/wordbench-releases/releases/latest/download/other.exe', 'https://github.com/bradyg7/wordbench-releases/releases/download/v9.9.9/Bible-Workbench-setup.exe']) assert.throws(() => parseRelease({ ...release, downloadUrl }));
+  for (const delta of [{ bytes: -1 }, { bytes: 1.2 }, { version: 'latest' }, { publishedAt: 'yesterday' }]) assert.throws(() => parseRelease({ ...release, ...delta }));
 });
 
 test('staging requires complete approved inventory and rejects tampering/traversal', async () => {

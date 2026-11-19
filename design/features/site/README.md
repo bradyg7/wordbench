@@ -73,19 +73,20 @@ it is hosted by GitHub Pages, which keeps ordinary request logs.
 
 | # | Where | Action | What the person sees | What changes | Command | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 1 | any page | open `https://bradyg7.github.io/` | the Overview, light or dark from the system | none | none | site.spec: overview | [ ] |
-| 2 | any page | the top links | Overview, Download, Releases, Help; the current one marked | none | none | site.spec: nav | [ ] |
-| 3 | Overview, Download | **Download for Windows** | the browser downloads `Bible-Workbench-setup.exe` from `wordbench-releases` | none | none | site.spec: link is the stable URL | [ ] |
-| 4 | Download | the release box | version, minimum Windows, size and date of the newest release | none | none | site.spec: from a fixture `latest.json` | [ ] |
-| 5 | Download | no release found at build | "Not available right now", no button | none | none | site.spec: empty fixture | [ ] |
-| 6 | Releases | open | every `docs/releases/*.md`, newest first | none | none | site.spec: three versions in order | [ ] |
-| 7 | Help, Privacy, footer | open | the text above | none | none | site.spec: pages exist, no License page | [ ] |
+| 1 | any page | open `https://bradyg7.github.io/` | the Overview, light or dark from the system | none | none | site.spec: overview | [x] |
+| 2 | any page | the top links | Overview, Download, Releases, Help; the current one marked | none | none | site.spec: nav | [x] |
+| 3 | Overview, Download | **Download for Windows** | the browser downloads `Bible-Workbench-setup.exe` from `wordbench-releases` | none | none | site.spec: link is the stable URL | [x] |
+| 4 | Download | the release box | version, minimum Windows, size and date of the newest release | none | none | site.spec: from a fixture `latest.json` | [x] |
+| 5 | Download | no release found at build | "Not available right now", no button | none | none | site.spec: empty fixture | [x] |
+| 6 | Releases | open | every `docs/releases/*.md`, newest first | none | none | site.spec: three versions in order | [x] |
+| 7 | Help, Privacy, footer | open | the text above | none | none | site.spec: pages exist, no License page | [x] |
 | 8 | GitHub | push to main touching `site/` or `docs/releases/`; or a release published | the site rebuilds and is live in about a minute | `bradyg7.github.io` gets the new build | `gh workflow run site` | a run on the first deploy | [ ] |
 
 ## Tickets
 
 - **W1** Text and pages (rows 1, 2, 7), the release box from a build-time `release.json` (rows 3–5), Releases from
   `docs/releases` (row 6); `distribution/release.mjs` takes the new shape. Screenshots replaced (S-8).
+- W1 built (rows 1 to 7; `npm run test:site`, `npm run test:distribution`).
 - **W2** The deploy (row 8): `.github/workflows/site.yml`, the new public repository, a token that can push to it
   (the person makes it; never in the repo), and release.yml starting it.
 
