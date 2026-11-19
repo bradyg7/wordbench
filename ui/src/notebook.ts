@@ -12,7 +12,7 @@
 // in place; pages sit inside pages (the path above the title, "Pages inside" under it). A wide Notebook has the sidebar
 // (sheet W1.1): Today, Pinned, the Pages tree (drag a page before, after or inside another), At the reader, Threads,
 // Questions, and the Trash at its foot. A narrow one keeps its row of sections, and its Pages section is the tree.
-import { kindButton, kindResults, marginRow } from './kinds';
+import { kindButton, kindResults } from './kinds';
 import { overviewBox } from './overview';
 import { wb } from './api';
 import './notebook.css';
@@ -486,7 +486,6 @@ function createNotebookSession(fixed?: PageTab) {
       if (!t.pages.length) scroll.append(h('p', 'muted nb-empty', 'No pages yet. The pen starts one; a note with no place is a page of its own.'));
       const tl = await trashLine();
       if (tl) scroll.append(tl);
-      scroll.append(await marginRow());
       out.push(scroll);
       return out;
     }
@@ -535,7 +534,6 @@ function createNotebookSession(fixed?: PageTab) {
     if (!any) scroll.append(h('p', 'muted nb-empty', group === 'questions' ? 'No questions yet. Write one with /? in a page, or mark a page with ?.' : 'Nothing written yet. Ctrl+J writes a thought at the verse you clicked; the pen starts a note.'));
     const bar = group === 'day' || group === 'thread' || group === 'chapter' ? foldAllBar(fkeys) : null;
     if (bar) out.push(bar);
-    scroll.append(await marginRow());
     out.push(scroll);
     return out;
   }
@@ -929,7 +927,6 @@ function createNotebookSession(fixed?: PageTab) {
         side.append(tr);
       }
     }
-    side.append(await marginRow());
     const foot = h('div', 'nb-side-foot');
     const tbtn = button('link-btn nb-side-link nb-side-templates', 'Templates', () => showTemplates(), 'notebook');
     tbtn.title = 'Your templates: pages that new pages start from';

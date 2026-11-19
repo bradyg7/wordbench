@@ -41,12 +41,13 @@ async function ready(page: Page, hidden: string[] = ['off']) {
 
 
 
-test('a run in five folders draws two lines and the hover names all five', async ({ page }) => {
+test('a run in five folders is a tab by the verse number, never a line on the words, and the hover names all five (MK7-7, MK7-15)', async ({ page }) => {
   await ready(page);
-  const w = page.locator('.w[title]').first();
-  await expect(w).toHaveAttribute('title', 'Phinehas, Zeal, Priests, Covenant, Plague');
-  const gradient = await w.evaluate(e => (e as HTMLElement).style.backgroundImage);
-  expect(gradient.match(/linear-gradient/g)!.length).toBe(2);
+  const vn = page.locator('.vn[data-v="11"]');
+  await expect(vn).toHaveClass(/vth/);
+  await expect(vn).toHaveAttribute('title', 'Phinehas, Zeal, Priests, Covenant, Plague');
+  expect(await page.locator('.w').evaluateAll(els => els.filter(e => (e as HTMLElement).style.backgroundImage || (e as HTMLElement).style.paddingBottom).length)).toBe(0);
+  await expect(page.locator('.w[title]')).toHaveCount(0);
 });
 
 test('a whole verse is a mark by its number and its words are not underlined; an eye off draws nothing', async ({ page }) => {

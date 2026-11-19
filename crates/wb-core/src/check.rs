@@ -14,9 +14,15 @@ fn files_in(dir: &Path, ending: &str) -> usize {
     fs::read_dir(dir).map(|rd| rd.flatten().filter(|e| e.path().to_string_lossy().ends_with(ending)).count()).unwrap_or(0)
 }
 
+/// Every file under a folder, at any depth (the margin's `<BOOK>/<chapter>.md` files).
+fn count_files(dir: &Path) -> usize {
+    fs::read_dir(dir).map(|rd| rd.flatten().map(|e| if e.path().is_dir() { count_files(&e.path()) } else { 1 }).sum()).unwrap_or(0)
+}
+
 /// What the study folder holds, and what a build of R1 would write to it (nothing it does not already write: the new
 /// settings file appears only when a thread is first pinned).
-pub fn study_check(store: &Store) -> Result<Value> {
+pub fn study_check(store: &mut Store) -> Result<Value> {
+    let to_move = crate::marks::move_marks(store, false)?;
     let placed = store.notes();
     let words = placed.iter().filter(|n| matches!(s(n, "anchor").chars().next(), Some('H' | 'G')) && s(n, "anchor").len() > 1 && s(n, "anchor")[1..].chars().all(|c| c.is_ascii_digit())).count();
     let threads = store.threads();
@@ -27,10 +33,7 @@ pub fn study_check(store: &Store) -> Result<Value> {
     let inbox = store.inbox();
     let inbox_questions = inbox.iter().filter(|n| s(n, "kind") == "question").count();
     let root = &store.root;
-    let margin_held = crate::margin::held(root);
-    let pencil_lines: usize = fs::read_dir(root.join("pencil"))
-        .map(|rd| rd.flatten().filter_map(|e| fs::read_to_string(e.path()).ok()).filter_map(|t| serde_json::from_str::<Value>(&t).ok()).map(|v| v["pencil"].as_array().map(|a| a.len()).unwrap_or(0)).sum())
-        .unwrap_or(0);
+    let margin_files = count_files(&root.join("margin"));
     Ok(json!({
         "folder": root.display().to_string(),
         "notes": {"files": placed.len() + inbox.len() + store.on_thread().len() + store.days().len(),
@@ -42,9 +45,11 @@ pub fn study_check(store: &Store) -> Result<Value> {
         "lessons": files_in(&root.join("lessons"), ".md"),
         "documents": files_in(&root.join("documents"), ".json"),
         "highlight_files": files_in(&root.join("highlights"), ".json"),
-        // the margin and the pencil (marks MK-17, MK-22): files and what they hold
-        "margin": {"files": margin_held.0, "notes": margin_held.1},
-        "pencil": {"files": files_in(&root.join("pencil"), ".json"), "lines": pencil_lines},
+        // the files marks rounds 1 to 6 wrote (marks MK7-5): only listed, never read or changed
+        "margin": {"files": margin_files},
+        "pencil": {"files": files_in(&root.join("pencil"), ".json")},
+        // what `wb study move-marks --go` would turn into marks (marks row 55): the same read-only dry run
+        "would_move_to_marks": to_move,
         // what the Python app reads of it: a note only with a place, and the rest as they are
         "python_reads": {"notes": placed.len(), "threads": threads.len(), "thread_places": places, "trails": trails.len(), "sets": store.sets().len()},
         "pages_file": root.join("settings").join("pages.json").exists(),

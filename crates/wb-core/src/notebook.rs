@@ -388,7 +388,7 @@ pub fn edit_text(bible: &Bible, store: &mut Store, id: &str, text: &str) -> Resu
 
 /// The deleted notes and questions waiting in .trash, with how many days each has left.
 pub fn trash(store: &Store) -> Value {
-    json!({"days": crate::store::TRASH_DAYS, "notes": store.trashed()})
+    json!({"days": crate::store::TRASH_DAYS, "notes": store.trashed(), "marks": crate::marks::trashed_marks(store), "margin": crate::margin::trashed(store)})
 }
 
 /// A placed note or question by its id: (is it a question, its anchor).
@@ -458,6 +458,7 @@ pub fn jot(bible: &Bible, store: &mut Store, text: &str, question: bool) -> Resu
 pub fn chapter_questions(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
     let mut out = trail_questions(store, code, chapter);
     out.extend(crate::questions::in_chapter(store, code, chapter));
+    out.extend(crate::margin::chapter_questions(store, code, chapter));
     out
 }
 

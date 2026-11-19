@@ -161,9 +161,11 @@ pub fn entry(bible: &Bible, f: &Found) -> Value {
     })
 }
 
-/// Every question written in a page, as entries.
+/// Every question written in a page or in a margin note (MK-11), as entries.
 pub fn entries(bible: &Bible, store: &Store) -> Vec<Value> {
-    found(store).iter().map(|f| entry(bible, f)).collect()
+    let mut out: Vec<Value> = found(store).iter().map(|f| entry(bible, f)).collect();
+    out.extend(crate::margin::question_entries(bible, store));
+    out
 }
 
 /// A question's id → (its page, its block number from 1).

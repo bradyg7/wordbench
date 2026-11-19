@@ -8,7 +8,10 @@ export interface Word { i: number; lead?: string; text: string; trail?: string; 
 export interface Verse { v: number; words: Word[] }
 export interface Chapter { code: string; name: string; chapter: number; chapters: number; title?: string; verses: Verse[]; version?: string }
 export interface Mark { kind: string; code: string; c1: number; v1: number; i1: number | null; c2: number | null; v2: number | null; i2: number | null; id: string; color?: string }
-export interface Marks { highlights: Mark[]; notes: Mark[]; pencil?: Mark[]; threads: Mark[]; thread_names: Record<string, string>; hidden?: string[] }
+/** A mark as the core keeps it (marks/<BOOK>.json, and the old highlights): `at` and `to` are anchor text (NUM.25:11.3-25:11.9). */
+export interface DrawnMark { id: string; kind: 'highlight' | 'underline' | 'circle' | 'box' | 'arrow'; color: string; lines?: number; at: string; to?: string; created: string; changed?: string; words?: string; legend?: string; style?: string }
+/** `marks` is what the reader draws (every kind, old highlights included, once each); `highlights` is the old list and is not drawn from. */
+export interface Marks { highlights: Mark[]; notes: Mark[]; threads: Mark[]; thread_names: Record<string, string>; hidden?: string[]; marks?: DrawnMark[] }
 export interface Question { id: string; v: number; text: string }
 export interface ReaderView { chapter: Chapter; marks: Marks; questions?: Question[] }
 export interface Lexicon { strong: string; lang: string; lemma: string; translit?: string; pron?: string; pos?: string; derivation?: string; definition?: string; usage?: string }

@@ -59,6 +59,14 @@ link is always readable from both ends.
 3. **Reference works: one book or several.** Decided in books.
 4. **Search in pages.** Where it lives (the Library's one search, a Notebook search, or both) is decided in search;
    what must hold: anything written or saved, the person's or a source's, is found by a word, topic or verse.
+   **The person, 2026-11-19:** they "really don't like" the Marks filter built in marks T12 (the Notebook search's
+   Marks kind with kind, style, book and date controls). It stays as built for now; the Library redesign revisits how
+   marks are found and filtered, and does not take T12's controls as given.
+6. **Filters, everywhere** (the person, 2026-11-19: "filters as a whole needs a redesign, whether library or notebook
+   or whatever else"). One way of filtering across the app (the Library's search, the Notebook, the Legend's "where
+   used", Colors across the Bible, search results), designed once in its own folder and reused, rather than each
+   feature inventing its own controls. Until then, existing filters stay as built; no new filter controls are designed
+   without this folder.
 
 5. **The Notebook's feature inventory.** Before the Notebook is redesigned, a written list of what Notion's pages and
    databases do (from its own help pages, and screenshots the person takes of what they like), each line marked

@@ -4,7 +4,7 @@
 
 use crate::bible::Bible;
 use crate::commands::find_refs;
-use crate::pages::{chars, jot_fence, scripture_fence, split, sub, text_of, word_fence};
+use crate::pages::{chars, scripture_fence, split, sub, text_of, word_fence};
 use crate::places::{parse_span, parse_spans, span_label, Span};
 use crate::store::Store;
 use crate::Result;
@@ -66,12 +66,6 @@ pub fn page(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
         } else if let Some(v) = word_fence(&md) {
             if !v.trim().is_empty() {
                 words.push(json!({"number": v.trim().to_uppercase(), "n": k + 1, "in": "word block"}));
-            }
-        } else if let Some(note) = jot_fence(&md) {
-            if let Some(at) = crate::margin::at_of(&store.root, note.trim()) {
-                if let Some(b) = bible.books().iter().find(|b| b.code == at.code) {
-                    put(Span { book: b.clone(), c1: at.c, v1: at.v1, c2: at.c, v2: at.v2 }, k + 1, "margin note");
-                }
             }
         }
     }

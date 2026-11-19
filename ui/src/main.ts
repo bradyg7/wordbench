@@ -10,7 +10,8 @@ import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/noto-sans-hebrew/400.css';
 import { api, inApp, onDo, wb, type WordView, type VerseView, type Book, type Mark } from './api';
-import { draw, drawTimes, paint, textOf, labelOf, type Drawn } from './reader';
+import { draw, drawTimes, paint, textOf, labelOf, marksOnWord, type Drawn } from './reader';
+import { openMarkCard } from './markcard';
 import { Selector, type InputMode } from './select';
 import { openSheet, closeSheet, showCard, hideCard, toast, toastUndo, compact } from './sheets';
 import { perf, afterPaint, record } from './perf';
@@ -38,8 +39,14 @@ import { canReopen, parse, reopen, runLine, written } from './actions';
 import { setupIfNeeded } from './setup';
 import { createReadAloud } from './listen';
 import { refreshInks } from './hlink';
+import { KIND_NAMES, panel } from './markpanel';
+import { inkOf } from './markdraw';
+import { createBar, kindHooks, type MarkBar } from './markbar';
+import { createMargin } from './margin';
+import { marksOnVerse } from './versemarks';
+import { createArrowBar, arrowColor, rememberArrowColor, STAY, type ArrowBar } from './arrowbar';
+import { parseAt } from './marks';
 import * as planReading from './planreading';
-import { drawMargin, initMargin, placeMargin } from './margin';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const reader = $('reader'), scroller = $('scroller');
@@ -47,7 +54,28 @@ const COLORS = ['yellow', 'green', 'blue', 'pink', 'orange'];
 const STORE = 'wb.place.v1';
 const SIZE_STORE = 'wb.size.v1';
 
+// Reading mode (row 46): the marks are not drawn, and one line says so.
+const readingNote = h('div', 'reading-note');
+readingNote.hidden = true;
+{
+  const show = h('button', 'btn soft', 'Show');
+  show.onclick = () => { void panel.setReading(false).catch(x => toast(String(x))); repaintLayers(); };
+  readingNote.append(h('span', '', 'Marks are hidden (Reading mode).'), show);
+  scroller.insertBefore(readingNote, reader);
+}
+
 let drawn: Drawn | null = null;
+
+/** The margin beside the main reader's text (marks T10): notes, signs, the popover. */
+const margin = createMargin({
+  scroller, reader,
+  openPage: id => void openNote(id),
+  questionsChanged: (v, on) => {
+    const d = drawn;
+    if (!d || v < 1) return;
+    if (on) { d.questions.add(v); paint(reader, d); } else if (inApp) void refreshMarks();
+  },
+});
 let books: Book[] = [];
 
 /** A reader on screen: the main one, or a second reader in a pane (notes 9587, 21bd). Each has what it draws, its own
@@ -107,6 +135,7 @@ async function setVersion(v: string): Promise<string> {
 // ---- drawing ----------------------------------------------------------------------------------------------------------
 let drawSeq = 0;
 async function open(code: string, chapter: number, verse = 1, offset = 0) {
+  if (arrowStays(code, chapter)) return;
   const t0 = performance.now(), seq = ++drawSeq;
   const { data, rust_ms } = await api.reader(code, chapter, version);
   if (seq !== drawSeq) return;
@@ -121,6 +150,7 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
     const vn = reader.querySelector<HTMLElement>(`.vn[data-v="${verse}"]`);
     if (vn) scroller.scrollTop = reader.offsetTop + vn.offsetTop - 12 + offset;
   }
+  void margin.load(drawn);
   placeButton(`${data.chapter.name} ${chapter}`);
   readerStep(`${data.chapter.name} ${chapter}`);
   readerMoved();
@@ -134,14 +164,11 @@ async function open(code: string, chapter: number, verse = 1, offset = 0) {
   const d = drawn;
   const rest = () => {
     if (seq === drawSeq && d.more()) setTimeout(rest, 0);
-    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); void planReading.paintRead(d, reader); if (finding) findInChapter(finding); placeMargin(); }
+    else if (seq === drawSeq) { record('chapter-complete', performance.now() - t0, { at: `${code} ${chapter}` }); chapterEnd(d); margin.layout(); void planReading.paintRead(d, reader); if (finding) findInChapter(finding); }
   };
-  if (!version || version === 'KJV') void drawMargin(reader, scroller, code, chapter);
   setTimeout(rest, 0);
   savePlace();
 }
-
-initMargin({ openPage: id => openNote(id) });
 
 const readAloud = createReadAloud({
   books: () => books,
@@ -164,6 +191,7 @@ function rememberPlace() {
 
 /** A jump elsewhere: the place left is kept for back. */
 async function jump(code: string, chapter: number, verse = 1) {
+  if (arrowStays(code, chapter)) return;
   readAloud.stopForNavigation();
   rememberPlace();
   app.picked = verse > 1 ? { anchor: `${code}.${chapter}:${verse}`, label: `${books.find(b => b.code === code)?.name ?? code} ${chapter}:${verse}` } : null;
@@ -171,6 +199,7 @@ async function jump(code: string, chapter: number, verse = 1) {
 }
 
 function back(): boolean {
+  if (arrow && backStack.length && arrowStays(backStack[backStack.length - 1].code, backStack[backStack.length - 1].chapter)) return true;
   readAloud.stopForNavigation();
   const p = backStack.pop();
   if (!p) return false;
@@ -179,6 +208,7 @@ function back(): boolean {
 }
 
 function step(n: number) {
+  if (arrow) { arrow.bar.say(STAY); arrow.place(); return; }   // a step is always another chapter (row 15)
   readAloud.stopForNavigation();
   if (!drawn) return;
   const c = drawn.chapter;
@@ -191,8 +221,9 @@ function step(n: number) {
 
 // Visibility changes use the marks already loaded in each reader.
 function repaintLayers() {
+  readingNote.hidden = !panel.reading;
+  margin.refresh();
   if (drawn) paint(reader, drawn);
-  placeMargin();
   for (const { view } of readers2.values()) {
     if (view.drawn) paint(view.root, view.drawn);
   }
@@ -210,34 +241,6 @@ async function refreshMarks() {
   paint(reader, d);
 }
 
-/** U on a selection draws the pencil under it; U again takes it off (marks M14). The color is not touched. */
-async function togglePencil() {
-  const d = barView?.drawn;
-  const at = app.picked;
-  if (!d || !at) return;
-  const touches = (m: Mark) => anchorOf(m) === at.anchor;
-  const on = (d.marks.pencil || []).some(touches);
-  if (!inApp) {
-    // In the WebKit tests there is no Rust: drawn for this session only, as a highlight is.
-    if (on) d.marks.pencil = (d.marks.pencil || []).filter(m => !touches(m));
-    else {
-      const m = /^\w+\.(\d+):(\d+)\.(\d+)(?:-(\d+):(\d+)\.(\d+))?$/.exec(at.anchor);
-      if (m) {
-        const n = m.slice(1).map(x => (x === undefined ? null : +x));
-        (d.marks.pencil ||= []).push({ kind: n[3] === null ? 'word' : 'phrase', code: d.chapter.code, c1: n[0]!, v1: n[1]!, i1: n[2], c2: n[3], v2: n[4], i2: n[5], id: `session_${Date.now()}` } as Mark);
-      }
-    }
-    paint(reader, d);
-    barView?.selector.clear();
-    return;
-  }
-  try {
-    await wb(['hl', 'pencil', ...(on ? ['--clear'] : []), at.anchor]);
-    barView?.selector.clear();
-    await refreshMarks();
-  } catch (e) { toast(String(e)); }
-}
-
 // ---- sheets and cards -----------------------------------------------------------------------------------------------
 function noteCard(placeLabel: string, text: string) {
   const c = h('div', 'note-card');
@@ -250,6 +253,7 @@ function verseBody(v: VerseView, card = false, ver = 'KJV'): HTMLElement {
   if (card) b.append(h('div', 'card-head', `${v.reference} · ${ver}`));
   else b.append(h('h2', 'sheet-title', v.reference), h('div', 'sheet-sub', ver));
   b.append(h('p', 'scripture', v.text));
+  b.append(marksOnVerse(v.anchor));   // every mark on the verse and the margin notes covering it (marks T12, row 53)
   if (card) return b;
   b.append(colorRow(v.color, c => {
     const [code, cv] = v.anchor.split('.');
@@ -372,7 +376,6 @@ function writeNote(from: HTMLElement, at: At, kind: 'note' | 'question') {
 }
 
 function addToThread(from: HTMLElement, at: At) {
-  if (!inApp) return toast('Threads are changed in the app');
   threadChooser(from, async name => {
     try {
       await wb(['thread', 'add', name, at.anchor]);
@@ -384,6 +387,75 @@ function addToThread(from: HTMLElement, at: At) {
   });
 }
 
+/** Add to… (marks row 11): a page, a folder or a save, each by the commands the app already has. */
+function addTo(from: HTMLElement, at: At) {
+  const box = h('div', 'menu-list add-to');
+  box.append(h('div', 'muted small nb-menu-note', at.label));
+  const item = (act: string, label: string, ico: string, fn: () => void) => {
+    const b = h('button', 'menu-item');
+    b.dataset.act = act;
+    b.append(icon(ico, 14), document.createTextNode(` ${label}`));
+    b.onclick = () => { shut(); fn(); };
+    box.append(b);
+  };
+  item('page', 'A page…', 'notebook', () => pageChooser(from, at));
+  item('folder', 'A folder…', 'threads', () => addToThread(from, at));
+  item('save', 'A save (the Shelf)', 'shelf', async () => {
+    try { await wb(['save', at.anchor]); clearSelection(); toast(`${at.label} saved`); written('threads'); } catch (e) { toast(String(e)); }
+  });
+  const shut = popMenu(from, box, { width: 240 });
+}
+
+/** A page for the selection: its verses go in as a scripture block (the file holds only the reference), last in the page. */
+function pageChooser(from: HTMLElement, at: At) {
+  const box = h('div', 'chooser');
+  const input = h('input', 'field') as HTMLInputElement;
+  input.placeholder = 'Find a page';
+  input.setAttribute('aria-label', 'Find a page');
+  const list = h('div', 'chooser-list');
+  box.append(input, list);
+  const close = popMenu(from, box, { width: 280 });
+  const flat = (ps: any[]): any[] => ps.flatMap(p => [p, ...flat(p.children || [])]);
+  wb(['page', 'tree']).then((t: any) => {
+    const pages = flat(t.pages || []);
+    const draw = () => {
+      const f = input.value.trim().toLowerCase();
+      list.replaceChildren(...pages.filter(p => (p.title || '').toLowerCase().includes(f)).slice(0, 12).map(p => {
+        const b = h('button', 'chooser-row');
+        b.dataset.page = p.id;
+        b.append(document.createTextNode(p.title || p.id));
+        b.onclick = async () => {
+          close();
+          try {
+            await wb(['block', 'add', p.id, '```scripture\n' + at.label.replace('–', '-') + '\n```']);
+            clearSelection();
+            toast(`${at.label} added to ${p.title}`);
+            written('notes');
+          } catch (e) { toast(String(e)); }
+        };
+        return b;
+      }));
+    };
+    input.oninput = draw;
+    draw();
+  }).catch(() => {});
+  input.focus();
+}
+
+/** Copy: the selected words with their reference, as the verse menu's Copy does (the words are the ones drawn; a span that reaches into another chapter is asked of `wb text`). */
+async function copySelection(vw: View, at: At): Promise<boolean> {
+  const d = vw.drawn, sel = vw.selector.sel;
+  if (!d || !sel) return false;
+  try {
+    const [first, last] = at.anchor.split('-');
+    const cross = !!last && /^\d+:\d+$/.test(last) && last.split(':')[0] !== first.split(':')[0].split('.').pop();
+    const text = cross ? String(await wb(['text', at.anchor, ...(d.chapter.version ? ['--version', d.chapter.version] : [])])).trim()
+      : `${textOf(d, sel.a, sel.b)} (${at.label} ${d.chapter.version || 'KJV'})`;
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch { toast('Copy is not allowed here'); return false; }
+}
+
 const anchorOf = (m: Mark) => {
   const start = `${m.code}.${m.c1}:${m.v1}` + (m.i1 !== null ? `.${m.i1}` : '');
   return m.c2 === null ? start : `${start}-${m.c2}:${m.v2}` + (m.i2 !== null ? `.${m.i2}` : '');
@@ -393,7 +465,7 @@ async function addHighlight(m: Mark) {
   if (!inApp && !m.color) return toast('Removed (this session only)');
   if (!inApp) {
     // In the WebKit tests there is no Rust: the mark is drawn for this session only.
-    drawn!.marks.highlights.push(m);
+    (drawn!.marks.marks ||= []).push({ id: m.id, kind: 'highlight', color: m.color!, at: anchorOf(m), created: new Date().toISOString(), legend: `Unnamed ${m.color} highlight`, style: `highlight:${m.color}` });
     paint(reader, drawn!);
     toast('Highlighted (this session only)');
     return;
@@ -410,6 +482,7 @@ async function addHighlight(m: Mark) {
 
 // ---- selection bar (touch) and color bar (mouse) --------------------------------------------------------------------
 let bar: HTMLElement | null = null;
+let markBar: MarkBar | null = null;
 /** The reader the bar belongs to, and the verse when a whole verse was picked by its number (note 4b90). */
 let barView: View | null = null;
 let barVerse = 0;
@@ -430,18 +503,38 @@ const verseAt = (d: Drawn, v: number): At => ({ anchor: `${d.chapter.code}.${d.c
 
 /** A click on a verse number selects the whole verse and shows the color bar for it; a click away clears both (note
  * 4b90). On a phone, and in another version, the verse's card opens as before. */
-function selectVerse(vw: View, v: number, el: HTMLElement, at: number) {
+function selectVerse(vw: View, v: number, el: HTMLElement, at: number, shift = false) {
   const d = vw.drawn;
-  if (!d || compact() || d.chapter.version) return void openVerse(vw, v, el, at);
-  const a = d.v.indexOf(v), b = d.v.lastIndexOf(v);
-  if (a < 0) return;
+  // On a phone, and in another version, a tap on a verse number still opens the verse's card (it holds Note, Question, Thread
+  // and Copy there; the bar's More holds Copy and Open as a tab). On a desktop the click selects (marks rows 2 and 3).
+  if (!d || compact() || d.chapter.version) { vw.selector.clear(); return void openVerse(vw, v, el, at); }
+  const code = d.chapter.code, ch = d.chapter.chapter;
+  const here = { code, chapter: ch, verse: v };
+  // A verse span (MK7-13): the first verse number clicked is kept, also across a turned chapter of the same book; shift-click the last.
+  const from = shift && spanFrom && spanFrom.code === code ? spanFrom : null;
+  if (!from) spanFrom = here;
+  const lo = from && (from.chapter < ch || (from.chapter === ch && from.verse <= v)) ? from : here;
+  const hi = lo === here ? from ?? here : here;
+  const a = lo.chapter === ch ? d.v.indexOf(lo.verse) : 0;
+  let b = hi.chapter === ch ? d.v.lastIndexOf(hi.verse) : d.v.length - 1;
+  if (a < 0 || b < 0) return;
   while (!d.el[b] && d.more()) { /* the rest of the verse drawn first */ }
-  barVerse = v;
+  if (hi.chapter !== ch) b = d.v.length - 1;
+  const one = lo.chapter === hi.chapter && lo.verse === hi.verse;
+  barVerse = one ? v : 0;
+  if (!one) {
+    const ref = lo.chapter === hi.chapter ? `${d.chapter.name} ${lo.chapter}:${lo.verse}–${hi.verse}` : `${d.chapter.name} ${lo.chapter}:${lo.verse}–${hi.chapter}:${hi.verse}`;
+    barAt = { anchor: `${code}.${lo.chapter}:${lo.verse}-${hi.chapter}:${hi.verse}`, label: ref };
+  }
   vw.root.querySelectorAll('.vn.vsel').forEach(e => e.classList.remove('vsel'));
   vw.selector.set(a, b);
-  vw.root.querySelector(`.vn[data-v="${v}"]`)?.classList.add('vsel');
+  for (let k = a; k <= b; k++) vw.root.querySelector(`.vn[data-v="${d.v[k]}"]`)?.classList.add('vsel');
   showBar(vw, a, b, false);
 }
+/** The first verse number clicked, kept for the shift-click that ends a span. */
+let spanFrom: { code: string; chapter: number; verse: number } | null = null;
+/** What a verse span's bar stands for (its anchor and name), when the words alone do not say it. */
+let barAt: At | null = null;
 
 function showBar(vw: View, a: number, b: number, touch: boolean) {
   bar?.remove();
@@ -452,62 +545,164 @@ function showBar(vw: View, a: number, b: number, touch: boolean) {
   const verse = barVerse && d.v[a] === barVerse && d.v[b] === barVerse && (a === 0 || d.v[a - 1] !== barVerse) && (b === d.v.length - 1 || d.v[b + 1] !== barVerse) ? barVerse : 0;
   barVerse = 0;
   barView = vw;
-  const at = verse ? verseAt(d, verse) : selectionAt(vw, a, b);
+  const at = barAt ?? (verse ? verseAt(d, verse) : selectionAt(vw, a, b));
+  barAt = null;
+  if (arrow) {
+    if (arrow.vw === vw) { void pickArrowTarget(vw, at, a, b); return; }
+    endArrow();   // a selection in another reader: arrow mode is over
+  }
   app.picked = at;
-  bar = h('div', touch ? 'selbar' : 'colorbar');
+  markBar?.dispose();
+  const mb = createBar({ anchor: at.anchor, label: at.label }, {
+    chapterMarks: () => d.marks.marks || [],
+    drawn: made => markDrawn(vw, made),
+    finish: () => vw.selector.clear(),
+    addTo: from => addTo(from, at),
+    copy: () => copySelection(vw, at),
+    openTab: () => { void openSecondReader(at.anchor, d.chapter.version || 'KJV'); vw.selector.clear(); },
+  });
+  markBar = mb;
+  bar = mb.el;
   if (verse) bar.classList.add('verse-bar');
-  const pick = (c: string | null) => {
-    if (verse) addHighlight({ kind: 'verse', code: d.chapter.code, c1: d.chapter.chapter, v1: verse, i1: null, c2: null, v2: null, i2: null, id: `session_${Date.now()}`, color: c ?? undefined });
-    else addHighlight({ kind: a === b ? 'word' : 'phrase', code: d.chapter.code, c1: d.chapter.chapter, v1: d.v[a], i1: d.i[a], c2: a === b ? null : d.chapter.chapter, v2: a === b ? null : d.v[b], i2: a === b ? null : d.i[b], id: `session_${Date.now()}`, color: c ?? undefined });
-    vw.selector.clear();
-  };
-  barPick = pick;
-  // a whole verse: its own color shows on the bar
-  const current = verse ? d.marks.highlights.find(m => m.kind === 'verse' && m.c1 === d.chapter.chapter && m.v1 === verse && m.c2 === null)?.color : undefined;
-  bar.append(colorRow(current, pick, true));
-  if (!touch) bar.append(threadChips(at));
-  const names = touch ? ['Note', 'Thread', 'Look up', 'Copy'] : verse ? ['Note', 'Question', 'Thread', 'Copy', 'Notes & lookup', 'Open as a tab'] : ['Note', 'Thread', 'Copy', 'Notes & lookup'];
-  bar.append(actions(names, (act, el) => {
-    if (act === 'Copy') copy(`${textOf(d, a, b)} (${at.label} KJV)`);
-    else if (act === 'Notes & lookup') { vw.selector.clear(); openPlace(at.anchor, at.label); }
-    else if (act === 'Open as a tab') { vw.selector.clear(); openSecondReader(at.anchor, 'KJV'); }
-    else if (act === 'Look up') {
-      const k = [...Array(b - a + 1).keys()].map(n => a + n).find(k => d.strong[k]);
-      if (k !== undefined) openWord(vw, k, d.el[k], performance.now());
-    } else if (act === 'Thread') addToThread(el, at);
-    else writeNote(el, at, act === 'Question' ? 'question' : 'note');
-  }));
   bar.addEventListener('pointerdown', e => e.stopPropagation());
   document.getElementById('overlay')!.append(bar);
   placeBar();
 }
 
-// On the color bar: your three most recently changed threads, one click to add the selection (again to take it out).
-let barPick: ((c: string | null) => void) | null = null;
-function threadChips(at: At): HTMLElement {
-  const box = h('span', 'cb-chips');
-  if (!inApp) return box;
-  Promise.all([wb(['thread', 'list']), wb(['anchor', at.anchor]).catch(() => ({ threads: [] }))]).then(([ts, here]) => {
-    const holding = new Set((here.threads || []).map((t: any) => t.id));
-    for (const t of (ts as any[]).slice(0, 3)) {
-      const chip = h('button', `cb-chip${holding.has(t.id) ? ' in' : ''}`);
-      chip.append(h('i', `dot c-${t.color}`), document.createTextNode(` ${t.name}`));
-      chip.title = holding.has(t.id) ? `In ${t.name}: click to take it out` : `Add to ${t.name}`;
-      chip.onclick = async () => {
-        const inIt = chip.classList.contains('in');
-        try {
-          await wb(['thread', inIt ? 'rm' : 'add', t.name, at.anchor]);
-          chip.classList.toggle('in', !inIt);
-          chip.title = !inIt ? `In ${t.name}: click to take it out` : `Add to ${t.name}`;
-          toast(inIt ? `Taken out of ${t.name}` : `${at.label} added to ${t.name}`);
-          written('threads');
-        } catch (e) { toast(String(e)); }
-      };
-      box.append(chip);
-    }
-    placeBar();
-  }).catch(() => {});
-  return box;
+/** A mark was made from the bar: the core's reader read again in the app; outside it (the WebKit tests) the mark the command answered is drawn for the session. */
+async function markDrawn(vw: View, made: any) {
+  const d = vw.drawn;
+  if (inApp) { written('highlights'); return; }
+  if (!d || !made?.at || !made.kind) return;
+  const style = made.style || (made.kind === 'underline' ? `underline:${made.color}:${made.lines ?? 1}` : `${made.kind}:${made.color}`);
+  (d.marks.marks ||= []).push({ ...made, legend: made.legend || `Unnamed ${made.color} ${made.kind}`, style });
+  paint(vw.root, d);
+}
+
+// ---- arrows (marks T9, rows 13 to 16 and 48; MK7-25) ------------------------------------------------------------------
+// Arrow (its icon, A, or the right-click menu's row): the mark bar shrinks to "Select where it points" with Back and Cancel, the
+// start words stay outlined, and the next selection in the same chapter (words, or a verse number) is the target. The arrow is
+// then made with `wb mark add <from> --kind arrow --color <c> --to <ref>` and drawn in the gutter. A chapter change is refused
+// while choosing (`arrowStays`, asked by open, jump, step and back).
+interface ArrowMode { vw: View; start: At; a: number; b: number; code: string; chapter: number; bar: ArrowBar; busy: boolean; place: () => void }
+let arrow: ArrowMode | null = null;
+
+function startArrow(ctx: At) {
+  const vw = barView, sel = vw?.selector.sel, d = vw?.drawn;
+  if (!vw || !sel || !d) return;
+  const { a, b } = sel;
+  const start = { anchor: ctx.anchor, label: ctx.label };
+  endArrow();
+  const ab = createArrowBar({ back: () => arrowBack(), cancel: () => endArrow() });
+  const mode: ArrowMode = { vw, start, a, b, code: d.chapter.code, chapter: d.chapter.chapter, bar: ab, busy: false, place: () => {} };
+  mode.place = () => {
+    const first = d.el[a]?.getClientRects()[0];
+    if (!first) return;
+    const w = ab.el.offsetWidth, hgt = ab.el.offsetHeight;
+    const top = first.top - hgt - 14 > 60 ? first.top - hgt - 14 : Math.min(first.bottom + 18, window.innerHeight - hgt - 8);
+    ab.el.style.top = `${top}px`;
+    ab.el.style.left = `${Math.max(8, Math.min(first.left, window.innerWidth - w - 8))}px`;
+  };
+  // the mark bar goes; the start words keep an outline instead of the selection
+  vw.selector.clear();
+  for (let k = a; k <= b; k++) { d.el[k]?.classList.add('arrow-from'); d.gap[k]?.classList.add('arrow-from'); }
+  arrow = mode;
+  document.getElementById('overlay')!.append(ab.el);
+  mode.place();
+  vw.scroller.addEventListener('scroll', mode.place, { passive: true });
+  window.addEventListener('resize', mode.place);
+}
+kindHooks.arrow = ctx => startArrow(ctx);
+// Margin note (T10, rows 17 and 18; MK7-27): the selection's verse or span, within one chapter, opens an empty note in the margin.
+kindHooks.note = ctx => {
+  const vw = barView;
+  if (!vw || !vw.drawn) return;
+  if (vw !== mainView) { toast('Margin notes are written beside the main reader'); return; }
+  const m = /^[A-Z0-9]+\.(\d+):(\d+)(?:\.\d+)?(?:-(\d+):(\d+)(?:\.\d+)?)?$/.exec(ctx.anchor);
+  if (!m) return;
+  const c1 = +m[1], c2 = m[3] ? +m[3] : c1, v1 = +m[2], v2 = m[4] ? +m[4] : v1;
+  if (c1 !== c2) { toast('A margin note covers verses of one chapter'); return; }
+  vw.selector.clear();
+  margin.startNote(Math.min(v1, v2), Math.max(v1, v2));
+};
+
+/** Arrow mode is over: nothing is made. */
+function endArrow() {
+  const m = arrow;
+  if (!m) return;
+  arrow = null;
+  m.bar.el.remove();
+  m.vw.scroller.removeEventListener('scroll', m.place);
+  window.removeEventListener('resize', m.place);
+  m.vw.root.querySelectorAll('.arrow-from').forEach(e => e.classList.remove('arrow-from'));
+}
+
+/** Back (row 16): the start selection, with the bar open again. */
+function arrowBack() {
+  const m = arrow;
+  if (!m) return;
+  endArrow();
+  const d = m.vw.drawn;
+  if (!d) return;
+  barAt = m.start;
+  const verses = !/:\d+\.\d/.test(m.start.anchor);   // a whole verse (or span), picked by its number, keeps its number marked
+  m.vw.selector.set(m.a, m.b);
+  if (verses) for (let k = m.a; k <= m.b; k++) m.vw.root.querySelector(`.vn[data-v="${d.v[k]}"]`)?.classList.add('vsel');
+  showBar(m.vw, m.a, m.b, false);
+}
+
+/** Row 15: the reader is asked to go to another chapter while an arrow's target is chosen: it stays, and the bar says why. */
+function arrowStays(code: string, chapter: number): boolean {
+  if (!arrow || (code === arrow.code && chapter === arrow.chapter)) return false;
+  arrow.bar.say(STAY);
+  arrow.place();
+  return true;
+}
+
+/** The target was chosen (row 14). */
+async function pickArrowTarget(vw: View, to: At, a: number, b: number) {
+  const m = arrow;
+  if (!m || m.busy) return;
+  const d = vw.drawn!;
+  const end = /-(\d+):\d+(?:\.\d+)?$/.exec(to.anchor);
+  vw.selector.clear();
+  if (end && +end[1] !== m.chapter) { m.bar.say(STAY); m.place(); return; }
+  if (d.v[a] === d.v[m.a]) { toast('An arrow joins two different verses'); return; }
+  m.busy = true;
+  try {
+    const pick = await arrowColor();
+    const made = await wb(['mark', 'add', m.start.anchor, '--kind', 'arrow', '--color', pick.color, '--to', to.anchor]);
+    rememberArrowColor(pick.color);
+    endArrow();
+    await markDrawn(vw, made);
+    toast(`Arrow from ${m.start.label} to ${to.label.replace(/^.* (\d+:)/, '$1')} in ${pick.name ?? pick.color}: ${pick.why}`);
+  } catch (e) {
+    m.busy = false;
+    toast(String((e as Error)?.message ?? e));
+  }
+}
+
+/** A click on an arrow's end in the gutter (row 48): the arrow's card. */
+function wireArrowEnds(vw: View) {
+  vw.root.addEventListener('click', e => {
+    const end = (e.target as Element).closest?.('.mk-end');
+    const d = vw.drawn;
+    if (!end || !d || arrow) return;
+    const m = (d.marks.marks || []).find(x => x.id === (end as SVGElement).dataset.mark);
+    if (!m) return;
+    const book = d.chapter.name;
+    const verseOf = (at: string | undefined) => { const p = at ? parseAt(at) : null; return p ? `${p.c1}:${p.v1}` : '?'; };
+    const sync = (apply: () => void) => { apply(); paint(vw.root, d); if (inApp) written('highlights'); };
+    void openMarkCard(end as unknown as HTMLElement, {
+      place: m.at, local: [], arrows: [m],
+      verses: x => `${book} ${verseOf(x.at)} to ${verseOf(x.to)}`,
+      chapterMarks: () => d.marks.marks || [],
+      restyled: n => sync(() => { d.marks.marks = (d.marks.marks || []).map(x => (x.id === n.id ? n : x)); }),
+      removed: id => sync(() => { d.marks.marks = (d.marks.marks || []).filter(x => x.id !== id); }),
+      restored: n => sync(() => { if (!(d.marks.marks || []).some(x => x.id === n.id)) (d.marks.marks ||= []).push(n); }),
+      lookup: () => {},
+    });
+  });
 }
 
 function placeBar() {
@@ -519,6 +714,7 @@ function placeBar() {
   const w = bar.offsetWidth, hgt = bar.offsetHeight;
   const top = first.top - hgt - 14 > 60 ? first.top - hgt - 14 : Math.min(last.bottom + 18, window.innerHeight - hgt - 8);
   bar.style.top = `${top}px`;
+  bar.dataset.side = top < first.top ? 'above' : 'below';   // the drop-down opens away from the selection
   bar.style.left = `${Math.max(8, Math.min((first.left + last.right) / 2 - w / 2, window.innerWidth - w - 8))}px`;
 }
 
@@ -535,6 +731,25 @@ async function openWord(vw: View, k: number, el: HTMLElement, at: number) {
   else openWordCard(data, el, () => el.classList.remove('tapped'));
   await afterPaint();
   record('word-sheet', performance.now() - at, { word: data.text, rust_ms, call_ms: t1 - at });
+}
+
+/** A click on a word (marks T8, rows 25 and 26): with a mark on it, the mark card (its Look up is the word's own card); with none, the word's card as always. */
+async function tapWord(vw: View, k: number, el: HTMLElement, at: number) {
+  const d = vw.drawn!;
+  if (arrow && arrow.vw === vw && !d.chapter.version) { vw.selector.set(k, k); return void showBar(vw, k, k, false); }   // choosing a target: a click on a word is the target
+  const local = d.chapter.version ? [] : marksOnWord(d, k);
+  if (!local.length) return openWord(vw, k, el, at);
+  app.picked = selectionAt(vw, k, k);
+  const sync = (apply: () => void) => { apply(); paint(vw.root, d); if (inApp) written('highlights'); };
+  await openMarkCard(el, {
+    place: app.picked.anchor,
+    local,
+    chapterMarks: () => d.marks.marks || [],
+    restyled: m => sync(() => { d.marks.marks = (d.marks.marks || []).map(x => (x.id === m.id ? m : x)); }),
+    removed: id => sync(() => { d.marks.marks = (d.marks.marks || []).filter(x => x.id !== id); }),
+    restored: m => sync(() => { if (!(d.marks.marks || []).some(x => x.id === m.id)) (d.marks.marks ||= []).push(m); }),
+    lookup: () => void openWord(vw, k, el, performance.now()),
+  });
 }
 
 async function openVerse(vw: View, v: number, el: HTMLElement, at: number) {
@@ -554,8 +769,8 @@ let hoverSeq = 0;
 /** What a reader does with clicks, hovers and selections. */
 function handlersFor(vw: View) {
   return {
-    tapWord: (k: number, el: HTMLElement, at: number) => openWord(vw, k, el, at),
-    tapVerse: (v: number, el: HTMLElement, at: number) => selectVerse(vw, v, el, at),
+    tapWord: (k: number, el: HTMLElement, at: number) => tapWord(vw, k, el, at),
+    tapVerse: (v: number, el: HTMLElement, at: number, shift?: boolean) => selectVerse(vw, v, el, at, shift),
     hoverWord: async (k: number, el: HTMLElement) => {
       if (hoverMode() !== 'on') return;
       const seq = ++hoverSeq, t0 = performance.now(), d = vw.drawn!;
@@ -576,7 +791,8 @@ function handlersFor(vw: View) {
     cleared: () => {
       vw.root.querySelectorAll('.vn.vsel').forEach(e => e.classList.remove('vsel'));
       if (barView !== vw && barView) return;
-      bar?.remove(); bar = null; barPick = null; barView = null;
+      markBar?.dispose(); markBar = null;
+      bar?.remove(); bar = null; barView = null;
     },
   };
 }
@@ -584,13 +800,14 @@ const mainView = { root: reader, scroller, main: true, get drawn() { return draw
 const selector = new Selector(reader, scroller, handlersFor(mainView));
 mainView.selector = selector;
 wireView(mainView);
+wireArrowEnds(mainView);
 
 // A click or tap away from the color bar closes it and clears the selection: anywhere but the bar itself (its presses
 // stop at it) and the menus or cards opened from it. In a reader the selector does the same on a tap.
 document.addEventListener('pointerdown', e => {
   if (!bar || !barView?.selector.sel) return;
   const t = e.target as HTMLElement;
-  if (barView.root.contains(t) || t.closest('.menu, .popover, .sheet, .hovercard')) return;
+  if (barView.root.contains(t) || t.closest('.menu, .popover, .sheet, .hovercard, .mb-ctx')) return;
   barView.selector.clear();
 });
 document.getElementById('overlay')!.addEventListener('pointerleave', e => { if ((e.target as HTMLElement).classList?.contains('hovercard')) hideCard(); }, true);
@@ -612,6 +829,12 @@ function wireView(vw: View) {
   vw.root.addEventListener('contextmenu', e => {
     const d = vw.drawn;
     if (!d || lastPointer === 'touch' || compact()) return;
+    // a right-click on the selected words: the same actions as the bar, as a menu at the pointer (MK7-34)
+    if (markBar && barView === vw && vw.selector.sel && (e.target as HTMLElement).closest('.sel, .sj')) {
+      e.preventDefault();
+      markBar.openContext(e.clientX, e.clientY);
+      return;
+    }
     const t = (e.target as HTMLElement).closest<HTMLElement>('.w, .g, .vn');
     if (!t) return;
     const v = t.classList.contains('vn') ? +t.dataset.v! : d.v[+t.dataset.k!];
@@ -939,6 +1162,38 @@ function setEyes(markIds: string[], hide: boolean) {
   repaintLayers();
 }
 
+// ---- the marks panel (rows 44 to 46): what is drawn, by kind and by legend entry, and Reading mode ----------------------
+async function marksPanel(box: HTMLElement, again: () => void) {
+  const wrap = h('div', 'marks-panel');
+  const row = (label: string, on: boolean, flip: () => Promise<void>, sample?: HTMLElement) => {
+    const b = h('button', `menu-item check${on ? ' on' : ''}`);
+    b.setAttribute('aria-pressed', String(on));
+    b.append(icon(on ? 'eye' : 'eyeoff', 14));
+    if (sample) b.append(sample);
+    b.append(document.createTextNode(` ${label}`));
+    b.onclick = async () => { try { await flip(); } catch (x) { toast(String(x)); } repaintLayers(); again(); };
+    wrap.append(b);
+  };
+  wrap.append(h('div', 'label', 'Marks'));
+  row('Reading mode (only the text)', panel.reading, () => panel.setReading(!panel.reading));
+  wrap.append(h('div', 'label', 'Kinds'));
+  for (const [k, name] of KIND_NAMES) row(name, !panel.kinds.has(k), () => panel.setKind(k, panel.kinds.has(k)));
+  let legend: { entries: any[]; unlisted: any[] } = { entries: [], unlisted: [] };
+  try { legend = await wb(['legend']); } catch { /* outside the app: no legend */ }
+  const listed = [...(legend.entries || []), ...(legend.unlisted || [])];
+  if (listed.length) {
+    wrap.append(h('div', 'label', 'Legend'));
+    for (const e of listed) {
+      const sample = h('i', 'sample');
+      const color = e.color as string;
+      sample.style.background = e.kind === 'highlight' ? (['yellow', 'green', 'blue', 'pink', 'orange'].includes(color) ? `var(--hl-${color})` : color) : inkOf(color);
+      sample.dataset.kind = e.kind;
+      row(`${e.label} (${e.count})`, !panel.styles.has(e.style), () => panel.setStyle(e.style, panel.styles.has(e.style)), sample);
+    }
+  }
+  box.append(wrap);
+}
+
 // ---- the Highlights menu: layers -------------------------------------------------------------------------------------
 async function highlightsMenu(from: HTMLElement) {
   const box = h('div', 'menu-list layers-menu');
@@ -952,10 +1207,9 @@ async function highlightsMenu(from: HTMLElement) {
     box.append(b);
   };
   box.append(h('div', 'label', 'In all readers'));
-  box.append(h('p', 'layers-hint', 'Controls highlight fills and the lines of folders with a color. Notes, questions and verse markers stay visible.'));
+  box.append(h('p', 'layers-hint', 'Controls highlight fills and the tabs of folders with a color. Notes, questions and verse markers stay visible.'));
   toggle('All highlights and folder lines', layers.all, () => { layers.all = !layers.all; });
   toggle('Your highlights', layers.mine, () => { layers.mine = !layers.mine; });
-  toggle('The margin', layers.margin, () => { layers.margin = !layers.margin; });
   // Shown on the text (T1, T10, T11): the folders with a color, the shown ones first, the rest folded under their parent
   let ts: any[] = [], where: any[] = [];
   try { [ts, where] = await Promise.all([wb(['folder', 'shown']), wb(['folder', 'list'])]); } catch { /* outside the app */ }
@@ -1002,6 +1256,7 @@ async function highlightsMenu(from: HTMLElement) {
     };
     box.append(search, hideAll, list);
   }
+  await marksPanel(box, () => { close(); void highlightsMenu(from); });
   const list = h('button', 'menu-item', 'Your highlights, listed…');
   list.onclick = () => { close(); openMarked('', 'all'); };
   box.append(list);
@@ -1186,6 +1441,12 @@ document.addEventListener('scroll', e => {
   scrollTimers.set(el, window.setTimeout(() => el.classList.remove('scrolling'), 800));
 }, { capture: true, passive: true });
 
+// The mark bar's keys (H U C B A N, 1 to 6, a kind's key twice): taken before anything else while the bar is open.
+document.addEventListener('keydown', e => {
+  if (arrow && e.key === 'Escape') { endArrow(); e.preventDefault(); e.stopPropagation(); return; }   // Cancel (row 16)
+  if (markBar && barView?.selector.sel && markBar.onKey(e)) { e.preventDefault(); e.stopPropagation(); }
+}, true);
+
 document.addEventListener('keydown', e => {
   const typing = !!(e.target as HTMLElement).closest('input, textarea, [contenteditable]');
   if (e.key === 'Escape') { closeSheet(); clearSelection(); hideCard(); }
@@ -1202,14 +1463,6 @@ document.addEventListener('keydown', e => {
   // quick capture (Ctrl+J unless set otherwise in the Notebook's settings): a small box at the verse, from anywhere
   if (isCaptureKey(e)) { e.preventDefault(); quickCapture(); return; }
   if (typing) return;
-  // a selection with its bar: 1–5 color it, 0 removes the highlight
-  if (bar && barView?.selector.sel && barPick && /^[0-5]$/.test(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
-    e.preventDefault();
-    barPick(e.key === '0' ? null : COLORS[+e.key - 1]);
-    return;
-  }
-  // U: the pencil under the selection, again to take it off
-  if (bar && barView?.selector.sel && (e.key === 'u' || e.key === 'U') && !e.ctrlKey && !e.altKey && !e.metaKey) { e.preventDefault(); void togglePencil(); return; }
   // ← → turn the chapter of the reader the key was pressed in: a second reader turns its own, never the main reader's
   const in2 = (e.target as HTMLElement).closest<HTMLElement>('.reader2-pane');
   const turn2 = in2 && turners.get(in2);
@@ -1228,7 +1481,7 @@ window.addEventListener('resize', () => {
   document.documentElement.dataset.size = sizeClass();
   const p = { ...place };
   cancelAnimationFrame(resizing);
-  resizing = requestAnimationFrame(() => { if (drawn && p.code === drawn.chapter.code && p.chapter === drawn.chapter.chapter) backTo(p); selector.placeHandles(); placeBar(); placeMargin(); });
+  resizing = requestAnimationFrame(() => { if (drawn && p.code === drawn.chapter.code && p.chapter === drawn.chapter.chapter) backTo(p); selector.placeHandles(); placeBar(); });
 });
 
 // ---- the hub ----------------------------------------------------------------------------------------------------------
@@ -1246,6 +1499,13 @@ Object.assign(app, {
   findInChapter,
   listen: (command: Parameters<typeof readAloud.execute>[0]) => readAloud.execute(command),
   secondReader: (ref: string, version?: string) => void openSecondReader(ref, version),
+  showMarginNote: async (id: string, at: string) => {
+    const p = /^([1-3A-Z]{3})\.(\d+)(?::(\d+))?/.exec(at);
+    if (!p) return;
+    margin.show(id);   // before the chapter is drawn, so the note is shown when its chapter's notes arrive
+    await jump(p[1], +p[2], p[3] ? +p[3] : 1);
+    margin.show(id);   // the chapter was already drawn: its notes are here
+  },
   readers: () => [...readers2.values()].filter(r => dock.panes.some(p => p.id === r.pane))
     .map(({ pane, code, chapter, label }) => ({ pane, code, chapter, label })),
   changed: (...what: Change[]) => { written(...what); if (!what.length || what.includes('threads')) loadThreads(); },
@@ -1296,12 +1556,13 @@ async function start() {
   if (inApp) {
     void readSettings();
     void loadWindowSettings();
+    void panel.load().then(() => repaintLayers());
     void loadKept();
     loadPalette();
     if (sizeClass() !== 'compact' && new URLSearchParams(location.search).get('notebook') !== '0') { openNotebook(); focusReader(); }
   }
 }
 
-(window as any).__wb = { open, plans: openPlans, concordance: openConcordance, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
+(window as any).__wb = { panel, open, plans: openPlans, concordance: openConcordance, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
 start().catch(e => { reader.innerHTML = `<p class="error">${String(e)}</p>`; });
 void here;

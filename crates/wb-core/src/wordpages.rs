@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 /// first, then how many times the page names it, then newest); a number's are newest first. Each says its folders.
 pub fn pages_naming(bible: &Bible, store: &Store, anchor: &str) -> Result<Value> {
     let a = anchors::parse(anchor)?;
-    let folders = crate::margin::folders_of(store);
+    let folders = folders_of(store);
     let row = |id: &str, e: &crate::pageindex::Entry, times: u32, block: bool| {
         json!({"id": id, "title": e.title, "kind": e.kind, "created": e.created, "times": times, "in_scripture_block": block,
             "folders": folders.get(id).cloned().unwrap_or_default()})
@@ -26,6 +26,14 @@ pub fn pages_naming(bible: &Bible, store: &Store, anchor: &str) -> Result<Value>
         let (lo, hi) = ((a.c1, a.v1), (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1)));
         crate::pageindex::naming(bible, store, &a.code, lo, hi).iter().map(|(id, e, t, b)| row(id, e, *t, *b)).collect()
     };
+    // margin notes whose own words name it (found like a page's references, after the pages)
+    let mut hits = hits;
+    let notes = if a.kind == Kind::Lemma {
+        crate::margin::naming(bible, store, "", (0, 0), (0, 0), Some(&a.strong.as_deref().unwrap_or("").to_uppercase()))
+    } else {
+        crate::margin::naming(bible, store, &a.code, (a.c1, a.v1), (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1)), None)
+    };
+    hits.extend(notes.iter().map(|(n, t)| crate::margin::naming_row(bible, n, *t)));
     let mut out = json!({"anchor": anchor, "count": hits.len(), "pages": hits});
     if out["count"].as_u64().unwrap_or(0) > 20 {
         // past 20 the list is grouped by folder (marks M37)
@@ -40,4 +48,17 @@ pub fn pages_naming(bible: &Bible, store: &Store, anchor: &str) -> Result<Value>
         out["groups"] = json!(groups.into_iter().map(|(f, p)| json!({"folder": f, "count": p.len(), "pages": p})).collect::<Vec<_>>());
     }
     Ok(out)
+}
+
+/// Folder names each page sits in (a folder's set holds the page's id).
+fn folders_of(store: &Store) -> std::collections::HashMap<String, Vec<String>> {
+    let mut out: std::collections::HashMap<String, Vec<String>> = Default::default();
+    for t in store.sets() {
+        for i in t["items"].as_array().cloned().unwrap_or_default() {
+            if i["kind"] == "note" {
+                out.entry(i["ref"].as_str().unwrap_or("").to_string()).or_default().push(t["name"].as_str().unwrap_or("").to_string());
+            }
+        }
+    }
+    out
 }

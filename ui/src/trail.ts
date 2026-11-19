@@ -7,6 +7,7 @@ import { wb } from './api';
 import { app } from './app';
 import type { Pane } from './dock';
 import { reopenConcordance } from './concordance';
+import { openLegend } from './legendpane';
 import { dock, openBdb, openDefine, openSearch, openStrong, openUses } from './panes';
 import { toast } from './sheets';
 import { h, icon, popMenu } from './ui';
@@ -30,7 +31,7 @@ let shown: () => void = () => {};
 const ICON: Record<string, string> = {
   verse: 'book', reader2: 'book', place: 'book', passage: 'book', versecard: 'book', wordcard: 'word', interlinear: 'book',
   concordance: 'book', strong: 'word', bdb: 'word', def: 'word', lexiconc: 'word',
-  uses: 'lines', count: 'lines', forms: 'lines', marked: 'lines',
+  legend: 'legend', uses: 'lines', count: 'lines', forms: 'lines', marked: 'lines',
   search: 'search', find: 'search', near: 'search',
   notebook: 'notebook', shelf: 'shelf', plans: 'lines', findings: 'prompt', documents: 'file', docpreview: 'file', lesson: 'file', today: 'file',
 };
@@ -122,6 +123,7 @@ async function goStep(s: Step) {
   else if (k === 'def') openDefine(a);
   else if (k === 'uses') openUses(a, b, c || 'all');
   else if (k === 'concordance') reopenConcordance(s.key);
+  else if (k === 'legend') openLegend();
   else if (s.line) await app.run?.(s.line);
   else toast(`${s.title} was closed, and there is no line to open it again`);
 }

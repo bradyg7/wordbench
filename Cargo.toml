@@ -23,6 +23,14 @@ debug = "line-tables-only"
 [profile.dev.package."*"]
 opt-level = 1
 
+# our own crates too: the tests run search, tether and the corpus many times, and unoptimized they were most of
+# `cargo test`'s run time (fix/test-speed, 2026-11-18)
+[profile.dev.package.wb-core]
+opt-level = 1
+
+[profile.dev.package.wb-cli]
+opt-level = 1
+
 [profile.release]
 opt-level = 3
 lto = "thin"

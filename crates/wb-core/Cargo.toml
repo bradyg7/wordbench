@@ -32,3 +32,6 @@ tempfile = "3.27.0"
 
 [dev-dependencies]
 rusqlite.workspace = true
+
+[lib]
+doctest = false

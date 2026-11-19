@@ -5,7 +5,7 @@
 
 use crate::bible::Bible;
 use crate::commands::find_refs;
-use crate::pages::{chars, jot_fence, scripture_fence, split, sub, word_fence};
+use crate::pages::{chars, scripture_fence, split, sub, word_fence};
 use crate::places::parse_spans;
 use crate::store::{s, Rec, Store};
 use std::collections::HashMap;
@@ -45,7 +45,7 @@ impl PageIndex {
 }
 
 /// Strong's numbers as whole tokens of a text.
-fn numbers_in(text: &str) -> Vec<String> {
+pub(crate) fn numbers_in(text: &str) -> Vec<String> {
     let mut out: Vec<String> = vec![];
     for tok in text.split(|c: char| !c.is_alphanumeric()) {
         let b = tok.as_bytes();
@@ -59,7 +59,7 @@ fn numbers_in(text: &str) -> Vec<String> {
     out
 }
 
-fn compute(bible: &Bible, root: &std::path::Path, r: &Rec, kind: &str) -> Entry {
+fn compute(bible: &Bible, r: &Rec, kind: &str) -> Entry {
     let text = s(r, "text");
     let mut spans: Vec<SpanRef> = vec![];
     let mut add = |code: &str, lo: (u32, u32), hi: (u32, u32), block: bool| {
@@ -89,12 +89,6 @@ fn compute(bible: &Bible, root: &std::path::Path, r: &Rec, kind: &str) -> Entry 
                     let (lo, hi) = bounds(sp.c1, sp.v1, sp.c2, sp.v2);
                     add(&sp.book.code, lo, hi, true);
                 }
-            } else if let Some(id) = jot_fence(&md) {
-                // a margin note shown in the page tethers it to the note's place (M33, M34)
-                if let Some(at) = crate::margin::at_of(root, id.trim()) {
-                    let (lo, hi) = ((at.c, at.v1), (at.c, if at.v1 == 0 { u32::MAX } else { at.v2 }));
-                    add(&at.code, lo, hi, false);
-                }
             } else if let Some(v) = word_fence(&md) {
                 let up = v.trim().to_uppercase();
                 if !up.is_empty() && !numbers.contains(&up) {
@@ -121,7 +115,7 @@ pub fn all(bible: &Bible, store: &Store) -> Vec<(String, Entry)> {
     for (r, kind) in pages {
         let id = s(r, "id");
         if !idx.map.contains_key(&id) {
-            let e = compute(bible, &store.root, r, kind);
+            let e = compute(bible, r, kind);
             idx.computed += 1;
             idx.map.insert(id.clone(), e);
         }

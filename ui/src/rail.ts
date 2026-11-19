@@ -12,11 +12,11 @@ import type { MinLink } from './dock';
 import { openDocuments } from './documents';
 import { openFindings } from './findings';
 import { openNotebook } from './notebook';
+import { openLegend } from './legendpane';
 import { openConcordance } from './concordance';
 import { openHelp, openPlans, openShelf } from './panes';
 import { openSettings } from './settings';
 import { keepTab } from './shelf';
-import { hooks } from './toolbar';
 import { h, icon, popMenu, sizeClass } from './ui';
 import { iconOf, openTrail, trailGoing } from './trail';
 
@@ -27,7 +27,7 @@ interface Spot { id: string; label: string; ico: string; kind?: string; run: (fr
 const TOP: Spot[] = [
   { id: 'notebook', label: 'Notebook', ico: 'notebook', kind: 'notebook', run: () => void openNotebook() },
   { id: 'shelf', label: 'Shelf', ico: 'shelf', kind: 'shelf', run: () => void openShelf() },
-  { id: 'highlights', label: 'Highlights', ico: 'pen', run: from => hooks.highlights(from) },
+  { id: 'legend', label: 'Legend', ico: 'legend', kind: 'legend', run: () => void openLegend() },
 ];
 const UNDER: Spot[] = [
   { id: 'trail', label: 'Trail', ico: 'trail', run: () => openTrail() },
@@ -52,7 +52,7 @@ function named(): boolean {
 
 /** Which rail icon holds a minimized tab of this kind; the rest wait under Minimized (R2a). */
 const HOLDS: Record<string, string> = {
-  concordance: 'concordance', notebook: 'notebook', note: 'notebook', thread: 'notebook', threads: 'notebook', today: 'notebook',
+  concordance: 'concordance', legend: 'legend', colormap: 'legend', notebook: 'notebook', note: 'notebook', thread: 'notebook', threads: 'notebook', today: 'notebook',
   shelf: 'shelf', plans: 'plans', reading: 'plans', findings: 'findings', documents: 'documents', docpreview: 'documents', lesson: 'documents', doc: 'documents',
 };
 const holder = (l: MinLink) => HOLDS[l.kind] ?? 'minimized';

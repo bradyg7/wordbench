@@ -5,7 +5,7 @@ use crate::args::{Append, Args, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Value};
 use wb_core::store::{s, Store};
-use wb_core::{lookup, places, shelf, studyapi as sa};
+use wb_core::{lookup, marks, places, shelf, studyapi as sa};
 
 fn e(x: wb_core::Error) -> String {
     x.0
@@ -128,12 +128,6 @@ pub fn commands() -> Vec<Command> {
                 let an = anchor(c, &a.s("place"))?;
                 j(sa::save_highlight(c.bible()?, &mut st, &an, Some(&color)).map_err(e)?)
             }),
-        cmd("hl pencil", "Draw the pencil under a place (marks M14: one grey, thin line under the run, no meaning): wb hl pencil John 3:16  |  wb hl pencil --clear John 3:16 takes it off (U again). Kept in pencil/<BOOK>.json with its date; highlights are not touched.",
-            vec![Pos("place", N::One), Flag("clear")], |c, a| {
-                let an = anchor(c, &a.s("place"))?;
-                let st = c.study()?;
-                j(if a.flag("clear") { wb_core::pencil::clear(&st, &an) } else { wb_core::pencil::set(&st, &an) }.map_err(e)?)
-            }),
         cmd("hl clear", "Remove the highlight from a place.", vec![Pos("place", N::One)], |c, a| {
             let an = anchor(c, &a.s("place"))?;
             j(sa::save_highlight(c.bible()?, &mut *c.study()?, &an, None).map_err(e)?)
@@ -151,23 +145,155 @@ pub fn commands() -> Vec<Command> {
             };
             j(sa::highlight_list(c.bible()?, &st, a.opt("color").as_deref(), t.as_deref()).map_err(e)?)
         }),
-        cmd("marks", "What is drawn on a chapter: highlights, notes, colored-thread places.", vec![Pos("ref", N::Many)], |c, a| {
+        cmd("marks", "What is drawn on a chapter: highlights, notes, colored-thread places, and every mark (\"marks\": the drawn marks and the old highlights, by date made).", vec![Pos("ref", N::Many)], |c, a| {
             let sp = c.span(&a.s("ref"))?;
             j(sa::chapter_marks(&*c.study()?, &sp.book.code, sp.c1 as i64).map_err(e)?)
         }),
+        cmd("marks map", "Colors across the Bible: wb marks map [--style ENTRY|kind:color[:lines]] [--folder NAME]. Every book in order with its chapters. With no filter each chapter lists its styles (style, kind, color, count) and the colored folders with saves there; with a style or a folder, each chapter has only its count, and a chapter with 0 is a gap. Also {styles, folders, filter, total, chapters_with}.",
+            vec![Opt("style", None), Opt("folder", None)], |c, a| {
+                j(marks::marks_map(c.bible()?, &*c.study()?, a.opt("style").as_deref(), a.opt("folder").as_deref()).map_err(e)?)
+            }),
+        cmd("mark add", "Draw a mark on a place: wb mark add John 3:16 --kind highlight|underline|circle|box|arrow --color yellow (or #rrggbb) [--lines 1|2|3, underline only] [--to PLACE, arrow only, in the same chapter]; or --style <legend entry> (its name, or its style kind:color[:lines]) instead of --kind, --color and --lines. Kept in marks/<BOOK>.json.",
+            vec![Pos("place", N::One), Opt("kind", None), Opt("color", None), Opt("lines", None), Opt("to", None), Opt("style", None)], |c, a| {
+                let mut lines = match a.opt("lines") {
+                    Some(n) => Some(n.parse::<u8>().map_err(|_| "argument --lines: invalid int value")?),
+                    None => None,
+                };
+                let (kind, color) = match a.opt("style") {
+                    Some(st) => {
+                        if a.opt("kind").is_some() || a.opt("color").is_some() || lines.is_some() {
+                            return Err("--style gives the kind, color and lines: do not also say --kind, --color or --lines.".into());
+                        }
+                        let (k, col, l) = marks::legend_style(&*c.study()?, &st).map_err(e)?;
+                        lines = l;
+                        (k, col)
+                    }
+                    None => (
+                        a.opt("kind").ok_or("Say the kind of mark: --kind highlight, underline, circle, box or arrow (or --style a legend entry).")?,
+                        a.opt("color").ok_or("Say its color: --color yellow (or #rrggbb).")?,
+                    ),
+                };
+                let at = anchor(c, &a.s("place"))?;
+                let to = match a.opt("to") {
+                    Some(t) => Some(anchor(c, &t)?),
+                    None => None,
+                };
+                j(serde_json::to_value(marks::mark_add(c.bible()?, &*c.study()?, &at, &kind, &color, lines, to.as_deref()).map_err(e)?).unwrap())
+            }),
+        cmd("mark show", "One mark: its kind, color, lines, at, to, created and changed (and the words of an old highlight), and its legend name (or \"Unnamed <color> <kind>\").", vec![Pos("id", N::One)], |c, a| {
+            j(marks::mark_show(&*c.study()?, &a.s("id")).map_err(e)?)
+        }),
+        cmd("mark at", "Every mark on a place (a verse, words, a phrase), old highlights too, topmost first: arrows, underlines, circle and box, highlight; newest first within each, each with its legend name. {\"place\", \"marks\", \"notes\"}: notes are the margin notes covering the place's verses (a chapter's own note covers no verse), as wb mark notes gives them.", vec![Pos("place", N::Many)], |c, a| {
+            let at = anchor(c, &a.s("place"))?;
+            j(marks::mark_at(c.bible()?, &*c.study()?, &at).map_err(e)?)
+        }),
+        cmd("mark style", "Replace one mark's style: wb mark style <id> [--kind K] [--color C] [--lines 1|2|3]. Its id, place and date are kept; `changed` is set. An old highlight: color only.",
+            vec![Pos("id", N::One), Opt("kind", None), Opt("color", None), Opt("lines", None)], |c, a| {
+                let lines = match a.opt("lines") {
+                    Some(n) => Some(n.parse::<u8>().map_err(|_| "argument --lines: invalid int value")?),
+                    None => None,
+                };
+                let mut st = c.study()?;
+                j(marks::mark_style(&mut st, &a.s("id"), a.opt("kind").as_deref(), a.opt("color").as_deref(), lines).map_err(e)?)
+            }),
+        cmd("mark rm", "Delete a mark (any id from wb marks, an old highlight too) or a margin note (its id from wb mark notes): it goes to .trash for 7 days; wb mark restore puts it back.", vec![Pos("id", N::Many)], |c, a| {
+            let mut st = c.study()?;
+            let mut done = vec![];
+            for id in a.list("id") {
+                // a margin note's id is a delete too (MK-21); any other id is a mark's
+                let note = wb_core::margin::has(c.bible()?, &st, &id);
+                done.push(if note { wb_core::margin::rm(c.bible()?, &mut st, &id) } else { marks::mark_rm(&mut st, &id) }.map_err(e)?);
+            }
+            j(if done.len() == 1 { done.remove(0) } else { json!({"deleted": done}) })
+        }),
+        cmd("mark restore", "Put a deleted mark or margin note back: wb mark restore <id>.", vec![Pos("id", N::Many)], |c, a| {
+            let mut st = c.study()?;
+            let mut done = vec![];
+            for id in a.list("id") {
+                let note = wb_core::margin::trashed_has(&st, &id);
+                done.push(if note { wb_core::margin::restore(c.bible()?, &mut st, &id) } else { marks::mark_restore(&mut st, &id) }.map_err(e)?);
+            }
+            j(if done.len() == 1 { done.remove(0) } else { json!({"restored": done}) })
+        }),
+        cmd("mark note", "Write a margin note (text only, kept in margin/<BOOK>/<chapter>.md): wb mark note Num 25:11 \"words\"  |  wb mark note Num 25:10-13 \"words\" (a span of verses in one chapter)  |  wb mark note Num 25 \"words\" (the chapter). The words may be - to read standard input. With --text it rewrites a note's words and sets changed: wb mark note <id> --text \"new words\" (or --text -).",
+            vec![Pos("args", N::Many), Opt("text", None)], |c, a| {
+                let mut args = a.list("args");
+                if let Some(t) = a.opt("text") {
+                    let text = if t.trim() == "-" { c.stdin()? } else { t };
+                    return j(wb_core::margin::edit(c.bible()?, &*c.study()?, &args.join(" "), &text).map_err(e)?);
+                }
+                if args.len() < 2 {
+                    return Err("Give the place and the words: wb mark note Num 25:11 \"words\" (or wb mark note <id> --text \"words\").".into());
+                }
+                let words = args.pop().unwrap();
+                let text = if words.trim() == "-" { c.stdin()? } else { words };
+                j(wb_core::margin::add(c.bible()?, &*c.study()?, &args.join(" "), &text).map_err(e)?)
+            }),
+        cmd("mark notes", "A chapter's margin notes, the chapter's own first, then by verse: wb mark notes Num 25. {\"place\", \"count\", \"notes\"}; each has id, at, label, kind (chapter|verse|span), text, question, created, changed, grew (the pages it grew into). Reads one file and no page.",
+            vec![Pos("chapter", N::Many)], |c, a| j(wb_core::margin::chapter(c.bible()?, &*c.study()?, &a.s("chapter")).map_err(e)?)),
+        cmd("mark grow", "Grow a margin note into a page: wb mark grow <id> [--title T]. A new page holds the note's words, titled by its place; the note stays in the margin and gains a grew link to the page. {\"note\", \"page\", \"title\"}.",
+            vec![Pos("id", N::One), Opt("title", None)], |c, a| {
+                j(wb_core::margin::grow(c.bible()?, &mut *c.study()?, &a.s("id"), a.opt("title").as_deref()).map_err(e)?)
+            }),
+        cmd("legend", "The legend (settings/legend.json): its entries in order, each with its label (its name, or \"Unnamed <color> <kind>\"), style, quick pin, key and the count of marks in the style (old highlights too); \"unlisted\" are styles marks use that no entry names, shown as Unnamed. Name an entry by its name or by its style written kind:color[:lines] (highlight:yellow, underline:red:2).", vec![], |c, _| {
+            j(marks::legend(&*c.study()?))
+        }),
+        cmd("legend add", "Add an entry: wb legend add --kind highlight|underline|circle|box|arrow --color yellow [--lines 1|2|3, underline only] [--name \"Promise\"] [--meaning \"...\"]. With no name it is Unnamed. The same style twice is refused.",
+            vec![Opt("kind", None), Opt("color", None), Opt("lines", None), Opt("name", None), Opt("meaning", None)], |c, a| {
+                let kind = a.opt("kind").ok_or("Say the kind: --kind highlight, underline, circle, box or arrow.")?;
+                let color = a.opt("color").ok_or("Say its color: --color yellow (or #rrggbb).")?;
+                let lines = match a.opt("lines") {
+                    Some(n) => Some(n.parse::<u8>().map_err(|_| "argument --lines: invalid int value")?),
+                    None => None,
+                };
+                j(marks::legend_add(&*c.study()?, &kind, &color, lines, a.opt("name").as_deref(), a.opt("meaning").as_deref()).map_err(e)?)
+            }),
+        cmd("legend set", "Change an entry (by its name, or its style kind:color[:lines]): wb legend set NAME [--name N] [--meaning M] [--color C --restyle | --no-restyle] [--quick on|off] [--key Ctrl+1..Ctrl+9 | none] [--move-key]. --restyle gives every mark in the old style the new color; --no-restyle changes the entry only (one is needed when marks use the style). At most 5 quick styles. A key already used is refused unless --move-key moves it here.",
+            vec![Pos("entry", N::Many), Opt("name", None), Opt("meaning", None), Opt("color", None), Flag("restyle"), Flag("no_restyle"), Opt("quick", None), Opt("key", None), Flag("move_key")], |c, a| {
+                let restyle = match (a.flag("restyle"), a.flag("no_restyle")) {
+                    (true, true) => return Err("Say --restyle or --no-restyle, not both.".into()),
+                    (true, false) => Some(true),
+                    (false, true) => Some(false),
+                    _ => None,
+                };
+                let quick = match a.opt("quick").map(|q| q.to_lowercase()).as_deref() {
+                    None => None,
+                    Some("on" | "true" | "yes") => Some(true),
+                    Some("off" | "false" | "no") => Some(false),
+                    Some(_) => return Err("--quick is on or off.".into()),
+                };
+                let (name, meaning, color, key) = (a.opt("name"), a.opt("meaning"), a.opt("color"), a.opt("key"));
+                let ch = marks::LegendChange { name: name.as_deref(), meaning: meaning.as_deref(), color: color.as_deref(), restyle, quick, key: key.as_deref(), move_key: a.flag("move_key") };
+                let mut st = c.study()?;
+                j(marks::legend_set(&mut st, &a.s("entry"), &ch).map_err(e)?)
+            }),
+        cmd("legend move", "Move an entry in the order: wb legend move NAME --to 1 (1 is first). The quick styles follow the order. Prints the legend.", vec![Pos("entry", N::Many), Opt("to", None)], |c, a| {
+            let to = a.opt("to").ok_or("Say the place: --to 1 (1 is first).")?.parse::<usize>().map_err(|_| "argument --to: invalid int value")?;
+            j(marks::legend_move(&*c.study()?, &a.s("entry"), to).map_err(e)?)
+        }),
+        cmd("legend rm", "Remove an entry: wb legend rm NAME. Its marks stay, and then show as Unnamed.", vec![Pos("entry", N::Many)], |c, a| {
+            j(marks::legend_rm(&*c.study()?, &a.s("entry")).map_err(e)?)
+        }),
+        cmd("legend uses", "Where a style is used: wb legend uses NAME (an entry by its name, or any style kind:color[:lines]). {\"entry\", \"count\", \"marks\"}: each mark with its id, kind, color, lines, at, to, book, chapter, verse, label (its reference), words (from the Bible; an old highlight's own if none), created and old, in Bible order. Delete some with wb mark rm.",
+            vec![Pos("entry", N::Many)], |c, a| j(marks::legend_uses(c.bible()?, &*c.study()?, &a.s("entry")).map_err(e)?)),
         cmd("palette", "Your saved custom colors (c1 .. c8).", vec![], |c, _| j(json!({"colors": c.study()?.palette()}))),
         cmd("palette rm", "Forget a saved color (highlights already made in it stay).", vec![Pos("color", N::One)], |c, a| {
             j(json!({"colors": c.study()?.drop_palette_color(Some(&a.s("color"))).map_err(e)?}))
         }),
-        cmd("study check", "What the study folder holds, as this app reads it, and which files the next change would write (none). Reads only. --margin-move: the read-only list of what each old note that has a place would become (a margin note or a page, MK-18), run on nothing; scripts/py-opens.py is the Python app's side of the same check.",
-            vec![Flag("margin_move")], |c, a| {
-                let st = c.study()?;
-                if a.flag("margin_move") {
-                    return j(wb_core::margin::move_list(c.bible()?, &st));
-                }
-                let mut v = wb_core::check::study_check(&st).map_err(e)?;
+        cmd("study check", "What the study folder holds, as this app reads it, and which files the next change would write (none). Reads only.",
+            vec![], |c, _| {
+                let mut st = c.study()?;
+                let mut v = wb_core::check::study_check(&mut st).map_err(e)?;
                 v["library"] = wb_core::check::library_check(c.bible()?, &st).map_err(e)?;
                 j(v)
+            }),
+        cmd("study move-marks", "Move the old highlights/ and pencil/ files into marks/ (once, after a backup). --dry-run writes nothing and says, per book, what would become marks, any record it cannot read and any id that collides, with totals. --go refuses if the dry run reports any problem; otherwise it writes marks/<BOOK>.json (an old highlight keeps its id, color, place, dates and words; a pencil line becomes a 1-line grey underline) and moves the old files whole into .archive/. A second --go finds nothing to move.",
+            vec![Flag("dry_run"), Flag("go")], |c, a| {
+                if a.flag("go") == a.flag("dry_run") {
+                    return Err("Say one of --dry-run or --go.".into());
+                }
+                let mut st = c.study()?;
+                j(marks::move_marks(&mut st, a.flag("go")).map_err(e)?)
             }),
         cmd("thread list", "Your threads, newest first; with words, only those whose name or note has them all.", vec![Pos("words", N::Any)], |c, a| {
             j(sa::thread_list(&*c.study()?, Some(&a.s("words"))).map_err(e)?)
@@ -394,12 +520,15 @@ pub fn commands() -> Vec<Command> {
             }
             j(wb_core::deletion::remove(c.bible()?, &mut st, &id).map_err(e)?)
         }),
-        cmd("find", "Search your own notes, thread names and notes, and trails. With --kind, --folder, --has-question, --edited or --sort it is the library's one search: pages, folders, saves and questions grouped by kind, \"count\" of \"total\". --kind page|folder|save|question|margin, --folder NAME, --has-question, --edited 7d|2026-11-01, --sort edited|title.",
-            vec![Pos("words", N::Any), Opt("kind", None), Opt("folder", None), Flag("has_question"), Opt("edited", None), Opt("sort", None)], |c, a| {
+        cmd("find", "Search your own notes, thread names and notes, and trails. With --kind, --folder, --has-question, --edited or --sort it is the library's one search: pages, folders, saves and questions grouped by kind, \"count\" of \"total\". --kind page|folder|save|question|margin|mark, --folder NAME, --has-question, --edited 7d|2026-11-01, --sort edited|title. --kind mark finds drawn marks (old highlights too), each with its words and reference, in Bible order: --style <legend entry | kind:color[:lines]>, --mark-kind highlight|underline|circle|box|arrow, --color C, --book B, --since/--until 7d|2026-11-01 (the day it was made); the words, if given, are looked for in a mark's words, reference and legend name.",
+            vec![Pos("words", N::Any), Opt("kind", None), Opt("folder", None), Flag("has_question"), Opt("edited", None), Opt("sort", None),
+                Opt("style", None), Opt("mark_kind", None), Opt("color", None), Opt("book", None), Opt("since", None), Opt("until", None)], |c, a| {
             let (kind, folder, edited, sort) = (a.opt("kind"), a.opt("folder"), a.opt("edited"), a.opt("sort"));
-            if kind.is_some() || folder.is_some() || edited.is_some() || sort.is_some() || a.flag("has_question") {
+            let (style, mark_kind, color, book, since, until) = (a.opt("style"), a.opt("mark_kind"), a.opt("color"), a.opt("book"), a.opt("since"), a.opt("until"));
+            if kind.is_some() || folder.is_some() || edited.is_some() || sort.is_some() || a.flag("has_question") || style.is_some() || mark_kind.is_some() || color.is_some() || book.is_some() || since.is_some() || until.is_some() {
                 let f = wb_core::library::Find { words: &a.s("words"), kind: kind.as_deref().unwrap_or(""), folder: folder.as_deref(), has_question: a.flag("has_question"),
-                    edited: edited.as_deref(), sort: sort.as_deref().unwrap_or("") };
+                    edited: edited.as_deref(), sort: sort.as_deref().unwrap_or(""),
+                    style: style.as_deref(), mark_kind: mark_kind.as_deref(), color: color.as_deref(), book: book.as_deref(), since: since.as_deref(), until: until.as_deref() };
                 return j(wb_core::library::find(c.bible()?, &*c.study()?, &f).map_err(e)?);
             }
             if a.s("words").trim().is_empty() {

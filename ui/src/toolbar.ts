@@ -5,6 +5,7 @@
 import { wb } from './api';
 import { openDocuments } from './documents';
 import { openFindings } from './findings';
+import { openLegend } from './legendpane';
 import { openNotebook } from './notebook';
 import { openHelp, openPlans, openShelf, openThreads, openToday } from './panes';
 import { toast } from './sheets';
@@ -31,6 +32,7 @@ export interface Item {
 export const CATALOG: Item[] = [
   { id: 'notebook', label: 'Notebook', icon: 'notebook', group: 'Panes', sub: 'Your notes and pages', run: () => void openNotebook(), more: true },
   { id: 'threads', label: 'Threads', icon: 'threads', group: 'Panes', sub: 'Your threads', run: () => void openThreads(), more: true },
+  { id: 'legend', label: 'Legend', icon: 'legend', group: 'Panes', sub: 'Your marks’ styles, and where each is used', run: () => void openLegend(), more: true },
   { id: 'shelf', label: 'Shelf', icon: 'shelf', group: 'Panes', sub: 'Your sets', run: () => void openShelf(), more: true },
   { id: 'plans', label: 'Reading plans', icon: 'lines', group: 'Panes', sub: 'Plans and today’s reading', run: () => void openPlans(), more: true },
   { id: 'log', label: 'Today’s log', icon: 'file', group: 'Panes', sub: 'What was typed today', run: () => void openToday(''), more: true },

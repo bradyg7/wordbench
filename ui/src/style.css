@@ -263,41 +263,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .theme-preview-verse { font-family: var(--font-read, serif); margin: 4px 0; line-height: 1.6; }
 .theme-marks .swatch { width: 22px; height: 22px; border-radius: 6px; display: inline-block; flex: none; }
 
-/* ---- the pencil (marks M14) and the reader's margin (marks M25 to M28, M43, M44) ---- */
-:root { --pencil: color-mix(in srgb, var(--muted) 75%, transparent); }
-.mg-rail { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
-.mg-rail > * { pointer-events: auto; }
-.mg-off .vn.vnote::after { }
-.mg-mark { position: absolute; max-width: 160px; padding: 0; border: 0; background: none; text-align: left; color: var(--muted); font: var(--type-caption); line-height: 1.2; cursor: pointer; white-space: normal; }
-.mg-mark:hover, .mg-mark:focus-visible { color: var(--accent); }
-.mg-dot { position: absolute; width: 10px; height: 10px; padding: 0; border: 1.5px solid var(--accent); border-radius: 50%; background: none; cursor: pointer; }
-.mg-dot::before { content: ''; position: absolute; inset: -4px; }
-.mg-bracket { position: absolute; width: 5px; border: 1.5px solid var(--muted); border-left: 0; border-radius: 0 3px 3px 0; opacity: .7; }
-.mg-pop { pointer-events: none; position: fixed; z-index: 60; max-width: 300px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 18px var(--scrim); font: var(--type-interface); }
-.mg-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mg-line.page { color: var(--muted); }
-.mg-panel { position: fixed; z-index: 29; right: 12px; width: 320px; max-height: 46vh; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 24px var(--scrim); font: var(--type-interface); box-sizing: border-box; }
-.mg-panel.mg-sheet { left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 60vh; border-radius: 14px 14px 0 0; }
-.mg-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.mg-close, .mg-more { border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; }
-.mg-verse { font: var(--read); font-size: 15px; line-height: 1.45; margin: 6px 0 8px; }
-.mg-note { padding: 6px 0; border-top: 1px solid var(--line); }
-.mg-note.around, .mg-note.legacy { font-size: 12px; color: var(--muted); }
-.mg-where { color: var(--accent); }
-.mg-text { outline: none; white-space: pre-wrap; }
-.mg-note.question .mg-text::before { content: '? '; color: var(--question); font-weight: 600; }
-.mg-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
-.mg-year { margin-top: 6px; font-size: 11px; color: var(--muted); }
-.mg-grew, .mg-open, .mg-page, .mg-count, .mg-showall { display: block; border: 0; background: none; padding: 2px 0; color: var(--accent); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
-.mg-counts { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 8px 0; }
-.mg-count { display: inline; font-size: 12px; line-height: 16px; padding: 0; white-space: nowrap; }
-.mg-field { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: inherit; }
-.mg-ask { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
-.mg-ask[hidden] { display: none; }
-.mg-leave, .mg-page-new { padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: inherit; cursor: pointer; }
-.mg-remember { font-size: 12px; color: var(--muted); }
-
-/* ---- Scripture in this page (marks M22, M23), a margin note in a page, a passage with my marks (M6, M7) ---- */
+/* ---- Scripture in this page (marks M22, M23) ---- */
 .ov { margin: 6px 0 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: var(--type-interface); }
 .ov-head { display: flex; align-items: center; gap: 6px; }
 .ov.wide .ov-list { display: block; max-height: calc(6 * 30px); overflow-y: auto; margin-top: 4px; }
@@ -309,21 +275,29 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .ov-name, .ov-open { border: 0; background: none; color: var(--accent); font: inherit; cursor: pointer; padding: 2px 0; }
 .ov-book summary { cursor: pointer; padding: 4px 0; }
 .ov-flash { outline: 2px solid var(--accent-soft); }
-.nb-jotblock { padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 8px 8px 0; }
-.nbj-head { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
-.nbj-text { margin-top: 4px; white-space: pre-wrap; outline: none; }
-.sv-dot { display: inline-block; width: 8px; height: 8px; margin: 0 3px; padding: 0; border: 1.5px solid var(--accent); border-radius: 50%; background: none; vertical-align: middle; cursor: pointer; }
-.sv-dotcard { margin: 4px 0 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: var(--type-interface); }
-.sv-dotline { margin-top: 2px; }
 
 .nb-kind { flex: none; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .nb-kind-line { margin: 4px 8px; }
-.mgl { margin: 6px 0; }
-.mgl-sum { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 4px 8px; font: var(--type-interface); }
-.mgl-book > summary, .mgl-chapter > summary { cursor: pointer; padding: 3px 8px 3px 16px; }
-.mgl-chapter > summary { padding-left: 28px; }
-.mgl-note { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 3px 8px 3px 40px; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
-.mgl-verse { font-size: 13px; }
+/* the Marks search (marks T12, row 51): filters as simple controls, then the marks with their words */
+.nb-mfilters { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px; }
+.nb-mfilters :is(select, input) { min-width: 0; max-width: 100%; font: var(--type-small); }
+.nb-mfilters .nb-mbook { width: 120px; }
+.nb-mfilters label { display: inline-flex; align-items: center; gap: 4px; font: var(--type-caption); color: var(--muted); }
+.nb-mrow .nb-mtop { display: flex; align-items: center; gap: 8px; }
+.nb-mrow .nb-mlegend { font: var(--type-caption); color: var(--muted); }
+.nb-mrow .nb-mwords { font: var(--type-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nb-return { margin: 4px 8px; }
+@media (pointer: coarse), (max-width: 600px) { .nb-mfilters :is(select, input) { min-height: 44px; } .nb-mrow { min-height: 44px; } }
+/* what is on a verse, in its card (marks T12, row 53) */
+.vm { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+.vm[hidden] { display: none; }
+.vm-head { font: var(--type-caption); color: var(--muted); margin: 2px 0; }
+.vm-mark { display: flex; align-items: center; gap: 8px; min-height: 24px; font: var(--type-small); }
+.vm-note { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; background: none; border: 0; padding: 4px 0; font: var(--type-small); color: inherit; cursor: pointer; }
+.vm-note .vm-where { color: var(--accent); }
+.vm-note .vm-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (pointer: coarse), (max-width: 600px) { .vm-note { min-height: 44px; } }
+.mg-card.mg-flash { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* A whole verse saved in a shown folder with a color: its color beside the verse number, the words untouched (threads TH-7) */
 .vn.vth { margin-left: 6px; }
 .eye-list { max-height: 260px; overflow: auto; }
@@ -336,4 +310,205 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 /* narrow: Shown on the text is a sheet over the bottom, not a small popover (threads T10) */
 @media (max-width: 600px) {
   .menu:has(.layers-menu) { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: 100% !important; max-height: 80vh; overflow: auto; border-radius: 12px 12px 0 0; }
+}
+
+/* ---- the layers over the words (marks round 7): boxes and circles, underlines, arrows; none takes the pointer or fills a word ---- */
+.mk-layers { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 1; }
+.mk-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: visible; pointer-events: none; }
+.mk-shape { position: absolute; box-sizing: border-box; border: 1.5px solid; background: none; }
+.mk-shape.mk-circle { border-radius: 9999px; }
+.mk-line { position: absolute; border-radius: 1px; }
+.mk-arrow path:first-of-type { pointer-events: stroke; stroke-linecap: round; }
+/* an arrow's two ends are the only part that takes a click (marks T9, row 48): a small hit area of their own in the gutter */
+.mk-arrow .mk-end { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; }
+.mk-arrow .mk-end:hover { fill: var(--accent-soft); }
+/* the arrow's start words while the target is chosen (marks T9, row 13) */
+.w.arrow-from, .g.arrow-from { outline: 1.5px solid var(--accent); outline-offset: 1px; border-radius: 3px; }
+.markbar.arrow-bar { width: auto; max-width: min(560px, calc(100vw - 16px)); gap: 10px; padding: 6px 10px; font: var(--type-caption); }
+.arrow-bar .ab-text { white-space: normal; }
+.arrow-bar button { display: inline-flex; align-items: center; gap: 2px; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; padding: 6px 4px; border-radius: 6px; }
+.arrow-bar button:hover { background: var(--sunken); }
+.arrow-bar button[hidden] { display: none; }
+.mark-card .mc-verses { padding: 2px 0 0 30px; color: var(--fg); }
+@media (max-width: 600px) { .arrow-bar button { min-height: 44px; min-width: 44px; } }
+/* Reading mode: one line says the marks are hidden, with Show */
+.reading-note { display: flex; align-items: center; gap: 10px; max-width: 700px; margin: 6px auto 0; padding: 6px 20px; font: var(--type-caption); color: var(--muted); }
+.reading-note[hidden] { display: none; }
+.marks-panel .sample { display: inline-block; width: 18px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+/* The mark bar (marks T6, MK7-30): icons only, one size, the same on a phone. Nothing in it grows with the legend. */
+.markbar { position: fixed; z-index: 20; display: flex; align-items: center; gap: 2px; box-sizing: border-box; width: 424px; max-width: calc(100vw - 16px); padding: 4px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 28px rgba(0, 0, 0, .18); }
+.markbar .mb-btn { flex: 1 1 0; min-width: 0; height: 36px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: inherit; cursor: pointer; padding: 0; }
+.markbar .mb-btn:hover { background: var(--sunken); }
+.markbar .mb-btn.on { background: var(--sunken); outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
+.markbar .mb-sep { flex: none; width: 1px; height: 20px; margin: 0 3px; background: var(--line); }
+@media (pointer: coarse), (max-width: 600px) { .markbar .mb-btn { height: 44px; } }
+.markbar .mb-menu { position: absolute; width: 236px; box-sizing: border-box; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, .18); font: var(--type-caption); }
+.markbar[data-side="above"] .mb-menu { bottom: calc(100% + 6px); }
+.markbar[data-side="below"] .mb-menu { top: calc(100% + 6px); }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-row, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-any { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; min-height: 32px; padding: 4px 8px; border: 0; border-radius: 7px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+@media (pointer: coarse), (max-width: 600px) { :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-row, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-any { min-height: 44px; } }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-row:hover, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-row.cur, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-any:hover { background: var(--sunken); }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-fixed { cursor: default; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-n { flex: none; min-width: 16px; text-align: center; font: var(--type-caption); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 3px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-tick { flex: none; color: var(--muted); display: inline-flex; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-rule { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow, .colormap) .mb-sample { flex: none; width: 22px; height: 14px; display: inline-flex; flex-direction: column; justify-content: center; gap: 1px; box-sizing: border-box; border-radius: 3px; font-style: normal; font-size: 12px; line-height: 14px; text-align: center; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow, .colormap) .mb-sample b { display: block; border-radius: 1px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow, .colormap) .mb-sample.s-circle { border: 1.5px solid; border-radius: 9999px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow, .colormap) .mb-sample.s-box { border: 1.5px solid; border-radius: 2px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-rainbow { flex: none; width: 16px; height: 16px; border-radius: 50%; background: conic-gradient(#e5484d, #f5a524, #f5d90a, #46a758, #3e63dd, #8e4ec6, #e5484d); }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-lines, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-kinds { display: flex; gap: 2px; padding: 2px; margin-bottom: 4px; background: var(--sunken); border-radius: 8px; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-line, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-kindpick { flex: 1; min-height: 26px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-line[aria-pressed="true"], :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-kindpick[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-filter, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-pen { width: 100%; box-sizing: border-box; min-height: 30px; padding: 4px 8px; margin: 0 0 4px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: inherit; font: inherit; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-list { max-height: 220px; overflow-y: auto; }
+:is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-empty, :is(.markbar, .mb-sheet, .mb-ctx, .mark-card, .legend-pane) .mb-hint { padding: 4px 8px; color: var(--muted); }
+.markbar[data-side="above"] .mb-menu.mb-flip { bottom: auto; top: calc(100% + 6px); }
+.markbar[data-side="below"] .mb-menu.mb-flip { top: auto; bottom: calc(100% + 6px); }
+
+/* Copy, Open as a tab, the right-click menu and the phone's ⋯ (marks T7b, MK7-32 to MK7-34) */
+.mb-sheet .mb-list { max-height: none; }
+.mb-sheet .mb-n { display: none; }   /* keys are a desktop extra (MK7-31) */
+.mb-sheet .mb-row, .mb-sheet .mb-any { font: var(--type-body); }
+.markbar .mb-flash { position: absolute; top: -26px; transform: translateX(-50%); padding: 2px 8px; border-radius: 6px; background: var(--fg); color: var(--bg); font: var(--type-caption); white-space: nowrap; pointer-events: none; }
+.markbar[data-side="above"] .mb-flash { top: auto; bottom: calc(100% + 4px); }
+.markbar[data-side="below"] .mb-flash { top: calc(100% + 4px); }
+.mb-ctx { position: fixed; z-index: 30; width: 232px; box-sizing: border-box; padding: 4px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, .18); font: var(--type-caption); }
+.mb-ctx .mb-row .ico { flex: none; }
+.mb-ctx .mb-key { flex: none; margin-left: auto; color: var(--muted); font: var(--type-caption); }
+.mb-ctx .mb-crow .mb-name { flex: 1; }
+.mb-ctx .mb-crow .mb-key + .ico { margin-left: 0; }
+.mb-ctx .mb-sub { position: absolute; width: 236px; box-sizing: border-box; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, .18); }
+
+/* The mark card (marks T8, MK7-20): small, anchored, in the theme's colors */
+.popover.mark-card-panel { padding: 10px 12px 12px; }
+.mark-card { width: min(300px, 100%); font: var(--type-caption); }
+.mark-card .mc-mark { padding: 6px 0; }
+.mark-card .mc-mark + .mc-mark { border-top: 1px solid var(--line); }
+.mark-card .mc-head { display: flex; align-items: center; gap: 8px; }
+.mark-card .mc-text { flex: 1; min-width: 0; }
+.mark-card .mc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
+.mark-card .mc-change, .mark-card .mc-look { flex: none; min-height: 28px; padding: 2px 10px; border: 1px solid var(--line); border-radius: var(--radius-pill); background: none; color: inherit; font: inherit; cursor: pointer; }
+.mark-card .mc-look { margin-top: 2px; border-color: transparent; padding-left: 0; color: var(--accent); }
+.mark-card .mc-delete { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
+.mark-card .mc-change:hover, .mark-card .mc-delete:hover { background: var(--sunken); }
+.mark-card .mc-drop { margin-top: 6px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.mark-card .mc-hint { padding: 2px 0 0 30px; }
+.mark-card .mc-rule { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+@media (pointer: coarse), (max-width: 600px) { .mark-card { width: 100%; } .mark-card .mc-change, .mark-card .mc-look, .mark-card .mc-delete { min-height: 44px; min-width: 44px; } }
+.popover.mark-card-panel > .close { display: none; }   /* beside the words the card closes with Esc or a click away; the sheet keeps its ✕ */
+@media (max-width: 600px) { .mark-card .mc-head { padding-right: 48px; } }
+
+/* The margin (marks T10, MK7-18): a column beside the text behind a thin line, like a Bible's; open it holds the notes level
+   with their verses, minimized only signs. A narrow window and a phone are always signs. */
+.margin-col { position: absolute; right: 0; width: 280px; box-sizing: border-box; border-left: 1px solid var(--line); z-index: 2; user-select: text; -webkit-user-select: text; cursor: text; }
+.margin-col[hidden] { display: none; }
+.margin-col[data-mode="signs"] { width: 40px; cursor: default; }
+.margin-col.phone { width: 26px; border-left: 0; }
+.mg-list { position: relative; }
+.mg-toggle[hidden] { display: none; }
+.mg-toggle { position: absolute; top: 4px; left: 6px; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+.mg-toggle:hover { background: var(--sunken); color: var(--fg); }
+.mg-card { position: absolute; left: 12px; right: 4px; box-sizing: border-box; padding: 6px 8px 8px; border-radius: 8px; font: var(--type-caption); color: var(--fg); cursor: default; }
+.mg-card:focus-within, .mg-card:hover { background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.mg-card[data-draft], .mg-card:has(.mg-edit) { box-shadow: 0 0 0 1.5px var(--accent); background: var(--surface); }
+.mg-head { display: flex; align-items: center; gap: 6px; color: var(--muted); font: var(--type-caption); }
+.mg-label { flex: 1; }
+.mg-more { width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; opacity: 0; }
+.mg-card:hover .mg-more, .mg-card:focus-within .mg-more, .mg-pop .mg-more { opacity: 1; }
+.mg-more:hover { background: var(--sunken); }
+.mg-body { cursor: text; outline: none; }
+.mg-body:focus-visible { box-shadow: 0 0 0 1.5px var(--accent); border-radius: 4px; }
+.mg-line { margin: 2px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mg-q { margin: 3px 0; overflow-wrap: anywhere; }
+.mg-qpill { display: inline-block; padding: 0 8px; border: 1px solid var(--accent); border-radius: var(--radius-pill); color: var(--accent); font-size: 11px; line-height: 18px; }
+.mg-q.done { color: var(--muted); text-decoration: line-through; }
+.mg-edit { display: block; width: 100%; box-sizing: border-box; min-height: 44px; resize: none; border: 0; outline: none; background: none; color: inherit; font: inherit; user-select: text; -webkit-user-select: text; }
+.mg-grew-row { margin-top: 2px; }
+.mg-grew-link { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-align: left; }
+.mg-menu { position: absolute; right: 4px; top: 30px; z-index: 5; min-width: 150px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px rgba(0, 0, 0, .18); }
+.mg-mi { display: block; width: 100%; min-height: 32px; padding: 4px 10px; border: 0; border-radius: 7px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.mg-mi:hover { background: var(--sunken); }
+.mg-sign { position: absolute; left: 8px; width: 28px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+.mg-sign:hover, .mg-sign.q { color: var(--accent); background: var(--sunken); }
+.margin-col.phone .mg-sign { left: 0; width: 24px; min-height: 24px; }
+@media (pointer: coarse) { .margin-col.phone .mg-sign { height: 44px; margin-top: -10px; } }
+.popover.mg-popover { padding: 10px 12px 12px; }
+.mg-pop { position: relative; width: min(330px, 100%); }
+.mg-pop .mg-card { position: relative; left: auto; right: auto; margin: 0 0 4px; padding-right: 32px; background: none; box-shadow: none; }
+.mg-pop .mg-card:has(.mg-edit) { box-shadow: 0 0 0 1.5px var(--accent); }
+.mg-pop .mg-more { position: absolute; top: 2px; right: 2px; }
+.mg-pop .mg-menu { top: 30px; }
+
+/* The Legend pane (marks T11, rows 32 to 41) */
+.legend-pane { display: flex; flex-direction: column; gap: 8px; }
+.lg-head { display: flex; align-items: center; gap: 8px; }
+.lg-title { flex: 1; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-list, .lg-uses, .lg-group { display: flex; flex-direction: column; gap: 6px; }
+.lg-entry { position: relative; display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface, var(--bg)); flex-wrap: wrap; }
+.lg-entry.dragging { opacity: .6; }
+.lg-entry.drop-before { box-shadow: 0 -2px 0 var(--accent); }
+.lg-entry.drop-after { box-shadow: 0 2px 0 var(--accent); }
+.lg-unlisted { border-style: dashed; }
+.lg-drag { cursor: grab; color: var(--muted); }
+.lg-text { flex: 1; min-width: 120px; display: flex; flex-direction: column; gap: 1px; }
+.lg-name, .lg-meaning { background: none; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; cursor: text; }
+.lg-name { font: var(--type-body-strong, inherit); }
+.lg-meaning { font: var(--type-caption); }
+.lg-name.muted, .lg-meaning.muted, .lg-name.muted { color: var(--muted); font-weight: normal; }
+.lg-edit { width: 100%; }
+.lg-key, .lg-quick { border: 1px solid var(--line); background: none; border-radius: 4px; padding: 1px 6px; font: var(--type-caption); color: var(--muted); cursor: pointer; }
+.lg-key.none, .lg-quick:not(.on) { opacity: 0; }
+.lg-entry:hover :is(.lg-key.none, .lg-quick:not(.on)), .lg-entry:focus-within :is(.lg-key.none, .lg-quick:not(.on)) { opacity: 1; }
+@media (pointer: coarse) { .lg-key.none, .lg-quick:not(.on) { opacity: 1; } }
+.lg-quick.on { background: var(--sunken); border-color: transparent; border-radius: 9999px; padding: 1px 10px; color: var(--fg); }
+.lg-recolor { position: relative; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.lg-recolor input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.lg-count { background: none; border: 0; padding: 0; font: var(--type-caption); color: var(--accent); cursor: pointer; }
+.lg-ask { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 8px; border-radius: 8px; background: var(--accent-soft); font: var(--type-small); }
+.lg-ask-text { flex: 1; min-width: 160px; }
+.lg-ask-btns { display: inline-flex; gap: 6px; }
+.lg-newpen { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.lg-color-pick { display: flex; align-items: center; gap: 8px; font: var(--type-small); }
+.lg-use { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; }
+.lg-use.picked { background: var(--accent-soft); }
+.lg-use-go { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; background: none; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.lg-ref { font: var(--type-small-strong); }
+.lg-words { font: var(--type-small); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-foot { display: flex; align-items: center; gap: 8px; }
+.lg-where { display: flex; align-items: center; gap: 6px; }
+@media (pointer: coarse), (max-width: 600px) { .lg-entry :is(button, .lg-recolor), .lg-use { min-height: 44px; } }
+.lg-newpen [hidden], .legend-pane [hidden] { display: none !important; }
+.lg-entry { flex-wrap: nowrap; }
+.lg-text { min-width: 60px; }
+.lg-count { flex: none; white-space: nowrap; }
+
+
+/* Colors across the Bible (marks T14, rows 57 and 58): a book a row of chapter cells; a style as small bars, a folder as a tab */
+.colormap { padding: 12px 14px; box-sizing: border-box; }
+.cm-head { display: flex; align-items: center; gap: 8px; }
+.cm-sub { margin: 4px 0 10px; }
+.cm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.cm-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 9999px; background: var(--surface, none); color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.cm-chip:hover { background: var(--sunken); }
+.cm-chip.on, .cm-chip[aria-pressed="true"] { background: var(--sunken); border-color: var(--ink, currentColor); font-weight: 600; }
+.cm-dot { display: inline-block; width: 10px; height: 10px; border-radius: 9999px; }
+.cm-where { margin: 0 0 8px; }
+.cm-grid { overflow: auto; max-width: 100%; padding-bottom: 6px; }
+.cm-row { display: flex; align-items: center; gap: 8px; min-width: max-content; height: 20px; }
+.cm-book { position: sticky; left: 0; z-index: 1; flex: none; width: 104px; background: var(--surface, var(--bg)); font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm-cells { display: inline-flex; gap: 2px; }
+.cm-cell { position: relative; display: flex; flex-direction: row; justify-content: center; gap: 1px; flex: none; width: 9px; height: 16px; padding: 0 1px; box-sizing: border-box; border: 0; border-radius: 2px; background: var(--sunken); overflow: hidden; cursor: pointer; }
+.cm-cell:hover, .cm-cell:focus-visible { outline: 2px solid var(--ink, currentColor); outline-offset: 0; z-index: 2; }
+.cm-bar { flex: 1; min-width: 0; border-radius: 1px; }
+.cm-tab { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; }
+@media (pointer: coarse), (max-width: 600px) {
+  .cm-row { height: 34px; }
+  .cm-cells { gap: 3px; }
+  .cm-cell { width: 28px; height: 30px; }
+  .cm-book { width: 92px; }
+  .cm-chip { min-height: 44px; }
 }

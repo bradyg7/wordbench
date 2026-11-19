@@ -173,9 +173,31 @@ fn notebook_commands() -> Vec<Command> {
             }),
         cmd("day rm", "Delete a day's page with timed Undo.",
             vec![Pos("day", N::Opt)], |c, a| j(nb::delete_day_with_undo(c.bible()?, &mut *c.study()?, day_of(a).as_deref()).map_err(e)?)),
-        cmd("settings", "The window's settings for a part (notebook): wb settings notebook; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
+        cmd("settings", "The window's settings for a part (notebook): wb settings notebook; the marks panel: wb settings marks [kind <kind> on|off | entry <name or style> on|off | reading on|off | margin open|signs]; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
             vec![Pos("part", N::One), Pos("key", N::Opt), Pos("value", N::Any), Flag("about")], |c, a| {
-                const FREE: [&str; 8] = ["reading", "hover", "theme", "advanced", "toolbar", "commands", "concordance", "margin"];
+                if a.s("part") == "marks" {
+                    // the marks panel (rows 44 to 46): wb settings marks | kind <kind> on|off | entry <name or style> on|off | reading on|off
+                    let mut st = c.study()?;
+                    let (key, rest) = (a.s("key"), a.s("value"));
+                    if key.is_empty() {
+                        return j(wb_core::marks::panel_settings(&st));
+                    }
+                    let rest = rest.trim();
+                    if key == "margin" {
+                        return j(wb_core::marks::panel_margin(&mut st, rest).map_err(e)?);
+                    }
+                    let (target, state) = if key == "reading" { ("", rest) } else { rest.rsplit_once(char::is_whitespace).map(|(t, s)| (t.trim(), s)).unwrap_or(("", rest)) };
+                    let on = match state {
+                        "on" => true,
+                        "off" => false,
+                        _ => return Err(format!("Say on or off: wb settings marks {key}{} on|off", if key == "reading" { "" } else { " <name>" })),
+                    };
+                    if key != "reading" && target.is_empty() {
+                        return Err(format!("Say which: wb settings marks {key} <name> on|off"));
+                    }
+                    return j(wb_core::marks::panel_set(&mut st, &key, target, on).map_err(e)?);
+                }
+                const FREE: [&str; 7] = ["reading", "hover", "theme", "advanced", "toolbar", "commands", "concordance"];
                 if FREE.contains(&a.s("part").as_str()) {
                     // the window's other settings (R4): any key, a value that is JSON or plain text; "default" forgets it
                     let part = a.s("part");
@@ -195,7 +217,7 @@ fn notebook_commands() -> Vec<Command> {
                     return j(serde_json::Value::Object(st.set_setting(&part, &a.s("key"), v).map_err(e)?));
                 }
                 if a.s("part") != "notebook" {
-                    return Err("The parts with settings: notebook, reading, hover, theme, advanced, toolbar, commands, concordance.".into());
+                    return Err("The parts with settings: notebook, marks, reading, hover, theme, advanced, toolbar, commands, concordance.".into());
                 }
                 let mut st = c.study()?;
                 if a.s("key").is_empty() {

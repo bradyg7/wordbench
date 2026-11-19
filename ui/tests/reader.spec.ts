@@ -33,8 +33,9 @@ test('draws Numbers 25 with the marks, in Literata', async ({ page }, info) => {
   expect(await page.evaluate(() => document.fonts.check('18px Literata'))).toBe(true);
   expect(await page.locator('.w.hl').count()).toBeGreaterThan(0);
   expect(await page.locator('.w.noted').count()).toBeGreaterThan(0);
-  // folder lines: under a phrase or word; a whole verse is a mark by its number (threads TH-7)
-  expect(await page.locator('.w[style*="linear-gradient"]').count() + await page.locator('.vn.vth').count()).toBeGreaterThan(0);
+  // a folder's color is a tab by the verse number, never a line on the words (MK7-7, MK7-15)
+  expect(await page.locator('.vn.vth').count()).toBeGreaterThan(0);
+  expect(await page.locator('.w[style*="linear-gradient"]').count()).toBe(0);
   // The words on screen are the database's words, in order.
   const v11 = fx.reader.chapter.verses.find((v: any) => v.v === 11);
   const shown = await page.$$eval('.w', els => els.map(e => e.textContent));
@@ -54,6 +55,7 @@ test('draws Numbers 25 with the marks, in Literata', async ({ page }, info) => {
 test('tap a word: the word sheet', async ({ page }, info) => {
   test.skip(info.project.name === 'webkit-desktop', 'phone');
   await ready(page);
+  await page.evaluate(() => { const w = (window as any).__wb; w.drawn.marks.marks = []; w.repaint(); });   // a marked word opens the mark card (marks T8)
   const zeal = fx.words['11.24'];
   const box = await wordBox(page, 11, 24);
   await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
@@ -97,14 +99,14 @@ test('press and hold, drag across verses, then a handle', async ({ page }, info)
   await touch(page, 'pointerup', b.x + 4, b.y + b.height / 2);
   const sel = await page.evaluate(() => { const s = (window as any).__wb.selector.sel, d = (window as any).__wb.drawn; return { a: [d.v[s.a], d.i[s.a]], b: [d.v[s.b], d.i[s.b]] }; });
   expect(sel).toEqual({ a: [7, 2], b: [8, 3] });
-  await expect(page.locator('.selbar')).toBeVisible();
+  await expect(page.locator('.markbar')).toBeVisible();
   await expect(page.locator('.handle-a')).toBeVisible();
   await page.screenshot({ path: `${shots}/${info.project.name}-selection.png` });
   // Drag the end handle on to verse 9.
   const hb = (await page.locator('.handle-b i').boundingBox())!;
   const line = (await page.locator('.handle-b').boundingBox())!;
   const grip = hb.y + hb.height / 2 - (line.y + line.height / 2);   // the finger holds the knob, below the line
-  await page.evaluate(() => (document.querySelector('.selbar') as HTMLElement).style.display = 'none');
+  await page.evaluate(() => (document.querySelector('.markbar') as HTMLElement).style.display = 'none');
   await touch(page, 'pointerdown', hb.x + hb.width / 2, hb.y + hb.height / 2);
   const c = await wordBox(page, 9, 4);
   await page.evaluate(([x, y]) => {
@@ -113,9 +115,6 @@ test('press and hold, drag across verses, then a handle', async ({ page }, info)
   }, [c.x + c.width - 2, c.y + c.height / 2 + grip]);
   const end = await page.evaluate(() => { const s = (window as any).__wb.selector.sel, d = (window as any).__wb.drawn; return [d.v[s.b], d.i[s.b]]; });
   expect(end[0]).toBe(9);
-  // A color from the bar highlights the words (in the spike, for this session only).
-  await page.locator('.selbar .swatch.c-green').tap();
-  expect(await page.locator('.w.hl[style*="hl-green"]').count()).toBeGreaterThan(5);
 });
 
 test('mouse: hover card and the color bar', async ({ page }, info) => {
@@ -132,7 +131,7 @@ test('mouse: hover card and the color bar', async ({ page }, info) => {
   await page.mouse.down();
   await page.mouse.move(b.x + b.width - 3, b.y + b.height / 2, { steps: 6 });
   await page.mouse.up();
-  await expect(page.locator('.colorbar')).toBeVisible();
+  await expect(page.locator('.markbar')).toBeVisible();
   await page.screenshot({ path: `${shots}/${info.project.name}-color-bar.png` });
 });
 
@@ -149,7 +148,7 @@ test('a mark made while a long chapter is still being drawn reaches its last ver
     const wb = (window as any).__wb;
     await wb.open('PSA', 119);
     const d = wb.drawn;
-    d.marks.highlights.push({ kind: 'verse', code: 'PSA', c1: 119, v1: 170, i1: null, c2: null, v2: null, i2: null, id: 't', color: 'green' });
+    d.marks.marks = [...(d.marks.marks || []), { id: 't', kind: 'highlight', color: 'green', at: 'PSA.119:170', created: '2026-01-01T00:00:00Z', legend: 'Unnamed green highlight', style: 'highlight:green' }];
     wb.repaint();
   });
   await page.waitForFunction(() => { const d = (window as any).__wb.drawn; return d.el.filter(Boolean).length === d.v.length; });
@@ -242,12 +241,12 @@ test('desktop: a click on a verse number selects the verse with the color bar; a
   const vn = page.locator('#reader .vn[data-v="7"]');
   await vn.scrollIntoViewIfNeeded();
   await vn.click();
-  await expect(page.locator('.colorbar.verse-bar')).toBeVisible();
+  await expect(page.locator('.markbar.verse-bar')).toBeVisible();
   const words = await page.evaluate(() => (window as any).__wb.drawn.v.filter((v: number) => v === 7).length);
   await expect(page.locator('#reader .w.sel')).toHaveCount(words);
   await expect(page.locator('#reader .vn.vsel')).toHaveCount(1);
   await page.locator('.ch-title').click();
-  await expect(page.locator('.colorbar')).toHaveCount(0);
+  await expect(page.locator('.markbar')).toHaveCount(0);
   await expect(page.locator('#reader .w.sel, #reader .vn.vsel')).toHaveCount(0);
 });
 
@@ -308,11 +307,12 @@ test('desktop: layer menu and commands repaint both readers in place and persist
   const mark = (v: number, id: string, color?: string) => ({
     kind: 'verse', code: 'NUM', c1: 25, v1: v, i1: null, c2: null, v2: null, i2: null, id, color,
   });
+  const drawnMark = (v: number, id: string, color: string) => ({ id, kind: 'highlight', color, at: `NUM.25:${v}`, created: '2026-01-01T00:00:00Z', legend: `Unnamed ${color} highlight`, style: `highlight:${color}` });
   const chapter = {
     ...fx,
     reader: {
       ...fx.reader,
-      marks: { highlights: [mark(10, 'fill', 'yellow')], threads: [mark(10, 'trial', 'green')],
+      marks: { highlights: [], marks: [drawnMark(10, 'fill', 'yellow')], threads: [mark(10, 'trial', 'green')],
         notes: [mark(11, 'note')], thread_names: { trial: 'Trial thread' } },
       questions: [{ id: 'question', v: 12, text: 'Test question' }],
     },
@@ -423,7 +423,7 @@ test('a highlight is continuous between words', async ({ page }) => {
   await ready(page);
   const r = await page.evaluate(() => {
     const w = (window as any).__wb, d = w.drawn;
-    d.marks.highlights.push({ kind: 'phrase', code: 'NUM', c1: 25, v1: 5, i1: 1, c2: 25, v2: 5, i2: 40, id: 'cont', color: '#7a1f1f' });
+    d.marks.marks = [...(d.marks.marks || []), { id: 'cont', kind: 'highlight', color: '#7a1f1f', at: 'NUM.25:5.1-25:5.40', created: '2026-01-01T00:00:00Z', legend: 'Unnamed #7a1f1f highlight', style: 'highlight:#7a1f1f' }];
     w.repaint();
     const ws = [...document.querySelectorAll<HTMLElement>('.w.hl')].filter(e => d.v[+e.dataset.k!] === 5);
     return ws.slice(0, -1).map(e => {

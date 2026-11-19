@@ -16,8 +16,27 @@ const wb = (...args) => execFileSync('cargo', ['run', '-q', '--release', '-p', '
 try {
   wb('hl', 'set', 'Numbers 25:11', 'green');
   wb('note', 'add', 'NUM.25:11.24', 'Synthetic reader fixture note.');
-  // the margin (design/features/marks): margin notes and pages at Numbers 25:11, as generated text, no scripture
-  for (const [at, text] of [['Numbers 25:11', 'First margin note (synthetic).'], ['Numbers 25:11', 'Second margin note (synthetic).'], ['Numbers 25:10-13', 'A note on the passage (synthetic).'], ['Numbers 25', 'A note on the chapter (synthetic).']]) wb('margin', 'add', at, text);
+  // every kind of mark and a legend (design/features/marks T5); the places are anchors, no scripture is typed
+  wb('legend', 'add', '--kind', 'underline', '--color', 'blue', '--lines', '2', '--name', 'Fixture double');
+  wb('legend', 'add', '--kind', 'box', '--color', '#cc3322', '--name', 'Fixture box');
+  // six more entries, so the mark bar's drop-downs and the Legend are tried with eight (marks T6); none is a style a mark above uses
+  for (const [kind, color, name, lines] of [['highlight', 'pink', 'Fixture promise'], ['highlight', 'blue', 'Fixture later'], ['underline', '#7a1f1f', 'Fixture repeated', '1'], ['circle', 'green', 'Fixture person'], ['circle', 'blue', 'Fixture place'], ['box', 'orange', 'Fixture orange box']]) {
+    wb('legend', 'add', '--kind', kind, '--color', color, '--name', name, ...(lines ? ['--lines', lines] : []));
+  }
+  wb('legend', 'set', 'Fixture promise', '--quick', 'on');
+  wb('legend', 'set', 'Fixture repeated', '--quick', 'on');
+  for (const args of [
+    ['NUM.25:7', '--kind', 'highlight', '--color', 'yellow'],
+    ['NUM.25:6.1-25:6.4', '--kind', 'underline', '--color', '#cc3322', '--lines', '1'],
+    ['NUM.25:8.1-25:8.5', '--style', 'Fixture double'],
+    ['NUM.25:9.1-25:9.5', '--kind', 'underline', '--color', 'green', '--lines', '3'],
+    ['NUM.25:11.2-25:11.5', '--kind', 'circle', '--color', 'orange'],
+    ['NUM.25:12.1-25:12.4', '--style', 'Fixture box'],
+    ['NUM.25:6', '--kind', 'arrow', '--color', 'blue', '--to', 'NUM.25:11'],
+  ]) wb('mark', 'add', ...args);
+  // two margin notes (marks T4, T12): one on a verse, one on a span of verses; their words are the person's, never scripture
+  wb('mark', 'note', 'NUM.25:11', 'A margin note written for the fixture.');
+  wb('mark', 'note', 'NUM.25:10-12', 'A span note written for the fixture.');
   wb('thread', 'new', 'Fixture thread', '--at', 'Numbers 25:12', '--color', '#654321');
   for (const [book, ch] of [['NUM', 25], ['NUM', 24], ['NUM', 26], ['PSA', 119]]) {
     writeFileSync(new URL(`${book}.${ch}.json`, out), wb('fixture', book, String(ch)));
@@ -45,16 +64,22 @@ try {
   for (const k of [1, 2, 3]) wb('page', 'new', `Fixture page ${k}
 
 Names Numbers 25:11 here.`);
-  // one page that shows what marks adds to a page: scripture named in a paragraph and in a block (With my marks), a margin note
-  // shown as a jot block, and the numbers the Notebook asks for when it draws it (design/features/marks)
-  const seed = JSON.parse(wb('margin', 'add', 'Numbers 25:11', 'Seed note (synthetic).', '--json')).id;
-  const marksPage = JSON.parse(wb('page', 'new', ['Marks page', '', 'See Numbers 25:11 and Psalm 119:105.', '', '```scripture', 'Numbers 25:10-12', 'marks', '```', '', '```jot', seed, '```', '', 'Also Romans 10:2 and Exodus 20:3.'].join('\n'), '--json')).id;
+  // one page that shows what marks adds to a page: scripture named in a paragraph and in a block, and the numbers the Notebook
+  // asks for when it draws it (design/features/marks)
+  const marksPage = JSON.parse(wb('page', 'new', ['Marks page', '', 'See Numbers 25:11 and Psalm 119:105.', '', '```scripture', 'Numbers 25:10-12', 'marks', '```', '', 'Also Romans 10:2 and Exodus 20:3.'].join('\n'), '--json')).id;
   mkdirSync(new URL('wb/', out), { recursive: true });
-  writeFileSync(new URL('wb/marks-page.json', out), JSON.stringify({ id: marksPage, note: seed }));
+  writeFileSync(new URL('wb/marks-page.json', out), JSON.stringify({ id: marksPage }));
   const named = argv => argv.join(' ').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
   for (const argv of [
-    ['page', 'overview', marksPage], ['page', 'blocks', marksPage], ['page', 'scripture', marksPage], ['page', 'jots', marksPage], ['note', 'show', marksPage],
-    ['page', 'tree'], ['notebook', 'sidebar', '--at', 'NUM 25'], ['parse', 'go Psalms 119:105'], ['find', '--sort', 'edited'], ['find', '--kind', 'margin'], ['find', '--kind', 'page'], ['margin', 'NUM 25'], ['margin', 'NUM 25:11'], ['margin', 'list'], ['settings', 'margin'],
+    ['page', 'overview', marksPage], ['page', 'blocks', marksPage], ['page', 'scripture', marksPage], ['note', 'show', marksPage],
+    ['page', 'tree'], ['notebook', 'sidebar', '--at', 'NUM 25'], ['parse', 'go Psalms 119:105'], ['find', '--sort', 'edited'], ['find', '--kind', 'page'],
+    // finding marks and margin notes, and what is on a verse (marks T12, rows 51 to 53)
+    ['find', '--kind', 'mark'], ['find', '--kind', 'mark', '--style', 'underline:blue:2'], ['find', '--kind', 'mark', '--mark-kind', 'underline'],
+    ['find', '--kind', 'mark', '--book', 'Numbers'], ['find', '--kind', 'mark', '--book', 'Psalms'], ['find', '--kind', 'mark', '--since', '2020-01-01'],
+    ['find', '--kind', 'mark', '--until', '2020-01-01'], ['find', '--kind', 'margin'], ['mark', 'at', 'NUM.25:11'], ['mark', 'notes', 'Numbers 25'], ['mark', 'at', 'NUM.25:13'],
+    // Colors across the Bible (marks T14, rows 57 and 58): the whole map, one style, one folder
+    ['marks', 'map'], ['marks', 'map', '--style', 'underline:blue:2'], ['marks', 'map', '--style', 'highlight:yellow'], ['marks', 'map', '--folder', 'thread:fixture-thread'],
+    ['legend'], ['settings', 'marks'], ['legend', 'uses', 'underline:blue:2'], ['legend', 'uses', 'box:#cc3322'], ['legend', 'uses', 'highlight:yellow'],
     ['concordance', 'letters'], ['settings', 'concordance'],
     ['concordance', 'zeal', '--forms', 'all'], ['concordance', 'zeal', '--forms', 'one'], ['concordance', 'zealous', '--forms', 'one'],
     ['concordance', 'heart', '--forms', 'one'], ['concordance', 'heart', '--forms', 'one', '--book', 'PSA'], ['concordance', 'and', '--forms', 'all'], ['concordance', 'and', '--forms', 'one'],

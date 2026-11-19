@@ -19,18 +19,18 @@ import { openConcordance } from './concordance';
 import { closeSheet, compact, hideCard, openSheet } from './sheets';
 import { frameCard, grip } from './cardframe';
 import { pagesLine } from './wordcard';
+import { marksOnVerse } from './versemarks';
 import { button, h, icon, placePill, popMenu } from './ui';
 
-export interface Run { t: string; hl?: string; pencil?: boolean }
-/** `dot`: With my marks (marks M6, M7), a margin note, page or save at this verse. */
-export interface MarkedVerse { ref: string; book: string; code: string; c: number; v: number; text: string; runs: Run[]; dot?: { notes: number; pages: number; saves: number } }
+export interface Run { t: string; hl?: string }
+export interface MarkedVerse { ref: string; book: string; code: string; c: number; v: number; text: string; runs: Run[] }
 export interface Marked { label: string; version: string; verses: MarkedVerse[] }
 
 import { hlStyle } from './hlink';
 
 /** Verses drawn verbatim, each with its number: as a paragraph (one after another) or a verse to a line. The person's
  * highlights are on the words, as in the reader (none while the highlights layer is hidden). */
-export function drawVerses(verses: MarkedVerse[], lines: boolean, opts: { dots?: boolean } = {}): HTMLElement {
+export function drawVerses(verses: MarkedVerse[], lines: boolean, onVerse?: (v: MarkedVerse, el: HTMLElement, e: MouseEvent | KeyboardEvent) => void): HTMLElement {
   const box = h('div', `sv-text ${lines ? 'sv-lines' : 'sv-para'}`);
   const showHl = layers.highlightsShown();
   const several = new Set(verses.map(v => `${v.code}.${v.c}`)).size > 1;
@@ -39,14 +39,22 @@ export function drawVerses(verses: MarkedVerse[], lines: boolean, opts: { dots?:
     if (lines || !p) { p = h('p', 'scripture sv-p'); box.append(p); } else p.append(' ');
     const verse = h('span', 'sv-verse');
     verse.dataset.ref = v.ref;
-    verse.append(h('span', 'sv-vn', several ? `${v.c}:${v.v}` : String(v.v)));
-    if (opts.dots && v.dot) verse.append(verseDot(v));
+    const vn = h('span', 'sv-vn', several ? `${v.c}:${v.v}` : String(v.v));
+    if (onVerse) {
+      // the verse's card (marks T12, MK7-23): a click on the number, as in the reader
+      vn.setAttribute('role', 'button');
+      vn.tabIndex = 0;
+      vn.title = `The card for ${v.ref}`;
+      vn.style.cursor = 'pointer';
+      vn.onclick = e => { e.stopPropagation(); onVerse(v, vn, e); };
+      vn.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onVerse(v, vn, e); } };
+    }
+    verse.append(vn);
     const t = h('span', 'sv-t');
     for (const r of v.runs) {
-      const pen = !!r.pencil && opts.dots;
-      if ((r.hl && showHl) || pen) {
-        const m = h('span', `sv-hl${pen ? ' sv-pencil' : ''}`, r.t);
-        m.style.cssText = (r.hl && showHl ? hlStyle(r.hl) : '') + (pen ? 'background-image:linear-gradient(var(--pencil),var(--pencil));background-position:0 100%;background-size:100% 2px;background-repeat:no-repeat;padding-bottom:3px;' : '');
+      if (r.hl && showHl) {
+        const m = h('span', 'sv-hl', r.t);
+        m.style.cssText = hlStyle(r.hl);
         t.append(m);
       } else t.append(r.t);
     }
@@ -54,34 +62,6 @@ export function drawVerses(verses: MarkedVerse[], lines: boolean, opts: { dots?:
     p.append(verse);
   }
   return box;
-}
-
-/** One dot per verse that has a margin note, a page or a save (marks M7). A click opens a small card in the page, right there:
- * the page does not scroll. */
-function verseDot(v: MarkedVerse): HTMLElement {
-  const b = h('button', 'sv-dot');
-  b.dataset.v = String(v.v);
-  const d = v.dot!;
-  b.setAttribute('aria-label', `${v.ref}: ${[d.notes && `${d.notes} notes`, d.pages && `${d.pages} pages`, d.saves && `${d.saves} saves`].filter(Boolean).join(', ')}`);
-  b.onclick = async ev => {
-    ev.stopPropagation();
-    const para = b.closest('.sv-p')!;
-    const old = para.parentElement!.querySelector(`.sv-dotcard[data-v="${v.v}"]`);
-    if (old) { old.remove(); return; }
-    const card = h('div', 'sv-dotcard');
-    card.dataset.v = String(v.v);
-    card.append(h('b', '', v.ref));
-    try {
-      const m = await wb(['margin', `${v.code} ${v.c}:${v.v}`]);
-      for (const n of m.notes) card.append(h('div', 'sv-dotline', n.first_line));
-      card.append(h('div', 'muted small', `${m.counts.notes} notes · ${m.counts.pages} pages · ${m.counts.saves} saves`));
-    } catch (x) { card.append(h('div', 'muted small', String(x))); }
-    const close = h('button', 'link-btn small', 'Close');
-    close.onclick = e2 => { e2.stopPropagation(); card.remove(); };
-    card.append(close);
-    para.after(card);
-  };
-  return b;
 }
 
 // ---- the one Open menu ------------------------------------------------------------------------------------------------
@@ -257,6 +237,8 @@ function fillCard(body: HTMLElement, ref: string, d: Marked, o: CardOpts) {
   body.append(head);
   body.append(drawVerses(d.verses.slice(0, MOST), false));
   if (d.verses.length > MOST) body.append(h('p', 'muted small', `and ${d.verses.length - MOST} more verses: Open the chapter shows them all`));
+  const [vf, vl] = [d.verses[0], d.verses[d.verses.length - 1]];
+  body.append(marksOnVerse(vf === vl ? `${vf.code}.${vf.c}:${vf.v}` : `${vf.code}.${vf.c}:${vf.v}-${vl.c}:${vl.v}`));   // every mark on it and the margin notes covering it (marks T12, row 53)
   const tabs = h('div', 'vc-tabs vc-seg');
   const panel = h('div', 'vc-panel');
   let tab: Tab = null;

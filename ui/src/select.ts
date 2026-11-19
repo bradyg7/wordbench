@@ -12,7 +12,7 @@ export type InputMode = 'auto' | 'touch' | 'pointer';
 
 export interface Handlers {
   tapWord(k: number, el: HTMLElement, at: number): void;
-  tapVerse(v: number, el: HTMLElement, at: number): void;
+  tapVerse(v: number, el: HTMLElement, at: number, shift?: boolean): void;
   hoverWord(k: number, el: HTMLElement): void;
   hoverVerse(v: number, el: HTMLElement): void;
   unhover(): void;
@@ -31,6 +31,8 @@ export class Selector {
   private drag: { id: number; end: 'a' | 'b' | 'free'; anchor: number; dx: number; dy: number } | null = null;
   private handles: HTMLElement[];
   private hoverTimer = 0;
+  /** The round handles belong to a selection made by touch (a press and hold); a mouse selection looks like a browser's, with none (marks MK7-12). */
+  private touchSel = false;
 
   constructor(private root: HTMLElement, private scroller: HTMLElement, private h: Handlers) {
     this.handles = ['a', 'b'].map(end => {
@@ -115,6 +117,7 @@ export class Selector {
     const p = this.press;
     if (!p || p.moved || p.k === null) return;
     p.held = true;
+    this.touchSel = true;
     navigator.vibrate?.(8);                       // a light tick where the platform allows it
     this.set(p.k, p.k);
     this.drag = { id: p.id, end: 'free', anchor: p.k, dx: 0, dy: 0 };
@@ -141,6 +144,7 @@ export class Selector {
       // A mouse press that moves starts a selection by dragging.
       if (!p.touch && p.k !== null && !this.drag) {
         capture(this.root, p.id);
+        this.touchSel = false;
         this.drag = { id: p.id, end: 'free', anchor: p.k, dx: 0, dy: 0 };
         this.set(p.k, p.k);
       }
@@ -161,6 +165,8 @@ export class Selector {
     clearTimeout(p.timer);
     if (p.moved || p.held) return;
     const at = e.timeStamp;
+    // a mouse click on a verse number selects that verse (shift: the span from the first), selection or not
+    if (p.v !== null && !p.touch) { this.h.tapVerse(p.v, (e.target as HTMLElement).closest('.vn')!, at, e.shiftKey); return; }
     if (this.sel) { this.clear(); return; }      // a tap away from a selection only clears it
     if (p.v !== null) this.h.tapVerse(p.v, (e.target as HTMLElement).closest('.vn')!, at);
     else if (p.k !== null) this.h.tapWord(p.k, this.d!.el[p.k], at);
@@ -208,6 +214,7 @@ export class Selector {
     const d = this.d;
     if (d && this.sel) for (let k = this.sel.a; k <= this.sel.b; k++) { d.el[k].classList.remove('sel', 'sj'); d.gap[k]?.classList.remove('sel'); }
     this.sel = null;
+    this.touchSel = false;
     this.handles.forEach(h => { h.hidden = true; });
     this.h.cleared();
   }
@@ -220,6 +227,7 @@ export class Selector {
 
   placeHandles() {
     if (!this.sel) return;
+    if (!this.touchSel) { this.handles.forEach(h => { h.hidden = true; }); return; }
     const base = this.root.getBoundingClientRect();
     (['a', 'b'] as const).forEach((end, n) => {
       const r = this.edgeRect(end), h = this.handles[n];
