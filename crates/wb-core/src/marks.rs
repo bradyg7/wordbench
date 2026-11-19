@@ -317,8 +317,8 @@ fn layer(kind: &str) -> u8 {
 
 /// Every mark covering a place (a verse, words, a phrase, verses), old highlights too, topmost first: arrows, then
 /// underlines, then circle and box, then highlight; within a layer, the newest first. A mark covers a place when its
-/// own words (`at`) share a word with it.
-pub fn mark_at(store: &Store, place: &str) -> Result<Value> {
+/// own words (`at`) share a word with it. `notes` are the margin notes whose verses overlap the place's verses (row 53).
+pub fn mark_at(bible: &Bible, store: &Store, place: &str) -> Result<Value> {
     let a = anchors::parse(place)?;
     if a.kind == Kind::Lemma {
         return Err(bad("Marks are on words, phrases or verses."));
@@ -339,7 +339,9 @@ pub fn mark_at(store: &Store, place: &str) -> Result<Value> {
     out.sort_by(|x, y| layer(&x.kind).cmp(&layer(&y.kind)).then_with(|| y.created.cmp(&x.created)));
     let entries = read_legend(store);
     let out: Vec<Value> = out.iter().map(|m| with_legend(&entries, m)).collect();
-    Ok(json!({"place": a.id(), "marks": out}))
+    // the margin notes covering the verses it names (row 53): `wb mark notes` rows, in the order of their verses
+    let notes = crate::margin::covering(bible, store, &a.code, (a.c1, a.v1), (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1)));
+    Ok(json!({"place": a.id(), "marks": out, "notes": notes}))
 }
 
 /// Replace one mark's style (kind, color, lines); its id, place and `created` stay and `changed` is set. It refuses what
@@ -864,19 +866,13 @@ fn words_under(bible: &Bible, a: &anchors::Anchor) -> String {
     }
 }
 
-/// Where a style is used (MK7-21, row 40): `{"entry": {label, style, kind, color, lines?, listed, count}, "count", "marks": [...]}`.
-/// `target` is an entry (its name or style) or any style marks use, listed or not. Each mark has its id, kind, color,
-/// lines, `at`, `to`, `code`, `book`, `chapter`, `verse`, `label` (its reference), `words` (from the Bible, or the old
-/// highlight's own), `created`, `old` (an old highlight); in Bible order.
-pub fn legend_uses(bible: &Bible, store: &Store, target: &str) -> Result<Value> {
-    let entries = read_legend(store);
-    let (style, entry) = match find_entry(&entries, target) {
-        Some(i) => (entry_style(&entries[i]), Some(entries[i].clone())),
-        None => (parse_style(target).ok_or_else(|| missing(format!("No legend entry “{}”. Name one, or write its style as kind:color[:lines] (wb legend lists them).", target.trim())))?, None),
-    };
+/// Every mark the keep-function accepts, as rows in Bible order: id, kind, color, lines, `at`, `to`, `code`, `book`,
+/// `chapter`, `verse`, `label` (its reference), `words` (from the Bible, or the old highlight's own), `created`, `old`.
+/// The one scanner behind `legend_uses` (row 40) and `find_marks` (row 51).
+fn mark_rows(bible: &Bible, store: &Store, keep: impl Fn(&DrawnMark) -> bool) -> Vec<Value> {
     let legacy_ids: std::collections::HashSet<String> = store.all_highlights().iter().map(|h| s(h, "id")).collect();
     let mut found: Vec<(usize, u32, u32, u32, String, Value)> = vec![];
-    for m in all_marks(store).into_iter().filter(|m| style_of(m) == style) {
+    for m in all_marks(store).into_iter().filter(|m| keep(m)) {
         let Ok(a) = anchors::parse(&m.at) else { continue };
         let Some(bi) = bible.books().iter().position(|b| b.code == a.code) else { continue };
         let book = &bible.books()[bi];
@@ -896,7 +892,71 @@ pub fn legend_uses(bible: &Bible, store: &Store, target: &str) -> Result<Value> 
         found.push((bi, a.c1, a.v1, a.i1.unwrap_or(0), m.created.clone(), v));
     }
     found.sort_by(|x, y| (x.0, x.1, x.2, x.3, &x.4).cmp(&(y.0, y.1, y.2, y.3, &y.4)));
-    let marks: Vec<Value> = found.into_iter().map(|f| f.5).collect();
+    found.into_iter().map(|f| f.5).collect()
+}
+
+/// What finds marks (row 51). Every filter that is set must hold. `style` is a legend entry (its name) or `kind:color[:lines]`;
+/// `since` and `until` are days (`2026-11-01`), compared with the day the mark was made.
+#[derive(Default)]
+pub struct MarkFilter<'a> {
+    pub style: Option<&'a str>,
+    pub kind: Option<&'a str>,
+    pub color: Option<&'a str>,
+    pub book: Option<&'a str>,
+    pub since: Option<&'a str>,
+    pub until: Option<&'a str>,
+}
+
+/// The marks that pass the filters, old highlights included, each as in `legend_uses` plus its `legend` name and `style`:
+/// `{"count", "marks": [...]}` in Bible order.
+pub fn find_marks(bible: &Bible, store: &Store, f: &MarkFilter<'_>) -> Result<Value> {
+    let entries = read_legend(store);
+    let style = match f.style {
+        Some(t) => Some(match find_entry(&entries, t) {
+            Some(i) => entry_style(&entries[i]),
+            None => parse_style(t).ok_or_else(|| missing(format!("No legend entry “{}”. Name one, or write its style as kind:color[:lines] (wb legend lists them).", t.trim())))?,
+        }),
+        None => None,
+    };
+    if let Some(k) = f.kind {
+        if !MARK_KINDS.contains(&k.trim().to_lowercase().as_str()) {
+            return Err(bad(format!("--mark-kind is one of: {}.", MARK_KINDS.join(", "))));
+        }
+    }
+    let code = match f.book {
+        Some(b) => Some(bible.find_book(b).ok_or_else(|| missing(format!("No book “{}”.", b.trim())))?.code.clone()),
+        None => None,
+    };
+    let kind = f.kind.map(|k| k.trim().to_lowercase());
+    let color = f.color.map(|c| c.trim().to_lowercase());
+    let day = |m: &DrawnMark| m.created.get(..10).unwrap_or("").to_string();
+    let mut marks = mark_rows(bible, store, |m| {
+        style.as_ref().is_none_or(|s| style_of(m) == *s)
+            && kind.as_ref().is_none_or(|k| m.kind == *k)
+            && color.as_ref().is_none_or(|c| m.color.to_lowercase() == *c)
+            && code.as_ref().is_none_or(|c| anchors::parse(&m.at).is_ok_and(|a| a.code == *c))
+            && f.since.is_none_or(|d| day(m).as_str() >= d)
+            && f.until.is_none_or(|d| day(m).as_str() <= d)
+    });
+    for m in marks.iter_mut() {
+        let st = style_key(m["kind"].as_str().unwrap_or(""), m["color"].as_str().unwrap_or(""), m["lines"].as_u64().map(|n| n as u8));
+        m["legend"] = json!(entries.iter().find(|e| entry_style(e) == st).map(entry_label).unwrap_or_else(|| unnamed_words(m["kind"].as_str().unwrap_or(""), m["color"].as_str().unwrap_or(""), m["lines"].as_u64().map(|n| n as u8))));
+        m["style"] = json!(st);
+    }
+    Ok(json!({"count": marks.len(), "marks": marks}))
+}
+
+/// Where a style is used (MK7-21, row 40): `{"entry": {label, style, kind, color, lines?, listed, count}, "count", "marks": [...]}`.
+/// `target` is an entry (its name or style) or any style marks use, listed or not. Each mark has its id, kind, color,
+/// lines, `at`, `to`, `code`, `book`, `chapter`, `verse`, `label` (its reference), `words` (from the Bible, or the old
+/// highlight's own), `created`, `old` (an old highlight); in Bible order.
+pub fn legend_uses(bible: &Bible, store: &Store, target: &str) -> Result<Value> {
+    let entries = read_legend(store);
+    let (style, entry) = match find_entry(&entries, target) {
+        Some(i) => (entry_style(&entries[i]), Some(entries[i].clone())),
+        None => (parse_style(target).ok_or_else(|| missing(format!("No legend entry “{}”. Name one, or write its style as kind:color[:lines] (wb legend lists them).", target.trim())))?, None),
+    };
+    let marks = mark_rows(bible, store, |m| style_of(m) == style);
     let p: Vec<&str> = style.split(':').collect();
     let lines = p.get(2).and_then(|n| n.parse::<u8>().ok());
     let label = entry.as_ref().map(entry_label).unwrap_or_else(|| unnamed_words(p[0], p[1], lines));

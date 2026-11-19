@@ -18,6 +18,8 @@ export const app = {
   refreshMarks: async () => {},
   /** Applies visibility preferences to the marks already loaded in every reader. */
   repaintLayers: () => {},
+  /** Opens the reader at a margin note's chapter with the margin showing that note (Back returns). `at` is the note's place, `NUM.25:11`. */
+  showMarginNote: async (_id: string, _at: string): Promise<void> => {},
   topVerse: () => 1,
   /** The reader's version (KJV, YLT); setting it redraws the chapter with the same verse at the top. */
   version: () => 'KJV',

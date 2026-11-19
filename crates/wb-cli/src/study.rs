@@ -179,9 +179,9 @@ pub fn commands() -> Vec<Command> {
         cmd("mark show", "One mark: its kind, color, lines, at, to, created and changed (and the words of an old highlight), and its legend name (or \"Unnamed <color> <kind>\").", vec![Pos("id", N::One)], |c, a| {
             j(marks::mark_show(&*c.study()?, &a.s("id")).map_err(e)?)
         }),
-        cmd("mark at", "Every mark on a place (a verse, words, a phrase), old highlights too, topmost first: arrows, underlines, circle and box, highlight; newest first within each, each with its legend name. {\"place\", \"marks\"}.", vec![Pos("place", N::Many)], |c, a| {
+        cmd("mark at", "Every mark on a place (a verse, words, a phrase), old highlights too, topmost first: arrows, underlines, circle and box, highlight; newest first within each, each with its legend name. {\"place\", \"marks\", \"notes\"}: notes are the margin notes covering the place's verses (a chapter's own note covers no verse), as wb mark notes gives them.", vec![Pos("place", N::Many)], |c, a| {
             let at = anchor(c, &a.s("place"))?;
-            j(marks::mark_at(&*c.study()?, &at).map_err(e)?)
+            j(marks::mark_at(c.bible()?, &*c.study()?, &at).map_err(e)?)
         }),
         cmd("mark style", "Replace one mark's style: wb mark style <id> [--kind K] [--color C] [--lines 1|2|3]. Its id, place and date are kept; `changed` is set. An old highlight: color only.",
             vec![Pos("id", N::One), Opt("kind", None), Opt("color", None), Opt("lines", None)], |c, a| {
@@ -508,12 +508,15 @@ pub fn commands() -> Vec<Command> {
             }
             j(wb_core::deletion::remove(c.bible()?, &mut st, &id).map_err(e)?)
         }),
-        cmd("find", "Search your own notes, thread names and notes, and trails. With --kind, --folder, --has-question, --edited or --sort it is the library's one search: pages, folders, saves and questions grouped by kind, \"count\" of \"total\". --kind page|folder|save|question|margin, --folder NAME, --has-question, --edited 7d|2026-11-01, --sort edited|title.",
-            vec![Pos("words", N::Any), Opt("kind", None), Opt("folder", None), Flag("has_question"), Opt("edited", None), Opt("sort", None)], |c, a| {
+        cmd("find", "Search your own notes, thread names and notes, and trails. With --kind, --folder, --has-question, --edited or --sort it is the library's one search: pages, folders, saves and questions grouped by kind, \"count\" of \"total\". --kind page|folder|save|question|margin|mark, --folder NAME, --has-question, --edited 7d|2026-11-01, --sort edited|title. --kind mark finds drawn marks (old highlights too), each with its words and reference, in Bible order: --style <legend entry | kind:color[:lines]>, --mark-kind highlight|underline|circle|box|arrow, --color C, --book B, --since/--until 7d|2026-11-01 (the day it was made); the words, if given, are looked for in a mark's words, reference and legend name.",
+            vec![Pos("words", N::Any), Opt("kind", None), Opt("folder", None), Flag("has_question"), Opt("edited", None), Opt("sort", None),
+                Opt("style", None), Opt("mark_kind", None), Opt("color", None), Opt("book", None), Opt("since", None), Opt("until", None)], |c, a| {
             let (kind, folder, edited, sort) = (a.opt("kind"), a.opt("folder"), a.opt("edited"), a.opt("sort"));
-            if kind.is_some() || folder.is_some() || edited.is_some() || sort.is_some() || a.flag("has_question") {
+            let (style, mark_kind, color, book, since, until) = (a.opt("style"), a.opt("mark_kind"), a.opt("color"), a.opt("book"), a.opt("since"), a.opt("until"));
+            if kind.is_some() || folder.is_some() || edited.is_some() || sort.is_some() || a.flag("has_question") || style.is_some() || mark_kind.is_some() || color.is_some() || book.is_some() || since.is_some() || until.is_some() {
                 let f = wb_core::library::Find { words: &a.s("words"), kind: kind.as_deref().unwrap_or(""), folder: folder.as_deref(), has_question: a.flag("has_question"),
-                    edited: edited.as_deref(), sort: sort.as_deref().unwrap_or("") };
+                    edited: edited.as_deref(), sort: sort.as_deref().unwrap_or(""),
+                    style: style.as_deref(), mark_kind: mark_kind.as_deref(), color: color.as_deref(), book: book.as_deref(), since: since.as_deref(), until: until.as_deref() };
                 return j(wb_core::library::find(c.bible()?, &*c.study()?, &f).map_err(e)?);
             }
             if a.s("words").trim().is_empty() {

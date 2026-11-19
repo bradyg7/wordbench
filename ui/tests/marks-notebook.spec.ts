@@ -75,9 +75,9 @@ test('the search’s kinds are one menu at the start of the field, with counts, 
   await expect(kind).toHaveText('Everything ▾');
   await kind.click();
   const menu = page.locator('.nb-kinds');
-  await expect(menu.locator('.menu-item')).toHaveCount(5);
+  await expect(menu.locator('.menu-item')).toHaveCount(7);
   const names = await menu.locator('.menu-item').allTextContents();
-  expect(names.map(n => n.split(' ·')[0])).toEqual(['Everything', 'Pages', 'Saves', 'Questions', 'Highlights']);
+  expect(names.map(n => n.split(' ·')[0])).toEqual(['Everything', 'Pages', 'Saves', 'Questions', 'Margin notes', 'Highlights', 'Marks']);
   const all = fx('find-sort-edited');
   const pages = all.groups.find((g: any) => g.kind === 'page').count;
   expect(names[1]).toBe(`Pages · ${pages}`);

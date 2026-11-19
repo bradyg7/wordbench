@@ -278,6 +278,26 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 .nb-kind { flex: none; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .nb-kind-line { margin: 4px 8px; }
+/* the Marks search (marks T12, row 51): filters as simple controls, then the marks with their words */
+.nb-mfilters { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px; }
+.nb-mfilters :is(select, input) { min-width: 0; max-width: 100%; font: var(--type-small); }
+.nb-mfilters .nb-mbook { width: 120px; }
+.nb-mfilters label { display: inline-flex; align-items: center; gap: 4px; font: var(--type-caption); color: var(--muted); }
+.nb-mrow .nb-mtop { display: flex; align-items: center; gap: 8px; }
+.nb-mrow .nb-mlegend { font: var(--type-caption); color: var(--muted); }
+.nb-mrow .nb-mwords { font: var(--type-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nb-return { margin: 4px 8px; }
+@media (pointer: coarse), (max-width: 600px) { .nb-mfilters :is(select, input) { min-height: 44px; } .nb-mrow { min-height: 44px; } }
+/* what is on a verse, in its card (marks T12, row 53) */
+.vm { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+.vm[hidden] { display: none; }
+.vm-head { font: var(--type-caption); color: var(--muted); margin: 2px 0; }
+.vm-mark { display: flex; align-items: center; gap: 8px; min-height: 24px; font: var(--type-small); }
+.vm-note { display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; background: none; border: 0; padding: 4px 0; font: var(--type-small); color: inherit; cursor: pointer; }
+.vm-note .vm-where { color: var(--accent); }
+.vm-note .vm-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (pointer: coarse), (max-width: 600px) { .vm-note { min-height: 44px; } }
+.mg-card.mg-flash { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* A whole verse saved in a shown folder with a color: its color beside the verse number, the words untouched (threads TH-7) */
 .vn.vth { margin-left: 6px; }
 .eye-list { max-height: 260px; overflow: auto; }
@@ -334,10 +354,10 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-n { flex: none; min-width: 16px; text-align: center; font: var(--type-caption); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 3px; }
 :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-tick { flex: none; color: var(--muted); display: inline-flex; }
 :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-rule { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-sample { flex: none; width: 22px; height: 14px; display: inline-flex; flex-direction: column; justify-content: center; gap: 1px; box-sizing: border-box; border-radius: 3px; font-style: normal; font-size: 12px; line-height: 14px; text-align: center; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-sample b { display: block; border-radius: 1px; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-sample.s-circle { border: 1.5px solid; border-radius: 9999px; }
-:is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-sample.s-box { border: 1.5px solid; border-radius: 2px; }
+:is(.markbar, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample { flex: none; width: 22px; height: 14px; display: inline-flex; flex-direction: column; justify-content: center; gap: 1px; box-sizing: border-box; border-radius: 3px; font-style: normal; font-size: 12px; line-height: 14px; text-align: center; }
+:is(.markbar, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample b { display: block; border-radius: 1px; }
+:is(.markbar, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample.s-circle { border: 1.5px solid; border-radius: 9999px; }
+:is(.markbar, .mb-ctx, .mark-card, .legend-pane, .vm, .nb-mrow) .mb-sample.s-box { border: 1.5px solid; border-radius: 2px; }
 :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-rainbow { flex: none; width: 16px; height: 16px; border-radius: 50%; background: conic-gradient(#e5484d, #f5a524, #f5d90a, #46a758, #3e63dd, #8e4ec6, #e5484d); }
 :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-lines, :is(.markbar, .mb-ctx, .mark-card, .legend-pane) .mb-kinds { display: flex; gap: 2px; padding: 2px; margin-bottom: 4px; background: var(--sunken); border-radius: 8px; }

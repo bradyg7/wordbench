@@ -34,6 +34,9 @@ try {
     ['NUM.25:12.1-25:12.4', '--style', 'Fixture box'],
     ['NUM.25:6', '--kind', 'arrow', '--color', 'blue', '--to', 'NUM.25:11'],
   ]) wb('mark', 'add', ...args);
+  // two margin notes (marks T4, T12): one on a verse, one on a span of verses; their words are the person's, never scripture
+  wb('mark', 'note', 'NUM.25:11', 'A margin note written for the fixture.');
+  wb('mark', 'note', 'NUM.25:10-12', 'A span note written for the fixture.');
   wb('thread', 'new', 'Fixture thread', '--at', 'Numbers 25:12', '--color', '#654321');
   for (const [book, ch] of [['NUM', 25], ['NUM', 24], ['NUM', 26], ['PSA', 119]]) {
     writeFileSync(new URL(`${book}.${ch}.json`, out), wb('fixture', book, String(ch)));
@@ -70,6 +73,10 @@ Names Numbers 25:11 here.`);
   for (const argv of [
     ['page', 'overview', marksPage], ['page', 'blocks', marksPage], ['page', 'scripture', marksPage], ['note', 'show', marksPage],
     ['page', 'tree'], ['notebook', 'sidebar', '--at', 'NUM 25'], ['parse', 'go Psalms 119:105'], ['find', '--sort', 'edited'], ['find', '--kind', 'page'],
+    // finding marks and margin notes, and what is on a verse (marks T12, rows 51 to 53)
+    ['find', '--kind', 'mark'], ['find', '--kind', 'mark', '--style', 'underline:blue:2'], ['find', '--kind', 'mark', '--mark-kind', 'underline'],
+    ['find', '--kind', 'mark', '--book', 'Numbers'], ['find', '--kind', 'mark', '--book', 'Psalms'], ['find', '--kind', 'mark', '--since', '2020-01-01'],
+    ['find', '--kind', 'mark', '--until', '2020-01-01'], ['find', '--kind', 'margin'], ['mark', 'at', 'NUM.25:11'], ['mark', 'notes', 'Numbers 25'], ['mark', 'at', 'NUM.25:13'],
     ['legend'], ['settings', 'marks'], ['legend', 'uses', 'underline:blue:2'], ['legend', 'uses', 'box:#cc3322'], ['legend', 'uses', 'highlight:yellow'],
     ['concordance', 'letters'], ['settings', 'concordance'],
     ['concordance', 'zeal', '--forms', 'all'], ['concordance', 'zeal', '--forms', 'one'], ['concordance', 'zealous', '--forms', 'one'],

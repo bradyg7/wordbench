@@ -486,6 +486,26 @@ pub fn chapter(bible: &Bible, store: &Store, place: &str) -> Result<Value> {
     Ok(json!({"place": format!("{} {}", sp.book.name, sp.c1), "book": sp.book.code, "chapter": sp.c1, "count": notes.len(), "notes": notes}))
 }
 
+/// The margin notes covering a place (row 53): verse and span notes of the chapters it touches whose verses overlap
+/// its verses, in the order of their verses (a chapter's own note covers no verse in particular and is not listed).
+/// Each as `wb mark notes` gives it. Reads one file per chapter and no page unless a note grew.
+pub fn covering(bible: &Bible, store: &Store, code: &str, from: (u32, u32), to: (u32, u32)) -> Vec<Value> {
+    let mut out: Vec<(u32, u32, Value)> = vec![];
+    for c in from.0..=to.0 {
+        let Ok(text) = read_text(&file(&store.root, code, c)) else { continue };
+        for n in parse_full(&text).1 {
+            if n.at.v1 == 0 {
+                continue;
+            }
+            if (c, n.at.v1) <= to && (c, n.at.v2) >= from {
+                out.push((c, n.at.v1, note_json(bible, store, &n)));
+            }
+        }
+    }
+    out.sort_by_key(|(c, v, _)| (*c, *v));
+    out.into_iter().map(|x| x.2).collect()
+}
+
 /// The open questions written in a chapter's margin notes, by verse (a span's first; the chapter's own note, none): `{id, v, text}`.
 /// Reads the chapter's one file, so the reader's ? marker can include them (MK-11).
 pub fn chapter_questions(store: &Store, code: &str, chapter: u32) -> Vec<Value> {

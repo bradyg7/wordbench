@@ -696,3 +696,76 @@ fn a_style_lists_where_it_is_used_with_the_words_from_the_bible_and_marks_go_to_
     w.ok(&back);
     assert_eq!(w.js(&["legend", "uses", "Promise"])["count"], 3);
 }
+
+// ---- T12: finding marks (row 51) ---------------------------------------------------------------------------------------
+
+#[test]
+fn find_kind_mark_filters_by_style_kind_color_book_and_date_and_gives_words_and_reference() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["legend", "add", "--kind", "highlight", "--color", "yellow", "--name", "Promise"]);
+    w.ok(&["mark", "add", "NUM.25:11.0-25:11.1", "--style", "Promise"]);
+    w.ok(&["mark", "add", "Num 25:13", "--kind", "box", "--color", "blue"]);
+    w.ok(&["mark", "add", "Gen 1:1", "--kind", "underline", "--color", "orange", "--lines", "2"]);
+    w.ok(&["mark", "add", "Psa 119:1", "--kind", "circle", "--color", "Blue"]);
+    // an old highlight, made long ago: it is found like any mark, with its own words when it has them
+    w.ok(&["hl", "set", "Num 25:12", "green"]);
+    let file = w.dir.join("highlights").join("NUM.json");
+    let old: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+    let (old_id, made) = (old["highlights"][0]["id"].as_str().unwrap().to_string(), old["highlights"][0]["created"].as_str().unwrap().to_string());
+    std::fs::write(&file, std::fs::read_to_string(&file).unwrap().replace(&made, "2020-03-04T10:00:00Z")).unwrap();
+    let find = |extra: &[&str]| {
+        let mut a = vec!["find", "--kind", "mark"];
+        a.extend_from_slice(extra);
+        let r = w.js(&a);
+        assert_eq!(r["groups"].as_array().unwrap().len(), 1, "only the marks group");
+        assert_eq!(r["groups"][0]["kind"], "mark");
+        r["groups"][0]["results"].as_array().unwrap().clone()
+    };
+    let labels = |rows: &[Value]| rows.iter().map(|r| r["title"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+    // everything, in Bible order, each with its words and reference
+    let all = find(&[]);
+    assert_eq!(labels(&all), ["Genesis 1:1", "Numbers 25:11", "Numbers 25:12", "Numbers 25:13", "Psalms 119:1"]);
+    let verse = |r: &str| w.ok(&["text", r]).lines().nth(1).unwrap().trim_start_matches(|c: char| c.is_ascii_digit() || c == ' ').to_string();
+    assert_eq!(all[3]["snippet"].as_str().unwrap(), verse("Num 25:13"), "a verse mark gives the verse, from the database");
+    assert!(verse("Num 25:11").starts_with(all[1]["snippet"].as_str().unwrap()) && !all[1]["snippet"].as_str().unwrap().is_empty());
+    assert_eq!((all[2]["id"].clone(), all[2]["mark_kind"].clone(), all[2]["old"].clone()), (json!(old_id), json!("highlight"), json!(true)));
+    assert_eq!(all[2]["snippet"].as_str().unwrap(), verse("Num 25:12"), "an old highlight's words are the verse too");
+    assert_eq!((all[1]["legend"].clone(), all[3]["legend"].clone()), (json!("Promise"), json!("Unnamed blue box")));
+    // the same as legend uses (one scanner)
+    let uses = w.js(&["legend", "uses", "Promise"]);
+    assert_eq!(uses["marks"][0]["id"], find(&["--style", "Promise"])[0]["id"]);
+    // style: an entry's name or kind:color[:lines]
+    assert_eq!(labels(&find(&["--style", "Promise"])), ["Numbers 25:11"]);
+    assert_eq!(labels(&find(&["--style", "underline:orange:2"])), ["Genesis 1:1"]);
+    assert_eq!(labels(&find(&["--style", "box:blue"])), ["Numbers 25:13"]);
+    // kind, color (any case), book
+    assert_eq!(labels(&find(&["--mark-kind", "highlight"])), ["Numbers 25:11", "Numbers 25:12"]);
+    assert_eq!(labels(&find(&["--color", "blue"])), ["Numbers 25:13", "Psalms 119:1"]);
+    assert_eq!(labels(&find(&["--book", "Numbers"])), ["Numbers 25:11", "Numbers 25:12", "Numbers 25:13"]);
+    assert_eq!(labels(&find(&["--book", "psa", "--color", "blue"])), ["Psalms 119:1"]);
+    // date: the old highlight is 2020, the rest are today
+    assert_eq!(labels(&find(&["--until", "2021-01-01"])), ["Numbers 25:12"]);
+    assert_eq!(labels(&find(&["--since", "2021-01-01"])).len(), 4);
+    assert_eq!(labels(&find(&["--since", "2020-01-01", "--until", "2020-12-31"])), ["Numbers 25:12"]);
+    assert_eq!(labels(&find(&["--since", "1d"])).len(), 4);
+    // words are looked for in the words, the reference and the legend name
+    assert_eq!(labels(&find(&["promise"])), ["Numbers 25:11"]);
+    assert_eq!(labels(&find(&["genesis"])), ["Genesis 1:1"]);
+    // the count and the total
+    let r = w.js(&["find", "--kind", "mark", "--book", "Gen"]);
+    assert_eq!((r["count"].clone(), r["total"].clone()), (json!(1), json!(5)));
+    // refusals say what to do
+    assert!(refused_text(&w, &["find", "--kind", "mark", "--mark-kind", "scribble"]).contains("--mark-kind is one of"));
+    assert!(refused_text(&w, &["find", "--kind", "mark", "--style", "Nothing"]).contains("No legend entry"));
+    assert!(refused_text(&w, &["find", "--kind", "mark", "--book", "Zork"]).contains("No book"));
+    assert!(refused_text(&w, &["find", "--kind", "mark", "--since", "soon"]).contains("--since takes"));
+    assert!(refused_text(&w, &["find", "--book", "Gen"]).contains("--kind mark"));
+    // the other kinds are unchanged: no marks group in the one search
+    assert!(w.js(&["find", "--sort", "edited"])["groups"].as_array().unwrap().iter().all(|g| g["kind"] != "mark"));
+}
+
+fn refused_text(w: &Wb, args: &[&str]) -> String {
+    let (code, out, err) = w.run(args);
+    assert_ne!(code, 0, "{args:?} should be refused: {out}");
+    format!("{out}{err}")
+}

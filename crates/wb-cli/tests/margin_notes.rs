@@ -292,3 +292,31 @@ fn the_readers_question_marker_includes_questions_written_in_a_margin_note() {
     assert_eq!(verses, vec![11], "{qs:?}");
     assert_eq!(qs[0]["text"], "Why here?");
 }
+
+#[test]
+fn mark_at_lists_the_margin_notes_covering_the_place_beside_its_marks() {
+    let Some(w) = Wb::new() else { return };
+    w.ok(&["mark", "add", "Num 25:11", "--kind", "box", "--color", "blue"]);
+    let one = w.js(&["mark", "note", "Num 25:11", "on the verse"]);
+    let span = w.js(&["mark", "note", "Num 25:10-13", "on a span"]);
+    w.ok(&["mark", "note", "Num 25:14", "elsewhere"]);
+    w.ok(&["mark", "note", "Num 25", "the chapter's own"]);
+    w.ok(&["mark", "note", "Num 26:11", "another chapter"]);
+    let at = w.js(&["mark", "at", "Num 25:11"]);
+    assert_eq!(at["marks"].as_array().unwrap().len(), 1, "the marks are as they were");
+    let ids: Vec<&str> = at["notes"].as_array().unwrap().iter().map(|n| n["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, [span["id"].as_str().unwrap(), one["id"].as_str().unwrap()], "the span's note (from verse 10) and the verse's, in the order of their first verses; no chapter note");
+    assert_eq!((at["notes"][1]["text"].clone(), at["notes"][1]["label"].clone()), (json!("on the verse"), json!("Numbers 25:11")));
+    // words of a verse name that verse; a run of verses finds every note in it
+    assert_eq!(w.js(&["mark", "at", "NUM.25:11.1-25:11.2"])["notes"].as_array().unwrap().len(), 2);
+    assert_eq!(w.js(&["mark", "at", "Num 25:14"])["notes"].as_array().unwrap().len(), 1);
+    assert_eq!(w.js(&["mark", "at", "Num 25:12-14"])["notes"].as_array().unwrap().len(), 2);
+    assert_eq!(w.js(&["mark", "at", "Num 25:15"])["notes"], json!([]));
+    // a verse with only a note has no marks and still lists its note
+    let only = w.js(&["mark", "at", "Num 25:13"]);
+    assert_eq!((only["marks"].clone(), only["notes"].as_array().unwrap().len()), (json!([]), 1));
+    // nothing written
+    let before = w.snapshot();
+    w.js(&["mark", "at", "Num 25:11"]);
+    assert_eq!(before, w.snapshot());
+}

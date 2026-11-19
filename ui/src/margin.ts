@@ -59,6 +59,9 @@ export interface Margin {
   refresh(): void;
   /** The bar's notepad (or N, or the right-click menu): an empty note at verses `v1` to `v2` of this chapter, the cursor in it. */
   startNote(v1: number, v2: number): void;
+  /** Show one note (Library search, a verse card): in the open column its card is scrolled to and outlined; as signs, its popover opens.
+   *  Waits for the chapter's notes when they are not read yet. */
+  show(id: string): void;
   mode(): 'open' | 'signs';
 }
 
@@ -96,6 +99,26 @@ export function createMargin(env: MarginEnv): Margin {
     if (mine !== seq) return;
     notes = got.map(n => ({ ...n, grew: n.grew || [] }));
     build();
+    reveal();
+  }
+
+  /** The note to show once the chapter's notes are here (`show`). */
+  let want = '';
+  function reveal() {
+    if (!want || !d) return;
+    const n = notes.find(x => !isDraft(x) && x.id === want) as MarginNote | undefined;
+    if (!n) return;
+    want = '';
+    if (mode() === 'open') {
+      const el = list.querySelector<HTMLElement>(`.mg-card[data-note="${n.id}"]`);
+      if (!el) return;
+      el.scrollIntoView({ block: 'center', behavior: 'instant' as ScrollBehavior });
+      el.classList.add('mg-flash');
+      setTimeout(() => el.classList.remove('mg-flash'), 2400);
+    } else {
+      const sign = list.querySelector<HTMLElement>(`.mg-sign[data-v="${n.v1}"]`);
+      if (sign) openSign(n.v1, sign);
+    }
   }
 
   const placeOf = (v1: number, v2: number) => (v1 === 0 ? `${code()}.${d!.chapter.chapter}` : v2 > v1 ? `${code()}.${d!.chapter.chapter}:${v1}-${v2}` : `${code()}.${d!.chapter.chapter}:${v1}`);
@@ -468,6 +491,7 @@ export function createMargin(env: MarginEnv): Margin {
     load, layout,
     refresh: () => { if (d && !editing) build(); },
     startNote(v1, v2) { if (d) void start(v1, v2); },
+    show(id) { want = id; reveal(); },
     mode,
   };
 }

@@ -43,6 +43,7 @@ import { KIND_NAMES, panel } from './markpanel';
 import { inkOf } from './markdraw';
 import { createBar, kindHooks, type MarkBar } from './markbar';
 import { createMargin } from './margin';
+import { marksOnVerse } from './versemarks';
 import { createArrowBar, arrowColor, rememberArrowColor, STAY, type ArrowBar } from './arrowbar';
 import { parseAt } from './marks';
 import * as planReading from './planreading';
@@ -252,6 +253,7 @@ function verseBody(v: VerseView, card = false, ver = 'KJV'): HTMLElement {
   if (card) b.append(h('div', 'card-head', `${v.reference} · ${ver}`));
   else b.append(h('h2', 'sheet-title', v.reference), h('div', 'sheet-sub', ver));
   b.append(h('p', 'scripture', v.text));
+  b.append(marksOnVerse(v.anchor));   // every mark on the verse and the margin notes covering it (marks T12, row 53)
   if (card) return b;
   b.append(colorRow(v.color, c => {
     const [code, cv] = v.anchor.split('.');
@@ -1497,6 +1499,13 @@ Object.assign(app, {
   findInChapter,
   listen: (command: Parameters<typeof readAloud.execute>[0]) => readAloud.execute(command),
   secondReader: (ref: string, version?: string) => void openSecondReader(ref, version),
+  showMarginNote: async (id: string, at: string) => {
+    const p = /^([1-3A-Z]{3})\.(\d+)(?::(\d+))?/.exec(at);
+    if (!p) return;
+    margin.show(id);   // before the chapter is drawn, so the note is shown when its chapter's notes arrive
+    await jump(p[1], +p[2], p[3] ? +p[3] : 1);
+    margin.show(id);   // the chapter was already drawn: its notes are here
+  },
   readers: () => [...readers2.values()].filter(r => dock.panes.some(p => p.id === r.pane))
     .map(({ pane, code, chapter, label }) => ({ pane, code, chapter, label })),
   changed: (...what: Change[]) => { written(...what); if (!what.length || what.includes('threads')) loadThreads(); },

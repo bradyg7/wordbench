@@ -19,6 +19,7 @@ import { openConcordance } from './concordance';
 import { closeSheet, compact, hideCard, openSheet } from './sheets';
 import { frameCard, grip } from './cardframe';
 import { pagesLine } from './wordcard';
+import { marksOnVerse } from './versemarks';
 import { button, h, icon, placePill, popMenu } from './ui';
 
 export interface Run { t: string; hl?: string }
@@ -29,7 +30,7 @@ import { hlStyle } from './hlink';
 
 /** Verses drawn verbatim, each with its number: as a paragraph (one after another) or a verse to a line. The person's
  * highlights are on the words, as in the reader (none while the highlights layer is hidden). */
-export function drawVerses(verses: MarkedVerse[], lines: boolean): HTMLElement {
+export function drawVerses(verses: MarkedVerse[], lines: boolean, onVerse?: (v: MarkedVerse, el: HTMLElement, e: MouseEvent | KeyboardEvent) => void): HTMLElement {
   const box = h('div', `sv-text ${lines ? 'sv-lines' : 'sv-para'}`);
   const showHl = layers.highlightsShown();
   const several = new Set(verses.map(v => `${v.code}.${v.c}`)).size > 1;
@@ -38,7 +39,17 @@ export function drawVerses(verses: MarkedVerse[], lines: boolean): HTMLElement {
     if (lines || !p) { p = h('p', 'scripture sv-p'); box.append(p); } else p.append(' ');
     const verse = h('span', 'sv-verse');
     verse.dataset.ref = v.ref;
-    verse.append(h('span', 'sv-vn', several ? `${v.c}:${v.v}` : String(v.v)));
+    const vn = h('span', 'sv-vn', several ? `${v.c}:${v.v}` : String(v.v));
+    if (onVerse) {
+      // the verse's card (marks T12, MK7-23): a click on the number, as in the reader
+      vn.setAttribute('role', 'button');
+      vn.tabIndex = 0;
+      vn.title = `The card for ${v.ref}`;
+      vn.style.cursor = 'pointer';
+      vn.onclick = e => { e.stopPropagation(); onVerse(v, vn, e); };
+      vn.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onVerse(v, vn, e); } };
+    }
+    verse.append(vn);
     const t = h('span', 'sv-t');
     for (const r of v.runs) {
       if (r.hl && showHl) {
@@ -226,6 +237,8 @@ function fillCard(body: HTMLElement, ref: string, d: Marked, o: CardOpts) {
   body.append(head);
   body.append(drawVerses(d.verses.slice(0, MOST), false));
   if (d.verses.length > MOST) body.append(h('p', 'muted small', `and ${d.verses.length - MOST} more verses: Open the chapter shows them all`));
+  const [vf, vl] = [d.verses[0], d.verses[d.verses.length - 1]];
+  body.append(marksOnVerse(vf === vl ? `${vf.code}.${vf.c}:${vf.v}` : `${vf.code}.${vf.c}:${vf.v}-${vl.c}:${vl.v}`));   // every mark on it and the margin notes covering it (marks T12, row 53)
   const tabs = h('div', 'vc-tabs vc-seg');
   const panel = h('div', 'vc-panel');
   let tab: Tab = null;

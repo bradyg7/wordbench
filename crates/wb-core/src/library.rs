@@ -216,9 +216,17 @@ pub struct Find<'a> {
     pub edited: Option<&'a str>,
     /// `edited` (newest first, the default) or `title` (A-Z).
     pub sort: &'a str,
+    /// Marks only (`kind` = "mark", row 51): a legend entry or `kind:color[:lines]`, a mark kind, a color, a book, and the
+    /// days a mark was made between (`7d` or a date).
+    pub style: Option<&'a str>,
+    pub mark_kind: Option<&'a str>,
+    pub color: Option<&'a str>,
+    pub book: Option<&'a str>,
+    pub since: Option<&'a str>,
+    pub until: Option<&'a str>,
 }
 
-fn since(text: &str) -> Result<String> {
+fn since(text: &str, flag: &str) -> Result<String> {
     let t = text.trim();
     if let Some(n) = t.strip_suffix('d').and_then(|n| n.parse::<i64>().ok()) {
         return Ok((chrono::Utc::now() - chrono::Duration::days(n)).format("%Y-%m-%d").to_string());
@@ -226,21 +234,25 @@ fn since(text: &str) -> Result<String> {
     if crate::store::is_day(t) {
         return Ok(t.to_string());
     }
-    Err(bad("--edited takes a number of days (7d) or a date (2026-11-01)."))
+    Err(bad(format!("{flag} takes a number of days (7d) or a date (2026-11-01).")))
 }
 
 /// Pages, folders, saves and questions in one list, grouped by kind: `{q, count, total, groups: [{kind, count, results}]}`.
 /// `total` is how many there were before the words and filters, for "23 of 412". Highlights are a group too.
 pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
-    if !["", "page", "folder", "save", "question", "margin", "highlight"].contains(&f.kind) {
-        return Err(bad("--kind is page, folder, save, question, margin or highlight."));
+    if !["", "page", "folder", "save", "question", "margin", "highlight", "mark"].contains(&f.kind) {
+        return Err(bad("--kind is page, folder, save, question, margin, highlight or mark."));
+    }
+    let marks_only = f.style.is_some() || f.mark_kind.is_some() || f.color.is_some() || f.book.is_some() || f.since.is_some() || f.until.is_some();
+    if marks_only && f.kind != "mark" {
+        return Err(bad("--style, --mark-kind, --color, --book, --since and --until find marks: add --kind mark."));
     }
     if !["", "edited", "title"].contains(&f.sort) {
         return Err(bad("--sort is edited or title."));
     }
     let words: Vec<String> = f.words.to_lowercase().split_whitespace().map(String::from).collect();
     let has = |blob: &str| words.iter().all(|w| blob.to_lowercase().contains(w.as_str()));
-    let cutoff = f.edited.map(since).transpose()?;
+    let cutoff = f.edited.map(|e| since(e, "--edited")).transpose()?;
     let want = |k: &str| f.kind.is_empty() || f.kind == k;
     let in_folder: Option<Vec<(String, String)>> = match f.folder {
         Some(name) => {
@@ -336,6 +348,33 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         all_total += n;
         out_groups.push(("margin".into(), rows));
     }
+    lap("before mark");
+    // marks (row 51): the one scanner `legend_uses` uses, then the words, if any; a mark's `updated` is the day it was made
+    if f.kind == "mark" {
+        let (sn, un) = (f.since.map(|d| since(d, "--since")).transpose()?, f.until.map(|d| since(d, "--until")).transpose()?);
+        let found = crate::marks::find_marks(bible, store, &crate::marks::MarkFilter { style: f.style, kind: f.mark_kind, color: f.color, book: f.book, since: sn.as_deref(), until: un.as_deref() })?;
+        let every = crate::marks::find_marks(bible, store, &Default::default())?["count"].as_u64().unwrap_or(0) as usize;
+        all_total += every;
+        let rows = found["marks"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|m| !f.has_question && in_folder.is_none() && has(&format!("{} {} {} {}", s_of(m, "label"), s_of(m, "words"), s_of(m, "legend"), s_of(m, "kind"))))
+            .filter(|m| cutoff.as_ref().is_none_or(|c| s_of(m, "created").as_str() >= c.as_str()))
+            .map(|m| {
+                let mut r = json!({"kind": "mark", "id": m["id"], "title": m["label"], "snippet": m["words"], "mark_kind": m["kind"], "color": m["color"],
+                    "legend": m["legend"], "style": m["style"], "at": m["at"], "book": m["book"], "code": m["code"], "chapter": m["chapter"], "verse": m["verse"],
+                    "old": m["old"], "updated": m["created"]});
+                for k in ["lines", "to"] {
+                    if !m[k].is_null() {
+                        r[k] = m[k].clone();
+                    }
+                }
+                r
+            })
+            .collect();
+        out_groups.push(("mark".into(), rows));
+    }
     lap("before highlight");
     if want("highlight") {
         let mut rows: Vec<Value> = vec![];
@@ -368,7 +407,9 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     lap("after groups");
     let mut count = 0;
     for (kind, mut rows) in out_groups {
-        if f.sort == "title" {
+        if kind == "mark" && f.sort.is_empty() {
+            // marks keep Bible order
+        } else if f.sort == "title" {
             rows.sort_by_key(|r| r["title"].as_str().unwrap_or("").to_lowercase());
         } else {
             rows.sort_by(|a, b| b["updated"].as_str().unwrap_or("").cmp(a["updated"].as_str().unwrap_or("")));

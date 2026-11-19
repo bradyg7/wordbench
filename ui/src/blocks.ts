@@ -9,7 +9,7 @@ import { registerPageWriter } from './pagewriters';
 import { app, here } from './app';
 import { toast } from './sheets';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
-import { drawVerses, openSplit, type MarkedVerse } from './verses';
+import { drawVerses, openSplit, verseCard, type MarkedVerse } from './verses';
 import { threadChooser } from './panes';
 
 export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string } }
@@ -550,7 +550,7 @@ function scriptureBlock(b: Blk, id: string, host: Host): HTMLElement {
       if (!mine) return;
       if (mine.error) { text.textContent = mine.error; return; }
       label.textContent = mine.label;
-      text.replaceWith(drawVerses(mine.verses as MarkedVerse[], !!mine.lines));
+      text.replaceWith(drawVerses(mine.verses as MarkedVerse[], !!mine.lines, (v, el, e) => void verseCard(v.ref, el, e as MouseEvent)));
     }).catch(x => { text.textContent = String(x); });
   }
   return box;
