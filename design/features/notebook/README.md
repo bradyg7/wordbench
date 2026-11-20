@@ -12,6 +12,25 @@ Sources: the person's 23 screenshots of Notion (2026-11-20, kept outside the rep
 written "feel" spec (`notion_feel_spec.md`, summarised here, not copied). Notion's brand, icons and exact visuals are
 never copied; its interaction model and proportions are.
 
+## Leading design
+
+The windows the board (and its PDF) holds, by part. Nothing is superseded yet.
+
+| Part | Leading | Superseded (and by what) |
+|---|---|---|
+| The one menu component | N1 | |
+| A new page | N2 | |
+| The / menu | N3 | |
+| The selection bar and @ | N4 | |
+| The block handle, block menu, drag, several blocks | N5 | |
+| Callouts (and the three names offered) | N6 | |
+| The page: icon, Add icon, toggles | N7 | |
+| The page's three dots and Appearance | N8 | |
+| Color: own palette or folder colors | N9 | |
+| Ctrl+K quick search | N10 | |
+| Recents in the side list; a list in a page | N11 | |
+| Real conditions (floating, narrow, phone, among tabs) | N12 | |
+
 ## How this fits what is already accepted
 
 The [library](../library/README.md) folder's round 4 (S25–S36, accepted 2026-11-17) already designed "the Notebook
@@ -215,6 +234,25 @@ person's existing pages read.
 - [ ] Today's pages read and write as before; the files stay Markdown; questions written as callouts stay listed (row 24).
 - [ ] Every new core action has its `wb` command (rows marked *proposed*).
 - [ ] Desktop, floating, narrow and phone (row 37); a 400-block page inside the budget (row 38).
+
+## Data the sheets show
+
+| File | Made by |
+|---|---|
+| `data/num25.json` | `wb text Num 25:11-13` |
+| `data/ps106.json` | `wb text Ps 106:30-31` |
+
+Scripture is fetched from the database, never typed. Page titles, folder names, notes and counts are a drawn sample,
+not anyone's study.
+
+## The real conditions
+
+| Condition | Window |
+|---|---|
+| Among other tabs | N12 · Among other tabs |
+| Floating | N12 · Floating tab |
+| Narrow | N12 · Narrow pane beside the reader; N12 · Phone: menus as sheets |
+| Years of study | N11 (round 4's side list counts: 75 pages, 5 folders, 86 margin notes); a 400-block page is row 38, not drawn |
 
 ## Open questions
 
