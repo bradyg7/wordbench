@@ -147,6 +147,73 @@ fn filters_f1_question_place_scope_includes_all_discovered_forms() {
     assert_eq!(text, ["Trail question on this place?", "Page question on this place?", "Margin question on this place?"].into());
 }
 
+/// Four pages at Acts 2:1, three of them in the folder "Acts study"; two have an open question and two an answered one.
+fn filters_f2_study(wb: &Wb) -> Vec<String> {
+    let folder = wb.js(&["folder", "new", "Acts study", "--json"]);
+    let mut ids = Vec::new();
+    for (title, status, filed) in [("Prayer in the upper room", "question", true), ("Prayer after the gathering", "done", true), ("Prayer elsewhere", "question", false), ("Travel notes", "done", true)] {
+        let page = wb.js(&["note", "new", &format!("{title}
+
+> [!{status}] {title} follow-up?"), "--at", "Acts 2:1", "--json"]);
+        let id = page["id"].as_str().unwrap().to_string();
+        if filed {
+            wb.ok(&["save", &format!("page:{id}"), "--folder", folder["id"].as_str().unwrap()]);
+        }
+        ids.push(id);
+    }
+    ids
+}
+
+fn filters_f2_ids(wb: &Wb, line: &str) -> std::collections::BTreeSet<String> {
+    wb.js(&["notebook", "--view", line, "--json"])["groups"][0]["entries"].as_array().unwrap().iter().map(|e| e["id"].as_str().unwrap().to_string()).collect()
+}
+
+fn filters_f2_questions(wb: &Wb, args: &[&str]) -> usize {
+    let mut line = vec!["question", "list"];
+    line.extend(args);
+    wb.js(&line)["questions"].as_array().unwrap().len()
+}
+
+#[test]
+fn filters_remove_one_keeps_the_others() {
+    let Some(wb) = Wb::new() else { return };
+    let ids = filters_f2_study(&wb);
+    let both = "notebook section all page-questions open folder \"Acts study\"";
+    assert_eq!(filters_f2_ids(&wb, both), [ids[0].clone()].into());
+    // without the status flag the folder stays; without the folder flag the status stays
+    assert_eq!(filters_f2_ids(&wb, "notebook section all folder \"Acts study\"").len(), 3);
+    assert_eq!(filters_f2_ids(&wb, "notebook section all page-questions open").len(), 2);
+    // Questions: dropping --at keeps the status; dropping --status keeps the place
+    assert_eq!(filters_f2_questions(&wb, &["--status", "done", "--at", "Acts 2"]), 2);
+    assert_eq!(filters_f2_questions(&wb, &["--status", "done"]), 2);
+    assert_eq!(filters_f2_questions(&wb, &["--status", "all", "--at", "Acts 2"]), 4);
+}
+
+#[test]
+fn filters_clear_keeps_words_and_starting_scope() {
+    let Some(wb) = Wb::new() else { return };
+    filters_f2_study(&wb);
+    assert_eq!(filters_f2_ids(&wb, "notebook section all \"prayer\" page-questions open folder \"Acts study\"").len(), 1);
+    assert_eq!(filters_f2_ids(&wb, "notebook section all \"prayer\"").len(), 3);
+    assert_eq!(filters_f2_ids(&wb, "notebook section all").len(), 4);
+    // Questions start as every question; Open and Answered are the two choices
+    assert_eq!(filters_f2_questions(&wb, &["--status", "all"]), 4);
+    assert_eq!(filters_f2_questions(&wb, &["--status", "open"]) + filters_f2_questions(&wb, &["--status", "done"]), 4);
+    assert_eq!(filters_f2_questions(&wb, &["--status", "all", "--search", "prayer"]), 3);
+}
+
+#[test]
+fn filters_distinguish_invalid_and_empty() {
+    let Some(wb) = Wb::new() else { return };
+    filters_f2_study(&wb);
+    // a folder that no longer exists, and a place that is not a place, are errors
+    assert!(wb.fails(&["notebook", "--view", "notebook section all folder \"Gone folder\""]).contains("No folder called"));
+    assert!(!wb.fails(&["question", "list", "--status", "all", "--at", "Zzz 99"]).is_empty());
+    // a valid choice that matches nothing is an empty answer, not an error
+    assert!(filters_f2_ids(&wb, "notebook section all \"prayer\" kind day folder \"Acts study\"").is_empty());
+    assert_eq!(filters_f2_questions(&wb, &["--status", "done", "--at", "Acts 2", "--search", "nothing-like-this"]), 0);
+}
+
 // ---- reading ----
 
 #[test]

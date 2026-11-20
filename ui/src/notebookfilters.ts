@@ -33,13 +33,16 @@ export function notebookFilters(questions: boolean, renderRow: (entry: any) => H
   let timer = 0;
   let panel: HTMLFormElement | null = null;
   let submission: Choices | null = null;
+  let removing = -1;
+  let panelFields = new Map<Choice, HTMLInputElement | HTMLSelectElement>();
 
-  function command(choices: Choices) {
+  function command(choices: Choices, plain = false) {
+    const words_ = plain ? '' : words;
     const { kind, status, place, folder, days } = choices;
     if (questions) return ['question', 'list', '--status', status?.value === 'answered' ? 'done' : status?.value || 'all',
-      ...(place ? ['--at', place.value] : []), ...(words.trim() ? ['--search', words.trim()] : [])];
+      ...(place ? ['--at', place.value] : []), ...(words_.trim() ? ['--search', words_.trim()] : [])];
     const line = ['notebook', 'section', 'all'];
-    for (const word of words.trim().split(/\s+/).filter(Boolean)) line.push(JSON.stringify(word));
+    for (const word of words_.trim().split(/\s+/).filter(Boolean)) line.push(JSON.stringify(word));
     if (kind) line.push('kind', kind.value);
     if (status) line.push('page-questions', status.value);
     if (place) line.push('@', JSON.stringify(place.value));
@@ -60,26 +63,81 @@ export function notebookFilters(questions: boolean, renderRow: (entry: any) => H
         ? data.questions.map((q: any) => ({ ...q, kind: 'question', title: q.title ?? q.text, placed: !!q.anchor, label: q.label ?? data.label }))
         : data.groups.flatMap((group: any) => group.entries);
       rows.replaceChildren(...entries.map(renderRow));
-      if (!entries.length) rows.append(h('p', 'muted nb-empty', `No ${questions ? 'questions' : 'pages'} match.`));
+      const shown = pending ?? applied;
+      const some = (Object.keys(labels) as Choice[]).some(key => shown[key]);
+      if (!entries.length) rows.append(h('p', 'muted nb-empty', `No ${questions ? 'questions' : 'pages'} match${some ? ' these choices' : ''}.`));
       const noun = questions ? 'question' : 'page';
       count.textContent = `${entries.length} ${noun}${entries.length === 1 ? '' : 's'}`;
       error.hidden = true;
+      active.querySelectorAll('.nb-scope-invalid').forEach(note => note.remove());
       if (pending) {
         applied = pending;
         submission = null;
         const keys = (Object.keys(labels) as Choice[]).filter(key => applied[key]);
-        active.replaceChildren(...keys.map(key => h('div', '', `${labels[key]} · ${applied[key]!.label}`)));
+        active.replaceChildren(...keys.map(key => {
+          const row = h('div', 'nb-scope-applied-row');
+          row.dataset.choice = key;
+          const text = `${labels[key]} · ${applied[key]!.label}`;
+          const remove = button('link-btn small', '×', () => removeChoice(key));
+          remove.type = 'button';
+          remove.setAttribute('aria-label', `Remove ${text}`);
+          row.append(h('span', '', text), remove);
+          return row;
+        }));
         active.hidden = !keys.length;
         toggle.textContent = keys.length ? `Filters · ${keys.length}` : 'Filters';
-        close();
+        if (removing >= 0) {
+          const next = active.querySelectorAll<HTMLElement>('button')[removing] ?? toggle;
+          removing = -1;
+          if (panel) close(); else next.focus({ preventScroll: true });
+        } else close();
       }
     } catch (reason) {
       if (current !== run || (from && panel !== from)) return;
+      const tried = submission ?? applied;
       submission = null;
+      removing = -1;
+      const found = await invalidChoice(tried);
+      if (current !== run || (from && panel !== from)) return;
+      if (found) {
+        const text = `${labels[found.key]}: ${found.message}`;
+        if (from) {
+          const message = from.querySelector<HTMLElement>('.nb-scope-error')!;
+          message.textContent = text;
+          message.hidden = false;
+          panelFields.get(found.key)?.focus({ preventScroll: true });
+        } else {
+          active.querySelectorAll('.nb-scope-invalid').forEach(note => note.remove());
+          const note = h('p', 'small nbv-error nb-scope-invalid', text);
+          note.setAttribute('role', 'alert');
+          const row = active.querySelector(`[data-choice="${found.key}"]`) ?? active;
+          row.append(note);
+        }
+        return;
+      }
       const message = from?.querySelector<HTMLElement>('.nb-scope-error') ?? error;
       message.textContent = String(reason);
       message.hidden = false;
     }
+  }
+
+  /** A bad value is told from a failed load by trying the words alone, then each applied choice alone. */
+  async function invalidChoice(choices: Choices) {
+    try { await wb(command({}, true)); } catch { return null; }
+    for (const key of Object.keys(labels) as Choice[]) {
+      if (!choices[key]) continue;
+      try { await wb(command({ [key]: choices[key] }, true)); } catch (reason) { return { key, message: String(reason) }; }
+    }
+    return null;
+  }
+
+  function removeChoice(key: Choice) {
+    const keys = (Object.keys(labels) as Choice[]).filter(k => applied[k]);
+    removing = keys.indexOf(key);
+    const rest = { ...applied };
+    delete rest[key];
+    submission = rest;
+    void load();
   }
 
   function close() {
@@ -108,6 +166,7 @@ export function notebookFilters(questions: boolean, renderRow: (entry: any) => H
     message.hidden = true;
     message.setAttribute('role', 'alert');
     const fields = new Map<Choice, HTMLInputElement | HTMLSelectElement>();
+    panelFields = fields;
 
     function field<T extends HTMLInputElement | HTMLSelectElement>(key: Choice, input: T) {
       const label = h('label', 'nb-filter-field');
@@ -164,7 +223,12 @@ export function notebookFilters(questions: boolean, renderRow: (entry: any) => H
     }
     body.append(message);
     const foot = h('div', 'nb-scope-panel-foot');
-    foot.append(h('button', 'btn', 'Apply'));
+    const clear = button('link-btn', 'Clear filters', () => {
+      submission = {};
+      void load();
+    });
+    clear.type = 'button';
+    foot.append(h('button', 'btn', 'Apply'), clear);
     form.append(head, body, foot);
     form.onsubmit = event => {
       event.preventDefault();

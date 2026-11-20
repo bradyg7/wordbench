@@ -107,10 +107,14 @@ Names Numbers 25:11 here.`);
   const selected = `folder "${folder}"`;
   for (const argv of [
     ['folder', 'list'],
-    ...[all, `${all} "prayer"`, `${all} "prayer" page-questions open ${selected}`, `${all} page-questions open ${selected}`]
+    ...[all, `${all} "prayer"`, `${all} "prayer" page-questions open ${selected}`, `${all} page-questions open ${selected}`,
+      `${all} page-questions open`, `${all} ${selected}`, `${all} "prayer" page-questions open`, `${all} "prayer" ${selected}`]
       .map(line => ['notebook', '--view', line]),
     ['question', 'list', '--status', 'all'],
     ['question', 'list', '--status', 'done', '--at', 'Acts 2'],
+    ['question', 'list', '--status', 'done'],
+    ['question', 'list', '--status', 'all', '--at', 'Acts 2'],
+    ['question', 'list', '--status', 'all', '--search', 'prayer'],
     ['question', 'list', '--status', 'done', '--at', 'Acts 2', '--search', 'prayer'],
     ['question', 'list', '--status', 'done', '--at', 'Acts 2', '--search', 'travel'],
   ]) writeFileSync(new URL(`${named(argv)}.json`, help), wb(...argv, '--json'));

@@ -35,6 +35,11 @@
   overflow-wrap: anywhere;
 }
 
+.nb-scope-applied-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.nb-scope-applied-row > span { flex: 1 1 auto; min-width: 0; }
+.nb-scope-applied-row > .nb-scope-invalid { flex-basis: 100%; margin: 0; }
+.nb-scope-panel-foot { justify-content: space-between; }
+
 .nb-scope-panel {
   position: absolute;
   z-index: 2;
@@ -66,4 +71,4 @@
 }
 
 .nb-scope-panel-head { border-bottom: 1px solid var(--line); }
-.nb-scope-panel-foot { border-top: 1px solid var(--line); justify-content: flex-end; }
+.nb-scope-panel-foot { border-top: 1px solid var(--line); }
