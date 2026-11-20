@@ -106,8 +106,9 @@ for (const g of groups) for (const r of g.rows) {
   const f = i => (i >= 0 && r[i] ? r[i] : '');
   const dd = (label, i, big) => f(i) ? `<dt>${label}</dt><dd${big ? ' class="big"' : ''}>${inline(f(i))}</dd>` : '';
   const isBuilt = /\[x\]/i.test(r[C.built] || '');
-  slideRows += `<section class="slide" data-row="${esc(n)}" data-group="${esc(plain(g.name))}" data-label="${esc(plain(f(C.action) || f(C.where)))}" data-ids="${esc(framesFor(n).map(x => x.id).join(',') || n)}" data-where="${esc(plain(f(C.where)))}" data-action="${esc(plain(f(C.action)))}">
-<div class="grp">${inline(g.name)}</div><div class="rowhead"><b>Row ${esc(n)}</b><span>${inline(f(C.where))}</span></div>
+  const approved = isBuilt || /approved/i.test(r[C.built] || "");
+  slideRows += `<section class="slide" data-approved="${approved ? 1 : 0}" data-row="${esc(n)}" data-group="${esc(plain(g.name))}" data-label="${esc(plain(f(C.action) || f(C.where)))}" data-ids="${esc(framesFor(n).map(x => x.id).join(',') || n)}" data-where="${esc(plain(f(C.where)))}" data-action="${esc(plain(f(C.action)))}">
+<div class="grp">${inline(g.name)}${approved ? ' <span class="badge">Approved</span>' : ''}</div><div class="rowhead"><b>Row ${esc(n)}</b><span>${inline(f(C.where))}</span></div>
 <div class="body"><div class="frames">${framesHtml(n)}</div>
 <div class="side"><div class="card"><dl>${dd('Action', C.action, true)}${dd('What the person sees', C.sees)}${dd('On disk', C.disk)}${dd('wb command', C.wb)}${dd('Test', C.test)}<dt>Built</dt><dd><span class="built${isBuilt ? ' yes' : ''}">${isBuilt ? 'Built' : 'Not built'}</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
@@ -131,7 +132,8 @@ ${css}</style></head><body>
 <div class="meta">Design review · round ${esc(round)}</div>
 <h1>${inline(title)}</h1>
 <p class="meta">${inline(state)}${state ? ' · ' : ''}${built} of ${total} rows built</p>
-<div class="links"><button id="start" class="primary">Start: row 1</button> <button id="nextun">Next unrated (N)</button></div>
+<div class="links"><button id="start" class="primary">Start: row 1</button> <button id="nextun">Next unrated (N)</button> <button id="showappr" aria-pressed="false">Show approved</button></div>
+<p id="appr" class="meta"></p>
 <p id="tally" class="tally"></p>
 ${noFrames ? '<p class="notice">The interactions of this folder are not drawn yet: every row shows a placeholder until rows/index.json lists frames.</p>' : ''}
 ${dec.lines.length ? `<h2>Decisions${dec.date ? ', ' + esc(dec.date) : ''}</h2>${prose(dec.lines)}` : ''}

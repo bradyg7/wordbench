@@ -1,6 +1,8 @@
 (() => {
   const D = JSON.parse(document.getElementById('data').textContent);
-  const slides = [...document.querySelectorAll('.slide')];
+  const all = [...document.querySelectorAll('.slide')];
+  let slides = all, rowSlides = [], showAppr = false;
+  const isAppr = s => s.dataset.approved === '1';
   const KEY = 'review:' + D.folder + ':round' + D.round;
   // Stored: notes[row] = comment (as before); notes._r[row] = rating 1-4; notes._c[row] = ["Category|Chip", ...].
   let notes = {};
@@ -18,7 +20,16 @@
     Drawing: ['Frame unclear', 'Needs before and after', 'Wrong or missing data'],
   };
   let cur = 0;
-  const rowSlides = slides.filter(s => s.dataset.row);
+  const refilter = () => {
+    slides = all.filter(s => !isAppr(s) || showAppr);
+    rowSlides = slides.filter(s => s.dataset.row);
+    const n = all.filter(isAppr).length;
+    $('appr').textContent = n + ' rows approved, ' + (all.filter(s => s.dataset.row).length - n) + ' to review';
+    $('showappr').setAttribute('aria-pressed', String(showAppr));
+    $('showappr').textContent = showAppr ? 'Hide approved' : 'Show approved';
+  };
+  refilter();
+  const msgEl = () => $('msg');
   const comment = k => (typeof notes[k] === 'string' ? notes[k] : '').trim();
   const chips = k => notes._c[k] || [];
   const touched = k => !!comment(k) || chips(k).length > 0;
@@ -37,7 +48,7 @@
     for (let v = 1; v <= 4; v++) {
       const b = document.createElement('button');
       b.dataset.v = v; b.setAttribute('aria-pressed', String(r === v));
-      b.innerHTML = RATINGS[v] + ' <kbd>' + v + '</kbd>';
+      b.innerHTML = RATINGS[v] + ' <kbd>' + v + '</kbd>'; b.disabled = isAppr(s);
       b.onclick = () => setRating(v);
       rate.appendChild(b);
     }
@@ -64,15 +75,15 @@
     s.querySelector('.chipbox summary').textContent = 'Reasons' + (chips(k).length ? ' (' + chips(k).length + ')' : '');
   };
   const setRating = v => {
-    const s = slides[cur], k = s.dataset.row; if (!k) return;
+    const s = slides[cur], k = s.dataset.row; if (!k || isAppr(s)) return;
     if (notes._r[k] === v) delete notes._r[k]; else notes._r[k] = v;
     save(); renderSlide(s, notes._r[k] >= 3); tally();
   };
 
   const show = i => {
     cur = Math.max(0, Math.min(slides.length - 1, i));
-    slides.forEach((s, j) => s.classList.toggle('on', j === cur));
     const s = slides[cur];
+    all.forEach(x => x.classList.toggle('on', x === s));
     s.scrollTop = 0;
     $('count').textContent = cur === 0 ? 'Title' : 'Row ' + s.dataset.row + ' (' + cur + ' of ' + (slides.length - 1) + ')';
     $('bar').firstChild.style.width = (slides.length > 1 ? cur / (slides.length - 1) * 100 : 100) + '%';
@@ -92,7 +103,7 @@
     t.value = typeof notes[t.dataset.k] === 'string' ? notes[t.dataset.k] : '';
     t.addEventListener('input', () => { notes[t.dataset.k] = t.value; save(); });
   });
-  rowSlides.forEach(s => renderSlide(s, notes._r[s.dataset.row] >= 3));
+  all.filter(s => s.dataset.row).forEach(s => renderSlide(s, notes._r[s.dataset.row] >= 3));
 
   const buildGrid = () => {
     let h = '', g = null;
@@ -100,7 +111,7 @@
       if (!s.dataset.row) return;
       if (s.dataset.group !== g) { if (g !== null) h += '</div>'; g = s.dataset.group; h += '<h3></h3><div class="cells">'; }
       const k = s.dataset.row;
-      h += '<button class="cell' + (notes._r[k] ? ' r' + notes._r[k] : '') + (touched(k) ? ' has' : '') + (i === cur ? ' cur' : '') + '" data-i="' + i + '"><b></b><span></span></button>';
+      h += '<button class="cell' + (isAppr(s) ? ' appr' : notes._r[k] ? ' r' + notes._r[k] : '') + (touched(k) ? ' has' : '') + (i === cur ? ' cur' : '') + '" data-i="' + i + '"><b></b><span></span></button>';
     });
     $('grid').innerHTML = h + '</div>';
     const heads = $('grid').querySelectorAll('h3'); let hi = -1, last = null;
@@ -154,6 +165,7 @@
   $('dlj').onclick = () => download('review-' + D.folder + '-round' + D.round + '.json', notesJson(), 'application/json');
   window.__review = { notesJson, notesMd };
   $('prev').onclick = () => show(cur - 1); $('next').onclick = () => show(cur + 1); $('gbtn').onclick = grid;
+  $('showappr').onclick = () => { showAppr = !showAppr; const s = slides[cur]; refilter(); tally(); const i = slides.indexOf(s); show(i < 0 ? 0 : i); };
   $('start').onclick = () => show(1); $('nextun').onclick = nextUnrated;
 
   document.addEventListener('keydown', e => {

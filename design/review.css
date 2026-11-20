@@ -71,3 +71,6 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
 .chip[aria-pressed=true]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .tally{font-weight:600}.tally span{margin-right:12px}
 #grid .cell.r1{background:rgba(63,125,88,.22)}#grid .cell.r2{background:rgba(111,123,134,.22)}#grid .cell.r3{background:rgba(185,121,31,.26)}#grid .cell.r4{background:rgba(176,65,62,.26)}
+.badge{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 8px;margin-left:8px;letter-spacing:0;text-transform:none}
+.rate button:disabled{opacity:.5;cursor:default}#showappr[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+#grid .cell.appr{opacity:.55;background:var(--sunken);border-style:dashed}

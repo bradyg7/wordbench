@@ -74,6 +74,9 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
 .chip[aria-pressed=true]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .tally{font-weight:600}.tally span{margin-right:12px}
 #grid .cell.r1{background:rgba(63,125,88,.22)}#grid .cell.r2{background:rgba(111,123,134,.22)}#grid .cell.r3{background:rgba(185,121,31,.26)}#grid .cell.r4{background:rgba(176,65,62,.26)}
+.badge{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 8px;margin-left:8px;letter-spacing:0;text-transform:none}
+.rate button:disabled{opacity:.5;cursor:default}#showappr[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+#grid .cell.appr{opacity:.55;background:var(--sunken);border-style:dashed}
 </style></head><body>
 <div id="bar"><i></i></div>
 <header><span class="name">Filters, everywhere</span><span class="sp"></span><span id="count"></span><button id="gbtn" title="Overview of all rows (G)">Rows (G)</button></header>
@@ -82,7 +85,8 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
 <div class="meta">Design review · round 3</div>
 <h1>Filters, everywhere</h1>
 <p class="meta">accepted for integration (2026-11-19) · 0 of 33 rows built</p>
-<div class="links"><button id="start" class="primary">Start: row 1</button> <button id="nextun">Next unrated (N)</button></div>
+<div class="links"><button id="start" class="primary">Start: row 1</button> <button id="nextun">Next unrated (N)</button> <button id="showappr" aria-pressed="false">Show approved</button></div>
+<p id="appr" class="meta"></p>
 <p id="tally" class="tally"></p>
 <p class="notice">The interactions of this folder are not drawn yet: every row shows a placeholder until rows/index.json lists frames.</p>
 <h2>Decisions, 2026-11-19</h2><ul><li><b>2026-11-19, the person.</b> Design filtering once for the whole app. Keep the existing controls in place until this design is settled. Revisit the Notebook's Marks filter and group the controls around Colors across the Bible. Library map, Open 4 and 6 · Marks, Out of scope / later</li><li><b>2026-11-19, the person.</b> Go with Direction B. With hundreds of choices, wrapping bubbles are hard to remember, locate or narrow to a kind of mark. Their positions also change with the pane width.</li><li><b>2026-11-19, the person.</b> Show how the controls work together and design filtering across Wordbench in this folder, including the Notebook's ordinary filters and the other places already offering filters.</li><li><b>2026-11-19, the person.</b> Begin integration from Round 3. Future feature designs may revise how the shared filters are used on their surfaces.</li></ul>
@@ -91,199 +95,199 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
 <h2>General comment</h2><textarea data-k="general" placeholder="Anything about the whole round" aria-label="General comment"></textarea>
 <p class="meta">Arrow keys or the buttons move between slides; 1 to 4 rate the row (Perfect, Satisfactory, Not great, Horrible); N jumps to the next unrated row; G shows every row; Esc leaves a comment box. Comments stay in this browser until you copy or download them.</p>
 </section>
-<section class="slide" data-row="1" data-group="" data-label="Click or tap Filters" data-ids="1" data-where="Results heading" data-action="Click or tap Filters">
+<section class="slide" data-approved="0" data-row="1" data-group="" data-label="Click or tap Filters" data-ids="1" data-where="Results heading" data-action="Click or tap Filters">
 <div class="grp"></div><div class="rowhead"><b>Row 1</b><span>Results heading</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Click or tap Filters</dd><dt>What the person sees</dt><dd>Panel or phone sheet opens with the applied choices loaded.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>filters_open_in_tab_or_phone_sheet</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="1" placeholder="Optional comment on row 1" aria-label="Comment on row 1"></textarea></div></div></section>
-<section class="slide" data-row="2" data-group="" data-label="Tab to Filters, then Enter or Space" data-ids="2" data-where="Results heading" data-action="Tab to Filters, then Enter or Space">
+<section class="slide" data-approved="0" data-row="2" data-group="" data-label="Tab to Filters, then Enter or Space" data-ids="2" data-where="Results heading" data-action="Tab to Filters, then Enter or Space">
 <div class="grp"></div><div class="rowhead"><b>Row 2</b><span>Results heading</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Tab to Filters, then Enter or Space</dd><dt>What the person sees</dt><dd>The same controls open and focus moves to the first control.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>filters_open_with_keyboard</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="2" placeholder="Optional comment on row 2" aria-label="Comment on row 2"></textarea></div></div></section>
-<section class="slide" data-row="3" data-group="" data-label="Add or change a choice by click, tap or keyboard" data-ids="3" data-where="Filters" data-action="Add or change a choice by click, tap or keyboard">
+<section class="slide" data-approved="0" data-row="3" data-group="" data-label="Add or change a choice by click, tap or keyboard" data-ids="3" data-where="Filters" data-action="Add or change a choice by click, tap or keyboard">
 <div class="grp"></div><div class="rowhead"><b>Row 3</b><span>Filters</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Add or change a choice by click, tap or keyboard</dd><dt>What the person sees</dt><dd>The pending choice is labeled. The applied count and results stay in place.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Apply runs the flags from rows 4 and 9–13.</dd><dt>Test</dt><dd><code>filters_hold_choices_until_apply</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="3" placeholder="Optional comment on row 3" aria-label="Comment on row 3"></textarea></div></div></section>
-<section class="slide" data-row="4" data-group="" data-label="Press Apply with kind, mark choices, place or date selected" data-ids="4" data-where="Notebook search" data-action="Press Apply with kind, mark choices, place or date selected">
+<section class="slide" data-approved="0" data-row="4" data-group="" data-label="Press Apply with kind, mark choices, place or date selected" data-ids="4" data-where="Notebook search" data-action="Press Apply with kind, mark choices, place or date selected">
 <div class="grp"></div><div class="rowhead"><b>Row 4</b><span>Notebook search</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Press Apply with kind, mark choices, place or date selected</dd><dt>What the person sees</dt><dd>Results refresh, the panel closes and the heading shows the active choices. Focus returns to Filters.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb find --kind mark --style Promise --book John</code> (plus applicable flags above)</dd><dt>Test</dt><dd><code>marks_apply_shared_flags</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="4" placeholder="Optional comment on row 4" aria-label="Comment on row 4"></textarea></div></div></section>
-<section class="slide" data-row="5" data-group="" data-label="Click or tap Close, or press Escape" data-ids="5" data-where="Filters" data-action="Click or tap Close, or press Escape">
+<section class="slide" data-approved="0" data-row="5" data-group="" data-label="Click or tap Close, or press Escape" data-ids="5" data-where="Filters" data-action="Click or tap Close, or press Escape">
 <div class="grp"></div><div class="rowhead"><b>Row 5</b><span>Filters</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Click or tap Close, or press Escape</dd><dt>What the person sees</dt><dd>The panel closes, pending edits are discarded and focus returns to Filters.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>filters_close_discards_pending_choices</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="5" placeholder="Optional comment on row 5" aria-label="Comment on row 5"></textarea></div></div></section>
-<section class="slide" data-row="6" data-group="" data-label="Activate × by click, tap or keyboard" data-ids="6" data-where="Applied values" data-action="Activate × by click, tap or keyboard">
+<section class="slide" data-approved="0" data-row="6" data-group="" data-label="Activate × by click, tap or keyboard" data-ids="6" data-where="Applied values" data-action="Activate × by click, tap or keyboard">
 <div class="grp"></div><div class="rowhead"><b>Row 6</b><span>Applied values</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Activate × by click, tap or keyboard</dd><dt>What the person sees</dt><dd>That value disappears, focus moves to the next removal button or Filters, and results refresh.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Rerun the part's command without that flag.</dd><dt>Test</dt><dd><code>filters_remove_one_keeps_the_others</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="6" placeholder="Optional comment on row 6" aria-label="Comment on row 6"></textarea></div></div></section>
-<section class="slide" data-row="7" data-group="" data-label="Activate Clear filters" data-ids="7" data-where="Filters" data-action="Activate Clear filters">
+<section class="slide" data-approved="0" data-row="7" data-group="" data-label="Activate Clear filters" data-ids="7" data-where="Filters" data-action="Activate Clear filters">
 <div class="grp"></div><div class="rowhead"><b>Row 7</b><span>Filters</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Activate Clear filters</dd><dt>What the person sees</dt><dd>Applied and pending choices clear. The panel closes, results return to their starting scope and focus returns to Filters. Words stay in the search field.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Rerun the part's command without optional filter flags.</dd><dt>Test</dt><dd><code>filters_clear_keeps_words_and_starting_scope</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="7" placeholder="Optional comment on row 7" aria-label="Comment on row 7"></textarea></div></div></section>
-<section class="slide" data-row="8" data-group="" data-label="Apply an invalid value or a valid choice with no matches" data-ids="8" data-where="Filters or results" data-action="Apply an invalid value or a valid choice with no matches">
+<section class="slide" data-approved="0" data-row="8" data-group="" data-label="Apply an invalid value or a valid choice with no matches" data-ids="8" data-where="Filters or results" data-action="Apply an invalid value or a valid choice with no matches">
 <div class="grp"></div><div class="rowhead"><b>Row 8</b><span>Filters or results</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply an invalid value or a valid choice with no matches</dd><dt>What the person sees</dt><dd>A bad value gets an explanation and focus stays on its control. A valid empty result keeps the active choices and says nothing matches. If the command fails to load, keep the last results and show the error.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>The current list command returns an error or an empty result for the supplied flags.</dd><dt>Test</dt><dd><code>filters_distinguish_invalid_and_empty</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="8" placeholder="Optional comment on row 8" aria-label="Comment on row 8"></textarea></div></div></section>
-<section class="slide" data-row="9" data-group="" data-label="Apply a book or place" data-ids="9" data-where="Legend where used" data-action="Apply a book or place">
+<section class="slide" data-approved="0" data-row="9" data-group="" data-label="Apply a book or place" data-ids="9" data-where="Legend where used" data-action="Apply a book or place">
 <div class="grp"></div><div class="rowhead"><b>Row 9</b><span>Legend where used</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply a book or place</dd><dt>What the person sees</dt><dd>Only marks in the chosen place appear. The starting entry stays visible.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb legend uses Promise --book John</code></dd><dt>Test</dt><dd><code>legend_uses_filters_with_its_entry_fixed</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="9" placeholder="Optional comment on row 9" aria-label="Comment on row 9"></textarea></div></div></section>
-<section class="slide" data-row="10" data-group="" data-label="Apply a Legend entry or colored folder" data-ids="10" data-where="Colors across the Bible" data-action="Apply a Legend entry or colored folder">
+<section class="slide" data-approved="0" data-row="10" data-group="" data-label="Apply a Legend entry or colored folder" data-ids="10" data-where="Colors across the Bible" data-action="Apply a Legend entry or colored folder">
 <div class="grp"></div><div class="rowhead"><b>Row 10</b><span>Colors across the Bible</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply a Legend entry or colored folder</dd><dt>What the person sees</dt><dd>The grid keeps every chapter and shows gaps. A new entry or folder replaces the other choice.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb marks map --style Promise</code> or <code>wb marks map --folder NAME</code></dd><dt>Test</dt><dd><code>colors_apply_keeps_gaps_and_one_choice</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="10" placeholder="Optional comment on row 10" aria-label="Comment on row 10"></textarea></div></div></section>
-<section class="slide" data-row="11" data-group="" data-label="Apply a book or chapter range" data-ids="11" data-where="Bible Search results" data-action="Apply a book or chapter range">
+<section class="slide" data-approved="0" data-row="11" data-group="" data-label="Apply a book or chapter range" data-ids="11" data-where="Bible Search results" data-action="Apply a book or chapter range">
 <div class="grp"></div><div class="rowhead"><b>Row 11</b><span>Bible Search results</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply a book or chapter range</dd><dt>What the person sees</dt><dd>Page one and its count reflect the chosen place. Words and other search choices stay in effect.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb search WORDS --book John</code> or <code>wb search WORDS --at &quot;John 1-3&quot;</code></dd><dt>Test</dt><dd><code>bible_search_place_resets_results_page</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="11" placeholder="Optional comment on row 11" aria-label="Comment on row 11"></textarea></div></div></section>
-<section class="slide" data-row="12" data-group="" data-label="Apply the offered choices" data-ids="12" data-where="Notebook lists and Questions, B8–B10" data-action="Apply the offered choices">
+<section class="slide" data-approved="0" data-row="12" data-group="" data-label="Apply the offered choices" data-ids="12" data-where="Notebook lists and Questions, B8–B10" data-action="Apply the offered choices">
 <div class="grp"></div><div class="rowhead"><b>Row 12</b><span>Notebook lists and Questions, B8–B10</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply the offered choices</dd><dt>What the person sees</dt><dd>The current list refreshes in place and keeps its heading and grouping. Notebook page choices match pages, and Questions status matches questions.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Proposed <code>wb notebook --view 'notebook section all prayer folder &quot;Acts study&quot; page-questions open'</code>. In Questions, <code>wb question list --status done --at PLACE</code> selects answered questions.</dd><dt>Test</dt><dd><code>notebook_and_questions_use_shared_choices</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="12" placeholder="Optional comment on row 12" aria-label="Comment on row 12"></textarea></div></div></section>
-<section class="slide" data-row="13" data-group="" data-label="Apply a kind or folder where offered" data-ids="13" data-where="Library search and folder lists" data-action="Apply a kind or folder where offered">
+<section class="slide" data-approved="0" data-row="13" data-group="" data-label="Apply a kind or folder where offered" data-ids="13" data-where="Library search and folder lists" data-action="Apply a kind or folder where offered">
 <div class="grp"></div><div class="rowhead"><b>Row 13</b><span>Library search and folder lists</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply a kind or folder where offered</dd><dt>What the person sees</dt><dd>The Library shows matching results. A folder tree keeps the folders needed to reach matching rows. A folder opened by name keeps that scope.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb find --folder NAME --kind save</code> or <code>wb folder show NAME --kind save</code></dd><dt>Test</dt><dd><code>library_filters_keep_matching_rows_reachable</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="13" placeholder="Optional comment on row 13" aria-label="Comment on row 13"></textarea></div></div></section>
-<section class="slide" data-row="14" data-group="" data-label="Choose “Keep as a list in a page”" data-ids="14" data-where="Notebook list menu" data-action="Choose “Keep as a list in a page”">
+<section class="slide" data-approved="0" data-row="14" data-group="" data-label="Choose “Keep as a list in a page”" data-ids="14" data-where="Notebook list menu" data-action="Choose “Keep as a list in a page”">
 <div class="grp"></div><div class="rowhead"><b>Row 14</b><span>Notebook list menu</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Choose “Keep as a list in a page”</dd><dt>What the person sees</dt><dd>A page chooser opens with the applied line ready.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>saved_list_offers_page_choice</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="14" placeholder="Optional comment on row 14" aria-label="Comment on row 14"></textarea></div></div></section>
-<section class="slide" data-row="15" data-group="" data-label="Confirm the page" data-ids="15" data-where="Page chooser" data-action="Confirm the page">
+<section class="slide" data-approved="0" data-row="15" data-group="" data-label="Confirm the page" data-ids="15" data-where="Page chooser" data-action="Confirm the page">
 <div class="grp"></div><div class="rowhead"><b>Row 15</b><span>Page chooser</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Confirm the page</dd><dt>What the person sees</dt><dd>The page receives a saved list that runs the applied line.</dd><dt>On disk</dt><dd>One block with the line in the chosen page.</dd><dt>wb command</dt><dd><code>wb block add PAGE BLOCK</code> with a <code>view</code> fence holding the line from row 12.</dd><dt>Test</dt><dd><code>saved_list_keeps_line_and_refreshes_results</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="15" placeholder="Optional comment on row 15" aria-label="Comment on row 15"></textarea></div></div></section>
-<section class="slide" data-row="16" data-group="" data-label="Cancel or press Escape" data-ids="16" data-where="Page chooser" data-action="Cancel or press Escape">
+<section class="slide" data-approved="0" data-row="16" data-group="" data-label="Cancel or press Escape" data-ids="16" data-where="Page chooser" data-action="Cancel or press Escape">
 <div class="grp"></div><div class="rowhead"><b>Row 16</b><span>Page chooser</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Cancel or press Escape</dd><dt>What the person sees</dt><dd>The chooser closes and focus returns to the list menu.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>saved_list_cancel_keeps_page_untouched</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="16" placeholder="Optional comment on row 16" aria-label="Comment on row 16"></textarea></div></div></section>
-<section class="slide" data-row="17" data-group="" data-label="Open a result or a chapter cell, then go Back" data-ids="17" data-where="Filtered results" data-action="Open a result or a chapter cell, then go Back">
+<section class="slide" data-approved="0" data-row="17" data-group="" data-label="Open a result or a chapter cell, then go Back" data-ids="17" data-where="Filtered results" data-action="Open a result or a chapter cell, then go Back">
 <div class="grp"></div><div class="rowhead"><b>Row 17</b><span>Filtered results</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Open a result or a chapter cell, then go Back</dd><dt>What the person sees</dt><dd>The reader opens at the result. Back restores the reader's prior place and the originating list keeps its choices.</dd><dt>On disk</dt><dd>Ordinary trail step from opening the result.</dd><dt>wb command</dt><dd>Existing open and back commands for that result.</dd><dt>Test</dt><dd><code>filtered_result_back_keeps_reader_place</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="17" placeholder="Optional comment on row 17" aria-label="Comment on row 17"></textarea></div></div></section>
-<section class="slide" data-row="18" data-group="" data-label="Choose Any kind or a kind of mark" data-ids="18" data-where="Notebook Marks, B1–B3" data-action="Choose Any kind or a kind of mark">
+<section class="slide" data-approved="0" data-row="18" data-group="" data-label="Choose Any kind or a kind of mark" data-ids="18" data-where="Notebook Marks, B1–B3" data-action="Choose Any kind or a kind of mark">
 <div class="grp"></div><div class="rowhead"><b>Row 18</b><span>Notebook Marks, B1–B3</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Choose Any kind or a kind of mark</dd><dt>What the person sees</dt><dd>The Legend entries narrow to the kind, in the same name order. If the pending entry belongs to another kind, it clears with a notice. The kind can be applied by itself.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Apply uses <code>wb find --kind mark --mark-kind KIND</code> with any remaining flags.</dd><dt>Test</dt><dd><code>marks_kind_scopes_entries_and_can_apply_alone</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="18" placeholder="Optional comment on row 18" aria-label="Comment on row 18"></textarea></div></div></section>
-<section class="slide" data-row="19" data-group="" data-label="Type or clear a name search" data-ids="19" data-where="Legend entry, B1–B3 and B5" data-action="Type or clear a name search">
+<section class="slide" data-approved="0" data-row="19" data-group="" data-label="Type or clear a name search" data-ids="19" data-where="Legend entry, B1–B3 and B5" data-action="Type or clear a name search">
 <div class="grp"></div><div class="rowhead"><b>Row 19</b><span>Legend entry, B1–B3 and B5</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Type or clear a name search</dd><dt>What the person sees</dt><dd>Only the chooser changes. The count updates, and a zero-match search says no Legend entries match. The selected entry remains visible above the list.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>The chooser reads <code>wb legend</code>.</dd><dt>Test</dt><dd><code>legend_name_search_keeps_pending_selection</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="19" placeholder="Optional comment on row 19" aria-label="Comment on row 19"></textarea></div></div></section>
-<section class="slide" data-row="20" data-group="" data-label="Scroll or move through the list with the keyboard, then choose an entry or Any entry" data-ids="20" data-where="Legend entry, B1–B3 and B5" data-action="Scroll or move through the list with the keyboard, then choose an entry or Any entry">
+<section class="slide" data-approved="0" data-row="20" data-group="" data-label="Scroll or move through the list with the keyboard, then choose an entry or Any entry" data-ids="20" data-where="Legend entry, B1–B3 and B5" data-action="Scroll or move through the list with the keyboard, then choose an entry or Any entry">
 <div class="grp"></div><div class="rowhead"><b>Row 20</b><span>Legend entry, B1–B3 and B5</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Scroll or move through the list with the keyboard, then choose an entry or Any entry</dd><dt>What the person sees</dt><dd>Each option stays on its own row with a sample, name and kind. The pending choice appears above the list and the result set stays in place until Apply.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Apply uses <code>--style</code> for a specific entry. Any entry omits the flag.</dd><dt>Test</dt><dd><code>legend_rows_keep_order_and_selection_across_widths</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="20" placeholder="Optional comment on row 20" aria-label="Comment on row 20"></textarea></div></div></section>
-<section class="slide" data-row="21" data-group="" data-label="Pick a kind within the Legend entry chooser" data-ids="21" data-where="Colors across the Bible, B5" data-action="Pick a kind within the Legend entry chooser">
+<section class="slide" data-approved="0" data-row="21" data-group="" data-label="Pick a kind within the Legend entry chooser" data-ids="21" data-where="Colors across the Bible, B5" data-action="Pick a kind within the Legend entry chooser">
 <div class="grp"></div><div class="rowhead"><b>Row 21</b><span>Colors across the Bible, B5</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Pick a kind within the Legend entry chooser</dd><dt>What the person sees</dt><dd>The chooser shows only entries of that kind. The chosen style or folder and the grid stay in place.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>The chooser reads <code>wb legend</code>.</dd><dt>Test</dt><dd><code>colors_kind_browses_styles_without_filtering_grid</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="21" placeholder="Optional comment on row 21" aria-label="Comment on row 21"></textarea></div></div></section>
-<section class="slide" data-row="22" data-group="" data-label="Type or clear the Notebook words" data-ids="22" data-where="Notebook section, B6–B8" data-action="Type or clear the Notebook words">
+<section class="slide" data-approved="0" data-row="22" data-group="" data-label="Type or clear the Notebook words" data-ids="22" data-where="Notebook section, B6–B8" data-action="Type or clear the Notebook words">
 <div class="grp"></div><div class="rowhead"><b>Row 22</b><span>Notebook section, B6–B8</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Type or clear the Notebook words</dd><dt>What the person sees</dt><dd>The active section's list narrows or widens using the applied filters. Its heading and any groups stay in place.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Proposed <code>wb notebook --view LINE</code>, with words in the line. Questions need a proposed <code>--search</code> option on <code>wb question list</code>.</dd><dt>Test</dt><dd><code>notebook_words_search_within_the_current_section</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="22" placeholder="Optional comment on row 22" aria-label="Comment on row 22"></textarea></div></div></section>
-<section class="slide" data-row="23" data-group="" data-label="Switch sections and return" data-ids="23" data-where="Notebook sections" data-action="Switch sections and return">
+<section class="slide" data-approved="0" data-row="23" data-group="" data-label="Switch sections and return" data-ids="23" data-where="Notebook sections" data-action="Switch sections and return">
 <div class="grp"></div><div class="rowhead"><b>Row 23</b><span>Notebook sections</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Switch sections and return</dd><dt>What the person sees</dt><dd>Each section restores its own words and applied choices. Close and reopen the tab to start at its defaults.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Same section command with its own choices.</dd><dt>Test</dt><dd><code>notebook_sections_keep_separate_filter_state</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="23" placeholder="Optional comment on row 23" aria-label="Comment on row 23"></textarea></div></div></section>
-<section class="slide" data-row="24" data-group="" data-label="Apply Any place, Follow the reader, or Specific place, then move the reader" data-ids="24" data-where="Notebook Places, B10" data-action="Apply Any place, Follow the reader, or Specific place, then move the reader">
+<section class="slide" data-approved="0" data-row="24" data-group="" data-label="Apply Any place, Follow the reader, or Specific place, then move the reader" data-ids="24" data-where="Notebook Places, B10" data-action="Apply Any place, Follow the reader, or Specific place, then move the reader">
 <div class="grp"></div><div class="rowhead"><b>Row 24</b><span>Notebook Places, B10</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply Any place, Follow the reader, or Specific place, then move the reader</dd><dt>What the person sees</dt><dd>Any place shows placed pages across the Bible. Follow reruns against the current chapter. A fixed reference stays set. Clear restores the configured default.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Proposed <code>wb notebook --view 'notebook section places [@PLACE]'</code>. The window supplies the current chapter while following.</dd><dt>Test</dt><dd><code>notebook_place_filter_overrides_follow_until_cleared</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="24" placeholder="Optional comment on row 24" aria-label="Comment on row 24"></textarea></div></div></section>
-<section class="slide" data-row="25" data-group="" data-label="Search for and choose a folder by name" data-ids="25" data-where="Notebook Filters, B7, and folder choosers inside Filters" data-action="Search for and choose a folder by name">
+<section class="slide" data-approved="0" data-row="25" data-group="" data-label="Search for and choose a folder by name" data-ids="25" data-where="Notebook Filters, B7, and folder choosers inside Filters" data-action="Search for and choose a folder by name">
 <div class="grp"></div><div class="rowhead"><b>Row 25</b><span>Notebook Filters, B7, and folder choosers inside Filters</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Search for and choose a folder by name</dd><dt>What the person sees</dt><dd>One ordered row per matching folder, selected label retained. Only applying changes the results.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Read <code>wb folder list</code>; pass the selected folder to the surface's command.</dd><dt>Test</dt><dd><code>folder_picker_scales_and_keeps_selected_identity</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="25" placeholder="Optional comment on row 25" aria-label="Comment on row 25"></textarea></div></div></section>
-<section class="slide" data-row="26" data-group="" data-label="Copy list command" data-ids="26" data-where="Notebook list menu" data-action="Copy list command">
+<section class="slide" data-approved="0" data-row="26" data-group="" data-label="Copy list command" data-ids="26" data-where="Notebook list menu" data-action="Copy list command">
 <div class="grp"></div><div class="rowhead"><b>Row 26</b><span>Notebook list menu</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Copy list command</dd><dt>What the person sees</dt><dd>The clipboard receives the command for the current words and applied choices. With Follow the reader it uses the current reference.</dd><dt>On disk</dt><dd>Clipboard only</dd><dt>wb command</dt><dd><code>wb view run LINE</code> runs the copied Notebook list query.</dd><dt>Test</dt><dd><code>copy_list_uses_applied_values_and_current_reference</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="26" placeholder="Optional comment on row 26" aria-label="Comment on row 26"></textarea></div></div></section>
-<section class="slide" data-row="27" data-group="" data-label="Apply or clear Status and Tag" data-ids="27" data-where="Findings, B15" data-action="Apply or clear Status and Tag">
+<section class="slide" data-approved="0" data-row="27" data-group="" data-label="Apply or clear Status and Tag" data-ids="27" data-where="Findings, B15" data-action="Apply or clear Status and Tag">
 <div class="grp"></div><div class="rowhead"><b>Row 27</b><span>Findings, B15</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply or clear Status and Tag</dd><dt>What the person sees</dt><dd>The same list refreshes. The tag picker can still see other tags. Clear shows open findings across tags.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb findings [--all] [--tag TAG]</code>. Read <code>wb findings --all</code> for chooser tags.</dd><dt>Test</dt><dd><code>findings_filters_keep_all_tags_reachable</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="27" placeholder="Optional comment on row 27" aria-label="Comment on row 27"></textarea></div></div></section>
-<section class="slide" data-row="28" data-group="" data-label="Apply Match case, Regular expression or Distance where offered" data-ids="28" data-where="Bible Search and Near, B11" data-action="Apply Match case, Regular expression or Distance where offered">
+<section class="slide" data-approved="0" data-row="28" data-group="" data-label="Apply Match case, Regular expression or Distance where offered" data-ids="28" data-where="Bible Search and Near, B11" data-action="Apply Match case, Regular expression or Distance where offered">
 <div class="grp"></div><div class="rowhead"><b>Row 28</b><span>Bible Search and Near, B11</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply Match case, Regular expression or Distance where offered</dd><dt>What the person sees</dt><dd>The original words stay visible and matching starts at page one.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb search WORDS [--case] [--regex]</code> or <code>wb near A B --within N</code>, with the chosen scope.</dd><dt>Test</dt><dd><code>bible_result_options_keep_words_and_reset_page</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="28" placeholder="Optional comment on row 28" aria-label="Comment on row 28"></textarea></div></div></section>
-<section class="slide" data-row="29" data-group="" data-label="Apply or remove a book, category or KJV rendering where offered" data-ids="29" data-where="Every use and Concordance, B14" data-action="Apply or remove a book, category or KJV rendering where offered">
+<section class="slide" data-approved="0" data-row="29" data-group="" data-label="Apply or remove a book, category or KJV rendering where offered" data-ids="29" data-where="Every use and Concordance, B14" data-action="Apply or remove a book, category or KJV rendering where offered">
 <div class="grp"></div><div class="rowhead"><b>Row 29</b><span>Every use and Concordance, B14</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply or remove a book, category or KJV rendering where offered</dd><dt>What the person sees</dt><dd>The word or entry stays open and the counts reflect the filtered occurrences. The forms control remains available in Concordance.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb uses TERM [--scope S] [--cat CAT] [--rendering WORD]</code> or <code>wb concordance WORD --book B</code> with current <code>--forms</code>.</dd><dt>Test</dt><dd><code>reference_work_filters_keep_entry_and_match_counts</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="29" placeholder="Optional comment on row 29" aria-label="Comment on row 29"></textarea></div></div></section>
-<section class="slide" data-row="30" data-group="" data-label="Select or change Result kind" data-ids="30" data-where="Find in study, B12" data-action="Select or change Result kind">
+<section class="slide" data-approved="0" data-row="30" data-group="" data-label="Select or change Result kind" data-ids="30" data-where="Find in study, B12" data-action="Select or change Result kind">
 <div class="grp"></div><div class="rowhead"><b>Row 30</b><span>Find in study, B12</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Select or change Result kind</dd><dt>What the person sees</dt><dd>The pending panel shows only choices for that kind. Inapplicable pending choices clear. The result count changes on Apply.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb find [WORDS] --kind KIND</code> with that kind's supported flags.</dd><dt>Test</dt><dd><code>result_kind_controls_which_choices_are_available</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="30" placeholder="Optional comment on row 30" aria-label="Comment on row 30"></textarea></div></div></section>
-<section class="slide" data-row="31" data-group="" data-label="Type words, then apply a place" data-ids="31" data-where="Opened folder, B13" data-action="Type words, then apply a place">
+<section class="slide" data-approved="0" data-row="31" data-group="" data-label="Type words, then apply a place" data-ids="31" data-where="Opened folder, B13" data-action="Type words, then apply a place">
 <div class="grp"></div><div class="rowhead"><b>Row 31</b><span>Opened folder, B13</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Type words, then apply a place</dd><dt>What the person sees</dt><dd>The same opened folder shows matching saves in folder order. Removing the place keeps the words and folder.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb folder show NAME</code> with proposed <code>--search WORDS --at PLACE</code>.</dd><dt>Test</dt><dd><code>opened_folder_combines_words_and_place_in_folder_order</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="31" placeholder="Optional comment on row 31" aria-label="Comment on row 31"></textarea></div></div></section>
-<section class="slide" data-row="32" data-group="" data-label="Apply Color, Book and place, or Folder" data-ids="32" data-where="Highlights list, B17" data-action="Apply Color, Book and place, or Folder">
+<section class="slide" data-approved="0" data-row="32" data-group="" data-label="Apply Color, Book and place, or Folder" data-ids="32" data-where="Highlights list, B17" data-action="Apply Color, Book and place, or Folder">
 <div class="grp"></div><div class="rowhead"><b>Row 32</b><span>Highlights list, B17</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Apply Color, Book and place, or Folder</dd><dt>What the person sees</dt><dd>The Highlights list stays open and shows highlights matching the applied choices.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb hl list [--color C] [--thread NAME]</code> with proposed <code>--at PLACE</code> for the existing place narrowing.</dd><dt>Test</dt><dd><code>highlights_list_filters_keep_the_same_list</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
 <div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
 <textarea data-k="32" placeholder="Optional comment on row 32" aria-label="Comment on row 32"></textarea></div></div></section>
-<section class="slide" data-row="33" data-group="" data-label="Activate Find in study beside the words by click, tap or keyboard" data-ids="33" data-where="Notebook, B6–B8" data-action="Activate Find in study beside the words by click, tap or keyboard">
+<section class="slide" data-approved="0" data-row="33" data-group="" data-label="Activate Find in study beside the words by click, tap or keyboard" data-ids="33" data-where="Notebook, B6–B8" data-action="Activate Find in study beside the words by click, tap or keyboard">
 <div class="grp"></div><div class="rowhead"><b>Row 33</b><span>Notebook, B6–B8</span></div>
 <div class="body"><div class="frames"><figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Activate Find in study beside the words by click, tap or keyboard</dd><dt>What the person sees</dt><dd>The mixed-results pane opens with the words and its own default scope. The Notebook keeps its section and current choices.</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb find WORDS</code> with its default scope.</dd><dt>Test</dt><dd><code>find_in_study_carries_words_from_notebook</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
@@ -297,7 +301,9 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
 <script>
 (() => {
   const D = JSON.parse(document.getElementById('data').textContent);
-  const slides = [...document.querySelectorAll('.slide')];
+  const all = [...document.querySelectorAll('.slide')];
+  let slides = all, rowSlides = [], showAppr = false;
+  const isAppr = s => s.dataset.approved === '1';
   const KEY = 'review:' + D.folder + ':round' + D.round;
   // Stored: notes[row] = comment (as before); notes._r[row] = rating 1-4; notes._c[row] = ["Category|Chip", ...].
   let notes = {};
@@ -315,7 +321,16 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
     Drawing: ['Frame unclear', 'Needs before and after', 'Wrong or missing data'],
   };
   let cur = 0;
-  const rowSlides = slides.filter(s => s.dataset.row);
+  const refilter = () => {
+    slides = all.filter(s => !isAppr(s) || showAppr);
+    rowSlides = slides.filter(s => s.dataset.row);
+    const n = all.filter(isAppr).length;
+    $('appr').textContent = n + ' rows approved, ' + (all.filter(s => s.dataset.row).length - n) + ' to review';
+    $('showappr').setAttribute('aria-pressed', String(showAppr));
+    $('showappr').textContent = showAppr ? 'Hide approved' : 'Show approved';
+  };
+  refilter();
+  const msgEl = () => $('msg');
   const comment = k => (typeof notes[k] === 'string' ? notes[k] : '').trim();
   const chips = k => notes._c[k] || [];
   const touched = k => !!comment(k) || chips(k).length > 0;
@@ -334,7 +349,7 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
     for (let v = 1; v <= 4; v++) {
       const b = document.createElement('button');
       b.dataset.v = v; b.setAttribute('aria-pressed', String(r === v));
-      b.innerHTML = RATINGS[v] + ' <kbd>' + v + '</kbd>';
+      b.innerHTML = RATINGS[v] + ' <kbd>' + v + '</kbd>'; b.disabled = isAppr(s);
       b.onclick = () => setRating(v);
       rate.appendChild(b);
     }
@@ -361,15 +376,15 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
     s.querySelector('.chipbox summary').textContent = 'Reasons' + (chips(k).length ? ' (' + chips(k).length + ')' : '');
   };
   const setRating = v => {
-    const s = slides[cur], k = s.dataset.row; if (!k) return;
+    const s = slides[cur], k = s.dataset.row; if (!k || isAppr(s)) return;
     if (notes._r[k] === v) delete notes._r[k]; else notes._r[k] = v;
     save(); renderSlide(s, notes._r[k] >= 3); tally();
   };
 
   const show = i => {
     cur = Math.max(0, Math.min(slides.length - 1, i));
-    slides.forEach((s, j) => s.classList.toggle('on', j === cur));
     const s = slides[cur];
+    all.forEach(x => x.classList.toggle('on', x === s));
     s.scrollTop = 0;
     $('count').textContent = cur === 0 ? 'Title' : 'Row ' + s.dataset.row + ' (' + cur + ' of ' + (slides.length - 1) + ')';
     $('bar').firstChild.style.width = (slides.length > 1 ? cur / (slides.length - 1) * 100 : 100) + '%';
@@ -389,7 +404,7 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
     t.value = typeof notes[t.dataset.k] === 'string' ? notes[t.dataset.k] : '';
     t.addEventListener('input', () => { notes[t.dataset.k] = t.value; save(); });
   });
-  rowSlides.forEach(s => renderSlide(s, notes._r[s.dataset.row] >= 3));
+  all.filter(s => s.dataset.row).forEach(s => renderSlide(s, notes._r[s.dataset.row] >= 3));
 
   const buildGrid = () => {
     let h = '', g = null;
@@ -397,7 +412,7 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
       if (!s.dataset.row) return;
       if (s.dataset.group !== g) { if (g !== null) h += '</div>'; g = s.dataset.group; h += '<h3></h3><div class="cells">'; }
       const k = s.dataset.row;
-      h += '<button class="cell' + (notes._r[k] ? ' r' + notes._r[k] : '') + (touched(k) ? ' has' : '') + (i === cur ? ' cur' : '') + '" data-i="' + i + '"><b></b><span></span></button>';
+      h += '<button class="cell' + (isAppr(s) ? ' appr' : notes._r[k] ? ' r' + notes._r[k] : '') + (touched(k) ? ' has' : '') + (i === cur ? ' cur' : '') + '" data-i="' + i + '"><b></b><span></span></button>';
     });
     $('grid').innerHTML = h + '</div>';
     const heads = $('grid').querySelectorAll('h3'); let hi = -1, last = null;
@@ -451,6 +466,7 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
   $('dlj').onclick = () => download('review-' + D.folder + '-round' + D.round + '.json', notesJson(), 'application/json');
   window.__review = { notesJson, notesMd };
   $('prev').onclick = () => show(cur - 1); $('next').onclick = () => show(cur + 1); $('gbtn').onclick = grid;
+  $('showappr').onclick = () => { showAppr = !showAppr; const s = slides[cur]; refilter(); tally(); const i = slides.indexOf(s); show(i < 0 ? 0 : i); };
   $('start').onclick = () => show(1); $('nextun').onclick = nextUnrated;
 
   document.addEventListener('keydown', e => {
