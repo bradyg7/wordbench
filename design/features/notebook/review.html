@@ -60,6 +60,20 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
  header .name{max-width:40vw}}
 .frames figure.none{justify-content:center;border-style:dashed;color:var(--muted)}
 .title .notice{background:var(--accent-soft);border:1px solid var(--line);border-radius:var(--r-ctl);padding:8px 12px}
+.rate{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.rate button{display:flex;gap:6px;align-items:center;justify-content:center;min-height:40px;font-weight:600}
+.rate button kbd{font:500 11px var(--font-ui);opacity:.6}
+.rate button[aria-pressed=true]{color:#fff;border-color:transparent;box-shadow:0 0 0 2px var(--bg),0 0 0 4px currentColor}
+.rate button[data-v="1"][aria-pressed=true]{background:#3F7D58}.rate button[data-v="2"][aria-pressed=true]{background:#6F7B86}
+.rate button[data-v="3"][aria-pressed=true]{background:#B9791F}.rate button[data-v="4"][aria-pressed=true]{background:#B0413E}
+.rate button[data-v="1"][aria-pressed=true],.rate button[data-v="2"][aria-pressed=true],.rate button[data-v="3"][aria-pressed=true],.rate button[data-v="4"][aria-pressed=true]{color:#fff}
+.chipbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:6px 12px}
+.chipbox summary{font-size:13px}.chips .cat{font:600 11px/14px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:10px 0 4px}
+.chips .row{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-weight:400;border-radius:999px;padding:4px 10px;min-height:30px}
+.chip[aria-pressed=true]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.tally{font-weight:600}.tally span{margin-right:12px}
+#grid .cell.r1{background:rgba(63,125,88,.22)}#grid .cell.r2{background:rgba(111,123,134,.22)}#grid .cell.r3{background:rgba(185,121,31,.26)}#grid .cell.r4{background:rgba(176,65,62,.26)}
 </style></head><body>
 <div id="bar"><i></i></div>
 <header><span class="name">The Notebook, with Notion's quality as the template</span><span class="sp"></span><span id="count"></span><button id="gbtn" title="Overview of all rows (G)">Rows (G)</button></header>
@@ -68,207 +82,246 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
 <div class="meta">Design review · round 2</div>
 <h1>The Notebook, with Notion's quality as the template</h1>
 <p class="meta">exploring (round 2: the first draft) · 0 of 38 rows built</p>
-<div class="links"><button id="start" class="primary">Start: row 1</button> </div>
+<div class="links"><button id="start" class="primary">Start: row 1</button> <button id="nextun">Next unrated (N)</button></div>
+<p id="tally" class="tally"></p>
 
 <h2>Decisions, 2026-11-20</h2><ul><li><b>Round 1 answers (2026-11-20).</b></li><li>L6: page text and block colors have <b>their own palette</b>; whether it can be the folders' colors (one palette for both) is drawn in round 2 (N9) for the person to choose. The Legend's styles stay for marks.</li><li>W7: <b>questions become one kind of callout.</b> A callout is a block with a kind; Question and Answered are two of its kinds, beside Key point and Note. The word for this block is open (round 2 offers names; the Library map changes only with the person's go-ahead). <code>&gt; [!question]</code> and <code>&gt; [!done]</code> in today's pages keep reading as before.</li><li>P6: <b>no covers</b> for now.</li><li>S2: <b>the side list gets Recents.</b></li><li>Build order: the feel and writing first, then the page, then the side list.</li><li><b>Round 2 answers (2026-11-20).</b></li><li><b>Callout</b> is the word: <code>/callout</code> makes one; its kinds are Question, Answered, Key point and Note.</li><li><b>One palette for annotation.</b> Page and block colors use the same colors as marks and folders, so a color means the same everywhere. A person can give a folder a color, or add one new color to the palette, and the pages in that folder carry it. No free color picker: customizing must not get in the way of organizing or using the app.</li><li><b>A toggle is written as <code>&lt;details&gt;</code></b> in the page (the lead's recommendation): other Markdown tools show it folded.</li><li><b>@ for a verse: both forms drawn</b> (12a plain text, 12b a link chip) to compare before choosing.</li><li><b>One frame per row.</b> Every row of the table gets its own drawn frame, shown beside the row in a review that moves like a presentation (← →), with a comment box per row. The whole board stays as the overview.</li></ul>
 <h2>Open questions</h2><ul><li><b>@ for a verse:</b> 12a or 12b, after seeing both.</li></ul>
 <details><summary>Directions</summary><h3>Recommendation</h3><p>Adopt the feel (F1–F10) and writing (W) lines whole: they are what makes Notion feel like Notion, and round 4 does</p><p>not have them. Then round 2 draws them on top of round 4's accepted windows (S28 page, S29 writing, S31 ⋯), so the</p><p>interaction table has one row per key, menu item and shortcut. Build order: one menu component (F3), then writing</p><p>(W1–W4, W9, W12, W14), then the page (P), then the side list (round 4 S25).</p></details>
 <h2>General comment</h2><textarea data-k="general" placeholder="Anything about the whole round" aria-label="General comment"></textarea>
-<p class="meta">Arrow keys or the buttons move between slides; G shows every row; Esc leaves a comment box. Comments stay in this browser until you copy or download them.</p>
+<p class="meta">Arrow keys or the buttons move between slides; 1 to 4 rate the row (Perfect, Satisfactory, Not great, Horrible); N jumps to the next unrated row; G shows every row; Esc leaves a comment box. Comments stay in this browser until you copy or download them.</p>
 </section>
-<section class="slide" data-row="1" data-group="The menu (one component for every menu), N1" data-label="Type while it is open" data-where="Any menu (/, block, page ⋯, @, Ctrl+K)" data-action="Type while it is open">
+<section class="slide" data-row="1" data-group="The menu (one component for every menu), N1" data-label="Type while it is open" data-ids="1" data-where="Any menu (/, block, page ⋯, @, Ctrl+K)" data-action="Type while it is open">
 <div class="grp">The menu (one component for every menu), N1</div><div class="rowhead"><b>Row 1</b><span>Any menu (/, block, page ⋯, @, Ctrl+K)</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/1.png" alt="Type while a menu is open: rows filter at once, the first match is highlighted, empty groups hide." loading="lazy"><figcaption><b>1</b> Type while a menu is open: rows filter at once, the first match is highlighted, empty groups hide.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Type while it is open</dd><dt>What the person sees</dt><dd>Rows filter as you type; the first match is highlighted; groups with no match hide; &quot;No results&quot; when none</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>menu_filters_as_you_type</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="1" placeholder="Your comment on row 1" aria-label="Comment on row 1"></textarea></div></div></section>
-<section class="slide" data-row="2" data-group="The menu (one component for every menu), N1" data-label="↑ ↓, Enter, Esc, or click outside" data-where="Any menu" data-action="↑ ↓, Enter, Esc, or click outside">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="1" placeholder="Optional comment on row 1" aria-label="Comment on row 1"></textarea></div></div></section>
+<section class="slide" data-row="2" data-group="The menu (one component for every menu), N1" data-label="↑ ↓, Enter, Esc, or click outside" data-ids="2" data-where="Any menu" data-action="↑ ↓, Enter, Esc, or click outside">
 <div class="grp">The menu (one component for every menu), N1</div><div class="rowhead"><b>Row 2</b><span>Any menu</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/2.png" alt="↑ ↓ move the highlight, Enter picks, Esc or a click outside closes; the caret returns and nothing moved." loading="lazy"><figcaption><b>2</b> ↑ ↓ move the highlight, Enter picks, Esc or a click outside closes; the caret returns and nothing moved.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">↑ ↓, Enter, Esc, or click outside</dd><dt>What the person sees</dt><dd>The highlight moves; Enter picks; Esc or outside closes and focus returns where it was. Nothing on the page moves when it opens</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>menu_keys_and_focus_return</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="2" placeholder="Your comment on row 2" aria-label="Comment on row 2"></textarea></div></div></section>
-<section class="slide" data-row="3" data-group="Writing, N2 to N4" data-label="Open a new page" data-where="Empty page" data-action="Open a new page">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="2" placeholder="Optional comment on row 2" aria-label="Comment on row 2"></textarea></div></div></section>
+<section class="slide" data-row="3" data-group="Writing, N2 to N4" data-label="Open a new page" data-ids="3" data-where="Empty page" data-action="Open a new page">
 <div class="grp">Writing, N2 to N4</div><div class="rowhead"><b>Row 3</b><span>Empty page</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/3.png" alt="A new page: the caret is in a faint “Untitled”; Enter moves to a first line that hints “Press / for blocks”." loading="lazy"><figcaption><b>3</b> A new page: the caret is in a faint “Untitled”; Enter moves to a first line that hints “Press / for blocks”.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Open a new page</dd><dt>What the person sees</dt><dd>The caret is in the title, a faint &quot;Untitled&quot;; Enter moves to the first line, which hints &quot;Press / for blocks&quot;</dd><dt>On disk</dt><dd>A new page file</dd><dt>wb command</dt><dd><code>wb page new &quot;Title&quot;</code></dd><dt>Test</dt><dd><code>new_page_caret_in_title</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="3" placeholder="Your comment on row 3" aria-label="Comment on row 3"></textarea></div></div></section>
-<section class="slide" data-row="4" data-group="Writing, N2 to N4" data-label="Type #  ##  ###  -  1.  []  &gt;  ---" data-where="A line" data-action="Type #  ##  ###  -  1.  []  &gt;  ---">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="3" placeholder="Optional comment on row 3" aria-label="Comment on row 3"></textarea></div></div></section>
+<section class="slide" data-row="4" data-group="Writing, N2 to N4" data-label="Type #  ##  ###  -  1.  []  &gt;  ---" data-ids="4" data-where="A line" data-action="Type #  ##  ###  -  1.  []  &gt;  ---">
 <div class="grp">Writing, N2 to N4</div><div class="rowhead"><b>Row 4</b><span>A line</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/4.png" alt="Type “## ” at the start of a line: it becomes Heading 2 at once. Ctrl+Z gives back the typed characters." loading="lazy"><figcaption><b>4</b> Type “## ” at the start of a line: it becomes Heading 2 at once. Ctrl+Z gives back the typed characters.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Type <code># </code> <code>## </code> <code>### </code> <code>- </code> <code>1. </code> <code>[] </code> <code>&gt; </code> <code>---</code></dd><dt>What the person sees</dt><dd>The line turns into heading 1–3, bullet, numbered, to-do, quote or divider at once; Ctrl+Z turns it back to the typed characters</dd><dt>On disk</dt><dd>The block's Markdown</dd><dt>wb command</dt><dd><code>wb block set ID N &quot;## …&quot;</code></dd><dt>Test</dt><dd><code>markdown_shortcuts_turn_the_line</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="4" placeholder="Your comment on row 4" aria-label="Comment on row 4"></textarea></div></div></section>
-<section class="slide" data-row="5" data-group="Writing, N2 to N4" data-label="Type word, *word*; Ctrl+B, Ctrl+I, Ctrl+U" data-where="A line" data-action="Type word, *word*; Ctrl+B, Ctrl+I, Ctrl+U">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="4" placeholder="Optional comment on row 4" aria-label="Comment on row 4"></textarea></div></div></section>
+<section class="slide" data-row="5" data-group="Writing, N2 to N4" data-label="Type word, *word*; Ctrl+B, Ctrl+I, Ctrl+U" data-ids="5" data-where="A line" data-action="Type word, *word*; Ctrl+B, Ctrl+I, Ctrl+U">
 <div class="grp">Writing, N2 to N4</div><div class="rowhead"><b>Row 5</b><span>A line</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/5.png" alt="**word** or Ctrl+B makes bold in place; *word* or Ctrl+I italic; Ctrl+U underline." loading="lazy"><figcaption><b>5</b> **word** or Ctrl+B makes bold in place; *word* or Ctrl+I italic; Ctrl+U underline.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Type <code><b>word</b></code>, <code>*word*</code>; Ctrl+B, Ctrl+I, Ctrl+U</dd><dt>What the person sees</dt><dd>Bold, italic, underline in place</dd><dt>On disk</dt><dd>The Markdown marks (underline as <code>&lt;u&gt;</code>)</dd><dt>wb command</dt><dd><code>wb block set</code></dd><dt>Test</dt><dd><code>inline_shortcuts_and_keys</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="5" placeholder="Your comment on row 5" aria-label="Comment on row 5"></textarea></div></div></section>
-<section class="slide" data-row="6" data-group="Writing, N2 to N4" data-label="Type /" data-where="An empty line, or after a space" data-action="Type /">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="5" placeholder="Optional comment on row 5" aria-label="Comment on row 5"></textarea></div></div></section>
+<section class="slide" data-row="6" data-group="Writing, N2 to N4" data-label="Type /" data-ids="6" data-where="An empty line, or after a space" data-action="Type /">
 <div class="grp">Writing, N2 to N4</div><div class="rowhead"><b>Row 6</b><span>An empty line, or after a space</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/6.png" alt="/ on an empty line: the menu at the caret, grouped Basic and Study, Markdown shortcuts muted on the right." loading="lazy"><figcaption><b>6</b> / on an empty line: the menu at the caret, grouped Basic and Study, Markdown shortcuts muted on the right.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Type <code>/</code></dd><dt>What the person sees</dt><dd>The block menu at the caret, grouped <b>Basic</b> (text, heading 1–3, bullet, numbered, to-do, toggle, quote, divider, table, page) and <b>Study</b> (scripture, word, callout, Saved thing, list in a page); shortcut hints on the right</dd><dt>On disk</dt><dd>Nothing until picked</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>slash_menu_groups_and_hints</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="6" placeholder="Your comment on row 6" aria-label="Comment on row 6"></textarea></div></div></section>
-<section class="slide" data-row="7" data-group="Writing, N2 to N4" data-label="Pick a block" data-where="/ menu" data-action="Pick a block">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="6" placeholder="Optional comment on row 6" aria-label="Comment on row 6"></textarea></div></div></section>
+<section class="slide" data-row="7" data-group="Writing, N2 to N4" data-label="Pick a block" data-ids="7" data-where="/ menu" data-action="Pick a block">
 <div class="grp">Writing, N2 to N4</div><div class="rowhead"><b>Row 7</b><span>/ menu</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/7.png" alt="Pick Scripture: the block appears and the caret is already in its reference field." loading="lazy"><figcaption><b>7</b> Pick Scripture: the block appears and the caret is already in its reference field.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Pick a block</dd><dt>What the person sees</dt><dd>The block appears and the caret is inside it ready to type (scripture: the reference field)</dd><dt>On disk</dt><dd>The block</dd><dt>wb command</dt><dd><code>wb block add ID &quot;…&quot; --after N</code></dd><dt>Test</dt><dd><code>slash_pick_puts_caret_inside</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="7" placeholder="Your comment on row 7" aria-label="Comment on row 7"></textarea></div></div></section>
-<section class="slide" data-row="8" data-group="Writing, N2 to N4" data-label="Enter; Enter on an empty item; Tab; Shift+Tab" data-where="A list item" data-action="Enter; Enter on an empty item; Tab; Shift+Tab">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="7" placeholder="Optional comment on row 7" aria-label="Comment on row 7"></textarea></div></div></section>
+<section class="slide" data-row="8" data-group="Writing, N2 to N4" data-label="Enter; Enter on an empty item; Tab; Shift+Tab" data-ids="8" data-where="A list item" data-action="Enter; Enter on an empty item; Tab; Shift+Tab">
 <div class="grp">Writing, N2 to N4</div><div class="rowhead"><b>Row 8</b><span>A list item</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/8.png" alt="In a list: Enter makes a new item, Tab indents, Shift+Tab outdents, Enter on an empty item leaves the list." loading="lazy"><figcaption><b>8</b> In a list: Enter makes a new item, Tab indents, Shift+Tab outdents, Enter on an empty item leaves the list.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Enter; Enter on an empty item; Tab; Shift+Tab</dd><dt>What the person sees</dt><dd>A new item; leaves the list; indents; outdents</dd><dt>On disk</dt><dd>The items' Markdown and indent</dd><dt>wb command</dt><dd><code>wb block set</code></dd><dt>Test</dt><dd><code>list_enter_tab_rules</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="8" placeholder="Your comment on row 8" aria-label="Comment on row 8"></textarea></div></div></section>
-<section class="slide" data-row="9" data-group="Writing, N2 to N4" data-label="Click the triangle, or Ctrl+Enter" data-where="A toggle" data-action="Click the triangle, or Ctrl+Enter">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="8" placeholder="Optional comment on row 8" aria-label="Comment on row 8"></textarea></div></div></section>
+<section class="slide" data-row="9" data-group="Writing, N2 to N4" data-label="Click the triangle, or Ctrl+Enter" data-ids="9" data-where="A toggle" data-action="Click the triangle, or Ctrl+Enter">
 <div class="grp">Writing, N2 to N4</div><div class="rowhead"><b>Row 9</b><span>A toggle</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/9.png" alt="Click the triangle (or Ctrl+Enter): the toggle folds and unfolds; a heading can be a toggle. Kept as &lt;details&gt;." loading="lazy"><figcaption><b>9</b> Click the triangle (or Ctrl+Enter): the toggle folds and unfolds; a heading can be a toggle. Kept as &lt;details&gt;.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Click the triangle, or Ctrl+Enter</dd><dt>What the person sees</dt><dd>Its children fold and unfold; a heading can be a toggle too</dd><dt>On disk</dt><dd><code>&lt;details&gt;&lt;summary&gt;…&lt;/summary&gt;…&lt;/details&gt;</code> in the page; folded or not is kept in settings/pages.json</dd><dt>wb command</dt><dd><code>wb block add ID &quot;&lt;details&gt;…&quot;</code></dd><dt>Test</dt><dd><code>toggle_folds_children</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="9" placeholder="Your comment on row 9" aria-label="Comment on row 9"></textarea></div></div></section>
-<section class="slide" data-row="10" data-group="Writing, N2 to N4" data-label="Select" data-where="Selected text" data-action="Select">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="9" placeholder="Optional comment on row 9" aria-label="Comment on row 9"></textarea></div></div></section>
+<section class="slide" data-row="10" data-group="Writing, N2 to N4" data-label="Select" data-ids="10" data-where="Selected text" data-action="Select">
 <div class="grp">Writing, N2 to N4</div><div class="rowhead"><b>Row 10</b><span>Selected text</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/10.png" alt="Select text: a bar appears above it. On scripture in a page it adds Mark and Margin note." loading="lazy"><figcaption><b>10</b> Select text: a bar appears above it. On scripture in a page it adds Mark and Margin note.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Select</dd><dt>What the person sees</dt><dd>A bar above the selection: Turn into ▾, B, I, U, S, link, color ▾, and on scripture text Mark ▾ and Margin note</dd><dt>On disk</dt><dd>Nothing until used</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>selection_bar_on_intent</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="10" placeholder="Your comment on row 10" aria-label="Comment on row 10"></textarea></div></div></section>
-<section class="slide" data-row="11" data-group="Writing, N2 to N4" data-label="Mark ▾ on scripture in a page" data-where="Selection bar" data-action="Mark ▾ on scripture in a page">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="10" placeholder="Optional comment on row 10" aria-label="Comment on row 10"></textarea></div></div></section>
+<section class="slide" data-row="11" data-group="Writing, N2 to N4" data-label="Mark ▾ on scripture in a page" data-ids="11" data-where="Selection bar" data-action="Mark ▾ on scripture in a page">
 <div class="grp">Writing, N2 to N4</div><div class="rowhead"><b>Row 11</b><span>Selection bar</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/11.png" alt="Mark ▾ on scripture in a page: the Legend's styles; the mark is the reader's mark, on the same words." loading="lazy"><figcaption><b>11</b> Mark ▾ on scripture in a page: the Legend's styles; the mark is the reader's mark, on the same words.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Mark ▾ on scripture in a page</dd><dt>What the person sees</dt><dd>The Legend's styles; the mark lands on those words in the reader too</dd><dt>On disk</dt><dd>The mark, as the reader's</dd><dt>wb command</dt><dd><code>wb mark add …</code> (existing)</dd><dt>Test</dt><dd><code>mark_from_a_page_is_the_reader_s_mark</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="11" placeholder="Your comment on row 11" aria-label="Comment on row 11"></textarea></div></div></section>
-<section class="slide" data-row="12" data-group="Writing, N2 to N4" data-label="@ then type" data-where="A line" data-action="@ then type">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="11" placeholder="Optional comment on row 11" aria-label="Comment on row 11"></textarea></div></div></section>
+<section class="slide" data-row="12" data-group="Writing, N2 to N4" data-label="@ then type" data-ids="12a,12b" data-where="A line" data-action="@ then type">
 <div class="grp">Writing, N2 to N4</div><div class="rowhead"><b>Row 12</b><span>A line</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/12a.png" alt="@ form A: the verse stays plain text in the page, quietly underlined; the page index finds it." loading="lazy"><figcaption><b>12a</b> @ form A: the verse stays plain text in the page, quietly underlined; the page index finds it.</figcaption></figure><figure><img src="rows/12b.png" alt="@ form B: the verse becomes a link chip with the reference." loading="lazy"><figcaption><b>12b</b> @ form B: the verse becomes a link chip with the reference.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big"><code>@</code> then type</dd><dt>What the person sees</dt><dd>A menu of verses (as you type a reference), pages, folders and Today. <b>Two forms drawn to compare (12a, 12b):</b> 12a the verse stays plain text, quietly underlined, found by the page index; 12b a link chip with the reference. Clicking either opens the reader at it and Back returns</dd><dt>On disk</dt><dd>12a: the reference as text; 12b: a link form (open)</dd><dt>wb command</dt><dd><code>wb page link ID</code>; <code>wb refs</code></dd><dt>Test</dt><dd><code>at_mention_verse_page_folder</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="12" placeholder="Your comment on row 12" aria-label="Comment on row 12"></textarea></div></div></section>
-<section class="slide" data-row="13" data-group="The block handle, N5" data-label="Hover, or focus it" data-where="A block" data-action="Hover, or focus it">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="12" placeholder="Optional comment on row 12" aria-label="Comment on row 12"></textarea></div></div></section>
+<section class="slide" data-row="13" data-group="The block handle, N5" data-label="Hover, or focus it" data-ids="13" data-where="A block" data-action="Hover, or focus it">
 <div class="grp">The block handle, N5</div><div class="rowhead"><b>Row 13</b><span>A block</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/13.png" alt="Hover a block: + and the grip appear in the gutter. The text does not move." loading="lazy"><figcaption><b>13</b> Hover a block: + and the grip appear in the gutter. The text does not move.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Hover, or focus it</dd><dt>What the person sees</dt><dd>A + and a grip (⋮⋮) in the left gutter; the text does not shift</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>handle_appears_without_shift</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="13" placeholder="Your comment on row 13" aria-label="Comment on row 13"></textarea></div></div></section>
-<section class="slide" data-row="14" data-group="The block handle, N5" data-label="Click" data-where="+" data-action="Click">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="13" placeholder="Optional comment on row 13" aria-label="Comment on row 13"></textarea></div></div></section>
+<section class="slide" data-row="14" data-group="The block handle, N5" data-label="Click" data-ids="14" data-where="+" data-action="Click">
 <div class="grp">The block handle, N5</div><div class="rowhead"><b>Row 14</b><span>+</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/14.png" alt="Click +: a new empty line below, with the / menu already open." loading="lazy"><figcaption><b>14</b> Click +: a new empty line below, with the / menu already open.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Click</dd><dt>What the person sees</dt><dd>A new empty line below, with the / menu open</dd><dt>On disk</dt><dd>A new block</dd><dt>wb command</dt><dd><code>wb block add</code></dd><dt>Test</dt><dd><code>plus_adds_below_with_menu</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="14" placeholder="Your comment on row 14" aria-label="Comment on row 14"></textarea></div></div></section>
-<section class="slide" data-row="15" data-group="The block handle, N5" data-label="Drag" data-where="Grip" data-action="Drag">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="14" placeholder="Optional comment on row 14" aria-label="Comment on row 14"></textarea></div></div></section>
+<section class="slide" data-row="15" data-group="The block handle, N5" data-label="Drag" data-ids="15" data-where="Grip" data-action="Drag">
 <div class="grp">The block handle, N5</div><div class="rowhead"><b>Row 15</b><span>Grip</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/15.png" alt="Drag the grip: a blue line shows where the block lands; dropping moves it." loading="lazy"><figcaption><b>15</b> Drag the grip: a blue line shows where the block lands; dropping moves it.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Drag</dd><dt>What the person sees</dt><dd>A blue line shows where it lands; dropping moves it; dropping to the side makes columns at full width (library S30)</dd><dt>On disk</dt><dd>The block's place</dd><dt>wb command</dt><dd><code>wb block move ID N --to M</code></dd><dt>Test</dt><dd><code>drag_moves_block</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="15" placeholder="Your comment on row 15" aria-label="Comment on row 15"></textarea></div></div></section>
-<section class="slide" data-row="16" data-group="The block handle, N5" data-label="Click" data-where="Grip" data-action="Click">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="15" placeholder="Optional comment on row 15" aria-label="Comment on row 15"></textarea></div></div></section>
+<section class="slide" data-row="16" data-group="The block handle, N5" data-label="Click" data-ids="16" data-where="Grip" data-action="Click">
 <div class="grp">The block handle, N5</div><div class="rowhead"><b>Row 16</b><span>Grip</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/16.png" alt="Click the grip: the block menu, searchable, with Edited and the word count at its foot." loading="lazy"><figcaption><b>16</b> Click the grip: the block menu, searchable, with Edited and the word count at its foot.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Click</dd><dt>What the person sees</dt><dd>The block menu: Turn into ▸, Color ▸, Copy link to block, Duplicate (Ctrl+D), Move to (Ctrl+Shift+P), Delete (Del); at the foot &quot;Edited …&quot; and its word count</dd><dt>On disk</dt><dd>Nothing until used</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>block_menu_items_and_foot</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="16" placeholder="Your comment on row 16" aria-label="Comment on row 16"></textarea></div></div></section>
-<section class="slide" data-row="17" data-group="The block handle, N5" data-label="Turn into ▸ a kind" data-where="Block menu" data-action="Turn into ▸ a kind">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="16" placeholder="Optional comment on row 16" aria-label="Comment on row 16"></textarea></div></div></section>
+<section class="slide" data-row="17" data-group="The block handle, N5" data-label="Turn into ▸ a kind" data-ids="17" data-where="Block menu" data-action="Turn into ▸ a kind">
 <div class="grp">The block handle, N5</div><div class="rowhead"><b>Row 17</b><span>Block menu</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/17.png" alt="Turn into ▸ Heading 2: the block changes kind and keeps its text." loading="lazy"><figcaption><b>17</b> Turn into ▸ Heading 2: the block changes kind and keeps its text.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Turn into ▸ a kind</dd><dt>What the person sees</dt><dd>The block changes kind and keeps its text</dd><dt>On disk</dt><dd>The block's Markdown</dd><dt>wb command</dt><dd><code>wb block set</code></dd><dt>Test</dt><dd><code>turn_into_keeps_text</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="17" placeholder="Your comment on row 17" aria-label="Comment on row 17"></textarea></div></div></section>
-<section class="slide" data-row="18" data-group="The block handle, N5" data-label="Copy link to block" data-where="Block menu" data-action="Copy link to block">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="17" placeholder="Optional comment on row 17" aria-label="Comment on row 17"></textarea></div></div></section>
+<section class="slide" data-row="18" data-group="The block handle, N5" data-label="Copy link to block" data-ids="18" data-where="Block menu" data-action="Copy link to block">
 <div class="grp">The block handle, N5</div><div class="rowhead"><b>Row 18</b><span>Block menu</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/18.png" alt="Copy link to block: a link that opens this page scrolled to this block." loading="lazy"><figcaption><b>18</b> Copy link to block: a link that opens this page scrolled to this block.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Copy link to block</dd><dt>What the person sees</dt><dd>A link that opens this page scrolled to this block</dd><dt>On disk</dt><dd>Clipboard only</dd><dt>wb command</dt><dd><code>wb block link ID N</code>, *proposed*</dd><dt>Test</dt><dd><code>link_to_block_opens_there</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="18" placeholder="Your comment on row 18" aria-label="Comment on row 18"></textarea></div></div></section>
-<section class="slide" data-row="19" data-group="The block handle, N5" data-label="Move to" data-where="Block menu" data-action="Move to">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="18" placeholder="Optional comment on row 18" aria-label="Comment on row 18"></textarea></div></div></section>
+<section class="slide" data-row="19" data-group="The block handle, N5" data-label="Move to" data-ids="19" data-where="Block menu" data-action="Move to">
 <div class="grp">The block handle, N5</div><div class="rowhead"><b>Row 19</b><span>Block menu</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/19.png" alt="Move to: choose a page; the block leaves this page and is last in the chosen one." loading="lazy"><figcaption><b>19</b> Move to: choose a page; the block leaves this page and is last in the chosen one.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Move to</dd><dt>What the person sees</dt><dd>The page chooser; the block leaves this page and is last in the chosen one</dd><dt>On disk</dt><dd>Both pages</dd><dt>wb command</dt><dd><code>wb block move ID N --page OTHER</code>, *proposed*</dd><dt>Test</dt><dd><code>move_block_to_another_page</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="19" placeholder="Your comment on row 19" aria-label="Comment on row 19"></textarea></div></div></section>
-<section class="slide" data-row="20" data-group="The block handle, N5" data-label="Delete, or Del on a selected block" data-where="Block menu" data-action="Delete, or Del on a selected block">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="19" placeholder="Optional comment on row 19" aria-label="Comment on row 19"></textarea></div></div></section>
+<section class="slide" data-row="20" data-group="The block handle, N5" data-label="Delete, or Del on a selected block" data-ids="20" data-where="Block menu" data-action="Delete, or Del on a selected block">
 <div class="grp">The block handle, N5</div><div class="rowhead"><b>Row 20</b><span>Block menu</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/20.png" alt="Delete (or Del on a selected block): it goes, and “Deleted · Undo” offers the page's Undo." loading="lazy"><figcaption><b>20</b> Delete (or Del on a selected block): it goes, and “Deleted · Undo” offers the page's Undo.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Delete, or Del on a selected block</dd><dt>What the person sees</dt><dd>It goes; &quot;Deleted · Undo&quot; offers the page's Undo</dd><dt>On disk</dt><dd>The page</dd><dt>wb command</dt><dd><code>wb block rm ID N --undo</code></dd><dt>Test</dt><dd><code>delete_block_with_undo</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="20" placeholder="Your comment on row 20" aria-label="Comment on row 20"></textarea></div></div></section>
-<section class="slide" data-row="21" data-group="The block handle, N5" data-label="Drag across them, or Shift+click; Esc selects the block the caret is in" data-where="Several blocks" data-action="Drag across them, or Shift+click; Esc selects the block the caret is in">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="20" placeholder="Optional comment on row 20" aria-label="Comment on row 20"></textarea></div></div></section>
+<section class="slide" data-row="21" data-group="The block handle, N5" data-label="Drag across them, or Shift+click; Esc selects the block the caret is in" data-ids="21" data-where="Several blocks" data-action="Drag across them, or Shift+click; Esc selects the block the caret is in">
 <div class="grp">The block handle, N5</div><div class="rowhead"><b>Row 21</b><span>Several blocks</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/21.png" alt="Several blocks: drag across, Shift+click or Esc; a pale wash on each; the grip menu acts on all." loading="lazy"><figcaption><b>21</b> Several blocks: drag across, Shift+click or Esc; a pale wash on each; the grip menu acts on all.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Drag across them, or Shift+click; Esc selects the block the caret is in</dd><dt>What the person sees</dt><dd>A pale wash on each; the grip menu acts on all (Turn into, Color, Move to, Delete)</dd><dt>On disk</dt><dd>The blocks</dd><dt>wb command</dt><dd><code>wb block … --count K</code></dd><dt>Test</dt><dd><code>several_blocks_act_together</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="21" placeholder="Your comment on row 21" aria-label="Comment on row 21"></textarea></div></div></section>
-<section class="slide" data-row="22" data-group="Callouts (questions are one kind), N6" data-label="Callout" data-where="/ menu (/callout) or Turn into" data-action="Callout">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="21" placeholder="Optional comment on row 21" aria-label="Comment on row 21"></textarea></div></div></section>
+<section class="slide" data-row="22" data-group="Callouts (questions are one kind), N6" data-label="Callout" data-ids="22" data-where="/ menu (/callout) or Turn into" data-action="Callout">
 <div class="grp">Callouts (questions are one kind), N6</div><div class="rowhead"><b>Row 22</b><span>/ menu (<code>/callout</code>) or Turn into</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/22.png" alt="/callout in the / menu makes a callout; its kinds are Question, Answered, Key point and Note." loading="lazy"><figcaption><b>22</b> /callout in the / menu makes a callout; its kinds are Question, Answered, Key point and Note.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Callout</dd><dt>What the person sees</dt><dd>A soft box with an icon and a kind: Question, Answered, Key point, Note</dd><dt>On disk</dt><dd><code>&gt; [!question]</code>, <code>&gt; [!done]</code>, <code>&gt; [!key]</code>, <code>&gt; [!note]</code></dd><dt>wb command</dt><dd><code>wb block add ID &quot;&gt; [!key] …&quot;</code></dd><dt>Test</dt><dd><code>callout_kinds_write_their_marker</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="22" placeholder="Your comment on row 22" aria-label="Comment on row 22"></textarea></div></div></section>
-<section class="slide" data-row="23" data-group="Callouts (questions are one kind), N6" data-label="Click" data-where="A callout's icon" data-action="Click">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="22" placeholder="Optional comment on row 22" aria-label="Comment on row 22"></textarea></div></div></section>
+<section class="slide" data-row="23" data-group="Callouts (questions are one kind), N6" data-label="Click" data-ids="23" data-where="A callout's icon" data-action="Click">
 <div class="grp">Callouts (questions are one kind), N6</div><div class="rowhead"><b>Row 23</b><span>A callout's icon</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/23.png" alt="Click a callout's icon: its kind menu. A Question becomes Answered, and back." loading="lazy"><figcaption><b>23</b> Click a callout's icon: its kind menu. A Question becomes Answered, and back.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Click</dd><dt>What the person sees</dt><dd>Its kind menu; a Question becomes Answered and back</dd><dt>On disk</dt><dd>The marker</dd><dt>wb command</dt><dd><code>wb block set</code></dd><dt>Test</dt><dd><code>callout_kind_changes</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="23" placeholder="Your comment on row 23" aria-label="Comment on row 23"></textarea></div></div></section>
-<section class="slide" data-row="24" data-group="Callouts (questions are one kind), N6" data-label="Open one with &gt; [!question] or &gt; [!done]" data-where="Today's pages" data-action="Open one with &gt; [!question] or &gt; [!done]">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="23" placeholder="Optional comment on row 23" aria-label="Comment on row 23"></textarea></div></div></section>
+<section class="slide" data-row="24" data-group="Callouts (questions are one kind), N6" data-label="Open one with &gt; [!question] or &gt; [!done]" data-ids="24" data-where="Today's pages" data-action="Open one with &gt; [!question] or &gt; [!done]">
 <div class="grp">Callouts (questions are one kind), N6</div><div class="rowhead"><b>Row 24</b><span>Today's pages</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/24.png" alt="Today's pages: `&gt; [!question]` and `&gt; [!done]` show as Question and Answered; the questions list finds them." loading="lazy"><figcaption><b>24</b> Today's pages: `&gt; [!question]` and `&gt; [!done]` show as Question and Answered; the questions list finds them.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Open one with <code>&gt; [!question]</code> or <code>&gt; [!done]</code></dd><dt>What the person sees</dt><dd>They show as Question and Answered callouts; the questions list still finds them</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb question list</code></dd><dt>Test</dt><dd><code>old_question_callouts_still_read</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="24" placeholder="Your comment on row 24" aria-label="Comment on row 24"></textarea></div></div></section>
-<section class="slide" data-row="25" data-group="Color, N9" data-label="Color ▸" data-where="Selection bar or block menu" data-action="Color ▸">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="24" placeholder="Optional comment on row 24" aria-label="Comment on row 24"></textarea></div></div></section>
+<section class="slide" data-row="25" data-group="Color, N9" data-label="Color ▸" data-ids="25" data-where="Selection bar or block menu" data-action="Color ▸">
 <div class="grp">Color, N9</div><div class="rowhead"><b>Row 25</b><span>Selection bar or block menu</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/25.png" alt="Color ▸: the one annotation palette, the same colors as marks and folders, plus Default. No free picker." loading="lazy"><figcaption><b>25</b> Color ▸: the one annotation palette, the same colors as marks and folders, plus Default. No free picker.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Color ▸</dd><dt>What the person sees</dt><dd>The app's one annotation palette (the same colors as marks and folders), plus Default; no free color picker</dd><dt>On disk</dt><dd>The text in a <code>&lt;span&gt;</code>, or the block's marker</dd><dt>wb command</dt><dd><code>wb block set</code></dd><dt>Test</dt><dd><code>color_palette_is_the_annotation_palette</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="25" placeholder="Your comment on row 25" aria-label="Comment on row 25"></textarea></div></div></section>
-<section class="slide" data-row="26" data-group="Color, N9" data-label="Pick a color from the same palette, or add one new color to the palette" data-where="A folder's ⋯ › Color, or New folder" data-action="Pick a color from the same palette, or add one new color to the palette">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="25" placeholder="Optional comment on row 25" aria-label="Comment on row 25"></textarea></div></div></section>
+<section class="slide" data-row="26" data-group="Color, N9" data-label="Pick a color from the same palette, or add one new color to the palette" data-ids="26" data-where="A folder's ⋯ › Color, or New folder" data-action="Pick a color from the same palette, or add one new color to the palette">
 <div class="grp">Color, N9</div><div class="rowhead"><b>Row 26</b><span>A folder's ⋯ › Color, or New folder</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/26.png" alt="A folder's Color, or add one color to the palette: its pages show the dot by the title and in the side list." loading="lazy"><figcaption><b>26</b> A folder's Color, or add one color to the palette: its pages show the dot by the title and in the side list.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Pick a color from the same palette, or add one new color to the palette</dd><dt>What the person sees</dt><dd>Pages in that folder show the folder's color (a dot by the title and in the side list); a page's own text colors stay as written</dd><dt>On disk</dt><dd>The folder's color</dd><dt>wb command</dt><dd><code>wb folder color NAME COLOR</code> (existing folder colors; *proposed* for adding a palette color)</dd><dt>Test</dt><dd><code>folder_color_tints_its_pages</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="26" placeholder="Your comment on row 26" aria-label="Comment on row 26"></textarea></div></div></section>
-<section class="slide" data-row="27" data-group="The page, N7 and N8" data-label="Hover" data-where="Title" data-action="Hover">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="26" placeholder="Optional comment on row 26" aria-label="Comment on row 26"></textarea></div></div></section>
+<section class="slide" data-row="27" data-group="The page, N7 and N8" data-label="Hover" data-ids="27" data-where="Title" data-action="Hover">
 <div class="grp">The page, N7 and N8</div><div class="rowhead"><b>Row 27</b><span>Title</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/27.png" alt="Hover the title of a page without an icon: “Add icon” shows above it (no cover)." loading="lazy"><figcaption><b>27</b> Hover the title of a page without an icon: “Add icon” shows above it (no cover).</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Hover</dd><dt>What the person sees</dt><dd>&quot;Add icon&quot; above the title (no cover)</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>title_hover_shows_add_icon</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="27" placeholder="Your comment on row 27" aria-label="Comment on row 27"></textarea></div></div></section>
-<section class="slide" data-row="28" data-group="The page, N7 and N8" data-label="Pick an emoji or a line icon" data-where="Add icon" data-action="Pick an emoji or a line icon">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="27" placeholder="Optional comment on row 27" aria-label="Comment on row 27"></textarea></div></div></section>
+<section class="slide" data-row="28" data-group="The page, N7 and N8" data-label="Pick an emoji or a line icon" data-ids="28" data-where="Add icon" data-action="Pick an emoji or a line icon">
 <div class="grp">The page, N7 and N8</div><div class="rowhead"><b>Row 28</b><span>Add icon</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/28.png" alt="Pick an icon: it sits before the title and in the side list." loading="lazy"><figcaption><b>28</b> Pick an icon: it sits before the title and in the side list.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Pick an emoji or a line icon</dd><dt>What the person sees</dt><dd>It sits before the title and in the side list</dd><dt>On disk</dt><dd>The page's front matter <code>icon:</code></dd><dt>wb command</dt><dd><code>wb page icon ID 📖</code>, *proposed*</dd><dt>Test</dt><dd><code>page_icon_in_title_and_side_list</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="28" placeholder="Your comment on row 28" aria-label="Comment on row 28"></textarea></div></div></section>
-<section class="slide" data-row="29" data-group="The page, N7 and N8" data-label="Edit anything" data-where="Top bar" data-action="Edit anything">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="28" placeholder="Optional comment on row 28" aria-label="Comment on row 28"></textarea></div></div></section>
+<section class="slide" data-row="29" data-group="The page, N7 and N8" data-label="Edit anything" data-ids="29" data-where="Top bar" data-action="Edit anything">
 <div class="grp">The page, N7 and N8</div><div class="rowhead"><b>Row 29</b><span>Top bar</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/29.png" alt="Edit anything: “Edited just now” in quiet gray, later “Edited 2m ago”. There is no Save button." loading="lazy"><figcaption><b>29</b> Edit anything: “Edited just now” in quiet gray, later “Edited 2m ago”. There is no Save button.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Edit anything</dd><dt>What the person sees</dt><dd>&quot;Edited just now&quot; in quiet gray, later &quot;Edited 2m ago&quot;; no Save button</dd><dt>On disk</dt><dd>The page</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>edited_status_updates</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="29" placeholder="Your comment on row 29" aria-label="Comment on row 29"></textarea></div></div></section>
-<section class="slide" data-row="30" data-group="The page, N7 and N8" data-label="Open" data-where="Page ⋯" data-action="Open">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="29" placeholder="Optional comment on row 29" aria-label="Comment on row 29"></textarea></div></div></section>
+<section class="slide" data-row="30" data-group="The page, N7 and N8" data-label="Open" data-ids="30" data-where="Page ⋯" data-action="Open">
 <div class="grp">The page, N7 and N8</div><div class="rowhead"><b>Row 30</b><span>Page ⋯</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/30.png" alt="The page's three dots: one searchable menu, with Edited and the word count at the foot." loading="lazy"><figcaption><b>30</b> The page's three dots: one searchable menu, with Edited and the word count at the foot.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Open</dd><dt>What the person sees</dt><dd>Searchable: Copy link, Copy contents, Duplicate, Move to, Page history, Appearance ▸, Lock page, Move to Trash; foot: Edited and word count</dd><dt>On disk</dt><dd>Nothing until used</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>page_menu_items</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="30" placeholder="Your comment on row 30" aria-label="Comment on row 30"></textarea></div></div></section>
-<section class="slide" data-row="31" data-group="The page, N7 and N8" data-label="Font Default or Serif; Small text; Full width; Table of contents" data-where="Appearance ▸" data-action="Font Default or Serif; Small text; Full width; Table of contents">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="30" placeholder="Optional comment on row 30" aria-label="Comment on row 30"></textarea></div></div></section>
+<section class="slide" data-row="31" data-group="The page, N7 and N8" data-label="Font Default or Serif; Small text; Full width; Table of contents" data-ids="31" data-where="Appearance ▸" data-action="Font Default or Serif; Small text; Full width; Table of contents">
 <div class="grp">The page, N7 and N8</div><div class="rowhead"><b>Row 31</b><span>Appearance ▸</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/31.png" alt="Appearance ▸ Serif (or Small text, Full width, Table of contents): the page changes at once." loading="lazy"><figcaption><b>31</b> Appearance ▸ Serif (or Small text, Full width, Table of contents): the page changes at once.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Font Default or Serif; Small text; Full width; Table of contents</dd><dt>What the person sees</dt><dd>The page changes at once</dd><dt>On disk</dt><dd>settings/pages.json</dd><dt>wb command</dt><dd><code>wb page look ID --font serif --toc on</code> (extends <code>page look</code>)</dd><dt>Test</dt><dd><code>appearance_changes_at_once</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="31" placeholder="Your comment on row 31" aria-label="Comment on row 31"></textarea></div></div></section>
-<section class="slide" data-row="32" data-group="The page, N7 and N8" data-label="Toggle" data-where="Lock page" data-action="Toggle">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="31" placeholder="Optional comment on row 31" aria-label="Comment on row 31"></textarea></div></div></section>
+<section class="slide" data-row="32" data-group="The page, N7 and N8" data-label="Toggle" data-ids="32" data-where="Lock page" data-action="Toggle">
 <div class="grp">The page, N7 and N8</div><div class="rowhead"><b>Row 32</b><span>Lock page</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/32.png" alt="Lock page: a quiet lock in the bar, no handle, and typing does nothing." loading="lazy"><figcaption><b>32</b> Lock page: a quiet lock in the bar, no handle, and typing does nothing.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Toggle</dd><dt>What the person sees</dt><dd>Typing does nothing; a quiet lock in the top bar; the handle hides</dd><dt>On disk</dt><dd>settings/pages.json</dd><dt>wb command</dt><dd>`wb page lock ID on</dd><dt>Test</dt><dd>off`, *proposed*</dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="32" placeholder="Your comment on row 32" aria-label="Comment on row 32"></textarea></div></div></section>
-<section class="slide" data-row="33" data-group="The page, N7 and N8" data-label="Click" data-where="Copy contents" data-action="Click">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="32" placeholder="Optional comment on row 32" aria-label="Comment on row 32"></textarea></div></div></section>
+<section class="slide" data-row="33" data-group="The page, N7 and N8" data-label="Click" data-ids="33" data-where="Copy contents" data-action="Click">
 <div class="grp">The page, N7 and N8</div><div class="rowhead"><b>Row 33</b><span>Copy contents</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/33.png" alt="Copy contents: the page's Markdown, with scripture expanded verbatim from the database." loading="lazy"><figcaption><b>33</b> Copy contents: the page's Markdown, with scripture expanded verbatim from the database.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Click</dd><dt>What the person sees</dt><dd>The page's Markdown, scripture expanded verbatim from the database</dd><dt>On disk</dt><dd>Clipboard only</dd><dt>wb command</dt><dd><code>wb page text ID</code>, *proposed*</dd><dt>Test</dt><dd><code>copy_contents_expands_scripture</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="33" placeholder="Your comment on row 33" aria-label="Comment on row 33"></textarea></div></div></section>
-<section class="slide" data-row="34" data-group="Finding, N10 and N11" data-label="Ctrl+K" data-where="Anywhere" data-action="Ctrl+K">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="33" placeholder="Optional comment on row 33" aria-label="Comment on row 33"></textarea></div></div></section>
+<section class="slide" data-row="34" data-group="Finding, N10 and N11" data-label="Ctrl+K" data-ids="34" data-where="Anywhere" data-action="Ctrl+K">
 <div class="grp">Finding, N10 and N11</div><div class="rowhead"><b>Row 34</b><span>Anywhere</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/34.png" alt="Ctrl+K: Recents when empty; typing groups the results; the highlighted one previews on the right." loading="lazy"><figcaption><b>34</b> Ctrl+K: Recents when empty; typing groups the results; the highlighted one previews on the right.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Ctrl+K</dd><dt>What the person sees</dt><dd>The Library's one search: Recents when empty; results grouped; a live preview of the highlighted result on the right; Enter opens; Esc returns</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb find WORDS</code></dd><dt>Test</dt><dd><code>quick_search_preview_and_recents</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="34" placeholder="Your comment on row 34" aria-label="Comment on row 34"></textarea></div></div></section>
-<section class="slide" data-row="35" data-group="Finding, N10 and N11" data-label="Recents" data-where="Side list" data-action="Recents">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="34" placeholder="Optional comment on row 34" aria-label="Comment on row 34"></textarea></div></div></section>
+<section class="slide" data-row="35" data-group="Finding, N10 and N11" data-label="Recents" data-ids="35" data-where="Side list" data-action="Recents">
 <div class="grp">Finding, N10 and N11</div><div class="rowhead"><b>Row 35</b><span>Side list</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/35.png" alt="The side list's Recents: the last 8 pages opened, newest first, folding, above round 4's groups." loading="lazy"><figcaption><b>35</b> The side list's Recents: the last 8 pages opened, newest first, folding, above round 4's groups.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Recents</dd><dt>What the person sees</dt><dd>A folding group of the last 8 pages opened, newest first</dd><dt>On disk</dt><dd>Nothing (read from the trail)</dd><dt>wb command</dt><dd><code>wb history list</code></dd><dt>Test</dt><dd><code>side_list_recents</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="35" placeholder="Your comment on row 35" aria-label="Comment on row 35"></textarea></div></div></section>
-<section class="slide" data-row="36" data-group="Finding, N10 and N11" data-label="List in a page" data-where="/ menu" data-action="List in a page">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="35" placeholder="Optional comment on row 35" aria-label="Comment on row 35"></textarea></div></div></section>
+<section class="slide" data-row="36" data-group="Finding, N10 and N11" data-label="List in a page" data-ids="36" data-where="/ menu" data-action="List in a page">
 <div class="grp">Finding, N10 and N11</div><div class="rowhead"><b>Row 36</b><span>/ menu</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/36.png" alt="/list makes a list in a page: a table of pages matching a line, with the Filters button above it." loading="lazy"><figcaption><b>36</b> /list makes a list in a page: a table of pages matching a line, with the Filters button above it.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">List in a page</dd><dt>What the person sees</dt><dd>A table of pages that match a line (folder, kind, words), with the shared Filters panel above it</dd><dt>On disk</dt><dd>One <code>view</code> fence</dd><dt>wb command</dt><dd><code>wb block add ID</code> with a <code>view</code> fence; <code>wb page views</code></dd><dt>Test</dt><dd><code>list_in_a_page_is_a_table</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="36" placeholder="Your comment on row 36" aria-label="Comment on row 36"></textarea></div></div></section>
-<section class="slide" data-row="37" data-group="Real conditions, N12" data-label="Floating tab, narrow pane, phone" data-where="A page" data-action="Floating tab, narrow pane, phone">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="36" placeholder="Optional comment on row 36" aria-label="Comment on row 36"></textarea></div></div></section>
+<section class="slide" data-row="37" data-group="Real conditions, N12" data-label="Floating tab, narrow pane, phone" data-ids="37" data-where="A page" data-action="Floating tab, narrow pane, phone">
 <div class="grp">Real conditions, N12</div><div class="rowhead"><b>Row 37</b><span>A page</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/37.png" alt="Every width: a floating tab, a narrow pane, a phone (menus become sheets). The column fits each." loading="lazy"><figcaption><b>37</b> Every width: a floating tab, a narrow pane, a phone (menus become sheets). The column fits each.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Floating tab, narrow pane, phone</dd><dt>What the person sees</dt><dd>The column fits; the handle sits inside the margin; the selection bar wraps; menus become sheets on a phone</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>writing_at_every_width</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="37" placeholder="Your comment on row 37" aria-label="Comment on row 37"></textarea></div></div></section>
-<section class="slide" data-row="38" data-group="Real conditions, N12" data-label="Type, open menus, drag" data-where="A page of 400 blocks" data-action="Type, open menus, drag">
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="37" placeholder="Optional comment on row 37" aria-label="Comment on row 37"></textarea></div></div></section>
+<section class="slide" data-row="38" data-group="Real conditions, N12" data-label="Type, open menus, drag" data-ids="38" data-where="A page of 400 blocks" data-action="Type, open menus, drag">
 <div class="grp">Real conditions, N12</div><div class="rowhead"><b>Row 38</b><span>A page of 400 blocks</span></div>
 <div class="body"><div class="frames"><figure><img src="rows/38.png" alt="A measurement, not a picture: a 400-block page must type, open menus and drag inside the typing budget of npm run measure (a budget for pages is still to be set there). Nothing jumps." loading="lazy"><figcaption><b>38</b> A measurement, not a picture: a 400-block page must type, open menus and drag inside the typing budget of npm run measure (a budget for pages is still to be set there). Nothing jumps.</figcaption></figure></div>
 <div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Type, open menus, drag</dd><dt>What the person sees</dt><dd>Inside the typing budget of <code>npm run measure</code>; nothing jumps</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>big_page_stays_inside_budget</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
-<textarea data-k="38" placeholder="Your comment on row 38" aria-label="Comment on row 38"></textarea></div></div></section>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="38" placeholder="Optional comment on row 38" aria-label="Comment on row 38"></textarea></div></div></section>
 <div id="grid"></div>
 </main>
-<nav class="pn"><button id="prev">&larr; Back</button><button id="next" class="primary">Next &rarr;</button><span class="sp"></span><span id="msg"></span><button id="copy">Copy notes</button><button id="dl">Download notes</button></nav>
+<nav class="pn"><button id="prev">&larr; Back</button><button id="next" class="primary">Next &rarr;</button><span class="sp"></span><span id="msg"></span><button id="copy">Copy notes</button><button id="dl">Download notes</button><button id="dlj">Download JSON</button></nav>
 <div id="zoom"><img alt=""></div>
 <script type="application/json" id="data">{"folder":"notebook","round":"2","title":"The Notebook, with Notion's quality as the template"}</script>
 <script>
@@ -276,12 +329,72 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
   const D = JSON.parse(document.getElementById('data').textContent);
   const slides = [...document.querySelectorAll('.slide')];
   const KEY = 'review:' + D.folder + ':round' + D.round;
+  // Stored: notes[row] = comment (as before); notes._r[row] = rating 1-4; notes._c[row] = ["Category|Chip", ...].
   let notes = {};
-  try { notes = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
+  try { notes = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { notes = {}; }
+  notes._r = notes._r || {}; notes._c = notes._c || {};
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(notes)); } catch (e) {} };
   const $ = id => document.getElementById(id);
+  const RATINGS = [null, 'Perfect', 'Satisfactory', 'Not great', 'Horrible'];
+  const GOOD = { Good: ['Clean', 'Clear', 'Feels like Notion', 'Right for study'] };
+  const CATS = {
+    Look: ['Cramped', 'Misaligned', 'Colors off', 'Type off', 'Not like the app', 'Too busy'],
+    Behavior: ['Wrong result', 'Missing state', 'Keyboard or focus', 'Too many steps', 'Surprising'],
+    Words: ['Wrong word', 'Unclear label', 'Not in the Library map'],
+    'Fit for study': ['Not needed', 'Conflicts with another row', 'Gets in the way of reading'],
+    Drawing: ['Frame unclear', 'Needs before and after', 'Wrong or missing data'],
+  };
   let cur = 0;
-  const hasNote = k => !!(notes[k] || '').trim();
+  const rowSlides = slides.filter(s => s.dataset.row);
+  const comment = k => (typeof notes[k] === 'string' ? notes[k] : '').trim();
+  const chips = k => notes._c[k] || [];
+  const touched = k => !!comment(k) || chips(k).length > 0;
+  const msg = t => { $('msg').textContent = t; setTimeout(() => $('msg').textContent = '', 3000); };
+
+  const tally = () => {
+    const n = [0, 0, 0, 0, 0];
+    rowSlides.forEach(s => n[notes._r[s.dataset.row] || 0]++);
+    $('tally').innerHTML = [1, 2, 3, 4].map(i => '<span>' + n[i] + ' ' + RATINGS[i] + '</span>').join('') + '<span>' + n[0] + ' unrated</span>';
+  };
+
+  const renderSlide = (s, openChips) => {
+    const k = s.dataset.row, r = notes._r[k] || 0;
+    const rate = s.querySelector('.rate');
+    rate.innerHTML = '';
+    for (let v = 1; v <= 4; v++) {
+      const b = document.createElement('button');
+      b.dataset.v = v; b.setAttribute('aria-pressed', String(r === v));
+      b.innerHTML = RATINGS[v] + ' <kbd>' + v + '</kbd>';
+      b.onclick = () => setRating(v);
+      rate.appendChild(b);
+    }
+    const box = s.querySelector('.chips');
+    box.innerHTML = '';
+    const groups = (r === 1 || r === 2 ? Object.assign({}, GOOD, CATS) : CATS);
+    Object.keys(groups).forEach(cat => {
+      const h = document.createElement('div'); h.className = 'cat'; h.textContent = cat; box.appendChild(h);
+      const row = document.createElement('div'); row.className = 'row';
+      groups[cat].forEach(c => {
+        const id = cat + '|' + c, b = document.createElement('button');
+        b.className = 'chip'; b.textContent = c; b.setAttribute('aria-pressed', String(chips(k).includes(id)));
+        b.onclick = () => {
+          const l = chips(k).slice(), i = l.indexOf(id);
+          if (i >= 0) l.splice(i, 1); else l.push(id);
+          notes._c[k] = l; save(); b.setAttribute('aria-pressed', String(i < 0));
+          s.querySelector('.chipbox summary').textContent = 'Reasons' + (l.length ? ' (' + l.length + ')' : '');
+        };
+        row.appendChild(b);
+      });
+      box.appendChild(row);
+    });
+    if (openChips !== undefined) s.querySelector('.chipbox').open = openChips;
+    s.querySelector('.chipbox summary').textContent = 'Reasons' + (chips(k).length ? ' (' + chips(k).length + ')' : '');
+  };
+  const setRating = v => {
+    const s = slides[cur], k = s.dataset.row; if (!k) return;
+    if (notes._r[k] === v) delete notes._r[k]; else notes._r[k] = v;
+    save(); renderSlide(s, notes._r[k] >= 3); tally();
+  };
 
   const show = i => {
     cur = Math.max(0, Math.min(slides.length - 1, i));
@@ -290,52 +403,85 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
     s.scrollTop = 0;
     $('count').textContent = cur === 0 ? 'Title' : 'Row ' + s.dataset.row + ' (' + cur + ' of ' + (slides.length - 1) + ')';
     $('bar').firstChild.style.width = (slides.length > 1 ? cur / (slides.length - 1) * 100 : 100) + '%';
-    try { history.replaceState(null, '', '#' + (s.dataset.row || 'title')); } catch (e) {}
+    try { history.replaceState(null, '', '#' + (s.dataset.row ? 'row-' + s.dataset.row : 'title')); } catch (e) {}
     $('grid').classList.remove('on');
   };
   const typing = () => { const a = document.activeElement; return a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT'); };
+  const nextUnrated = () => {
+    for (let d = 1; d <= slides.length; d++) {
+      const i = (cur + d) % slides.length, s = slides[i];
+      if (s.dataset.row && !notes._r[s.dataset.row]) { show(i); return; }
+    }
+    msg('Every row is rated');
+  };
 
   document.querySelectorAll('textarea[data-k]').forEach(t => {
-    t.value = notes[t.dataset.k] || '';
+    t.value = typeof notes[t.dataset.k] === 'string' ? notes[t.dataset.k] : '';
     t.addEventListener('input', () => { notes[t.dataset.k] = t.value; save(); });
   });
+  rowSlides.forEach(s => renderSlide(s, notes._r[s.dataset.row] >= 3));
 
   const buildGrid = () => {
     let h = '', g = null;
     slides.forEach((s, i) => {
       if (!s.dataset.row) return;
       if (s.dataset.group !== g) { if (g !== null) h += '</div>'; g = s.dataset.group; h += '<h3></h3><div class="cells">'; }
-      h += '<button class="cell' + (hasNote(s.dataset.row) ? ' has' : '') + (i === cur ? ' cur' : '') + '" data-i="' + i + '"><b></b><span></span></button>';
+      const k = s.dataset.row;
+      h += '<button class="cell' + (notes._r[k] ? ' r' + notes._r[k] : '') + (touched(k) ? ' has' : '') + (i === cur ? ' cur' : '') + '" data-i="' + i + '"><b></b><span></span></button>';
     });
     $('grid').innerHTML = h + '</div>';
     const heads = $('grid').querySelectorAll('h3'); let hi = -1, last = null;
-    slides.forEach((s, i) => { if (!s.dataset.row) return; if (s.dataset.group !== last) { last = s.dataset.group; hi++; heads[hi].textContent = last || 'Rows'; } });
+    slides.forEach(s => { if (!s.dataset.row) return; if (s.dataset.group !== last) { last = s.dataset.group; hi++; heads[hi].textContent = last || 'Rows'; } });
     $('grid').querySelectorAll('.cell').forEach(b => {
       const s = slides[+b.dataset.i];
       b.firstChild.textContent = s.dataset.row; b.lastChild.textContent = s.dataset.label;
+      b.title = notes._r[s.dataset.row] ? RATINGS[notes._r[s.dataset.row]] : 'Unrated';
       b.onclick = () => show(+b.dataset.i);
     });
   };
   const grid = () => { if ($('grid').classList.contains('on')) $('grid').classList.remove('on'); else { buildGrid(); $('grid').classList.add('on'); } };
 
-  const notesMd = () => {
-    const out = ['Notes on ' + D.title + ' (round ' + D.round + ')', ''];
-    slides.forEach(s => { const k = s.dataset.row; if (k && hasNote(k)) out.push('Row ' + k + ' (' + s.dataset.where + ' / ' + s.dataset.action + '): ' + notes[k].trim().replace(/\n+/g, ' ')); });
-    if (hasNote('general')) out.push('General: ' + notes.general.trim().replace(/\n+/g, ' '));
-    return out.join('\n') + '\n';
+  const rowInfo = s => {
+    const k = s.dataset.row;
+    return { row: isNaN(+k) ? k : +k, id: s.dataset.ids, where: s.dataset.where, action: s.dataset.action,
+      rating: RATINGS[notes._r[k]] || null,
+      reasons: chips(k).map(x => { const p = x.split('|'); return { category: p[0], chip: p[1] }; }),
+      comment: comment(k) };
   };
-  const msg = t => { $('msg').textContent = t; setTimeout(() => $('msg').textContent = '', 3000); };
+  const notesMd = () => {
+    const out = ['# Notes on ' + D.title + ' (round ' + D.round + ')', ''];
+    for (const v of [4, 3, 2, 1, 0]) {
+      const lines = [];
+      rowSlides.forEach(s => {
+        const k = s.dataset.row;
+        if ((notes._r[k] || 0) !== v || (v === 0 && !touched(k))) return;
+        const r = rowInfo(s);
+        const parts = ['Row ' + k + ' (' + s.dataset.where + ' / ' + s.dataset.action + ')'];
+        if (r.rating) parts.push(r.rating);
+        if (r.reasons.length) parts.push(r.reasons.map(x => x.chip).join(', '));
+        if (r.comment) parts.push(r.comment.replace(/\n+/g, ' '));
+        lines.push('- ' + parts.join(' — '));
+      });
+      if (lines.length) out.push('## ' + (v ? RATINGS[v] : 'Unrated, with notes'), '', ...lines, '');
+    }
+    if (comment('general')) out.push('## General', '', comment('general').replace(/\n+/g, ' '), '');
+    return out.join('\n');
+  };
+  const notesJson = () => JSON.stringify({ folder: D.folder, round: Number(D.round) || D.round, rows: rowSlides.map(rowInfo).filter(r => r.rating || r.reasons.length || r.comment), general: comment('general') }, null, 2);
+  const download = (name, text, type) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name; a.click();
+  };
   $('copy').onclick = async () => {
     const t = notesMd();
     try { await navigator.clipboard.writeText(t); msg('Copied'); } catch (e) { prompt('Copy these notes:', t); }
   };
-  $('dl').onclick = () => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([notesMd()], { type: 'text/markdown' }));
-    a.download = D.folder + '-round' + D.round + '-notes.md'; a.click();
-  };
+  $('dl').onclick = () => download(D.folder + '-round' + D.round + '-notes.md', notesMd(), 'text/markdown');
+  $('dlj').onclick = () => download('review-' + D.folder + '-round' + D.round + '.json', notesJson(), 'application/json');
+  window.__review = { notesJson, notesMd };
   $('prev').onclick = () => show(cur - 1); $('next').onclick = () => show(cur + 1); $('gbtn').onclick = grid;
-  $('start').onclick = () => show(1);
+  $('start').onclick = () => show(1); $('nextun').onclick = nextUnrated;
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { if ($('zoom').classList.contains('on')) $('zoom').classList.remove('on'); else if (typing()) document.activeElement.blur(); else $('grid').classList.remove('on'); return; }
@@ -343,6 +489,8 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
     if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); show(cur + 1); }
     else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(cur - 1); }
     else if (e.key === 'g' || e.key === 'G') grid();
+    else if (e.key === 'n' || e.key === 'N') nextUnrated();
+    else if (e.key >= '1' && e.key <= '4') setRating(+e.key);
     else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
   });
   let sx = null, sy = null;
@@ -355,7 +503,8 @@ nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
   document.querySelectorAll('.frames img').forEach(im => im.onclick = () => { $('zoom').firstChild.src = im.src; $('zoom').classList.add('on'); });
   $('zoom').onclick = () => $('zoom').classList.remove('on');
 
-  const h = (location.hash || '').slice(1);
+  tally();
+  const h = (location.hash || '').slice(1).replace(/^row-?/i, '');
   const at = slides.findIndex(s => s.dataset.row === h);
   show(at > 0 ? at : 0);
 })();

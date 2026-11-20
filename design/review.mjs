@@ -106,11 +106,12 @@ for (const g of groups) for (const r of g.rows) {
   const f = i => (i >= 0 && r[i] ? r[i] : '');
   const dd = (label, i, big) => f(i) ? `<dt>${label}</dt><dd${big ? ' class="big"' : ''}>${inline(f(i))}</dd>` : '';
   const isBuilt = /\[x\]/i.test(r[C.built] || '');
-  slideRows += `<section class="slide" data-row="${esc(n)}" data-group="${esc(plain(g.name))}" data-label="${esc(plain(f(C.action) || f(C.where)))}" data-where="${esc(plain(f(C.where)))}" data-action="${esc(plain(f(C.action)))}">
+  slideRows += `<section class="slide" data-row="${esc(n)}" data-group="${esc(plain(g.name))}" data-label="${esc(plain(f(C.action) || f(C.where)))}" data-ids="${esc(framesFor(n).map(x => x.id).join(',') || n)}" data-where="${esc(plain(f(C.where)))}" data-action="${esc(plain(f(C.action)))}">
 <div class="grp">${inline(g.name)}</div><div class="rowhead"><b>Row ${esc(n)}</b><span>${inline(f(C.where))}</span></div>
 <div class="body"><div class="frames">${framesHtml(n)}</div>
 <div class="side"><div class="card"><dl>${dd('Action', C.action, true)}${dd('What the person sees', C.sees)}${dd('On disk', C.disk)}${dd('wb command', C.wb)}${dd('Test', C.test)}<dt>Built</dt><dd><span class="built${isBuilt ? ' yes' : ''}">${isBuilt ? 'Built' : 'Not built'}</span></dd></dl></div>
-<textarea data-k="${esc(n)}" placeholder="Your comment on row ${esc(n)}" aria-label="Comment on row ${esc(n)}"></textarea></div></div></section>\n`;
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="${esc(n)}" placeholder="Optional comment on row ${esc(n)}" aria-label="Comment on row ${esc(n)}"></textarea></div></div></section>\n`;
 }
 
 const noFrames = !frames || !frames.length;
@@ -130,17 +131,18 @@ ${css}</style></head><body>
 <div class="meta">Design review · round ${esc(round)}</div>
 <h1>${inline(title)}</h1>
 <p class="meta">${inline(state)}${state ? ' · ' : ''}${built} of ${total} rows built</p>
-<div class="links"><button id="start" class="primary">Start: row 1</button> </div>
+<div class="links"><button id="start" class="primary">Start: row 1</button> <button id="nextun">Next unrated (N)</button></div>
+<p id="tally" class="tally"></p>
 ${noFrames ? '<p class="notice">The interactions of this folder are not drawn yet: every row shows a placeholder until rows/index.json lists frames.</p>' : ''}
 ${dec.lines.length ? `<h2>Decisions${dec.date ? ', ' + esc(dec.date) : ''}</h2>${prose(dec.lines)}` : ''}
 <h2>Open questions</h2>${prose(sec('Open questions')) || '<p class="meta">None listed.</p>'}
 ${directions}
 <h2>General comment</h2><textarea data-k="general" placeholder="Anything about the whole round" aria-label="General comment"></textarea>
-<p class="meta">Arrow keys or the buttons move between slides; G shows every row; Esc leaves a comment box. Comments stay in this browser until you copy or download them.</p>
+<p class="meta">Arrow keys or the buttons move between slides; 1 to 4 rate the row (Perfect, Satisfactory, Not great, Horrible); N jumps to the next unrated row; G shows every row; Esc leaves a comment box. Comments stay in this browser until you copy or download them.</p>
 </section>
 ${slideRows}<div id="grid"></div>
 </main>
-<nav class="pn"><button id="prev">&larr; Back</button><button id="next" class="primary">Next &rarr;</button><span class="sp"></span><span id="msg"></span><button id="copy">Copy notes</button><button id="dl">Download notes</button></nav>
+<nav class="pn"><button id="prev">&larr; Back</button><button id="next" class="primary">Next &rarr;</button><span class="sp"></span><span id="msg"></span><button id="copy">Copy notes</button><button id="dl">Download notes</button><button id="dlj">Download JSON</button></nav>
 <div id="zoom"><img alt=""></div>
 <script type="application/json" id="data">${data}</script>
 <script>
