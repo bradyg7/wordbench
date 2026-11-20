@@ -433,3 +433,25 @@ test('after an update the section says so, with its notes, and nothing is over t
   await expect(pane.locator('.set-upd-after .set-upd-notes')).toContainText('Updates in Settings.');
   if (info.project.name !== 'webkit-phone') await expect(gear(page)).not.toHaveClass(/update-ready/);
 });
+
+// UP6 (rows 20 and 21): Go back, and the copy built from source.
+test('after an update the section offers Go back to the version before, and not when none is kept (row 20)', async ({ page }) => {
+  const today = new Date().toISOString().slice(0, 10);
+  await serve(page, status({ newer: null, ready: null, dot: null, installed: '0.3.0', updated: { from: '0.2.4', on: today }, back: '0.2.4' }));
+  await ready(page);
+  await openSettings(page);
+  await toUpdates(page);
+  const after = page.locator('.set-pane .set-upd-after');
+  await expect(after.getByRole('button', { name: 'Go back to 0.2.4' })).toBeVisible();
+  // outside the app it cannot restart, and says so without changing anything
+  await after.getByRole('button', { name: 'Go back to 0.2.4' }).click();
+  await expect(after.locator('.set-upd-said')).toHaveText('Going back works in the app.');
+  // the notes say the study folder was moved forward: no Go back
+  await serve(page, status({ newer: null, ready: null, dot: null, installed: '0.3.0', updated: { from: '0.2.4', on: today }, back: null, back_refused: 'Going back to 0.2.4 is not offered' }));
+  await page.evaluate(() => (window as any).__wb.refreshUpdates());
+  await page.keyboard.press('Escape');
+  await openSettings(page);
+  await toUpdates(page);
+  await expect(page.locator('.set-pane .set-upd-after')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Go back/ })).toHaveCount(0);
+});

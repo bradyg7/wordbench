@@ -493,6 +493,7 @@ impl Updates {
     /// Run when the app opens: leftovers of an update that has happened are taken away, and an installer that was started
     /// but did not change the version is said so (U-11): the old version opens, and the section says it was not changed.
     pub fn settle(&self) {
+        self.sweep_old();
         let s = self.read();
         let Some(i) = s.get("installing") else { return };
         let to = i.get("to").and_then(Value::as_str).unwrap_or("");
@@ -506,6 +507,12 @@ impl Updates {
             self.put_failure(to, &crate::updates_install::refused_line("the installer did not finish."));
         }
         let mut s = s;
+        s.remove("installing");
+        let _ = self.write(&s);
+    }
+
+    pub(crate) fn drop_installing(&self) {
+        let mut s = self.read();
         s.remove("installing");
         let _ = self.write(&s);
     }
@@ -546,6 +553,8 @@ impl Updates {
             "ring": ring,
             "download": download.as_ref().map(|d| d.to_json()),
             "failure": failure,
+            "back": self.updated().and_then(|_| self.back_offer().ok()),
+            "back_refused": self.updated().and_then(|_| self.before()).and_then(|_| self.back_offer().err()),
             "updated": self.updated().map(|(from, on)| json!({ "from": from, "on": on })),
         })
     }

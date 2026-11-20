@@ -47,6 +47,22 @@ pub fn commands() -> Vec<Command> {
             },
         ),
         cmd(
+            "update back",
+            "Put back the version before the last update (kept beside the app, not downloaded again; program files only). With the window open it asks the window to save every page and restart. Refuses, saying why, when none is kept or the notes say the study folder's form was moved.",
+            vec![Opt("wait", Some("120"))],
+            |_, a| {
+                let u = Updates::here();
+                u.back_offer()?;
+                let wait: f64 = a.opt_or("wait", "120").parse().map_err(|_| "argument --wait: a number of seconds")?;
+                match wb_core::relay::send("update back", std::time::Duration::from_secs_f64(wait.max(0.1))) {
+                    Ok(r) if r["ok"] == false => Err(r["error"].as_str().unwrap_or("the window refused it").to_string()),
+                    Ok(r) => Ok(Out::Text(r["said"].as_str().unwrap_or("done").to_string())),
+                    Err(e) if e.to_string().starts_with("The app is not running") => Ok(Out::Text(u.go_back()?)),
+                    Err(e) => Err(e.to_string()),
+                }
+            },
+        ),
+        cmd(
             "update stop",
             "Give up a download, or a restart that is waiting: the downloaded file is removed and the dot returns.",
             vec![],

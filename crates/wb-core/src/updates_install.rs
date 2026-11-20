@@ -372,6 +372,7 @@ impl Updates {
         if !newer_than(&d.version, INSTALLED) {
             return Err(refused_line("it is not newer than the version running."));
         }
+        self.keep_before();
         self.note_installing(&d.version, restart)?;
         spawn_installer(&path, restart)?;
         Ok(format!("Bible Workbench {} is being installed.", d.version))
@@ -418,6 +419,111 @@ fn http_reader(_: &str, _: &mut Download) -> Result<Box<dyn std::io::Read>, Fail
     Err(words(updates::source_line()))
 }
 
+/// The folder the program runs from: `WB_APP_DIR`, else where the running program is.
+pub fn app_dir() -> Option<PathBuf> {
+    match std::env::var("WB_APP_DIR") {
+        Ok(p) if !p.trim().is_empty() => Some(PathBuf::from(p)),
+        _ => std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())),
+    }
+}
+
+/// Why going back is not offered when the notes of the version running say the study folder changed (U-13).
+pub fn back_refusal(installed_notes: &str, before: &str) -> Option<String> {
+    let p = crate::updates_notes::parts(installed_notes);
+    if p.study_unchanged() {
+        return None;
+    }
+    let line = if p.study.is_empty() { "says nothing about it".to_string() } else { format!("say “{}”", p.study.join(" ")) };
+    Some(format!("Going back to {before} is not offered: the notes of Bible Workbench {INSTALLED} {line}, so your study folder may have been moved forward."))
+}
+
+impl Updates {
+    fn before_dir(&self) -> PathBuf {
+        self.dir().join("before")
+    }
+
+    /// The version before, kept once (U-13): the program files beside the app, copied before the installer replaces them.
+    /// The Bible database and everything in a folder are not part of it. A copy that could not be made is not kept at all.
+    pub(crate) fn keep_before(&self) {
+        let dest = self.before_dir();
+        let _ = fs::remove_dir_all(&dest);
+        let Some(app) = app_dir() else { return };
+        let files = dest.join(INSTALLED);
+        let kept = (|| -> std::io::Result<()> {
+            fs::create_dir_all(&files)?;
+            for e in fs::read_dir(&app)? {
+                let e = e?;
+                if e.file_type()?.is_file() {
+                    fs::copy(e.path(), files.join(e.file_name()))?;
+                }
+            }
+            fs::write(dest.join("before.json"), json!({ "version": INSTALLED, "at": Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true) }).to_string())
+        })();
+        if kept.is_err() {
+            let _ = fs::remove_dir_all(&dest);
+        }
+    }
+
+    /// The version kept before, if one is.
+    pub fn before(&self) -> Option<String> {
+        let v: Value = serde_json::from_str(&fs::read_to_string(self.before_dir().join("before.json")).ok()?).ok()?;
+        let version = v.get("version")?.as_str()?.to_string();
+        (self.before_dir().join(&version).is_dir() && !updates::version_parts(&version).is_none() && version != INSTALLED).then_some(version)
+    }
+
+    /// Whether Go back is offered, and if not, why (U-13). Ok(version) when it is.
+    pub fn back_offer(&self) -> Result<String, String> {
+        if !updates::updates_itself() {
+            return Err(updates::source_line());
+        }
+        let Some(v) = self.before() else { return Err("There is no earlier version kept. Going back is offered after an update.".into()) };
+        match back_refusal(crate::updates_notes::installed_notes(), &v) {
+            Some(why) => Err(why),
+            None => Ok(v),
+        }
+    }
+
+    /// `wb update back`: puts the version before back (the program files only; the study folder is not touched). It takes
+    /// effect when the app is opened again.
+    pub fn go_back(&self) -> Result<String, String> {
+        let v = self.back_offer()?;
+        let app = app_dir().ok_or("The folder the program runs from is not known.")?;
+        let from = self.before_dir().join(&v);
+        for e in fs::read_dir(&from).map_err(|e| e.to_string())? {
+            let e = e.map_err(|e| e.to_string())?;
+            let to = app.join(e.file_name());
+            if fs::copy(e.path(), &to).is_err() {
+                // a program that is running cannot be written over, but it can be renamed out of the way
+                let aside = app.join(format!("{}.old", e.file_name().to_string_lossy()));
+                let _ = fs::remove_file(&aside);
+                fs::rename(&to, &aside).map_err(|e| format!("Bible Workbench {v} could not be put back ({e}). Nothing was changed."))?;
+                fs::copy(e.path(), &to).map_err(|e| format!("Bible Workbench {v} could not be put back ({e})."))?;
+            }
+        }
+        self.forget_update();
+        Ok(format!("Bible Workbench {v} is back. It opens when the app is started again."))
+    }
+
+    /// After going back the update is not the one running, and the version kept is used up.
+    fn forget_update(&self) {
+        let _ = fs::remove_dir_all(self.before_dir());
+        self.clear_download();
+        self.drop_installing();
+    }
+
+    /// Takes away what a restore left (programs renamed out of the way) once they can be.
+    pub fn sweep_old(&self) {
+        let Some(app) = app_dir() else { return };
+        if let Ok(d) = fs::read_dir(app) {
+            for e in d.flatten() {
+                if e.file_name().to_string_lossy().ends_with(".old") {
+                    let _ = fs::remove_file(e.path());
+                }
+            }
+        }
+    }
+}
+
 /// The file name the installer is kept under: the last piece of its address.
 fn installer_name(url: &str, version: &str) -> String {
     let last = url.split(['?', '#']).next().unwrap_or("").rsplit(['/', '\\']).next().unwrap_or("");
@@ -446,5 +552,27 @@ fn spawn_installer(path: &std::path::Path, restart: bool) -> Result<(), String> 
         std::process::Command::new("sh").arg(path).arg(if restart { "/R" } else { "/P" }).spawn().map(|_| ()).map_err(|e| refused_line(&format!("the installer could not be started ({e}).")))
     } else {
         Err(refused_line("installing from the window is built for Windows only."))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// U-13: going back is offered only when the release's own words say nothing in the study folder changed.
+    #[test]
+    fn going_back_is_not_offered_when_the_notes_say_the_study_folder_changed() {
+        assert!(back_refusal("## Your study folder\nNothing changes in your study folder.", "0.2.4").is_none());
+        let why = back_refusal("## Your study folder\nYour pages are moved into a new form.", "0.2.4").unwrap();
+        assert!(why.starts_with("Going back to 0.2.4 is not offered") && why.contains("moved into a new form"), "{why}");
+        // no line at all is not a promise that nothing changed
+        assert!(back_refusal("## New\n- x", "0.2.4").is_some());
+        assert!(back_refusal("## Your study folder\nNothing is moved forward, nothing changes... but moved forward later", "0.2.4").is_some());
+    }
+
+    #[test]
+    fn a_stopped_download_is_said_in_megabytes() {
+        let s = stopped_line("0.3.0", 31_000_000, 84_000_000);
+        assert!(s.starts_with("The download of 0.3.0 stopped at 31 of 84 MB. Bible Workbench "), "{s}");
     }
 }

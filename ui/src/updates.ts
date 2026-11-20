@@ -26,6 +26,9 @@ export interface UpdateStatus {
   download?: Download | null;
   /** After an update: the version this one was updated from, and the day (YYYY-MM-DD). */
   updated?: { from: string; on: string } | null;
+  /** The version before, when Go back is offered; or why it is not (the notes say the study folder was moved). */
+  back?: string | null;
+  back_refused?: string | null;
 }
 
 /** A download as `wb update status` gives it (UP4). */
@@ -120,12 +123,31 @@ export async function restartNow(): Promise<{ ok: boolean; said: string }> {
   }
 }
 
+/** Go back (U-13): every page is saved first, then the version before is put back and the app opens it. */
+export async function goBack(): Promise<{ ok: boolean; said: string }> {
+  try { await flushPageWriters(); } catch (e) {
+    return { ok: false, said: `${e instanceof PageNotSaved ? e.title : 'A page'} could not be saved, so Bible Workbench was not restarted.` };
+  }
+  try {
+    if (!inApp) return { ok: false, said: 'Going back works in the app.' };
+    restartHooks.capture();
+    await invoke('update_back');
+    return { ok: true, said: 'Restarting…' };
+  } catch (e) {
+    return { ok: false, said: String(e instanceof Error ? e.message : e).replace(/^error: /, '').trim() };
+  }
+}
+
 /** Set by the window: keeps the place and what is half written before the app restarts (U-8). */
 export const restartHooks = { capture: () => {} };
 
 /** `wb update install [--when-closed]` from a terminal, with the window open (it arrives as a `wb do` line): the window does
  *  what its buttons do. Null for any other line. */
 export async function updateLine(line: string): Promise<{ ok: boolean; said?: string; error?: string } | null> {
+  if (line.trim() === 'update back') {
+    const r = await goBack();
+    return r.ok ? { ok: true, said: 'Going back' } : { ok: false, error: r.said };
+  }
   const m = /^update install( --when-closed)?$/.exec(line.trim());
   if (!m) return null;
   let s = await refreshUpdates();
@@ -264,7 +286,14 @@ function drawUpdated(s: UpdateStatus): HTMLElement {
   };
   const acts = h('div', 'set-upd-acts');
   acts.append(what);
-  box.append(acts, slot);
+  const said = h('div', 'set-upd-said muted small');
+  said.setAttribute('role', 'status');
+  if (s.back) {
+    const back = h('button', 'btn', `Go back to ${s.back}`) as HTMLButtonElement;
+    back.onclick = async () => { back.disabled = true; said.textContent = 'Saving your pages…'; const r = await goBack(); said.textContent = r.said; said.classList.toggle('error', !r.ok); if (!r.ok) back.disabled = false; };
+    acts.append(back);
+  }
+  box.append(acts, said, slot);
   return box;
 }
 

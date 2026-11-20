@@ -18,7 +18,11 @@ impl Home {
     fn new(name: &str) -> Home {
         let dir = std::env::temp_dir().join("bible-workbench-rs").join("update-tests").join(format!("{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(dir.join("app")).unwrap();
+        // the program files beside the app (the Bible database is a folder of its own, and is not part of what is kept)
+        std::fs::write(dir.join("app").join("bible-workbench.exe"), "the version running").unwrap();
+        std::fs::create_dir_all(dir.join("app").join("datasets")).unwrap();
+        std::fs::write(dir.join("app").join("datasets").join("workbench.db"), "database").unwrap();
         Home { dir }
     }
     /// Where the test installer writes that it ran.
@@ -32,6 +36,7 @@ impl Home {
         let mut c = Command::new(env!("CARGO_BIN_EXE_wb"));
         c.args(args).env("WB_UPDATES_DIR", self.updates()).env("WB_STUDY_DIR", self.dir.join("study")).env_remove("WB_NO_UPDATE_CHECK").env_remove("WB_UPDATE_FEED")
             .env("WB_CACHE_DIR", self.dir.join("cache"))
+            .env("WB_APP_DIR", self.dir.join("app"))
             .env("WB_UPDATE_PUBKEY", TEST_KEY.trim())
             .env("WB_TEST_INSTALLED", self.installed_marker());
         if let Some(f) = feed {
@@ -94,6 +99,13 @@ fn a_copy_built_from_source_says_so_and_makes_no_request() {
     assert_eq!(s["self_updating"], false);
     assert_eq!(s["message"], wb_core::updates::source_line());
     assert!(!h.updates().join("state.json").exists());
+    // row 21: nothing else is offered either: no install, no stop-and-go, no going back, and no request
+    for args in [&["update", "install"][..], &["update", "back"][..]] {
+        let (code, _, err) = h.run(args, Some(&feed));
+        assert_eq!(code, 1, "{args:?}");
+        assert!(err.contains("This copy was built from source (") && err.contains("). It does not update itself."), "{args:?}: {err}");
+    }
+    assert!(!h.updates().join("download").exists() && !h.updates().join("state.json").exists());
 }
 
 #[cfg(feature = "updater")]
@@ -607,6 +619,7 @@ mod with_the_update_code {
         std::env::set_var("WB_UPDATE_FEED", srv.url("latest.json"));
         std::env::set_var("WB_UPDATE_PUBKEY", TEST_KEY.trim());
         std::env::set_var("WB_TEST_INSTALLED", h.installed_marker());
+        std::env::set_var("WB_APP_DIR", h.dir.join("app"));
         let u = wb_core::updates::Updates::new(h.updates());
         // a download of 200 KB at 8 KB / 20 ms takes half a second or more: starting it must not wait for it
         let t = Instant::now();
@@ -633,7 +646,7 @@ mod with_the_update_code {
         // with nothing downloaded, closing the window installs nothing
         let none = wb_core::updates::Updates::new(h.dir.join("elsewhere"));
         assert!(none.install_on_close().is_none());
-        for k in ["WB_UPDATE_FEED", "WB_UPDATE_PUBKEY", "WB_TEST_INSTALLED"] {
+        for k in ["WB_UPDATE_FEED", "WB_UPDATE_PUBKEY", "WB_TEST_INSTALLED", "WB_APP_DIR"] {
             std::env::remove_var(k);
         }
     }
@@ -699,5 +712,75 @@ mod with_the_update_code {
         let (code, out, _) = h.run(&["update", "notes", me], Some("http://127.0.0.1:9/latest.json"));
         assert_eq!(code, 0);
         assert!(out.contains("Your study folder"), "{out}");
+    }
+
+    /// Row 20: after an update the program files before it are kept once, beside the app (not the database); Go back puts
+    /// them back without the network.
+    #[test]
+    fn the_version_before_is_kept_once_and_go_back_puts_it_back() {
+        let h = Home::new("back");
+        let srv = Server::start(vec![release("99.0.0", NAME, SIG, INSTALLER.len()), route(NAME, INSTALLER)]);
+        let (code, out, err) = h.run(&["update", "install"], Some(&srv.url("latest.json")));
+        assert_eq!(code, 0, "{out} {err}");
+        wait_until("the installer to run", || h.installed_marker().exists());
+        let kept = h.updates().join("before").join(wb_core::updates::INSTALLED);
+        assert_eq!(std::fs::read_to_string(kept.join("bible-workbench.exe")).unwrap(), "the version running");
+        assert!(!kept.join("datasets").exists() && !kept.join("workbench.db").exists(), "the database is not part of it");
+        // not offered before an update has happened
+        let (code, _, err) = h.run(&["update", "back"], None);
+        assert_eq!(code, 1);
+        assert!(err.contains("not offered") || err.contains("no earlier version"), "{err}");
+
+        // now it is the new version that runs: the record names it, and what was kept is the version before
+        let me = wb_core::updates::INSTALLED;
+        let before = h.updates().join("before");
+        std::fs::remove_dir_all(&before).unwrap();
+        std::fs::create_dir_all(before.join("0.0.9")).unwrap();
+        std::fs::write(before.join("0.0.9").join("bible-workbench.exe"), "the version before").unwrap();
+        std::fs::write(before.join("before.json"), r#"{"version":"0.0.9"}"#).unwrap();
+        std::fs::write(h.updates().join("state.json"), serde_json::json!({ "installing": { "from": "0.0.9", "to": me, "at": "2026-11-19T09:00:00Z" } }).to_string()).unwrap();
+        let s = json(&h.run(&["update", "status"], None).1);
+        assert_eq!(s["back"], "0.0.9", "{s}");
+        // the study folder is never part of it
+        let (code, out, err) = h.run(&["update", "back"], None);
+        assert_eq!(code, 0, "{out} {err}");
+        assert!(out.contains("Bible Workbench 0.0.9 is back"), "{out}");
+        assert_eq!(std::fs::read_to_string(h.dir.join("app").join("bible-workbench.exe")).unwrap(), "the version before");
+        assert_eq!(std::fs::read_to_string(h.dir.join("app").join("datasets").join("workbench.db")).unwrap(), "database");
+        let s = json(&h.run(&["update", "status"], None).1);
+        assert!(s["back"].is_null() && s["updated"].is_null(), "{s}");
+        assert!(!before.exists(), "the version kept is used up");
+        assert!(!h.dir.join("study").exists());
+    }
+
+    /// Row 20: with the window open, `wb update back` asks the window; with none kept it refuses.
+    #[test]
+    fn go_back_asks_the_window_and_refuses_when_nothing_is_kept() {
+        let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+        let h = Home::new("back-relay");
+        std::env::set_var("WB_CACHE_DIR", h.dir.join("cache"));
+        // nothing kept: refused before the window is asked
+        let (code, _, err) = h.run(&["update", "back"], None);
+        assert_eq!(code, 1);
+        assert!(err.contains("no earlier version is kept") || err.contains("no earlier version kept"), "{err}");
+        let before = h.updates().join("before");
+        std::fs::create_dir_all(before.join("0.0.9")).unwrap();
+        std::fs::write(before.join("0.0.9").join("bible-workbench.exe"), "the version before").unwrap();
+        std::fs::write(before.join("before.json"), r#"{"version":"0.0.9"}"#).unwrap();
+        std::fs::write(h.updates().join("state.json"), serde_json::json!({ "installing": { "from": "0.0.9", "to": wb_core::updates::INSTALLED, "at": "2026-11-19T09:00:00Z" } }).to_string()).unwrap();
+        let (listener, token) = wb_core::relay::listen(&h.dir.join("study")).unwrap();
+        let line: Arc<Mutex<String>> = Arc::default();
+        let seen = line.clone();
+        std::thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            *seen.lock().unwrap() = wb_core::relay::read_request(&stream, &token).unwrap().0;
+            wb_core::relay::answer(&stream, &serde_json::json!({"ok": true, "said": "Going back"}));
+        });
+        let (code, out, err) = h.run(&["update", "back"], None);
+        assert_eq!((code, out.trim(), err.trim()), (0, "Going back", ""));
+        assert_eq!(*line.lock().unwrap(), "update back");
+        // the window did the work: the files here are as they were
+        assert_eq!(std::fs::read_to_string(h.dir.join("app").join("bible-workbench.exe")).unwrap(), "the version running");
+        std::env::remove_var("WB_CACHE_DIR");
     }
 }

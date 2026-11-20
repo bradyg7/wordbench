@@ -75,12 +75,12 @@ impl Parts {
     pub fn moved_something(&self) -> bool {
         !self.moved.is_empty()
     }
-    /// The notes say the study folder's form was moved forward (U-13): a release whose *Your study folder* line says
-    /// anything other than that nothing changes in it is one the person cannot go back from. Only a line that names a move
-    /// counts, so the word the release writes ("moved", "converted", "new form") is what is looked for.
-    pub fn study_form_moved(&self) -> bool {
+    /// Whether the notes leave the study folder as it was (U-13): the release's *Your study folder* line says that nothing
+    /// in it changes. Any other line, or none, is taken to mean its form was moved forward: going back is then not offered,
+    /// because the version before may not read what the person has written since. The cautious reading is the safe one.
+    pub fn study_unchanged(&self) -> bool {
         let t = self.study.join(" ").to_lowercase();
-        ["moved", "converted", "new form", "migrat", "rewritten", "changes the form"].iter().any(|w| t.contains(w)) && !t.contains("nothing")
+        !t.is_empty() && t.contains("nothing") && !t.contains("moved forward")
     }
 }
 

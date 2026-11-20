@@ -494,6 +494,23 @@ async fn update_restart(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Go back (U-13): the version before is put back (the window has saved every page first), the app leaves, and the old
+/// version is opened again.
+#[tauri::command]
+async fn update_back(app: tauri::AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| wb_core::updates::Updates::here().go_back()).await.map_err(|e| e.to_string())??;
+    if let Some(dir) = wb_core::updates_install::app_dir() {
+        let exe = dir.join(if cfg!(windows) { "bible-workbench.exe" } else { "bible-workbench" });
+        // started a moment after this one has left, so the two do not hold the window's storage at once
+        #[cfg(windows)]
+        let _ = std::process::Command::new("cmd").arg("/C").arg(format!("ping -n 3 127.0.0.1 >nul & start \"\" \"{}\"", exe.display())).spawn();
+        #[cfg(not(windows))]
+        let _ = std::process::Command::new(exe).spawn();
+    }
+    app.exit(0);
+    Ok(())
+}
+
 /// The window is closing: an update that was downloaded and checked is installed (U-7: doing neither of the two buttons is the
 /// same as When I close the app). The installer replaces program files only.
 fn install_on_close() {
@@ -537,7 +554,7 @@ fn main() {
         .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
         .invoke_handler(tauri::generate_handler![
             pilot_license, installation_status, installation_configure, installation_restart,
-            wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready, update_check, update_install, update_stop, update_restart,
+            wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready, update_check, update_install, update_stop, update_restart, update_back,
             setup_status, set_study_dir, choose_study_dir, set_bible_db, choose_bible_db
         ])
         .setup(move |app| {
