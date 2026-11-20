@@ -15,7 +15,7 @@ test('Settings has the remodelled tabs, and reflows when narrow', async ({ page 
   if (info.project.name !== 'webkit-phone') expect((await pane.evaluate(el => el.clientWidth)) >= 720).toBe(true);
 
   // Keys is Help's now (design/features/help); with no keyboard pressed yet a phone has no Keys
-  const names = ['Reading', 'Theme', 'Notebook', 'Layouts', 'Commands', 'Study folder', 'Documents', 'Guide', ...(info.project.name === 'webkit-phone' ? [] : ['Keys']), 'Manual'];
+  const names = ['Reading', 'Theme', 'Notebook', 'Layouts', 'Commands', 'Study folder', 'Documents', 'Updates', 'Guide', ...(info.project.name === 'webkit-phone' ? [] : ['Keys']), 'Manual'];
   const menu = pane.getByRole('combobox', { name: 'Settings section' });
   const narrow = (await pane.evaluate(el => el.clientWidth)) < 520;
   if (info.project.name === 'webkit-phone') expect(narrow).toBe(true);

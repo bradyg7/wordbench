@@ -143,19 +143,19 @@ in `app/src-tauri/src/main.rs` shows the system dialog. **Ticket UP1 removes tha
 
 | # | Where (window tag) | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 1 | U1 | The app opens; ten seconds after the reader has drawn it looks by itself (setting *When the app opens*, not looked in 24 h) | Nothing while it looks. If 0.3.0 is newer: a dot on the rail's Settings gear, and nothing else. No dialog, toast or tab | `updates\state.json` beside the app: last look, newest version known | `wb update status` | Rust: no system dialog is created (the `dialog().message` call is gone); WebKit: after a feed with 0.3.0, the gear has the dot, scroll, selection and tabs unchanged | [ ] |
-| 2 | U1 | A look fails (no network, site down) by itself | Nothing | last look time not changed | `wb update status` | Rust: a dead feed leaves state unchanged and emits nothing to the window | [ ] |
-| 3 | U1 | Rest on the gear with the dot | Tooltip "Bible Workbench 0.3.0 is ready" | none | | WebKit: tooltip text | [ ] |
-| 4 | U2 | Open Settings on any other section while an update is ready | One line at the top: "Bible Workbench 0.3.0 is ready"; clicking it opens Updates | none | | WebKit | [ ] |
+| 1 | U1 | The app opens; ten seconds after the reader has drawn it looks by itself (setting *When the app opens*, not looked in 24 h) | Nothing while it looks. If 0.3.0 is newer: a dot on the rail's Settings gear, and nothing else. No dialog, toast or tab | `updates\state.json` beside the app: last look, newest version known | `wb update status` | Rust: no system dialog is created (the `dialog().message` call is gone); WebKit: after a feed with 0.3.0, the gear has the dot, scroll, selection and tabs unchanged | [x] |
+| 2 | U1 | A look fails (no network, site down) by itself | Nothing | last look time not changed | `wb update status` | Rust: a dead feed leaves state unchanged and emits nothing to the window | [x] |
+| 3 | U1 | Rest on the gear with the dot | Tooltip "Bible Workbench 0.3.0 is ready" | none | | WebKit: tooltip text | [x] |
+| 4 | U2 | Open Settings on any other section while an update is ready | One line at the top: "Bible Workbench 0.3.0 is ready"; clicking it opens Updates | none | | WebKit | [x] |
 
 ### The Updates section
 
 | # | Where (window tag) | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 5 | U2 | Open Settings → Updates | Installed version; when it last looked; "Look for updates" with its two choices; Check now; U-4's line; when newer is known, the card (version, date, size, first Moved or removed line, Your study folder line, What changed, Install, Not this version). One filled button | none | `wb update status` | WebKit: every part present, at 390 wide stacked and whole (U13) | [ ] |
-| 6 | U7 | Check now | "Looking…", then the card, or "Bible Workbench 0.2.4 is the newest" | last look | `wb update check` (exit 0) | Rust + WebKit with the test feed | [ ] |
-| 7 | U8 | Check now with no network | "Could not reach the update site. Bible Workbench works as it is." Check now stays; no Try again | none | `wb update check` (exit 1) | Rust: exit code and words | [ ] |
-| 8 | U7 | Change "Look for updates" to *Only when I ask* (or back) | The choice shown | the setting in `updates\` beside the app | `wb settings updates ask\|open` | Rust: ten starts with *ask* make no request; `WB_NO_UPDATE_CHECK=1` makes none under either | [ ] |
+| 5 | U2 | Open Settings → Updates | Installed version; when it last looked; "Look for updates" with its two choices; Check now; U-4's line; when newer is known, the card (version, date, size, first Moved or removed line, Your study folder line, What changed, Install, Not this version). One filled button | none | `wb update status` | WebKit: every part present, at 390 wide stacked and whole (U13) | [~] card lacks What changed and Not this version (UP3) |
+| 6 | U7 | Check now | "Looking…", then the card, or "Bible Workbench 0.2.4 is the newest" | last look | `wb update check` (exit 0) | Rust + WebKit with the test feed | [x] |
+| 7 | U8 | Check now with no network | "Could not reach the update site. Bible Workbench works as it is." Check now stays; no Try again | none | `wb update check` (exit 1) | Rust: exit code and words | [x] |
+| 8 | U7 | Change "Look for updates" to *Only when I ask* (or back) | The choice shown | the setting in `updates\` beside the app | `wb settings updates ask\|open` | Rust: ten starts with *ask* make no request; `WB_NO_UPDATE_CHECK=1` makes none under either | [x] |
 | 9 | U3 | What changed | Every newer release, newest first, under Moved or removed, New, Changed, Fixed, then Your study folder; older folded to version and date (one that moved something keeps that line); plain text only | none | `wb update notes [version]` | Rust: heading order, "Nothing was moved or removed.", markup shown as text; WebKit: fourteen behind folds (U14) | [ ] |
 | 10 | U2 | Not this version | Dot goes; version still listed with Install; a newer one brings the dot back | the set-aside version | `wb update skip [version]`, `--clear` | Rust | [ ] |
 

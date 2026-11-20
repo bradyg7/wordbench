@@ -173,8 +173,12 @@ fn notebook_commands() -> Vec<Command> {
             }),
         cmd("day rm", "Delete a day's page with timed Undo.",
             vec![Pos("day", N::Opt)], |c, a| j(nb::delete_day_with_undo(c.bible()?, &mut *c.study()?, day_of(a).as_deref()).map_err(e)?)),
-        cmd("settings", "The window's settings for a part (notebook): wb settings notebook; the marks panel: wb settings marks [kind <kind> on|off | entry <name or style> on|off | reading on|off | margin open|signs]; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
+        cmd("settings", "The window's settings for a part (notebook): wb settings notebook; the update look: wb settings updates [open|ask]; the marks panel: wb settings marks [kind <kind> on|off | entry <name or style> on|off | reading on|off | margin open|signs]; change one: wb settings notebook group chapter (default puts it back). --about says what each does.",
             vec![Pos("part", N::One), Pos("key", N::Opt), Pos("value", N::Any), Flag("about")], |c, a| {
+                if a.s("part") == "updates" {
+                    // "Look for updates" (updates U-3): kept beside the app, not in the study folder
+                    return crate::update::settings(c, a);
+                }
                 if a.s("part") == "marks" {
                     // the marks panel (rows 44 to 46): wb settings marks | kind <kind> on|off | entry <name or style> on|off | reading on|off
                     let mut st = c.study()?;
@@ -217,7 +221,7 @@ fn notebook_commands() -> Vec<Command> {
                     return j(serde_json::Value::Object(st.set_setting(&part, &a.s("key"), v).map_err(e)?));
                 }
                 if a.s("part") != "notebook" {
-                    return Err("The parts with settings: notebook, marks, reading, hover, theme, advanced, toolbar, commands, concordance.".into());
+                    return Err("The parts with settings: notebook, marks, updates, reading, hover, theme, advanced, toolbar, commands, concordance.".into());
                 }
                 let mut st = c.study()?;
                 if a.s("key").is_empty() {

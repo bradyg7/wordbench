@@ -11,6 +11,7 @@ import { refreshInks } from './hlink';
 import { section as layoutsSection } from './layouts';
 import { form, kept, loadKept, remove as removeKept, run as runKept, save as saveKept, topUsed, type Kept } from './mycommands';
 import { perf } from './perf';
+import { updateStatus, updatesRows } from './updates';
 
 /** What main.ts lends: the text size and the version live there. */
 export const bridge = {
@@ -155,7 +156,7 @@ export async function loadWindowSettings() {
 // design/features/settings (accepted 2026-11-13): eight tabs became these; Hover and cards joined Reading, Advanced
 // became Study folder (window size and timings only with the developer switch), Documents is new.
 // Help is the menu's second half (design/features/help, 2026-11-13): Guide, Keys (the only keys section), Manual.
-const SECTIONS = ['Reading', 'Theme', 'Notebook', 'Layouts', 'Commands', 'Study folder', 'Documents', 'Guide', 'Keys', 'Manual'] as const;
+const SECTIONS = ['Reading', 'Theme', 'Notebook', 'Layouts', 'Commands', 'Study folder', 'Documents', 'Updates', 'Guide', 'Keys', 'Manual'] as const;
 type Section = (typeof SECTIONS)[number];
 let current: Section = 'Reading';
 /** Older names still open the tab that holds them now (`settings advanced`, `settings hover`). */
@@ -238,9 +239,9 @@ export function openSettings(section: string = '', at = '') {
 /** Each tab's icon and the groups the list is split into (as a settings panel: lines between groups). */
 const ICON_OF: Record<Section, string> = {
   Reading: 'book', Theme: 'eye', Notebook: 'notebook', Layouts: 'sidebar', Commands: 'prompt', Keys: 'lines',
-  'Study folder': 'folder', Documents: 'file', Guide: 'help', Manual: 'book',
+  'Study folder': 'folder', Documents: 'file', Updates: 'sliders', Guide: 'help', Manual: 'book',
 };
-const GROUPS: Section[][] = [['Reading', 'Theme'], ['Notebook', 'Layouts', 'Commands'], ['Study folder', 'Documents'], ['Guide', 'Keys', 'Manual']];
+const GROUPS: Section[][] = [['Reading', 'Theme'], ['Notebook', 'Layouts', 'Commands'], ['Study folder', 'Documents', 'Updates'], ['Guide', 'Keys', 'Manual']];
 
 /** The Settings menu: a title bar, the search and tabs down the left (still), the chosen tab on the right (scrolls).
  *  Built once per opening; typing in the search only filters (the person, 2026-11-13: it froze on every letter, because
@@ -268,6 +269,14 @@ function draw(el: HTMLElement, query = '') {
   narrow.append(menu, find2);
   el.append(narrow);
 
+  // an update is ready (updates U-1): one line at the top of every other section, opening Updates
+  const readyLine = (): HTMLElement[] => {
+    const u = updateStatus();
+    if (!u?.self_updating || !u.ready) return [];
+    const b = h('button', 'set-upd-line', u.ready);
+    b.onclick = () => { find.value = ''; find2.value = ''; current = 'Updates'; menu.value = 'Updates'; show(); };
+    return [b];
+  };
   const wrap = h('div', 'set-wrap');
   const nav = h('nav', 'set-nav');
   nav.setAttribute('aria-label', 'Settings sections');
@@ -302,7 +311,7 @@ function draw(el: HTMLElement, query = '') {
     if (!q) {
       const rows = await rowsOf(current);
       if (mine !== token) return;
-      body.replaceChildren(h('h3', 'set-heading', current), ...rows);
+      body.replaceChildren(...(current === 'Updates' ? [] : readyLine()), h('h3', 'set-heading', current), ...rows);
       const at = body.querySelector<HTMLElement>('.guide-card.focus, details.doc[open]');
       if (at) at.scrollIntoView({ block: 'center' }); else body.scrollTop = 0;
       focus = '';
@@ -406,6 +415,8 @@ async function section(name: Section, redraw: () => void): Promise<HTMLElement[]
     }
   } else if (name === 'Documents') {
     out.push(...(await documentRows(redraw)));
+  } else if (name === 'Updates') {
+    out.push(...(await updatesRows(row, seg, redraw)));
   }
   return out;
 }
