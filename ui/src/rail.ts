@@ -19,7 +19,7 @@ import { openSettings } from './settings';
 import { keepTab } from './shelf';
 import { h, icon, popMenu, sizeClass } from './ui';
 import { iconOf, openTrail, trailGoing } from './trail';
-import { onUpdateStatus, updateStatus, type UpdateStatus } from './updates';
+import { dotOf, onUpdateStatus, updateStatus, type UpdateStatus } from './updates';
 
 const NAMES = 'wb.rail.names';
 
@@ -236,9 +236,14 @@ export function railLinksInit() {
 function gearDot(s: UpdateStatus | null) {
   const gear = rail?.querySelector<HTMLElement>('[data-rail="settings"]');
   if (!gear) return;
-  const ready = s?.self_updating ? s.ready : null;
+  const ready = dotOf(s);
+  const ring = s?.self_updating && typeof s.ring === 'number' ? s.ring : null;
   gear.classList.toggle('update-ready', !!ready);
-  gear.title = ready || 'Settings';
+  // while a download runs the dot is a ring that fills (UP4)
+  gear.classList.toggle('update-ring', ring !== null);
+  if (ring !== null) gear.style.setProperty('--ring', String(ring)); else gear.style.removeProperty('--ring');
+  const dl = s?.download;
+  gear.title = ring !== null ? `Downloading Bible Workbench ${dl?.version ?? ''}${dl?.total_text ? `: ${dl.got_text || '0 KB'} of ${dl.total_text}` : ''}` : ready || 'Settings';
 }
 
 export function initRail() {

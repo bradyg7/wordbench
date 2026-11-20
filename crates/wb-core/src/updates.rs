@@ -195,6 +195,11 @@ pub fn feed_address() -> Result<String, String> {
     Ok(url)
 }
 
+/// The installer's address, held to the same rule (U-12).
+pub(crate) fn check_installer_address(url: &str) -> Result<(), String> {
+    check_address(url)
+}
+
 fn check_address(url: &str) -> Result<(), String> {
     let lower = url.to_lowercase();
     if lower.starts_with("https://") || !lower.contains("://") || lower.starts_with("file://") {
@@ -467,9 +472,33 @@ impl Updates {
         self.look_by_itself(Utc::now(), std::env::var("WB_NO_UPDATE_CHECK").is_ok(), &fetch_feed)
     }
 
+    /// Kept before the installer runs, so the next opening can say what happened (U-9, U-11).
+    pub(crate) fn set_installing(&self, to: &str, restart: bool) -> Result<(), String> {
+        let mut s = self.read();
+        s.insert("installing".into(), json!({ "from": INSTALLED, "to": to, "restart": restart, "at": Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true) }));
+        self.write(&s)
+    }
+
+    /// The version an installer was last started for, if one was.
+    pub(crate) fn installing_version(&self) -> Option<String> {
+        self.read().get("installing").and_then(|i| i.get("to")).and_then(Value::as_str).map(str::to_string)
+    }
+
+    /// The Updates section has been opened: a failure's dot goes (U-11). A version still ready keeps its dot.
+    pub fn mark_seen(&self) {
+        self.seen_download();
+    }
+
     /// `wb update status`, and what the window reads for the dot and the Updates section. Reads only; no network.
     pub fn status(&self) -> Value {
         let newer = self.newer();
+        let download = self.download();
+        let failure = download.as_ref().filter(|d| matches!(d.state.as_str(), "stopped" | "refused")).map(|d| d.message.clone());
+        let ring = download.as_ref().filter(|d| d.state == "downloading").map(|d| if d.total > 0 { (d.got as f64 / d.total as f64).min(1.0) } else { 0.0 });
+        let ready = newer.as_ref().filter(|f| !self.is_skipped(f)).map(|f| ready_line(&f.version));
+        // the gear's dot: a version that is ready; or, after a download the person asked for failed, that failure until the
+        // section has been opened (U-11)
+        let dot = ready.clone().or_else(|| failure.clone().filter(|_| download.as_ref().is_some_and(|d| !d.seen)));
         let env_off = std::env::var("WB_NO_UPDATE_CHECK").is_ok();
         json!({
             "installed": INSTALLED,
@@ -481,7 +510,11 @@ impl Updates {
             "last_look": self.last_look().map(|t| t.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)),
             "newer": newer.as_ref().map(|f| json!({ "version": f.version, "date": f.date, "size": f.size, "size_text": size_text(f.size), "moved": f.moved, "study": f.study })),
             "skipped": newer.as_ref().is_some_and(|f| self.is_skipped(f)),
-            "ready": newer.as_ref().filter(|f| !self.is_skipped(f)).map(|f| ready_line(&f.version)),
+            "ready": ready,
+            "dot": dot,
+            "ring": ring,
+            "download": download.as_ref().map(|d| d.to_json()),
+            "failure": failure,
         })
     }
 }

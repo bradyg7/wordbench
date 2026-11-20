@@ -238,3 +238,132 @@ test('Not this version sets the version aside, and the same button puts it back 
   await expect.poll(() => asked).toEqual(['skip', 'clear']);
   await expect(gear(page)).toHaveClass(/update-ready/);
 });
+
+// UP4 (rows 11 to 15): Install downloads in the background, the ring on the gear, Stop, the stopped and refused words, and
+// the two buttons once the file is whole and signed. The shell is not here: outside the app Install, Stop and the status
+// come from fixtures these tests serve themselves.
+const download = (over: object = {}) => ({
+  version: '0.3.0', state: 'downloading', got: 31_000_000, total: 84_000_000, got_text: '31 MB', total_text: '84 MB', fraction: 31 / 84, message: '', seen: false, ...over,
+});
+
+test('Install starts the download and returns; the gear shows a ring that fills and Settings can be closed (row 11)', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'the rail is the desktop');
+  await serve(page, status());
+  const asked: string[] = [];
+  await page.route('**/fixtures/wb/update-install.json', r => { asked.push('install'); return r.fulfill({ json: '' }); });
+  await ready(page);
+  await openSettings(page);
+  const pane = page.locator('.set-pane');
+  await toUpdates(page);
+  const card = pane.locator('.set-upd-card');
+  await expect(card.getByRole('button', { name: 'Install' })).toBeVisible();
+  await serve(page, status({ ring: 31 / 84, download: download() }));
+  await card.getByRole('button', { name: 'Install' }).click();
+  await expect.poll(() => asked).toEqual(['install']);
+  // the section says how far, and that reading goes on; the one button is Stop
+  await expect(card.locator('.set-upd-said')).toHaveText('Downloading 31 MB of 84 MB. You can close Settings and keep reading.');
+  await expect(card.getByRole('button', { name: 'Stop' })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Install' })).toHaveCount(0);
+  expect(await card.locator('progress').evaluate((el: HTMLProgressElement) => el.value)).toBeCloseTo(31 / 84, 2);
+  // Settings closed: the dot became a ring that fills, and the reader is as it was
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.set-pane')).toHaveCount(0);
+  await expect(gear(page)).toHaveClass(/update-ring/);
+  expect(await gear(page).evaluate(el => el.style.getPropertyValue('--ring'))).toBe(String(31 / 84));
+  await expect(gear(page)).toHaveAttribute('title', 'Downloading Bible Workbench 0.3.0: 31 MB of 84 MB');
+  // it fills as the status is read again
+  await serve(page, status({ ring: 0.9, download: download({ got: 75_600_000, got_text: '76 MB', fraction: 0.9 }) }));
+  await page.evaluate(() => (window as any).__wb.refreshUpdates());
+  expect(await gear(page).evaluate(el => el.style.getPropertyValue('--ring'))).toBe('0.9');
+  // the reader is as it was while it runs
+  await expect(page.locator('#reader')).toContainText('Numbers');
+});
+
+test('Stop gives the download up and the dot returns (row 12)', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'the rail is the desktop');
+  await serve(page, status({ ring: 0.4, download: download() }));
+  const asked: string[] = [];
+  await page.route('**/fixtures/wb/update-stop.json', r => { asked.push('stop'); return r.fulfill({ json: 'The download was stopped.' }); });
+  await ready(page);
+  await expect(gear(page)).toHaveClass(/update-ring/);
+  await openSettings(page);
+  const pane = page.locator('.set-pane');
+  await toUpdates(page);
+  await serve(page, status());
+  await pane.locator('.set-upd-card').getByRole('button', { name: 'Stop' }).click();
+  await expect.poll(() => asked).toEqual(['stop']);
+  await expect(pane.locator('.set-upd-card').getByRole('button', { name: 'Install' })).toBeVisible();
+  await expect(pane.locator('.set-upd-card .set-upd-said')).toHaveText('The download was stopped.');
+  await expect(gear(page)).not.toHaveClass(/update-ring/);
+  await expect(gear(page)).toHaveClass(/update-ready/);
+});
+
+test('a download that stopped says where, with Try again; the gear keeps its dot (row 13)', async ({ page }) => {
+  const words = 'The download of 0.3.0 stopped at 31 of 84 MB. Bible Workbench 0.2.4 works as it is.';
+  await serve(page, status({ failure: words, download: download({ state: 'stopped', message: words }) }));
+  await ready(page);
+  await openSettings(page);
+  const pane = page.locator('.set-pane');
+  await toUpdates(page);
+  const card = pane.locator('.set-upd-card');
+  await expect(card.locator('.set-upd-said')).toHaveText(words);
+  await expect(card.locator('.set-upd-said')).toHaveClass(/error/);
+  await expect(card.getByRole('button', { name: 'Try again' })).toBeVisible();
+  // the setting, Check now and the line of U-4 stay through the failure
+  await expect(pane.getByRole('button', { name: 'Check now' })).toBeVisible();
+  await expect(pane.locator('.set-upd-sends')).toBeVisible();
+  await expect(pane.locator('.set-body .btn.primary')).toHaveCount(1);
+});
+
+test('a refused update says so in the words, and nothing installs it anyway (row 14)', async ({ page }) => {
+  const words = 'This update was not installed: it was not signed by Bible Workbench. Nothing was changed.';
+  await serve(page, status({ failure: words, download: download({ state: 'refused', message: words, got: 0 }) }));
+  await ready(page);
+  await openSettings(page);
+  const pane = page.locator('.set-pane');
+  await toUpdates(page);
+  const card = pane.locator('.set-upd-card');
+  await expect(card.locator('.set-upd-said')).toHaveText(words);
+  for (const name of ['Install', 'Try again', 'Restart now', 'When I close the app']) await expect(card.getByRole('button', { name })).toHaveCount(0);
+  await expect(pane.locator('.set-body .btn.primary')).toHaveCount(0);
+});
+
+test('a failure keeps the gear lit until Updates is opened (row 13)', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'the rail is the desktop');
+  const words = 'The download of 0.3.0 stopped at 31 of 84 MB. Bible Workbench 0.2.4 works as it is.';
+  const failed = status({ newer: null, ready: null, dot: words, failure: words, download: download({ state: 'stopped', message: words }) });
+  await serve(page, failed);
+  const asked: string[] = [];
+  await page.route('**/fixtures/wb/update-status-seen.json', r => { asked.push('seen'); return r.fulfill({ json: { ...failed, dot: null, download: download({ state: 'stopped', message: words, seen: true }) } }); });
+  await ready(page);
+  await expect(gear(page)).toHaveClass(/update-ready/);
+  await expect(gear(page)).toHaveAttribute('title', words);
+  await openSettings(page);
+  await toUpdates(page);
+  await expect.poll(() => asked).toEqual(['seen']);
+});
+
+test('once the file is whole and checked, Restart now (filled) and When I close the app (row 15)', async ({ page }) => {
+  await serve(page, status({ download: download({ state: 'ready', got: 84_000_000, fraction: 1 }) }));
+  await ready(page);
+  await openSettings(page);
+  const pane = page.locator('.set-pane');
+  await toUpdates(page);
+  const card = pane.locator('.set-upd-card');
+  await expect(card.getByRole('button', { name: 'Restart now' })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'When I close the app' })).toBeVisible();
+  await expect(pane.locator('.set-body .btn.primary')).toHaveCount(1);
+  await expect(card.locator('.btn.primary')).toHaveText('Restart now');
+  await expect(card.getByRole('button', { name: 'Install' })).toHaveCount(0);
+  await expect(card.locator('progress')).toBeHidden();
+  // the same, whole at phone width
+  const box = (await pane.locator('.set-body').boundingBox())!;
+  for (const name of ['Restart now', 'When I close the app']) {
+    const b = (await card.getByRole('button', { name }).boundingBox())!;
+    expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width + 1);
+  }
+  // choosing When I close the app says what happens and changes nothing else
+  await card.getByRole('button', { name: 'When I close the app' }).click();
+  await expect(card.locator('.set-upd-said')).toHaveText('Bible Workbench will install it when you close the app.');
+  await expect(card.getByRole('button', { name: 'Restart now' })).toBeVisible();
+});

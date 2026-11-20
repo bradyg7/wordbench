@@ -42,6 +42,7 @@
 .rail-item[data-rail="trail"].going::after { content: ''; position: absolute; left: 17px; bottom: 3px; width: 5px; height: 5px; border-radius: 3px; background: var(--accent); }
 /* an update is ready (design/features/updates U-1): a dot on the gear's top right corner; the Trail's dot is bottom left */
 .rail-item[data-rail="settings"].update-ready::before { content: ''; position: absolute; right: 8px; top: 7px; width: 8px; height: 8px; border-radius: 4px; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+.rail-item[data-rail="settings"].update-ring::before { width: 10px; height: 10px; border-radius: 5px; right: 7px; top: 6px; background: conic-gradient(var(--accent) calc(var(--ring, 0) * 1turn), var(--line) 0); -webkit-mask: radial-gradient(circle, transparent 2.6px, #000 3px); mask: radial-gradient(circle, transparent 2.6px, #000 3px); box-shadow: none; }
 .rail .grow { flex: 1; }
 
 /* everything else starts right of the rail */

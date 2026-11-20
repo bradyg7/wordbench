@@ -468,24 +468,34 @@ async fn update_check(app: tauri::AppHandle) -> Result<String, String> {
     .map_err(|e| e.to_string())?
 }
 
-/// Install for now (the interim Install of design/features/updates Directions, until UP4): the download and installer the
-/// system dialog used to start, then the restart. The window has saved every open page first and does not call this
-/// when a save failed. The installer closes the app and opens it again; the study folder is not part of it.
-#[cfg(feature = "updater")]
-#[tauri::command]
-async fn update_install(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri_plugin_updater::UpdaterExt;
-    let not_installed = |why: String| format!("This update was not installed: {why} Nothing was changed.");
-    let updater = app.updater().map_err(|e| not_installed(e.to_string()))?;
-    let update = updater.check().await.map_err(|_| wb_core::updates::COULD_NOT_REACH.to_string())?.ok_or("Bible Workbench is the newest.")?;
-    update.download_and_install(|_, _| {}, || {}).await.map_err(|e| not_installed(e.to_string()))?;
-    app.restart()
-}
-
-#[cfg(not(feature = "updater"))]
+/// Install (design/features/updates U-7, UP4): the download starts in the background and this returns at once. Settings can be
+/// closed; the window reads `wb update status` for how far it has come (the ring on the gear). Nothing is installed until
+/// Restart now, or the window is closed.
 #[tauri::command]
 async fn update_install() -> Result<(), String> {
-    Err(wb_core::updates::source_line())
+    wb_core::updates::Updates::here().start_download()
+}
+
+/// Stop: a download is given up (and its partial file removed), or a download waiting for a restart is.
+#[tauri::command]
+async fn update_stop() -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(|| wb_core::updates::Updates::here().stop()).await.map_err(|e| e.to_string())?
+}
+
+/// Restart now (U-8): the window has saved every open page first (and does not call this when a save failed). The installer
+/// is run, the app leaves, and the installer opens it again in the new version. Program files only; the study folder is not
+/// part of it.
+#[tauri::command]
+async fn update_restart(app: tauri::AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| wb_core::updates::Updates::here().run_installer(true)).await.map_err(|e| e.to_string())??;
+    app.exit(0);
+    Ok(())
+}
+
+/// The window is closing: an update that was downloaded and checked is installed (U-7: doing neither of the two buttons is the
+/// same as When I close the app). The installer replaces program files only.
+fn install_on_close() {
+    let _ = wb_core::updates::Updates::here().install_on_close();
 }
 
 /// The study folder the person chose (a setting or WB_STUDY_DIR), opened; none on a first run.
@@ -525,7 +535,7 @@ fn main() {
         .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
         .invoke_handler(tauri::generate_handler![
             pilot_license, installation_status, installation_configure, installation_restart,
-            wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready, update_check, update_install,
+            wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready, update_check, update_install, update_stop, update_restart,
             setup_status, set_study_dir, choose_study_dir, set_bible_db, choose_bible_db
         ])
         .setup(move |app| {
@@ -572,6 +582,11 @@ fn main() {
             b.build()?;
             Ok(())
         })
-        .run(context)
-        .expect("error while running Bible Workbench");
+        .build(context)
+        .expect("error while building Bible Workbench")
+        .run(|_app, event| {
+            if let tauri::RunEvent::Exit = event {
+                install_on_close();
+            }
+        });
 }

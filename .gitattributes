@@ -2,3 +2,4 @@
 *.png binary
 *.ico binary
 *.icns binary
+crates/wb-cli/tests/update-fixtures/* -text

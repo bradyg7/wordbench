@@ -6823,10 +6823,12 @@ dependencies = [
 name = "wb-core"
 version = "0.2.2"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "fancy-regex 0.20.0",
  "flate2",
  "lopdf",
+ "minisign-verify",
  "regex",
  "rusqlite",
  "serde",

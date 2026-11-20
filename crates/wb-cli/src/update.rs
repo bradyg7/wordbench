@@ -9,9 +9,15 @@ pub fn commands() -> Vec<Command> {
     vec![
         cmd(
             "update status",
-            "The installed version, whether this copy updates itself, the setting, when it last looked, a newer version it knows of. Reads only; makes no request.",
-            vec![],
-            |_, _| Ok(Out::Json(Updates::here().status())),
+            "The installed version, whether this copy updates itself, the setting, when it last looked, a newer version it knows of, a download and how far it has come, and the last failure. Reads only; makes no request. --seen: the Updates section has been opened, so a failure's dot goes.",
+            vec![Flag("seen")],
+            |_, a| {
+                let u = Updates::here();
+                if a.flag("seen") {
+                    u.mark_seen();
+                }
+                Ok(Out::Json(u.status()))
+            },
         ),
         cmd(
             "update check",
@@ -21,6 +27,30 @@ pub fn commands() -> Vec<Command> {
                 let answer = Updates::here().check_now()?;
                 Ok(Out::Text(updates::answer_line(&answer)))
             },
+        ),
+        cmd(
+            "update install",
+            "Install the newer version: download it, check its signature, and install it. With the window open it asks the window to save every page and restart (--when-closed: to install when the window is closed); with no window open it installs at once. A file whose signature does not match, that is not newer, or whose address is not HTTPS is thrown away.",
+            vec![Flag("when_closed"), Opt("wait", Some("900"))],
+            |_, a| {
+                let u = Updates::here();
+                let when_closed = a.flag("when_closed");
+                let wait: f64 = a.opt_or("wait", "900").parse().map_err(|_| "argument --wait: a number of seconds")?;
+                let line = if when_closed { "update install --when-closed" } else { "update install" };
+                match wb_core::relay::send(line, std::time::Duration::from_secs_f64(wait.max(0.1))) {
+                    Ok(r) if r["ok"] == false => Err(r["error"].as_str().unwrap_or("the window refused it").to_string()),
+                    Ok(r) => Ok(Out::Text(r["said"].as_str().unwrap_or("done").to_string())),
+                    // no window: install at once
+                    Err(e) if e.to_string().starts_with("The app is not running") => Ok(Out::Text(u.install_now(false)?)),
+                    Err(e) => Err(e.to_string()),
+                }
+            },
+        ),
+        cmd(
+            "update stop",
+            "Give up a download, or a restart that is waiting: the downloaded file is removed and the dot returns.",
+            vec![],
+            |_, _| Ok(Out::Text(Updates::here().stop()?)),
         ),
         cmd(
             "update notes",
