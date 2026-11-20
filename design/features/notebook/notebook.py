@@ -1672,6 +1672,9 @@ def _r37c(f):
 
 
 # ---- round 4 (the person's review of round 3, README Directions) ------------------------------------------------------
+APPROVED |= {"12a", "12b", "12c", "12d", "18a", "18b", "18c", "25a", "25b", "26", "32", "34a", "34b", "34c", "34d",
+             "35", "36", "39a", "39b", "39c", "39d", "44a", "44b", "45a", "45b", "45c", "46a", "46b", "46c", "46d",
+             "47a", "47b", "47c", "47d", "47e", "48", "49", "50", "51", "52", "53", "54", "55"}
 APPROVED |= {"1", "6a", "6b", "7a", "7b", "9", "10", "11", "13", "16", "19", "21", "22", "30", "31", "32", "37a", "37b",
              "37c", "41", "42", "43"}
 ORDER[ORDER.index(36) + 1:ORDER.index(36) + 1] = [48]
@@ -1986,7 +1989,8 @@ def _r44b(f):
     compare(f, 4)
 
 
-@r_(40, "Margin note from a page: it opens in the margin beside the selected words; drag it by its grip to move it.")
+@r_(40, "A margin note opens beside the selected words (drag it by its grip). A reference in its words is found as in "
+         "a page: “1 Corinthians 10:8” is a link chip that opens the same compact chapter panel.")
 def _r40_4(f):
     x, pg = full(f)
     in_gutter(pg, lambda b: marked_verse(b, "Numbers 25:11", "11", V[("num", 11)], ph(), "#2E6FB833"))
@@ -1997,10 +2001,24 @@ def _r40_4(f):
     icon(hd, "drag", 14, "muted")
     text(hd, "Margin note · Numbers 25:11", "caption", "muted", W="fill")
     icon(hd, "close", 12, "muted")
-    r = row(nb, "t", gap=0)
-    text(r, "Compare Psalm 106:30", "body")
-    frame(r, "caret", w=2, h=20, fill="fg", W="fixed", H="fixed")
+    r = row(nb, "t", gap=6)
+    text(r, "See", "body")
+    P.chip(r, "1 Corinthians 10:8", "selected", icon_name="book")
     frame(f, "leader", x=cxof(x) + 600, y=200, w=CW - 300 - cxof(x) - 600, h=1, fill="line")
+    pp = col(f, "chapter panel", gap=0, fill="surface", radius=12, W="fixed", clip=True)
+    Q.put(pp, CW - 460, 330, 440)
+    shadow(pp, 8, 32, "#00000026")
+    hd = row(pp, "head", gap=8, pad=[8, 10, 8, 12], fill="sunken", W="fill")
+    icon(hd, "drag", 14, "muted")
+    text(hd, "1 Corinthians 10:8", "smallStrong", W="fill")
+    icon(hd, "left", 14, "muted")
+    icon(hd, "right", 14, "muted")
+    ob = row(hd, "open", pad=[3, 8, 3, 8], radius=6, fill="surface")
+    text(ob, "Open in reader", "caption")
+    icon(hd, "close", 14, "muted")
+    body = col(pp, "verses", gap=4, pad=[10, 14, 12, 14], W="fill")
+    for lab, t in C108:
+        para(body, f"{lab}  {t}", "readSmall")
 
 
 @r_("25a", "Color ▾ on selected words: 8 plain colors and Default, for emphasis only. Text color means nothing; "

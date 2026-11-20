@@ -1,6 +1,6 @@
 # The Notebook, with Notion's quality as the template
 
-**State:** exploring (round 4: the round 3 review's changes) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
+**State:** exploring (round 5: row 40) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
 Nothing here is built. · **Review page:** `node design/review.mjs notebook` writes `review.html`.
 
 The person, 2026-11-20: Notion's quality is the template; Wordbench comes in and changes it for studying the Bible.
@@ -164,14 +164,14 @@ person's existing pages read.
 | 5 | A line | Type `**word**`, `*word*`; Ctrl+B, Ctrl+I, Ctrl+U | Bold, italic, underline in place | The Markdown marks (underline as `<u>`) | `wb block set` | `inline_shortcuts_and_keys` | [ ] approved 2026-11-20 |
 | 6 | An empty line, or after a space | Type `/` | **One list** at the caret: Text, Heading 1–3, Bullet, Numbered, To-do, Toggle, Quote, Divider, Table, then **Study** folded at its end (Scripture, Word, Callout, Saved thing, List in a page); typing finds any command by name, folded or not ("scr" → Scripture); the same in a narrow pane and a floating tab (6a, 6b) | Nothing until picked | Window only | `slash_menu_one_list_finds_folded` | [ ] approved 2026-11-20 |
 | 7 | / menu › Scripture | Type a reference | The book completes as you type ("josh" → Joshua, Tab), so names and numbers cannot be wrong; the verse text previews under the field; several verses and ranges across chapters make one block (7a, 7b) | The block's reference | `wb block add ID "Num 25:18-26:1" --after N` | `scripture_block_completes_and_previews` | [ ] approved 2026-11-20 |
-| 44 | Scripture blocks | Drag one by its grip beside another | Up to 4 side by side at Full width (44a three, 44b four); fewer columns as the pane narrows, then one under another | The blocks' column form | `wb block move ID N --beside M`, *proposed* | `scripture_side_by_side_up_to_four` | [ ] |
+| 44 | Scripture blocks | Drag one by its grip beside another | Up to 4 side by side at Full width (44a three, 44b four); fewer columns as the pane narrows, then one under another | The blocks' column form | `wb block move ID N --beside M`, *proposed* | `scripture_side_by_side_up_to_four` | [ ] approved 2026-11-20 |
 | 8 | A list item | Enter; Enter on an empty item; Tab; Shift+Tab | A new item; leaves the list; indents; outdents | The items' Markdown and indent | `wb block set` | `list_enter_tab_rules` | [ ] approved 2026-11-20 |
 | 9 | A toggle | Click the triangle, or Ctrl+Enter | Its children fold and unfold; a heading can be a toggle too | `<details><summary>…</summary>…</details>` in the page; folded or not is kept in settings/pages.json | `wb block add ID "<details>…"` | `toggle_folds_children` | [ ] approved 2026-11-20 |
 | 10 | Selected text | Select | A bar above the selection: Turn into ▾, B, I, U, S, link, color ▾, and on scripture text Mark ▾ and Margin note | Nothing until used | Window only | `selection_bar_on_intent` | [ ] approved 2026-11-20 |
 | 11 | Selection bar | Mark ▾ on scripture in a page | The Legend's styles; the mark lands on those words in the reader too | The mark, as the reader's | `wb mark add …` (existing) | `mark_from_a_page_is_the_reader_s_mark` | [ ] approved 2026-11-20 |
-| 39 | Scripture in a page | Select words, Mark ▾, pick a style | Step by step (39a–39d): the bar opens above the selection; Mark ▾'s menu opens attached under the bar; the mark sits on the scripture's own words in the page; the reader shows the same mark | The mark, as the reader's | `wb mark add …` (existing) | `mark_from_a_page_step_by_step` | [ ] |
-| 40 | Scripture in a page | Select words, Margin note | The note opens in the margin beside the selected words, with a grip to drag it; it is that verse's margin note and shows in the reader | `margin/<BOOK>/<chapter>.md` | `wb mark note REF "…"` (existing) | `margin_note_beside_the_words` | [ ] |
-| 12 | A line | `@` then a reference | A menu of verses, pages, folders and Today; a verse is placed as a **link chip** (12a). Clicking the chip opens a popup with the verse (12b) that can be dragged, grown to the whole chapter as a compact panel with a header (reference, ← →, Open in reader, close), sized to its text and snapped to a corner (12c), or sent to the side reader with Open beside (12d); Esc closes it and Back returns | The reference as a link form (open: its form in the file) | `wb page link ID`; `wb refs` | `at_verse_chip_popup` | [ ] |
+| 39 | Scripture in a page | Select words, Mark ▾, pick a style | Step by step (39a–39d): the bar opens above the selection; Mark ▾'s menu opens attached under the bar; the mark sits on the scripture's own words in the page; the reader shows the same mark | The mark, as the reader's | `wb mark add …` (existing) | `mark_from_a_page_step_by_step` | [ ] approved 2026-11-20 |
+| 40 | Scripture in a page | Select words, Margin note | The note opens in the margin beside the selected words, with a grip to drag it; it is that verse's margin note and shows in the reader; a reference in its words ("See 1 Cor 10:8") is found as in a page and shown as the link chip of row 12, which opens the compact chapter panel | `margin/<BOOK>/<chapter>.md` | `wb mark note REF "…"` (existing) | `margin_note_beside_the_words` | [ ] |
+| 12 | A line | `@` then a reference | A menu of verses, pages, folders and Today; a verse is placed as a **link chip** (12a). Clicking the chip opens a popup with the verse (12b) that can be dragged, grown to the whole chapter as a compact panel with a header (reference, ← →, Open in reader, close), sized to its text and snapped to a corner (12c), or sent to the side reader with Open beside (12d); Esc closes it and Back returns | The reference as a link form (open: its form in the file) | `wb page link ID`; `wb refs` | `at_verse_chip_popup` | [ ] approved 2026-11-20 |
 
 ### The block handle, N5
 
@@ -184,7 +184,7 @@ person's existing pages read.
 | 16 | Grip | Click | The block menu: Turn into ▸, Color ▸, Copy link to block, Duplicate (Ctrl+D), Move to (Ctrl+Shift+P), Delete (Del); at the foot "Edited …" and its word count | Nothing until used | Window only | `block_menu_items_and_foot` | [ ] approved 2026-11-20 |
 | 17 | Block menu | Turn into ▸ a kind | The block changes kind and keeps its text | The block's Markdown | `wb block set` | `turn_into_keeps_text` | [ ] approved 2026-11-20 |
 | 42 | Block menu | Duplicate (Ctrl+D) | A copy right below, with the caret in it | The page | `wb block dup ID N`, *proposed* | `duplicate_block_below` | [ ] approved 2026-11-20 |
-| 18 | Block menu | Copy link to block | The whole flow (18a–18c): copy in page A; paste in page B makes a chip "Page A › first words"; clicking it opens page A scrolled to the block, which glows briefly; Back returns. Scripture references stay references (found by the page index) | Page B holds the link | `wb block link ID N`, *proposed* | `link_to_block_flow` | [ ] |
+| 18 | Block menu | Copy link to block | The whole flow (18a–18c): copy in page A; paste in page B makes a chip "Page A › first words"; clicking it opens page A scrolled to the block, which glows briefly; Back returns. Scripture references stay references (found by the page index) | Page B holds the link | `wb block link ID N`, *proposed* | `link_to_block_flow` | [ ] approved 2026-11-20 |
 | 19 | Block menu | Move to | The page chooser; the block leaves this page and is last in the chosen one | Both pages | `wb block move ID N --page OTHER`, *proposed* | `move_block_to_another_page` | [ ] approved 2026-11-20 |
 | 20 | Block menu | Delete, or Del on a selected block | It goes; "Deleted · Undo" offers the page's Undo | The page | `wb block rm ID N --undo` | `delete_block_with_undo` | [ ] approved 2026-11-20 |
 | 21 | Several blocks | Drag across them, or Shift+click; Esc selects the block the caret is in | A pale wash on each; the grip menu acts on all (Turn into, Color, Move to, Delete) | The blocks | `wb block … --count K` | `several_blocks_act_together` | [ ] approved 2026-11-20 |
@@ -197,14 +197,14 @@ person's existing pages read.
 | 22 | / menu (`/callout`) or Turn into | Callout | A soft box with an icon and a kind: Question, Answered, Key point, Note | `> [!question]`, `> [!done]`, `> [!key]`, `> [!note]` | `wb block add ID "> [!key] …"` | `callout_kinds_write_their_marker` | [ ] approved 2026-11-20 |
 | 23 | A callout's icon | Click | Its kind menu; a Question becomes Answered and back | The marker | `wb block set` | `callout_kind_changes` | [ ] approved 2026-11-20 |
 | 24 | Today's pages | Open one with `> [!question]` or `> [!done]` | They show as Question and Answered callouts; the questions list still finds them | Nothing | `wb question list` | `old_question_callouts_still_read` | [ ] approved 2026-11-20 |
-| 46 | A callout | Write several lines and a nested list in it | It holds them all (46a); the Questions list (Library) filters by kind, Question or Answered (46b); Key points and Notes are found by Ctrl+K (46c) and by a List in a page grouped by callout kind (46d) | The callout's lines | `wb question list` | `callout_kinds_found` | [ ] |
+| 46 | A callout | Write several lines and a nested list in it | It holds them all (46a); the Questions list (Library) filters by kind, Question or Answered (46b); Key points and Notes are found by Ctrl+K (46c) and by a List in a page grouped by callout kind (46d) | The callout's lines | `wb question list` | `callout_kinds_found` | [ ] approved 2026-11-20 |
 
 ### Color, N9
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 25 | Selection bar or block menu | Color ▾ | Text or Background, 8 plain colors and Default, for emphasis only; text color means nothing (marks carry meaning) (25a); the 8 pale backgrounds on words and on a block (25b) | The text in a `<span>`, or the block's marker | `wb block set` | `color_menu_plain_colors` | [ ] |
-| 26 | A folder's ⋯ › Color, or New folder | Pick one of the folder colors (as today) | The folder's color is the only organizing color: its pages show the folder's dot by the title and in the side list; nothing is added to any color list | The folder's color | `wb folder color NAME COLOR` | `folder_color_dots_its_pages` | [ ] |
+| 25 | Selection bar or block menu | Color ▾ | Text or Background, 8 plain colors and Default, for emphasis only; text color means nothing (marks carry meaning) (25a); the 8 pale backgrounds on words and on a block (25b) | The text in a `<span>`, or the block's marker | `wb block set` | `color_menu_plain_colors` | [ ] approved 2026-11-20 |
+| 26 | A folder's ⋯ › Color, or New folder | Pick one of the folder colors (as today) | The folder's color is the only organizing color: its pages show the folder's dot by the title and in the side list; nothing is added to any color list | The folder's color | `wb folder color NAME COLOR` | `folder_color_dots_its_pages` | [ ] approved 2026-11-20 |
 
 ### The page, N7 and N8
 
@@ -213,7 +213,7 @@ person's existing pages read.
 | 29 | Top bar | Edit anything | "Edited just now" in quiet gray, later "Edited 2m ago"; no Save button | The page | Window only | `edited_status_updates` | [ ] approved 2026-11-20 |
 | 30 | Page ⋯ | Open | Searchable: Copy link, Copy contents, Duplicate, Move to, Page history, Appearance ▸, Lock page, Move to Trash; foot: Edited and word count | Nothing until used | Window only | `page_menu_items` | [ ] approved 2026-11-20 |
 | 31 | Appearance ▸ | Font Default or Serif; Small text; Full width; Table of contents | The page changes at once | settings/pages.json | `wb page look ID --font serif --toc on` (extends `page look`) | `appearance_changes_at_once` | [ ] approved 2026-11-20 |
-| 45 | Appearance › Table of contents | Turn on | The contents as a bar in the page's right side (45a); a button folds it to a thin rail of ticks and opens it again (45b); it stays inside its own pane among other panes (45c) | settings/pages.json | `wb page look ID --toc on` | `toc_bar_folds_to_rail` | [ ] |
+| 45 | Appearance › Table of contents | Turn on | The contents as a bar in the page's right side (45a); a button folds it to a thin rail of ticks and opens it again (45b); it stays inside its own pane among other panes (45c) | settings/pages.json | `wb page look ID --toc on` | `toc_bar_folds_to_rail` | [ ] approved 2026-11-20 |
 | 32 | Lock page | Toggle | Typing does nothing; a quiet lock in the top bar; the handle hides | settings/pages.json | `wb page lock ID on|off`, *proposed* | `locked_page_does_not_edit` | [ ] approved 2026-11-20 |
 | 33 | Copy contents | Click | The page's Markdown, scripture expanded verbatim from the database | Clipboard only | `wb page text ID`, *proposed* | `copy_contents_expands_scripture` | [ ] approved 2026-11-20 |
 
@@ -221,11 +221,11 @@ person's existing pages read.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 34 | Anywhere | Ctrl+K | The Library's one search: Recents when empty; results grouped; a live preview of the highlighted result on the right, showing lists, callouts and tables as in the page (34a–34c); folders show with their color and page count (34d); Enter opens; Esc returns | Nothing | `wb find WORDS` | `quick_search_preview_and_recents` | [ ] |
-| 35 | Side list | Recents | **Recents replaces Today:** a folding group of the last 8 pages opened, newest first, above Pinned, Folders, Pages | Nothing (read from the trail) | `wb history list` | `side_list_recents_replaces_today` | [ ] |
-| 36 | / menu | List in a page | A folder acts as the database: each page in it is a row; a column is a page property from its front matter; + New page adds a page to the folder; + Property adds a column; Filters above | One `view` fence; a new page; a property in front matter | `wb block add ID` with a `view` fence; `wb page views`; `wb page prop ID NAME VALUE`, *proposed* | `list_in_a_page_folder_as_database` | [ ] |
-| 48 | / menu | Table | A plain table you type into: + adds a row at the foot or a column at the right; nothing is linked | The table in Markdown | `wb block add ID` with a table | `plain_table_add_row_column` | [ ] |
-| 47 | A list in a page | View ▾, Group by | Table, List, Gallery, Board; Calendar and Timeline later (47a–47d); Group by gathers rows under a heading per folder, callout kind or property, each foldable with its count (47e) | The `view` fence's view and grouping | `wb page views`, *proposed* `--view board --group folder` | `list_views_and_group_by` | [ ] |
+| 34 | Anywhere | Ctrl+K | The Library's one search: Recents when empty; results grouped; a live preview of the highlighted result on the right, showing lists, callouts and tables as in the page (34a–34c); folders show with their color and page count (34d); Enter opens; Esc returns | Nothing | `wb find WORDS` | `quick_search_preview_and_recents` | [ ] approved 2026-11-20 |
+| 35 | Side list | Recents | **Recents replaces Today:** a folding group of the last 8 pages opened, newest first, above Pinned, Folders, Pages | Nothing (read from the trail) | `wb history list` | `side_list_recents_replaces_today` | [ ] approved 2026-11-20 |
+| 36 | / menu | List in a page | A folder acts as the database: each page in it is a row; a column is a page property from its front matter; + New page adds a page to the folder; + Property adds a column; Filters above | One `view` fence; a new page; a property in front matter | `wb block add ID` with a `view` fence; `wb page views`; `wb page prop ID NAME VALUE`, *proposed* | `list_in_a_page_folder_as_database` | [ ] approved 2026-11-20 |
+| 48 | / menu | Table | A plain table you type into: + adds a row at the foot or a column at the right; nothing is linked | The table in Markdown | `wb block add ID` with a table | `plain_table_add_row_column` | [ ] approved 2026-11-20 |
+| 47 | A list in a page | View ▾, Group by | Table, List, Gallery, Board; Calendar and Timeline later (47a–47d); Group by gathers rows under a heading per folder, callout kind or property, each foldable with its count (47e) | The `view` fence's view and grouping | `wb page views`, *proposed* `--view board --group folder` | `list_views_and_group_by` | [ ] approved 2026-11-20 |
 
 ### Real conditions, N12
 
@@ -239,13 +239,13 @@ Each is drawn for the person to keep or cut. Lookups are fetched with `wb`; noth
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 49 | / › Study | Scripture | A block that keeps only the reference; the words are read from the database each time | The reference | `wb text REF` | `study_scripture_reference_only` | [ ] |
-| 50 | / › Study | Word | A Strong's entry: the original word, its sound, the definition and the KJV's renderings | The number | `wb strong H7065` | `study_word_block` | [ ] |
-| 51 | / › Study | Interlinear | A verse's original words, each with its sound, gloss and number | The reference | `wb interlinear REF` | `study_interlinear_block` | [ ] |
-| 52 | / › Study | Cross references | Proposed: the app has no cross-reference source, so the block says so; a source must be chosen first | The reference | `wb xrefs REF`, *proposed* | `study_cross_references` | [ ] |
-| 53 | / › Study | Concordance | Every place of a word in Bible order, with words either side and the original number | The word | `wb concordance WORD` | `study_concordance_block` | [ ] |
-| 54 | / › Study | Margin notes for a passage | The margin notes on a passage, by verse; each opens its note | The passage | `wb mark notes REF` | `study_margin_notes_block` | [ ] |
-| 55 | / › Study | Marks in a passage | Every mark on a passage with its Legend style and the marked words | The passage | `wb marks BOOK CH` | `study_marks_block` | [ ] |
+| 49 | / › Study | Scripture | A block that keeps only the reference; the words are read from the database each time | The reference | `wb text REF` | `study_scripture_reference_only` | [ ] approved 2026-11-20 |
+| 50 | / › Study | Word | A Strong's entry: the original word, its sound, the definition and the KJV's renderings | The number | `wb strong H7065` | `study_word_block` | [ ] approved 2026-11-20 |
+| 51 | / › Study | Interlinear | A verse's original words, each with its sound, gloss and number; a long verse scrolls sideways inside the block, its height grows with its words, and it is as wide as the column (wider at Full width); no drag-to-resize | The reference | `wb interlinear REF` | `study_interlinear_block` | [ ] approved 2026-11-20 |
+| 52 | / › Study | Cross references | Proposed: the app has no cross-reference source, so the block says so; a source must be chosen first | The reference | `wb xrefs REF`, *proposed* | `study_cross_references` | [ ] approved 2026-11-20 |
+| 53 | / › Study | Concordance | Every place of a word in Bible order, with words either side and the original number | The word | `wb concordance WORD` | `study_concordance_block` | [ ] approved 2026-11-20 |
+| 54 | / › Study | Margin notes for a passage | The margin notes on a passage, by verse; each opens its note | The passage | `wb mark notes REF` | `study_margin_notes_block` | [ ] approved 2026-11-20 |
+| 55 | / › Study | Marks in a passage | Every mark on a passage with its Legend style and the marked words | The passage | `wb marks BOOK CH` | `study_marks_block` | [ ] approved 2026-11-20 |
 
 ## What the build must satisfy
 
@@ -256,6 +256,7 @@ Each is drawn for the person to keep or cut. Lookups are fetched with `wb`; noth
 - [ ] Every new core action has its `wb` command (rows marked *proposed*).
 - [ ] Desktop, floating, narrow and phone (row 37).
 - [ ] The floating pane drags smoothly (row 6; checked in the build).
+- [ ] The interlinear block (row 51) scrolls sideways inside itself when a verse is long, grows in height with its words, and is as wide as the column (wider at Full width); it has no drag-to-resize.
 - [ ] A page of 400 blocks types, opens menus and drags inside the typing budget of `npm run measure`; nothing jumps (was row 38).
 - [ ] The page is rebuilt on this design; the old page code and its ways are taken out, not built around.
 
@@ -307,7 +308,8 @@ not anyone's study.
 | 2 | 2026-11-20 | N1–N12, then a frame per row | The first draft: the menu, writing, the block handle, callouts, color, the page, finding, real conditions | Reviewed 2026-11-20 (Directions) |
 | 3 | 2026-11-20 | rows/ (60 frames) | The review's changes: one / list, scripture autocomplete and ranges, side by side, Mark and Margin note step by step, the @ chip popup, plain text colors, folder color only, table of contents, callouts with lists, views of a list in a page | Reviewed 2026-11-20 (Directions) |
 
-| 4 | 2026-11-20 | rows/ (78 frames) | The round 3 review: Mark on the words, the chapter panel, the link flow, contents as a bar, Table and List in a page, Group by, four side by side, margin note beside the words, backgrounds, callout kinds found, folders in Ctrl+K, and Study commands (49–55) | Pending |
+| 4 | 2026-11-20 | rows/ (78 frames) | The round 3 review: Mark on the words, the chapter panel, the link flow, contents as a bar, Table and List in a page, Group by, four side by side, margin note beside the words, backgrounds, callout kinds found, folders in Ctrl+K, and Study commands (49–55) | Reviewed 2026-11-20 (Directions) |
+| 5 | 2026-11-20 | rows/40 | Row 40: a reference in a margin note is a link chip opening the chapter panel | Pending |
 
 ## Directions
 
@@ -373,3 +375,17 @@ Rows 1, 6, 7, 9, 10, 11, 13, 16, 19, 21, 22, 30, 31, 32, 37, 41, 42, 43. With ro
 
 - **Nesting and the Shelf** (library): folders in folders, pages in pages, references to pages, the Shelf.
 - **Tabs** (37's floating tab as the starting look).
+
+### Round 4 review (the person, 2026-11-20)
+
+Tally: 20 Perfect, 1 unrated (row 40, a question). Two questions answered:
+
+- **Row 51, is the interlinear scrollable, can its size change?** It scrolls sideways inside its block when a verse is
+  long, its height grows with its words, and it is as wide as the column (wider at Full width); no drag-to-resize.
+- **Row 40, do margin notes give clickable references?** Yes: wb-core's margin notes already find references in a
+  note's own words (`find_refs`). Round 5 redraws 40: "See 1 Cor 10:8" in the note is the link chip of row 12 and
+  opens the same compact chapter panel.
+
+### Approved (round 4)
+
+Rows 12, 18, 25, 26, 32, 34, 35, 36, 39, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55.
