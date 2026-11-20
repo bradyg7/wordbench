@@ -1,6 +1,6 @@
 # The Notebook, with Notion's quality as the template
 
-**State:** exploring (round 1: the inventory) · **Sheets:** none yet; round 2 draws the adopted lines as windows ·
+**State:** exploring (round 2: the first draft) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `notebook.figcraft` and `notebook.pdf` (N1–N12) ·
 Nothing here is built. · **Review page:** `node design/review.mjs notebook` writes `review.html`.
 
 The person, 2026-11-20: Notion's quality is the template; Wordbench comes in and changes it for studying the Bible.
@@ -31,12 +31,21 @@ folder, not as a Notebook tab.
   not built: those sections go. Filters resumes for surfaces outside the Notebook after this redesign.
 - **Notion's quality is the template.** Its feel and interaction model are the starting point; Wordbench changes it
   for Bible study. Inspiration, not a checklist.
+- **Round 1 answers (2026-11-20).**
+  - L6: page text and block colors have **their own palette**; whether it can be the folders' colors (one palette for
+    both) is drawn in round 2 (N9) for the person to choose. The Legend's styles stay for marks.
+  - W7: **questions become one kind of callout.** A callout is a block with a kind; Question and Answered are two of
+    its kinds, beside Key point and Note. The word for this block is open (round 2 offers names; the Library map
+    changes only with the person's go-ahead). `> [!question]` and `> [!done]` in today's pages keep reading as before.
+  - P6: **no covers** for now.
+  - S2: **the side list gets Recents.**
+  - Build order: the feel and writing first, then the page, then the side list.
 
-## Interaction table (round 1: the inventory, not yet actions)
+## The inventory (round 1)
 
-Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into action rows.
+Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into the interaction table below.
 
-### The feel
+#### The feel
 
 | # | Line | Mark | Why / Wordbench's version |
 |---|---|---|---|
@@ -51,7 +60,7 @@ Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopte
 | F9 | Small calm chrome around larger comfortable content; consistent density | adopt | |
 | F10 | Destructive actions only in menus, always recoverable | adopt | Matches the 7-day Trash and page Undo |
 
-### Look
+#### Look
 
 | # | Line | Mark | Why / Wordbench's version |
 |---|---|---|---|
@@ -64,7 +73,7 @@ Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopte
 | L7 | Popovers: soft, large-radius, low-opacity shadows; no hard outlines | adopt | |
 | L8 | Every menu row has an icon; shortcuts right-aligned and muted | adopt | |
 
-### Writing in a page
+#### Writing in a page
 
 | # | Line | Mark | Why / Wordbench's version |
 |---|---|---|---|
@@ -87,7 +96,7 @@ Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopte
 | W17 | @ mention: date and sub-page (N12) | adapt | @ offers a **verse** (inline reference that opens the reader), a page, a folder, and a date; people skipped |
 | W18 | Ctrl+B/I/U, Ctrl+D, Ctrl+Z/Y, Esc, Tab/Shift+Tab on day one | adopt | Ctrl+Shift+M (comment) skipped |
 
-### The page
+#### The page
 
 | # | Line | Mark | Why / Wordbench's version |
 |---|---|---|---|
@@ -99,7 +108,7 @@ Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopte
 | P6 | Cover band and cover gallery (N23, N24) | **open** | Pleasant; images cost space; ask the person |
 | P7 | Lock page (read-only) | adopt | Protects finished lessons |
 
-### Finding and listing
+#### Finding and listing
 
 | # | Line | Mark | Why / Wordbench's version |
 |---|---|---|---|
@@ -108,25 +117,119 @@ Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopte
 | S3 | A database as a block with views: table, board, gallery, timeline, filter, sort, group (N14–N19) | adapt | A **list in a page** (Filters rows 14–15's saved list, a `view` fence): table view first; board, gallery, timeline skipped for now |
 | S4 | Filter menu (N19) | adapt | The shared Filters panel (F1–F2) is the control a list in a page uses |
 
-### Removed from the Notebook
+#### Removed from the Notebook
 
 | # | Line | Mark | Why |
 |---|---|---|---|
 | R1 | Days, Places, Questions (and Threads, Inbox, All) as tabs | skip | The person, 2026-11-20: a legacy workflow; round 4 already removed them (S27). Today stays a page you can show; questions are listed by the questions folder; a place is reached from the reader's margin |
 
+## Interaction table
+
+Round 2, the first draft. Every row is drawn on a sheet (N1–N12). Rows marked *proposed* name a `wb` command that does
+not exist yet; it is added with the row. A page is still Markdown with front matter; nothing here changes how the
+person's existing pages read.
+
+### The menu (one component for every menu), N1
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
+|---|---|---|---|---|---|---|---|
+| 1 | Any menu (/, block, page ⋯, @, Ctrl+K) | Type while it is open | Rows filter as you type; the first match is highlighted; groups with no match hide; "No results" when none | Nothing | Window only | `menu_filters_as_you_type` | [ ] |
+| 2 | Any menu | ↑ ↓, Enter, Esc, or click outside | The highlight moves; Enter picks; Esc or outside closes and focus returns where it was. Nothing on the page moves when it opens | Nothing | Window only | `menu_keys_and_focus_return` | [ ] |
+
+### Writing, N2 to N4
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
+|---|---|---|---|---|---|---|---|
+| 3 | Empty page | Open a new page | The caret is in the title, a faint "Untitled"; Enter moves to the first line, which hints "Press / for blocks" | A new page file | `wb page new "Title"` | `new_page_caret_in_title` | [ ] |
+| 4 | A line | Type `# ` `## ` `### ` `- ` `1. ` `[] ` `> ` `---` | The line turns into heading 1–3, bullet, numbered, to-do, quote or divider at once; Ctrl+Z turns it back to the typed characters | The block's Markdown | `wb block set ID N "## …"` | `markdown_shortcuts_turn_the_line` | [ ] |
+| 5 | A line | Type `**word**`, `*word*`; Ctrl+B, Ctrl+I, Ctrl+U | Bold, italic, underline in place | The Markdown marks (underline as `<u>`) | `wb block set` | `inline_shortcuts_and_keys` | [ ] |
+| 6 | An empty line, or after a space | Type `/` | The block menu at the caret, grouped **Basic** (text, heading 1–3, bullet, numbered, to-do, toggle, quote, divider, table, page) and **Study** (scripture, word, callout, Saved thing, list in a page); shortcut hints on the right | Nothing until picked | Window only | `slash_menu_groups_and_hints` | [ ] |
+| 7 | / menu | Pick a block | The block appears and the caret is inside it ready to type (scripture: the reference field) | The block | `wb block add ID "…" --after N` | `slash_pick_puts_caret_inside` | [ ] |
+| 8 | A list item | Enter; Enter on an empty item; Tab; Shift+Tab | A new item; leaves the list; indents; outdents | The items' Markdown and indent | `wb block set` | `list_enter_tab_rules` | [ ] |
+| 9 | A toggle | Click the triangle, or Ctrl+Enter | Its children fold and unfold; a heading can be a toggle too | The toggle's form (open question); folded or not is kept in settings/pages.json | `wb block add ID …` with the toggle form, *proposed* | `toggle_folds_children` | [ ] |
+| 10 | Selected text | Select | A bar above the selection: Turn into ▾, B, I, U, S, link, color ▾, and on scripture text Mark ▾ and Margin note | Nothing until used | Window only | `selection_bar_on_intent` | [ ] |
+| 11 | Selection bar | Mark ▾ on scripture in a page | The Legend's styles; the mark lands on those words in the reader too | The mark, as the reader's | `wb mark add …` (existing) | `mark_from_a_page_is_the_reader_s_mark` | [ ] |
+| 12 | A line | `@` then type | A menu of verses (as you type a reference), pages, folders and Today; picking puts a quiet inline link; clicking a verse opens the reader at it and Back returns | `[[Page]]` or the reference as text | `wb page link ID` | `at_mention_verse_page_folder` | [ ] |
+
+### The block handle, N5
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
+|---|---|---|---|---|---|---|---|
+| 13 | A block | Hover, or focus it | A + and a grip (⋮⋮) in the left gutter; the text does not shift | Nothing | Window only | `handle_appears_without_shift` | [ ] |
+| 14 | + | Click | A new empty line below, with the / menu open | A new block | `wb block add` | `plus_adds_below_with_menu` | [ ] |
+| 15 | Grip | Drag | A blue line shows where it lands; dropping moves it; dropping to the side makes columns at full width (library S30) | The block's place | `wb block move ID N --to M` | `drag_moves_block` | [ ] |
+| 16 | Grip | Click | The block menu: Turn into ▸, Color ▸, Copy link to block, Duplicate (Ctrl+D), Move to (Ctrl+Shift+P), Delete (Del); at the foot "Edited …" and its word count | Nothing until used | Window only | `block_menu_items_and_foot` | [ ] |
+| 17 | Block menu | Turn into ▸ a kind | The block changes kind and keeps its text | The block's Markdown | `wb block set` | `turn_into_keeps_text` | [ ] |
+| 18 | Block menu | Copy link to block | A link that opens this page scrolled to this block | Clipboard only | `wb block link ID N`, *proposed* | `link_to_block_opens_there` | [ ] |
+| 19 | Block menu | Move to | The page chooser; the block leaves this page and is last in the chosen one | Both pages | `wb block move ID N --page OTHER`, *proposed* | `move_block_to_another_page` | [ ] |
+| 20 | Block menu | Delete, or Del on a selected block | It goes; "Deleted · Undo" offers the page's Undo | The page | `wb block rm ID N --undo` | `delete_block_with_undo` | [ ] |
+| 21 | Several blocks | Drag across them, or Shift+click; Esc selects the block the caret is in | A pale wash on each; the grip menu acts on all (Turn into, Color, Move to, Delete) | The blocks | `wb block … --count K` | `several_blocks_act_together` | [ ] |
+
+### Callouts (questions are one kind), N6
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
+|---|---|---|---|---|---|---|---|
+| 22 | / menu or Turn into | Callout | A soft box with an icon and a kind: Question, Answered, Key point, Note | `> [!question]`, `> [!done]`, `> [!key]`, `> [!note]` | `wb block add ID "> [!key] …"` | `callout_kinds_write_their_marker` | [ ] |
+| 23 | A callout's icon | Click | Its kind menu; a Question becomes Answered and back | The marker | `wb block set` | `callout_kind_changes` | [ ] |
+| 24 | Today's pages | Open one with `> [!question]` or `> [!done]` | They show as Question and Answered callouts; the questions list still finds them | Nothing | `wb question list` | `old_question_callouts_still_read` | [ ] |
+
+### Color, N9
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
+|---|---|---|---|---|---|---|---|
+| 25 | Selection bar or block menu | Color ▸ | Ten text colors and ten pale backgrounds, plus Default; the last used first | The text in a `<span>`, or the block's marker | `wb block set` | `color_palette_text_and_background` | [ ] |
+| 26 | Settings › Notebook | "Page colors: Own palette / Folder colors" (drawn for the person to choose) | The palette shows the folders' colors instead | settings | `wb settings notebook --page-colors own|folders`, *proposed* | `page_colors_from_folders_option` | [ ] |
+
+### The page, N7 and N8
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
+|---|---|---|---|---|---|---|---|
+| 27 | Title | Hover | "Add icon" above the title (no cover) | Nothing | Window only | `title_hover_shows_add_icon` | [ ] |
+| 28 | Add icon | Pick an emoji or a line icon | It sits before the title and in the side list | The page's front matter `icon:` | `wb page icon ID 📖`, *proposed* | `page_icon_in_title_and_side_list` | [ ] |
+| 29 | Top bar | Edit anything | "Edited just now" in quiet gray, later "Edited 2m ago"; no Save button | The page | Window only | `edited_status_updates` | [ ] |
+| 30 | Page ⋯ | Open | Searchable: Copy link, Copy contents, Duplicate, Move to, Page history, Appearance ▸, Lock page, Move to Trash; foot: Edited and word count | Nothing until used | Window only | `page_menu_items` | [ ] |
+| 31 | Appearance ▸ | Font Default or Serif; Small text; Full width; Table of contents | The page changes at once | settings/pages.json | `wb page look ID --font serif --toc on` (extends `page look`) | `appearance_changes_at_once` | [ ] |
+| 32 | Lock page | Toggle | Typing does nothing; a quiet lock in the top bar; the handle hides | settings/pages.json | `wb page lock ID on|off`, *proposed* | `locked_page_does_not_edit` | [ ] |
+| 33 | Copy contents | Click | The page's Markdown, scripture expanded verbatim from the database | Clipboard only | `wb page text ID`, *proposed* | `copy_contents_expands_scripture` | [ ] |
+
+### Finding, N10 and N11
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
+|---|---|---|---|---|---|---|---|
+| 34 | Anywhere | Ctrl+K | The Library's one search: Recents when empty; results grouped; a live preview of the highlighted result on the right; Enter opens; Esc returns | Nothing | `wb find WORDS` | `quick_search_preview_and_recents` | [ ] |
+| 35 | Side list | Recents | A folding group of the last 8 pages opened, newest first | Nothing (read from the trail) | `wb history list` | `side_list_recents` | [ ] |
+| 36 | / menu | List in a page | A table of pages that match a line (folder, kind, words), with the shared Filters panel above it | One `view` fence | `wb block add ID` with a `view` fence; `wb page views` | `list_in_a_page_is_a_table` | [ ] |
+
+### Real conditions, N12
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
+|---|---|---|---|---|---|---|---|
+| 37 | A page | Floating tab, narrow pane, phone | The column fits; the handle sits inside the margin; the selection bar wraps; menus become sheets on a phone | Nothing | Window only | `writing_at_every_width` | [ ] |
+| 38 | A page of 400 blocks | Type, open menus, drag | Inside the typing budget of `npm run measure`; nothing jumps | Nothing | Window only | `big_page_stays_inside_budget` | [ ] |
+
+## What the build must satisfy
+
+- [ ] Every menu is the one menu component (rows 1–2): typing filters, keys work, focus returns, nothing jumps.
+- [ ] Writing never waits and never needs a click to continue (rows 3–8).
+- [ ] Every text block can turn into every other text kind and keep its text (row 17).
+- [ ] Today's pages read and write as before; the files stay Markdown; questions written as callouts stay listed (row 24).
+- [ ] Every new core action has its `wb` command (rows marked *proposed*).
+- [ ] Desktop, floating, narrow and phone (row 37); a 400-block page inside the budget (row 38).
+
 ## Open questions
 
-- L6: page text colors from the Legend's styles, or a separate palette?
-- W7: a plain callout besides the question callout?
-- P6: covers on pages, yes or no?
-- S2: a Recents group in the side list?
-- Order of building: the feel and writing (F, W) before the side list and page ⋯ (round 4)?
+- **The word for a callout.** One word for "a box in a page with a kind" (Question, Answered, Key point, Note). N6
+  offers *Callout*, *Box* and *Note box*. The Library map changes only with the person's go-ahead.
+- **Page colors:** their own palette (N9 left) or the folders' colors (N9 right)?
+- **A toggle in the file:** `<details>` (readable in other Markdown tools) or a marker like the callouts?
+- **@ for a verse:** keep the reference as plain text (as today, found by the page index), or a link form?
 
 ## Rounds
 
 | Round | Date | Windows | What it tried | Review |
 |---|---|---|---|---|
-| 1 | 2026-11-20 | none | The inventory: adopt, adapt or skip for each Notion line, against round 4 of library | Pending |
+| 1 | 2026-11-20 | none | The inventory: adopt, adapt or skip for each Notion line, against round 4 of library | Answered 2026-11-20 (Decisions) |
+| 2 | 2026-11-20 | N1–N12 | The first draft: the menu, writing, the block handle, callouts, color, the page, finding, real conditions | Pending |
 
 ## Directions
 
