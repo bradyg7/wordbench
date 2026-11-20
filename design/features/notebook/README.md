@@ -1,6 +1,6 @@
 # The Notebook, with Notion's quality as the template
 
-**State:** exploring (round 3: the review's changes) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
+**State:** exploring (round 4: the round 3 review's changes) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
 Nothing here is built. · **Review page:** `node design/review.mjs notebook` writes `review.html`.
 
 The person, 2026-11-20: Notion's quality is the template; Wordbench comes in and changes it for studying the Bible.
@@ -316,3 +316,34 @@ what round 3 does.
 
 Rows 2, 3, 4, 5, 8, 14, 15, 17, 20, 23, 24, 29, 33. They leave the review; the next rounds show only rows that still
 need review. (1, 9, 10, 13, 16, 30, 31, 35 were Perfect or Satisfactory with something asked; they stay.)
+
+### Round 3 review (the person, 2026-11-20; review-notebook-round3.json)
+
+Tally: 23 Perfect, 7 Satisfactory, 0 Not great, 0 Horrible. Worst first, then Perfect rows that asked something.
+
+| Row | Rating | Asked | Round 4 |
+|---|---|---|---|
+| 39 | Satisfactory | Bar connected to its menu; marks on the words, not below | Redraw: the Mark ▾ menu opens attached under the selection bar; the mark is drawn on the scripture's own words in the page, as the app draws it. |
+| 12 | Satisfactory | Chapter box draggable to a corner, no wasted space, more structured | Redraw 12c: a compact panel with a header (reference, ← → chapter, Open in reader, close), snaps to a corner, sized to its text. |
+| 18 | Satisfactory | How do links work? | Draw the whole flow: Copy link to block in page A → paste in page B makes a chip "Page A › first words" → clicking opens page A scrolled to that block, which glows briefly; Back returns. You choose where it goes by copying from that block. |
+| 26 | Satisfactory | Nested folders and pages, page references | **Moved to its own design: nesting** (folders in folders, pages in pages, how a page's folder color shows when nested, what a reference to a page looks like). It belongs to the [library](../library/README.md) folder's side list; proposed as the next folder after this one. Row 26 stays as drawn until then. |
+| 45 | Satisfactory | A full bar, or minimize into the page's side | Redraw: the contents sit in the page's right side as a bar; a button folds it to a thin rail of ticks and opens it again; it stays inside its own pane when other panes are open. |
+| 36 | Satisfactory | Own entries, add rows and columns; database or folder? | **Lead's recommendation:** two blocks. A **Table** is a plain table you type into (add a row, add a column, like Notion's simple table). A **List in a page** shows pages: a folder acts as the database, each page is a row, and a column is a page property kept in the page's front matter; "+ New" adds a page to that folder, "+ Property" adds a column. Draw both. |
+| 47 | Satisfactory | What does group by mean | Draw Group by: rows gathered under headings by a property (folder, callout kind, a property), each heading foldable with a count. |
+| 44 | Perfect | 3 or 4 side by side? | Yes: up to 4 at Full width; fewer columns as the pane narrows; draw 3 and 4. |
+| 40 | Perfect | Margin note button near the scripture, draggable | Redraw: Margin note opens beside the selected words in the margin, and the note can be dragged. |
+| 25 | Perfect | What does a background look like | Add a frame: the 8 pale backgrounds on a line and on a block. |
+| 46 | Perfect | Where are the question, answered, key point and note lists | Draw: the Questions list (Library) filters by kind: Question, Answered; Key point and Note are found by Ctrl+K and by a List in a page grouped by callout kind. |
+| 34 | Perfect | How are folders searched; other study commands | Folders show in Ctrl+K results with their color and page count (draw). **New group: Study commands** (brainstorm row by row): Scripture, Word (a Strong's entry), Interlinear (a verse's original words), Cross references for a verse, Concordance list, Margin notes for a passage, Marks in a passage. Each gets its own frame; the person keeps or cuts each. |
+| 35 | Perfect | What is the Shelf | **Its own design** with nesting (the library folder): what the Shelf is today, whether it stays. |
+| 6 | Perfect | Dragging the floating pane | Build note: the floating pane drags smoothly (checked in the build). |
+| 1, 37 | Perfect | (1: the right panel is only the "No results" example; 37: the tab could lead the tabs redesign) | Approved. 37's tab is noted for the tabs redesign. |
+
+### Approved for building (round 3)
+
+Rows 1, 6, 7, 9, 10, 11, 13, 16, 19, 21, 22, 30, 31, 32, 37, 41, 42, 43. With round 2's 13, that is 31 of 44.
+
+### Next designs this review opened
+
+- **Nesting and the Shelf** (library): folders in folders, pages in pages, references to pages, the Shelf.
+- **Tabs** (37's floating tab as the starting look).
