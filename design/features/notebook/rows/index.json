@@ -1,0 +1,236 @@
+[
+  {
+    "id": "1",
+    "row": 1,
+    "file": "rows/1.png",
+    "caption": "Type while a menu is open: rows filter at once, the first match is highlighted, empty groups hide."
+  },
+  {
+    "id": "2",
+    "row": 2,
+    "file": "rows/2.png",
+    "caption": "↑ ↓ move the highlight, Enter picks, Esc or a click outside closes; the caret returns and nothing moved."
+  },
+  {
+    "id": "3",
+    "row": 3,
+    "file": "rows/3.png",
+    "caption": "A new page: the caret is in a faint “Untitled”; Enter moves to a first line that hints “Press / for blocks”."
+  },
+  {
+    "id": "4",
+    "row": 4,
+    "file": "rows/4.png",
+    "caption": "Type “## ” at the start of a line: it becomes Heading 2 at once. Ctrl+Z gives back the typed characters."
+  },
+  {
+    "id": "5",
+    "row": 5,
+    "file": "rows/5.png",
+    "caption": "**word** or Ctrl+B makes bold in place; *word* or Ctrl+I italic; Ctrl+U underline."
+  },
+  {
+    "id": "6",
+    "row": 6,
+    "file": "rows/6.png",
+    "caption": "/ on an empty line: the menu at the caret, grouped Basic and Study, Markdown shortcuts muted on the right."
+  },
+  {
+    "id": "7",
+    "row": 7,
+    "file": "rows/7.png",
+    "caption": "Pick Scripture: the block appears and the caret is already in its reference field."
+  },
+  {
+    "id": "8",
+    "row": 8,
+    "file": "rows/8.png",
+    "caption": "In a list: Enter makes a new item, Tab indents, Shift+Tab outdents, Enter on an empty item leaves the list."
+  },
+  {
+    "id": "9",
+    "row": 9,
+    "file": "rows/9.png",
+    "caption": "Click the triangle (or Ctrl+Enter): the toggle folds and unfolds; a heading can be a toggle. Kept as <details>."
+  },
+  {
+    "id": "10",
+    "row": 10,
+    "file": "rows/10.png",
+    "caption": "Select text: a bar appears above it. On scripture in a page it adds Mark and Margin note."
+  },
+  {
+    "id": "11",
+    "row": 11,
+    "file": "rows/11.png",
+    "caption": "Mark ▾ on scripture in a page: the Legend's styles; the mark is the reader's mark, on the same words."
+  },
+  {
+    "id": "12a",
+    "row": 12,
+    "file": "rows/12a.png",
+    "caption": "@ form A: the verse stays plain text in the page, quietly underlined; the page index finds it."
+  },
+  {
+    "id": "12b",
+    "row": 12,
+    "file": "rows/12b.png",
+    "caption": "@ form B: the verse becomes a link chip with the reference."
+  },
+  {
+    "id": "13",
+    "row": 13,
+    "file": "rows/13.png",
+    "caption": "Hover a block: + and the grip appear in the gutter. The text does not move."
+  },
+  {
+    "id": "14",
+    "row": 14,
+    "file": "rows/14.png",
+    "caption": "Click +: a new empty line below, with the / menu already open."
+  },
+  {
+    "id": "15",
+    "row": 15,
+    "file": "rows/15.png",
+    "caption": "Drag the grip: a blue line shows where the block lands; dropping moves it."
+  },
+  {
+    "id": "16",
+    "row": 16,
+    "file": "rows/16.png",
+    "caption": "Click the grip: the block menu, searchable, with Edited and the word count at its foot."
+  },
+  {
+    "id": "17",
+    "row": 17,
+    "file": "rows/17.png",
+    "caption": "Turn into ▸ Heading 2: the block changes kind and keeps its text."
+  },
+  {
+    "id": "18",
+    "row": 18,
+    "file": "rows/18.png",
+    "caption": "Copy link to block: a link that opens this page scrolled to this block."
+  },
+  {
+    "id": "19",
+    "row": 19,
+    "file": "rows/19.png",
+    "caption": "Move to: choose a page; the block leaves this page and is last in the chosen one."
+  },
+  {
+    "id": "20",
+    "row": 20,
+    "file": "rows/20.png",
+    "caption": "Delete (or Del on a selected block): it goes, and “Deleted · Undo” offers the page's Undo."
+  },
+  {
+    "id": "21",
+    "row": 21,
+    "file": "rows/21.png",
+    "caption": "Several blocks: drag across, Shift+click or Esc; a pale wash on each; the grip menu acts on all."
+  },
+  {
+    "id": "22",
+    "row": 22,
+    "file": "rows/22.png",
+    "caption": "/callout in the / menu makes a callout; its kinds are Question, Answered, Key point and Note."
+  },
+  {
+    "id": "23",
+    "row": 23,
+    "file": "rows/23.png",
+    "caption": "Click a callout's icon: its kind menu. A Question becomes Answered, and back."
+  },
+  {
+    "id": "24",
+    "row": 24,
+    "file": "rows/24.png",
+    "caption": "Today's pages: `> [!question]` and `> [!done]` show as Question and Answered; the questions list finds them."
+  },
+  {
+    "id": "25",
+    "row": 25,
+    "file": "rows/25.png",
+    "caption": "Color ▸: the one annotation palette, the same colors as marks and folders, plus Default. No free picker."
+  },
+  {
+    "id": "26",
+    "row": 26,
+    "file": "rows/26.png",
+    "caption": "A folder's Color, or add one color to the palette: its pages show the dot by the title and in the side list."
+  },
+  {
+    "id": "27",
+    "row": 27,
+    "file": "rows/27.png",
+    "caption": "Hover the title of a page without an icon: “Add icon” shows above it (no cover)."
+  },
+  {
+    "id": "28",
+    "row": 28,
+    "file": "rows/28.png",
+    "caption": "Pick an icon: it sits before the title and in the side list."
+  },
+  {
+    "id": "29",
+    "row": 29,
+    "file": "rows/29.png",
+    "caption": "Edit anything: “Edited just now” in quiet gray, later “Edited 2m ago”. There is no Save button."
+  },
+  {
+    "id": "30",
+    "row": 30,
+    "file": "rows/30.png",
+    "caption": "The page's three dots: one searchable menu, with Edited and the word count at the foot."
+  },
+  {
+    "id": "31",
+    "row": 31,
+    "file": "rows/31.png",
+    "caption": "Appearance ▸ Serif (or Small text, Full width, Table of contents): the page changes at once."
+  },
+  {
+    "id": "32",
+    "row": 32,
+    "file": "rows/32.png",
+    "caption": "Lock page: a quiet lock in the bar, no handle, and typing does nothing."
+  },
+  {
+    "id": "33",
+    "row": 33,
+    "file": "rows/33.png",
+    "caption": "Copy contents: the page's Markdown, with scripture expanded verbatim from the database."
+  },
+  {
+    "id": "34",
+    "row": 34,
+    "file": "rows/34.png",
+    "caption": "Ctrl+K: Recents when empty; typing groups the results; the highlighted one previews on the right."
+  },
+  {
+    "id": "35",
+    "row": 35,
+    "file": "rows/35.png",
+    "caption": "The side list's Recents: the last 8 pages opened, newest first, folding, above round 4's groups."
+  },
+  {
+    "id": "36",
+    "row": 36,
+    "file": "rows/36.png",
+    "caption": "/list makes a list in a page: a table of pages matching a line, with the Filters button above it."
+  },
+  {
+    "id": "37",
+    "row": 37,
+    "file": "rows/37.png",
+    "caption": "Every width: a floating tab, a narrow pane, a phone (menus become sheets). The column fits each."
+  },
+  {
+    "id": "38",
+    "row": 38,
+    "file": "rows/38.png",
+    "caption": "A measurement, not a picture: a 400-block page must type, open menus and drag inside the typing budget of npm run measure (a budget for pages is still to be set there). Nothing jumps."
+  }
+]

@@ -1,6 +1,6 @@
 # The Notebook, with Notion's quality as the template
 
-**State:** exploring (round 2: the first draft) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `notebook.figcraft` and `notebook.pdf` (N1–N12) ·
+**State:** exploring (round 2: the first draft) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
 Nothing here is built. · **Review page:** `node design/review.mjs notebook` writes `review.html`.
 
 The person, 2026-11-20: Notion's quality is the template; Wordbench comes in and changes it for studying the Bible.
@@ -14,22 +14,13 @@ never copied; its interaction model and proportions are.
 
 ## Leading design
 
-The windows the board (and its PDF) holds, by part. Nothing is superseded yet.
+One frame per interaction row (the person, 2026-11-20: no whole board). `python -B design/features/notebook/notebook.py`
+writes `rows/<id>.png` (1600×1000, ids 1–38, with 12a and 12b) and `rows/index.json`. The round-2 board (N1–N12) is
+superseded by these frames and stays in git history (commit 6f78494).
 
 | Part | Leading | Superseded (and by what) |
 |---|---|---|
-| The one menu component | N1 | |
-| A new page | N2 | |
-| The / menu | N3 | |
-| The selection bar and @ | N4 | |
-| The block handle, block menu, drag, several blocks | N5 | |
-| Callouts (and the three names offered) | N6 | |
-| The page: icon, Add icon, toggles | N7 | |
-| The page's three dots and Appearance | N8 | |
-| Color: own palette or folder colors | N9 | |
-| Ctrl+K quick search | N10 | |
-| Recents in the side list; a list in a page | N11 | |
-| Real conditions (floating, narrow, phone, among tabs) | N12 | |
+| Every row of the interaction table | `rows/<id>.png` | N1–N12 board (by the row frames) |
 
 ## How this fits what is already accepted
 
