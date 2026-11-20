@@ -14,7 +14,6 @@
     slides.forEach((s, j) => s.classList.toggle('on', j === cur));
     const s = slides[cur];
     s.scrollTop = 0;
-    s.querySelectorAll('[data-pdf]').forEach(h => { if (!h.firstChild) { const e = document.createElement('embed'); e.src = h.dataset.pdf; e.type = 'application/pdf'; h.appendChild(e); } });
     $('count').textContent = cur === 0 ? 'Title' : 'Row ' + s.dataset.row + ' (' + cur + ' of ' + (slides.length - 1) + ')';
     $('bar').firstChild.style.width = (slides.length > 1 ? cur / (slides.length - 1) * 100 : 100) + '%';
     try { history.replaceState(null, '', '#' + (s.dataset.row || 'title')); } catch (e) {}

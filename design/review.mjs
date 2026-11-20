@@ -1,6 +1,6 @@
 // The review page for a design folder, as a presentation: a title slide, then one slide per interaction row with its
 // drawn frame(s) large (rows/index.json) and the row's table data in a compact card, a comment box on each, notes kept in
-// the browser and handed back as Markdown. Without rows/index.json every row shows the folder's whole sheet (the PDF).
+// the browser and handed back as Markdown. A row without a frame in rows/index.json shows a placeholder.
 // Writes design/features/<folder>/review.html. Styles are in review.css, behaviour in review-client.js (both inlined).
 //
 //   node design/review.mjs marks
@@ -16,7 +16,6 @@ if (!folder) { console.error('usage: node design/review.mjs <folder>'); process.
 const here = dirname(fileURLToPath(import.meta.url));
 const dir = join(here, 'features', folder);
 const md = readFileSync(join(dir, 'README.md'), 'utf8');
-const pdf = existsSync(join(dir, `${folder}.pdf`)) ? `${folder}.pdf` : null;
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const inline = s => esc(s)
@@ -98,9 +97,7 @@ const framesFor = n => (frames || []).filter(f => String(f.row) === String(n));
 const framesHtml = n => {
   const fs = framesFor(n);
   if (fs.length) return fs.map(f => `<figure><img src="${esc(f.file)}" alt="${esc(f.caption || f.id)}" loading="lazy"><figcaption><b>${esc(f.id)}</b>${f.caption ? ' ' + esc(f.caption) : ''}</figcaption></figure>`).join('');
-  if (frames) return `<figure><figcaption>No frame drawn for this row.</figcaption></figure>`;
-  if (pdf) return `<figure><div class="pdf" data-pdf="${esc(pdf)}"></div><figcaption>The whole sheet (no per-row frames yet)</figcaption></figure>`;
-  return `<figure><figcaption>No sheet drawn yet: the table comes first.</figcaption></figure>`;
+  return `<figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure>`;
 };
 
 let slideRows = '';
@@ -116,7 +113,7 @@ for (const g of groups) for (const r of g.rows) {
 <textarea data-k="${esc(n)}" placeholder="Your comment on row ${esc(n)}" aria-label="Comment on row ${esc(n)}"></textarea></div></div></section>\n`;
 }
 
-const nav = pdf ? `<a href="${esc(pdf)}">Open the whole board (PDF)</a>` : '<span class="meta">No sheet drawn yet.</span>';
+const noFrames = !frames || !frames.length;
 const directions = sec('Directions').some(l => l.trim()) ? `<details><summary>Directions</summary>${prose(sec('Directions'))}</details>` : '';
 const data = JSON.stringify({ folder, round, title }).replace(/</g, '\\u003c');
 const css = readFileSync(join(here, 'review.css'), 'utf8');
@@ -133,7 +130,8 @@ ${css}</style></head><body>
 <div class="meta">Design review · round ${esc(round)}</div>
 <h1>${inline(title)}</h1>
 <p class="meta">${inline(state)}${state ? ' · ' : ''}${built} of ${total} rows built</p>
-<div class="links"><button id="start" class="primary">Start: row 1</button> ${nav}</div>
+<div class="links"><button id="start" class="primary">Start: row 1</button> </div>
+${noFrames ? '<p class="notice">The interactions of this folder are not drawn yet: every row shows a placeholder until rows/index.json lists frames.</p>' : ''}
 ${dec.lines.length ? `<h2>Decisions${dec.date ? ', ' + esc(dec.date) : ''}</h2>${prose(dec.lines)}` : ''}
 <h2>Open questions</h2>${prose(sec('Open questions')) || '<p class="meta">None listed.</p>'}
 ${directions}
@@ -148,4 +146,4 @@ ${slideRows}<div id="grid"></div>
 <script>
 ${js}</script></body></html>`;
 writeFileSync(join(dir, 'review.html'), html);
-console.log(`${join(dir, 'review.html')}: ${total} rows in ${groups.length} groups, ${frames ? frames.length + ' frames' : pdf ? 'whole sheet for every row' : 'no sheet yet'}`);
+console.log(`${join(dir, 'review.html')}: ${total} rows in ${groups.length} groups, ${frames ? frames.length + ' frames' : 'no frames (placeholders)'}`);
