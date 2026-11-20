@@ -3,7 +3,6 @@ import { createReadStream } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, relative, isAbsolute, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseRelease } from '../../distribution/release.mjs';
 
 export async function digest(path) {
   const hash = createHash('sha256');
@@ -51,9 +50,9 @@ async function main() {
   const workspaceSection = cargo.split('[workspace.package]')[1]?.split('\n[')[0];
   const version = workspaceSection?.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
   if (!version || version !== tauri.version) throw new Error('Cargo and Tauri versions differ.');
-  const publicRelease = parseRelease(JSON.parse(await readFile(resolve(root, 'site/public/release.json'), 'utf8')));
-  if (publicRelease.status === 'published' && publicRelease.version !== version) throw new Error('Website and app versions differ.');
-  console.log(`Version ${version}: Cargo, Tauri, and website metadata agree.`);
+  // The website's release.json is written by site.yml from the published release (scripts/site/fetch-release.mjs)
+  // after every release; the copy in the repository is only a local placeholder, so it is not compared here.
+  console.log(`Version ${version}: Cargo and Tauri agree.`);
   const args = process.argv.slice(2);
   if (args.length !== 2 || args[0] !== '--staging') throw new Error('Packaging is not ready: supply --staging <directory> containing manifest.json and approved artifacts. See docs/SPEC.md.');
   await checkStaging(resolve(args[1]), version);
