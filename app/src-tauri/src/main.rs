@@ -505,7 +505,12 @@ async fn update_back(app: tauri::AppHandle) -> Result<(), String> {
         #[cfg(windows)]
         let _ = std::process::Command::new("cmd").arg("/C").arg(format!("ping -n 3 127.0.0.1 >nul & start \"\" \"{}\"", exe.display())).spawn();
         #[cfg(not(windows))]
-        let _ = std::process::Command::new(exe).spawn();
+        match wb_core::updates_install::app_bundle().filter(|_| wb_core::updates_install::use_bundle()) {
+            Some(bundle) => wb_core::updates_install::relaunch(&bundle),
+            None => {
+                let _ = std::process::Command::new(exe).spawn();
+            }
+        }
     }
     app.exit(0);
     Ok(())

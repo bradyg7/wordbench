@@ -29,6 +29,8 @@ typst-pdf = "0.15"
 typst-layout = "0.15"
 typst-svg = "0.15"
 flate2 = "1.1.11"
+# The Mac update is a signed .app.tar.gz (design/features/updates, installing on a Mac).
+tar = "0.4"
 lopdf = { version = "0.47.0", default-features = false }
 tempfile = "3.27.0"
 ureq = { version = "3", optional = true, default-features = false, features = ["rustls"] }

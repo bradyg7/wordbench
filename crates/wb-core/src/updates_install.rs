@@ -447,14 +447,23 @@ impl Updates {
     pub(crate) fn keep_before(&self) {
         let dest = self.before_dir();
         let _ = fs::remove_dir_all(&dest);
-        let Some(app) = app_dir() else { return };
         let files = dest.join(INSTALLED);
+        // On a Mac the whole .app bundle is kept, not top-level files
+        let bundle = if use_bundle() { app_bundle() } else { None };
+        if use_bundle() && bundle.is_none() {
+            return;
+        }
+        let Some(app) = bundle.clone().or_else(app_dir) else { return };
         let kept = (|| -> std::io::Result<()> {
             fs::create_dir_all(&files)?;
-            for e in fs::read_dir(&app)? {
-                let e = e?;
-                if e.file_type()?.is_file() {
-                    fs::copy(e.path(), files.join(e.file_name()))?;
+            if let Some(b) = &bundle {
+                copy_tree(b, &files.join(b.file_name().unwrap_or_default()))?;
+            } else {
+                for e in fs::read_dir(&app)? {
+                    let e = e?;
+                    if e.file_type()?.is_file() {
+                        fs::copy(e.path(), files.join(e.file_name()))?;
+                    }
                 }
             }
             fs::write(dest.join("before.json"), json!({ "version": INSTALLED, "at": Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true) }).to_string())
@@ -487,8 +496,24 @@ impl Updates {
     /// effect when the app is opened again.
     pub fn go_back(&self) -> Result<String, String> {
         let v = self.back_offer()?;
-        let app = app_dir().ok_or("The folder the program runs from is not known.")?;
         let from = self.before_dir().join(&v);
+        if use_bundle() {
+            let bundle = app_bundle().ok_or("The app the program runs from is not known.")?;
+            let kept = find_app(&from).ok_or_else(|| format!("Bible Workbench {v} could not be put back (the kept app is missing). Nothing was changed."))?;
+            let stage = bundle.parent().unwrap_or(&bundle).join(format!(".wb-back-{}", std::process::id()));
+            let _ = fs::remove_dir_all(&stage);
+            let put = (|| -> Result<(), String> {
+                fs::create_dir_all(&stage).map_err(|e| e.to_string())?;
+                let copy = stage.join(bundle.file_name().unwrap_or_default());
+                copy_tree(&kept, &copy).map_err(|e| e.to_string())?;
+                swap_bundle(&bundle, &copy)
+            })();
+            let _ = fs::remove_dir_all(&stage);
+            put.map_err(|e| format!("Bible Workbench {v} could not be put back ({e}). Nothing was changed."))?;
+            self.forget_update();
+            return Ok(format!("Bible Workbench {v} is back. It opens when the app is started again."));
+        }
+        let app = app_dir().ok_or("The folder the program runs from is not known.")?;
         for e in fs::read_dir(&from).map_err(|e| e.to_string())? {
             let e = e.map_err(|e| e.to_string())?;
             let to = app.join(e.file_name());
@@ -548,11 +573,115 @@ fn spawn_installer(path: &std::path::Path, restart: bool) -> Result<(), String> 
 #[cfg(not(windows))]
 fn spawn_installer(path: &std::path::Path, restart: bool) -> Result<(), String> {
     if cfg!(test) || std::env::var("WB_UPDATE_FEED").is_ok() {
-        // a test release carries a script; a real release's Mac and Linux files are not installers this build runs
+        // a test release carries a script
         std::process::Command::new("sh").arg(path).arg(if restart { "/R" } else { "/P" }).spawn().map(|_| ()).map_err(|e| refused_line(&format!("the installer could not be started ({e}).")))
+    } else if cfg!(target_os = "macos") {
+        let bundle = app_bundle().ok_or_else(|| refused_line("the app it would replace could not be found."))?;
+        install_bundle(path, &bundle).map_err(|e| refused_line(&format!("{e} Nothing was changed.")))?;
+        if restart {
+            relaunch(&bundle);
+        }
+        Ok(())
     } else {
-        Err(refused_line("installing from the window is built for Windows only."))
+        Err(refused_line("installing from the window is built for Windows and Mac only."))
     }
+}
+
+/// Opens the app at `bundle` again, a moment after this one has left (`open -n` starts a new instance).
+pub fn relaunch(bundle: &std::path::Path) {
+    let _ = std::process::Command::new("sh").arg("-c").arg("sleep 2; exec open -n \"$0\"").arg(bundle).spawn();
+}
+
+/// Whether the program is replaced as a whole `.app` bundle (a Mac) rather than as files in a folder.
+pub fn use_bundle() -> bool {
+    cfg!(target_os = "macos")
+}
+
+/// The `.app` bundle a program inside it runs from: `.../X.app/Contents/MacOS/<exe>` gives `.../X.app`.
+pub fn bundle_of(exe: &std::path::Path) -> Option<PathBuf> {
+    let macos = exe.parent()?;
+    let contents = macos.parent()?;
+    let app = contents.parent()?;
+    let is = macos.file_name()? == "MacOS" && contents.file_name()? == "Contents" && app.extension().is_some_and(|e| e == "app");
+    is.then(|| app.to_path_buf())
+}
+
+/// The running program's bundle: `WB_APP_BUNDLE`, else found from the running program.
+pub fn app_bundle() -> Option<PathBuf> {
+    match std::env::var("WB_APP_BUNDLE") {
+        Ok(p) if !p.trim().is_empty() => Some(PathBuf::from(p)),
+        _ => bundle_of(&std::env::current_exe().ok()?),
+    }
+}
+
+/// The one `.app` folder directly inside `dir`.
+fn find_app(dir: &std::path::Path) -> Option<PathBuf> {
+    fs::read_dir(dir).ok()?.flatten().map(|e| e.path()).find(|p| p.is_dir() && p.extension().is_some_and(|e| e == "app"))
+}
+
+/// A folder copied whole, links kept as links and file modes kept.
+fn copy_tree(from: &std::path::Path, to: &std::path::Path) -> std::io::Result<()> {
+    fs::create_dir_all(to)?;
+    for e in fs::read_dir(from)? {
+        let e = e?;
+        let t = e.file_type()?;
+        let dest = to.join(e.file_name());
+        if t.is_symlink() {
+            #[cfg(unix)]
+            std::os::unix::fs::symlink(fs::read_link(e.path())?, &dest)?;
+            #[cfg(not(unix))]
+            fs::copy(e.path(), &dest).map(|_| ())?;
+        } else if t.is_dir() {
+            copy_tree(&e.path(), &dest)?;
+        } else {
+            fs::copy(e.path(), &dest)?;
+        }
+    }
+    Ok(())
+}
+
+/// The signed `.app.tar.gz` unpacked into `dest` (new or empty); the `.app` folder it holds.
+pub fn extract_bundle(archive: &std::path::Path, dest: &std::path::Path) -> Result<PathBuf, String> {
+    let file = fs::File::open(archive).map_err(|e| format!("The download could not be read ({e})."))?;
+    fs::create_dir_all(dest).map_err(|e| e.to_string())?;
+    let mut tar = tar::Archive::new(flate2::read::GzDecoder::new(file));
+    tar.set_preserve_permissions(true);
+    tar.unpack(dest).map_err(|e| format!("The download could not be unpacked ({e})."))?;
+    find_app(dest).ok_or_else(|| "The download holds no app.".to_string())
+}
+
+/// `new` takes the place of `old`: the old bundle is moved aside, the new one moved in, and the old one is put back if the
+/// second step fails. Both must be on the same disk. The old copy is removed once the new one is in.
+pub fn swap_bundle(old: &std::path::Path, new: &std::path::Path) -> Result<(), String> {
+    let mut aside_name = old.file_name().unwrap_or_default().to_os_string();
+    aside_name.push(".old");
+    let aside = old.with_file_name(aside_name);
+    let _ = fs::remove_dir_all(&aside);
+    fs::rename(old, &aside).map_err(|e| format!("the old app could not be moved aside ({e})."))?;
+    if let Err(e) = fs::rename(new, old) {
+        return Err(match fs::rename(&aside, old) {
+            Ok(()) => format!("the new app could not be moved in ({e}); the old one was put back."),
+            Err(b) => format!("the new app could not be moved in ({e}), and the old one could not be put back ({b}); it is at {}.", aside.display()),
+        });
+    }
+    let _ = fs::remove_dir_all(&aside);
+    Ok(())
+}
+
+/// Installs the signed `.app.tar.gz` over the running bundle: unpacked beside it, then swapped in.
+pub fn install_bundle(archive: &std::path::Path, bundle: &std::path::Path) -> Result<(), String> {
+    let parent = bundle.parent().ok_or("the app has no folder.")?;
+    let stage = parent.join(format!(".wb-update-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&stage);
+    let r = extract_bundle(archive, &stage).and_then(|new| {
+        // under the bundle's own name, so the app is found where it was
+        let named = stage.join("next").join(bundle.file_name().unwrap_or_default());
+        fs::create_dir_all(named.parent().unwrap()).map_err(|e| e.to_string())?;
+        fs::rename(&new, &named).map_err(|e| e.to_string())?;
+        swap_bundle(bundle, &named)
+    });
+    let _ = fs::remove_dir_all(&stage);
+    r
 }
 
 #[cfg(test)]
@@ -568,6 +697,76 @@ mod tests {
         // no line at all is not a promise that nothing changed
         assert!(back_refusal("## New\n- x", "0.2.4").is_some());
         assert!(back_refusal("## Your study folder\nNothing is moved forward, nothing changes... but moved forward later", "0.2.4").is_some());
+    }
+
+    fn make_app(root: &std::path::Path, name: &str, marker: &str) -> PathBuf {
+        let app = root.join(name);
+        fs::create_dir_all(app.join("Contents/MacOS")).unwrap();
+        fs::write(app.join("Contents/MacOS/bible-workbench"), marker).unwrap();
+        fs::write(app.join("Contents/Info.plist"), marker).unwrap();
+        app
+    }
+
+    fn make_archive(path: &std::path::Path, app: &std::path::Path) {
+        let enc = flate2::write::GzEncoder::new(fs::File::create(path).unwrap(), flate2::Compression::default());
+        let mut b = tar::Builder::new(enc);
+        b.append_dir_all(app.file_name().unwrap(), app).unwrap();
+        b.into_inner().unwrap().finish().unwrap();
+    }
+
+    #[test]
+    fn the_bundle_is_found_from_the_running_program() {
+        let exe = std::path::Path::new("/Applications/Wordbench.app/Contents/MacOS/bible-workbench");
+        assert_eq!(bundle_of(exe).unwrap(), std::path::Path::new("/Applications/Wordbench.app"));
+        assert!(bundle_of(std::path::Path::new("/usr/local/bin/bible-workbench")).is_none());
+        assert!(bundle_of(std::path::Path::new("/x/Wordbench/Contents/MacOS/bible-workbench")).is_none());
+        assert!(bundle_of(std::path::Path::new("C:/prog/bible-workbench.exe")).is_none());
+    }
+
+    #[test]
+    fn an_archive_is_unpacked_and_swapped_in_and_the_old_app_goes() {
+        let t = tempfile::tempdir().unwrap();
+        let src = tempfile::tempdir().unwrap();
+        let new = make_app(src.path(), "Wordbench.app", "new");
+        let archive = t.path().join("update.app.tar.gz");
+        make_archive(&archive, &new);
+        let old = make_app(t.path(), "Wordbench.app", "old");
+        install_bundle(&archive, &old).unwrap();
+        assert_eq!(fs::read_to_string(old.join("Contents/MacOS/bible-workbench")).unwrap(), "new");
+        let left: Vec<_> = fs::read_dir(t.path()).unwrap().flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect();
+        assert!(left.iter().all(|n| n == "Wordbench.app" || n == "update.app.tar.gz"), "{left:?}");
+        let out = tempfile::tempdir().unwrap();
+        assert_eq!(extract_bundle(&archive, out.path()).unwrap().file_name().unwrap(), "Wordbench.app");
+    }
+
+    #[test]
+    fn a_swap_that_fails_puts_the_old_app_back() {
+        let t = tempfile::tempdir().unwrap();
+        let old = make_app(t.path(), "Wordbench.app", "old");
+        let missing = t.path().join("next/Wordbench.app");
+        let why = swap_bundle(&old, &missing).unwrap_err();
+        assert!(why.contains("put back"), "{why}");
+        assert_eq!(fs::read_to_string(old.join("Contents/MacOS/bible-workbench")).unwrap(), "old");
+        // a download that is not an archive changes nothing
+        let bad = t.path().join("bad.app.tar.gz");
+        fs::write(&bad, "not an archive").unwrap();
+        assert!(install_bundle(&bad, &old).is_err());
+        assert_eq!(fs::read_to_string(old.join("Contents/MacOS/bible-workbench")).unwrap(), "old");
+        assert!(fs::read_dir(t.path()).unwrap().flatten().all(|e| !e.file_name().to_string_lossy().starts_with(".wb-update")));
+    }
+
+    #[test]
+    fn the_whole_old_bundle_can_be_copied_and_put_back() {
+        let t = tempfile::tempdir().unwrap();
+        let old = make_app(t.path(), "Wordbench.app", "old");
+        let kept = t.path().join("before/Wordbench.app");
+        copy_tree(&old, &kept).unwrap();
+        assert_eq!(find_app(&t.path().join("before")).unwrap(), kept);
+        fs::write(old.join("Contents/MacOS/bible-workbench"), "new").unwrap();
+        let copy = t.path().join("stage/Wordbench.app");
+        copy_tree(&kept, &copy).unwrap();
+        swap_bundle(&old, &copy).unwrap();
+        assert_eq!(fs::read_to_string(old.join("Contents/Info.plist")).unwrap(), "old");
     }
 
     #[test]
