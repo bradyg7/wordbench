@@ -54,10 +54,16 @@
     "caption": "Several verses and ranges across chapters: Num 25:18–26:1 is one block, each verse with its reference."
   },
   {
-    "id": "44",
+    "id": "44a",
     "row": 44,
-    "file": "rows/44.png",
-    "caption": "Drag one Scripture block beside another: they sit side by side to compare."
+    "file": "rows/44a.png",
+    "caption": "Three Scripture blocks side by side at Full width."
+  },
+  {
+    "id": "44b",
+    "row": 44,
+    "file": "rows/44b.png",
+    "caption": "Four side by side, the most; as the pane narrows they fall to three, two, then one under another."
   },
   {
     "id": "8",
@@ -87,31 +93,31 @@
     "id": "39a",
     "row": 39,
     "file": "rows/39a.png",
-    "caption": "Mark, step 1: select words of scripture in a page. The selection bar shows Mark and Margin note."
+    "caption": "Mark, step 1: select words of scripture in a page; the selection bar opens right above them."
   },
   {
     "id": "39b",
     "row": 39,
     "file": "rows/39b.png",
-    "caption": "Mark, step 2: Mark ▾ opens the Legend's styles, searchable."
+    "caption": "Mark, step 2: Mark ▾ opens its menu attached under the bar: the Legend's styles, searchable."
   },
   {
     "id": "39c",
     "row": 39,
     "file": "rows/39c.png",
-    "caption": "Mark, step 3: pick Zeal. The words take its style in the page at once."
+    "caption": "Mark, step 3: pick Zeal; the mark sits on the scripture's own words in the page."
   },
   {
     "id": "39d",
     "row": 39,
     "file": "rows/39d.png",
-    "caption": "Mark, step 4: it is the reader's mark. Open Numbers 25 and the same words carry Zeal."
+    "caption": "Mark, step 4: it is the reader's mark. Numbers 25 in the reader shows the same words marked Zeal."
   },
   {
     "id": "40",
     "row": 40,
     "file": "rows/40.png",
-    "caption": "Margin note from a page: select scripture, Margin note; the note is written in that verse's margin and shows in the reader."
+    "caption": "Margin note from a page: it opens in the margin beside the selected words; drag it by its grip to move it."
   },
   {
     "id": "12a",
@@ -129,7 +135,7 @@
     "id": "12c",
     "row": 12,
     "file": "rows/12c.png",
-    "caption": "Whole chapter: the popup grows to Psalm 106, scrolled to verse 30 and marked; it can still be dragged."
+    "caption": "Whole chapter: a compact panel with a header (reference, ← →, Open in reader, close), sized to its text, snapped to the top-right corner; drag it to another corner."
   },
   {
     "id": "12d",
@@ -180,10 +186,22 @@
     "caption": "Duplicate (Ctrl+D): a copy appears right below the block, with the caret in it."
   },
   {
-    "id": "18",
+    "id": "18a",
     "row": 18,
-    "file": "rows/18.png",
-    "caption": "Copy link to block: a link to a place in a page. It does not replace scripture references, which stay references and are found by the page index."
+    "file": "rows/18a.png",
+    "caption": "Link to a block, step 1: in page A (Haste study), the block's grip › Copy link to block. Where it will lead is chosen by copying from that block."
+  },
+  {
+    "id": "18b",
+    "row": 18,
+    "file": "rows/18b.png",
+    "caption": "Step 2: paste in page B: a chip “Haste study › Read the chapter twice…”. Scripture references stay references; this is a link to a place in a page."
+  },
+  {
+    "id": "18c",
+    "row": 18,
+    "file": "rows/18c.png",
+    "caption": "Step 3: clicking the chip opens Haste study scrolled to that block, which glows for a moment; Back returns to Tuesday study."
   },
   {
     "id": "19",
@@ -237,13 +255,31 @@
     "id": "46b",
     "row": 46,
     "file": "rows/46b.png",
-    "caption": "In the questions list the callout shows its first line, its page and its kind; the rest opens with the page."
+    "caption": "The Questions list (Library) filters by kind: Question or Answered; each shows its first line and its page."
   },
   {
-    "id": "25",
+    "id": "46c",
+    "row": 46,
+    "file": "rows/46c.png",
+    "caption": "Key points and notes are found by Ctrl+K (“key point”), grouped as Key points and Notes, each with its page."
+  },
+  {
+    "id": "46d",
+    "row": 46,
+    "file": "rows/46d.png",
+    "caption": "Or a List in a page grouped by callout kind: Key point and Note as headings, each callout a row with its page."
+  },
+  {
+    "id": "25a",
     "row": 25,
-    "file": "rows/25.png",
+    "file": "rows/25a.png",
     "caption": "Color ▾ on selected words: 8 plain colors and Default, for emphasis only. Text color means nothing; marks carry meaning."
+  },
+  {
+    "id": "25b",
+    "row": 25,
+    "file": "rows/25b.png",
+    "caption": "Background: the 8 pale backgrounds, on words in a line and on a whole block."
   },
   {
     "id": "26",
@@ -270,10 +306,22 @@
     "caption": "Appearance ▸ Serif (or Small text, Full width, Table of contents): the page changes at once."
   },
   {
-    "id": "45",
+    "id": "45a",
     "row": 45,
-    "file": "rows/45.png",
-    "caption": "Appearance › Table of contents: an outline of the page's headings folds beside a long page; click one to go there."
+    "file": "rows/45a.png",
+    "caption": "Table of contents: a bar in the page's right side; ▸ folds it."
+  },
+  {
+    "id": "45b",
+    "row": 45,
+    "file": "rows/45b.png",
+    "caption": "Folded: a thin rail of ticks at the page's edge; ◂ or a click on the rail opens it again."
+  },
+  {
+    "id": "45c",
+    "row": 45,
+    "file": "rows/45c.png",
+    "caption": "Among other panes: the contents stay inside the page's own pane, beside the reader."
   },
   {
     "id": "32",
@@ -306,6 +354,12 @@
     "caption": "Ctrl+K preview of a page with a table (a list in a page): its first rows."
   },
   {
+    "id": "34d",
+    "row": 34,
+    "file": "rows/34d.png",
+    "caption": "Folders in Ctrl+K: a folder shows its color and its page count; Enter opens it in the side list."
+  },
+  {
     "id": "35",
     "row": 35,
     "file": "rows/35.png",
@@ -315,7 +369,13 @@
     "id": "36",
     "row": 36,
     "file": "rows/36.png",
-    "caption": "/list makes a list in a page: pages that match a line, in a Table by default, with the view and Filters above it."
+    "caption": "List in a page: a folder acts as the database; each page in it is a row; a column is a page property from its front matter. + New page adds a page to the folder; + Property adds a column."
+  },
+  {
+    "id": "48",
+    "row": 48,
+    "file": "rows/48.png",
+    "caption": "A Table: a plain table you type into. + adds a row at the foot or a column at the right; nothing else is linked."
   },
   {
     "id": "47a",
@@ -342,6 +402,12 @@
     "caption": "Board view, grouped by folder: a column per folder; dragging a card to another column moves the page there."
   },
   {
+    "id": "47e",
+    "row": 47,
+    "file": "rows/47e.png",
+    "caption": "Group by Folder: rows gather under a heading per folder, each with its count; ▸ folds a group."
+  },
+  {
     "id": "37a",
     "row": 37,
     "file": "rows/37a.png",
@@ -358,5 +424,47 @@
     "row": 37,
     "file": "rows/37c.png",
     "caption": "Phone: the page at 390 px; every menu is a bottom sheet with the same search, groups and rows."
+  },
+  {
+    "id": "49",
+    "row": 49,
+    "file": "rows/49.png",
+    "caption": "Study › Scripture: the block keeps only the reference; the words are read from the database each time."
+  },
+  {
+    "id": "50",
+    "row": 50,
+    "file": "rows/50.png",
+    "caption": "Study › Word: a Strong's entry as a block: the original word, its sound, the definition and the KJV's renderings."
+  },
+  {
+    "id": "51",
+    "row": 51,
+    "file": "rows/51.png",
+    "caption": "Study › Interlinear: a verse's original words, each with its sound, gloss and Strong's number."
+  },
+  {
+    "id": "52",
+    "row": 52,
+    "file": "rows/52.png",
+    "caption": "Study › Cross references: proposed. wb has no cross-reference data today, so nothing is listed; the block would need a source chosen first."
+  },
+  {
+    "id": "53",
+    "row": 53,
+    "file": "rows/53.png",
+    "caption": "Study › Concordance: every place of a word in Bible order, with words either side and the original number."
+  },
+  {
+    "id": "54",
+    "row": 54,
+    "file": "rows/54.png",
+    "caption": "Study › Margin notes for a passage: the margin notes on Numbers 25, by verse; each opens its note. (The notes drawn are samples, not anyone's study.)"
+  },
+  {
+    "id": "55",
+    "row": 55,
+    "file": "rows/55.png",
+    "caption": "Study › Marks in a passage: every mark on Numbers 25, with its Legend style and the marked words. (The marks drawn are samples; the words are the database's.)"
   }
 ]

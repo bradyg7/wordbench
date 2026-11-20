@@ -1,0 +1,134 @@
+{
+  "command": "wb concordance zealous",
+  "output": {
+    "word": "zealous",
+    "mode": "one",
+    "forms": [
+      {
+        "form": "zealous",
+        "n": 8
+      },
+      {
+        "form": "zeal",
+        "n": 16
+      },
+      {
+        "form": "zealously",
+        "n": 2
+      }
+    ],
+    "words": [
+      "zealous"
+    ],
+    "places": 8,
+    "verses": 8,
+    "kind": "run",
+    "small": false,
+    "lines": [
+      {
+        "ref": "Numbers 25:11",
+        "code": "NUM",
+        "book": "Numbers",
+        "c": 25,
+        "v": 11,
+        "i": 24,
+        "anchor": "NUM.25:11.24",
+        "strong": "H7065",
+        "before": "Israel, while he was ",
+        "word": "zealous",
+        "after": " for my sake among"
+      },
+      {
+        "ref": "Numbers 25:13",
+        "code": "NUM",
+        "book": "Numbers",
+        "c": 25,
+        "v": 13,
+        "i": 20,
+        "anchor": "NUM.25:13.20",
+        "strong": "H7065",
+        "before": "priesthood; because he was ",
+        "word": "zealous",
+        "after": " for his God, and"
+      },
+      {
+        "ref": "Acts 21:20",
+        "code": "ACT",
+        "book": "Acts",
+        "c": 21,
+        "v": 20,
+        "i": 29,
+        "anchor": "ACT.21:20.29",
+        "strong": "G2207",
+        "before": "and they are all ",
+        "word": "zealous",
+        "after": " of the law:"
+      },
+      {
+        "ref": "Acts 22:3",
+        "code": "ACT",
+        "book": "Acts",
+        "c": 22,
+        "v": 3,
+        "i": 42,
+        "anchor": "ACT.22:3.42",
+        "strong": "G2207",
+        "before": "the fathers, and was ",
+        "word": "zealous",
+        "after": " toward God, as ye"
+      },
+      {
+        "ref": "1 Corinthians 14:12",
+        "code": "1CO",
+        "book": "1 Corinthians",
+        "c": 14,
+        "v": 12,
+        "i": 7,
+        "anchor": "1CO.14:12.7",
+        "strong": "G2207",
+        "before": "forasmuch as ye are ",
+        "word": "zealous",
+        "after": " of spiritual gifts, seek"
+      },
+      {
+        "ref": "Galatians 1:14",
+        "code": "GAL",
+        "book": "Galatians",
+        "c": 1,
+        "v": 14,
+        "i": 17,
+        "anchor": "GAL.1:14.17",
+        "strong": "G2207",
+        "before": "nation, being more exceedingly ",
+        "word": "zealous",
+        "after": " of the traditions of"
+      },
+      {
+        "ref": "Titus 2:14",
+        "code": "TIT",
+        "book": "Titus",
+        "c": 2,
+        "v": 14,
+        "i": 20,
+        "anchor": "TIT.2:14.20",
+        "strong": "G2207",
+        "before": "himself a peculiar people, ",
+        "word": "zealous",
+        "after": " of good works."
+      },
+      {
+        "ref": "Revelation 3:19",
+        "code": "REV",
+        "book": "Revelation",
+        "c": 3,
+        "v": 19,
+        "i": 10,
+        "anchor": "REV.3:19.10",
+        "strong": "G2206",
+        "before": "rebuke and chasten: be ",
+        "word": "zealous",
+        "after": " therefore, and repent."
+      }
+    ]
+  }
+}

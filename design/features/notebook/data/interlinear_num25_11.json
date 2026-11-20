@@ -1,0 +1,375 @@
+{
+  "command": "wb interlinear Num 25:11",
+  "output": {
+    "book": {
+      "id": 4,
+      "code": "NUM",
+      "name": "Numbers"
+    },
+    "lang": "heb",
+    "verses": [
+      {
+        "c": 25,
+        "v": 11,
+        "text": "Phinehas, the son of Eleazar, the son of Aaron the priest, hath turned my wrath away from the children of Israel, while he was zealous for my sake among them, that I consumed not the children of Israel in my jealousy.",
+        "words": [
+          {
+            "original": "פִּֽינְחָס",
+            "translit": "pin.Chas",
+            "strong": "H6372",
+            "lemma": "פִּינְחָס",
+            "gloss": "Phinehas",
+            "morph": "HNpm",
+            "parse": [
+              {
+                "code": "HNpm",
+                "text": "Noun · Proper · Masculine"
+              }
+            ]
+          },
+          {
+            "original": "בֶּן",
+            "translit": "ben-",
+            "strong": "H1121",
+            "lemma": "בֵּן",
+            "gloss": "[the] son of",
+            "morph": "HNcmsc",
+            "parse": [
+              {
+                "code": "HNcmsc",
+                "text": "Noun · Common · Masculine · Singular · Construct"
+              }
+            ]
+          },
+          {
+            "original": "אֶלְעָזָר",
+            "translit": "'el.'a.Zar",
+            "strong": "H499",
+            "lemma": "אֶלְעָזָר",
+            "gloss": "Eleazar",
+            "morph": "HNpm",
+            "parse": [
+              {
+                "code": "HNpm",
+                "text": "Noun · Proper · Masculine"
+              }
+            ]
+          },
+          {
+            "original": "בֶּן",
+            "translit": "ben-",
+            "strong": "H1121",
+            "lemma": "בֵּן",
+            "gloss": "[the] son of",
+            "morph": "HNcmsc",
+            "parse": [
+              {
+                "code": "HNcmsc",
+                "text": "Noun · Common · Masculine · Singular · Construct"
+              }
+            ]
+          },
+          {
+            "original": "אַהֲרֹן",
+            "translit": "'a.ha.Ron",
+            "strong": "H175",
+            "lemma": "אַהֲרֹן",
+            "gloss": "Aaron",
+            "morph": "HNpm",
+            "parse": [
+              {
+                "code": "HNpm",
+                "text": "Noun · Proper · Masculine"
+              }
+            ]
+          },
+          {
+            "original": "הַכֹּהֵן",
+            "translit": "ha.ko.Hen",
+            "strong": "H3548",
+            "lemma": "כֹּהֵן",
+            "gloss": "the priest",
+            "morph": "HTd/Ncmsa",
+            "parse": [
+              {
+                "code": "HTd",
+                "text": "Particle · Definite article (Hebrew)"
+              },
+              {
+                "code": "HNcmsa",
+                "text": "Noun · Common · Masculine · Singular · Absolute"
+              }
+            ]
+          },
+          {
+            "original": "הֵשִׁיב",
+            "translit": "he.Shiv",
+            "strong": "H7725",
+            "lemma": "שׁוּב",
+            "gloss": "he has turned back",
+            "morph": "HVhp3ms",
+            "parse": [
+              {
+                "code": "HVhp3ms",
+                "text": "Verb · Hiphil (hence Action=Causative/declarative; Voice=Active) · Perfect (hence Tense=Past/present; Mood=Indicative) · Third · Masculine · Singular"
+              }
+            ]
+          },
+          {
+            "original": "אֶת",
+            "translit": "'et-",
+            "strong": "H853",
+            "lemma": "אֵת",
+            "gloss": "<obj.>",
+            "morph": "HTo",
+            "parse": [
+              {
+                "code": "HTo",
+                "text": "Particle · Object indicator"
+              }
+            ]
+          },
+          {
+            "original": "חֲמָתִי",
+            "translit": "cha.ma.Ti",
+            "strong": "H2534",
+            "lemma": "חֵמָה",
+            "gloss": "rage my",
+            "morph": "HNcfsc/Sp1bs",
+            "parse": [
+              {
+                "code": "HNcfsc",
+                "text": "Noun · Common · Feminine · Singular · Construct"
+              },
+              {
+                "code": "HSp1bs",
+                "text": "Suffix · Personal · First · Either gender · Singular"
+              }
+            ]
+          },
+          {
+            "original": "מֵעַל",
+            "translit": "me.'Al",
+            "strong": "H5921",
+            "lemma": "עַל",
+            "gloss": "from against",
+            "morph": "HR/R",
+            "parse": [
+              {
+                "code": "HR",
+                "text": "Preposition"
+              },
+              {
+                "code": "HR",
+                "text": "Preposition"
+              }
+            ]
+          },
+          {
+            "original": "בְּנֵֽי",
+            "translit": "be.nei-",
+            "strong": "H1121",
+            "lemma": "בֵּן",
+            "gloss": "[the] people of",
+            "morph": "HNcmpc",
+            "parse": [
+              {
+                "code": "HNcmpc",
+                "text": "Noun · Common · Masculine · Plural · Construct"
+              }
+            ]
+          },
+          {
+            "original": "יִשְׂרָאֵל",
+            "translit": "Yis.ra.'El",
+            "strong": "H3478",
+            "lemma": "יִשְׂרָאֵל",
+            "gloss": "Israel",
+            "morph": "HNpl",
+            "parse": [
+              {
+                "code": "HNpl",
+                "text": "Noun · Proper · Location"
+              }
+            ]
+          },
+          {
+            "original": "בְּקַנְאוֹ",
+            "translit": "be.kan.'O",
+            "strong": "H7065",
+            "lemma": "קָנָא",
+            "gloss": "because was zealous he",
+            "morph": "HR/Vpcc/Sp3ms",
+            "parse": [
+              {
+                "code": "HR",
+                "text": "Preposition"
+              },
+              {
+                "code": "HVpcc",
+                "text": "Verb · Piel (hence Action=Intensive/resultive/transtive; Voice=Active) · Infinitive · Construct"
+              },
+              {
+                "code": "HSp3ms",
+                "text": "Suffix · Personal · Third · Masculine · Singular"
+              }
+            ]
+          },
+          {
+            "original": "אֶת",
+            "translit": "'et-",
+            "strong": "H853",
+            "lemma": "אֵת",
+            "gloss": "<obj.>",
+            "morph": "HTo",
+            "parse": [
+              {
+                "code": "HTo",
+                "text": "Particle · Object indicator"
+              }
+            ]
+          },
+          {
+            "original": "קִנְאָתִי",
+            "translit": "kin.'a.Ti",
+            "strong": "H7068",
+            "lemma": "קִנְאָה",
+            "gloss": "zeal my",
+            "morph": "HNcfsc/Sp1bs",
+            "parse": [
+              {
+                "code": "HNcfsc",
+                "text": "Noun · Common · Feminine · Singular · Construct"
+              },
+              {
+                "code": "HSp1bs",
+                "text": "Suffix · Personal · First · Either gender · Singular"
+              }
+            ]
+          },
+          {
+            "original": "בְּתוֹכָם",
+            "translit": "be.to.Kham",
+            "strong": "H8432",
+            "lemma": "תָּ֫וֶךְ",
+            "gloss": "in midst of them",
+            "morph": "HR/Ncmsc/Sp3mp",
+            "parse": [
+              {
+                "code": "HR",
+                "text": "Preposition"
+              },
+              {
+                "code": "HNcmsc",
+                "text": "Noun · Common · Masculine · Singular · Construct"
+              },
+              {
+                "code": "HSp3mp",
+                "text": "Suffix · Personal · Third · Masculine · Plural"
+              }
+            ]
+          },
+          {
+            "original": "וְלֹא",
+            "translit": "ve.lo'-",
+            "strong": "H3808",
+            "lemma": "לֹא",
+            "gloss": "and not",
+            "morph": "HC/Tn",
+            "parse": [
+              {
+                "code": "HC",
+                "text": "Conjunction"
+              },
+              {
+                "code": "HTn",
+                "text": "Particle · Negative"
+              }
+            ]
+          },
+          {
+            "original": "כִלִּיתִי",
+            "translit": "khi.Li.ti",
+            "strong": "H3615",
+            "lemma": "כָּלָה",
+            "gloss": "I made an end of",
+            "morph": "HVpp1cs",
+            "parse": [
+              {
+                "code": "HVpp1cs",
+                "text": "Verb · Piel (hence Action=Intensive/resultive/transtive; Voice=Active) · Perfect (hence Tense=Past/present; Mood=Indicative) · First · Either gender · Singular"
+              }
+            ]
+          },
+          {
+            "original": "אֶת",
+            "translit": "'et-",
+            "strong": "H853",
+            "lemma": "אֵת",
+            "gloss": "<obj.>",
+            "morph": "HTo",
+            "parse": [
+              {
+                "code": "HTo",
+                "text": "Particle · Object indicator"
+              }
+            ]
+          },
+          {
+            "original": "בְּנֵֽי",
+            "translit": "be.nei-",
+            "strong": "H1121",
+            "lemma": "בֵּן",
+            "gloss": "[the] people of",
+            "morph": "HNcmpc",
+            "parse": [
+              {
+                "code": "HNcmpc",
+                "text": "Noun · Common · Masculine · Plural · Construct"
+              }
+            ]
+          },
+          {
+            "original": "יִשְׂרָאֵל",
+            "translit": "Yis.ra.'El",
+            "strong": "H3478",
+            "lemma": "יִשְׂרָאֵל",
+            "gloss": "Israel",
+            "morph": "HNpl",
+            "parse": [
+              {
+                "code": "HNpl",
+                "text": "Noun · Proper · Location"
+              }
+            ]
+          },
+          {
+            "original": "בְּקִנְאָתִֽי",
+            "translit": "be.kin.'a.Ti",
+            "strong": "H7068",
+            "lemma": "קִנְאָה",
+            "gloss": "in zeal my",
+            "morph": "HR/Ncfsc/Sp1bs",
+            "parse": [
+              {
+                "code": "HR",
+                "text": "Preposition"
+              },
+              {
+                "code": "HNcfsc",
+                "text": "Noun · Common · Feminine · Singular · Construct"
+              },
+              {
+                "code": "HSp1bs",
+                "text": "Suffix · Personal · First · Either gender · Singular"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "total": 1,
+    "offset": 0,
+    "more": false
+  }
+}
