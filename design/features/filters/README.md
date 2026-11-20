@@ -1,6 +1,6 @@
 # Filters, everywhere
 
-**State:** accepted for integration (2026-11-19) · **Round:** 3 · **Date:** 2026-11-19 · **Sheets:** `python -B design/features/filters/filters.py` writes `filters.figcraft` and `filters.pdf`.
+**State:** accepted for integration (2026-11-19); **paused after F2 (2026-11-20)**: F3 not built, the Notebook sections go in the redesign ([notebook](../notebook/README.md)); resumes for surfaces outside the Notebook · **Round:** 3 · **Date:** 2026-11-19 · **Sheets:** `python -B design/features/filters/filters.py` writes `filters.figcraft` and `filters.pdf`.
 
 Design one way to narrow a list or a search, then use it across the Library. The same action should feel familiar in the Notebook, in the Legend's where used list, and in Colors across the Bible. Each part offers the choices that make sense for what it shows.
 
