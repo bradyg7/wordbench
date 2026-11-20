@@ -396,6 +396,13 @@ pub fn split_at(s: &str, books: &[Book]) -> Result<(String, Option<At>), String>
 /// this one parser, so all three list the same notes. Views read; they never write.
 #[derive(Serialize, Debug, Clone, PartialEq, Default)]
 pub struct ViewQuery {
+    /// A Notebook page section, using that section's grouping and page scope.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub section: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub folder: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page_questions: Option<String>,
     /// `@place`: the notes on it or on any verse in it (a verse, a run, a chapter, a book), or on a Strong's number
     /// (`@H7065`). Kept as a reference that reads again ("Numbers 25", "Numbers 25:10-13").
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -421,26 +428,30 @@ pub struct ViewQuery {
 }
 
 /// A line's words, a phrase in quotes ("…" or “…”) kept as one.
-fn quoted_words(s: &str) -> Result<Vec<String>, String> {
+fn quoted_words(s: &str, scoped: bool) -> Result<Vec<(String, bool)>, String> {
     let mut out = vec![];
     let mut cur = String::new();
     let mut quote: Option<char> = None;
-    for c in s.chars() {
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
         match quote {
+            Some('"') if scoped && c == '\\' && matches!(chars.peek(), Some('"' | '\\')) => {
+                cur.push(chars.next().unwrap());
+            }
             Some(q) if c == q || (q == '“' && c == '”') => {
-                out.push(std::mem::take(&mut cur));
+                out.push((std::mem::take(&mut cur), true));
                 quote = None;
             }
             Some(_) => cur.push(c),
             None if c == '"' || c == '“' => {
                 if !cur.is_empty() {
-                    out.push(std::mem::take(&mut cur));
+                    out.push((std::mem::take(&mut cur), false));
                 }
                 quote = Some(c);
             }
             None if c.is_whitespace() => {
                 if !cur.is_empty() {
-                    out.push(std::mem::take(&mut cur));
+                    out.push((std::mem::take(&mut cur), false));
                 }
             }
             None => cur.push(c),
@@ -450,9 +461,9 @@ fn quoted_words(s: &str) -> Result<Vec<String>, String> {
         return Err("A name in quotes needs its closing quote, like: notebook thread \"the zeal of God\"".into());
     }
     if !cur.is_empty() {
-        out.push(cur);
+        out.push((cur, false));
     }
-    Ok(out.into_iter().filter(|w| !w.trim().is_empty()).collect())
+    Ok(out.into_iter().filter(|(w, _)| !w.trim().is_empty()).collect())
 }
 
 /// A place as a reference that reads again: the label with a plain hyphen ("Numbers 25:10-13").
@@ -462,19 +473,37 @@ pub fn span_ref(sp: &Span) -> String {
 
 /// Read a view's line (with or without its leading `notebook`): see `ViewQuery`.
 pub fn view_line(line: &str, books: &[Book]) -> Result<ViewQuery, String> {
-    let mut t = quoted_words(line)?;
-    if t.first().is_some_and(|w| w.eq_ignore_ascii_case("notebook")) {
+    let mut start = line.split_whitespace();
+    let first = start.next().unwrap_or_default();
+    let scoped = first.eq_ignore_ascii_case("section")
+        || (first.eq_ignore_ascii_case("notebook") && start.next().is_some_and(|w| w.eq_ignore_ascii_case("section")));
+    let mut t = quoted_words(line, scoped)?;
+    if t.first().is_some_and(|(w, _)| w.eq_ignore_ascii_case("notebook")) {
         t.remove(0);
     }
     let mut q = ViewQuery::default();
     let mut i = 0;
     while i < t.len() {
-        let w = t[i].clone();
+        let (w, quoted) = &t[i];
         let low = w.to_lowercase();
+        if scoped && *quoted {
+            q.words.push(low);
+            i += 1;
+            continue;
+        }
         if let Some(first) = w.strip_prefix('@') {
+            if scoped && first.is_empty() {
+                if let Some((place, true)) = t.get(i + 1) {
+                    if q.place.replace(place.clone()).is_some() {
+                        return Err("A view has one @place.".into());
+                    }
+                    i += 2;
+                    continue;
+                }
+            }
             // the longest run of words after @ that is a place: "@Num 25 questions" is Num 25, then questions
             let mut rest: Vec<String> = if first.is_empty() { vec![] } else { vec![first.to_string()] };
-            rest.extend(t[i + 1..].iter().cloned());
+            rest.extend(t[i + 1..].iter().take_while(|(_, quoted)| !scoped || !quoted).map(|(w, _)| w.clone()));
             let mut took = None;
             for k in (1..=rest.len().min(5)).rev() {
                 let cand = rest[..k].join(" ");
@@ -502,23 +531,39 @@ pub fn view_line(line: &str, books: &[Book]) -> Result<ViewQuery, String> {
             continue;
         }
         match low.as_str() {
+            "section" if scoped => {
+                q.section = Some(t.get(i + 1).map(|(w, _)| w.to_lowercase())
+                    .filter(|w| matches!(w.as_str(), "all" | "days" | "pages" | "places"))
+                    .ok_or("section takes all, days, pages or places.")?);
+                i += 1;
+            }
+            "folder" if scoped => {
+                q.folder = Some(t.get(i + 1).map(|(w, _)| w.clone()).ok_or("folder takes a folder name.")?);
+                i += 1;
+            }
+            "page-questions" if scoped => {
+                q.page_questions = Some(t.get(i + 1).map(|(w, _)| w.to_lowercase())
+                    .filter(|w| matches!(w.as_str(), "open" | "answered"))
+                    .ok_or("page-questions takes open or answered.")?);
+                i += 1;
+            }
             "questions" | "question" => q.questions = Some(q.questions.take().unwrap_or_else(|| "all".into())),
             "open" => q.questions = Some("open".into()),
             "answered" => q.questions = Some("answered".into()),
             "pages" => q.pages = true,
             "kind" => {
-                let kind = t.get(i + 1).map(|x| x.to_lowercase()).filter(|x| matches!(x.as_str(), "all" | "note" | "question" | "day" | "thread"));
+                let kind = t.get(i + 1).map(|(x, _)| x.to_lowercase()).filter(|x| matches!(x.as_str(), "all" | "note" | "question" | "day" | "thread"));
                 q.kind = Some(kind.ok_or_else(|| "kind takes all, note, question, day or thread.".to_string())?);
                 i += 1;
             }
             "days" => {
-                let n = t.get(i + 1).and_then(|x| x.parse::<u32>().ok()).filter(|n| (1..=3650).contains(n));
+                let n = t.get(i + 1).and_then(|(x, _)| x.parse::<u32>().ok()).filter(|n| (1..=3650).contains(n));
                 let Some(n) = n else { return Err("days takes a number: notebook days 7 (written in the last 7 days)".into()) };
                 q.days = Some(n);
                 i += 1;
             }
             "thread" => {
-                let Some(name) = t.get(i + 1).filter(|x| !x.starts_with('@')) else {
+                let Some((name, _)) = t.get(i + 1).filter(|(x, _)| !x.starts_with('@')) else {
                     return Err("thread takes a thread's name: notebook thread phinehas (a name of more words in quotes)".into());
                 };
                 q.thread = Some(name.clone());
@@ -527,6 +572,9 @@ pub fn view_line(line: &str, books: &[Book]) -> Result<ViewQuery, String> {
             _ => q.words.push(low),
         }
         i += 1;
+    }
+    if scoped && q.questions.is_some() {
+        return Err("Use page-questions open or answered to select pages, or quote the words to search for them.".into());
     }
     Ok(q)
 }

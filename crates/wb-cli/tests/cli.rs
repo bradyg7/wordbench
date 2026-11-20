@@ -75,6 +75,78 @@ fn verse_texts(wb: &Wb, place: &str) -> Vec<String> {
     wb.js(&["text", place, "--json"])["verses"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap().to_string()).collect()
 }
 
+#[test]
+fn filters_f1_keeps_notebook_scope_and_matches_each_active_choice() {
+    let Some(wb) = Wb::new() else { return };
+    let folder = wb.js(&["folder", "new", "Acts study", "--json"]);
+    let mut page_ids = Vec::new();
+    for (title, status, filed) in [
+        ("Prayer in the upper room", "question", true),
+        ("Prayer after the gathering", "done", true),
+        ("Prayer elsewhere", "question", false),
+        ("Travel notes", "question", true),
+    ] {
+        let text = format!("{title}\n\n> [!{status}] {title} follow-up?");
+        let page = wb.js(&["note", "new", &text, "--at", "Acts 2:1", "--json"]);
+        let id = page["id"].as_str().unwrap().to_string();
+        if filed {
+            wb.ok(&["save", &format!("page:{id}"), "--folder", folder["id"].as_str().unwrap()]);
+        }
+        page_ids.push(id);
+    }
+    wb.ok(&["page", "new", "Open folders\n\nThe words in this page are ordinary text."]);
+    wb.ok(&["day", "text", "Prayer journal"]);
+    fn files(dir: &std::path::Path) -> std::collections::BTreeMap<PathBuf, Vec<u8>> {
+        let mut result = std::collections::BTreeMap::new();
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                result.extend(files(&path));
+            } else {
+                result.insert(path.clone(), std::fs::read(&path).unwrap());
+            }
+        }
+        result
+    }
+    let before = files(&wb.dir);
+    let notebook = |line| wb.js(&["notebook", "--view", line, "--json"]);
+    let ids = |answer: &Value| {
+        let group = &answer["groups"][0];
+        assert_eq!(group["key"], "_all");
+        group["entries"].as_array().unwrap().iter().map(|e| e["id"].as_str().unwrap().to_string()).collect::<std::collections::BTreeSet<_>>()
+    };
+    assert_eq!(ids(&notebook("notebook section all")).len(), 6);
+    assert_eq!(ids(&notebook("notebook section all prayer")).len(), 4);
+    let line = "notebook section all prayer folder \"Acts study\" page-questions open";
+    assert_eq!(ids(&notebook(line)), [page_ids[0].clone()].into());
+    assert_eq!(ids(&notebook("notebook section all folder \"Acts study\" page-questions open")), [page_ids[0].clone(), page_ids[3].clone()].into());
+    assert_eq!(ids(&notebook("notebook section all prayer folder \"Acts study\" page-questions answered")), [page_ids[1].clone()].into());
+    assert_eq!(ids(&notebook("notebook section all kind note days 1 @ \"Acts 2\"")).len(), 4);
+    assert_eq!(ids(&notebook("notebook section all \"open\" \"folders\"")).len(), 1);
+    assert_eq!(ids(&notebook("notebook section all prayer kind day")).len(), 1);
+    assert_eq!(wb.js(&["view", "run", line])["rows"][0]["id"], page_ids[0]);
+    let legacy = wb.js(&["view", "run", "notebook open"]);
+    assert!(legacy["rows"].as_array().unwrap().iter().all(|e| e["kind"] == "question" && e["block"].is_number()));
+    assert_eq!(legacy["count"], 3);
+    let questions = wb.js(&["question", "list", "--status", "done", "--at", "Acts 2", "--search", "prayer"]);
+    assert_eq!(questions["questions"].as_array().unwrap().len(), 1);
+    assert_eq!(questions["questions"][0]["page"], page_ids[1]);
+    assert_eq!(wb.js(&["question", "list", "--status", "done", "--at", "Acts 2", "--search", "travel"])["questions"], json!([]));
+    assert!(files(&wb.dir) == before, "Filtering should leave scratch study files byte-for-byte intact.");
+}
+
+#[test]
+fn filters_f1_question_place_scope_includes_all_discovered_forms() {
+    let Some(wb) = Wb::new() else { return };
+    wb.ok(&["note", "new", "Trail question on this place?", "--at", "Genesis 1:1", "--question"]);
+    wb.ok(&["note", "new", "Page\n\n> [!question] Page question on this place?", "--at", "Genesis 1:2"]);
+    wb.ok(&["mark", "note", "Genesis 1:3", "> [!question] Margin question on this place?"]);
+    wb.ok(&["note", "new", "Question in another chapter?", "--at", "Genesis 2:1", "--question"]);
+    let questions = wb.js(&["question", "list", "--status", "open", "--at", "Genesis 1", "--search", "this place"]);
+    let text: std::collections::BTreeSet<&str> = questions["questions"].as_array().unwrap().iter().map(|q| q["text"].as_str().unwrap()).collect();
+    assert_eq!(text, ["Trail question on this place?", "Page question on this place?", "Margin question on this place?"].into());
+}
+
 // ---- reading ----
 
 #[test]

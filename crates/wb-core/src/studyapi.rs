@@ -716,7 +716,7 @@ pub fn trail_at(bible: &Bible, store: &Store, anchor: &str, status: &str) -> Res
         let places = places_of(t);
         let here = places.iter().any(|p| *p == a);
         let near = !lemma
-            && places.iter().any(|p| !p.is_empty() && !p.starts_with('H') && !p.starts_with('G') && py_parse(p).map(|q| overlaps(&res, &q)).unwrap_or(false));
+            && places.iter().any(|p| py_parse(p).is_ok_and(|q| q["kind"] != "lemma" && overlaps(&res, &q)));
         if here || near {
             let mut v = trail_public(t, &label(bible, &s(t, "anchor"))?);
             v["here"] = json!(here);

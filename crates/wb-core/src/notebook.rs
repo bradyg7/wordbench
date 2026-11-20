@@ -663,6 +663,10 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
     if pages {
         all.retain(|e| e["placed"] == false && e["kind"] != "day");
     }
+    group_entries(bible, store, o, grouped, all, words.is_empty() && !questions)
+}
+
+pub(crate) fn group_entries(bible: &Bible, store: &Store, o: &Listing, grouped: &str, mut all: Vec<Value>, show_blank_day: bool) -> Result<Value> {
     let mut groups: Vec<Value> = vec![];
     if o.inbox_apart {
         let (mut inbox, rest): (Vec<Value>, Vec<Value>) = all.into_iter().partition(|e| e["placed"] == false && e["kind"] != "day");
@@ -682,7 +686,7 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
                     Some((d, e))
                 })
                 .collect();
-            let blank = o.days && words.is_empty() && !questions && !by.iter().any(|(d, e)| *d == today && e["kind"] == "day");
+            let blank = o.days && show_blank_day && !by.iter().any(|(d, e)| *d == today && e["kind"] == "day");
             if blank {
                 by.push((today, day_blank(today)));
             }

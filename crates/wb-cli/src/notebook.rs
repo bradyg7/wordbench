@@ -113,10 +113,18 @@ fn findings() -> Vec<Command> {
 fn notebook_commands() -> Vec<Command> {
     vec![
         cmd("notebook", "The Notebook's list, grouped: --group day (today's page first), chapter (--at \"Num 25\": that chapter, as following the reader), thread or none; or a section: --group pages (notes with no place yet) or questions; --search words; --questions; --pages; --inbox-apart.
-                   With no --group, the group it opens with (wb settings notebook).",
-            vec![Opt("group", None), Opt("search", None), Opt("at", None), Flag("questions"), Flag("pages"), Flag("inbox_apart"), Flag("no_days")], |c, a| {
+                   With no --group, the group it opens with (wb settings notebook). --view LINE uses the page scope and filters in a line such as notebook section all prayer folder “Acts study” page-questions open.",
+            vec![Opt("group", None), Opt("search", None), Opt("at", None), Flag("questions"), Flag("pages"), Flag("inbox_apart"), Flag("no_days"), Opt("view", None)], |c, a| {
                 let st = c.study()?;
                 let set = nb::settings(&st);
+                let days = !a.flag("no_days") && set["today"] != false;
+                if let Some(line) = a.opt("view") {
+                    if a.opt("group").is_some() || a.opt("search").is_some() || a.opt("at").is_some()
+                        || a.flag("questions") || a.flag("pages") || a.flag("inbox_apart") {
+                        return Err("Put the section, words and filters in --view LINE.".into());
+                    }
+                    return j(wb_core::pageviews::notebook(c.bible()?, &st, &line, days).map_err(e)?);
+                }
                 let at = match a.opt("at") {
                     Some(t) => {
                         let sp = c.span(&t)?;
@@ -131,7 +139,7 @@ fn notebook_commands() -> Vec<Command> {
                     inbox_apart: a.flag("inbox_apart"),
                     questions: a.flag("questions"),
                     pages: a.flag("pages"),
-                    days: !a.flag("no_days") && set["today"] != false,
+                    days,
                 };
                 j(nb::list(c.bible()?, &st, &o).map_err(e)?)
             }),
@@ -359,14 +367,12 @@ fn notebook_commands() -> Vec<Command> {
         cmd("questions", "Your questions: those in the Inbox and those at a place (trails), newest first.", vec![Opt("status", Some("open"))], |c, a| {
             j(nb::questions(c.bible()?, &*c.study()?, &a.opt_or("status", "open")).map_err(e)?)
         }),
-        cmd("question list", "Every question as one list: those at a place (trails), in the Inbox, and written in a page (/?, a callout block); --at a place: those on it and on any part of it (\"here\": on this very place); each says its form (trail or block). Answered ones with --status all or done.",
-            vec![Opt("status", Some("open")), Opt("at", None)], |c, a| {
+        cmd("question list", "Every question as one list: those at a place (trails), in the Inbox, and written in a page (/?, a callout block); --at a place: those on it and on any part of it (\"here\": on this very place); each says its form (trail or block). Answered ones with --status all or done. --search WORDS narrows the current list.",
+            vec![Opt("status", Some("open")), Opt("at", None), Opt("search", None)], |c, a| {
                 let st = a.opt_or("status", "open");
-                if let Some(at) = a.opt("at") {
-                    let at = crate::study::anchor(c, &at)?;
-                    return j(wb_core::questions::at(c.bible()?, &*c.study()?, &at, &st).map_err(e)?);
-                }
-                j(wb_core::questions::list(c.bible()?, &*c.study()?, &st).map_err(e)?)
+                let bible = c.bible()?;
+                let at = a.opt("at").map(|at| nb::place_anchor(bible, &at).map_err(e)).transpose()?;
+                j(wb_core::questions::search(bible, &*c.study()?, at.as_deref(), &st, &a.opt_or("search", "")).map_err(e)?)
             }),
         cmd("question add", "Write a question in a page, as its last block (or after block N): wb question add <page id> \"text\" [--after N]. It is a callout line: > [!question] text. A question at a verse is wb note new --question.",
             vec![Pos("page", N::One), Pos("text", N::Many), Opt("after", None)], |c, a| {

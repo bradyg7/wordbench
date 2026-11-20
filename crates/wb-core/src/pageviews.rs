@@ -19,6 +19,7 @@ use crate::store::{bad, Store};
 use crate::Result;
 use chrono::{Duration, Local};
 use serde_json::{json, Value};
+use std::collections::HashSet;
 
 /// The verses a place reaches: (book's id, first (chapter, verse), last (chapter, verse)); None for a Strong's number.
 fn reach(bible: &Bible, anchor: &str) -> Option<(u32, (u32, u32), (u32, u32))> {
@@ -60,8 +61,80 @@ fn row(e: &Value) -> Value {
 /// The notes a line finds (`wb view run`): the line, what it was read as (`query`), how many, and the rows.
 pub fn run(bible: &Bible, store: &Store, line: &str) -> Result<Value> {
     let q = view_line(line, bible.books()).map_err(bad)?;
-    let rows = find(bible, store, &q)?;
+    let rows = if q.section.is_some() {
+        let list = section_list(bible, store, &q, true)?;
+        list["groups"].as_array().unwrap().iter().flat_map(|g| g["entries"].as_array().unwrap().iter().map(row)).collect()
+    } else {
+        find(bible, store, &q)?
+    };
     Ok(json!({"line": line.trim(), "query": q, "count": rows.len(), "rows": rows}))
+}
+
+/// The same page selection for the current Notebook section and a view of that section.
+pub fn notebook(bible: &Bible, store: &Store, line: &str, days: bool) -> Result<Value> {
+    let q = view_line(line, bible.books()).map_err(bad)?;
+    section_list(bible, store, &q, days)
+}
+
+fn section_list(bible: &Bible, store: &Store, q: &ViewQuery, days: bool) -> Result<Value> {
+    let grouped = match q.section.as_deref() {
+        Some("all" | "pages") => "none",
+        Some("days") => "day",
+        Some("places") => "chapter",
+        _ => return Err(bad("A Notebook view starts with notebook section all, days, pages or places.")),
+    };
+    let pages = q.pages || q.section.as_deref() == Some("pages");
+    let folder = q.folder.as_deref().map(|name| crate::folders::find_folder(store, name)).transpose()?;
+    let thread = q.thread.as_deref().map(|name| legacy_thread_id(store, name)).transpose()?;
+    let saved_pages: HashSet<String> = match &folder {
+        Some(f) if !f.thread => store.find_set(&f.id)?["items"].as_array().into_iter().flatten()
+            .filter(|item| item["kind"] == "note").filter_map(|item| item["ref"].as_str().map(String::from)).collect(),
+        _ => HashSet::new(),
+    };
+    let question_pages: HashSet<String> = q.page_questions.as_deref().map(|status| {
+        crate::questions::found(store).into_iter().filter(|f| f.q.done == (status == "answered")).map(|f| f.page).collect()
+    }).unwrap_or_default();
+    let from = q.days.map(|n| (Local::now().date_naive() - Duration::days(i64::from(n) - 1)).to_string());
+    let want = q.place.as_deref().map(|place| nb::place_anchor(bible, place)).transpose()?;
+    let range = want.as_ref().and_then(|anchor| reach(bible, anchor));
+    let mut all = nb::all_lines(bible, store, days);
+    all.extend(crate::threadpage::lines(bible, store));
+    all.retain(|e| {
+        let id = e["id"].as_str().unwrap_or("");
+        !nb::is_template(e)
+            && (!pages || (e["placed"] == false && e["kind"] != "day" && e["kind"] != "thread"))
+            && q.kind.as_deref().is_none_or(|kind| kind == "all" || e["kind"] == kind)
+            && nb::words_in(e, &q.words)
+            && q.page_questions.as_deref().is_none_or(|status| {
+                question_pages.contains(id)
+                    || (e["kind"] == "question" && (e["status"] == "done") == (status == "answered"))
+            })
+            && folder.as_ref().is_none_or(|f| if f.thread { on_thread(e, &f.id) } else { saved_pages.contains(id) })
+            && thread.as_ref().is_none_or(|id| on_thread(e, id))
+            && from.as_ref().is_none_or(|from| e["day"].as_str().is_some_and(|d| d >= from.as_str()))
+            && want.as_ref().is_none_or(|anchor| places(store, e).iter().any(|p| match range {
+                Some((book, lo, hi)) => reach(bible, p).is_some_and(|(b, start, end)| b == book && start <= hi && end >= lo),
+                None => p.eq_ignore_ascii_case(anchor),
+            }))
+    });
+    let options = nb::Listing {
+        group: grouped.into(), days, search: String::new(), at: None,
+        inbox_apart: false, questions: false, pages,
+    };
+    let show_blank = q.words.is_empty() && q.kind.as_deref().is_none_or(|k| k == "all")
+        && q.page_questions.is_none() && folder.is_none() && thread.is_none() && want.is_none() && from.is_none();
+    nb::group_entries(bible, store, &options, grouped, all, show_blank)
+}
+
+fn on_thread(e: &Value, id: &str) -> bool {
+    e["slug"] == id || e["threads"].as_array().into_iter().flatten().any(|x| x["id"] == id)
+}
+
+fn legacy_thread_id(store: &Store, name: &str) -> Result<String> {
+    store.threads().into_iter()
+        .find(|t| crate::store::s(t, "name").eq_ignore_ascii_case(name) || crate::store::s(t, "id") == name)
+        .map(|t| crate::store::s(t, "id"))
+        .ok_or_else(|| bad(format!("No thread called “{name}” (wb thread list names them).")))
 }
 
 fn find(bible: &Bible, store: &Store, q: &ViewQuery) -> Result<Vec<Value>> {
@@ -86,13 +159,8 @@ fn find(bible: &Bible, store: &Store, q: &ViewQuery) -> Result<Vec<Value>> {
         all.retain(|e| e["placed"] == false && e["kind"] != "day" && e["kind"] != "thread");
     }
     if let Some(name) = &q.thread {
-        let t = store
-            .threads()
-            .into_iter()
-            .find(|t| crate::store::s(t, "name").eq_ignore_ascii_case(name) || crate::store::s(t, "id") == *name)
-            .ok_or_else(|| bad(format!("No thread called “{name}” (wb thread list names them).")))?;
-        let id = crate::store::s(t, "id");
-        all.retain(|e| e["slug"] == id.as_str() || e["threads"].as_array().into_iter().flatten().any(|x| x["id"] == id.as_str()));
+        let id = legacy_thread_id(store, name)?;
+        all.retain(|e| on_thread(e, &id));
     }
     if let Some(n) = q.days {
         let from = (Local::now().date_naive() - Duration::days(i64::from(n) - 1)).to_string();

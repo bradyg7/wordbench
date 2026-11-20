@@ -90,6 +90,30 @@ Names Numbers 25:11 here.`);
     ['interlinear', 'Numbers 25:11'], ['interlinear', 'Numbers 25:11-12'], ['interlinear', 'Numbers 25'],
     ['scripture', '2SA 21:2'], ['scripture', 'NUM 5:14'], ['text', 'Numbers 25:11', '--json'], ['text', '2SA 21:2', '--json'],
   ]) writeFileSync(new URL(`${named(argv)}.json`, help), wb(...argv, '--json'));
+
+  // Filters F1: independent conditions on pages in Notebook All, and question rows in Questions.
+  const folder = JSON.parse(wb('folder', 'new', 'Acts study', '--json')).id;
+  for (const [title, status, filed] of [
+    ['Prayer in the upper room', 'question', true],
+    ['Prayer after the gathering', 'done', true],
+    ['Prayer elsewhere', 'question', false],
+    ['Travel notes', 'question', true],
+  ]) {
+    const text = `${title}\n\n> [!${status}] ${title} follow-up?`;
+    const { id } = JSON.parse(wb('note', 'new', text, '--at', 'Acts 2:1', '--json'));
+    if (filed) wb('save', `page:${id}`, '--folder', folder);
+  }
+  const all = 'notebook section all';
+  const selected = `folder "${folder}"`;
+  for (const argv of [
+    ['folder', 'list'],
+    ...[all, `${all} "prayer"`, `${all} "prayer" page-questions open ${selected}`, `${all} page-questions open ${selected}`]
+      .map(line => ['notebook', '--view', line]),
+    ['question', 'list', '--status', 'all'],
+    ['question', 'list', '--status', 'done', '--at', 'Acts 2'],
+    ['question', 'list', '--status', 'done', '--at', 'Acts 2', '--search', 'prayer'],
+    ['question', 'list', '--status', 'done', '--at', 'Acts 2', '--search', 'travel'],
+  ]) writeFileSync(new URL(`${named(argv)}.json`, help), wb(...argv, '--json'));
 } finally {
   const resolved = realpathSync(study);
   if (dirname(resolved) === fixtureRoot) rmSync(resolved, { recursive: true, force: true });

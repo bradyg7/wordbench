@@ -224,15 +224,23 @@ pub fn at(bible: &Bible, store: &Store, anchor: &str, status: &str) -> Result<Va
     for v in out.iter_mut() {
         v["form"] = json!("trail");
     }
+    let matches_place = |p: &str| {
+        p == a || (!lemma && crate::anchors::py_parse(p).is_ok_and(|q| q["kind"] != "lemma" && crate::studyapi::overlaps(&res, &q)))
+    };
     for f in found(store) {
         if status != "all" && (if f.q.done { "done" } else { "open" }) != status {
             continue;
         }
-        let here = f.places.iter().any(|p| *p == a);
-        let near = !lemma && f.places.iter().any(|p| !p.is_empty() && !p.starts_with('H') && !p.starts_with('G') && crate::anchors::py_parse(p).map(|q| crate::studyapi::overlaps(&res, &q)).unwrap_or(false));
-        if here || near {
+        if f.places.iter().any(|p| matches_place(p)) {
             let mut e = entry(bible, &f);
-            e["here"] = json!(here);
+            e["here"] = json!(f.places.contains(&a));
+            e["form"] = json!("block");
+            out.push(e);
+        }
+    }
+    for mut e in crate::margin::question_entries(bible, store) {
+        if (status == "all" || e["status"] == status) && e["anchor"].as_str().is_some_and(matches_place) {
+            e["here"] = json!(e["anchor"] == a);
             e["form"] = json!("block");
             out.push(e);
         }
@@ -246,6 +254,19 @@ pub fn list(bible: &Bible, store: &Store, status: &str) -> Result<Value> {
     let mut v = nb::questions(bible, store, status)?;
     v["questions"].as_array_mut().map(|a| a.sort_by(|x, y| y["created"].as_str().cmp(&x["created"].as_str())));
     Ok(v)
+}
+
+/// Keep the same question scope and order while matching words in its entries.
+pub fn search(bible: &Bible, store: &Store, place: Option<&str>, status: &str, words: &str) -> Result<Value> {
+    let mut answer = match place {
+        Some(anchor) => at(bible, store, anchor, status)?,
+        None => list(bible, store, status)?,
+    };
+    let words: Vec<String> = words.to_lowercase().split_whitespace().map(String::from).collect();
+    if let Some(rows) = answer["questions"].as_array_mut() {
+        rows.retain(|question| nb::words_in(question, &words));
+    }
+    Ok(answer)
 }
 
 /// A trail folded into a page: it becomes a question block at the page's end, and the trail goes to .trash. The page must

@@ -16,6 +16,7 @@ import { kindButton, kindResults } from './kinds';
 import { overviewBox } from './overview';
 import { wb } from './api';
 import './notebook.css';
+import { notebookFilters as scopedFilters } from './notebookfilters';
 import { registerPageWriter, flushPageWriters, removedPages } from './pagewriters';
 import { app, book, here, type At } from './app';
 import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, startWritingAtEnd, viewRow, type Blocks, type Host } from './blocks';
@@ -172,7 +173,7 @@ function createNotebookSession(fixed?: PageTab) {
     if (v && v !== 'trash') showTrash = false;
     const was = dock.find('notebook');
     pane = dock.open('notebook', 'Notebook', 'notebook', 'right', el => draw(el));
-    pane.onClose = () => { pane = null; sized?.disconnect(); sized = null; };
+    pane.onClose = () => { pane = null; filtered = null; sized?.disconnect(); sized = null; };
     watchDrag(pane);
     pane.captureView = () => ({ openId, group, showTrash, editorShown, mainList });
     pane.restoreView = async state => {
@@ -299,8 +300,9 @@ function createNotebookSession(fixed?: PageTab) {
     if (gen !== drawing) return;
     const keep = listEl.querySelector<HTMLElement>('.nb-scroll')?.scrollTop ?? 0;
     const typing = listEl.contains(document.activeElement) && document.activeElement?.classList.contains('nb-find');
-    const filters = !showTrash && !(two && sideFolded) ? notebookFilters(listEl) : null;
-    const filterFocus = filters?.contains(document.activeElement) ? document.activeElement as HTMLElement : null;
+    const filters = !showTrash && !(two && sideFolded) && !list.some(el => el.classList.contains('nb-scope')) ? notebookFilters(listEl) : null;
+    const focused = document.activeElement as HTMLElement | null;
+    const filterFocus = focused && (filters?.contains(focused) || filtered?.list.root.contains(focused)) ? focused : null;
     if (filters) list.splice(1, 0, filters);
     listEl.replaceChildren(...list);
     filterFocus?.focus({ preventScroll: true });
@@ -434,18 +436,32 @@ function createNotebookSession(fixed?: PageTab) {
   }
 
   /** The search, the pen, the Trash (narrow: wide has it at the sidebar's foot) and the settings. */
-  function listHead(two: boolean): HTMLElement {
+  function listHead(two: boolean, scoped?: ReturnType<typeof scopedFilters>): HTMLElement {
     const top = h('div', 'nb-head');
     const f = h('div', 'nb-search');
     f.append(icon('search'));
     const input = h('input', 'field nb-find') as HTMLInputElement;
-    input.placeholder = 'Search every page';
-    input.setAttribute('aria-label', 'Search every page');
-    input.value = search;
-    f.append(kindButton(() => kind, () => search, k => { kind = k; void pane?.refresh?.(); }));
+    const searchLabel = scoped ? (group === 'questions' ? 'Search questions' : 'Search pages') : 'Search every page';
+    input.placeholder = searchLabel;
+    input.setAttribute('aria-label', searchLabel);
+    input.value = scoped?.words ?? search;
+    f.append(kindButton(() => kind, () => scoped?.words ?? search, k => {
+      if (k && scoped) search = scoped.words;
+      kind = k;
+      void pane?.refresh?.();
+    }));
     let t = 0;
     input.oninput = () => { clearTimeout(t); t = window.setTimeout(() => { search = input.value; void pane?.refresh?.(); }, 220); };
     input.onkeydown = e => { if (e.key === 'Escape' && input.value) { e.stopPropagation(); input.value = ''; search = ''; void pane?.refresh?.(); } };
+    if (scoped) {
+      input.oninput = () => scoped.search(input.value);
+      input.onkeydown = e => {
+        if (e.key !== 'Escape' || !input.value) return;
+        e.stopPropagation();
+        input.value = '';
+        scoped.search('');
+      };
+    }
     f.append(input);
     const add = button('icon-btn nb-new', '', () => void newPage(), 'pen');
     add.title = 'A new page';
@@ -471,7 +487,18 @@ function createNotebookSession(fixed?: PageTab) {
   }
 
   let kind = '';
+  let filtered: { group: Group; list: ReturnType<typeof scopedFilters> } | null = null;
+
+  function drawScoped(two: boolean): HTMLElement[] | null {
+    if (kind || (group !== 'none' && group !== 'questions')) return null;
+    if (filtered?.group !== group) filtered = { group, list: scopedFilters(group === 'questions', item) };
+    filtered.list.refresh();
+    return [listHead(two, filtered.list), sectionsRow(), filtered.list.root];
+  }
+
   async function drawList(): Promise<HTMLElement[]> {
+    const scoped = drawScoped(false);
+    if (scoped) return scoped;
     const head = listHead(false);
     if (kind) return [head, await kindResults(kind, search, { openPage: id => void openNote(id) })];
     if (search.trim()) return [head, searchResults(await wb(listArgs()))];
@@ -671,10 +698,10 @@ function createNotebookSession(fixed?: PageTab) {
 
   /** The Notebook's sections, one click each (W1: they replace Group and the ⋯ menu's Questions only and Inbox only; the
    * Trash is the bin beside the pen). The Trash's list draws the same row, so every section is one click from it. */
-  function sectionsRow(): HTMLElement {
+  function sectionsRow(sections = SECTIONS): HTMLElement {
     const row = h('nav', 'nb-sections');
     row.setAttribute('aria-label', 'Notebook sections');
-    for (const [g, label, what] of SECTIONS) {
+    for (const [g, label, what] of sections) {
       const on = !showTrash && group === g;
       const b = h('button', `nb-section${on ? ' on' : ''}`, label);
       b.dataset.section = g;
@@ -866,6 +893,8 @@ function createNotebookSession(fixed?: PageTab) {
       rail.append(sideFoldButton(false), pen);
       return [rail];
     }
+    const scoped = drawScoped(true);
+    if (scoped) return scoped;
     const top = listHead(true);
     if (kind) return [top, await kindResults(kind, search, { openPage: id => void openNote(id) })];
     if (search.trim()) {
@@ -934,7 +963,7 @@ function createNotebookSession(fixed?: PageTab) {
     const tl = await trashLine();
     if (tl) foot.append(tl);
 
-    return [top, side, foot];
+    return [top, sectionsRow(SECTIONS.filter(([section]) => section === 'none' || section === 'questions')), side, foot];
   }
 
   /** The main column's list, in a wide Notebook: the notes at the chapter the reader shows (it follows the reader), or a
