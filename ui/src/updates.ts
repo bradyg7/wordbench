@@ -4,7 +4,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { inApp, wb } from './api';
-import { flushPageWriters } from './pagewriters';
+import { flushPageWriters, PageNotSaved } from './pagewriters';
 import { h } from './ui';
 
 export interface UpdateStatus {
@@ -24,6 +24,8 @@ export interface UpdateStatus {
   ring?: number | null;
   failure?: string | null;
   download?: Download | null;
+  /** After an update: the version this one was updated from, and the day (YYYY-MM-DD). */
+  updated?: { from: string; on: string } | null;
 }
 
 /** A download as `wb update status` gives it (UP4). */
@@ -103,16 +105,52 @@ export async function stopInstall(): Promise<{ ok: boolean; said: string }> {
 /** Restart now (U-8): every open page is saved by the ordinary save first; if one cannot be saved the app is not restarted
  *  and says so. Then the installer runs and the app opens again in the new version. */
 export async function restartNow(): Promise<{ ok: boolean; said: string }> {
+  const waiting = status?.newer ? ` ${status.newer.version} is still waiting.` : '';
   try { await flushPageWriters(); } catch (e) {
-    return { ok: false, said: `A page could not be saved, so Bible Workbench was not restarted. ${String(e instanceof Error ? e.message : e)}`.trim() };
+    const page = e instanceof PageNotSaved ? e.title : 'A page';
+    return { ok: false, said: `${page} could not be saved, so Bible Workbench was not restarted.${waiting}` };
   }
   try {
     if (!inApp) return { ok: false, said: 'Installing works in the app.' };
+    restartHooks.capture();
     await invoke('update_restart');
     return { ok: true, said: 'Restarting…' };
   } catch (e) {
     return { ok: false, said: String(e instanceof Error ? e.message : e) };
   }
+}
+
+/** Set by the window: keeps the place and what is half written before the app restarts (U-8). */
+export const restartHooks = { capture: () => {} };
+
+/** `wb update install [--when-closed]` from a terminal, with the window open (it arrives as a `wb do` line): the window does
+ *  what its buttons do. Null for any other line. */
+export async function updateLine(line: string): Promise<{ ok: boolean; said?: string; error?: string } | null> {
+  const m = /^update install( --when-closed)?$/.exec(line.trim());
+  if (!m) return null;
+  let s = await refreshUpdates();
+  if (s?.download?.state !== 'ready') {
+    if (s?.download?.state !== 'downloading') {
+      const r = await startInstall();
+      if (!r.ok) return { ok: false, error: r.said };
+    }
+    // wait for the download to end: whole and signed, or one of the words that say why not
+    for (;;) {
+      await new Promise(res => setTimeout(res, 500));
+      s = await refreshUpdates();
+      if (s?.download?.state === 'ready') break;
+      if (!s?.download || s.download.state !== 'downloading') return { ok: false, error: s?.failure || 'The download did not finish.' };
+    }
+  }
+  const v = s?.download?.version ?? s?.newer?.version ?? '';
+  if (m[1]) return { ok: true, said: `Bible Workbench ${v} is downloaded. It installs when the window is closed.` };
+  try { await flushPageWriters(); } catch (e) {
+    return { ok: false, error: `${e instanceof PageNotSaved ? e.title : 'A page'} could not be saved, so Bible Workbench was not restarted. ${v} is still waiting.` };
+  }
+  restartHooks.capture();
+  // the answer goes back to the terminal first; then the app leaves
+  setTimeout(() => { void invoke('update_restart').catch(() => {}); }, 300);
+  return { ok: true, said: `Restarting into ${v}` };
 }
 
 /** Not this version (U-10): set the newer version aside, so the dot goes; or put it back. */
@@ -197,12 +235,37 @@ export async function updatesRows(row: Row, seg: Seg, redraw: () => void): Promi
   out.push(checkRow);
   out.push(h('p', 'muted small set-upd-sends', SENDS_NOTHING));
 
+  if (s.updated) out.push(drawUpdated(s));
   if (s.newer) {
     out.push(drawCard(s, redraw));
   } else if (s.last_look) {
     out.push(h('p', 'muted set-upd-newest', `Bible Workbench ${s.installed} is the newest`));
   }
   return out;
+}
+
+/** After an update (U-9): nothing opens over the reader; the section says what happened, and what changed is there to read,
+ *  offline too (the notes of the version running come with the program). */
+function drawUpdated(s: UpdateStatus): HTMLElement {
+  const u = s.updated!;
+  const box = h('div', 'set-upd-after');
+  const today = new Date().toISOString().slice(0, 10);
+  box.append(h('div', 'set-name', `You have ${s.installed}, updated ${u.on === today ? 'today' : u.on ? `on ${u.on}` : 'just now'} from ${u.from}`));
+  const slot = h('div', 'set-upd-notes-slot');
+  const what = h('button', 'btn', 'What changed') as HTMLButtonElement;
+  what.setAttribute('aria-expanded', 'false');
+  what.onclick = async () => {
+    if (what.getAttribute('aria-expanded') === 'true') { slot.replaceChildren(); what.setAttribute('aria-expanded', 'false'); return; }
+    try {
+      const r = await wb(['update', 'notes', s.installed, '--json']) as { releases: ReleaseNotes[] };
+      slot.replaceChildren(drawNotes(r.releases));
+      what.setAttribute('aria-expanded', 'true');
+    } catch (e) { slot.replaceChildren(h('div', 'set-upd-said error muted small', String(e instanceof Error ? e.message : e).replace(/^error: /, ''))); }
+  };
+  const acts = h('div', 'set-upd-acts');
+  acts.append(what);
+  box.append(acts, slot);
+  return box;
 }
 
 /** The card for the newer version (row 5): what it is, What changed, Not this version, and the one filled button for the

@@ -21,7 +21,7 @@ import { hooks } from './toolbar';
 import { noteLine } from './trail';
 import { addFinding, openFindings } from './findings';
 import { KINDS, makeDoc, openDocuments } from './documents';
-import { canonicalKey, readLayout } from './layout-state';
+import { canonicalKey, readLayout, type LayoutState } from './layout-state';
 import { openCardLine, openCardPane } from './verses';
 import { openWordPane } from './wordcard';
 import { openSettings } from './settings';
@@ -448,7 +448,12 @@ async function applyLayout(a: any): Promise<string> {
     return `Layout ${a.name}: ${saved.panes.length} panes`;
   }
   const shown = await wb(['layout', 'show', a.name]);
-  const l = readLayout(shown.layout ?? shown);
+  return applyState(readLayout(shown.layout ?? shown), `Layout ${a.name}`);
+}
+
+/** Opens a window arrangement as a layout does. `quiet`: panes that cannot be reopened are left out without asking (the
+ *  restart after an update has no one to ask). */
+export async function applyState(l: LayoutState, said: string, quiet = false): Promise<string> {
   // Settings is a menu now, not a pane: an older layout that kept it opens without it
   l.panes = l.panes.filter(p => p.key !== 'settings');
   l.groups = l.groups.map(g => ({ ...g, keys: g.keys.filter(k => k !== 'settings') })).filter(g => g.keys.length);
@@ -467,7 +472,7 @@ async function applyLayout(a: any): Promise<string> {
       else if (kind === 'lesson') await wb(['lesson', 'show', value]);
     } catch (e) { unavailable.set(p.key, `${p.title || p.key}: ${String(e)}`); }
   }
-  if (unavailable.size && !confirm(`Some panes cannot be restored:\n${[...unavailable.values()].join('\n')}\n\nOpen the remaining layout? Cancel keeps this arrangement.`)) return 'Layout unchanged';
+  if (unavailable.size && !quiet && !confirm(`Some panes cannot be restored:\n${[...unavailable.values()].join('\n')}\n\nOpen the remaining layout? Cancel keeps this arrangement.`)) return 'Layout unchanged';
   l.panes = l.panes.filter(p => !unavailable.has(p.key));
   l.groups = l.groups.map(g => ({ ...g, keys: g.keys.filter(k => !unavailable.has(k)) })).filter(g => g.keys.length);
   for (const g of l.groups) if (!g.keys.includes(g.front!)) g.front = g.keys[0];
@@ -486,7 +491,7 @@ async function applyLayout(a: any): Promise<string> {
     await dock.restore(before);
     throw e;
   }
-  return `Layout ${a.name}`;
+  return said;
 }
 
 const reopenKinds = new Set(['search', 'uses', 'def', 'strong', 'bdb', 'count', 'forms', 'lexiconc', 'near', 'thread', 'threads', 'notebook', 'help', 'keys', 'shelf', 'find', 'interlinear', 'place', 'passage', 'reader2', 'today', 'lesson', 'findings', 'documents', 'note', 'doc', 'versecard', 'wordcard', 'marked', 'plans', 'reading', 'settings', 'concordance', 'legend', 'colormap']);

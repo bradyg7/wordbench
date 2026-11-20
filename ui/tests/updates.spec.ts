@@ -367,3 +367,69 @@ test('once the file is whole and checked, Restart now (filled) and When I close 
   await expect(card.locator('.set-upd-said')).toHaveText('Bible Workbench will install it when you close the app.');
   await expect(card.getByRole('button', { name: 'Restart now' })).toBeVisible();
 });
+
+// UP5 (rows 16 to 19): Restart now saves first and keeps what the window was, the case where a page cannot be saved, When I
+// close the app, and the section after an update. The shell's restart itself is not here (no Tauri): what is checked is
+// the window's side, with its storage and a reload standing for the restart.
+const readyDownload = () => status({ download: { version: '0.3.0', state: 'ready', got: 84_000_000, total: 84_000_000, got_text: '84 MB', total_text: '84 MB', fraction: 1, message: '', seen: false } });
+
+test('Restart now with a page that cannot be saved does not restart and says which (row 17)', async ({ page }) => {
+  await serve(page, readyDownload());
+  await ready(page);
+  await page.evaluate(async () => {
+    const m = await import('/src/pagewriters.ts');
+    const wrap = document.createElement('div');
+    wrap.id = 'fake-editor';
+    wrap.innerHTML = '<div class="nb-title">Phinehas</div><textarea id="fake-ta">a sentence typed a moment ago</textarea>';
+    document.body.append(wrap);
+    m.registerPageWriter(wrap.querySelector('textarea')!, 'phinehas', async () => { throw new Error('The page file could not be written'); }, () => {});
+  });
+  await openSettings(page);
+  const pane = page.locator('.set-pane');
+  await toUpdates(page);
+  const card = pane.locator('.set-upd-card');
+  await card.getByRole('button', { name: 'Restart now' }).click();
+  await expect(card.locator('.set-upd-said')).toHaveText('Phinehas could not be saved, so Bible Workbench was not restarted. 0.3.0 is still waiting.');
+  await expect(card.locator('.set-upd-said')).toHaveClass(/error/);
+  // the same two buttons, and the writing is still in the editor
+  await expect(card.getByRole('button', { name: 'Restart now' })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'When I close the app' })).toBeVisible();
+  await expect(page.locator('#fake-ta')).toHaveValue('a sentence typed a moment ago');
+});
+
+test('what the window was is kept for the start after a restart, and used once (row 16)', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'panes and floating tabs are the desktop');
+  await serve(page, readyDownload());
+  await ready(page);
+  await page.evaluate(() => { (window as any).__wb.concordance({ strong: 'H7068' }); (window as any).__wb.concordance({ strong: 'H7069' }); });
+  await expect.poll(() => page.evaluate(() => (window as any).__wb.dock().panes.filter((p: any) => p.kind === 'concordance').length)).toBe(2);
+  await page.locator('#cmd').fill('open John 3');
+  const before = await page.evaluate(() => {
+    const d = (window as any).__wb.dock();
+    return { keys: d.panes.map((p: any) => p.key).filter((k: string) => k !== 'settings').sort() };
+  });
+  await page.evaluate(async () => { const m = await import('/src/updates.ts'); m.restartHooks.capture(); });
+  expect(await page.evaluate(() => localStorage.getItem('wb.restart.v1') !== null)).toBe(true);
+  await page.reload();
+  await page.waitForFunction(() => (window as any).__wbReady);
+  await expect(page.locator('#cmd')).toHaveValue('open John 3');
+  await expect.poll(() => page.evaluate(() => (window as any).__wb.dock().panes.map((p: any) => p.key).filter((k: string) => k !== 'settings').sort())).toEqual(before.keys);
+  // Settings is not reopened, and the kept window is used once
+  await expect(page.locator('.set-pane')).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('wb.restart.v1'))).toBeNull();
+});
+
+test('after an update the section says so, with its notes, and nothing is over the reader (row 19)', async ({ page }, info) => {
+  const today = new Date().toISOString().slice(0, 10);
+  await serve(page, status({ newer: null, ready: null, dot: null, installed: '0.3.0', updated: { from: '0.2.4', on: today } }));
+  await page.route('**/fixtures/wb/update-notes-0-3-0-json.json', r => r.fulfill({ json: { releases: [rel('0.3.0', today, { open: true, new: ['Updates in Settings.'] })] } }));
+  await ready(page);
+  await expect(page.locator('[role="dialog"], .toast, .sheet')).toHaveCount(0);
+  await openSettings(page);
+  await toUpdates(page);
+  const pane = page.locator('.set-pane');
+  await expect(pane.locator('.set-upd-after .set-name')).toHaveText('You have 0.3.0, updated today from 0.2.4');
+  await pane.locator('.set-upd-after').getByRole('button', { name: 'What changed' }).click();
+  await expect(pane.locator('.set-upd-after .set-upd-notes')).toContainText('Updates in Settings.');
+  if (info.project.name !== 'webkit-phone') await expect(gear(page)).not.toHaveClass(/update-ready/);
+});

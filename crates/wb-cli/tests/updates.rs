@@ -667,4 +667,37 @@ mod with_the_update_code {
         assert_eq!(*lines.lock().unwrap(), ["update install", "update install --when-closed", "update install"]);
         std::env::remove_var("WB_CACHE_DIR");
     }
+
+    /// Row 18: closing the window installs and the next opening is the new version; row 19: it says "updated from".
+    /// An installer that ran but left the version as it was is said so on the next opening, with Try again.
+    #[test]
+    fn an_install_that_does_not_finish_is_said_and_one_that_does_is_remembered() {
+        let h = Home::new("settle");
+        let srv = Server::start(vec![release("99.0.0", NAME, SIG, INSTALLER.len()), route(NAME, INSTALLER)]);
+        let (code, out, err) = h.run(&["update", "install", "--when-closed"], Some(&srv.url("latest.json")));
+        assert_eq!(code, 0, "{out} {err}");
+        wait_until("the installer to run", || h.installed_marker().exists());
+        // the test installer changes nothing: this opening is still the old version
+        let u = wb_core::updates::Updates::new(h.updates());
+        u.settle();
+        let s = json(&h.run(&["update", "status"], None).1);
+        assert_eq!(s["failure"], "This update was not installed: the installer did not finish. Nothing was changed.");
+        assert_eq!(s["download"]["state"], "stopped");
+        assert_eq!(s["dot"], s["failure"]);
+        assert!(s["updated"].is_null());
+        assert!(files_in(&h.updates().join("download")).is_empty());
+        // an installer that did change the version: the record names the version now running
+        let state = h.updates().join("state.json");
+        let me = wb_core::updates::INSTALLED;
+        std::fs::write(&state, serde_json::json!({ "installing": { "from": "0.0.9", "to": me, "restart": true, "at": "2026-11-19T09:00:00Z" } }).to_string()).unwrap();
+        u.settle();
+        let s = json(&h.run(&["update", "status"], None).1);
+        assert_eq!(s["updated"]["from"], "0.0.9");
+        assert_eq!(s["updated"]["on"], "2026-11-19");
+        assert!(s["failure"].is_null() && s["dot"].is_null());
+        // its notes read offline
+        let (code, out, _) = h.run(&["update", "notes", me], Some("http://127.0.0.1:9/latest.json"));
+        assert_eq!(code, 0);
+        assert!(out.contains("Your study folder"), "{out}");
+    }
 }

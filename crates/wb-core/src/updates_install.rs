@@ -142,6 +142,10 @@ impl Updates {
         let v: Value = serde_json::from_str(&fs::read_to_string(self.download_file()).ok()?).ok()?;
         let s = |k: &str| v.get(k).and_then(Value::as_str).unwrap_or("").to_string();
         let n = |k: &str| v.get(k).and_then(Value::as_u64).unwrap_or(0);
+        // a download of a version that is now the one running (or older) is over
+        if matches!(s("state").as_str(), "ready" | "downloading") && !s("version").is_empty() && !newer_than(&s("version"), INSTALLED) {
+            return None;
+        }
         let mut d = Download { version: s("version"), state: s("state"), got: n("got"), total: n("total"), message: s("message"), file: s("file"), sig: s("sig"), seen: v.get("seen").and_then(Value::as_bool).unwrap_or(false) };
         if d.state == "downloading" {
             let at = v.get("at").and_then(Value::as_str).and_then(|t| DateTime::parse_from_rfc3339(t).ok()).map(|t| t.with_timezone(&Utc));
@@ -161,6 +165,11 @@ impl Updates {
         let d = self.download().filter(|d| d.state == "ready")?;
         let p = self.download_dir().join(&d.file);
         Some((d, p))
+    }
+
+    /// A failure the person had asked for (an install that did not finish): said in the section, with Try again.
+    pub(crate) fn put_failure(&self, version: &str, message: &str) {
+        self.put_download(&Download { version: version.into(), state: "stopped".into(), got: 0, total: 0, message: message.into(), file: String::new(), sig: String::new(), seen: false });
     }
 
     /// The section was opened: a failure's dot goes.

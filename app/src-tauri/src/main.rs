@@ -340,6 +340,8 @@ fn set_window(window: tauri::WebviewWindow, preset: String) -> Result<Value, Str
 /// `measure/measure.mjs` (start-up time is measured from process start, which the measuring script records).
 #[tauri::command]
 fn ui_ready(app: State<App>, handle: tauri::AppHandle, report: Value) -> Result<Value, String> {
+    // What an update left behind is settled once the reader has drawn: an installer that did not finish is said so.
+    std::thread::spawn(|| wb_core::updates::Updates::here().settle());
     // The reader has drawn: ten seconds from now the app may look for an update, once (design/features/updates U-3).
     #[cfg(feature = "updater")]
     {

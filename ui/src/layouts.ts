@@ -81,7 +81,7 @@ async function shown(name: string): Promise<LayoutState | null> {
 }
 
 /** The window as it is, without Settings itself (it is where the layout is being made). */
-function current(): LayoutState {
+export function current(): LayoutState {
   const s = dock.snapshot();
   const drop = new Set(s.panes.filter(p => p.kind === 'settings' || p.key === 'settings').map(p => p.key));
   return {

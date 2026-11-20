@@ -479,6 +479,37 @@ impl Updates {
         self.write(&s)
     }
 
+    /// After an update (U-9): the version this one was updated from, and the day (`YYYY-MM-DD`). None unless the installer
+    /// this program came from was started by the updater.
+    pub fn updated(&self) -> Option<(String, String)> {
+        let s = self.read();
+        let i = s.get("installing")?;
+        if version_parts(i.get("to")?.as_str()?) != version_parts(INSTALLED) {
+            return None;
+        }
+        Some((i.get("from")?.as_str()?.to_string(), i.get("at").and_then(Value::as_str).unwrap_or("").chars().take(10).collect()))
+    }
+
+    /// Run when the app opens: leftovers of an update that has happened are taken away, and an installer that was started
+    /// but did not change the version is said so (U-11): the old version opens, and the section says it was not changed.
+    pub fn settle(&self) {
+        let s = self.read();
+        let Some(i) = s.get("installing") else { return };
+        let to = i.get("to").and_then(Value::as_str).unwrap_or("");
+        if version_parts(to) == version_parts(INSTALLED) {
+            self.clear_download();
+            return;
+        }
+        if newer_than(to, INSTALLED) {
+            // the installer did not finish: nothing was changed
+            self.clear_download();
+            self.put_failure(to, &crate::updates_install::refused_line("the installer did not finish."));
+        }
+        let mut s = s;
+        s.remove("installing");
+        let _ = self.write(&s);
+    }
+
     /// The version an installer was last started for, if one was.
     pub(crate) fn installing_version(&self) -> Option<String> {
         self.read().get("installing").and_then(|i| i.get("to")).and_then(Value::as_str).map(str::to_string)
@@ -515,6 +546,7 @@ impl Updates {
             "ring": ring,
             "download": download.as_ref().map(|d| d.to_json()),
             "failure": failure,
+            "updated": self.updated().map(|(from, on)| json!({ "from": from, "on": on })),
         })
     }
 }
