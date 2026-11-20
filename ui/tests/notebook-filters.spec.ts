@@ -107,7 +107,7 @@ test('rows 12 and 22: notebook_and_questions_use_shared_choices', async ({ page 
   await scope.getByRole('button', { name: 'Filters' }).click();
   const panel = scope.getByRole('dialog', { name: 'Filters' });
   await panel.getByLabel('Status', { exact: true }).selectOption('answered');
-  await panel.getByLabel('Book and place').fill('Acts 2');
+  await pickPlace(panel, 'Acts', '2');
   await expect(titles).toHaveCount(4);
   await panel.getByRole('button', { name: 'Apply' }).click();
   await expect(titles).toHaveText(['Prayer after the gathering follow-up?']);
@@ -118,6 +118,11 @@ test('rows 12 and 22: notebook_and_questions_use_shared_choices', async ({ page 
   await words.fill('prayer');
   await expect(titles).toHaveText(['Prayer after the gathering follow-up?']);
 });
+
+async function pickPlace(panel: ReturnType<Page['locator']>, book: string, chapter: string) {
+  await panel.getByLabel('Book', { exact: true }).selectOption(book);
+  await panel.getByLabel('Chapter', { exact: true }).selectOption(chapter);
+}
 
 async function applyAll(scope: ReturnType<Page['locator']>, folder = true) {
   await scope.getByRole('button', { name: /^Filters/ }).click();
@@ -190,7 +195,7 @@ test('row 6: filters_remove_one_keeps_the_others in Questions', async ({ page })
   await scope.getByRole('button', { name: 'Filters' }).click();
   const panel = scope.getByRole('dialog', { name: 'Filters' });
   await panel.getByLabel('Status', { exact: true }).selectOption('answered');
-  await panel.getByLabel('Book and place').fill('Acts 2');
+  await pickPlace(panel, 'Acts', '2');
   await panel.getByRole('button', { name: 'Apply' }).click();
   await expect(titles).toHaveCount(1);
   await scope.getByRole('button', { name: 'Remove Book and place · Acts 2' }).click();
@@ -233,7 +238,7 @@ test('row 7: filters_clear_keeps_words_and_starting_scope in Questions', async (
   const panel = scope.getByRole('dialog', { name: 'Filters' });
   await expect(panel.getByLabel('Status', { exact: true }).locator('option')).toHaveText(['Any status', 'Open', 'Answered']);
   await panel.getByLabel('Status', { exact: true }).selectOption('answered');
-  await panel.getByLabel('Book and place').fill('Acts 2');
+  await pickPlace(panel, 'Acts', '2');
   await panel.getByRole('button', { name: 'Apply' }).click();
   await expect(titles).toHaveCount(1);
   await scope.getByRole('button', { name: /^Filters/ }).click();
@@ -249,15 +254,9 @@ test('row 8: filters_distinguish_invalid_and_empty', async ({ page }) => {
   const words = page.getByRole('textbox', { name: 'Search questions' });
   await scope.getByRole('button', { name: 'Filters' }).click();
   const panel = scope.getByRole('dialog', { name: 'Filters' });
-  // a bad place: explained, focus stays on its control, nothing applied
-  await panel.getByLabel('Book and place').fill('Zzz 99');
-  await panel.getByRole('button', { name: 'Apply' }).click();
-  await expect(panel.getByRole('alert').filter({ hasText: 'Book and place:' })).toBeVisible();
-  await expect(panel.getByLabel('Book and place')).toBeFocused();
-  await expect(titles).toHaveCount(4);
   // a valid choice with no matches: choices stay, says nothing matches
   await panel.getByLabel('Status', { exact: true }).selectOption('answered');
-  await panel.getByLabel('Book and place').fill('Acts 2');
+  await pickPlace(panel, 'Acts', '2');
   await panel.getByRole('button', { name: 'Apply' }).click();
   await words.fill('travel');
   await expect(titles).toHaveCount(0);
@@ -273,10 +272,73 @@ test('row 8: filters_distinguish_invalid_and_empty', async ({ page }) => {
   await expect(scope.locator('.nb-scope-invalid')).toContainText('Book and place:');
   await expect(words).toBeFocused();
   await expect(titles).toHaveCount(1);
+  // applying it again from the panel: explained at the control, focus on that control
+  await scope.getByRole('button', { name: /^Filters/ }).click();
+  await panel.getByRole('button', { name: 'Apply' }).click();
+  await expect(panel.getByRole('alert').filter({ hasText: 'Book and place:' })).toBeVisible();
+  await expect(panel.getByLabel('Book', { exact: true })).toBeFocused();
+  await panel.getByRole('button', { name: 'Close' }).click();
   await page.unroute('**/fixtures/wb/question-list-*acts-2*.json');
   await words.clear();
   await expect(scope.locator('.nb-scope-invalid')).toHaveCount(0);
   await expect(titles).toHaveCount(1);
+});
+
+test('row 8: no filter is typed; the place and the written range are picked', async ({ page }) => {
+  const scope = await openNotebook(page);
+  await scope.getByRole('button', { name: /^Filters/ }).click();
+  const panel = scope.getByRole('dialog', { name: 'Filters' });
+  await expect(panel.locator('input')).toHaveCount(0);
+  const book = panel.getByLabel('Book', { exact: true });
+  const chapter = panel.getByLabel('Chapter', { exact: true });
+  await expect(chapter).toBeDisabled();
+  const names = await book.locator('option').allInnerTexts();
+  expect(names[0]).toBe('Any book');
+  expect(names).toHaveLength(67);
+  expect(names[1]).toBe('Genesis');
+  expect(names.at(-1)).toBe('Revelation');
+  await book.selectOption('Acts');
+  await expect(chapter).toBeEnabled();
+  await expect(chapter.locator('option')).toHaveCount(29);
+  await expect(panel.getByLabel('Written')).toHaveText(/Any time\s*Today\s*Last 7 days\s*Last 30 days\s*Last year/);
+});
+
+test('rows 6 and 8: the pickers apply the same flags as the wb lines', async ({ page }) => {
+  const scope = await openNotebook(page, 'Questions');
+  const titles = scope.locator('.nb-item-title');
+  const seen: string[] = [];
+  page.on('request', request => {
+    const name = new URL(request.url()).pathname.split('/').at(-1)!;
+    if (name.startsWith('question-list-') || name.startsWith('notebook-view-')) seen.push(name);
+  });
+  await scope.getByRole('button', { name: 'Filters' }).click();
+  const panel = scope.getByRole('dialog', { name: 'Filters' });
+  await panel.getByLabel('Status', { exact: true }).selectOption('answered');
+  await pickPlace(panel, 'Acts', '2');
+  await panel.getByRole('button', { name: 'Apply' }).click();
+  await expect(titles).toHaveCount(1);
+  // wb question list --status done --at "Acts 2"
+  expect(seen).toContain('question-list-status-done-at-acts-2.json');
+  await scope.getByRole('button', { name: /^Filters/ }).click();
+  await pickPlace(panel, 'Acts', '');
+  await panel.getByRole('button', { name: 'Apply' }).click();
+  await expect(scope.getByText('Book and place · Acts', { exact: true })).toBeVisible();
+  // wb question list --status done --at Acts
+  expect(seen).toContain('question-list-status-done-at-acts.json');
+});
+
+test('rows 6 and 8: the All pickers apply the same flags as the wb line', async ({ page }) => {
+  const all = await openNotebook(page, 'All');
+  const seen: string[] = [];
+  page.on('request', request => seen.push(new URL(request.url()).pathname.split('/').at(-1)!));
+  const panel = all.getByRole('dialog', { name: 'Filters' });
+  await all.getByRole('button', { name: /^Filters/ }).click();
+  await pickPlace(panel, 'Acts', '2');
+  await panel.getByLabel('Written').selectOption({ label: 'Last 7 days' });
+  await panel.getByRole('button', { name: 'Apply' }).click();
+  await expect(all.getByText('Written · Last 7 days')).toBeVisible();
+  // wb notebook --view 'notebook section all @ "Acts 2" days 7'
+  expect(seen.some(name => name.startsWith('notebook-view-notebook-section-all-acts-2-days-7'))).toBe(true);
 });
 
 test('row 8: a failed load keeps the last results with one error line', async ({ page }) => {

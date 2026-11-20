@@ -1,4 +1,5 @@
 import { wb } from './api';
+import { app } from './app';
 import { button, h } from './ui';
 
 type Choice = 'kind' | 'status' | 'place' | 'folder' | 'days';
@@ -166,6 +167,7 @@ export function notebookFilters(questions: boolean, renderRow: (entry: any) => H
     message.hidden = true;
     message.setAttribute('role', 'alert');
     const fields = new Map<Choice, HTMLInputElement | HTMLSelectElement>();
+    let placeChapter: HTMLSelectElement | null = null;
     panelFields = fields;
 
     function field<T extends HTMLInputElement | HTMLSelectElement>(key: Choice, input: T) {
@@ -181,6 +183,39 @@ export function notebookFilters(questions: boolean, renderRow: (entry: any) => H
       for (const [value, label] of options) input.add(new Option(label, value));
     }
 
+    /** The place is picked: a book from the books list, then an optional chapter. Nothing is typed. */
+    function placePicker() {
+      const group = h('div', 'nb-filter-field');
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-label', labels.place);
+      const bookSelect = h('select', 'field');
+      bookSelect.setAttribute('aria-label', 'Book');
+      const chapterSelect = h('select', 'field');
+      chapterSelect.setAttribute('aria-label', 'Chapter');
+      bookSelect.add(new Option('Any book', ''));
+      for (const b of app.books) bookSelect.add(new Option(b.name, b.name));
+      const now = applied.place?.value ?? '';
+      const bookNow = app.books.find(b => now === b.name || now.startsWith(`${b.name} `));
+      const chapters = (name: string) => {
+        chapterSelect.length = 0;
+        chapterSelect.add(new Option('Any chapter', ''));
+        const found = app.books.find(b => b.name === name);
+        for (let n = 1; n <= (found?.chapters ?? 0); n++) chapterSelect.add(new Option(String(n), String(n)));
+        chapterSelect.disabled = !found;
+      };
+      if (now && !bookNow) bookSelect.add(new Option(now, now));
+      bookSelect.value = bookNow?.name ?? now;
+      chapters(bookNow?.name ?? '');
+      const rest = bookNow ? now.slice(bookNow.name.length).trim() : '';
+      if (rest && [...chapterSelect.options].some(o => o.value === rest)) chapterSelect.value = rest;
+      else if (rest) { chapterSelect.add(new Option(rest, rest)); chapterSelect.value = rest; }
+      bookSelect.onchange = () => chapters(bookSelect.value);
+      group.append(h('span', '', labels.place), bookSelect, chapterSelect);
+      body.append(group);
+      fields.set('place', bookSelect);
+      placeChapter = chapterSelect;
+    }
+
     function select(key: Choice, options: string[][]) {
       const input = field(key, h('select', 'field'));
       addOptions(input, options);
@@ -190,9 +225,7 @@ export function notebookFilters(questions: boolean, renderRow: (entry: any) => H
 
     if (!questions) select('kind', pageKinds);
     select('status', statuses);
-    const place = field('place', h('input', 'field'));
-    place.placeholder = questions ? 'Any place' : 'Reference or Strong’s number';
-    place.value = applied.place?.value ?? '';
+    placePicker();
     if (!questions) {
       const folder = select('folder', [['', 'Any folder']]);
       if (applied.folder) {
@@ -214,12 +247,10 @@ export function notebookFilters(questions: boolean, renderRow: (entry: any) => H
         message.textContent = String(reason);
         message.hidden = false;
       });
-      const days = field('days', h('input', 'field'));
-      days.type = 'number';
-      days.min = '1';
-      days.max = '3650';
-      days.placeholder = 'Any date, or enter a number of days';
-      days.value = applied.days?.value ?? '';
+      const days = select('days', [['', 'Any time'], ['1', 'Today'], ['7', 'Last 7 days'], ['30', 'Last 30 days'], ['365', 'Last year']]);
+      const now = applied.days?.value;
+      if (now && ![...days.options].some(o => o.value === now)) days.add(new Option(applied.days!.label, now));
+      days.value = now ?? '';
     }
     body.append(message);
     const foot = h('div', 'nb-scope-panel-foot');
@@ -234,10 +265,10 @@ export function notebookFilters(questions: boolean, renderRow: (entry: any) => H
       event.preventDefault();
       const pending: Choices = {};
       for (const [key, input] of fields) {
-        const value = input.value.trim();
+        let value = input.value.trim();
         if (!value) continue;
-        const label = input instanceof HTMLSelectElement ? input.selectedOptions[0].text
-          : key === 'days' ? `Last ${value} ${value === '1' ? 'day' : 'days'}` : value;
+        if (key === 'place' && placeChapter?.value) value = `${value} ${placeChapter.value}`;
+        const label = key === 'place' || !(input instanceof HTMLSelectElement) ? value : input.selectedOptions[0].text;
         pending[key] = { value, label };
       }
       submission = pending;
