@@ -59,6 +59,15 @@ folder, not as a Notebook tab.
   - P6: **no covers** for now.
   - S2: **the side list gets Recents.**
   - Build order: the feel and writing first, then the page, then the side list.
+- **Round 2 answers (2026-11-20).**
+  - **Callout** is the word: `/callout` makes one; its kinds are Question, Answered, Key point and Note.
+  - **One palette for annotation.** Page and block colors use the same colors as marks and folders, so a color means
+    the same everywhere. A person can give a folder a color, or add one new color to the palette, and the pages in
+    that folder carry it. No free color picker: customizing must not get in the way of organizing or using the app.
+  - **A toggle is written as `<details>`** in the page (the lead's recommendation): other Markdown tools show it folded.
+  - **@ for a verse: both forms drawn** (12a plain text, 12b a link chip) to compare before choosing.
+  - **One frame per row.** Every row of the table gets its own drawn frame, shown beside the row in a review that moves
+    like a presentation (← →), with a comment box per row. The whole board stays as the overview.
 
 ## The inventory (round 1)
 
@@ -165,10 +174,10 @@ person's existing pages read.
 | 6 | An empty line, or after a space | Type `/` | The block menu at the caret, grouped **Basic** (text, heading 1–3, bullet, numbered, to-do, toggle, quote, divider, table, page) and **Study** (scripture, word, callout, Saved thing, list in a page); shortcut hints on the right | Nothing until picked | Window only | `slash_menu_groups_and_hints` | [ ] |
 | 7 | / menu | Pick a block | The block appears and the caret is inside it ready to type (scripture: the reference field) | The block | `wb block add ID "…" --after N` | `slash_pick_puts_caret_inside` | [ ] |
 | 8 | A list item | Enter; Enter on an empty item; Tab; Shift+Tab | A new item; leaves the list; indents; outdents | The items' Markdown and indent | `wb block set` | `list_enter_tab_rules` | [ ] |
-| 9 | A toggle | Click the triangle, or Ctrl+Enter | Its children fold and unfold; a heading can be a toggle too | The toggle's form (open question); folded or not is kept in settings/pages.json | `wb block add ID …` with the toggle form, *proposed* | `toggle_folds_children` | [ ] |
+| 9 | A toggle | Click the triangle, or Ctrl+Enter | Its children fold and unfold; a heading can be a toggle too | `<details><summary>…</summary>…</details>` in the page; folded or not is kept in settings/pages.json | `wb block add ID "<details>…"` | `toggle_folds_children` | [ ] |
 | 10 | Selected text | Select | A bar above the selection: Turn into ▾, B, I, U, S, link, color ▾, and on scripture text Mark ▾ and Margin note | Nothing until used | Window only | `selection_bar_on_intent` | [ ] |
 | 11 | Selection bar | Mark ▾ on scripture in a page | The Legend's styles; the mark lands on those words in the reader too | The mark, as the reader's | `wb mark add …` (existing) | `mark_from_a_page_is_the_reader_s_mark` | [ ] |
-| 12 | A line | `@` then type | A menu of verses (as you type a reference), pages, folders and Today; picking puts a quiet inline link; clicking a verse opens the reader at it and Back returns | `[[Page]]` or the reference as text | `wb page link ID` | `at_mention_verse_page_folder` | [ ] |
+| 12 | A line | `@` then type | A menu of verses (as you type a reference), pages, folders and Today. **Two forms drawn to compare (12a, 12b):** 12a the verse stays plain text, quietly underlined, found by the page index; 12b a link chip with the reference. Clicking either opens the reader at it and Back returns | 12a: the reference as text; 12b: a link form (open) | `wb page link ID`; `wb refs` | `at_mention_verse_page_folder` | [ ] |
 
 ### The block handle, N5
 
@@ -188,7 +197,7 @@ person's existing pages read.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 22 | / menu or Turn into | Callout | A soft box with an icon and a kind: Question, Answered, Key point, Note | `> [!question]`, `> [!done]`, `> [!key]`, `> [!note]` | `wb block add ID "> [!key] …"` | `callout_kinds_write_their_marker` | [ ] |
+| 22 | / menu (`/callout`) or Turn into | Callout | A soft box with an icon and a kind: Question, Answered, Key point, Note | `> [!question]`, `> [!done]`, `> [!key]`, `> [!note]` | `wb block add ID "> [!key] …"` | `callout_kinds_write_their_marker` | [ ] |
 | 23 | A callout's icon | Click | Its kind menu; a Question becomes Answered and back | The marker | `wb block set` | `callout_kind_changes` | [ ] |
 | 24 | Today's pages | Open one with `> [!question]` or `> [!done]` | They show as Question and Answered callouts; the questions list still finds them | Nothing | `wb question list` | `old_question_callouts_still_read` | [ ] |
 
@@ -196,8 +205,8 @@ person's existing pages read.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 25 | Selection bar or block menu | Color ▸ | Ten text colors and ten pale backgrounds, plus Default; the last used first | The text in a `<span>`, or the block's marker | `wb block set` | `color_palette_text_and_background` | [ ] |
-| 26 | Settings › Notebook | "Page colors: Own palette / Folder colors" (drawn for the person to choose) | The palette shows the folders' colors instead | settings | `wb settings notebook --page-colors own|folders`, *proposed* | `page_colors_from_folders_option` | [ ] |
+| 25 | Selection bar or block menu | Color ▸ | The app's one annotation palette (the same colors as marks and folders), plus Default; no free color picker | The text in a `<span>`, or the block's marker | `wb block set` | `color_palette_is_the_annotation_palette` | [ ] |
+| 26 | A folder's ⋯ › Color, or New folder | Pick a color from the same palette, or add one new color to the palette | Pages in that folder show the folder's color (a dot by the title and in the side list); a page's own text colors stay as written | The folder's color | `wb folder color NAME COLOR` (existing folder colors; *proposed* for adding a palette color) | `folder_color_tints_its_pages` | [ ] |
 
 ### The page, N7 and N8
 
@@ -256,11 +265,7 @@ not anyone's study.
 
 ## Open questions
 
-- **The word for a callout.** One word for "a box in a page with a kind" (Question, Answered, Key point, Note). N6
-  offers *Callout*, *Box* and *Note box*. The Library map changes only with the person's go-ahead.
-- **Page colors:** their own palette (N9 left) or the folders' colors (N9 right)?
-- **A toggle in the file:** `<details>` (readable in other Markdown tools) or a marker like the callouts?
-- **@ for a verse:** keep the reference as plain text (as today, found by the page index), or a link form?
+- **@ for a verse:** 12a or 12b, after seeing both.
 
 ## Rounds
 

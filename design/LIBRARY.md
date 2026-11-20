@@ -86,6 +86,7 @@ One word per thing. A builder never uses a retired word in the window.
 | Unfiled (a folder) | Shelf, Unsorted | the person, 2026-11-18 (supersedes L-5) |
 | saved list | view | settings S5 |
 | folder (with a color) | thread | the person, 2026-11-18 |
+| callout (kinds: Question, Answered, Key point, Note) | box, note box | the person, 2026-11-20 |
 
 **Decided (the person, 2026-11-18):** the study `trails/` files (questions to follow up) fold into Questions; `wb trail`
 and `trails/` are read and moved forward by a designed, backed-up move with the person's go-ahead.
