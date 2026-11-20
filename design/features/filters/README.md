@@ -1,6 +1,6 @@
 # Filters, everywhere
 
-**State:** exploring · **Round:** 3 · **Date:** 2026-11-19 · **Sheets:** `python -B design/features/filters/filters.py` writes `filters.figcraft` and `filters.pdf`.
+**State:** accepted for integration (2026-11-19) · **Round:** 3 · **Date:** 2026-11-19 · **Sheets:** `python -B design/features/filters/filters.py` writes `filters.figcraft` and `filters.pdf`.
 
 Design one way to narrow a list or a search, then use it across the Library. The same action should feel familiar in the Notebook, in the Legend's where used list, and in Colors across the Bible. Each part offers the choices that make sense for what it shows.
 
@@ -23,6 +23,7 @@ For Colors across the Bible, the same panel puts Folder and Legend entry on sepa
 - **2026-11-19, the person.** Design filtering once for the whole app. Keep the existing controls in place until this design is settled. Revisit the Notebook's Marks filter and group the controls around Colors across the Bible. [Library map, Open 4 and 6](../../LIBRARY.md) · [Marks, Out of scope / later](../marks/README.md#out-of-scope--later)
 - **2026-11-19, the person.** Go with Direction B. With hundreds of choices, wrapping bubbles are hard to remember, locate or narrow to a kind of mark. Their positions also change with the pane width.
 - **2026-11-19, the person.** Show how the controls work together and design filtering across Wordbench in this folder, including the Notebook's ordinary filters and the other places already offering filters.
+- **2026-11-19, the person.** Begin integration from Round 3. Future feature designs may revise how the shared filters are used on their surfaces.
 
 ## The person's findings that touch it
 
@@ -76,7 +77,7 @@ This is what the code does today. Labels in quotation marks are current window l
 |---|---|---|---|---|
 | 1 | 2026-11-19 | None | Survey and three directions | B chosen |
 | 2 | 2026-11-19 | B1–B5 | Search and kind for a large Legend, stable rows at different widths, applied values and the color grid | Ready for review |
-| 3 | 2026-11-19 | B6–B16, plus B1–B5 | Notebook before, during and after Apply. Shared controls and starting scope across the app. | Ready for review |
+| 3 | 2026-11-19 | B6–B17, plus B1–B5 | Notebook before, during and after Apply. Shared controls and starting scope across the app. | Accepted for integration |
 
 ## Directions
 
