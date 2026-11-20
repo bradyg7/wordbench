@@ -267,9 +267,34 @@ not anyone's study.
 
 ## Directions
 
-### Recommendation
+### Round 2 review (the person, 2026-11-20; review-notebook-round2.json)
 
-Adopt the feel (F1–F10) and writing (W) lines whole: they are what makes Notion feel like Notion, and round 4 does
-not have them. Then round 2 draws them on top of round 4's accepted windows (S28 page, S29 writing, S31 ⋯), so the
-interaction table has one row per key, menu item and shortcut. Build order: one menu component (F3), then writing
-(W1–W4, W9, W12, W14), then the page (P), then the side list (round 4 S25).
+Tally: 20 Perfect, 13 Satisfactory, 2 Not great (+1 Not great row 6), 2 Horrible, 1 unrated. Worst first, each with
+what round 3 does.
+
+| Row | Rating | Reasons | Round 3 |
+|---|---|---|---|
+| 27, 28 | Horrible | Not needed | **Removed.** No page icons, no "Add icon" on the title. |
+| 25 | Not great | Too busy, missing state, surprising, unclear label, frame unclear, needs before/after | **Decided by the lead (see below): text color carries no meaning.** One small set of plain text and background colors in the app's hues, for emphasis only; the Legend's colors stay the only colors that mean something (marks). Redraw: before/after, a short menu (8 colors, Default), no "palette" word. |
+| 26 | Not great | (comment: what does a palette mean; pages with their own colors get disorganized) | **A folder's color is the only organizing color.** A page shows its folder's dot; nothing else colors a page by meaning. No "add a color to the palette"; a folder picks from the same folder colors as today. Redraw before/after. |
+| 6 | Not great | Surprising, frame unclear | **One list.** The / menu is one list; Study is a folded group at its end; typing finds every command by name (e.g. "scr" shows Scripture). Draw it in a narrow and floating pane too. |
+| 11 | Satisfactory | Missing state, too many steps | Draw every step: select scripture → Mark ▾ → pick a style → the mark shows in the page and in the reader. |
+| 12 | Satisfactory | 12b chosen | **The link chip (12b).** Clicking it opens a popup with the verse(s); the popup can be dragged, can grow to the whole chapter, or send the passage to the side reader. Draw: chip, popup, popup grown, side reader. |
+| 7 | Satisfactory | | Scripture block: as you type a book, autocomplete ("josh" → Joshua) so spelling and numbers cannot be wrong; the verse text previews under the field; several verses and ranges across chapters; scripture blocks can be dragged side by side to compare. |
+| 9 | Perfect | | A **table of contents** that folds, beside a long page (like a document outline), drawn with Appearance › Table of contents (row 31). |
+| 10, 13, 16 | Perfect | | Add rows for what each control and menu item does: Mark, Margin note, + and grip explained, Duplicate, Copy link to block, Move to (each its own frame). |
+| 18 | Satisfactory | | Answer: a link to a block is a link to a place in a page; it does not replace scripture references, which stay references (found by the page index). Caption says so. |
+| 21 | Satisfactory | | Draw the drag to select several blocks (the selection band). |
+| 22 | Satisfactory | "something feels incomplete" | Draw a callout with more than one line, a nested list inside it, and how it looks in the questions list. |
+| 34 | Satisfactory | | The preview shows other kinds: a page with a list, a callout, a table. |
+| 35 | Perfect | | **Recents replaces Today** in the side list. |
+| 36 | Satisfactory | | List in a page gets views, from the person's Notion views screenshots: Table, List, Gallery, Board (by folder or callout kind); Calendar and Timeline later. Draw the layout menu and each kept view. These also feed the Library's view of folders. |
+| 37 | Satisfactory | Cramped | Redraw the narrow and phone frames with room. |
+| 38 | Satisfactory | | **Not a frame.** A page of many blocks becomes a check under What the build must satisfy. |
+| 31 | Perfect | | More fonts only if light: offer Default, Serif and one reading serif already shipped; no font downloads. |
+| 30 | Perfect | | Build note: the page is rebuilt on this design; the old page code and its ways are taken out, not built around. The same holds later for tabs, commands, and the Notes & lookup pane. |
+
+### Approved for building (Perfect with no change asked)
+
+Rows 2, 3, 4, 5, 8, 14, 15, 17, 20, 23, 24, 29, 33. They leave the review; the next rounds show only rows that still
+need review. (1, 9, 10, 13, 16, 30, 31, 35 were Perfect or Satisfactory with something asked; they stay.)
