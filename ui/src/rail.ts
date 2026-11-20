@@ -19,6 +19,7 @@ import { openSettings } from './settings';
 import { keepTab } from './shelf';
 import { h, icon, popMenu, sizeClass } from './ui';
 import { iconOf, openTrail, trailGoing } from './trail';
+import { onUpdateStatus, updateStatus, type UpdateStatus } from './updates';
 
 const NAMES = 'wb.rail.names';
 
@@ -230,6 +231,16 @@ export function railLinksInit() {
   railLinks();
 }
 
+/** The dot on the Settings gear when a newer version is known (updates U-1): the only sign outside Settings. It sits on the
+ *  gear's own corner, apart from the Trail's dot; resting on the gear says what is ready. */
+function gearDot(s: UpdateStatus | null) {
+  const gear = rail?.querySelector<HTMLElement>('[data-rail="settings"]');
+  if (!gear) return;
+  const ready = s?.self_updating ? s.ready : null;
+  gear.classList.toggle('update-ready', !!ready);
+  gear.title = ready || 'Settings';
+}
+
 export function initRail() {
   rail = h('aside', 'rail');
   rail.id = 'rail';
@@ -241,5 +252,7 @@ export function initRail() {
   document.body.append(rail);
   document.documentElement.classList.toggle('rail-named', named());
   void sizeClass;
+  onUpdateStatus(gearDot);
+  gearDot(updateStatus());
   railOn();
 }

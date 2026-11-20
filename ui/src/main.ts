@@ -27,6 +27,7 @@ import { loadKept } from './mycommands';
 import { fills as cmdFills, byKey as commandByKey, run as runKeptCommand } from './mycommands';
 import { byId, CATALOG, flipTheme, hooks, initReaderTools, READER_TOOLS, setBadge, setVersionLabel, textSizeMenu, toggleFullScreen } from './toolbar';
 import { initRail, railLinksInit, railOn } from './rail';
+import { refreshUpdates, startUpdates } from './updates';
 import { focusReader, frontStep, initTrail, onFront, paneStep, readerStep } from './trail';
 import { menu as layoutMenu } from './layouts';
 import { isCaptureKey, notebookBadge, openNote, openNotebook, quickCapture, readerMoved, readSettings, writeInNotebook } from './notebook';
@@ -1553,6 +1554,7 @@ async function start() {
   // the desktop after the first chapter is on screen: the command field, the Notebook docked, wb do
   attachCommandField();
   onDo(runLine);
+  startUpdates();
   if (inApp) {
     void readSettings();
     void loadWindowSettings();
@@ -1563,6 +1565,6 @@ async function start() {
   }
 }
 
-(window as any).__wb = { panel, open, plans: openPlans, concordance: openConcordance, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
+(window as any).__wb = { refreshUpdates, panel, open, plans: openPlans, concordance: openConcordance, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
 start().catch(e => { reader.innerHTML = `<p class="error">${String(e)}</p>`; });
 void here;

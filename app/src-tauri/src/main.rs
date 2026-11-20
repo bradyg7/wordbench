@@ -11,10 +11,6 @@ use std::sync::mpsc;
 use tauri::{Emitter, LogicalSize, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::{DialogExt, FilePath};
 use wb_core::{bible::Bible, store::Store, studyapi, views};
-#[cfg(feature = "updater")]
-use tauri_plugin_dialog::MessageDialogButtons;
-#[cfg(feature = "updater")]
-use tauri_plugin_updater::UpdaterExt;
 
 /// Said when the setup screen has not finished: the window still draws, and says what is missing rather than closing.
 const NOT_SET_UP: &str = "Bible Workbench is not set up yet. Choose the Bible database and the folder for your notes.";
@@ -343,7 +339,14 @@ fn set_window(window: tauri::WebviewWindow, preset: String) -> Result<Value, Str
 /// The UI calls this once the first chapter is on screen. With `WB_MEASURE_OUT` set, the report is written there for
 /// `measure/measure.mjs` (start-up time is measured from process start, which the measuring script records).
 #[tauri::command]
-fn ui_ready(app: State<App>, report: Value) -> Result<Value, String> {
+fn ui_ready(app: State<App>, handle: tauri::AppHandle, report: Value) -> Result<Value, String> {
+    // The reader has drawn: ten seconds from now the app may look for an update, once (design/features/updates U-3).
+    #[cfg(feature = "updater")]
+    {
+        static LOOKED: std::sync::Once = std::sync::Once::new();
+        LOOKED.call_once(|| look_for_update(handle.clone()));
+    }
+    let _ = &handle;
     let out = json!({
         "ready_wall_ms": wall_ms() as f64,
         "main_wall_ms": app.started_wall_ms as f64,
@@ -434,41 +437,55 @@ fn pilot_license(action: String, certificate: Option<String>) -> Result<Value, S
     { let _ = (action, certificate); Err("Pilot licensing is available in distribution builds only.".into()) }
 }
 
-/// Looks at the update feed once, a little after the reader opens, and asks before installing: an update is never
-/// something that happens to someone mid-chapter. The installer closes the app and opens it again where it was; the
-/// study folder and the settings are not part of it. `WB_NO_UPDATE_CHECK=1` turns the check off.
+/// The look the app makes by itself (design/features/updates U-1, U-3): once, ten seconds after the reader has drawn,
+/// at most daily, only when the setting says *When the app opens*; `WB_NO_UPDATE_CHECK=1` turns it off. It never shows
+/// a dialog: a newer version is written to `updates\state.json` beside the app, and the window is told ("wb-update"), which
+/// puts a dot on the Settings gear. A look that fails says nothing and changes nothing.
 #[cfg(feature = "updater")]
-fn check_for_update(app: tauri::AppHandle) {
-    // Without the updater's configuration its plugin is not registered (see main), and there is nothing to check.
+fn look_for_update(app: tauri::AppHandle) {
+    // Without the updater's configuration its plugin is not registered (see main), and there is nothing to look for.
     if std::env::var("WB_NO_UPDATE_CHECK").is_ok() || !app.config().plugins.0.contains_key("updater") {
         return;
     }
     std::thread::spawn(move || {
         // The reader comes first: the first chapter is on screen before this asks anything of the network.
         std::thread::sleep(std::time::Duration::from_secs(10));
-        let found = tauri::async_runtime::block_on(async {
-            let updater = app.updater().ok()?;
-            updater.check().await.ok().flatten()
-        });
-        let Some(update) = found else { return };
-        let install = app
-            .dialog()
-            .message(format!(
-                "Bible Workbench {} is ready to install.\n\nYour notes stay where they are, and the window opens again where you left off.",
-                update.version
-            ))
-            .title("A new version of Bible Workbench")
-            .buttons(MessageDialogButtons::OkCancelCustom("Install it".into(), "Not now".into()))
-            .blocking_show();
-        if !install {
-            return;
-        }
-        // Windows runs the installer and exits this process; elsewhere the app restarts into the new version.
-        let installed = tauri::async_runtime::block_on(update.download_and_install(|_, _| {}, || {})).is_ok();
-        if installed {
-            app.restart();
+        if wb_core::updates::Updates::here().look_by_itself_now().is_some() {
+            let _ = app.emit("wb-update", ());
         }
     });
+}
+
+/// Check now: a look by hand. The answer is kept like any look; the window then reads `wb update status`.
+#[tauri::command]
+async fn update_check(app: tauri::AppHandle) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let answer = wb_core::updates::Updates::here().check_now()?;
+        let _ = app.emit("wb-update", ());
+        Ok(wb_core::updates::answer_line(&answer))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Install for now (the interim Install of design/features/updates Directions, until UP4): the download and installer the
+/// system dialog used to start, then the restart. The window has saved every open page first and does not call this
+/// when a save failed. The installer closes the app and opens it again; the study folder is not part of it.
+#[cfg(feature = "updater")]
+#[tauri::command]
+async fn update_install(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_updater::UpdaterExt;
+    let not_installed = |why: String| format!("This update was not installed: {why} Nothing was changed.");
+    let updater = app.updater().map_err(|e| not_installed(e.to_string()))?;
+    let update = updater.check().await.map_err(|_| wb_core::updates::COULD_NOT_REACH.to_string())?.ok_or("Bible Workbench is the newest.")?;
+    update.download_and_install(|_, _| {}, || {}).await.map_err(|e| not_installed(e.to_string()))?;
+    app.restart()
+}
+
+#[cfg(not(feature = "updater"))]
+#[tauri::command]
+async fn update_install() -> Result<(), String> {
+    Err(wb_core::updates::source_line())
 }
 
 /// The study folder the person chose (a setting or WB_STUDY_DIR), opened; none on a first run.
@@ -508,7 +525,7 @@ fn main() {
         .manage(App { bible: Mutex::new(bible), store: Mutex::new(store), started, started_wall_ms, waiting: Mutex::new(HashMap::new()) })
         .invoke_handler(tauri::generate_handler![
             pilot_license, installation_status, installation_configure, installation_restart,
-            wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready,
+            wb, finding_attach, do_done, reader, word, verse, books, highlight, plan_today, read_mark, set_window, ui_ready, update_check, update_install,
             setup_status, set_study_dir, choose_study_dir, set_bible_db, choose_bible_db
         ])
         .setup(move |app| {
@@ -553,8 +570,6 @@ fn main() {
                 ))
             } else { b };
             b.build()?;
-            #[cfg(feature = "updater")]
-            check_for_update(app.handle().clone());
             Ok(())
         })
         .run(context)

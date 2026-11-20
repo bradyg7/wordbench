@@ -9,7 +9,7 @@ publish.workspace = true
 distribution = ["wb-core/distribution", "wb-cli/distribution"]
 # Automatic updates. Off by default. The update check needs the release's public key and endpoint in the build's
 # plugins.updater configuration; without them the app starts and simply has no update check (distribution/README.md).
-updater = ["dep:tauri-plugin-updater", "wb-core/installed"]
+updater = ["dep:tauri-plugin-updater", "wb-core/installed", "wb-core/updater", "wb-cli/updater"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

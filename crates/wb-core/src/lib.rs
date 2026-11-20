@@ -41,6 +41,7 @@ pub mod setup;
 pub mod store;
 pub mod studyapi;
 pub mod tether;
+pub mod updates;
 pub mod templates;
 pub mod threadpage;
 pub mod views;

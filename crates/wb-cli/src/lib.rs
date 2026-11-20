@@ -16,6 +16,7 @@ mod reading;
 mod setup;
 mod study;
 mod tether;
+mod update;
 
 use args::{Args, Spec};
 use std::cell::{OnceCell, RefCell, RefMut};
@@ -144,6 +145,7 @@ fn commands() -> Vec<Command> {
     all.extend(docs::commands());
     all.extend(setup::commands());
     all.extend(tether::commands());
+    all.extend(update::commands());
     all
 }
 

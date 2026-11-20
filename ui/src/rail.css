@@ -40,6 +40,8 @@
 .rail-named .rail-name { display: inline; }
 .rail-rule { height: 1px; background: var(--line); margin: 4px 6px; flex: none; }
 .rail-item[data-rail="trail"].going::after { content: ''; position: absolute; left: 17px; bottom: 3px; width: 5px; height: 5px; border-radius: 3px; background: var(--accent); }
+/* an update is ready (design/features/updates U-1): a dot on the gear's top right corner; the Trail's dot is bottom left */
+.rail-item[data-rail="settings"].update-ready::before { content: ''; position: absolute; right: 8px; top: 7px; width: 8px; height: 8px; border-radius: 4px; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
 .rail .grow { flex: 1; }
 
 /* everything else starts right of the rail */
