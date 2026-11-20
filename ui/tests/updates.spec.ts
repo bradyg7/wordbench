@@ -147,9 +147,9 @@ test('Check now looks and says the answer; the setting is saved (rows 6, 8)', as
   await toUpdates(page);
   await pane.getByRole('button', { name: 'Check now' }).click();
   await expect(pane.locator('.set-upd-said').first()).toHaveText('Bible Workbench 0.2.4 is the newest');
-  expect(asked).toContain('check');
+  await expect.poll(() => asked).toContain('check');
   await serve(page, status({ newer: null, ready: null, look: 'ask' }));
   await pane.locator('.set-row', { hasText: 'Look for updates' }).getByRole('button', { name: 'Only when I ask' }).click();
   await expect(pane.locator('.set-row', { hasText: 'Look for updates' }).locator('.seg button.on')).toHaveText('Only when I ask');
-  expect(asked).toContain('ask');
+  await expect.poll(() => asked).toContain('ask');
 });
