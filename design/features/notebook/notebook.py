@@ -5,6 +5,7 @@ sample, never anyone's study.
     python -B design/features/notebook/notebook.py
 """
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -769,7 +770,7 @@ ROWS = []          # (id, row, caption, draw)
 
 def r_(rid, caption):
     def deco(fn):
-        ROWS.append((str(rid), int(str(rid).rstrip("ab")), caption, fn))
+        ROWS.append((str(rid), int(re.match(r"\d+", str(rid)).group()), caption, fn))
         return fn
     return deco
 
@@ -903,43 +904,6 @@ def _r5(f):
     text(bb, "?", "body")
 
 
-@r_(6, "/ on an empty line: the menu at the caret, grouped Basic and Study, Markdown shortcuts muted on the right.")
-def _r6(f):
-    x, pg = full(f)
-    blk(pg, "p", "Where the word first appears in this story:")
-    blk(pg, "p", "/", hover=True)
-    m = pop(f, cxof(x), 220, 300)
-    msearch(m, None, "Type to filter")
-    mgroup(m, "Basic")
-    for lab, ic, k in (("Text", "text", None), ("Heading 1", "text", "#"), ("Heading 2", "text", "##"),
-                       ("Bullet list", "list", "-"), ("To-do", "check", "[]"), ("Toggle list", "right", None),
-                       ("Quote", "text", ">"), ("Divider", "minimize", "---")):
-        mrow(m, lab, ic, k, on=lab == "Text")
-    m = pop(f, cxof(x) + 310, 220, 280)
-    mgroup(m, "Study")
-    for lab, ic, k in (("Scripture", "book", "/verse"), ("Word", "word", "/word"), ("Callout", "question", "/callout"),
-                       ("Saved thing", "bookmark", "/save"), ("List in a page", "table", "/list")):
-        mrow(m, lab, ic, k)
-
-
-@r_(7, "Pick Scripture: the block appears and the caret is already in its reference field.")
-def _r7(f):
-    a, b = halves(f, "Enter on Scripture", "Caret inside")
-    pg = hp(a)
-    blk(pg, "p", "/scr", hover=True)
-    m = pop(a, 110, 260, 300)
-    msearch(m, "scr")
-    mgroup(m, "Study")
-    mrow(m, "Scripture", "book", "/verse", on=True)
-    pg = hp(b)
-    r = row(pg, "scripture", gap=0, W="fill")
-    gutter(r, False)
-    vb = row(r, "field", gap=8, pad=[12, 14, 12, 14], radius=8, fill="surface", W="fill", stroke="line", sw=1)
-    icon(vb, "book", 16, "accent")
-    frame(vb, "caret", w=2, h=20, fill="fg", W="fixed", H="fixed")
-    text(vb, "Type a reference, e.g. Num 25:11", "body", "muted")
-
-
 @r_(8, "In a list: Enter makes a new item, Tab indents, Shift+Tab outdents, Enter on an empty item leaves the list.")
 def _r8(f):
     a, b = halves(f, "Enter, then Tab", "Enter on an empty item")
@@ -1047,16 +1011,6 @@ def at_scene(f, chip):
     K.note(b, "Clicking it opens the reader at Psalm 106:30; Back returns here.", 80, 300, 380)
 
 
-@r_("12a", "@ form A: the verse stays plain text in the page, quietly underlined; the page index finds it.")
-def _r12a(f):
-    at_scene(f, False)
-
-
-@r_("12b", "@ form B: the verse becomes a link chip with the reference.")
-def _r12b(f):
-    at_scene(f, True)
-
-
 @r_(13, "Hover a block: + and the grip appear in the gutter. The text does not move.")
 def _r13(f):
     a, b = halves(f, "Not hovered", "Hovered")
@@ -1124,16 +1078,6 @@ def _r17(f):
         mrow(tm, lab, "text", on=lab == "Heading 2", check=lab == "Text")
     pg = hp(b)
     blk(pg, "h2", "Running ahead")
-
-
-@r_(18, "Copy link to block: a link that opens this page scrolled to this block.")
-def _r18(f):
-    x, pg = full(f, "Haste study", path="Pages  /  Haste study", list_kw={"on": "Haste study"})
-    blk(pg, "p", "Read the chapter twice before writing anything about it.", hover="grip")
-    m = pop(f, cxof(x) - 30, 240, 290)
-    mrow(m, "Copy link to block", "link", on=True)
-    mrow(m, "Duplicate", "copy", "Ctrl+D")
-    toast(f, "Link to block copied")
 
 
 @r_(19, "Move to: choose a page; the block leaves this page and is last in the chosen one.")
@@ -1228,49 +1172,6 @@ def _r24(f):
     blk(pg, "callout", "Read Psalm 106:30–31 beside it.", kname="Answered", ic="check", bg="#E6F0E3")
 
 
-@r_(25, "Color ▸: the one annotation palette, the same colors as marks and folders, plus Default. No free picker.")
-def _r25(f):
-    x, pg = full(f)
-    blk(pg, "verse", ("num", [11], "Numbers 25:11"))
-    blk(pg, "p", "The covenant of peace is the promise to follow.", color="#2E6FB8")
-    sel_bar(f, cxof(x) + 40, 330, mark=False)
-    annot_menu(f, cxof(x) + 420, 30, on="Blue")
-
-
-@r_(26, "A folder's Color, or add one color to the palette: its pages show the dot by the title and in the side list.")
-def _r26(f):
-    w = M.rail5(f, on="Notebook")
-    t = col(f, "side list", gap=1, pad=[10, 8, 10, 8], fill="sunken", W="fixed", H="fixed", clip=True)
-    Q.put(t, w, TB, 270, CH - TB)
-    L.side_row(t, "Phinehas", ic="folder", dot="#D9822B", open_=True, sub="56", hover=True)
-    for lab in ("Zeal in Numbers 25", "Zeal in Psalms 106", "Phinehas and Psalm 106"):
-        L.side_row(t, lab, 1, dot="#D9822B", on=lab == "Zeal in Numbers 25")
-    L.side_row(t, "Salt", ic="folder", open_=False, sub="120")
-    x = w + 270
-    pg = page(f, x, CW - x, "Zeal in Numbers 25", colw=560, h=CH - TB, dot="#D9822B")
-    blk(pg, "p", "Where the word first appears in this story:")
-    folder_color_menu(f, w + 200, 90, added=True)
-
-
-@r_(27, "Hover the title of a page without an icon: “Add icon” shows above it (no cover).")
-def _r27(f):
-    a, b = halves(f, "Not hovered", "Hovered")
-    hp(a)
-    hp(b, add_icon=True)
-
-
-@r_(28, "Pick an icon: it sits before the title and in the side list.")
-def _r28(f):
-    x, pg = full(f, "Tuesday study", path="Pages  /  Tuesday study", ic="book", list_kw={"on": "Tuesday study"})
-    blk(pg, "p", "Numbers 25 and Psalm 106.")
-    ic_m = row(f, "picker", gap=8, pad=[8, 8, 8, 8], radius=12, fill="surface")
-    Q.put(ic_m, cxof(x) + 90, 100)
-    shadow(ic_m, 6, 24, SOFT)
-    for ic in ("book", "pen", "star", "question", "folder", "word", "highlight", "list"):
-        b = row(ic_m, f"pick/{ic}", pad=[5, 5, 5, 5], radius=6, fill="sunken" if ic == "book" else None)
-        icon(b, ic, 20, "muted")
-
-
 @r_(29, "Edit anything: “Edited just now” in quiet gray, later “Edited 2m ago”. There is no Save button.")
 def _r29(f):
     a, b = halves(f, "While typing", "Two minutes later")
@@ -1337,32 +1238,480 @@ def _r33(f):
     para(fl, "> " + V[("num", 11)], "small", "muted")
 
 
-@r_(34, "Ctrl+K: Recents when empty; typing groups the results; the highlighted one previews on the right.")
-def _r34(f):
+# ---- round 3 (the person's review of round 2, README Directions) ------------------------------------------------------
+APPROVED = {"2", "3", "4", "5", "8", "14", "15", "17", "20", "23", "24", "29", "33"}
+ORDER = [1, 2, 3, 4, 5, 6, 7, 44, 8, 9, 10, 11, 39, 40, 12, 13, 41, 14, 15, 16, 17, 42, 18, 19, 20, 21, 43, 22, 23, 24,
+         46, 25, 26, 29, 30, 31, 45, 32, 33, 34, 35, 36, 47, 37]
+
+
+def raw(name, ref):
+    """Scripture whose lines carry their own reference (ranges across chapters): [(label, text)]."""
+    p = HERE / "data" / f"{name}.json"
+    out = json.loads(p.read_text(encoding="utf-8"))["output"] if p.exists() else K.fetch(HERE, name, ["text", ref],
+                                                                                          as_json=False)
+    res = []
+    for ln in out.splitlines()[1:]:
+        m = re.match(r"((?:[1-3] )?[A-Za-z]+ \d+:\d+|\d+) (.*)", ln)
+        if m:
+            res.append((m.group(1), m.group(2)))
+    return out.splitlines()[0], res
+
+
+JOSH_REF, JOSH = raw("josh1", "Josh 1:9")
+CROSS_REF, CROSS = raw("num25_26", "Num 25:18-26:1")
+PSCH_REF, PSCH = raw("ps106ch", "Ps 106:28-33")
+NUM18 = raw("num25_11_13", "Num 25:11-13")[1]
+
+PLAIN = (("Gray", "#787774"), ("Brown", "#9F6B53"), ("Orange", "#C9711A"), ("Yellow", "#A8861A"),
+         ("Green", "#3F7A55"), ("Blue", "#2F6FA3"), ("Purple", "#7E5AA6"), ("Red", "#B8433E"))
+FOLDERS = (("Phinehas", "#D9822B"), ("Phinehas echoes", "#2E6FB8"), ("Salt", "#3B7A3B"), ("Anna", "#B0457E"),
+           ("Word studies", "#6B4FA0"))
+
+
+def passage(parent, label, lines, w=None, ref_field=False):
+    vb = col(parent, f"scripture/{label}", gap=4, pad=[10, 14, 12, 14], radius=8, fill="surface", W="fill" if w is None else "fixed")
+    if w:
+        S.do("node.set", {"ids": [vb], "props": {"width": w}}, ref=False)
+    hr = row(vb, "h", gap=8, W="fill")
+    icon(hr, "book", 14, "accent")
+    text(hr, label, "smallStrong", "accent", W="fill")
+    text(hr, "KJV", "caption", "muted")
+    for lab, t in lines:
+        para(vb, f"{lab}  {t}", "readSmall")
+    return vb
+
+
+def in_gutter(pg, node_fn):
+    r = row(pg, "block", gap=0, W="fill", align="min")
+    gutter(r, False)
+    b = col(r, "b", gap=0, W="fill", pad=[3, 4, 3, 4])
+    return node_fn(b)
+
+
+@r_("6a", "The / menu is one list: Basic blocks first, Study folded at its end. Typing finds any command by name.")
+def _r6a(f):
+    x, pg = full(f)
+    blk(pg, "p", "Where the word first appears in this story:")
+    blk(pg, "p", "/", hover=True)
+    m = pop(f, cxof(x), 210, 320)
+    msearch(m, None, "Type to filter")
+    for lab, ic, k in (("Text", "text", None), ("Heading 1", "text", "#"), ("Heading 2", "text", "##"),
+                       ("Heading 3", "text", "###"), ("Bullet list", "list", "-"), ("Numbered list", "list", "1."),
+                       ("To-do", "check", "[]"), ("Toggle list", "right", None), ("Quote", "text", ">"),
+                       ("Divider", "minimize", "---"), ("Table", "table", None)):
+        mrow(m, lab, ic, k, on=lab == "Text")
+    sep(m)
+    st = row(m, "Study", gap=10, pad=[6, 8, 6, 8], radius=6, W="fill")
+    icon(st, "right", 12, "muted")
+    text(st, "Study", "smallStrong", "muted")
+    text(st, "Scripture, Word, Callout, Saved thing, List", "caption", "muted", W="fill", maxLines=1)
+
+
+@r_("6b", "Typing “scr” finds Scripture though Study is folded. The same list in a narrow pane and a floating tab.")
+def _r6b(f):
+    for i, (lab, w_) in enumerate((("Narrow pane", 460), ("Floating tab", 560))):
+        x0 = 120 + i * 640
+        hv = frame(f, lab, x=x0, y=100, w=w_, h=700, fill="bg", radius=12, stroke="line", sw=1, W="fixed", H="fixed",
+                   clip=True)
+        shadow(hv, 6, 24, SOFT)
+        label(f, lab, x0, 60)
+        pg = page(hv, 0, w_, "Zeal in Numbers 25", colw=w_ - 90, h=660, path="Phinehas")
+        blk(pg, "p", "Where the word first appears in this story:")
+        blk(pg, "p", "/scr", hover=True)
+        m = pop(hv, 60, 270, min(320, w_ - 100))
+        msearch(m, "scr")
+        mgroup(m, "Study")
+        mrow(m, "Scripture", "book", "/verse", on=True)
+        mrow(m, "Saved thing", "bookmark", "/save", sub="“scr” is in its description")
+
+
+@r_("7a", "A Scripture block: typing a book completes it (“josh” → Joshua), so the name and numbers cannot be wrong; "
+           "the verse previews under the field.")
+def _r7a(f):
+    x, pg = full(f, "Courage", path="Pages  /  Courage", list_kw={"on": "Prayer list"})
+    def fld(b):
+        r = row(b, "field", gap=8, pad=[12, 14, 12, 14], radius=8, fill="surface", W="fill", stroke="accent", sw=1)
+        icon(r, "book", 16, "accent")
+        text(r, "Joshua 1:9", "body")
+        frame(r, "caret", w=2, h=20, fill="fg", W="fixed", H="fixed")
+        spacer(r)
+        text(r, "Enter to place", "caption", "muted")
+        pv = col(b, "preview", gap=2, pad=[8, 14, 4, 14], W="fill")
+        text(pv, "Preview", "caption", "muted")
+        para(pv, f"9  {JOSH[0][1]}", "readSmall", "muted")
+    in_gutter(pg, fld)
+    m = pop(f, cxof(x) + 40, 330, 300)
+    msearch(m, "josh")
+    mgroup(m, "Books")
+    mrow(m, "Joshua", "book", "Tab", on=True, sub="24 chapters")
+    K.note(f, "Drawn as the field fills: josh → Joshua, then 1:9; the preview is the database's text.", cxof(x) + 380,
+           330, 300)
+
+
+@r_("7b", "Several verses and ranges across chapters: Num 25:18–26:1 is one block, each verse with its reference.")
+def _r7b(f):
+    x, pg = full(f, "Courage", path="Pages  /  Courage", list_kw={"on": "Prayer list"})
+    in_gutter(pg, lambda b: passage(b, CROSS_REF.split(" (")[0], CROSS))
+    blk(pg, "p", "After the plague, the counting begins.")
+
+
+@r_(44, "Drag one Scripture block beside another: they sit side by side to compare.")
+def _r44(f):
+    x, pg = full(f, side=False)
+    two = row(pg, "compare", gap=16, W="fill", align="min", pad=[0, 0, 0, 40])
+    passage(two, "Numbers 25:11–13", NUM18)
+    passage(two, "Psalm 106:30–31", [(str(v["v"]), v["text"]) for v in PS])
+    blk(pg, "p", "Read across: the act, then how the psalm remembers it.")
+    K.note(f, "Dropped to the right of a block (the blue line stands upright); dragging one out makes them stack again.",
+           cxof(x) + 40, 640, 460)
+
+
+@r_(39, "Mark, step 1: select words of scripture in a page. The selection bar shows Mark and Margin note.")
+def _r39a(f):
+    x, pg = full(f)
+    blk(pg, "verse", ("num", [11], "Numbers 25:11"))
+    sel_bar(f, cxof(x) + 40, 200)
+    K.note(f, f"Selected: “{words(('num', 11), 18, 23)}”", cxof(x) + 40, 560, 360)
+
+
+def _mark_menu(f, x, y, pick=None):
+    lm = pop(f, x, y, 240)
+    msearch(lm, None, "Search the Legend")
+    mgroup(lm, "Legend")
+    for lab, c_ in (("Zeal", "hlOrange"), ("Covenant", "hlYellow"), ("Promise", "hlGreen"), ("Names", "hlBlue")):
+        r = row(lm, f"legend/{lab}", gap=10, pad=[5, 8, 5, 8], radius=6, W="fill", fill="sunken" if lab == pick else None)
+        frame(r, "sample", w=18, h=10, radius=2, fill=c_, W="fixed", H="fixed")
+        text(r, lab, "small", W="fill")
+
+
+ROWS[-1] = ("39a",) + ROWS[-1][1:]
+
+
+@r_(39, "Mark, step 2: Mark ▾ opens the Legend's styles, searchable.")
+def _r39b(f):
+    x, pg = full(f)
+    blk(pg, "verse", ("num", [11], "Numbers 25:11"))
+    sel_bar(f, cxof(x) + 40, 200)
+    _mark_menu(f, cxof(x) + 420, 244)
+
+
+ROWS[-1] = ("39b",) + ROWS[-1][1:]
+
+
+@r_(39, "Mark, step 3: pick Zeal. The words take its style in the page at once.")
+def _r39c(f):
+    x, pg = full(f)
+    blk(pg, "verse", ("num", [11], "Numbers 25:11"))
+    _mark_menu(f, cxof(x) + 420, 244, pick="Zeal")
+    hl = row(f, "marked", gap=8, pad=[4, 8, 4, 8], radius=4, fill="hlOrange")
+    Q.put(hl, cxof(x) + 40, 560)
+    text(hl, words(("num", 11), 18, 23), "readSmall")
+    text(f, "the marked words, shown with Zeal's style", "caption", "muted", x=cxof(x) + 40, y=600)
+
+
+ROWS[-1] = ("39c",) + ROWS[-1][1:]
+
+
+@r_(39, "Mark, step 4: it is the reader's mark. Open Numbers 25 and the same words carry Zeal.")
+def _r39d(f):
+    a, b = halves(f, "In the page", "In the reader")
+    pg = hp(a, "Zeal in Numbers 25", "Phinehas")
+    blk(pg, "verse", ("num", [11], "Numbers 25:11"))
+    for h in (a, b):
+        hl = row(h, "marked", gap=8, pad=[4, 8, 4, 8], radius=4, fill="hlOrange")
+        Q.put(hl, 120 if h is a else 60, 420)
+        text(hl, words(("num", 11), 18, 23) + "  · Zeal", "readSmall")
+    rd = col(b, "reader", gap=10, pad=[110, 60, 40, 60], W="fixed")
+    Q.put(rd, 0, 0, CW // 2)
+    text(rd, "Numbers 25", "chapter")
+    para(rd, "11  " + V[("num", 11)], "readDesk")
+
+
+ROWS[-1] = ("39d",) + ROWS[-1][1:]
+
+
+@r_(40, "Margin note from a page: select scripture, Margin note; the note is written in that verse's margin and shows in the reader.")
+def _r40(f):
+    a, b = halves(f, "Margin note", "In the reader's margin")
+    pg = hp(a, "Zeal in Numbers 25", "Phinehas")
+    blk(pg, "verse", ("num", [11], "Numbers 25:11"))
+    nb = col(a, "note box", gap=6, pad=[12, 14, 12, 14], radius=10, fill="surface", W="fixed")
+    Q.put(nb, 100, 420, 420)
+    shadow(nb, 6, 24, SOFT)
+    text(nb, "Margin note · Numbers 25:11", "caption", "muted")
+    r = row(nb, "t", gap=0)
+    text(r, "Compare Psalm 106:30", "body")
+    frame(r, "caret", w=2, h=20, fill="fg", W="fixed", H="fixed")
+    rd = col(b, "reader", gap=10, pad=[100, 40, 40, 40], W="fixed")
+    Q.put(rd, 0, 0, 470)
+    text(rd, "Numbers 25", "chapter")
+    para(rd, "11  " + V[("num", 11)], "readDesk")
+    mg = col(b, "margin", gap=4, pad=[10, 12, 10, 12], radius=8, fill="surface", W="fixed")
+    Q.put(mg, 490, 150, 210)
+    icon(mg, "pen", 14, "muted")
+    para(mg, "Compare Psalm 106:30", "small")
+
+
+@r_(41, "What + and the grip do: + adds a line below (Alt+click above); the grip drags the block, or opens its menu when clicked.")
+def _r41(f):
+    x, pg = full(f, "Haste study", path="Pages  /  Haste study", list_kw={"on": "Haste study"})
+    blk(pg, "p", "Read the chapter twice before writing anything about it.", hover=True)
+    blk(pg, "li", "Who acts first, and who waits?")
+    cx = cxof(x)
+    for (s_, dx, dy) in (("+  adds an empty line below, with / open", -260, 130),
+                         ("⋮⋮  drag: move;  click: Turn into, Color, Duplicate, Move to, Delete", -260, 300)):
+        n = col(f, "explain", gap=0, pad=[8, 10, 8, 10], radius=8, fill="#FFF4C2", W="fixed")
+        Q.put(n, cx + 40, dy + 150, 460)
+        para(n, s_, "small", "#5A4A00")
+
+
+@r_(42, "Duplicate (Ctrl+D): a copy appears right below the block, with the caret in it.")
+def _r42(f):
+    a, b = halves(f, "Ctrl+D", "Copied below")
+    pg = hp(a)
+    blk(pg, "p", "First reading: KJV.", sel=True, hover=True)
+    blk(pg, "p", "Second reading: YLT.")
+    pg = hp(b)
+    blk(pg, "p", "First reading: KJV.")
+    blk(pg, "p", "First reading: KJV.", wash="#2E6FB81A")
+    blk(pg, "p", "Second reading: YLT.")
+
+
+@r_(43, "Drag in the margin to select several blocks: a pale band follows the pointer; every block it touches is selected.")
+def _r43(f):
+    x, pg = full(f, "Haste study", path="Pages  /  Haste study", list_kw={"on": "Haste study"})
+    blk(pg, "h3", "Readings")
+    blk(pg, "p", "First reading: KJV.", sel=True)
+    blk(pg, "p", "Second reading: YLT.", sel=True)
+    blk(pg, "p", "Third: aloud, slowly.")
+    band = frame(f, "band", x=cxof(x) - 80, y=210, w=560, h=86, fill="#2E6FB814", stroke="#2E6FB8", sw=1, radius=2)
+
+
+@r_("12a", "@ then a reference: the verse is placed as a link chip with its reference.")
+def _r12a2(f):
+    at_scene(f, True)
+
+
+def chip_line(pg):
+    r = row(pg, "line", gap=0, W="fill")
+    gutter(r, False)
+    bb = row(r, "b", gap=6, pad=[3, 4, 3, 4])
+    text(bb, "Psalm 106 names him too:", "body")
+    P.chip(bb, "Psalm 106:30", "selected", icon_name="book")
+
+
+def verse_pop(f, x, y, w, h, lines, title, grown=False):
+    pp = col(f, "verse popup", gap=8, pad=[10, 16, 14, 16], fill="surface", radius=12, W="fixed", H="fixed", clip=True)
+    Q.put(pp, x, y, w, h)
+    shadow(pp, 8, 32, "#00000026")
+    hd = row(pp, "head", gap=8, W="fill")
+    icon(hd, "drag", 16, "muted")
+    text(hd, title, "smallStrong", "accent", W="fill")
+    for lab in (("Whole chapter" if not grown else "Back to the verse"), "Open beside"):
+        b = row(hd, lab, pad=[3, 8, 3, 8], radius=6, fill="sunken")
+        text(b, lab, "caption")
+    icon(hd, "close", 14, "muted")
+    for lab, t in lines:
+        para(pp, f"{lab}  {t}", "readSmall")
+    return pp
+
+
+@r_("12b", "Click the chip: a popup with the verse. Drag it by its grip anywhere; Esc closes it and the page is as it was.")
+def _r12b2(f):
+    x, pg = full(f)
+    blk(pg, "p", "Where the word first appears in this story:")
+    chip_line(pg)
+    verse_pop(f, cxof(x) + 220, 210, 460, 170, [(str(v["v"]), v["text"]) for v in PS[:1]], "Psalm 106:30")
+
+
+@r_("12c", "Whole chapter: the popup grows to Psalm 106, scrolled to verse 30 and marked; it can still be dragged.")
+def _r12c(f):
+    x, pg = full(f)
+    chip_line(pg)
+    verse_pop(f, cxof(x) + 120, 90, 560, 680, PSCH, "Psalm 106", grown=True)
+
+
+@r_("12d", "Open beside: the passage goes to the side reader at Psalm 106:30; the page stays; Back returns.")
+def _r12d(f):
+    w = M.rail5(f, on="Notebook")
+    pw = 760
+    pg = page(f, w, pw, "Zeal in Numbers 25", colw=560, h=CH - TB, path="Phinehas")
+    chip_line(pg)
+    side = frame(f, "side reader", x=w + pw, y=0, w=CW - w - pw, h=CH, fill="bg", layout="vertical", W="fixed",
+                 H="fixed", clip=True, stroke="line", strokeLeftWeight=1, strokeRightWeight=0, strokeTopWeight=0,
+                 strokeBottomWeight=0)
+    P.pane_header(side, ["Psalm 106"], "Psalm 106")
+    rd = col(side, "reader", gap=8, pad=[24, 32, 24, 32], W="fill")
+    text(rd, "Psalm 106", "chapter")
+    for lab, t in PSCH:
+        para(rd, f"{lab}  {t}", "readSmall")
+
+
+@r_(18, "Copy link to block: a link to a place in a page. It does not replace scripture references, which stay "
+         "references and are found by the page index.")
+def _r18b(f):
+    x, pg = full(f, "Haste study", path="Pages  /  Haste study", list_kw={"on": "Haste study"})
+    blk(pg, "p", "Read the chapter twice before writing anything about it.", hover="grip")
+    m = pop(f, cxof(x) - 30, 240, 290)
+    mrow(m, "Copy link to block", "link", on=True)
+    mrow(m, "Duplicate", "copy", "Ctrl+D")
+    toast(f, "Link to block copied: opens Haste study at this line")
+
+
+@r_(46, "A callout holds several lines and a nested list.")
+def _r46a(f):
+    x, pg = full(f)
+    def co(b):
+        box = row(b, "callout", gap=10, pad=[14, 16, 14, 16], radius=8, fill="#EFEAF7", W="fill", align="min")
+        icon(box, "question", 18, "muted")
+        cc = col(box, "c", gap=4, W="fill")
+        text(cc, "Question", "caption", "muted")
+        para(cc, "Why “an everlasting priesthood” here?", "body")
+        para(cc, "Read it beside Psalm 106:31 before answering.", "body")
+        for s_, d in (("Who receives the covenant?", 0), ("Numbers 25:13", 1), ("Psalm 106:31", 1),
+                      ("What is it called?", 0)):
+            r = row(cc, f"li/{s_}", gap=8, pad=[0, 0, 0, 20 * d])
+            text(r, "•" if d == 0 else "◦", "body", "muted")
+            text(r, s_, "body")
+    in_gutter(pg, co)
+
+
+ROWS[-1] = ("46a",) + ROWS[-1][1:]
+
+
+@r_(46, "In the questions list the callout shows its first line, its page and its kind; the rest opens with the page.")
+def _r46b(f):
+    w = M.rail5(f, on="Notebook")
+    p_ = col(f, "questions", gap=6, pad=[40, 60, 40, 60], W="fixed")
+    Q.put(p_, w + 120, 40, 900)
+    text(p_, "Questions", "display")
+    text(p_, "Open · 3", "caption", "muted")
+    for q, pgn, kind in (("Why “an everlasting priesthood” here?", "Zeal in Numbers 25", "Question"),
+                         ("Who acts first, and who waits?", "Haste study", "Question"),
+                         ("What is promised afterwards?", "Haste study", "Question")):
+        r = row(p_, f"q/{q}", gap=12, pad=[10, 12, 10, 12], radius=8, W="fill",
+                fill="sunken" if pgn == "Zeal in Numbers 25" else None)
+        icon(r, "question", 16, "question")
+        tc = col(r, "t", gap=1, W="fill")
+        text(tc, q, "body")
+        text(tc, f"{pgn} · {kind}" + (" · 2 more lines, a list" if pgn == "Zeal in Numbers 25" else ""), "caption",
+             "muted")
+
+
+ROWS[-1] = ("46b",) + ROWS[-1][1:]
+
+
+@r_(25, "Color ▾ on selected words: 8 plain colors and Default, for emphasis only. Text color means nothing; marks carry meaning.")
+def _r25b(f):
+    a, b = halves(f, "Color ▾", "Colored")
+    pg = hp(a, "Haste study")
+    blk(pg, "p", "Read the chapter twice before writing anything about it.")
+    sel_bar(a, 60, 210, mark=False)
+    m = pop(a, 260, 260, 240)
+    P.segmented(m, ["Text", "Background"], "Text")
+    mrow(m, "Default", swatch=("fg", None), check=True)
+    for nm, c_ in PLAIN:
+        mrow(m, nm, swatch=(c_, None), on=nm == "Red")
+    pg = hp(b, "Haste study")
+    blk(pg, "p", "Read the chapter twice before writing anything about it.", color="#B8433E")
+
+
+@r_(26, "A folder's color is the only organizing color: pick it from the folder colors; its pages show the dot by the "
+         "title and in the side list.")
+def _r26b(f):
+    a, b = halves(f, "Folder › Color", "Its pages carry it")
+    t = col(a, "side list", gap=1, pad=[110, 8, 10, 8], fill="sunken", W="fixed", H="fixed", clip=True)
+    Q.put(t, 0, 0, 300, CH)
+    L.side_row(t, "Phinehas", ic="folder", open_=True, sub="56", hover=True)
+    for lab in ("Zeal in Numbers 25", "Zeal in Psalms 106"):
+        L.side_row(t, lab, 1)
+    m = pop(a, 250, 130, 260)
+    mgroup(m, "Phinehas · Color")
+    mrow(m, "None", swatch=("fg", None))
+    for nm, c_ in zip(("Orange", "Blue", "Green", "Pink", "Purple"), [c for _, c in FOLDERS]):
+        mrow(m, nm, swatch=(c_, c_), on=nm == "Orange")
+    t = col(b, "side list", gap=1, pad=[110, 8, 10, 8], fill="sunken", W="fixed", H="fixed", clip=True)
+    Q.put(t, 0, 0, 280, CH)
+    L.side_row(t, "Phinehas", ic="folder", dot="#D9822B", open_=True, sub="56")
+    for lab in ("Zeal in Numbers 25", "Zeal in Psalms 106"):
+        L.side_row(t, lab, 1, dot="#D9822B", on=lab == "Zeal in Numbers 25")
+    pg = page(b, 280, CW // 2 - 280, "Zeal in Numbers 25", colw=330, h=CH - TB, dot="#D9822B", path="Phinehas")
+    blk(pg, "p", "Where the word first appears.")
+
+
+@r_(45, "Appearance › Table of contents: an outline of the page's headings folds beside a long page; click one to go there.")
+def _r45(f):
+    x, pg = full(f, "Salt lessons 2025", path="Salt  /  Salt lessons 2025", list_kw={"on": "SALT Bible Study Notes: Nov 12"})
+    for s_ in ("Numbers 25", "Psalm 106", "Questions for Tuesday"):
+        blk(pg, "h2", s_)
+        blk(pg, "p", "Notes for this part of the lesson.")
+    toc = col(f, "contents", gap=4, pad=[12, 14, 12, 14], radius=10, fill="surface", W="fixed")
+    Q.put(toc, CW - 260, 120, 230)
+    shadow(toc, 4, 18, SOFT)
+    hd = row(toc, "h", gap=6, W="fill")
+    icon(hd, "down", 12, "muted")
+    text(hd, "Contents", "caption", "muted", W="fill")
+    for s_, d, on in (("Numbers 25", 0, True), ("The act", 1, False), ("Psalm 106", 0, False),
+                      ("Questions for Tuesday", 0, False)):
+        r = row(toc, s_, pad=[3, 6, 3, 6 + 14 * d], radius=5, W="fill", fill="sunken" if on else None)
+        text(r, s_, "small", "fg" if on else "muted")
+    text(f, "The ▾ folds it to a thin strip at the edge.", "caption", "muted", x=CW - 260, y=300)
+
+
+def preview_box(f, sel, body):
     frame(f, "scrim", x=0, y=0, w=CW, h=CH, fill="#0000001F")
     box = row(f, "quick search", gap=0, align="min", fill="surface", radius=12, W="fixed", H="fixed", clip=True)
     Q.put(box, 100, 80, 1240, 700)
     shadow(box, 8, 32, SOFT)
     lc = col(box, "results", gap=1, pad=[8, 8, 8, 8], W="fixed", H="fill")
-    S.do("node.set", {"ids": [lc], "props": {"width": 460}}, ref=False)
-    msearch(lc, "zeal")
+    S.do("node.set", {"ids": [lc], "props": {"width": 440}}, ref=False)
+    msearch(lc, "tuesday")
     mgroup(lc, "Pages")
-    mrow(lc, "Zeal in Numbers 25", "page", sub="Phinehas · Edited 2m ago", on=True)
-    mrow(lc, "Zeal", "page", sub="Pages · Edited 3 Nov")
-    mgroup(lc, "Folders")
-    mrow(lc, "Phinehas", "folder", sub="56 saves and pages")
-    mgroup(lc, "Margin notes")
-    mrow(lc, "Numbers 25:11", "pen", sub="Margin note · 9 Nov")
-    mgroup(lc, "Verses")
-    mrow(lc, "Numbers 25:11", "book", sub=words(("num", 11), 0, 7) + "…")
+    for lab, sub in (("Tuesday study", "Pages · a list"), ("Questions for Tuesday", "Salt · callouts"),
+                     ("Word studies index", "Pages · a table")):
+        mrow(lc, lab, "page", sub=sub, on=lab == sel)
     pv = col(box, "preview", gap=8, pad=[24, 28, 24, 28], fill="bg", W="fill", H="fill", clip=True)
-    text(pv, "Phinehas  /  Zeal in Numbers 25", "caption", "muted")
-    para(pv, "Zeal in Numbers 25", "display")
-    para(pv, "11  " + V[("num", 11)], "readSmall")
+    text(pv, "Preview", "caption", "muted")
+    para(pv, sel, "display")
+    body(pv)
 
 
-@r_(35, "The side list's Recents: the last 8 pages opened, newest first, folding, above round 4's groups.")
-def _r35(f):
+@r_("34a", "Ctrl+K preview of a page with a list: the list shows as it is in the page.")
+def _r34a(f):
+    def b(pv):
+        for s_ in ("Psalm 106:30–31 beside it.", "The YLT of verse 13.", "Questions for Tuesday."):
+            r = row(pv, s_, gap=8)
+            text(r, "•", "body", "muted")
+            text(r, s_, "body")
+    preview_box(f, "Tuesday study", b)
+
+
+@r_("34b", "Ctrl+K preview of a page with a callout: the callout keeps its color and kind.")
+def _r34b(f):
+    def b(pv):
+        box = row(pv, "callout", gap=10, pad=[12, 14, 12, 14], radius=8, fill="#EFEAF7", W="fill")
+        icon(box, "question", 18, "muted")
+        cc = col(box, "c", gap=2, W="fill")
+        text(cc, "Question", "caption", "muted")
+        para(cc, "Who acts first, and who waits?", "body")
+    preview_box(f, "Questions for Tuesday", b)
+
+
+@r_("34c", "Ctrl+K preview of a page with a table (a list in a page): its first rows.")
+def _r34c(f):
+    def b(pv):
+        for i, cells in enumerate((("Title", "Folder", "Edited"), ("Zeal", "Word studies", "3 Nov"),
+                                   ("Covenant of peace", "Word studies", "28 Oct"))):
+            r = row(pv, f"tr{i}", gap=0, W="fill", stroke="line", strokeBottomWeight=1, strokeTopWeight=0,
+                    strokeLeftWeight=0, strokeRightWeight=0)
+            for j, c_ in enumerate(cells):
+                cc = row(r, f"td{j}", pad=[6, 8, 6, 8], W="fill")
+                text(cc, c_, "caption" if i == 0 else "small", "muted" if i == 0 else "fg")
+    preview_box(f, "Word studies index", b)
+
+
+@r_(35, "Recents replaces Today in the side list: the last 8 pages opened, newest first, above Pinned, Folders, Pages.")
+def _r35b(f):
     w = M.rail5(f, on="Notebook")
     t = col(f, "side list", gap=1, pad=[10, 8, 10, 8], fill="sunken", W="fixed", H="fixed", clip=True)
     Q.put(t, w, TB, 300, CH - TB)
@@ -1373,20 +1722,32 @@ def _r35(f):
     for lab in ("Word studies index", "Tuesday study", "Zeal in Numbers 25", "Haste study", "Friday, November 20",
                 "SALT Bible Study Notes: Nov 12", "Prayer list", "Zeal"):
         L.side_row(t, lab, on=lab == "Word studies index")
-    L.side_list_body(t, today=True, search=False, salt_open=False)
+    L.side_list_body(t, today=False, search=False, salt_open=False)
     page(f, w + 300, CW - w - 300, "Word studies index", colw=560, h=CH - TB)
 
 
-@r_(36, "/list makes a list in a page: a table of pages matching a line, with the Filters button above it.")
-def _r36(f):
+TABLE = (("Zeal", "Word studies", "2 open", "3 Nov", "#6B4FA0"), ("Zeal in Psalms 106", "Phinehas", "1 open", "1 Nov", "#D9822B"),
+         ("Covenant of peace", "Phinehas", "1 open", "28 Oct", "#D9822B"), ("Haste", "Salt", "3 open", "20 Oct", "#3B7A3B"),
+         ("Courage", "Salt", "0", "12 Oct", "#3B7A3B"), ("Prayer list", "Anna", "1 open", "2 Oct", "#B0457E"))
+
+
+def list_page(f, view):
     x, pg = full(f, "Word studies index", path="Pages  /  Word studies index", side=False)
     tr = row(pg, "list head", gap=8, W="fill", pad=[6, 0, 6, 40])
-    text(tr, "Pages · folder Word studies · has a question", "caption", "muted", W="fill")
-    P.button(tr, "Filters · 2", icon_name="filter", size="sm")
+    vb = row(tr, "view", gap=4, pad=[4, 8, 4, 8], radius=6, fill="sunken")
+    icon(vb, {"Table": "table", "List": "list", "Gallery": "layers", "Board": "dock"}[view], 14, "fg")
+    text(vb, view, "small")
+    icon(vb, "down", 12, "muted")
+    text(tr, "Pages · has a question", "caption", "muted", W="fill")
+    P.button(tr, "Filters · 1", icon_name="filter", size="sm")
+    return x, pg
+
+
+@r_(36, "/list makes a list in a page: pages that match a line, in a Table by default, with the view and Filters above it.")
+def _r36b(f):
+    x, pg = list_page(f, "Table")
     tbl = col(pg, "table", gap=0, W="fill", pad=[0, 0, 0, 40])
-    for i, cells in enumerate((("Title", "Folder", "Questions", "Edited"), ("Zeal", "Word studies", "2 open", "3 Nov"),
-                               ("Zeal in Psalms 106", "Word studies", "1 open", "1 Nov"),
-                               ("Covenant of peace", "Word studies", "1 open", "28 Oct"))):
+    for i, cells in enumerate([("Title", "Folder", "Questions", "Edited")] + [c[:4] for c in TABLE]):
         r = row(tbl, f"tr/{i}", gap=0, W="fill", stroke="line", strokeBottomWeight=1, strokeTopWeight=0,
                 strokeLeftWeight=0, strokeRightWeight=0)
         for j, c_ in enumerate(cells):
@@ -1396,46 +1757,130 @@ def _r36(f):
             text(cc, c_, "caption" if i == 0 else "small", "muted" if (i == 0 or j) else "fg")
 
 
-@r_(37, "Every width: a floating tab, a narrow pane, a phone (menus become sheets). The column fits each.")
-def _r37(f):
-    for i, (lab, w_) in enumerate((("Floating tab", 520), ("Narrow pane", 420), ("Phone", 390))):
-        x0 = 30 + sum((560, 460)[:i])
-        hv = frame(f, lab, x=x0, y=90, w=w_, h=740, fill="bg", radius=12, stroke="line", sw=1, W="fixed", H="fixed",
-                   clip=True)
-        shadow(hv, 6, 24, SOFT)
-        label(f, lab, x0, 50)
-        pg = page(hv, 0, w_, "Zeal in Numbers 25", colw=w_ - 72, h=700, path="Phinehas")
-        blk(pg, "p", "Where the word first appears in this story:", hover=i == 0)
+@r_("47a", "The view menu of a list in a page: Table, List, Gallery, Board (Calendar and Timeline later); group by folder or callout kind.")
+def _r47a(f):
+    x, pg = list_page(f, "Table")
+    m = pop(f, cxof(x) + 40, 240, 300)
+    mgroup(m, "View")
+    for lab, ic in (("Table", "table"), ("List", "list"), ("Gallery", "layers"), ("Board", "dock")):
+        mrow(m, lab, ic, check=lab == "Table")
+    mrow(m, "Calendar", "clock", sub="later")
+    mrow(m, "Timeline", "toc", sub="later")
+    sep(m)
+    mrow(m, "Group by", "folder", "Folder", arrow=True)
+    mrow(m, "Sort", "list", "Edited", arrow=True)
+
+
+@r_("47b", "List view: one quiet line per page, its folder's dot and when it was edited.")
+def _r47b(f):
+    x, pg = list_page(f, "List")
+    for t_, fo, q, e, c_ in TABLE:
+        r = row(pg, t_, gap=10, pad=[8, 8, 8, 48], W="fill", stroke="line", strokeBottomWeight=1, strokeTopWeight=0,
+                strokeLeftWeight=0, strokeRightWeight=0)
+        frame(r, "dot", w=8, h=8, radius=4, fill=c_, W="fixed", H="fixed")
+        text(r, t_, "body", W="fill")
+        text(r, e, "caption", "muted")
+
+
+@r_("47c", "Gallery view: a card per page, its first lines as the preview.")
+def _r47c(f):
+    x, pg = list_page(f, "Gallery")
+    gg = col(pg, "gallery", gap=14, W="fill", pad=[0, 0, 0, 40])
+    for k, (t_, fo, q, e, c_) in enumerate(TABLE):
+        if k % 3 == 0:
+            g = row(gg, f"g{k}", gap=14, W="fill", align="min")
+        cd = col(g, t_, gap=6, pad=[12, 14, 12, 14], radius=10, fill="surface", stroke="line", sw=1, W="fixed")
+        S.do("node.set", {"ids": [cd], "props": {"width": 190}}, ref=False)
+        pv = frame(cd, "preview", w=10, h=70, fill="sunken", radius=6, W="fill", H="fixed")
+        hr = row(cd, "t", gap=6)
+        frame(hr, "dot", w=8, h=8, radius=4, fill=c_, W="fixed", H="fixed")
+        text(hr, t_, "smallStrong")
+        text(cd, f"{fo} · {q}", "caption", "muted")
+
+
+@r_("47d", "Board view, grouped by folder: a column per folder; dragging a card to another column moves the page there.")
+def _r47d(f):
+    x, pg = list_page(f, "Board")
+    bd = row(pg, "board", gap=14, W="fill", align="min", pad=[0, 0, 0, 40])
+    for fo, c_ in (("Phinehas", "#D9822B"), ("Salt", "#3B7A3B"), ("Word studies", "#6B4FA0"), ("Anna", "#B0457E")):
+        cl = col(bd, fo, gap=8, pad=[8, 8, 8, 8], radius=10, fill="sunken", W="fill")
+        hr = row(cl, "h", gap=6)
+        frame(hr, "dot", w=8, h=8, radius=4, fill=c_, W="fixed", H="fixed")
+        text(hr, fo, "smallStrong")
+        for t_, fo2, q, e, _ in TABLE:
+            if fo2 == fo:
+                cd = col(cl, t_, gap=2, pad=[10, 12, 10, 12], radius=8, fill="surface", W="fill")
+                text(cd, t_, "small")
+                text(cd, q, "caption", "muted")
+
+
+def width_frame(f, lab, w_, h_, sheet=False):
+    x0 = CW - w_ - 120
+    if not sheet:
+        w = M.rail5(f, on="Notebook")
+        K.reader(f, w, CW - w, NUM, "Numbers 25") if lab != "Narrow pane" else None
+    hv = frame(f, lab, x=x0 if lab != "Narrow pane" else CW - w_, y=60 if lab != "Narrow pane" else 0, w=w_,
+               h=h_, fill="bg", radius=12 if lab != "Narrow pane" else 0, stroke="line", sw=1, W="fixed", H="fixed",
+               clip=True)
+    shadow(hv, 10, 36, "#00000026")
+    pg = page(hv, 0, w_, "Zeal in Numbers 25", colw=w_ - 96, h=h_, path="Phinehas")
+    blk(pg, "p", "Where the word first appears in this story:", hover=True)
+    blk(pg, "verse", ("num", [11], "Numbers 25:11"))
+    blk(pg, "callout", "How does Psalm 106:31 read this?", kname="Question", ic="question", bg="#EFEAF7")
+    return hv
+
+
+@r_("37a", "Floating tab: the page floats over the reader at 560 px; the column keeps a 24 px margin and the gutter fits inside.")
+def _r37a(f):
+    width_frame(f, "Floating tab", 560, 740)
+
+
+@r_("37b", "Narrow pane: 460 px beside the reader; the handle sits inside the margin; menus stay inside the pane.")
+def _r37b(f):
+    w = M.rail5(f, on="Notebook")
+    K.reader(f, w, CW - w - 460, NUM, "Numbers 25", width=560)
+    hv = width_frame(f, "Narrow pane", 460, CH, sheet=True)
+
+
+@r_("37c", "Phone: the page at 390 px; every menu is a bottom sheet with the same search, groups and rows.")
+def _r37c(f):
+    for i, sheet in enumerate((False, True)):
+        x0 = 280 + i * 480
+        hv = frame(f, f"phone{i}", x=x0, y=50, w=390, h=790, fill="bg", radius=28, stroke="line", sw=1, W="fixed",
+                   H="fixed", clip=True)
+        shadow(hv, 10, 36, "#00000026")
+        pg = page(hv, 0, 390, "Zeal in Numbers 25", colw=310, h=820, path="Phinehas")
+        blk(pg, "p", "Where the word first appears in this story:")
         blk(pg, "verse", ("num", [11], "Numbers 25:11"))
-        if i == 2:
-            sh = col(hv, "sheet", gap=1, pad=[8, 12, 20, 12], fill="surface", radius=16, W="fixed")
-            Q.put(sh, 0, 470, w_)
-            shadow(sh, -4, 20, SOFT)
+        if sheet:
+            frame(hv, "scrim", x=0, y=0, w=390, h=820, fill="#0000002E")
+            sh = col(hv, "sheet", gap=1, pad=[8, 14, 28, 14], fill="surface", radius=18, W="fixed")
+            Q.put(sh, 0, 420, 390)
+            grab = row(sh, "grab", W="fill", mainAlign="center", pad=[2, 0, 8, 0])
+            frame(grab, "handle", w=36, h=4, radius=2, fill="line", W="fixed", H="fixed")
             msearch(sh, None, "Search for a block")
-            mrow(sh, "Text", "text", on=True)
-            mrow(sh, "Heading 1", "text", "#")
-            mrow(sh, "Scripture", "book", "/verse")
-
-
-@r_(38, "A measurement, not a picture: a 400-block page must type, open menus and drag inside the typing budget "
-         "of npm run measure (a budget for pages is still to be set there). Nothing jumps.")
-def _r38(f):
-    x, pg = full(f, "Salt lessons 2025", path="Salt  /  Salt lessons 2025", edited="Edited just now",
-                 list_kw={"on": "SALT Bible Study Notes: Nov 12"})
-    for i in range(1, 13):
-        blk(pg, "h3" if i % 4 == 1 else "p", f"Lesson {i // 4 + 1}" if i % 4 == 1 else f"Block {i} of 400")
-    sb = frame(f, "scroll thumb", x=CW - 12, y=60, w=6, h=40, fill="line", radius=3)
+            for lab, ic, k in (("Text", "text", None), ("Heading 1", "text", "#"), ("Bullet list", "list", "-"),
+                               ("To-do", "check", "[]"), ("Scripture", "book", "/verse")):
+                mrow(sh, lab, ic, k, on=lab == "Text")
+        label(f, "Page" if not sheet else "/ as a sheet", x0, 14)
 
 
 def write_rows(cli, target):
     out = HERE / "rows"
     out.mkdir(exist_ok=True)
     idx = []
-    for rid, num, cap, _ in ROWS:
+    rows_ = sorted(ROWS, key=lambda r: (ORDER.index(r[1]), r[0]))
+    keep = {f"{r[0]}.png" for r in rows_}
+    for old in out.glob("*.png"):
+        if old.name not in keep:
+            old.unlink()
+    for rid, num, cap, _ in rows_:
         png = out / f"{rid}.png"
+        idx.append({"id": rid, "row": num, "file": f"rows/{rid}.png", "caption": cap})
+        if rid in APPROVED and png.exists():
+            continue
         subprocess.run([cli, "export", "--no-system-fonts", str(target), "--page", BOARD, "--node",
                         f"Row frame {rid}", "--format", "png", "--out", str(png)], check=True, capture_output=True)
-        idx.append({"id": rid, "row": num, "file": f"rows/{rid}.png", "caption": cap})
     (out / "index.json").write_text(json.dumps(idx, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(len(idx), "row frames ->", out)
 

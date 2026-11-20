@@ -30,16 +30,34 @@
     "caption": "**word** or Ctrl+B makes bold in place; *word* or Ctrl+I italic; Ctrl+U underline."
   },
   {
-    "id": "6",
+    "id": "6a",
     "row": 6,
-    "file": "rows/6.png",
-    "caption": "/ on an empty line: the menu at the caret, grouped Basic and Study, Markdown shortcuts muted on the right."
+    "file": "rows/6a.png",
+    "caption": "The / menu is one list: Basic blocks first, Study folded at its end. Typing finds any command by name."
   },
   {
-    "id": "7",
+    "id": "6b",
+    "row": 6,
+    "file": "rows/6b.png",
+    "caption": "Typing “scr” finds Scripture though Study is folded. The same list in a narrow pane and a floating tab."
+  },
+  {
+    "id": "7a",
     "row": 7,
-    "file": "rows/7.png",
-    "caption": "Pick Scripture: the block appears and the caret is already in its reference field."
+    "file": "rows/7a.png",
+    "caption": "A Scripture block: typing a book completes it (“josh” → Joshua), so the name and numbers cannot be wrong; the verse previews under the field."
+  },
+  {
+    "id": "7b",
+    "row": 7,
+    "file": "rows/7b.png",
+    "caption": "Several verses and ranges across chapters: Num 25:18–26:1 is one block, each verse with its reference."
+  },
+  {
+    "id": "44",
+    "row": 44,
+    "file": "rows/44.png",
+    "caption": "Drag one Scripture block beside another: they sit side by side to compare."
   },
   {
     "id": "8",
@@ -66,22 +84,70 @@
     "caption": "Mark ▾ on scripture in a page: the Legend's styles; the mark is the reader's mark, on the same words."
   },
   {
+    "id": "39a",
+    "row": 39,
+    "file": "rows/39a.png",
+    "caption": "Mark, step 1: select words of scripture in a page. The selection bar shows Mark and Margin note."
+  },
+  {
+    "id": "39b",
+    "row": 39,
+    "file": "rows/39b.png",
+    "caption": "Mark, step 2: Mark ▾ opens the Legend's styles, searchable."
+  },
+  {
+    "id": "39c",
+    "row": 39,
+    "file": "rows/39c.png",
+    "caption": "Mark, step 3: pick Zeal. The words take its style in the page at once."
+  },
+  {
+    "id": "39d",
+    "row": 39,
+    "file": "rows/39d.png",
+    "caption": "Mark, step 4: it is the reader's mark. Open Numbers 25 and the same words carry Zeal."
+  },
+  {
+    "id": "40",
+    "row": 40,
+    "file": "rows/40.png",
+    "caption": "Margin note from a page: select scripture, Margin note; the note is written in that verse's margin and shows in the reader."
+  },
+  {
     "id": "12a",
     "row": 12,
     "file": "rows/12a.png",
-    "caption": "@ form A: the verse stays plain text in the page, quietly underlined; the page index finds it."
+    "caption": "@ then a reference: the verse is placed as a link chip with its reference."
   },
   {
     "id": "12b",
     "row": 12,
     "file": "rows/12b.png",
-    "caption": "@ form B: the verse becomes a link chip with the reference."
+    "caption": "Click the chip: a popup with the verse. Drag it by its grip anywhere; Esc closes it and the page is as it was."
+  },
+  {
+    "id": "12c",
+    "row": 12,
+    "file": "rows/12c.png",
+    "caption": "Whole chapter: the popup grows to Psalm 106, scrolled to verse 30 and marked; it can still be dragged."
+  },
+  {
+    "id": "12d",
+    "row": 12,
+    "file": "rows/12d.png",
+    "caption": "Open beside: the passage goes to the side reader at Psalm 106:30; the page stays; Back returns."
   },
   {
     "id": "13",
     "row": 13,
     "file": "rows/13.png",
     "caption": "Hover a block: + and the grip appear in the gutter. The text does not move."
+  },
+  {
+    "id": "41",
+    "row": 41,
+    "file": "rows/41.png",
+    "caption": "What + and the grip do: + adds a line below (Alt+click above); the grip drags the block, or opens its menu when clicked."
   },
   {
     "id": "14",
@@ -108,10 +174,16 @@
     "caption": "Turn into ▸ Heading 2: the block changes kind and keeps its text."
   },
   {
+    "id": "42",
+    "row": 42,
+    "file": "rows/42.png",
+    "caption": "Duplicate (Ctrl+D): a copy appears right below the block, with the caret in it."
+  },
+  {
     "id": "18",
     "row": 18,
     "file": "rows/18.png",
-    "caption": "Copy link to block: a link that opens this page scrolled to this block."
+    "caption": "Copy link to block: a link to a place in a page. It does not replace scripture references, which stay references and are found by the page index."
   },
   {
     "id": "19",
@@ -132,6 +204,12 @@
     "caption": "Several blocks: drag across, Shift+click or Esc; a pale wash on each; the grip menu acts on all."
   },
   {
+    "id": "43",
+    "row": 43,
+    "file": "rows/43.png",
+    "caption": "Drag in the margin to select several blocks: a pale band follows the pointer; every block it touches is selected."
+  },
+  {
     "id": "22",
     "row": 22,
     "file": "rows/22.png",
@@ -150,28 +228,28 @@
     "caption": "Today's pages: `> [!question]` and `> [!done]` show as Question and Answered; the questions list finds them."
   },
   {
+    "id": "46a",
+    "row": 46,
+    "file": "rows/46a.png",
+    "caption": "A callout holds several lines and a nested list."
+  },
+  {
+    "id": "46b",
+    "row": 46,
+    "file": "rows/46b.png",
+    "caption": "In the questions list the callout shows its first line, its page and its kind; the rest opens with the page."
+  },
+  {
     "id": "25",
     "row": 25,
     "file": "rows/25.png",
-    "caption": "Color ▸: the one annotation palette, the same colors as marks and folders, plus Default. No free picker."
+    "caption": "Color ▾ on selected words: 8 plain colors and Default, for emphasis only. Text color means nothing; marks carry meaning."
   },
   {
     "id": "26",
     "row": 26,
     "file": "rows/26.png",
-    "caption": "A folder's Color, or add one color to the palette: its pages show the dot by the title and in the side list."
-  },
-  {
-    "id": "27",
-    "row": 27,
-    "file": "rows/27.png",
-    "caption": "Hover the title of a page without an icon: “Add icon” shows above it (no cover)."
-  },
-  {
-    "id": "28",
-    "row": 28,
-    "file": "rows/28.png",
-    "caption": "Pick an icon: it sits before the title and in the side list."
+    "caption": "A folder's color is the only organizing color: pick it from the folder colors; its pages show the dot by the title and in the side list."
   },
   {
     "id": "29",
@@ -192,6 +270,12 @@
     "caption": "Appearance ▸ Serif (or Small text, Full width, Table of contents): the page changes at once."
   },
   {
+    "id": "45",
+    "row": 45,
+    "file": "rows/45.png",
+    "caption": "Appearance › Table of contents: an outline of the page's headings folds beside a long page; click one to go there."
+  },
+  {
     "id": "32",
     "row": 32,
     "file": "rows/32.png",
@@ -204,33 +288,75 @@
     "caption": "Copy contents: the page's Markdown, with scripture expanded verbatim from the database."
   },
   {
-    "id": "34",
+    "id": "34a",
     "row": 34,
-    "file": "rows/34.png",
-    "caption": "Ctrl+K: Recents when empty; typing groups the results; the highlighted one previews on the right."
+    "file": "rows/34a.png",
+    "caption": "Ctrl+K preview of a page with a list: the list shows as it is in the page."
+  },
+  {
+    "id": "34b",
+    "row": 34,
+    "file": "rows/34b.png",
+    "caption": "Ctrl+K preview of a page with a callout: the callout keeps its color and kind."
+  },
+  {
+    "id": "34c",
+    "row": 34,
+    "file": "rows/34c.png",
+    "caption": "Ctrl+K preview of a page with a table (a list in a page): its first rows."
   },
   {
     "id": "35",
     "row": 35,
     "file": "rows/35.png",
-    "caption": "The side list's Recents: the last 8 pages opened, newest first, folding, above round 4's groups."
+    "caption": "Recents replaces Today in the side list: the last 8 pages opened, newest first, above Pinned, Folders, Pages."
   },
   {
     "id": "36",
     "row": 36,
     "file": "rows/36.png",
-    "caption": "/list makes a list in a page: a table of pages matching a line, with the Filters button above it."
+    "caption": "/list makes a list in a page: pages that match a line, in a Table by default, with the view and Filters above it."
   },
   {
-    "id": "37",
+    "id": "47a",
+    "row": 47,
+    "file": "rows/47a.png",
+    "caption": "The view menu of a list in a page: Table, List, Gallery, Board (Calendar and Timeline later); group by folder or callout kind."
+  },
+  {
+    "id": "47b",
+    "row": 47,
+    "file": "rows/47b.png",
+    "caption": "List view: one quiet line per page, its folder's dot and when it was edited."
+  },
+  {
+    "id": "47c",
+    "row": 47,
+    "file": "rows/47c.png",
+    "caption": "Gallery view: a card per page, its first lines as the preview."
+  },
+  {
+    "id": "47d",
+    "row": 47,
+    "file": "rows/47d.png",
+    "caption": "Board view, grouped by folder: a column per folder; dragging a card to another column moves the page there."
+  },
+  {
+    "id": "37a",
     "row": 37,
-    "file": "rows/37.png",
-    "caption": "Every width: a floating tab, a narrow pane, a phone (menus become sheets). The column fits each."
+    "file": "rows/37a.png",
+    "caption": "Floating tab: the page floats over the reader at 560 px; the column keeps a 24 px margin and the gutter fits inside."
   },
   {
-    "id": "38",
-    "row": 38,
-    "file": "rows/38.png",
-    "caption": "A measurement, not a picture: a 400-block page must type, open menus and drag inside the typing budget of npm run measure (a budget for pages is still to be set there). Nothing jumps."
+    "id": "37b",
+    "row": 37,
+    "file": "rows/37b.png",
+    "caption": "Narrow pane: 460 px beside the reader; the handle sits inside the margin; menus stay inside the pane."
+  },
+  {
+    "id": "37c",
+    "row": 37,
+    "file": "rows/37c.png",
+    "caption": "Phone: the page at 390 px; every menu is a bottom sheet with the same search, groups and rows."
   }
 ]
