@@ -108,16 +108,28 @@ Names Numbers 25:11 here.`);
   for (const argv of [
     ['folder', 'list'],
     ...[all, `${all} "prayer"`, `${all} "prayer" page-questions open ${selected}`, `${all} page-questions open ${selected}`,
+      `${all} @ "Acts"`, `${all} @ "Acts 2"`, `${all} @ "Acts 2" days 7`, `${all} days 1`, `${all} days 7`, `${all} days 30`, `${all} days 365`, `${all} kind note`, `${all} kind day`,
       `${all} page-questions open`, `${all} ${selected}`, `${all} "prayer" page-questions open`, `${all} "prayer" ${selected}`]
       .map(line => ['notebook', '--view', line]),
     ['question', 'list', '--status', 'all'],
     ['question', 'list', '--status', 'done', '--at', 'Acts 2'],
     ['question', 'list', '--status', 'done'],
+    ['question', 'list', '--status', 'open'], ['question', 'list', '--status', 'open', '--at', 'Acts 2'], ['question', 'list', '--status', 'all', '--at', 'Acts'],
+    ['question', 'list', '--status', 'done', '--at', 'Acts'], ['question', 'list', '--status', 'open', '--at', 'Acts'],
     ['question', 'list', '--status', 'all', '--at', 'Acts 2'],
     ['question', 'list', '--status', 'all', '--search', 'prayer'],
     ['question', 'list', '--status', 'done', '--at', 'Acts 2', '--search', 'prayer'],
     ['question', 'list', '--status', 'done', '--at', 'Acts 2', '--search', 'travel'],
   ]) writeFileSync(new URL(`${named(argv)}.json`, help), wb(...argv, '--json'));
+  // What the Notebook and the reader ask for when they open, so the plain dev preview (no route mocks) gets JSON everywhere.
+  for (const argv of [
+    ['settings', 'notebook'], ['trash'], ['notebook', '--group', 'day'], ['page', 'sweep'], ['update', 'status'], ['read', 'times', 'Numbers 25'],
+  ]) writeFileSync(new URL(`${named(argv)}.json`, help), wb(...argv, '--json'));
+  // answers that are only "nothing yet" or a write's receipt
+  for (const [name, body] of Object.entries({
+    'docs-looks': {}, 'craft-designs': { themes: {}, theme: '' },
+    'history-add-verse-numbers-25-line-numbers-25': {}, 'history-add-notebook-notebook-line': {},
+  })) writeFileSync(new URL(`${name}.json`, help), JSON.stringify(body));
 } finally {
   const resolved = realpathSync(study);
   if (dirname(resolved) === fixtureRoot) rmSync(resolved, { recursive: true, force: true });
