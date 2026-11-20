@@ -32,7 +32,11 @@ folder, not as a Notebook tab.
 - **Notion's quality is the template.** Its feel and interaction model are the starting point; Wordbench changes it
   for Bible study. Inspiration, not a checklist.
 
-## The feel (adopt, all)
+## Interaction table (round 1: the inventory, not yet actions)
+
+Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into action rows.
+
+### The feel
 
 | # | Line | Mark | Why / Wordbench's version |
 |---|---|---|---|
@@ -47,7 +51,7 @@ folder, not as a Notebook tab.
 | F9 | Small calm chrome around larger comfortable content; consistent density | adopt | |
 | F10 | Destructive actions only in menus, always recoverable | adopt | Matches the 7-day Trash and page Undo |
 
-## Look
+### Look
 
 | # | Line | Mark | Why / Wordbench's version |
 |---|---|---|---|
@@ -60,7 +64,7 @@ folder, not as a Notebook tab.
 | L7 | Popovers: soft, large-radius, low-opacity shadows; no hard outlines | adopt | |
 | L8 | Every menu row has an icon; shortcuts right-aligned and muted | adopt | |
 
-## Writing in a page
+### Writing in a page
 
 | # | Line | Mark | Why / Wordbench's version |
 |---|---|---|---|
@@ -83,7 +87,7 @@ folder, not as a Notebook tab.
 | W17 | @ mention: date and sub-page (N12) | adapt | @ offers a **verse** (inline reference that opens the reader), a page, a folder, and a date; people skipped |
 | W18 | Ctrl+B/I/U, Ctrl+D, Ctrl+Z/Y, Esc, Tab/Shift+Tab on day one | adopt | Ctrl+Shift+M (comment) skipped |
 
-## The page
+### The page
 
 | # | Line | Mark | Why / Wordbench's version |
 |---|---|---|---|
@@ -95,7 +99,7 @@ folder, not as a Notebook tab.
 | P6 | Cover band and cover gallery (N23, N24) | **open** | Pleasant; images cost space; ask the person |
 | P7 | Lock page (read-only) | adopt | Protects finished lessons |
 
-## Finding and listing
+### Finding and listing
 
 | # | Line | Mark | Why / Wordbench's version |
 |---|---|---|---|
@@ -104,7 +108,7 @@ folder, not as a Notebook tab.
 | S3 | A database as a block with views: table, board, gallery, timeline, filter, sort, group (N14–N19) | adapt | A **list in a page** (Filters rows 14–15's saved list, a `view` fence): table view first; board, gallery, timeline skipped for now |
 | S4 | Filter menu (N19) | adapt | The shared Filters panel (F1–F2) is the control a list in a page uses |
 
-## Removed from the Notebook
+### Removed from the Notebook
 
 | # | Line | Mark | Why |
 |---|---|---|---|
