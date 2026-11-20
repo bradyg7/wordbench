@@ -1,6 +1,6 @@
 # The Notebook, with Notion's quality as the template
 
-**State:** exploring (round 2: the first draft) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
+**State:** exploring (round 3: the review's changes) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
 Nothing here is built. · **Review page:** `node design/review.mjs notebook` writes `review.html`.
 
 The person, 2026-11-20: Notion's quality is the template; Wordbench comes in and changes it for studying the Bible.
