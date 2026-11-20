@@ -17,7 +17,11 @@ export interface UpdateStatus {
   last_look: string | null;
   newer: { version: string; date: string; size: number; size_text: string; moved?: string; study?: string } | null;
   ready: string | null;
+  skipped?: boolean;
 }
+
+/** One release's notes as `wb update notes --json` gives them (UP3). */
+export interface ReleaseNotes { version: string; date: string; open: boolean; moved: string[]; moved_something: boolean; new: string[]; changed: string[]; fixed: string[]; study: string[] }
 
 let status: UpdateStatus | null = null;
 const watchers = new Set<(s: UpdateStatus | null) => void>();
@@ -72,6 +76,44 @@ export async function installNow(): Promise<{ ok: boolean; said: string }> {
   }
 }
 
+/** Not this version (U-10): set the newer version aside, so the dot goes; or put it back. */
+export async function setAside(on: boolean) {
+  await wb(on ? ['update', 'skip'] : ['update', 'skip', '--clear']);
+  await refreshUpdates();
+}
+
+/** What changed (U-6): every release newer than the one running, newest first, as plain text. The newest is open under
+ *  its four headings in order, then Your study folder; the older ones are folded to their version and date, and one that
+ *  moved or removed something still shows that line. Everything here is set with textContent: no link is followed, no
+ *  markup drawn, nothing fetched. */
+export function drawNotes(releases: ReleaseNotes[]): HTMLElement {
+  const box = h('div', 'set-upd-notes');
+  box.setAttribute('aria-label', 'What changed');
+  const list = (title: string, lines: string[]) => {
+    const part = h('div', 'set-upd-part');
+    part.append(h('h4', 'set-upd-heading', title));
+    if (lines.length) { const ul = h('ul', 'set-upd-lines'); for (const l of lines) ul.append(h('li', '', l)); part.append(ul); }
+    return part;
+  };
+  const body = (r: ReleaseNotes) => [list('Moved or removed', r.moved), list('New', r.new), list('Changed', r.changed), list('Fixed', r.fixed), list('Your study folder', r.study)];
+  const title = (r: ReleaseNotes) => `Bible Workbench ${r.version}${r.date ? ` (${r.date})` : ''}`;
+  for (const r of releases) {
+    if (r.open) {
+      const sec = h('section', 'set-upd-release open');
+      sec.append(h('h3', 'set-upd-version', title(r)), ...body(r));
+      box.append(sec);
+      continue;
+    }
+    const d = h('details', 'set-upd-release folded');
+    const sum = h('summary', 'set-upd-folded', title(r));
+    d.append(sum);
+    if (r.moved_something) sum.append(h('span', 'set-upd-folded-moved muted small', `Moved or removed: ${r.moved[0]}`));
+    d.append(...body(r));
+    box.append(d);
+  }
+  return box;
+}
+
 /** "19 Nov 2026, 08:00" for the last look. */
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -124,6 +166,23 @@ export async function updatesRows(row: Row, seg: Seg, redraw: () => void): Promi
     if (n.study) card.append(h('div', 'set-upd-study muted small', n.study));
     const note = h('div', 'set-upd-said muted small');
     note.setAttribute('role', 'status');
+    const notes = h('div', 'set-upd-notes-slot');
+    const what = h('button', 'btn', 'What changed') as HTMLButtonElement;
+    what.setAttribute('aria-expanded', 'false');
+    what.onclick = async () => {
+      if (what.getAttribute('aria-expanded') === 'true') { notes.replaceChildren(); what.setAttribute('aria-expanded', 'false'); return; }
+      what.disabled = true;
+      try {
+        const r = await wb(['update', 'notes', '--json']) as { releases: ReleaseNotes[] };
+        notes.replaceChildren(drawNotes(r.releases));
+        what.setAttribute('aria-expanded', 'true');
+      } catch (e) {
+        notes.replaceChildren(h('div', 'set-upd-said error muted small', String(e instanceof Error ? e.message : e).replace(/^error: /, '')));
+      }
+      what.disabled = false;
+    };
+    const aside = h('button', 'btn', s.skipped ? 'Tell me about this version again' : 'Not this version') as HTMLButtonElement;
+    aside.onclick = async () => { aside.disabled = true; try { await setAside(!s.skipped); } finally { redraw(); } };
     const install = h('button', 'btn primary', 'Install') as HTMLButtonElement;
     install.onclick = async () => {
       install.disabled = true;
@@ -133,7 +192,9 @@ export async function updatesRows(row: Row, seg: Seg, redraw: () => void): Promi
       note.classList.toggle('error', !r.ok);
       if (!r.ok) install.disabled = false;
     };
-    card.append(install, note);
+    const acts = h('div', 'set-upd-acts');
+    acts.append(install, what, aside);
+    card.append(acts, note, notes);
     out.push(card);
   } else if (s.last_look) {
     out.push(h('p', 'muted set-upd-newest', `Bible Workbench ${s.installed} is the newest`));

@@ -42,6 +42,7 @@ pub mod store;
 pub mod studyapi;
 pub mod tether;
 pub mod updates;
+pub mod updates_notes;
 pub mod templates;
 pub mod threadpage;
 pub mod views;

@@ -5,6 +5,7 @@
 //! `%LOCALAPPDATA%\bible-workbench-rs\updates\state.json` (`WB_UPDATES_DIR`, or `updates` under `WB_APP_DIR`, name another
 //! place for a test). A look asks one address for one small file and sends nothing about the person (U-4).
 
+use crate::updates_notes::{self as notes, Release};
 use chrono::{DateTime, Duration, Utc};
 use serde_json::{json, Map, Value};
 use std::fs;
@@ -73,11 +74,19 @@ pub struct Found {
     pub moved: Option<String>,
     /// The release's *Your study folder* line.
     pub study: Option<String>,
+    /// The release's whole notes, and the notes of the releases before it that the feed carries (UP3).
+    pub notes: String,
+    pub history: Vec<Release>,
 }
 
 impl Found {
     fn to_json(&self) -> Value {
-        json!({ "version": self.version, "date": self.date, "size": self.size, "moved": self.moved, "study": self.study })
+        let history: Vec<Value> = self.history.iter().map(|r| json!({ "version": r.version, "date": r.date, "notes": r.notes })).collect();
+        json!({ "version": self.version, "date": self.date, "size": self.size, "moved": self.moved, "study": self.study, "notes": self.notes, "history": history })
+    }
+    /// This release's notes as a release.
+    pub fn release(&self) -> Release {
+        Release { version: self.version.clone(), date: self.date.clone(), notes: self.notes.clone() }
     }
 }
 
@@ -157,8 +166,24 @@ pub fn parse_feed(text: &str) -> Result<Found, String> {
     }
     let date = v.get("pub_date").and_then(Value::as_str).map(|d| d.chars().take(10).collect()).unwrap_or_default();
     let size = v.get("size").and_then(Value::as_u64).unwrap_or(0);
-    let (moved, study) = notes_lines(v.get("notes").and_then(Value::as_str).unwrap_or(""));
-    Ok(Found { version, date, size, moved, study })
+    let text = v.get("notes").and_then(Value::as_str).unwrap_or("");
+    let (moved, study) = notes_lines(text);
+    // the earlier releases' notes: an entry that is not a release, or whose version is not one, is left out
+    let history = v
+        .get("releases")
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter_map(|r| {
+                    let version = r.get("version")?.as_str()?.trim().trim_start_matches('v').to_string();
+                    version_parts(&version)?;
+                    let date = r.get("pub_date").and_then(Value::as_str).map(|d| d.chars().take(10).collect()).unwrap_or_default();
+                    Some(Release { version, date, notes: r.get("notes").and_then(Value::as_str).unwrap_or("").to_string() })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    Ok(Found { version, date, size, moved, study, notes: text.to_string(), history })
 }
 
 /// Where the feed is read from: `WB_UPDATE_FEED` (a test release: a file, or an address) or the release address.
@@ -284,7 +309,114 @@ impl Updates {
             return None;
         }
         let line = |k: &str| n.get(k).and_then(Value::as_str).map(str::to_string);
-        Some(Found { version, date: n.get("date").and_then(Value::as_str).unwrap_or("").into(), size: n.get("size").and_then(Value::as_u64).unwrap_or(0), moved: line("moved"), study: line("study") })
+        let history = n
+            .get("history")
+            .and_then(Value::as_array)
+            .map(|a| {
+                a.iter()
+                    .filter_map(|r| Some(Release { version: r.get("version")?.as_str()?.to_string(), date: r.get("date").and_then(Value::as_str).unwrap_or("").into(), notes: r.get("notes").and_then(Value::as_str).unwrap_or("").into() }))
+                    .collect()
+            })
+            .unwrap_or_default();
+        Some(Found {
+            version,
+            date: n.get("date").and_then(Value::as_str).unwrap_or("").into(),
+            size: n.get("size").and_then(Value::as_u64).unwrap_or(0),
+            moved: line("moved"),
+            study: line("study"),
+            notes: line("notes").unwrap_or_default(),
+            history,
+        })
+    }
+
+    /// Every release newer than the one running, newest first: the newest the last look found, then the earlier ones the
+    /// feed carried (U-6).
+    pub fn releases(&self) -> Vec<Release> {
+        let Some(f) = self.newer() else { return vec![] };
+        let mut all = vec![f.release()];
+        for r in &f.history {
+            if newer_than(&r.version, INSTALLED) && !all.iter().any(|x| x.version == r.version) {
+                all.push(r.clone());
+            }
+        }
+        all.sort_by(|a, b| version_parts(&b.version).cmp(&version_parts(&a.version)));
+        all
+    }
+
+    /// The notes of one version: the one running (they come with the program, so they read offline), or a newer one a look
+    /// found.
+    pub fn release(&self, version: &str) -> Result<Release, String> {
+        let want = version.trim().trim_start_matches('v');
+        if version_parts(want) == version_parts(INSTALLED) {
+            return Ok(Release { version: INSTALLED.to_string(), date: String::new(), notes: notes::installed_notes().to_string() });
+        }
+        self.releases()
+            .into_iter()
+            .find(|r| version_parts(&r.version) == version_parts(want))
+            .ok_or_else(|| format!("The notes of {want} are not known on this computer. Look for updates first (wb update check)."))
+    }
+
+    /// `wb update notes [version]`: one version in full, or every newer release (the newest in full, the older folded);
+    /// with none newer, the version running.
+    pub fn notes_text(&self, version: Option<&str>) -> Result<String, String> {
+        match version.filter(|v| !v.trim().is_empty()) {
+            Some(v) => Ok(notes::render_full(&self.release(v)?)),
+            None => {
+                let all = self.releases();
+                if all.is_empty() {
+                    Ok(notes::render_full(&self.release(INSTALLED)?))
+                } else {
+                    Ok(notes::render_all(&all))
+                }
+            }
+        }
+    }
+
+    /// The same for the window: the releases with their headings, and which are shown open.
+    pub fn notes_json(&self, version: Option<&str>) -> Result<Value, String> {
+        match version.filter(|v| !v.trim().is_empty()) {
+            Some(v) => Ok(json!({ "releases": [notes::to_json(&self.release(v)?, true)] })),
+            None => {
+                let all = self.releases();
+                if all.is_empty() {
+                    return Ok(json!({ "releases": [notes::to_json(&self.release(INSTALLED)?, true)] }));
+                }
+                Ok(json!({ "releases": all.iter().enumerate().map(|(i, r)| notes::to_json(r, i == 0)).collect::<Vec<_>>() }))
+            }
+        }
+    }
+
+    /// "Not this version" (U-10): the newer version set aside, or the one named. The dot goes; the version stays listed.
+    pub fn skip(&self, version: Option<&str>) -> Result<String, String> {
+        let v = match version.filter(|v| !v.trim().is_empty()) {
+            Some(v) => v.trim().trim_start_matches('v').to_string(),
+            None => self.newer().map(|f| f.version).ok_or("There is no newer version to set aside.")?,
+        };
+        if version_parts(&v).is_none() {
+            return Err(format!("“{v}” is not a version."));
+        }
+        let mut s = self.read();
+        s.insert("skipped".into(), json!(v));
+        self.write(&s)?;
+        Ok(format!("Bible Workbench {v} is set aside. The dot comes back for a newer version."))
+    }
+
+    /// `wb update skip --clear`: puts the set-aside version back.
+    pub fn unskip(&self) -> Result<String, String> {
+        let mut s = self.read();
+        let had = s.remove("skipped").is_some();
+        self.write(&s)?;
+        Ok(if had { "The set-aside version is no longer set aside.".into() } else { "No version was set aside.".into() })
+    }
+
+    /// The version set aside, if any.
+    pub fn skipped(&self) -> Option<String> {
+        self.read().get("skipped").and_then(Value::as_str).map(str::to_string)
+    }
+
+    /// Whether the newer version is set aside (no dot).
+    fn is_skipped(&self, f: &Found) -> bool {
+        self.skipped().is_some_and(|v| version_parts(&v) == version_parts(&f.version))
     }
 
     /// A look, made now by hand (Check now, `wb update check`): the answer is kept, with the time. A look that fails
@@ -348,7 +480,8 @@ impl Updates {
             "looks_by_itself": updates_itself() && !env_off && self.look() == Look::Open,
             "last_look": self.last_look().map(|t| t.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)),
             "newer": newer.as_ref().map(|f| json!({ "version": f.version, "date": f.date, "size": f.size, "size_text": size_text(f.size), "moved": f.moved, "study": f.study })),
-            "ready": newer.as_ref().map(|f| ready_line(&f.version)),
+            "skipped": newer.as_ref().is_some_and(|f| self.is_skipped(f)),
+            "ready": newer.as_ref().filter(|f| !self.is_skipped(f)).map(|f| ready_line(&f.version)),
         })
     }
 }

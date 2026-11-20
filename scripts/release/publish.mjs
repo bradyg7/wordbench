@@ -10,6 +10,7 @@
 import { readFileSync, readdirSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 export const REPO = 'bradyg7/wordbench-releases';
@@ -27,8 +28,22 @@ export function assetNames(version) {
   };
 }
 
-// latest.json: a pure function of the version, notes, date and the two signatures.
-export function buildLatest({ version, notes, pubDate, winSignature, macSignature, repo = REPO }) {
+// The earlier releases' notes, newest first, for the window's "What changed" (design/features/updates U-6): every
+// docs/releases/<version>.md older than this release, as { version, pub_date, notes }. `dateOf(file)` says when a notes file
+// was last committed (it may be empty: the window then shows the version alone).
+export function earlierReleases(version, dir, dateOf = () => '') {
+  const key = v => v.split('.').map(Number);
+  const older = (a, b) => { for (let i = 0; i < Math.max(a.length, b.length); i++) { const d = (a[i] ?? 0) - (b[i] ?? 0); if (d) return d; } return 0; };
+  return readdirSync(dir)
+    .filter(f => /^\d+(\.\d+)*\.md$/.test(f))
+    .map(f => f.slice(0, -3))
+    .filter(v => older(key(v), key(version)) < 0)
+    .sort((a, b) => older(key(b), key(a)))
+    .map(v => ({ version: v, pub_date: dateOf(join(dir, `${v}.md`)), notes: readFileSync(join(dir, `${v}.md`), 'utf8') }));
+}
+
+// latest.json: a pure function of the version, notes, date, the installer's size, the two signatures and the earlier notes.
+export function buildLatest({ version, notes, pubDate, winSignature, macSignature, size, releases = [], repo = REPO }) {
   const names = assetNames(version);
   const base = `https://github.com/${repo}/releases/download/v${version}`;
   const mac = { signature: macSignature, url: `${base}/${names.macUpdate}` };
@@ -36,6 +51,8 @@ export function buildLatest({ version, notes, pubDate, winSignature, macSignatur
     version,
     notes,
     pub_date: pubDate,
+    ...(size ? { size } : {}),
+    ...(releases.length ? { releases } : {}),
     platforms: {
       'windows-x86_64': { signature: winSignature, url: `${base}/${names.winSetup}` },
       'darwin-aarch64': { ...mac },
@@ -75,7 +92,10 @@ function main() {
   writeFileSync(join(out, names.macSig), macSignature);
   const notes = readFileSync(`docs/releases/${version}.md`, 'utf8');
   writeFileSync(join(out, 'latest.json'), JSON.stringify(buildLatest({
-    version, notes, pubDate: new Date().toISOString(), winSignature, macSignature,
+    version, notes, pubDate: new Date().toISOString(), winSignature, macSignature, size: statSync(exe).size,
+    releases: earlierReleases(version, 'docs/releases', file => {
+      try { return execFileSync('git', ['log', '-1', '--format=%cI', '--', file], { encoding: 'utf8' }).trim(); } catch { return ''; }
+    }),
   }), null, 2));
 
   execFileSync('gh', [

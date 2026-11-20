@@ -30,6 +30,14 @@ impl Home {
         let out = c.output().unwrap();
         (out.status.code().unwrap_or(-1), String::from_utf8_lossy(&out.stdout).into(), String::from_utf8_lossy(&out.stderr).into())
     }
+    /// A release file with the given notes and earlier releases `[(version, date, notes)]`.
+    fn feed_notes(&self, version: &str, notes: &str, earlier: &[(&str, &str, &str)]) -> String {
+        let p = self.dir.join("latest.json");
+        let releases: Vec<Value> = earlier.iter().map(|(v, d, n)| serde_json::json!({"version": v, "pub_date": d, "notes": n})).collect();
+        let body = serde_json::json!({"version": version, "pub_date": "2026-11-19T07:00:00Z", "size": 84000000, "notes": notes, "releases": releases, "platforms": {}});
+        std::fs::write(&p, body.to_string()).unwrap();
+        p.display().to_string()
+    }
     fn feed(&self, version: &str) -> String {
         let p = self.dir.join("latest.json");
         std::fs::write(&p, format!(r#"{{"version":"{version}","pub_date":"2026-11-19T07:00:00Z","size":84000000,"notes":"x","platforms":{{}}}}"#)).unwrap();
@@ -97,6 +105,138 @@ mod with_the_update_code {
         assert_eq!(s["ready"], "Bible Workbench 99.0.0 is ready");
         assert_eq!(s["newer"]["version"], "99.0.0");
         assert!(s["last_look"].is_string());
+    }
+
+    const FULL: &str = "## Moved or removed\n- The Trail moved into the rail.\n- The old pane is gone.\n\n## New\n- Updates in Settings.\n\n## Changed\n- A line changed.\n\n## Fixed\n- A thing was fixed.\n\n## Your study folder\nNothing changes in your study folder.";
+
+    /// Row 9: the four headings in order, then the study-folder line, in the release's own words.
+    #[test]
+    fn notes_show_the_four_headings_in_order_then_the_study_folder() {
+        let h = Home::new("notes-full");
+        let feed = h.feed_notes("99.0.0", FULL, &[]);
+        assert_eq!(h.run(&["update", "check"], Some(&feed)).0, 0);
+        let (code, out, _) = h.run(&["update", "notes"], None);
+        assert_eq!(code, 0);
+        let at = |w: &str| out.find(&format!("\n{w}\n")).unwrap_or_else(|| panic!("{w} in {out}"));
+        let order = ["Moved or removed", "New", "Changed", "Fixed", "Your study folder"].map(at);
+        assert!(order.windows(2).all(|w| w[0] < w[1]), "{out}");
+        for line in ["- The Trail moved into the rail.", "- The old pane is gone.", "- Updates in Settings.", "- A line changed.", "- A thing was fixed.", "Nothing changes in your study folder."] {
+            assert!(out.contains(line), "{line} in {out}");
+        }
+        assert!(out.starts_with("Bible Workbench 99.0.0 (2026-11-19)"), "{out}");
+        // one version by name
+        assert_eq!(h.run(&["update", "notes", "99.0.0"], None).1, out);
+    }
+
+    #[test]
+    fn a_release_that_moved_nothing_says_so() {
+        let h = Home::new("notes-nothing");
+        let feed = h.feed_notes("99.0.0", "## New\n- A thing.\n\n## Your study folder\nNothing changes.", &[]);
+        h.run(&["update", "check"], Some(&feed));
+        let out = h.run(&["update", "notes"], None).1;
+        assert!(out.contains("Moved or removed\n- Nothing was moved or removed.\n"), "{out}");
+        // an empty heading too
+        let feed = h.feed_notes("99.0.0", "## Moved or removed\n\n## New\n- x", &[]);
+        h.run(&["update", "check"], Some(&feed));
+        assert!(h.run(&["update", "notes"], None).1.contains("Nothing was moved or removed."));
+    }
+
+    /// Notes holding a link or markup are shown as their plain text, and nothing is fetched.
+    #[test]
+    fn markup_in_the_notes_is_text_and_nothing_is_fetched() {
+        let h = Home::new("notes-markup");
+        let line = "<img src=\"http://127.0.0.1:9/x.png\"> and [a link](http://127.0.0.1:9/y) and **bold**";
+        let feed = h.feed_notes("99.0.0", &format!("## Moved or removed\n- {line}\n\n## Your study folder\nNothing changes."), &[]);
+        h.run(&["update", "check"], Some(&feed));
+        let out = h.run(&["update", "notes"], None).1;
+        assert!(out.contains(line), "{out}");
+        let j = json(&h.run(&["update", "notes", "--json"], None).1);
+        assert_eq!(j["releases"][0]["moved"][0], line);
+    }
+
+    /// Fourteen behind: the newest is open, the thirteen older are folded to version and date, and the ones that moved
+    /// something keep that line.
+    #[test]
+    fn fourteen_behind_folds_the_older_ones() {
+        let h = Home::new("notes-fold");
+        let mut earlier: Vec<(String, String, String)> = vec![];
+        for i in 1..=13 {
+            let moved = if i % 4 == 0 { format!("## Moved or removed\n- Moved thing {i}\n- second line {i}\n\n") } else { String::new() };
+            earlier.push((format!("98.{i}.0"), format!("2026-10-{i:02}T00:00:00Z"), format!("{moved}## New\n- new {i}\n")));
+        }
+        // an older release than the one running is never listed
+        earlier.push(("0.0.1".into(), "2020-01-01T00:00:00Z".into(), "## New\n- ancient\n".into()));
+        let refs: Vec<(&str, &str, &str)> = earlier.iter().map(|(a, b, c)| (a.as_str(), b.as_str(), c.as_str())).collect();
+        let feed = h.feed_notes("99.0.0", FULL, &refs);
+        h.run(&["update", "check"], Some(&feed));
+        let out = h.run(&["update", "notes"], None).1;
+        assert!(out.starts_with("Bible Workbench 99.0.0 (2026-11-19)\n"), "{out}");
+        assert!(!out.contains("ancient") && !out.contains("0.0.1"), "{out}");
+        // newest first: 98.13.0 before 98.1.0
+        assert!(out.find("98.13.0").unwrap() < out.find("98.1.0").unwrap());
+        // folded: the version and date; a release that moved something keeps its first line, one that moved nothing shows only version and date
+        assert!(out.contains("Bible Workbench 98.4.0 (2026-10-04)\n  Moved or removed: Moved thing 4\n"), "{out}");
+        assert!(!out.contains("second line"), "{out}");
+        assert!(out.contains("Bible Workbench 98.3.0 (2026-10-03)\n\nBible"), "{out}");
+        assert!(!out.contains("new 3"), "folded notes are not open: {out}");
+        let j = json(&h.run(&["update", "notes", "--json"], None).1);
+        let rel = j["releases"].as_array().unwrap();
+        assert_eq!(rel.len(), 14);
+        assert_eq!(rel[0]["open"], true);
+        assert!(rel[1..].iter().all(|r| r["open"] == false));
+        // a folded one can be read in full by name
+        assert!(h.run(&["update", "notes", "98.3.0"], None).1.contains("- new 3"));
+    }
+
+    /// The version running reads offline: its notes come with the program.
+    #[test]
+    fn the_installed_versions_notes_read_offline() {
+        let h = Home::new("notes-installed");
+        let (code, out, _) = h.run(&["update", "notes", wb_core::updates::INSTALLED], Some("http://127.0.0.1:9/latest.json"));
+        assert_eq!(code, 0, "{out}");
+        assert!(out.contains(&format!("Bible Workbench {}", wb_core::updates::INSTALLED)) && out.contains("Your study folder"), "{out}");
+        // with nothing newer known, the bare command prints them too
+        assert_eq!(h.run(&["update", "notes"], None).1, out);
+        let (code, _, err) = h.run(&["update", "notes", "98.0.0"], None);
+        assert_eq!(code, 1);
+        assert!(err.contains("not known on this computer"), "{err}");
+    }
+
+    /// Row 10: Not this version puts the dot away until a newer release; the version stays listed.
+    #[test]
+    fn not_this_version_puts_the_dot_away_until_a_newer_release() {
+        let h = Home::new("skip");
+        let feed = h.feed("99.0.0");
+        h.run(&["update", "check"], Some(&feed));
+        let s = json(&h.run(&["update", "status"], None).1);
+        assert_eq!(s["ready"], "Bible Workbench 99.0.0 is ready");
+        assert_eq!(s["skipped"], false);
+        let (code, out, _) = h.run(&["update", "skip"], None);
+        assert_eq!(code, 0, "{out}");
+        let s = json(&h.run(&["update", "status"], None).1);
+        assert!(s["ready"].is_null(), "the dot is gone: {s}");
+        assert_eq!(s["newer"]["version"], "99.0.0", "still listed with Install");
+        assert_eq!(s["skipped"], true);
+        // across looks that find the same version
+        let again = h.run(&["update", "check"], Some(&feed));
+        assert_eq!(again.0, 0);
+        assert!(json(&h.run(&["update", "status"], None).1)["ready"].is_null());
+        // a newer one brings the dot back
+        let feed = h.feed("99.0.1");
+        h.run(&["update", "check"], Some(&feed));
+        let s = json(&h.run(&["update", "status"], None).1);
+        assert_eq!(s["ready"], "Bible Workbench 99.0.1 is ready");
+        assert_eq!(s["skipped"], false);
+        // --clear undoes it
+        h.run(&["update", "skip", "99.0.1"], None);
+        assert!(json(&h.run(&["update", "status"], None).1)["ready"].is_null());
+        h.run(&["update", "skip", "--clear"], None);
+        assert_eq!(json(&h.run(&["update", "status"], None).1)["ready"], "Bible Workbench 99.0.1 is ready");
+        // nothing to set aside
+        let h2 = Home::new("skip-none");
+        let (code, _, err) = h2.run(&["update", "skip"], None);
+        assert_eq!(code, 1);
+        assert!(err.contains("no newer version"), "{err}");
     }
 
     #[test]

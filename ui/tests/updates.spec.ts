@@ -114,6 +114,8 @@ test('the Updates section holds every part, whole at any width (row 5)', async (
   // one filled button
   await expect(body.locator('.btn.primary')).toHaveCount(1);
   await expect(card.getByRole('button', { name: 'Install' })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'What changed' })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Not this version' })).toBeVisible();
   // nothing is cut off sideways, and every part sits inside the pane
   expect(await body.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   const box = (await body.boundingBox())!;
@@ -152,4 +154,87 @@ test('Check now looks and says the answer; the setting is saved (rows 6, 8)', as
   await pane.locator('.set-row', { hasText: 'Look for updates' }).getByRole('button', { name: 'Only when I ask' }).click();
   await expect(pane.locator('.set-row', { hasText: 'Look for updates' }).locator('.seg button.on')).toHaveText('Only when I ask');
   await expect.poll(() => asked).toContain('ask');
+});
+
+// UP3 (rows 9 and 10): What changed, and Not this version.
+const rel = (version: string, date: string, over: object = {}) => ({
+  version, date, open: false, moved: ['Nothing was moved or removed.'], moved_something: false, new: [`New in ${version}`], changed: [], fixed: [], study: ['Nothing changes in your study folder.'], ...over,
+});
+
+test('What changed shows the newest open under its headings in order, plain text only (row 9)', async ({ page }) => {
+  await serve(page, status());
+  const fetched: string[] = [];
+  page.on('request', r => { if (/x\.png|evil/.test(r.url())) fetched.push(r.url()); });
+  await page.route('**/fixtures/wb/update-notes-json.json', r => r.fulfill({ json: { releases: [
+    rel('0.3.0', '2026-11-19', { open: true, moved: ['<img src="http://evil.test/x.png"> and [a link](http://evil.test/y)'], moved_something: true, new: ['Updates in Settings.'], changed: ['A line changed.'], fixed: ['A thing was fixed.'] }),
+  ] } }));
+  await ready(page);
+  await openSettings(page);
+  const pane = page.locator('.set-pane');
+  await toUpdates(page);
+  const card = pane.locator('.set-upd-card');
+  await card.getByRole('button', { name: 'What changed' }).click();
+  const notes = card.locator('.set-upd-notes');
+  await expect(notes.locator('.set-upd-heading')).toHaveText(['Moved or removed', 'New', 'Changed', 'Fixed', 'Your study folder']);
+  await expect(notes.locator('.set-upd-lines').first()).toHaveText('<img src="http://evil.test/x.png"> and [a link](http://evil.test/y)');
+  await expect(notes.locator('img, a')).toHaveCount(0);
+  await expect(notes).toContainText('Nothing changes in your study folder.');
+  expect(fetched).toEqual([]);
+  // one filled button still
+  await expect(pane.locator('.set-body .btn.primary')).toHaveCount(1);
+  // closing it
+  await card.getByRole('button', { name: 'What changed' }).click();
+  await expect(notes).toHaveCount(0);
+});
+
+test('a release that moved nothing says so, and fourteen behind folds the older ones (rows 9, U14)', async ({ page }) => {
+  await serve(page, status());
+  const older = Array.from({ length: 13 }, (_, i) => rel(`0.2.${20 - i}`, `2026-10-${String(20 - i).padStart(2, '0')}`, i % 4 === 0 ? { moved: [`Moved thing ${i}`], moved_something: true } : {}));
+  await page.route('**/fixtures/wb/update-notes-json.json', r => r.fulfill({ json: { releases: [rel('0.3.0', '2026-11-19', { open: true }), ...older] } }));
+  await ready(page);
+  await openSettings(page);
+  const pane = page.locator('.set-pane');
+  await toUpdates(page);
+  const card = pane.locator('.set-upd-card');
+  await card.getByRole('button', { name: 'What changed' }).click();
+  const notes = card.locator('.set-upd-notes');
+  await expect(notes.locator('.set-upd-release.open')).toHaveCount(1);
+  await expect(notes.locator('.set-upd-release.open .set-upd-lines').first()).toHaveText('Nothing was moved or removed.');
+  await expect(notes.locator('details.folded')).toHaveCount(13);
+  // folded to version and date; open, none of the older bodies show
+  await expect(notes.locator('details.folded').first().locator('summary')).toContainText('Bible Workbench 0.2.20 (2026-10-20)');
+  await expect(notes.locator('details.folded').first().locator('summary')).toContainText('Moved or removed: Moved thing 0');
+  await expect(notes.locator('details.folded').nth(1).locator('summary .set-upd-folded-moved')).toHaveCount(0);
+  await expect(notes.locator('details.folded[open]')).toHaveCount(0);
+  await expect(notes.getByText('New in 0.2.19')).toBeHidden();
+  // the list scrolls inside the section
+  const box = await notes.evaluate(el => ({ scroll: el.scrollHeight, client: el.clientHeight, overflow: getComputedStyle(el).overflowY }));
+  expect(box.overflow).toBe('auto');
+  // a folded release opens to its notes
+  await notes.locator('details.folded').nth(1).locator('summary').click();
+  await expect(notes.getByText('New in 0.2.19')).toBeVisible();
+});
+
+test('Not this version sets the version aside, and the same button puts it back (row 10)', async ({ page }) => {
+  await serve(page, status());
+  const asked: string[] = [];
+  await page.route('**/fixtures/wb/update-skip.json', r => { asked.push('skip'); return r.fulfill({ json: 'set aside' }); });
+  await page.route('**/fixtures/wb/update-skip-clear.json', r => { asked.push('clear'); return r.fulfill({ json: 'cleared' }); });
+  await ready(page);
+  await expect(gear(page)).toHaveClass(/update-ready/);
+  await openSettings(page);
+  const pane = page.locator('.set-pane');
+  await toUpdates(page);
+  const card = pane.locator('.set-upd-card');
+  await serve(page, status({ ready: null, skipped: true }));
+  await card.getByRole('button', { name: 'Not this version' }).click();
+  await expect.poll(() => asked).toEqual(['skip']);
+  // the dot is gone; the version is still listed with Install
+  await expect(gear(page)).not.toHaveClass(/update-ready/);
+  await expect(pane.locator('.set-upd-card')).toContainText('Bible Workbench 0.3.0');
+  await expect(pane.locator('.set-upd-card').getByRole('button', { name: 'Install' })).toBeVisible();
+  await serve(page, status());
+  await pane.locator('.set-upd-card').getByRole('button', { name: 'Tell me about this version again' }).click();
+  await expect.poll(() => asked).toEqual(['skip', 'clear']);
+  await expect(gear(page)).toHaveClass(/update-ready/);
 });
