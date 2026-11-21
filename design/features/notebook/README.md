@@ -152,8 +152,8 @@ person's existing pages read.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 1 | Any menu (/, block, page ⋯, @, Ctrl+K) | Type while it is open | Rows filter as you type; the first match is highlighted; groups with no match hide; "No results" when none | Nothing | Window only | `menu_filters_as_you_type` | [ ] approved 2026-11-20 |
-| 2 | Any menu | ↑ ↓, Enter, Esc, or click outside | The highlight moves; Enter picks; Esc or outside closes and focus returns where it was. Nothing on the page moves when it opens | Nothing | Window only | `menu_keys_and_focus_return` | [ ] approved 2026-11-20 |
+| 1 | Any menu (/, block, page ⋯, @, Ctrl+K) | Type while it is open | Rows filter as you type; the first match is highlighted; groups with no match hide; "No results" when none | Nothing | Window only | `menu_filters_as_you_type` | built (NB1) · approved 2026-11-20 |
+| 2 | Any menu | ↑ ↓, Enter, Esc, or click outside | The highlight moves; Enter picks; Esc or outside closes and focus returns where it was. Nothing on the page moves when it opens | Nothing | Window only | `menu_keys_and_focus_return` | built (NB1) · approved 2026-11-20 |
 
 ### Writing, N2 to N4
 
@@ -271,7 +271,7 @@ A ticket is done when every row in it has its passing test and its Built cell sa
 
 ## What the build must satisfy
 
-- [ ] Every menu is the one menu component (rows 1–2): typing filters, keys work, focus returns, nothing jumps.
+- [x] Every menu is the one menu component (rows 1–2): typing filters, keys work, focus returns, nothing jumps.
 - [ ] Writing never waits and never needs a click to continue (rows 3–8).
 - [ ] Every text block can turn into every other text kind and keep its text (row 17).
 - [ ] Today's pages read and write as before; the files stay Markdown; questions written as callouts stay listed (row 24).

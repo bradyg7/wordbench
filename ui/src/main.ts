@@ -9,6 +9,7 @@ import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/noto-sans-hebrew/400.css';
+import { openMenu } from './menu';
 import { api, inApp, onDo, wb, type WordView, type VerseView, type Book, type Mark } from './api';
 import { draw, drawTimes, paint, textOf, labelOf, marksOnWord, type Drawn } from './reader';
 import { openMarkCard } from './markcard';
@@ -1569,6 +1570,6 @@ async function start() {
   void restoreRestart();
 }
 
-(window as any).__wb = { refreshUpdates, panel, open, plans: openPlans, concordance: openConcordance, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
+(window as any).__wb = { menu: openMenu, refreshUpdates, panel, open, plans: openPlans, concordance: openConcordance, note: (id: string) => openNote(id), perf, selector, dock: () => dock, run: (l: string) => runLine(l), parse, changed: () => app.changed(), repaint: () => drawn && paint(reader, drawn), get drawn() { return drawn; } };
 start().catch(e => { reader.innerHTML = `<p class="error">${String(e)}</p>`; });
 void here;
