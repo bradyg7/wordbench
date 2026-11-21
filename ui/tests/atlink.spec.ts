@@ -148,8 +148,11 @@ test('at_verse_chip_popup', async ({ page }) => {
   await expect(page.locator('.pane-reader2 .reader2 .vn-asked[data-v="11"]')).toBeAttached();
   await expect(page.locator('.pane-reader2 .reader2 .vn-asked')).toHaveCount(1);
   expect(await chapterAt(page)).toBe(26);
-  await expect(page.locator('.nb-block[data-n="2"]')).toBeVisible();
+  // on a phone the front pane is a full-screen sheet over the reader (dock.ts, compact), so the page is behind it, out of the screen;
+  // wider, the page stays in view beside the side reader
   await expect(page.locator('.pane-reader2')).toBeVisible();
+  if (vp.width < 600) await page.evaluate(() => (window as any).__wb.note('w1'));   // the way back to the page on a phone
+  await expect(page.locator('.nb-block[data-n="2"]')).toBeVisible();
 
   // Open in reader goes to the verse; Back returns to the place the reader left
   await chip.click();
