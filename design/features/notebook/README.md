@@ -63,6 +63,15 @@ folder, not as a Notebook tab.
   empty block above, caret stays with the text, like Notion. The file cannot hold an empty block, so the empty block is a
   line above that is written only when it is clicked and typed in; leaving it alone leaves the file as it was (test
   `enter_at_start_adds_a_block_above`).
+- **The / menu after a space, NB3 (the lead, 2026-11-21).** (1) `/` typed after a space opens the menu right there in the
+  line: no new block, no extra Enter. The `/` is taken out of the line when a command is picked or Esc is pressed (or the
+  menu is closed any other way); a picked block kind is inserted as a new block below, and the line keeps its text, like
+  Notion (test `slash_after_a_space_inserts_a_block_below`; on an empty line a pick still writes its form in the line).
+  (2) `wb block add ID "REF" --scripture --after N` writes the fenced scripture block holding only the reference (the
+  reference is checked against the Bible); without `--scripture` a bare reference stays a paragraph. (3) Editing an
+  existing scripture block uses the reference field of row 7, not the older "Edit card" form (test
+  `editing_a_scripture_block_uses_the_reference_field`). The form stays for the other fenced blocks (view, thread, word),
+  a question and a template's blank, which nothing else edits yet.
 
 ## The inventory (round 1)
 
@@ -167,7 +176,7 @@ person's existing pages read.
 | 4 | A line | Type `# ` `## ` `### ` `- ` `1. ` `[] ` `> ` `---` | The line turns into heading 1–3, bullet, numbered, to-do, quote or divider at once; Ctrl+Z turns it back to the typed characters | The block's Markdown | `wb block set ID N "## …"` | `markdown_shortcuts_turn_the_line` | built (NB2, NB2b) · approved 2026-11-20 |
 | 5 | A line | Type `**word**`, `*word*`; Ctrl+B, Ctrl+I, Ctrl+U | Bold, italic, underline in place | The Markdown marks (underline as `<u>`) | `wb block set` | `inline_shortcuts_and_keys` | built (NB2, NB2b) · approved 2026-11-20 |
 | 6 | An empty line, or after a space | Type `/` | **One list** at the caret: Text, Heading 1–3, Bullet, Numbered, To-do, Toggle, Quote, Divider, Table, then **Study** folded at its end (Scripture, Word, Callout, Saved thing, List in a page); typing finds any command by name, folded or not ("scr" → Scripture); the same in a narrow pane and a floating tab (6a, 6b) | Nothing until picked | Window only | `slash_menu_one_list_finds_folded` | built (NB3) · approved 2026-11-20 |
-| 7 | / menu › Scripture | Type a reference | The book completes as you type ("josh" → Joshua, Tab), so names and numbers cannot be wrong; the verse text previews under the field; several verses and ranges across chapters make one block (7a, 7b) | The block's reference | `wb block add ID "Num 25:18-26:1" --after N` | `scripture_block_completes_and_previews` | built (NB3) · approved 2026-11-20 |
+| 7 | / menu › Scripture | Type a reference | The book completes as you type ("josh" → Joshua, Tab), so names and numbers cannot be wrong; the verse text previews under the field; several verses and ranges across chapters make one block (7a, 7b) | The block's reference | `wb block add ID "Num 25:18-26:1" --scripture --after N` | `scripture_block_completes_and_previews` | built (NB3) · approved 2026-11-20 |
 | 44 | Scripture blocks | Drag one by its grip beside another | Up to 4 side by side at Full width (44a three, 44b four); fewer columns as the pane narrows, then one under another | The blocks' column form | `wb block move ID N --beside M`, *proposed* | `scripture_side_by_side_up_to_four` | [ ] approved 2026-11-20 |
 | 8 | A list item | Enter; Enter on an empty item; Tab; Shift+Tab | A new item; leaves the list; indents; outdents | The items' Markdown and indent | `wb block set` | `list_enter_tab_rules` | built (NB2, NB2b) · approved 2026-11-20 |
 | 9 | A toggle | Click the triangle, or Ctrl+Enter | Its children fold and unfold; a heading can be a toggle too | `<details><summary>…</summary>…</details>` in the page; folded or not is kept in settings/pages.json | `wb block add ID "<details>…"` | `toggle_folds_children` | [ ] approved 2026-11-20 |

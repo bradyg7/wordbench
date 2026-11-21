@@ -91,12 +91,51 @@ test('slash_after_a_space_and_back_out', async ({ page }) => {
   await page.keyboard.press('End');
   await page.keyboard.type(' /');
   await expect(page.locator('.wbm')).toBeVisible();
-  await page.keyboard.press('Escape');                       // closes, nothing picked, the caret returns
+  await page.keyboard.press('Escape');                       // closes, nothing picked, the caret returns, the slash is taken out
   await expect(page.locator('.wbm')).toHaveCount(0);
   await expect(box).toBeFocused();
-  expect(await md(box)).toBe('Where it first appears /');
+  expect(await md(box)).toBe('Where it first appears');
   await page.keyboard.type('x');                             // not after a space now: no list
   await expect(page.locator('.wbm')).toHaveCount(0);
+  expect(await md(box)).toBe('Where it first appearsx');
+});
+
+test('slash_after_a_space_inserts_a_block_below', async ({ page }) => {
+  await slashPage(page, [{ kind: 'paragraph', text: 'Where it first appears' }]);
+  await page.locator('.nb-block-body').first().click();
+  const box = page.locator('.nb-block-input');
+  await page.keyboard.press('End');
+  await page.keyboard.type(' /');
+  await expect(page.locator('.wbm')).toBeVisible();          // right there in the line: no new block, no extra Enter
+  await expect(page.locator('.nb-block-input')).toHaveCount(1);
+  await page.keyboard.type('heading 2');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.wbm')).toHaveCount(0);
+  // the first line keeps its words (the slash and the filter are gone); the picked kind is a new block below it
+  const below = page.locator('.nb-new-block .nb-block-input');
+  await expect(below).toBeFocused();
+  expect(await md(below)).toBe('## ');
+  await expect(page.locator('.nb-block[data-n="1"]')).toContainText('Where it first appears');
+  await expect(page.locator('.nb-block[data-n="1"]')).not.toContainText('/');
+  void box;
+});
+
+test('editing_a_scripture_block_uses_the_reference_field', async ({ page }) => {
+  const d = fx('scripture-numbers-25-11-13');
+  const text = ['```scripture', 'Numbers 25:11-13', '```'].join('\n');
+  await slashPage(page, [{ kind: 'fence', lang: 'scripture', text }], { blocks: [{ n: 1, label: d.label, lines: false, verses: d.verses }] });
+  await expect(page.locator('.nb-scripture')).toContainText(d.verses[0].text);
+  await page.locator('.nb-scripture .sv-ref').click();
+  const field = page.locator('.sf-input');
+  await expect(field).toBeFocused();
+  await expect(field).toHaveValue('Numbers 25:11-13');
+  // the old "Edit card" form is not used for scripture
+  await expect(page.locator('.nb-card-input, .nb-card-field')).toHaveCount(0);
+  await expect(page.locator('.sf-verse')).toHaveCount(d.verses.length);
+  await expect(page.locator('.sf-verse').first()).toContainText(d.verses[0].text);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.sf')).toHaveCount(0);
+  await expect(page.locator('.nb-scripture')).toBeVisible();
 });
 
 test('scripture_block_completes_and_previews', async ({ page }) => {

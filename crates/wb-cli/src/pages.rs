@@ -237,9 +237,14 @@ pub fn commands() -> Vec<Command> {
                 }
                 j(pg::edit_guarded(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Set { n, count, text: &text }, a.opt("expect").as_deref()).map_err(e)?)
             }),
-        cmd("block add", "Add a block: wb block add ID \"# Before Tuesday\" --after 2 (--first: right under the title; neither: last). - reads standard input.",
-            vec![Pos("id", N::One), Pos("text", N::Many), Opt("after", None), Flag("first")], |c, a| {
-                let text = text_of(c, &a.s("text"))?;
+        cmd("block add", "Add a block: wb block add ID \"# Before Tuesday\" --after 2 (--first: right under the title; neither: last). - reads standard input. --scripture: the text is a reference (\"Num 25:18-26:1\"), checked against the Bible, and the block written is the fenced scripture block holding only that reference; without it a bare reference stays a paragraph.",
+            vec![Pos("id", N::One), Pos("text", N::Many), Opt("after", None), Flag("first"), Flag("scripture")], |c, a| {
+                let mut text = text_of(c, &a.s("text"))?;
+                if a.flag("scripture") {
+                    let reference = text.trim().to_string();
+                    c.span(&reference)?;
+                    text = format!("```scripture\n{reference}\n```");
+                }
                 let after = match (opt_n(a, "after")?, a.flag("first")) {
                     (Some(n), _) => Some(n - 1),
                     (None, true) => None,

@@ -2637,3 +2637,21 @@ fn the_builders_old_abilities_and_pasting_a_published_plan_still_work() {
     let s = wb.js(&["plan", "show", "horner", "--on", "2026-11-09"]);
     assert_eq!(s["schedule"][6]["date"], json!("2026-11-09"));
 }
+
+#[test]
+fn block_add_scripture_writes_the_fenced_reference_block() {
+    // notebook row 7 (NB3): --scripture checks the reference and writes the block holding only it; a bare reference stays a paragraph
+    let Some(wb) = Wb::new() else { return };
+    let id = wb.js(&["page", "new", "A passage page"])["id"].as_str().unwrap().to_string();
+    wb.js(&["block", "add", &id, "First line"]);
+    let r = wb.js(&["block", "add", &id, "Num 25:18-26:1", "--scripture", "--after", "1"]);
+    assert_eq!(r["n"], 2);
+    wb.js(&["block", "add", &id, "Num 25:11"]);
+    let blocks = wb.js(&["page", "blocks", &id]);
+    let texts: Vec<(String, String)> = blocks["blocks"].as_array().unwrap().iter().map(|b| (b["kind"].as_str().unwrap().to_string(), b["text"].as_str().unwrap().to_string())).collect();
+    assert_eq!(texts[1], ("fence".to_string(), "```scripture\nNum 25:18-26:1\n```".to_string()));
+    assert_eq!(texts[2], ("paragraph".to_string(), "Num 25:11".to_string()));
+    let (code, _, err) = wb.run(&["block", "add", &id, "Not a book 3:4", "--scripture"], None);
+    assert_ne!(code, 0, "{err}");
+    assert_eq!(wb.js(&["page", "blocks", &id])["blocks"].as_array().unwrap().len(), 3);
+}

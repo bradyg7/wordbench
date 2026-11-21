@@ -47,7 +47,7 @@ type BlockFocus = { n: number; at: 'start' | 'end' | number } | { after: number;
 type BlockData = { id: string; got: Promise<any> } | null;
 export interface BlockEditorState {
   focus: BlockFocus;
-  pending: { id: string; after: () => number; text: string; at?: 'start' | 'end' } | null;
+  pending: { id: string; after: () => number; text: string; at?: 'start' | 'end'; pick?: string } | null;
   menuKey: ((ev: KeyboardEvent) => boolean) | null;
   menuClose: (() => void) | null;
   scripture: BlockData;
@@ -377,8 +377,46 @@ function isStructured(b: Blk) {
 }
 
 function editBlock(data: Blocks, b: Blk, el: HTMLElement, host: Host) {
-  if (isStructured(b)) editStructured(data, b, el, host);
+  // a scripture block is edited in the reference field (the book completes, the words under it are the database's); a template's blank still uses the form
+  if (isScripture(b) && !/{[a-z]+}/i.test(heldIn(b))) editScripture(data, b, el, host);
+  else if (isStructured(b)) editStructured(data, b, el, host);
   else startEdit(data, b, el, host, 'end');
+}
+
+/** Edit a scripture block's reference in the same field a new one is made with (notebook row 7, NB3). The fence's other lines (lines, ylt, marks) stay. */
+function editScripture(data: Blocks, b: Blk, el: HTMLElement, host: Host) {
+  if (el.classList.contains('editing')) return;
+  const body = el.querySelector('.nb-block-body')!;
+  el.classList.add('editing');
+  const lines = b.text.split('\n');
+  const closing = lines.findIndex((line, i) => i > 0 && /^\s*(`{3,}|~{3,})\s*$/.test(line));
+  const limit = closing < 0 ? lines.length : closing;
+  const at = lines.findIndex((line, i) => i > 0 && i < limit && !!line.trim());
+  const original = at < 0 ? '' : lines[at].trim();
+  const form = h('div', 'nb-structured-editor nb-scripture-edit');
+  body.replaceChildren(form);
+  const done = () => {
+    const root = el.closest<HTMLElement>('.nb-editor');
+    if (root) historyFor(root, data.id).focus = b.n;
+    (document.activeElement as HTMLElement | null)?.blur();
+  };
+  const field = scriptureField(form, {
+    start: original,
+    onCancel: () => { done(); host.redraw(); },
+    onPlace: async reference => {
+      if (reference === original) { done(); host.redraw(); return; }
+      const next = [...lines];
+      if (at < 0) next.splice(limit, 0, reference); else next[at] = reference;
+      if (closing < 0) next.push(lines[0].trimStart().slice(0, 3));
+      try {
+        await wb(['block', 'set', data.id, String(b.n), '--expect', host.text, '-'], next.join('\n'));
+        done();
+        host.changed();
+      } catch (x) { toast(String(x)); }
+    },
+  });
+  registerPageWriter(form, data.id, async () => {}, () => { form.querySelectorAll<HTMLInputElement>('input').forEach(x => x.disabled = true); });
+  field.focus();
 }
 
 function editStructured(data: Blocks, b: Blk, el: HTMLElement, host: Host) {
@@ -761,15 +799,15 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
 
 
 /** Write in a new block after block `after` (0: first, right under the title). */
-function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string, at: 'start' | 'end' = 'end') {
+function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string, at: 'start' | 'end' = 'end', pick?: string) {
   const el = h('div', 'nb-block nb-new-block');
   beforeEl.before(el);
-  startEdit(data, { n: 0, kind: 'paragraph', text, start: 0, end: 0 }, el, host, at, after);
+  startEdit(data, { n: 0, kind: 'paragraph', text, start: 0, end: 0 }, el, host, at, after, pick);
 }
 
 /** Write in a block (NB2b): the block is its own contenteditable element, drawn as the block it is and styled as it is
  *  typed; its Markdown is what is saved as it is typed (`wb block set`; a new block, `wb block add`). */
-function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start' | 'end' | number, newAfter?: number) {
+function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start' | 'end' | number, newAfter?: number, pick?: string) {
   if (el.querySelector('.nb-block-input')) return;
   const ta = createEditor(b.text);
   ta.placeholder = 'Write, or type / for a block';
@@ -980,6 +1018,9 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   const pos = at === 'start' ? contentStart(ta) : at === 'end' ? ta.value.length : Math.min(at, ta.value.length);
   ta.setSelectionRange(pos, pos);
   if (ta.value) slashMenu(ta, data, host, cur, finish);
+  // a command picked from the / menu after a space: it runs in this new block, no second Enter
+  const picked = pick ? MENU.find(x => x.key === pick) : undefined;
+  if (picked) void makeChoose(ta, data, host, cur, finish)(picked);
   if (dirty) touched();
 }
 
@@ -1005,7 +1046,7 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
     host.state.pending = null;
     const after = p.after();
     const next = wrap.querySelector<HTMLElement>(`.nb-block[data-n="${after + 1}"]`) || wrap.querySelector<HTMLElement>('.nb-block-add')!;
-    startNew(data, host, next, after, p.text, p.at);
+    startNew(data, host, next, after, p.text, p.at, p.pick);
     return;
   }
   const f = host.state.focus;
@@ -1035,24 +1076,9 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
   else if (f.n > data.blocks.length) startNew(data, host, wrap.querySelector<HTMLElement>('.nb-block-add')!, data.blocks.length, '');
 }
 
-/** `/` on an empty line, or after a space, opens the one list at the caret (notebook row 6): Basic blocks, then Study folded
- *  at its end; typing in the list finds any command by name, folded or not. */
-function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>, typedSlash = false) {
-  const v = ta.value;
-  const afterSpace = typedSlash && v.length > 1 && /\s\/$/.test(v) && !v.includes('\n');
-  const wholeLine = v.startsWith('/') && !v.includes('\n') && v.length <= 30;
-  if (typedSlash ? !(v === '/' || afterSpace) : !wholeLine) return;
-  const query = typedSlash ? '' : v.slice(1).trim();
-  host.state.menuClose?.();
-  const choose = async (m: typeof MENU[number]) => {
-    if (afterSpace) {
-      // the words before the slash stay as they are; the command opens in a block under them
-      ta.value = v.slice(0, -1).trimEnd();
-      void finish();
-      host.state.focus = null;
-      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: `/${m.label}`, at: 'end' };
-      return;
-    }
+/** What picking a command from the / menu does in the block being written (in the line itself; after a space, in a new block). */
+function makeChoose(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>) {
+  return async (m: typeof MENU[number]) => {
     if (m.key === 'inside') return askInside(ta, host, cur, finish);
     if (m.key === 'thread' || m.key === 'word') {
       const before = ta.value;
@@ -1121,6 +1147,27 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
       host.redraw();
     }
   };
+}
+
+/** `/` on an empty line, or after a space, opens the one list at the caret (notebook row 6): Basic blocks, then Study folded
+ *  at its end; typing in the list finds any command by name, folded or not. On an empty line a command writes its form in the
+ *  line; after a space the line's words stay and the command is inserted as a new block below (NB3, the lead 2026-11-21). The "/"
+ *  typed is taken out of the line when a command is picked or the list is closed without one. */
+function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>, typedSlash = false) {
+  const v = ta.value;
+  const afterSpace = typedSlash && v.length > 1 && /\s\/$/.test(v) && !v.includes('\n');
+  const wholeLine = v.startsWith('/') && !v.includes('\n') && v.length <= 30;
+  if (typedSlash ? !(v === '/' || afterSpace) : !wholeLine) return;
+  const query = typedSlash ? '' : v.slice(1).trim();
+  host.state.menuClose?.();
+  const choose = makeChoose(ta, data, host, cur, finish);
+  let picked = false;
+  const takeSlashOut = () => {
+    if (!ta.isConnected || !ta.value.endsWith('/')) return;
+    ta.value = ta.value.slice(0, -1).trimEnd();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    ta.dispatchEvent(new Event('input'));
+  };
   const item = (m: typeof MENU[number]): MenuItem => ({ id: m.key, label: m.label, icon: m.glyph, hint: m.hint, keywords: [m.key, ...(m.alias || [])] });
   const groups: MenuGroup[] = [
     { title: 'Basic', items: MENU.filter(m => m.group === 'Basic').map(item) },
@@ -1132,8 +1179,26 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
   const handle = openMenu({
     groups, query, label: 'Add a block', placeholder: 'Type to filter',
     at: { x: box.left, y: box.bottom + 6 },
-    onPick: it => { const m = MENU.find(x => x.key === it.id); if (m) void choose(m); },
-    onClose: () => { if (host.state.menuClose === handle.close) { host.state.menuClose = null; host.state.menuKey = null; } },
+    onPick: it => {
+      const m = MENU.find(x => x.key === it.id);
+      if (!m) return;
+      picked = true;
+      if (afterSpace) {
+        // the words before the slash stay as they are; the command is inserted as a block under them
+        takeSlashOut();
+        void finish();
+        host.state.focus = null;
+        host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '', at: 'end', pick: m.key };
+        return;
+      }
+      void choose(m);
+    },
+    onClose: () => {
+      if (host.state.menuClose === handle.close) { host.state.menuClose = null; host.state.menuKey = null; }
+      // closed with nothing picked (Esc, a click outside, Backspace in the empty filter): the slash typed goes out of the line.
+      // A pick runs just after the close, so this waits for it.
+      if (typedSlash) queueMicrotask(() => { if (!picked) takeSlashOut(); });
+    },
   });
   host.state.menuClose = handle.close;
   // Backspace in the empty filter takes the slash back out and closes the list
@@ -1141,7 +1206,6 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
     if (ev.key !== 'Backspace' || (handle.el.querySelector('.wbm-input') as HTMLInputElement).value) return;
     ev.preventDefault();
     handle.close();
-    if (ta.value.endsWith('/')) { ta.value = ta.value.slice(0, -1); ta.dispatchEvent(new Event('input')); }
   });
 }
 
