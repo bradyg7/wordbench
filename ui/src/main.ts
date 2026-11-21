@@ -888,7 +888,7 @@ function verseMenu(vw: View, v: number, x: number, y: number) {
  * question marks), with its own selection, color bar and verse cards, and ‹ › to turn its own chapter. The verses asked
  * for are marked and scrolled to. Nothing in it moves the main reader; "Go to in the reader" does, when asked.
  */
-async function openSecondReader(ref: string, version = 'KJV') {
+async function openSecondReader(ref: string, version = 'KJV', beside?: HTMLElement | null) {
   const clean = ref.replace(/(:\d+)\.\d+/g, '$1');   // words of a verse: their verse
   // (S6) the pane's own version: its KJV | YLT switch changes this and no other reader
   let ver = version === 'YLT' ? 'YLT' : 'KJV';
@@ -932,7 +932,10 @@ async function openSecondReader(ref: string, version = 'KJV') {
     clearSelection();
     await draw2(el, p, 1);
   };
-  const pane2 = dock.open('reader2', `${bk.name} ${st.chapter}`, `reader2|${clean}|${ver}`, 'left', async (el, p) => {
+  // sent from a pane's page (Open beside): the reader goes to the other column, not into the tab strip of the pane it came from
+  const from = beside ? dock.panes.find(x => x.el.contains(beside)) : undefined;
+  if (from) dock.apart();
+  const pane2 = dock.open('reader2', `${bk.name} ${st.chapter}`, `reader2|${clean}|${ver}`, from ? (from.side === 'right' ? 'left' : 'right') : 'left', async (el, p) => {
     if (!vw) {
       el.replaceChildren();
       head = h('header', 'pane-head reader2-head');
@@ -1501,7 +1504,7 @@ Object.assign(app, {
   setVersion,
   findInChapter,
   listen: (command: Parameters<typeof readAloud.execute>[0]) => readAloud.execute(command),
-  secondReader: (ref: string, version?: string) => void openSecondReader(ref, version),
+  secondReader: (ref: string, version?: string, beside?: HTMLElement | null) => void openSecondReader(ref, version, beside),
   showMarginNote: async (id: string, at: string) => {
     const p = /^([1-3A-Z]{3})\.(\d+)(?::(\d+))?/.exec(at);
     if (!p) return;

@@ -29,6 +29,13 @@ async function openPage(page: Page, at = 'NUM.26') {
     const send = (json: unknown) => route.fulfill({ json });
     if (name === 'note-show-w1.json') return send(detail());
     if (name === 'page-blocks-w1.json') return send(blocks());
+    // the side reader asks for the passage by its words (wb text "Numbers 25:11" --version KJV --json)
+    if (name === 'text-numbers-25-11-version-kjv-json.json') return send(fixture('text-numbers-25-11-json'));
+    if (name.startsWith('refs-plain-')) {
+      // the finder `wb refs --plain` stands in as a regex over what the block being written holds now
+      const text: string = await page.evaluate(() => (document.querySelector('.nb-block-input') as any)?.value ?? '');
+      return send([...text.matchAll(/Numbers 25:11/g)].map(m => ({ start: [...text.slice(0, m.index)].length, end: [...text.slice(0, m.index! + m[0].length)].length, ref: 'Numbers 25:11', hash: '#NUM.25:11' })));
+    }
     if (name.startsWith('block-set-w1-')) return route.fulfill({ status: 500, body: 'kept' });
     if (name === 'notebook-group-none.json') return send({ groups: [{ key: 'all', label: 'All', count: 3, entries: [
       entry('w1', TITLE, 'note'), entry('p2', 'Tuesday study', 'note'), entry('t1', 'Phinehas', 'thread'),
@@ -132,8 +139,19 @@ test('at_verse_chip_popup', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(panel).toHaveCount(0);
 
-  // Open in reader goes to the verse; Back returns to the place the reader left
+  // Open beside (12d) sends the passage to the side reader at the verse; the page stays, and the reader keeps its place
   expect(await chapterAt(page)).toBe(26);
+  await chip.click();
+  await expect(panel.getByRole('button', { name: 'Open beside' })).toBeVisible();
+  await panel.getByRole('button', { name: 'Open beside' }).click();
+  await expect(panel).toHaveCount(0);
+  await expect(page.locator('.pane-reader2 .reader2 .vn-asked[data-v="11"]')).toBeAttached();
+  await expect(page.locator('.pane-reader2 .reader2 .vn-asked')).toHaveCount(1);
+  expect(await chapterAt(page)).toBe(26);
+  await expect(page.locator('.nb-block[data-n="2"]')).toBeVisible();
+  await expect(page.locator('.pane-reader2')).toBeVisible();
+
+  // Open in reader goes to the verse; Back returns to the place the reader left
   await chip.click();
   await expect(panel.locator('.cp-title')).toHaveText('Numbers 25');
   await panel.getByRole('button', { name: 'Open in reader' }).click();
@@ -141,4 +159,53 @@ test('at_verse_chip_popup', async ({ page }) => {
   await expect.poll(() => chapterAt(page)).toBe(25);
   await page.evaluate(() => (window as any).__wb.run('back'));
   await expect.poll(() => chapterAt(page)).toBe(26);
+});
+
+test('chip_while_writing', async ({ page }) => {
+  // a reference is a chip while its block is being written, not only after it is left; the file keeps the plain words
+  await openPage(page);
+  await page.locator('.nb-block[data-n="2"] .nb-block-body').click({ position: { x: 4, y: 8 } });
+  const box = page.locator('.nb-block-input');
+  await expect(box).toBeFocused();
+  const chip = box.locator('.nb-chip');
+  await expect(chip).toHaveCount(1);
+  await expect(chip).toHaveText('Numbers 25:11');
+  const md = () => box.evaluate(e => (e as any).value as string);
+  const caret = () => box.evaluate(e => [(e as any).selectionStart, (e as any).selectionEnd]);
+  expect(await md()).toBe('Also Numbers 25:11 here');
+  // the caret walks through the chip a letter at a time, in the file's offsets
+  await page.keyboard.press('Home');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
+  expect(await caret()).toEqual([5, 5]);
+  for (let i = 0; i < 13; i++) await page.keyboard.press('ArrowRight');
+  expect(await caret()).toEqual([18, 18]);
+  // typing next to the chip: the words are still the reference's, the new letter is outside it after a moment
+  await page.keyboard.type('x');
+  expect(await md()).toBe('Also Numbers 25:11x here');
+  await expect(chip).toHaveText('Numbers 25:11');
+  expect(await caret()).toEqual([19, 19]);
+  // Backspace crosses the chip: letter by letter, and the chip goes when the reference is no longer whole
+  await page.keyboard.press('Backspace');
+  expect(await md()).toBe('Also Numbers 25:11 here');
+  await page.keyboard.press('Backspace');
+  expect(await md()).toBe('Also Numbers 25:1 here');
+  await expect(chip).toHaveCount(0);
+  for (let i = 0; i < 12; i++) await page.keyboard.press('Backspace');
+  expect(await md()).toBe('Also  here');
+  expect(await caret()).toEqual([5, 5]);
+  // a reference typed in is a chip a moment after it is whole; the round trip is the same words
+  await page.keyboard.type('Numbers 25:11');
+  expect(await md()).toBe('Also Numbers 25:11 here');
+  await expect(chip).toHaveCount(1);
+  await expect(chip).toHaveText('Numbers 25:11');
+  expect(await caret()).toEqual([18, 18]);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.type('!');
+  expect(await md()).toBe('Also Numbers 25:11 !here');
+  // Ctrl+click on the chip opens the chapter panel; a plain click only places the caret
+  await chip.click();
+  await expect(page.locator('.cp')).toHaveCount(0);
+  await chip.click({ modifiers: ['Control'] });
+  await expect(page.locator('.cp')).toBeVisible();
+  await expect(page.locator('.cp .cp-title')).toHaveText('Numbers 25');
 });

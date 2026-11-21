@@ -86,11 +86,14 @@ export async function openChapterPanel(ref: string, from?: HTMLElement | null): 
   next.setAttribute('aria-label', 'Next chapter'); next.title = 'Next chapter'; next.append(icon('right', 14));
   const open = h('button', 'cp-open', 'Open in reader') as HTMLButtonElement;
   open.type = 'button';
+  const beside = h('button', 'cp-open cp-beside', 'Open beside') as HTMLButtonElement;
+  beside.type = 'button';
+  beside.title = 'Send this passage to the side reader; the page and the reader stay where they are';
   const close = h('button', 'cp-btn cp-close') as HTMLButtonElement;
   close.type = 'button';
   close.setAttribute('aria-label', 'Close'); close.title = 'Close (Esc)'; close.textContent = '×';
   const head = h('header', 'cp-head');
-  head.append(grip, title, h('span', 'cp-fill'), prev, next, open, close);
+  head.append(grip, title, h('span', 'cp-fill'), prev, next, beside, open, close);
   const body = h('div', 'cp-body');
   body.setAttribute('aria-live', 'polite');
   el.append(head, body);
@@ -135,6 +138,15 @@ export async function openChapterPanel(ref: string, from?: HTMLElement | null): 
     const verse = at.from && chapter === at.chapter ? at.from : 1;
     closeChapterPanel(false);
     app.go(at.code, chapter, verse);
+  };
+
+  // Open beside (12d): the passage goes to a second reader in a pane at the verse the chip names; the reader and the page keep their
+  // places (nothing here moves the main reader), and Back returns as it does from any pane
+  beside.onclick = () => {
+    const where = at.from && chapter === at.chapter ? ref : `${at.name} ${chapter}`;
+    const from = opener;
+    closeChapterPanel(false);
+    app.secondReader(where, undefined, from);
   };
 
   // drag by the header; let go and it snaps to the nearest corner

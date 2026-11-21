@@ -60,3 +60,7 @@
 .cp-verse { margin: 0; padding: 3px 6px; border-radius: 4px; }
 .cp-verse.cp-on { background: #f7e2a0; }
 .cp-vnum { font-weight: 600; font-size: .85em; opacity: .7; }
+
+/* a reference drawn as a chip while its block is written (row 12): the words inside are ordinary text, so it stays inline */
+.nb-block-input .nb-chip-live { display: inline; padding: 0 5px; margin: 0 -1px; }
+.nb-block-input .nb-chip-live::before { content: ''; display: inline-block; width: 11px; height: 11px; margin-right: 4px; vertical-align: -1px; background: currentColor; opacity: .6; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6'%3E%3Cpath d='M8 3.5C6.5 2.5 4 2.3 2 2.8v9.5c2-.5 4.5-.3 6 .7 1.5-1 4-1.2 6-.7V2.8c-2-.5-4.5-.3-6 .7zM8 3.5V13'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6'%3E%3Cpath d='M8 3.5C6.5 2.5 4 2.3 2 2.8v9.5c2-.5 4.5-.3 6 .7 1.5-1 4-1.2 6-.7V2.8c-2-.5-4.5-.3-6 .7zM8 3.5V13'/%3E%3C/svg%3E") center / contain no-repeat; }

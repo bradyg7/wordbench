@@ -13,8 +13,9 @@ import { drawVerses, openSplit, verseCard, type MarkedVerse } from './verses';
 import { threadChooser } from './panes';
 import { openMenu, type MenuGroup, type MenuItem } from './menu';
 import { atMenu } from './atmenu';
+import { openChapterPanel } from './chapterpanel';
 import { scriptureField } from './scripturefield';
-import { caretAt, caretLine, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, undoTurn, type Turn, type Writer } from './blockedit';
+import { caretAt, caretLine, chipRefs, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, undoTurn, type Turn, type Writer } from './blockedit';
 import { isToggleEnd, placeBlocks, toggleHead, toggleOf, wrapHead } from './toggles';
 import { installSelectionBar, selectionBarBusy } from './selbar';
 
@@ -990,11 +991,25 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     if (document.activeElement === ta) ta.blur();
     host.redraw();
   };
+  // references drawn as chips while the block is written (row 12): the ones the block opens with now, and again a moment after typing
+  // stops (wb-core's finder, the same as when the block is left). A chip adds nothing to the Markdown.
+  let chipTimer = 0, chipSeq = 0;
+  const chipNow = async () => {
+    const text = ta.value, mine = ++chipSeq;
+    if (!/\d/.test(text)) { chipRefs(ta, []); return; }
+    let found: Found[] = [];
+    try { found = await wb(['refs', '--plain', text]); } catch { return; }
+    if (mine !== chipSeq || gone || !ta.isConnected || ta.value !== text) return;
+    const at = (n: number) => [...text].slice(0, n).join('').length;
+    chipRefs(ta, found.map(f => ({ start: at(f.start), end: at(f.end), ref: f.ref })));
+  };
+  const chipSoon = () => { clearTimeout(chipTimer); chipTimer = window.setTimeout(() => void chipNow(), 250); };
+  if (newAfter === undefined) chipRefs(ta, shifted(host.refs, b.start, b.end).filter(r => !toggleHead(b.text)).map(r => ({ start: [...b.text].slice(0, r.start).join('').length, end: [...b.text].slice(0, r.end).join('').length, ref: r.ref })));
   registerPageWriter(ta, data.id, async () => {
     await save();
     if (wrapped().replace(/\n+$/, '') !== last && dirty && ta.value.trim() && !blank(ta.value)) throw new Error('Save or cancel the current block before deleting its page.');
     await finish();
-  }, () => { gone = true; clearTimeout(timer); ta.disabled = true; });
+  }, () => { gone = true; clearTimeout(timer); clearTimeout(chipTimer); ta.disabled = true; });
   // a shortcut that turned the typed characters into another form, kept so Ctrl+Z gives the typed characters back
   let turned: Turn = null;
   ta.oninput = ev => {
@@ -1016,8 +1031,16 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     if (host.template) blankMenu(ta, host);
     clearTimeout(timer);
     timer = window.setTimeout(save, 600);
+    chipSoon();
     host.maybeSuggest(ta);
   };
+  // Ctrl+click on a chip opens its chapter panel; a plain click only places the caret (the words inside are text being written)
+  ta.addEventListener('click', ev => {
+    const chip = (ev.target as HTMLElement).closest<HTMLElement>('[data-ref]');
+    if (!chip || !(ev.ctrlKey || ev.metaKey)) return;
+    ev.preventDefault();
+    void openChapterPanel(chip.dataset.ref!, ta);
+  });
   ta.onpaste = ev => {
     ev.preventDefault();
     const text = ev.clipboardData?.getData('text/plain') || '';

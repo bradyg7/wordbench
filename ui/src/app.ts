@@ -28,8 +28,9 @@ export const app = {
   setSize: (_percent: number) => {},
   size: () => 100,
   findInChapter: (_q: string) => {},
-  /** Opens a place as a second reader in a pane (never moves the reader). */
-  secondReader: (_ref: string, _version?: string) => {},
+  /** Opens a place as a second reader in a pane (never moves the reader). `beside`: an element of the pane it is sent from; the reader then
+   *  opens in the other column, so that pane stays in view (the chapter panel's Open beside). */
+  secondReader: (_ref: string, _version?: string, _beside?: HTMLElement | null) => {},
   /** The second readers open, in the order they were opened: each one's pane and the chapter it shows. */
   readers: (): { pane: string; code: string; chapter: number; label: string }[] => [],
   /** Runs a line as if typed into the command field. */

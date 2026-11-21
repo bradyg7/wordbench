@@ -300,14 +300,14 @@ export function caretAt(ed: Writer): { start: boolean; end: boolean; collapsed: 
 
 /** After an edit: a box with nothing in it is truly empty (so its hint shows), and elements the browser added are unwrapped. */
 export function tidy(ed: HTMLElement) {
-  const foreign = ed.querySelector('span:not([data-c]):not([data-bg]), font, div, p, a, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, code, pre, table, img');
+  const foreign = ed.querySelector('span:not([data-c]):not([data-bg]):not([data-ref]), font, div, p, a, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, code, pre, table, img');
   if (foreign) {
     const w = ed as Writer;
     const r = selectionRange(ed);
     const L = layout(ed);
     const a = r ? mdAt(L, ed, r.startContainer, r.startOffset) : -1, b = r ? mdAt(L, ed, r.endContainer, r.endOffset) : -1;
     const blocky = /^(DIV|P|H[1-6]|LI|BLOCKQUOTE|PRE|TABLE)$/;
-    for (const el of Array.from(ed.querySelectorAll('span:not([data-c]):not([data-bg]), font, div, p, a, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, code, pre, table, img'))) {
+    for (const el of Array.from(ed.querySelectorAll('span:not([data-c]):not([data-bg]):not([data-ref]), font, div, p, a, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, code, pre, table, img'))) {
       if (!el.isConnected) continue;
       if (blocky.test(el.tagName) && el.previousSibling) el.before(document.createElement('br'));
       el.replaceWith(...Array.from(el.childNodes));
@@ -611,6 +611,58 @@ export function caretLine(ed: Writer): { first: boolean; last: boolean } {
   const box = ed.getBoundingClientRect();
   const lh = parseFloat(getComputedStyle(ed).lineHeight) || rect.height;
   return { first: rect.top - box.top < lh * 0.75, last: box.bottom - rect.bottom < lh * 0.75 };
+}
+
+// ---- references drawn as chips while the block is written (notebook row 12, NB5) ------------------------------------------
+// A reference in the text is wrapped in <span class="nb-chip" data-ref="…">: the words inside are ordinary, editable text (the caret
+// moves through them, typing and Backspace work as anywhere), so the chip is only how they are drawn. It adds nothing to the
+// Markdown (`marksOf` writes nothing for it): the file keeps the plain reference. `refs` come from wb-core (`wb refs --plain`), the
+// same finder the page uses when the block is left, in the Markdown's offsets.
+
+export interface ChipRef { start: number; end: number; ref: string }
+
+/** Draw exactly `refs` as chips: a chip that no longer matches one is unwrapped, a reference with none is wrapped (when it sits in one
+ *  piece of text, not across a bold or a color). The caret stays where it was, in Markdown offsets. */
+export function chipRefs(ed: Writer, refs: ChipRef[]) {
+  const doc = ed.ownerDocument;
+  const L0 = layout(ed);
+  const want = new Map(refs.map(r => [`${r.start}:${r.end}`, r]));
+  const chips = Array.from(ed.querySelectorAll<HTMLElement>('span[data-ref]'));
+  const keep = new Set<string>();
+  let todo = false;
+  for (const c of chips) {
+    const key = `${L0.start.get(c)}:${L0.end.get(c)}`;
+    if (want.has(key) && c.dataset.ref === want.get(key)!.ref && !keep.has(key)) keep.add(key); else { todo = true; }
+  }
+  for (const k of want.keys()) if (!keep.has(k)) todo = true;
+  if (!todo) return;
+  const focused = doc.activeElement === ed;
+  const r0 = focused ? selectionRange(ed) : null;
+  const a = r0 ? mdAt(L0, ed, r0.startContainer, r0.startOffset) : -1, b = r0 ? mdAt(L0, ed, r0.endContainer, r0.endOffset) : -1;
+  const seen = new Set<string>();
+  for (const c of chips) {
+    const key = `${L0.start.get(c)}:${L0.end.get(c)}`;
+    if (keep.has(key) && !seen.has(key) && c.dataset.ref === want.get(key)!.ref) { seen.add(key); continue; }
+    c.replaceWith(...Array.from(c.childNodes));
+  }
+  ed.normalize();
+  for (const r of [...refs].sort((x, y) => y.start - x.start)) {
+    if (keep.has(`${r.start}:${r.end}`)) continue;
+    const L = layout(ed);
+    const t = L.texts.find(x => { const s0 = L.start.get(x)!; return r.start >= s0 && r.end <= s0 + clean(x.data).length && !x.parentElement?.closest('[data-ref]'); });
+    if (!t) continue;
+    const into = (k: number) => { let seen = 0, d = 0; while (d < t.data.length && seen < k) { if (clean(t.data[d]) !== '') seen++; d++; } return d; };
+    const o1 = into(r.start - L.start.get(t)!), o2 = into(r.end - L.start.get(t)!);
+    const mid = o1 > 0 ? t.splitText(o1) : t;
+    mid.splitText(o2 - o1);
+    const chip = doc.createElement('span');
+    chip.className = 'nb-chip nb-chip-live';
+    chip.dataset.ref = r.ref;
+    chip.title = `${r.ref} (Ctrl+click opens it)`;
+    mid.replaceWith(chip);
+    chip.append(mid);
+  }
+  if (r0) ed.setSelectionRange(a, b);
 }
 
 /** For a test and for the round trip: the Markdown a block gives back when it is opened and nothing is typed. */

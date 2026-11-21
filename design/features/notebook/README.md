@@ -75,8 +75,10 @@ folder, not as a Notebook tab.
 - **The @ chip in the file, NB5 (the person, 2026-11-21).** The file keeps the plain reference text (e.g. `Psalm 106:30`).
   The chip is how the editor draws a reference it recognises, so every recognised reference in a block is drawn as a
   chip, whether it was placed with `@` or typed; other Markdown tools show the words and the page index finds them as
-  before. `@` places a verse as its plain reference, and a page, a folder or Today as a `[[link]]`. While a block is being
-  written its references are plain text; the chip shows when the block is left. The chip and the compact chapter panel
+  before. `@` places a verse as its plain reference, and a page, a folder or Today as a `[[link]]`. A reference is drawn as a
+  chip while its block is being written too (the lead, 2026-11-21, NB6): the words inside the chip are ordinary text (the caret
+  walks through them, typing and Backspace work as anywhere), wb-core's finder (`wb refs --plain`) decides what is a reference a
+  moment after typing stops, and Ctrl+click opens it (test `chip_while_writing`). The chip and the compact chapter panel
   are one module (`ui/src/chapterpanel.ts`) that margin notes (row 40, NB8) reuse (test `at_verse_chip_popup`).
 
 ## The inventory (round 1)
@@ -190,7 +192,7 @@ person's existing pages read.
 | 11 | Selection bar | Mark ▾ on scripture in a page | The Legend's styles; the mark lands on those words in the reader too | The mark, as the reader's | `wb mark add …` (existing) | `mark_from_a_page_is_the_reader_s_mark` | [ ] approved 2026-11-20 |
 | 39 | Scripture in a page | Select words, Mark ▾, pick a style | Step by step (39a–39d): the bar opens above the selection; Mark ▾'s menu opens attached under the bar; the mark sits on the scripture's own words in the page; the reader shows the same mark | The mark, as the reader's | `wb mark add …` (existing) | `mark_from_a_page_step_by_step` | [ ] approved 2026-11-20 |
 | 40 | Scripture in a page | Select words, Margin note | The note opens in the margin beside the selected words, with a grip to drag it; it is that verse's margin note and shows in the reader; a reference in its words ("See 1 Cor 10:8") is found as in a page and shown as the link chip of row 12, which opens the compact chapter panel | `margin/<BOOK>/<chapter>.md` | `wb mark note REF "…"` (existing) | `margin_note_beside_the_words` | [ ] approved 2026-11-20 |
-| 12 | A line | `@` then a reference | A menu of verses, pages, folders and Today; a verse is placed as a **link chip** (12a). Clicking the chip opens a popup with the verse (12b) that can be dragged, grown to the whole chapter as a compact panel with a header (reference, ← →, Open in reader, close), sized to its text and snapped to a corner (12c), or sent to the side reader with Open beside (12d); Esc closes it and Back returns | The plain reference text (decided 2026-11-21) | `wb page link ID`; `wb refs` | `at_verse_chip_popup` | built (NB5) · approved 2026-11-20 |
+| 12 | A line | `@` then a reference | A menu of verses, pages, folders and Today; a verse is placed as a **link chip** (12a). Clicking the chip opens a popup with the verse (12b) that can be dragged, grown to the whole chapter as a compact panel with a header (reference, ← →, Open in reader, close), sized to its text and snapped to a corner (12c), or sent to the side reader with Open beside (12d); Esc closes it and Back returns | The plain reference text (decided 2026-11-21) | `wb page link ID`; `wb refs` | `at_verse_chip_popup` | built (NB5; Open beside and chips while writing NB6) · approved 2026-11-20 |
 
 ### The block handle, N5
 
