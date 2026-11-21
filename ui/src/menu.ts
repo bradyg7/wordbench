@@ -8,6 +8,8 @@ export type MenuItem = { id: string; label: string; icon?: string; iconClass?: s
 export type MenuGroup = { title?: string; items: MenuItem[]; folded?: boolean };
 export type MenuOptions = {
   groups: MenuGroup[];
+  /** The rows for what is typed, when they depend on it (the @ menu's verse); used instead of filtering `groups`. */
+  groupsFor?: (query: string) => MenuGroup[];
   at?: { x: number; y: number } | HTMLElement;   // a point, or the element the menu hangs under
   placeholder?: string;
   query?: string;
@@ -15,7 +17,7 @@ export type MenuOptions = {
   onPick: (item: MenuItem) => void;
   onClose?: () => void;
 };
-export type MenuHandle = { el: HTMLElement; close: () => void; setQuery: (q: string) => void; readonly open: boolean };
+export type MenuHandle = { el: HTMLElement; close: () => void; setQuery: (q: string) => void; /** Draw the rows again for what is typed (the rows' source changed). */ refresh: () => void; readonly open: boolean };
 
 const norm = (s: string) => s.toLowerCase();
 
@@ -65,7 +67,7 @@ export function openMenu(opts: MenuOptions): MenuHandle {
     list.textContent = '';
     rows = [];
     starts.clear();
-    const shown = filterGroups(opts.groups, input.value);
+    const shown = opts.groupsFor ? opts.groupsFor(input.value).filter(g => g.items.length) : filterGroups(opts.groups, input.value);
     if (!shown.length) {
       const none = document.createElement('div');
       none.className = 'wbm-none';
@@ -166,6 +168,7 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   const handle: MenuHandle = {
     el, close: () => close(),
     setQuery: (q) => { input.value = q; render(); place(); },
+    refresh: () => { const keep = hi; render(); place(); hi = Math.min(keep, Math.max(0, rows.length - 1)); mark(); },
     get open() { return isOpen; },
   };
   current = handle;

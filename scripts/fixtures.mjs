@@ -90,6 +90,8 @@ Names Numbers 25:11 here.`);
     ['interlinear', 'Numbers 25:11'], ['interlinear', 'Numbers 25:11-12'], ['interlinear', 'Numbers 25'],
     // the Scripture block's field previews what it names (notebook row 7)
     ['scripture', 'Joshua 1:9'], ['scripture', 'Numbers 25:11-13'], ['scripture', 'Numbers 25:18-26:1'],
+    // the link chip's chapter panel and the @ menu's verse (notebook row 12)
+    ['scripture', 'Numbers 24'], ['scripture', 'Numbers 25'], ['scripture', 'Numbers 26'], ['scripture', 'Numbers 25:11'],
     ['scripture', '2SA 21:2'], ['scripture', 'NUM 5:14'], ['text', 'Numbers 25:11', '--json'], ['text', '2SA 21:2', '--json'],
   ]) writeFileSync(new URL(`${named(argv)}.json`, help), wb(...argv, '--json'));
 } finally {

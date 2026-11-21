@@ -42,3 +42,21 @@
 .nb-sb-btn[aria-disabled=true] { opacity: .55; cursor: default; }
 .nb-sb-b { font-weight: 700; } .nb-sb-i { font-style: italic; } .nb-sb-u { text-decoration: underline; } .nb-sb-s { text-decoration: line-through; }
 .nb-sb-turn { margin-right: 4px; }
+
+/* The link chip and the compact chapter panel (row 12) */
+.nb-chip { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border: 1px solid var(--line, #d9cfc0); border-radius: 999px; background: var(--chip-bg, #f6e9dc); color: inherit; text-decoration: none; font-size: .92em; line-height: 1.5; white-space: nowrap; }
+.nb-chip:hover { background: var(--chip-hover, #f0dcc8); }
+.nb-chip svg { flex: none; opacity: .75; }
+.cp { position: fixed; z-index: 60; box-sizing: border-box; width: min(400px, calc(100vw - 24px)); max-height: calc(100vh - 68px); display: flex; flex-direction: column; background: var(--surface, #fff); border: 1px solid var(--line, #d9cfc0); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.18); overflow: hidden; }
+.cp.moving { user-select: none; }
+.cp-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line, #d9cfc0); cursor: grab; touch-action: none; font-family: var(--ui-font, Inter, sans-serif); font-size: 13px; }
+.cp-grip { width: 10px; height: 14px; background: radial-gradient(circle, currentColor 1px, transparent 1.5px) 0 0 / 5px 5px; opacity: .45; }
+.cp-fill { flex: 1; }
+.cp-btn { border: 0; background: none; color: inherit; cursor: pointer; padding: 2px 4px; border-radius: 4px; font-size: 16px; line-height: 1; }
+.cp-btn:hover:not(:disabled) { background: rgba(0,0,0,.07); }
+.cp-btn:disabled { opacity: .3; cursor: default; }
+.cp-open { border: 1px solid var(--line, #d9cfc0); background: var(--surface, #fff); color: inherit; border-radius: 6px; padding: 2px 8px; cursor: pointer; font: inherit; }
+.cp-body { overflow: auto; padding: 4px 10px 8px; font-family: var(--scripture-font, Literata, serif); font-size: 15px; line-height: 1.45; }
+.cp-verse { margin: 0; padding: 3px 6px; border-radius: 4px; }
+.cp-verse.cp-on { background: #f7e2a0; }
+.cp-vnum { font-weight: 600; font-size: .85em; opacity: .7; }

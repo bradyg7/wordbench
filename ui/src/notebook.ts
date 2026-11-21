@@ -14,6 +14,7 @@
 // Questions, and the Trash at its foot. A narrow one keeps its row of sections, and its Pages section is the tree.
 import { kindButton, kindResults } from './kinds';
 import { overviewBox } from './overview';
+import { refChip } from './chapterpanel';
 import { wb } from './api';
 import './notebook.css';
 import { registerPageWriter, flushPageWriters, removedPages } from './pagewriters';
@@ -1295,6 +1296,7 @@ ${l}` : ''}`;
       refs: e.refs || [],
       links: nbSettings.links ? e.links || [] : [],
       linkSuggest,
+      titles: async () => (await allTitles()).map(t => ({ id: t.id, title: t.title, insert: t.insert, kind: t.kind })),
       maybeSuggest: ta => { if (nbSettings.links) maybeSuggest(ta); },
       suggestKey: ev => !!suggestKey?.(ev),
       changed: () => changed(),
@@ -1542,9 +1544,10 @@ ${l}` : ''}`;
       if (s < at) continue;
       f.append(styled(chars.slice(at, s).join('')));
       if (mk.kind === 'ref') {
-        const a = h('a', 'ref', chars.slice(s, e).join(''));
-        a.href = mk.r.hash;
-        a.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); void verseCard(mk.r.ref, a, ev); };
+        // a reference in a page is a link chip (row 12): its words stay the reference; a click opens the chapter panel
+        const a = refChip(chars.slice(s, e).join(''), mk.r.ref, c => { c.href = mk.r.hash; });
+        const open = a.onclick as (ev: MouseEvent) => void;
+        a.onclick = ev => { if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); ev.stopPropagation(); void verseCard(mk.r.ref, a, ev); } else open(ev); };
         refHover(a, mk.r.ref);
         f.append(a);
       } else {

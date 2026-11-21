@@ -12,6 +12,7 @@ import { button, h, icon, placePill, popMenu, type Found } from './ui';
 import { drawVerses, openSplit, verseCard, type MarkedVerse } from './verses';
 import { threadChooser } from './panes';
 import { openMenu, type MenuGroup, type MenuItem } from './menu';
+import { atMenu } from './atmenu';
 import { scriptureField } from './scripturefield';
 import { caretAt, caretLine, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, undoTurn, type Turn, type Writer } from './blockedit';
 import { isToggleEnd, placeBlocks, toggleHead, toggleOf, wrapHead } from './toggles';
@@ -29,6 +30,8 @@ export interface Host {
   refs: Found[];
   links: any[];
   linkSuggest(ta: Writer): void;
+  /** Every page, day and folder with a title: what the @ menu offers besides a verse. */
+  titles(): Promise<{ id: string; title: string; insert: string; kind: string }[]>;
   maybeSuggest(ta: Writer): void;
   suggestKey(ev: KeyboardEvent): boolean;
   /** Something was written: the panes that show notes are drawn again. */
@@ -1009,6 +1012,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
       return;
     }
     if (isTyped && data1 === '/') slashMenu(ta, data, host, cur, finish, true);
+    if (isTyped && data1 === '@') atMenu(ta, host, data.id);
     if (host.template) blankMenu(ta, host);
     clearTimeout(timer);
     timer = window.setTimeout(save, 600);

@@ -25,6 +25,6 @@ export default defineConfig({
     { name: 'webkit-phone', use: { browserName: 'webkit', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } },
     { name: 'webkit-desktop', use: { browserName: 'webkit', viewport: { width: 1440, height: 900 } } },
     // The real app is WebView2 (Edge's Chromium, so the installed Edge is used): the writing specs run in it too (`npx playwright test --project chromium-editor`)
-    { name: 'chromium-editor', testMatch: ['writing.spec.ts', 'slash.spec.ts', 'notebook-*.spec.ts'], use: { browserName: 'chromium', channel: 'msedge', viewport: { width: 1440, height: 900 } } },
+    { name: 'chromium-editor', testMatch: ['writing.spec.ts', 'slash.spec.ts', 'atlink.spec.ts', 'notebook-*.spec.ts'], use: { browserName: 'chromium', channel: 'msedge', viewport: { width: 1440, height: 900 } } },
   ],
 });
