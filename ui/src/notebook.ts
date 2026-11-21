@@ -1036,12 +1036,12 @@ function createNotebookSession(fixed?: PageTab) {
     if (isT) { title.append(h('i', `dot big c-${e.color || ''}`), document.createTextNode(` ${e.title}`)); title.title = 'A thread: rename it from ⋯'; }
     else if (byBlocks && e.kind !== 'day' && bd!.title) editableTitle(title, e, bd!);
     else title.textContent = e.kind === 'day' ? e.title : e.title || (draft?.parent ? 'A new page' : draft?.question ? 'A new question' : 'A new page');
-    out.push(title);
+    if (!plainDraft(e)) out.push(title);
     if (tpl) out.push(templateAbout(), templateSettings(tpl));
     else if (isT) out.push(threadControls(e));
     else if (!e.template) out.push(chipsRow(e));
     if (e.id && byBlocks && !e.template) { const ov = await overviewBox(e.id); if (ov) out.push(ov); }
-    out.push(formatBar(e));
+    if (!plainDraft(e)) out.push(formatBar(e));
     if (byBlocks) {
       blocksData = bd;
       blockHostNow = blockHost(e);
@@ -1165,7 +1165,61 @@ function createNotebookSession(fixed?: PageTab) {
 
   /** The note's text: shown as a page (headings, lists, references and [[links]] working), and written as plain
    * Markdown in a box when clicked. It is saved as it is typed. */
+  /** A page not made yet, with no text to start from (NB2, row 3): it opens as a title and a first line. */
+  const plainDraft = (e: Entry) => !e.id && e.kind !== 'day' && !e.template && !!draft && !draft.day && !draft.text;
+
+  /** Row 3: the caret is in the title (a faint "Untitled"); Enter moves to the first line ("Press / for blocks"). The page
+   *  file is made when the writing is left or the first line is ended; typing never waits for it. */
+  function newPageForm(e: Entry): HTMLElement {
+    const wrapEl = h('div', 'nb-body nb-newpage');
+    const title = h('input', 'nb-new-title') as HTMLInputElement;
+    title.placeholder = 'Untitled';
+    title.setAttribute('aria-label', 'The page’s title');
+    const line = h('textarea', 'nb-new-line') as HTMLTextAreaElement;
+    line.rows = 1;
+    line.placeholder = 'Press / for blocks';
+    line.setAttribute('aria-label', 'The first line');
+    wrapEl.append(title, line);
+    let made = false;
+    const make = async (): Promise<boolean> => {
+      if (made) return true;
+      const t = title.value.trim(), l = line.value.trim();
+      if (!t && !l) return false;
+      made = true;
+      const text = `${t || 'Untitled'}${l ? `
+
+${l}` : ''}`;
+      try {
+        const d = draft;
+        const r: Entry = d?.parent ? await wb(['page', 'new', '-', '--parent', d.parent], text)
+          : await wb(['note', 'new', '-', ...(d?.at ? ['--at', d.at.anchor] : []), ...(d?.question ? ['--question'] : [])], text);
+        openId = r.id; draft = null; e.id = r.id;
+        changed();
+        return true;
+      } catch (x) { made = false; toast(String(x)); return false; }
+    };
+    title.onkeydown = ev => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); line.focus(); } };
+    line.onkeydown = ev => {
+      if (ev.key === 'Enter' && !ev.isComposing && !ev.shiftKey) {
+        ev.preventDefault();
+        void make().then(ok => { if (ok) { focusEditor = 'end'; void pane?.refresh?.(); } });
+      }
+    };
+    line.oninput = () => { line.style.height = 'auto'; line.style.height = `${line.scrollHeight}px`; };
+    wrapEl.addEventListener('focusout', ev => {
+      const to = (ev as FocusEvent).relatedTarget as Node | null;
+      if (to && wrapEl.contains(to)) return;
+      setTimeout(() => { if (!wrapEl.contains(document.activeElement) && !made) void make().then(ok => { if (ok) void pane?.refresh?.(); }); }, 150);
+    });
+    registerPageWriter(title, '', async () => { await make(); }, () => { made = true; });
+    const focus = () => { if (wrapEl.isConnected && !wrapEl.contains(document.activeElement)) title.focus(); };
+    requestAnimationFrame(focus);
+    setTimeout(focus, 150);
+    return wrapEl;
+  }
+
   function page(e: Entry): HTMLElement {
+    if (plainDraft(e)) return newPageForm(e);
     const wrapEl = h('div', 'nb-body');
     const view = h('div', 'nb-page');
     if (e.text) view.append(render(e.text, e.refs || [], nbSettings.links ? e.links || [] : []));
@@ -1236,9 +1290,9 @@ function createNotebookSession(fixed?: PageTab) {
       formatKey: (ev, ta) => {
         if (!(ev.ctrlKey || ev.metaKey)) return false;
         const k = ev.key.toLowerCase();
-        if (k !== 'b' && k !== 'i') return false;
+        if (k !== 'b' && k !== 'i' && k !== 'u') return false;
         ev.preventDefault();
-        wrap(ta, k === 'b' ? '**' : '*');
+        if (k === 'u') wrap(ta, '<u>', '</u>'); else wrap(ta, k === 'b' ? '**' : '*');
         ta.dispatchEvent(new Event('input'));
         return true;
       },
@@ -1277,7 +1331,7 @@ function createNotebookSession(fixed?: PageTab) {
     for (const p of above) {
       nav.append(h('span', 'nb-crumb-sep', '/'), button('link-btn nb-crumb', p.title || 'Untitled', () => openNote(p.id)));
     }
-    nav.append(h('span', 'nb-crumb-sep', '/'), h('span', 'nb-crumb here', e.title || (e.id ? 'Untitled' : 'A new page')));
+    nav.append(h('span', 'nb-crumb-sep', '/'), h('span', 'nb-crumb here', e.title || 'Untitled'));
     return nav;
   }
 
@@ -1507,11 +1561,11 @@ function createNotebookSession(fixed?: PageTab) {
   /** **bold** and *italics* in plain text, as elements (never as HTML). */
   function styled(s: string): DocumentFragment {
     const f = document.createDocumentFragment();
-    const re = /\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|_([^_\s][^_]*)_/g;
+    const re = /\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|_([^_\s][^_]*)_|<u>([^<]+)<\/u>/g;
     let at = 0, m: RegExpExecArray | null;
     while ((m = re.exec(s))) {
       f.append(s.slice(at, m.index));
-      f.append(m[1] ? h('strong', '', m[1]) : h('em', '', m[2] ?? m[3]));
+      f.append(m[1] ? h('strong', '', m[1]) : m[4] ? h('u', '', m[4]) : h('em', '', m[2] ?? m[3]));
       at = m.index + m[0].length;
     }
     f.append(s.slice(at));
@@ -1539,10 +1593,17 @@ function createNotebookSession(fixed?: PageTab) {
     ta.focus();
   }
 
-  function wrap(ta: HTMLTextAreaElement, mark: string) {
+  function wrap(ta: HTMLTextAreaElement, mark: string, close = mark) {
     const { selectionStart: s, selectionEnd: e, value: v } = ta;
-    const inside = v.slice(s, e) || 'text';
-    ta.value = v.slice(0, s) + mark + inside + mark + v.slice(e);
+    // already marked: the marks come off (Ctrl+B twice is bold and plain again)
+    if (e > s && v.slice(s - mark.length, s) === mark && v.slice(e, e + close.length) === close) {
+      ta.value = v.slice(0, s - mark.length) + v.slice(s, e) + v.slice(e + close.length);
+      ta.setSelectionRange(s - mark.length, e - mark.length);
+      ta.focus();
+      return;
+    }
+    const inside = v.slice(s, e) || (e > s ? '' : 'text');
+    ta.value = v.slice(0, s) + mark + inside + close + v.slice(e);
     ta.setSelectionRange(s + mark.length, s + mark.length + inside.length);
     ta.focus();
   }

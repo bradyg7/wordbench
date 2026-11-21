@@ -130,6 +130,28 @@ function blockUndoToast(wrap: HTMLElement, data: Blocks, host: Host) {
 // table are never empty; a lone `-` is an empty item, `---` is not.
 const blank = (t: string) => !t.replace(/^\s*(([-*+]|\d+[.)])(\s+\[[ xX]\])?|(>\s*)+|#{1,6})(\s+|$)/, '').trim();
 
+/** What the line looks like as it is typed (NB2, row 4): the characters stay, the box is drawn as the block they make. */
+export function shapeOf(v: string): string {
+  const h = /^(#{1,3}) /.exec(v);
+  if (h) return `h${h[1].length}`;
+  if (/^\s*[-*+] \[[ xX]\] /.test(v)) return 'todo';
+  if (/^\s*[-*+] /.test(v)) return 'bullet';
+  if (/^\s*\d+[.)] /.test(v)) return 'numbered';
+  if (/^> /.test(v)) return 'quote';
+  return '';
+}
+
+const NL = String.fromCharCode(10);
+/** Tab and Shift+Tab on a list item: two spaces in or out (the item's indent, as wb-core reads it). Returns the new text
+ *  and how far the caret moves, or null when the line is not a list item. */
+export function reindent(v: string, out: boolean): { text: string; shift: number } | null {
+  if (!/^\s*([-*+]|\d+[.)])(\s|$)/.test(v)) return null;
+  const first = v.split(NL)[0];
+  const lead = /^[ 	]*/.exec(first)![0].length;
+  if (out) { const k = Math.min(2, lead); return { text: v.split(NL).map(l => l.slice(Math.min(k, /^[ 	]*/.exec(l)![0].length))).join(NL), shift: -k }; }
+  return { text: v.split(NL).map(l => '  ' + l).join(NL), shift: 2 };
+}
+
 /** What a new block after this one starts with: a list goes on as a list. */
 function goesOn(text: string): string {
   const last = text.split('\n').filter(l => l.trim()).pop() || '';
@@ -857,8 +879,26 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     if (ta.value !== last && ta.value.trim() && !blank(ta.value)) throw new Error('Save or cancel the current block before deleting its page.');
     await finish();
   }, () => { gone = true; clearTimeout(timer); ta.disabled = true; });
+  // a shortcut that turned the typed characters into another form, kept so Ctrl+Z gives the typed characters back
+  let turned: { from: string; to: string } | null = null;
+  const shape = () => { ta.dataset.shape = shapeOf(ta.value); };
+  shape();
   ta.oninput = () => {
     fit();
+    if (turned && ta.value !== turned.to) turned = null;
+    if (ta.value === '[] ' && ta.selectionStart === 3) {
+      turned = { from: '[] ', to: '- [ ] ' };
+      ta.value = turned.to;
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    } else if (ta.value === '---' && !turned) {
+      // a divider at once: the line is kept as it is and a new line opens under it
+      shape();
+      void finish().then(() => {});
+      host.state.focus = null;
+      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '' };
+      return;
+    }
+    shape();
     slashMenu(ta, data, host, cur, finish);
     if (host.template) blankMenu(ta, host);
     clearTimeout(timer);
@@ -871,6 +911,26 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     const atStart = ta.selectionStart === 0 && ta.selectionEnd === 0;
     const inFence = /^(```|~~~)/.test(ta.value) && ta.value.trim().split('\n').length < 2 + (/\n(```|~~~)\s*$/.test(ta.value) ? 1 : 0);
     if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); ta.blur(); return; }
+    if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && ev.key.toLowerCase() === 'z' && turned && ta.value === turned.to) {
+      ev.preventDefault();
+      ta.value = turned.from;
+      turned = null;
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+      shape();
+      return;
+    }
+    if (ev.key === 'Tab' && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
+      const r = reindent(ta.value, ev.shiftKey);
+      if (r) {
+        ev.preventDefault();
+        const at = ta.selectionStart;
+        ta.value = r.text;
+        const to = Math.max(0, at + r.shift);
+        ta.setSelectionRange(to, to);
+        ta.dispatchEvent(new Event('input'));
+        return;
+      }
+    }
     if (ev.key === 'Enter' && ev.shiftKey && !ev.isComposing) {
       ev.preventDefault();
       insertBreak();
