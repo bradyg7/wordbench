@@ -11,6 +11,7 @@ import { toast } from './sheets';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
 import { drawVerses, openSplit, verseCard, type MarkedVerse } from './verses';
 import { threadChooser } from './panes';
+import { caretAt, caretLine, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, undoTurn, type Turn, type Writer } from './blockedit';
 
 export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string } }
 export interface Blocks { id: string; title: { text: string; start: number; end: number } | null; blocks: Blk[] }
@@ -23,11 +24,9 @@ export interface Host {
   text: string;
   refs: Found[];
   links: any[];
-  linkSuggest(ta: HTMLTextAreaElement): void;
-  maybeSuggest(ta: HTMLTextAreaElement): void;
+  linkSuggest(ta: Writer): void;
+  maybeSuggest(ta: Writer): void;
   suggestKey(ev: KeyboardEvent): boolean;
-  /** Ctrl+B, Ctrl+I and the like, as in the whole-text box; true when the key was used. */
-  formatKey(ev: KeyboardEvent, ta: HTMLTextAreaElement): boolean;
   /** Something was written: the panes that show notes are drawn again. */
   changed(): void;
   /** Draw the page again (after the writing ends). */
@@ -42,11 +41,11 @@ export interface Host {
 }
 
 /** Pending input belongs to one editor. Its data is refreshed separately on each draw. */
-type BlockFocus = { n: number; at: 'start' | 'end' } | { after: number; text: string } | null;
+type BlockFocus = { n: number; at: 'start' | 'end' | number } | { after: number; text: string } | null;
 type BlockData = { id: string; got: Promise<any> } | null;
 export interface BlockEditorState {
   focus: BlockFocus;
-  pending: { id: string; after: () => number; text: string } | null;
+  pending: { id: string; after: () => number; text: string; at?: 'start' | 'end' } | null;
   menuKey: ((ev: KeyboardEvent) => boolean) | null;
   menuClose: (() => void) | null;
   scripture: BlockData;
@@ -130,38 +129,6 @@ function blockUndoToast(wrap: HTMLElement, data: Blocks, host: Host) {
 // table are never empty; a lone `-` is an empty item, `---` is not.
 const blank = (t: string) => !t.replace(/^\s*(([-*+]|\d+[.)])(\s+\[[ xX]\])?|(>\s*)+|#{1,6})(\s+|$)/, '').trim();
 
-/** What the line looks like as it is typed (NB2, row 4): the characters stay, the box is drawn as the block they make. */
-export function shapeOf(v: string): string {
-  const h = /^(#{1,3}) /.exec(v);
-  if (h) return `h${h[1].length}`;
-  if (/^\s*[-*+] \[[ xX]\] /.test(v)) return 'todo';
-  if (/^\s*[-*+] /.test(v)) return 'bullet';
-  if (/^\s*\d+[.)] /.test(v)) return 'numbered';
-  if (/^> /.test(v)) return 'quote';
-  return '';
-}
-
-const NL = String.fromCharCode(10);
-/** Tab and Shift+Tab on a list item: two spaces in or out (the item's indent, as wb-core reads it). Returns the new text
- *  and how far the caret moves, or null when the line is not a list item. */
-export function reindent(v: string, out: boolean): { text: string; shift: number } | null {
-  if (!/^\s*([-*+]|\d+[.)])(\s|$)/.test(v)) return null;
-  const first = v.split(NL)[0];
-  const lead = /^[ 	]*/.exec(first)![0].length;
-  if (out) { const k = Math.min(2, lead); return { text: v.split(NL).map(l => l.slice(Math.min(k, /^[ 	]*/.exec(l)![0].length))).join(NL), shift: -k }; }
-  return { text: v.split(NL).map(l => '  ' + l).join(NL), shift: 2 };
-}
-
-/** What a new block after this one starts with: a list goes on as a list. */
-function goesOn(text: string): string {
-  const last = text.split('\n').filter(l => l.trim()).pop() || '';
-  const m = /^(\s*)([-*+])\s+\[[ xX]\]\s/.exec(last) || /^(\s*)([-*+])\s/.exec(last);
-  if (m) return `${m[1]}${m[2]} ${/\[[ xX]\]/.test(last.slice(0, m[0].length + 1)) ? '[ ] ' : ''}`;
-  const k = /^(\s*)(\d+)([.)])\s/.exec(last);
-  if (k) return `${k[1]}${Number(k[2]) + 1}${k[3]} `;
-  return '';
-}
-
 // ---- drawing ------------------------------------------------------------------------------------------------------------
 
 /** The page's blocks, each drawn as it reads, with a grip to drag it; and a line under them to write a new one. */
@@ -218,7 +185,7 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
   if (isStructured(b)) body.append(button('link-btn small nb-edit-structured', b.kind === 'table' ? 'Edit table' : 'Edit card', () => editBlock(data, b, el, host), 'pen'));
   body.onclick = ev => {
     const t = ev.target as HTMLElement;
-    if (t.closest('a, input, button, textarea, label, select, .nb-structured-editor')) return;
+    if (t.closest('a, input, button, textarea, label, select, .nb-structured-editor, .nb-block-input')) return;
     editBlock(data, b, el, host);
   };
   el.append(grip, body);
@@ -787,37 +754,29 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
 
 
 /** Write in a new block after block `after` (0: first, right under the title). */
-function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string) {
+function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string, at: 'start' | 'end' = 'end') {
   const el = h('div', 'nb-block nb-new-block');
   beforeEl.before(el);
-  startEdit(data, { n: 0, kind: 'paragraph', text, start: 0, end: 0 }, el, host, 'end', after);
+  startEdit(data, { n: 0, kind: 'paragraph', text, start: 0, end: 0 }, el, host, at, after);
 }
 
-/** Write in a block: its Markdown in a box, saved as it is typed (`wb block set`; a new block, `wb block add`). */
-function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start' | 'end', newAfter?: number) {
-  if (el.querySelector('textarea')) return;
-  const ta = h('textarea', 'nb-input nb-block-input') as HTMLTextAreaElement;
-  ta.value = b.text;
-  ta.spellcheck = true;
-  ta.rows = 1;
+/** Write in a block (NB2b): the block is its own contenteditable element, drawn as the block it is and styled as it is
+ *  typed; its Markdown is what is saved as it is typed (`wb block set`; a new block, `wb block add`). */
+function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start' | 'end' | number, newAfter?: number) {
+  if (el.querySelector('.nb-block-input')) return;
+  const ta = createEditor(b.text);
   ta.placeholder = 'Write, or type / for a block';
   el.classList.add('editing');
   const body = el.querySelector('.nb-block-body') || el;
-  // a line break inside the block: Shift+Enter (no button under the box, so no text moves: note 6ed1)
-  const insertBreak = () => {
-    const quoted = b.kind === 'quote' || ta.value.trimStart().startsWith('>');
-    ta.setRangeText(quoted ? '\n> ' : '\n', ta.selectionStart, ta.selectionEnd, 'end');
-    ta.focus();
-    ta.dispatchEvent(new Event('input'));
-  };
   body.replaceChildren(ta);
-  const fit = () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight}px`; };
   // where this writing is in the page: blocks n .. n+count-1 (from 1), or not written yet (after block `after`)
   const cur = { n: newAfter === undefined ? b.n : 0, count: 1, after: newAfter ?? 0 };
   let last = newAfter === undefined ? b.text : '';
   let timer = 0;
   let saving: Promise<void> = Promise.resolve();
   let gone = false;
+  // nothing is written back until something is typed: opening and leaving a block never touches its file
+  let dirty = newAfter !== undefined && !blank(b.text);
   // The page may have changed since it was drawn (another block's writing ending, a terminal): before the first
   // save, the block is found again by its text, so a change never lands on the wrong block.
   let found = false;
@@ -840,9 +799,9 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   const save = () => {
     clearTimeout(timer);
     saving = saving.then(async () => {
-      const text = ta.value;
+      const text = ta.value.replace(/\n+$/, '');
       // not while the / menu is open or a new page's name is asked for in the box
-      if (text === last || blank(text) || text.startsWith('/') || ta.classList.contains('asking')) return;
+      if (!dirty || text === last || blank(text) || text.startsWith('/') || ta.classList.contains('asking')) return;
       try {
         await findAgain();
         const r = cur.n
@@ -856,6 +815,8 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     });
     return saving;
   };
+  /** Something was changed without a key being typed (a shape, an indent): saved soon, like typing. */
+  const touched = () => { dirty = true; clearTimeout(timer); timer = window.setTimeout(save, 600); };
   /** The writing ends: saved, an emptied block removed, the page drawn again (and `then` started, if given). */
   const finish = async (then?: BlockFocus) => {
     if (gone) return;
@@ -874,91 +835,118 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     if (document.activeElement === ta) ta.blur();
     host.redraw();
   };
+  /** Backspace at the start of a plain block: its words join the end of the block before, which keeps its shape. */
+  const mergeUp = async () => {
+    const mine = ta.value;
+    if (/^(```|~~~|\|)/.test(mine)) return;
+    await save();
+    await findAgain();
+    if (cur.n < 2) return;
+    const now: Blk[] = (await wb(['page', 'blocks', data.id])).blocks;
+    const prev = now.find(x => x.n === cur.n - 1);
+    if (!prev || !['paragraph', 'heading', 'item', 'numbered', 'todo', 'quote'].includes(prev.kind) || isStructured(prev)) return;
+    if (gone) return;
+    gone = true;
+    clearTimeout(timer);
+    try {
+      await wb(['block', 'set', data.id, String(prev.n), '--count', String(1 + cur.count), '-'], prev.text + mine.replace(/\n+$/, ''));
+    } catch (x) { gone = false; toast(String(x)); return; }
+    host.state.menuClose?.();
+    host.state.focus = { n: prev.n, at: prev.text.length };
+    host.changed();
+    if (document.activeElement === ta) ta.blur();
+    host.redraw();
+  };
   registerPageWriter(ta, data.id, async () => {
     await save();
-    if (ta.value !== last && ta.value.trim() && !blank(ta.value)) throw new Error('Save or cancel the current block before deleting its page.');
+    if (ta.value.replace(/\n+$/, '') !== last && dirty && ta.value.trim() && !blank(ta.value)) throw new Error('Save or cancel the current block before deleting its page.');
     await finish();
   }, () => { gone = true; clearTimeout(timer); ta.disabled = true; });
   // a shortcut that turned the typed characters into another form, kept so Ctrl+Z gives the typed characters back
-  let turned: { from: string; to: string } | null = null;
-  const shape = () => { ta.dataset.shape = shapeOf(ta.value); };
-  shape();
-  ta.oninput = () => {
-    fit();
-    if (turned && ta.value !== turned.to) turned = null;
-    if (ta.value === '[] ' && ta.selectionStart === 3) {
-      turned = { from: '[] ', to: '- [ ] ' };
-      ta.value = turned.to;
-      ta.setSelectionRange(ta.value.length, ta.value.length);
-    } else if (ta.value === '---' && !turned) {
+  let turned: Turn = null;
+  ta.oninput = ev => {
+    dirty = true;
+    turned = null;
+    tidy(ta);
+    const data1 = (ev as InputEvent).data ?? null;
+    const isTyped = (ev as InputEvent).inputType === 'insertText';
+    if (isTyped) turned = lineStartShortcut(ta) ?? inlineShortcut(ta, data1);
+    if (isTyped && !turned && ta.value === '---') {
       // a divider at once: the line is kept as it is and a new line opens under it
-      shape();
       void finish().then(() => {});
       host.state.focus = null;
-      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '' };
+      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '', at: 'end' };
       return;
     }
-    shape();
     slashMenu(ta, data, host, cur, finish);
     if (host.template) blankMenu(ta, host);
     clearTimeout(timer);
     timer = window.setTimeout(save, 600);
     host.maybeSuggest(ta);
   };
+  ta.onpaste = ev => {
+    ev.preventDefault();
+    const text = ev.clipboardData?.getData('text/plain') || '';
+    if (text) { insertPlain(ta, text); ta.dispatchEvent(new Event('input')); }
+  };
   ta.onkeydown = ev => {
-    if (host.state.menuKey?.(ev) || host.suggestKey(ev) || host.formatKey(ev, ta)) return;
-    const atEnd = ta.selectionStart === ta.value.length && ta.selectionEnd === ta.value.length;
-    const atStart = ta.selectionStart === 0 && ta.selectionEnd === 0;
-    const inFence = /^(```|~~~)/.test(ta.value) && ta.value.trim().split('\n').length < 2 + (/\n(```|~~~)\s*$/.test(ta.value) ? 1 : 0);
+    if (host.state.menuKey?.(ev) || host.suggestKey(ev)) return;
+    if (ev.isComposing) return;
+    const mod = ev.ctrlKey || ev.metaKey;
+    const plainKey = !mod && !ev.altKey;
     if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); ta.blur(); return; }
-    if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && ev.key.toLowerCase() === 'z' && turned && ta.value === turned.to) {
-      ev.preventDefault();
-      ta.value = turned.from;
-      turned = null;
-      ta.setSelectionRange(ta.value.length, ta.value.length);
-      shape();
-      return;
-    }
-    if (ev.key === 'Tab' && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
-      const r = reindent(ta.value, ev.shiftKey);
-      if (r) {
+    if (mod && !ev.shiftKey && !ev.altKey) {
+      const k = ev.key.toLowerCase();
+      if (k === 'z' && turned && undoTurn(ta, turned)) {
         ev.preventDefault();
-        const at = ta.selectionStart;
-        ta.value = r.text;
-        const to = Math.max(0, at + r.shift);
-        ta.setSelectionRange(to, to);
-        ta.dispatchEvent(new Event('input'));
+        turned = null;
+        touched();
         return;
       }
+      if (k === 'b' || k === 'i' || k === 'u') { ev.preventDefault(); toggleMark(ta, k); return; }
     }
-    if (ev.key === 'Enter' && ev.shiftKey && !ev.isComposing) {
+    const c = caretAt(ta);
+    if (ev.key === 'Tab' && plainKey && indentList(ta, ev.shiftKey)) { ev.preventDefault(); touched(); return; }
+    if (ev.key === 'Enter' && ev.shiftKey && !mod && !ev.altKey) {
       ev.preventDefault();
-      insertBreak();
+      insertBreak(ta);
+      ta.dispatchEvent(new Event('input'));
       return;
     }
-    if (ev.key === 'Enter' && !ev.isComposing && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey && !ev.altKey && atEnd && !inFence && !ta.value.trim().startsWith('|') && !/^(```|~~~)/.test(ta.value)) {
+    if (ev.key === 'Enter' && plainKey && !ev.shiftKey) {
       ev.preventDefault();
-      // Enter in a list item with nothing in it ends the list; else a new block after this one
-      if (ta.value.trim() && blank(ta.value)) { ta.value = ''; fit(); return; }
-      if (!ta.value.trim()) return;
-      const next = goesOn(ta.value);
+      const fenced = shapeOf(ta) === '' && /^(```|~~~|\|)/.test(ta.value);
+      if (fenced) { insertBreak(ta); ta.dispatchEvent(new Event('input')); return; }
+      // Enter in a list item with nothing in it ends the list; else the block is split at the caret
+      if (isEmpty(ta)) { if (shapeOf(ta)) { clearShape(ta); touched(); } return; }
+      if (c.start && c.collapsed) return;
+      const next = continuation(ta);
+      const sp = splitAtCaret(ta);
+      if (!sp) return;
+      if (sp.rest) ta.value = sp.first;
+      dirty = true;
       void finish().then(() => {}); // the writing is saved and the page drawn again; the new block opens after it
       host.state.focus = null;
-      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: next };
+      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: next + sp.rest, at: sp.rest ? 'start' : 'end' };
       return;
     }
-    if (ev.key === 'Backspace' && !ta.value) {
+    if (ev.key === 'Backspace' && plainKey && c.start && c.collapsed) {
       ev.preventDefault();
-      const prev = (cur.n || cur.after + 1) - 1;
-      void finish(prev >= 1 ? { n: prev, at: 'end' } : null);
+      if (shapeOf(ta)) { clearShape(ta); touched(); return; }
+      if (isEmpty(ta)) {
+        const prev = (cur.n || cur.after + 1) - 1;
+        void finish(prev >= 1 ? { n: prev, at: 'end' } : null);
+        return;
+      }
+      void mergeUp();
       return;
     }
-    if (ev.key === 'ArrowUp' && atStart && (cur.n || cur.after) > 1) {
+    if (ev.key === 'ArrowUp' && plainKey && !ev.shiftKey && c.collapsed && caretLine(ta).first && (cur.n || cur.after + 1) > 1) {
       ev.preventDefault();
       void finish({ n: (cur.n || cur.after + 1) - 1, at: 'end' });
       return;
     }
-    if (ev.key === 'ArrowDown' && atEnd) {
+    if (ev.key === 'ArrowDown' && plainKey && !ev.shiftKey && c.collapsed && caretLine(ta).last) {
       const nextN = cur.n ? cur.n + cur.count : cur.after + 1;
       if (nextN <= data.blocks.length + (cur.n ? 0 : 1)) { ev.preventDefault(); void finish({ n: nextN, at: 'start' }); }
     }
@@ -967,11 +955,11 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     // a click on the format bar, the block menu or a [[link]] list keeps the box
     setTimeout(() => { if (document.activeElement === ta || !ta.isConnected || gone || ta.classList.contains('asking')) return; if (host.state.menuClose) return; void finish(); }, 150);
   };
-  fit();
   ta.focus();
-  const pos = at === 'start' ? 0 : ta.value.length;
+  const pos = at === 'start' ? contentStart(ta) : at === 'end' ? ta.value.length : Math.min(at, ta.value.length);
   ta.setSelectionRange(pos, pos);
   if (ta.value) slashMenu(ta, data, host, cur, finish);
+  if (dirty) touched();
 }
 
 /** After the page is drawn: start writing where Enter, Backspace or an arrow key asked. */
@@ -996,7 +984,7 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
     host.state.pending = null;
     const after = p.after();
     const next = wrap.querySelector<HTMLElement>(`.nb-block[data-n="${after + 1}"]`) || wrap.querySelector<HTMLElement>('.nb-block-add')!;
-    startNew(data, host, next, after, p.text);
+    startNew(data, host, next, after, p.text, p.at);
     return;
   }
   const f = host.state.focus;
@@ -1027,7 +1015,7 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
 }
 
 /** `/` at the start of an empty block opens the block menu; what is typed after it narrows the menu. */
-function slashMenu(ta: HTMLTextAreaElement, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>) {
+function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>) {
   const v = ta.value;
   if (!v.startsWith('/') || v.includes('\n') || v.length > 30) { host.state.menuClose?.(); return; }
   const typed = v.slice(1).trim().toLowerCase();
@@ -1124,7 +1112,7 @@ export const BLANKS: { key: string; what: string; ico: string }[] = [
   { key: '{reader}', what: 'The chapter in the reader then', ico: 'book' },
 ];
 
-function blankMenu(ta: HTMLTextAreaElement, host: Host) {
+function blankMenu(ta: Writer, host: Host) {
   const at = ta.selectionStart;
   if (ta.selectionEnd !== at || ta.value[at - 1] !== '{' || ta.value.startsWith('/')) return;
   host.state.menuClose?.();
@@ -1206,7 +1194,7 @@ function wordChooser(from: HTMLElement, pick: (id: string) => void, cancel: () =
   input.focus();
 }
 
-function askInside(ta: HTMLTextAreaElement, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>) {
+function askInside(ta: Writer, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>) {
   ta.value = '';
   ta.placeholder = 'The new page’s name, then Enter';
   ta.classList.add('asking');
@@ -1228,7 +1216,7 @@ function askInside(ta: HTMLTextAreaElement, host: Host, cur: { n: number; count:
     if (ta.isConnected) { const blk = ta.closest('.nb-new-block'); if (blk) blk.remove(); else ta.remove(); }
     try { await host.pageInside(title, after); } catch (x) { toast(String(x)); }
   };
-  ta.oninput = () => { ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight}px`; };
+  ta.oninput = () => {};
 }
 
 /** The format bar writes into the block being written; with none, a new block at the page's end. */

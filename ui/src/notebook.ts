@@ -19,6 +19,7 @@ import './notebook.css';
 import { registerPageWriter, flushPageWriters, removedPages } from './pagewriters';
 import { app, book, here, type At } from './app';
 import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, startWritingAtEnd, viewRow, type Blocks, type Host } from './blocks';
+import type { Writer } from './blockedit';
 import { dock, refHover, openHelp, openStrong, threadChooser } from './panes';
 import { layers } from './layers';
 import { threadDocuments } from './documents';
@@ -1131,7 +1132,7 @@ function createNotebookSession(fixed?: PageTab) {
   // list, > a quote; then a reference to the place picked in the reader, a [[link]] to another note, and ? to ask it.
   function formatBar(e: Entry): HTMLElement {
     const bar = h('div', 'nb-format');
-    const act = (label: string, what: string, fn: (ta: HTMLTextAreaElement) => void, cls = '') => {
+    const act = (label: string, what: string, fn: (ta: Writer) => void, cls = '') => {
       const b = h('button', `nb-fmt ${cls}`, label);
       b.title = what;
       b.setAttribute('aria-label', what);
@@ -1242,11 +1243,11 @@ ${l}` : ''}`;
   }
 
   /** The box being written in; with none, one is started: a new block at the page's end, or the whole-text box. */
-  const editText = () => pane?.el.querySelector<HTMLTextAreaElement>('.nb-editor textarea.nb-input') ?? (() => {
+  const editText = (): Writer | null => pane?.el.querySelector<Writer>('.nb-editor .nb-input') ?? (() => {
     const w = pane?.el.querySelector<HTMLElement>('.nb-editor .nb-body');
     if (w && blocksData && blockHostNow) startWritingAtEnd(w, blocksData, blockHostNow);
     else if (w && shown) startEditing(w, shown);
-    return pane?.el.querySelector<HTMLTextAreaElement>('.nb-editor textarea.nb-input') ?? null;
+    return pane?.el.querySelector<Writer>('.nb-editor .nb-input') ?? null;
   })();
 
   /** The destination already holds the exact place, so folding does not add a new place to a page. */
@@ -1287,15 +1288,6 @@ ${l}` : ''}`;
       linkSuggest,
       maybeSuggest: ta => { if (nbSettings.links) maybeSuggest(ta); },
       suggestKey: ev => !!suggestKey?.(ev),
-      formatKey: (ev, ta) => {
-        if (!(ev.ctrlKey || ev.metaKey)) return false;
-        const k = ev.key.toLowerCase();
-        if (k !== 'b' && k !== 'i' && k !== 'u') return false;
-        ev.preventDefault();
-        if (k === 'u') wrap(ta, '<u>', '</u>'); else wrap(ta, k === 'b' ? '**' : '*');
-        ta.dispatchEvent(new Event('input'));
-        return true;
-      },
       changed: () => changed(),
       redraw: () => void pane?.refresh?.(),
       open: id => openFromList(id),
@@ -1582,7 +1574,7 @@ ${l}` : ''}`;
 
   // ---- writing helpers for the format bar ------------------------------------------------------------------------------
 
-  function lines(ta: HTMLTextAreaElement, fn: (line: string) => string) {
+  function lines(ta: Writer, fn: (line: string) => string) {
     const v = ta.value;
     const s = v.lastIndexOf('\n', ta.selectionStart - 1) + 1;
     let e = v.indexOf('\n', ta.selectionEnd);
@@ -1593,7 +1585,7 @@ ${l}` : ''}`;
     ta.focus();
   }
 
-  function wrap(ta: HTMLTextAreaElement, mark: string, close = mark) {
+  function wrap(ta: Writer, mark: string, close = mark) {
     const { selectionStart: s, selectionEnd: e, value: v } = ta;
     // already marked: the marks come off (Ctrl+B twice is bold and plain again)
     if (e > s && v.slice(s - mark.length, s) === mark && v.slice(e, e + close.length) === close) {
@@ -1608,7 +1600,7 @@ ${l}` : ''}`;
     ta.focus();
   }
 
-  function insert(ta: HTMLTextAreaElement, text: string) {
+  function insert(ta: Writer, text: string) {
     const { selectionStart: s, selectionEnd: e, value: v } = ta;
     const pad = s > 0 && !/\s/.test(v[s - 1]) && !text.startsWith('[[') ? ' ' : '';
     ta.value = v.slice(0, s) + pad + text + v.slice(e);
@@ -1638,7 +1630,19 @@ ${l}` : ''}`;
   }
 
   /** Where the cursor of a text box is on the screen, measured on a copy of the box laid out the same way. */
-  function caretRect(ta: HTMLTextAreaElement): DOMRect {
+  function caretRect(ta: Writer): DOMRect {
+    if (ta.isContentEditable) {
+      // a block being written in place: the caret's own box
+      const sel = getSelection();
+      if (sel?.rangeCount) {
+        const probe = sel.getRangeAt(0).cloneRange();
+        probe.collapse(true);
+        const r = probe.getClientRects()[0];
+        if (r && r.height) return new DOMRect(r.left, r.top, 1, r.height);
+      }
+      const box = ta.getBoundingClientRect();
+      return new DOMRect(box.left, box.top, 1, parseFloat(getComputedStyle(ta).lineHeight) || 20);
+    }
     const cs = getComputedStyle(ta);
     const m = document.createElement('div');
     for (const p of ['boxSizing', 'width', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderLeftWidth', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'tabSize'] as const) m.style[p] = cs[p];
@@ -1653,7 +1657,7 @@ ${l}` : ''}`;
     return new DOMRect(r.left + k.left - ta.scrollLeft, r.top + k.top - ta.scrollTop, 1, k.height || parseFloat(cs.lineHeight) || 20);
   }
 
-  function linkSuggest(ta: HTMLTextAreaElement) {
+  function linkSuggest(ta: Writer) {
     void allTitles().then(all => {
       const before = ta.value.slice(0, ta.selectionStart);
       const open = before.lastIndexOf('[[');
@@ -1742,7 +1746,7 @@ ${l}` : ''}`;
     });
   }
 
-  function maybeSuggest(ta: HTMLTextAreaElement) {
+  function maybeSuggest(ta: Writer) {
     const before = ta.value.slice(0, ta.selectionStart);
     const open = before.lastIndexOf('[[');
     if (open < 0 || before.slice(open).includes(']]') || before.slice(open).includes('\n')) { suggestClose?.(); return; }
@@ -2306,7 +2310,7 @@ ${l}` : ''}`;
   }
 
   /** Insert a known template field at the current caret or replace its selection. */
-  function templateFieldPicker(target: () => HTMLInputElement | HTMLTextAreaElement | null): HTMLButtonElement {
+  function templateFieldPicker(target: () => HTMLInputElement | Writer | null): HTMLButtonElement {
     const pick = button('btn small nb-template-field', 'Insert field', () => {
       const text = target();
       if (!text) return;

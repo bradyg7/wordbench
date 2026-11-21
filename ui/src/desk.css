@@ -461,6 +461,19 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-block-input[data-shape=h2] { font-size: 22px; line-height: 30px; font-weight: 650; }
 .nb-block-input[data-shape=h3] { font-size: 18px; line-height: 26px; font-weight: 650; }
 .nb-block-input[data-shape=quote] { border-left: 3px solid var(--line); padding-left: 10px; }
+/* in place (NB2b): the block being written is drawn as the block it is; the marks are elements, not characters */
+.nb-block-input { position: relative; white-space: pre-wrap; overflow-wrap: anywhere; outline: 0; cursor: text; --lead: 0; }
+.nb-block-input strong, .nb-block-input b { font-weight: 700; }
+.nb-block-input em, .nb-block-input i { font-style: italic; }
+.nb-block-input u { text-decoration: underline; }
+.nb-block-input:empty::after { content: attr(data-placeholder); color: var(--muted); opacity: .7; pointer-events: none; }
+.nb-block-input[data-shape=h1], .nb-block-input[data-shape=h2], .nb-block-input[data-shape=h3] { margin-top: 14px; }
+.nb-block-input[data-shape=bullet], .nb-block-input[data-shape=numbered], .nb-block-input[data-shape=todo] { padding-left: calc(22px + var(--lead) * 8px); }
+.nb-block-input[data-shape=bullet]::before, .nb-block-input[data-shape=numbered]::before, .nb-block-input[data-shape=todo]::before { position: absolute; left: calc(var(--lead) * 8px); color: var(--muted); }
+.nb-block-input[data-shape=bullet]::before { content: "\2022"; left: calc(6px + var(--lead) * 8px); }
+.nb-block-input[data-shape=numbered]::before { content: attr(data-num) '.'; }
+.nb-block-input[data-shape=todo]::before { content: "\2610"; }
+.nb-block-input[data-shape=todo][data-checked=true]::before { content: "\2611"; }
 .nb-new-title { display: block; width: 100%; font: inherit; font-size: 32px; font-weight: 650; border: 0; background: transparent; outline: 0; padding: 0; margin: 0 0 12px; color: inherit; }
 .nb-new-title::placeholder { color: var(--muted, #bbb); opacity: .5; }
 .nb-new-line { display: block; width: 100%; font: inherit; font-size: 16px; line-height: 26px; border: 0; background: transparent; outline: 0; resize: none; padding: 0; color: inherit; }

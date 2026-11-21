@@ -1,0 +1,508 @@
+// The in-place block editor (Notebook NB2b, decided 2026-11-21). One block is one contenteditable element. What the
+// block is (heading, bullet, numbered, to-do, quote) is the element's shape, drawn by CSS as the block it makes; **bold**,
+// *italic* and <u>underline</u> are real <strong>, <em> and <u> elements, so text is styled as it is typed. The file form
+// is still the Markdown wb-core reads and writes: `value` is that Markdown, built from the elements, and loading a
+// block's Markdown builds the elements back. A block whose Markdown would not come back identical is drawn as plain
+// characters (a fence, a ####, anything unusual) so that opening and leaving a block never changes its file.
+//
+// The element also answers like a text box (`value`, `selectionStart`, `selectionEnd`, `setSelectionRange`,
+// `setRangeText`, `placeholder`, `disabled`), in Markdown offsets, so the /, [[ link and format-bar code that was written
+// for a text box keeps working on it.
+
+export type Writer = HTMLElement & Pick<HTMLTextAreaElement, 'value' | 'selectionStart' | 'selectionEnd' | 'setSelectionRange' | 'setRangeText' | 'placeholder' | 'disabled'>;
+
+interface St { shape: string; lead: string; mark: string; num: number; delim: string; box: string; rel: string }
+const states = new WeakMap<HTMLElement, St>();
+const NL = String.fromCharCode(10);
+const ZW = '\u200b';
+const LISTY = new Set(['bullet', 'todo', 'numbered']);
+const blankState = (): St => ({ shape: '', lead: '', mark: '-', num: 1, delim: '.', box: ' ', rel: '' });
+const clean = (s: string) => s.replace(/\u200b/g, '').replace(/\u00a0/g, ' ');
+
+export const shapeOf = (ed: HTMLElement) => (states.get(ed) ?? blankState()).shape;
+export const isListShape = (ed: HTMLElement) => LISTY.has(shapeOf(ed));
+
+function prefixOf(s: St): string {
+  switch (s.shape) {
+    case 'h1': return '# ';
+    case 'h2': return '## ';
+    case 'h3': return '### ';
+    case 'bullet': return `${s.lead}${s.mark} `;
+    case 'todo': return `${s.lead}${s.mark} [${s.box}] `;
+    case 'numbered': return `${s.lead}${s.num}${s.delim} `;
+    case 'quote': return '> ';
+    default: return '';
+  }
+}
+const contOf = (s: St) => (s.shape === 'quote' ? '> ' : LISTY.has(s.shape) ? s.lead + s.rel : '');
+
+function marksOf(el: Element): [string, string] {
+  switch (el.tagName) {
+    case 'STRONG': case 'B': return ['**', '**'];
+    case 'EM': case 'I': { const d = (el as HTMLElement).dataset.d || '*'; return [d, d]; }
+    case 'U': return ['<u>', '</u>'];
+    default: return ['', ''];
+  }
+}
+
+// ---- Markdown to elements -------------------------------------------------------------------------------------------
+
+function parseMd(md: string): { st: St; lines: string[] } {
+  const lines = md.split(NL);
+  const st = blankState();
+  const plain = { st: blankState(), lines };
+  const l0 = lines[0];
+  const rest = (lead: string): string[] | null => {
+    const more = lines.slice(1);
+    if (!more.length) return [];
+    const ws = /^[ \t]*/.exec(more[0])![0];
+    if (!ws.startsWith(lead) || !more.every(l => /^[ \t]*/.exec(l)![0] === ws)) return null;
+    st.rel = ws.slice(lead.length);
+    return more.map(l => l.slice(ws.length));
+  };
+  let m: RegExpExecArray | null;
+  if ((m = /^(#{1,3}) (.*)$/.exec(l0))) {
+    if (lines.length > 1) return plain;
+    st.shape = `h${m[1].length}`;
+    return { st, lines: [m[2]] };
+  }
+  if ((m = /^(\s*)([-*+]) \[([ xX])\] (.*)$/.exec(l0))) {
+    st.shape = 'todo'; st.lead = m[1]; st.mark = m[2]; st.box = m[3];
+    const more = rest(st.lead);
+    return more ? { st, lines: [m[4], ...more] } : plain;
+  }
+  if ((m = /^(\s*)([-*+]) (.*)$/.exec(l0))) {
+    st.shape = 'bullet'; st.lead = m[1]; st.mark = m[2];
+    const more = rest(st.lead);
+    return more ? { st, lines: [m[3], ...more] } : plain;
+  }
+  if ((m = /^(\s*)(\d+)([.)]) (.*)$/.exec(l0))) {
+    st.shape = 'numbered'; st.lead = m[1]; st.num = Number(m[2]); st.delim = m[3];
+    const more = rest(st.lead);
+    return more ? { st, lines: [m[4], ...more] } : plain;
+  }
+  if (/^> /.test(l0) && lines.every(l => /^> /.test(l))) { st.shape = 'quote'; return { st, lines: lines.map(l => l.slice(2)) }; }
+  return plain;
+}
+
+/** **bold**, *italic*, _italic_ and <u>underline</u> as elements; the rest stays text (the same marks the page draws). */
+function inlineNodes(s: string, marks: boolean): Node[] {
+  if (!marks) return s ? [document.createTextNode(s)] : [];
+  const out: Node[] = [];
+  const re = /\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|_([^_\s][^_]*)_|<u>([^<]+)<\/u>/g;
+  let at = 0, m: RegExpExecArray | null;
+  while ((m = re.exec(s))) {
+    if (m.index > at) out.push(document.createTextNode(s.slice(at, m.index)));
+    const el = document.createElement(m[1] ? 'strong' : m[4] ? 'u' : 'em');
+    el.textContent = m[1] ?? m[4] ?? m[2] ?? m[3];
+    if (!m[1] && !m[4]) el.dataset.d = m[2] !== undefined ? '*' : '_';
+    out.push(el);
+    at = m.index + m[0].length;
+  }
+  if (at < s.length) out.push(document.createTextNode(s.slice(at)));
+  return out;
+}
+
+function fill(ed: HTMLElement, lines: string[], marks: boolean) {
+  ed.replaceChildren();
+  lines.forEach((l, i) => {
+    if (i) ed.append(document.createElement('br'));
+    ed.append(...inlineNodes(l, marks));
+  });
+  // a last empty line needs its own mark: one break at the very end is only the box's placeholder
+  if (lines.length > 1 && lines[lines.length - 1] === '') ed.append(document.createElement('br'));
+}
+
+function sync(ed: HTMLElement) {
+  const st = states.get(ed) ?? blankState();
+  ed.dataset.shape = st.shape;
+  ed.dataset.num = String(st.num);
+  ed.dataset.checked = st.shape === 'todo' && st.box !== ' ' ? 'true' : 'false';
+  ed.style.setProperty('--lead', String(Math.min(st.lead.length, 24)));
+}
+
+/** Show a block's Markdown: its shape and marks as elements; plain characters when that would not read back the same. */
+function load(ed: HTMLElement, md: string) {
+  const { st, lines } = parseMd(md);
+  states.set(ed, st);
+  fill(ed, lines, true);
+  if (layout(ed).md !== md) {
+    states.set(ed, blankState());
+    fill(ed, md.split(NL), false);
+  }
+  sync(ed);
+}
+
+// ---- elements to Markdown, with where each piece is -----------------------------------------------------------------
+
+interface Layout { md: string; start: Map<Node, number>; end: Map<Element, number>; texts: Text[]; at: number }
+
+function layout(ed: HTMLElement): Layout {
+  const st = states.get(ed) ?? blankState();
+  const cont = contOf(st);
+  let out = prefixOf(st);
+  const L: Layout = { md: '', start: new Map(), end: new Map(), texts: [], at: out.length };
+  const walk = (n: Node, root: boolean) => {
+    for (const c of Array.from(n.childNodes)) {
+      L.start.set(c, out.length);
+      if (c.nodeType === 3) { L.texts.push(c as Text); out += clean((c as Text).data); continue; }
+      if (!(c instanceof HTMLElement)) continue;
+      if (c.tagName === 'BR') { if (!(root && c === n.lastChild)) out += NL + cont; continue; }
+      const [open, close] = marksOf(c);
+      out += open;
+      walk(c, false);
+      L.end.set(c, out.length);
+      out += close;
+    }
+  };
+  walk(ed, true);
+  L.end.set(ed, out.length);
+  L.md = out;
+  return L;
+}
+
+/** The Markdown of what is inside `node` alone (a half of a split block), with the continuation lines of this shape. */
+function inlineMd(node: Node, cont: string): string {
+  let out = '';
+  const walk = (n: Node, root: boolean) => {
+    for (const c of Array.from(n.childNodes)) {
+      if (c.nodeType === 3) { out += clean((c as Text).data); continue; }
+      if (!(c instanceof HTMLElement)) continue;
+      if (c.tagName === 'BR') { if (!(root && c === n.lastChild)) out += NL + cont; continue; }
+      const [open, close] = marksOf(c);
+      out += open; walk(c, false); out += close;
+    }
+  };
+  walk(node, true);
+  return out;
+}
+
+const selectionRange = (ed: HTMLElement): Range | null => {
+  const s = ed.ownerDocument.getSelection();
+  if (!s || !s.rangeCount) return null;
+  const r = s.getRangeAt(0);
+  return ed.contains(r.startContainer) && ed.contains(r.endContainer) ? r : null;
+};
+
+function mdAt(L: Layout, ed: HTMLElement, node: Node, off: number): number {
+  if (node.nodeType === 3) return (L.start.get(node) ?? L.md.length) + clean((node as Text).data.slice(0, off)).length;
+  const kids = node.childNodes;
+  if (off < kids.length) return L.start.get(kids[off]) ?? L.md.length;
+  return node === ed ? L.md.length : L.end.get(node as Element) ?? L.md.length;
+}
+
+function domAt(L: Layout, ed: HTMLElement, i: number): [Node, number] {
+  const into = (t: Text, k: number): [Node, number] => {
+    let seen = 0, d = 0;
+    const s = t.data;
+    while (d < s.length && seen < k) { if (clean(s[d]) !== '') seen++; d++; }
+    if (k === 0) while (d < s.length && s[d] === ZW) d++;
+    return [t, d];
+  };
+  for (const t of L.texts) {
+    const s = L.start.get(t)!, len = clean(t.data).length;
+    if (i >= s && i <= s + len) return into(t, i - s);
+  }
+  const next = L.texts.find(t => L.start.get(t)! >= i);
+  if (next) return into(next, 0);
+  const last = L.texts[L.texts.length - 1];
+  return last ? into(last, clean(last.data).length) : [ed, 0];
+}
+
+// ---- the element ---------------------------------------------------------------------------------------------------
+
+export function createEditor(md: string): Writer {
+  const ed = document.createElement('div') as unknown as Writer;
+  ed.className = 'nb-input nb-block-input';
+  ed.contentEditable = 'true';
+  ed.spellcheck = true;
+  ed.setAttribute('role', 'textbox');
+  ed.setAttribute('aria-multiline', 'true');
+  ed.setAttribute('aria-label', 'The block’s text');
+  Object.defineProperties(ed, {
+    value: { configurable: true, get: () => layout(ed).md, set: (v: string) => load(ed, v) },
+    selectionStart: { configurable: true, get: () => { const r = selectionRange(ed); const L = layout(ed); return r ? mdAt(L, ed, r.startContainer, r.startOffset) : L.md.length; } },
+    selectionEnd: { configurable: true, get: () => { const r = selectionRange(ed); const L = layout(ed); return r ? mdAt(L, ed, r.endContainer, r.endOffset) : L.md.length; } },
+    placeholder: { configurable: true, get: () => ed.dataset.placeholder || '', set: (v: string) => { ed.dataset.placeholder = v; } },
+    disabled: { configurable: true, get: () => ed.contentEditable !== 'true', set: (v: boolean) => { ed.contentEditable = v ? 'false' : 'true'; } },
+    setSelectionRange: {
+      configurable: true,
+      value: (a: number, b: number) => {
+        const L = layout(ed);
+        const s = ed.ownerDocument.getSelection();
+        if (!s) return;
+        if (ed.ownerDocument.activeElement !== ed) ed.focus({ preventScroll: true });
+        const r = ed.ownerDocument.createRange();
+        const [n1, o1] = domAt(L, ed, a);
+        const [n2, o2] = domAt(L, ed, b);
+        r.setStart(n1, o1);
+        r.setEnd(n2, o2);
+        s.removeAllRanges();
+        s.addRange(r);
+      },
+    },
+    setRangeText: {
+      configurable: true,
+      value: (text: string, s: number, e: number, mode?: string) => {
+        const v = ed.value;
+        ed.value = v.slice(0, s) + text + v.slice(e);
+        const at = mode === 'select' ? s : s + text.length;
+        ed.setSelectionRange(at, mode === 'select' ? s + text.length : at);
+      },
+    },
+  });
+  load(ed, md);
+  return ed;
+}
+
+/** Where the writing starts (after the shape's mark) and ends, in Markdown offsets. */
+export const contentStart = (ed: HTMLElement) => prefixOf(states.get(ed) ?? blankState()).length;
+export const contentEnd = (ed: Writer) => ed.value.length;
+/** Nothing typed in the block besides its shape. */
+export const isEmpty = (ed: HTMLElement) => layout(ed).md.length === contentStart(ed);
+/** Is the caret (collapsed) at the start of what is written, or at its end? */
+export function caretAt(ed: Writer): { start: boolean; end: boolean; collapsed: boolean } {
+  const a = ed.selectionStart, b = ed.selectionEnd;
+  return { start: a === b && a <= contentStart(ed), end: a === b && b >= ed.value.length, collapsed: a === b };
+}
+
+/** After an edit: a box with nothing in it is truly empty (so its hint shows), and elements the browser added are unwrapped. */
+export function tidy(ed: HTMLElement) {
+  const foreign = ed.querySelector('span, font, div, p, a, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, code, pre, table, img');
+  if (foreign) {
+    const w = ed as Writer;
+    const r = selectionRange(ed);
+    const L = layout(ed);
+    const a = r ? mdAt(L, ed, r.startContainer, r.startOffset) : -1, b = r ? mdAt(L, ed, r.endContainer, r.endOffset) : -1;
+    const blocky = /^(DIV|P|H[1-6]|LI|BLOCKQUOTE|PRE|TABLE)$/;
+    for (const el of Array.from(ed.querySelectorAll('span, font, div, p, a, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, code, pre, table, img'))) {
+      if (!el.isConnected) continue;
+      if (blocky.test(el.tagName) && el.previousSibling) el.before(document.createElement('br'));
+      el.replaceWith(...Array.from(el.childNodes));
+    }
+    for (const el of Array.from(ed.querySelectorAll('*'))) {
+      if (el instanceof HTMLElement && el.tagName !== 'BR') { el.removeAttribute('style'); el.removeAttribute('class'); }
+    }
+    ed.normalize();
+    if (r) w.setSelectionRange(a, b);
+  }
+  // nothing typed (the browser may leave an empty <strong> or a break behind): the box is truly empty, so its hint shows and
+  // the next words are not caught in a mark that held nothing
+  if (ed.firstChild && clean(ed.textContent || '') === '' && ed.querySelectorAll('br').length <= 1) ed.replaceChildren();
+}
+
+// ---- what typing does ------------------------------------------------------------------------------------------------
+
+/** What was typed, and what it was turned into: Ctrl+Z gives the typed characters back. */
+export type Turn = { kind: 'line'; typed: string; to: string } | { kind: 'inline'; typed: string; el: HTMLElement } | null;
+
+export function setShape(ed: HTMLElement, shape: string, over: Partial<St> = {}) {
+  const st = { ...(states.get(ed) ?? blankState()), ...over, shape };
+  if (!LISTY.has(shape)) { st.lead = ''; st.rel = ''; }
+  states.set(ed, st);
+  sync(ed);
+}
+
+/** `# `, `- `, `1. `, `> `, `[] ` typed at the start of a block turn it into that block at once. */
+export function lineStartShortcut(ed: Writer): Turn {
+  const st = states.get(ed) ?? blankState();
+  if (st.shape !== '' && st.shape !== 'bullet') return null;
+  const r = selectionRange(ed);
+  if (!r || !r.collapsed) return null;
+  const L = layout(ed);
+  const caret = mdAt(L, ed, r.startContainer, r.startOffset);
+  const pl = prefixOf(st).length;
+  const before = L.md.slice(pl, caret);
+  let m: RegExpExecArray | null;
+  let to: [string, Partial<St>] | null = null;
+  if ((m = /^\[( ?)\] $/.exec(before))) to = ['todo', { mark: st.shape === 'bullet' ? st.mark : '-', box: ' ' }];
+  else if (st.shape === '') {
+    if ((m = /^(#{1,3}) $/.exec(before))) to = [`h${m[1].length}`, {}];
+    else if ((m = /^([-*+]) $/.exec(before))) to = ['bullet', { mark: m[1] }];
+    else if ((m = /^(\d{1,9})([.)]) $/.exec(before))) to = ['numbered', { num: Number(m[1]), delim: m[2] }];
+    else if (/^> $/.test(before)) to = ['quote', {}];
+  }
+  if (!to) return null;
+  // the characters typed go out of the text, the block takes their shape
+  const [n1, o1] = domAt(L, ed, pl);
+  const cut = document.createRange();
+  cut.setStart(n1, o1);
+  cut.setEnd(r.startContainer, r.startOffset);
+  cut.deleteContents();
+  setShape(ed, to[0], to[1]);
+  ed.setSelectionRange(contentStart(ed), contentStart(ed));
+  return { kind: 'line', typed: before, to: layout(ed).md };
+}
+
+/** `**word**`, `*word*`, `_word_` and `<u>word</u>`: when the closing mark is typed, the words are styled in place. */
+export function inlineShortcut(ed: Writer, data: string | null): Turn {
+  if (!data || !/[*_>]/.test(data)) return null;
+  const r = selectionRange(ed);
+  if (!r || !r.collapsed || r.startContainer.nodeType !== 3) return null;
+  const t = r.startContainer as Text, off = r.startOffset;
+  const before = t.data.slice(0, off);
+  const tries: [RegExp, string, string | null][] = [
+    [/\*\*([^*\s](?:[^*]*[^*\s])?)\*\*$/, 'strong', null],
+    [/(?<!\*)\*([^*\s](?:[^*]*[^*\s])?)\*$/, 'em', '*'],
+    [/(?<![\w_])_([^_\s](?:[^_]*[^_\s])?)_$/, 'em', '_'],
+    [/<u>([^<]+)<\/u>$/, 'u', null],
+  ];
+  for (const [re, tag, d] of tries) {
+    const m = re.exec(before);
+    if (!m) continue;
+    const el = document.createElement(tag);
+    el.textContent = m[1];
+    if (d) el.dataset.d = d;
+    const after = document.createTextNode(ZW + t.data.slice(off));
+    t.data = before.slice(0, m.index);
+    t.after(el, after);
+    const s = ed.ownerDocument.getSelection()!;
+    const nr = ed.ownerDocument.createRange();
+    nr.setStart(after, 1);
+    nr.collapse(true);
+    s.removeAllRanges();
+    s.addRange(nr);
+    return { kind: 'inline', typed: m[0], el };
+  }
+  return null;
+}
+
+/** Ctrl+Z straight after a shortcut: the typed characters come back. */
+export function undoTurn(ed: Writer, turn: NonNullable<Turn>): boolean {
+  if (turn.kind === 'line') {
+    if (layout(ed).md !== turn.to) return false;
+    const body = layout(ed).md.slice(contentStart(ed));
+    setShape(ed, '');
+    ed.value = turn.typed + body;
+    ed.setSelectionRange(turn.typed.length, turn.typed.length);
+    return true;
+  }
+  if (!turn.el.isConnected) return false;
+  const t = document.createTextNode(turn.typed);
+  turn.el.replaceWith(t);
+  const nr = document.createRange();
+  nr.setStart(t, t.data.length);
+  nr.collapse(true);
+  const s = ed.ownerDocument.getSelection()!;
+  s.removeAllRanges();
+  s.addRange(nr);
+  return true;
+}
+
+/** Ctrl+B, Ctrl+I, Ctrl+U: on the words selected, or on the words typed next. */
+export function toggleMark(ed: HTMLElement, key: 'b' | 'i' | 'u') {
+  ed.ownerDocument.execCommand(key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline');
+}
+
+/** Tab and Shift+Tab on a list item: its indent, two spaces in or out. False when the block is not a list item. */
+export function indentList(ed: Writer, out: boolean): boolean {
+  const st = states.get(ed);
+  if (!st || !LISTY.has(st.shape)) return false;
+  const a = ed.selectionStart, b = ed.selectionEnd;
+  const was = st.lead.length;
+  const lead = out ? st.lead.slice(Math.min(2, st.lead.length)) : '  ' + st.lead;
+  states.set(ed, { ...st, lead });
+  sync(ed);
+  const shift = lead.length - was;
+  ed.setSelectionRange(Math.max(contentStart(ed), a + shift), Math.max(contentStart(ed), b + shift));
+  return true;
+}
+
+/** The block's shape goes (a list is left, a heading is a plain line again); its words stay. */
+export function clearShape(ed: Writer) {
+  const body = ed.value.slice(contentStart(ed));
+  const at = Math.max(0, ed.selectionStart - contentStart(ed));
+  setShape(ed, '');
+  ed.value = body;
+  ed.setSelectionRange(at, at);
+}
+
+/** A line break inside the block (Shift+Enter): in a quote the next line is quoted too. */
+export function insertBreak(ed: HTMLElement) {
+  const r = selectionRange(ed);
+  if (!r) return;
+  // the browser's own line break keeps its caret and its placeholder break right
+  if (ed.ownerDocument.execCommand('insertLineBreak')) return;
+  r.deleteContents();
+  const br = document.createElement('br');
+  r.insertNode(br);
+  if (br === ed.lastChild || (br.parentNode !== ed && br.parentNode?.lastChild === br && br.parentNode.parentNode === ed)) br.after(document.createElement('br'));
+  const nr = document.createRange();
+  nr.setStartAfter(br);
+  nr.collapse(true);
+  const s = ed.ownerDocument.getSelection()!;
+  s.removeAllRanges();
+  s.addRange(nr);
+}
+
+/** Text pasted or dropped in is plain text, never someone else's styling. */
+export function insertPlain(ed: HTMLElement, text: string) {
+  const r = selectionRange(ed);
+  if (!r) return;
+  r.deleteContents();
+  const lines = text.replace(/\r\n?/g, NL).split(NL);
+  let last: Node | null = null;
+  lines.forEach((l, i) => {
+    if (i) { const br = document.createElement('br'); r.insertNode(br); r.setStartAfter(br); last = br; }
+    if (l) { const t = document.createTextNode(l); r.insertNode(t); r.setStartAfter(t); last = t; }
+  });
+  if (last) {
+    r.setStartAfter(last);
+    r.collapse(true);
+    const s = ed.ownerDocument.getSelection()!;
+    s.removeAllRanges();
+    s.addRange(r);
+  }
+}
+
+/** Enter in the middle of a block: what is before the caret stays, what follows goes to a new block (with the list's
+ *  mark, if this is a list). Null when there is nothing to split off. */
+export function splitAtCaret(ed: Writer): { first: string; rest: string } | null {
+  const r = selectionRange(ed);
+  if (!r) return null;
+  if (!r.collapsed) r.deleteContents();
+  const st = states.get(ed) ?? blankState();
+  const cont = contOf(st);
+  const before = ed.ownerDocument.createRange();
+  before.setStart(ed, 0);
+  before.setEnd(r.startContainer, r.startOffset);
+  const after = ed.ownerDocument.createRange();
+  after.setStart(r.startContainer, r.startOffset);
+  after.setEnd(ed, ed.childNodes.length);
+  const tmp = (rg: Range) => { const d = document.createElement('div'); d.append(rg.cloneContents()); return inlineMd(d, cont); };
+  const first = prefixOf(st) + tmp(before);
+  const rest = tmp(after);
+  return { first, rest };
+}
+
+/** The markers a new block after this one starts with, from this block's Markdown (a list goes on as a list). */
+export function continuation(ed: HTMLElement): string {
+  const st = states.get(ed) ?? blankState();
+  if (st.shape === 'bullet') return `${st.lead}${st.mark} `;
+  if (st.shape === 'todo') return `${st.lead}${st.mark} [ ] `;
+  if (st.shape === 'numbered') return `${st.lead}${st.num + 1}${st.delim} `;
+  return '';
+}
+
+/** Is the caret on the block's first line, or its last? (↑ and ↓ cross to the next block from there.) */
+export function caretLine(ed: Writer): { first: boolean; last: boolean } {
+  const r = selectionRange(ed);
+  const c = caretAt(ed);
+  if (!r) return { first: c.start, last: c.end };
+  const probe = r.cloneRange();
+  probe.collapse(true);
+  let rect: DOMRect | undefined = probe.getClientRects()[0];
+  if (!rect || !rect.height) {
+    // after a line break the browser may give no box for the caret; the offsets decide
+    return { first: !ed.value.slice(0, ed.selectionStart).includes(NL), last: !ed.value.slice(ed.selectionEnd).includes(NL) };
+  }
+  const box = ed.getBoundingClientRect();
+  const lh = parseFloat(getComputedStyle(ed).lineHeight) || rect.height;
+  return { first: rect.top - box.top < lh * 0.75, last: box.bottom - rect.bottom < lh * 0.75 };
+}
+
+/** For a test and for the round trip: the Markdown a block gives back when it is opened and nothing is typed. */
+export function roundTrip(md: string): string {
+  const ed = createEditor(md);
+  return ed.value;
+}

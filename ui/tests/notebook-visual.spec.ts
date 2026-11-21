@@ -64,6 +64,7 @@ test('table fields and editor Undo work with keyboard and touch', async ({ page,
   await block.getByRole('button', { name: 'Remove column 3' }).click();
   await block.getByRole('button', { name: 'Save block' }).click();
   await expect(block.getByRole('cell', { name: 'Edited' })).toBeVisible();
+  await expect(block.getByRole('button', { name: 'Save block' })).toHaveCount(0);
 
   const grip = editor.getByRole('button', { name: 'Actions for block 2' });
   if (hasTouch) await grip.tap(); else await grip.press('Enter');
@@ -80,7 +81,7 @@ test('table fields and editor Undo work with keyboard and touch', async ({ page,
   const input = editor.locator('.nb-block-input');
   await input.press('Shift+Enter');
   await input.type('New line');
-  await expect(input).toHaveValue('First block\nNew line');
+  await expect.poll(() => input.evaluate(e => (e as any).value)).toBe('First block\nNew line');
 });
 
 test('Notebook filters show the exact view command and its result', async ({ page }) => {
