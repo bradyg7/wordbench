@@ -919,7 +919,21 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
       if (fenced) { insertBreak(ta); ta.dispatchEvent(new Event('input')); return; }
       // Enter in a list item with nothing in it ends the list; else the block is split at the caret
       if (isEmpty(ta)) { if (shapeOf(ta)) { clearShape(ta); touched(); } return; }
-      if (c.start && c.collapsed) return;
+      if (c.start && c.collapsed) {
+        // Enter at the start of a block with words: an empty block opens above, the caret stays with the words (decided 2026-11-21).
+        // An empty block is not a thing the file can hold, so it is a line above that becomes a new block when it is clicked.
+        const gap = h('div', 'nb-block nb-new-block nb-gap');
+        gap.setAttribute('aria-label', 'An empty block above');
+        gap.append(h('div', 'nb-gap-line'));
+        gap.onmousedown = e2 => {
+          e2.preventDefault();
+          void finish();
+          host.state.focus = null;
+          host.state.pending = { id: data.id, after: () => (cur.n || cur.after + 1) - 1, text: '', at: 'end' };
+        };
+        el.before(gap);
+        return;
+      }
       const next = continuation(ta);
       const sp = splitAtCaret(ta);
       if (!sp) return;

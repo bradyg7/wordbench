@@ -19,7 +19,7 @@ import './notebook.css';
 import { registerPageWriter, flushPageWriters, removedPages } from './pagewriters';
 import { app, book, here, type At } from './app';
 import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, startWritingAtEnd, viewRow, type Blocks, type Host } from './blocks';
-import type { Writer } from './blockedit';
+import { createEditor, inlineShortcut, insertBreak, insertPlain, lineStartShortcut, tidy, toggleMark, type Writer } from './blockedit';
 import { dock, refHover, openHelp, openStrong, threadChooser } from './panes';
 import { layers } from './layers';
 import { threadDocuments } from './documents';
@@ -1176,8 +1176,8 @@ function createNotebookSession(fixed?: PageTab) {
     const title = h('input', 'nb-new-title') as HTMLInputElement;
     title.placeholder = 'Untitled';
     title.setAttribute('aria-label', 'The page’s title');
-    const line = h('textarea', 'nb-new-line') as HTMLTextAreaElement;
-    line.rows = 1;
+    const line = createEditor('');
+    line.classList.add('nb-new-line');
     line.placeholder = 'Press / for blocks';
     line.setAttribute('aria-label', 'The first line');
     wrapEl.append(title, line);
@@ -1201,12 +1201,21 @@ ${l}` : ''}`;
     };
     title.onkeydown = ev => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); line.focus(); } };
     line.onkeydown = ev => {
-      if (ev.key === 'Enter' && !ev.isComposing && !ev.shiftKey) {
+      if (ev.isComposing) return;
+      const mod = ev.ctrlKey || ev.metaKey;
+      const k = ev.key.toLowerCase();
+      if (mod && !ev.shiftKey && !ev.altKey && (k === 'b' || k === 'i' || k === 'u')) { ev.preventDefault(); toggleMark(line, k); return; }
+      if (ev.key === 'Enter' && !mod && !ev.shiftKey) {
         ev.preventDefault();
         void make().then(ok => { if (ok) { focusEditor = 'end'; void pane?.refresh?.(); } });
-      }
+      } else if (ev.key === 'Enter' && ev.shiftKey && !mod) { ev.preventDefault(); insertBreak(line); }
     };
-    line.oninput = () => { line.style.height = 'auto'; line.style.height = `${line.scrollHeight}px`; };
+    line.onpaste = ev => { ev.preventDefault(); const t = ev.clipboardData?.getData('text/plain') || ''; if (t) insertPlain(line, t); };
+    // the first line is a block like any other: # and ** style as they are typed
+    line.oninput = ev => {
+      tidy(line);
+      if ((ev as InputEvent).inputType === 'insertText') lineStartShortcut(line) ?? inlineShortcut(line, (ev as InputEvent).data ?? null);
+    };
     wrapEl.addEventListener('focusout', ev => {
       const to = (ev as FocusEvent).relatedTarget as Node | null;
       if (to && wrapEl.contains(to)) return;
@@ -1231,7 +1240,7 @@ ${l}` : ''}`;
     };
     wrapEl.append(view);
     // a new note or a blank page opens ready to type
-    if (!e.id || !e.text) requestAnimationFrame(() => { if (wrapEl.isConnected && !wrapEl.querySelector('textarea')) startEditing(wrapEl, e); });
+    if (!e.id || !e.text) requestAnimationFrame(() => { if (wrapEl.isConnected && !wrapEl.querySelector('.nb-input')) startEditing(wrapEl, e); });
     return wrapEl;
   }
 
@@ -1371,13 +1380,12 @@ ${l}` : ''}`;
   let saving: Promise<void> = Promise.resolve();
 
   function startEditing(wrapEl: HTMLElement, e: Entry) {
-    if (wrapEl.querySelector('textarea')) return;
-    const ta = h('textarea', 'nb-input') as HTMLTextAreaElement;
-    ta.value = e.text;
+    if (wrapEl.querySelector('.nb-input')) return;
+    // the whole text of a page with no blocks yet (a draft, a day not written): the same in-place editor as a block
+    const ta = createEditor(e.text);
+    ta.classList.add('nb-whole');
     ta.placeholder = placeholderFor(e);
-    ta.spellcheck = true;
     wrapEl.replaceChildren(ta);
-    const fit = () => { ta.style.height = 'auto'; ta.style.height = `${Math.max(160, ta.scrollHeight + 2)}px`; };
     const titleEl = pane?.el.querySelector<HTMLElement>('.nb-editor .nb-title');
     const firstTitle = e.title;
     let id = e.id;
@@ -1407,8 +1415,9 @@ ${l}` : ''}`;
       await save();
       if (ta.value.trim() !== last.trim()) throw new Error('Save or cancel the current page text before deleting it.');
     }, () => { clearTimeout(timer); ta.disabled = true; });
-    ta.oninput = () => {
-      fit();
+    ta.oninput = ev => {
+      tidy(ta);
+      if ((ev as InputEvent).inputType === 'insertText') inlineShortcut(ta, (ev as InputEvent).data ?? null);
       if (titleEl && e.kind !== 'day') titleEl.textContent = titleOf(ta.value) || (e.kind === 'question' ? 'A new question' : 'A new page');
       clearTimeout(timer);
       timer = window.setTimeout(save, 700);
@@ -1416,10 +1425,13 @@ ${l}` : ''}`;
     };
     ta.onkeydown = ev => {
       if (suggestKey?.(ev)) return;
-      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'b') { ev.preventDefault(); wrap(ta, '**'); ta.dispatchEvent(new Event('input')); }
-      else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'i') { ev.preventDefault(); wrap(ta, '*'); ta.dispatchEvent(new Event('input')); }
+      if (ev.isComposing) return;
+      const k = ev.key.toLowerCase();
+      if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && !ev.altKey && (k === 'b' || k === 'i' || k === 'u')) { ev.preventDefault(); toggleMark(ta, k); }
+      else if (ev.key === 'Enter' && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { ev.preventDefault(); insertBreak(ta); ta.dispatchEvent(new Event('input')); }
       else if (ev.key === 'Escape' || ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter')) { ev.preventDefault(); ev.stopPropagation(); ta.blur(); }
     };
+    ta.onpaste = ev => { ev.preventDefault(); const t = ev.clipboardData?.getData('text/plain') || ''; if (t) { insertPlain(ta, t); ta.dispatchEvent(new Event('input')); } };
     ta.onblur = () => {
       // a click on the format bar or a suggestion keeps the box
       setTimeout(async () => {
@@ -1430,7 +1442,6 @@ ${l}` : ''}`;
         void pane?.refresh?.();
       }, 120);
     };
-    fit();
     ta.focus();
     if (focusEditor === 'end' || !e.text) ta.setSelectionRange(ta.value.length, ta.value.length);
     else ta.setSelectionRange(ta.value.length, ta.value.length);
@@ -1464,7 +1475,7 @@ ${l}` : ''}`;
     } else if (f === 'end') {
       const w = edEl.querySelector<HTMLElement>('.nb-body');
       if (w && blocksData && blockHostNow) startWritingAtEnd(w, blocksData, blockHostNow);
-      else if (w && shown && !w.querySelector('textarea')) startEditing(w, shown);
+      else if (w && shown && !w.querySelector('.nb-input')) startEditing(w, shown);
       return;
     }
     // a page drawn block by block: the writing Enter, Backspace or an arrow key asked for goes on in its block

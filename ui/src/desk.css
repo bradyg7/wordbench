@@ -477,6 +477,10 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-new-title { display: block; width: 100%; font: inherit; font-size: 32px; font-weight: 650; border: 0; background: transparent; outline: 0; padding: 0; margin: 0 0 12px; color: inherit; }
 .nb-new-title::placeholder { color: var(--muted, #bbb); opacity: .5; }
 .nb-new-line { display: block; width: 100%; font: inherit; font-size: 16px; line-height: 26px; border: 0; background: transparent; outline: 0; resize: none; padding: 0; color: inherit; }
+.nb-block-input.nb-whole.nb-input { min-height: 160px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); overflow: auto; }
+.nb-block-input.nb-whole.nb-input:focus { border: 1px solid var(--accent); }
+.nb-gap { cursor: text; }
+.nb-gap .nb-gap-line { min-height: 26px; }
 .nb-block-input.asking { box-shadow: 0 1px 0 0 var(--line); }
 .nb-block-add { padding: 6px 0; cursor: text; font: var(--type-small); }
 .nb-block-add:hover { color: var(--fg); }

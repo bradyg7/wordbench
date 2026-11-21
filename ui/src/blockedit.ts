@@ -37,6 +37,8 @@ function prefixOf(s: St): string {
 const contOf = (s: St) => (s.shape === 'quote' ? '> ' : LISTY.has(s.shape) ? s.lead + s.rel : '');
 
 function marksOf(el: Element): [string, string] {
+  // a mark with nothing inside (the caret's place after Ctrl+B in an empty box) writes nothing
+  if (clean(el.textContent || '') === '') return ['', ''];
   switch (el.tagName) {
     case 'STRONG': case 'B': return ['**', '**'];
     case 'EM': case 'I': { const d = (el as HTMLElement).dataset.d || '*'; return [d, d]; }
@@ -288,7 +290,20 @@ export function tidy(ed: HTMLElement) {
   }
   // nothing typed (the browser may leave an empty <strong> or a break behind): the box is truly empty, so its hint shows and
   // the next words are not caught in a mark that held nothing
-  if (ed.firstChild && clean(ed.textContent || '') === '' && ed.querySelectorAll('br').length <= 1) ed.replaceChildren();
+  if (clean(ed.textContent || '') === '' && ed.querySelectorAll('br').length <= 1) {
+    if (ed.firstChild) ed.replaceChildren();
+    letGoOfStyle(ed);
+  }
+}
+
+/** The browser keeps the bold, italic or underline of text that was deleted for what is typed next (WebKit and Chromium
+ *  both do, after select-all and delete). An empty box starts plain; Ctrl+B in it afterwards turns it on again. */
+function letGoOfStyle(ed: HTMLElement) {
+  const doc = ed.ownerDocument;
+  if (doc.activeElement !== ed) return;
+  for (const cmd of ['bold', 'italic', 'underline']) {
+    try { if (doc.queryCommandState(cmd)) doc.execCommand(cmd); } catch { /* a browser without the query */ }
+  }
 }
 
 // ---- what typing does ------------------------------------------------------------------------------------------------
@@ -391,7 +406,23 @@ export function undoTurn(ed: Writer, turn: NonNullable<Turn>): boolean {
 
 /** Ctrl+B, Ctrl+I, Ctrl+U: on the words selected, or on the words typed next. */
 export function toggleMark(ed: HTMLElement, key: 'b' | 'i' | 'u') {
-  ed.ownerDocument.execCommand(key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline');
+  const doc = ed.ownerDocument;
+  const cmd = key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline';
+  const was = doc.queryCommandState(cmd);
+  doc.execCommand(cmd);
+  // WebKit does not turn a style on in a box with no text: the mark is put in by hand, and the words typed go inside it
+  if (doc.queryCommandState(cmd) !== was || clean(ed.textContent || '') !== '') return;
+  const sel = doc.getSelection();
+  if (!sel || !sel.rangeCount || !ed.contains(sel.anchorNode)) return;
+  const el = doc.createElement(key === 'b' ? 'strong' : key === 'i' ? 'em' : 'u');
+  const t = doc.createTextNode(ZW);
+  el.append(t);
+  ed.replaceChildren(el);
+  const r = doc.createRange();
+  r.setStart(t, 1);
+  r.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(r);
 }
 
 /** Tab and Shift+Tab on a list item: its indent, two spaces in or out. False when the block is not a list item. */

@@ -59,6 +59,10 @@ folder, not as a Notebook tab.
   - **@ for a verse: both forms drawn** (12a plain text, 12b a link chip) to compare before choosing.
   - **One frame per row.** Every row of the table gets its own drawn frame, shown beside the row in a review that moves
     like a presentation (← →), with a comment box per row. The whole board stays as the overview.
+- **Enter at the start of a non-empty block (the lead, 2026-11-21).** Enter at the start of a non-empty block inserts an
+  empty block above, caret stays with the text, like Notion. The file cannot hold an empty block, so the empty block is a
+  line above that is written only when it is clicked and typed in; leaving it alone leaves the file as it was (test
+  `enter_at_start_adds_a_block_above`).
 
 ## The inventory (round 1)
 

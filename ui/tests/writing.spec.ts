@@ -61,7 +61,15 @@ test('new_page_caret_in_title', async ({ page }) => {
   await page.keyboard.press('Enter');
   const line = page.locator('.nb-new-line');
   await expect(line).toBeFocused();
-  await expect(line).toHaveAttribute('placeholder', 'Press / for blocks');
+  await expect(line).toHaveAttribute('data-placeholder', 'Press / for blocks');
+  // the first line is the same in-place editor as a block: # turns it into a heading and **word** is bold, as it is typed
+  expect(await line.evaluate(e => e.tagName)).not.toBe('TEXTAREA');
+  await page.keyboard.type('# ');
+  await expect(line).toHaveAttribute('data-shape', 'h1');
+  await expect(line).toHaveText('');
+  await page.keyboard.type('Big **word** now');
+  await expect(line.locator('strong')).toHaveText('word');
+  expect(await line.evaluate(e => (e as any).value)).toBe('# Big **word** now');
 });
 
 test('markdown_shortcuts_turn_the_line', async ({ page }) => {
@@ -250,4 +258,52 @@ test('opening_and_leaving_a_block_keeps_its_markdown', async ({ page }) => {
     await page.keyboard.type('Z');
     expect(await md(box)).toBe(corpus[i] + 'Z');
   }
+});
+
+test('enter_at_start_adds_a_block_above', async ({ page }) => {
+  // Enter at the start of a block with words: an empty block opens above, the caret stays with the text, nothing is changed in the file
+  const { box, saved } = await writingPage(page, ['One', 'Two'], 2);
+  await box.press('Home');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.nb-gap')).toHaveCount(1);
+  await expect(box).toBeFocused();
+  expect(await md(box)).toBe('Two');
+  expect(await box.evaluate(e => (e as any).selectionStart)).toBe(0);
+  // the empty line sits above the block with the caret, under block 1
+  const order = await page.evaluate(() => [...document.querySelectorAll('.nb-blocks > .nb-block')].map(b => b.classList.contains('nb-gap') ? 'gap' : (b as HTMLElement).dataset.n));
+  expect(order).toEqual(['1', 'gap', '2']);
+  expect(saved).toEqual([]);
+  // typing goes into the words, not above
+  await page.keyboard.type('X');
+  expect(await md(box)).toBe('XTwo');
+});
+
+test('typing_after_select_all_and_delete_is_not_bold', async ({ page }) => {
+  // WebKit keeps the bold of deleted text for what is typed next; the box lets it go unless Ctrl+B is on
+  const { box } = await writingPage(page, '**bold words**');
+  await expect(box.locator('strong')).toHaveText('bold words');
+  await box.press('Control+a');
+  await page.keyboard.press('Delete');
+  await page.keyboard.type('plain');
+  await expect(box.locator('strong, b')).toHaveCount(0);
+  expect(await md(box)).toBe('plain');
+  // Ctrl+B turns it on again, on purpose
+  await box.press('Control+a');
+  await page.keyboard.press('Delete');
+  await page.keyboard.press('Control+b');
+  await page.keyboard.type('loud');
+  await expect(box.locator('strong, b')).toHaveText('loud');
+  expect(await md(box)).toBe('**loud**');
+});
+
+test('text_after_a_bold_shortcut_is_plain', async ({ page }) => {
+  const { box } = await writingPage(page, 'x');
+  await box.fill('');
+  await page.keyboard.type('**word** after');
+  await expect(box.locator('strong')).toHaveText('word');
+  expect(await md(box)).toBe('**word** after');
+  await page.keyboard.type(' ');
+  await page.keyboard.press('Control+b');
+  await page.keyboard.type('B');
+  expect(await md(box)).toBe('**word** after **B**');
 });
