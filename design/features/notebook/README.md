@@ -247,6 +247,28 @@ Each is drawn for the person to keep or cut. Lookups are fetched with `wb`; noth
 | 54 | / › Study | Margin notes for a passage | The margin notes on a passage, by verse; each opens its note | The passage | `wb mark notes REF` | `study_margin_notes_block` | [ ] approved 2026-11-20 |
 | 55 | / › Study | Marks in a passage | Every mark on a passage with its Legend style and the marked words | The passage | `wb marks BOOK CH` | `study_marks_block` | [ ] approved 2026-11-20 |
 
+## Tickets (cut 2026-11-20, built in this order, one at a time)
+
+A ticket is done when every row in it has its passing test and its Built cell says built.
+
+| Ticket | Rows | What |
+|---|---|---|
+| NB1 | 1, 2 | The one menu component: filter as you type, keys, Esc, focus returns |
+| NB2 | 3, 4, 5, 8 | The new page editor: title, Markdown shortcuts, bold/italic/underline, lists |
+| NB3 | 6, 7, 49 | The / menu (one list, Study folded) and the Scripture block with book autocomplete |
+| NB4 | 9, 10, 25 | Toggles, the selection bar, Color ▾ (text and background) |
+| NB5 | 12 | `@`: the link chip and the compact chapter panel |
+| NB6 | 13, 41, 14, 16, 17, 42, 20 | The block handle: +, grip menu, Turn into, Duplicate, Delete with Undo |
+| NB7 | 15, 44, 21, 43 | Dragging blocks, columns up to 4, selecting several blocks |
+| NB8 | 11, 39, 40 | Mark ▾ on scripture in a page, Margin note beside the words |
+| NB9 | 18, 19 | Copy link to block, Move to |
+| NB10 | 22, 23, 24, 46 | Callouts, their kinds, the questions already written read as callouts |
+| NB11 | 29, 30, 31, 32, 33, 45 | The page: Edited time, page ⋯, Appearance, Lock, Copy contents, contents bar |
+| NB12 | 50–55 | The other Study blocks |
+| NB13 | 34, 35, 26 | Ctrl+K, Recents, folder color |
+| NB14 | 36, 48, 47 | List in a page, Table, views and Group by |
+| NB15 | 37 and the checks below | Floating, narrow, phone; the 400-block budget; old page code removed |
+
 ## What the build must satisfy
 
 - [ ] Every menu is the one menu component (rows 1–2): typing filters, keys work, focus returns, nothing jumps.
