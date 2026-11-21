@@ -53,7 +53,7 @@ export function installSelectionBar() {
 
 const collapsed = () => { const s = getSelection(); return !s || !s.rangeCount || s.isCollapsed; };
 
-function hide() { bar?.remove(); bar = null; }
+function hide() { bar?.remove(); bar = null; shown = null; }
 
 /** The block being written that holds the whole selection. */
 function targetOf(range: Range): { ed: Writer } | null {
@@ -72,8 +72,14 @@ function update() {
   const range = sel.getRangeAt(0);
   const t = targetOf(range);
   if (!t) return hide();
+  // the same words already have their bar: leave it (a late selection event must not swap the bar under a press on it)
+  if (bar && bar.isConnected && shown && sameRange(shown, range)) { place(bar, range); return; }
   show(range, t);
 }
+
+let shown: Range | null = null;
+const sameRange = (a: Range, b: Range) =>
+  a.startContainer === b.startContainer && a.startOffset === b.startOffset && a.endContainer === b.endContainer && a.endOffset === b.endOffset;
 
 function button(text: string, name: string, on: () => void, extra = ''): HTMLButtonElement {
   const b = document.createElement('button');
@@ -123,6 +129,7 @@ function show(range: Range, t: { ed: Writer }) {
   }
   document.body.append(el);
   bar = el;
+  shown = range.cloneRange();
   place(el, range);
 }
 
