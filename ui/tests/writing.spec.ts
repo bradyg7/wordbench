@@ -204,7 +204,7 @@ test('backspace_at_the_start_joins_the_block_before', async ({ page }) => {
   const { box, saved } = await writingPage(page, ['One', 'Two'], 2);
   await box.press('Home');
   await page.keyboard.press('Backspace');
-  await expect.poll(() => saved).toContain('block-set-w1-1-count-2');
+  await expect.poll(() => saved).toContain('block-set-w1-1-count-2-undo');
   // the writing goes on in the first block, with the caret where the two met
   const joined = page.locator('.nb-block-input');
   await expect(joined).toHaveCount(1);

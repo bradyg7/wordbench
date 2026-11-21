@@ -227,15 +227,19 @@ pub fn commands() -> Vec<Command> {
             }),
         cmd("page title","Change a page's title (its first line; a # it had stays): wb page title ID \"New title\". The links to its old title: wb note relink.",
             vec![Pos("id", N::One), Pos("title", N::Many)], |c, a| j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Title(&a.s("title"))).map_err(e)?)),
-        cmd("block set", "Write a block anew: wb block set ID 3 \"- [ ] Print the verse deck\" (--count K: K blocks from it become this text; - reads standard input; a blank line in it makes two blocks).",
-            vec![Pos("id", N::One), Pos("n", N::One), Pos("text", N::Many), Opt("count", None), Opt("expect", None)], |c, a| {
+        cmd("block set", "Write a block anew: wb block set ID 3 \"- [ ] Print the verse deck\" (--count K: K blocks from it become this text; - reads standard input; a blank line in it makes two blocks; --undo returns a token for wb block undo, how a join of two blocks is made undoable; --expect TEXT requires the current page text to match).",
+            vec![Pos("id", N::One), Pos("n", N::One), Pos("text", N::Many), Opt("count", None), Opt("expect", None), Flag("undo")], |c, a| {
                 let n = nth(a, "n")?;
                 let count = opt_n(a, "count")?.unwrap_or(1);
                 let text = text_of(c, &a.s("text"))?;
                 if text.trim().is_empty() {
                     return Err("Give the block's new text (wb block rm removes it).".into());
                 }
-                j(pg::edit_guarded(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Set { n, count, text: &text }, a.opt("expect").as_deref()).map_err(e)?)
+                let what = Edit::Set { n, count, text: &text };
+                if a.flag("undo") {
+                    return j(pg::edit_undoable(c.bible()?, &mut *c.study()?, &a.s("id"), what, a.opt("expect").as_deref()).map_err(e)?);
+                }
+                j(pg::edit_guarded(c.bible()?, &mut *c.study()?, &a.s("id"), what, a.opt("expect").as_deref()).map_err(e)?)
             }),
         cmd("block add", "Add a block: wb block add ID \"# Before Tuesday\" --after 2 (--first: right under the title; neither: last). - reads standard input. --scripture: the text is a reference (\"Num 25:18-26:1\"), checked against the Bible, and the block written is the fenced scripture block holding only that reference; without it a bare reference stays a paragraph.",
             vec![Pos("id", N::One), Pos("text", N::Many), Opt("after", None), Flag("first"), Flag("scripture")], |c, a| {
@@ -251,6 +255,11 @@ pub fn commands() -> Vec<Command> {
                     (None, false) => count(c, &a.s("id"))?.checked_sub(1),
                 };
                 j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Add { after, text: &text }).map_err(e)?)
+            }),
+        cmd("block dup", "Copy a block right below itself (Duplicate in the block menu): wb block dup ID 3. The answer's n is the copy's number. --undo returns a token for wb block undo; --expect TEXT requires the current page text to match.",
+            vec![Pos("id", N::One), Pos("n", N::One), Flag("undo"), Opt("expect", None)], |c, a| {
+                let n = nth(a, "n")?;
+                j(pg::duplicate_block(c.bible()?, &mut *c.study()?, &a.s("id"), n, a.flag("undo"), a.opt("expect").as_deref()).map_err(e)?)
             }),
         cmd("page fold", "Fold or unfold a toggle (a block that begins <details><summary>), kept in settings/pages.json and not in the page: wb page fold ID N --on|--off (N: the toggle's head block, from 1). With neither, the folded toggles' head texts.",
             vec![Pos("id", N::One), Pos("n", N::Opt), Flag("on"), Flag("off")], |c, a| {
@@ -269,7 +278,7 @@ pub fn commands() -> Vec<Command> {
                     j(pg::edit_guarded(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Set { n, count, text: "" }, a.opt("expect").as_deref()).map_err(e)?)
                 }
             }),
-        cmd("block undo", "Restore a removed block if the page text is unchanged. wb block undo ID TOKEN; - reads the undo token from standard input.",
+        cmd("block undo", "Put back what a block change took (a removal, a join of two blocks, a copy) if the page text is as the change left it. wb block undo ID TOKEN; - reads the undo token from standard input.",
             vec![Pos("id", N::One), Pos("token", N::One)], |c, a| {
                 let text = text_of(c, &a.s("token"))?;
                 let undo = serde_json::from_str(&text).map_err(|_| "Give the undo token returned by wb block rm --undo.")?;

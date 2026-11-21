@@ -3,7 +3,7 @@
 // ↑ ↓ move the highlight, Enter picks, Esc or a click outside closes and focus returns to where it was.
 // The menu is fixed-position, so opening it never moves anything on the page.
 
-export type MenuItem = { id: string; label: string; icon?: string; iconClass?: string; iconData?: Record<string, string>; hint?: string; keywords?: string[] };
+export type MenuItem = { id: string; label: string; icon?: string; iconClass?: string; iconData?: Record<string, string>; hint?: string; keywords?: string[]; /** drawn in the warning color (Delete) */ danger?: boolean };
 // `folded`: with nothing typed the group is one row (its title and what is in it); Enter or a click opens it. Typing finds its rows.
 export type MenuGroup = { title?: string; items: MenuItem[]; folded?: boolean };
 export type MenuOptions = {
@@ -14,6 +14,8 @@ export type MenuOptions = {
   placeholder?: string;
   query?: string;
   label?: string;                                // the menu's accessible name
+  /** Words at the foot in place of the key hints (the block menu's "Edited …" and word count); a line break makes a second line. */
+  foot?: string;
   onPick: (item: MenuItem) => void;
   onClose?: () => void;
 };
@@ -50,7 +52,8 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   list.setAttribute('role', 'listbox');
   const foot = document.createElement('div');
   foot.className = 'wbm-foot';
-  foot.textContent = '↑↓ to move · Enter to pick · Esc to close';
+  foot.textContent = opts.foot ?? '↑↓ to move · Enter to pick · Esc to close';
+  if (opts.foot) foot.style.whiteSpace = 'pre-line';
   el.append(input, list, foot);
 
   let rows: { item: MenuItem; el: HTMLElement }[] = [];
@@ -97,7 +100,7 @@ export function openMenu(opts: MenuOptions): MenuHandle {
       if (g.title) { const h = document.createElement('div'); h.className = 'wbm-group'; h.textContent = g.title; list.append(h); }
       for (const item of g.items) {
         const row = document.createElement('div');
-        row.className = 'wbm-row';
+        row.className = item.danger ? 'wbm-row wbm-danger' : 'wbm-row';
         row.setAttribute('role', 'option');
         row.dataset.id = item.id;
         const icon = document.createElement('span'); icon.className = `wbm-icon${item.iconClass ? ` ${item.iconClass}` : ''}`; icon.textContent = item.icon ?? '';

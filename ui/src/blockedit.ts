@@ -613,6 +613,13 @@ export function caretLine(ed: Writer): { first: boolean; last: boolean } {
   return { first: rect.top - box.top < lh * 0.75, last: box.bottom - rect.bottom < lh * 0.75 };
 }
 
+/** A block's Markdown as another kind (Turn into): the words and their marks stay, only the shape changes. */
+export function turnedMd(md: string, shape: string, over: Partial<{ mark: string; box: string; num: number; delim: string }> = {}): string {
+  const ed = createEditor(md);
+  setShape(ed, shape, over);
+  return ed.value;
+}
+
 // ---- references drawn as chips while the block is written (notebook row 12, NB5) ------------------------------------------
 // A reference in the text is wrapped in <span class="nb-chip" data-ref="…">: the words inside are ordinary, editable text (the caret
 // moves through them, typing and Backspace work as anywhere), so the chip is only how they are drawn. It adds nothing to the

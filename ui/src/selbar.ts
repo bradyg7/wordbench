@@ -18,7 +18,7 @@ let timer = 0;
 /** Is one of the bar's menus open? (The block being written keeps its place while it is.) */
 export const selectionBarBusy = () => menuOpen || holding;
 
-const KINDS: { key: string; label: string; shape: string }[] = [
+export const KINDS: { key: string; label: string; shape: string }[] = [
   { key: 'text', label: 'Text', shape: '' },
   { key: 'h1', label: 'Heading 1', shape: 'h1' },
   { key: 'h2', label: 'Heading 2', shape: 'h2' },
@@ -29,6 +29,9 @@ const KINDS: { key: string; label: string; shape: string }[] = [
   { key: 'quote', label: 'Quote', shape: 'quote' },
   { key: 'toggle', label: 'Toggle list', shape: '' },
 ];
+
+/** What a kind's shape starts with (a bullet's mark, a to-do's empty box, a list's first number). */
+export const shapeProps = (key: string) => (key === 'bullet' ? { mark: '-' } : key === 'todo' ? { mark: '-', box: ' ' } : key === 'numbered' ? { num: 1, delim: '.' } : {});
 
 export function installSelectionBar() {
   if (installed) return;
@@ -171,7 +174,7 @@ function turnMenu(ed: Writer, anchor: HTMLElement) {
       if (!/^h[1-3]$/.test(shapeOf(ed))) setShape(ed, '');
       if (!toggleOf.get(ed)) toggleOf.set(ed, { closed: true });
     } else {
-      setShape(ed, k.shape, k.key === 'bullet' ? { mark: '-' } : k.key === 'todo' ? { mark: '-', box: ' ' } : k.key === 'numbered' ? { num: 1, delim: '.' } : {});
+      setShape(ed, k.shape, shapeProps(k.key));
     }
     ed.dispatchEvent(new Event('input'));
     hide();

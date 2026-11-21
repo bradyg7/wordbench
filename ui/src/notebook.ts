@@ -1303,6 +1303,7 @@ ${l}` : ''}`;
       redraw: () => void pane?.refresh?.(),
       open: id => openFromList(id),
       template: !!e.template,
+      updated: e.updated || e.created,
       questionPlaces: e.kind === 'note' && !e.template && e.anchor
         ? [{ anchor: e.anchor, label: e.label }, ...(e.also || [])].filter(a => !/^[HG]\d+$/i.test(a.anchor))
         : [],

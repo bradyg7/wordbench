@@ -12,3 +12,4 @@
 .wbm-foot { border-top: 1px solid var(--line); padding: 6px 12px; font-size: 12px; color: var(--muted); }
 .wbm-fold .wbm-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wbm-fold { border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; margin-top: 4px; }
+.wbm-danger .wbm-label, .wbm-danger .wbm-icon { color: var(--accent); }

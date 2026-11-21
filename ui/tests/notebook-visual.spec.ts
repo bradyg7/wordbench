@@ -68,12 +68,12 @@ test('table fields and editor Undo work with keyboard and touch', async ({ page,
 
   const grip = editor.getByRole('button', { name: 'Actions for block 2' });
   if (hasTouch) await grip.tap(); else await grip.press('Enter');
-  await page.getByRole('button', { name: 'Delete block', exact: true }).click();
+  await page.getByRole('option', { name: /Delete/ }).click();
   await expect(editor.locator('.nb-b-table')).toHaveCount(0);
   await expect(editor.getByText(first)).toBeVisible();
   await expect(editor.getByText(last)).toBeVisible();
   await expect(editor.getByRole('button', { name: 'Actions for block 2' })).toBeFocused();
-  if (hasTouch) await editor.getByRole('button', { name: 'Undo block deletion' }).tap();
+  if (hasTouch) await editor.getByRole('button', { name: 'Undo block change' }).tap();
   else await page.keyboard.press('Control+z');
   await expect(block.getByRole('cell', { name: 'Left' })).toBeVisible();
 

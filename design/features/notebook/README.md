@@ -198,16 +198,16 @@ person's existing pages read.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 13 | A block | Hover, or focus it | A + and a grip (⋮⋮) in the left gutter; the text does not shift | Nothing | Window only | `handle_appears_without_shift` | [ ] approved 2026-11-20 |
-| 41 | A block's gutter | Read what + and the grip do | + adds an empty line below with / open; the grip drags the block, or opens its menu when clicked | Nothing | Window only | `handle_controls_explained` | [ ] approved 2026-11-20 |
-| 14 | + | Click | A new empty line below, with the / menu open | A new block | `wb block add` | `plus_adds_below_with_menu` | [ ] approved 2026-11-20 |
+| 13 | A block | Hover, or focus it | A + and a grip (⋮⋮) in the left gutter; the text does not shift | Nothing | Window only | `handle_appears_without_shift` | built (NB6) · approved 2026-11-20 |
+| 41 | A block's gutter | Read what + and the grip do | + adds an empty line below with / open; the grip drags the block, or opens its menu when clicked | Nothing | Window only | `handle_controls_explained` | built (NB6) · approved 2026-11-20 |
+| 14 | + | Click | A new empty line below, with the / menu open | A new block | `wb block add` | `plus_adds_below_with_menu` | built (NB6) · approved 2026-11-20 |
 | 15 | Grip | Drag | A blue line shows where it lands; dropping moves it; dropping to the side makes columns at full width (library S30) | The block's place | `wb block move ID N --to M` | `drag_moves_block` | [ ] approved 2026-11-20 |
-| 16 | Grip | Click | The block menu: Turn into ▸, Color ▸, Copy link to block, Duplicate (Ctrl+D), Move to (Ctrl+Shift+P), Delete (Del); at the foot "Edited …" and its word count | Nothing until used | Window only | `block_menu_items_and_foot` | [ ] approved 2026-11-20 |
-| 17 | Block menu | Turn into ▸ a kind | The block changes kind and keeps its text | The block's Markdown | `wb block set` | `turn_into_keeps_text` | [ ] approved 2026-11-20 |
-| 42 | Block menu | Duplicate (Ctrl+D) | A copy right below, with the caret in it | The page | `wb block dup ID N`, *proposed* | `duplicate_block_below` | [ ] approved 2026-11-20 |
+| 16 | Grip | Click | The block menu: Turn into ▸, Color ▸, Copy link to block, Duplicate (Ctrl+D), Move to (Ctrl+Shift+P), Delete (Del); at the foot "Edited …" and its word count | Nothing until used | Window only | `block_menu_items_and_foot` | built (NB6: Turn into, Duplicate, Delete and the foot; Color ▸ waits on its file form, Copy link to block and Move to are NB9) · approved 2026-11-20 |
+| 17 | Block menu | Turn into ▸ a kind | The block changes kind and keeps its text | The block's Markdown | `wb block set` | `turn_into_keeps_text` | built (NB6) · approved 2026-11-20 |
+| 42 | Block menu | Duplicate (Ctrl+D) | A copy right below, with the caret in it | The page | `wb block dup ID N`, *proposed* | `duplicate_block_below` | built (NB6) · approved 2026-11-20 |
 | 18 | Block menu | Copy link to block | The whole flow (18a–18c): copy in page A; paste in page B makes a chip "Page A › first words"; clicking it opens page A scrolled to the block, which glows briefly; Back returns. Scripture references stay references (found by the page index) | Page B holds the link | `wb block link ID N`, *proposed* | `link_to_block_flow` | [ ] approved 2026-11-20 |
 | 19 | Block menu | Move to | The page chooser; the block leaves this page and is last in the chosen one | Both pages | `wb block move ID N --page OTHER`, *proposed* | `move_block_to_another_page` | [ ] approved 2026-11-20 |
-| 20 | Block menu | Delete, or Del on a selected block | It goes; "Deleted · Undo" offers the page's Undo | The page | `wb block rm ID N --undo` | `delete_block_with_undo` | [ ] approved 2026-11-20 |
+| 20 | Block menu | Delete, or Del on a selected block | It goes; "Deleted · Undo" offers the page's Undo | The page | `wb block rm ID N --undo` | `delete_block_with_undo` | built (NB6) · approved 2026-11-20 |
 | 21 | Several blocks | Drag across them, or Shift+click; Esc selects the block the caret is in | A pale wash on each; the grip menu acts on all (Turn into, Color, Move to, Delete) | The blocks | `wb block … --count K` | `several_blocks_act_together` | [ ] approved 2026-11-20 |
 | 43 | The page's margin | Drag from the margin across blocks | A pale selection band follows the pointer; every block it touches is selected | Nothing | Window only | `band_selects_blocks` | [ ] approved 2026-11-20 |
 
@@ -295,7 +295,7 @@ A ticket is done when every row in it has its passing test and its Built cell sa
 
 - [x] Every menu is the one menu component (rows 1–2): typing filters, keys work, focus returns, nothing jumps.
 - [ ] Writing never waits and never needs a click to continue (rows 3–8).
-- [ ] Every text block can turn into every other text kind and keep its text (row 17).
+- [x] Every text block can turn into every other text kind and keep its text (row 17).
 - [ ] Today's pages read and write as before; the files stay Markdown; questions written as callouts stay listed (row 24).
 - [ ] Every new core action has its `wb` command (rows marked *proposed*).
 - [ ] Desktop, floating, narrow and phone (row 37).

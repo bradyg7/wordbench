@@ -15,9 +15,9 @@ import { openMenu, type MenuGroup, type MenuItem } from './menu';
 import { atMenu } from './atmenu';
 import { openChapterPanel } from './chapterpanel';
 import { scriptureField } from './scripturefield';
-import { caretAt, caretLine, chipRefs, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, undoTurn, type Turn, type Writer } from './blockedit';
+import { caretAt, caretLine, chipRefs, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, turnedMd, undoTurn, type Turn, type Writer } from './blockedit';
 import { isToggleEnd, placeBlocks, toggleHead, toggleOf, wrapHead } from './toggles';
-import { installSelectionBar, selectionBarBusy } from './selbar';
+import { KINDS, installSelectionBar, selectionBarBusy, shapeProps } from './selbar';
 
 export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string } }
 export interface Blocks { id: string; title: { text: string; start: number; end: number } | null; blocks: Blk[]; /** the folded toggles, each named by its head's text (settings/pages.json) */ folds?: string[] }
@@ -46,6 +46,8 @@ export interface Host {
   /** W5: the page is a template: `{` offers the blanks, and its blanks are shown as blanks. */
   template?: boolean;
   questionPlaces?: { anchor: string; label: string }[];
+  /** When the page was last written (its `updated`): the block menu's foot says "Edited …". */
+  updated?: string;
 }
 
 /** Pending input belongs to one editor. Its data is refreshed separately on each draw. */
@@ -53,7 +55,7 @@ type BlockFocus = { n: number; at: 'start' | 'end' | number } | { after: number;
 type BlockData = { id: string; got: Promise<any> } | null;
 export interface BlockEditorState {
   focus: BlockFocus;
-  pending: { id: string; after: () => number; text: string; at?: 'start' | 'end'; pick?: string } | null;
+  pending: { id: string; after: () => number; text: string; at?: 'start' | 'end'; pick?: string; menu?: boolean } | null;
   menuKey: ((ev: KeyboardEvent) => boolean) | null;
   menuClose: (() => void) | null;
   scripture: BlockData;
@@ -86,8 +88,7 @@ function historyFor(root: HTMLElement, page: string): BlockHistory {
   return history;
 }
 
-async function undoRemoval(wrap: HTMLElement, data: Blocks, host: Host) {
-  const root = wrap.closest<HTMLElement>('.nb-editor');
+async function undoRemoval(root: HTMLElement | null, data: Blocks, host: Host) {
   if (!root) return;
   const history = historyFor(root, data.id);
   const entry = history.undo.at(-1);
@@ -102,8 +103,7 @@ async function undoRemoval(wrap: HTMLElement, data: Blocks, host: Host) {
   finally { history.busy = false; }
 }
 
-async function removeBlock(wrap: HTMLElement, data: Blocks, host: Host, n: number, count = 1, expected?: string): Promise<boolean> {
-  const root = wrap.closest<HTMLElement>('.nb-editor');
+async function removeBlock(root: HTMLElement | null, data: Blocks, host: Host, n: number, count = 1, expected?: string): Promise<boolean> {
   if (!root) return false;
   const history = historyFor(root, data.id);
   if (history.busy) return false;
@@ -118,16 +118,16 @@ async function removeBlock(wrap: HTMLElement, data: Blocks, host: Host, n: numbe
   finally { history.busy = false; }
 }
 
-/** The Undo toast after a block is deleted (trash T9): 10 seconds, in the same rail as a page's. A block is part of
- *  its page, so it never goes to the Trash. */
-function blockUndoToast(wrap: HTMLElement, data: Blocks, host: Host) {
+/** The Undo toast after a block change (trash T9): 10 seconds, in the same rail as a page's. "Deleted · Undo" for a deletion
+ *  (notebook row 20), "Joined · Undo" for a Backspace that joined two blocks. A block is part of its page, so it never goes to the Trash. */
+function blockUndoToast(root: HTMLElement | null, data: Blocks, host: Host, said = 'Deleted') {
   let rail = document.querySelector<HTMLElement>('.page-deletions');
   if (!rail) { rail = h('div', 'page-deletions'); rail.setAttribute('aria-label', 'Page deletion Undo'); document.body.append(rail); }
   rail.querySelectorAll('.block-deletion').forEach(x => x.remove());
   const row = h('div', 'page-deletion block-deletion');
   row.setAttribute('role', 'status');
-  const undo = button('btn small', 'Undo', () => { row.remove(); void undoRemoval(wrap, data, host); });
-  row.append(h('span', '', 'Block deleted. '), undo);
+  const undo = button('btn small', 'Undo', () => { row.remove(); void undoRemoval(root, data, host); });
+  row.append(h('span', '', `${said} · `), undo);
   rail.append(row);
   setTimeout(() => row.remove(), 10000);
 }
@@ -232,25 +232,27 @@ function shifted<T extends { start: number; end: number }>(xs: T[], a: number, b
 function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
   const el = h('div', `nb-block nb-b-${b.kind}`);
   el.dataset.n = String(b.n);
+  // the block handle (rows 13, 14, 16, 41): a + and a grip in the left gutter, shown on hover or focus; the gutter is always
+  // there, so the text never shifts. + adds an empty line below with the / menu open; the grip drags the block, or opens its menu.
+  const plus = h('button', 'nb-plus');
+  plus.type = 'button';
+  plus.append(icon('plus', 14));
+  plus.title = 'Add a line below, with the / menu open';
+  plus.setAttribute('aria-label', `Add a block below block ${b.n}`);
   const grip = h('button', 'nb-grip');
   grip.append(icon('grip'));
-  grip.title = 'Block actions · drag to move';
+  grip.title = 'Drag to move this block · click for its menu (Del deletes it, Ctrl+D duplicates it)';
   grip.setAttribute('aria-label', `Actions for block ${b.n}`);
-  grip.onclick = () => {
-    const wrap = el.closest<HTMLElement>('.nb-blocks');
-    if (!wrap || el.classList.contains('editing')) return;
-    const menu = h('div', 'nb-block-actions');
-    const item = (label: string, action: () => void) => menu.append(button('menu-item', label, () => { close(); action(); }));
-    item('Edit block', () => editBlock(data, b, el, host));
-    item('Add block below', () => startNew(data, host, el.nextElementSibling as HTMLElement, b.n, ''));
-    const move = (to: number | null) => async () => {
-      try { await wb(['block', 'move', data.id, String(b.n), ...(to === null ? ['--last'] : ['--to', String(to)])]); host.changed(); } catch (x) { toast(String(x)); }
-    };
-    if (b.n > 1) item('Move up', () => void move(b.n - 1)());
-    if (b.n < data.blocks.length) item('Move down', () => void move(b.n + 1 >= data.blocks.length ? null : b.n + 2)());
-    item('Delete block', () => void removeBlock(wrap, data, host, b.n, 1, host.text).then(ok => { if (ok) blockUndoToast(wrap, data, host); }));
-    const close = popMenu(grip, menu);
-    menu.querySelector('button')?.focus();
+  // a press on either keeps the block being written open: its writing is saved when the handle is used
+  for (const x of [plus, grip]) x.onpointerdown = ev => { if (liveEdit && ev.pointerType !== 'touch') ev.preventDefault(); };
+  plus.onclick = () => void addBelow(data, host, el, b);
+  grip.onclick = () => void openBlockMenu(data, host, el, b, grip);
+  grip.onfocus = () => el.classList.add('nb-selected');
+  grip.onblur = () => { if (!document.querySelector('.wbm')) el.classList.remove('nb-selected'); };
+  grip.onkeydown = ev => {
+    const mod = ev.ctrlKey || ev.metaKey;
+    if ((ev.key === 'Delete' || ev.key === 'Backspace') && !mod && !ev.shiftKey && !ev.altKey) { ev.preventDefault(); void deleteBlock(data, host, el, b); }
+    else if (mod && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'd') { ev.preventDefault(); void duplicateBlock(data, host, el, b); }
   };
   grip.draggable = true;
   grip.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-block', `${data.id} ${b.n}`); ev.dataTransfer!.effectAllowed = 'move'; el.classList.add('dragging'); };
@@ -263,7 +265,7 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
     if (t.closest('a, input, button, textarea, label, select, .nb-structured-editor, .nb-block-input')) return;
     editBlock(data, b, el, host);
   };
-  el.append(grip, body);
+  el.append(plus, grip, body);
   // a block dropped on another goes before it (the upper half) or after it (the lower half)
   el.ondragover = ev => {
     if (!ev.dataTransfer?.types.includes('text/wb-block')) return;
@@ -290,6 +292,145 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
     } catch (x) { toast(String(x)); }
   };
   return el;
+}
+
+// ---- the block handle's actions (rows 14, 16, 17, 20, 42) -------------------------------------------------------------------
+
+/** The block being written now (one at a time): the handle saves it first and finds its place from it. */
+interface Live { el: HTMLElement; cur: { n: number; count: number; after: number }; save: () => Promise<void>; finish: (then?: BlockFocus) => Promise<void>; text: () => string }
+let liveEdit: Live | null = null;
+
+/** Where block `b` is right now, and the page text to guard the change with (none when the page may have been written since it was
+ *  drawn: the block being written was saved). The block being written is saved and let go first. null: nothing there to act on. */
+async function settle(el: HTMLElement, b: Blk, host: Host): Promise<{ n: number; text: string; expect?: string } | null> {
+  const live = liveEdit;
+  if (!live) return { n: b.n, text: b.text, expect: host.text };
+  const wasNew = live.cur.n === 0;
+  await live.save();
+  let out: { n: number; text: string; expect?: string } | null;
+  if (live.el === el) out = live.cur.n ? { n: live.cur.n, text: live.text() } : null;
+  else out = { n: wasNew && live.cur.n > 0 && b.n > live.cur.after ? b.n + live.cur.count : b.n, text: b.text };
+  await live.finish();
+  return out;
+}
+
+/** + : an empty line right below the block, with the / menu open (row 14). Nothing is written until something is typed. */
+async function addBelow(data: Blocks, host: Host, el: HTMLElement, b: Blk) {
+  if (liveEdit) {
+    const t = await settle(el, b, host);
+    if (!t) return;
+    host.state.focus = null;
+    host.state.pending = { id: data.id, after: () => t.n, text: '', at: 'end', menu: true };
+    host.redraw();
+    return;
+  }
+  startNew(data, host, el.nextElementSibling as HTMLElement, b.n, '', 'end', undefined, true);
+}
+
+async function deleteBlock(data: Blocks, host: Host, el: HTMLElement, b: Blk) {
+  const root = el.closest<HTMLElement>('.nb-editor');
+  const t = await settle(el, b, host);
+  if (!t) return;
+  if (await removeBlock(root, data, host, t.n, 1, t.expect)) blockUndoToast(root, data, host, 'Deleted');
+}
+
+/** Duplicate: a copy right below, with the caret in it (row 42). A block that is not plain writing gets its grip focused instead. */
+async function duplicateBlock(data: Blocks, host: Host, el: HTMLElement, b: Blk) {
+  const root = el.closest<HTMLElement>('.nb-editor');
+  const t = await settle(el, b, host);
+  if (!t || !root) return;
+  const history = historyFor(root, data.id);
+  if (history.busy) return;
+  history.busy = true;
+  try {
+    const r = await wb(['block', 'dup', data.id, String(t.n), '--undo', ...(t.expect === undefined ? [] : ['--expect', t.expect])]);
+    history.undo.push({ token: JSON.stringify(r.undo), n: r.n });
+    if (turnable(b)) host.state.focus = { n: r.n, at: 'end' };
+    else history.focus = r.n;
+    host.changed();
+  } catch (x) { toast(String(x)); }
+  finally { history.busy = false; }
+}
+
+/** Turn into: the block's Markdown as another kind, its words and marks kept (row 17). */
+async function turnBlock(data: Blocks, host: Host, el: HTMLElement, b: Blk, key: string) {
+  const root = el.closest<HTMLElement>('.nb-editor');
+  const t = await settle(el, b, host);
+  if (!t) return;
+  const k = KINDS.find(x => x.key === key)!;
+  const md = k.key === 'toggle' ? wrapHead(turnedMd(t.text, ''), true) : turnedMd(t.text, k.shape, shapeProps(k.key));
+  if (md === t.text) return;
+  try {
+    await wb(['block', 'set', data.id, String(t.n), ...(t.expect === undefined ? [] : ['--expect', t.expect]), '-'], md);
+    if (root) historyFor(root, data.id).focus = t.n;
+    host.changed();
+  } catch (x) { toast(String(x)); }
+}
+
+/** Can this block be turned into another text kind? (A table, a fence, a divider, a toggle's line and a callout are not plain text.) */
+const turnable = (b: Blk) => ['paragraph', 'heading', 'item', 'numbered', 'todo', 'quote'].includes(b.kind) && !isStructured(b) && !toggleHead(b.text) && !isToggleEnd(b.text);
+
+const wordsIn = (md: string) => md.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
+
+/** "Edited today, 14:02" or "Edited 2026-11-20" from the page's `updated`. */
+function editedText(updated?: string): string {
+  const d = updated ? new Date(updated) : null;
+  if (!d || Number.isNaN(d.getTime())) return 'Edited';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const now = new Date();
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const time = /T\d\d:\d\d/.test(updated!) ? `, ${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
+  return `Edited ${day === today ? 'today' : day}${time}`;
+}
+
+/** The grip's click: the block menu (row 16): Turn into ▸, Duplicate (Ctrl+D), Delete (Del), and at its foot when the page was edited
+ *  and how many words it holds. Color ▸ (row 25b), Copy link to block and Move to (NB9) come with their tickets. */
+async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, grip: HTMLElement) {
+  if (document.querySelector('.wbm[aria-label="Block actions"]')) return;
+  if (liveEdit && liveEdit.el === el) { await liveEdit.save(); if (!liveEdit.cur.n) return; }
+  el.classList.add('nb-selected');
+  const words = data.blocks.reduce((n, x) => n + wordsIn(x.text), wordsIn(data.title?.text ?? ''));
+  const items: MenuItem[] = [];
+  if (turnable(b)) items.push({ id: 'turn', label: 'Turn into', icon: 'T', hint: '▸', keywords: ['turn', 'change', 'kind'] });
+  items.push({ id: 'dup', label: 'Duplicate', icon: '⧉', hint: 'Ctrl+D', keywords: ['copy'] });
+  items.push({ id: 'del', label: 'Delete', icon: '✕', hint: 'Del', danger: true, keywords: ['remove'] });
+  const keep = host.state.menuClose;
+  let picked = false;
+  const handle = openMenu({
+    groups: [{ items }], label: 'Block actions', placeholder: 'Search actions', at: grip,
+    foot: `${editedText(host.updated)}\n${words} word${words === 1 ? '' : 's'}`,
+    onPick: it => {
+      picked = true;
+      if (it.id === 'turn') return turnMenu(data, host, el, b, grip);
+      if (it.id === 'dup') return void duplicateBlock(data, host, el, b);
+      void deleteBlock(data, host, el, b);
+    },
+    onClose: () => {
+      if (host.state.menuClose === handle.close) host.state.menuClose = keep ?? null;
+      if (!picked) el.classList.remove('nb-selected');
+    },
+  });
+  host.state.menuClose = handle.close;
+  // Del and Ctrl+D act from the open menu too (the filter box is empty)
+  handle.el.addEventListener('keydown', ev => {
+    const q = (handle.el.querySelector('.wbm-input') as HTMLInputElement).value;
+    const mod = ev.ctrlKey || ev.metaKey;
+    if (ev.key === 'Delete' && !q && !mod) { ev.preventDefault(); picked = true; handle.close(); void deleteBlock(data, host, el, b); }
+    else if (mod && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'd') { ev.preventDefault(); picked = true; handle.close(); void duplicateBlock(data, host, el, b); }
+  });
+}
+
+/** Turn into ▸: the kinds, in the one menu component, hung under the grip. */
+function turnMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, grip: HTMLElement) {
+  const glyph = (k: string) => (k === 'toggle' ? '›' : k.startsWith('h') ? 'H' : k === 'bullet' ? '•' : k === 'numbered' ? '1.' : k === 'todo' ? '✓' : k === 'quote' ? '”' : 'T');
+  const keep = host.state.menuClose;
+  const handle = openMenu({
+    groups: [{ items: KINDS.map(k => ({ id: k.key, label: k.label, icon: glyph(k.key) })) }], label: 'Turn into', placeholder: 'Turn into', at: grip,
+    onPick: it => void turnBlock(data, host, el, b, it.id),
+    onClose: () => { if (host.state.menuClose === handle.close) host.state.menuClose = keep ?? null; el.classList.remove('nb-selected'); },
+  });
+  host.state.menuClose = handle.close;
 }
 
 /** A block as it reads: a to-do with its box, a numbered item with its number, a divider, a table, a fenced block. */
@@ -879,18 +1020,18 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
 
 
 /** Write in a new block after block `after` (0: first, right under the title). */
-function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string, at: 'start' | 'end' = 'end', pick?: string) {
+function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string, at: 'start' | 'end' = 'end', pick?: string, menu = false) {
   const el = h('div', 'nb-block nb-new-block');
   // a block written under a toggle's line is inside the toggle
   const prev = beforeEl.parentElement?.querySelector<HTMLElement>(`.nb-block[data-n="${after}"]`);
   if (prev) el.style.setProperty('--td', String(Number(prev.style.getPropertyValue('--td') || 0) + (prev.classList.contains('nb-toggle') ? 1 : 0)));
   beforeEl.before(el);
-  startEdit(data, { n: 0, kind: 'paragraph', text, start: 0, end: 0 }, el, host, at, after, pick);
+  startEdit(data, { n: 0, kind: 'paragraph', text, start: 0, end: 0 }, el, host, at, after, pick, menu);
 }
 
 /** Write in a block (NB2b): the block is its own contenteditable element, drawn as the block it is and styled as it is
  *  typed; its Markdown is what is saved as it is typed (`wb block set`; a new block, `wb block add`). */
-function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start' | 'end' | number, newAfter?: number, pick?: string) {
+function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start' | 'end' | number, newAfter?: number, pick?: string, menu = false) {
   if (el.querySelector('.nb-block-input')) return;
   // a toggle's head is edited as its own line (with the heading shape it may have); the block saved is the head written around it
   const head0 = toggleHead(b.text);
@@ -953,6 +1094,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   const finish = async (then?: BlockFocus) => {
     if (gone) return;
     gone = true;
+    if (liveEdit?.el === el) liveEdit = null;
     host.state.menuClose?.();
     await save();
     const tg = toggleOf.get(ta);
@@ -961,7 +1103,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
       try {
         await findAgain();
         const wrap = el.closest<HTMLElement>('.nb-blocks');
-        if (cur.n && wrap) await removeBlock(wrap, data, host, cur.n, cur.count, last === b.text ? host.text : undefined);
+        if (cur.n && wrap) await removeBlock(wrap.closest<HTMLElement>('.nb-editor'), data, host, cur.n, cur.count, last === b.text ? host.text : undefined);
       } catch (x) { toast(String(x)); }
     }
     host.state.focus = then ?? null;
@@ -981,9 +1123,13 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     if (!prev || !['paragraph', 'heading', 'item', 'numbered', 'todo', 'quote'].includes(prev.kind) || isStructured(prev) || toggleHead(prev.text) || isToggleEnd(prev.text)) return;
     if (gone) return;
     gone = true;
+    if (liveEdit?.el === el) liveEdit = null;
     clearTimeout(timer);
+    // the join is the page's Undo too (a token from `wb block set --undo`): Undo gives back the two blocks as they were
+    const root = el.closest<HTMLElement>('.nb-editor');
     try {
-      await wb(['block', 'set', data.id, String(prev.n), '--count', String(1 + cur.count), '-'], prev.text + mine.replace(/\n+$/, ''));
+      const r = await wb(['block', 'set', data.id, String(prev.n), '--count', String(1 + cur.count), '--undo', '-'], prev.text + mine.replace(/\n+$/, ''));
+      if (root && r.undo) { historyFor(root, data.id).undo.push({ token: JSON.stringify(r.undo), n: prev.n + 1 }); blockUndoToast(root, data, host, 'Joined'); }
     } catch (x) { gone = false; toast(String(x)); return; }
     host.state.menuClose?.();
     host.state.focus = { n: prev.n, at: prev.text.length };
@@ -991,6 +1137,8 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     if (document.activeElement === ta) ta.blur();
     host.redraw();
   };
+  const live: Live = { el, cur, save: () => save(), finish, text: () => last };
+  liveEdit = live;
   // references drawn as chips while the block is written (row 12): the ones the block opens with now, and again a moment after typing
   // stops (wb-core's finder, the same as when the block is left). A chip adds nothing to the Markdown.
   let chipTimer = 0, chipSeq = 0;
@@ -1009,7 +1157,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     await save();
     if (wrapped().replace(/\n+$/, '') !== last && dirty && ta.value.trim() && !blank(ta.value)) throw new Error('Save or cancel the current block before deleting its page.');
     await finish();
-  }, () => { gone = true; clearTimeout(timer); clearTimeout(chipTimer); ta.disabled = true; });
+  }, () => { gone = true; if (liveEdit === live) liveEdit = null; clearTimeout(timer); clearTimeout(chipTimer); ta.disabled = true; });
   // a shortcut that turned the typed characters into another form, kept so Ctrl+Z gives the typed characters back
   let turned: Turn = null;
   ta.oninput = ev => {
@@ -1061,6 +1209,17 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
         return;
       }
       if (k === 'b' || k === 'i' || k === 'u') { ev.preventDefault(); toggleMark(ta, k); return; }
+      if (k === 'd' && !toggleOf.get(ta) && !/^(```|~~~|\|)/.test(ta.value)) {
+        // Duplicate (row 42): the block is saved, copied right below, and the caret goes into the copy
+        ev.preventDefault();
+        void duplicateBlock(data, host, el, { n: cur.n || cur.after + 1, kind: 'paragraph', text: last, start: 0, end: 0 });
+        return;
+      }
+      if (k === 'z' && !dirty) {
+        // nothing typed in this block: Ctrl+Z is the page's Undo (a join of two blocks, a deletion, a copy)
+        const root = el.closest<HTMLElement>('.nb-editor');
+        if (root && historyFor(root, data.id).undo.length) { ev.preventDefault(); void undoRemoval(root, data, host); return; }
+      }
     }
     if (mod && ev.key === 'Enter' && !ev.shiftKey && !ev.altKey && toggleOf.get(ta)) {
       // Ctrl+Enter folds or unfolds the toggle this line heads
@@ -1163,6 +1322,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   const pos = at === 'start' ? contentStart(ta) : at === 'end' ? ta.value.length : Math.min(at, ta.value.length);
   ta.setSelectionRange(pos, pos);
   if (ta.value) slashMenu(ta, data, host, cur, finish);
+  else if (menu) slashMenu(ta, data, host, cur, finish, false, true);
   // a command picked from the / menu after a space: it runs in this new block, no second Enter
   const picked = pick ? MENU.find(x => x.key === pick) : undefined;
   if (picked) void makeChoose(ta, data, host, cur, finish)(picked);
@@ -1176,14 +1336,14 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
   if (!wrap) return;
   const history = historyFor(root, data.id);
   if (history.undo.length) {
-    const undo = button('link-btn small nb-undo-block', 'Undo block deletion', () => void undoRemoval(wrap, data, host));
+    const undo = button('link-btn small nb-undo-block', 'Undo block change', () => void undoRemoval(root, data, host));
     wrap.prepend(undo);
     wrap.onkeydown = ev => {
       if ((!ev.ctrlKey && !ev.metaKey) || ev.shiftKey || ev.altKey || ev.key.toLowerCase() !== 'z') return;
       if ((ev.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
       ev.preventDefault();
       ev.stopPropagation();
-      void undoRemoval(wrap, data, host);
+      void undoRemoval(root, data, host);
     };
   }
   if (host.state.pending && host.state.pending.id === data.id) {
@@ -1191,7 +1351,7 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
     host.state.pending = null;
     const after = p.after();
     const next = wrap.querySelector<HTMLElement>(`.nb-block[data-n="${after + 1}"]`) || wrap.querySelector<HTMLElement>('.nb-block-add')!;
-    startNew(data, host, next, after, p.text, p.at, p.pick);
+    startNew(data, host, next, after, p.text, p.at, p.pick, p.menu);
     return;
   }
   const f = host.state.focus;
@@ -1307,11 +1467,11 @@ function makeChoose(ta: Writer, data: Blocks, host: Host, cur: { n: number; coun
  *  at its end; typing in the list finds any command by name, folded or not. On an empty line a command writes its form in the
  *  line; after a space the line's words stay and the command is inserted as a new block below (NB3, the lead 2026-11-21). The "/"
  *  typed is taken out of the line when a command is picked or the list is closed without one. */
-function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>, typedSlash = false) {
+function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>, typedSlash = false, fromPlus = false) {
   const v = ta.value;
   const afterSpace = typedSlash && v.length > 1 && /\s\/$/.test(v) && !v.includes('\n');
   const wholeLine = v.startsWith('/') && !v.includes('\n') && v.length <= 30;
-  if (typedSlash ? !(v === '/' || afterSpace) : !wholeLine) return;
+  if (!fromPlus && (typedSlash ? !(v === '/' || afterSpace) : !wholeLine)) return;
   const query = typedSlash ? '' : v.slice(1).trim();
   host.state.menuClose?.();
   const choose = makeChoose(ta, data, host, cur, finish);

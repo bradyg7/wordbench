@@ -2678,3 +2678,39 @@ fn a_toggle_folds_in_the_settings_and_the_page_keeps_its_details() {
     let (code, _, _) = wb.run(&["page", "fold", &id, "2", "--on"], None);
     assert_ne!(code, 0, "a paragraph is not a toggle");
 }
+
+#[test]
+fn a_block_is_copied_below_itself_and_a_join_or_a_copy_can_be_undone() {
+    // notebook rows 42 and 20 (NB6): `wb block dup` copies a block right below it; `--undo` on block set and block dup gives
+    // a token that `wb block undo` takes back, only while the page is as the change left it
+    let Some(wb) = Wb::new() else { return };
+    let id = wb.js(&["page", "new", "A copy page"])["id"].as_str().unwrap().to_string();
+    wb.js(&["block", "add", &id, "First line"]);
+    wb.js(&["block", "add", &id, "- an item"]);
+    wb.js(&["block", "add", &id, "Last line"]);
+    let texts = |wb: &Wb| -> Vec<String> { wb.js(&["page", "blocks", &id])["blocks"].as_array().unwrap().iter().map(|b| b["text"].as_str().unwrap().to_string()).collect() };
+    let r = wb.js(&["block", "dup", &id, "2"]);
+    assert_eq!(r["n"], 3, "the copy is block 3");
+    assert_eq!(texts(&wb), ["First line", "- an item", "- an item", "Last line"]);
+    // a duplicate that is taken back
+    let r = wb.js(&["block", "dup", &id, "1", "--undo"]);
+    assert_eq!(texts(&wb).len(), 5);
+    let token = r["undo"].to_string();
+    wb.js(&["block", "undo", &id, &token]);
+    assert_eq!(texts(&wb), ["First line", "- an item", "- an item", "Last line"]);
+    // a join of two blocks, written as one: taken back, the two blocks are as they were
+    let r = wb.js(&["block", "set", &id, "3", "--count", "2", "--undo", "- an itemLast line"]);
+    assert_eq!(texts(&wb), ["First line", "- an item", "- an itemLast line"]);
+    let token = r["undo"].to_string();
+    // the page changed after the join: the token is refused and nothing is written
+    wb.js(&["block", "add", &id, "Another"]);
+    let (code, _, _) = wb.run(&["block", "undo", &id, &token], None);
+    assert_ne!(code, 0);
+    assert_eq!(texts(&wb).len(), 4);
+    wb.js(&["block", "rm", &id, "4"]);
+    wb.js(&["block", "undo", &id, &token]);
+    assert_eq!(texts(&wb), ["First line", "- an item", "- an item", "Last line"]);
+    // a block that is not there cannot be copied
+    let (code, _, _) = wb.run(&["block", "dup", &id, "9"], None);
+    assert_ne!(code, 0);
+}

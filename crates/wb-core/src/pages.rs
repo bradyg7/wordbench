@@ -947,8 +947,8 @@ pub fn edit_guarded(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>, 
     written(bible, store, &id, &out, titled, n, count)
 }
 
-/// A successful deletion's inverse. The complete previous body preserves spacing, and the digest
-/// limits Undo to the exact body produced by the deletion.
+/// A successful change's inverse (a deletion, a join, a copy). The complete previous body preserves spacing, and the
+/// digest limits Undo to the exact body produced by the change.
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct BlockUndo {
     page: String,
@@ -956,6 +956,14 @@ pub struct BlockUndo {
     after: String,
     n: usize,
     count: usize,
+    /// A deletion also checks that taking the block out of `before` gives the page as it is; a token from another
+    /// change (older tokens have no field and are deletions) rests on the digest alone.
+    #[serde(default = "is_removal")]
+    removal: bool,
+}
+
+fn is_removal() -> bool {
+    true
 }
 
 fn body_digest(text: &str) -> String {
@@ -971,8 +979,35 @@ pub fn remove_block(bible: &Bible, store: &mut Store, id: &str, n: usize, count:
     let (out, at, remaining) = set(&before, titled, n, count, "")?;
     let mut result = written(bible, store, &id, &out, titled, at, remaining)?;
     let (_, after, _) = text_of(store, &id)?;
-    result["undo"] = json!(BlockUndo { page: id, before, after: body_digest(&after), n, count });
+    result["undo"] = json!(BlockUndo { page: id, before, after: body_digest(&after), n, count, removal: true });
     Ok(result)
+}
+
+/// Any block change with a token for `wb block undo` (the page's Undo): a join (`block set --undo`), a copy (
+/// `block dup --undo`). The token holds the page as it was and a digest of the page as the change left it; it restores
+/// only while the page is still as the change left it.
+pub fn edit_undoable(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>, expected: Option<&str>) -> Result<Value> {
+    let (id, before, _) = text_of(store, id)?;
+    let mut result = edit_guarded(bible, store, &id, what, expected)?;
+    let (_, after, _) = text_of(store, &id)?;
+    let n = result["n"].as_u64().unwrap_or(1).saturating_sub(1) as usize;
+    let count = result["count"].as_u64().unwrap_or(1) as usize;
+    result["undo"] = json!(BlockUndo { page: id, before, after: body_digest(&after), n, count, removal: false });
+    Ok(result)
+}
+
+/// Copy block `n` right below itself (`wb block dup`; Duplicate in the block menu). → the blocks after, `n` the copy's number.
+pub fn duplicate_block(bible: &Bible, store: &mut Store, id: &str, n: usize, undo: bool, expected: Option<&str>) -> Result<Value> {
+    let (id, text, titled) = text_of(store, id)?;
+    let (_, bs) = split(&text, titled);
+    let b = bs.get(n).ok_or_else(|| missing(format!("The page has {} block{}; there is no block {}.", bs.len(), if bs.len() == 1 { "" } else { "s" }, n + 1)))?;
+    let copy = sub(&chars(&text), b.start, b.end);
+    let what = Edit::Add { after: Some(n), text: &copy };
+    if undo {
+        edit_undoable(bible, store, &id, what, expected)
+    } else {
+        edit_guarded(bible, store, &id, what, expected)
+    }
 }
 
 pub fn undo_block(bible: &Bible, store: &mut Store, id: &str, undo: BlockUndo) -> Result<Value> {
@@ -981,9 +1016,11 @@ pub fn undo_block(bible: &Bible, store: &mut Store, id: &str, undo: BlockUndo) -
         return Err(bad("The page changed after the block was deleted."));
     }
     // Check the inverse before writing so a stale or damaged token cannot replace unrelated text.
-    let (after, _, _) = set(&undo.before, titled, undo.n, undo.count, "")?;
-    if after.trim() != current.trim() {
-        return Err(bad("The block Undo does not match this page."));
+    if undo.removal {
+        let (after, _, _) = set(&undo.before, titled, undo.n, undo.count, "")?;
+        if after.trim() != current.trim() {
+            return Err(bad("The block Undo does not match this page."));
+        }
     }
     written(bible, store, &id, &undo.before, titled, undo.n, undo.count)
 }
