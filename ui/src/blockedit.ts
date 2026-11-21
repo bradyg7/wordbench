@@ -9,6 +9,8 @@
 // `setRangeText`, `placeholder`, `disabled`), in Markdown offsets, so the /, [[ link and format-bar code that was written
 // for a text box keeps working on it.
 
+import { COLORS, attrOf, isColor, type ColorKind } from './palette';
+
 export type Writer = HTMLElement & Pick<HTMLTextAreaElement, 'value' | 'selectionStart' | 'selectionEnd' | 'setSelectionRange' | 'setRangeText' | 'placeholder' | 'disabled'>;
 
 interface St { shape: string; lead: string; mark: string; num: number; delim: string; box: string; rel: string }
@@ -43,6 +45,13 @@ function marksOf(el: Element): [string, string] {
     case 'STRONG': case 'B': return ['**', '**'];
     case 'EM': case 'I': { const d = (el as HTMLElement).dataset.d || '*'; return [d, d]; }
     case 'U': return ['<u>', '</u>'];
+    case 'S': case 'STRIKE': case 'DEL': return ['~~', '~~'];
+    case 'SPAN': {
+      const d = (el as HTMLElement).dataset;
+      if (d.c && isColor(d.c)) return [`<span data-c="${d.c}">`, '</span>'];
+      if (d.bg && isColor(d.bg)) return [`<span data-bg="${d.bg}">`, '</span>'];
+      return ['', ''];
+    }
     default: return ['', ''];
   }
 }
@@ -87,19 +96,40 @@ function parseMd(md: string): { st: St; lines: string[] } {
   return plain;
 }
 
-/** **bold**, *italic*, _italic_ and <u>underline</u> as elements; the rest stays text (the same marks the page draws). */
+/** **bold**, *italic*, _italic_, <u>underline</u>, ~~strike~~ and a color's <span data-c="red"> as elements, each holding
+ *  what is inside it the same way; the rest stays text (the same marks the page draws). */
 function inlineNodes(s: string, marks: boolean): Node[] {
   if (!marks) return s ? [document.createTextNode(s)] : [];
   const out: Node[] = [];
-  const re = /\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|_([^_\s][^_]*)_|<u>([^<]+)<\/u>/g;
+  const names = COLORS.join('|');
+  const re = new RegExp(`\\*\\*([^*]+)\\*\\*|\\*([^*\\s][^*]*)\\*|_([^_\\s][^_]*)_|<u>((?:(?!</u>)[^])+)</u>|~~([^~]+)~~|<span data-(c|bg)="(${names})">`, 'g');
   let at = 0, m: RegExpExecArray | null;
   while ((m = re.exec(s))) {
+    let end = m.index + m[0].length;
+    let el: HTMLElement;
+    let inner: string;
+    if (m[6]) {
+      // a color span: its end is the </span> that balances it
+      const tags = /<span\b[^>]*>|<\/span>/g;
+      tags.lastIndex = end;
+      let depth = 1, t: RegExpExecArray | null, close = -1;
+      while ((t = tags.exec(s))) { depth += t[0] === '</span>' ? -1 : 1; if (!depth) { close = t.index; break; } }
+      if (close < 0) continue;
+      inner = s.slice(end, close);
+      el = document.createElement('span');
+      el.dataset[m[6] === 'c' ? 'c' : 'bg'] = m[7];
+      end = close + '</span>'.length;
+      re.lastIndex = end;
+    } else {
+      el = document.createElement(m[1] ? 'strong' : m[4] ? 'u' : m[5] ? 's' : 'em');
+      inner = (m[1] ?? m[4] ?? m[5] ?? m[2] ?? m[3])!;
+      if (m[2] !== undefined || m[3] !== undefined) el.dataset.d = m[2] !== undefined ? '*' : '_';
+    }
     if (m.index > at) out.push(document.createTextNode(s.slice(at, m.index)));
-    const el = document.createElement(m[1] ? 'strong' : m[4] ? 'u' : 'em');
-    el.textContent = m[1] ?? m[4] ?? m[2] ?? m[3];
-    if (!m[1] && !m[4]) el.dataset.d = m[2] !== undefined ? '*' : '_';
+    // a color holds marks of its own; a mark holds plain text unless a color is inside it
+    el.append(...(m[6] || inner.includes('<span data-') ? inlineNodes(inner, true) : [document.createTextNode(inner)]));
     out.push(el);
-    at = m.index + m[0].length;
+    at = end;
   }
   if (at < s.length) out.push(document.createTextNode(s.slice(at)));
   return out;
@@ -270,14 +300,14 @@ export function caretAt(ed: Writer): { start: boolean; end: boolean; collapsed: 
 
 /** After an edit: a box with nothing in it is truly empty (so its hint shows), and elements the browser added are unwrapped. */
 export function tidy(ed: HTMLElement) {
-  const foreign = ed.querySelector('span, font, div, p, a, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, code, pre, table, img');
+  const foreign = ed.querySelector('span:not([data-c]):not([data-bg]), font, div, p, a, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, code, pre, table, img');
   if (foreign) {
     const w = ed as Writer;
     const r = selectionRange(ed);
     const L = layout(ed);
     const a = r ? mdAt(L, ed, r.startContainer, r.startOffset) : -1, b = r ? mdAt(L, ed, r.endContainer, r.endOffset) : -1;
     const blocky = /^(DIV|P|H[1-6]|LI|BLOCKQUOTE|PRE|TABLE)$/;
-    for (const el of Array.from(ed.querySelectorAll('span, font, div, p, a, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, code, pre, table, img'))) {
+    for (const el of Array.from(ed.querySelectorAll('span:not([data-c]):not([data-bg]), font, div, p, a, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, code, pre, table, img'))) {
       if (!el.isConnected) continue;
       if (blocky.test(el.tagName) && el.previousSibling) el.before(document.createElement('br'));
       el.replaceWith(...Array.from(el.childNodes));
@@ -351,7 +381,7 @@ export function lineStartShortcut(ed: Writer): Turn {
 
 /** `**word**`, `*word*`, `_word_` and `<u>word</u>`: when the closing mark is typed, the words are styled in place. */
 export function inlineShortcut(ed: Writer, data: string | null): Turn {
-  if (!data || !/[*_>]/.test(data)) return null;
+  if (!data || !/[*_>~]/.test(data)) return null;
   const r = selectionRange(ed);
   if (!r || !r.collapsed || r.startContainer.nodeType !== 3) return null;
   const t = r.startContainer as Text, off = r.startOffset;
@@ -361,6 +391,7 @@ export function inlineShortcut(ed: Writer, data: string | null): Turn {
     [/(?<!\*)\*([^*\s](?:[^*]*[^*\s])?)\*$/, 'em', '*'],
     [/(?<![\w_])_([^_\s](?:[^_]*[^_\s])?)_$/, 'em', '_'],
     [/<u>([^<]+)<\/u>$/, 'u', null],
+    [/~~([^~\s](?:[^~]*[^~\s])?)~~$/, 's', null],
   ];
   for (const [re, tag, d] of tries) {
     const m = re.exec(before);
@@ -405,16 +436,16 @@ export function undoTurn(ed: Writer, turn: NonNullable<Turn>): boolean {
 }
 
 /** Ctrl+B, Ctrl+I, Ctrl+U: on the words selected, or on the words typed next. */
-export function toggleMark(ed: HTMLElement, key: 'b' | 'i' | 'u') {
+export function toggleMark(ed: HTMLElement, key: 'b' | 'i' | 'u' | 's') {
   const doc = ed.ownerDocument;
-  const cmd = key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline';
+  const cmd = key === 'b' ? 'bold' : key === 'i' ? 'italic' : key === 's' ? 'strikeThrough' : 'underline';
   const was = doc.queryCommandState(cmd);
   doc.execCommand(cmd);
   // WebKit does not turn a style on in a box with no text: the mark is put in by hand, and the words typed go inside it
   if (doc.queryCommandState(cmd) !== was || clean(ed.textContent || '') !== '') return;
   const sel = doc.getSelection();
   if (!sel || !sel.rangeCount || !ed.contains(sel.anchorNode)) return;
-  const el = doc.createElement(key === 'b' ? 'strong' : key === 'i' ? 'em' : 'u');
+  const el = doc.createElement(key === 'b' ? 'strong' : key === 'i' ? 'em' : key === 's' ? 's' : 'u');
   const t = doc.createTextNode(ZW);
   el.append(t);
   ed.replaceChildren(el);
@@ -423,6 +454,56 @@ export function toggleMark(ed: HTMLElement, key: 'b' | 'i' | 'u') {
   r.collapse(true);
   sel.removeAllRanges();
   sel.addRange(r);
+}
+
+/** The color the words at the start of `range` carry, of one kind (null: Default). */
+export function colorAt(ed: HTMLElement, range: Range, kind: ColorKind): string | null {
+  let n: Node | null = range.startContainer;
+  const attr = attrOf(kind).replace('data-', '');
+  while (n && n !== ed) {
+    if (n instanceof HTMLElement && n.tagName === 'SPAN' && n.dataset[attr] && isColor(n.dataset[attr]!)) return n.dataset[attr]!;
+    n = n.parentNode;
+  }
+  return null;
+}
+
+/** Put a color (`null`: Default) of one kind on the words of `range`, inside the block `ed`; returns the range of those words.
+ *  The words keep their other marks; an earlier color of the same kind on them (or around them) is replaced. */
+export function applyColor(ed: HTMLElement, range: Range, kind: ColorKind, name: string | null): Range | null {
+  if (range.collapsed || !ed.contains(range.startContainer) || !ed.contains(range.endContainer)) return null;
+  const attr = attrOf(kind).replace('data-', '');
+  const same = (el: Element) => el instanceof HTMLElement && el.tagName === 'SPAN' && !!el.dataset[attr];
+  const doc = ed.ownerDocument;
+  const frag = range.extractContents();
+  for (const sp of Array.from(frag.querySelectorAll('span')).filter(same)) sp.replaceWith(...Array.from(sp.childNodes));
+  // the words were inside a span of this color: it is split around the place they leave, so what is put back is not inside it
+  let host: HTMLElement | null = null;
+  for (let n: Node | null = range.startContainer; n && n !== ed; n = n.parentNode) if (same(n as Element)) host = n as HTMLElement;
+  if (host) {
+    const tail = doc.createRange();
+    tail.setStart(range.startContainer, range.startOffset);
+    tail.setEnd(host, host.childNodes.length);
+    const rest = host.cloneNode(false) as HTMLElement;
+    rest.append(tail.extractContents());
+    host.after(rest);
+    range.setStartAfter(host);
+    range.collapse(true);
+  }
+  let first: Node | null, last: Node | null;
+  if (name) {
+    const sp = doc.createElement('span');
+    sp.dataset[attr] = name;
+    sp.append(frag);
+    first = last = sp;
+    range.insertNode(sp);
+  } else {
+    first = frag.firstChild; last = frag.lastChild;
+    range.insertNode(frag);
+  }
+  for (const el of Array.from(ed.querySelectorAll('span'))) if (same(el) && clean(el.textContent || '') === '') el.remove();
+  const out = doc.createRange();
+  if (first && last && first.isConnected && last.isConnected) { out.setStartBefore(first); out.setEndAfter(last); } else out.collapse(true);
+  return out;
 }
 
 /** Tab and Shift+Tab on a list item: its indent, two spaces in or out. False when the block is not a list item. */

@@ -3,7 +3,7 @@
 // ↑ ↓ move the highlight, Enter picks, Esc or a click outside closes and focus returns to where it was.
 // The menu is fixed-position, so opening it never moves anything on the page.
 
-export type MenuItem = { id: string; label: string; icon?: string; hint?: string; keywords?: string[] };
+export type MenuItem = { id: string; label: string; icon?: string; iconClass?: string; iconData?: Record<string, string>; hint?: string; keywords?: string[] };
 // `folded`: with nothing typed the group is one row (its title and what is in it); Enter or a click opens it. Typing finds its rows.
 export type MenuGroup = { title?: string; items: MenuItem[]; folded?: boolean };
 export type MenuOptions = {
@@ -98,7 +98,8 @@ export function openMenu(opts: MenuOptions): MenuHandle {
         row.className = 'wbm-row';
         row.setAttribute('role', 'option');
         row.dataset.id = item.id;
-        const icon = document.createElement('span'); icon.className = 'wbm-icon'; icon.textContent = item.icon ?? '';
+        const icon = document.createElement('span'); icon.className = `wbm-icon${item.iconClass ? ` ${item.iconClass}` : ''}`; icon.textContent = item.icon ?? '';
+        if (item.iconData) Object.assign(icon.dataset, item.iconData);
         const label = document.createElement('span'); label.className = 'wbm-label'; label.textContent = item.label;
         row.append(icon, label);
         if (item.hint) { const k = document.createElement('span'); k.className = 'wbm-hint'; k.textContent = item.hint; row.append(k); }

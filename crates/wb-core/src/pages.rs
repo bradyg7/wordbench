@@ -834,8 +834,48 @@ fn block_values(text: &str, titled: bool) -> Value {
 pub fn blocks(store: &Store, id: &str) -> Result<Value> {
     let (id, text, titled) = text_of(store, id)?;
     let mut v = block_values(&text, titled);
+    v["folds"] = json!(folded(store, &id));
     v["id"] = json!(id);
     Ok(v)
+}
+
+/// Is this block the head of a toggle: `<details><summary>…</summary>` (notebook row 9)? A head written with its `</details>`
+/// on the same line is a toggle with nothing inside.
+fn is_toggle_head(text: &str) -> bool {
+    let t = text.trim_start();
+    t.starts_with("<details") && t.contains("<summary")
+}
+
+/// The toggles of a page that are folded, each named by its head's text. Which toggles are folded is the window's, kept in
+/// `settings/pages.json` under `folds`, never in the page (notebook row 9).
+pub fn folded(store: &Store, id: &str) -> Vec<String> {
+    store.settings("pages").get("folds").and_then(|f| f.get(id.trim())).and_then(|l| l.as_array())
+        .map(|l| l.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default()
+}
+
+/// Fold or unfold the toggle whose head is block `n` (from 0). Other pages' folds and everything else in the file are kept.
+pub fn set_fold(store: &mut Store, id: &str, n: usize, fold: bool) -> Result<Value> {
+    let (id, text, titled) = text_of(store, id)?;
+    let c = chars(&text);
+    let (_, bs) = split(&text, titled);
+    let b = bs.get(n).ok_or_else(|| bad("No such block (wb page blocks lists them)."))?;
+    let head = sub(&c, b.start, b.end);
+    if !is_toggle_head(&head) {
+        return Err(bad("That block is not a toggle (its text begins <details><summary>)."));
+    }
+    let mut all = store.settings("pages").get("folds").and_then(|l| l.as_object().cloned()).unwrap_or_default();
+    let mut mine = folded(store, &id);
+    mine.retain(|h| h != &head);
+    if fold {
+        mine.push(head);
+    }
+    if mine.is_empty() {
+        all.shift_remove(&id);
+    } else {
+        all.insert(id.clone(), json!(mine));
+    }
+    store.set_setting("pages", "folds", if all.is_empty() { None } else { Some(Value::Object(all)) })?;
+    Ok(json!({"id": id, "n": n + 1, "folded": fold, "folds": folded(store, &id)}))
 }
 
 /// Write a page's whole text back (Tether's Accept and its Undo), as every block change is written.

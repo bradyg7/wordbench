@@ -14,9 +14,11 @@ import { threadChooser } from './panes';
 import { openMenu, type MenuGroup, type MenuItem } from './menu';
 import { scriptureField } from './scripturefield';
 import { caretAt, caretLine, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, undoTurn, type Turn, type Writer } from './blockedit';
+import { isToggleEnd, placeBlocks, toggleHead, toggleOf, wrapHead } from './toggles';
+import { installSelectionBar, selectionBarBusy } from './selbar';
 
 export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string } }
-export interface Blocks { id: string; title: { text: string; start: number; end: number } | null; blocks: Blk[] }
+export interface Blocks { id: string; title: { text: string; start: number; end: number } | null; blocks: Blk[]; /** the folded toggles, each named by its head's text (settings/pages.json) */ folds?: string[] }
 export interface LinkAt { start: number; end: number }
 
 /** What the Notebook lends the blocks: drawing Markdown, the [[link]] list, and redrawing after a change. */
@@ -145,11 +147,78 @@ export function drawBlocks(data: Blocks, host: Host): HTMLElement {
   host.state.threads?.got.catch(() => {});
   host.state.words = data.blocks.some(isWord) ? { id: data.id, got: wb(['page', 'words', data.id]) } : null;
   host.state.words?.got.catch(() => {});
-  for (const b of data.blocks) wrap.append(blockEl(data, b, host));
+  installSelectionBar();
+  const places = placeBlocks(data.blocks);
+  for (const b of data.blocks) {
+    const el = blockEl(data, b, host);
+    const p = places.get(b.n)!;
+    el.style.setProperty('--td', String(p.role === 'end' ? p.inside.length - 1 : p.inside.length));
+    if (p.role === 'head') {
+      el.classList.add('nb-toggle');
+      el.insertBefore(toggleTriangle(data, b, host), el.querySelector('.nb-block-body'));
+    } else if (p.role === 'end') el.classList.add('nb-toggle-end');
+    wrap.append(el);
+  }
+  applyFolds(wrap, data);
   const add = h('button', 'link-btn nb-block-add muted', data.blocks.length ? 'Write here, or type / for a block' : 'Write the page here, or type / for a block');
   add.onclick = () => startNew(data, host, add, data.blocks.length ? data.blocks[data.blocks.length - 1].n : 0, '');
   wrap.append(add);
   return wrap;
+}
+
+// ---- toggles (row 9) -----------------------------------------------------------------------------------------------------
+
+/** Show each toggle folded or open, and hide what is inside a folded one. Folded is the window's, not the page's (settings/pages.json). */
+function applyFolds(wrap: HTMLElement, data: Blocks) {
+  const places = placeBlocks(data.blocks);
+  const folds = data.folds ?? [];
+  const textOf = new Map(data.blocks.map(b => [b.n, b.text]));
+  for (const b of data.blocks) {
+    const el = wrap.querySelector<HTMLElement>(`.nb-block[data-n="${b.n}"]`);
+    const p = places.get(b.n);
+    if (!el || !p) continue;
+    el.classList.toggle('nb-folded', p.inside.some(n => folds.includes(textOf.get(n) ?? '')));
+    if (p.role === 'head') {
+      const folded = folds.includes(b.text);
+      el.classList.toggle('folded', folded);
+      el.querySelector('.nb-toggle-tri')?.setAttribute('aria-expanded', String(!folded));
+    }
+  }
+}
+
+/** Fold or unfold the toggle whose head is block `n`; the page is not drawn again. */
+async function setFold(data: Blocks, host: Host, wrap: HTMLElement | null, n: number, headText: string, fold: boolean) {
+  const folds = (data.folds ??= []);
+  const at = folds.indexOf(headText);
+  if (fold && at < 0) folds.push(headText);
+  if (!fold && at >= 0) folds.splice(at, 1);
+  if (wrap) applyFolds(wrap, data);
+  try { await wb(['page', 'fold', data.id, String(n), fold ? '--on' : '--off']); } catch (x) { toast(String(x)); }
+  void host;
+}
+
+function toggleTriangle(data: Blocks, b: Blk, host: Host): HTMLElement {
+  const tri = h('button', 'nb-toggle-tri', '›') as HTMLButtonElement;
+  tri.type = 'button';
+  tri.title = 'Fold or unfold (Ctrl+Enter)';
+  tri.setAttribute('aria-label', 'Fold or unfold the toggle');
+  tri.onmousedown = ev => ev.preventDefault();
+  const flip = () => {
+    const wrap = tri.closest<HTMLElement>('.nb-blocks');
+    void setFold(data, host, wrap, b.n, b.text, !(data.folds ?? []).includes(b.text));
+  };
+  tri.onclick = ev => { ev.stopPropagation(); flip(); };
+  tri.onkeydown = ev => { if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); ev.stopPropagation(); flip(); } };
+  return tri;
+}
+
+/** The nearest block from `n` in a direction that is shown (not folded away, not a toggle's end), for the arrow keys. */
+function shownFrom(wrap: HTMLElement | null, n: number, step: 1 | -1, last: number): number {
+  for (let k = n; k >= 1 && k <= last; k += step) {
+    const el = wrap?.querySelector<HTMLElement>(`.nb-block[data-n="${k}"]`);
+    if (!el || (!el.classList.contains('nb-folded') && !el.classList.contains('nb-toggle-end'))) return k;
+  }
+  return n;
 }
 
 function shifted<T extends { start: number; end: number }>(xs: T[], a: number, b: number): T[] {
@@ -246,6 +315,13 @@ function drawn(b: Blk, host: Host, id: string): Node {
   if (isView(b)) return viewBlock(b, id, host);
   if (isThread(b)) return threadBlock(b, id, host);
   if (isWord(b)) return wordBlock(b, id, host);
+  const tg = toggleHead(b.text);
+  if (tg) {
+    const line = h('div', 'nb-toggle-line');
+    if (tg.inner.trim()) line.append(host.render(tg.inner, [], []));
+    else line.append(h('span', 'muted', 'Toggle'));
+    return line;
+  }
   if (b.kind === 'quote' && b.question) return questionBlock(b, id, host);
   if (b.kind === 'fence') return fence(b);
   const f = host.render(b.text, refs, links);
@@ -801,6 +877,9 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
 /** Write in a new block after block `after` (0: first, right under the title). */
 function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string, at: 'start' | 'end' = 'end', pick?: string) {
   const el = h('div', 'nb-block nb-new-block');
+  // a block written under a toggle's line is inside the toggle
+  const prev = beforeEl.parentElement?.querySelector<HTMLElement>(`.nb-block[data-n="${after}"]`);
+  if (prev) el.style.setProperty('--td', String(Number(prev.style.getPropertyValue('--td') || 0) + (prev.classList.contains('nb-toggle') ? 1 : 0)));
   beforeEl.before(el);
   startEdit(data, { n: 0, kind: 'paragraph', text, start: 0, end: 0 }, el, host, at, after, pick);
 }
@@ -809,8 +888,12 @@ function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number
  *  typed; its Markdown is what is saved as it is typed (`wb block set`; a new block, `wb block add`). */
 function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start' | 'end' | number, newAfter?: number, pick?: string) {
   if (el.querySelector('.nb-block-input')) return;
-  const ta = createEditor(b.text);
-  ta.placeholder = 'Write, or type / for a block';
+  // a toggle's head is edited as its own line (with the heading shape it may have); the block saved is the head written around it
+  const head0 = toggleHead(b.text);
+  const ta = createEditor(head0 ? head0.inner : b.text);
+  if (head0) toggleOf.set(ta, { closed: head0.closed });
+  const wrapped = () => { const t = toggleOf.get(ta); return t ? wrapHead(ta.value, t.closed) : ta.value; };
+  ta.placeholder = head0 ? 'Toggle' : 'Write, or type / for a block';
   el.classList.add('editing');
   const body = el.querySelector('.nb-block-body') || el;
   body.replaceChildren(ta);
@@ -844,7 +927,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   const save = () => {
     clearTimeout(timer);
     saving = saving.then(async () => {
-      const text = ta.value.replace(/\n+$/, '');
+      const text = wrapped().replace(/\n+$/, '');
       // not while the / menu is open or a new page's name is asked for in the box
       if (!dirty || text === last || blank(text) || text.startsWith('/') || ta.classList.contains('asking')) return;
       try {
@@ -868,7 +951,9 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     gone = true;
     host.state.menuClose?.();
     await save();
-    if (cur.n && (blank(ta.value) || !ta.value.trim())) {
+    const tg = toggleOf.get(ta);
+    // an emptied block goes; so does an emptied toggle that has nothing inside it
+    if (cur.n && (blank(ta.value) || !ta.value.trim()) && (!tg || (tg.closed && dirty))) {
       try {
         await findAgain();
         const wrap = el.closest<HTMLElement>('.nb-blocks');
@@ -883,13 +968,13 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   /** Backspace at the start of a plain block: its words join the end of the block before, which keeps its shape. */
   const mergeUp = async () => {
     const mine = ta.value;
-    if (/^(```|~~~|\|)/.test(mine)) return;
+    if (/^(```|~~~|\|)/.test(mine) || toggleOf.get(ta)) return;
     await save();
     await findAgain();
     if (cur.n < 2) return;
     const now: Blk[] = (await wb(['page', 'blocks', data.id])).blocks;
     const prev = now.find(x => x.n === cur.n - 1);
-    if (!prev || !['paragraph', 'heading', 'item', 'numbered', 'todo', 'quote'].includes(prev.kind) || isStructured(prev)) return;
+    if (!prev || !['paragraph', 'heading', 'item', 'numbered', 'todo', 'quote'].includes(prev.kind) || isStructured(prev) || toggleHead(prev.text) || isToggleEnd(prev.text)) return;
     if (gone) return;
     gone = true;
     clearTimeout(timer);
@@ -904,7 +989,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   };
   registerPageWriter(ta, data.id, async () => {
     await save();
-    if (ta.value.replace(/\n+$/, '') !== last && dirty && ta.value.trim() && !blank(ta.value)) throw new Error('Save or cancel the current block before deleting its page.');
+    if (wrapped().replace(/\n+$/, '') !== last && dirty && ta.value.trim() && !blank(ta.value)) throw new Error('Save or cancel the current block before deleting its page.');
     await finish();
   }, () => { gone = true; clearTimeout(timer); ta.disabled = true; });
   // a shortcut that turned the typed characters into another form, kept so Ctrl+Z gives the typed characters back
@@ -950,6 +1035,17 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
       }
       if (k === 'b' || k === 'i' || k === 'u') { ev.preventDefault(); toggleMark(ta, k); return; }
     }
+    if (mod && ev.key === 'Enter' && !ev.shiftKey && !ev.altKey && toggleOf.get(ta)) {
+      // Ctrl+Enter folds or unfolds the toggle this line heads
+      ev.preventDefault();
+      const wrap = el.closest<HTMLElement>('.nb-blocks');
+      void (async () => {
+        await save();
+        await findAgain();
+        if (cur.n) await setFold(data, host, wrap, cur.n, last, !(data.folds ?? []).includes(last));
+      })();
+      return;
+    }
     const c = caretAt(ta);
     if (ev.key === 'Tab' && plainKey && indentList(ta, ev.shiftKey)) { ev.preventDefault(); touched(); return; }
     if (ev.key === 'Enter' && ev.shiftKey && !mod && !ev.altKey) {
@@ -979,6 +1075,28 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
         el.before(gap);
         return;
       }
+      const tgh = toggleOf.get(ta);
+      if (tgh) {
+        // Enter in a toggle's line: what follows the caret is the first thing inside it, and the toggle is open. A toggle written
+        // as one block becomes the head, the blocks inside it and the `</details>` that ends it.
+        const sp0 = splitAtCaret(ta);
+        if (!sp0) return;
+        if (sp0.rest) ta.value = sp0.first;
+        dirty = true;
+        const wasClosed = tgh.closed;
+        const wrap = el.closest<HTMLElement>('.nb-blocks');
+        void (async () => {
+          if (cur.n && (data.folds ?? []).includes(last)) await setFold(data, host, wrap, cur.n, last, false);
+          tgh.closed = false;
+          await save();
+          await findAgain();
+          try { if (wasClosed && cur.n) await wb(['block', 'add', data.id, '--after', String(cur.n + cur.count - 1), '</details>']); } catch (x) { toast(String(x)); }
+          host.state.focus = null;
+          host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: sp0.rest, at: sp0.rest ? 'start' : 'end' };
+          await finish();
+        })();
+        return;
+      }
       const next = continuation(ta);
       const sp = splitAtCaret(ta);
       if (!sp) return;
@@ -1002,17 +1120,17 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     }
     if (ev.key === 'ArrowUp' && plainKey && !ev.shiftKey && c.collapsed && caretLine(ta).first && (cur.n || cur.after + 1) > 1) {
       ev.preventDefault();
-      void finish({ n: (cur.n || cur.after + 1) - 1, at: 'end' });
+      void finish({ n: shownFrom(el.closest<HTMLElement>('.nb-blocks'), (cur.n || cur.after + 1) - 1, -1, data.blocks.length), at: 'end' });
       return;
     }
     if (ev.key === 'ArrowDown' && plainKey && !ev.shiftKey && c.collapsed && caretLine(ta).last) {
-      const nextN = cur.n ? cur.n + cur.count : cur.after + 1;
+      const nextN = shownFrom(el.closest<HTMLElement>('.nb-blocks'), cur.n ? cur.n + cur.count : cur.after + 1, 1, data.blocks.length);
       if (nextN <= data.blocks.length + (cur.n ? 0 : 1)) { ev.preventDefault(); void finish({ n: nextN, at: 'start' }); }
     }
   };
   ta.onblur = () => {
     // a click on the format bar, the block menu or a [[link]] list keeps the box
-    setTimeout(() => { if (document.activeElement === ta || !ta.isConnected || gone || ta.classList.contains('asking')) return; if (host.state.menuClose) return; void finish(); }, 150);
+    setTimeout(() => { if (document.activeElement === ta || !ta.isConnected || gone || ta.classList.contains('asking')) return; if (host.state.menuClose || selectionBarBusy()) return; void finish(); }, 150);
   };
   ta.focus();
   const pos = at === 'start' ? contentStart(ta) : at === 'end' ? ta.value.length : Math.min(at, ta.value.length);
@@ -1124,6 +1242,15 @@ function makeChoose(ta: Writer, data: Blocks, host: Host, cur: { n: number; coun
         },
       });
       field.focus();
+      return;
+    }
+    if (m.key === 'toggle') {
+      // the line becomes a toggle's line: what is typed in it is the summary, written as <details><summary> (row 9)
+      toggleOf.set(ta, { closed: true });
+      ta.placeholder = 'Toggle';
+      ta.value = '';
+      ta.focus();
+      ta.dispatchEvent(new Event('input'));
       return;
     }
     ta.value = m.write;

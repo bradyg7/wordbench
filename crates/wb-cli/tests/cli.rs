@@ -2655,3 +2655,26 @@ fn block_add_scripture_writes_the_fenced_reference_block() {
     assert_ne!(code, 0, "{err}");
     assert_eq!(wb.js(&["page", "blocks", &id])["blocks"].as_array().unwrap().len(), 3);
 }
+
+#[test]
+fn a_toggle_folds_in_the_settings_and_the_page_keeps_its_details() {
+    // notebook row 9 (NB4): the toggle is <details><summary> in the page; folded or not is in settings/pages.json
+    let Some(wb) = Wb::new() else { return };
+    let id = wb.js(&["page", "new", "A toggle page"])["id"].as_str().unwrap().to_string();
+    wb.js(&["block", "add", &id, "<details><summary>Numbers 25</summary>"]);
+    wb.js(&["block", "add", &id, "Read it twice."]);
+    wb.js(&["block", "add", &id, "</details>"]);
+    let before = wb.js(&["page", "blocks", &id]);
+    assert_eq!(before["folds"].as_array().unwrap().len(), 0);
+    let r = wb.js(&["page", "fold", &id, "1", "--on"]);
+    assert_eq!(r["folded"], true);
+    let after = wb.js(&["page", "blocks", &id]);
+    assert_eq!(after["folds"][0], "<details><summary>Numbers 25</summary>");
+    // the page itself is unchanged by folding
+    assert_eq!(before["blocks"], after["blocks"]);
+    assert!(wb.dir.join("settings/pages.json").exists());
+    wb.js(&["page", "fold", &id, "1", "--off"]);
+    assert_eq!(wb.js(&["page", "blocks", &id])["folds"].as_array().unwrap().len(), 0);
+    let (code, _, _) = wb.run(&["page", "fold", &id, "2", "--on"], None);
+    assert_ne!(code, 0, "a paragraph is not a toggle");
+}

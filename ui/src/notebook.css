@@ -6,3 +6,39 @@
 .page-delete-options label { display: block; margin-bottom: .6rem; }
 .page-delete-options .btn { margin: .4rem; }
 .deletion-error { display: block; }
+
+/* Toggles (notebook row 9): the triangle sits in the gutter-side of the head's line; what is inside is indented a step and
+   hidden while the toggle is folded. */
+.nb-blocks > .nb-block { --td: 0; margin-left: calc(-22px + var(--td) * 24px); }
+.nb-blocks > .nb-block.nb-folded, .nb-blocks > .nb-block.nb-toggle-end { display: none; }
+.nb-toggle > .nb-block-body { padding-left: 22px; }
+.nb-toggle-tri { position: absolute; left: calc(22px + 1px); top: 3px; width: 20px; height: 20px; padding: 0; display: inline-grid; place-items: center; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 600 18px/1 var(--font-ui, inherit); cursor: pointer; transform: rotate(90deg); transition: transform .12s; }
+.nb-toggle-tri:hover { background: var(--sunken); color: var(--fg); }
+.nb-toggle.folded > .nb-toggle-tri { transform: none; }
+.nb-toggle-line > :first-child { margin-top: 0; margin-bottom: 0; }
+
+/* The plain colors (row 25): the names are the page's, the look is the theme's. Backgrounds are the same hue, pale. */
+:root { --nbc-gray: #6b6b66; --nbc-brown: #8a5a3c; --nbc-orange: #b8641a; --nbc-yellow: #8f6d00; --nbc-green: #2f7a45; --nbc-blue: #2b62a8; --nbc-purple: #7048a8; --nbc-red: #b03a3a; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="eink"]) { --nbc-gray: #a8a8a0; --nbc-brown: #c99876; --nbc-orange: #e8a060; --nbc-yellow: #d9b74a; --nbc-green: #7bc28f; --nbc-blue: #7fb0e8; --nbc-purple: #b896e0; --nbc-red: #e58080; }
+}
+:root[data-theme="dark"] { --nbc-gray: #a8a8a0; --nbc-brown: #c99876; --nbc-orange: #e8a060; --nbc-yellow: #d9b74a; --nbc-green: #7bc28f; --nbc-blue: #7fb0e8; --nbc-purple: #b896e0; --nbc-red: #e58080; }
+:root[data-theme="eink"] { --nbc-gray: inherit; --nbc-brown: inherit; --nbc-orange: inherit; --nbc-yellow: inherit; --nbc-green: inherit; --nbc-blue: inherit; --nbc-purple: inherit; --nbc-red: inherit; }
+[data-c=gray] { color: var(--nbc-gray); } [data-c=brown] { color: var(--nbc-brown); } [data-c=orange] { color: var(--nbc-orange); } [data-c=yellow] { color: var(--nbc-yellow); }
+[data-c=green] { color: var(--nbc-green); } [data-c=blue] { color: var(--nbc-blue); } [data-c=purple] { color: var(--nbc-purple); } [data-c=red] { color: var(--nbc-red); }
+[data-bg=gray] { background: color-mix(in srgb, var(--nbc-gray) 18%, transparent); } [data-bg=brown] { background: color-mix(in srgb, var(--nbc-brown) 18%, transparent); }
+[data-bg=orange] { background: color-mix(in srgb, var(--nbc-orange) 18%, transparent); } [data-bg=yellow] { background: color-mix(in srgb, var(--nbc-yellow) 22%, transparent); }
+[data-bg=green] { background: color-mix(in srgb, var(--nbc-green) 18%, transparent); } [data-bg=blue] { background: color-mix(in srgb, var(--nbc-blue) 18%, transparent); }
+[data-bg=purple] { background: color-mix(in srgb, var(--nbc-purple) 18%, transparent); } [data-bg=red] { background: color-mix(in srgb, var(--nbc-red) 18%, transparent); }
+:root[data-theme="eink"] [data-bg] { background: var(--hl-yellow); }
+.nb-page s, .nb-page strike, .nb-page del, .nb-block-input s, .nb-block-input strike, .nb-block-input del { text-decoration: line-through; }
+.wbm-icon.nbc-a { font-weight: 650; }
+.wbm-icon.nbc-sw { border-radius: 4px; }
+
+/* The selection bar (row 10) */
+.nb-selbar { position: fixed; z-index: 49; display: flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 18px var(--scrim); font-size: 13px; }
+.nb-sb-btn { min-width: 28px; height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.nb-sb-btn:hover, .nb-sb-btn[aria-pressed=true] { background: var(--sunken); }
+.nb-sb-btn[aria-disabled=true] { opacity: .55; cursor: default; }
+.nb-sb-b { font-weight: 700; } .nb-sb-i { font-style: italic; } .nb-sb-u { text-decoration: underline; } .nb-sb-s { text-decoration: line-through; }
+.nb-sb-turn { margin-right: 4px; }

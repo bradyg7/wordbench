@@ -252,6 +252,13 @@ pub fn commands() -> Vec<Command> {
                 };
                 j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Add { after, text: &text }).map_err(e)?)
             }),
+        cmd("page fold", "Fold or unfold a toggle (a block that begins <details><summary>), kept in settings/pages.json and not in the page: wb page fold ID N --on|--off (N: the toggle's head block, from 1). With neither, the folded toggles' head texts.",
+            vec![Pos("id", N::One), Pos("n", N::Opt), Flag("on"), Flag("off")], |c, a| {
+                if a.flag("on") == a.flag("off") {
+                    return j(serde_json::json!({"id": a.s("id"), "folds": pg::folded(&*c.study()?, &a.s("id"))}));
+                }
+                j(pg::set_fold(&mut *c.study()?, &a.s("id"), nth(a, "n")?, a.flag("on")).map_err(e)?)
+            }),
         cmd("block rm", "Remove a block from a page (--count K: K blocks from it). --undo returns a token for wb block undo; --expect TEXT requires the current page text to match.",
             vec![Pos("id", N::One), Pos("n", N::One), Opt("count", None), Flag("undo"), Opt("expect", None)], |c, a| {
                 let n = nth(a, "n")?;

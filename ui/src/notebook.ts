@@ -1561,15 +1561,34 @@ ${l}` : ''}`;
     return f;
   }
 
-  /** **bold** and *italics* in plain text, as elements (never as HTML). */
+  /** **bold**, *italics*, _italics_, <u>underline</u>, ~~strike~~ and a color's <span data-c="red"> in plain text, as elements (never as HTML). */
   function styled(s: string): DocumentFragment {
     const f = document.createDocumentFragment();
-    const re = /\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|_([^_\s][^_]*)_|<u>([^<]+)<\/u>/g;
+    const names = ['gray', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'red'].join('|');
+    const re = new RegExp(`\\*\\*([^*]+)\\*\\*|\\*([^*\\s][^*]*)\\*|_([^_\\s][^_]*)_|<u>((?:(?!</u>)[^])+)</u>|~~([^~]+)~~|<span data-(c|bg)="(${names})">`, 'g');
     let at = 0, m: RegExpExecArray | null;
     while ((m = re.exec(s))) {
+      let end = m.index + m[0].length;
+      let el: HTMLElement, inner: string;
+      if (m[6]) {
+        const tags = /<span\b[^>]*>|<\/span>/g;
+        tags.lastIndex = end;
+        let depth = 1, t: RegExpExecArray | null, close = -1;
+        while ((t = tags.exec(s))) { depth += t[0] === '</span>' ? -1 : 1; if (!depth) { close = t.index; break; } }
+        if (close < 0) continue;
+        inner = s.slice(end, close);
+        el = h('span');
+        el.dataset[m[6] === 'c' ? 'c' : 'bg'] = m[7];
+        end = close + '</span>'.length;
+        re.lastIndex = end;
+      } else {
+        el = h(m[1] ? 'strong' : m[4] ? 'u' : m[5] ? 's' : 'em');
+        inner = (m[1] ?? m[4] ?? m[5] ?? m[2] ?? m[3])!;
+      }
       f.append(s.slice(at, m.index));
-      f.append(m[1] ? h('strong', '', m[1]) : m[4] ? h('u', '', m[4]) : h('em', '', m[2] ?? m[3]));
-      at = m.index + m[0].length;
+      if (m[6] || inner.includes('<span data-')) el.append(styled(inner)); else el.textContent = inner;
+      f.append(el);
+      at = end;
     }
     f.append(s.slice(at));
     return f;
