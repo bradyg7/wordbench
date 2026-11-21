@@ -1,6 +1,6 @@
 # The Notebook, with Notion's quality as the template
 
-**State:** exploring (round 5: row 40) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
+**State:** accepted (the person, 2026-11-20, after round 5) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
 Nothing here is built. · **Review page:** `node design/review.mjs notebook` writes `review.html`.
 
 The person, 2026-11-20: Notion's quality is the template; Wordbench comes in and changes it for studying the Bible.
@@ -170,7 +170,7 @@ person's existing pages read.
 | 10 | Selected text | Select | A bar above the selection: Turn into ▾, B, I, U, S, link, color ▾, and on scripture text Mark ▾ and Margin note | Nothing until used | Window only | `selection_bar_on_intent` | [ ] approved 2026-11-20 |
 | 11 | Selection bar | Mark ▾ on scripture in a page | The Legend's styles; the mark lands on those words in the reader too | The mark, as the reader's | `wb mark add …` (existing) | `mark_from_a_page_is_the_reader_s_mark` | [ ] approved 2026-11-20 |
 | 39 | Scripture in a page | Select words, Mark ▾, pick a style | Step by step (39a–39d): the bar opens above the selection; Mark ▾'s menu opens attached under the bar; the mark sits on the scripture's own words in the page; the reader shows the same mark | The mark, as the reader's | `wb mark add …` (existing) | `mark_from_a_page_step_by_step` | [ ] approved 2026-11-20 |
-| 40 | Scripture in a page | Select words, Margin note | The note opens in the margin beside the selected words, with a grip to drag it; it is that verse's margin note and shows in the reader; a reference in its words ("See 1 Cor 10:8") is found as in a page and shown as the link chip of row 12, which opens the compact chapter panel | `margin/<BOOK>/<chapter>.md` | `wb mark note REF "…"` (existing) | `margin_note_beside_the_words` | [ ] |
+| 40 | Scripture in a page | Select words, Margin note | The note opens in the margin beside the selected words, with a grip to drag it; it is that verse's margin note and shows in the reader; a reference in its words ("See 1 Cor 10:8") is found as in a page and shown as the link chip of row 12, which opens the compact chapter panel | `margin/<BOOK>/<chapter>.md` | `wb mark note REF "…"` (existing) | `margin_note_beside_the_words` | [ ] approved 2026-11-20 |
 | 12 | A line | `@` then a reference | A menu of verses, pages, folders and Today; a verse is placed as a **link chip** (12a). Clicking the chip opens a popup with the verse (12b) that can be dragged, grown to the whole chapter as a compact panel with a header (reference, ← →, Open in reader, close), sized to its text and snapped to a corner (12c), or sent to the side reader with Open beside (12d); Esc closes it and Back returns | The reference as a link form (open: its form in the file) | `wb page link ID`; `wb refs` | `at_verse_chip_popup` | [ ] approved 2026-11-20 |
 
 ### The block handle, N5
@@ -389,3 +389,7 @@ Tally: 20 Perfect, 1 unrated (row 40, a question). Two questions answered:
 ### Approved (round 4)
 
 Rows 12, 18, 25, 26, 32, 34, 35, 36, 39, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55.
+
+### Round 5 review (the person, 2026-11-20; review-notebook-round5.json)
+
+Rows 40 and 32: Perfect. Every row is approved; the person accepted the design on 2026-11-20. Next: tickets in the order menu and writing, the page, the side list.
