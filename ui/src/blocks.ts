@@ -11,6 +11,8 @@ import { toast } from './sheets';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
 import { drawVerses, openSplit, verseCard, type MarkedVerse } from './verses';
 import { threadChooser } from './panes';
+import { openMenu, type MenuGroup, type MenuItem } from './menu';
+import { scriptureField } from './scripturefield';
 import { caretAt, caretLine, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, undoTurn, type Turn, type Writer } from './blockedit';
 
 export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string } }
@@ -736,20 +738,25 @@ function fence(b: Blk): HTMLElement {
 // ---- writing in a block -------------------------------------------------------------------------------------------------
 
 /** The block menu (sheet W2), in its order: what each writes. */
-const MENU: { key: string; label: string; what: string; ico: string; write: string; caret?: number; alias?: string[] }[] = [
-  { key: 'question', label: 'Question', what: 'Open until you answer it', ico: 'prompt', write: '> [!question] ', alias: ['?'] },
-  { key: 'thread', label: 'Thread', what: 'A thread’s places, kept up to date', ico: 'threads', write: '', alias: ['~'] },
-  { key: 'word', label: 'Word', what: 'A Strong’s entry from the lexicon', ico: 'search', write: '' },
-  { key: 'scripture', label: 'Scripture', what: 'A passage, drawn from the Bible', ico: 'book', write: '' },
-  { key: 'heading', label: 'Heading', what: '# A heading', ico: 'prompt', write: '# ' },
-  { key: 'list', label: 'List', what: '- an item', ico: 'shelf', write: '- ' },
-  { key: 'todo', label: 'To-do', what: '- [ ] something to do', ico: 'check', write: '- [ ] ' },
-  { key: 'quote', label: 'Quote', what: '> quoted words', ico: 'copy', write: '> ' },
-  { key: 'divider', label: 'Divider', what: 'A line across the page', ico: 'minus', write: '---' },
-  { key: 'table', label: 'Table', what: 'Rows and columns', ico: 'filter', write: '| Column | Column |\n| --- | --- |\n|  |  |', caret: 2 },
-  { key: 'link', label: 'Link to a page', what: '[[a page’s title]]', ico: 'notebook', write: '[[' },
-  { key: 'inside', label: 'Page inside this one', what: 'A new page, with a link to it here', ico: 'notebook', write: '', alias: ['note', 'page'] },
-  { key: 'view', label: 'View', what: 'A list kept up to date (a line of the command language)', ico: 'filter', write: '```view\nnotebook \n```', caret: 17 },
+const MENU: { key: string; label: string; what: string; ico: string; write: string; caret?: number; alias?: string[]; group: 'Basic' | 'Study'; hint?: string; glyph: string }[] = [
+  { key: 'text', label: 'Text', what: 'Plain writing', ico: 'prompt', write: '', group: 'Basic', glyph: 'T' },
+  { key: 'h1', label: 'Heading 1', what: '# A heading', ico: 'prompt', write: '# ', group: 'Basic', hint: '#', glyph: 'T', alias: ['heading'] },
+  { key: 'h2', label: 'Heading 2', what: '## A heading', ico: 'prompt', write: '## ', group: 'Basic', hint: '##', glyph: 'T', alias: ['heading'] },
+  { key: 'h3', label: 'Heading 3', what: '### A heading', ico: 'prompt', write: '### ', group: 'Basic', hint: '###', glyph: 'T', alias: ['heading'] },
+  { key: 'bullet', label: 'Bullet list', what: '- an item', ico: 'shelf', write: '- ', group: 'Basic', hint: '-', glyph: '•', alias: ['list'] },
+  { key: 'numbered', label: 'Numbered list', what: '1. an item', ico: 'shelf', write: '1. ', group: 'Basic', hint: '1.', glyph: '1.', alias: ['list'] },
+  { key: 'todo', label: 'To-do', what: '- [ ] something to do', ico: 'check', write: '- [ ] ', group: 'Basic', hint: '[]', glyph: '✓', alias: ['task', 'checkbox'] },
+  { key: 'toggle', label: 'Toggle list', what: 'Folds what is inside', ico: 'copy', write: '<details><summary></summary></details>', caret: 18, group: 'Basic', glyph: '›', alias: ['details', 'fold'] },
+  { key: 'quote', label: 'Quote', what: '> quoted words', ico: 'copy', write: '> ', group: 'Basic', hint: '>', glyph: '”' },
+  { key: 'divider', label: 'Divider', what: 'A line across the page', ico: 'minus', write: '---', group: 'Basic', hint: '---', glyph: '—' },
+  { key: 'table', label: 'Table', what: 'Rows and columns', ico: 'filter', write: '| Column | Column |\n| --- | --- |\n|  |  |', caret: 2, group: 'Basic', glyph: '▦' },
+  { key: 'inside', label: 'Page', what: 'A new page, with a link to it here', ico: 'notebook', write: '', alias: ['note', 'page inside this one'], group: 'Basic', glyph: '▯' },
+  { key: 'link', label: 'Link to a page', what: '[[a page’s title]]', ico: 'notebook', write: '[[', group: 'Basic', glyph: '↗' },
+  { key: 'scripture', label: 'Scripture', what: 'A passage, drawn from the Bible', ico: 'book', write: '', group: 'Study', glyph: 'S' },
+  { key: 'word', label: 'Word', what: 'A Strong’s entry from the lexicon', ico: 'search', write: '', group: 'Study', glyph: 'W' },
+  { key: 'question', label: 'Callout', what: 'A question, open until you answer it', ico: 'prompt', write: '> [!question] ', alias: ['question', '?'], group: 'Study', glyph: '?' },
+  { key: 'thread', label: 'Saved thing', what: 'A folder’s places, kept up to date', ico: 'threads', write: '', alias: ['thread', 'folder', '~'], group: 'Study', glyph: '~' },
+  { key: 'view', label: 'List in a page', what: 'A list kept up to date (a line of the command language)', ico: 'filter', write: '```view\nnotebook \n```', caret: 17, alias: ['view'], group: 'Study', glyph: '☰' },
 ];
 
 
@@ -878,7 +885,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
       host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '', at: 'end' };
       return;
     }
-    slashMenu(ta, data, host, cur, finish);
+    if (isTyped && data1 === '/') slashMenu(ta, data, host, cur, finish, true);
     if (host.template) blankMenu(ta, host);
     clearTimeout(timer);
     timer = window.setTimeout(save, 600);
@@ -1028,21 +1035,24 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
   else if (f.n > data.blocks.length) startNew(data, host, wrap.querySelector<HTMLElement>('.nb-block-add')!, data.blocks.length, '');
 }
 
-/** `/` at the start of an empty block opens the block menu; what is typed after it narrows the menu. */
-function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>) {
+/** `/` on an empty line, or after a space, opens the one list at the caret (notebook row 6): Basic blocks, then Study folded
+ *  at its end; typing in the list finds any command by name, folded or not. */
+function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>, typedSlash = false) {
   const v = ta.value;
-  if (!v.startsWith('/') || v.includes('\n') || v.length > 30) { host.state.menuClose?.(); return; }
-  const typed = v.slice(1).trim().toLowerCase();
-  const hits = MENU.filter(m => !typed || m.label.toLowerCase().includes(typed) || m.key.startsWith(typed) || (m.alias || []).some(a => a.startsWith(typed)));
+  const afterSpace = typedSlash && v.length > 1 && /\s\/$/.test(v) && !v.includes('\n');
+  const wholeLine = v.startsWith('/') && !v.includes('\n') && v.length <= 30;
+  if (typedSlash ? !(v === '/' || afterSpace) : !wholeLine) return;
+  const query = typedSlash ? '' : v.slice(1).trim();
   host.state.menuClose?.();
-  if (!hits.length) return;
-  const box = h('div', 'nb-blockmenu');
-  box.append(h('div', 'nb-blockmenu-head', 'Add a block · type to narrow it'));
-  const rows: HTMLButtonElement[] = [];
-  let on = 0;
-  const mark = (i: number) => { rows[on]?.classList.remove('on'); on = Math.max(0, Math.min(rows.length - 1, i)); rows[on]?.classList.add('on'); rows[on]?.scrollIntoView({ block: 'nearest' }); };
   const choose = async (m: typeof MENU[number]) => {
-    close();
+    if (afterSpace) {
+      // the words before the slash stay as they are; the command opens in a block under them
+      ta.value = v.slice(0, -1).trimEnd();
+      void finish();
+      host.state.focus = null;
+      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: `/${m.label}`, at: 'end' };
+      return;
+    }
     if (m.key === 'inside') return askInside(ta, host, cur, finish);
     if (m.key === 'thread' || m.key === 'word') {
       const before = ta.value;
@@ -1065,18 +1075,38 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
       return;
     }
     if (m.key === 'scripture') {
-      const at = app.picked ?? here();
-      ta.value = `\`\`\`scripture\n${at.label}\n\`\`\``;
-      ta.setSelectionRange(14, 14 + at.label.length);
-    } else {
-      ta.value = m.write;
-      const c = m.caret ?? m.write.length;
-      ta.setSelectionRange(c, c);
+      // a field in the block's place: the book completes as it is typed, the words under it are the database's (row 7)
+      const before = ta.value;
+      ta.classList.add('asking');
+      ta.style.display = 'none';
+      const field = scriptureField(ta.parentElement!, {
+        onPlace: reference => {
+          if (!ta.isConnected) return;
+          field.remove();
+          ta.value = `\`\`\`scripture\n${reference}\n\`\`\``;
+          ta.dispatchEvent(new Event('input'));
+          void finish();
+        },
+        onCancel: () => {
+          field.remove();
+          ta.style.display = '';
+          ta.classList.remove('asking');
+          if (ta.value !== before || !ta.isConnected) return;
+          ta.value = data.blocks.find(b => b.n === cur.n)?.text || '';
+          ta.focus();
+          ta.dispatchEvent(new Event('input'));
+        },
+      });
+      field.focus();
+      return;
     }
+    ta.value = m.write;
+    const c = m.caret ?? m.write.length;
+    ta.setSelectionRange(c, c);
     ta.focus();
     ta.dispatchEvent(new Event('input'));
     if (m.key === 'link') host.linkSuggest(ta);
-    if (m.key === 'table' || m.key === 'scripture') {
+    if (m.key === 'table') {
       const root = ta.closest<HTMLElement>('.nb-editor');
       await finish();
       if (root && cur.n) {
@@ -1087,35 +1117,32 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
     if (m.key === 'divider') {
       // a divider is whole as it is: saved, and the writing goes on in a new block under it
       await finish();
-      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '' };
+      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '', at: 'end' };
       host.redraw();
     }
   };
-  for (const m of hits) {
-    const r = h('button', 'nb-blockmenu-row') as HTMLButtonElement;
-    r.append(icon(m.ico));
-    const t = h('div');
-    t.append(h('div', 'nb-blockmenu-label', m.label), h('div', 'nb-blockmenu-what', m.what));
-    r.append(t);
-    r.dataset.key = m.key;
-    r.onmousedown = ev => ev.preventDefault();
-    r.onmousemove = () => { if (rows[on] !== r) mark(rows.indexOf(r)); };
-    r.onclick = () => void choose(m);
-    rows.push(r);
-    box.append(r);
-  }
-  mark(0);
-  const close = popMenu(ta, box, { width: 300, onClose: () => {
-    if (host.state.menuClose === close) { host.state.menuClose = null; host.state.menuKey = null; }
-  } });
-  host.state.menuClose = close;
-  host.state.menuKey = ev => {
-    if (!box.isConnected) return false;
-    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); mark(on + (ev.key === 'ArrowDown' ? 1 : -1)); return true; }
-    if (ev.key === 'Enter' || ev.key === 'Tab') { ev.preventDefault(); void choose(hits[on]); return true; }
-    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); close(); return true; }
-    return false;
-  };
+  const item = (m: typeof MENU[number]): MenuItem => ({ id: m.key, label: m.label, icon: m.glyph, hint: m.hint, keywords: [m.key, ...(m.alias || [])] });
+  const groups: MenuGroup[] = [
+    { title: 'Basic', items: MENU.filter(m => m.group === 'Basic').map(item) },
+    { title: 'Study', folded: true, items: MENU.filter(m => m.group === 'Study').map(item) },
+  ];
+  const sel = window.getSelection();
+  const r = sel && sel.rangeCount ? sel.getRangeAt(0).getBoundingClientRect() : null;
+  const box = r && (r.width || r.height) ? r : ta.getBoundingClientRect();
+  const handle = openMenu({
+    groups, query, label: 'Add a block', placeholder: 'Type to filter',
+    at: { x: box.left, y: box.bottom + 6 },
+    onPick: it => { const m = MENU.find(x => x.key === it.id); if (m) void choose(m); },
+    onClose: () => { if (host.state.menuClose === handle.close) { host.state.menuClose = null; host.state.menuKey = null; } },
+  });
+  host.state.menuClose = handle.close;
+  // Backspace in the empty filter takes the slash back out and closes the list
+  handle.el.addEventListener('keydown', ev => {
+    if (ev.key !== 'Backspace' || (handle.el.querySelector('.wbm-input') as HTMLInputElement).value) return;
+    ev.preventDefault();
+    handle.close();
+    if (ta.value.endsWith('/')) { ta.value = ta.value.slice(0, -1); ta.dispatchEvent(new Event('input')); }
+  });
 }
 
 /** The blanks a template can hold (W5, sheet W6.2): `{` typed in a template's block offers them. */

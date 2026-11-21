@@ -4,7 +4,8 @@
 // The menu is fixed-position, so opening it never moves anything on the page.
 
 export type MenuItem = { id: string; label: string; icon?: string; hint?: string; keywords?: string[] };
-export type MenuGroup = { title?: string; items: MenuItem[] };
+// `folded`: with nothing typed the group is one row (its title and what is in it); Enter or a click opens it. Typing finds its rows.
+export type MenuGroup = { title?: string; items: MenuItem[]; folded?: boolean };
 export type MenuOptions = {
   groups: MenuGroup[];
   at?: { x: number; y: number } | HTMLElement;   // a point, or the element the menu hangs under
@@ -53,6 +54,8 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   let rows: { item: MenuItem; el: HTMLElement }[] = [];
   let hi = 0;
   let isOpen = true;
+  const opened = new Set<string>();
+  const starts = new Map<string, number>();
 
   const mark = () => {
     rows.forEach((r, n) => { r.el.classList.toggle('on', n === hi); r.el.setAttribute('aria-selected', String(n === hi)); });
@@ -61,6 +64,7 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   const render = () => {
     list.textContent = '';
     rows = [];
+    starts.clear();
     const shown = filterGroups(opts.groups, input.value);
     if (!shown.length) {
       const none = document.createElement('div');
@@ -69,6 +73,25 @@ export function openMenu(opts: MenuOptions): MenuHandle {
       list.append(none);
     }
     for (const g of shown) {
+      if (g.folded && !input.value.trim() && !opened.has(g.title ?? '')) {
+        const fold: MenuItem = { id: `fold:${g.title ?? ''}`, label: g.title ?? '' };
+        const row = document.createElement('div');
+        row.className = 'wbm-row wbm-fold';
+        row.setAttribute('role', 'option');
+        row.dataset.id = fold.id;
+        const icon = document.createElement('span'); icon.className = 'wbm-icon'; icon.textContent = '›';
+        const label = document.createElement('span'); label.className = 'wbm-label';
+        const t = document.createElement('strong'); t.textContent = g.title ?? '';
+        const what = document.createElement('span'); what.className = 'wbm-hint'; what.textContent = ' ' + g.items.map((i) => i.label).join(', ');
+        label.append(t, what);
+        row.append(icon, label);
+        row.addEventListener('mousedown', (e) => e.preventDefault());
+        row.addEventListener('click', () => pick(fold));
+        list.append(row);
+        rows.push({ item: fold, el: row });
+        continue;
+      }
+      starts.set(g.title ?? '', rows.length);
       if (g.title) { const h = document.createElement('div'); h.className = 'wbm-group'; h.textContent = g.title; list.append(h); }
       for (const item of g.items) {
         const row = document.createElement('div');
@@ -116,7 +139,11 @@ export function openMenu(opts: MenuOptions): MenuHandle {
     if (refocus) returnTo?.focus({ preventScroll: true });
     opts.onClose?.();
   }
-  const pick = (item: MenuItem) => { close(); opts.onPick(item); };
+  const pick = (item: MenuItem) => {
+    if (item.id.startsWith('fold:')) { opened.add(item.id.slice(5)); render(); place(); hi = starts.get(item.id.slice(5)) ?? 0; mark(); return; }
+    close();
+    opts.onPick(item);
+  };
 
   input.addEventListener('input', render);
   el.addEventListener('keydown', (e) => {

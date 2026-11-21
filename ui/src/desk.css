@@ -1441,3 +1441,16 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .set-upd-lines { margin: 0; padding-left: 18px; }
 .set-upd-folded { cursor: pointer; display: flex; flex-direction: column; gap: 2px; font: var(--type-small-strong); }
 .set-upd-release.folded { border-top: 1px solid var(--line); padding-top: 8px; }
+
+/* The Scripture block's reference field (notebook row 7): the book completes as it is typed, the words under it are the database's */
+.sf { display: flex; flex-direction: column; gap: 6px; position: relative; }
+.sf-box { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); }
+.sf-input { flex: 1; border: 0; background: transparent; color: inherit; font: inherit; outline: none; min-width: 0; }
+.sf-books { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 6px 28px var(--scrim); padding: 4px; width: min(300px, 100%); }
+.sf-book { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.sf-book.on { background: var(--accent-soft); }
+.sf-book-name { flex: 1; display: flex; flex-direction: column; }
+.sf-preview { font-family: var(--font-scripture, Literata, serif); }
+.sf-preview-head { font-family: var(--font-ui, inherit); margin-bottom: 2px; }
+.sf-verse { margin: 2px 0; }
+.sf-vnum { font-size: .8em; }

@@ -810,7 +810,7 @@ wireArrowEnds(mainView);
 document.addEventListener('pointerdown', e => {
   if (!bar || !barView?.selector.sel) return;
   const t = e.target as HTMLElement;
-  if (barView.root.contains(t) || t.closest('.menu, .popover, .sheet, .hovercard, .mb-ctx')) return;
+  if (barView.root.contains(t) || t.closest('.menu, .wbm, .popover, .sheet, .hovercard, .mb-ctx')) return;
   barView.selector.clear();
 });
 document.getElementById('overlay')!.addEventListener('pointerleave', e => { if ((e.target as HTMLElement).classList?.contains('hovercard')) hideCard(); }, true);

@@ -151,7 +151,7 @@ export class Dock {
     // to the front.
     document.addEventListener('pointerdown', e => {
       const t = e.target as Element;
-      if (t.closest?.('.menu, .popover, .hovercard')) return;
+      if (t.closest?.('.menu, .wbm, .popover, .hovercard')) return;
       const g = t.closest?.('.dock-group') as HTMLElement | null;
       this.origin = g?.dataset.front ? { pane: g.dataset.front, at: performance.now() } : null;
       if (g?.dataset.front) this.active = this.panes.find(p => p.id === g.dataset.front)?.key;
@@ -164,7 +164,7 @@ export class Dock {
         // The hidden main reader must not turn from a focused note or lookup. PDF handles its arrows locally.
         e.stopImmediatePropagation(); return;
       }
-      if (e.key !== 'Escape' || !this.focused || e.defaultPrevented || document.querySelector('.menu, .popover, .sheet, .pd-modal, .nb-modal')) return;
+      if (e.key !== 'Escape' || !this.focused || e.defaultPrevented || document.querySelector('.menu, .wbm, .popover, .sheet, .pd-modal, .nb-modal')) return;
       e.preventDefault(); e.stopImmediatePropagation(); this.exitFocus();
     });
   }
