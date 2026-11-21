@@ -255,6 +255,7 @@ A ticket is done when every row in it has its passing test and its Built cell sa
 |---|---|---|
 | NB1 | 1, 2 | The one menu component: filter as you type, keys, Esc, focus returns |
 | NB2 | 3, 4, 5, 8 | The new page editor: title, Markdown shortcuts, bold/italic/underline, lists |
+| NB2b | 4, 5, 8 (and every later row) | The in-place editor: each block is its own contenteditable, styled as you type; Markdown stays the file form (`<u>` for underline); the textarea editor is removed (decided 2026-11-21) |
 | NB3 | 6, 7, 49 | The / menu (one list, Study folded) and the Scripture block with book autocomplete |
 | NB4 | 9, 10, 25 | Toggles, the selection bar, Color ▾ (text and background) |
 | NB5 | 12 | `@`: the link chip and the compact chapter panel |
