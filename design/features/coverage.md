@@ -27,6 +27,7 @@ A new button or command gets a row here, and its folder, before it is built.
 | Notebook: pages, Pinned, blocks | the side list, the page, / and the selection bar, many pages at once, folders | [library](library/README.md) | accepted (2026-11-17); building |
 | Notebook: Find scripture in a page | Find scripture… in a page's ⋯, the Tether pane, Accept and Skip, the verses in order for a deck or script | [tether](tether/README.md) | exploring (seeded 2026-11-17) |
 | Notebook: Notion's quality (the feel, writing, the page) | the inventory of Notion lines marked adopt, adapt or skip; Turn into, the block handle, markdown shortcuts, toggles, drag to reorder, focus rules | [notebook](notebook/README.md) | exploring (round 1, 2026-11-20) |
+| Notebook: the shell (side list and page tree, where a page opens, the page list, Trash, row menus) | Notion's sidebar, open in place, the Trash popover, the list as a table; the old Notebook pane removed | [notebook-shell](notebook-shell/README.md) | exploring (round 1, 2026-11-22) |
 | Shelf and sets, bookmarks (Keep) | Keep on anything, the folder picker, a folder opened | [library](library/README.md) | accepted (2026-11-17); building |
 | Threads | a thread is a folder with a color (TH-1; the person's word 2026-11-17, TH-11); its line on the text and its eye | [threads](threads/README.md) | accepted (2026-11-17); building |
 | Marks: what the text shows of yours | on the words, in the margin, margin notes, Scripture in this page, a passage with its marks | [marks](marks/README.md) | accepted (2026-11-17); building |
