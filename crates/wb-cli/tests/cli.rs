@@ -3599,7 +3599,8 @@ fn a_days_page_reads_and_writes_as_before() {
         let mut files: Vec<_> = std::fs::read_dir(&dir).unwrap().filter_map(|e| e.ok()).map(|e| e.path()).collect();
         files.sort();
         assert_eq!(files.len(), 1, "one file for the day");
-        std::fs::read_to_string(&files[0]).unwrap().replace("\r\n", "\n")
+        // the time of the last change is the one thing a write moves
+        std::fs::read_to_string(&files[0]).unwrap().replace("\r\n", "\n").lines().filter(|l| !l.starts_with("updated")).collect::<Vec<_>>().join("\n")
     };
     // written whole, as it always was
     let made = wb.js(&["day", "text", "-", "--day", day]);
