@@ -360,13 +360,28 @@ fn notebook_commands() -> Vec<Command> {
             j(nb::questions(c.bible()?, &*c.study()?, &a.opt_or("status", "open")).map_err(e)?)
         }),
         cmd("question list", "Every question as one list: those at a place (trails), in the Inbox, and written in a page (/?, a callout block); --at a place: those on it and on any part of it (\"here\": on this very place); each says its form (trail or block). Answered ones with --status all or done.",
-            vec![Opt("status", Some("open")), Opt("at", None)], |c, a| {
-                let st = a.opt_or("status", "open");
+            vec![Opt("status", Some("open")), Opt("at", None), Opt("kind", None)], |c, a| {
+                // --kind question|answered is the Questions list's two kinds (open and done); it is --status by another name
+                let st = match a.opt("kind").as_deref().map(str::trim) {
+                    Some(k) if k.eq_ignore_ascii_case("question") => "open".to_string(),
+                    Some(k) if k.eq_ignore_ascii_case("answered") || k.eq_ignore_ascii_case("done") => "done".to_string(),
+                    Some(k) if k.eq_ignore_ascii_case("all") => "all".to_string(),
+                    Some(k) => return Err(format!("--kind is question, answered or all, not “{k}”. Key points and notes: wb callout list --kind key.").into()),
+                    None => a.opt_or("status", "open"),
+                };
                 if let Some(at) = a.opt("at") {
                     let at = crate::study::anchor(c, &at)?;
                     return j(wb_core::questions::at(c.bible()?, &*c.study()?, &at, &st).map_err(e)?);
                 }
                 j(wb_core::questions::list(c.bible()?, &*c.study()?, &st).map_err(e)?)
+            }),
+        cmd("callout list", "Every callout in the study, of any kind: wb callout list [--kind question|answered|key|note|all] [--page ID]. Each says its kind and name, its first line, how many more lines it has and whether a list is among them, and the page it is written in; counts gives how many of each kind. Question and Answered are the Questions list; Key points and Notes are found by Ctrl+K and by a List in a page grouped by callout kind.",
+            vec![Opt("kind", None), Opt("page", None)], |c, a| {
+                j(wb_core::questions::callouts(&*c.study()?, a.opt("kind").as_deref(), a.opt("page").as_deref()).map_err(e)?)
+            }),
+        cmd("callout kind", "Change a callout's kind (the window's menu on its icon): wb callout kind <page id>#<block number> question|answered|key|note. Only the word in its marker is written again (> [!question] → > [!done]); its lines and nested list stay. wb question answer is the same for question and answered. A callout is added with wb block add ID \"> [!key] words\" (lines after the first start with > ; a nested list is > - item and >   - item).",
+            vec![Pos("id", N::One), Pos("kind", N::One)], |c, a| {
+                j(wb_core::questions::set_kind(c.bible()?, &mut *c.study()?, &a.s("id"), &a.s("kind")).map_err(e)?)
             }),
         cmd("question add", "Write a question in a page, as its last block (or after block N): wb question add <page id> \"text\" [--after N]. It is a callout line: > [!question] text. A question at a verse is wb note new --question.",
             vec![Pos("page", N::One), Pos("text", N::Many), Opt("after", None)], |c, a| {

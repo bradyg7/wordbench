@@ -240,8 +240,8 @@ fn since(text: &str, flag: &str) -> Result<String> {
 /// Pages, folders, saves and questions in one list, grouped by kind: `{q, count, total, groups: [{kind, count, results}]}`.
 /// `total` is how many there were before the words and filters, for "23 of 412". Highlights are a group too.
 pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
-    if !["", "page", "folder", "save", "question", "margin", "highlight", "mark"].contains(&f.kind) {
-        return Err(bad("--kind is page, folder, save, question, margin, highlight or mark."));
+    if !["", "page", "folder", "save", "question", "key", "note", "margin", "highlight", "mark"].contains(&f.kind) {
+        return Err(bad("--kind is page, folder, save, question, key, note, margin, highlight or mark."));
     }
     let marks_only = f.style.is_some() || f.mark_kind.is_some() || f.color.is_some() || f.book.is_some() || f.since.is_some() || f.until.is_some();
     if marks_only && f.kind != "mark" {
@@ -336,6 +336,26 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
             .map(|e| json!({"kind": "question", "id": e["id"], "title": e["title"], "snippet": e["text"], "updated": e["updated"]}))
             .collect();
         out_groups.push(("question".into(), rows));
+    }
+    lap("before callouts");
+    // Key points and Notes (notebook row 46c): the callouts that are not questions, grouped as Key points and Notes, each with its page.
+    // They are in the one search only when it is given words (a search with none lists pages, folders and saves as before).
+    for (kind, name) in [("key", "Key point"), ("note", "Note")] {
+        if !(f.kind == kind || f.kind.is_empty() && !words.is_empty()) || in_folder.is_some() || f.has_question || cutoff.is_some() {
+            continue;
+        }
+        let all = crate::questions::callouts(store, Some(kind), None)?;
+        let rows: Vec<Value> = all["callouts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|c| has(&format!("{name} {} {}", s_of(c, "text"), s_of(c, "page_title"))))
+            .map(|c| json!({"kind": kind, "id": c["id"], "title": c["first"], "snippet": c["page_title"], "page": c["page"], "updated": c["updated"]}))
+            .collect();
+        all_total += all["callouts"].as_array().map(|a| a.len()).unwrap_or(0);
+        if !rows.is_empty() || f.kind == kind {
+            out_groups.push((kind.into(), rows));
+        }
     }
     lap("before margin");
     if want("margin") {

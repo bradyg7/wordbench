@@ -830,6 +830,12 @@ fn block_words(text: &str, bid: &str) -> Option<String> {
     let plain = if plain.trim_start().starts_with("```") || plain.trim_start().starts_with("~~~") { plain.lines().skip(1).find(|l| !l.trim().is_empty() && !l.trim_start().starts_with("```") && !l.trim_start().starts_with("~~~")).unwrap_or("").to_string() } else { plain };
     let mut line = plain.lines().next().unwrap_or("").trim_start().to_string();
     line = line.trim_start_matches(|c: char| "#>-*+ ".contains(c)).to_string();
+    // a callout's marker (`[!key]`) is not words
+    if line.starts_with("[!") {
+        if let Some(i) = line.find(']') {
+            line = line[i + 1..].trim_start_matches(['+', '-', ' ']).to_string();
+        }
+    }
     for mark in ["[ ] ", "[x] ", "[X] "] {
         if let Some(r) = line.strip_prefix(mark) {
             line = r.to_string();

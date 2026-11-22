@@ -55,7 +55,7 @@ const INTERNAL: &[&str] = &[
     // a thread as a page and questions in pages (R1): fences and ids read and written, the tree and the reader's pieces of
     // wb thread page|pin, wb page threads|words, wb block thread|word and wb question *
     "thread_fence", "word_fence", "value_fence_text", "thread_held", "slug_of", "pinned_of", "set_pinned", "question_of", "question_md",
-    "with_marker", "found", "in_chapter", "entries", "split_id",
+    "callout_of", "kind_word", "with_marker", "found", "in_chapter", "entries", "split_id",
     // the Shelf (R2): a kept pane as the window's key (a piece of wb set open), an item read out to move it (wb shelf item)
     "pane_key", "set_item_of",
     // the dictionary (R5): the pieces of wb word-define

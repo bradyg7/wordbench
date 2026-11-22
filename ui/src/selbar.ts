@@ -34,6 +34,7 @@ export const KINDS: { key: string; label: string; shape: string }[] = [
   { key: 'numbered', label: 'Numbered list', shape: 'numbered' },
   { key: 'todo', label: 'To-do', shape: 'todo' },
   { key: 'quote', label: 'Quote', shape: 'quote' },
+  { key: 'callout', label: 'Callout', shape: 'callout' },
   { key: 'toggle', label: 'Toggle list', shape: '' },
 ];
 

@@ -80,7 +80,7 @@ export async function kindResults(kind: string, words: string, host: { openPage:
         if (g.kind === 'highlight') void goTo(row.title);
         else if (g.kind === 'save') void goTo(row.ref || row.title);
         else if (g.kind === 'margin') openFromResult(list, () => app.showMarginNote(row.id, row.at));   // row 52
-        else host.openPage(row.id);
+        else host.openPage(row.page || row.id);   // a callout (row 46c) opens its page
       };
       list.append(it);
     }

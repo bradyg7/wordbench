@@ -821,8 +821,13 @@ fn block_values(text: &str, titled: bool) -> Value {
                 v["lang"] = json!(tail_id(&b.lang).map(|(at, _)| b.lang.chars().take(at).collect::<String>()).unwrap_or_else(|| b.lang.clone()));
             }
             if b.kind == "quote" {
-                if let Some(q) = crate::questions::question_of(&sub(&c, b.start, b.end)) {
+                let md = sub(&c, b.start, b.end);
+                if let Some(q) = crate::questions::question_of(&md) {
                     v["question"] = json!({"done": q.done, "text": q.text});
+                }
+                // a callout of any kind (notebook rows 22, 23): its kind, the name the window shows, and its first line
+                if let Some(q) = crate::questions::callout_of(&md) {
+                    v["callout"] = json!({"kind": q.kind, "label": crate::questions::kind_label(q.kind), "first": q.first, "more": q.more, "list": q.list});
                 }
             }
             if listish(b.kind) {
@@ -1038,11 +1043,6 @@ pub fn duplicate_block(bible: &Bible, store: &mut Store, id: &str, n: usize, und
 /// (```` ```scripture ^abc123 ````; the lead, 2026-11-21). It is how a `[[Page#^id]]` link finds the block after the page is edited;
 /// the window never shows it.
 pub(crate) fn block_id_of(text: &str) -> Option<(usize, String)> {
-    let t = text.trim_end();
-    let tail: Vec<char> = t.chars().rev().take(8).collect();
-    if tail.len() < 8 || !tail[7].is_whitespace() || tail[6] != '^' {
-        return None;
-    }
     if is_fenced(text) {
         let first = text.lines().next().unwrap_or("");
         return tail_id(first);
@@ -1057,6 +1057,11 @@ fn is_fenced(text: &str) -> bool {
 
 /// ` ^abc123` at the end of one piece of text → (where it starts, in characters; the id).
 fn tail_id(text: &str) -> Option<(usize, String)> {
+    let t = text.trim_end();
+    let tail: Vec<char> = t.chars().rev().take(8).collect();
+    if tail.len() < 8 || !tail[7].is_whitespace() || tail[6] != '^' {
+        return None;
+    }
     let id: String = tail[..6].iter().rev().collect();
     if !id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()) {
         return None;
@@ -1088,12 +1093,12 @@ fn with_block_id(text: &str, bid: &str) -> String {
             None => first,
         };
     }
+    format!("{} ^{bid}", text.trim_end())
 }
 
 fn new_block_id(page: &str) -> String {
     use sha2::{Digest, Sha256};
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
-    format!("{} ^{bid}", text.trim_end())
     let h = Sha256::digest(format!("{now}{}", page.len()).as_bytes());
     let alphabet = b"abcdefghijklmnopqrstuvwxyz0123456789";
     h.iter().take(6).map(|b| alphabet[*b as usize % alphabet.len()] as char).collect()

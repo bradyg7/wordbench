@@ -99,6 +99,21 @@ folder, not as a Notebook tab.
   says "Moved to <page> · Undo": Undo is the page's Undo, which gives the blocks back to their place here (the undo token `wb block move --page`
   already returned) and then takes them out of the other page (`wb block rm OTHER N --count K`); Ctrl+Shift+P opens Move to from the picked-blocks
   menu too, its hint shown (test `move_to_says_where_and_undoes`).
+- **Callouts, NB10 (the lead, 2026-11-21, file forms by the most compatible Markdown).** A callout is a quote block whose first line is
+  `> [!kind] words` (the Obsidian callout form). The four kinds' words are `question`, `done` (shown **Answered**), `key` (**Key point**) and `note`
+  (**Note**); the marker is read in any case, with Obsidian's `+` or `-` after it kept as written, and a marker with another word is an ordinary quote.
+  More lines are `> …`; a nested list is `> - item` and `>   - item` (two spaces a level); a blank line is not part of the block. `> [!question]` and
+  `> [!done]` in today's pages are read and written unchanged. `wb page blocks` gives a quote block `callout: {kind, label, first, more, list}` (and the
+  older `question` for the first two kinds). Changing the kind (row 23) is `wb callout kind <page>#<N> question|answered|key|note`, which writes only
+  the marker's word and keeps the lines and a link id; `wb question answer` stays for question and answered. Lists (row 46): `wb question list
+  [--kind question|answered]` (the same as `--status open|done`), `wb callout list [--kind question|answered|key|note|all] [--page ID]`
+  (each callout with its kind, first line, how many more lines and whether a list is among them, its page; `counts` for each kind), and `wb find WORDS
+  [--kind key|note]` (the one search gives Key points and Notes as groups whenever it is given words). In the window the question rows of the side list
+  show the first line and "5 more lines, a list". The Library's Questions page with its Question and Answered chips, Ctrl+K and a List in a page
+  grouped by callout kind are the surfaces of NB13 and NB14 (their tickets); they read these commands. In the block editor a callout is its own
+  shape: Enter is a new line (a list line goes on as a list at its indent; Enter on an empty item steps the list out, then leaves it; Enter on an empty
+  last line ends the callout), Tab and Shift+Tab nest a list line, Backspace at the start turns it into a plain block (tests
+  `callout_kinds_write_their_marker`, `callout_kind_changes`, `old_question_callouts_still_read`, `callout_kinds_found`; Rust and window).
 
 ## The inventory (round 1)
 
@@ -256,10 +271,10 @@ person's existing pages read.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 22 | / menu (`/callout`) or Turn into | Callout | A soft box with an icon and a kind: Question, Answered, Key point, Note | `> [!question]`, `> [!done]`, `> [!key]`, `> [!note]` | `wb block add ID "> [!key] …"` | `callout_kinds_write_their_marker` | [ ] approved 2026-11-20 |
-| 23 | A callout's icon | Click | Its kind menu; a Question becomes Answered and back | The marker | `wb block set` | `callout_kind_changes` | [ ] approved 2026-11-20 |
-| 24 | Today's pages | Open one with `> [!question]` or `> [!done]` | They show as Question and Answered callouts; the questions list still finds them | Nothing | `wb question list` | `old_question_callouts_still_read` | [ ] approved 2026-11-20 |
-| 46 | A callout | Write several lines and a nested list in it | It holds them all (46a); the Questions list (Library) filters by kind, Question or Answered (46b); Key points and Notes are found by Ctrl+K (46c) and by a List in a page grouped by callout kind (46d) | The callout's lines | `wb question list` | `callout_kinds_found` | [ ] approved 2026-11-20 |
+| 22 | / menu (`/callout`) or Turn into | Callout | A soft box with an icon and a kind: Question, Answered, Key point, Note | `> [!question]`, `> [!done]`, `> [!key]`, `> [!note]`; later lines `> …`, a nested list `>   - …` | `wb block add ID "> [!key] …"` | `callout_kinds_write_their_marker` | built (NB10) · approved 2026-11-20 |
+| 23 | A callout's icon | Click | Its kind menu; a Question becomes Answered and back | The marker's word only | `wb callout kind ID#N KIND` (`wb block set` writes the whole block) | `callout_kind_changes` | built (NB10) · approved 2026-11-20 |
+| 24 | Today's pages | Open one with `> [!question]` or `> [!done]` | They show as Question and Answered callouts; the questions list still finds them | Nothing | `wb question list` | `old_question_callouts_still_read` | built (NB10) · approved 2026-11-20 |
+| 46 | A callout | Write several lines and a nested list in it | It holds them all (46a); the Questions list (Library) filters by kind, Question or Answered (46b); Key points and Notes are found by Ctrl+K (46c) and by a List in a page grouped by callout kind (46d) | The callout's lines | `wb question list [--kind question\|answered]`, `wb callout list [--kind key\|note]`, `wb find WORDS --kind key\|note` | `callout_kinds_found` | built (NB10) · approved 2026-11-20 |
 
 ### Color, N9
 

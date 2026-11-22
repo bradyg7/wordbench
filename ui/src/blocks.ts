@@ -16,7 +16,7 @@ import { openMenu, type MenuGroup, type MenuItem } from './menu';
 import { atMenu } from './atmenu';
 import { openChapterPanel } from './chapterpanel';
 import { scriptureField } from './scripturefield';
-import { caretAt, caretLine, chipRefs, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, turnedMd, undoTurn, type Turn, type Writer } from './blockedit';
+import { caretAt, calloutEnter, caretLine, chipRefs, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, turnedMd, undoTurn, type Turn, type Writer } from './blockedit';
 import { isToggleEnd, placeBlocks, toggleHead, toggleOf, wrapHead } from './toggles';
 import { KINDS, installSelectionBar, selectionBarBusy, shapeProps } from './selbar';
 import { COLORS, label as colorLabel } from './palette';
@@ -24,7 +24,7 @@ import { bgOf, takesBackground } from './blockbg';
 import { columnGroups, isMarker, MAX_COLUMNS, type Group } from './columns';
 import { applyPicks, clearPick, installPicking, pick as pickBlocks, pickedRun } from './blockpick';
 
-export interface Blk { n: number; bid?: string; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string } }
+export interface Blk { n: number; bid?: string; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string }; callout?: { kind: string; label: string; first: string; more: number; list: boolean } }
 export interface Blocks { id: string; title: { text: string; start: number; end: number } | null; blocks: Blk[]; /** the folded toggles, each named by its head's text (settings/pages.json) */ folds?: string[] }
 export interface LinkAt { start: number; end: number }
 
@@ -141,7 +141,7 @@ function blockUndoToast(root: HTMLElement | null, data: Blocks, host: Host, said
 /** Is this block's writing nothing but a list's mark ("- ", "- [ ] ", "2. ")? */
 // A block with only its marker is empty: a list item or to-do, a quote (`>`), a heading (`#`). A divider (`---`) and a
 // table are never empty; a lone `-` is an empty item, `---` is not.
-const blank = (t: string) => !t.replace(/^\s*(([-*+]|\d+[.)])(\s+\[[ xX]\])?|(>\s*)+|#{1,6})(\s+|$)/, '').trim();
+const blank = (t: string) => !t.replace(/^\s*(([-*+]|\d+[.)])(\s+\[[ xX]\])?|(>\s*)+(\[![A-Za-z]+\][+-]?)?|#{1,6})(\s+|$)/, '').trim();
 
 // ---- drawing ------------------------------------------------------------------------------------------------------------
 
@@ -703,7 +703,7 @@ function drawn(b: Blk, host: Host, id: string): Node {
     else line.append(h('span', 'muted', 'Toggle'));
     return line;
   }
-  if (b.kind === 'quote' && b.question) return questionBlock(b, id, host);
+  if (b.kind === 'quote' && b.callout) return calloutBlock(b, id, host);
   if (b.kind === 'fence') return fence(b);
   const f = host.render(b.text, refs, links);
   if (b.kind === 'numbered') {
@@ -830,7 +830,7 @@ function editTable(text: string, form: HTMLElement, changed: () => void): () => 
 }
 
 function isStructured(b: Blk) {
-  return b.kind === 'table' || !!b.question || ['scripture', 'view', 'thread', 'word'].includes(fenceLang(b));
+  return b.kind === 'table' || ['scripture', 'view', 'thread', 'word'].includes(fenceLang(b));
 }
 
 function editBlock(data: Blocks, b: Blk, el: HTMLElement, host: Host) {
@@ -884,14 +884,14 @@ function editStructured(data: Blocks, b: Blk, el: HTMLElement, host: Host) {
   const table = b.kind === 'table';
   const lang = fenceLang(b);
   const labels: Record<string, string> = { scripture: 'Scripture reference', view: 'View command', thread: 'Thread', word: 'Strong’s number' };
-  const title = table ? 'Edit table' : b.question ? 'Edit question' : labels[lang];
+  const title = table ? 'Edit table' : labels[lang];
   const heading = h('div', 'nb-structured-title', title);
   form.append(heading);
   const error = h('p', 'small nbv-error');
   error.hidden = true;
   error.setAttribute('role', 'alert');
   const changed = () => { error.hidden = true; };
-  const serialize = table ? editTable(b.text, form, changed) : editCard(b, form, labels[lang] || 'Question', changed);
+  const serialize = table ? editTable(b.text, form, changed) : editCard(b, form, labels[lang], changed);
   const tools = h('div', 'nb-structured-tools');
   const finish = () => {
     const root = el.closest<HTMLElement>('.nb-editor');
@@ -934,20 +934,6 @@ function editCard(b: Blk, form: HTMLElement, label: string, changed: () => void)
   const lines = b.text.split('\n');
   const field = h('label', 'nb-card-field', label);
   form.append(field);
-  if (b.question) {
-    const first = /^\s*>\s?\[![a-z]+\][+-]?\s*/i.exec(lines[0]);
-    const input = h('textarea', 'field nb-card-text');
-    const original = [lines[0].slice(first?.[0].length || 0), ...lines.slice(1).map(line => line.replace(/^\s*>\s?/, ''))].join('\n');
-    input.value = original;
-    input.required = true;
-    input.oninput = changed;
-    field.append(input);
-    return () => {
-      if (input.value === original) return b.text;
-      const [head, ...rest] = input.value.split('\n');
-      return [`${first?.[0].trimEnd() || '> [!question]'} ${head}`, ...rest.map(line => `> ${line}`)].join('\n');
-    };
-  }
   const lang = fenceLang(b);
   const closing = lines.findIndex((line, i) => i > 0 && /^\s*(`{3,}|~{3,})\s*$/.test(line));
   const limit = closing < 0 ? lines.length : closing;
@@ -1150,34 +1136,80 @@ function wordBlock(b: Blk, id: string, host: Host): HTMLElement {
   return box;
 }
 
-/** A question block (R1, sheet R1.3): the question, open until it is answered (the tick a to-do has). In the file it is a
- * callout line, > [!question] …, and > [!done] … when answered (`wb question answer`). */
-function questionBlock(b: Blk, id: string, host: Host): HTMLElement {
-  const done = !!b.question?.done;
-  const box = h('div', `nb-questionblock${done ? ' done' : ''}`);
-  box.append(h('span', 'nbq-mark', done ? '✓' : '?'));
+/** A callout (notebook rows 22, 23, 46; R1's question block is its Question and Answered kinds): a soft box with an icon and a kind, holding
+ *  several lines and a nested list. In the file it is `> [!question] …` (`[!done]` when answered, `[!key]`, `[!note]`), later lines `> …`,
+ *  a nested list `>   - …`. A click on the icon opens the kind menu (`wb callout kind`). */
+const CALLOUT_ICON: Record<string, string> = { question: '?', done: '✓', key: '☆', note: '✎' };
+const CALLOUT_KINDS: [string, string][] = [['question', 'Question'], ['done', 'Answered'], ['key', 'Key point'], ['note', 'Note']];
+
+function calloutBlock(b: Blk, id: string, host: Host): HTMLElement {
+  const kind = b.callout!.kind;
+  const box = h('div', `nb-callout nb-callout-${kind}`);
+  box.dataset.kind = kind;
+  const ico = button('nb-callout-icon', CALLOUT_ICON[kind] ?? '?', ev => { ev.stopPropagation(); kindMenu(ico); });
+  ico.title = 'Change its kind';
+  ico.setAttribute('aria-label', `${b.callout!.label}: change its kind`);
+  const kindMenu = (at: HTMLElement) => {
+    const keep = host.state.menuClose;
+    const handle = openMenu({
+      groups: [{ title: 'Kind', items: CALLOUT_KINDS.map(([k, name]) => ({ id: k, label: name, icon: CALLOUT_ICON[k], hint: k === kind ? '✓' : undefined })) }],
+      label: 'Callout kind', placeholder: 'Kind', at,
+      onPick: it => void (async () => {
+        if (it.id === kind) return;
+        try {
+          const n = await blockNow(id, b);
+          if (!n) return toast('The page changed; try again');
+          await wb(['callout', 'kind', `${id}#${n}`, it.id]);
+          host.changed();
+        } catch (x) { toast(String(x)); }
+      })(),
+      onClose: () => { if (host.state.menuClose === handle.close) host.state.menuClose = keep ?? null; },
+    });
+    host.state.menuClose = handle.close;
+  };
+  const main = h('div', 'nb-callout-main');
+  main.append(h('div', 'nb-callout-label', b.callout!.label));
   const refs = shifted(host.refs, b.start, b.end), links = shifted(host.links, b.start, b.end);
-  const lines = b.text.split('\n');
-  const first = /^\s*>\s?\[![a-z]+\][+-]?\s*/i.exec(lines[0]);
-  const text = [lines[0].slice(first ? first[0].length : 0), ...lines.slice(1).map(l => l.replace(/^\s*>\s?/, ''))].join('\n');
-  const t = h('div', 'nbq-text');
-  t.append(host.render(text, [], []));
-  void refs; void links;
-  box.append(t);
-  const ans = button(`btn small nbq-answer${done ? ' on' : ''}`, done ? 'Answered' : 'Mark answered', async ev => {
-    ev.stopPropagation();
-    try {
-      const n = await blockNow(id, b);
-      if (!n) return toast('The page changed; try again');
-      await wb(['question', 'answer', `${id}#${n}`, ...(done ? ['--open'] : [])]);
-      host.changed();
-    } catch (x) { toast(String(x)); }
+  const body = h('div', 'nb-callout-body');
+  // a line's words and the reference chips and links in them (their places are relative to the block's text)
+  const words = (text: string, at: number) => {
+    const t = h('div');
+    t.append(host.render(text, shifted(refs, at, at + [...text].length), shifted(links, at, at + [...text].length)));
+    const p = t.querySelector('p');
+    return p ? Array.from(p.childNodes) : [document.createTextNode(text)];
+  };
+  const lists: { indent: number; el: HTMLElement }[] = [];
+  let at = 0;
+  b.text.split('\n').forEach((raw, i) => {
+    const lead = i === 0 ? /^\s*>\s?\[![a-z]+\][+-]?\s*/i.exec(raw) : /^\s*>\s?/.exec(raw);
+    const skip = [...(lead?.[0] ?? '')].length;
+    const line = [...raw].slice(skip).join('');
+    const here = at + skip;
+    at += [...raw].length + 1;
+    const m = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/.exec(line);
+    if (!m) {
+      lists.length = 0;
+      if (line.trim()) { const p = h('p'); p.append(...words(line, here)); body.append(p); }
+      return;
+    }
+    // a list line: deeper than the last goes inside it, one no deeper goes back out to the list it belongs to
+    const indent = m[1].replace(/\t/g, '  ').length;
+    while (lists.length && lists[lists.length - 1].indent > indent) lists.pop();
+    let list = lists[lists.length - 1];
+    if (!list || list.indent < indent) {
+      const ul = h(/^\d/.test(m[2]) ? 'ol' : 'ul', 'nb-callout-list');
+      (list ? (list.el.lastElementChild ?? list.el) : body).append(ul);
+      list = { indent, el: ul };
+      lists.push(list);
+    }
+    const li = h('li');
+    li.append(...words(m[3], here + [...line].length - [...m[3]].length));
+    list.el.append(li);
   });
-  ans.title = done ? 'Open it again' : 'Mark it answered';
-  const actions = h('div', 'nbq-actions');
-  actions.append(ans);
+  main.append(body);
+  box.append(ico, main);
   const places = host.questionPlaces || [];
-  if (places.length) {
+  if ((kind === 'question' || kind === 'done') && places.length) {
     const move = async (anchor: string) => {
       try {
         const n = await blockNow(id, b);
@@ -1197,9 +1229,10 @@ function questionBlock(b: Blk, id: string, host: Host): HTMLElement {
       const close = popMenu(give, menu, { width: 270 });
       menu.querySelector('button')?.focus();
     });
+    const actions = h('div', 'nbq-actions');
     actions.append(give);
+    main.append(actions);
   }
-  box.append(actions);
   return box;
 }
 
@@ -1255,7 +1288,7 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
   { key: 'link', label: 'Link to a page', what: '[[a page’s title]]', ico: 'notebook', write: '[[', group: 'Basic', glyph: '↗' },
   { key: 'scripture', label: 'Scripture', what: 'A passage, drawn from the Bible', ico: 'book', write: '', group: 'Study', glyph: 'S' },
   { key: 'word', label: 'Word', what: 'A Strong’s entry from the lexicon', ico: 'search', write: '', group: 'Study', glyph: 'W' },
-  { key: 'question', label: 'Callout', what: 'A question, open until you answer it', ico: 'prompt', write: '> [!question] ', alias: ['question', '?'], group: 'Study', glyph: '?' },
+  { key: 'question', label: 'Callout', what: 'Question, Answered, Key point, Note', ico: 'prompt', write: '> [!question] ', alias: ['callout', 'question', 'answered', 'key point', 'note', '?'], group: 'Study', hint: '/callout', glyph: '?' },
   { key: 'thread', label: 'Saved thing', what: 'A folder’s places, kept up to date', ico: 'threads', write: '', alias: ['thread', 'folder', '~'], group: 'Study', glyph: '~' },
   { key: 'view', label: 'List in a page', what: 'A list kept up to date (a line of the command language)', ico: 'filter', write: '```view\nnotebook \n```', caret: 17, alias: ['view'], group: 'Study', glyph: '☰' },
 ];
@@ -1495,6 +1528,11 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
       if (fenced) { insertBreak(ta); ta.dispatchEvent(new Event('input')); return; }
       // Enter in a list item with nothing in it ends the list; else the block is split at the caret
       if (isEmpty(ta)) { if (shapeOf(ta)) { clearShape(ta); touched(); } return; }
+      // a callout holds several lines and a nested list: Enter is a new line in it, until an empty last line ends it
+      if (shapeOf(ta) === 'callout' && !(c.start && c.collapsed)) {
+        const went = calloutEnter(ta);
+        if (went === true) { touched(); ta.dispatchEvent(new Event('input')); return; }
+      }
       if (c.start && c.collapsed) {
         // Enter at the start of a block with words: an empty block opens above, the caret stays with the words (decided 2026-11-21).
         // An empty block is not a thing the file can hold, so it is a line above that becomes a new block when it is clicked.

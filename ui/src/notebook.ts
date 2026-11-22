@@ -914,7 +914,10 @@ function createNotebookSession(fixed?: PageTab) {
     }
     side.append(sideHead('questions', 'Questions', s.questions.length, true));
     if (!isShut('questions', true)) for (const q of s.questions as Row[]) {
-      const b = sideRow(`nb-question-row${q.status === 'done' ? ' done' : ''}`, null, q.title, q.status === 'done' ? 'answered' : '', openId === (q.block ? q.page : q.id), () => openPage(q.block ? q.page! : q.id));
+      // a callout of several lines shows its first line, and says what follows it (row 46b): "2 more lines, a list"
+      const qx = q as any, more = Number(qx.more_lines) || 0;
+      const follows = more ? `${more} more line${more === 1 ? '' : 's'}${qx.has_list ? ', a list' : ''}` : '';
+      const b = sideRow(`nb-question-row${q.status === 'done' ? ' done' : ''}`, null, qx.first || q.title, [q.status === 'done' ? 'answered' : '', follows].filter(Boolean).join(' · '), openId === (q.block ? q.page : q.id), () => openPage(q.block ? q.page! : q.id));
       b.prepend(h('span', 'nb-tree-q', '?'));
       if (q.block) b.title = `Written in ${(q as any).page_title || 'a page'}`; else pageContext(b, q.id);
       side.append(b);

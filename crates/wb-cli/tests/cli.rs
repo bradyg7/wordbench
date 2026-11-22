@@ -2836,3 +2836,109 @@ fn a_block_link_writes_a_short_id_the_window_never_shows_and_the_link_finds_the_
     assert_eq!(shown["links"][1]["block_words"], Value::Null);
     assert_eq!(shown["links"][1]["heading_ok"], false);
 }
+
+#[test]
+fn callout_kinds_write_their_marker() {
+    // notebook row 22 (NB10): a callout has a kind, written as its marker; `wb block add` writes it, `wb page blocks` reads it
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    for (marker, kind) in [("question", "question"), ("done", "done"), ("key", "key"), ("note", "note")] {
+        wb.js(&["block", "add", &a, &format!("> [!{marker}] A {kind} callout")]);
+    }
+    let shown = wb.js(&["note", "show", &a]);
+    let text = shown["text"].as_str().unwrap();
+    for marker in ["> [!question] A question callout", "> [!done] A done callout", "> [!key] A key callout", "> [!note] A note callout"] {
+        assert!(text.contains(marker), "{marker} in {text}");
+    }
+    let blocks = wb.js(&["page", "blocks", &a]);
+    let kinds: Vec<(&str, &str)> = blocks["blocks"].as_array().unwrap().iter().map(|b| (b["callout"]["kind"].as_str().unwrap(), b["callout"]["label"].as_str().unwrap())).collect();
+    assert_eq!(kinds, [("question", "Question"), ("done", "Answered"), ("key", "Key point"), ("note", "Note")]);
+    // several lines and a nested list stay in the one block, with the first line and what follows named
+    wb.js(&["block", "add", &a, "> [!key] First line\n> second line\n> - an item\n>   - nested"]);
+    let b = wb.js(&["page", "blocks", &a])["blocks"][4].clone();
+    assert_eq!(b["kind"], "quote");
+    assert_eq!((b["callout"]["first"].as_str().unwrap(), b["callout"]["more"].as_u64().unwrap(), b["callout"]["list"].as_bool().unwrap()), ("First line", 3, true));
+}
+
+#[test]
+fn callout_kind_changes() {
+    // notebook row 23 (NB10): `wb callout kind PAGE#N KIND` writes only the marker's word; the lines, the nested list and a link id stay
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    wb.js(&["block", "add", &a, "> [!question] Why an everlasting priesthood?\n> read it beside the next\n> - who receives it?\n>   - the seed"]);
+    let id = format!("{a}#1");
+    let r = wb.js(&["callout", "kind", &id, "answered"]);
+    assert_eq!((r["kind"].as_str().unwrap(), r["label"].as_str().unwrap()), ("done", "Answered"));
+    let text = wb.js(&["note", "show", &a])["text"].as_str().unwrap().to_string();
+    assert!(text.contains("> [!done] Why an everlasting priesthood?\n> read it beside the next\n> - who receives it?\n>   - the seed"), "{text}");
+    // and back, through a block that has a link id
+    let link = wb.js(&["block", "link", &a, "1"]);
+    let bid = link["block"].as_str().unwrap().to_string();
+    wb.js(&["callout", "kind", &id, "Question"]);
+    let text = wb.js(&["note", "show", &a])["text"].as_str().unwrap().to_string();
+    assert!(text.contains(&format!("> [!question] Why an everlasting priesthood?\n> read it beside the next\n> - who receives it?\n>   - the seed ^{bid}")), "{text}");
+    wb.js(&["callout", "kind", &id, "key point"]);
+    assert_eq!(wb.js(&["page", "blocks", &a])["blocks"][0]["callout"]["kind"], "key");
+    // not a callout, not a kind
+    wb.js(&["block", "add", &a, "A plain paragraph"]);
+    let (code, _, _) = wb.run(&["callout", "kind", &format!("{a}#2"), "note"], None);
+    assert_ne!(code, 0);
+    let (code, _, _) = wb.run(&["callout", "kind", &id, "bogus"], None);
+    assert_ne!(code, 0);
+}
+
+#[test]
+fn old_question_callouts_still_read() {
+    // notebook row 24 (NB10): a page that holds `> [!question]` and `> [!done]` shows them as the Question and Answered callouts, and the
+    // Questions list still finds them, as before
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["page", "new", "Haste study"])["id"].as_str().unwrap().to_string();
+    wb.js(&["block", "add", &a, "> [!question] Who acts first, and who waits?"]);
+    wb.js(&["block", "add", &a, "> [!done] What is promised afterwards?"]);
+    let blocks = wb.js(&["page", "blocks", &a]);
+    assert_eq!(blocks["blocks"][0]["callout"]["label"], "Question");
+    assert_eq!(blocks["blocks"][1]["callout"]["label"], "Answered");
+    assert_eq!(blocks["blocks"][0]["question"]["done"], false);
+    assert_eq!(blocks["blocks"][1]["question"]["done"], true);
+    let open = wb.js(&["question", "list"]);
+    assert!(open["questions"].as_array().unwrap().iter().any(|q| q["text"] == "Who acts first, and who waits?"));
+    let all = wb.js(&["question", "list", "--status", "all"]);
+    assert!(all["questions"].as_array().unwrap().iter().any(|q| q["text"] == "What is promised afterwards?" && q["status"] == "done"));
+    // the file is untouched by reading it
+    assert!(wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains("> [!done] What is promised afterwards?"));
+}
+
+#[test]
+fn callout_kinds_found() {
+    // notebook row 46 (NB10): the Questions list filters by kind (question, answered); Key points and Notes are found by the search and by
+    // `wb callout list`, each with its page and first line, a callout of several lines named as such
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    let b = wb.js(&["page", "new", "Haste study"])["id"].as_str().unwrap().to_string();
+    wb.js(&["block", "add", &a, "> [!question] Why an everlasting priesthood?\n> read it twice\n> - who receives it?"]);
+    wb.js(&["block", "add", &a, "> [!key] The covenant is given to him and to his seed after him."]);
+    wb.js(&["block", "add", &a, "> [!note] Read the YLT of verse 13 next."]);
+    wb.js(&["block", "add", &b, "> [!done] What is promised afterwards?"]);
+    wb.js(&["block", "add", &b, "> [!key] Wait for the word before acting."]);
+    let qs = wb.js(&["question", "list", "--kind", "question"]);
+    let q = qs["questions"].as_array().unwrap().iter().find(|q| q["first"] == "Why an everlasting priesthood?").unwrap().clone();
+    assert_eq!((q["more_lines"].as_u64().unwrap(), q["has_list"].as_bool().unwrap(), q["page_title"].as_str().unwrap()), (2, true, "Zeal in Numbers 25"));
+    assert!(qs["questions"].as_array().unwrap().iter().all(|q| q["status"] == "open"));
+    let done = wb.js(&["question", "list", "--kind", "answered"]);
+    assert!(done["questions"].as_array().unwrap().iter().any(|q| q["text"] == "What is promised afterwards?"));
+    assert!(done["questions"].as_array().unwrap().iter().all(|q| q["status"] == "done"));
+    let keys = wb.js(&["callout", "list", "--kind", "key"]);
+    let rows = keys["callouts"].as_array().unwrap();
+    assert_eq!(rows.len(), 2);
+    assert!(rows.iter().all(|r| r["kind"] == "key" && r["label"] == "Key point"));
+    assert!(rows.iter().any(|r| r["first"] == "Wait for the word before acting." && r["page_title"] == "Haste study"));
+    assert_eq!(keys["counts"]["note"], 1);
+    assert_eq!(wb.js(&["callout", "list", "--page", &a])["callouts"].as_array().unwrap().len(), 3);
+    // the one search groups them as Key points and Notes
+    let found = wb.js(&["find", "key point", "--sort", "edited"]);
+    let g = found["groups"].as_array().unwrap().iter().find(|g| g["kind"] == "key").unwrap().clone();
+    assert_eq!(g["count"], 2);
+    assert!(g["results"].as_array().unwrap().iter().all(|r| r["snippet"].is_string()));
+    let notes = wb.js(&["find", "ylt", "--kind", "note"]);
+    assert_eq!(notes["groups"][0]["results"][0]["title"], "Read the YLT of verse 13 next.");
+}

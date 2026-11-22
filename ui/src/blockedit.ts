@@ -33,10 +33,15 @@ function prefixOf(s: St): string {
     case 'todo': return `${s.lead}${s.mark} [${s.box}] `;
     case 'numbered': return `${s.lead}${s.num}${s.delim} `;
     case 'quote': return '> ';
+    case 'callout': return `> ${s.mark} `;
     default: return '';
   }
 }
-const contOf = (s: St) => (s.shape === 'quote' ? '> ' : LISTY.has(s.shape) ? s.lead + s.rel : '');
+const contOf = (s: St) => (s.shape === 'quote' || s.shape === 'callout' ? '> ' : LISTY.has(s.shape) ? s.lead + s.rel : '');
+
+/** A callout's marker as written (`[!question]`, `[!done]`, `[!key]`, `[!note]`, with Obsidian's + or - after it) → its kind's word. */
+const CALLOUT_WORDS = ['question', 'done', 'key', 'note'];
+export const calloutWord = (mark: string) => /^\[!([A-Za-z]+)\]/.exec(mark)?.[1].toLowerCase() ?? '';
 
 function marksOf(el: Element): [string, string] {
   // a mark with nothing inside (the caret's place after Ctrl+B in an empty box) writes nothing
@@ -91,6 +96,11 @@ function parseMd(md: string): { st: St; lines: string[] } {
     st.shape = 'numbered'; st.lead = m[1]; st.num = Number(m[2]); st.delim = m[3];
     const more = rest(st.lead);
     return more ? { st, lines: [m[4], ...more] } : plain;
+  }
+  // a callout (rows 22-24, 46): `> [!kind] first line`, more lines `> …`, a nested list `>   - …`
+  if ((m = /^> (\[![A-Za-z]+\][+-]?)(?: (.*))?$/.exec(l0)) && CALLOUT_WORDS.includes(calloutWord(m[1])) && lines.slice(1).every(l => /^> /.test(l))) {
+    st.shape = 'callout'; st.mark = m[1];
+    return { st, lines: [m[2] ?? '', ...lines.slice(1).map(l => l.slice(2))] };
   }
   if (/^> /.test(l0) && lines.every(l => /^> /.test(l))) { st.shape = 'quote'; return { st, lines: lines.map(l => l.slice(2)) }; }
   return plain;
@@ -150,6 +160,7 @@ function sync(ed: HTMLElement) {
   ed.dataset.shape = st.shape;
   ed.dataset.num = String(st.num);
   ed.dataset.checked = st.shape === 'todo' && st.box !== ' ' ? 'true' : 'false';
+  if (st.shape === 'callout') ed.dataset.kind = calloutWord(st.mark); else delete ed.dataset.kind;
   ed.style.setProperty('--lead', String(Math.min(st.lead.length, 24)));
 }
 
@@ -344,6 +355,7 @@ export type Turn = { kind: 'line'; typed: string; to: string } | { kind: 'inline
 export function setShape(ed: HTMLElement, shape: string, over: Partial<St> = {}) {
   const st = { ...(states.get(ed) ?? blankState()), ...over, shape };
   if (!LISTY.has(shape)) { st.lead = ''; st.rel = ''; }
+  if (shape === 'callout' && !CALLOUT_WORDS.includes(calloutWord(st.mark))) st.mark = '[!question]';
   states.set(ed, st);
   sync(ed);
 }
@@ -509,6 +521,7 @@ export function applyColor(ed: HTMLElement, range: Range, kind: ColorKind, name:
 /** Tab and Shift+Tab on a list item: its indent, two spaces in or out. False when the block is not a list item. */
 export function indentList(ed: Writer, out: boolean): boolean {
   const st = states.get(ed);
+  if (st?.shape === 'callout') return indentCalloutLine(ed, out);
   if (!st || !LISTY.has(st.shape)) return false;
   const a = ed.selectionStart, b = ed.selectionEnd;
   const was = st.lead.length;
@@ -517,6 +530,61 @@ export function indentList(ed: Writer, out: boolean): boolean {
   sync(ed);
   const shift = lead.length - was;
   ed.setSelectionRange(Math.max(contentStart(ed), a + shift), Math.max(contentStart(ed), b + shift));
+  return true;
+}
+
+/** Where the line holding Markdown offset `at` starts and ends in a callout, and where its words start (after the `> ` of a later line,
+ *  after the marker of the first). */
+function calloutLine(ed: Writer, at: number) {
+  const v = ed.value;
+  const from = v.lastIndexOf(NL, at - 1) + 1;
+  const to = v.indexOf(NL, at) < 0 ? v.length : v.indexOf(NL, at);
+  const body = from === 0 ? contentStart(ed) : from + 2;
+  return { v, from, to, body: Math.min(body, to) };
+}
+
+const LIST_LINE = /^(\s*)([-*+]|\d+[.)]) ?(.*)$/;
+
+/** Tab and Shift+Tab on a list line inside a callout: the line goes two spaces in or out (a nested list). False on any other line. */
+function indentCalloutLine(ed: Writer, out: boolean): boolean {
+  const a = ed.selectionStart, b = ed.selectionEnd;
+  const { v, to, body } = calloutLine(ed, a);
+  const line = v.slice(body, to);
+  if (!/^\s*([-*+]|\d+[.)]) /.test(line)) return false;
+  if (out && !line.startsWith(' ')) return true;
+  const shift = out ? -Math.min(2, /^ */.exec(line)![0].length) : 2;
+  ed.value = out ? v.slice(0, body) + line.slice(-shift) + v.slice(to) : v.slice(0, body) + '  ' + line + v.slice(to);
+  ed.setSelectionRange(Math.max(body, a + shift), Math.max(body, b + shift));
+  return true;
+}
+
+/** Enter inside a callout (rows 22, 46): a new line in the same callout, and a list line goes on as a list (a nested one at its indent);
+ *  Enter on a list line with nothing in it steps the list out one level, then leaves it. 'exit': Enter on an empty last line, which is
+ *  taken out so the block can end (the next block opens below). False when the block is not a callout. */
+export function calloutEnter(ed: Writer): boolean | 'exit' {
+  if (shapeOf(ed) !== 'callout') return false;
+  const a = ed.selectionStart, b = ed.selectionEnd;
+  const { v, from, to, body } = calloutLine(ed, a);
+  const line = v.slice(body, to);
+  const m = LIST_LINE.exec(line);
+  if (a === b && line === '' && to === v.length && from > 0) {
+    ed.value = v.slice(0, from - 1);
+    ed.setSelectionRange(ed.value.length, ed.value.length);
+    return 'exit';
+  }
+  if (a === b && m && /^\s*([-*+]|\d+[.)])\s*$/.test(line) && a === to) {
+    // an empty item: one level out, or the list is left (the line is empty)
+    const nl = m[1].length >= 2 ? m[1].slice(2) + m[2] + ' ' : '';
+    ed.value = v.slice(0, body) + nl + v.slice(to);
+    ed.setSelectionRange(body + nl.length, body + nl.length);
+    return true;
+  }
+  let next = NL + '> ';
+  if (m && m[3] !== '') {
+    const n = /^\d+/.exec(m![2]);
+    next += m![1] + (n ? `${Number(n[0]) + 1}${m![2].slice(-1)}` : m![2]) + ' ';
+  }
+  ed.setRangeText(next, a, b);
   return true;
 }
 
