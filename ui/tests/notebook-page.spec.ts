@@ -118,7 +118,7 @@ test('page_menu_items', async ({ page }) => {
   await expect(menu).toBeVisible();
   // 30: searchable, in the frame's order
   await expect(menu.locator('.wbm-input')).toBeFocused();
-  await expect(menuRows(page, 'Page actions')).toHaveText(['Copy link', 'Copy contents', 'Duplicate', 'Move to', 'Page history', 'Appearance', 'Lock page', 'Move to Trash', /^More/]);
+  await expect(menuRows(page, 'Page actions')).toHaveText(['Copy link', 'Copy contents', 'Duplicate', 'Move to', 'Page history', 'Appearance', 'Properties', 'Lock page', 'Move to Trash', /^More/]);
   // the foot: when it was edited, and the word count (the title is not counted; the page's text is)
   await expect(menu.locator('.wbm-foot')).toContainText('Edited 2m ago');
   await expect(menu.locator('.wbm-foot')).toContainText(/\d+ words?/);

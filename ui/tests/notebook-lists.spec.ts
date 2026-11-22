@@ -115,8 +115,11 @@ test('list_in_a_page_folder_as_database', async ({ page }) => {
   await list.getByLabel('Status of Haste').press('Enter');
   await expect.poll(() => s.calls.map(c => c.name)).toContain('page-prop-p3-status-open');
   // + Property adds a column: its name goes into the list's own line, not into any page
-  await list.getByRole('button', { name: '+ Property' }).click();
-  await list.getByLabel('Property name').fill('Reviewed');
+  // a redraw after the last cell write can land late: open the name field again until it holds
+  await expect(async () => {
+    await list.getByRole('button', { name: '+ Property' }).click({ timeout: 1000 });
+    await list.getByLabel('Property name').fill('Reviewed', { timeout: 1000 });
+  }).toPass();
   await list.getByLabel('Property name').press('Enter');
   await page.locator('.wbm-row', { hasText: 'Text' }).first().click();
   await expect.poll(() => s.calls.map(c => c.name).join(' ')).toContain('block-view-w1-1-columns-book-status-reviewed');

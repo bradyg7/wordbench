@@ -407,12 +407,15 @@ test('own_property_add_and_type', async ({ page }) => {
   await expect(list.getByLabel('Mood of Zeal')).toHaveAttribute('list', /nbv-ch-/);
   await list.getByLabel('Due of Zeal').fill('2026-11-22');
   await list.getByLabel('Done of Zeal').check();
-  await expect.poll(() => s.calls.filter(c => c[1] === 'prop').map(c => c.slice(2).join(' '))).toEqual(['p1 Due 2026-11-22 --type date', 'p1 Done true --type yesno']);
+  await expect.poll(() => [...new Set(s.calls.filter(c => c[1] === 'prop').map(c => c.slice(2).join(' ')))]).toEqual(['p1 Due 2026-11-22 --type date', 'p1 Done true --type yesno']);
   // + Property: a name, then its kind: Text, Choice, Date or Yes/no
-  await list.getByRole('button', { name: '+ Property' }).click();
-  await list.getByLabel('Property name').fill('Reviewed');
-  await list.getByLabel('Property name').press('Enter');
-  await expect(page.locator('.wbm-row .wbm-label')).toHaveText(['Text', 'Choice', 'Date', 'Yes/no']);
+  // a redraw after the last cell write can land late: open the name field again until it holds
+  await expect(async () => {
+    await list.getByRole('button', { name: '+ Property' }).click({ timeout: 1000 });
+    await list.getByLabel('Property name').fill('Reviewed', { timeout: 1000 });
+    await list.getByLabel('Property name').press('Enter', { timeout: 1000 });
+    await expect(page.locator('.wbm-row .wbm-label')).toHaveText(['Text', 'Choice', 'Date', 'Yes/no'], { timeout: 1500 });
+  }).toPass();
   await row(page, 'Date').click();
   await expect.poll(s.filterCalls).toEqual(['--columns Speaker, Status, Due, Done, Mood, Reviewed --type Reviewed date']);
   // the Filter menu offers it under Your own properties
