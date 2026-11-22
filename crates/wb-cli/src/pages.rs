@@ -122,8 +122,8 @@ pub fn commands() -> Vec<Command> {
             vec![Pos("id", N::One)], |c, a| j(pg::duplicate(c.bible()?, &mut *c.study()?, &a.s("id")).map_err(e)?)),
         cmd("page link", "The [[link]] that Copy link copies, for a page: wb page link ID prints [[Its title]].",
             vec![Pos("id", N::One)], |c, a| Ok(Out::Text(pg::link_of(&*c.study()?, &a.s("id")).map_err(e)?))),
-        cmd("page look", "A page's view choices, kept in settings/pages.json and not in the page: wb page look ID [--full-width on|off] [--small-text on|off]. With neither, what is set.",
-            vec![Pos("id", N::One), Opt("full_width", None), Opt("small_text", None)], |c, a| {
+        cmd("page look", "A page's view choices, kept in settings/pages.json and not in the page: wb page look ID [--full-width on|off] [--small-text on|off] [--font default|serif] [--toc on|off]. With none, what is set (these and whether the page is locked).",
+            vec![Pos("id", N::One), Opt("full_width", None), Opt("small_text", None), Opt("font", None), Opt("toc", None)], |c, a| {
                 let onoff = |name: &str| -> Result<Option<bool>, String> {
                     match a.opt(name).map(|v| v.trim().to_lowercase()).as_deref() {
                         None => Ok(None),
@@ -132,11 +132,26 @@ pub fn commands() -> Vec<Command> {
                         Some(v) => Err(format!("--{} is on or off, not “{v}”.", name.replace('_', "-"))),
                     }
                 };
-                let (fw, st) = (onoff("full_width")?, onoff("small_text")?);
-                if fw.is_none() && st.is_none() {
+                let font = a.opt("font");
+                let ch = pg::LookChange { full_width: onoff("full_width")?, small_text: onoff("small_text")?, toc: onoff("toc")?, font: font.as_deref().map(str::trim), locked: None };
+                if ch.full_width.is_none() && ch.small_text.is_none() && ch.toc.is_none() && ch.font.is_none() {
                     return j(pg::look(&*c.study()?, &a.s("id")));
                 }
-                j(pg::set_look(&mut *c.study()?, &a.s("id"), fw, st).map_err(e)?)
+                j(pg::set_look(&mut *c.study()?, &a.s("id"), ch).map_err(e)?)
+            }),
+        cmd("page lock", "Lock a page or unlock it: wb page lock ID on|off. A locked page takes no typing in the window; kept in settings/pages.json. With no on or off, whether it is locked.",
+            vec![Pos("id", N::One), Pos("state", N::Opt)], |c, a| {
+                match Some(a.s("state").trim().to_lowercase()).filter(|v| !v.is_empty()).as_deref() {
+                    None => j(pg::look(&*c.study()?, &a.s("id"))),
+                    Some("on") => j(pg::set_lock(&mut *c.study()?, &a.s("id"), true).map_err(e)?),
+                    Some("off") => j(pg::set_lock(&mut *c.study()?, &a.s("id"), false).map_err(e)?),
+                    Some(v) => Err(format!("Lock is on or off, not “{v}”.")),
+                }
+            }),
+        cmd("page text", "The page's Markdown as one text, as Copy contents copies it: the title a heading, every scripture block written out from the Bible verbatim with its reference, no link ids. wb page text ID prints it (--json: {id, text}); with new text after the id it is wb note text, which writes the page.",
+            vec![Pos("id", N::One)], |c, a| {
+                let v = pg::contents(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?;
+                if a.flag("json") { j(v) } else { Ok(Out::Text(v["text"].as_str().unwrap_or("").to_string())) }
             }),
         cmd("page unpin", "Take a page out of Pinned.", vec![Pos("id", N::One)], |c, a| j(pg::unpin(c.bible()?, &mut *c.study()?, &a.s("id")).map_err(e)?)),
         cmd("page blocks", "A page's blocks, numbered from 1: each one's kind (paragraph, heading, item, numbered, todo, quote, divider, table, fence), its Markdown and where it is in the text; and its title. A day's page by its day (2026-11-07).",

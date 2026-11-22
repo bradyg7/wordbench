@@ -181,7 +181,9 @@ pub fn run(ctx: &Ctx<'_>, argv: &[String]) -> Result<(Out, bool), Fail> {
     let all = commands();
     // R1: a note is a page. `wb page show`, `wb page text` … are `wb note …` under the new name (`wb note` stays, as the Python
     // `wb` has it); a `wb page` command of its own (tree, new, blocks …) is never taken for a note's.
-    let argv: Vec<String> = if argv.len() >= 2 && argv[0] == "page" && !all.iter().any(|c| c.name == format!("page {}", argv[1])) && all.iter().any(|c| c.name == format!("note {}", argv[1])) {
+    // `wb page text ID` is the page's contents (notebook row 33); with new text after the id (`wb page text ID "new text"`, `-` for standard input) it is the note's, as before
+    let writes_text = argv.len() >= 4 && argv[0] == "page" && argv[1] == "text" && argv[3..].iter().any(|x| x == "-" || !x.starts_with("--"));
+    let argv: Vec<String> = if argv.len() >= 2 && argv[0] == "page" && (writes_text || !all.iter().any(|c| c.name == format!("page {}", argv[1]))) && all.iter().any(|c| c.name == format!("note {}", argv[1])) {
         let mut v = argv.clone();
         v[0] = "note".into();
         v

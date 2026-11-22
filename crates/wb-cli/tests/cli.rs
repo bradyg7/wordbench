@@ -2942,3 +2942,78 @@ fn callout_kinds_found() {
     let notes = wb.js(&["find", "ylt", "--kind", "note"]);
     assert_eq!(notes["groups"][0]["results"][0]["title"], "Read the YLT of verse 13 next.");
 }
+
+#[test]
+fn appearance_changes_at_once() {
+    // notebook rows 31 and 45 (NB11): `wb page look` keeps Font, Small text, Full width and Table of contents in settings/pages.json, not in
+    // the page; a choice at its default is not written; another page's choices stay
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    let b = wb.js(&["page", "new", "Tuesday study"])["id"].as_str().unwrap().to_string();
+    let start = wb.js(&["page", "look", &a]);
+    assert_eq!((start["font"].as_str().unwrap(), start["toc"].as_bool().unwrap(), start["locked"].as_bool().unwrap()), ("default", false, false));
+    let r = wb.js(&["page", "look", &a, "--font", "serif", "--toc", "on", "--small-text", "on"]);
+    assert_eq!((r["font"].as_str().unwrap(), r["toc"].as_bool().unwrap(), r["small_text"].as_bool().unwrap(), r["full_width"].as_bool().unwrap()), ("serif", true, true, false));
+    wb.js(&["page", "look", &b, "--full-width", "on"]);
+    // one choice changes alone; the others are kept
+    let r = wb.js(&["page", "look", &a, "--font", "default"]);
+    assert_eq!((r["font"].as_str().unwrap(), r["toc"].as_bool().unwrap(), r["small_text"].as_bool().unwrap()), ("default", true, true));
+    let file = || -> Value { serde_json::from_str(&std::fs::read_to_string(wb.dir.join("settings").join("pages.json")).unwrap()).unwrap() };
+    assert_eq!(file()["look"][&a], json!({"small_text": true, "toc": true}));
+    assert_eq!(file()["look"][&b], json!({"full_width": true}));
+    assert!(!wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains("serif"));
+    // back to the defaults: the page has no entry
+    wb.js(&["page", "look", &a, "--small-text", "off", "--toc", "off"]);
+    assert!(file()["look"].get(&a).is_none());
+    assert!(wb.fails(&["page", "look", &a, "--font", "mono"]).contains("serif"));
+    assert!(wb.fails(&["page", "look", &a, "--toc", "maybe"]).contains("on or off"));
+}
+
+#[test]
+fn locked_page_does_not_edit() {
+    // notebook row 32 (NB11): `wb page lock ID on|off` is kept with the page's view choices; the page's other choices survive it
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    wb.js(&["page", "look", &a, "--font", "serif"]);
+    assert_eq!(wb.js(&["page", "lock", &a])["locked"], false);
+    let r = wb.js(&["page", "lock", &a, "on"]);
+    assert_eq!((r["locked"].as_bool().unwrap(), r["font"].as_str().unwrap()), (true, "serif"));
+    let file: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("settings").join("pages.json")).unwrap()).unwrap();
+    assert_eq!(file["look"][&a], json!({"locked": true, "font": "serif"}));
+    assert_eq!(wb.js(&["page", "look", &a])["locked"], true);
+    // locking is the window's: wb still writes the file
+    wb.js(&["block", "add", &a, "Written from a terminal"]);
+    assert!(wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains("Written from a terminal"));
+    assert_eq!(wb.js(&["page", "lock", &a, "off"])["locked"], false);
+    assert_eq!(wb.js(&["page", "look", &a])["font"], "serif");
+    assert!(wb.fails(&["page", "lock", &a, "maybe"]).contains("on or off"));
+    assert!(wb.fails(&["page", "lock", "nope-nope", "on"]).contains("No note"));
+}
+
+#[test]
+fn copy_contents_expands_scripture() {
+    // notebook row 33 (NB11): `wb page text` is the page's Markdown with each scripture block written out from the Bible verbatim, with its
+    // reference; the file holds only the reference, and a link id is not copied
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    wb.js(&["block", "add", &a, "Where the word first appears in this story:"]);
+    wb.js(&["block", "add", &a, "Num 25:11-13", "--scripture"]);
+    wb.js(&["block", "add", &a, "After the passage"]);
+    wb.js(&["block", "link", &a, "3"]);
+    let r = wb.js(&["text", "Num 25:11-13", "--json"]);
+    let verses = r["verses"].as_array().unwrap();
+    assert_eq!(verses.len(), 3);
+    let out = wb.ok(&["page", "text", &a]);
+    assert!(out.starts_with("# Zeal in Numbers 25\n\nWhere the word first appears in this story:\n\n**"), "{out}");
+    assert!(out.contains(&format!("**{}** (KJV)", r["label"].as_str().unwrap())), "{out}");
+    for v in verses {
+        let line = format!("> {} {}", v["v"], v["text"].as_str().unwrap().trim());
+        assert!(out.contains(&line), "{line} not in {out}");
+    }
+    assert!(out.trim_end().ends_with("After the passage"), "{out}");
+    assert!(!out.contains('^') && !out.contains("```"), "{out}");
+    // the file itself still holds only the reference
+    let file = wb.js(&["note", "show", &a])["text"].as_str().unwrap().to_string();
+    assert!(file.contains("```scripture") && !file.contains(verses[0]["text"].as_str().unwrap().trim()), "{file}");
+    assert_eq!(wb.js(&["page", "text", &a, "--json"])["text"], out.trim_end_matches('\n'));
+}

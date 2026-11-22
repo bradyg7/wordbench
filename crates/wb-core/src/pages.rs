@@ -1581,28 +1581,107 @@ pub fn link_of(store: &Store, id: &str) -> Result<String> {
     Ok(format!("[[{title}]]"))
 }
 
-/// A page's view choices (L-25), kept in `settings/pages.json` under `look`, not in the page: Full width and Small text.
+/// A page's view choices (notebook rows 31, 32, 45), kept in `settings/pages.json` under `look`, not in the page: Full width, Small text,
+/// the Font (`default` or `serif`), the Table of contents bar, and Lock page. A page with none of them set has no entry.
 pub fn look(store: &Store, id: &str) -> Value {
     let all = store.settings("pages").get("look").and_then(|l| l.get(id.trim())).cloned().unwrap_or(json!({}));
-    json!({"id": id.trim(), "full_width": all["full_width"] == true, "small_text": all["small_text"] == true})
+    json!({"id": id.trim(), "full_width": all["full_width"] == true, "small_text": all["small_text"] == true,
+        "font": if all["font"] == "serif" { "serif" } else { "default" }, "toc": all["toc"] == true, "locked": all["locked"] == true})
 }
 
-/// Change a page's view choices (`None` keeps one as it is). Other pages' choices and Pinned in the file are kept.
-pub fn set_look(store: &mut Store, id: &str, full_width: Option<bool>, small_text: Option<bool>) -> Result<Value> {
+/// What a page's view choices can be changed to: `None` keeps one as it is.
+#[derive(Default, Clone, Copy)]
+pub struct LookChange<'a> {
+    pub full_width: Option<bool>,
+    pub small_text: Option<bool>,
+    pub font: Option<&'a str>,
+    pub toc: Option<bool>,
+    pub locked: Option<bool>,
+}
+
+/// Change a page's view choices. Other pages' choices and Pinned in the file are kept; a choice at its default is not written.
+pub fn set_look(store: &mut Store, id: &str, ch: LookChange<'_>) -> Result<Value> {
     let id = id.trim();
     if crate::threadpage::slug_of(id).is_some() {
         store.thread(crate::threadpage::slug_of(id).unwrap_or(""))?;
     } else {
         store.find_note(id)?;
     }
+    if let Some(f) = ch.font {
+        if !["default", "serif"].contains(&f.to_lowercase().as_str()) {
+            return Err(bad(&format!("The font is default or serif, not “{f}”.")));
+        }
+    }
     let now = look(store, id);
-    let (fw, st) = (full_width.unwrap_or(now["full_width"] == true), small_text.unwrap_or(now["small_text"] == true));
+    let on = |v: Option<bool>, k: &str| v.unwrap_or(now[k] == true);
+    let font = ch.font.map(|f| f.to_lowercase()).unwrap_or_else(|| now["font"].as_str().unwrap_or("default").to_string());
+    let mut entry = serde_json::Map::new();
+    for (k, v) in [("full_width", on(ch.full_width, "full_width")), ("small_text", on(ch.small_text, "small_text")), ("toc", on(ch.toc, "toc")), ("locked", on(ch.locked, "locked"))] {
+        if v {
+            entry.insert(k.into(), json!(true));
+        }
+    }
+    if font == "serif" {
+        entry.insert("font".into(), json!("serif"));
+    }
     let mut all = store.settings("pages").get("look").and_then(|l| l.as_object().cloned()).unwrap_or_default();
-    if fw || st {
-        all.insert(id.to_string(), json!({"full_width": fw, "small_text": st}));
-    } else {
+    if entry.is_empty() {
         all.shift_remove(id);
+    } else {
+        all.insert(id.to_string(), Value::Object(entry));
     }
     store.set_setting("pages", "look", if all.is_empty() { None } else { Some(Value::Object(all)) })?;
     Ok(look(store, id))
+}
+
+/// Lock a page or unlock it (notebook row 32): kept with the page's view choices. The window then takes no typing in it; the file is
+/// the person's, and `wb` commands still write it.
+pub fn set_lock(store: &mut Store, id: &str, locked: bool) -> Result<Value> {
+    set_look(store, id, LookChange { locked: Some(locked), ..Default::default() })
+}
+
+/// One block as Copy contents writes it: a scripture block becomes its reference in bold and its verses verbatim from the Bible, each
+/// `> N words` (`> C:N words` when the passage runs over chapters); the version's name follows the reference; a link id is not copied.
+fn expanded(bible: &Bible, block: &str) -> String {
+    let Some(f) = scripture_fence(block) else { return without_block_id(block) };
+    if f.reference.is_empty() {
+        return String::new();
+    }
+    let version = if f.ylt { "YLT" } else { "KJV" };
+    match crate::scripture::passage(bible, &f.reference, version) {
+        Ok(p) => {
+            let verses = p["verses"].as_array().cloned().unwrap_or_default();
+            let one_chapter = verses.windows(2).all(|w| w[0]["c"] == w[1]["c"]);
+            let mut out = format!("**{}** ({})", p["label"].as_str().unwrap_or(&f.reference), p["version"].as_str().unwrap_or(version));
+            for v in &verses {
+                let n = if one_chapter { format!("{}", v["v"]) } else { format!("{}:{}", v["c"], v["v"]) };
+                out += &format!("\n> {} {}", n, v["text"].as_str().unwrap_or("").trim());
+            }
+            out
+        }
+        Err(e) => format!("**{}** ({})", f.reference, e.0),
+    }
+}
+
+/// Copy contents (notebook row 33): the page's Markdown as one text, its title a heading, every scripture block written out in full from the
+/// Bible (verbatim, with its reference), no link ids (`wb page text ID`).
+pub fn contents(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
+    let (id, text, titled) = text_of(store, id)?;
+    let c = chars(&text);
+    let (title, bs) = split(&text, titled);
+    let mut out = String::new();
+    let mut at = 0;
+    if let Some((a, b)) = title {
+        let t = sub(&c, a, b);
+        out += &sub(&c, 0, a);
+        out += &if t.trim_start().starts_with('#') { t } else { format!("# {}", t.trim()) };
+        at = b;
+    }
+    for b in &bs {
+        out += &sub(&c, at, b.start);
+        out += &expanded(bible, &sub(&c, b.start, b.end));
+        at = b.end;
+    }
+    out += &sub(&c, at, c.len());
+    Ok(json!({"id": id, "text": out}))
 }
