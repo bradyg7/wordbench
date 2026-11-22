@@ -1267,7 +1267,7 @@ pub fn set_scripture(bible: &Bible, store: &mut Store, id: &str, n: usize, lines
 
 /// A fence with one value in it (```` ```thread ```` then a thread's id, ```` ```word ```` then H7065): the value, or an
 /// empty string when there is none yet.
-fn value_fence(block: &str, lang: &str) -> Option<String> {
+pub(crate) fn value_fence(block: &str, lang: &str) -> Option<String> {
     let mut ls = block.lines();
     let first = ls.next()?.trim_start();
     let mark = ["```", "~~~"].into_iter().find(|m| first.starts_with(m))?;
@@ -1370,7 +1370,7 @@ pub fn words(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
                 None => v["error"] = json!(format!("The lexicon has no {strong}.")),
                 Some(e) => {
                     v["strong"] = json!(strong);
-                    for k in ["lemma", "translit", "pron", "definition", "usage", "occurrences"] {
+                    for k in ["lemma", "translit", "pron", "pos", "definition", "usage", "occurrences"] {
                         v[k] = e.get(k).cloned().unwrap_or(Value::Null);
                     }
                     v["renderings"] = json!(e["renderings"].as_array().map(|a| a.iter().take(6).cloned().collect::<Vec<_>>()).unwrap_or_default());

@@ -16,6 +16,7 @@ import { openMenu, type MenuGroup, type MenuItem } from './menu';
 import { atMenu } from './atmenu';
 import { openChapterPanel } from './chapterpanel';
 import { scriptureField } from './scripturefield';
+import { concordanceChooser, isRefLang, isStudyLang, studyBlock, validWord, type StudyData } from './studyblocks';
 import { caretAt, calloutEnter, caretLine, chipRefs, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, turnedMd, undoTurn, type Turn, type Writer } from './blockedit';
 import { isToggleEnd, placeBlocks, toggleHead, toggleOf, wrapHead } from './toggles';
 import { KINDS, installSelectionBar, selectionBarBusy, shapeProps } from './selbar';
@@ -69,10 +70,11 @@ export interface BlockEditorState {
   views: BlockData;
   threads: BlockData;
   words: BlockData;
+  study: BlockData;
 }
 export const createBlockEditorState = (): BlockEditorState => ({
   focus: null, pending: null, menuKey: null, menuClose: null,
-  scripture: null, views: null, threads: null, words: null,
+  scripture: null, views: null, threads: null, words: null, study: null,
 });
 
 
@@ -160,6 +162,8 @@ export function drawBlocks(data: Blocks, host: Host): HTMLElement {
   host.state.threads?.got.catch(() => {});
   host.state.words = data.blocks.some(isWord) ? { id: data.id, got: wb(['page', 'words', data.id]) } : null;
   host.state.words?.got.catch(() => {});
+  host.state.study = data.blocks.some(isStudy) ? { id: data.id, got: wb(['page', 'study', data.id]) } : null;
+  host.state.study?.got.catch(() => {});
   installSelectionBar();
   const places = placeBlocks(data.blocks);
   // columns (rows 15, 44): blocks between the markers of a balanced group are drawn side by side; the markers are blocks of
@@ -700,6 +704,7 @@ function drawn(b: Blk, host: Host, id: string): Node {
   if (isView(b)) return viewBlock(b, id, host);
   if (isThread(b)) return threadBlock(b, id, host);
   if (isWord(b)) return wordBlock(b, id, host);
+  if (isStudy(b)) return studyBlock(fenceLang(b) as Parameters<typeof studyBlock>[0], heldIn(b), b.n, id, host.state.study as StudyData | null);
   const tg = toggleHead(b.text);
   if (tg) {
     const line = h('div', 'nb-toggle-line');
@@ -834,13 +839,13 @@ function editTable(text: string, form: HTMLElement, changed: () => void): () => 
 }
 
 function isStructured(b: Blk) {
-  return b.kind === 'table' || ['scripture', 'view', 'thread', 'word'].includes(fenceLang(b));
+  return b.kind === 'table' || ['scripture', 'view', 'thread', 'word'].includes(fenceLang(b)) || isStudy(b);
 }
 
 function editBlock(data: Blocks, b: Blk, el: HTMLElement, host: Host) {
   if (host.locked) return;
   // a scripture block is edited in the reference field (the book completes, the words under it are the database's); a template's blank still uses the form
-  if (isScripture(b) && !/{[a-z]+}/i.test(heldIn(b))) editScripture(data, b, el, host);
+  if ((isScripture(b) || isRefStudy(b)) && !/{[a-z]+}/i.test(heldIn(b))) editScripture(data, b, el, host);
   else if (isStructured(b)) editStructured(data, b, el, host);
   else startEdit(data, b, el, host, 'end');
 }
@@ -888,7 +893,7 @@ function editStructured(data: Blocks, b: Blk, el: HTMLElement, host: Host) {
   const form = h('form', 'nb-structured-editor');
   const table = b.kind === 'table';
   const lang = fenceLang(b);
-  const labels: Record<string, string> = { scripture: 'Scripture reference', view: 'View command', thread: 'Thread', word: 'Strong’s number' };
+  const labels: Record<string, string> = { scripture: 'Scripture reference', view: 'View command', thread: 'Thread', word: 'Strong’s number', concordance: 'Concordance word' };
   const title = table ? 'Edit table' : labels[lang];
   const heading = h('div', 'nb-structured-title', title);
   form.append(heading);
@@ -949,7 +954,7 @@ function editCard(b: Blk, form: HTMLElement, label: string, changed: () => void)
   input.required = true;
   input.oninput = changed;
   field.append(input);
-  const example: Record<string, string> = { scripture: 'Example: John 1:1', view: 'Example: notebook questions', thread: 'Thread ID or name', word: 'Example: H7065' };
+  const example: Record<string, string> = { scripture: 'Example: John 1:1', view: 'Example: notebook questions', thread: 'Thread ID or name', word: 'Example: H7065', concordance: 'Example: zeal' };
   field.append(h('span', 'muted small', example[lang]));
   return async () => {
     let value = input.value.trim();
@@ -960,6 +965,10 @@ function editCard(b: Blk, form: HTMLElement, label: string, changed: () => void)
         value = value.toUpperCase();
         if (!/^[HG]\d+$/.test(value)) throw new Error('Enter a Strong’s number beginning with H or G.');
         await wb(['strong', value]);
+      } else if (lang === 'concordance') {
+        value = value.toLowerCase();
+        if (!validWord(value)) throw new Error('Enter one English word, like zeal.');
+        await wb(['forms', value]);
       } else if (lang === 'thread') {
         const threads: { id: string; name: string }[] = await wb(['thread', 'list']);
         const match = threads.find(t => t.id === value || t.name.toLowerCase() === value.toLowerCase());
@@ -1081,6 +1090,9 @@ function viewBlock(b: Blk, id: string, host: Host): HTMLElement {
 const fenceLang = (b: Blk) => (b.kind === 'fence' ? (b.lang || '').split(/\s/)[0].toLowerCase() : '');
 const isThread = (b: Blk) => fenceLang(b) === 'thread';
 const isWord = (b: Blk) => fenceLang(b) === 'word';
+/** Interlinear, Cross references, Concordance, Margin notes and Marks blocks (`wb page study`); the first four hold a reference. */
+const isStudy = (b: Blk) => isStudyLang(fenceLang(b));
+const isRefStudy = (b: Blk) => isRefLang(fenceLang(b));
 /** What a thread or word block holds: the first line inside its fence. */
 const heldIn = (b: Blk) => (b.text.split('\n').slice(1).find(l => l.trim() && !/^(```|~~~)/.test(l.trim())) || '').trim();
 
@@ -1128,7 +1140,7 @@ function wordBlock(b: Blk, id: string, host: Host): HTMLElement {
       if (!mine) return;
       if (mine.error) { if (heldIn(b)) body.replaceChildren(h('p', 'small nbv-note nbv-error', mine.error)); return; }
       const top = h('div', 'nbw-top');
-      top.append(h('span', `nbw-lemma${/^H/.test(mine.strong) ? ' hebrew' : ' greek'}`, mine.lemma || ''), h('span', 'nbw-sound', mine.translit || ''));
+      top.append(h('span', `nbw-lemma${/^H/.test(mine.strong) ? ' hebrew' : ' greek'}`, mine.lemma || ''), h('span', 'nbw-sound', [mine.translit, mine.pron, mine.pos].filter(Boolean).join(' · ')));
       body.replaceChildren(top);
       if (mine.definition) body.append(h('p', 'nbw-def', mine.definition));
       const used = (mine.renderings || []).map((r: any) => `${r.w} (${r.n})`).join(', ');
@@ -1293,6 +1305,11 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
   { key: 'link', label: 'Link to a page', what: '[[a page’s title]]', ico: 'notebook', write: '[[', group: 'Basic', glyph: '↗' },
   { key: 'scripture', label: 'Scripture', what: 'A passage, drawn from the Bible', ico: 'book', write: '', group: 'Study', glyph: 'S' },
   { key: 'word', label: 'Word', what: 'A Strong’s entry from the lexicon', ico: 'search', write: '', group: 'Study', glyph: 'W' },
+  { key: 'interlinear', label: 'Interlinear', what: 'A verse’s original words, with sound, gloss and number', ico: 'book', write: '', alias: ['greek', 'hebrew', 'original words'], group: 'Study', glyph: 'א' },
+  { key: 'xrefs', label: 'Cross references', what: 'The places a verse points to', ico: 'book', write: '', alias: ['cross', 'references', 'xrefs'], group: 'Study', glyph: '⇄' },
+  { key: 'concordance', label: 'Concordance', what: 'Every place of a word, in Bible order', ico: 'search', write: '', alias: ['places', 'strong', 'every place'], group: 'Study', glyph: 'C' },
+  { key: 'margin', label: 'Margin notes for a passage', what: 'The margin notes on a passage, by verse', ico: 'pen', write: '', alias: ['margin', 'notes', 'margin notes'], group: 'Study', glyph: '✎' },
+  { key: 'marks', label: 'Marks in a passage', what: 'Every mark on a passage with its Legend style', ico: 'pen', write: '', alias: ['marks', 'legend', 'highlights'], group: 'Study', glyph: '▤' },
   { key: 'question', label: 'Callout', what: 'Question, Answered, Key point, Note', ico: 'prompt', write: '> [!question] ', alias: ['callout', 'question', 'answered', 'key point', 'note', '?'], group: 'Study', hint: '/callout', glyph: '?' },
   { key: 'thread', label: 'Saved thing', what: 'A folder’s places, kept up to date', ico: 'threads', write: '', alias: ['thread', 'folder', '~'], group: 'Study', glyph: '~' },
   { key: 'view', label: 'List in a page', what: 'A list kept up to date (a line of the command language)', ico: 'filter', write: '```view\nnotebook \n```', caret: 17, alias: ['view'], group: 'Study', glyph: '☰' },
@@ -1700,7 +1717,25 @@ function makeChoose(ta: Writer, data: Blocks, host: Host, cur: { n: number; coun
       else wordChooser(ta, pick, cancel);
       return;
     }
-    if (m.key === 'scripture') {
+    if (m.key === 'concordance') {
+      const before = ta.value;
+      ta.classList.add('asking');
+      const cancel = () => {
+        ta.classList.remove('asking');
+        if (ta.value !== before || !ta.isConnected) return;
+        ta.value = data.blocks.find(b => b.n === cur.n)?.text || '';
+        ta.focus();
+        ta.dispatchEvent(new Event('input'));
+      };
+      concordanceChooser(ta, word => {
+        if (!ta.isConnected) return;
+        ta.value = `\`\`\`concordance\n${word}\n\`\`\``;
+        ta.dispatchEvent(new Event('input'));
+        void finish();
+      }, cancel);
+      return;
+    }
+    if (m.key === 'scripture' || isRefLang(m.key)) {
       // a field in the block's place: the book completes as it is typed, the words under it are the database's (row 7)
       const before = ta.value;
       ta.classList.add('asking');
@@ -1709,7 +1744,7 @@ function makeChoose(ta: Writer, data: Blocks, host: Host, cur: { n: number; coun
         onPlace: reference => {
           if (!ta.isConnected) return;
           field.remove();
-          ta.value = `\`\`\`scripture\n${reference}\n\`\`\``;
+          ta.value = `\`\`\`${m.key}\n${reference}\n\`\`\``;
           ta.dispatchEvent(new Event('input'));
           void finish();
         },

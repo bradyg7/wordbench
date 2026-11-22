@@ -94,6 +94,11 @@ Names Numbers 25:11 here.`);
     ['scripture', 'Numbers 24'], ['scripture', 'Numbers 25'], ['scripture', 'Numbers 26'], ['scripture', 'Numbers 25:11'],
     ['scripture', '2SA 21:2'], ['scripture', 'NUM 5:14'], ['text', 'Numbers 25:11', '--json'], ['text', '2SA 21:2', '--json'],
   ]) writeFileSync(new URL(`${named(argv)}.json`, help), wb(...argv, '--json'));
+  // the Study blocks (notebook rows 50 to 55, NB12): a page holding one of each, and what `wb page study` reads for it
+  const studyPage = JSON.parse(wb('page', 'new', ['Study blocks page', '', '```word', 'H7065', '```', '', '```interlinear', 'Numbers 25:11', '```', '', '```xrefs', 'Numbers 25:11', '```', '',
+    '```concordance', 'zealous', '```', '', '```margin', 'Numbers 25', '```', '', '```marks', 'Numbers 25', '```'].join('\n'), '--json')).id;
+  writeFileSync(new URL('study-blocks.json', help), wb('page', 'study', studyPage, '--json'));
+  writeFileSync(new URL('forms-zealous.json', help), wb('forms', 'zealous', '--json'));
 } finally {
   const resolved = realpathSync(study);
   if (dirname(resolved) === fixtureRoot) rmSync(resolved, { recursive: true, force: true });

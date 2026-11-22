@@ -134,6 +134,20 @@ folder, not as a Notebook tab.
   is open, not on disk (tests `edited_status_updates`, `page_menu_items`, `appearance_changes_at_once`, `toc_bar_folds_to_rail`,
   `locked_page_does_not_edit`, `copy_contents_expands_scripture`; Rust and window).
 
+- **The other Study blocks, NB12 (the lead, 2026-11-21, file forms by the existing ```word / ```thread fence pattern).** Each block is a fence
+  holding one line, a reference or an English word, never text: ```` ```interlinear ```` (a reference), ```` ```xrefs ```` (a reference), ```` ```concordance ````
+  (one English word, kept lower case), ```` ```margin ```` (a passage) and ```` ```marks ```` (a passage); Word stays ```` ```word ```` with its number. What
+  they show is read each time the page is drawn: `wb page study ID` (one call for the page; the Word block keeps `wb page words`). `wb block add ID VALUE
+  --as word|interlinear|xrefs|concordance|margin|marks` places one (the value checked), `wb block study ID N VALUE` changes one's value, `wb mark in REF`
+  is Marks in a passage (every mark with its Legend name, style and the marked words, from the Bible) and `wb xrefs REF` is row 52: the app has
+  no cross-reference source, so it lists none and says so; the block says the same and "Proposed: wb xrefs REF, after a source is chosen." Margin notes
+  for a whole chapter are `wb mark notes` (the chapter's own first); for verses, the notes covering them. Interlinear shows up to 40 verses; its words
+  scroll sideways inside the card, which is as wide as the column (Full width widens the column) and has no resize handle. In the / menu: Interlinear,
+  Cross references, Concordance, Margin notes for a passage, Marks in a passage follow Word. Row 50 was built before (NB3 era); the Word block now
+  also shows the sound (Strong's pronunciation) and the part of speech, as the frame does. Tests `study_word_block`, `study_interlinear_block`,
+  `study_cross_references`, `study_concordance_block`, `study_margin_notes_block`, `study_marks_block` (window) and
+  `study_blocks_hold_only_a_reference_or_a_word_and_read_the_rest` (Rust).
+
 ## The inventory (round 1)
 
 Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into the interaction table below.
@@ -336,12 +350,12 @@ Each is drawn for the person to keep or cut. Lookups are fetched with `wb`; noth
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
 | 49 | / › Study | Scripture | A block that keeps only the reference; the words are read from the database each time | The reference | `wb text REF` | `study_scripture_reference_only` | built (NB3) · approved 2026-11-20 |
-| 50 | / › Study | Word | A Strong's entry: the original word, its sound, the definition and the KJV's renderings | The number | `wb strong H7065` | `study_word_block` | [ ] approved 2026-11-20 |
-| 51 | / › Study | Interlinear | A verse's original words, each with its sound, gloss and number; a long verse scrolls sideways inside the block, its height grows with its words, and it is as wide as the column (wider at Full width); no drag-to-resize | The reference | `wb interlinear REF` | `study_interlinear_block` | [ ] approved 2026-11-20 |
-| 52 | / › Study | Cross references | Proposed: the app has no cross-reference source, so the block says so; a source must be chosen first | The reference | `wb xrefs REF`, *proposed* | `study_cross_references` | [ ] approved 2026-11-20 |
-| 53 | / › Study | Concordance | Every place of a word in Bible order, with words either side and the original number | The word | `wb concordance WORD` | `study_concordance_block` | [ ] approved 2026-11-20 |
-| 54 | / › Study | Margin notes for a passage | The margin notes on a passage, by verse; each opens its note | The passage | `wb mark notes REF` | `study_margin_notes_block` | [ ] approved 2026-11-20 |
-| 55 | / › Study | Marks in a passage | Every mark on a passage with its Legend style and the marked words | The passage | `wb marks BOOK CH` | `study_marks_block` | [ ] approved 2026-11-20 |
+| 50 | / › Study | Word | A Strong's entry: the original word, its sound, the definition and the KJV's renderings | The number | `wb strong H7065` | `study_word_block` | built (NB12) · approved 2026-11-20 |
+| 51 | / › Study | Interlinear | A verse's original words, each with its sound, gloss and number; a long verse scrolls sideways inside the block, its height grows with its words, and it is as wide as the column (wider at Full width); no drag-to-resize | The reference | `wb interlinear REF` | `study_interlinear_block` | built (NB12) · approved 2026-11-20 |
+| 52 | / › Study | Cross references | Proposed: the app has no cross-reference source, so the block says so; a source must be chosen first | The reference | `wb xrefs REF`, *proposed* | `study_cross_references` | built (NB12) · approved 2026-11-20 |
+| 53 | / › Study | Concordance | Every place of a word in Bible order, with words either side and the original number | The word | `wb concordance WORD` | `study_concordance_block` | built (NB12) · approved 2026-11-20 |
+| 54 | / › Study | Margin notes for a passage | The margin notes on a passage, by verse; each opens its note | The passage | `wb mark notes REF` | `study_margin_notes_block` | built (NB12) · approved 2026-11-20 |
+| 55 | / › Study | Marks in a passage | Every mark on a passage with its Legend style and the marked words | The passage | `wb marks BOOK CH` | `study_marks_block` | built (NB12) · approved 2026-11-20 |
 
 ## Tickets (cut 2026-11-20, built in this order, one at a time)
 
@@ -375,7 +389,7 @@ A ticket is done when every row in it has its passing test and its Built cell sa
 - [ ] Every new core action has its `wb` command (rows marked *proposed*).
 - [ ] Desktop, floating, narrow and phone (row 37).
 - [ ] The floating pane drags smoothly (row 6; checked in the build).
-- [ ] The interlinear block (row 51) scrolls sideways inside itself when a verse is long, grows in height with its words, and is as wide as the column (wider at Full width); it has no drag-to-resize.
+- [x] The interlinear block (row 51) scrolls sideways inside itself when a verse is long, grows in height with its words, and is as wide as the column (wider at Full width); it has no drag-to-resize.
 - [ ] A page of 400 blocks types, opens menus and drags inside the typing budget of `npm run measure`; nothing jumps (was row 38).
 - [ ] The page is rebuilt on this design; the old page code and its ways are taken out, not built around.
 

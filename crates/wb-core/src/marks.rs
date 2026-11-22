@@ -1110,12 +1110,37 @@ pub fn find_marks(bible: &Bible, store: &Store, f: &MarkFilter<'_>) -> Result<Va
             && f.since.is_none_or(|d| day(m).as_str() >= d)
             && f.until.is_none_or(|d| day(m).as_str() <= d)
     });
+    name_styles(&entries, &mut marks);
+    Ok(json!({"count": marks.len(), "marks": marks}))
+}
+
+/// Give each mark row its `legend` name (or "Unnamed <color> <kind>") and its `style`.
+fn name_styles(entries: &[LegendEntry], marks: &mut [Value]) {
     for m in marks.iter_mut() {
         let st = style_key(m["kind"].as_str().unwrap_or(""), m["color"].as_str().unwrap_or(""), m["lines"].as_u64().map(|n| n as u8));
         m["legend"] = json!(entries.iter().find(|e| entry_style(e) == st).map(entry_label).unwrap_or_else(|| unnamed_words(m["kind"].as_str().unwrap_or(""), m["color"].as_str().unwrap_or(""), m["lines"].as_u64().map(|n| n as u8))));
         m["style"] = json!(st);
     }
-    Ok(json!({"count": marks.len(), "marks": marks}))
+}
+
+/// Every mark on a passage (a chapter, a verse, verses; notebook row 55), old highlights too, in Bible order, each as
+/// `find_marks` gives it (its `legend` name, `style`, `label` and the `words` under it, from the Bible):
+/// `{"place", "count", "marks"}`. A mark is on the passage when its words share a verse with it.
+pub fn in_passage(bible: &Bible, store: &Store, place: &str) -> Result<Value> {
+    let sp = crate::places::parse_span(place, bible.books())?;
+    let s0 = (sp.c1, sp.v1, 0u32);
+    let e0 = (sp.c2, if sp.v2 == 0 { u32::MAX } else { sp.v2 }, u32::MAX);
+    let code = sp.book.code.clone();
+    let mut marks = mark_rows(bible, store, |m| {
+        let Ok(a) = anchors::parse(&m.at) else { return false };
+        if a.code != code {
+            return false;
+        }
+        let (s1, e1) = span_of(&a);
+        s1 <= e0 && s0 <= e1
+    });
+    name_styles(&read_legend(store), &mut marks);
+    Ok(json!({"place": crate::places::span_label(&sp), "count": marks.len(), "marks": marks}))
 }
 
 /// Where a style is used (MK7-21, row 40): `{"entry": {label, style, kind, color, lines?, listed, count}, "count", "marks": [...]}`.

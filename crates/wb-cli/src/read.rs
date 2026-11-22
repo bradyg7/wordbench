@@ -80,6 +80,9 @@ pub fn commands() -> Vec<Command> {
                 };
                 Ok(Out::Json(concordance::page(c.bible()?, &a.s("word"), &mode.to_lowercase(), a.opt("book").as_deref()).map_err(e)?))
             }),
+        // Cross references (notebook row 52, proposed): the app has no source for them, so none is listed and the answer says so.
+        cmd("xrefs", "The cross references of a place: wb xrefs Num 25:11. The app has no cross-reference source yet, so none is listed: {\"place\", \"count\": 0, \"references\": [], \"source\": null, \"message\"}. Proposed; a source is chosen first.",
+            vec![Pos("ref", N::Many)], |c, a| Ok(Out::Json(wb_core::studyblocks::xrefs(c.bible()?, &a.s("ref")).map_err(e)?))),
         cmd("concordance box", "What the Concordance's one box suggests for what is typed: a Strong's number (NUMBER), English forms with counts, original words whose definition holds it, and sounds-alike (at most 3 rows each): wb concordance box zea.",
             vec![Pos("text", N::Many)], |c, a| Ok(Out::Json(concordance::suggest(c.bible()?, &a.s("text")).map_err(e)?))),
         cmd("concordance letters", "The letter strip: for each letter a to z, how many English words start with it and their places (x has none): wb concordance letters.",

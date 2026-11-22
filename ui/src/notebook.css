@@ -139,3 +139,40 @@
 .nb-toc-tick::after { content: ""; position: absolute; left: 50%; top: 4px; height: 2px; width: 10px; margin-left: -5px; border-radius: 1px; background: var(--line); }
 .nb-toc-tick.l2::after { width: 7px; margin-left: -3px; } .nb-toc-tick.l3::after { width: 5px; margin-left: -2px; }
 .nb-toc-tick.on::after, .nb-toc-tick:hover::after { background: var(--accent); }
+
+/* The other Study blocks (notebook rows 51-55, NB12): a card as wide as the column (wider at Full width, which widens the column
+   itself), a head (what it holds, its name at the right) and a body that grows with what it lists. */
+.nb-study { border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); padding: 10px 16px 8px; margin: 4px 0; width: 100%; min-width: 0; box-sizing: border-box; }
+.nbs-head { display: flex; align-items: baseline; gap: 10px; }
+.nbs-what { font: var(--type-small-strong); color: var(--accent); }
+.nbs-body { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; min-width: 0; }
+.nbs-body > p { margin: 0; }
+.nbs-foot { margin: 0; }
+.nbs-none { font-size: 15px; }
+/* Interlinear: the words scroll sideways inside the card; the card's height is its words' height; nothing resizes it */
+.nbi-verse { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.nbi-vn { flex: none; padding-top: 4px; }
+.nbi-scroll { flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; padding-bottom: 6px; overscroll-behavior-x: contain; }
+.nbi-words { display: flex; gap: 22px; width: max-content; }
+.nbi-word { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; white-space: nowrap; }
+.nbi-orig { font-size: 22px; line-height: 1.3; }
+.nbi-gloss { font-size: 14px; }
+.nbi-num { color: var(--accent); }
+/* Concordance */
+.nbc-row { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 14px; align-items: baseline; font-size: 14px; }
+.nbc-ctx { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nbc-group { font-weight: 600; margin-top: 6px; }
+/* Margin notes and Marks */
+.nbm-row, .nbk-row { display: flex; align-items: baseline; gap: 14px; min-width: 0; }
+.nbm-where { flex: none; min-width: 120px; text-align: left; color: var(--accent); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.nbm-text { min-width: 0; }
+.nbk-row { align-items: center; }
+.nbk-row .nb-chip { flex: none; }
+.nbk-words { min-width: 0; font-family: var(--scripture-font, Literata, serif); font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 520px) {
+  .nbc-row { grid-template-columns: minmax(0, 1fr) max-content; }
+  .nbc-ctx { grid-column: 1 / -1; grid-row: 2; }
+  .nbm-row { flex-wrap: wrap; gap: 4px 14px; }
+  .nbk-row { flex-wrap: wrap; }
+  .nbk-words { flex-basis: 100%; white-space: normal; }
+}

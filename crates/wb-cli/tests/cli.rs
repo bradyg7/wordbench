@@ -2059,6 +2059,80 @@ fn a_page_holds_a_thread_and_a_word_as_blocks_that_hold_only_an_id_and_a_number(
     }
 }
 
+// ---- NB12: the other Study blocks (notebook rows 50 to 55) ---------------------------------------------------------
+
+#[test]
+fn study_blocks_hold_only_a_reference_or_a_word_and_read_the_rest() {
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["mark", "add", "NUM.25:11.2-25:11.5", "--kind", "circle", "--color", "orange"]);
+    wb.js(&["mark", "add", "NUM.24:1", "--kind", "highlight", "--color", "yellow"]);
+    wb.js(&["mark", "note", "Num 25:11", "A margin note written for the test."]);
+    wb.js(&["mark", "note", "Num 25", "A chapter note written for the test."]);
+    let id = wb.js(&["page", "new", "Studies"])["id"].as_str().unwrap().to_string();
+    let id = id.as_str();
+    for (lang, value) in [("interlinear", "Num 25:11"), ("xrefs", "Num 25:11"), ("concordance", "Zealous"), ("margin", "Num 25"), ("marks", "Num 25"), ("word", "h7065")] {
+        wb.js(&["block", "add", id, value, "--as", lang]);
+    }
+    // the file holds one value each, and no text of the Bible or of the lexicon
+    let file: String = std::fs::read_dir(wb.dir.join("notes").join("_inbox")).unwrap().flatten().map(|e| std::fs::read_to_string(e.path()).unwrap()).collect::<String>().replace("
+
+", "
+");
+    for held in ["```interlinear
+Num 25:11
+```", "```xrefs
+Num 25:11
+```", "```concordance
+zealous
+```", "```margin
+Num 25
+```", "```marks
+Num 25
+```", "```word
+H7065
+```"] {
+        assert!(file.contains(held), "{held}");
+    }
+    let s = wb.js(&["page", "study", id]);
+    let blocks = s["blocks"].as_array().unwrap();
+    assert_eq!(blocks.iter().map(|b| b["lang"].as_str().unwrap()).collect::<Vec<_>>(), ["interlinear", "xrefs", "concordance", "margin", "marks"]);
+    // Interlinear: the original words of the verse with sound, gloss and number, from the database
+    let il = wb.js(&["interlinear", "Num 25:11"]);
+    let want = &il["verses"][0]["words"];
+    let got = &blocks[0]["data"]["verses"][0]["words"];
+    assert_eq!(got.as_array().unwrap().len(), want.as_array().unwrap().len());
+    assert_eq!((got[0]["original"].clone(), got[0]["translit"].clone(), got[0]["gloss"].clone(), got[0]["strong"].clone()), (want[0]["original"].clone(), want[0]["translit"].clone(), want[0]["gloss"].clone(), want[0]["strong"].clone()));
+    // Cross references: the app has no source, so the block says so
+    assert_eq!(blocks[1]["data"]["count"], 0);
+    assert!(blocks[1]["data"]["message"].as_str().unwrap().contains("no cross-reference source"));
+    assert_eq!(wb.js(&["xrefs", "Num 25:11"])["message"], blocks[1]["data"]["message"]);
+    // Concordance: the words of `wb concordance`, in Bible order, with the number
+    let cc = wb.js(&["concordance", "zealous"]);
+    assert_eq!(blocks[2]["data"]["lines"], cc["lines"]);
+    assert_eq!(blocks[2]["data"]["lines"][0]["ref"], "Numbers 25:11");
+    // Margin notes: the chapter's own first, then by verse; a verse passage lists the notes covering it
+    assert_eq!(blocks[3]["data"]["count"], 2);
+    assert_eq!(wb.js(&["mark", "notes", "Num 25"])["notes"], blocks[3]["data"]["notes"]);
+    assert_eq!(wb.js(&["mark", "notes", "Num 25"])["notes"][1]["at"], "NUM.25:11");
+    // Marks in a passage: this chapter's mark with its Legend style and the marked words from the Bible; not another chapter's
+    let m = &blocks[4]["data"];
+    assert_eq!((m["count"].as_u64(), m["marks"][0]["legend"].as_str(), m["marks"][0]["style"].as_str()), (Some(1), Some("Unnamed orange circle"), Some("circle:orange")));
+    assert_eq!(wb.js(&["mark", "in", "Num 25"]), *m);
+    let words = m["marks"][0]["words"].as_str().unwrap();
+    assert!(verse_texts(&wb, "Num 25:11")[0].contains(words), "{words}");
+    assert_eq!(wb.js(&["mark", "in", "Num 24:1"])["count"], 1);
+    assert_eq!(wb.js(&["mark", "in", "Num 25:12"])["count"], 0);
+    // a value is checked, and changed in place
+    assert!(wb.fails(&["block", "add", id, "Nowhere 3:1", "--as", "marks"]).contains("Nowhere"));
+    assert!(wb.fails(&["block", "add", id, "two words", "--as", "concordance"]).contains("one English word"));
+    wb.js(&["block", "study", id, "2", "Num 25:12"]);
+    assert_eq!(wb.js(&["page", "study", id])["blocks"][1]["held"], "Num 25:12");
+    // a block with nothing in it says what to write
+    wb.js(&["block", "add", id, "```margin
+```"]);
+    assert!(wb.js(&["page", "study", id])["blocks"][5]["error"].as_str().unwrap().contains("No reference yet"));
+}
+
 #[test]
 fn search_every_page_finds_thread_names_and_notes() {
     let Some(wb) = Wb::new() else { return };

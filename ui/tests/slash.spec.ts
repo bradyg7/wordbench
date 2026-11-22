@@ -59,7 +59,7 @@ test('slash_menu_one_list_finds_folded', async ({ page }) => {
   await expect(page.locator('.wbm-group')).toHaveText(['Basic']);
   const fold = page.locator('.wbm-row.wbm-fold');
   await expect(fold).toHaveCount(1);
-  await expect(fold).toContainText('Scripture, Word, Callout, Saved thing, List in a page');
+  await expect(fold).toContainText('Scripture, Word, Interlinear, Cross references, Concordance, Margin notes for a passage, Marks in a passage, Callout, Saved thing, List in a page');
   expect(await page.locator('.wbm-row').last().getAttribute('class')).toContain('wbm-fold');
   // it opens at the caret and fits the pane (the same in a narrow pane)
   const m = await page.locator('.wbm').boundingBox();

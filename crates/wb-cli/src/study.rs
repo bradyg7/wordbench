@@ -149,6 +149,8 @@ pub fn commands() -> Vec<Command> {
             let sp = c.span(&a.s("ref"))?;
             j(sa::chapter_marks(&*c.study()?, &sp.book.code, sp.c1 as i64).map_err(e)?)
         }),
+        cmd("mark in", "Every mark on a passage (a chapter, verses), old highlights too, in Bible order: each with its Legend name and style, its label and the marked words from the Bible. {\"place\", \"count\", \"marks\"}. wb mark in Num 25  |  wb mark in Num 25:9-13. The Marks in a passage block shows this.",
+            vec![Pos("place", N::Many)], |c, a| j(marks::in_passage(c.bible()?, &*c.study()?, &a.s("place")).map_err(e)?)),
         cmd("marks map", "Colors across the Bible: wb marks map [--style ENTRY|kind:color[:lines]] [--folder NAME]. Every book in order with its chapters. With no filter each chapter lists its styles (style, kind, color, count) and the colored folders with saves there; with a style or a folder, each chapter has only its count, and a chapter with 0 is a gap. Also {styles, folders, filter, total, chapters_with}.",
             vec![Opt("style", None), Opt("folder", None)], |c, a| {
                 j(marks::marks_map(c.bible()?, &*c.study()?, a.opt("style").as_deref(), a.opt("folder").as_deref()).map_err(e)?)

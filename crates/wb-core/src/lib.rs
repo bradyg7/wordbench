@@ -41,6 +41,7 @@ pub mod shelf;
 pub mod setup;
 pub mod store;
 pub mod studyapi;
+pub mod studyblocks;
 pub mod tether;
 pub mod updates;
 pub mod updates_install;

@@ -189,6 +189,13 @@ pub fn commands() -> Vec<Command> {
                 let n = nth(a, "n")?;
                 j(pg::set_value_block(c.bible()?, &mut *c.study()?, &a.s("id"), n, "word", &a.s("strong")).map_err(e)?)
             }),
+        cmd("page study", "A page's Study blocks (interlinear, xrefs, concordance, margin, marks) with what each shows now: the block's number, its fence (lang), what it holds (a reference, or an English word) and its data; a block that cannot be read says why. The file holds only the reference or word.",
+            vec![Pos("id", N::One)], |c, a| j(wb_core::studyblocks::page(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
+        cmd("block study", "Change a Study block's value: wb block study ID 3 \"Num 25:11\" (interlinear, xrefs, margin and marks hold a reference, concordance an English word, word a Strong's number). The block's fence stays; the value is checked first.",
+            vec![Pos("id", N::One), Pos("n", N::One), Pos("value", N::Many)], |c, a| {
+                let n = nth(a, "n")?;
+                j(wb_core::studyblocks::set(c.bible()?, &mut *c.study()?, &a.s("id"), n, &a.s("value")).map_err(e)?)
+            }),
         cmd("page views", "A page's views (W5) with what each finds now: each block's number, its line, and its rows (as wb view run); a line that cannot be read, or holds a template's blank, says so.",
             vec![Pos("id", N::One)], |c, a| j(pv::page_views(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
         cmd("block view", "Change a view's line: wb block view ID 3 \"notebook @Num 25 questions\". The line is read first; one that cannot be read is not written.",
@@ -256,9 +263,17 @@ pub fn commands() -> Vec<Command> {
                 }
                 j(pg::edit_guarded(c.bible()?, &mut *c.study()?, &a.s("id"), what, a.opt("expect").as_deref()).map_err(e)?)
             }),
-        cmd("block add", "Add a block: wb block add ID \"# Before Tuesday\" --after 2 (--first: right under the title; neither: last). - reads standard input. --scripture: the text is a reference (\"Num 25:18-26:1\"), checked against the Bible, and the block written is the fenced scripture block holding only that reference; without it a bare reference stays a paragraph.",
-            vec![Pos("id", N::One), Pos("text", N::Many), Opt("after", None), Flag("first"), Flag("scripture")], |c, a| {
+        cmd("block add", "Add a block: wb block add ID \"# Before Tuesday\" --after 2 (--first: right under the title; neither: last). - reads standard input. --as word|interlinear|xrefs|concordance|margin|marks: the text is the one value the Study block holds (a Strong's number, a reference, an English word), checked, and the block written is that fence. --scripture: the text is a reference (\"Num 25:18-26:1\"), checked against the Bible, and the block written is the fenced scripture block holding only that reference; without it a bare reference stays a paragraph.",
+            vec![Pos("id", N::One), Pos("text", N::Many), Opt("after", None), Flag("first"), Flag("scripture"), Opt("as", None)], |c, a| {
                 let mut text = text_of(c, &a.s("text"))?;
+                if let Some(kind) = a.opt("as") {
+                    if a.flag("scripture") {
+                        return Err("--scripture or --as, not both.".into());
+                    }
+                    let kind = kind.to_lowercase();
+                    let held = wb_core::studyblocks::checked(c.bible()?, &kind, &text).map_err(e)?;
+                    text = wb_core::studyblocks::fence_text(&kind, &held);
+                }
                 if a.flag("scripture") {
                     let reference = text.trim().to_string();
                     c.span(&reference)?;
