@@ -370,6 +370,9 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-page blockquote { margin: 0 0 12px; padding-left: 12px; border-left: 3px solid var(--line); color: var(--muted); }
 .nb-page .nb-h { font: var(--type-heading); margin: 18px 0 8px; }
 .nb-page h3.nb-h { font-size: 19px; } .nb-page h4.nb-h { font-size: 16px; }
+.nb-page .nb-block.flash { background: var(--accent-soft); border-radius: 6px; transition: background .4s; }
+.nb-page a.nb-link.nb-blocklink::before, .nb-page a.nb-link.nb-blocklink::after { content: none; }
+.nb-page a.nb-link.nb-blocklink { background: var(--accent-soft); border-radius: 4px; padding: 0 4px; }
 .nb-page .nb-h.flash { background: var(--accent-soft); border-radius: 4px; }
 .nb-page a.ref { color: var(--fg); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .nb-page a.nb-link { color: var(--accent); font-weight: 600; text-decoration: none; }

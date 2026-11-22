@@ -820,6 +820,36 @@ fn links_in(text: &str) -> Vec<Link> {
     out
 }
 
+/// The first words of the block that carries link id `bid` in a page's text, without its Markdown marks (None: no such block).
+fn block_words(text: &str, bid: &str) -> Option<String> {
+    let tag = format!(" ^{bid}");
+    let para = text.split("
+
+").find(|p| p.trim_end().ends_with(&tag))?;
+    let plain = crate::pages::without_block_id(para);
+    let mut line = plain.lines().next().unwrap_or("").trim_start().to_string();
+    line = line.trim_start_matches(|c: char| "#>-*+ ".contains(c)).to_string();
+    for mark in ["[ ] ", "[x] ", "[X] "] {
+        if let Some(r) = line.strip_prefix(mark) {
+            line = r.to_string();
+        }
+    }
+    // inline marks: <span data-bg="…">, </span>, <u>, </u>, ** and *
+    let mut out = String::new();
+    let mut rest = line.as_str();
+    while let Some(i) = rest.find('<') {
+        out.push_str(&rest[..i]);
+        match rest[i..].find('>') {
+            Some(j) => rest = &rest[i + j + 1..],
+            None => { out.push_str(&rest[i..]); rest = ""; }
+        }
+    }
+    out.push_str(rest);
+    let plain = out.replace("**", "").replace('*', "");
+    let words: Vec<&str> = plain.split_whitespace().take(6).collect();
+    Some(words.join(" "))
+}
+
 /// The headings in a note's text (`# …`, `## …`), in order.
 fn headings_of(text: &str) -> Vec<String> {
     text.lines().filter(|l| l.starts_with('#')).map(|l| l.trim_start_matches('#').trim().to_string()).filter(|h| !h.is_empty()).collect()
@@ -859,8 +889,12 @@ fn link_values(text: &str, index: &[(String, Value)]) -> Vec<Value> {
         .into_iter()
         .map(|l| {
             let to = named(index, &l.title);
-            let heading_ok = l.heading.is_empty() || to.is_some_and(|t| headings_of(t["text"].as_str().unwrap_or("")).iter().any(|h| h.eq_ignore_ascii_case(&l.heading)));
+            // `[[Page#^abc123]]` names a block by its link id (notebook row 18): its first words are what the chip shows
+            let block = l.heading.strip_prefix('^').filter(|b| b.len() == 6 && b.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()));
+            let words = block.and_then(|b| to.and_then(|t| block_words(t["text"].as_str().unwrap_or(""), b)));
+            let heading_ok = block.is_some() && words.is_some() || block.is_none() && (l.heading.is_empty() || to.is_some_and(|t| headings_of(t["text"].as_str().unwrap_or("")).iter().any(|h| h.eq_ignore_ascii_case(&l.heading))));
             json!({"start": l.start, "end": l.end, "title": l.title, "heading": l.heading, "shown": l.shown,
+                "block": block.map(|b| json!(b)).unwrap_or(Value::Null), "block_words": words,
                 "to": to.map(|t| t["id"].clone()).unwrap_or(Value::Null), "kind": to.map(|t| t["kind"].clone()).unwrap_or(Value::Null),
                 "heading_ok": heading_ok})
         })

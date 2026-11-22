@@ -316,6 +316,11 @@ pub fn commands() -> Vec<Command> {
                 };
                 j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Move { n, to }).map_err(e)?)
             }),
+        cmd("block link", "The link to a block (the block menu's Copy link to block): wb block link ID 3 gives {link: \"[[Page title#^abc123]]\", block}. The block gets a short id (^ and six lowercase letters or digits) at the end of its text the first time, which the window never shows; one it already has is reused. Paste the link into another page.",
+            vec![Pos("id", N::One), Pos("n", N::One)], |c, a| {
+                let n = nth(a, "n")?;
+                j(pg::block_link(c.bible()?, &mut *c.study()?, &a.s("id"), n).map_err(e)?)
+            }),
         cmd("block color", "Give blocks a background color (the block menu's Color): wb block color ID 3 yellow (gray brown orange yellow green blue purple red, or default to take it off; --count K: K blocks from it). The color is a <span data-bg=\"…\"> around the block's whole text; blocks that are not text (scripture, a table, a divider) are left as they are. --undo returns a token for wb block undo; --expect TEXT requires the current page text to match.",
             vec![Pos("id", N::One), Pos("n", N::One), Pos("color", N::One), Opt("count", None), Flag("undo"), Opt("expect", None)], |c, a| {
                 let n = nth(a, "n")?;

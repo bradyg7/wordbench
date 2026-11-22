@@ -81,6 +81,16 @@ folder, not as a Notebook tab.
   moment after typing stops, and Ctrl+click opens it (test `chip_while_writing`). The chip and the compact chapter panel
   are one module (`ui/src/chapterpanel.ts`) that margin notes (row 40, NB8) reuse (test `at_verse_chip_popup`).
 
+- **A block's link, NB9 (the lead, 2026-11-21, by the person's standing authority).** Copy link to block writes a short stable id at the end of that block in page A's file, at copy time: a space, `^` and
+  6 lowercase letters or digits (the Obsidian form, e.g. `Read the chapter twice ^abc123`); a block that already has one keeps it. The id is
+  never shown in the page (`wb page blocks` gives the text without it and the id as `bid`; changing the block's words keeps it; a copy of the
+  block does not carry it). Page B holds `[[Page A#^abc123]]`, an extension of the `[[page#heading]]` link, drawn as the chip "Page A › first words"
+  (`wb note show` gives each link `block` and `block_words`); clicking it opens page A in its tab scrolled to that block, which glows briefly, with
+  Back to the page it came from. A link whose id is gone opens page A at the top with a quiet "That block is gone". Scripture and other fenced
+  blocks, tables, dividers and column markers cannot carry an id yet (`wb block link` says so). Move to (row 19): `wb block move ID N --page OTHER
+  [--count K]` writes the blocks last in the other page, then takes them out of this one (tests `move_block_to_another_page`,
+  `link_to_block_flow`).
+
 ## The inventory (round 1)
 
 Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into the interaction table below.
@@ -224,10 +234,10 @@ person's existing pages read.
 | 41 | A block's gutter | Read what + and the grip do | + adds an empty line below with / open; the grip drags the block, or opens its menu when clicked | Nothing | Window only | `handle_controls_explained` | built (NB6) · approved 2026-11-20 |
 | 14 | + | Click | A new empty line below, with the / menu open | A new block | `wb block add` | `plus_adds_below_with_menu` | built (NB6) · approved 2026-11-20 |
 | 15 | Grip | Drag | A blue line shows where it lands; dropping moves it; dropping to the side makes columns at full width (library S30) | The block's place | `wb block move ID N --to M`; `--beside M [--left]` for columns | `drag_moves_block` | built (NB7) · approved 2026-11-20 |
-| 16 | Grip | Click | The block menu: Turn into ▸, Color ▸, Copy link to block, Duplicate (Ctrl+D), Move to (Ctrl+Shift+P), Delete (Del); at the foot "Edited …" and its word count | Nothing until used | Window only | `block_menu_items_and_foot` | built (NB4, NB6, NB9) · approved 2026-11-20 (Copy link to block, row 18, waits) |
+| 16 | Grip | Click | The block menu: Turn into ▸, Color ▸, Copy link to block, Duplicate (Ctrl+D), Move to (Ctrl+Shift+P), Delete (Del); at the foot "Edited …" and its word count | Nothing until used | Window only | `block_menu_items_and_foot` | built (NB4, NB6, NB9) · approved 2026-11-20 |
 | 17 | Block menu | Turn into ▸ a kind | The block changes kind and keeps its text | The block's Markdown | `wb block set` | `turn_into_keeps_text` | built (NB6) · approved 2026-11-20 |
 | 42 | Block menu | Duplicate (Ctrl+D) | A copy right below, with the caret in it | The page | `wb block dup ID N`, *proposed* | `duplicate_block_below` | built (NB6) · approved 2026-11-20 |
-| 18 | Block menu | Copy link to block | The whole flow (18a–18c): copy in page A; paste in page B makes a chip "Page A › first words"; clicking it opens page A scrolled to the block, which glows briefly; Back returns. Scripture references stay references (found by the page index) | Page B holds the link | `wb block link ID N`, *proposed* | `link_to_block_flow` | [ ] approved 2026-11-20 |
+| 18 | Block menu | Copy link to block | The whole flow (18a–18c): copy in page A; paste in page B makes a chip "Page A › first words"; clicking it opens page A scrolled to the block, which glows briefly; Back returns. Scripture references stay references (found by the page index) | Page A: the block ends with ` ^abc123` (a short id, written when the link is copied, reused if it has one, never shown). Page B holds `[[Page A#^abc123]]` | `wb block link ID N` (writes the id, gives `{link, block}`) | `link_to_block_flow` | built (NB9) · approved 2026-11-20 |
 | 19 | Block menu | Move to | The page chooser; the block leaves this page and is last in the chosen one | Both pages | `wb block move ID N --page OTHER [--count K]` | `move_block_to_another_page` | built (NB9) · approved 2026-11-20 |
 | 20 | Block menu | Delete, or Del on a selected block | It goes; "Deleted · Undo" offers the page's Undo | The page | `wb block rm ID N --undo` | `delete_block_with_undo` | built (NB6) · approved 2026-11-20 |
 | 21 | Several blocks | Drag across them, or Shift+click; Esc selects the block the caret is in | A pale wash on each; the grip menu acts on all (Turn into, Color, Move to, Delete) | The blocks | `wb block color ID N NAME --count K`, `wb block rm ID N --count K`; Turn into is `wb block set` for each | `several_blocks_act_together` | built (NB7, NB9) · approved 2026-11-20 |

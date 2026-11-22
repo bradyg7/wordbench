@@ -41,7 +41,7 @@ const SECTIONS: [Group, string, string][] = [
   ['none', 'All', 'Every page, the most recently changed first'],
 ];
 
-interface Link { start: number; end: number; title: string; heading: string; shown: string; to: string | null; kind: string | null; heading_ok: boolean }
+interface Link { start: number; end: number; title: string; heading: string; shown: string; block?: string | null; block_words?: string | null; to: string | null; kind: string | null; heading_ok: boolean }
 interface Entry {
   id: string; kind: 'note' | 'question' | 'day' | 'thread'; placed: boolean; anchor: string; label: string; text: string; time: string; created: string; updated: string;
   title: string; preview: string; whole?: string; day?: string; today?: boolean; exists?: boolean;
@@ -264,11 +264,11 @@ function createNotebookSession(fixed?: PageTab) {
     await pane?.refresh?.();
   }
 
-  function routePage(id: string, at: typeof focusEditor = null): boolean {
+  function routePage(id: string, at: typeof focusEditor = null, from: PageTab | undefined = fixed): boolean {
     id = id.split('#')[0];
     const key = pageTabKey(id);
-    if (fixed?.id === id || (!fixed && !dock.find(key) && !openingTabs.has(key))) return false;
-    void openPageTab(key, at, fixed).catch(x => toast(String(x)));
+    if (fixed?.id === id || (!fixed && !from && !dock.find(key) && !openingTabs.has(key))) return false;
+    void openPageTab(key, at, from).catch(x => toast(String(x)));
     return true;
   }
 
@@ -1473,6 +1473,14 @@ ${l}` : ''}`;
     const f = focusEditor;
     focusEditor = null;
     if (f && typeof f === 'object') {
+      if (f.heading.startsWith('^')) {
+        // a link to a block (row 18): the page opens scrolled to it, and it glows for a moment; a block that is gone leaves the page at the top
+        const bl = [...edEl.querySelectorAll<HTMLElement>('.nb-block[data-bid]')].find(x => x.dataset.bid === f.heading.slice(1));
+        if (bl) { bl.scrollIntoView({ block: 'center' }); bl.classList.add('flash'); setTimeout(() => bl.classList.remove('flash'), 1800); }
+        else toast('That block is gone');
+        afterDrawn(edEl, blockState, blockHostNow, blocksData);
+        return;
+      }
       const hd = [...edEl.querySelectorAll<HTMLElement>('.nb-page [data-heading]')].find(x => x.dataset.heading!.toLowerCase() === f.heading.toLowerCase());
       if (hd) { hd.scrollIntoView({ block: 'start' }); hd.classList.add('flash'); setTimeout(() => hd.classList.remove('flash'), 1600); }
     } else if (f === 'end') {
@@ -1553,9 +1561,10 @@ ${l}` : ''}`;
         f.append(a);
       } else {
         const l = mk.l;
-        const a = h('a', `nb-link${l.to ? '' : ' missing'}`, l.shown || (l.heading ? `${l.title} › ${l.heading}` : l.title));
+        const blockLink = !!l.block && !!l.to;
+        const a = h('a', `nb-link${l.to ? '' : ' missing'}${blockLink ? ' nb-blocklink' : ''}`, l.shown || (blockLink ? `${l.title} › ${l.block_words || 'a block'}` : l.heading ? `${l.title} › ${l.heading}` : l.title));
         a.href = '#';
-        a.title = l.to ? (l.heading ? `${l.title}, at ${l.heading}` : l.title) : `No note is titled “${l.title}” yet`;
+        a.title = blockLink ? (l.block_words ? `${l.title}, at “${l.block_words}”` : `${l.title}: that block is gone`) : l.to ? (l.heading ? `${l.title}, at ${l.heading}` : l.title) : `No note is titled “${l.title}” yet`;
         a.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); followLink(l, a); };
         f.append(a);
       }
@@ -1599,6 +1608,11 @@ ${l}` : ''}`;
   }
 
   function followLink(l: Link, a: HTMLElement) {
+    if (l.to && l.block && shown?.id && shown.id !== l.to) {
+      // a link to a block (row 18) opens that page in its own tab, with Back to this page
+      const here = fixed ?? { id: shown.id, key: pageTabKey(shown.id), title: shown.title };
+      if (routePage(l.to, { heading: l.heading }, here)) return;
+    }
     if (l.to) return void openNote(l.to, l.heading || undefined);
     const box = h('div', 'menu-list');
     box.append(h('div', 'muted small nb-menu-note', `No note is titled “${l.title}” yet.`));

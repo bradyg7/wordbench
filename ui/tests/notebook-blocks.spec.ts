@@ -40,11 +40,27 @@ async function openPage(page: Page, start: string[] = WORDS) {
     const name = new URL(route.request().url()).pathname.split('/').at(-1)!.replace(/\.json$/, '');
     const input = decodeURIComponent(route.request().headers()['x-wb-input'] ?? '');
     const send = (json: unknown) => route.fulfill({ json });
-    if (name === 'note-show-w1') return send({ id: 'w1', title: TITLE, kind: 'note', placed: false, text: full(), updated: '2026-11-20T14:02:00', linked_from: [], also: [], threads: [], refs: [] });
+    let m: RegExpExecArray | null;
+    if (name === 'note-show-w1') {
+      // a link to a block of the other page, as wb-core reads it: its first words, and whether the block is still there
+      const links: unknown[] = [];
+      const t = full();
+      for (const [lm, bid] of [...t.matchAll(/\[\[Other page#\^(\w{6})\]\]/g)].map(x => [x, x[1]] as const)) {
+        links.push({ start: lm.index!, end: lm.index! + lm[0].length, title: 'Other page', heading: `^${bid}`, shown: '', block: bid, block_words: bid === 'abc123' ? 'Read the chapter twice' : null, to: 'w2', kind: 'note', heading_ok: bid === 'abc123' });
+      }
+      return send({ id: 'w1', title: TITLE, kind: 'note', placed: false, text: t, updated: '2026-11-20T14:02:00', linked_from: [], also: [], threads: [], refs: [], links });
+    }
+    if (name === 'note-show-w2') return send({ id: 'w2', title: 'Other page', kind: 'note', placed: false, text: 'Other page\n\nIntro\n\nRead the chapter twice ^abc123', updated: '2026-11-20T14:02:00', linked_from: [], also: [], threads: [], refs: [], links: [] });
+    if (name === 'page-blocks-w2') return send({ id: 'w2', folds: [], title: { text: 'Other page', start: 0, end: 10 }, blocks: [
+      { n: 1, kind: 'paragraph', text: 'Intro', start: 12, end: 17 }, { n: 2, kind: 'paragraph', text: 'Read the chapter twice', bid: 'abc123', start: 19, end: 49 }] });
+    if (name === 'page-scripture-w2') return send({ blocks: [] });
+    if ((m = /^block-link-w1-(\d+)$/.exec(name))) {
+      calls.push({ name, input });
+      return send({ id: 'w1', n: Number(m[1]), block: 'abc123', title: TITLE, link: `[[${TITLE}#^abc123]]`, wrote: true });
+    }
     if (name === 'page-blocks-w1') return send(blocks());
     if (name === 'page-scripture-w1') return send({ blocks: [] });
     if (name.startsWith('refs-plain-')) return send([]);
-    let m: RegExpExecArray | null;
     if ((m = /^block-color-w1-(\d+)-(\w+)-count-(\d+)/.exec(name))) {
       calls.push({ name, input });
       const n = Number(m[1]), color = m[2], count = Number(m[3]);
@@ -132,7 +148,7 @@ test('block_background_color', async ({ page }) => {
   const s = await openPage(page, ['Plain words', '## A heading', SCR('Num 25:11')]);
   // Color ▸ is in the menu of a text block (Background: Default and the 8 colors); not in a scripture block's
   await grip(page, 1).click({ force: true });
-  await expect(page.locator('.wbm .wbm-row .wbm-label')).toHaveText(['Turn into', 'Color', 'Duplicate', 'Move to', 'Delete']);
+  await expect(page.locator('.wbm .wbm-row .wbm-label')).toHaveText(['Turn into', 'Color', 'Copy link to block', 'Duplicate', 'Move to', 'Delete']);
   await page.locator('.wbm-row', { hasText: 'Color' }).click();
   await expect(page.locator('.wbm-group')).toHaveText(['Background']);
   await expect(page.locator('.wbm-row .wbm-label')).toHaveText(['Default', 'Gray', 'Brown', 'Orange', 'Yellow', 'Green', 'Blue', 'Purple', 'Red']);
@@ -366,4 +382,31 @@ test('move_block_to_another_page', async ({ page }) => {
   await expect.poll(() => s.texts().length).toBe(0);
   expect(s.other()).toEqual([WORDS[1], WORDS[0], ...WORDS.slice(2)]);
   expect(s.calls.at(-1)!.name).toBe('block-move-w1-1-page-w2-count-3');
+});
+
+test('link_to_block_flow', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const LINK = '[[Other page#^abc123]]';
+  const s = await openPage(page, ['Before the link', `See ${LINK} for more`, 'See [[Other page#^zzzzzz]] too']);
+  // 18a: Copy link to block is in the block menu of a text block; it asks wb-core for the link (which writes the id) and copies it
+  await grip(page, 1).click({ force: true });
+  await page.locator('.wbm-row', { hasText: 'Copy link to block' }).click();
+  await expect.poll(() => s.calls.at(-1)?.name).toBe('block-link-w1-1');
+  await expect(page.locator('.toast, [role=status]').filter({ hasText: 'Link to block copied' }).first()).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('[[Blocks page#^abc123]]');
+  // 18b: pasted in another page the link is a chip "Page A › first words", not the brackets
+  const chip = block(page, 2).locator('a.nb-blocklink');
+  await expect(chip).toHaveText('Other page › Read the chapter twice');
+  // 18c: clicking it opens that page scrolled to the block, which glows; Back returns
+  await chip.click();
+  const target = page.locator('.nb-block[data-bid="abc123"]');
+  await expect(target).toBeVisible();
+  await expect(target).toHaveClass(/flash/);
+  await expect(page.locator('.nb-return')).toContainText('Back to');
+  await page.locator('.nb-return').click();
+  await expect(page.locator('.nb-block[data-n="2"] a.nb-blocklink')).toBeVisible();
+  // a link whose id is gone opens the page quietly with "That block is gone"
+  await block(page, 3).locator('a.nb-blocklink').click();
+  await expect(page.locator('.toast, [role=status]').filter({ hasText: 'That block is gone' }).first()).toBeVisible();
+  await expect(page.locator('.nb-block.flash')).toHaveCount(0);
 });

@@ -806,7 +806,11 @@ fn block_values(text: &str, titled: bool) -> Value {
         .iter()
         .enumerate()
         .map(|(i, b)| {
-            let mut v = json!({"n": i + 1, "kind": b.kind, "text": sub(&c, b.start, b.end), "start": b.start, "end": b.end});
+            let raw = sub(&c, b.start, b.end);
+            let mut v = json!({"n": i + 1, "kind": b.kind, "text": without_block_id(&raw), "start": b.start, "end": b.end});
+            if let Some((_, bid)) = block_id_of(&raw) {
+                v["bid"] = json!(bid);
+            }
             if b.kind == "heading" {
                 v["level"] = json!(b.level);
             }
@@ -935,7 +939,12 @@ pub fn edit_guarded(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>, 
     }
     let (out, n, count) = match what {
         Edit::Set { n, count, text: new } => {
-            let (out, at, k) = set(&text, titled, n, count, new)?;
+            // a block's link id stays when its words are changed (the window never shows it, so it never sends it back)
+            let keep = if count == 1 && !new.trim().is_empty() && block_id_of(new).is_none() {
+                let bs = split(&text, titled).1;
+                bs.get(n).and_then(|b| block_id_of(&sub(&chars(&text), b.start, b.end))).map(|(_, bid)| format!("{} ^{bid}", new.trim_end()))
+            } else { None };
+            let (out, at, k) = set(&text, titled, n, count, keep.as_deref().unwrap_or(new))?;
             // taking blocks out may leave a column empty: its marker goes with it
             if new.trim().is_empty() { (crate::blockops::tidy(&out, titled)?, at, k) } else { (out, at, k) }
         }
@@ -1015,13 +1024,74 @@ pub fn duplicate_block(bible: &Bible, store: &mut Store, id: &str, n: usize, und
     let (id, text, titled) = text_of(store, id)?;
     let (_, bs) = split(&text, titled);
     let b = bs.get(n).ok_or_else(|| missing(format!("The page has {} block{}; there is no block {}.", bs.len(), if bs.len() == 1 { "" } else { "s" }, n + 1)))?;
-    let copy = sub(&chars(&text), b.start, b.end);
+    let copy = without_block_id(&sub(&chars(&text), b.start, b.end));
     let what = Edit::Add { after: Some(n), text: &copy };
     if undo {
         edit_undoable(bible, store, &id, what, expected)
     } else {
         edit_guarded(bible, store, &id, what, expected)
     }
+}
+
+/// A block's link id (notebook row 18): ` ^` and six lowercase letters or digits at the very end of the block's text (the Obsidian
+/// form). It is how a `[[Page#^id]]` link finds the block after the page is edited; the window never shows it.
+pub fn block_id_of(text: &str) -> Option<(usize, String)> {
+    let t = text.trim_end();
+    let tail: Vec<char> = t.chars().rev().take(8).collect();
+    if tail.len() < 8 || !tail[7].is_whitespace() || tail[6] != '^' {
+        return None;
+    }
+    let id: String = tail[..6].iter().rev().collect();
+    if !id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()) {
+        return None;
+    }
+    Some((t.chars().count() - 8, id))
+}
+
+/// The block's words without its link id.
+pub fn without_block_id(text: &str) -> String {
+    match block_id_of(text) {
+        Some((at, _)) => text.chars().take(at).collect(),
+        None => text.to_string(),
+    }
+}
+
+fn new_block_id(page: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    let h = Sha256::digest(format!("{now}{}", page.len()).as_bytes());
+    let alphabet = b"abcdefghijklmnopqrstuvwxyz0123456789";
+    h.iter().take(6).map(|b| alphabet[*b as usize % alphabet.len()] as char).collect()
+}
+
+/// The link to block `n` of a page (`wb block link ID N`; Copy link to block): `[[Title#^abc123]]`. The block gets its id at the end of
+/// its text the first time (an id it already has is reused); scripture, other fenced blocks, tables, dividers and column markers
+/// cannot carry one.
+pub fn block_link(bible: &Bible, store: &mut Store, id: &str, n: usize) -> Result<Value> {
+    let (id, text, titled) = text_of(store, id)?;
+    let (_, bs) = split(&text, titled);
+    check_n(&bs, n, 1)?;
+    let c = chars(&text);
+    let b = &bs[n];
+    let body = sub(&c, b.start, b.end);
+    if ["fence", "divider", "table"].contains(&b.kind) || body.trim_start().starts_with("<!--") {
+        return Err(bad("A link to that kind of block is not offered yet: link to a paragraph, heading, list item or quote."));
+    }
+    let title = nb::title_of(&text);
+    let (bid, wrote) = match block_id_of(&body) {
+        Some((_, bid)) => (bid, false),
+        None => {
+            let mut bid = new_block_id(&id);
+            while text.contains(&format!("^{bid}")) {
+                bid = new_block_id(&format!("{id}{bid}"));
+            }
+            let new = format!("{} ^{bid}", body.trim_end());
+            let (out, _, _) = set(&text, titled, n, 1, &new)?;
+            written(bible, store, &id, &out, titled, n, 1)?;
+            (bid, true)
+        }
+    };
+    Ok(json!({"id": id, "n": n + 1, "block": bid, "title": title, "link": format!("[[{title}#^{bid}]]"), "wrote": wrote}))
 }
 
 /// Move `count` blocks from block `n` of a page to the end of another page (`wb block move ID N --page OTHER`; Move to in the block

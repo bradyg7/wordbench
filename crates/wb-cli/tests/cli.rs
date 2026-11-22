@@ -2782,3 +2782,48 @@ fn a_block_moves_to_the_end_of_another_page() {
     assert_ne!(code, 0, "no such block");
     assert_eq!(texts(&a), ["One"]);
 }
+
+#[test]
+fn a_block_link_writes_a_short_id_the_window_never_shows_and_the_link_finds_the_block() {
+    // notebook row 18 (NB9): `wb block link ID N` writes ` ^abc123` at the end of the block (reused when it has one) and gives
+    // `[[Title#^abc123]]`; the block's text in `wb page blocks` has no id, a change of its words keeps it, a copy has none
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["page", "new", "Haste study"])["id"].as_str().unwrap().to_string();
+    let b = wb.js(&["page", "new", "Tuesday study"])["id"].as_str().unwrap().to_string();
+    for t in ["Read the chapter twice before the verses", "Second thought"] {
+        wb.js(&["block", "add", &a, t]);
+    }
+    let r = wb.js(&["block", "link", &a, "1"]);
+    let link = r["link"].as_str().unwrap().to_string();
+    let bid = r["block"].as_str().unwrap().to_string();
+    assert_eq!(bid.len(), 6);
+    assert!(bid.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()));
+    assert_eq!(link, format!("[[Haste study#^{bid}]]"));
+    assert!(wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains(&format!("Read the chapter twice before the verses ^{bid}")));
+    let blocks = wb.js(&["page", "blocks", &a]);
+    assert_eq!(blocks["blocks"][0]["text"], "Read the chapter twice before the verses");
+    assert_eq!(blocks["blocks"][0]["bid"], bid.as_str());
+    // asked again, the same id; a change of the words keeps it; a copy does not carry it
+    assert_eq!(wb.js(&["block", "link", &a, "1"])["block"], bid.as_str());
+    let (_, _, _) = wb.run(&["block", "set", &a, "1", "-"], Some("Read the chapter again"));
+    assert_eq!(wb.js(&["block", "link", &a, "1"])["block"], bid.as_str());
+    wb.js(&["block", "dup", &a, "1"]);
+    assert_eq!(wb.js(&["page", "blocks", &a])["blocks"][1].get("bid"), None);
+    // fenced blocks cannot carry one
+    wb.js(&["block", "add", &a, "```scripture\nNum 25:11\n```"]);
+    let (code, _, _) = wb.run(&["block", "link", &a, "4"], None);
+    assert_ne!(code, 0);
+    // page B holds the link; the page's links name the block and its first words
+    wb.js(&["block", "add", &b, &format!("See {link} now")]);
+    let shown = wb.js(&["note", "show", &b]);
+    let l = &shown["links"][0];
+    assert_eq!(l["block"], bid.as_str());
+    assert_eq!(l["block_words"], "Read the chapter again");
+    assert_eq!(l["heading_ok"], true);
+    assert_eq!(l["to"], a.as_str());
+    // a link whose id is gone: no block words
+    wb.js(&["block", "add", &b, "[[Haste study#^zzzzzz]]"]);
+    let shown = wb.js(&["note", "show", &b]);
+    assert_eq!(shown["links"][1]["block_words"], Value::Null);
+    assert_eq!(shown["links"][1]["heading_ok"], false);
+}

@@ -24,7 +24,7 @@ import { bgOf, takesBackground } from './blockbg';
 import { columnGroups, isMarker, MAX_COLUMNS, type Group } from './columns';
 import { applyPicks, clearPick, installPicking, pick as pickBlocks, pickedRun } from './blockpick';
 
-export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string } }
+export interface Blk { n: number; bid?: string; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string } }
 export interface Blocks { id: string; title: { text: string; start: number; end: number } | null; blocks: Blk[]; /** the folded toggles, each named by its head's text (settings/pages.json) */ folds?: string[] }
 export interface LinkAt { start: number; end: number }
 
@@ -259,6 +259,7 @@ function shifted<T extends { start: number; end: number }>(xs: T[], a: number, b
 function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
   const el = h('div', `nb-block nb-b-${b.kind}`);
   el.dataset.n = String(b.n);
+  if (b.bid) el.dataset.bid = b.bid;
   const bg = bgOf(b);
   if (bg) el.dataset.blockBg = bg;
   // the block handle (rows 13, 14, 16, 41): a + and a grip in the left gutter, shown on hover or focus; the gutter is always
@@ -450,6 +451,7 @@ async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, 
   const items: MenuItem[] = [];
   if (turnable(b)) items.push({ id: 'turn', label: 'Turn into', icon: 'T', hint: '▸', keywords: ['turn', 'change', 'kind'] });
   if (takesBackground(b)) items.push({ id: 'color', label: 'Color', icon: '◐', hint: '▸', keywords: ['background', 'highlight'] });
+  if (linkable(b)) items.push({ id: 'link', label: 'Copy link to block', icon: '🔗', keywords: ['link', 'url', 'reference'] });
   items.push({ id: 'dup', label: 'Duplicate', icon: '⧉', hint: 'Ctrl+D', keywords: ['copy'] });
   items.push({ id: 'move', label: 'Move to', icon: '↗', hint: 'Ctrl+Shift+P', keywords: ['page', 'send'] });
   items.push({ id: 'del', label: 'Delete', icon: '✕', hint: 'Del', danger: true, keywords: ['remove'] });
@@ -463,6 +465,7 @@ async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, 
       if (it.id === 'turn') return turnMenu(data, host, el, b, grip);
       if (it.id === 'color') return colorMenu(host, [b], grip, name => void colorBlocks(data, host, el, b, 1, name), el);
       if (it.id === 'dup') return void duplicateBlock(data, host, el, b);
+      if (it.id === 'link') return void copyBlockLink(data, host, el, b);
       if (it.id === 'move') return moveToMenu(data, host, grip, async () => { const t = await settle(el, b, host); return t ? [[t.n, 1]] : []; }, 1, el);
       void deleteBlock(data, host, el, b);
     },
@@ -480,6 +483,23 @@ async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, 
     else if (mod && ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'p') { ev.preventDefault(); picked = true; handle.close(); moveToMenu(data, host, grip, async () => { const t = await settle(el, b, host); return t ? [[t.n, 1]] : []; }, 1, el); }
     else if (mod && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'd') { ev.preventDefault(); picked = true; handle.close(); void duplicateBlock(data, host, el, b); }
   });
+}
+
+/** Can the block carry a link id (row 18)? Scripture and the other fenced blocks, tables, dividers and column markers cannot yet. */
+const linkable = (b: Blk) => !['fence', 'table', 'divider'].includes(b.kind) && !isMarker(b.text);
+
+/** Copy link to block (row 18): `wb block link` writes the block's short id at the end of its text the first time and gives
+ *  `[[Page title#^abc123]]`, which goes to the clipboard; pasted in another page it is drawn as a chip. */
+async function copyBlockLink(data: Blocks, host: Host, el: HTMLElement, b: Blk) {
+  const t = await settle(el, b, host);
+  if (!t) return;
+  try {
+    const r = await wb(['block', 'link', data.id, String(t.n)]);
+    try { await navigator.clipboard.writeText(r.link); } catch { /* no clipboard here: the toast still names the link */ }
+    toast('Link to block copied');
+    if (r.wrote) host.changed();
+  } catch (x) { toast(String(x)); }
+  el.classList.remove('nb-selected');
 }
 
 /** Move to (row 19): the page chooser, in the one menu component; the blocks leave this page and are last in the chosen one
