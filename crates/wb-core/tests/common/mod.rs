@@ -36,7 +36,7 @@ impl Drop for Scratch {
 pub fn bible() -> Option<Bible> {
     let p = wb_core::default_db_path();
     if !p.exists() {
-        eprintln!("no Bible database at {}: skipped", p.display());
+        wb_core::bible_database_missing_in_test();
         return None;
     }
     Some(Bible::open(&p).unwrap())

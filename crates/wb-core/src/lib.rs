@@ -64,6 +64,21 @@ pub fn default_db_path() -> PathBuf {
     }
 }
 
+/// A test that needs the Bible database calls this when it is not there. It says so loudly (`SKIPPED`, with where it
+/// looked and how to set it) and, when `WB_REQUIRE_DB=1` is set, fails the test instead, so a run that skipped cannot
+/// look clean. Without the variable the test still skips (a computer with no database, such as the Mac check).
+pub fn bible_database_missing_in_test() {
+    let looked = default_db_path();
+    let msg = format!(
+        "SKIPPED: no Bible database at {} (set WB_BIBLE_DB to a workbench.db; WB_REQUIRE_DB=1 makes this a failure)",
+        looked.display()
+    );
+    if std::env::var("WB_REQUIRE_DB").map(|v| v == "1").unwrap_or(false) {
+        panic!("{msg}");
+    }
+    eprintln!("{msg}");
+}
+
 /// The study folder: `WB_STUDY_DIR`, the choice saved by the app or `wb setup`, or the scratch copy made by
 /// `scripts/scratch-study.ps1` (a development checkout; the window asks the person to choose on first run).
 pub fn default_study_dir() -> PathBuf {

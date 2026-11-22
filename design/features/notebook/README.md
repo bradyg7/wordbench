@@ -197,6 +197,8 @@ folder, not as a Notebook tab.
   Remove column and Remove row. Tests `list_in_a_page_folder_as_database`, `list_views_and_group_by` and `plain_table_add_row_column` (Rust and window),
   `callouts_grouped_by_kind` and `list_in_a_page_from_the_slash_menu` (window).
 
+- **Rust tests that need the Bible database, NB15 (the lead, 2026-11-22).** A test that finds no database calls `wb_core::bible_database_missing_in_test()`: it prints `SKIPPED: no Bible database at <path> (set WB_BIBLE_DB ...)` and returns, as before (a computer with no database, such as the Mac check, still runs), and with `WB_REQUIRE_DB=1` it fails instead, so a run that skipped cannot look clean. With `WB_BIBLE_DB` set to the sibling checkout's `datasets/workbench.db` and `WB_REQUIRE_DB=1`, `cargo test -p wb-core -p wb-cli` passes with no skipped test.
+
 ## The inventory (round 1)
 
 Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into the interaction table below.

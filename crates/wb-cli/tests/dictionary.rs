@@ -65,7 +65,7 @@ fn no_dictionary_is_said_plainly() {
 #[test]
 fn the_words_of_a_place_each_once_with_their_entry() {
     if !wb_core::default_db_path().exists() {
-        eprintln!("no Bible database: skipped");
+        wb_core::bible_database_missing_in_test();
         return;
     }
     let d = scratch("verse");

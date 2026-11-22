@@ -13,7 +13,7 @@ struct Wb {
 impl Wb {
     fn new() -> Option<Wb> {
         if !wb_core::default_db_path().exists() {
-            eprintln!("no Bible database: skipped");
+            wb_core::bible_database_missing_in_test();
             return None;
         }
         static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
