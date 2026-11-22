@@ -1,0 +1,395 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Filters, round 1 of the new design review</title>
+<style>
+@font-face{font-family:Inter;font-weight:400 600;src:local("Inter"),url("../../../crates/wb-core/fonts/inter-latin-400-normal.woff") format("woff")}
+@font-face{font-family:Literata;font-weight:400;src:local("Literata"),url("../../../crates/wb-core/fonts/literata-latin-400-normal.woff") format("woff")}
+:root{--font-ui:"Inter",system-ui,sans-serif;--font-read:"Literata","Iowan Old Style",Palatino,Georgia,serif;
+--bg:#FBF9F4;--surface:#FFFFFF;--sunken:#F3EEE4;--fg:#231F1A;--muted:#6F675C;--line:#E4DDD0;--accent:#8A4B20;--accent-soft:#F1E3D3;--on-accent:#FFFFFF;
+--r-card:12px;--r-ctl:8px}
+@media (prefers-color-scheme:dark){:root{--bg:#17140F;--surface:#211D16;--sunken:#1C1813;--fg:#E9E2D4;--muted:#9A917F;--line:#342E24;--accent:#E0A46C;--accent-soft:#3A2D1F;--on-accent:#17140F}}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 15px/22px var(--font-ui);display:flex;flex-direction:column;overflow:hidden}
+button{font:600 13px/18px var(--font-ui);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);padding:7px 12px;cursor:pointer;min-height:34px}
+button:hover{background:var(--accent-soft)}button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+#bar{height:3px;background:var(--line);flex:none}#bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+header{flex:none;display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--sunken)}
+header .name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}header .sp{flex:1}
+#count{font:500 12px/16px var(--font-ui);color:var(--muted);white-space:nowrap}
+main{flex:1;min-height:0;position:relative;display:flex}
+.slide{display:none;flex:1;min-width:0;min-height:0;flex-direction:column;padding:16px 20px;gap:12px;overflow:auto}
+.slide.on{display:flex}
+.grp{font:600 11px/14px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+.rowhead{display:flex;gap:10px;align-items:baseline}.rowhead b{font:600 20px/26px var(--font-ui);color:var(--accent)}
+.body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px}
+.frames{min-height:0;min-width:0;display:flex;gap:12px;align-items:stretch;justify-content:center}
+.frames figure{margin:0;flex:1;min-width:0;min-height:260px;display:flex;flex-direction:column;gap:6px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:10px}
+.frames img{flex:1;min-height:0;max-width:100%;object-fit:contain;cursor:zoom-in}
+.frames embed{flex:1;width:100%;min-height:50vh;border:0}
+.frames .pdf{flex:1;display:flex;width:100%}
+.frames figcaption{font:400 13px/18px var(--font-ui);color:var(--muted);text-align:center}
+.frames figcaption b{color:var(--accent)}
+.side{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:10px 14px;font-size:13px;line-height:18px;color:var(--muted)}
+.card dl{margin:0}.card dt{font:600 11px/14px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;margin-top:8px}.card dt:first-child{margin-top:0}
+.card dd{margin:2px 0 0;color:var(--fg)}.card dd.big{font-size:15px;line-height:22px}
+code{font-size:12px;background:var(--accent-soft);padding:0 4px;border-radius:4px}
+textarea{width:100%;min-height:90px;resize:vertical;font:400 15px/22px var(--font-ui);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-ctl);padding:8px 10px}
+textarea:focus{outline:2px solid var(--accent);outline-offset:0}
+.built{display:inline-block;font:600 11px/14px var(--font-ui);padding:2px 8px;border-radius:999px;background:var(--sunken);border:1px solid var(--line)}.built.yes{background:var(--accent-soft);color:var(--accent)}
+.title{max-width:820px;margin:0 auto;width:100%;gap:14px}
+.title h1{font:700 30px/38px var(--font-read);margin:8px 0 0;letter-spacing:-.3px}
+.title h2{font:600 11px/14px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:14px 0 2px}
+.title h3{font:600 14px/20px var(--font-ui);margin:8px 0 2px}
+.title p,.title li{margin:4px 0}.title ul{padding-left:20px;margin:4px 0}.title .meta{color:var(--muted)}
+.title .drow{padding:3px 0;border-bottom:1px solid var(--line)}
+.title .links{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.title a{color:var(--accent)}details summary{cursor:pointer;font-weight:600}
+nav.pn{flex:none;display:flex;gap:8px;align-items:center;padding:8px 16px;border-top:1px solid var(--line);background:var(--sunken)}
+nav.pn .sp{flex:1}#msg{font-size:12px;color:var(--accent)}
+#grid{position:absolute;inset:0;background:var(--bg);z-index:5;overflow:auto;padding:16px 20px;display:none}
+#grid.on{display:block}
+#grid h3{font:600 11px/14px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+#grid .cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+#grid .cell{text-align:left;display:flex;gap:8px;align-items:baseline;min-height:44px;position:relative;font-weight:400}
+#grid .cell b{color:var(--accent);font-weight:600}#grid .cell span{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:13px;line-height:18px}
+#grid .cell.cur{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+#grid .cell.has::after{content:"";position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+#zoom{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9;display:none;align-items:center;justify-content:center;cursor:zoom-out}
+#zoom.on{display:flex}#zoom img{max-width:96vw;max-height:96vh;background:#fff}
+@media (max-width:860px){.body{grid-template-columns:1fr;grid-auto-rows:min-content}.frames{flex-direction:column}.frames img{max-height:60vh}.slide{padding:12px}
+ header .name{max-width:40vw}}
+.frames figure.none{justify-content:center;border-style:dashed;color:var(--muted)}
+.title .notice{background:var(--accent-soft);border:1px solid var(--line);border-radius:var(--r-ctl);padding:8px 12px}
+.rate{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.rate button{display:flex;gap:6px;align-items:center;justify-content:center;min-height:40px;font-weight:600}
+.rate button kbd{font:500 11px var(--font-ui);opacity:.6}
+.rate button[aria-pressed=true]{color:#fff;border-color:transparent;box-shadow:0 0 0 2px var(--bg),0 0 0 4px currentColor}
+.rate button[data-v="1"][aria-pressed=true]{background:#3F7D58}.rate button[data-v="2"][aria-pressed=true]{background:#6F7B86}
+.rate button[data-v="3"][aria-pressed=true]{background:#B9791F}.rate button[data-v="4"][aria-pressed=true]{background:#B0413E}
+.rate button[data-v="1"][aria-pressed=true],.rate button[data-v="2"][aria-pressed=true],.rate button[data-v="3"][aria-pressed=true],.rate button[data-v="4"][aria-pressed=true]{color:#fff}
+.chipbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:6px 12px}
+.chipbox summary{font-size:13px}.chips .cat{font:600 11px/14px var(--font-ui);letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:10px 0 4px}
+.chips .row{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-weight:400;border-radius:999px;padding:4px 10px;min-height:30px}
+.chip[aria-pressed=true]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.tally{font-weight:600}.tally span{margin-right:12px}
+#grid .cell.r1{background:rgba(63,125,88,.22)}#grid .cell.r2{background:rgba(111,123,134,.22)}#grid .cell.r3{background:rgba(185,121,31,.26)}#grid .cell.r4{background:rgba(176,65,62,.26)}
+.badge{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 8px;margin-left:8px;letter-spacing:0;text-transform:none}
+.rate button:disabled{opacity:.5;cursor:default}#showappr[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+#grid .cell.appr{opacity:.55;background:var(--sunken);border-style:dashed}
+</style></head><body>
+<div id="bar"><i></i></div>
+<header><span class="name">Filters, round 1 of the new design</span><span class="sp"></span><span id="count"></span><button id="gbtn" title="Overview of all rows (G)">Rows (G)</button></header>
+<main id="stage">
+<section class="slide title">
+<div class="meta">Design review · round 1</div>
+<h1>Filters, round 1 of the new design</h1>
+<p class="meta">exploring (round 1, 2026-11-22) · 0 of 16 rows built</p>
+<div class="links"><button id="start" class="primary">Start: row 1</button> <button id="nextun">Next unrated (N)</button> <button id="showappr" aria-pressed="false">Show approved</button></div>
+<p id="appr" class="meta"></p>
+<p id="tally" class="tally"></p>
+
+<h2>Decisions, 2026-11-22</h2><ul><li><b>2026-11-22, the person.</b> Scrap the old Filters design (Direction B) and design filters again to fit the Notebook.</li><li><b>2026-11-22, the lead (file form, by the person's standing go-ahead of 2026-11-21).</b> A filter is kept in the list's ```<code> </code>`<code>view </code>``` fence as one line each, under the command line and the other options: <code>filter: PROPERTY is VALUE[, VALUE…]</code>, <code>filter: PROPERTY is not VALUE[, …]</code>, <code>filter: PROPERTY is empty</code>, <code>filter: PROPERTY is not empty</code>, and for dates <code>filter: Edited|Written today|last 7 days|last 30 days|last year</code>. Several values on one line match any of them; several lines must all match. Plain words, one line each, so the file reads like the chips and other Markdown tools show it as text; it extends NB14's <code>name: value</code> option lines rather than adding a second form. A line that names a property or value no longer present is kept as written (row 12).</li><li><b>2026-11-22, the lead.</b> Chips apply at once; there is no Apply button and no pending state (the old design's Apply, Close and pending edits are dropped). Undo of a filter change is the chip's ×.</li><li><b>2026-11-22, the lead.</b> Folder is offered only when the list's pages come from more than one folder; a list that names one folder already is that folder.</li><li><b>2026-11-22, the lead.</b> The Library lists' chips (rows 13–15) live only in the window for the life of the tab (as the side list's choices do today); only a list in a page keeps its filters on disk.</li></ul>
+<h2>Open questions</h2><ul><li><b>The other surfaces of Library Open 6.</b> The Legend's &quot;where used&quot;, Colors across the Bible, Bible Search and Near, Every use and Concordance, Findings and the reader's Highlights list each narrow a list today. Should each take the same chips in a later round (lead's leaning: yes, one round each, in the map's priority order), or stay as built?</li><li><b>The Marks filter (marks T12)</b>, which the person &quot;really doesn't like&quot;: retire it into Ctrl+K's chips (a Kind: Marks chip with a Legend entry chip), or design marks finding on its own?</li><li><b>Any of / all of.</b> Round 1 has every chip must match, values within a chip any. Is a whole &quot;match any chip&quot; switch wanted (Notion's filter groups), or is that more than a study needs?</li><li><b>Library map words.</b> This folder uses two words the map does not list yet: <b>filter</b> (a picked condition shown as a chip on a list) and <b>page property</b> (a column kept in a page's front matter, from NB14). Proposed map change: add both to the words table. The old word &quot;applied value&quot; is retired with Direction B.</li></ul>
+
+<h2>General comment</h2><textarea data-k="general" placeholder="Anything about the whole round" aria-label="General comment"></textarea>
+<p class="meta">Arrow keys or the buttons move between slides; 1 to 4 rate the row (Perfect, Satisfactory, Not great, Horrible); N jumps to the next unrated row; G shows every row; Esc leaves a comment box. Comments stay in this browser until you copy or download them.</p>
+</section>
+<section class="slide" data-approved="0" data-row="1" data-group="A list in a page" data-label="Filter" data-ids="1" data-where="A list's head" data-action="Filter">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 1</b><span>A list's head</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/1.png" alt="Filter on a list in a page: a searchable menu of what the list can be filtered by — its folders, callout kind, when pages were written or edited, and every page property the list's pages hold." loading="lazy"><figcaption><b>1</b> Filter on a list in a page: a searchable menu of what the list can be filtered by — its folders, callout kind, when pages were written or edited, and every page property the list's pages hold.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Filter</dd><dt>What the person sees</dt><dd>A searchable menu (the one menu): Folder (when the list spans folders), Callout kind, Edited, Written, then every page property its pages hold</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>filter_menu_lists_properties</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="1" placeholder="Optional comment on row 1" aria-label="Comment on row 1"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="2" data-group="A list in a page" data-label="Pick a property, tick a value" data-ids="2" data-where="Filter menu" data-action="Pick a property, tick a value">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 2</b><span>Filter menu</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/2.png" alt="Pick Status: its values as a checklist with how many pages hold each. Ticking Open applies at once — the list narrows behind the menu and the chip appears. No Apply button." loading="lazy"><figcaption><b>2</b> Pick Status: its values as a checklist with how many pages hold each. Ticking Open applies at once — the list narrows behind the menu and the chip appears. No Apply button.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Pick a property, tick a value</dd><dt>What the person sees</dt><dd>Its values as a checklist with counts; ticking applies at once, the list narrows behind, a chip &quot;Status: Open&quot; appears; the head says &quot;3 of 6 pages&quot;</dd><dt>On disk</dt><dd>One <code>filter:</code> line in the list's <code>view</code> fence</dd><dt>wb command</dt><dd><code>wb block view ID N --filter &quot;Status is Open&quot;</code></dd><dt>Test</dt><dd><code>tick_value_applies_at_once</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="2" placeholder="Optional comment on row 2" aria-label="Comment on row 2"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="3" data-group="A list in a page" data-label="Click it (or Enter on it)" data-ids="3" data-where="A chip" data-action="Click it (or Enter on it)">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 3</b><span>A chip</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/3.png" alt="Click a chip to change it: the same picker opens under the chip, with is, is not, is empty and is not empty." loading="lazy"><figcaption><b>3</b> Click a chip to change it: the same picker opens under the chip, with is, is not, is empty and is not empty.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Click it (or Enter on it)</dd><dt>What the person sees</dt><dd>The same picker under the chip, with is, is not, is empty, is not empty</dd><dt>On disk</dt><dd>That <code>filter:</code> line</dd><dt>wb command</dt><dd><code>wb block view ID N --filter …</code></dd><dt>Test</dt><dd><code>chip_reopens_its_picker</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="3" placeholder="Optional comment on row 3" aria-label="Comment on row 3"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="4" data-group="A list in a page" data-label="× (or Backspace on a focused chip)" data-ids="4" data-where="A chip" data-action="× (or Backspace on a focused chip)">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 4</b><span>A chip</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/4.png" alt="× on a chip takes that filter away; the list widens at once and focus moves to the next chip, or to Filter." loading="lazy"><figcaption><b>4</b> × on a chip takes that filter away; the list widens at once and focus moves to the next chip, or to Filter.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">× (or Backspace on a focused chip)</dd><dt>What the person sees</dt><dd>That filter goes; the list widens; focus moves to the next chip or to Filter</dd><dt>On disk</dt><dd>Its line removed</dd><dt>wb command</dt><dd><code>wb block view ID N --unfilter PROPERTY</code></dd><dt>Test</dt><dd><code>chip_x_removes_filter</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="4" placeholder="Optional comment on row 4" aria-label="Comment on row 4"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="5" data-group="A list in a page" data-label="Clear" data-ids="5" data-where="Chip row" data-action="Clear">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 5</b><span>Chip row</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/5.png" alt="Clear takes every filter away; the list shows all its pages again and the search words, if any, stay." loading="lazy"><figcaption><b>5</b> Clear takes every filter away; the list shows all its pages again and the search words, if any, stay.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Clear</dd><dt>What the person sees</dt><dd>Every filter goes; the list shows all its pages; search words stay</dd><dt>On disk</dt><dd>Every <code>filter:</code> line removed</dd><dt>wb command</dt><dd><code>wb block view ID N --unfilter all</code></dd><dt>Test</dt><dd><code>clear_removes_all_filters</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="5" placeholder="Optional comment on row 5" aria-label="Comment on row 5"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="6" data-group="A list in a page" data-label="Add a second filter" data-ids="6" data-where="Chip row" data-action="Add a second filter">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 6</b><span>Chip row</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/6.png" alt="Two filters: a page must match both. The head counts what is shown, 2 of 6 pages." loading="lazy"><figcaption><b>6</b> Two filters: a page must match both. The head counts what is shown, 2 of 6 pages.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Add a second filter</dd><dt>What the person sees</dt><dd>A page must match every chip; a chip with several values matches any of them</dd><dt>On disk</dt><dd>A second line</dd><dt>wb command</dt><dd><code>--filter</code> twice</dd><dt>Test</dt><dd><code>filters_combine_and_within_or</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="6" placeholder="Optional comment on row 6" aria-label="Comment on row 6"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="7" data-group="A list in a page" data-label="Edited or Written" data-ids="7" data-where="Filter menu" data-action="Edited or Written">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 7</b><span>Filter menu</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/7.png" alt="Edited or Written: fixed choices only — Today, Last 7 days, Last 30 days, Last year, Any time. No typed dates." loading="lazy"><figcaption><b>7</b> Edited or Written: fixed choices only — Today, Last 7 days, Last 30 days, Last year, Any time. No typed dates.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Edited or Written</dd><dt>What the person sees</dt><dd>Fixed choices: Today, Last 7 days, Last 30 days, Last year, Any time; no typed dates</dd><dt>On disk</dt><dd><code>filter: Edited last 7 days</code></dd><dt>wb command</dt><dd><code>wb block view ID N --filter &quot;Edited last 7 days&quot;</code></dd><dt>Test</dt><dd><code>date_filter_fixed_choices</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="7" placeholder="Optional comment on row 7" aria-label="Comment on row 7"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="8" data-group="A list in a page" data-label="Search this list (the magnifier), type words" data-ids="8" data-where="A list's head" data-action="Search this list (the magnifier), type words">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 8</b><span>A list's head</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/8.png" alt="Search this list: the only typed field. Its words narrow the list together with the chips, and Esc empties it." loading="lazy"><figcaption><b>8</b> Search this list: the only typed field. Its words narrow the list together with the chips, and Esc empties it.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Search this list (the magnifier), type words</dd><dt>What the person sees</dt><dd>The words narrow the list with the chips; Esc empties the field</dd><dt>On disk</dt><dd>Nothing (the words are not kept)</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>search_this_list_with_chips</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="8" placeholder="Optional comment on row 8" aria-label="Comment on row 8"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="9" data-group="A list in a page" data-label="Filter on Table, List, Gallery or Board, grouped or not" data-ids="9" data-where="Any view" data-action="Filter on Table, List, Gallery or Board, grouped or not">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 9</b><span>Any view</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/9.png" alt="The same chips on every view. On a Board grouped by Status, a column whose pages are all filtered out shows its heading with 0 and stays, so a card can still be dragged into it." loading="lazy"><figcaption><b>9</b> The same chips on every view. On a Board grouped by Status, a column whose pages are all filtered out shows its heading with 0 and stays, so a card can still be dragged into it.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Filter on Table, List, Gallery or Board, grouped or not</dd><dt>What the person sees</dt><dd>The same chips on every view; group counts follow the filters; a Board column left empty stays with 0 so a card can be dragged into it</dd><dt>On disk</dt><dd>The fence's lines</dd><dt>wb command</dt><dd>as rows 2–7</dd><dt>Test</dt><dd><code>chips_on_every_view</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="9" placeholder="Optional comment on row 9" aria-label="Comment on row 9"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="10" data-group="A list in a page" data-label="Nothing matches" data-ids="10" data-where="A filtered list" data-action="Nothing matches">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 10</b><span>A filtered list</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/10.png" alt="Nothing matches: one quiet line and Clear filters, in the list's own place; the chips stay so one can be changed." loading="lazy"><figcaption><b>10</b> Nothing matches: one quiet line and Clear filters, in the list's own place; the chips stay so one can be changed.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Nothing matches</dd><dt>What the person sees</dt><dd>&quot;No pages match these filters.&quot; and Clear filters, in the list's own place; the chips stay</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd>Window only</dd><dt>Test</dt><dd><code>no_match_says_so</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="10" placeholder="Optional comment on row 10" aria-label="Comment on row 10"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="11" data-group="A list in a page" data-label="Open it again" data-ids="11" data-where="A page" data-action="Open it again">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 11</b><span>A page</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/11.png" alt="Kept in the page: open it again and the chips are as they were. The ```view fence holds one filter: line each (shown here as the file holds it)." loading="lazy"><figcaption><b>11</b> Kept in the page: open it again and the chips are as they were. The ```view fence holds one filter: line each (shown here as the file holds it).</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Open it again</dd><dt>What the person sees</dt><dd>The chips are as they were, read from the fence's <code>filter:</code> lines</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb page views ID</code> gives <code>filters</code></dd><dt>Test</dt><dd><code>filters_kept_in_the_page</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="11" placeholder="Optional comment on row 11" aria-label="Comment on row 11"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="12" data-group="A list in a page" data-label="Its value is gone (folder deleted, property removed)" data-ids="12" data-where="A chip" data-action="Its value is gone (folder deleted, property removed)">
+<div class="grp">A list in a page</div><div class="rowhead"><b>Row 12</b><span>A chip</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/12.png" alt="A filter whose value is gone (its folder deleted, a property removed): the chip shows the value struck and 'gone'; the list ignores it; × takes it away. Nothing is changed on disk until then." loading="lazy"><figcaption><b>12</b> A filter whose value is gone (its folder deleted, a property removed): the chip shows the value struck and 'gone'; the list ignores it; × takes it away. Nothing is changed on disk until then.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Its value is gone (folder deleted, property removed)</dd><dt>What the person sees</dt><dd>The chip shows the value struck through and &quot;gone&quot;; the list ignores that filter; × removes it</dd><dt>On disk</dt><dd>Nothing until ×</dd><dt>wb command</dt><dd><code>wb page views ID</code> marks it <code>gone</code></dd><dt>Test</dt><dd><code>gone_value_chip</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="12" placeholder="Optional comment on row 12" aria-label="Comment on row 12"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="13" data-group="The Library's lists" data-label="+ Filter beside All, Question, Answered" data-ids="13" data-where="Questions list (side list)" data-action="+ Filter beside All, Question, Answered">
+<div class="grp">The Library's lists</div><div class="rowhead"><b>Row 13</b><span>Questions list (side list)</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/13.png" alt="The Questions list in the side list: All, Question and Answered stay as built; + Filter beside them adds a Folder or Book chip from the same picker." loading="lazy"><figcaption><b>13</b> The Questions list in the side list: All, Question and Answered stay as built; + Filter beside them adds a Folder or Book chip from the same picker.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">+ Filter beside All, Question, Answered</dd><dt>What the person sees</dt><dd>A Folder or Book chip from the same picker; the list narrows</dd><dt>On disk</dt><dd>Nothing (window, for the tab)</dd><dt>wb command</dt><dd><code>wb question list --kind … --folder NAME --book BOOK</code></dd><dt>Test</dt><dd><code>questions_list_chips</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="13" placeholder="Optional comment on row 13" aria-label="Comment on row 13"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="14" data-group="The Library's lists" data-label="+ Filter under the search field" data-ids="14" data-where="Ctrl+K" data-action="+ Filter under the search field">
+<div class="grp">The Library's lists</div><div class="rowhead"><b>Row 14</b><span>Ctrl+K</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/14.png" alt="Ctrl+K: the same chips under the search field narrow the one search — a kind (Pages, Questions, Key points, Notes, Folders) and a folder. Esc clears the words first, then closes." loading="lazy"><figcaption><b>14</b> Ctrl+K: the same chips under the search field narrow the one search — a kind (Pages, Questions, Key points, Notes, Folders) and a folder. Esc clears the words first, then closes.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">+ Filter under the search field</dd><dt>What the person sees</dt><dd>Kind (Pages, Questions, Key points, Notes, Folders) and Folder chips narrow the one search; Esc clears the words first, then closes</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb find WORDS --kind K --folder NAME</code> (existing flags)</dd><dt>Test</dt><dd><code>ctrlk_chips_narrow_search</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="14" placeholder="Optional comment on row 14" aria-label="Comment on row 14"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="15" data-group="The Library's lists" data-label="+ Filter" data-ids="15" data-where="An opened folder" data-action="+ Filter">
+<div class="grp">The Library's lists</div><div class="rowhead"><b>Row 15</b><span>An opened folder</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/15.png" alt="An opened folder with many saves: + Filter offers what its saves are — a kind of save (verse, word, page, search) and a book — as chips over the folder's own order." loading="lazy"><figcaption><b>15</b> An opened folder with many saves: + Filter offers what its saves are — a kind of save (verse, word, page, search) and a book — as chips over the folder's own order.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">+ Filter</dd><dt>What the person sees</dt><dd>Kind of save (verse, word, page, search) and Book chips over the folder's own order</dd><dt>On disk</dt><dd>Nothing</dd><dt>wb command</dt><dd><code>wb folder show NAME --kind K --book BOOK</code></dd><dt>Test</dt><dd><code>folder_chips</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="15" placeholder="Optional comment on row 15" aria-label="Comment on row 15"></textarea></div></div></section>
+<section class="slide" data-approved="0" data-row="16" data-group="Real conditions" data-label="Filter, or a chip" data-ids="16" data-where="Phone, narrow pane, floating tab" data-action="Filter, or a chip">
+<div class="grp">Real conditions</div><div class="rowhead"><b>Row 16</b><span>Phone, narrow pane, floating tab</span></div>
+<div class="body"><div class="frames"><figure><img src="rows/16.png" alt="Phone and narrow panes: the chips stay on one line and scroll sideways; Filter and a chip's picker open as a bottom sheet with the same checklist." loading="lazy"><figcaption><b>16</b> Phone and narrow panes: the chips stay on one line and scroll sideways; Filter and a chip's picker open as a bottom sheet with the same checklist.</figcaption></figure></div>
+<div class="side"><div class="card"><dl><dt>Action</dt><dd class="big">Filter, or a chip</dd><dt>What the person sees</dt><dd>The chips stay on one line and scroll sideways; Filter and a chip's picker open as a bottom sheet with the same checklist</dd><dt>On disk</dt><dd>As rows 2–7</dd><dt>wb command</dt><dd>as rows 2–7</dd><dt>Test</dt><dd><code>chips_on_phone</code></dd><dt>Built</dt><dd><span class="built">Not built</span></dd></dl></div>
+<div class="rate" role="group" aria-label="Rating"></div><details class="chipbox"><summary>Reasons</summary><div class="chips"></div></details>
+<textarea data-k="16" placeholder="Optional comment on row 16" aria-label="Comment on row 16"></textarea></div></div></section>
+<div id="grid"></div>
+</main>
+<nav class="pn"><button id="prev">&larr; Back</button><button id="next" class="primary">Next &rarr;</button><span class="sp"></span><span id="msg"></span><button id="copy">Copy notes</button><button id="dl">Download notes</button><button id="dlj">Download JSON</button></nav>
+<div id="zoom"><img alt=""></div>
+<script type="application/json" id="data">{"folder":"filters-v2","round":"1","title":"Filters, round 1 of the new design"}</script>
+<script>
+(() => {
+  const D = JSON.parse(document.getElementById('data').textContent);
+  const all = [...document.querySelectorAll('.slide')];
+  let slides = all, rowSlides = [], showAppr = false;
+  const isAppr = s => s.dataset.approved === '1';
+  const KEY = 'review:' + D.folder + ':round' + D.round;
+  // Stored: notes[row] = comment (as before); notes._r[row] = rating 1-4; notes._c[row] = ["Category|Chip", ...].
+  let notes = {};
+  try { notes = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { notes = {}; }
+  notes._r = notes._r || {}; notes._c = notes._c || {};
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(notes)); } catch (e) {} };
+  const $ = id => document.getElementById(id);
+  const RATINGS = [null, 'Perfect', 'Satisfactory', 'Not great', 'Horrible'];
+  const GOOD = { Good: ['Clean', 'Clear', 'Feels like Notion', 'Right for study'] };
+  const CATS = {
+    Look: ['Cramped', 'Misaligned', 'Colors off', 'Type off', 'Not like the app', 'Too busy'],
+    Behavior: ['Wrong result', 'Missing state', 'Keyboard or focus', 'Too many steps', 'Surprising'],
+    Words: ['Wrong word', 'Unclear label', 'Not in the Library map'],
+    'Fit for study': ['Not needed', 'Conflicts with another row', 'Gets in the way of reading'],
+    Drawing: ['Frame unclear', 'Needs before and after', 'Wrong or missing data'],
+  };
+  let cur = 0;
+  const refilter = () => {
+    slides = all.filter(s => !isAppr(s) || showAppr);
+    rowSlides = slides.filter(s => s.dataset.row);
+    const n = all.filter(isAppr).length;
+    $('appr').textContent = n + ' rows approved, ' + (all.filter(s => s.dataset.row).length - n) + ' to review';
+    $('showappr').setAttribute('aria-pressed', String(showAppr));
+    $('showappr').textContent = showAppr ? 'Hide approved' : 'Show approved';
+  };
+  refilter();
+  const msgEl = () => $('msg');
+  const comment = k => (typeof notes[k] === 'string' ? notes[k] : '').trim();
+  const chips = k => notes._c[k] || [];
+  const touched = k => !!comment(k) || chips(k).length > 0;
+  const msg = t => { $('msg').textContent = t; setTimeout(() => $('msg').textContent = '', 3000); };
+
+  const tally = () => {
+    const n = [0, 0, 0, 0, 0];
+    rowSlides.forEach(s => n[notes._r[s.dataset.row] || 0]++);
+    $('tally').innerHTML = [1, 2, 3, 4].map(i => '<span>' + n[i] + ' ' + RATINGS[i] + '</span>').join('') + '<span>' + n[0] + ' unrated</span>';
+  };
+
+  const renderSlide = (s, openChips) => {
+    const k = s.dataset.row, r = notes._r[k] || 0;
+    const rate = s.querySelector('.rate');
+    rate.innerHTML = '';
+    for (let v = 1; v <= 4; v++) {
+      const b = document.createElement('button');
+      b.dataset.v = v; b.setAttribute('aria-pressed', String(r === v));
+      b.innerHTML = RATINGS[v] + ' <kbd>' + v + '</kbd>'; b.disabled = isAppr(s);
+      b.onclick = () => setRating(v);
+      rate.appendChild(b);
+    }
+    const box = s.querySelector('.chips');
+    box.innerHTML = '';
+    const groups = (r === 1 || r === 2 ? Object.assign({}, GOOD, CATS) : CATS);
+    Object.keys(groups).forEach(cat => {
+      const h = document.createElement('div'); h.className = 'cat'; h.textContent = cat; box.appendChild(h);
+      const row = document.createElement('div'); row.className = 'row';
+      groups[cat].forEach(c => {
+        const id = cat + '|' + c, b = document.createElement('button');
+        b.className = 'chip'; b.textContent = c; b.setAttribute('aria-pressed', String(chips(k).includes(id)));
+        b.onclick = () => {
+          const l = chips(k).slice(), i = l.indexOf(id);
+          if (i >= 0) l.splice(i, 1); else l.push(id);
+          notes._c[k] = l; save(); b.setAttribute('aria-pressed', String(i < 0));
+          s.querySelector('.chipbox summary').textContent = 'Reasons' + (l.length ? ' (' + l.length + ')' : '');
+        };
+        row.appendChild(b);
+      });
+      box.appendChild(row);
+    });
+    if (openChips !== undefined) s.querySelector('.chipbox').open = openChips;
+    s.querySelector('.chipbox summary').textContent = 'Reasons' + (chips(k).length ? ' (' + chips(k).length + ')' : '');
+  };
+  const setRating = v => {
+    const s = slides[cur], k = s.dataset.row; if (!k || isAppr(s)) return;
+    if (notes._r[k] === v) delete notes._r[k]; else notes._r[k] = v;
+    save(); renderSlide(s, notes._r[k] >= 3); tally();
+  };
+
+  const show = i => {
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    const s = slides[cur];
+    all.forEach(x => x.classList.toggle('on', x === s));
+    s.scrollTop = 0;
+    $('count').textContent = cur === 0 ? 'Title' : 'Row ' + s.dataset.row + ' (' + cur + ' of ' + (slides.length - 1) + ')';
+    $('bar').firstChild.style.width = (slides.length > 1 ? cur / (slides.length - 1) * 100 : 100) + '%';
+    try { history.replaceState(null, '', '#' + (s.dataset.row ? 'row-' + s.dataset.row : 'title')); } catch (e) {}
+    $('grid').classList.remove('on');
+  };
+  const typing = () => { const a = document.activeElement; return a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT'); };
+  const nextUnrated = () => {
+    for (let d = 1; d <= slides.length; d++) {
+      const i = (cur + d) % slides.length, s = slides[i];
+      if (s.dataset.row && !notes._r[s.dataset.row]) { show(i); return; }
+    }
+    msg('Every row is rated');
+  };
+
+  document.querySelectorAll('textarea[data-k]').forEach(t => {
+    t.value = typeof notes[t.dataset.k] === 'string' ? notes[t.dataset.k] : '';
+    t.addEventListener('input', () => { notes[t.dataset.k] = t.value; save(); });
+  });
+  all.filter(s => s.dataset.row).forEach(s => renderSlide(s, notes._r[s.dataset.row] >= 3));
+
+  const buildGrid = () => {
+    let h = '', g = null;
+    slides.forEach((s, i) => {
+      if (!s.dataset.row) return;
+      if (s.dataset.group !== g) { if (g !== null) h += '</div>'; g = s.dataset.group; h += '<h3></h3><div class="cells">'; }
+      const k = s.dataset.row;
+      h += '<button class="cell' + (isAppr(s) ? ' appr' : notes._r[k] ? ' r' + notes._r[k] : '') + (touched(k) ? ' has' : '') + (i === cur ? ' cur' : '') + '" data-i="' + i + '"><b></b><span></span></button>';
+    });
+    $('grid').innerHTML = h + '</div>';
+    const heads = $('grid').querySelectorAll('h3'); let hi = -1, last = null;
+    slides.forEach(s => { if (!s.dataset.row) return; if (s.dataset.group !== last) { last = s.dataset.group; hi++; heads[hi].textContent = last || 'Rows'; } });
+    $('grid').querySelectorAll('.cell').forEach(b => {
+      const s = slides[+b.dataset.i];
+      b.firstChild.textContent = s.dataset.row; b.lastChild.textContent = s.dataset.label;
+      b.title = notes._r[s.dataset.row] ? RATINGS[notes._r[s.dataset.row]] : 'Unrated';
+      b.onclick = () => show(+b.dataset.i);
+    });
+  };
+  const grid = () => { if ($('grid').classList.contains('on')) $('grid').classList.remove('on'); else { buildGrid(); $('grid').classList.add('on'); } };
+
+  const rowInfo = s => {
+    const k = s.dataset.row;
+    return { row: isNaN(+k) ? k : +k, id: s.dataset.ids, where: s.dataset.where, action: s.dataset.action,
+      rating: RATINGS[notes._r[k]] || null,
+      reasons: chips(k).map(x => { const p = x.split('|'); return { category: p[0], chip: p[1] }; }),
+      comment: comment(k) };
+  };
+  const notesMd = () => {
+    const out = ['# Notes on ' + D.title + ' (round ' + D.round + ')', ''];
+    for (const v of [4, 3, 2, 1, 0]) {
+      const lines = [];
+      rowSlides.forEach(s => {
+        const k = s.dataset.row;
+        if ((notes._r[k] || 0) !== v || (v === 0 && !touched(k))) return;
+        const r = rowInfo(s);
+        const parts = ['Row ' + k + ' (' + s.dataset.where + ' / ' + s.dataset.action + ')'];
+        if (r.rating) parts.push(r.rating);
+        if (r.reasons.length) parts.push(r.reasons.map(x => x.chip).join(', '));
+        if (r.comment) parts.push(r.comment.replace(/\n+/g, ' '));
+        lines.push('- ' + parts.join(' — '));
+      });
+      if (lines.length) out.push('## ' + (v ? RATINGS[v] : 'Unrated, with notes'), '', ...lines, '');
+    }
+    if (comment('general')) out.push('## General', '', comment('general').replace(/\n+/g, ' '), '');
+    return out.join('\n');
+  };
+  const notesJson = () => JSON.stringify({ folder: D.folder, round: Number(D.round) || D.round, rows: rowSlides.map(rowInfo).filter(r => r.rating || r.reasons.length || r.comment), general: comment('general') }, null, 2);
+  const download = (name, text, type) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name; a.click();
+  };
+  $('copy').onclick = async () => {
+    const t = notesMd();
+    try { await navigator.clipboard.writeText(t); msg('Copied'); } catch (e) { prompt('Copy these notes:', t); }
+  };
+  $('dl').onclick = () => download(D.folder + '-round' + D.round + '-notes.md', notesMd(), 'text/markdown');
+  $('dlj').onclick = () => download('review-' + D.folder + '-round' + D.round + '.json', notesJson(), 'application/json');
+  window.__review = { notesJson, notesMd };
+  $('prev').onclick = () => show(cur - 1); $('next').onclick = () => show(cur + 1); $('gbtn').onclick = grid;
+  $('showappr').onclick = () => { showAppr = !showAppr; const s = slides[cur]; refilter(); tally(); const i = slides.indexOf(s); show(i < 0 ? 0 : i); };
+  $('start').onclick = () => show(1); $('nextun').onclick = nextUnrated;
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { if ($('zoom').classList.contains('on')) $('zoom').classList.remove('on'); else if (typing()) document.activeElement.blur(); else $('grid').classList.remove('on'); return; }
+    if (typing() || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); show(cur + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(cur - 1); }
+    else if (e.key === 'g' || e.key === 'G') grid();
+    else if (e.key === 'n' || e.key === 'N') nextUnrated();
+    else if (e.key >= '1' && e.key <= '4') setRating(+e.key);
+    else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+  });
+  let sx = null, sy = null;
+  $('stage').addEventListener('touchstart', e => { if (typing()) return; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  $('stage').addEventListener('touchend', e => {
+    if (sx === null) return;
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy)) show(cur + (dx < 0 ? 1 : -1));
+  }, { passive: true });
+  document.querySelectorAll('.frames img').forEach(im => im.onclick = () => { $('zoom').firstChild.src = im.src; $('zoom').classList.add('on'); });
+  $('zoom').onclick = () => $('zoom').classList.remove('on');
+
+  tally();
+  const h = (location.hash || '').slice(1).replace(/^row-?/i, '');
+  const at = slides.findIndex(s => s.dataset.row === h);
+  show(at > 0 ? at : 0);
+})();
+</script></body></html>

@@ -1,0 +1,98 @@
+[
+  {
+    "id": "1",
+    "row": 1,
+    "file": "rows/1.png",
+    "caption": "Filter on a list in a page: a searchable menu of what the list can be filtered by — its folders, callout kind, when pages were written or edited, and every page property the list's pages hold."
+  },
+  {
+    "id": "2",
+    "row": 2,
+    "file": "rows/2.png",
+    "caption": "Pick Status: its values as a checklist with how many pages hold each. Ticking Open applies at once — the list narrows behind the menu and the chip appears. No Apply button."
+  },
+  {
+    "id": "3",
+    "row": 3,
+    "file": "rows/3.png",
+    "caption": "Click a chip to change it: the same picker opens under the chip, with is, is not, is empty and is not empty."
+  },
+  {
+    "id": "4",
+    "row": 4,
+    "file": "rows/4.png",
+    "caption": "× on a chip takes that filter away; the list widens at once and focus moves to the next chip, or to Filter."
+  },
+  {
+    "id": "5",
+    "row": 5,
+    "file": "rows/5.png",
+    "caption": "Clear takes every filter away; the list shows all its pages again and the search words, if any, stay."
+  },
+  {
+    "id": "6",
+    "row": 6,
+    "file": "rows/6.png",
+    "caption": "Two filters: a page must match both. The head counts what is shown, 2 of 6 pages."
+  },
+  {
+    "id": "7",
+    "row": 7,
+    "file": "rows/7.png",
+    "caption": "Edited or Written: fixed choices only — Today, Last 7 days, Last 30 days, Last year, Any time. No typed dates."
+  },
+  {
+    "id": "8",
+    "row": 8,
+    "file": "rows/8.png",
+    "caption": "Search this list: the only typed field. Its words narrow the list together with the chips, and Esc empties it."
+  },
+  {
+    "id": "9",
+    "row": 9,
+    "file": "rows/9.png",
+    "caption": "The same chips on every view. On a Board grouped by Status, a column whose pages are all filtered out shows its heading with 0 and stays, so a card can still be dragged into it."
+  },
+  {
+    "id": "10",
+    "row": 10,
+    "file": "rows/10.png",
+    "caption": "Nothing matches: one quiet line and Clear filters, in the list's own place; the chips stay so one can be changed."
+  },
+  {
+    "id": "11",
+    "row": 11,
+    "file": "rows/11.png",
+    "caption": "Kept in the page: open it again and the chips are as they were. The ```view fence holds one filter: line each (shown here as the file holds it)."
+  },
+  {
+    "id": "12",
+    "row": 12,
+    "file": "rows/12.png",
+    "caption": "A filter whose value is gone (its folder deleted, a property removed): the chip shows the value struck and 'gone'; the list ignores it; × takes it away. Nothing is changed on disk until then."
+  },
+  {
+    "id": "13",
+    "row": 13,
+    "file": "rows/13.png",
+    "caption": "The Questions list in the side list: All, Question and Answered stay as built; + Filter beside them adds a Folder or Book chip from the same picker."
+  },
+  {
+    "id": "14",
+    "row": 14,
+    "file": "rows/14.png",
+    "caption": "Ctrl+K: the same chips under the search field narrow the one search — a kind (Pages, Questions, Key points, Notes, Folders) and a folder. Esc clears the words first, then closes."
+  },
+  {
+    "id": "15",
+    "row": 15,
+    "file": "rows/15.png",
+    "caption": "An opened folder with many saves: + Filter offers what its saves are — a kind of save (verse, word, page, search) and a book — as chips over the folder's own order."
+  },
+  {
+    "id": "16",
+    "row": 16,
+    "file": "rows/16.png",
+    "caption": "Phone and narrow panes: the chips stay on one line and scroll sideways; Filter and a chip's picker open as a bottom sheet with the same checklist."
+  }
+]
