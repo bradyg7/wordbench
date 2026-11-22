@@ -458,7 +458,8 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-block-input strong, .nb-block-input b { font-weight: 700; }
 .nb-block-input em, .nb-block-input i { font-style: italic; }
 .nb-block-input u { text-decoration: underline; }
-.nb-block-input:empty::after { content: attr(data-placeholder); color: var(--muted); opacity: .7; pointer-events: none; }
+.nb-block-input:not(:focus):empty::after { content: none; }
+.nb-block-input:focus:empty::after { content: attr(data-placeholder); color: var(--muted); opacity: .7; pointer-events: none; }
 .nb-block-input[data-shape=h1], .nb-block-input[data-shape=h2], .nb-block-input[data-shape=h3] { margin-top: 14px; }
 .nb-block-input[data-shape=bullet], .nb-block-input[data-shape=numbered], .nb-block-input[data-shape=todo] { padding-left: calc(22px + var(--lead) * 8px); }
 .nb-block-input[data-shape=bullet]::before, .nb-block-input[data-shape=numbered]::before, .nb-block-input[data-shape=todo]::before { position: absolute; left: calc(var(--lead) * 8px); color: var(--muted); }
@@ -472,8 +473,7 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-gap { cursor: text; }
 .nb-gap .nb-gap-line { min-height: 26px; }
 .nb-block-input.asking { box-shadow: 0 1px 0 0 var(--line); }
-.nb-block-add { padding: 6px 0; cursor: text; font: var(--type-small); }
-.nb-block-add:hover { color: var(--fg); }
+.nb-block-add { display: block; width: 100%; min-height: 72px; padding: 0; border: 0; background: none; cursor: text; }
 .nb-todo { display: flex; align-items: flex-start; gap: 10px; }
 .nb-todo input { flex: none; width: 16px; height: 16px; margin: 5px 0 0; accent-color: var(--accent); cursor: pointer; }
 .nb-todo-text { flex: 1; min-width: 0; }

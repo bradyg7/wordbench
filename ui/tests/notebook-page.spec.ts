@@ -290,3 +290,18 @@ test('copy_contents_expands_scripture', async ({ page, context, browserName }) =
     expect(clip).toContain(verse11);
   }
 });
+
+// the hint (Notion feel, 2026-11-22): only the line being written shows "type / for a block"; the space under the page has no words
+test('only the focused empty line shows the hint; the space under the page is blank', async ({ page }) => {
+  await openPage(page, BODY);
+  const add = page.locator('.nb-block-add');
+  await expect(add).toHaveText('');
+  await add.click();
+  const input = page.locator('.nb-block-input');
+  await expect(input).toHaveCount(1);
+  await expect(input).toBeFocused();
+  const hint = () => input.evaluate(el => getComputedStyle(el, '::after').content);
+  expect(await hint()).toContain('for a block');
+  await input.evaluate(el => (el as HTMLElement).blur());
+  expect(await hint()).toBe('none');
+});
