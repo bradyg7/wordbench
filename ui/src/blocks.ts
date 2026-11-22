@@ -73,6 +73,52 @@ export interface BlockEditorState {
   words: BlockData;
   study: BlockData;
 }
+/** Keys typed after Enter, Backspace or an arrow, before the next block is drawn (the writing is saved and the page drawn again first):
+ *  they are held here and put in the block that opens, so writing never waits for a round trip and nothing typed lands in the block just
+ *  left (NB15). `alive` says the block is still on its way; the keys are let through again when it is not, or after 4 seconds. */
+const typeAhead: { text: string; off: (() => void) | null } = { text: '', off: null };
+function holdKeys(alive: () => boolean, keep = false) {
+  typeAhead.off?.();
+  if (!keep) typeAhead.text = '';
+  const onKey = (ev: KeyboardEvent) => {
+    if (!alive()) return off();
+    if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.isComposing) return;
+    if (ev.key.length === 1) typeAhead.text += ev.key;
+    else if (ev.key === 'Backspace') typeAhead.text = [...typeAhead.text].slice(0, -1).join('');
+    else if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    ev.stopPropagation();
+  };
+  const stop = window.setTimeout(() => off(), 4000);
+  const off = () => { document.removeEventListener('keydown', onKey, true); clearTimeout(stop); if (typeAhead.off === off) typeAhead.off = null; };
+  typeAhead.off = off;
+  document.addEventListener('keydown', onKey, true);
+}
+function setPending(host: Host, p: NonNullable<BlockEditorState['pending']>) {
+  host.state.pending = p;
+  if (p.menu || p.pick) { typeAhead.off?.(); return; }
+  holdKeys(() => host.state.pending === p);
+}
+function setFocus(host: Host, f: NonNullable<BlockFocus>) {
+  host.state.focus = f;
+  holdKeys(() => host.state.focus === f, true);
+}
+/** What was typed while the block was on its way, taken once. */
+function takeTypeAhead(): string {
+  typeAhead.off?.();
+  const t = typeAhead.text;
+  typeAhead.text = '';
+  return t;
+}
+/** Puts what was typed on the way into the block that opened, at its caret, as if it had been typed there. */
+function putTypedAhead(el: HTMLElement, typed: string) {
+  const box = typed ? el.querySelector<Writer>('.nb-block-input') : null;
+  if (!box) return;
+  const c = box.selectionStart;
+  box.setRangeText(typed, c, c, 'end');
+  box.dispatchEvent(new Event('input'));
+}
+
 export const createBlockEditorState = (): BlockEditorState => ({
   focus: null, pending: null, menuKey: null, menuClose: null,
   scripture: null, views: null, threads: null, words: null, study: null,
@@ -385,7 +431,7 @@ async function addBelow(data: Blocks, host: Host, el: HTMLElement, b: Blk) {
     const t = await settle(el, b, host);
     if (!t) return;
     host.state.focus = null;
-    host.state.pending = { id: data.id, after: () => t.n, text: '', at: 'end', menu: true };
+    setPending(host, { id: data.id, after: () => t.n, text: '', at: 'end', menu: true });
     host.redraw();
     return;
   }
@@ -512,6 +558,9 @@ async function copyBlockLink(data: Blocks, host: Host, el: HTMLElement, b: Blk) 
   el.classList.remove('nb-selected');
 }
 
+/** The editor a page is drawn in now, found by the page's id (for a block element that has since been replaced). */
+const editorOf = (data: Blocks) => document.querySelector<HTMLElement>(`.nb-blocks[data-id="${CSS.escape(data.id)}"]`)?.closest<HTMLElement>('.nb-editor') ?? null;
+
 /** Move to (row 19): the page chooser, in the one menu component; the blocks leave this page and are last in the chosen one
  *  (`wb block move ID N --page OTHER --count K`, one call a run of neighbours, in the page's order). `runs` gives [first, count] pairs. */
 async function moveToMenu(data: Blocks, host: Host, grip: HTMLElement, runs: () => Promise<[number, number][]>, total: number, el: HTMLElement) {
@@ -523,7 +572,8 @@ async function moveToMenu(data: Blocks, host: Host, grip: HTMLElement, runs: () 
     groups: [{ title: total > 1 ? `Move ${total} blocks to` : 'Move to', items: pages.map(t => ({ id: t.id, label: t.title || 'Untitled', icon: '↗', keywords: [t.insert] })) }],
     label: 'Move to', placeholder: 'Move to a page', at: grip,
     onPick: it => { picked = true; void (async () => {
-      const root = el.closest<HTMLElement>('.nb-editor');
+      // the page's editor: the block's own, or, when the page was drawn again since the menu opened (its blocks replaced), the page's
+      const root = el.closest<HTMLElement>('.nb-editor') ?? editorOf(data);
       const todo = await runs();
       if (!todo.length) return;
       clearPick(root);
@@ -768,6 +818,9 @@ function table(b: Blk, host: Host, id: string): HTMLElement {
     catch (x) { cellFocus = null; toast(String(x)); }
   };
   const inputs: HTMLInputElement[][] = [];
+  /** The rows as they are in the boxes now: a cell typed and left a moment ago may not be in `rows` yet (its save is on its way and the
+   *  table is drawn again after it), and a new row or column must not take it back. */
+  const live = () => inputs.map((r, i) => r.map((input, j) => (input.value === cellText(rows[i]?.[j] || '') ? rows[i]?.[j] || '' : escapeCell(input.value))));
   rows.forEach((cells, row) => {
     const tr = h('tr');
     inputs[row] = [];
@@ -785,8 +838,7 @@ function table(b: Blk, host: Host, id: string): HTMLElement {
         else if (ev.key === 'Tab' && !ev.shiftKey && row === rows.length - 1 && col === cols - 1 && !host.locked) {
           // Tab in the last cell goes on to a new row
           ev.preventDefault();
-          const rs = rows.map((r, i) => i === row ? Object.assign([...r], { [col]: escapeCell(input.value) }) : r);
-          void save(md([...rs, Array.from({ length: cols }, () => '')], rule), { row: rows.length, col: 0 });
+          void save(md([...live(), Array.from({ length: cols }, () => '')], rule), { row: rows.length, col: 0 });
         }
       };
       input.onchange = () => {
@@ -808,7 +860,7 @@ function table(b: Blk, host: Host, id: string): HTMLElement {
   if (!host.locked) {
     const col = button('nb-table-addcol', '', ev => {
       ev.stopPropagation();
-      const rs = rows.map((r, i) => [...r, i === 0 ? '' : '']);
+      const rs = live().map(r => [...r, '']);
       const rl = [...Array.from({ length: cols }, (_, i) => rule[i] || '---'), '---'];
       const wider = (cells: string[]) => `| ${Array.from({ length: cols + 1 }, (_, i) => cells[i] || '').join(' | ')} |`;
       void save([wider(rs[0]), wider(rl), ...rs.slice(1).map(wider)].join('\n'), { row: 0, col: cols });
@@ -820,7 +872,7 @@ function table(b: Blk, host: Host, id: string): HTMLElement {
     wrap.classList.add('has-addcol');
     const row = button('nb-table-addrow', 'Row', ev => {
       ev.stopPropagation();
-      void save(md([...rows, Array.from({ length: cols }, () => '')], rule), { row: rows.length, col: 0 });
+      void save(md([...live(), Array.from({ length: cols }, () => '')], rule), { row: rows.length, col: 0 });
     }, 'plus');
     row.type = 'button';
     row.title = 'Add a row at the foot';
@@ -1365,7 +1417,7 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
 
 
 /** Write in a new block after block `after` (0: first, right under the title). */
-function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string, at: 'start' | 'end' = 'end', pick?: string, menu = false) {
+function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string, at: 'start' | 'end' = 'end', pick?: string, menu = false, typed = '') {
   if (host.locked) return;
   const el = h('div', 'nb-block nb-new-block');
   // a block written under a toggle's line is inside the toggle
@@ -1373,6 +1425,7 @@ function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number
   if (prev) el.style.setProperty('--td', String(Number(prev.style.getPropertyValue('--td') || 0) + (prev.classList.contains('nb-toggle') ? 1 : 0)));
   beforeEl.before(el);
   startEdit(data, { n: 0, kind: 'paragraph', text, start: 0, end: 0 }, el, host, at, after, pick, menu);
+  putTypedAhead(el, typed);
 }
 
 /** Write in a block (NB2b): the block is its own contenteditable element, drawn as the block it is and styled as it is
@@ -1442,6 +1495,8 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     gone = true;
     if (liveEdit?.el === el) liveEdit = null;
     host.state.menuClose?.();
+    let onItsWay = !!then;
+    if (then) holdKeys(() => onItsWay || host.state.focus === then);     // what is typed while the writing is saved goes to the next block
     await save();
     const tg = toggleOf.get(ta);
     // an emptied block goes; so does an emptied toggle that has nothing inside it
@@ -1452,7 +1507,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
         if (cur.n && wrap) await removeBlock(wrap.closest<HTMLElement>('.nb-editor'), data, host, cur.n, cur.count, last === b.text ? host.text : undefined);
       } catch (x) { toast(String(x)); }
     }
-    host.state.focus = then ?? null;
+    if (then) { setFocus(host, then); onItsWay = false; } else host.state.focus = null;
     // the box lets go of the cursor, so the page is drawn again (the Notebook leaves an editor being typed in alone)
     if (document.activeElement === ta) ta.blur();
     host.redraw();
@@ -1461,13 +1516,17 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   const mergeUp = async () => {
     const mine = ta.value;
     if (/^(```|~~~|\|)/.test(mine) || toggleOf.get(ta)) return;
+    // what is typed while the join is made is held, and goes where the two met; if no join is made it goes back into this block
+    let joining: NonNullable<BlockFocus> | null = null, over = false;
+    holdKeys(() => !over && (joining === null || host.state.focus === joining));
+    const noJoin = () => { over = true; const t = takeTypeAhead(); if (t && ta.isConnected) { const c = ta.selectionStart; ta.setRangeText(t, c, c, 'end'); ta.dispatchEvent(new Event('input')); } };
     await save();
     await findAgain();
-    if (cur.n < 2) return;
+    if (cur.n < 2) return noJoin();
     const now: Blk[] = (await wb(['page', 'blocks', data.id])).blocks;
     const prev = now.find(x => x.n === cur.n - 1);
-    if (!prev || !['paragraph', 'heading', 'item', 'numbered', 'todo', 'quote'].includes(prev.kind) || isStructured(prev) || toggleHead(prev.text) || isToggleEnd(prev.text)) return;
-    if (gone) return;
+    if (!prev || !['paragraph', 'heading', 'item', 'numbered', 'todo', 'quote'].includes(prev.kind) || isStructured(prev) || toggleHead(prev.text) || isToggleEnd(prev.text)) return noJoin();
+    if (gone) return noJoin();
     gone = true;
     if (liveEdit?.el === el) liveEdit = null;
     clearTimeout(timer);
@@ -1476,9 +1535,10 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     try {
       const r = await wb(['block', 'set', data.id, String(prev.n), '--count', String(1 + cur.count), '--undo', '-'], prev.text + mine.replace(/\n+$/, ''));
       if (root && r.undo) { historyFor(root, data.id).undo.push({ token: JSON.stringify(r.undo), n: prev.n + 1 }); blockUndoToast(root, data, host, 'Joined'); }
-    } catch (x) { gone = false; toast(String(x)); return; }
+    } catch (x) { gone = false; toast(String(x)); return noJoin(); }
     host.state.menuClose?.();
-    host.state.focus = { n: prev.n, at: prev.text.length };
+    joining = { n: prev.n, at: prev.text.length };
+    setFocus(host, joining);
     host.changed();
     if (document.activeElement === ta) ta.blur();
     host.redraw();
@@ -1517,7 +1577,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
       // a divider at once: the line is kept as it is and a new line opens under it
       void finish().then(() => {});
       host.state.focus = null;
-      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '', at: 'end' };
+      setPending(host, { id: data.id, after: () => cur.n + cur.count - 1, text: '', at: 'end' });
       return;
     }
     if (isTyped && data1 === '/') slashMenu(ta, data, host, cur, finish, true);
@@ -1614,7 +1674,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
           e2.preventDefault();
           void finish();
           host.state.focus = null;
-          host.state.pending = { id: data.id, after: () => (cur.n || cur.after + 1) - 1, text: '', at: 'end' };
+          setPending(host, { id: data.id, after: () => (cur.n || cur.after + 1) - 1, text: '', at: 'end' });
         };
         el.before(gap);
         return;
@@ -1636,7 +1696,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
           await findAgain();
           try { if (wasClosed && cur.n) await wb(['block', 'add', data.id, '--after', String(cur.n + cur.count - 1), '</details>']); } catch (x) { toast(String(x)); }
           host.state.focus = null;
-          host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: sp0.rest, at: sp0.rest ? 'start' : 'end' };
+          setPending(host, { id: data.id, after: () => cur.n + cur.count - 1, text: sp0.rest, at: sp0.rest ? 'start' : 'end' });
           await finish();
         })();
         return;
@@ -1648,7 +1708,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
       dirty = true;
       void finish().then(() => {}); // the writing is saved and the page drawn again; the new block opens after it
       host.state.focus = null;
-      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: next + sp.rest, at: sp.rest ? 'start' : 'end' };
+      setPending(host, { id: data.id, after: () => cur.n + cur.count - 1, text: next + sp.rest, at: sp.rest ? 'start' : 'end' });
       return;
     }
     if (ev.key === 'Backspace' && plainKey && c.start && c.collapsed) {
@@ -1721,7 +1781,7 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
     host.state.pending = null;
     const after = p.after();
     const next = wrap.querySelector<HTMLElement>(`.nb-block[data-n="${after + 1}"]`) || wrap.querySelector<HTMLElement>('.nb-block-add')!;
-    startNew(data, host, next, after, p.text, p.at, p.pick, p.menu);
+    startNew(data, host, next, after, p.text, p.at, p.pick, p.menu, takeTypeAhead());
     return;
   }
   const f = host.state.focus;
@@ -1742,12 +1802,12 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
   }
   if ('after' in f) {
     const next = wrap.querySelector<HTMLElement>(`.nb-block[data-n="${f.after + 1}"]`) || wrap.querySelector<HTMLElement>('.nb-block-add')!;
-    startNew(data, host, next, f.after, f.text);
+    startNew(data, host, next, f.after, f.text, 'end', undefined, false, takeTypeAhead());
     return;
   }
   const b = data.blocks.find(x => x.n === f.n);
   const el = wrap.querySelector<HTMLElement>(`.nb-block[data-n="${f.n}"]`);
-  if (b && el) startEdit(data, b, el, host, f.at);
+  if (b && el) { startEdit(data, b, el, host, f.at); putTypedAhead(el, takeTypeAhead()); }
   else if (f.n > data.blocks.length) startNew(data, host, wrap.querySelector<HTMLElement>('.nb-block-add')!, data.blocks.length, '');
 }
 
@@ -1846,7 +1906,7 @@ function makeChoose(ta: Writer, data: Blocks, host: Host, cur: { n: number; coun
     if (m.key === 'divider') {
       // a divider is whole as it is: saved, and the writing goes on in a new block under it
       await finish();
-      host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '', at: 'end' };
+      setPending(host, { id: data.id, after: () => cur.n + cur.count - 1, text: '', at: 'end' });
       host.redraw();
     }
   };
@@ -1891,7 +1951,7 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
         takeSlashOut();
         void finish();
         host.state.focus = null;
-        host.state.pending = { id: data.id, after: () => cur.n + cur.count - 1, text: '', at: 'end', pick: m.key };
+        setPending(host, { id: data.id, after: () => cur.n + cur.count - 1, text: '', at: 'end', pick: m.key });
         return;
       }
       void choose(m);
@@ -2034,4 +2094,3 @@ export function startWritingAtEnd(root: HTMLElement, data: Blocks | null, host: 
   startNew(data, host, add, data.blocks.length ? data.blocks[data.blocks.length - 1].n : 0, '');
 }
 
-export const blockButton = button;

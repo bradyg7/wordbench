@@ -254,6 +254,18 @@ test('scripture_side_by_side_up_to_four', async ({ page, browserName }) => {
   s.calls.length = 0;
 });
 
+/** The page is drawn again after a change, a moment after the server has it: mark what is on screen, then wait until none of it is left.
+ *  (A key pressed on a grip that is about to be replaced goes nowhere, which is the page being drawn again, not a lost key.) */
+const markOld = (page: Page) => page.evaluate(() => document.querySelectorAll('.nb-block').forEach(e => e.setAttribute('data-old', '1')));
+const drawnAgain = (page: Page) => expect(page.locator('.nb-block[data-old]')).toHaveCount(0);
+/** The Notebook has stopped changing: no change to it for 400 ms (an Undo draws the page again twice, once for each half of it). */
+const settled = (page: Page) => page.evaluate(() => new Promise<void>(done => {
+  const pane = document.querySelector('.pane-notebook')!;
+  let t = window.setTimeout(() => { mo.disconnect(); done(); }, 400);
+  const mo = new MutationObserver(() => { clearTimeout(t); t = window.setTimeout(() => { mo.disconnect(); done(); }, 400); });
+  mo.observe(pane, { childList: true, subtree: true, attributes: true });
+}));
+
 test('several_blocks_act_together', async ({ page }) => {
   const s = await openPage(page, [...WORDS.slice(0, 3), '- an item', SCR('Num 25:11')]);
   // Shift+click picks the run from the block the caret is in
@@ -262,6 +274,7 @@ test('several_blocks_act_together', async ({ page }) => {
   await block(page, 3).locator('.nb-block-body').click({ modifiers: ['Shift'] });
   await expect(page.locator('.nb-block.nb-picked')).toHaveCount(3);
   await expect(page.locator('.nb-block-input')).toHaveCount(0);
+  await settled(page);
   // the grip menu acts on all
   await grip(page, 2).click({ force: true });
   const menu = page.locator('.wbm');
@@ -277,8 +290,10 @@ test('several_blocks_act_together', async ({ page }) => {
   await expect(grip(page, 1)).toBeFocused();
   await grip(page, 1).click({ force: true });
   await page.locator('.wbm-row', { hasText: 'Turn into' }).click();
+  await markOld(page);
   await page.locator('.wbm-row .wbm-label', { hasText: /^Quote$/ }).click();
   await expect.poll(() => s.texts().slice(0, 3)).toEqual(WORDS.slice(0, 3).map(w => `> <span data-bg="green">${w}</span>`));
+  await drawnAgain(page);
   // Del on the grip deletes them all, with Undo
   await expect(page.locator('.nb-block.nb-picked')).toHaveCount(3);
   await grip(page, 3).focus();
@@ -376,6 +391,7 @@ test('move_block_to_another_page', async ({ page }) => {
   expect(s.calls.at(-1)!.name).toBe('block-move-w1-2-page-w2-count-1');
   expect(s.texts()).toEqual([WORDS[0], ...WORDS.slice(2)]);
   await expect(page.locator('.nb-block')).toHaveCount(4);
+  await settled(page);
   // the keys: Ctrl+Shift+P from the open menu
   await grip(page, 1).click({ force: true });
   await page.keyboard.press('Control+Shift+P');
@@ -384,10 +400,12 @@ test('move_block_to_another_page', async ({ page }) => {
   await expect.poll(() => s.other()).toEqual([WORDS[1], WORDS[0]]);
   await expect(page.locator('.nb-block')).toHaveCount(3);
   await expect(page.locator('.wbm')).toHaveCount(0);
+  await settled(page);
   // several picked blocks go together, in the page's order, last in the other page
   await block(page, 1).locator('.nb-block-body').click();
   await block(page, 3).locator('.nb-block-body').click({ modifiers: ['Shift'] });
   await expect(page.locator('.nb-block.nb-picked')).toHaveCount(3);
+  await settled(page);                                   // the block just written in is saved and the page drawn again first
   await grip(page, 2).click({ force: true });
   await page.locator('.wbm-row', { hasText: 'Move to' }).click();
   await expect(page.locator('.wbm[aria-label="Move to"] .wbm-group')).toHaveText(['Move 3 blocks to']);
@@ -406,14 +424,17 @@ test('move_to_says_where_and_undoes', async ({ page }) => {
   const said = page.locator('.block-deletion');
   await expect(said).toContainText('Moved to Other page · Undo');
   await expect.poll(() => s.other()).toEqual([WORDS[1]]);
+  await markOld(page);
   await said.getByRole('button', { name: 'Undo' }).click();
   await expect.poll(() => s.texts()).toEqual(WORDS);
   await expect.poll(() => s.other()).toEqual([]);
   expect(s.calls.map(c => c.name).slice(-2)).toEqual(['block-undo-w1', 'block-rm-w2-1-count-1']);
+  await settled(page);
   // several picked blocks: Move to shows Ctrl+Shift+P in the picked-blocks menu, and the key opens the chooser from the open menu
   await block(page, 1).locator('.nb-block-body').click();
   await block(page, 3).locator('.nb-block-body').click({ modifiers: ['Shift'] });
   await expect(page.locator('.nb-block.nb-picked')).toHaveCount(3);
+  await settled(page);                                   // the block just written in is saved and the page drawn again first
   await grip(page, 2).click({ force: true });
   const menu = page.locator('.wbm[aria-label="Block actions"]');
   await expect(menu.locator('.wbm-row', { hasText: 'Move to' }).locator('.wbm-hint')).toHaveText('Ctrl+Shift+P');

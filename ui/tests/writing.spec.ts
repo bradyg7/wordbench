@@ -194,21 +194,39 @@ test('enter_splits_a_block', async ({ page }) => {
   for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => one.saved).toContain('block-set-w1-1-count-1');
-  const tail = page.locator('.nb-block-input');
+  // the page is drawn again before the new block opens: wait for it (the block just left is still the one box until then)
+  const tail = page.locator('.nb-new-block .nb-block-input');
   await expect(tail).toHaveCount(1);
-  expect(await md(tail)).toBe(' world');
+  await expect.poll(() => md(tail)).toBe(' world');
   expect(await tail.evaluate(e => (e as any).selectionStart)).toBe(0);
+});
+
+test('typing_right_after_enter_is_not_lost', async ({ page }) => {
+  // NB15: keys typed after Enter, before the new block is drawn, are held and put in the new block; none lands in the block just left
+  const one = await writingPage(page, 'Hello world');
+  await one.box.press('Home');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('abc');
+  await page.keyboard.press('Backspace');
+  const tail = page.locator('.nb-new-block .nb-block-input');
+  await expect(tail).toHaveCount(1);
+  await expect.poll(() => md(tail)).toBe('ab world');
+  expect(await tail.evaluate(e => (e as any).selectionStart)).toBe(2);
+  await expect(page.locator('.nb-block[data-n="1"] .nb-block-body')).toHaveText(/Hello/);
 });
 
 test('backspace_at_the_start_joins_the_block_before', async ({ page }) => {
   const { box, saved } = await writingPage(page, ['One', 'Two'], 2);
   await box.press('Home');
   await page.keyboard.press('Backspace');
+  await page.keyboard.type('x');      // typed before the page is drawn again: held, and put where the two met (NB15)
   await expect.poll(() => saved).toContain('block-set-w1-1-count-2-undo');
-  // the writing goes on in the first block, with the caret where the two met
-  const joined = page.locator('.nb-block-input');
+  // the writing goes on in the first block, with the caret where the two met (the page is drawn again first: poll)
+  const joined = page.locator('.nb-block[data-n="1"] .nb-block-input');
   await expect(joined).toHaveCount(1);
-  expect(await joined.evaluate(e => (e as any).selectionStart)).toBe(3);
+  await expect.poll(() => joined.evaluate(e => (e as any).selectionStart)).toBe(4);
+  expect(await md(joined)).toBe('Onex');
 });
 
 test('arrows_cross_blocks', async ({ page }) => {
