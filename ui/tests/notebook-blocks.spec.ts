@@ -14,6 +14,7 @@ interface Call { name: string; input: string }
 
 async function openPage(page: Page, start: string[] = WORDS) {
   let texts = [...start];
+  const other: string[] = [];                       // the other page ("Other page", w2): what was moved into it
   const calls: Call[] = [];
   const kindOf = (t: string) => (t.startsWith('```') ? 'fence' : /^#{1,3} /.test(t) ? 'heading' : /^- \[[ xX]\] /.test(t) ? 'todo' : /^- /.test(t) ? 'item' : /^> /.test(t) ? 'quote' : 'paragraph');
   const blocks = () => {
@@ -66,6 +67,13 @@ async function openPage(page: Page, start: string[] = WORDS) {
       texts.splice(Number(m[1]) - 1, 1, input);
       return send({ ...blocks(), n: Number(m[1]), count: 1 });
     }
+    if ((m = /^block-move-w1-(\d+)-page-(\w+)-count-(\d+)$/.exec(name))) {
+      calls.push({ name, input });
+      const gone = texts.splice(Number(m[1]) - 1, Number(m[3]));
+      other.push(...gone);
+      tidy();
+      return send({ ...blocks(), to: m[2], at: other.length });
+    }
     if ((m = /^block-move-w1-(\d+)-(to-(\d+)|last|beside-(\d+)(-left)?)$/.exec(name))) {
       calls.push({ name, input });
       const n = Number(m[1]) - 1;
@@ -96,7 +104,7 @@ async function openPage(page: Page, start: string[] = WORDS) {
     }
     if (name === 'block-undo-w1') { calls.push({ name, input }); return send(blocks()); }
     if (name.startsWith('notebook-sidebar-')) return send({ ...JSON.parse(readFileSync('ui/public/fixtures/wb/notebook-sidebar-at-num-25.json', 'utf8')), pages: [{ id: 'w1', title: TITLE, kind: 'note', placed: false, anchor: '', label: '', color: null, status: null, pinned: null, order: null, parent: null, created: '2026-11-20', updated: '2026-11-20', children: [] }] });
-    if (name === 'notebook-group-none') return send({ groups: [{ key: 'all', label: 'All', count: 1, entries: [entry('w1', TITLE)] }] });
+    if (name === 'notebook-group-none') return send({ groups: [{ key: 'all', label: 'All', count: 2, entries: [entry('w1', TITLE), entry('w2', 'Other page')] }] });
     if (name === 'settings-notebook') return send({});
     if (name === 'page-sweep') return send({ operations: [], errors: [] });
     if (name === 'docs-looks') return send({ looks: [] });
@@ -114,7 +122,7 @@ async function openPage(page: Page, start: string[] = WORDS) {
   await page.waitForSelector('.pane-notebook');
   await page.evaluate(() => (window as any).__wb.note('w1'));
   await page.waitForSelector('.nb-block[data-n="1"]');
-  return { texts: () => [...texts], calls };
+  return { texts: () => [...texts], other: () => [...other], calls };
 }
 
 const block = (page: Page, n: number) => page.locator(`.nb-block[data-n="${n}"]`);
@@ -124,7 +132,7 @@ test('block_background_color', async ({ page }) => {
   const s = await openPage(page, ['Plain words', '## A heading', SCR('Num 25:11')]);
   // Color ▸ is in the menu of a text block (Background: Default and the 8 colors); not in a scripture block's
   await grip(page, 1).click({ force: true });
-  await expect(page.locator('.wbm .wbm-row .wbm-label')).toHaveText(['Turn into', 'Color', 'Duplicate', 'Delete']);
+  await expect(page.locator('.wbm .wbm-row .wbm-label')).toHaveText(['Turn into', 'Color', 'Duplicate', 'Move to', 'Delete']);
   await page.locator('.wbm-row', { hasText: 'Color' }).click();
   await expect(page.locator('.wbm-group')).toHaveText(['Background']);
   await expect(page.locator('.wbm-row .wbm-label')).toHaveText(['Default', 'Gray', 'Brown', 'Orange', 'Yellow', 'Green', 'Blue', 'Purple', 'Red']);
@@ -231,7 +239,7 @@ test('several_blocks_act_together', async ({ page }) => {
   await grip(page, 2).click({ force: true });
   const menu = page.locator('.wbm');
   await expect(menu.locator('.wbm-group')).toHaveText(['3 blocks']);
-  await expect(menu.locator('.wbm-row .wbm-label')).toHaveText(['Turn into', 'Color', 'Delete']);
+  await expect(menu.locator('.wbm-row .wbm-label')).toHaveText(['Turn into', 'Color', 'Move to', 'Delete']);
   await menu.locator('.wbm-row', { hasText: 'Color' }).click();
   await page.locator('.wbm-row', { hasText: 'Green' }).click();
   await expect.poll(() => s.texts().slice(0, 3)).toEqual(WORDS.slice(0, 3).map(w => `<span data-bg="green">${w}</span>`));
@@ -327,4 +335,35 @@ test('picks_only_the_blocks_touched_in_columns', async ({ page }) => {
   const t = s.texts();
   expect(t[4]).toBe(col[2]);                    // A three is untouched
   expect(t[8]).toBe(col[5]);                    // so is B three
+});
+
+test('move_block_to_another_page', async ({ page }) => {
+  const s = await openPage(page);
+  // Move to is in the block menu (Ctrl+Shift+P); the page chooser is the one menu, without this page, and filters as you type
+  await grip(page, 2).click({ force: true });
+  await page.locator('.wbm-row', { hasText: 'Move to' }).click();
+  const chooser = page.locator('.wbm[aria-label="Move to"]');
+  await expect(chooser.locator('.wbm-row .wbm-label')).toHaveText(['Other page']);
+  await chooser.locator('.wbm-row', { hasText: 'Other page' }).click();
+  await expect.poll(() => s.other()).toEqual([WORDS[1]]);
+  expect(s.calls.at(-1)!.name).toBe('block-move-w1-2-page-w2-count-1');
+  expect(s.texts()).toEqual([WORDS[0], ...WORDS.slice(2)]);
+  await expect(page.locator('.nb-block')).toHaveCount(4);
+  // the keys: Ctrl+Shift+P from the open menu
+  await grip(page, 1).click({ force: true });
+  await page.keyboard.press('Control+Shift+P');
+  await expect(page.locator('.wbm[aria-label="Move to"] .wbm-row')).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => s.other()).toEqual([WORDS[1], WORDS[0]]);
+  // several picked blocks go together, in the page's order, last in the other page
+  await block(page, 1).locator('.nb-block-body').click();
+  await block(page, 3).locator('.nb-block-body').click({ modifiers: ['Shift'] });
+  await expect(page.locator('.nb-block.nb-picked')).toHaveCount(3);
+  await grip(page, 2).click({ force: true });
+  await page.locator('.wbm-row', { hasText: 'Move to' }).click();
+  await expect(page.locator('.wbm[aria-label="Move to"] .wbm-group')).toHaveText(['Move 3 blocks to']);
+  await page.locator('.wbm[aria-label="Move to"] .wbm-row', { hasText: 'Other page' }).click();
+  await expect.poll(() => s.texts().length).toBe(0);
+  expect(s.other()).toEqual([WORDS[1], WORDS[0], ...WORDS.slice(2)]);
+  expect(s.calls.at(-1)!.name).toBe('block-move-w1-1-page-w2-count-3');
 });

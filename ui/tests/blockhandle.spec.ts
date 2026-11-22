@@ -157,7 +157,7 @@ test('block_menu_items_and_foot', async ({ page }) => {
   await grip(page, 1).click({ force: true });
   const menu = page.locator('.wbm');
   await expect(menu).toHaveAttribute('aria-label', 'Block actions');
-  await expect(menu.locator('.wbm-row .wbm-label')).toHaveText(['Turn into', 'Color', 'Duplicate', 'Delete']);
+  await expect(menu.locator('.wbm-row .wbm-label')).toHaveText(['Turn into', 'Color', 'Duplicate', 'Move to', 'Delete']);
   await expect(menu.locator('.wbm-row', { hasText: 'Duplicate' }).locator('.wbm-hint')).toHaveText('Ctrl+D');
   await expect(menu.locator('.wbm-row', { hasText: 'Delete' }).locator('.wbm-hint')).toHaveText('Del');
   // the foot: when the page was edited, and how many words it holds

@@ -284,9 +284,19 @@ pub fn commands() -> Vec<Command> {
                 let undo = serde_json::from_str(&text).map_err(|_| "Give the undo token returned by wb block rm --undo.")?;
                 j(pg::undo_block(c.bible()?, &mut *c.study()?, &a.s("id"), undo).map_err(e)?)
             }),
-        cmd("block move", "Move a block: wb block move ID 5 --to 2 (it then comes before what is now block 2), or --last. --beside M puts it in a column beside block M, at M's right (--left: at M's left): the two blocks, or the column, sit between the page's <!-- columns --> markers; at most four columns, and a column or group left empty by the move loses its markers.",
-            vec![Pos("id", N::One), Pos("n", N::One), Opt("to", None), Opt("beside", None), Flag("left"), Flag("last")], |c, a| {
+        cmd("block move", "Move a block: wb block move ID 5 --page OTHER [--count K] moves K blocks from it to the end of another page; wb block move ID 5 --to 2 (it then comes before what is now block 2), or --last. --beside M puts it in a column beside block M, at M's right (--left: at M's left): the two blocks, or the column, sit between the page's <!-- columns --> markers; at most four columns, and a column or group left empty by the move loses its markers.",
+            vec![Pos("id", N::One), Pos("n", N::One), Opt("to", None), Opt("beside", None), Flag("left"), Flag("last"), Opt("page", None), Opt("count", None)], |c, a| {
                 let n = nth(a, "n")?;
+                if let Some(other) = a.opt("page") {
+                    if a.opt("to").is_some() || a.opt("beside").is_some() || a.flag("last") || a.flag("left") {
+                        return Err("--page, or --to, --beside, --last: one of them.".into());
+                    }
+                    let count = opt_n(a, "count")?.unwrap_or(1);
+                    return j(pg::move_to_page(c.bible()?, &mut *c.study()?, &a.s("id"), n, count, &other).map_err(e)?);
+                }
+                if a.opt("count").is_some() {
+                    return Err("--count goes with --page.".into());
+                }
                 if let Some(m) = opt_n(a, "beside")? {
                     if a.opt("to").is_some() || a.flag("last") {
                         return Err("--beside, or --to, or --last: one of them.".into());

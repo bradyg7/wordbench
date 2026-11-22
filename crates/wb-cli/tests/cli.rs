@@ -2758,3 +2758,27 @@ fn a_block_gets_a_background_and_goes_beside_another_as_a_column() {
     wb.js(&["block", "rm", &id, &at(&wb, "First line")]);
     assert!(texts(&wb).iter().all(|x| !x.starts_with("<!--")));
 }
+
+#[test]
+fn a_block_moves_to_the_end_of_another_page() {
+    // notebook row 19 (NB9): `wb block move ID N --page OTHER [--count K]` writes the blocks last in the other page, then takes them out
+    let Some(wb) = Wb::new() else { return };
+    let a = wb.js(&["page", "new", "Page A"])["id"].as_str().unwrap().to_string();
+    let b = wb.js(&["page", "new", "Page B"])["id"].as_str().unwrap().to_string();
+    for t in ["One", "Two", "Three", "Four"] {
+        wb.js(&["block", "add", &a, t]);
+    }
+    wb.js(&["block", "add", &b, "Already here"]);
+    let texts = |id: &str| -> Vec<String> { wb.js(&["page", "blocks", id])["blocks"].as_array().unwrap().iter().map(|x| x["text"].as_str().unwrap().to_string()).collect() };
+    wb.js(&["block", "move", &a, "2", "--page", &b]);
+    assert_eq!(texts(&a), ["One", "Three", "Four"]);
+    assert_eq!(texts(&b), ["Already here", "Two"]);
+    wb.js(&["block", "move", &a, "2", "--page", &b, "--count", "2"]);
+    assert_eq!(texts(&a), ["One"]);
+    assert_eq!(texts(&b), ["Already here", "Two", "Three", "Four"]);
+    let (code, _, _) = wb.run(&["block", "move", &a, "1", "--page", &a], None);
+    assert_ne!(code, 0, "not to the same page");
+    let (code, _, _) = wb.run(&["block", "move", &a, "5", "--page", &b], None);
+    assert_ne!(code, 0, "no such block");
+    assert_eq!(texts(&a), ["One"]);
+}

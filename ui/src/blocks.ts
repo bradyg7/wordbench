@@ -283,6 +283,7 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
     const run = pickedRun(data.id);
     if ((ev.key === 'Delete' || ev.key === 'Backspace') && !mod && !ev.shiftKey && !ev.altKey && run && run.ns.length > 1 && run.ns.includes(b.n)) { ev.preventDefault(); void deletePicked(data, host, el, run.ns); }
     else if ((ev.key === 'Delete' || ev.key === 'Backspace') && !mod && !ev.shiftKey && !ev.altKey) { ev.preventDefault(); void deleteBlock(data, host, el, b); }
+    else if (mod && ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'p') { ev.preventDefault(); void openBlockMenu(data, host, el, b, grip).then(() => document.querySelector<HTMLElement>('.wbm[aria-label="Block actions"] .wbm-row[data-id="move"]')?.click()); }
     else if (mod && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'd') { ev.preventDefault(); void duplicateBlock(data, host, el, b); }
   };
   grip.draggable = true;
@@ -438,7 +439,7 @@ function editedText(updated?: string): string {
 }
 
 /** The grip's click: the block menu (row 16): Turn into ▸, Duplicate (Ctrl+D), Delete (Del), and at its foot when the page was edited
- *  and how many words it holds. Color ▸ (row 25b), Copy link to block and Move to (NB9) come with their tickets. */
+ *  and how many words it holds. Color ▸ (row 25b), Copy link to block (NB9, row 18) comes with its ticket; Move to is row 19. */
 async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, grip: HTMLElement) {
   if (document.querySelector('.wbm[aria-label="Block actions"]')) return;
   if (liveEdit && liveEdit.el === el) { await liveEdit.save(); if (!liveEdit.cur.n) return; }
@@ -450,6 +451,7 @@ async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, 
   if (turnable(b)) items.push({ id: 'turn', label: 'Turn into', icon: 'T', hint: '▸', keywords: ['turn', 'change', 'kind'] });
   if (takesBackground(b)) items.push({ id: 'color', label: 'Color', icon: '◐', hint: '▸', keywords: ['background', 'highlight'] });
   items.push({ id: 'dup', label: 'Duplicate', icon: '⧉', hint: 'Ctrl+D', keywords: ['copy'] });
+  items.push({ id: 'move', label: 'Move to', icon: '↗', hint: 'Ctrl+Shift+P', keywords: ['page', 'send'] });
   items.push({ id: 'del', label: 'Delete', icon: '✕', hint: 'Del', danger: true, keywords: ['remove'] });
   const keep = host.state.menuClose;
   let picked = false;
@@ -461,6 +463,7 @@ async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, 
       if (it.id === 'turn') return turnMenu(data, host, el, b, grip);
       if (it.id === 'color') return colorMenu(host, [b], grip, name => void colorBlocks(data, host, el, b, 1, name), el);
       if (it.id === 'dup') return void duplicateBlock(data, host, el, b);
+      if (it.id === 'move') return moveToMenu(data, host, grip, async () => { const t = await settle(el, b, host); return t ? [[t.n, 1]] : []; }, 1, el);
       void deleteBlock(data, host, el, b);
     },
     onClose: () => {
@@ -474,8 +477,39 @@ async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, 
     const q = (handle.el.querySelector('.wbm-input') as HTMLInputElement).value;
     const mod = ev.ctrlKey || ev.metaKey;
     if (ev.key === 'Delete' && !q && !mod) { ev.preventDefault(); picked = true; handle.close(); void deleteBlock(data, host, el, b); }
+    else if (mod && ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'p') { ev.preventDefault(); picked = true; handle.close(); moveToMenu(data, host, grip, async () => { const t = await settle(el, b, host); return t ? [[t.n, 1]] : []; }, 1, el); }
     else if (mod && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'd') { ev.preventDefault(); picked = true; handle.close(); void duplicateBlock(data, host, el, b); }
   });
+}
+
+/** Move to (row 19): the page chooser, in the one menu component; the blocks leave this page and are last in the chosen one
+ *  (`wb block move ID N --page OTHER --count K`, one call a run of neighbours, in the page's order). `runs` gives [first, count] pairs. */
+async function moveToMenu(data: Blocks, host: Host, grip: HTMLElement, runs: () => Promise<[number, number][]>, total: number, el: HTMLElement) {
+  let pages: { id: string; title: string; insert: string; kind: string }[] = [];
+  try { pages = (await host.titles()).filter(t => t.kind !== 'thread' && t.kind !== 'day' && t.id !== data.id); } catch { /* none to offer */ }
+  const keep = host.state.menuClose;
+  let picked = false;
+  const handle = openMenu({
+    groups: [{ title: total > 1 ? `Move ${total} blocks to` : 'Move to', items: pages.map(t => ({ id: t.id, label: t.title || 'Untitled', icon: '↗', keywords: [t.insert] })) }],
+    label: 'Move to', placeholder: 'Move to a page', at: grip,
+    onPick: it => { picked = true; void (async () => {
+      const root = el.closest<HTMLElement>('.nb-editor');
+      const todo = await runs();
+      if (!todo.length) return;
+      clearPick(root);
+      let gone = 0;
+      try {
+        for (const [from, count] of todo) {
+          await wb(['block', 'move', data.id, String(from - gone), '--page', it.id, '--count', String(count)]);
+          gone += count;
+        }
+        toast(`Moved ${total > 1 ? `${total} blocks` : 'the block'} to ${it.label}`);
+      } catch (x) { toast(String(x)); }
+      host.changed();
+    })(); },
+    onClose: () => { if (host.state.menuClose === handle.close) host.state.menuClose = keep ?? null; if (!picked) el.classList.remove('nb-selected'); },
+  });
+  host.state.menuClose = handle.close;
 }
 
 /** Color ▸ (row 25b): Background, Default and the 8 plain colors; a tick on the one the block has (the first one's, for several). */
@@ -511,7 +545,7 @@ async function colorBlocks(data: Blocks, host: Host, el: HTMLElement, b: Blk, co
   finally { history.busy = false; }
 }
 
-/** The grip's menu on several picked blocks (row 21): Turn into, Color and Delete act on all of them. Move to comes with NB9. */
+/** The grip's menu on several picked blocks (row 21): Turn into, Color and Delete act on all of them. Move to is row 19. */
 function openPickMenu(data: Blocks, host: Host, ns: number[], grip: HTMLElement) {
   if (document.querySelector('.wbm[aria-label="Block actions"]')) return;
   const bs = data.blocks.filter(x => ns.includes(x.n) && !isMarker(x.text));
@@ -520,6 +554,7 @@ function openPickMenu(data: Blocks, host: Host, ns: number[], grip: HTMLElement)
   const items: MenuItem[] = [];
   if (bs.some(turnable)) items.push({ id: 'turn', label: 'Turn into', icon: 'T', hint: '▸', keywords: ['change', 'kind'] });
   if (bs.some(takesBackground)) items.push({ id: 'color', label: 'Color', icon: '◐', hint: '▸', keywords: ['background'] });
+  items.push({ id: 'move', label: 'Move to', icon: '↗', keywords: ['page', 'send'] });
   items.push({ id: 'del', label: 'Delete', icon: '✕', hint: 'Del', danger: true, keywords: ['remove'] });
   const keep = host.state.menuClose;
   const handle = openMenu({
@@ -527,6 +562,7 @@ function openPickMenu(data: Blocks, host: Host, ns: number[], grip: HTMLElement)
     onPick: it => {
       if (it.id === 'turn') return turnPickedMenu(data, host, bs.filter(turnable), grip);
       if (it.id === 'color') return colorMenu(host, bs, grip, name => void colorRuns(data, host, el, runs, name));
+      if (it.id === 'move') return moveToMenu(data, host, grip, async () => runs.map(([a, z]) => [a, z - a + 1] as [number, number]), bs.length, el);
       void deletePicked(data, host, el, ns);
     },
     onClose: () => { if (host.state.menuClose === handle.close) host.state.menuClose = keep ?? null; },

@@ -1024,6 +1024,27 @@ pub fn duplicate_block(bible: &Bible, store: &mut Store, id: &str, n: usize, und
     }
 }
 
+/// Move `count` blocks from block `n` of a page to the end of another page (`wb block move ID N --page OTHER`; Move to in the block
+/// menu). The blocks are written into the other page first, then taken out of this one, so a failure loses nothing. → this page's
+/// blocks after (as `wb block rm` gives them), with `to` the other page's id and `at` the number of the first moved block there.
+pub fn move_to_page(bible: &Bible, store: &mut Store, id: &str, n: usize, count: usize, other: &str) -> Result<Value> {
+    let (id, text, titled) = text_of(store, id)?;
+    let (oid, otext, otitled) = text_of(store, other)?;
+    if oid == id {
+        return Err(bad("Choose another page: the block is already in this one."));
+    }
+    let (_, bs) = split(&text, titled);
+    check_n(&bs, n, count.max(1))?;
+    let c = chars(&text);
+    let moved = sub(&c, bs[n].start, bs[n + count - 1].end);
+    let after = split(&otext, otitled).1.len().checked_sub(1);
+    let put = edit(bible, store, &oid, Edit::Add { after, text: &moved })?;
+    let mut out = remove_block(bible, store, &id, n, count, None)?;
+    out["to"] = json!(oid);
+    out["at"] = put["n"].clone();
+    Ok(out)
+}
+
 pub fn undo_block(bible: &Bible, store: &mut Store, id: &str, undo: BlockUndo) -> Result<Value> {
     let (id, current, titled) = text_of(store, id)?;
     if undo.page != id || undo.after != body_digest(&current) {
