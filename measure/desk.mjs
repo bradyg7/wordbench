@@ -690,11 +690,11 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await page.keyboard.press('Enter');
   await page.keyboard.type('.');
   check('Enter writes the picked note’s whole title and closes the link', (await page.locator('.pane-notebook textarea.nb-input').inputValue()).endsWith('Wrote up [[Numbers 25, read again]].'), await page.locator('.pane-notebook textarea.nb-input').inputValue());
-  await page.keyboard.press('Control+a');
-  await page.locator('.pane-notebook .nb-fmt', { hasText: '•' }).click();
+  await page.keyboard.press('Home');
+  await page.keyboard.type('- ');   // the line turns into a bullet as it is typed (the old format bar is gone)
   await done();
   check('writing in today’s page makes notes/_days/<today>.md, with no place', existsSync(dayFile) && !/anchor/.test(readFileSync(dayFile, 'utf8')));
-  check('the format bar writes Markdown as plain text', /\n\n- Read Numbers 25 twice/.test(readFileSync(dayFile, 'utf8')) && await ed.locator('.nb-page li').count() === 1, readFileSync(dayFile, 'utf8').split('---').pop().trim());
+  check('typing "- " writes a list as Markdown', /\n\n- Read Numbers 25 twice/.test(readFileSync(dayFile, 'utf8')) && await ed.locator('.nb-page li').count() === 1, readFileSync(dayFile, 'utf8').split('---').pop().trim());
   check('the Python app passes over it: no anchor, so no note list or Inbox shows it', !notesAt('Numbers 25').some(n => n.text.includes('Wrote up')) && !JSON.parse(execFileSync(wbExe, ['inbox'], { env }).toString()).notes.some(n => n.text.includes('Wrote up')));
   await page.screenshot({ path: shots + '1440-notebook-today-s-page.png' });
   await nbBack();

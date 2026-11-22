@@ -1056,15 +1056,23 @@ export class Dock {
     strip.addEventListener('pointerdown', e => {
       if ((e.target as HTMLElement).closest('button')) return;
       const f = this.floats.get(g.id)!, r = f.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+      const from = { x: g.rect!.x, y: g.rect!.y };
       strip.setPointerCapture(e.pointerId);
+      // The window moves as a layer (a transform the compositor does), not by its left and top, which would lay the whole page
+      // inside it out again on every move (a long page in a floating tab dragged in 50 ms steps, notebook NB15); where it
+      // is dropped is written into left and top once.
+      f.style.willChange = 'transform';
       const move = (m: PointerEvent) => {
         g.rect = this.fit({ ...g.rect!, x: m.clientX - dx, y: m.clientY - dy });
-        f.style.left = `${g.rect.x}px`;
-        f.style.top = `${g.rect.y}px`;
+        f.style.transform = `translate(${g.rect.x - from.x}px, ${g.rect.y - from.y}px)`;
       };
       const up = () => {
         strip.removeEventListener('pointermove', move);
         strip.removeEventListener('pointerup', up);
+        f.style.left = `${g.rect!.x}px`;
+        f.style.top = `${g.rect!.y}px`;
+        f.style.transform = '';
+        f.style.willChange = '';
         for (const p of this.inGroup(g)) this.remember(p);
       };
       strip.addEventListener('pointermove', move);

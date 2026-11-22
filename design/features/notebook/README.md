@@ -199,6 +199,34 @@ folder, not as a Notebook tab.
 
 - **Rust tests that need the Bible database, NB15 (the lead, 2026-11-22).** A test that finds no database calls `wb_core::bible_database_missing_in_test()`: it prints `SKIPPED: no Bible database at <path> (set WB_BIBLE_DB ...)` and returns, as before (a computer with no database, such as the Mac check, still runs), and with `WB_REQUIRE_DB=1` it fails instead, so a run that skipped cannot look clean. With `WB_BIBLE_DB` set to the sibling checkout's `datasets/workbench.db` and `WB_REQUIRE_DB=1`, `cargo test -p wb-core -p wb-cli` passes with no skipped test.
 
+- **A page at every width, the 400-block budget, type-ahead and the old page code, NB15 (the lead, 2026-11-22, by the most compatible form).** (1) Row 37:
+  the column, the handle, every menu and the selection bar are checked in a floating tab (560 px), a narrow pane (460 px) and a phone (390 px)
+  (test `writing_at_every_width`: the column and its blocks sit inside the pane, nothing scrolls sideways, + and the grip are inside the pane and
+  left of the text, the handle's showing and a menu's opening move nothing, the menus and the selection bar fit the window). **On a phone, at 520 px
+  or less, every menu is a bottom sheet** (`.wbm-sheet`: as wide as the window, at its foot, the same search, groups and rows); the window is the
+  only thing changed, nothing on disk. (2) **The budget** `npm run measure` had no typing section, so this is it, measured with the web view's CPU
+  slowed 4x as `measure` does (test `page_of_400_blocks_types_menus_drags`, Chromium, the real app's engine): half the keys reach a painted frame in
+  75 ms, nineteen in twenty in 150 ms, every one in 250 ms; a menu is on screen in 300 ms; the page drawn again at a drop takes no longer than 1.5x its
+  first draw (1 s at least). Each limit is also relative (the larger of the number and a small multiple of the same work on a 5-block page in the same run), so a
+  computer busy with other tests does not fail a long page that is no slower than a short one. Measured here (4x): 400 blocks drawn in 0.6 to 0.9 s;
+  typing median 31 to 47 ms and p95 60 to 90 ms (the page of 5 blocks: median 25 to 32, p95 33 to 42; unthrottled WebKit: median 13, p95 16); the
+  `/` menu and the block menu 50 to 220 ms. The numbers are noisy on a busy computer. **Not measured: the real app** (`npx tauri build --no-bundle` and `npm run measure` were not run; a
+  typing section for `measure.mjs` is not written). A tighter fix for the 5 to 20 ms a key costs more on a long page (the browser lays out and
+  layerizes the whole page each frame) was tried as `content-visibility` and `contain` on each block and not kept: the gain was inside the noise and
+  both change how a block's popups and fixed parts are placed. (3) **The floating pane drags smoothly** (test `floating_pane_drags_smoothly`): the
+  window follows the pointer on every move (0 px off) and is moved as a layer (`transform`, written into left and top once, at the drop) instead of by
+  left and top, which laid the whole page inside it out on every move; nineteen frames in twenty under 100 ms and none over 250 ms at 4x with a
+  400-block page in it (measured: p95 31 ms, longest 127 ms; before the change about 55 ms a frame). (4) **Writing never waits.** Keys typed after Enter, Backspace at the start or an arrow, before the next block is drawn (the
+  writing is saved and the page drawn again first), are held and put in the block that opens, at its caret; none lands in the block just left or is
+  lost (tests `typing_right_after_enter_is_not_lost`, `backspace_at_the_start_joins_the_block_before`). (5) **Taken out, not built around:** the old
+  format bar (H, B, I, •, 1., ", Place, [[ ]], ? Question) and its helpers `lines`, `wrap`, `insert` (the / menu, the selection bar, `@` and the page
+  menu do all of it; a template's field picker is kept as its own bar); `blockButton`, `isListShape`, `contentEnd`, `joinLines`; and the unused styles
+  `.nb-fmt*`, `.nb-b-*`, `.nb-pages-narrow`, `.nb-threads`, `.thread-notes`, `.nbv-input`, `.nb-places-head`, `.nb-place-row`, `.nb-place-quote`,
+  `.nb-block-actions`, `.vc-pages`, `.nb-side-trash`. **Still there, because nothing in this design replaces it:** the whole-text box for a day's page
+  not yet written and for a draft with text (Today's first line), the `[[` link list (its own hand-made list, not the one menu), and the older
+  `popMenu` lists in `notebook.ts` for places, thread choosers, templates and the question target; a design for how Today's page starts, and whether
+  `[[` becomes the `@` menu, is the person's to give.
+
 ## The inventory (round 1)
 
 Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into the interaction table below.
@@ -392,7 +420,7 @@ person's existing pages read.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 37 | A page | Floating tab, narrow pane, phone (37a–37c) | The column fits; the handle sits inside the margin; the selection bar wraps; menus become sheets on a phone | Nothing | Window only | `writing_at_every_width` | [ ] approved 2026-11-20 |
+| 37 | A page | Floating tab, narrow pane, phone (37a–37c) | The column fits; the handle sits inside the margin; the selection bar wraps; menus become sheets on a phone | Nothing | Window only | `writing_at_every_width` | built (NB15) · approved 2026-11-20 |
 
 ### Study commands (a brainstorm, in the / menu's Study group)
 
@@ -434,15 +462,15 @@ A ticket is done when every row in it has its passing test and its Built cell sa
 ## What the build must satisfy
 
 - [x] Every menu is the one menu component (rows 1–2): typing filters, keys work, focus returns, nothing jumps.
-- [ ] Writing never waits and never needs a click to continue (rows 3–8).
+- [x] Writing never waits and never needs a click to continue (rows 3–8). (Tests `new_page_caret_in_title`, `markdown_shortcuts_turn_the_line`, `inline_shortcuts_and_keys`, `list_enter_tab_rules`, `enter_splits_a_block`, `typing_right_after_enter_is_not_lost`, `backspace_at_the_start_joins_the_block_before`, and `page_of_400_blocks_types_menus_drags` for typing on a long page.)
 - [x] Every text block can turn into every other text kind and keep its text (row 17).
-- [ ] Today's pages read and write as before; the files stay Markdown; questions written as callouts stay listed (row 24).
-- [ ] Every new core action has its `wb` command (rows marked *proposed*).
-- [ ] Desktop, floating, narrow and phone (row 37).
-- [ ] The floating pane drags smoothly (row 6; checked in the build).
+- [x] Today's pages read and write as before; the files stay Markdown; questions written as callouts stay listed (row 24). (`old_question_callouts_still_read`, Rust and window; the full `cargo test` with the Bible database, `WB_REQUIRE_DB=1`, passes.)
+- [x] Every new core action has its `wb` command (rows marked *proposed*). (`wb block dup`, `wb xrefs`, `wb page lock`, `wb page text` and the others each answer `wb help`; the CLI test `every_action` passes.)
+- [x] Desktop, floating, narrow and phone (row 37). (`writing_at_every_width` in webkit-desktop, chromium-editor and webkit-phone.)
+- [x] The floating pane drags smoothly (row 6; checked in the build). (`floating_pane_drags_smoothly`.)
 - [x] The interlinear block (row 51) scrolls sideways inside itself when a verse is long, grows in height with its words, and is as wide as the column (wider at Full width); it has no drag-to-resize.
-- [ ] A page of 400 blocks types, opens menus and drags inside the typing budget of `npm run measure`; nothing jumps (was row 38).
-- [ ] The page is rebuilt on this design; the old page code and its ways are taken out, not built around.
+- [x] A page of 400 blocks types, opens menus and drags inside the typing budget of `npm run measure`; nothing jumps (was row 38). (`page_of_400_blocks_types_menus_drags`, Chromium at 4x; the budget is in Decisions, NB15. **Not run: the real app** — `npm run measure` has no typing section and `npx tauri build --no-bundle` was not run.)
+- [ ] The page is rebuilt on this design; the old page code and its ways are taken out, not built around. (Partly: the old format bar and the dead code are out, listed in Decisions, NB15; the whole-text box for a day's page not yet written, the `[[` link list and the older `popMenu` lists in `notebook.ts` stay until the person gives a design for how Today's page starts and for `[[`.)
 
 ## Data the sheets show
 

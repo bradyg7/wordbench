@@ -32,3 +32,9 @@
 .wbm-pv-mark { color: var(--muted); flex: none; }
 .wbm-pv-quote { margin: 6px 0; padding-left: 12px; border-left: 3px solid var(--line); }
 .wbm-dot.big { display: inline-block; width: 14px; height: 14px; margin: 0; }
+/* A phone (notebook row 37c): every menu is a bottom sheet, the same search, groups and rows, as wide as the window. */
+@media (max-width: 520px) {
+  .wbm.wbm-sheet { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: 100% !important; max-width: none; max-height: 72vh; border-radius: 14px 14px 0 0; border-bottom: 0; }
+  .wbm.wbm-sheet .wbm-list { max-height: none; flex: 1; min-height: 0; }
+  .wbm.wbm-split.wbm-sheet { height: 72vh; }
+}

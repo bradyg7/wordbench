@@ -25,6 +25,8 @@ export type MenuOptions = {
 };
 export type MenuHandle = { el: HTMLElement; close: () => void; setQuery: (q: string) => void; /** Draw the rows again for what is typed (the rows' source changed). */ refresh: () => void; readonly open: boolean };
 
+/** At or under this window width a menu is a bottom sheet. */
+const PHONE = 520;
 const norm = (s: string) => s.toLowerCase();
 
 /** Rows that match the query (label or keywords contain it); groups with none are dropped. Empty query keeps all. */
@@ -144,6 +146,10 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   };
 
   const place = () => {
+    // on a phone every menu is a bottom sheet (row 37c): the same search, groups and rows, as wide as the window
+    const sheet = window.innerWidth <= PHONE;
+    el.classList.toggle('wbm-sheet', sheet);
+    if (sheet) { el.style.left = ''; el.style.top = ''; return; }
     const at = opts.at;
     let x = 0, y = 0;
     if (opts.center) {

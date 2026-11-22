@@ -1111,7 +1111,7 @@ function createNotebookSession(fixed?: PageTab) {
     else if (isT) out.push(threadControls(e));
     else if (!e.template) out.push(chipsRow(e));
     if (e.id && byBlocks && !e.template) { const ov = await overviewBox(e.id); if (ov) out.push(ov); }
-    if (!plainDraft(e)) out.push(formatBar(e));
+    if (e.template) out.push(templateBar());
     if (byBlocks) {
       blocksData = bd;
       blockHostNow = blockHost(e);
@@ -1204,39 +1204,11 @@ function createNotebookSession(fixed?: PageTab) {
     return row;
   }
 
-  // The format bar writes Markdown into the text, as plain text: # a heading, **bold**, *italics*, - a list, 1. a numbered
-  // list, > a quote; then a reference to the place picked in the reader, a [[link]] to another note, and ? to ask it.
-  function formatBar(e: Entry): HTMLElement {
+  // A template's settings bar: the field picker writes a {field} into the template's text. (The old format bar of H, B, I,
+  // list, quote, Place, [[ ]] and ? Question is gone: the / menu, the selection bar, @ and the page menu do those, NB15.)
+  function templateBar(): HTMLElement {
     const bar = h('div', 'nb-format');
-    const act = (label: string, what: string, fn: (ta: Writer) => void, cls = '') => {
-      const b = h('button', `nb-fmt ${cls}`, label);
-      b.title = what;
-      b.setAttribute('aria-label', what);
-      b.onmousedown = ev => ev.preventDefault(); // keep the cursor in the text
-      b.onclick = () => { const ta = editText(); if (ta) { fn(ta); ta.dispatchEvent(new Event('input')); } };
-      bar.append(b);
-    };
-    act('H', 'A heading', ta => lines(ta, l => (l.startsWith('# ') ? l.slice(2) : `# ${l.replace(/^#+\s*/, '')}`)));
-    act('B', 'Bold (Ctrl+B)', ta => wrap(ta, '**'), 'b');
-    act('I', 'Italics (Ctrl+I)', ta => wrap(ta, '*'), 'i');
-    act('•', 'A list', ta => lines(ta, l => (l.startsWith('- ') ? l.slice(2) : `- ${l}`)));
-    act('1.', 'A numbered list', ta => { let n = 0; lines(ta, l => (/^\d+\. /.test(l) ? l.replace(/^\d+\. /, '') : `${++n}. ${l}`)); });
-    act('“', 'A quote', ta => lines(ta, l => (l.startsWith('> ') ? l.slice(2) : `> ${l}`)));
-    bar.append(h('span', 'nb-fmt-sep'));
-    if (e.template) bar.append(templateFieldPicker(editText));
-    act('Place', 'Write the place picked in the reader into the text', ta => insert(ta, here().label));
-    if (nbSettings.links) act('[[ ]]', 'A link to another note', ta => { insert(ta, '[['); linkSuggest(ta); });
-    if (e.kind !== 'day' && e.kind !== 'thread' && !e.template) {
-      const q = h('button', `nb-fmt${e.kind === 'question' ? ' on' : ''}`, '? Question');
-      q.title = e.kind === 'question' ? 'Make it a plain note' : 'Ask it as a question';
-      q.onclick = async () => {
-        if (!e.id) { draft!.question = !draft!.question; return void pane?.refresh?.(); }
-        if (!e.placed && !e.anchor && e.threads?.length) return toast('A note on a thread alone cannot be a question; give it a place first');
-        await wb(['note', 'question', e.id, ...(e.kind === 'question' ? ['--plain'] : [])]);
-        changed();
-      };
-      bar.append(q);
-    }
+    bar.append(templateFieldPicker(editText));
     return bar;
   }
 
@@ -1298,9 +1270,12 @@ ${l}` : ''}`;
       setTimeout(() => { if (!wrapEl.contains(document.activeElement) && !made) void make().then(ok => { if (ok) void pane?.refresh?.(); }); }, 150);
     });
     registerPageWriter(title, '', async () => { await make(); }, () => { made = true; });
+    // The form is built before the page is on the screen (the rest of the page is still being fetched), so the title is focused when it
+    // gets there, not at a fixed time after it was built; and once more a moment later, for a draw that took the focus back.
+    let frames = 0;
     const focus = () => { if (wrapEl.isConnected && !wrapEl.contains(document.activeElement)) title.focus(); };
-    requestAnimationFrame(focus);
-    setTimeout(focus, 150);
+    const whenThere = () => { if (wrapEl.isConnected) { focus(); setTimeout(focus, 150); } else if (frames++ < 300) requestAnimationFrame(whenThere); };
+    requestAnimationFrame(whenThere);
     return wrapEl;
   }
 
@@ -1695,43 +1670,6 @@ ${l}` : ''}`;
     box.append(h('div', 'muted small nb-menu-note', `No note is titled “${l.title}” yet.`));
     box.append(button('menu-item', `Start “${l.title}”`, () => { close(); newNote({ at: null, question: false, text: `${l.title}\n` }); }));
     const close = popMenu(a, box, { width: 260 });
-  }
-
-  // ---- writing helpers for the format bar ------------------------------------------------------------------------------
-
-  function lines(ta: Writer, fn: (line: string) => string) {
-    const v = ta.value;
-    const s = v.lastIndexOf('\n', ta.selectionStart - 1) + 1;
-    let e = v.indexOf('\n', ta.selectionEnd);
-    if (e < 0) e = v.length;
-    const out = v.slice(s, e).split('\n').map(fn).join('\n');
-    ta.value = v.slice(0, s) + out + v.slice(e);
-    ta.setSelectionRange(s, s + out.length);
-    ta.focus();
-  }
-
-  function wrap(ta: Writer, mark: string, close = mark) {
-    const { selectionStart: s, selectionEnd: e, value: v } = ta;
-    // already marked: the marks come off (Ctrl+B twice is bold and plain again)
-    if (e > s && v.slice(s - mark.length, s) === mark && v.slice(e, e + close.length) === close) {
-      ta.value = v.slice(0, s - mark.length) + v.slice(s, e) + v.slice(e + close.length);
-      ta.setSelectionRange(s - mark.length, e - mark.length);
-      ta.focus();
-      return;
-    }
-    const inside = v.slice(s, e) || (e > s ? '' : 'text');
-    ta.value = v.slice(0, s) + mark + inside + close + v.slice(e);
-    ta.setSelectionRange(s + mark.length, s + mark.length + inside.length);
-    ta.focus();
-  }
-
-  function insert(ta: Writer, text: string) {
-    const { selectionStart: s, selectionEnd: e, value: v } = ta;
-    const pad = s > 0 && !/\s/.test(v[s - 1]) && !text.startsWith('[[') ? ' ' : '';
-    ta.value = v.slice(0, s) + pad + text + v.slice(e);
-    const at = s + pad.length + text.length;
-    ta.setSelectionRange(at, at);
-    ta.focus();
   }
 
   // Typing [[ offers the notes' titles; a pick writes the title and ]] (finding ad58: every note, not 8; a list that

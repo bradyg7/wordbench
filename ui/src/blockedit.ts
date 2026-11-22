@@ -22,7 +22,6 @@ const blankState = (): St => ({ shape: '', lead: '', mark: '-', num: 1, delim: '
 const clean = (s: string) => s.replace(/\u200b/g, '').replace(/\u00a0/g, ' ');
 
 export const shapeOf = (ed: HTMLElement) => (states.get(ed) ?? blankState()).shape;
-export const isListShape = (ed: HTMLElement) => LISTY.has(shapeOf(ed));
 
 function prefixOf(s: St): string {
   switch (s.shape) {
@@ -300,7 +299,6 @@ export function createEditor(md: string): Writer {
 
 /** Where the writing starts (after the shape's mark) and ends, in Markdown offsets. */
 export const contentStart = (ed: HTMLElement) => prefixOf(states.get(ed) ?? blankState()).length;
-export const contentEnd = (ed: Writer) => ed.value.length;
 /** Nothing typed in the block besides its shape. */
 export const isEmpty = (ed: HTMLElement) => layout(ed).md.length === contentStart(ed);
 /** Is the caret (collapsed) at the start of what is written, or at its end? */

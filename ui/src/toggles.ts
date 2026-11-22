@@ -52,4 +52,3 @@ export function placeBlocks(blocks: { n: number; text: string }[]): Map<number, 
   return out;
 }
 
-export const joinLines = (xs: string[]) => xs.join(NL);

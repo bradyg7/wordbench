@@ -357,11 +357,6 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .chip.nb-add { background: var(--sunken); color: var(--muted); padding: 4px 12px; }
 .chip.nb-add:hover { color: var(--accent); }
 .nb-format { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; background: var(--sunken); border-radius: var(--radius-control); padding: 3px; margin-bottom: 14px; }
-.nb-fmt { min-width: 30px; height: 30px; padding: 0 8px; border-radius: 6px; font: var(--type-small-strong); color: var(--muted); }
-.nb-fmt:hover { background: var(--surface); color: var(--fg); }
-.nb-fmt.b { font-weight: 800; } .nb-fmt.i { font-style: italic; }
-.nb-fmt.on { color: var(--question); }
-.nb-fmt-sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
 .nb-body { min-height: 160px; }
 .nb-page { font: var(--type-body); font-size: 16px; line-height: 26px; overflow-wrap: anywhere; cursor: text; min-height: 120px; }
 .nb-page p { margin: 0 0 12px; }
@@ -419,10 +414,9 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-tree-add { flex: none; width: 24px; height: 24px; margin-right: 2px; opacity: 0; color: var(--muted); }
 .nb-tree-row:hover .nb-tree-add, .nb-tree-add:focus-visible { opacity: 1; }
 .nb-tree-add:hover { color: var(--accent); }
-.nb-pages-narrow .nb-tree-row { min-height: 36px; }
 .nb-side-foot { flex: none; display: flex; gap: 14px; padding: 8px 16px 10px; border-top: 1px solid var(--line); }
-.nb-side-trash, .nb-side-link { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: var(--type-small); }
-.nb-side-trash:hover, .nb-side-link:hover { color: var(--fg); }
+.nb-side-link { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: var(--type-small); }
+.nb-side-link:hover { color: var(--fg); }
 .menu-sep { height: 1px; background: var(--line); margin: 4px 2px; }
 .nb-move-list { max-height: min(360px, 50vh); overflow-y: auto; display: flex; flex-direction: column; }
 .nb-move-row .ico { flex: none; color: var(--muted); }
@@ -443,12 +437,9 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 /* a page written block by block (sheet W2): each block as it reads, a grip at its left to drag it */
 .nb-blocks { min-height: 80px; cursor: default; }
 .nb-block { position: relative; display: flex; align-items: flex-start; margin: 0 0 8px calc(-1 * var(--nb-gut, 44px)); padding-left: var(--nb-gut, 44px); border-radius: 6px; }
-.nb-b-item, .nb-b-numbered, .nb-b-todo { margin-bottom: 2px; }
 .nb-block-body { flex: 1; min-width: 0; cursor: text; }
 .nb-block-body > :last-child, .nb-block-body > * > :last-child { margin-bottom: 0; }
 .nb-block-body > ul, .nb-block-body > ol { margin-bottom: 0; }
-.nb-b-heading .nb-h { margin: 14px 0 2px; }
-.nb-block:first-child.nb-b-heading .nb-h { margin-top: 2px; }
 .nb-grip { position: absolute; left: 22px; top: 3px; width: 20px; height: 20px; padding: 0; display: inline-grid; place-items: center; border: 0; border-radius: 4px; background: none; color: var(--muted); opacity: 0; cursor: grab; }
 .nb-plus { position: absolute; left: 0; top: 3px; width: 20px; height: 20px; padding: 0; display: inline-grid; place-items: center; border: 0; border-radius: 4px; background: none; color: var(--muted); opacity: 0; cursor: pointer; }
 /* the handle (row 13): the gutter is always there, so showing + and the grip moves nothing */
@@ -603,15 +594,12 @@ button.question-pill:hover { text-decoration: line-through; }
 .pane-place .colors { margin: 6px 0; }
 
 /* a note's threads, its other places, the Trash, and the notes on a thread */
-.nb-threads { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .nb-thread-chip { padding: 2px 4px 2px 8px; gap: 4px; }
 .nb-thread-chip .link-btn { padding: 2px; }
 .nb-top { flex-wrap: wrap; row-gap: 6px; }
 .nb-acts { flex-wrap: wrap; row-gap: 4px; }
 .nb-entry.trashed .nb-text { color: var(--muted); }
 .nb-trash-about { margin: 4px 0 12px; }
-.thread-notes { margin: 0 0 8px; display: flex; flex-direction: column; gap: 10px; }
-.thread-notes > .label { margin-bottom: -2px; }
 
 /* reading plans (plans.ts): the plan in its pane, the form, past plans */
 .plan-bar-row { margin: 0 0 12px; }
@@ -935,7 +923,6 @@ button.question-pill:hover { text-decoration: line-through; }
 .nbv-head .grow { flex: 1; }
 .nbv-line { min-width: 0; border: 0; background: none; padding: 0; text-align: left; font: var(--type-small); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
-.nbv-input { flex: 1; min-width: 0; padding: 4px 8px; font: var(--type-small); }
 .nbv-count { flex: none; white-space: nowrap; }
 .nbv-rows { display: flex; flex-direction: column; gap: 2px; padding: 4px 0 0; }
 .nbv-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: none; text-align: left; color: var(--fg); font: var(--type-small); font-size: 14px; }
@@ -1008,7 +995,6 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 
 /* S5: a thread's places on its Notebook page, under its notes */
 .nb-thread-places { margin-top: 18px; padding-top: 4px; border-top: 1px solid var(--line); }
-.nb-places-head { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); margin: 10px 0 6px; }
 .nb-places-row { display: flex; align-items: center; gap: 8px; margin: 10px 0 8px; }
 .nb-places-row .label { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); }
 .nb-places-row .grow, .nbt-head .grow { flex: 1; }
@@ -1056,9 +1042,6 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .nb-block-input[data-shape=callout][data-kind=key]::before { content: '☆'; }
 .nb-block-input[data-shape=callout][data-kind=note]::before { content: '✎'; }
 .nbq-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.nb-place-row { padding: 8px 0; }
-.nb-place-row.off .ref-link { color: var(--muted); }
-.nb-place-quote { margin: 2px 0 0; }
 
 /* ---- the Shelf as a tree (R2, sheets B1 to B5) ------------------------------------------------------------------------ */
 .pane-shelf { display: flex; flex-direction: column; gap: 8px; }
@@ -1312,7 +1295,6 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .cmd-slot { margin-top: 8px; }
 .cmd-top { margin-top: 16px; }
 
-.nb-block-actions { min-width: 150px; }
 .nb-edit-structured, .nb-undo-block { display: inline-block; margin: 4px 0; }
 .nb-table-scroll { overflow: auto; }
 .nb-table-edit td, .nb-table-edit th { padding: 4px; }
@@ -1366,7 +1348,6 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .wc-books .btn { flex: 1; justify-content: center; }
 .vc-tabs.vc-seg { background: var(--sunken); border-radius: 10px; padding: 3px; gap: 2px; }
 .vc-tabs .vc-tab { white-space: nowrap; }
-.vc-pages { margin-top: 6px; }
 .vc-foot { margin-top: 10px; }
 
 /* trash T14 (TR-4): the Trash grouped by the day of deletion, folded to its first rows */
