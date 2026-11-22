@@ -184,7 +184,7 @@ dependencies = [
 
 [[package]]
 name = "bible-workbench"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4918,7 +4918,7 @@ dependencies = [
 
 [[package]]
 name = "spike-pdf"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "flate2",
  "serde_json",
@@ -4932,7 +4932,7 @@ dependencies = [
 
 [[package]]
 name = "spike-sync"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "git2",
  "serde",
@@ -6809,7 +6809,7 @@ dependencies = [
 
 [[package]]
 name = "wb-cli"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "regex",
@@ -6821,7 +6821,7 @@ dependencies = [
 
 [[package]]
 name = "wb-core"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -6848,7 +6848,7 @@ dependencies = [
 
 [[package]]
 name = "wb-license"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
