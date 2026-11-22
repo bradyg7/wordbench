@@ -1,7 +1,7 @@
 # Filters, the new design
 
 **State:** accepted (the person, 2026-11-22, after round 3) · **Sheets:** `python -B design/features/filters-v2/filters2.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
-NB16 (rows 1-25) is built; NB17 (rows 26-33) is not. · **Review page:** `node design/review.mjs filters-v2` writes `review.html`.
+NB16 (rows 1-25) and NB17 (rows 26-33) are built. · **Review page:** `node design/review.mjs filters-v2` writes `review.html`.
 
 The person, 2026-11-22: "I'd rather scrap the old one, and use one that fits the newer design better." The old
 [filters](../filters/README.md) design (Direction B: a Filters panel with Apply, a bottom sheet, one labeled row per
@@ -76,6 +76,29 @@ folder.
   magnifier in the head. The Library lists keep their chips for the tab only (`question list --filter`, `find --filter` in Ctrl+K, the folder's places narrowed in the window).
   Ctrl+K: Esc clears the words first, then closes. `x-wb-argv` is sent with every fixture request outside the app so tests read the exact words.
 
+### NB17, file and `wb` forms chosen by the builder (2026-11-22, by the most compatible form)
+
+- **The real commands.** The README's names for rows 26-33 were guesses; the lists' own commands take `--filter "…"` (repeatable, the words of NB16):
+  Margin notes `wb find --kind margin`, Highlights and Marks `wb find --kind highlight|mark` (`--kind mark` finds the drawn marks, old highlights
+  included), Findings `wb findings`, the Legend's where used `wb legend uses ENTRY`, Colors across the Bible `wb marks map`, Bible Search `wb search`,
+  Near `wb near`, Every use `wb uses`, the Concordance `wb concordance`. Each answer carries `properties` (the Filter menu: each property with
+  its values and counts), `filters` (the ones applied) and `unfiltered` (how many rows there were); a list refuses a property it does not have and
+  names the ones it has (`No property called “Status” here; this list has Book, Testament, Version.`). Nothing is written to the study folder.
+- **What each list offers.** Margin notes: Book (the chapter inside it, `Book is Numbers 25`), Written, Edited, Folder (the folders of the pages a
+  note grew into). Highlights and Marks: Kind (Highlight, Underline, Circle, Box, Arrow), Legend entry, Book, Written. Findings: Status (Open,
+  Handled; a Status chip lists the handled ones too), Kind (the design folders a finding is tagged with), Written. Where used: Book, Kind. Colors:
+  Legend entry (several values add their counts), Book. Search and Near: Book, Testament (Old Testament, New Testament), Version (the KJV is the only
+  version searched; `Version is YLT` finds nothing). Every use: Book, Testament, Strong's number (the original words behind an English word, by
+  number). Concordance: Book, Testament.
+- **Kind and Marks in the one search.** `wb find --filter "Kind is Marks"` still sets the list (Pages, Questions, Key points, Notes, Folders, Saves,
+  Margin notes, Highlights, Marks). Once the list is Margin notes, Highlights or Marks, `Kind is Underline` is the mark's own kind. The T12 controls of
+  the Marks search (kind, legend entry, book, since, until) are retired into this Kind chip, a Legend entry chip, Book and Written; `--style`,
+  `--mark-kind`, `--color`, `--book`, `--since` and `--until` stay on `wb find` for a terminal. The Legend's typed "Filter by book" and the Findings'
+  tag pills are retired into the chips too (no typed filter value anywhere).
+- **Window.** Each list keeps its chips for the life of the window only (`listChips` in `ui/src/chips.ts`); a Search, Near or Every use pane keeps them per
+  pane. On Colors across the Bible the style and folder chips stay beside the new row; a Legend entry chip takes the place of the style chip.
+- **Not changed.** Every use's "both / only the original / only the English" chips are the lookup's own categories and stay as they are.
+
 ### Round 3 (2026-11-22, the person through the lead's recommendations)
 
 - **One chip component, everywhere a list is narrowed.** The filter chips are one part and work the same way on every
@@ -149,14 +172,14 @@ One row per list that narrows today; each takes the one chip component. No frame
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 26 | Margin notes list | Add filter | The same chips and pickers as a list in a page, offering only: Book, Chapter, Written, Edited, Folder; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb mark notes … --filter "…"` (repeatable), *proposed* | `margin_notes_chips` | [ ] |
-| 27 | Highlights list | Add filter | The same chips and pickers as a list in a page, offering only: Kind, Legend entry, Book, Chapter, Written; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb marks … --filter "…"` (repeatable), *proposed* | `highlights_chips` | [ ] |
-| 28 | Findings | Add filter | The same chips and pickers as a list in a page, offering only: Status, Kind, Written; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb finding list … --filter "…"` (repeatable), *proposed* | `findings_chips` | [ ] |
-| 29 | The Legend's "where used" | Add filter | The same chips and pickers as a list in a page, offering only: Book, Chapter, Kind; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb legend uses … --filter "…"` (repeatable), *proposed* | `legend_where_used_chips` | [ ] |
-| 30 | Colors across the Bible | Add filter | The same chips and pickers as a list in a page, offering only: Legend entry, Book; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb colors … --filter "…"` (repeatable), *proposed* | `colors_chips` | [ ] |
-| 31 | Bible Search and Near | Add filter | The same chips and pickers as a list in a page, offering only: Book, Testament, Version; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb search … --filter "…"` (repeatable), *proposed* | `bible_search_chips` | [ ] |
-| 32 | Every use | Add filter | The same chips and pickers as a list in a page, offering only: Book, Testament, Strong's number; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb every-use … --filter "…"` (repeatable), *proposed* | `every_use_chips` | [ ] |
-| 33 | Concordance | Add filter | The same chips and pickers as a list in a page, offering only: Book, Testament; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb concordance … --filter "…"` (repeatable), *proposed* | `concordance_chips` | [ ] |
+| 26 | Margin notes list | Add filter | The same chips and pickers as a list in a page, offering only: Book, Chapter, Written, Edited, Folder; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb find --kind margin --filter "…"` (repeatable; the Notebook search's Margin notes list. `wb mark notes` is one chapter's notes and takes no filter) | `margin_notes_chips` | built (NB17) · approved 2026-11-22 |
+| 27 | Highlights list | Add filter | The same chips and pickers as a list in a page, offering only: Kind, Legend entry, Book, Chapter, Written; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb find --kind highlight --filter "…"` and `wb find --kind mark --filter "…"` (repeatable; the Highlights and Marks lists; `wb marks` is one chapter and takes none) | `highlights_chips` | built (NB17) · approved 2026-11-22 |
+| 28 | Findings | Add filter | The same chips and pickers as a list in a page, offering only: Status, Kind, Written; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb findings --filter "…"` (repeatable) | `findings_chips` | built (NB17) · approved 2026-11-22 |
+| 29 | The Legend's "where used" | Add filter | The same chips and pickers as a list in a page, offering only: Book, Chapter, Kind; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb legend uses ENTRY --filter "…"` (repeatable) | `legend_where_used_chips` | built (NB17) · approved 2026-11-22 |
+| 30 | Colors across the Bible | Add filter | The same chips and pickers as a list in a page, offering only: Legend entry, Book; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb marks map --filter "…"` (repeatable) | `colors_chips` | built (NB17) · approved 2026-11-22 |
+| 31 | Bible Search and Near | Add filter | The same chips and pickers as a list in a page, offering only: Book, Testament, Version; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb search WORDS --filter "…"` and `wb near A B --filter "…"` (repeatable) | `bible_search_chips` | built (NB17) · approved 2026-11-22 |
+| 32 | Every use | Add filter | The same chips and pickers as a list in a page, offering only: Book, Testament, Strong's number; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb uses TERM --filter "…"` (repeatable) | `every_use_chips` | built (NB17) · approved 2026-11-22 |
+| 33 | Concordance | Add filter | The same chips and pickers as a list in a page, offering only: Book, Testament; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb concordance WORD --filter "…"` (repeatable) | `concordance_chips` | built (NB17) · approved 2026-11-22 |
 
 ### Real conditions
 
@@ -169,7 +192,7 @@ One row per list that narrows today; each takes the one chip component. No frame
 | Ticket | Rows | What |
 |---|---|---|
 | NB16 | 1–25 | The one chip component and the Filter menu on a list in a page (every view), the Library's lists (Questions, an opened folder, Ctrl+K), typed page properties and page ⋯ › Properties, phone and narrow; `--filter` on `wb page views`, `wb question list`, `wb find`; replaces NB14's interim Filters button |
-| NB17 | 26–33 | The same chips on Margin notes, Highlights, Findings, the Legend's "where used", Colors across the Bible, Bible Search and Near, Every use and Concordance; the marks T12 filter retired into them; `--filter` on each list command |
+| NB17 (built 2026-11-22) | 26–33 | The same chips on Margin notes, Highlights, Findings, the Legend's "where used", Colors across the Bible, Bible Search and Near, Every use and Concordance; the marks T12 filter retired into them; `--filter` on each list command |
 
 ## What the build must satisfy
 
@@ -183,7 +206,8 @@ One row per list that narrows today; each takes the one chip component. No frame
 
 NB16 evidence (2026-11-22): every row's test is in `ui/tests/notebook-filters.spec.ts` (chromium-editor, webkit-desktop, webkit-phone) and, for the
 files and `wb`, `filters_on_a_list_in_a_page`, `own_property_add_and_type` and `filters_on_the_librarys_lists` in `crates/wb-cli/tests/cli.rs`.
-The rows' test names are the specs' names (row 23: `list_placed_from_slash`). Chips are on the Library lists, not on rows 26-33 (NB17).
+The rows' test names are the specs' names (row 23: `list_placed_from_slash`). Rows 26-33 (NB17): `ui/tests/lists-chips.spec.ts` (webkit-desktop and chromium-editor; the phone has them through the same component, `chips_on_phone`) with each row's test
+name, and `filters_on_the_other_lists` in `crates/wb-cli/tests/cli.rs`; `marks-legend.spec.ts` (row 40) and `marks-find.spec.ts` (row 51) were moved to the chips.
 
 ## Data the sheets show
 
