@@ -822,11 +822,12 @@ fn links_in(text: &str) -> Vec<Link> {
 
 /// The first words of the block that carries link id `bid` in a page's text, without its Markdown marks (None: no such block).
 fn block_words(text: &str, bid: &str) -> Option<String> {
-    let tag = format!(" ^{bid}");
     let para = text.split("
 
-").find(|p| p.trim_end().ends_with(&tag))?;
+").find(|p| crate::pages::block_id_of(p).is_some_and(|(_, id)| id == bid))?;
     let plain = crate::pages::without_block_id(para);
+    // a fenced block (scripture, view, thread, word): its first line inside the fence, the reference or the value
+    let plain = if plain.trim_start().starts_with("```") || plain.trim_start().starts_with("~~~") { plain.lines().skip(1).find(|l| !l.trim().is_empty() && !l.trim_start().starts_with("```") && !l.trim_start().starts_with("~~~")).unwrap_or("").to_string() } else { plain };
     let mut line = plain.lines().next().unwrap_or("").trim_start().to_string();
     line = line.trim_start_matches(|c: char| "#>-*+ ".contains(c)).to_string();
     for mark in ["[ ] ", "[x] ", "[X] "] {

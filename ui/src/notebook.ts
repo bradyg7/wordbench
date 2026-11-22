@@ -1504,10 +1504,12 @@ ${l}` : ''}`;
     let list: HTMLElement | null = null;
     let para: HTMLElement | null = null;
     const lines = text.split('\n');
-    for (const raw of lines) {
+    for (const [at, line] of lines.entries()) {
+      // a block's link id (` ^abc123`, notebook row 18) ends its last line; the page never shows it
+      const raw = !lines[at + 1]?.trim() ? line.replace(/\s\^[a-z0-9]{6}\s*$/, '') : line;
       const len = [...raw].length;
       const start = pos;
-      pos += len + 1;
+      pos += [...line].length + 1;
       const m = /^(#{1,6})\s+|^([-*])\s+|^(\d+)\.\s+|^>\s?/.exec(raw);
       const skip = m ? [...m[0]].length : 0;
       const inline = () => inlineOf(chars, start + skip, start + len, refs, links);

@@ -15,6 +15,7 @@ interface Call { name: string; input: string }
 async function openPage(page: Page, start: string[] = WORDS) {
   let texts = [...start];
   const other: string[] = [];                       // the other page ("Other page", w2): what was moved into it
+  const moves: string[][] = [];                     // this page before each move (what its undo token gives back)
   const calls: Call[] = [];
   const kindOf = (t: string) => (t.startsWith('```') ? 'fence' : /^#{1,3} /.test(t) ? 'heading' : /^- \[[ xX]\] /.test(t) ? 'todo' : /^- /.test(t) ? 'item' : /^> /.test(t) ? 'quote' : 'paragraph');
   const blocks = () => {
@@ -85,10 +86,16 @@ async function openPage(page: Page, start: string[] = WORDS) {
     }
     if ((m = /^block-move-w1-(\d+)-page-(\w+)-count-(\d+)$/.exec(name))) {
       calls.push({ name, input });
+      moves.push([...texts]);
       const gone = texts.splice(Number(m[1]) - 1, Number(m[3]));
       other.push(...gone);
       tidy();
-      return send({ ...blocks(), to: m[2], at: other.length });
+      return send({ ...blocks(), to: m[2], at: other.length - gone.length + 1, undo: { test: true } });
+    }
+    if ((m = /^block-rm-w2-(\d+)-count-(\d+)$/.exec(name))) {
+      calls.push({ name, input });
+      other.splice(Number(m[1]) - 1, Number(m[2]));
+      return send({ id: 'w2', blocks: [] });
     }
     if ((m = /^block-move-w1-(\d+)-(to-(\d+)|last|beside-(\d+)(-left)?)$/.exec(name))) {
       calls.push({ name, input });
@@ -118,7 +125,7 @@ async function openPage(page: Page, start: string[] = WORDS) {
       tidy();
       return send({ ...blocks(), n: 1, count: 1 });
     }
-    if (name === 'block-undo-w1') { calls.push({ name, input }); return send(blocks()); }
+    if (name === 'block-undo-w1') { calls.push({ name, input }); if (moves.length) texts = moves.pop()!; return send(blocks()); }
     if (name.startsWith('notebook-sidebar-')) return send({ ...JSON.parse(readFileSync('ui/public/fixtures/wb/notebook-sidebar-at-num-25.json', 'utf8')), pages: [{ id: 'w1', title: TITLE, kind: 'note', placed: false, anchor: '', label: '', color: null, status: null, pinned: null, order: null, parent: null, created: '2026-11-20', updated: '2026-11-20', children: [] }] });
     if (name === 'notebook-group-none') return send({ groups: [{ key: 'all', label: 'All', count: 2, entries: [entry('w1', TITLE), entry('w2', 'Other page')] }] });
     if (name === 'settings-notebook') return send({});
@@ -173,6 +180,8 @@ test('block_background_color', async ({ page }) => {
   await expect(page.locator('.wbm')).toHaveCount(0);
   await grip(page, 3).click({ force: true });
   await expect(page.locator('.wbm .wbm-row .wbm-label')).not.toContainText(['Color']);
+  // a fenced block carries its link id on its opening line, so it can be linked to too
+  await expect(page.locator('.wbm .wbm-row .wbm-label')).toContainText(['Copy link to block']);
 });
 
 /** Drag block `n`'s grip to a point inside block `m`: x as a share of the block's width, y as a share of its height. */
@@ -384,6 +393,36 @@ test('move_block_to_another_page', async ({ page }) => {
   await expect.poll(() => s.texts().length).toBe(0);
   expect(s.other()).toEqual([WORDS[1], WORDS[0], ...WORDS.slice(2)]);
   expect(s.calls.at(-1)!.name).toBe('block-move-w1-1-page-w2-count-3');
+});
+
+test('move_to_says_where_and_undoes', async ({ page }) => {
+  const s = await openPage(page);
+  // one block: "Moved to Other page · Undo"; Undo moves it back (this page's Undo, then it is taken out of the other page)
+  await grip(page, 2).click({ force: true });
+  await page.locator('.wbm-row', { hasText: 'Move to' }).click();
+  await page.locator('.wbm[aria-label="Move to"] .wbm-row', { hasText: 'Other page' }).click();
+  const said = page.locator('.block-deletion');
+  await expect(said).toContainText('Moved to Other page · Undo');
+  await expect.poll(() => s.other()).toEqual([WORDS[1]]);
+  await said.getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(() => s.texts()).toEqual(WORDS);
+  await expect.poll(() => s.other()).toEqual([]);
+  expect(s.calls.map(c => c.name).slice(-2)).toEqual(['block-undo-w1', 'block-rm-w2-1-count-1']);
+  // several picked blocks: Move to shows Ctrl+Shift+P in the picked-blocks menu, and the key opens the chooser from the open menu
+  await block(page, 1).locator('.nb-block-body').click();
+  await block(page, 3).locator('.nb-block-body').click({ modifiers: ['Shift'] });
+  await expect(page.locator('.nb-block.nb-picked')).toHaveCount(3);
+  await grip(page, 2).click({ force: true });
+  const menu = page.locator('.wbm[aria-label="Block actions"]');
+  await expect(menu.locator('.wbm-row', { hasText: 'Move to' }).locator('.wbm-hint')).toHaveText('Ctrl+Shift+P');
+  await page.keyboard.press('Control+Shift+P');
+  await expect(page.locator('.wbm[aria-label="Move to"] .wbm-group')).toHaveText(['Move 3 blocks to']);
+  await page.locator('.wbm[aria-label="Move to"] .wbm-row', { hasText: 'Other page' }).click();
+  await expect(page.locator('.block-deletion')).toContainText('Moved to Other page · Undo');
+  await expect.poll(() => s.texts()).toEqual(WORDS.slice(3));
+  await page.locator('.block-deletion').getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(() => s.texts()).toEqual(WORDS);
+  await expect.poll(() => s.other()).toEqual([]);
 });
 
 test('link_to_block_flow', async ({ page, context, browserName }) => {

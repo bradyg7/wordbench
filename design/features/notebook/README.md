@@ -86,10 +86,19 @@ folder, not as a Notebook tab.
   never shown in the page (`wb page blocks` gives the text without it and the id as `bid`; changing the block's words keeps it; a copy of the
   block does not carry it). Page B holds `[[Page A#^abc123]]`, an extension of the `[[page#heading]]` link, drawn as the chip "Page A › first words"
   (`wb note show` gives each link `block` and `block_words`); clicking it opens page A in its tab scrolled to that block, which glows briefly, with
-  Back to the page it came from. A link whose id is gone opens page A at the top with a quiet "That block is gone". Scripture and other fenced
-  blocks, tables, dividers and column markers cannot carry an id yet (`wb block link` says so). Move to (row 19): `wb block move ID N --page OTHER
+  Back to the page it came from. A link whose id is gone opens page A at the top with a quiet "That block is gone". Fenced blocks carry theirs on the fence's
+  opening line, tables, dividers and column markers cannot carry one yet (`wb block link` says so; see the 2026-11-21 note below). Move to (row 19): `wb block move ID N --page OTHER
   [--count K]` writes the blocks last in the other page, then takes them out of this one (tests `move_block_to_another_page`,
   `link_to_block_flow`).
+- **Fenced blocks carry a link id; the page view hides it; Move to undoes (the lead, 2026-11-21, after NB9).** (1) A fenced block (Scripture, view,
+  thread, word) carries its link id on the fence's opening line after its kind: ```` ```scripture ^abc123 ````. `wb block link` and Copy link to block
+  now work for fenced blocks (tables, dividers and column markers still cannot); the id is never shown (`wb page blocks` gives the fence's text and
+  `lang` without it, and `bid`); a rewrite of the card keeps it; the chip's first words for a fenced block are the first line inside the fence (the
+  reference). The block round trip holds (test `a_block_link_writes_a_short_id_the_window_never_shows_and_the_link_finds_the_block`). (2) The page
+  drawn as a whole, not by the block editor, hides a trailing ` ^abc123` at the end of a block too (test `page_view_hides_the_block_id`). (3) Move to
+  says "Moved to <page> · Undo": Undo is the page's Undo, which gives the blocks back to their place here (the undo token `wb block move --page`
+  already returned) and then takes them out of the other page (`wb block rm OTHER N --count K`); Ctrl+Shift+P opens Move to from the picked-blocks
+  menu too, its hint shown (test `move_to_says_where_and_undoes`).
 
 ## The inventory (round 1)
 

@@ -818,7 +818,7 @@ fn block_values(text: &str, titled: bool) -> Value {
                 v["checked"] = json!(x);
             }
             if b.kind == "fence" {
-                v["lang"] = json!(b.lang);
+                v["lang"] = json!(tail_id(&b.lang).map(|(at, _)| b.lang.chars().take(at).collect::<String>()).unwrap_or_else(|| b.lang.clone()));
             }
             if b.kind == "quote" {
                 if let Some(q) = crate::questions::question_of(&sub(&c, b.start, b.end)) {
@@ -942,7 +942,7 @@ pub fn edit_guarded(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>, 
             // a block's link id stays when its words are changed (the window never shows it, so it never sends it back)
             let keep = if count == 1 && !new.trim().is_empty() && block_id_of(new).is_none() {
                 let bs = split(&text, titled).1;
-                bs.get(n).and_then(|b| block_id_of(&sub(&chars(&text), b.start, b.end))).map(|(_, bid)| format!("{} ^{bid}", new.trim_end()))
+                bs.get(n).and_then(|b| block_id_of(&sub(&chars(&text), b.start, b.end))).map(|(_, bid)| with_block_id(new, &bid))
             } else { None };
             let (out, at, k) = set(&text, titled, n, count, keep.as_deref().unwrap_or(new))?;
             // taking blocks out may leave a column empty: its marker goes with it
@@ -1034,13 +1034,29 @@ pub fn duplicate_block(bible: &Bible, store: &mut Store, id: &str, n: usize, und
 }
 
 /// A block's link id (notebook row 18): ` ^` and six lowercase letters or digits at the very end of the block's text (the Obsidian
-/// form). It is how a `[[Page#^id]]` link finds the block after the page is edited; the window never shows it.
+/// form). A fenced block (scripture, view, thread, word) carries it on the fence's opening line, after its kind
+/// (```` ```scripture ^abc123 ````; the lead, 2026-11-21). It is how a `[[Page#^id]]` link finds the block after the page is edited;
+/// the window never shows it.
 pub(crate) fn block_id_of(text: &str) -> Option<(usize, String)> {
     let t = text.trim_end();
     let tail: Vec<char> = t.chars().rev().take(8).collect();
     if tail.len() < 8 || !tail[7].is_whitespace() || tail[6] != '^' {
         return None;
     }
+    if is_fenced(text) {
+        let first = text.lines().next().unwrap_or("");
+        return tail_id(first);
+    }
+    tail_id(text)
+}
+
+fn is_fenced(text: &str) -> bool {
+    let t = text.trim_start();
+    t.starts_with("```") || t.starts_with("~~~")
+}
+
+/// ` ^abc123` at the end of one piece of text → (where it starts, in characters; the id).
+fn tail_id(text: &str) -> Option<(usize, String)> {
     let id: String = tail[..6].iter().rev().collect();
     if !id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()) {
         return None;
@@ -1050,23 +1066,42 @@ pub(crate) fn block_id_of(text: &str) -> Option<(usize, String)> {
 
 /// The block's words without its link id.
 pub(crate) fn without_block_id(text: &str) -> String {
-    match block_id_of(text) {
-        Some((at, _)) => text.chars().take(at).collect(),
-        None => text.to_string(),
+    let Some((at, _)) = block_id_of(text) else { return text.to_string() };
+    if is_fenced(text) {
+        let (first, rest) = text.split_once('\n').map(|(a, b)| (a, Some(b))).unwrap_or((text, None));
+        let kept: String = first.chars().take(at).collect();
+        return match rest {
+            Some(r) => format!("{kept}\n{r}"),
+            None => kept,
+        };
+    }
+    text.chars().take(at).collect()
+}
+
+/// The block's text with link id `bid` put in: at its end, or on a fence's opening line.
+fn with_block_id(text: &str, bid: &str) -> String {
+    if is_fenced(text) {
+        let (first, rest) = text.split_once('\n').map(|(a, b)| (a, Some(b))).unwrap_or((text, None));
+        let first = format!("{} ^{bid}", first.trim_end());
+        return match rest {
+            Some(r) => format!("{first}\n{r}"),
+            None => first,
+        };
     }
 }
 
 fn new_block_id(page: &str) -> String {
     use sha2::{Digest, Sha256};
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    format!("{} ^{bid}", text.trim_end())
     let h = Sha256::digest(format!("{now}{}", page.len()).as_bytes());
     let alphabet = b"abcdefghijklmnopqrstuvwxyz0123456789";
     h.iter().take(6).map(|b| alphabet[*b as usize % alphabet.len()] as char).collect()
 }
 
 /// The link to block `n` of a page (`wb block link ID N`; Copy link to block): `[[Title#^abc123]]`. The block gets its id at the end of
-/// its text the first time (an id it already has is reused); scripture, other fenced blocks, tables, dividers and column markers
-/// cannot carry one.
+/// its text the first time, or on a fenced block's opening line (an id it already has is reused); tables, dividers and column
+/// markers cannot carry one.
 pub fn block_link(bible: &Bible, store: &mut Store, id: &str, n: usize) -> Result<Value> {
     let (id, text, titled) = text_of(store, id)?;
     let (_, bs) = split(&text, titled);
@@ -1074,8 +1109,8 @@ pub fn block_link(bible: &Bible, store: &mut Store, id: &str, n: usize) -> Resul
     let c = chars(&text);
     let b = &bs[n];
     let body = sub(&c, b.start, b.end);
-    if ["fence", "divider", "table"].contains(&b.kind) || body.trim_start().starts_with("<!--") {
-        return Err(bad("A link to that kind of block is not offered yet: link to a paragraph, heading, list item or quote."));
+    if ["divider", "table"].contains(&b.kind) || body.trim_start().starts_with("<!--") {
+        return Err(bad("A link to that kind of block is not offered yet: link to a paragraph, heading, list item, quote, callout or a card (scripture, view, thread, word)."));
     }
     let title = nb::title_of(&text);
     let (bid, wrote) = match block_id_of(&body) {
@@ -1085,7 +1120,7 @@ pub fn block_link(bible: &Bible, store: &mut Store, id: &str, n: usize) -> Resul
             while text.contains(&format!("^{bid}")) {
                 bid = new_block_id(&format!("{id}{bid}"));
             }
-            let new = format!("{} ^{bid}", body.trim_end());
+            let new = with_block_id(&body, &bid);
             let (out, _, _) = set(&text, titled, n, 1, &new)?;
             written(bible, store, &id, &out, titled, n, 1)?;
             (bid, true)

@@ -2809,10 +2809,19 @@ fn a_block_link_writes_a_short_id_the_window_never_shows_and_the_link_finds_the_
     assert_eq!(wb.js(&["block", "link", &a, "1"])["block"], bid.as_str());
     wb.js(&["block", "dup", &a, "1"]);
     assert_eq!(wb.js(&["page", "blocks", &a])["blocks"][1].get("bid"), None);
-    // fenced blocks cannot carry one
+    // a fenced block carries it on its opening line, after its kind; the window's text has none and a rewrite of the card keeps it
     wb.js(&["block", "add", &a, "```scripture\nNum 25:11\n```"]);
-    let (code, _, _) = wb.run(&["block", "link", &a, "4"], None);
-    assert_ne!(code, 0);
+    let f = wb.js(&["block", "link", &a, "4"]);
+    let fid = f["block"].as_str().unwrap().to_string();
+    assert!(wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains(&format!("```scripture ^{fid}\nNum 25:11\n```")));
+    let fb = wb.js(&["page", "blocks", &a])["blocks"][3].clone();
+    assert_eq!(fb["text"], "```scripture\nNum 25:11\n```");
+    assert_eq!(fb["bid"], fid.as_str());
+    assert_eq!(fb["lang"], "scripture");
+    let (_, _, _) = wb.run(&["block", "set", &a, "4", "-"], Some("```scripture\nNum 25:12\n```"));
+    assert!(wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains(&format!("```scripture ^{fid}\nNum 25:12\n```")));
+    assert_eq!(wb.js(&["block", "link", &a, "4"])["block"], fid.as_str());
+    wb.js(&["block", "rm", &a, "4"]);
     // page B holds the link; the page's links name the block and its first words
     wb.js(&["block", "add", &b, &format!("See {link} now")]);
     let shown = wb.js(&["note", "show", &b]);

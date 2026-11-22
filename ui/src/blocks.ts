@@ -76,7 +76,7 @@ export const createBlockEditorState = (): BlockEditorState => ({
 
 interface BlockHistory {
   page: string;
-  undo: { token: string; n: number }[];
+  undo: { token: string; n: number; after?: () => Promise<void> }[];
   focus?: number;
   visual?: number;
   busy?: boolean;
@@ -102,6 +102,7 @@ async function undoRemoval(root: HTMLElement | null, data: Blocks, host: Host) {
   try {
     await wb(['block', 'undo', data.id, '-'], entry.token);
     history.undo.pop();
+    await entry.after?.();
     history.focus = entry.n;
     host.changed();
   } catch (x) { toast(String(x)); }
@@ -125,13 +126,13 @@ async function removeBlock(root: HTMLElement | null, data: Blocks, host: Host, n
 
 /** The Undo toast after a block change (trash T9): 10 seconds, in the same rail as a page's. "Deleted · Undo" for a deletion
  *  (notebook row 20), "Joined · Undo" for a Backspace that joined two blocks. A block is part of its page, so it never goes to the Trash. */
-function blockUndoToast(root: HTMLElement | null, data: Blocks, host: Host, said = 'Deleted') {
+function blockUndoToast(root: HTMLElement | null, data: Blocks, host: Host, said = 'Deleted', times = 1) {
   let rail = document.querySelector<HTMLElement>('.page-deletions');
   if (!rail) { rail = h('div', 'page-deletions'); rail.setAttribute('aria-label', 'Page deletion Undo'); document.body.append(rail); }
   rail.querySelectorAll('.block-deletion').forEach(x => x.remove());
   const row = h('div', 'page-deletion block-deletion');
   row.setAttribute('role', 'status');
-  const undo = button('btn small', 'Undo', () => { row.remove(); void undoRemoval(root, data, host); });
+  const undo = button('btn small', 'Undo', () => { row.remove(); void (async () => { for (let i = 0; i < times; i++) await undoRemoval(root, data, host); })(); });
   row.append(h('span', '', `${said} · `), undo);
   rail.append(row);
   setTimeout(() => row.remove(), 10000);
@@ -485,8 +486,8 @@ async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, 
   });
 }
 
-/** Can the block carry a link id (row 18)? Scripture and the other fenced blocks, tables, dividers and column markers cannot yet. */
-const linkable = (b: Blk) => !['fence', 'table', 'divider'].includes(b.kind) && !isMarker(b.text);
+/** Can the block carry a link id (row 18)? A fenced block carries it on its opening line; tables, dividers and column markers cannot yet. */
+const linkable = (b: Blk) => !['table', 'divider'].includes(b.kind) && !isMarker(b.text);
 
 /** Copy link to block (row 18): `wb block link` writes the block's short id at the end of its text the first time and gives
  *  `[[Page title#^abc123]]`, which goes to the clipboard; pasted in another page it is drawn as a chip. */
@@ -517,13 +518,20 @@ async function moveToMenu(data: Blocks, host: Host, grip: HTMLElement, runs: () 
       const todo = await runs();
       if (!todo.length) return;
       clearPick(root);
-      let gone = 0;
+      let gone = 0, moved = 0;
+      const history = root ? historyFor(root, data.id) : null;
       try {
         for (const [from, count] of todo) {
-          await wb(['block', 'move', data.id, String(from - gone), '--page', it.id, '--count', String(count)]);
+          // the move's undo token is this page's Undo; taking the blocks out of the other page again is its second half
+          const r = await wb(['block', 'move', data.id, String(from - gone), '--page', it.id, '--count', String(count)]);
+          if (history && r.undo) {
+            history.undo.push({ token: JSON.stringify(r.undo), n: from - gone, after: async () => { await wb(['block', 'rm', it.id, String(r.at), '--count', String(count)]); } });
+            moved++;
+          }
           gone += count;
         }
-        toast(`Moved ${total > 1 ? `${total} blocks` : 'the block'} to ${it.label}`);
+        if (root && moved) blockUndoToast(root, data, host, `Moved to ${it.label}`, moved);
+        else toast(`Moved ${total > 1 ? `${total} blocks` : 'the block'} to ${it.label}`);
       } catch (x) { toast(String(x)); }
       host.changed();
     })(); },
@@ -574,7 +582,7 @@ function openPickMenu(data: Blocks, host: Host, ns: number[], grip: HTMLElement)
   const items: MenuItem[] = [];
   if (bs.some(turnable)) items.push({ id: 'turn', label: 'Turn into', icon: 'T', hint: '▸', keywords: ['change', 'kind'] });
   if (bs.some(takesBackground)) items.push({ id: 'color', label: 'Color', icon: '◐', hint: '▸', keywords: ['background'] });
-  items.push({ id: 'move', label: 'Move to', icon: '↗', keywords: ['page', 'send'] });
+  items.push({ id: 'move', label: 'Move to', icon: '↗', hint: 'Ctrl+Shift+P', keywords: ['page', 'send'] });
   items.push({ id: 'del', label: 'Delete', icon: '✕', hint: 'Del', danger: true, keywords: ['remove'] });
   const keep = host.state.menuClose;
   const handle = openMenu({
@@ -588,6 +596,14 @@ function openPickMenu(data: Blocks, host: Host, ns: number[], grip: HTMLElement)
     onClose: () => { if (host.state.menuClose === handle.close) host.state.menuClose = keep ?? null; },
   });
   host.state.menuClose = handle.close;
+  // Ctrl+Shift+P: Move to, from the open menu too (as the grip's menu for one block)
+  handle.el.addEventListener('keydown', ev => {
+    if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'p') {
+      ev.preventDefault();
+      handle.close();
+      moveToMenu(data, host, grip, async () => runs.map(([a, z]) => [a, z - a + 1] as [number, number]), bs.length, el);
+    }
+  });
 }
 
 function turnPickedMenu(data: Blocks, host: Host, bs: Blk[], grip: HTMLElement) {
