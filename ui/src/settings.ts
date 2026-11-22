@@ -239,7 +239,7 @@ export function openSettings(section: string = '', at = '') {
 /** Each tab's icon and the groups the list is split into (as a settings panel: lines between groups). */
 const ICON_OF: Record<Section, string> = {
   Reading: 'book', Theme: 'eye', Notebook: 'notebook', Layouts: 'sidebar', Commands: 'prompt', Keys: 'lines',
-  'Study folder': 'folder', Documents: 'file', Updates: 'sliders', Guide: 'help', Manual: 'book',
+  'Study folder': 'folder', Documents: 'file', Updates: 'download', Guide: 'help', Manual: 'book',
 };
 const GROUPS: Section[][] = [['Reading', 'Theme'], ['Notebook', 'Layouts', 'Commands'], ['Study folder', 'Documents', 'Updates'], ['Guide', 'Keys', 'Manual']];
 

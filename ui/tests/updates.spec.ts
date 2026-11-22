@@ -455,3 +455,15 @@ test('after an update the section offers Go back to the version before, and not 
   await expect(page.locator('.set-pane .set-upd-after')).toBeVisible();
   await expect(page.getByRole('button', { name: /Go back/ })).toHaveCount(0);
 });
+
+// U-1: the notice sits on the rail's Settings gear, so Settings is drawn as a gear (0.3.0 still drew the sliders)
+test('Settings on the rail is a gear, not the sliders (U-1)', async ({ page }, info) => {
+  test.skip(info.project.name === 'webkit-phone', 'the rail is the desktop');
+  await serve(page, null);
+  await ready(page);
+  const d = await gear(page).locator('svg path').getAttribute('d');
+
+
+  expect(d).not.toBe('M2.5 5h7M12 5h1.5M2.5 11h1.5M7 11h6.5M10 3.5v3M5 9.5v3');
+  expect(d).toContain('a2.2 2.2');
+});

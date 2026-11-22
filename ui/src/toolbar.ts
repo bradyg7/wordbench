@@ -40,7 +40,7 @@ export const CATALOG: Item[] = [
   { id: 'documents', label: 'Documents', icon: 'file', group: 'Panes', sub: 'Word files and slides made from your study', run: () => void openDocuments(), more: true },
   { id: 'help', label: 'Help', icon: 'help', group: 'Panes', sub: 'The guide, the commands, the keys', run: () => void openHelp() },
   { id: 'keys', label: 'Keys', icon: 'lines', group: 'Panes', sub: 'Every key the window understands', run: () => bridge.openKeys() },
-  { id: 'settings', label: 'Settings', icon: 'sliders', group: 'Panes', sub: 'Reading, theme, notebook…', run: () => void openSettings() },
+  { id: 'settings', label: 'Settings', icon: 'gear', group: 'Panes', sub: 'Reading, theme, notebook…', run: () => void openSettings() },
   { id: 'version', label: 'KJV', icon: '', group: 'Reading controls', sub: 'KJV ↔ YLT in one click', run: () => void hooks.toggleVersion().then(toast) },
   { id: 'highlights', label: 'Highlights', icon: 'pen', group: 'Reading controls', sub: 'What is drawn in the reader', run: from => hooks.highlights(from), caret: true },
   { id: 'layout', label: 'Layout', icon: 'sidebar', group: 'Reading controls', sub: 'Open or save an arrangement of panes', run: from => void layoutMenu(from, s => void openSettings(s)), caret: true },

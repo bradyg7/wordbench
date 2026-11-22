@@ -40,7 +40,7 @@ const UNDER: Spot[] = [
 const MINIMIZED: Spot = { id: 'minimized', label: 'Minimized', ico: 'float', run: () => {} };
 const FOOT: Spot[] = [
   { id: 'help', label: 'Help', ico: 'help', run: () => void openHelp() },
-  { id: 'settings', label: 'Settings', ico: 'sliders', run: () => void openSettings() },
+  { id: 'settings', label: 'Settings', ico: 'gear', run: () => void openSettings() },
 ];
 
 let rail: HTMLElement | null = null;
