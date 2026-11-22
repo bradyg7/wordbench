@@ -3295,3 +3295,211 @@ fn plain_table_add_row_column() {
     assert!(text.contains("| Who | Acts | Promise |\n| --- | --- | --- |\n| Phinehas | rose up |  |\n| Moses |  |  |"), "{text}");
     assert_eq!(wb.js(&["page", "blocks", &p])["blocks"][0]["kind"], "table");
 }
+
+/// Make a page old: its `created` and `updated` lines (a test's scratch copy of the study, never the person's).
+fn age_page(wb: &Wb, id: &str, day: &str) {
+    let mut dirs = vec![wb.dir.join("notes")];
+    while let Some(d) = dirs.pop() {
+        for e in std::fs::read_dir(d).unwrap().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                dirs.push(p);
+            } else if let Ok(t) = std::fs::read_to_string(&p) {
+                if t.contains(&format!("id: \"{id}\"")) {
+                    let t = t.lines().map(|l| if l.starts_with("created:") { format!("created: \"{day}T10:00:00Z\"") } else if l.starts_with("updated:") { format!("updated: \"{day}T10:00:00Z\"") } else { l.to_string() }).collect::<Vec<_>>().join("\n");
+                    std::fs::write(&p, t + "\n").unwrap();
+                    return;
+                }
+            }
+        }
+    }
+    panic!("no page {id}");
+}
+
+#[test]
+fn filters_on_a_list_in_a_page() {
+    // filters-v2 rows 2, 5, 6, 7, 10, 11, 12, 17-22 (NB16): `wb block view --filter` puts a `filter:` line in the fence; values in one
+    // filter match any, every filter must match; is, is not, is not set, is set; Edited and Written are fixed choices; Folder, Book
+    // (and its chapter), Callout kind and a page's own properties; a folder or property that is gone is a chip that is ignored
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Phinehas"]);
+    wb.js(&["thread", "new", "Salt"]);
+    let index = wb.js(&["page", "new", "Word studies index"])["id"].as_str().unwrap().to_string();
+    let id = |t: &str| wb.js(&["page", "new", t])["id"].as_str().unwrap().to_string();
+    let (a, b, c) = (id("Zeal in Numbers"), id("Haste study"), id("Prayer list"));
+    wb.js(&["note", "thread", &a, "Phinehas"]);
+    wb.js(&["note", "thread", &b, "Salt"]);
+    wb.js(&["block", "add", &a, "See Num 25:11 for the verse."]);
+    wb.js(&["block", "add", &a, "> [!key] Hold on to this."]);
+    wb.js(&["block", "add", &b, "See Prov 1:1 and Num 24:1."]);
+    wb.js(&["block", "add", &b, "> [!question] Who waits?"]);
+    wb.js(&["page", "prop", &a, "Status", "Open"]);
+    wb.js(&["page", "prop", &b, "Status", "Done"]);
+    wb.js(&["page", "prop", &c, "Status", "Open"]);
+    wb.js(&["page", "prop", &a, "Speaker", "Moore, J."]);
+    age_page(&wb, &c, "2024-01-05");
+    wb.js(&["block", "add", &index, "```view\nnotebook kind note\n```"]);
+    let views = |wb: &Wb| wb.js(&["page", "views", &index])["blocks"][0].clone();
+    let titles = |v: &Value| -> Vec<String> { let mut t: Vec<String> = v["rows"].as_array().unwrap().iter().map(|r| r["title"].as_str().unwrap().to_string()).collect(); t.sort(); t };
+    let fence = |wb: &Wb| wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
+    assert_eq!(views(&wb)["total"].as_u64().unwrap(), 4);
+    assert_eq!(views(&wb)["filters"], json!([]));
+    // the Filter menu: Folder (the list spans folders), Edited, Written, Callout kind, Book, then its own properties
+    let menu: Vec<String> = views(&wb)["filter_menu"].as_array().unwrap().iter().map(|m| m["name"].as_str().unwrap().to_string()).collect();
+    assert_eq!(menu, ["Folder", "Edited", "Written", "Callout kind", "Book", "Speaker", "Status"]);
+    let status = views(&wb)["filter_menu"].as_array().unwrap().iter().find(|m| m["name"] == "Status").unwrap().clone();
+    assert_eq!(status["values"], json!([{"value": "Done", "label": "Done", "count": 1}, {"value": "Open", "label": "Open", "count": 2}]));
+    // row 2: one value; the fence has its line and nothing else changes
+    wb.js(&["block", "view", &index, "1", "--filter", "Status is Open"]);
+    assert!(fence(&wb).contains("```view\nnotebook kind note\nfilter: Status is Open\n```"), "{}", fence(&wb));
+    let v = views(&wb);
+    assert_eq!((v["count"].as_u64().unwrap(), v["total"].as_u64().unwrap()), (2, 4));
+    assert_eq!(titles(&v), ["Prayer list", "Zeal in Numbers"]);
+    assert_eq!(v["filters"][0]["text"], "Status is Open");
+    // row 6: a second filter must match too; several values in one match any
+    wb.js(&["block", "view", &index, "1", "--filter", "Folder is Phinehas, Salt"]);
+    assert_eq!(titles(&views(&wb)), ["Zeal in Numbers"]);
+    wb.js(&["block", "view", &index, "1", "--filter", "Status is Open, Done"]);
+    assert_eq!(titles(&views(&wb)), ["Haste study", "Zeal in Numbers"]);
+    // the same property again replaces its line
+    wb.js(&["block", "view", &index, "1", "--filter", "Status is Done"]);
+    assert_eq!(views(&wb)["filters"].as_array().unwrap().len(), 2);
+    assert_eq!(titles(&views(&wb)), ["Haste study"]);
+    // row 5 and 4: --unfilter one, then all
+    wb.js(&["block", "view", &index, "1", "--unfilter", "Folder"]);
+    assert_eq!(titles(&views(&wb)), ["Haste study"]);
+    wb.js(&["block", "view", &index, "1", "--unfilter", "all"]);
+    assert_eq!(views(&wb)["count"], 4);
+    assert!(fence(&wb).contains("```view\nnotebook kind note\n```"));
+    // the four ways
+    let count = |f: &str| {
+        wb.js(&["block", "view", &index, "1", "--unfilter", "all", "--filter", f]);
+        views(&wb)["count"].as_u64().unwrap()
+    };
+    assert_eq!(count("Status is not Open"), 2);
+    assert_eq!(count("Status is not set"), 1);
+    assert_eq!(count("Status is set"), 3);
+    // row 7: the dates are fixed choices; a typed date is refused
+    assert_eq!(count("Edited today"), 3);
+    assert_eq!(count("Written last year"), 3);
+    assert_eq!(count("Written last 30 days"), 3);
+    assert!(wb.fails(&["block", "view", &index, "1", "--filter", "Edited 2026-11-01"]).contains("last 7 days"));
+    // row 20: Book, and the chapter inside it
+    assert_eq!(count("Book is Numbers"), 2);
+    assert_eq!(count("Book is Numbers 25"), 1);
+    assert_eq!(count("Book is Proverbs"), 1);
+    // row 21: callout kind
+    assert_eq!(count("Callout kind is Key point"), 1);
+    assert_eq!(count("Callout kind is Question"), 1);
+    // row 22: an own property, a comma in a value kept
+    assert_eq!(count("Speaker is Moore\\, J."), 1);
+    assert!(fence(&wb).contains("filter: Speaker is Moore\\, J."));
+    // a property the list does not have is refused with the ones it has
+    let err = wb.fails(&["block", "view", &index, "1", "--filter", "Mood is Glad"]);
+    assert!(err.contains("no property called “Mood”") && err.contains("Status"), "{err}");
+    // row 12: a folder that is gone is a chip with the value gone, and the list ignores it
+    wb.js(&["block", "view", &index, "1", "--unfilter", "all", "--filter", "Folder is Salt"]);
+    wb.js(&["thread", "delete", "Salt"]);
+    let v = views(&wb);
+    assert_eq!(v["filters"][0]["gone"], true);
+    assert_eq!(v["filters"][0]["gone_values"], json!(["Salt"]));
+    assert_eq!(v["count"], 4);
+    assert!(fence(&wb).contains("filter: Folder is Salt"));
+    // row 11 and a filter laid over one answer (`wb page views --filter`) writes nothing
+    wb.js(&["block", "view", &index, "1", "--unfilter", "all", "--filter", "Status is Open"]);
+    let before = fence(&wb);
+    let v = wb.js(&["page", "views", &index, "--filter", "Callout kind is Key point"])["blocks"][0].clone();
+    assert_eq!((v["filters"].as_array().unwrap().len(), v["count"].as_u64().unwrap()), (2, 1));
+    assert_eq!(fence(&wb), before);
+    // the board keeps an empty column, with 0
+    wb.js(&["block", "view", &index, "1", "--view", "board", "--group", "Status", "--unfilter", "all", "--filter", "Status is Open"]);
+    let v = views(&wb);
+    let done = v["groups"].as_array().unwrap().iter().find(|g| g["label"] == "Done").unwrap().clone();
+    assert_eq!(done["count"], 0);
+}
+
+#[test]
+fn own_property_add_and_type() {
+    // filters-v2 rows 24 and 25 (NB16): a property has a kind (Text, Choice, Date YYYY-MM-DD, Yes/no true/false), kept as `type:` on the
+    // list's fence; a value is checked as its kind writes it
+    let Some(wb) = Wb::new() else { return };
+    let index = wb.js(&["page", "new", "Index"])["id"].as_str().unwrap().to_string();
+    let p = wb.js(&["page", "new", "Zeal"])["id"].as_str().unwrap().to_string();
+    wb.js(&["block", "add", &index, "```view\nnotebook kind note\n```"]);
+    wb.js(&["block", "view", &index, "1", "--columns", "Due, Done, Speaker", "--type", "Due date", "--type", "Done yesno", "--type", "Speaker choice"]);
+    let text = wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
+    assert!(text.contains("```view\nnotebook kind note\ncolumns: Due, Done, Speaker\ntype: Due date\ntype: Done yesno\ntype: Speaker choice\n```"), "{text}");
+    let v = wb.js(&["page", "views", &index])["blocks"][0].clone();
+    assert_eq!(v["types"], json!([{"name": "Due", "type": "date"}, {"name": "Done", "type": "yesno"}, {"name": "Speaker", "type": "choice"}]));
+    // typed values
+    assert_eq!(wb.js(&["page", "prop", &p, "Due", "2026-11-22", "--type", "date"])["props"]["Due"], "2026-11-22");
+    assert!(wb.fails(&["page", "prop", &p, "Due", "next week", "--type", "date"]).contains("YYYY-MM-DD"));
+    assert!(wb.fails(&["page", "prop", &p, "Due", "2026-13-40", "--type", "date"]).contains("YYYY-MM-DD"));
+    assert_eq!(wb.js(&["page", "prop", &p, "Done", "yes", "--type", "yesno"])["props"]["Done"], "true");
+    assert!(wb.fails(&["page", "prop", &p, "Done", "maybe", "--type", "yesno"]).contains("true or false"));
+    // the Filter menu offers Yes and No for a Yes/no property, and the typed property filters
+    let menu = wb.js(&["page", "views", &index])["blocks"][0]["filter_menu"].clone();
+    let done = menu.as_array().unwrap().iter().find(|m| m["name"] == "Done").unwrap().clone();
+    assert_eq!(done["type"], "yesno");
+    assert_eq!(done["values"], json!([{"value": "true", "label": "Yes", "count": 1}, {"value": "false", "label": "No", "count": 0}]));
+    wb.js(&["block", "view", &index, "1", "--filter", "Done is true"]);
+    assert_eq!(wb.js(&["page", "views", &index])["blocks"][0]["pages"], 1);
+    // a kind of text is the default and takes the line away; a bad kind is refused
+    wb.js(&["block", "view", &index, "1", "--type", "Done text"]);
+    let text = wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
+    assert!(!text.contains("type: Done"), "{text}");
+    assert!(wb.fails(&["block", "view", &index, "1", "--type", "Done number"]).contains("Text, Choice, Date or Yes/no"));
+}
+
+#[test]
+fn filters_on_the_librarys_lists() {
+    // filters-v2 rows 13, 14 and 15 (NB16): the Questions list, Ctrl+K's one search and an opened folder take the one filter form
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Phinehas"]);
+    wb.js(&["thread", "new", "Salt"]);
+    let id = |t: &str| wb.js(&["page", "new", t])["id"].as_str().unwrap().to_string();
+    let (a, b) = (id("Zeal in Numbers"), id("Haste study"));
+    wb.js(&["note", "thread", &a, "Phinehas"]);
+    wb.js(&["note", "thread", &b, "Salt"]);
+    wb.js(&["block", "add", &a, "See Num 25:11."]);
+    wb.js(&["block", "add", &a, "> [!question] What is zeal?"]);
+    wb.js(&["block", "add", &b, "See Prov 1:1."]);
+    wb.js(&["block", "add", &b, "> [!question] Who waits?"]);
+    wb.js(&["block", "add", &b, "> [!done] Who hurries?"]);
+    let texts = |v: &Value| -> Vec<String> { let mut t: Vec<String> = v["questions"].as_array().unwrap().iter().map(|q| q["first"].as_str().unwrap().to_string()).collect(); t.sort(); t };
+    // row 13: --folder, --book and --filter narrow the Questions list, and say how many there were
+    let all = wb.js(&["question", "list", "--kind", "all"]);
+    assert_eq!(texts(&all), ["What is zeal?", "Who hurries?", "Who waits?"]);
+    let v = wb.js(&["question", "list", "--kind", "all", "--folder", "Salt"]);
+    assert_eq!((texts(&v), v["total"].as_u64().unwrap()), (vec!["Who hurries?".to_string(), "Who waits?".to_string()], 3));
+    assert_eq!(texts(&wb.js(&["question", "list", "--kind", "all", "--book", "Numbers"])), ["What is zeal?"]);
+    assert_eq!(texts(&wb.js(&["question", "list", "--kind", "all", "--filter", "Book is Proverbs", "--filter", "Kind is Answered"])), ["Who hurries?"]);
+    assert_eq!(texts(&wb.js(&["question", "list", "--kind", "all", "--filter", "Folder is not Salt"])), ["What is zeal?"]);
+    assert!(wb.fails(&["question", "list", "--filter", "Mood is Glad"]).contains("Kind, Folder, Book, Edited, Written"));
+    // row 14: wb find takes the same words as its flags
+    let find = |args: &[&str]| -> Vec<String> {
+        let mut a = vec!["find", "--sort", "edited"];
+        a.extend(args);
+        let v = wb.js(&a);
+        let mut t: Vec<String> = v["groups"].as_array().unwrap().iter().flat_map(|g| g["results"].as_array().unwrap().iter().map(|r| format!("{}:{}", g["kind"].as_str().unwrap(), r["title"].as_str().unwrap_or(""))).collect::<Vec<_>>()).collect();
+        t.sort();
+        t
+    };
+    assert_eq!(find(&["--filter", "Kind is Pages", "--filter", "Folder is Salt"]), ["page:Haste study"]);
+    assert_eq!(find(&["--filter", "Kind is Pages", "--filter", "Edited today"]).len(), 2);
+    assert_eq!(find(&["--kind", "page", "--folder", "Salt"]), ["page:Haste study"]);
+    assert!(wb.fails(&["find", "--filter", "Book is Numbers"]).contains("Kind, Folder and Edited"));
+    assert!(wb.fails(&["find", "--filter", "Kind is not Pages"]).contains("with “is”"));
+    // row 15: an opened folder's saves by kind of save and book
+    for r in ["Num 25:11", "Num 25:12", "Prov 1:1", "H7065"] {
+        wb.js(&["thread", "add", "Salt", r]);
+    }
+    let v = wb.js(&["folder", "show", "Salt"]);
+    assert_eq!((v["count"].as_u64().unwrap(), v["total"].as_u64().unwrap()), (4, 4));
+    assert_eq!(v["kinds"], json!([{"value": "Verse", "count": 3}, {"value": "Word", "count": 1}]));
+    assert_eq!(v["books"], json!([{"value": "Numbers", "count": 2}, {"value": "Proverbs", "count": 1}]));
+    let v = wb.js(&["folder", "show", "Salt", "--kind", "Verse", "--book", "Numbers"]);
+    assert_eq!((v["count"].as_u64().unwrap(), v["total"].as_u64().unwrap()), (2, 4));
+    assert_eq!(wb.js(&["folder", "show", "Salt", "--filter", "Save is Word"])["count"], 1);
+    assert!(wb.fails(&["folder", "show", "Salt", "--filter", "Mood is Glad"]).contains("Save, Book"));
+}

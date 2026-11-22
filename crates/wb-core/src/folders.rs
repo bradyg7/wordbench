@@ -161,6 +161,60 @@ pub fn folder_view(bible: &Bible, store: &Store, name: &str) -> Result<Value> {
     Ok(v)
 }
 
+/// What a folder's saves can be narrowed by (filters-v2 row 15): the kind of save (Verse, Word, Page) and the book a verse is in.
+pub const SAVE_PROPERTIES: [&str; 2] = ["Save", "Book"];
+
+fn save_kind(i: &Value) -> &'static str {
+    let r = i["ref"].as_str().unwrap_or("");
+    if i["kind"] == "note" {
+        "Page"
+    } else if r.len() > 1 && r.as_bytes()[0].is_ascii_alphabetic() && matches!(r.as_bytes()[0], b'H' | b'G' | b'h' | b'g') && r[1..].chars().all(|c| c.is_ascii_digit()) {
+        "Word"
+    } else {
+        "Verse"
+    }
+}
+
+/// A folder opened with its saves narrowed (`wb folder show NAME --kind Verse --book Numbers`, or `--filter "Save is Verse"`): `items`
+/// keep what passes, `total` is how many there were, and `kinds` and `books` count the saves by kind and by book (from all of them), for the
+/// chips' pickers and the head's "18 of 120". A filter naming another property is refused with the ones a folder's saves have.
+pub fn folder_view_filtered(bible: &Bible, store: &Store, name: &str, filters: &[crate::filters::Filter]) -> Result<Value> {
+    use crate::filters::passes;
+    let mut v = folder_view(bible, store, name)?;
+    for f in filters {
+        if !SAVE_PROPERTIES.iter().any(|p| p.eq_ignore_ascii_case(&f.property)) {
+            return Err(crate::store::bad(format!("A folder's saves have no property called “{}”; they have {}.", f.property, SAVE_PROPERTIES.join(", "))));
+        }
+    }
+    let items: Vec<Value> = v["items"].as_array().cloned().unwrap_or_default();
+    let facts = |i: &Value| -> (Vec<String>, Vec<String>) {
+        let book = i["ref"].as_str().and_then(|r| crate::anchors::parse(r).ok()).filter(|a| a.kind != crate::anchors::Kind::Lemma).and_then(|a| bible.book(&a.code).ok().map(|b| b.name.clone()));
+        (vec![save_kind(i).to_string()], book.into_iter().collect())
+    };
+    let tally = |pick: &dyn Fn(&(Vec<String>, Vec<String>)) -> Vec<String>| -> Vec<Value> {
+        let mut m: std::collections::BTreeMap<String, usize> = Default::default();
+        for i in &items {
+            for k in pick(&facts(i)) {
+                *m.entry(k).or_insert(0) += 1;
+            }
+        }
+        m.into_iter().map(|(value, count)| json!({"value": value, "count": count})).collect()
+    };
+    v["kinds"] = json!(tally(&|f| f.0.clone()));
+    v["books"] = json!(tally(&|f| f.1.clone()));
+    v["total"] = json!(items.len());
+    let kept: Vec<Value> = items
+        .into_iter()
+        .filter(|i| {
+            let (k, b) = facts(i);
+            filters.iter().all(|f| passes(f, if f.property.eq_ignore_ascii_case("save") { &k } else { &b }))
+        })
+        .collect();
+    v["count"] = json!(kept.len());
+    v["items"] = json!(kept);
+    Ok(v)
+}
+
 /// The thread files as folders with their color, for `wb shelf` and the Library's FOLDERS, in name order. Each holds its
 /// places (`wb folder show` lists them) and one page, its note.
 pub fn thread_folders(store: &Store) -> Vec<Value> {

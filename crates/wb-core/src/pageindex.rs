@@ -70,7 +70,9 @@ fn compute(bible: &Bible, r: &Rec, kind: &str) -> Entry {
         }
     };
     let bounds = |c1: u32, v1: u32, c2: u32, v2: u32| ((c1, v1), (c2, if v2 == 0 { u32::MAX } else { v2 }));
-    for f in find_refs(&text, bible.books()) {
+    // a list's `filter: Book is Numbers 25` line names a book to choose by, not a verse the page is about
+    let prose: String = if text.contains("filter:") { text.lines().filter(|l| !l.trim_start().to_lowercase().starts_with("filter:")).collect::<Vec<_>>().join("\n") } else { text.clone() };
+    for f in find_refs(&prose, bible.books()) {
         if let Ok(sp) = crate::places::parse_span(&f.place, bible.books()) {
             let (lo, hi) = bounds(sp.c1, sp.v1, sp.c2, sp.v2);
             add(&sp.book.code, lo, hi, false);

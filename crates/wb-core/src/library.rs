@@ -268,14 +268,27 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     let has = |blob: &str| words.iter().all(|w| blob.to_lowercase().contains(w.as_str()));
     let cutoff = f.edited.map(|e| since(e, "--edited")).transpose()?;
     let want = |k: &str| f.kind.is_empty() || f.kind == k;
-    let in_folder: Option<Vec<(String, String)>> = match f.folder {
-        Some(name) => {
+    // a folder is a set folder or a thread file (a folder with a color); the thread's saves are its places, its pages those written on it
+    let thread_folder: Option<Rec> = f.folder.and_then(|name| {
+        let n = name.trim().to_lowercase();
+        store.threads().into_iter().find(|t| s(t, "name").to_lowercase() == n || s(t, "id") == n).cloned()
+    });
+    let in_folder: Option<Vec<(String, String)>> = match (f.folder, &thread_folder) {
+        (_, Some(t)) => {
+            let id = s(t, "id");
+            Some(store.notes().into_iter().chain(store.on_thread()).filter(|r| crate::store::threads_of(r).contains(&id)).map(|r| ("note".to_string(), s(r, "id"))).collect())
+        }
+        (Some(name), None) => {
             let t = store.find_set(name)?;
             Some(t["items"].as_array().cloned().unwrap_or_default().iter().map(|i| (s_of(i, "kind"), s_of(i, "ref"))).collect())
         }
-        None => None,
+        (None, None) => None,
     };
-    let folder_id = f.folder.map(|n| store.find_set(n).map(|t| s(&t, "id"))).transpose()?;
+    let folder_id = match (&thread_folder, f.folder) {
+        (Some(t), _) => Some(s(t, "id")),
+        (None, Some(n)) => Some(store.find_set(n).map(|t| s(&t, "id"))?),
+        (None, None) => None,
+    };
     let clock = std::time::Instant::now();
     let lap = |what: &str| { if std::env::var("WB_FIND_TIMES").is_ok() { eprintln!("find {what}: {:?}", clock.elapsed()); } };
     let mut groups = vec![];
@@ -352,6 +365,12 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
             let name = s(&t, "name");
             for i in t["items"].as_array().into_iter().flatten() {
                 take(&name, i);
+            }
+        }
+        if let Some(t) = &thread_folder {
+            let name = s(t, "name");
+            for m in t["members"].as_array().into_iter().flatten() {
+                take(&name, &json!({"key": m["anchor"], "kind": "place", "ref": m["anchor"]}));
             }
         }
         if in_folder.is_none() {

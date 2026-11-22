@@ -522,10 +522,50 @@ pub fn commands() -> Vec<Command> {
             }
             j(wb_core::deletion::remove(c.bible()?, &mut st, &id).map_err(e)?)
         }),
-        cmd("find", "Search your own notes, thread names and notes, and trails. With --kind, --folder, --has-question, --edited or --sort it is the library's one search: pages, folders, saves and questions grouped by kind, \"count\" of \"total\". --kind page|folder|save|question|key|note|margin|mark (key and note are the callouts that are not questions: Key points and Notes), --folder NAME, --has-question, --edited 7d|2026-11-01, --sort edited|title. --kind mark finds drawn marks (old highlights too), each with its words and reference, in Bible order: --style <legend entry | kind:color[:lines]>, --mark-kind highlight|underline|circle|box|arrow, --color C, --book B, --since/--until 7d|2026-11-01 (the day it was made); the words, if given, are looked for in a mark's words, reference and legend name.",
+        cmd("find", "Search your own notes, thread names and notes, and trails. With --kind, --folder, --has-question, --edited or --sort it is the library's one search: pages, folders, saves and questions grouped by kind, \"count\" of \"total\". --filter \"Kind is Questions\" / \"Folder is Salt\" / \"Edited last 7 days\" (repeatable) says the same in the one filter form of every list. --kind page|folder|save|question|key|note|margin|mark (key and note are the callouts that are not questions: Key points and Notes), --folder NAME, --has-question, --edited 7d|2026-11-01, --sort edited|title. --kind mark finds drawn marks (old highlights too), each with its words and reference, in Bible order: --style <legend entry | kind:color[:lines]>, --mark-kind highlight|underline|circle|box|arrow, --color C, --book B, --since/--until 7d|2026-11-01 (the day it was made); the words, if given, are looked for in a mark's words, reference and legend name.",
             vec![Pos("words", N::Any), Opt("kind", None), Opt("folder", None), Flag("has_question"), Opt("edited", None), Opt("sort", None),
-                Opt("style", None), Opt("mark_kind", None), Opt("color", None), Opt("book", None), Opt("since", None), Opt("until", None)], |c, a| {
-            let (kind, folder, edited, sort) = (a.opt("kind"), a.opt("folder"), a.opt("edited"), a.opt("sort"));
+                Opt("style", None), Opt("mark_kind", None), Opt("color", None), Opt("book", None), Opt("since", None), Opt("until", None), Append("filter")], |c, a| {
+            let (mut kind, mut folder, mut edited, sort) = (a.opt("kind"), a.opt("folder"), a.opt("edited"), a.opt("sort"));
+            // --filter \"Kind is Questions\" / \"Folder is Salt\" / \"Edited last 7 days\": Ctrl+K's chips, in the one filter form (filters-v2 row 14)
+            for text in a.list("filter") {
+                let f = wb_core::filters::parse(&text).map_err(e)?;
+                let one = |f: &wb_core::filters::Filter| -> Result<String, String> {
+                    if f.way != wb_core::filters::Way::Is || f.values.len() != 1 {
+                        return Err(format!("wb find takes one value with “is”: {} is VALUE.", f.property));
+                    }
+                    Ok(f.values[0].clone())
+                };
+                match f.property.to_lowercase().as_str() {
+                    "kind" => {
+                        let v = one(&f)?;
+                        let w = v.to_lowercase();
+                        let k = match w.trim_end_matches('s') {
+                            "page" => "page",
+                            "question" => "question",
+                            "key point" | "key" => "key",
+                            "note" => "note",
+                            "folder" => "folder",
+                            "save" => "save",
+                            "margin note" | "margin" => "margin",
+                            "highlight" => "highlight",
+                            "mark" => "mark",
+                            _ => return Err(format!("Kind is Pages, Questions, Key points, Notes, Folders, Saves, Margin notes, Highlights or Marks, not “{v}”.").into()),
+                        };
+                        kind = Some(k.to_string());
+                    }
+                    "folder" => folder = Some(one(&f)?),
+                    "edited" => {
+                        edited = Some(match f.values.first().map(String::as_str) {
+                            Some("today") => chrono::Local::now().format("%Y-%m-%d").to_string(),
+                            Some("last 7 days") => "7d".into(),
+                            Some("last 30 days") => "30d".into(),
+                            Some("last year") => "365d".into(),
+                            _ => return Err("Edited is today, last 7 days, last 30 days or last year.".into()),
+                        });
+                    }
+                    other => return Err(format!("wb find has no filter called “{other}”; it has Kind, Folder and Edited.").into()),
+                }
+            }
             let (style, mark_kind, color, book, since, until) = (a.opt("style"), a.opt("mark_kind"), a.opt("color"), a.opt("book"), a.opt("since"), a.opt("until"));
             if kind.is_some() || folder.is_some() || edited.is_some() || sort.is_some() || a.flag("has_question") || style.is_some() || mark_kind.is_some() || color.is_some() || book.is_some() || since.is_some() || until.is_some() {
                 let f = wb_core::library::Find { words: &a.s("words"), kind: kind.as_deref().unwrap_or(""), folder: folder.as_deref(), has_question: a.flag("has_question"),

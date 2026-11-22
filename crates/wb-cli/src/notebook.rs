@@ -2,7 +2,7 @@
 //! questions, and placing a note. And the capture box's language: what a line means (`wb parse`), the manual, and the
 //! references in a piece of text.
 
-use crate::args::{Flag, Opt, Pos, N};
+use crate::args::{Append, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Value};
 use wb_core::{commands as lang, findings as fd, history as hs, notebook as nb};
@@ -359,8 +359,8 @@ fn notebook_commands() -> Vec<Command> {
         cmd("questions", "Your questions: those in the Inbox and those at a place (trails), newest first.", vec![Opt("status", Some("open"))], |c, a| {
             j(nb::questions(c.bible()?, &*c.study()?, &a.opt_or("status", "open")).map_err(e)?)
         }),
-        cmd("question list", "Every question as one list: those at a place (trails), in the Inbox, and written in a page (/?, a callout block); --at a place: those on it and on any part of it (\"here\": on this very place); each says its form (trail or block). Answered ones with --status all or done.",
-            vec![Opt("status", Some("open")), Opt("at", None), Opt("kind", None)], |c, a| {
+        cmd("question list", "Every question as one list: those at a place (trails), in the Inbox, and written in a page (/?, a callout block); --folder NAME and --book BOOK (the Questions list's chips) and --filter \"Folder is Salt\" / \"Book is Numbers\" / \"Kind is Answered\" / \"Edited last 7 days\" (repeatable) narrow it, and say how many there were (`total`); --at a place: those on it and on any part of it (\"here\": on this very place); each says its form (trail or block). Answered ones with --status all or done.",
+            vec![Opt("status", Some("open")), Opt("at", None), Opt("kind", None), Opt("folder", None), Opt("book", None), Append("filter")], |c, a| {
                 // --kind question|answered is the Questions list's two kinds (open and done); it is --status by another name
                 let st = match a.opt("kind").as_deref().map(str::trim) {
                     Some(k) if k.eq_ignore_ascii_case("question") => "open".to_string(),
@@ -373,7 +373,16 @@ fn notebook_commands() -> Vec<Command> {
                     let at = crate::study::anchor(c, &at)?;
                     return j(wb_core::questions::at(c.bible()?, &*c.study()?, &at, &st).map_err(e)?);
                 }
-                j(wb_core::questions::list(c.bible()?, &*c.study()?, &st).map_err(e)?)
+                let filters = wb_core::pageviews::filters_of(&a.list("filter"), a.opt("folder").as_deref(), a.opt("book").as_deref()).map_err(e)?;
+                let mut v = wb_core::questions::list(c.bible()?, &*c.study()?, &st).map_err(e)?;
+                if !filters.is_empty() {
+                    let list = v["questions"].as_array().cloned().unwrap_or_default();
+                    let total = list.len();
+                    let kept = wb_core::pageviews::narrow_questions(c.bible()?, &*c.study()?, list, &filters).map_err(e)?;
+                    v["total"] = serde_json::json!(total);
+                    v["questions"] = serde_json::json!(kept);
+                }
+                j(v)
             }),
         cmd("callout list", "Every callout in the study, of any kind: wb callout list [--kind question|answered|key|note|all] [--page ID]. Each says its kind and name, its first line, how many more lines it has and whether a list is among them, and the page it is written in; counts gives how many of each kind. Question and Answered are the Questions list; Key points and Notes are found by Ctrl+K and by a List in a page grouped by callout kind.",
             vec![Opt("kind", None), Opt("page", None)], |c, a| {

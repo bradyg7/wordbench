@@ -35,10 +35,14 @@ pub fn commands() -> Vec<Command> {
                 let t = shelf::new_folder(&mut st, &a.s("name"), &parent).map_err(e)?;
                 j(sa::set_view(c.bible()?, &st, &t).map_err(e)?)
             }),
-        cmd("folder show", "A folder opened: its saves (a thread file's places, in the file's order) and its pages (a thread file's note is one page, thread:<slug>), with its color and eye. Writes nothing.",
-            vec![Pos("name", N::Many)], |c, a| {
+        cmd("folder show", "A folder opened: its saves (a thread file's places, in the file's order) and its pages (a thread file's note is one page, thread:<slug>), with its color and eye. --kind Verse|Word|Page and --book Numbers (or --filter \"Save is Verse\" / \"Book is Numbers\", repeatable) narrow the saves and say how many there were (`total`), with `kinds` and `books` counted. Writes nothing.",
+            vec![Pos("name", N::Many), Opt("kind", None), Opt("book", None), Append("filter")], |c, a| {
                 let name = fo::find_folder(&*c.study()?, &a.s("name")).map_err(e)?.key;
-                j(fo::folder_view(c.bible()?, &*c.study()?, &name).map_err(e)?)
+                let mut filters = wb_core::pageviews::filters_of(&a.list("filter"), None, a.opt("book").as_deref()).map_err(e)?;
+                if let Some(k) = a.opt("kind").filter(|k| !k.trim().is_empty()) {
+                    wb_core::filters::put(&mut filters, wb_core::filters::Filter { property: "Save".into(), way: wb_core::filters::Way::Is, values: vec![k.trim().to_string()] });
+                }
+                j(fo::folder_view_filtered(c.bible()?, &*c.study()?, &name, &filters).map_err(e)?)
             }),
         cmd("folder color", "Give a folder a color, or take it off: wb folder color Phinehas yellow  |  wb folder color Phinehas none. A color is a name (yellow, green, blue, pink, orange) or #rrggbb. A folder with a color is what a thread was: its saved places are underlined in the text while its eye is on.",
             vec![Pos("folder", N::One), Pos("color", N::One)], |c, a| j(fo::folder_color(&mut *c.study()?, &a.s("folder"), &a.s("color")).map_err(e)?)),

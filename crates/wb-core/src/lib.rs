@@ -15,6 +15,7 @@ pub mod concordance;
 pub mod dictionary;
 pub mod deletion;
 pub mod docs;
+pub mod filters;
 pub mod folders;
 pub mod library;
 pub mod lookup;
