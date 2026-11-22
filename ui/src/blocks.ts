@@ -1639,6 +1639,9 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
   if (dirty) touched();
 }
 
+const undoKeys = new WeakMap<HTMLElement, { data: Blocks; host: Host }>();
+const undoKeysInstalled = new WeakSet<HTMLElement>();
+
 /** After the page is drawn: start writing where Enter, Backspace or an arrow key asked. */
 export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Host | null, data: Blocks | null) {
   if (!data || !host) { state.pending = null; state.focus = null; blockHistory.delete(root); return; }
@@ -1650,13 +1653,20 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
   if (history.undo.length) {
     const undo = button('link-btn small nb-undo-block', 'Undo block change', () => void undoRemoval(root, data, host));
     wrap.prepend(undo);
-    wrap.onkeydown = ev => {
+  }
+  undoKeys.set(root, { data, host });
+  if (!undoKeysInstalled.has(root)) {
+    undoKeysInstalled.add(root);
+    // On the page root, once: a Ctrl+Z pressed before the page is drawn again (the Deleted toast is up first) is still the page's Undo
+    root.addEventListener('keydown', ev => {
       if ((!ev.ctrlKey && !ev.metaKey) || ev.shiftKey || ev.altKey || ev.key.toLowerCase() !== 'z') return;
       if ((ev.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
+      const cur = undoKeys.get(root);
+      if (!cur || !historyFor(root, cur.data.id).undo.length) return;
       ev.preventDefault();
       ev.stopPropagation();
-      void undoRemoval(root, data, host);
-    };
+      void undoRemoval(root, cur.data, cur.host);
+    });
   }
   if (host.state.pending && host.state.pending.id === data.id) {
     const p = host.state.pending;
