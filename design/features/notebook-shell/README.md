@@ -1,6 +1,6 @@
 # The Notebook's shell, like Notion
 
-**State:** exploring, round 1 (2026-11-22) · **Sheets:** `node design/features/notebook-shell/frames.mjs` writes
+**State:** accepted (the person, 2026-11-22, round 1: "i like it") · **Sheets:** `node design/features/notebook-shell/frames.mjs` writes
 `rows/<id>.png` and `rows/index.json` from `frames.html` · Nothing here is built. · **Review page:**
 `node design/review.mjs notebook-shell` writes `review.html`.
 
@@ -95,9 +95,10 @@ Rethink tabs and panes for the whole window: opened things are light attachments
 **A now, C next as its own folder (`panes`).** A gives the Notebook Notion's open-in-place feel and removes the
 New-page bug; C answers the person's findings on tabs for the whole window. B is not recommended.
 
-## Decisions
+## Decisions (the person, 2026-11-22)
 
-None yet (round 1).
+- **Round 1 accepted, direction A: open in place.** Asked to choose A, B or C, the person answered "i like it". A page opens in place; Ctrl+click opens one beside; no hidden tabs inside the Notebook. B is not built. C (attachments for the whole window) is its own folder, `panes`, later.
+- Open questions 2–4 take the frames' answers unless the person says otherwise: columns Name, Folder, Edited, Created; Today only in Recents; a trashed page opens read-only under the band.
 
 ## The person's findings that touch it (read only)
 
@@ -121,7 +122,7 @@ None yet (round 1).
 
 | Round | Date | Windows | What it tried | Review |
 |---|---|---|---|---|
-| 1 | 2026-11-22 | 1–40 | The shell like Notion: side list as a page tree, open in place, Trash as a popover, the list as a table, the old pane removed | pending |
+| 1 | 2026-11-22 | 1–40 | The shell like Notion: side list as a page tree, open in place, Trash as a popover, the list as a table, the old pane removed | Accepted, direction A, 2026-11-22 |
 
 ## The real conditions
 
