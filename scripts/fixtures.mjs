@@ -76,7 +76,7 @@ Names Numbers 25:11 here.`);
     // finding marks and margin notes, and what is on a verse (marks T12, rows 51 to 53)
     ['find', '--kind', 'mark'], ['find', '--kind', 'mark', '--style', 'underline:blue:2'], ['find', '--kind', 'mark', '--mark-kind', 'underline'],
     ['find', '--kind', 'mark', '--book', 'Numbers'], ['find', '--kind', 'mark', '--book', 'Psalms'], ['find', '--kind', 'mark', '--since', '2020-01-01'],
-    ['find', '--kind', 'mark', '--until', '2020-01-01'], ['find', '--kind', 'margin'], ['mark', 'at', 'NUM.25:11'], ['mark', 'notes', 'Numbers 25'], ['mark', 'at', 'NUM.25:13'],
+    ['find', '--kind', 'mark', '--until', '2020-01-01'], ['find', '--kind', 'margin'], ['mark', 'at', 'NUM.25:11'], ['marks', 'NUM 25'], ['mark', 'notes', 'Numbers 25'], ['mark', 'at', 'NUM.25:13'],
     // Colors across the Bible (marks T14, rows 57 and 58): the whole map, one style, one folder
     ['marks', 'map'], ['marks', 'map', '--style', 'underline:blue:2'], ['marks', 'map', '--style', 'highlight:yellow'], ['marks', 'map', '--folder', 'thread:fixture-thread'],
     ['legend'], ['settings', 'marks'], ['legend', 'uses', 'underline:blue:2'], ['legend', 'uses', 'box:#cc3322'], ['legend', 'uses', 'highlight:yellow'],

@@ -1,12 +1,19 @@
 // The selection bar (notebook design row 10, NB4): select words in a block being written and a bar appears above them with
-// Turn into ▾, B, I, U, S, Link and Color ▾ (row 25). Mark ▾ and Margin note on scripture text are NB8's (rows 11, 39, 40):
-// scripture in a page shows no bar until then. The bar shows on intent: when a
+// Turn into ▾, B, I, U, S, Link and Color ▾ (row 25). On the words of a scripture block (read-only, drawn word by word: pagescripture.ts)
+// the bar is Mark ▾ (the Legend's styles) and Margin note (NB8, rows 11, 39, 40). The bar shows on intent: when a
 // selection has been made (the pointer let go, or Shift with the arrows), not on every flicker of the selection while it is
 // dragged. Its menus are the one menu component (ui/src/menu.ts). Nothing is written until a button is used.
 import { applyColor, colorAt, setShape, shapeOf, toggleMark, type Writer } from './blockedit';
 import { COLORS, label, type ColorKind } from './palette';
 import { openMenu, type MenuGroup, type MenuItem } from './menu';
 import { toggleOf } from './toggles';
+import { addMarkEverywhere, anchorOf, pickedWords, type Picked } from './pagescripture';
+import { startMarginNote } from './pagemargin';
+import { wb, inApp } from './api';
+import { app } from './app';
+import { hlStyle } from './hlink';
+import { inkOf } from './markdraw';
+import { toast } from './sheets';
 
 let installed = false;
 let bar: HTMLElement | null = null;
@@ -73,6 +80,11 @@ function update() {
   const sel = getSelection();
   if (!sel || !sel.rangeCount || sel.isCollapsed || !sel.toString().trim()) return hide();
   const range = sel.getRangeAt(0);
+  const words = pickedWords(range);
+  if (words) {
+    if (bar && bar.isConnected && shown && sameRange(shown, range)) { place(bar, range); return; }
+    return showScripture(range, words);
+  }
   const t = targetOf(range);
   if (!t) return hide();
   // the same words already have their bar: leave it (a late selection event must not swap the bar under a press on it)
@@ -134,6 +146,63 @@ function show(range: Range, t: { ed: Writer }) {
   bar = el;
   shown = range.cloneRange();
   place(el, range);
+}
+
+/** The bar over words of scripture in a page: Mark ▾ and Margin note. */
+function showScripture(range: Range, words: Picked) {
+  hide();
+  const el = document.createElement('div');
+  el.className = 'nb-selbar nb-selbar-scripture';
+  el.setAttribute('role', 'toolbar');
+  el.setAttribute('aria-label', 'Mark the selection');
+  const markBtn = button('Mark ▾', 'Mark', () => void markMenu(markBtn, words), 'nb-sb-mark');
+  const noteBtn = button('Margin note', 'Margin note', () => {
+    const rect = range.getBoundingClientRect();
+    hide();
+    getSelection()?.removeAllRanges();
+    startMarginNote(words, rect);
+  }, 'nb-sb-note');
+  el.append(markBtn, noteBtn);
+  document.body.append(el);
+  bar = el;
+  shown = range.cloneRange();
+  place(el, range);
+}
+
+interface LegendEntry { kind: string; color: string; lines?: number; label: string; style: string }
+
+/** Mark ▾: the Legend's styles under the bar; a pick makes the mark on those words (`wb mark add <place> --style <entry>`), the reader's mark. */
+async function markMenu(anchor: HTMLElement, words: Picked) {
+  let entries: LegendEntry[] = [];
+  try { entries = ((await wb(['legend']))?.entries || []).filter((e: LegendEntry) => e.kind !== 'arrow'); } catch { /* no legend to choose from */ }
+  const swatch = (e: LegendEntry) => {
+    const ink = inkOf(e.color);
+    if (e.kind === 'highlight') return `${hlStyle(e.color).split(';')[0]};border-radius:4px;`;
+    if (e.kind === 'underline') return `border-bottom:${e.lines && e.lines > 1 ? 4 : 2}px ${e.lines && e.lines > 1 ? 'double' : 'solid'} ${ink};border-radius:0;`;
+    return `border:2px solid ${ink};border-radius:${e.kind === 'circle' ? '9999px' : '3px'};`;
+  };
+  const items: MenuItem[] = entries.map(e => ({
+    id: e.style, label: e.label, iconClass: 'nbc-mk', iconStyle: swatch(e), hint: e.kind === 'underline' && e.lines && e.lines > 1 ? `underline ×${e.lines}` : e.kind,
+    keywords: [e.kind, e.color, e.style],
+  }));
+  menuOpen = true;
+  const release = () => { menuOpen = false; holding = true; window.setTimeout(() => { holding = false; }, 400); };
+  openMenu({
+    groups: [{ title: 'Legend', items }], at: anchor, label: 'Mark', placeholder: 'Search the Legend',
+    onPick: it => {
+      release();
+      hide();
+      getSelection()?.removeAllRanges();
+      void (async () => {
+        try {
+          const made = await wb(['mark', 'add', anchorOf(words), '--style', it.id]);
+          addMarkEverywhere(made);
+          if (inApp) void app.refreshMarks();
+        } catch (x) { toast(String((x as Error)?.message ?? x)); }
+      })();
+    },
+    onClose: () => { if (menuOpen) release(); },
+  });
 }
 
 function place(el: HTMLElement, range: Range) {

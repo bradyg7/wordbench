@@ -203,8 +203,33 @@ fn runs(text: &str, words: &[Word], c: u32, v: u32, marks: &[Mark]) -> Vec<Value
         .collect()
 }
 
+/// A verse's text cut into its words and what lies between them (`parts`: [{t, i?}]): a word carries its index in the chapter
+/// (`i`, the number a mark's anchor uses: NUM.25:11.3), what lies between has none. The parts joined are the text exactly as
+/// given; a word that cannot be found in it is left in the part around it, with no index (as `runs` does).
+fn parts(text: &str, words: &[Word]) -> Vec<Value> {
+    let mut out: Vec<Value> = vec![];
+    let mut at = 0;
+    for w in words {
+        let full = format!("{}{}{}", w.lead, w.text, w.trail.trim_end());
+        let bare = format!("{}{}", w.lead, w.text);
+        let hit = [full.as_str(), bare.as_str()].into_iter().filter(|t| !t.is_empty()).find_map(|t| text[at..].find(t).map(|p| (at + p, at + p + t.len())));
+        if let Some((a, b)) = hit {
+            if a > at {
+                out.push(json!({"t": &text[at..a]}));
+            }
+            out.push(json!({"t": &text[a..b], "i": w.i}));
+            at = b;
+        }
+    }
+    if at < text.len() {
+        out.push(json!({"t": &text[at..]}));
+    }
+    out
+}
+
 /// Verses as a scripture block and the verse card draw them (`wb scripture`): the passage, each verse verbatim with its
-/// reference, and its text again as runs (`runs`: [{t, hl?}]) carrying the person's highlights. In a version other
+/// reference, its text again as runs (`runs`: [{t, hl?}]) carrying the person's highlights, and as `parts` (the words with
+/// their indexes, for drawing marks on them and for selecting words to mark). In a version other
 /// than the KJV, only highlights on whole verses show (`marks::verse_level`), as in the reader.
 pub fn marked(bible: &Bible, store: &Store, text: &str, version: &str) -> Result<Value> {
     let mut psg = passage(bible, text, version)?;
@@ -226,6 +251,10 @@ pub fn marked(bible: &Bible, store: &Store, text: &str, version: &str) -> Result
         let t = v["text"].as_str().unwrap_or("").to_string();
         v["code"] = json!(code);
         v["runs"] = json!(runs(&t, words, c, n, hls));
+        // another version has no KJV word positions: no parts, so no marks on words there (the reader says so too)
+        if ch.version.is_none() {
+            v["parts"] = json!(parts(&t, words));
+        }
     }
     Ok(psg)
 }

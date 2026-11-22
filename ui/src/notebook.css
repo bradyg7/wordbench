@@ -91,3 +91,18 @@
 .nb-block.drop-left::before, .nb-block.drop-right::after { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: var(--accent); pointer-events: none; }
 .nb-block.drop-left::before { left: calc(var(--nb-gut, 44px) - 6px); }
 .nb-block.drop-right::after { right: -6px; }
+
+/* Scripture in a page: Mark ▾ swatches, and the margin note card beside the words (rows 39, 40) */
+.wbm-icon.nbc-mk { display: inline-block; width: 16px; height: 12px; box-sizing: border-box; }
+.sv-words .w:hover { cursor: text; }
+.sv-words .sv-chap { position: relative; }
+.pm-card { position: fixed; z-index: 48; width: 280px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 18px var(--scrim); font-size: 13px; }
+.pm-card.moving { user-select: none; }
+.pm-head { display: flex; align-items: center; gap: 6px; padding: 5px 6px 4px 8px; color: var(--muted); font-size: 12px; }
+.pm-grip { cursor: grab; touch-action: none; user-select: none; line-height: 1; padding: 2px 2px; }
+.pm-card.moving .pm-grip { cursor: grabbing; }
+.pm-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-close { border: 0; background: none; color: inherit; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.pm-body { padding: 0 10px 10px; }
+.pm-text { margin: 0; line-height: 1.5; cursor: text; white-space: pre-wrap; }
+.pm-edit { display: block; width: 100%; box-sizing: border-box; min-height: 56px; resize: vertical; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; background: var(--bg); color: inherit; font: inherit; }

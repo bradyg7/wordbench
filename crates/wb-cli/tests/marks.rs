@@ -859,3 +859,35 @@ fn marks_map_with_a_style_or_a_folder_counts_each_chapter_and_the_empty_ones_are
     w.ok(&["marks", "map"]);
     assert_eq!(w.snapshot(), before);
 }
+
+/// Notebook row 11, 39 (NB8): a mark made from words in a page is the reader's mark. The page's scripture block gives each verse's text as
+/// `parts` (the words with their indexes); a mark on the words of two of them is kept where the reader reads it (`wb marks`), and the
+/// block draws it from the chapter's marks.
+#[test]
+fn mark_from_a_page_is_the_reader_s_mark() {
+    let Some(wb) = Wb::new() else { return };
+    let id = wb.page("Words\n\n```scripture\nNum 25:11\n```\n");
+    let blocks = wb.js(&["page", "scripture", &id]);
+    let verse = &blocks["blocks"][0]["verses"][0];
+    let parts = verse["parts"].as_array().unwrap();
+    // the parts joined are the verse's text; the words carry their indexes
+    let joined: String = parts.iter().map(|p| p["t"].as_str().unwrap()).collect();
+    assert_eq!(joined, verse["text"].as_str().unwrap());
+    let words: Vec<&Value> = parts.iter().filter(|p| p.get("i").is_some()).collect();
+    assert!(words.len() > 5);
+    let (a, b) = (words[3]["i"].as_u64().unwrap(), words[5]["i"].as_u64().unwrap());
+    let at = format!("NUM.25:11.{a}-25:11.{b}");
+    let style = wb.js(&["legend", "add", "--kind", "highlight", "--color", "green", "--name", "Zeal"]);
+    assert_eq!(style["name"], "Zeal");
+    let made = wb.js(&["mark", "add", &at, "--style", "Zeal"]);
+    assert_eq!(made["kind"], "highlight");
+    // the reader's list has it, on those words
+    let reader = wb.js(&["marks", "Num 25"]);
+    assert!(reader["marks"].as_array().unwrap().iter().any(|m| m["id"] == made["id"] && m["at"] == at.as_str()), "{reader}");
+    // the words it covers are the parts from a to b (the page draws the mark on them from the chapter's marks, as the reader does)
+    let covered: Vec<u64> = words.iter().map(|w| w["i"].as_u64().unwrap()).filter(|i| (a..=b).contains(i)).collect();
+    assert_eq!(covered, (a..=b).collect::<Vec<_>>());
+    // a version without KJV word positions gives no parts
+    wb.js(&["block", "scripture", &id, "2", "--ylt"]);
+    assert!(wb.js(&["page", "scripture", &id])["blocks"][0]["verses"][0].get("parts").is_none());
+}

@@ -77,7 +77,7 @@ function marginStyle(c: Computed, v: number): string {
 const marginTitle = (c: Computed, v: number) => (c.margin.get(v) || []).map(t => c.names[t.id] || '').join(', ');
 
 // The marks the layers let through: no highlights when they are hidden, and only the threads shown.
-function compute(keys: number[], m: Marks, ch: number): Computed {
+export function compute(keys: number[], m: Marks, ch: number): Computed {
   const off = m.hidden || [];
   // Reading mode shows only the text: no mark and no folder tab. A kind or an entry switched off hides its marks only.
   return computeMarks(keys, m, ch, id => layers.all && !panel.reading && !off.includes(id),

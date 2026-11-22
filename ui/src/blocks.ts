@@ -10,6 +10,7 @@ import { app, here } from './app';
 import { toast } from './sheets';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
 import { drawVerses, openSplit, verseCard, type MarkedVerse } from './verses';
+import { chapterMarks, drawWords, hasWords, type PageVerse } from './pagescripture';
 import { threadChooser } from './panes';
 import { openMenu, type MenuGroup, type MenuItem } from './menu';
 import { atMenu } from './atmenu';
@@ -294,6 +295,7 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
     const t = ev.target as HTMLElement;
     if (t.closest('a, input, button, textarea, label, select, .nb-structured-editor, .nb-block-input')) return;
     if (ev.shiftKey) return;      // Shift+click picks blocks (blockpick.ts)
+    { const sel = getSelection(); if (sel && !sel.isCollapsed && body.contains(sel.anchorNode) && sel.toString().trim()) return; }   // words selected (scripture's bar): not a click to edit
     editBlock(data, b, el, host);
   };
   el.append(plus, grip, body);
@@ -957,12 +959,18 @@ function scriptureBlock(b: Blk, id: string, host: Host): HTMLElement {
   const text = h('div', 'sv-body muted small', ref ? 'Reading the verses…' : 'No reference yet. Choose Edit card to enter one.');
   box.append(head, text);
   if (ref && host.state.scripture?.id === id) {
-    void host.state.scripture.got.then(d => {
+    void host.state.scripture.got.then(async d => {
       const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
       if (!mine) return;
       if (mine.error) { text.textContent = mine.error; return; }
       label.textContent = mine.label;
-      text.replaceWith(drawVerses(mine.verses as MarkedVerse[], !!mine.lines, (v, el, e) => void verseCard(v.ref, el, e as MouseEvent)));
+      const onVerse = (v: MarkedVerse, el: HTMLElement, e: MouseEvent | KeyboardEvent) => void verseCard(v.ref, el, e as MouseEvent);
+      const verses = mine.verses as PageVerse[];
+      // KJV words are drawn one by one with the reader's marks on them (rows 39, 40: Mark ▾ and Margin note select from them); another version, as it was
+      if (hasWords(verses)) {
+        const marks = await chapterMarks(verses);
+        if (text.isConnected) text.replaceWith(drawWords(verses, !!mine.lines, marks, onVerse));
+      } else text.replaceWith(drawVerses(verses, !!mine.lines, onVerse));
     }).catch(x => { text.textContent = String(x); });
   }
   return box;
