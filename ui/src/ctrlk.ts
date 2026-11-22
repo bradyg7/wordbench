@@ -9,6 +9,7 @@ import { openNote } from './notebook';
 import { openShelf } from './panes';
 import { toast } from './sheets';
 import { h } from './ui';
+import { chipRow, chipWords, parseFilterText, type Chip, type FilterProp } from './chips';
 
 type Row = Record<string, any>;
 const TITLES: Record<string, string> = { folder: 'Folders', page: 'Pages', question: 'Questions', key: 'Key points', note: 'Notes', save: 'Saves', margin: 'Margin notes', highlight: 'Highlights' };
@@ -30,6 +31,10 @@ export function openQuickSearch(): MenuHandle {
   const rows = new Map<string, Row>();
   let groups: MenuGroup[] = [];
   let ticket = 0;
+  // + Filter under the search field (filters-v2 row 14): Kind and Folder chips narrow the one search; window state only
+  let chips: Chip[] = [];
+  let folderValues: { value: string }[] = [];
+  const kinds = ['Pages', 'Questions', 'Key points', 'Notes', 'Folders'].map(value => ({ value }));
 
   const itemOf = (kind: string, r: Row): MenuItem => {
     const id = `${kind}:${r.id ?? r.ref ?? r.title}`;
@@ -54,7 +59,7 @@ export function openQuickSearch(): MenuHandle {
   };
   const search = async (q: string): Promise<MenuGroup[]> => {
     try {
-      const r = await wb(['find', q, '--sort', 'edited']);
+      const r = await wb(['find', ...(q ? [q] : []), '--sort', 'edited', ...chips.flatMap(c => ['--filter', chipWords(c)])]);
       const by = new Map<string, Row[]>((r.groups as Row[]).map(g => [g.kind as string, g.results as Row[]]));
       const out: MenuGroup[] = [];
       for (const k of [...ORDER, ...[...by.keys()].filter(k => !ORDER.includes(k))]) {
@@ -67,7 +72,7 @@ export function openQuickSearch(): MenuHandle {
 
   const reload = async (handle: MenuHandle | null, q: string) => {
     const mine = ++ticket;
-    const got = q.trim() ? await search(q.trim()) : await recents();
+    const got = q.trim() || chips.length ? await search(q.trim()) : await recents();
     if (mine !== ticket) return;
     groups = got;
     handle?.refresh();
@@ -121,6 +126,26 @@ export function openQuickSearch(): MenuHandle {
     onPick: it => void open(it),
   });
   const input = handle.el.querySelector<HTMLInputElement>('.wbm-input')!;
+  const chipBox = h('div', 'wbm-chips');
+  input.after(chipBox);
+  const drawChips = () => {
+    const props: FilterProp[] = [{ name: 'Kind', hint: 'Pages, Questions, Key points, Notes or Folders', type: 'choice', values: kinds }, { name: 'Folder', hint: 'The folder a page is in', type: 'choice', values: folderValues }];
+    const redo = () => { drawChips(); void reload(handle, input.value); setTimeout(() => { if (!document.querySelector('.wbm[data-nested]')) input.focus(); }, 0); };
+    chipBox.replaceChildren(chipRow({
+      props, chips, nested: true,
+      apply: text => { const c = parseFilterText(text); if (!c) return; chips = [...chips.filter(x => x.property !== c.property), c]; redo(); },
+      remove: property => { chips = chips.filter(x => x.property !== property); redo(); },
+      clear: () => { chips = []; redo(); },
+    }, { addLabel: '+ Filter' }));
+  };
+  drawChips();
+  void wb(['thread', 'list']).then((l: any[]) => { folderValues = l.map(t => ({ value: t.name })); drawChips(); }).catch(() => {});
+  // Esc clears the words first, then closes
+  const esc = (ev: KeyboardEvent) => {
+    if (!handle.open) { document.removeEventListener('keydown', esc, true); return; }
+    if (ev.key === 'Escape' && input.value && !document.querySelector('.wbm[data-nested]')) { ev.preventDefault(); ev.stopPropagation(); input.value = ''; input.focus(); void reload(handle, ''); }
+  };
+  document.addEventListener('keydown', esc, true);
   let t = 0;
   input.addEventListener('input', () => { clearTimeout(t); t = window.setTimeout(() => void reload(handle, input.value), 120); });
   void reload(handle, '');

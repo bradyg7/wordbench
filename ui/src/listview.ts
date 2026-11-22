@@ -8,9 +8,11 @@ import { wb } from './api';
 import { toast } from './sheets';
 import { button, h, icon } from './ui';
 import { openMenu, type MenuGroup } from './menu';
+import { chipRow, openFilterMenu, type Chip, type ChipHost, type FilterProp } from './chips';
 import type { Blk, Host } from './blocks';
 
 const VIEWS: [string, string, string][] = [['table', 'Table', '▦'], ['list', 'List', '☰'], ['gallery', 'Gallery', '▣'], ['board', 'Board', '◫']];
+const PROP_TYPES: [string, string, string][] = [['text', 'Text', 'Any words'], ['choice', 'Choice', 'One of the values already used'], ['date', 'Date', 'A day, YYYY-MM-DD'], ['yesno', 'Yes/no', 'A tick: true or false']];
 const SORTS: [string, string][] = [['edited', 'Edited'], ['created', 'Created'], ['title', 'Title']];
 
 /** The groups folded by the person, while the window is open (a heading is named by its page, block and key). */
@@ -48,10 +50,27 @@ function dot(color: string | null | undefined): HTMLElement {
   return d;
 }
 
+/** What is typed in a list's Search this list, kept while the window is open (never written): by page and block. */
+const searches = new Map<string, string>();
+
+/** A row's words, for Search this list. */
+const hay = (r: any) => [r.title, r.preview, r.first, r.text, r.page_title, r.folder?.name, ...Object.values(r.props || {})].filter(Boolean).join(' ').toLowerCase();
+
+/** The rows and groups of a list that Search this list keeps (a Board's empty columns stay, with 0). */
+function narrow(mine: any, q: string): { rows: any[]; groups: any[] | null } {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const keep = (r: any) => words.every(w => hay(r).includes(w));
+  const rows: any[] = (mine.rows || []).filter(keep);
+  if (!words.length) return { rows: mine.rows || [], groups: mine.groups || null };
+  const groups = mine.groups ? (mine.groups as any[]).map(g => { const rs = g.rows.filter(keep); return { ...g, rows: rs, count: rs.length }; }) : null;
+  return { rows, groups };
+}
+
 export function listBlock(b: Blk, id: string, host: Host, editLine: () => void): HTMLElement {
   const o = viewOptions(b.text);
   const view = VIEWS.some(v => v[0] === o.view) ? o.view : 'table';
   const group = o.group || (view === 'board' ? 'folder' : '');
+  const key = `${id}:${b.n}`;
   const box = h('div', 'nb-view nb-listview');
   box.dataset.view = view;
   const head = h('div', 'nbv-head nbv-listhead');
@@ -60,22 +79,39 @@ export function listBlock(b: Blk, id: string, host: Host, editLine: () => void):
   viewBtn.setAttribute('aria-label', 'View');
   viewBtn.append(h('span', 'nbv-viewglyph', VIEWS.find(v => v[0] === view)![2]), h('span', '', VIEWS.find(v => v[0] === view)![1]), h('span', 'nbv-chev', '▾'));
   const summary = h('span', 'nbv-summary muted small', o.line ? 'Finding the pages…' : '');
-  const filters = h('button', 'nbv-filters') as HTMLButtonElement;
-  filters.type = 'button';
-  filters.title = 'What this list shows: its line of the command language';
-  filters.append(icon('filter', 14), document.createTextNode('Filters'));
-  filters.onclick = ev => { ev.stopPropagation(); editLine(); };
-  head.append(viewBtn, summary, h('span', 'grow'), filters);
+  // Search this list: the magnifier opens a field; its words narrow the list with the chips and are not kept in the page
+  const searchBtn = h('button', 'nbv-searchbtn') as HTMLButtonElement;
+  searchBtn.type = 'button';
+  searchBtn.setAttribute('aria-label', 'Search this list');
+  searchBtn.title = 'Search this list';
+  searchBtn.append(icon('search', 14));
+  const searchBox = h('input', 'field small nbv-search') as HTMLInputElement;
+  searchBox.type = 'search';
+  searchBox.placeholder = 'Search this list';
+  searchBox.setAttribute('aria-label', 'Search this list');
+  searchBox.value = searches.get(key) ?? '';
+  searchBox.hidden = !searchBox.value;
+  const filterBtn = h('button', 'nbv-filters') as HTMLButtonElement;
+  filterBtn.type = 'button';
+  filterBtn.setAttribute('aria-haspopup', 'dialog');
+  filterBtn.title = 'Narrow this list by a folder, a date, a book, a callout kind or a property';
+  head.append(viewBtn, summary, h('span', 'grow'), searchBox, searchBtn, filterBtn);
+  const chipBox = h('div', 'nbv-chipbox');
   const body = h('div', 'nbv-body');
-  if (!o.line) body.append(h('p', 'muted small nbv-note', 'No line yet: click Filters and write one, like notebook thread phinehas.'));
+  if (!o.line) body.append(h('p', 'muted small nbv-note', 'No line yet: edit the block and write one, like notebook thread phinehas.'));
   else body.append(h('p', 'muted small nbv-note', 'Finding the pages…'));
-  box.append(head, body);
+  box.append(head, chipBox, body);
 
   const write = async (args: string[], what?: string) => {
     try { await wb(['block', 'view', id, String(b.n), ...args]); host.changed(); }
     catch (x) { toast(what ? `${what}: ${x}` : String(x)); }
   };
   let known: string[] = o.columns;
+  let chips: ChipHost = { props: [], chips: [], apply: () => {}, remove: () => {}, clear: () => {} };
+  const labelFilter = () => { filterBtn.replaceChildren(icon('filter', 14), document.createTextNode(chips.chips.length ? `Filter · ${chips.chips.length}` : 'Filter')); };
+  labelFilter();
+  filterBtn.onclick = ev => { ev.stopPropagation(); if (!host.locked && o.line) openFilterMenu(chips, filterBtn); };
+  searchBtn.onclick = ev => { ev.stopPropagation(); searchBox.hidden = false; searchBox.focus(); };
   viewBtn.onclick = ev => {
     ev.stopPropagation();
     if (host.locked) return;
@@ -121,38 +157,73 @@ export function listBlock(b: Blk, id: string, host: Host, editLine: () => void):
     void host.state.views.got.then(d => {
       const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
       if (!mine) return;
-      body.replaceChildren();
-      if (mine.error) { body.append(h('p', `small nbv-note${mine.blank ? ' muted' : ' nbv-error'}`, mine.error)); return; }
+      chipBox.replaceChildren();
+      if (mine.error) { body.replaceChildren(h('p', `small nbv-note${mine.blank ? ' muted' : ' nbv-error'}`, mine.error)); return; }
       const shown: string[] = o.columns.length ? o.columns : (mine.properties || []);
       known = mine.properties || o.columns;
-      const rows: any[] = mine.rows || [];
-      summary.replaceChildren();
-      if (mine.folder && mine.rows_are !== 'callouts') summary.append(dot(mine.folder.color), document.createTextNode(`Folder: ${mine.folder.name} · ${rows.length} page${rows.length === 1 ? '' : 's'}`));
-      else summary.textContent = `${mine.rows_are === 'callouts' ? 'Callouts' : 'Pages'} · ${rows.length} found`;
-      const ctx: Ctx = { id, n: b.n, host, view, group: mine.group || group, shown, mine, write };
-      const groups: any[] | null = mine.groups || null;
-      if (view === 'board') body.append(board(groups || [{ key: '', label: 'Pages', color: null, count: rows.length, rows }], ctx));
-      else if (!groups) body.append(plain(rows, ctx));
-      else for (const g of groups) body.append(section(g, ctx));
-      if (!rows.length && !groups) body.append(h('p', 'muted small nbv-note', 'Nothing found yet. It fills as you write.'));
-      if (mine.folder && !host.locked) {
-        const add = h('button', 'nbv-new') as HTMLButtonElement;
-        add.type = 'button';
-        add.append(icon('plus', 14), document.createTextNode('New page'));
-        add.onclick = async ev => {
-          ev.stopPropagation();
-          add.disabled = true;
-          try { await wb(['page', 'new', 'Untitled', '--parent', `thread:${mine.folder.id}`]); host.changed(); }
-          catch (x) { toast(String(x)); add.disabled = false; }
-        };
-        body.append(add);
-      }
+      const types: Record<string, string> = {};
+      for (const t of mine.types || []) types[String(t.name).toLowerCase()] = t.type;
+      const filtered = (mine.filters || []).length > 0;
+      chips = {
+        props: (mine.filter_menu || []) as FilterProp[],
+        chips: (mine.filters || []) as Chip[],
+        apply: text => write(['--filter', text]),
+        remove: property => write(['--unfilter', property]),
+        clear: () => write(['--unfilter', 'all']),
+      };
+      labelFilter();
+      if (filtered) chipBox.append(chipRow(chips));
+      const draw = () => {
+        const q = searchBox.value.trim();
+        const { rows, groups } = narrow(mine, q);
+        const total = Number(mine.total ?? (mine.rows || []).length);
+        const narrowed = filtered || !!q;
+        const of = narrowed ? ` of ${total}` : '';
+        const count = mine.rows_are === 'callouts' ? rows.length : narrowed ? rows.length : rows.length;
+        const nPages = mine.rows_are === 'callouts' ? Number(mine.pages ?? total) : q ? rows.length : Number(mine.pages ?? rows.length);
+        summary.replaceChildren();
+        if (mine.folder && mine.rows_are !== 'callouts') summary.append(dot(mine.folder.color), document.createTextNode(`Folder: ${mine.folder.name} · ${nPages}${of} page${nPages === 1 && !narrowed ? '' : 's'}`));
+        else summary.textContent = `${mine.rows_are === 'callouts' ? 'Callouts' : 'Pages'} · ${mine.rows_are === 'callouts' ? count : nPages}${mine.rows_are === 'callouts' ? '' : of} found`;
+        body.replaceChildren();
+        const ctx: Ctx = { id, n: b.n, host, view, group: mine.group || group, shown, mine, write, types, known };
+        if (narrowed && !(mine.rows_are === 'callouts' ? rows.length : (view === 'board' ? rows.length : rows.length))) {
+          const none = h('div', 'nbv-nomatch');
+          none.append(h('p', 'nbv-note', filtered ? 'No pages match these filters.' : 'No pages match this search.'));
+          if (filtered) none.append(button('nbv-clearfilters', 'Clear filters', ev => { ev.stopPropagation(); void chips.clear(); }));
+          body.append(none);
+          if (view === 'board') body.append(board(groups || [], ctx));
+          return;
+        }
+        if (view === 'board') body.append(board(groups || [{ key: '', label: 'Pages', color: null, count: rows.length, rows }], ctx));
+        else if (!groups) body.append(plain(rows, ctx));
+        else for (const g of groups) body.append(section(g, ctx));
+        if (!rows.length && !groups && !narrowed) body.append(h('p', 'muted small nbv-note', 'Nothing found yet. It fills as you write.'));
+        if (mine.folder && !host.locked) {
+          const add = h('button', 'nbv-new') as HTMLButtonElement;
+          add.type = 'button';
+          add.append(icon('plus', 14), document.createTextNode('New page'));
+          add.onclick = async ev => {
+            ev.stopPropagation();
+            add.disabled = true;
+            try { await wb(['page', 'new', 'Untitled', '--parent', `thread:${mine.folder.id}`]); host.changed(); }
+            catch (x) { toast(String(x)); add.disabled = false; }
+          };
+          body.append(add);
+        }
+      };
+      searchBox.oninput = () => { searches.set(key, searchBox.value); draw(); };
+      searchBox.onkeydown = ev => {
+        ev.stopPropagation();
+        if (ev.key === 'Escape') { ev.preventDefault(); searchBox.value = ''; searches.delete(key); searchBox.hidden = true; draw(); searchBtn.focus(); }
+      };
+      body.replaceChildren();
+      draw();
     }).catch(x => { body.replaceChildren(h('p', 'small nbv-note nbv-error', String(x))); });
   }
   return box;
 }
 
-interface Ctx { id: string; n: number; host: Host; view: string; group: string; shown: string[]; mine: any; write: (args: string[], what?: string) => Promise<void> }
+interface Ctx { id: string; n: number; host: Host; view: string; group: string; shown: string[]; mine: any; write: (args: string[], what?: string) => Promise<void>; types: Record<string, string>; known: string[] }
 
 /** One row's title as a button that opens the page (or, for a callout, the page it is written in). */
 function titleBtn(r: any, ctx: Ctx, cls = 'nbv-title'): HTMLElement {
@@ -225,7 +296,14 @@ function tableOf(rows: any[], ctx: Ctx): HTMLElement {
         done = true;
         const name = input.value.trim();
         if (!name) { plus.replaceChildren(add); return; }
-        void ctx.write(['--columns', [...ctx.shown, name].join(', ')], 'Not added');
+        // pick its kind: Text, Choice, Date or Yes/no (filters-v2 row 24); the name is kept in the list's columns and its kind in `type:`
+        let picked = false;
+        openMenu({
+          groups: [{ title: `${name} is`, items: PROP_TYPES.map(([k, label, hint]) => ({ id: `t:${k}`, label, description: hint })) }],
+          label: 'Property kind', placeholder: 'Kind of property', at: plus,
+          onPick: it => { picked = true; const k = it.id.slice(2); void ctx.write(['--columns', [...ctx.shown, name].join(', '), '--type', `${name} ${k}`], 'Not added'); },
+          onClose: () => { if (!picked) plus.replaceChildren(add); },
+        });
       };
     };
     plus.append(add);
@@ -243,15 +321,30 @@ function tableOf(rows: any[], ctx: Ctx): HTMLElement {
     row.append(first);
     for (const c of ctx.shown) {
       const cell = h('td');
-      const input = h('input', 'nbv-cell') as HTMLInputElement;
-      input.value = r.props?.[c] ?? '';
+      const kind = ctx.types[c.toLowerCase()] || 'text';
+      const input = h('input', kind === 'yesno' ? 'nbv-check' : 'nbv-cell') as HTMLInputElement;
+      const was = r.props?.[c] ?? '';
+      if (kind === 'yesno') { input.type = 'checkbox'; input.checked = was === 'true'; input.disabled = !!ctx.host.locked; }
+      else if (kind === 'date') { input.type = 'date'; input.value = was; input.readOnly = !!ctx.host.locked; }
+      else {
+        input.value = was;
+        input.readOnly = !!ctx.host.locked;
+        if (kind === 'choice') {
+          const own = (ctx.mine.filter_menu || []).find((m: any) => m.group === 'own' && String(m.name).toLowerCase() === c.toLowerCase());
+          const list = h('datalist') as HTMLDataListElement;
+          list.id = `nbv-ch-${ctx.id}-${ctx.n}-${c}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+          for (const v of own?.values || []) { const op = h('option') as HTMLOptionElement; op.value = v.value; list.append(op); }
+          input.setAttribute('list', list.id);
+          cell.append(list);
+        }
+      }
       input.setAttribute('aria-label', `${c} of ${r.title}`);
-      input.readOnly = !!ctx.host.locked;
       input.onclick = ev => ev.stopPropagation();
-      input.onkeydown = ev => { ev.stopPropagation(); if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); } else if (ev.key === 'Escape') { input.value = r.props?.[c] ?? ''; input.blur(); } };
+      input.onkeydown = ev => { ev.stopPropagation(); if (kind === 'yesno') return; if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); } else if (ev.key === 'Escape') { input.value = was; input.blur(); } };
       input.onchange = async () => {
-        try { await wb(['page', 'prop', r.id, c, ...(input.value.trim() ? [input.value.trim()] : ['--remove'])]); ctx.host.changed(); }
-        catch (x) { toast(String(x)); input.value = r.props?.[c] ?? ''; }
+        const value = kind === 'yesno' ? (input.checked ? 'true' : 'false') : input.value.trim();
+        try { await wb(['page', 'prop', r.id, c, ...(value ? [value] : ['--remove']), ...(kind === 'text' ? [] : ['--type', kind])]); ctx.host.changed(); }
+        catch (x) { toast(String(x)); if (kind === 'yesno') input.checked = was === 'true'; else input.value = was; }
       };
       cell.append(input);
       row.append(cell);

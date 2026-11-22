@@ -99,7 +99,10 @@ async function wbRaw(argv: string[], input?: string): Promise<any> {
     return r.data.json !== undefined ? r.data.json : r.data.text;
   }
   // what a write was given on standard input rides in a header, so a test can see what the window wrote (the fixture server ignores it)
-  const r = await fetch(`fixtures/wb/${wbFixtureName(argv)}.json`, input === undefined ? undefined : { headers: { 'x-wb-input': encodeURIComponent(input) } });
+  // the exact words ride in a header too (the file name is lowercased and cut), so a test can read what the window asked
+  const headers: Record<string, string> = { 'x-wb-argv': encodeURIComponent(JSON.stringify(argv)) };
+  if (input !== undefined) headers['x-wb-input'] = encodeURIComponent(input);
+  const r = await fetch(`fixtures/wb/${wbFixtureName(argv)}.json`, { headers });
   if (!r.ok) throw new Error(`Not in the app: wb ${argv.join(' ')}`);
   return r.json();
 }

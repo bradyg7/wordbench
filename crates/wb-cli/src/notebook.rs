@@ -375,6 +375,7 @@ fn notebook_commands() -> Vec<Command> {
                 }
                 let filters = wb_core::pageviews::filters_of(&a.list("filter"), a.opt("folder").as_deref(), a.opt("book").as_deref()).map_err(e)?;
                 let mut v = wb_core::questions::list(c.bible()?, &*c.study()?, &st).map_err(e)?;
+                v["filter_menu"] = serde_json::json!(wb_core::pageviews::question_menu(c.bible()?, &*c.study()?, &v["questions"].as_array().cloned().unwrap_or_default()));
                 if !filters.is_empty() {
                     let list = v["questions"].as_array().cloned().unwrap_or_default();
                     let total = list.len();

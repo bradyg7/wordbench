@@ -38,3 +38,25 @@
   .wbm.wbm-sheet .wbm-list { max-height: none; flex: 1; min-height: 0; }
   .wbm.wbm-split.wbm-sheet { height: 72vh; }
 }
+/* The Done button at the foot of a filter picker (filters-v2): on a phone it is the way out of the sheet. */
+.wbm-done { margin: 6px 8px 8px; padding: 8px 14px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: var(--on-accent, #fff); font: inherit; cursor: pointer; }
+@media (max-width: 520px) {
+  .wbm.wbm-sheet .wbm-row { min-height: 44px; }
+  .wbm-done { min-height: 44px; }
+}
+.wbm-chips { padding: 0 10px; border-bottom: 1px solid var(--line); }
+.wbm-split .wbm-chips { grid-column: 1; grid-row: 1; }
+.wbm.wbm-split { grid-template-rows: auto auto 1fr auto; }
+.wbm-split .wbm-chips { grid-row: 2; }
+.wbm-split .wbm-list { grid-row: 3; }
+.wbm-split .wbm-foot { grid-row: 4; }
+.wbm-split .wbm-done { grid-column: 1; grid-row: 5; }
+.wbm-preview { grid-row: 1 / 5; }
+/* Page ⋯ › Properties (filters-v2 row 25) */
+.wb-props { width: 320px; padding-bottom: 4px; }
+.wb-props-body { padding: 4px 8px; display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+.wb-props-row { display: flex; align-items: center; gap: 6px; }
+.wb-props-name { width: 90px; flex: none; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.wb-props-row input { flex: 1; min-width: 0; }
+.wb-props-x, .wb-props-addbtn { border: 0; background: none; color: var(--muted); cursor: pointer; font: inherit; }
+.wb-props-add input { width: 40%; flex: none; }

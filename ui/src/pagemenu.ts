@@ -154,6 +154,7 @@ export function openPageMenu(m: PageMenu) {
   const view: MenuItem[] = [
     { id: 'history', label: 'Page history', icon: '◷', keywords: ['versions', 'earlier'] },
     { id: 'appearance', label: 'Appearance', icon: 'T', hint: '▸', keywords: ['font', 'serif', 'small text', 'full width', 'table of contents', 'toc'] },
+    { id: 'properties', label: 'Properties', icon: '≡', keywords: ['property', 'status', 'column', 'fields'] },
     { id: 'lock', label: m.look.locked ? 'Unlock page' : 'Lock page', icon: '🔒', keywords: ['read-only', 'protect', 'unlock'] },
   ];
   const danger: MenuItem[] = [{ id: 'trash', label: 'Move to Trash', icon: '✕', danger: true, keywords: ['delete', 'remove'] }];
@@ -170,9 +171,73 @@ export function openPageMenu(m: PageMenu) {
       if (it.id === 'move') return m.moveTo();
       if (it.id === 'history') return toast('Earlier versions of a page are not kept yet; Undo gives back what was deleted');
       if (it.id === 'appearance') return void openAppearance(m);
+      if (it.id === 'properties') return void openProperties(m);
       if (it.id === 'lock') return void change(m, ['lock', m.look.locked ? 'off' : 'on']).then(() => toast(m.look.locked ? 'Page locked' : 'Page unlocked'), x => toast(String(x)));
       if (it.id === 'trash') return m.trash();
     },
   });
   return handle;
+}
+
+/** Page ⋯ › Properties (filters-v2 row 25): the page's properties as name and value lines, editable, with + Add property; the same
+ *  values a List in a page shows as columns, kept in the page's `props:` line (`wb page prop`). */
+async function openProperties(m: PageMenu) {
+  document.querySelector('.wb-props')?.remove();
+  const box = h('div', 'wbm wb-props');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', 'Properties');
+  const body = h('div', 'wb-props-body');
+  box.append(h('div', 'wbm-group', 'Properties'), body);
+  const close = () => { box.remove(); document.removeEventListener('pointerdown', outside, true); };
+  const outside = (e: Event) => { if (!box.contains(e.target as Node)) close(); };
+  const done = h('button', 'wbm-done', 'Done') as HTMLButtonElement;
+  done.type = 'button';
+  done.onclick = close;
+  box.append(done);
+  box.onkeydown = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+  const draw = async () => {
+    let props: Record<string, string> = {};
+    try { props = (await wb(['page', 'prop', m.id])).props || {}; } catch (x) { toast(String(x)); }
+    body.replaceChildren();
+    const save = async (name: string, value: string) => {
+      try { await wb(['page', 'prop', m.id, name, ...(value.trim() ? [value.trim()] : ['--remove'])]); } catch (x) { toast(String(x)); }
+      void draw();
+    };
+    for (const [name, value] of Object.entries(props)) {
+      const row = h('div', 'wb-props-row');
+      const input = h('input', 'field small') as HTMLInputElement;
+      input.value = String(value);
+      input.setAttribute('aria-label', `${name} value`);
+      input.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') input.blur(); };
+      input.onchange = () => void save(name, input.value);
+      const x = h('button', 'wb-props-x', '×') as HTMLButtonElement;
+      x.type = 'button';
+      x.setAttribute('aria-label', `Remove ${name}`);
+      x.onclick = () => void save(name, '');
+      row.append(h('span', 'wb-props-name', name), input, x);
+      body.append(row);
+    }
+    if (!Object.keys(props).length) body.append(h('p', 'muted small wb-props-none', 'No properties yet.'));
+    const add = h('div', 'wb-props-row wb-props-add');
+    const n = h('input', 'field small') as HTMLInputElement;
+    n.placeholder = 'Property name';
+    n.setAttribute('aria-label', 'Property name');
+    const v = h('input', 'field small') as HTMLInputElement;
+    v.placeholder = 'Value';
+    v.setAttribute('aria-label', 'Property value');
+    const go = h('button', 'wb-props-addbtn', '+ Add property') as HTMLButtonElement;
+    go.type = 'button';
+    const put = () => { if (n.value.trim()) void save(n.value.trim(), v.value || ' '); };
+    go.onclick = put;
+    for (const i of [n, v]) i.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') put(); };
+    add.append(n, v, go);
+    body.append(add);
+  };
+  await draw();
+  document.body.append(box);
+  const at = m.at instanceof HTMLElement ? m.at.getBoundingClientRect() : { left: (m.at as { x: number }).x, bottom: (m.at as { y: number }).y };
+  box.style.left = `${Math.max(8, Math.min(at.left, window.innerWidth - 328))}px`;
+  box.style.top = `${Math.max(8, at.bottom + 4)}px`;
+  setTimeout(() => document.addEventListener('pointerdown', outside, true), 0);
+  box.querySelector<HTMLInputElement>('input')?.focus();
 }

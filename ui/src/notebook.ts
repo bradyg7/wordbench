@@ -30,6 +30,7 @@ import { threadDocuments } from './documents';
 import type { Change, Pane } from './dock';
 import { toast } from './sheets';
 import { pageStep } from './trail';
+import { chipRow, chipWords, parseFilterText, type Chip, type FilterProp } from './chips';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
 import { opens, placeOpen, verseCard, type Where } from './verses';
 import { makeFromPage, pageDocuments } from './pagedocs';
@@ -480,6 +481,10 @@ function createNotebookSession(fixed?: PageTab) {
 
   let kind = '';
   let questionKind: '' | 'question' | 'answered' = '';
+  /** The Questions list's filter chips (filters-v2 row 13): window state for the tab, never written. */
+  let questionChips: Chip[] = [];
+  /** The chips on an opened folder's saves, by folder (filters-v2 row 15). */
+  const folderChips = new Map<string, Chip[]>();
   async function drawList(): Promise<HTMLElement[]> {
     const head = listHead(false);
     if (kind) return [head, await kindResults(kind, search, { openPage: id => void openNote(id) })];
@@ -942,8 +947,16 @@ function createNotebookSession(fixed?: PageTab) {
     }
     // row 46b: the Questions list filters by kind, Question or Answered (`wb question list --kind`); All is the whole list
     let questions: Row[] = s.questions;
-    if (questionKind) {
-      try { questions = (await wb(['question', 'list', '--kind', questionKind])).questions as Row[]; } catch { questions = []; }
+    let questionMenu: FilterProp[] = [];
+    if (questionKind || questionChips.length) {
+      try {
+        const r = await wb(['question', 'list', '--kind', questionKind || 'all', ...questionChips.flatMap(c => ['--filter', chipWords(c)])]);
+        questions = r.questions as Row[];
+        questionMenu = (r.filter_menu || []) as FilterProp[];
+      } catch { questions = []; }
+    }
+    if (!questionKind && !questionChips.length) {
+      try { questionMenu = ((await wb(['question', 'list', '--kind', questionKind || 'all'])).filter_menu || []) as FilterProp[]; } catch { questionMenu = []; }
     }
     side.append(sideHead('questions', 'Questions', questions.length, true));
     if (!isShut('questions', true)) {
@@ -957,6 +970,14 @@ function createNotebookSession(fixed?: PageTab) {
         chips.append(c);
       }
       side.append(chips);
+      // Add filter beside All, Question and Answered: the one chip component, for the life of the tab
+      const redo = () => void pane?.refresh?.();
+      side.append(chipRow({
+        props: questionMenu, chips: questionChips,
+        apply: text => { const c = parseFilterText(text); if (!c) return; questionChips = [...questionChips.filter(x => x.property !== c.property), c]; redo(); },
+        remove: property => { questionChips = questionChips.filter(x => x.property !== property); redo(); },
+        clear: () => { questionChips = []; redo(); },
+      }));
     }
     if (!isShut('questions', true)) for (const q of questions) {
       // a callout of several lines shows its first line, and says what follows it (row 46b): "2 more lines, a list"
@@ -2878,9 +2899,30 @@ ${l}` : ''}`;
       try { await wb(['thread', 'add', slug, here().anchor]); toast(`${here().label} added`); changed('threads'); } catch (x) { toast(String(x)); }
     }));
     box.append(head);
+    // Add filter (filters-v2 row 15): a kind of save and a book narrow the saves; window state for the tab, never written
+    const saveKind = (m: any) => (/^[HG]\d+$/i.test(m.anchor) ? 'Word' : 'Verse');
+    const saveBook = (m: any) => (/^[HG]\d+$/i.test(m.anchor) ? '' : String(m.label || '').replace(/\s+\d.*$/, ''));
+    const tally = (pick: (m: any) => string) => { const c = new Map<string, number>(); for (const m of members) { const v = pick(m); if (v) c.set(v, (c.get(v) || 0) + 1); } return [...c].map(([value, count]) => ({ value, label: value, count })); };
+    const mine = folderChips.get(slug) || [];
+    const passes = (m: any) => mine.every(c => {
+      const have = c.property === 'Save' ? saveKind(m) : saveBook(m);
+      const hit = c.values.some(v => v.toLowerCase() === have.toLowerCase());
+      return c.way === 'is not' ? !hit : hit;
+    });
+    if (members.length > 6 || mine.length) {
+      box.append(chipRow({
+        props: [{ name: 'Save', hint: 'The kind of save: a verse or a word', type: 'choice', values: tally(saveKind) }, { name: 'Book', hint: 'The book a verse is in', type: 'choice', values: tally(saveBook) }],
+        chips: mine,
+        apply: text => { const c = parseFilterText(text); if (!c) return; folderChips.set(slug, [...mine.filter(x => x.property !== c.property), c]); changed('threads'); },
+        remove: property => { folderChips.set(slug, mine.filter(x => x.property !== property)); changed('threads'); },
+        clear: () => { folderChips.delete(slug); changed('threads'); },
+      }));
+      if (mine.length) head.querySelector('.label')!.textContent = `Places · ${members.filter(passes).length} of ${members.length}`;
+    }
     if (!members.length) box.append(h('p', 'muted small', `No places yet: + Place adds the place you are at, or type +${e.title} in the command field.`));
     const list = h('div', 'members');
     members.forEach((m: any, k: number) => {
+      if (!passes(m)) return;
       const card = h('div', `member${m.ok === false ? ' off' : ''}`);
       card.draggable = true;
       card.dataset.k = String(k);

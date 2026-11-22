@@ -240,3 +240,36 @@
 .nb-table-addcol { position: absolute; top: 0; right: 0; width: 26px; height: 30px; border: 0; background: none; color: var(--muted); cursor: pointer; }
 .nb-table-addcol:hover, .nb-table-addrow:hover { color: var(--accent); }
 .nb-table-addrow { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--muted); font: var(--type-small); padding: 6px 2px; cursor: pointer; }
+
+/* Filter chips (filters-v2, NB16): the one component everywhere a list is narrowed. A chip is a button with a border and a fill, ▾ to open its
+   picker and a separate ×; they wrap onto more lines, never squeezed or scrolled. */
+.wb-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 0 8px; }
+.wb-chip { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); overflow: hidden; max-width: 100%; }
+.wb-chip.gone { border-style: dashed; color: var(--muted); }
+.wb-chip-main { display: inline-flex; align-items: center; gap: 6px; padding: 5px 4px 5px 10px; border: 0; background: none; color: var(--fg); font: var(--type-small); cursor: pointer; min-width: 0; }
+.wb-chip-main:hover, .wb-chip-x:hover { background: var(--accent-soft); }
+.wb-chip-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-chip-caret { color: var(--muted); font-size: 11px; }
+.wb-chip-gone { color: var(--muted); font-style: italic; }
+.wb-chip-x { border: 0; border-left: 1px solid var(--line); background: none; color: var(--muted); padding: 0 10px; font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }
+.wb-chip-add, .wb-chip-clear { padding: 5px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: var(--type-small); cursor: pointer; }
+.wb-chip-clear { border-color: transparent; background: none; color: var(--muted); }
+.wb-chip-add:hover, .wb-chip-clear:hover { background: var(--accent-soft); }
+.wb-chip-main:focus-visible, .wb-chip-x:focus-visible, .wb-chip-add:focus-visible, .wb-chip-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (max-width: 520px) {
+  .wb-chips { gap: 10px; }
+  .wb-chip, .wb-chip-add, .wb-chip-clear { min-height: 44px; }
+  .wb-chip-add, .wb-chip-clear { padding: 0 16px; }
+  .wb-chip-main { padding: 0 6px 0 14px; }
+  .wb-chip-x { padding: 0 16px; min-width: 44px; }
+  .wb-chip { flex: 1 1 auto; }
+  .wb-chip-text { white-space: normal; }
+}
+.nbv-search { width: 180px; }
+.nbv-searchbtn { border: 0; background: none; color: var(--muted); padding: 4px 6px; cursor: pointer; border-radius: 6px; }
+.nbv-searchbtn:hover { background: var(--accent-soft); color: var(--fg); }
+.nbv-nomatch { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 0; }
+.nbv-clearfilters { padding: 5px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: var(--type-small); cursor: pointer; }
+.nbv-check { width: 18px; height: 18px; }
+.nbv-chipbox:empty { display: none; }
+@media (max-width: 520px) { .nbv-filters { min-height: 44px; } .nbv-listhead { flex-wrap: wrap; } .nbv-search { width: 100%; order: 9; } }

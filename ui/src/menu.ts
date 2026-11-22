@@ -3,7 +3,7 @@
 // ↑ ↓ move the highlight, Enter picks, Esc or a click outside closes and focus returns to where it was.
 // The menu is fixed-position, so opening it never moves anything on the page.
 
-export type MenuItem = { id: string; label: string; icon?: string; iconClass?: string; iconData?: Record<string, string>; /** inline style of the icon (a swatch's color) */ iconStyle?: string; hint?: string; /** a small round color after the icon (a folder's color) */ dot?: string; /** a second, quieter line under the label (the / menu's Callout: its kinds) */ description?: string; keywords?: string[]; /** drawn in the warning color (Delete) */ danger?: boolean };
+export type MenuItem = { id: string; label: string; icon?: string; iconClass?: string; iconData?: Record<string, string>; /** inline style of the icon (a swatch's color) */ iconStyle?: string; hint?: string; /** a small round color after the icon (a folder's color) */ dot?: string; /** a second, quieter line under the label (the / menu's Callout: its kinds) */ description?: string; keywords?: string[]; /** drawn in the warning color (Delete) */ danger?: boolean; /** a pick that leaves the menu open (a checklist: the owner draws the rows again with `refresh`) */ stay?: boolean };
 // `folded`: with nothing typed the group is one row (its title and what is in it); Enter or a click opens it. Typing finds its rows.
 export type MenuGroup = { title?: string; items: MenuItem[]; folded?: boolean };
 export type MenuOptions = {
@@ -22,6 +22,10 @@ export type MenuOptions = {
   preview?: (item: MenuItem | null, into: HTMLElement) => void;
   onPick: (item: MenuItem) => void;
   onClose?: () => void;
+  /** A Done button at the foot (the filter pickers): it closes the menu; on a phone it is the way out of the sheet. */
+  done?: string;
+  /** Opens over another menu without closing it (Ctrl+K's filter pickers). */
+  nested?: boolean;
 };
 export type MenuHandle = { el: HTMLElement; close: () => void; setQuery: (q: string) => void; /** Draw the rows again for what is typed (the rows' source changed). */ refresh: () => void; readonly open: boolean };
 
@@ -40,10 +44,11 @@ export function filterGroups(groups: MenuGroup[], query: string): MenuGroup[] {
 let current: MenuHandle | null = null;
 
 export function openMenu(opts: MenuOptions): MenuHandle {
-  current?.close();
+  if (!opts.nested) current?.close();
   const returnTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const el = document.createElement('div');
   el.className = 'wbm';
+  if (opts.nested) el.dataset.nested = '1';
   el.setAttribute('role', 'dialog');
   el.setAttribute('aria-label', opts.label ?? 'Menu');
   const input = document.createElement('input');
@@ -61,6 +66,15 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   foot.textContent = opts.foot ?? '↑↓ to move · Enter to pick · Esc to close';
   if (opts.foot) foot.style.whiteSpace = 'pre-line';
   el.append(input, list, foot);
+  if (opts.done) {
+    const done = document.createElement('button');
+    done.type = 'button';
+    done.className = 'wbm-done';
+    done.textContent = opts.done;
+    done.addEventListener('mousedown', (e) => e.preventDefault());
+    done.addEventListener('click', () => close());
+    el.append(done);
+  }
   let pv: HTMLElement | null = null;
   let shownId: string | null | undefined;
   if (opts.preview) {
@@ -167,7 +181,7 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   };
 
   const outside = (e: Event) => {
-    if (el.contains(e.target as Node)) return;
+    if (el.contains(e.target as Node) || (e.target as Element).closest?.('.wbm[data-nested]')) return;
     close(false);
     // The click's own focus change comes after this handler: when it lands on nothing focusable, focus goes back.
     setTimeout(() => { if (!document.activeElement || document.activeElement === document.body) returnTo?.focus({ preventScroll: true }); }, 0);
@@ -183,6 +197,7 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   }
   const pick = (item: MenuItem) => {
     if (item.id.startsWith('fold:')) { opened.add(item.id.slice(5)); render(); place(); hi = starts.get(item.id.slice(5)) ?? 0; mark(); return; }
+    if (item.stay) { opts.onPick(item); return; }
     close();
     opts.onPick(item);
   };
@@ -210,6 +225,6 @@ export function openMenu(opts: MenuOptions): MenuHandle {
     refresh: () => { const keep = hi; shownId = undefined; render(); place(); hi = Math.min(keep, Math.max(0, rows.length - 1)); mark(); },
     get open() { return isOpen; },
   };
-  current = handle;
+  if (!opts.nested) current = handle;
   return handle;
 }

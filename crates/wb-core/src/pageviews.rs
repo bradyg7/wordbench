@@ -844,25 +844,50 @@ pub fn narrow_questions(bible: &Bible, store: &Store, list: Vec<Value>, filters:
     }
     let lens = Lens::new(bible, store);
     let none: Vec<String> = vec![];
-    Ok(list
-        .into_iter()
-        .filter(|e| {
-            let page = e["page"].as_str().unwrap_or("");
-            let mut folders: Vec<String> = e["threads"].as_array().into_iter().flatten().filter_map(|t| t["name"].as_str()).map(String::from).collect();
-            if !page.is_empty() {
-                folders.extend(folders_of_page(store, page));
+    Ok(list.into_iter().filter(|e| {
+        let facts = question_facts(bible, store, &lens, e);
+        filters.iter().all(|f| filters::passes(f, facts.get(&f.key()).unwrap_or(&none)))
+    }).collect())
+}
+
+fn question_facts(bible: &Bible, store: &Store, lens: &Lens, e: &Value) -> Facts {
+    let page = e["page"].as_str().unwrap_or("");
+    let mut folders: Vec<String> = e["threads"].as_array().into_iter().flatten().filter_map(|t| t["name"].as_str()).map(String::from).collect();
+    if !page.is_empty() {
+        folders.extend(folders_of_page(store, page));
+    }
+    let mut books = lens.books(page);
+    books.extend(books_of_anchor(bible, e["anchor"].as_str().unwrap_or("")));
+    let mut facts = Facts::new();
+    facts.insert("kind".into(), vec![if e["status"] == "done" { "Answered" } else { "Question" }.to_string()]);
+    facts.insert("folder".into(), folders);
+    facts.insert("book".into(), books);
+    facts.insert("edited".into(), vec![e["updated"].as_str().unwrap_or("").to_string()]);
+    facts.insert("written".into(), vec![e["created"].as_str().unwrap_or("").to_string()]);
+    facts
+}
+
+/// The Questions list's Add filter menu (Folder, Book) with the values the questions hold and how many hold each.
+pub fn question_menu(bible: &Bible, store: &Store, list: &[Value]) -> Vec<Value> {
+    let lens = Lens::new(bible, store);
+    let facts: Vec<Facts> = list.iter().map(|e| question_facts(bible, store, &lens, e)).collect();
+    let tally = |key: &str, books_only: bool| -> Vec<Value> {
+        let mut m: BTreeMap<String, usize> = BTreeMap::new();
+        for f in &facts {
+            let mut seen: Vec<&String> = vec![];
+            for v in f.get(key).into_iter().flatten().filter(|v| !books_only || !v.chars().last().is_some_and(|c| c.is_ascii_digit())) {
+                if !seen.contains(&v) {
+                    seen.push(v);
+                    *m.entry(v.clone()).or_insert(0) += 1;
+                }
             }
-            let mut books = lens.books(page);
-            books.extend(books_of_anchor(bible, e["anchor"].as_str().unwrap_or("")));
-            let mut facts = Facts::new();
-            facts.insert("kind".into(), vec![if e["status"] == "done" { "Answered" } else { "Question" }.to_string()]);
-            facts.insert("folder".into(), folders);
-            facts.insert("book".into(), books);
-            facts.insert("edited".into(), vec![e["updated"].as_str().unwrap_or("").to_string()]);
-            facts.insert("written".into(), vec![e["created"].as_str().unwrap_or("").to_string()]);
-            filters.iter().all(|f| filters::passes(f, facts.get(&f.key()).unwrap_or(&none)))
-        })
-        .collect())
+        }
+        m.into_iter().map(|(v, n)| json!({"value": v, "label": v, "count": n})).collect()
+    };
+    vec![
+        json!({"name": "Folder", "group": "page", "hint": "The folder a question's page is in", "type": "choice", "values": tally("folder", false)}),
+        json!({"name": "Book", "group": "page", "hint": "The books a question names", "type": "choice", "values": tally("book", true)}),
+    ]
 }
 
 /// `--folder NAME --book BOOK --filter "…"` of a command, as filters.

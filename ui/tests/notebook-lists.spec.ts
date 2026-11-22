@@ -118,6 +118,7 @@ test('list_in_a_page_folder_as_database', async ({ page }) => {
   await list.getByRole('button', { name: '+ Property' }).click();
   await list.getByLabel('Property name').fill('Reviewed');
   await list.getByLabel('Property name').press('Enter');
+  await page.locator('.wbm-row', { hasText: 'Text' }).first().click();
   await expect.poll(() => s.calls.map(c => c.name).join(' ')).toContain('block-view-w1-1-columns-book-status-reviewed');
   await expect(list.locator('th')).toHaveText(['Title', 'Book', 'Status', 'Reviewed', 'Edited', '+ Property']);
   // + New page writes a page on the folder

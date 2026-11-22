@@ -132,7 +132,9 @@ test('quick_search_preview_and_recents', async ({ page }) => {
   await expect(folders.first().locator('.wbm-dot')).toHaveCSS('background-color', /rgb/);
   await expect(pv.locator('.wbm-pv-title')).toContainText('Phinehas');
   expect(s.calls.map(c => c.name).filter(n => n.startsWith('find-'))).toEqual(['find-tuesday-sort-edited', 'find-phin-sort-edited']);
-  // Esc closes it and Ctrl+K again opens it
+  // Esc clears the words first, then closes it; Ctrl+K again opens it
+  await page.keyboard.press('Escape');
+  await expect(menu.locator('.wbm-input')).toHaveValue('');
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
   await page.keyboard.press('Control+k');
