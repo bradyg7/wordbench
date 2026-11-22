@@ -42,6 +42,7 @@ pub fn commands() -> Vec<Command> {
                 if let Some(k) = a.opt("kind").filter(|k| !k.trim().is_empty()) {
                     wb_core::filters::put(&mut filters, wb_core::filters::Filter { property: "Save".into(), way: wb_core::filters::Way::Is, values: vec![k.trim().to_string()] });
                 }
+                if filters.is_empty() { return j(fo::folder_view(c.bible()?, &*c.study()?, &name).map_err(e)?); }
                 j(fo::folder_view_filtered(c.bible()?, &*c.study()?, &name, &filters).map_err(e)?)
             }),
         cmd("folder color", "Give a folder a color, or take it off: wb folder color Phinehas yellow  |  wb folder color Phinehas none. A color is a name (yellow, green, blue, pink, orange) or #rrggbb. A folder with a color is what a thread was: its saved places are underlined in the text while its eye is on.",

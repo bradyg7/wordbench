@@ -204,6 +204,7 @@ pub fn commands() -> Vec<Command> {
         cmd("page views", "A page's views (W5) with what each finds now: each block's number, its line, and its rows (as wb view run); a line that cannot be read, or holds a template's blank, says so. Each also gives its `filters` (the chips: property, way, values, `gone` when the folder or property no longer exists), `total` before them, `count` after, and `filter_menu` (what it can be narrowed by, with counts). --filter \"Status is Open\" (repeatable; is, is not, is not set, is set, Edited last 7 days) narrows every list in this answer; nothing is written.",
             vec![Pos("id", N::One), Append("filter")], |c, a| {
                 let extra = a.list("filter").iter().map(|t| wb_core::filters::parse(t)).collect::<Result<Vec<_>, _>>().map_err(e)?;
+                if extra.is_empty() { return j(pv::page_views(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?); }
                 j(pv::page_views_with(c.bible()?, &*c.study()?, &a.s("id"), &extra).map_err(e)?)
             }),
         cmd("block view", "Change a List in a page: wb block view ID 3 \"notebook thread phinehas\" [--view table|list|gallery|board] [--group none|folder|callout|PROPERTY] [--columns \"Status, Book\"] [--sort edited|created|title] [--filter \"Status is Open\"]... [--unfilter Status|all]... [--type \"Speaker choice\"]... (filters-v2: --filter puts one filter on the list as a `filter:` line, a second for the same property replaces it; is, is not, is not set, is set, or Edited|Written today|last 7 days|last 30 days|last year|any time; values in one filter match any, every filter must match. --unfilter takes one property's filter away, or all. --type gives a property its kind: text, choice, date or yesno, kept as `type:` lines). The line is read first; one that cannot be read is not written. With no line only the options change; an empty option (--group \"\") is taken away. The fence keeps the line first and one option a line under it.",
@@ -226,7 +227,11 @@ pub fn commands() -> Vec<Command> {
                     return j(pv::page_props(&*c.study()?, &a.s("id")).map_err(e)?);
                 }
                 let value = a.s("value");
-                j(pv::set_prop_typed(&mut *c.study()?, &a.s("id"), &name, if a.flag("remove") { None } else { Some(value.as_str()) }, a.opt("type").as_deref()).map_err(e)?)
+                let v = if a.flag("remove") { None } else { Some(value.as_str()) };
+                match a.opt("type") {
+                    Some(t) => j(pv::set_prop_typed(&mut *c.study()?, &a.s("id"), &name, v, Some(t.as_str())).map_err(e)?),
+                    None => j(pv::set_prop(&mut *c.study()?, &a.s("id"), &name, v).map_err(e)?),
+                }
             }),
         cmd("view run", "What a view's line finds, as a view lists it (and the command field): wb view run \"notebook @Num 25 questions\". The line: notebook, then any of @place (a verse, chapter, book or H7065), questions | open | answered, thread <name>, days N, pages, kind all|note|question|day|thread, and words. Views read; they never write.",
             vec![Pos("line", N::Many)], |c, a| j(pv::run(c.bible()?, &*c.study()?, &a.s("line")).map_err(e)?)),

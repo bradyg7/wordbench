@@ -256,7 +256,7 @@ pub fn set_prop(store: &mut Store, id: &str, name: &str, value: Option<&str>) ->
 
 /// A value as its type keeps it: a Date is `YYYY-MM-DD` (a real day), Yes/no is `true` or `false` (yes, no, on and off are read); Text and
 /// Choice are the text as given.
-pub fn typed_value(kind: &str, value: &str) -> Result<String> {
+pub(crate) fn typed_value(kind: &str, value: &str) -> Result<String> {
     let v = value.trim();
     match type_word(kind)? {
         "date" if !v.is_empty() => chrono::NaiveDate::parse_from_str(v, "%Y-%m-%d").map(|_| v.to_string()).map_err(|_| bad(format!("A date is written YYYY-MM-DD (2026-11-22), not “{v}”."))),
@@ -706,7 +706,7 @@ pub struct ViewEdits<'a> {
 }
 
 /// A property's kind as written: text, choice, date, or yes/no (`yesno`, `yes/no`).
-pub fn type_word(said: &str) -> Result<&'static str> {
+pub(crate) fn type_word(said: &str) -> Result<&'static str> {
     match said.trim().to_lowercase().replace(['/', ' ', '-'], "").as_str() {
         "text" => Ok("text"),
         "choice" => Ok("choice"),

@@ -140,7 +140,7 @@ fn thread_as_set(t: &Rec) -> Rec {
 
 /// A folder opened (`wb folder show`): its saves (a thread file's places, in its file's order) and its pages (a thread
 /// file's note is one page, `thread:<slug>`). Nothing is written.
-pub fn folder_view(bible: &Bible, store: &Store, name: &str) -> Result<Value> {
+fn folder_base(bible: &Bible, store: &Store, name: &str) -> Result<Value> {
     let f = find_folder(store, name)?;
     let mut v = if f.thread {
         let t = store.thread(&f.id)?;
@@ -180,7 +180,7 @@ fn save_kind(i: &Value) -> &'static str {
 /// chips' pickers and the head's "18 of 120". A filter naming another property is refused with the ones a folder's saves have.
 pub fn folder_view_filtered(bible: &Bible, store: &Store, name: &str, filters: &[crate::filters::Filter]) -> Result<Value> {
     use crate::filters::passes;
-    let mut v = folder_view(bible, store, name)?;
+    let mut v = folder_base(bible, store, name)?;
     for f in filters {
         if !SAVE_PROPERTIES.iter().any(|p| p.eq_ignore_ascii_case(&f.property)) {
             return Err(crate::store::bad(format!("A folder's saves have no property called “{}”; they have {}.", f.property, SAVE_PROPERTIES.join(", "))));
@@ -213,6 +213,11 @@ pub fn folder_view_filtered(bible: &Bible, store: &Store, name: &str, filters: &
     v["count"] = json!(kept.len());
     v["items"] = json!(kept);
     Ok(v)
+}
+
+/// A folder opened, with its saves counted by kind and by book (no filter).
+pub fn folder_view(bible: &Bible, store: &Store, name: &str) -> Result<Value> {
+    folder_view_filtered(bible, store, name, &[])
 }
 
 /// The thread files as folders with their color, for `wb shelf` and the Library's FOLDERS, in name order. Each holds its
