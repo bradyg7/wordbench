@@ -69,8 +69,10 @@ export function startMarginNote(p: Picked, rect: DOMRect) {
   // beside the words: to the right of the block they are in, level with them; where there is no room, over its right edge
   const block = p.box.closest<HTMLElement>('.nb-block')?.getBoundingClientRect() ?? rect;
   const w = card.offsetWidth || 280;
-  const left = Math.max(8, Math.min(block.right + 12, innerWidth - w - 8));
-  const top = Math.max(8, Math.min(rect.top, innerHeight - 120));
+  const room = block.right + 12 + w <= innerWidth - 8;
+  // with no room beside the block (a phone, a narrow pane) the card sits under the words instead
+  const left = room ? block.right + 12 : Math.max(8, Math.min(rect.left, innerWidth - w - 8));
+  const top = room ? Math.max(8, Math.min(rect.top, innerHeight - 120)) : Math.max(8, Math.min(rect.bottom + 8, innerHeight - 140));
   card.style.left = `${left}px`;
   card.style.top = `${top}px`;
 

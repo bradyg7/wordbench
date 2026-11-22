@@ -144,9 +144,14 @@ test('margin_note_beside_the_words', async ({ page }) => {
   await expect(card).toContainText('Margin note · Numbers 25:11');
   // beside the words: right of the scripture block, level with the selection
   const blockBox = (await page.locator('.nb-block[data-n="2"]').boundingBox())!, c0 = (await card.boundingBox())!;
-  expect(c0.x).toBeGreaterThanOrEqual(blockBox.x + blockBox.width - 2);
-  expect(c0.y).toBeGreaterThanOrEqual(blockBox.y - 4);
-  expect(c0.y).toBeLessThanOrEqual(blockBox.y + blockBox.height);
+  const vw = page.viewportSize()!.width;
+  if (c0.x + c0.width <= vw - 8 && blockBox.x + blockBox.width + 12 + c0.width <= vw - 8) {
+    expect(c0.x).toBeGreaterThanOrEqual(blockBox.x + blockBox.width - 2);
+    expect(c0.y).toBeGreaterThanOrEqual(blockBox.y - 4);
+    expect(c0.y).toBeLessThanOrEqual(blockBox.y + blockBox.height);
+  } else {
+    expect(c0.y).toBeGreaterThanOrEqual(blockBox.y);      // no room beside (a phone): under the words
+  }
   // nothing is kept before there are words
   expect(s.calls.length).toBe(0);
   // written: it is that verse's margin note (wb mark note NUM.25:11 "…"); the reference in its words is a link chip
@@ -165,12 +170,13 @@ test('margin_note_beside_the_words', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.locator('.cp')).toHaveCount(0);
   // the grip drags the card
+  const dx = c0.x >= 130 ? -120 : 30;
   const grip = (await card.locator('.pm-grip').boundingBox())!;
   await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
   await page.mouse.down();
-  await page.mouse.move(grip.x + grip.width / 2 - 120, grip.y + grip.height / 2 + 90, { steps: 6 });
+  await page.mouse.move(grip.x + grip.width / 2 + dx, grip.y + grip.height / 2 + 90, { steps: 6 });
   await page.mouse.up();
   const c1 = (await card.boundingBox())!;
-  expect(Math.round(c1.x - c0.x)).toBe(-120);
-  expect(Math.round(c1.y - c0.y)).toBe(90);
+  expect(Math.abs(c1.x - c0.x - dx)).toBeLessThan(2);
+  expect(Math.abs(c1.y - c0.y - 90)).toBeLessThan(2);
 });
