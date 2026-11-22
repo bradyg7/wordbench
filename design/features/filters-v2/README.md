@@ -1,6 +1,6 @@
 # Filters, the new design
 
-**State:** exploring (round 2, 2026-11-22) · **Sheets:** `python -B design/features/filters-v2/filters2.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
+**State:** accepted (the person, 2026-11-22, after round 3) · **Sheets:** `python -B design/features/filters-v2/filters2.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
 Nothing here is built. · **Review page:** `node design/review.mjs filters-v2` writes `review.html`.
 
 The person, 2026-11-22: "I'd rather scrap the old one, and use one that fits the newer design better." The old
@@ -60,23 +60,44 @@ folder.
 - **2026-11-22, the lead (round 2).** Custom page properties (NB14's + Property, kept on the page's `props:` line)
   are filterable like any other and listed under "Your own properties" in the Filter menu.
 
+### Round 3 (2026-11-22, the person through the lead's recommendations)
+
+- **One chip component, everywhere a list is narrowed.** The filter chips are one part and work the same way on every
+  list: a list in a page, the Library's lists (Questions, an opened folder, Ctrl+K), and the Margin notes list,
+  Highlights, Findings, the Legend's "where used", Colors across the Bible, Bible Search and Near, Every use and the
+  Concordance (rows 26–33). Each list offers only the properties it has. Answers open question 1 and row 13.
+- **The Marks filter (marks T12) folds into the chips:** a Kind: Marks chip plus a Legend entry chip. Its own filter is
+  retired. Answers open question 2.
+- **No "match any chip" switch.** Every chip must match; the values inside one chip match any of them. Answers open
+  question 3.
+- **Making your own property (row 22).** In a list in a page, **+ Property** at the right of the table head: type a
+  name, pick a type (Text, Choice, Date, Yes/no), then fill the cells (row 24). On any page, page ⋯ › **Properties**
+  shows and edits the same values (row 25). Values stay in the page's `props:` line (NB14). NB14 built text
+  properties only; the four types are new in this design. File forms: Text is a string, Choice is one of the values
+  the list has seen (kept as a string), Date is `YYYY-MM-DD`, Yes/no is `true`/`false`. The type of a property is
+  kept on the list's `view` fence as `type: Speaker text` (one line per typed property), so one page's values never
+  decide another's type.
+- **One `wb` filter form.** Every list command takes `--filter "Status is Open"`, repeatable, in the same words as
+  the file's `filter:` line. Commands that cannot take a property name refuse it with the list of properties they have.
+- **Library map.** The words **filter** and **page property** are added to the map (open question 4).
+
 ## Interaction table
 
 ### A list in a page
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 1 | A list's head | Filter (1a: where it is; 1b: the menu) | 1a: every list in a page has a head with a labelled **Filter** button. 1b: a searchable menu (the one menu), each choice with a short line saying what it is: About the page (Folder when the list spans folders, Edited, Written, Callout kind, Book), then Your own properties (columns added with + Property) | Nothing | Window only | `filter_menu_lists_properties` | [ ] |
-| 2 | Filter menu | Pick a property, tick a value (2a); what the four ways mean (2b) | Its values as a checklist with counts; ticking applies at once, the list narrows behind, a chip "Status: Open" appears; the head says "3 of 6 pages". The four ways read **is**, **is not**, **is not set**, **is set** (2b explains each with an example) | One `filter:` line in the list's `view` fence | `wb block view ID N --filter "Status is Open"` | `tick_value_applies_at_once` | [ ] |
-| 3 | A chip | Click it (or Enter on it) | The same picker under the chip, with is, is not, is not set, is set | That `filter:` line | `wb block view ID N --filter …` | `chip_reopens_its_picker` | [ ] |
-| 4 | A chip | × (or Backspace on a focused chip) (4a); many chips (4b) | That filter goes; the list widens; focus moves to the next chip or to Filter. Many chips wrap onto a second line at the full width; nothing is squeezed or scrolled; Add filter and Clear all stay at the end | Its line removed | `wb block view ID N --unfilter PROPERTY` | `chip_x_removes_filter` | [ ] |
+| 1 | A list's head | Filter (1a: where it is; 1b: the menu) | 1a: every list in a page has a head with a labelled **Filter** button. 1b: a searchable menu (the one menu), each choice with a short line saying what it is: About the page (Folder when the list spans folders, Edited, Written, Callout kind, Book), then Your own properties (columns added with + Property) | Nothing | Window only | `filter_menu_lists_properties` | [ ] approved 2026-11-22 |
+| 2 | Filter menu | Pick a property, tick a value (2a); what the four ways mean (2b) | Its values as a checklist with counts; ticking applies at once, the list narrows behind, a chip "Status: Open" appears; the head says "3 of 6 pages". The four ways read **is**, **is not**, **is not set**, **is set** (2b explains each with an example) | One `filter:` line in the list's `view` fence | `wb block view ID N --filter "Status is Open"` | `tick_value_applies_at_once` | [ ] approved 2026-11-22 |
+| 3 | A chip | Click it (or Enter on it) | The same picker under the chip, with is, is not, is not set, is set | That `filter:` line | `wb block view ID N --filter …` | `chip_reopens_its_picker` | [ ] approved 2026-11-22 |
+| 4 | A chip | × (or Backspace on a focused chip) (4a); many chips (4b) | That filter goes; the list widens; focus moves to the next chip or to Filter. Many chips wrap onto a second line at the full width; nothing is squeezed or scrolled; Add filter and Clear all stay at the end | Its line removed | `wb block view ID N --unfilter PROPERTY` | `chip_x_removes_filter` | [ ] approved 2026-11-22 |
 | 5 | Chip row | Clear | Every filter goes; the list shows all its pages; search words stay | Every `filter:` line removed | `wb block view ID N --unfilter all` | `clear_removes_all_filters` | [ ] approved 2026-11-22 |
 | 6 | Chip row | Add a second filter | A page must match every chip; a chip with several values matches any of them | A second line | `--filter` twice | `filters_combine_and_within_or` | [ ] approved 2026-11-22 |
 | 7 | Filter menu | Edited or Written | Fixed choices: Today, Last 7 days, Last 30 days, Last year, Any time; no typed dates | `filter: Edited last 7 days` | `wb block view ID N --filter "Edited last 7 days"` | `date_filter_fixed_choices` | [ ] approved 2026-11-22 |
 | 8 | A list's head | Search this list (the magnifier), type words | The words narrow the list with the chips; Esc empties the field | Nothing (the words are not kept) | Window only | `search_this_list_with_chips` | [ ] approved 2026-11-22 |
 | 9 | Any view | Filter on Table, List, Gallery or Board, grouped or not | The same chips on every view; group counts follow the filters; a Board column left empty stays with 0 so a card can be dragged into it | The fence's lines | as rows 2–7 | `chips_on_every_view` | [ ] approved 2026-11-22 |
 | 10 | A filtered list | Nothing matches | "No pages match these filters." and Clear filters, in the list's own place; the chips stay | Nothing | Window only | `no_match_says_so` | [ ] approved 2026-11-22 |
-| 11 | A page | Close it, open it again (11a before, 11b after) | The same chips are on its list, showing the same pages; nothing asks to save | Nothing | `wb page views ID` gives `filters` | `filters_kept_in_the_page` | [ ] |
+| 11 | A page | Close it, open it again (11a before, 11b after) | The same chips are on its list, showing the same pages; nothing asks to save | Nothing | `wb page views ID` gives `filters` | `filters_kept_in_the_page` | [ ] approved 2026-11-22 |
 | 12 | A chip | Its value is gone (folder deleted, property removed) | The chip shows the value struck through and "gone"; the list ignores that filter; × removes it | Nothing until × | `wb page views ID` marks it `gone` | `gone_value_chip` | [ ] approved 2026-11-22 |
 
 ### The Library's lists
@@ -85,30 +106,54 @@ folder.
 |---|---|---|---|---|---|---|---|
 | 13 | Questions list (side list) | Open it (13a: Questions at the side list's foot), then Add filter beside All, Question, Answered (13b) | A Folder or Book chip from the same picker; the list narrows | Nothing (window, for the tab) | `wb question list --kind … --folder NAME --book BOOK` | `questions_list_chips` | [ ] |
 | 14 | Ctrl+K | + Filter under the search field | Kind (Pages, Questions, Key points, Notes, Folders) and Folder chips narrow the one search; Esc clears the words first, then closes | Nothing | `wb find WORDS --kind K --folder NAME` (existing flags) | `ctrlk_chips_narrow_search` | [ ] approved 2026-11-22 |
-| 15 | An opened folder | Add filter, in a folder of about a hundred saves | The folder grouped by kind of save with counts, scrolling; Save and Book chips show 18 of 120 | Nothing | `wb folder show NAME --kind K --book BOOK` | `folder_chips` | [ ] |
+| 15 | An opened folder | Add filter, in a folder of about a hundred saves | The folder grouped by kind of save with counts, scrolling; Save and Book chips show 18 of 120 | Nothing | `wb folder show NAME --kind K --book BOOK` | `folder_chips` | [ ] approved 2026-11-22 |
 
 ### What each filter means (round 2)
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 17 | Filter menu | Folder | Plain words beside the menu: the folder a page is in; Folder: Phinehas shows the 3 pages in Phinehas | `filter: Folder is Phinehas` | `--filter "Folder is Phinehas"` | `filter_by_folder` | [ ] |
-| 18 | Filter menu | Status | A column you add yourself with + Property; it means only what you make it mean, the app never sets it; a question's Question or Answered is Callout kind, not Status | `filter: Status is Open` | `--filter "Status is Open"` | `filter_by_own_status` | [ ] |
-| 19 | Filter menu | Edited and Written | Edited: when the page was last changed; Written: when it was first made; fixed choices only | `filter: Edited last 7 days` | `--filter "Edited last 7 days"` | `filter_by_edited_written` | [ ] |
-| 20 | Filter menu | Book (and Chapter inside it) | The books a page names in its references and Scripture blocks; a page naming two books is under both; Chapter is picked inside Book (Numbers › 25) | `filter: Book is Numbers` or `Book is Numbers 25` | `--filter "Book is Numbers"` | `filter_by_book` | [ ] |
-| 21 | Filter menu | Callout kind | The callouts written in a page: Question, Answered, Key point, Note | `filter: Callout kind is Question` | `--filter "Callout kind is Question"` | `filter_by_callout_kind` | [ ] |
+| 17 | Filter menu | Folder | Plain words beside the menu: the folder a page is in; Folder: Phinehas shows the 3 pages in Phinehas | `filter: Folder is Phinehas` | `--filter "Folder is Phinehas"` | `filter_by_folder` | [ ] approved 2026-11-22 |
+| 18 | Filter menu | Status | A column you add yourself with + Property; it means only what you make it mean, the app never sets it; a question's Question or Answered is Callout kind, not Status | `filter: Status is Open` | `--filter "Status is Open"` | `filter_by_own_status` | [ ] approved 2026-11-22 |
+| 19 | Filter menu | Edited and Written | Edited: when the page was last changed; Written: when it was first made; fixed choices only | `filter: Edited last 7 days` | `--filter "Edited last 7 days"` | `filter_by_edited_written` | [ ] approved 2026-11-22 |
+| 20 | Filter menu | Book (and Chapter inside it) | The books a page names in its references and Scripture blocks; a page naming two books is under both; Chapter is picked inside Book (Numbers › 25) | `filter: Book is Numbers` or `Book is Numbers 25` | `--filter "Book is Numbers"` | `filter_by_book` | [ ] approved 2026-11-22 |
+| 21 | Filter menu | Callout kind | The callouts written in a page: Question, Answered, Key point, Note | `filter: Callout kind is Question` | `--filter "Callout kind is Question"` | `filter_by_callout_kind` | [ ] approved 2026-11-22 |
 | 22 | Filter menu | Your own properties | Any column added with + Property (here Speaker) is offered with the values the pages hold | `filter: Speaker is J. Moore` | `--filter "Speaker is J. Moore"` | `filter_by_own_property` | [ ] |
 
 ### Where a list comes from (round 2)
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 23 | Any page | / › List in a page (23a), then pick a folder (23b) | Any page can hold a list; "All study pages" in these frames is such a list in a page of that name; its head carries the view, Search and Filter | The `view` fence | `wb block add ID --as view "notebook thread ID"` (NB14) | `list_placed_from_slash` | [ ] |
+| 23 | Any page | / › List in a page (23a), then pick a folder (23b) | Any page can hold a list; "All study pages" in these frames is such a list in a page of that name; its head carries the view, Search and Filter | The `view` fence | `wb block add ID --as view "notebook thread ID"` (NB14) | `list_placed_from_slash` | [ ] approved 2026-11-22 |
+
+| 24 | A list in a page, table head | + Property, type a name, pick Text, Choice, Date or Yes/no | A new column with that name; its cells take that type (a Choice cell offers the values already used, a Date cell a date picker, Yes/no a tick); the Filter menu offers it under Your own properties | Each page's `props:` line as cells are filled; `type:` on the list's `view` fence | `wb page prop ID NAME VALUE`; `wb block view ID N --type "NAME text|choice|date|yesno"`, *proposed* | `own_property_add_and_type` | [ ] |
+| 25 | Page ⋯ | Properties | The page's properties as name and value lines, editable; + Add property | The page's `props:` line | `wb page prop ID [NAME [VALUE]] [--remove]` (NB14) | `page_menu_properties` | [ ] |
+### Every other list (round 3, text only)
+
+One row per list that narrows today; each takes the one chip component. No frames: they look and act as rows 1–16.
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
+|---|---|---|---|---|---|---|---|
+| 26 | Margin notes list | Add filter | The same chips and pickers as a list in a page, offering only: Book, Chapter, Written, Edited, Folder; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb mark notes … --filter "…"` (repeatable), *proposed* | `margin_notes_chips` | [ ] |
+| 27 | Highlights list | Add filter | The same chips and pickers as a list in a page, offering only: Kind, Legend entry, Book, Chapter, Written; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb marks … --filter "…"` (repeatable), *proposed* | `highlights_chips` | [ ] |
+| 28 | Findings | Add filter | The same chips and pickers as a list in a page, offering only: Status, Kind, Written; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb finding list … --filter "…"` (repeatable), *proposed* | `findings_chips` | [ ] |
+| 29 | The Legend's "where used" | Add filter | The same chips and pickers as a list in a page, offering only: Book, Chapter, Kind; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb legend uses … --filter "…"` (repeatable), *proposed* | `legend_where_used_chips` | [ ] |
+| 30 | Colors across the Bible | Add filter | The same chips and pickers as a list in a page, offering only: Legend entry, Book; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb colors … --filter "…"` (repeatable), *proposed* | `colors_chips` | [ ] |
+| 31 | Bible Search and Near | Add filter | The same chips and pickers as a list in a page, offering only: Book, Testament, Version; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb search … --filter "…"` (repeatable), *proposed* | `bible_search_chips` | [ ] |
+| 32 | Every use | Add filter | The same chips and pickers as a list in a page, offering only: Book, Testament, Strong's number; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb every-use … --filter "…"` (repeatable), *proposed* | `every_use_chips` | [ ] |
+| 33 | Concordance | Add filter | The same chips and pickers as a list in a page, offering only: Book, Testament; Marks are a Kind chip with a Legend entry chip | Window state only (kept for the tab) | `wb concordance … --filter "…"` (repeatable), *proposed* | `concordance_chips` | [ ] |
 
 ### Real conditions
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 16 | Phone, narrow pane, floating tab | Filter, or a chip (16a the list, 16b the sheet) | A labelled **Filter · 3** button; chips are big bordered buttons (▾ and a separate ×, 44 px to tap) that wrap onto as many lines as needed, nothing off screen; tapping opens a bottom sheet with big rows, the four ways as buttons, Remove this filter and Done | As rows 2–7 | as rows 2–7 | `chips_on_phone` | [ ] |
+| 16 | Phone, narrow pane, floating tab | Filter, or a chip (16a the list, 16b the sheet) | A labelled **Filter · 3** button; chips are big bordered buttons (▾ and a separate ×, 44 px to tap) that wrap onto as many lines as needed, nothing off screen; tapping opens a bottom sheet with big rows, the four ways as buttons, Remove this filter and Done | As rows 2–7 | as rows 2–7 | `chips_on_phone` | [ ] approved 2026-11-22 |
+
+## Tickets (cut 2026-11-22, built in this order, one at a time)
+
+| Ticket | Rows | What |
+|---|---|---|
+| NB16 | 1–25 | The one chip component and the Filter menu on a list in a page (every view), the Library's lists (Questions, an opened folder, Ctrl+K), typed page properties and page ⋯ › Properties, phone and narrow; `--filter` on `wb page views`, `wb question list`, `wb find`; replaces NB14's interim Filters button |
+| NB17 | 26–33 | The same chips on Margin notes, Highlights, Findings, the Legend's "where used", Colors across the Bible, Bible Search and Near, Every use and Concordance; the marks T12 filter retired into them; `--filter` on each list command |
 
 ## What the build must satisfy
 
@@ -127,16 +172,7 @@ anyone's study. The two questions in row 13 are samples. No scripture is drawn.
 
 ## Open questions
 
-1. **The other surfaces of Library Open 6.** The Legend's "where used", Colors across the Bible, Bible Search and Near,
-   Every use and Concordance, Findings and the reader's Highlights list each narrow a list today. Should each take the
-   same chips in a later round (lead's leaning: yes, one round each, in the map's priority order), or stay as built?
-2. **The Marks filter (marks T12)**, which the person "really doesn't like": retire it into Ctrl+K's chips (a Kind:
-   Marks chip with a Legend entry chip), or design marks finding on its own?
-3. **Any of / all of.** Round 1 has every chip must match, values within a chip any. Is a whole "match any chip"
-   switch wanted (Notion's filter groups), or is that more than a study needs?
-4. **Library map words.** This folder uses two words the map does not list yet: **filter** (a picked condition shown as
-   a chip on a list) and **page property** (a column kept in a page's front matter, from NB14). Proposed map change:
-   add both to the words table. The old word "applied value" is retired with Direction B.
+None. Questions 1–4 of round 1 were answered in round 3 (Decisions, 2026-11-22).
 
 ## Rounds
 
@@ -144,6 +180,7 @@ anyone's study. The two questions in row 13 are samples. No scripture is drawn.
 |---|---|---|---|---|
 | 1 | 2026-11-22 | rows/ (16 frames) | Chips on a list in a page, the Library's lists, phone | Reviewed 2026-11-22 (Directions) |
 | 2 | 2026-11-22 | rows/ (30 frames) | Step frames, what each filter means, the four ways in plain words, button-like chips, wrapping, a hundred saves, phone redrawn | |
+| 3 | 2026-11-22 | none (text only, as the person asked) | One chip component across every list (rows 26–33), making your own property (rows 24–25), the marks filter folded into chips, no match-any switch, `--filter` for every list command; accepted |
 
 ## Directions
 
@@ -165,3 +202,17 @@ Tally: 8 Perfect, 7 Satisfactory, 1 unrated with a comment. Worst first.
 ### Approved (round 1)
 
 Rows 5, 6, 7, 8, 9, 10, 12, 14 (Perfect, no change asked).
+
+### Round 2 review (the person, 2026-11-22; review-filters-v2-round2.json)
+
+Tally: 14 Perfect, 1 Satisfactory, 1 unrated. Worst first.
+
+| Row | Rating | Asked | Round 3 |
+|---|---|---|---|
+| 22 | Satisfactory | What is the process of making your own property? | Rows 24 (+ Property: name, then Text, Choice, Date or Yes/no) and 25 (page ⋯ › Properties); text only |
+| 13 | (unrated) | Does the Margin notes menu look the same? Chips should work the same across the whole app | **One chip component everywhere** (Decisions); rows 26–33 add every other list; row 13 stays as drawn |
+
+### Approved (round 2)
+
+Rows 1, 2, 3, 4, 11, 15, 16, 17, 18, 19, 20, 21, 23. With round 1's 5, 6, 7, 8, 9, 10, 12, 14, that is 21 of 23 drawn
+rows; 13 and 22 are answered in round 3 and the design is accepted.

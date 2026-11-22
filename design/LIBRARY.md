@@ -87,11 +87,17 @@ One word per thing. A builder never uses a retired word in the window.
 | saved list | view | settings S5 |
 | folder (with a color) | thread | the person, 2026-11-18 |
 | callout (kinds: Question, Answered, Key point, Note) | box, note box | the person, 2026-11-20 |
+| **filter** = a chip that narrows a list by one property; every chip must match, the values in one chip match any | applied value, typed filter | the person, 2026-11-22 (filters-v2) |
+| **page property** = a named value kept in a page's front matter (`props:`), shown as a column in a list | field, attribute | the person, 2026-11-22 (filters-v2, NB14) |
 
 **Decided (the person, 2026-11-18):** the study `trails/` files (questions to follow up) fold into Questions; `wb trail`
 and `trails/` are read and moved forward by a designed, backed-up move with the person's go-ahead.
 
 ## Search
+
+**One component (the person, 2026-11-22):** every list that can be narrowed (a list in a page, the Library's lists, Margin
+notes, Highlights, Findings, the Legend's "where used", Colors across the Bible, Bible Search and Near, Every use,
+Concordance) uses the one filter-chip component and the one `--filter` form. Designed in `filters-v2` (accepted).
 
 The goal is one search over the whole Library. Today it is two: the Bible (`wb search`), and the person's own work
 (`wb find`: pages, folders, saves, questions, margin notes, highlights). **Not searched yet:** pencil lines, documents,
