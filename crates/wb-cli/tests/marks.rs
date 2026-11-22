@@ -888,6 +888,6 @@ fn mark_from_a_page_is_the_reader_s_mark() {
     let covered: Vec<u64> = words.iter().map(|w| w["i"].as_u64().unwrap()).filter(|i| (a..=b).contains(i)).collect();
     assert_eq!(covered, (a..=b).collect::<Vec<_>>());
     // a version without KJV word positions gives no parts
-    wb.js(&["block", "scripture", &id, "2", "--ylt"]);
+    wb.js(&["block", "scripture", &id, "1", "--ylt"]);
     assert!(wb.js(&["page", "scripture", &id])["blocks"][0]["verses"][0].get("parts").is_none());
 }
