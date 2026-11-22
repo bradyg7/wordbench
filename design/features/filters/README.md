@@ -1,6 +1,6 @@
 # Filters, everywhere
 
-**State:** accepted for integration (2026-11-19) · **Round:** 3 · **Date:** 2026-11-19 · **Sheets:** `python -B design/features/filters/filters.py` writes `filters.figcraft` and `filters.pdf`.
+**State:** superseded (the person, 2026-11-22) by [filters-v2](../filters-v2/README.md); kept as history · **Round:** 3 · **Date:** 2026-11-19 · **Sheets:** `python -B design/features/filters/filters.py` writes `filters.figcraft` and `filters.pdf`.
 
 Design one way to narrow a list or a search, then use it across the Library. The same action should feel familiar in the Notebook, in the Legend's where used list, and in Colors across the Bible. Each part offers the choices that make sense for what it shows.
 
@@ -20,6 +20,7 @@ For Colors across the Bible, the same panel puts Folder and Legend entry on sepa
 
 ## Decisions
 
+- **2026-11-22, the person.** "I'd rather scrap the old one, and use one that fits the newer design better." This design (Direction B, Apply and the shared panel) is superseded by [filters-v2](../filters-v2/README.md); F1 and F2 built on `feature/filters` are not merged.
 - **2026-11-19, the person.** Design filtering once for the whole app. Keep the existing controls in place until this design is settled. Revisit the Notebook's Marks filter and group the controls around Colors across the Bible. [Library map, Open 4 and 6](../../LIBRARY.md) · [Marks, Out of scope / later](../marks/README.md#out-of-scope--later)
 - **2026-11-19, the person.** Go with Direction B. With hundreds of choices, wrapping bubbles are hard to remember, locate or narrow to a kind of mark. Their positions also change with the pane width.
 - **2026-11-19, the person.** Show how the controls work together and design filtering across Wordbench in this folder, including the Notebook's ordinary filters and the other places already offering filters.

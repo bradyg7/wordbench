@@ -33,7 +33,7 @@ A new button or command gets a row here, and its folder, before it is built.
 | Questions | asking, the list, answering | [questions](questions/README.md) | accepted (2026-11-17); building |
 | Day page, journal, inbox | Today optional; Inbox removed (minimize round 5) | [library](library/README.md) | accepted (2026-11-17); building |
 | Search, uses, count, near, forms | asking and narrowing a search; the [Concordance](concordance/README.md) hosts uses, count, forms and near for an entry and reuses search's controls | [search](search/README.md) | exploring |
-| Shared filtering | Filters, Apply, Clear filters, applied values, and Find in study from Notebook words | [filters](filters/README.md) | accepted for integration (round 3) |
+| Shared filtering | Filter chips on a list in a page and the Library's lists, pickers only, kept as `filter:` lines in the view fence | [filters-v2](filters-v2/README.md) (replaces [filters](filters/README.md), superseded 2026-11-22) | exploring (round 1, 2026-11-22) |
 | Reading plans and the reading log | a plan's day, starting a plan, what was read | [reading-plans](reading-plans/README.md) | exploring |
 | Lessons and documents (Word, PDF, Present) | the builder, the viewer, Looks, where a file went | [documents](documents/README.md) | accepted (2026-11-17); building |
 | Trash | Undo, the 7 days, Empty trash, the way in, deleting a block; several pages at once (T10) | [trash](trash/README.md) | accepted (2026-11-17, round 3; rounds 1-2 built); building |
