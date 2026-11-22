@@ -1,27 +1,45 @@
 [
   {
-    "id": "1",
+    "id": "1a",
     "row": 1,
-    "file": "rows/1.png",
-    "caption": "Filter on a list in a page: a searchable menu of what the list can be filtered by — its folders, callout kind, when pages were written or edited, and every page property the list's pages hold."
+    "file": "rows/1a.png",
+    "caption": "Step 1: every list in a page has a head. Click Filter (it says Filter, with its icon) to open the menu."
   },
   {
-    "id": "2",
+    "id": "1b",
+    "row": 1,
+    "file": "rows/1b.png",
+    "caption": "Step 2: the Filter menu, each choice with a short line saying what it is. Your own properties (columns you added with + Property) are listed under their own heading."
+  },
+  {
+    "id": "2a",
     "row": 2,
-    "file": "rows/2.png",
-    "caption": "Pick Status: its values as a checklist with how many pages hold each. Ticking Open applies at once — the list narrows behind the menu and the chip appears. No Apply button."
+    "file": "rows/2a.png",
+    "caption": "Pick Status: its values as a checklist with how many pages hold each. Ticking Open applies at once: the list narrows behind the menu and the chip appears. The four ways read in plain words."
+  },
+  {
+    "id": "2b",
+    "row": 2,
+    "file": "rows/2b.png",
+    "caption": "What the four ways mean, each with an example from the same list of six pages."
   },
   {
     "id": "3",
     "row": 3,
     "file": "rows/3.png",
-    "caption": "Click a chip to change it: the same picker opens under the chip, with is, is not, is empty and is not empty."
+    "caption": "Click a chip to change it: the same picker opens under the chip, with is, is not, is not set and is set."
   },
   {
-    "id": "4",
+    "id": "4a",
     "row": 4,
-    "file": "rows/4.png",
+    "file": "rows/4a.png",
     "caption": "× on a chip takes that filter away; the list widens at once and focus moves to the next chip, or to Filter."
+  },
+  {
+    "id": "4b",
+    "row": 4,
+    "file": "rows/4b.png",
+    "caption": "Many filters at the full width: the chips wrap onto a second line; nothing is squeezed or hidden, and Add filter and Clear all stay at the end."
   },
   {
     "id": "5",
@@ -60,10 +78,16 @@
     "caption": "Nothing matches: one quiet line and Clear filters, in the list's own place; the chips stay so one can be changed."
   },
   {
-    "id": "11",
+    "id": "11a",
     "row": 11,
-    "file": "rows/11.png",
-    "caption": "Kept in the page: open it again and the chips are as they were. The ```view fence holds one filter: line each (shown here as the file holds it)."
+    "file": "rows/11a.png",
+    "caption": "Monday: two filters are added to the list in the Zeal page. The page keeps them as it keeps your words; there is nothing to save."
+  },
+  {
+    "id": "11b",
+    "row": 11,
+    "file": "rows/11b.png",
+    "caption": "Tuesday: open the Zeal page again and the same two chips are on its list, showing the same 3 of 6 pages."
   },
   {
     "id": "12",
@@ -72,10 +96,16 @@
     "caption": "A filter whose value is gone (its folder deleted, a property removed): the chip shows the value struck and 'gone'; the list ignores it; × takes it away. Nothing is changed on disk until then."
   },
   {
-    "id": "13",
+    "id": "13a",
     "row": 13,
-    "file": "rows/13.png",
-    "caption": "The Questions list in the side list: All, Question and Answered stay as built; + Filter beside them adds a Folder or Book chip from the same picker."
+    "file": "rows/13a.png",
+    "caption": "Step 1: the Questions list is at the foot of the side list, above Margin notes. Click Questions."
+  },
+  {
+    "id": "13b",
+    "row": 13,
+    "file": "rows/13b.png",
+    "caption": "Step 2: the Questions list. All, Question and Answered stay as built; Add filter beside them adds a Folder or Book chip from the same picker."
   },
   {
     "id": "14",
@@ -87,12 +117,66 @@
     "id": "15",
     "row": 15,
     "file": "rows/15.png",
-    "caption": "An opened folder with many saves: + Filter offers what its saves are — a kind of save (verse, word, page, search) and a book — as chips over the folder's own order."
+    "caption": "An opened folder holding about a hundred saves of every kind: grouped by kind with counts, scrolling, with Add filter for a kind of save and a book. Here 120 saves (Salt); the Verse and Numbers chips show 18 of them."
   },
   {
-    "id": "16",
+    "id": "16a",
     "row": 16,
-    "file": "rows/16.png",
-    "caption": "Phone and narrow panes: the chips stay on one line and scroll sideways; Filter and a chip's picker open as a bottom sheet with the same checklist."
+    "file": "rows/16a.png",
+    "caption": "Phone: the list's head has a clear Filter button with its count, the chips are big buttons that wrap onto as many lines as they need, and nothing runs off the screen."
+  },
+  {
+    "id": "16b",
+    "row": 16,
+    "file": "rows/16b.png",
+    "caption": "Phone: tapping a chip or Filter opens a bottom sheet with big rows, the four ways as buttons, and Done; the list behind narrows as you tick."
+  },
+  {
+    "id": "17",
+    "row": 17,
+    "file": "rows/17.png",
+    "caption": "Folder: the folder a page is in. A list that gathers pages from several folders can be narrowed to one or more of them."
+  },
+  {
+    "id": "18",
+    "row": 18,
+    "file": "rows/18.png",
+    "caption": "Status: a column you add yourself with + Property, such as Open and Done for a study you are still working on. Status means only what you make it mean; the app never sets it."
+  },
+  {
+    "id": "19",
+    "row": 19,
+    "file": "rows/19.png",
+    "caption": "Edited and Written: Edited is when the page was last changed; Written is when it was first made. Both pick from fixed choices: Today, Last 7 days, Last 30 days, Last year."
+  },
+  {
+    "id": "20",
+    "row": 20,
+    "file": "rows/20.png",
+    "caption": "Book: the books of the Bible a page names in its references and Scripture blocks. A page that names Numbers and Psalms is found under both."
+  },
+  {
+    "id": "21",
+    "row": 21,
+    "file": "rows/21.png",
+    "caption": "Callout kind: the callouts written in a page: Question, Answered, Key point or Note. A page with a question still open shows under Question."
+  },
+  {
+    "id": "22",
+    "row": 22,
+    "file": "rows/22.png",
+    "caption": "Your own properties: any column you added to the list with + Property (here Speaker, for lessons taught by different people). It is offered in the Filter menu with the values your pages hold."
+  },
+  {
+    "id": "23a",
+    "row": 23,
+    "file": "rows/23a.png",
+    "caption": "Where a list comes from: in any page, type / and pick List in a page. It is not a separate place; any page can hold one."
+  },
+  {
+    "id": "23b",
+    "row": 23,
+    "file": "rows/23b.png",
+    "caption": "Then pick which folder's pages it lists. The list shows those pages; its head carries the view, Search and Filter. 'All study pages' in these frames is such a list, placed in a page of that name."
   }
 ]
