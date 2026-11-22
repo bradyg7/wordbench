@@ -140,4 +140,9 @@ Documents\Bible Workbench, where the person's documents already are; with any ot
 (`<study>-documents`), so tests and scratch copies never write the person's documents. After a document is made, every
 verse the source holds is checked in the finished file; one that fails is not kept.
 
+CodeGraph (the person, 2026-11-22: in every session): `.mcp.json` starts the `codegraph` server and `.claude/settings.json`
+turns it on without asking, so every Claude session in a checkout has `codegraph_explore` for finding code. A checkout
+needs its index once: `powershell -File scripts\setup-codegraph.ps1` (it keeps `.codegraph/` out of git and syncs an
+existing index). It reads code only; it never touches the study folder.
+
 Do not push without the person's go-ahead.
