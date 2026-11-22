@@ -24,6 +24,14 @@ use std::collections::{HashMap, HashSet};
 
 // ---- the tree ---------------------------------------------------------------------------------------------------------
 
+/// The color a page carries from its folder (notebook row 26): the first folder it is in that has a color; none for a folder itself.
+fn folder_dot(e: &Value) -> Value {
+    if e["kind"] == "thread" {
+        return Value::Null;
+    }
+    e["threads"].as_array().into_iter().flatten().find_map(|x| x["color"].as_str().filter(|c| !c.is_empty())).map(|c| json!(c)).unwrap_or(Value::Null)
+}
+
 fn id_of(e: &Value) -> &str {
     e["id"].as_str().unwrap_or("")
 }
@@ -132,7 +140,7 @@ impl Tree {
 
     fn row(&self, e: &Value) -> Value {
         json!({"id": e["id"], "title": e["title"], "kind": e["kind"], "placed": e["placed"], "anchor": e["anchor"], "label": e["label"], "color": e.get("color").cloned().unwrap_or(Value::Null),
-            "status": e.get("status").cloned().unwrap_or(Value::Null), "pinned": e["pinned"], "order": e["order"],
+            "status": e.get("status").cloned().unwrap_or(Value::Null), "pinned": e["pinned"], "order": e["order"], "dot": folder_dot(e),
             "parent": self.parent_of(id_of(e)), "created": e["created"], "updated": e["updated"]})
     }
 
@@ -164,8 +172,9 @@ pub fn tree(bible: &Bible, store: &Store) -> Result<Value> {
 ///
 /// W4 (sheet W1.2), a row per open reader: `at` holds the reader's chapter first, then each second reader's.
 /// `at_reader` is the first (the reader), `at_readers` all of them, each with how many notes are on its chapter.
-pub fn sidebar_at(bible: &Bible, store: &Store, at: Vec<(String, u32)>, today: bool) -> Result<Value> {
+pub fn sidebar_at(bible: &Bible, store: &Store, root: &std::path::Path, at: Vec<(String, u32)>, today: bool) -> Result<Value> {
     let mut v = sidebar_one(bible, store, at.first().cloned(), today)?;
+    v["recents"] = recents(bible, store, root, RECENTS)?["recents"].clone();
     let mut rows = vec![];
     for (k, (code, ch)) in at.into_iter().enumerate() {
         let o = nb::Listing { group: "chapter".into(), at: Some((code.clone(), ch)), ..Default::default() };
@@ -175,6 +184,27 @@ pub fn sidebar_at(bible: &Bible, store: &Store, at: Vec<(String, u32)>, today: b
     }
     v["at_readers"] = json!(rows);
     Ok(v)
+}
+
+/// How many pages Recents holds (notebook row 35).
+pub const RECENTS: usize = 8;
+
+/// Recents (notebook row 35): the last `n` pages opened, newest first, read from the trail (`wb history list`: the steps of kind `page`);
+/// a page opened twice is listed once, one that is gone is passed over. Each is the tree's row with `at`, when it was last opened.
+pub fn recents(bible: &Bible, store: &Store, root: &std::path::Path, n: usize) -> Result<Value> {
+    let t = Tree::read(bible, store);
+    let mut rows = vec![];
+    for (id, at) in crate::history::page_opens(root)? {
+        if rows.len() >= n {
+            break;
+        }
+        if let Some(e) = t.get(&id).filter(|e| e["kind"] != "thread") {
+            let mut r = t.row(e);
+            r["at"] = json!(at);
+            rows.push(r);
+        }
+    }
+    Ok(json!({"recents": rows}))
 }
 
 fn sidebar_one(bible: &Bible, store: &Store, at: Option<(String, u32)>, today: bool) -> Result<Value> {

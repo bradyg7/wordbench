@@ -3091,3 +3091,66 @@ fn copy_contents_expands_scripture() {
     assert!(file.contains("```scripture") && !file.contains(verses[0]["text"].as_str().unwrap().trim()), "{file}");
     assert_eq!(wb.js(&["page", "text", &a, "--json"])["text"], out.trim_end_matches('\n'));
 }
+
+#[test]
+fn quick_search_preview_and_recents() {
+    // notebook rows 34 and 35 (NB13): Ctrl+K's one search gives folders with their color and page count, pages with the folder they are in and
+    // what they hold (a list, callouts, a table), and Key points; Recents are the last pages opened, newest first, read from the trail
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Phinehas", "--at", "Num 25:11", "--color", "orange"]);
+    wb.js(&["thread", "new", "Phinehas echoes", "--color", "blue"]);
+    let a = wb.js(&["page", "new", "Tuesday study\n\n- first item\n- second item"])["id"].as_str().unwrap().to_string();
+    let b = wb.js(&["page", "new", "Questions for Tuesday\n\n> [!question] Who acts first?"])["id"].as_str().unwrap().to_string();
+    let c = wb.js(&["page", "new", "Word studies index\n\n| Title | Folder |\n| --- | --- |\n| Zeal | Word studies |"])["id"].as_str().unwrap().to_string();
+    wb.js(&["note", "thread", &a, "Phinehas"]);
+    let found = wb.js(&["find", "tuesday", "--sort", "edited"]);
+    let pages = found["groups"].as_array().unwrap().iter().find(|g| g["kind"] == "page").unwrap()["results"].as_array().unwrap().clone();
+    let of = |title: &str| pages.iter().find(|p| p["title"] == title).unwrap().clone();
+    assert_eq!((of("Tuesday study")["has"].as_str().unwrap(), of("Tuesday study")["folder"].as_str().unwrap()), ("a list", "Phinehas"));
+    assert_eq!(of("Questions for Tuesday")["has"], "callouts");
+    let t = wb.js(&["find", "index", "--sort", "edited"]);
+    let idx = t["groups"].as_array().unwrap().iter().find(|g| g["kind"] == "page").unwrap()["results"][0].clone();
+    assert_eq!(idx["has"], "a table");
+    // folders: color and how many pages and saves
+    let f = wb.js(&["find", "phin", "--kind", "folder"]);
+    let rows = f["groups"][0]["results"].as_array().unwrap().clone();
+    let ph = rows.iter().find(|r| r["title"] == "Phinehas").unwrap();
+    assert_eq!((ph["color"].as_str().unwrap(), ph["pages"].as_u64().unwrap(), ph["saves"].as_u64().unwrap(), ph["count"].as_u64().unwrap()), ("orange", 1, 1, 2));
+    assert_eq!(rows.iter().find(|r| r["title"] == "Phinehas echoes").unwrap()["color"], "blue");
+    // Recents: only pages opened, newest first, each once, at most the limit; a gone page is left out
+    for (id, title) in [(&a, "Tuesday study"), (&b, "Questions for Tuesday"), (&c, "Word studies index"), (&a, "Tuesday study")] {
+        wb.js(&["history", "add", "page", title, "--line", &format!("page {id}")]);
+    }
+    wb.js(&["history", "add", "verse", "Numbers 25", "--line", "Numbers 25"]);
+    let r = wb.js(&["page", "recents"]);
+    let titles: Vec<&str> = r["recents"].as_array().unwrap().iter().map(|x| x["title"].as_str().unwrap()).collect();
+    assert_eq!(titles, ["Tuesday study", "Word studies index", "Questions for Tuesday"]);
+    assert_eq!(wb.js(&["page", "recents", "--limit", "2"])["recents"].as_array().unwrap().len(), 2);
+    assert_eq!(wb.js(&["notebook", "sidebar"])["recents"].as_array().unwrap().len(), 3);
+    wb.js(&["history", "add", "page", "Gone", "--line", "page n_nosuchpage"]);
+    assert_eq!(wb.js(&["page", "recents"])["recents"].as_array().unwrap().len(), 3);
+}
+
+#[test]
+fn folder_color_dots_its_pages() {
+    // notebook row 26 (NB13): a folder's color is the one organizing color; its pages carry it as `dot` in the tree and in `note show`'s threads
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Phinehas"]);
+    let p = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    wb.js(&["note", "thread", &p, "Phinehas"]);
+    let dot = |wb: &Wb| -> Value {
+        let tree = wb.js(&["page", "tree"]);
+        let folder = tree["pages"].as_array().unwrap().iter().find(|r| r["title"] == "Phinehas").unwrap().clone();
+        assert!(folder["dot"].is_null());
+        folder["children"][0]["dot"].clone()
+    };
+    assert!(dot(&wb).is_null());
+    let r = wb.js(&["folder", "color", "Phinehas", "orange"]);
+    assert_eq!(r["color"], "orange");
+    assert_eq!(dot(&wb), "orange");
+    assert_eq!(wb.js(&["note", "show", &p])["threads"][0]["color"], "orange");
+    // none takes it off again; nothing is added to any list of colors
+    wb.js(&["folder", "color", "Phinehas", "none"]);
+    assert!(dot(&wb).is_null());
+    assert!(wb.js(&["palette"])["colors"].as_array().unwrap().is_empty());
+}

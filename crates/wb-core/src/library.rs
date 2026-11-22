@@ -239,6 +239,20 @@ fn since(text: &str, flag: &str) -> Result<String> {
 
 /// Pages, folders, saves and questions in one list, grouped by kind: `{q, count, total, groups: [{kind, count, results}]}`.
 /// `total` is how many there were before the words and filters, for "23 of 412". Highlights are a group too.
+/// What a page holds besides paragraphs, for the one search's second line (notebook row 34): "a table", "callouts" or "a list"; "" for plain text.
+fn shape_of(text: &str) -> &'static str {
+    let lines: Vec<&str> = text.lines().map(str::trim_start).collect();
+    if lines.windows(2).any(|w| w[0].starts_with('|') && w[1].starts_with('|') && w[1].contains("---")) {
+        "a table"
+    } else if lines.iter().any(|l| l.starts_with("> [!")) {
+        "callouts"
+    } else if lines.iter().any(|l| l.starts_with("- ") || l.starts_with("* ") || l.chars().next().is_some_and(|c| c.is_ascii_digit()) && l.split_once(". ").is_some_and(|(n, _)| n.chars().all(|c| c.is_ascii_digit()))) {
+        "a list"
+    } else {
+        ""
+    }
+}
+
 pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     if !["", "page", "folder", "save", "question", "key", "note", "margin", "highlight", "mark"].contains(&f.kind) {
         return Err(bad("--kind is page, folder, save, question, key, note, margin, highlight or mark."));
@@ -277,15 +291,38 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
             .filter(|e| !f.has_question || e["text"].as_str().unwrap_or("").contains("[!question]"))
             .filter(|e| cutoff.as_ref().is_none_or(|c| e["updated"].as_str().unwrap_or("") >= c.as_str()))
             .filter(|e| in_folder.as_ref().is_none_or(|l| l.iter().any(|(k, r)| k == "note" && r == e["id"].as_str().unwrap_or(""))))
-            .map(|e| json!({"kind": "page", "id": e["id"], "title": e["title"], "snippet": e["preview"], "updated": e["updated"]}))
+            .map(|e| json!({"kind": "page", "id": e["id"], "title": e["title"], "snippet": e["preview"], "updated": e["updated"],
+                "folder": e["threads"][0]["name"], "has": shape_of(e["text"].as_str().unwrap_or(""))}))
             .collect();
         out_groups.push(("page".into(), rows));
     }
     lap("before folder");
     if want("folder") && in_folder.is_none() && !f.has_question && cutoff.is_none() {
+        // a folder is a set folder or a thread file (a folder with a color); each shows its color and how many pages and saves it holds
+        // (notebook row 34d): the pages written in it plus its saves
+        let on: Vec<Vec<String>> = store.notes().into_iter().chain(store.on_thread()).map(crate::store::threads_of).collect();
         let sets = store.sets();
-        all_total += sets.len();
-        let rows = sets.iter().filter(|t| has(&s(t, "name"))).map(|t| json!({"kind": "folder", "id": t["id"], "title": t["name"], "updated": t["updated"]})).collect();
+        let threads = store.threads();
+        all_total += sets.len() + threads.len();
+        let mut rows: Vec<Value> = vec![];
+        for t in &sets {
+            if !has(&s(t, "name")) {
+                continue;
+            }
+            let items = t["items"].as_array().cloned().unwrap_or_default();
+            let pages = items.iter().filter(|i| s_of(i, "kind") == "note").count();
+            let saves = items.len() - pages;
+            rows.push(json!({"kind": "folder", "id": t["id"], "title": t["name"], "color": s(t, "color"), "pages": pages, "saves": saves, "count": pages + saves, "updated": t["updated"]}));
+        }
+        for t in &threads {
+            if !has(&s(t, "name")) {
+                continue;
+            }
+            let id = s(t, "id");
+            let pages = on.iter().filter(|l| l.contains(&id)).count();
+            let saves = t["members"].as_array().map(|a| a.len()).unwrap_or(0);
+            rows.push(json!({"kind": "folder", "id": crate::threadpage::page_id(&id), "title": t["name"], "color": s(t, "color"), "pages": pages, "saves": saves, "count": pages + saves, "updated": t["updated"]}));
+        }
         out_groups.push(("folder".into(), rows));
     }
     lap("before save");

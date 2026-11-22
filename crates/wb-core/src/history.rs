@@ -78,6 +78,22 @@ pub fn steps(root: &Path, days: usize) -> Result<Vec<Value>> {
     Ok(out)
 }
 
+/// The pages opened (steps of kind `page`, whose line is `page <id>`), newest first, each page once: `(id, when it was last opened)`.
+pub fn page_opens(root: &Path) -> Result<Vec<(String, String)>> {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = vec![];
+    for s in steps(root, 0)?.into_iter().rev() {
+        if s["kind"] != "page" {
+            continue;
+        }
+        let Some(id) = s["line"].as_str().and_then(|l| l.strip_prefix("page ")).map(str::trim).filter(|i| !i.is_empty()) else { continue };
+        if seen.insert(id.to_string()) {
+            out.push((id.to_string(), s["at"].as_str().unwrap_or("").to_string()));
+        }
+    }
+    Ok(out)
+}
+
 /// The steps cut into sittings (a gap of `SITTING_GAP_MINUTES` or more starts one), newest sitting first. Each:
 /// `{start, at, end, count, title, steps}` (`steps` only with `with_steps`).
 pub fn sittings(root: &Path, days: usize, with_steps: bool) -> Result<Value> {

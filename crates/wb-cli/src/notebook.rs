@@ -135,7 +135,7 @@ fn notebook_commands() -> Vec<Command> {
                 };
                 j(nb::list(c.bible()?, &st, &o).map_err(e)?)
             }),
-        cmd("notebook sidebar", "The Notebook's sidebar in one answer: Today (today's page and the last days written in), Pinned, Pages (the tree), At the reader (--at \"Num 25\": that chapter and how many notes are on it; with second readers open, each one's chapter after the reader's: --at \"Num 25; Ps 106\", a row each), Threads and Questions.",
+        cmd("notebook sidebar", "The Notebook's sidebar in one answer: Recents (the last 8 pages opened, newest first), Today (today's page and the last days written in), Pinned, Pages (the tree), At the reader (--at \"Num 25\": that chapter and how many notes are on it; with second readers open, each one's chapter after the reader's: --at \"Num 25; Ps 106\", a row each), Threads and Questions.",
             vec![Opt("at", None)], |c, a| {
                 let st = c.study()?;
                 let mut at = vec![];
@@ -144,7 +144,7 @@ fn notebook_commands() -> Vec<Command> {
                     at.push((sp.book.code.clone(), sp.c1));
                 }
                 let today = nb::settings(&st)["today"] != false;
-                j(wb_core::pages::sidebar_at(c.bible()?, &st, at, today).map_err(e)?)
+                j(wb_core::pages::sidebar_at(c.bible()?, &st, &c.root()?, at, today).map_err(e)?)
             }),
         cmd("note show", "Any note, question or day's page whole, by its id (or a day, 2026-11-04): its text, places, threads, [[links]], headings and Linked from.",
             vec![Pos("id", N::One)], |c, a| j(nb::show(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),

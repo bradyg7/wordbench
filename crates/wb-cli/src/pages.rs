@@ -64,6 +64,11 @@ pub fn commands() -> Vec<Command> {
         cmd("page sweep", "Recover interrupted page deletions, then expire only committed operations past their original deadlines. Legacy Trash is unchanged.",vec![],|c,_| j(wb_core::deletion::sweep(&mut *c.study()?,wb_core::deletion::now_ms()).map_err(e)?)),
         cmd("page tree", "The Notebook's Pinned and Pages: the pinned pages in order, and every page with the pages inside it (children). A page is a note with no place, or any note put inside a page or holding one.",
             vec![], |c, _| j(pg::tree(c.bible()?, &*c.study()?).map_err(e)?)),
+        cmd("page recents", "Recents, the side list's first group (notebook row 35): the last pages opened (default 8), newest first, each once, read from the trail (steps of kind page, line \"page <id>\": wb history add page \"Title\" --line \"page <id>\"); a page that is gone is left out.",
+            vec![Opt("limit", Some("8"))], |c, a| {
+                let n = a.opt("limit").unwrap_or_default().parse::<usize>().map_err(|_| "--limit takes a number".to_string())?;
+                j(pg::recents(c.bible()?, &*c.study()?, &c.root()?, n).map_err(e)?)
+            }),
         cmd("page new", "A new page (a note with no place yet): wb page new \"Lesson: Phinehas\" [--parent ID: inside that page, last there] [--link: and a [[link]] to it in that page, after block --after N, or --first, else at its end]. Its first line is its title; - reads standard input.
                    From a template (W5): wb page new --template \"Chapter study\" --place \"Num 25\" [--title \"…\"] [--reader \"Ps 106\"] [--parent ID]: its blocks copied, {place} {date} {title} {reader} filled.",
             vec![Pos("text", N::Any), Opt("parent", None), Flag("link"), Opt("after", None), Flag("first"), Opt("template", None), Opt("place", None), Opt("title", None), Opt("reader", None)], |c, a| {

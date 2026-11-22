@@ -120,7 +120,11 @@ fn entry_in(bible: &Bible, store: &Store, r: &Rec, kind: &str, placed: bool) -> 
     let also: Vec<Value> = places_of(r).into_iter().skip(1).map(|a| json!({"anchor": a, "label": label(bible, &a)})).collect();
     let threads: Vec<Value> = threads_of(r)
         .into_iter()
-        .map(|t| json!({"id": t, "name": store.thread(&t).map(|x| s(&x, "name")).unwrap_or_else(|_| t.clone())}))
+        .map(|t| {
+            let th = store.thread(&t);
+            let color = th.as_ref().map(|x| s(x, "color")).unwrap_or_default();
+            json!({"id": t, "name": th.map(|x| s(&x, "name")).unwrap_or_else(|_| t.clone()), "color": if color.is_empty() { Value::Null } else { json!(color) }})
+        })
         .collect();
     if s(r, "anchor").is_empty() && !threads.is_empty() {
         e["label"] = json!(format!("On {}", threads.iter().map(|t| t["name"].as_str().unwrap_or("")).collect::<Vec<_>>().join(", ")));
