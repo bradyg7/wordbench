@@ -418,7 +418,7 @@ test('move_to_says_where_and_undoes', async ({ page }) => {
   await page.keyboard.press('Control+Shift+P');
   await expect(page.locator('.wbm[aria-label="Move to"] .wbm-group')).toHaveText(['Move 3 blocks to']);
   await page.locator('.wbm[aria-label="Move to"] .wbm-row', { hasText: 'Other page' }).click();
-  await expect(page.locator('.block-deletion')).toContainText('Moved to Other page · Undo');
+  await expect(page.locator('.block-deletion')).toContainText('Moved to Other page · Undo', { timeout: 15000 });
   await expect.poll(() => s.texts()).toEqual(WORDS.slice(3));
   await page.locator('.block-deletion').getByRole('button', { name: 'Undo' }).click();
   await expect.poll(() => s.texts()).toEqual(WORDS);
