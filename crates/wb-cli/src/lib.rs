@@ -243,7 +243,7 @@ fn changes_page_files(command: &str) -> bool {
         "trail rm" | "question add" | "question answer" | "question fold" | "question unfold" |
         "day add" | "day text" | "day rm" | "page new" | "page move" | "page pin" |
         "page unpin" | "page title" | "mark grow" |
-        "block scripture" | "block thread" | "block word" | "block view" | "block set" |
+        "block scripture" | "block thread" | "block word" | "block view" | "page prop" | "block set" |
         "callout kind" | "block add" | "block color" | "block dup" | "block rm" | "block undo" | "block move" | "block link" | "tether accept" | "template new" |
         "template save" | "template set" | "template rm" | "trash restore" | "history keep"
     )

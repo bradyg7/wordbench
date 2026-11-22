@@ -168,6 +168,35 @@ folder, not as a Notebook tab.
   Question and Answered; a chip reads `wb question list --kind question|answered`. Tests `quick_search_preview_and_recents` (Rust and window),
   `side_list_recents_replaces_today`, `folder_color_dots_its_pages` (Rust and window), `questions_list_filters_by_kind` (window).
 
+- **List in a page, Table, views and Group by, NB14 (the lead, 2026-11-22, file forms by the most compatible Markdown / front-matter form).** (1) A
+  List in a page is the existing ```` ```view ```` fence: its first line is the command line that names the pages (`notebook thread word-studies`: the
+  folder is the database, each page in it a row), then one option a line under it: `view: table|list|gallery|board`, `group: folder|callout|NAME`,
+  `columns: Status, Book`, `sort: edited|created|title`; an option at its default is not written, and a line the fence holds that is not one of these
+  stays. Older view fences (the line alone) read as a Table, and changing the line keeps the options. `/ › List in a page` asks for a folder (the folder
+  chooser) and writes ```` ```view ````, `notebook thread <id>`, `view: table`. (2) A column is a **page property**: the page's front matter gets one
+  `props:` line, a JSON map of name → text (`props: {"Status": "Open", "Book": "Numbers"}`), beside `parent`, `order` and the other page fields, kept
+  when the page is placed or moved. One line beats a key for each property because the header is `key: JSON` lines with a fixed set of system names
+  (a question's `status`, `kind`, `created` …), which a free key could collide with, and because a page rewritten by placing it would drop an unknown key.
+  `wb page prop ID` shows them, `wb page prop ID NAME VALUE` sets one, `--remove` (or an empty value) takes it away; a name is a few plain words and
+  `title`, `edited`, `created`, `folder`, `callout`, `kind` and `id` are taken (they are the list's own columns and groupings). A page that lacks a
+  property shows an empty cell. **+ Property** writes the new name into the fence's `columns` (a column with no values yet); with no `columns`, the list
+  shows every property its pages hold, in name order. **+ New page** is `wb page new Untitled --parent thread:<folder id>`, a page written on the folder,
+  a row at once. (3) `wb page views ID` gives each list's `view`, `group`, `columns`, `sort`, `properties` (every name its pages hold, and its columns),
+  `folder` (when the line names one), `rows` (each page with `props`, its first `folder`, `edited`) and, with a group, `groups`: `{key, label, color,
+  count, rows}` (folders by name, a property's values by name, the rows that have none last: "Pages", "No Status"). Grouped by `callout` the rows are
+  the callouts of those pages (`wb callout list`'s rows), `rows_are` is `callouts`, and the headings are Question, Answered, Key point and Note in that
+  order, each with its count (row 46d). A Board with no group is grouped by folder. `wb block view ID N [LINE] [--view …] [--group …] [--columns "…"]
+  [--sort …]` writes the fence (an empty option takes it away); Calendar and Timeline are refused with "come later". (4) The window: the head is
+  View ▾ (Table, List, Gallery, Board, Calendar and Timeline marked later, then Group by ▸ and Sort ▸ as two more menus), the folder (its dot, "Folder:
+  Word studies · 4 pages"), and **Filters**, which opens the list's line for editing (the line is the filter; the paused Filters design is not built
+  here). A cell is typed into where it is (Enter or leaving it saves, `wb page prop`); a title opens its page; a group's heading folds (open or folded
+  is kept while the window is open, not on disk); a Board card dragged to another folder's column puts the page on that folder and takes it off the
+  old (`wb note thread`), and to another value's column sets the property. (5) A **Table** (row 48) is the page's Markdown table; each cell is an input
+  written where it is (Enter or leaving it saves, Tab in the last cell adds a row), **+** at the right adds a column (`---` in the rule line) and **+ Row**
+  under it a row at the foot, each one `wb block set ID N` of the whole table; nothing in it is linked. The older Edit table form stays for its
+  Remove column and Remove row. Tests `list_in_a_page_folder_as_database`, `list_views_and_group_by` and `plain_table_add_row_column` (Rust and window),
+  `callouts_grouped_by_kind` and `list_in_a_page_from_the_slash_menu` (window).
+
 ## The inventory (round 1)
 
 Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into the interaction table below.
@@ -327,7 +356,7 @@ person's existing pages read.
 | 22 | / menu (`/callout`) or Turn into | Callout | A soft box with an icon and a kind: Question, Answered, Key point, Note | `> [!question]`, `> [!done]`, `> [!key]`, `> [!note]`; later lines `> …`, a nested list `>   - …` | `wb block add ID "> [!key] …"` | `callout_kinds_write_their_marker` | built (NB10) · approved 2026-11-20 |
 | 23 | A callout's icon | Click | Its kind menu; a Question becomes Answered and back | The marker's word only | `wb callout kind ID#N KIND` (`wb block set` writes the whole block) | `callout_kind_changes` | built (NB10) · approved 2026-11-20 |
 | 24 | Today's pages | Open one with `> [!question]` or `> [!done]` | They show as Question and Answered callouts; the questions list still finds them | Nothing | `wb question list` | `old_question_callouts_still_read` | built (NB10) · approved 2026-11-20 |
-| 46 | A callout | Write several lines and a nested list in it | It holds them all (46a); the Questions list (Library) filters by kind, Question or Answered (46b); Key points and Notes are found by Ctrl+K (46c) and by a List in a page grouped by callout kind (46d) | The callout's lines | `wb question list [--kind question\|answered]`, `wb callout list [--kind key\|note]`, `wb find WORDS --kind key\|note` | `callout_kinds_found` | [ ] partly (NB10: 46a and `wb`; NB13: 46b the Questions list's Question/Answered chips, 46c Key points and Notes in Ctrl+K; 46d the List in a page grouped by callout kind comes with NB14) · approved 2026-11-20 |
+| 46 | A callout | Write several lines and a nested list in it | It holds them all (46a); the Questions list (Library) filters by kind, Question or Answered (46b); Key points and Notes are found by Ctrl+K (46c) and by a List in a page grouped by callout kind (46d) | The callout's lines | `wb question list [--kind question\|answered]`, `wb callout list [--kind key\|note]`, `wb find WORDS --kind key\|note` | `callout_kinds_found` | built (NB10, NB13, NB14) · approved 2026-11-20 |
 
 ### Color, N9
 
@@ -353,9 +382,9 @@ person's existing pages read.
 |---|---|---|---|---|---|---|---|
 | 34 | Anywhere | Ctrl+K | The Library's one search: Recents when empty; results grouped; a live preview of the highlighted result on the right, showing lists, callouts and tables as in the page (34a–34c); folders show with their color and page count (34d); Enter opens; Esc returns | Nothing | `wb find WORDS` | `quick_search_preview_and_recents` | built (NB13) · approved 2026-11-20 |
 | 35 | Side list | Recents | **Recents replaces Today:** a folding group of the last 8 pages opened, newest first, above Pinned, Folders, Pages | Nothing (read from the trail) | `wb history list` | `side_list_recents_replaces_today` | built (NB13) · approved 2026-11-20 |
-| 36 | / menu | List in a page | A folder acts as the database: each page in it is a row; a column is a page property from its front matter; + New page adds a page to the folder; + Property adds a column; Filters above | One `view` fence; a new page; a property in front matter | `wb block add ID` with a `view` fence; `wb page views`; `wb page prop ID NAME VALUE`, *proposed* | `list_in_a_page_folder_as_database` | [ ] approved 2026-11-20 |
-| 48 | / menu | Table | A plain table you type into: + adds a row at the foot or a column at the right; nothing is linked | The table in Markdown | `wb block add ID` with a table | `plain_table_add_row_column` | [ ] approved 2026-11-20 |
-| 47 | A list in a page | View ▾, Group by | Table, List, Gallery, Board; Calendar and Timeline later (47a–47d); Group by gathers rows under a heading per folder, callout kind or property, each foldable with its count (47e) | The `view` fence's view and grouping | `wb page views`, *proposed* `--view board --group folder` | `list_views_and_group_by` | [ ] approved 2026-11-20 |
+| 36 | / menu | List in a page | A folder acts as the database: each page in it is a row; a column is a page property from its front matter; + New page adds a page to the folder; + Property adds a column; Filters above | One `view` fence; a new page; a property in front matter | `wb block add ID` with a `view` fence; `wb page views`; `wb page prop ID NAME VALUE`; `wb page new TEXT --parent thread:ID` | `list_in_a_page_folder_as_database` | built (NB14) · approved 2026-11-20 |
+| 48 | / menu | Table | A plain table you type into: + adds a row at the foot or a column at the right; nothing is linked | The table in Markdown | `wb block add ID` with a table; `wb block set ID N` | `plain_table_add_row_column` | built (NB14) · approved 2026-11-20 |
+| 47 | A list in a page | View ▾, Group by | Table, List, Gallery, Board; Calendar and Timeline later (47a–47d); Group by gathers rows under a heading per folder, callout kind or property, each foldable with its count (47e) | The `view` fence's view and grouping | `wb page views`; `wb block view ID N --view board --group folder` | `list_views_and_group_by` | built (NB14) · approved 2026-11-20 |
 
 ### Real conditions, N12
 

@@ -3154,3 +3154,144 @@ fn folder_color_dots_its_pages() {
     assert!(dot(&wb).is_null());
     assert!(wb.js(&["palette"])["colors"].as_array().unwrap().is_empty());
 }
+
+#[test]
+fn list_in_a_page_folder_as_database() {
+    // notebook row 36 (NB14): a folder acts as the database. A List in a page holds the line that names the folder; each page in it is a
+    // row; a column is a page property kept in that page's front matter (`wb page prop`); + New page is a page written on the folder
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Word studies"]);
+    wb.js(&["folder", "color", "Word studies", "pink"]);
+    let index = wb.js(&["page", "new", "Word studies index"])["id"].as_str().unwrap().to_string();
+    let zeal = wb.js(&["page", "new", "Zeal"])["id"].as_str().unwrap().to_string();
+    let haste = wb.js(&["page", "new", "Haste"])["id"].as_str().unwrap().to_string();
+    wb.js(&["page", "new", "Not in the folder"]);
+    for id in [&zeal, &haste] {
+        wb.js(&["note", "thread", id, "Word studies"]);
+    }
+    wb.js(&["block", "add", &index, "```view\nnotebook thread word-studies\n```"]);
+    let views = |wb: &Wb| wb.js(&["page", "views", &index])["blocks"][0].clone();
+    let v = views(&wb);
+    assert_eq!((v["view"].as_str().unwrap(), v["count"].as_u64().unwrap()), ("table", 2));
+    assert_eq!(v["folder"]["name"], "Word studies");
+    assert!(v["rows"].as_array().unwrap().iter().all(|r| r["props"].as_object().unwrap().is_empty()));
+    // a property is a column: set on a page, kept in its front matter, read by the list
+    let r = wb.js(&["page", "prop", &zeal, "Status", "Open"]);
+    assert_eq!(r["props"]["Status"], "Open");
+    wb.js(&["page", "prop", &zeal, "Book", "Numbers"]);
+    wb.js(&["page", "prop", &haste, "Book", "Proverbs"]);
+    let mut files = vec![]; let mut dirs = vec![wb.dir.join("notes")]; while let Some(d) = dirs.pop() { for e in std::fs::read_dir(d).unwrap().flatten() { if e.path().is_dir() { dirs.push(e.path()) } else { files.push(e.path()) } } }
+    let file = files.iter().map(|f| std::fs::read_to_string(f).unwrap()).find(|t| t.contains("Numbers")).unwrap();
+    assert!(file.contains("props: {\"Status\": \"Open\", \"Book\": \"Numbers\"}"), "{file}");
+    assert!(file.contains("Zeal"));
+    let v = views(&wb);
+    assert_eq!(v["properties"], json!(["Book", "Status"]));
+    let row = v["rows"].as_array().unwrap().iter().find(|r| r["title"] == "Zeal").unwrap().clone();
+    assert_eq!((row["props"]["Status"].as_str().unwrap(), row["props"]["Book"].as_str().unwrap()), ("Open", "Numbers"));
+    let other = v["rows"].as_array().unwrap().iter().find(|r| r["title"] == "Haste").unwrap().clone();
+    assert!(other["props"].get("Status").is_none());
+    // + Property: a column with no values yet is a name in the fence; the page's own text is not touched
+    wb.js(&["block", "view", &index, "1", "--columns", "Status, Book, Reviewed"]);
+    let v = views(&wb);
+    assert_eq!(v["columns"], json!(["Status", "Book", "Reviewed"]));
+    assert!(v["properties"].as_array().unwrap().iter().any(|p| p == "Reviewed"));
+    let text = wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
+    assert!(text.contains("```view\nnotebook thread word-studies\ncolumns: Status, Book, Reviewed\n```"), "{text}");
+    // + New page: a page written on the folder is a row at once; a change of the line keeps the options
+    let new = wb.js(&["page", "new", "Courage", "--parent", "thread:word-studies"])["id"].as_str().unwrap().to_string();
+    assert_eq!(views(&wb)["count"], 3);
+    wb.js(&["block", "view", &index, "1", "notebook thread word-studies"]);
+    assert_eq!(views(&wb)["columns"], json!(["Status", "Book", "Reviewed"]));
+    // a value taken away; moving a page keeps its properties
+    wb.js(&["page", "prop", &new, "Status", "Done"]);
+    wb.js(&["page", "prop", &new, "Status", "--remove"]);
+    assert!(wb.js(&["page", "prop", &new])["props"].as_object().unwrap().is_empty());
+    wb.js(&["page", "move", &zeal, "--parent", &haste]);
+    assert_eq!(wb.js(&["page", "prop", &zeal])["props"]["Book"], "Numbers");
+    assert!(wb.fails(&["page", "prop", &zeal, "Edited", "x"]).contains("already a column"));
+    assert!(wb.fails(&["page", "prop", &zeal, "a:b", "x"]).contains("plain words"));
+}
+
+#[test]
+fn list_views_and_group_by() {
+    // notebook rows 47 and 46d (NB14): View ▾ is Table, List, Gallery or Board (Calendar and Timeline later), kept in the fence; Group by gathers
+    // rows under headings by folder, callout kind or a property, each with its count
+    let Some(wb) = Wb::new() else { return };
+    wb.js(&["thread", "new", "Phinehas"]);
+    wb.js(&["folder", "color", "Phinehas", "orange"]);
+    wb.js(&["thread", "new", "Salt"]);
+    wb.js(&["folder", "color", "Salt", "green"]);
+    let index = wb.js(&["page", "new", "Word studies index"])["id"].as_str().unwrap().to_string();
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    let b = wb.js(&["page", "new", "Haste study"])["id"].as_str().unwrap().to_string();
+    let c = wb.js(&["page", "new", "Prayer list"])["id"].as_str().unwrap().to_string();
+    wb.js(&["note", "thread", &a, "Phinehas"]);
+    wb.js(&["note", "thread", &b, "Salt"]);
+    wb.js(&["block", "add", &a, "> [!key] The covenant is given to him and to his seed after him."]);
+    wb.js(&["block", "add", &a, "> [!note] Read the YLT of verse 13 next."]);
+    wb.js(&["block", "add", &b, "> [!key] Wait for the word before acting."]);
+    wb.js(&["block", "add", &b, "> [!question] Who waits?"]);
+    wb.js(&["page", "prop", &a, "Status", "Open"]);
+    wb.js(&["page", "prop", &b, "Status", "Done"]);
+    wb.js(&["page", "prop", &c, "Status", "Open"]);
+    wb.js(&["block", "add", &index, "```view\nnotebook kind note\n```"]);
+    let views = |wb: &Wb| wb.js(&["page", "views", &index])["blocks"][0].clone();
+    let titles = |v: &Value| -> Vec<String> { v["rows"].as_array().unwrap().iter().map(|r| r["title"].as_str().unwrap().to_string()).collect() };
+    assert_eq!(views(&wb)["view"], "table");
+    assert!(views(&wb)["groups"].is_null());
+    for view in ["list", "gallery", "board", "table"] {
+        let r = wb.js(&["block", "view", &index, "1", "--view", view]);
+        assert!(r.is_object());
+        assert_eq!(views(&wb)["view"], view);
+    }
+    assert!(wb.fails(&["block", "view", &index, "1", "--view", "calendar"]).contains("later"));
+    assert!(wb.fails(&["block", "view", &index, "1", "--view", "cards"]).contains("table, list, gallery or board"));
+    assert!(wb.fails(&["block", "view", &index, "1"]).contains("Give the view's line"));
+    // sort
+    wb.js(&["block", "view", &index, "1", "--sort", "title"]);
+    let t = titles(&views(&wb));
+    let mut sorted = t.clone();
+    sorted.sort_by_key(|x| x.to_lowercase());
+    assert_eq!(t, sorted);
+    // group by folder: a heading per folder with its count and color; no folder last
+    wb.js(&["block", "view", &index, "1", "--group", "folder"]);
+    let v = views(&wb);
+    let groups = v["groups"].as_array().unwrap();
+    let names: Vec<(&str, u64)> = groups.iter().map(|g| (g["label"].as_str().unwrap(), g["count"].as_u64().unwrap())).collect();
+    assert!(names.contains(&("Phinehas", 1)) && names.contains(&("Salt", 1)), "{names:?} {v}");
+    assert_eq!(groups.last().unwrap()["label"], "Pages");
+    assert_eq!(groups.iter().find(|g| g["label"] == "Phinehas").unwrap()["color"], "orange");
+    // group by a property
+    wb.js(&["block", "view", &index, "1", "--group", "Status"]);
+    let v = views(&wb);
+    let g = |label: &str| v["groups"].as_array().unwrap().iter().find(|g| g["label"] == label).map(|g| g["count"].as_u64().unwrap());
+    assert_eq!((g("Open"), g("Done")), (Some(2), Some(1)));
+    // group by callout kind (row 46d): Key point and Note as headings, each callout a row with its page
+    wb.js(&["block", "view", &index, "1", "--group", "callout", "--view", "list"]);
+    let v = views(&wb);
+    assert_eq!(v["rows_are"], "callouts");
+    let kinds: Vec<(&str, u64)> = v["groups"].as_array().unwrap().iter().map(|g| (g["label"].as_str().unwrap(), g["count"].as_u64().unwrap())).collect();
+    assert_eq!(kinds, vec![("Question", 1), ("Key point", 2), ("Note", 1)]);
+    let key = v["groups"].as_array().unwrap().iter().find(|g| g["key"] == "key").unwrap().clone();
+    assert!(key["rows"].as_array().unwrap().iter().any(|r| r["first"] == "Wait for the word before acting." && r["page_title"] == "Haste study"));
+    // the fence holds the line first, then one option a line; none takes them away
+    let text = wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
+    assert!(text.contains("```view\nnotebook kind note\nview: list\ngroup: callout\nsort: title\n```"), "{text}");
+    wb.js(&["block", "view", &index, "1", "--group", "none", "--view", "", "--sort", ""]);
+    let text = wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
+    assert!(text.contains("```view\nnotebook kind note\n```"), "{text}");
+}
+
+#[test]
+fn plain_table_add_row_column() {
+    // notebook row 48 (NB14): a Table is a plain Markdown table written with `wb block add`; a row at the foot or a column at the right is the
+    // same block written again (`wb block set`); nothing in it is linked, and the page text stays a Markdown table
+    let Some(wb) = Wb::new() else { return };
+    let p = wb.js(&["page", "new", "Tuesday study"])["id"].as_str().unwrap().to_string();
+    wb.js(&["block", "add", &p, "| Who | Acts |\n| --- | --- |\n| Phinehas | rose up |"]);
+    assert_eq!(wb.js(&["page", "blocks", &p])["blocks"][0]["kind"], "table");
+    wb.js(&["block", "set", &p, "1", "| Who | Acts | Promise |\n| --- | --- | --- |\n| Phinehas | rose up |  |\n| Moses |  |  |"]);
+    let text = wb.js(&["note", "show", &p])["text"].as_str().unwrap().to_string();
+    assert!(text.contains("| Who | Acts | Promise |\n| --- | --- | --- |\n| Phinehas | rose up |  |\n| Moses |  |  |"), "{text}");
+    assert_eq!(wb.js(&["page", "blocks", &p])["blocks"][0]["kind"], "table");
+}

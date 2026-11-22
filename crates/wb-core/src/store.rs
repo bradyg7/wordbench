@@ -261,7 +261,7 @@ pub fn threads_of(n: &Rec) -> Vec<String> {
 ///
 /// Library L-21 (2026-11-17): `title` is the page's own title field. A page without it is titled by its first line (read,
 /// never rewritten until edited); where both exist and differ, the field wins and `wb study check` reports it.
-pub const PAGE_FIELDS: &[&str] = &["parent", "order", "pinned", "title", "template", "new_name", "asks", "goes_in", "from_template"];
+pub const PAGE_FIELDS: &[&str] = &["props", "parent", "order", "pinned", "title", "template", "new_name", "asks", "goes_in", "from_template"];
 
 /// A note's page fields, kept when its file is written anew (placed, moved, a place taken off).
 fn carry(old: &Rec, meta: &mut Rec) {

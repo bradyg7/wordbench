@@ -203,10 +203,25 @@ pub fn commands() -> Vec<Command> {
             }),
         cmd("page views", "A page's views (W5) with what each finds now: each block's number, its line, and its rows (as wb view run); a line that cannot be read, or holds a template's blank, says so.",
             vec![Pos("id", N::One)], |c, a| j(pv::page_views(c.bible()?, &*c.study()?, &a.s("id")).map_err(e)?)),
-        cmd("block view", "Change a view's line: wb block view ID 3 \"notebook @Num 25 questions\". The line is read first; one that cannot be read is not written.",
-            vec![Pos("id", N::One), Pos("n", N::One), Pos("line", N::Many)], |c, a| {
+        cmd("block view", "Change a List in a page: wb block view ID 3 \"notebook thread phinehas\" [--view table|list|gallery|board] [--group none|folder|callout|PROPERTY] [--columns \"Status, Book\"] [--sort edited|created|title]. The line is read first; one that cannot be read is not written. With no line only the options change; an empty option (--group \"\") is taken away. The fence keeps the line first and one option a line under it.",
+            vec![Pos("id", N::One), Pos("n", N::One), Pos("line", N::Any), Opt("view", None), Opt("group", None), Opt("columns", None), Opt("sort", None)], |c, a| {
                 let n = nth(a, "n")?;
-                j(pv::set_line(c.bible()?, &mut *c.study()?, &a.s("id"), n, &a.s("line")).map_err(e)?)
+                let line = a.s("line");
+                let opts: Vec<(&str, Option<String>)> = ["view", "group", "columns", "sort"].into_iter().map(|k| (k, a.opt(k))).collect();
+                let opts: Vec<(&str, Option<&str>)> = opts.iter().map(|(k, v)| (*k, v.as_deref())).collect();
+                if line.trim().is_empty() && opts.iter().all(|o| o.1.is_none()) {
+                    return Err("Give the view's line, or an option: --view, --group, --columns, --sort.".into());
+                }
+                j(pv::set_view(c.bible()?, &mut *c.study()?, &a.s("id"), n, if line.trim().is_empty() { None } else { Some(line.as_str()) }, &opts).map_err(e)?)
+            }),
+        cmd("page prop", "A page's properties, the columns of a List in a page (notebook rows 36, 47): wb page prop ID shows them; wb page prop ID Status Open sets one; wb page prop ID Status --remove (or an empty value) takes it away. They are kept in the page's front matter (props), text only, one line each; title, edited, created, folder, callout, kind and id cannot be names.",
+            vec![Pos("id", N::One), Pos("name", N::Opt), Pos("value", N::Any), Flag("remove")], |c, a| {
+                let name = a.s("name");
+                if name.trim().is_empty() {
+                    return j(pv::page_props(&*c.study()?, &a.s("id")).map_err(e)?);
+                }
+                let value = a.s("value");
+                j(pv::set_prop(&mut *c.study()?, &a.s("id"), &name, if a.flag("remove") { None } else { Some(value.as_str()) }).map_err(e)?)
             }),
         cmd("view run", "What a view's line finds, as a view lists it (and the command field): wb view run \"notebook @Num 25 questions\". The line: notebook, then any of @place (a verse, chapter, book or H7065), questions | open | answered, thread <name>, days N, pages, kind all|note|question|day|thread, and words. Views read; they never write.",
             vec![Pos("line", N::Many)], |c, a| j(pv::run(c.bible()?, &*c.study()?, &a.s("line")).map_err(e)?)),

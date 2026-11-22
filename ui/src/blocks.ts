@@ -14,6 +14,7 @@ import { chapterMarks, drawWords, hasWords, type PageVerse } from './pagescriptu
 import { threadChooser } from './panes';
 import { openMenu, type MenuGroup, type MenuItem } from './menu';
 import { atMenu } from './atmenu';
+import { listBlock } from './listview';
 import { openChapterPanel } from './chapterpanel';
 import { scriptureField } from './scripturefield';
 import { concordanceChooser, isRefLang, isStudyLang, studyBlock, validWord, type StudyData } from './studyblocks';
@@ -699,7 +700,7 @@ function drawn(b: Blk, host: Host, id: string): Node {
     return row;
   }
   if (b.kind === 'divider') return h('hr', 'nb-hr');
-  if (b.kind === 'table') return table(b.text);
+  if (b.kind === 'table') return table(b, host, id);
   if (isScripture(b)) return scriptureBlock(b, id, host);
   if (isView(b)) return viewBlock(b, id, host);
   if (isThread(b)) return threadBlock(b, id, host);
@@ -746,18 +747,92 @@ function tableRows(text: string): string[][] {
 
 const tableRule = (cells?: string[]) => !!cells?.length && cells.every(cell => /^:?-+:?$/.test(cell));
 const cellText = (cell: string) => cell.replace(/\\\|/g, '|');
+const escapeCell = (v: string) => v.replace(/(?<!\\)\|/g, '\\|');
 
-function table(text: string): HTMLElement {
+/** A Table (notebook row 48): a plain table you type into. Each cell is written where it is (Enter or leaving it saves, Tab goes on to the
+ *  next cell); + at the right adds a column, + Row under it a row at the foot. The page holds a Markdown table and nothing in it is linked. */
+let cellFocus: { page: string; n: number; row: number; col: number } | null = null;
+
+function table(b: Blk, host: Host, id: string): HTMLElement {
   const scroll = h('div', 'nb-table-scroll');
-  const t = h('table', 'nb-table');
-  tableRows(text).forEach((cells, row) => {
-    if (row === 1 && tableRule(cells)) return;
+  const t = h('table', 'nb-table nb-table-inline');
+  const rows = tableRows(b.text);
+  const rule = tableRule(rows[1]) ? rows.splice(1, 1)[0] : [];
+  const cols = Math.max(1, rule.length, ...rows.map(r => r.length));
+  const asLine = (cells: string[]) => `| ${Array.from({ length: cols }, (_, i) => cells[i] || '').join(' | ')} |`;
+  const md = (rs: string[][], rl: string[]) => [asLine(rs[0]), asLine(Array.from({ length: cols }, (_, i) => rl[i] || '---')), ...rs.slice(1).map(asLine)].join('\n');
+  const save = async (next: string, focus?: { row: number; col: number }) => {
+    if (next === b.text) return;
+    if (focus) cellFocus = { page: id, n: b.n, ...focus };
+    try { await wb(['block', 'set', id, String(b.n), '--expect', host.text, '-'], next); host.changed(); }
+    catch (x) { cellFocus = null; toast(String(x)); }
+  };
+  const inputs: HTMLInputElement[][] = [];
+  rows.forEach((cells, row) => {
     const tr = h('tr');
-    for (const c of cells) tr.append(h(row === 0 ? 'th' : 'td', '', cellText(c)));
+    inputs[row] = [];
+    for (let col = 0; col < cols; col++) {
+      const cell = h(row === 0 ? 'th' : 'td');
+      const input = h('input', 'nb-table-input') as HTMLInputElement;
+      input.value = cellText(cells[col] || '');
+      input.readOnly = !!host.locked;
+      input.setAttribute('aria-label', row ? `Row ${row}, column ${col + 1}` : `Column ${col + 1} heading`);
+      input.onclick = ev => ev.stopPropagation();
+      input.onkeydown = ev => {
+        ev.stopPropagation();
+        if (ev.key === 'Enter') { ev.preventDefault(); cellFocus = row + 1 < rows.length ? { page: id, n: b.n, row: row + 1, col } : null; input.blur(); }
+        else if (ev.key === 'Escape') { ev.preventDefault(); input.value = cellText(cells[col] || ''); input.blur(); }
+        else if (ev.key === 'Tab' && !ev.shiftKey && row === rows.length - 1 && col === cols - 1 && !host.locked) {
+          // Tab in the last cell goes on to a new row
+          ev.preventDefault();
+          const rs = rows.map((r, i) => i === row ? Object.assign([...r], { [col]: escapeCell(input.value) }) : r);
+          void save(md([...rs, Array.from({ length: cols }, () => '')], rule), { row: rows.length, col: 0 });
+        }
+      };
+      input.onchange = () => {
+        const rs = rows.map(r => [...r]);
+        rs[row][col] = escapeCell(input.value);
+        const next = md(rs, rule);
+        const f = cellFocus && cellFocus.page === id && cellFocus.n === b.n ? { row: cellFocus.row, col: cellFocus.col } : undefined;
+        void save(next, f);
+      };
+      inputs[row][col] = input;
+      cell.append(input);
+      tr.append(cell);
+    }
     t.append(tr);
   });
+  const wrap = h('div', 'nb-table-wrap');
   scroll.append(t);
-  return scroll;
+  wrap.append(scroll);
+  if (!host.locked) {
+    const col = button('nb-table-addcol', '', ev => {
+      ev.stopPropagation();
+      const rs = rows.map((r, i) => [...r, i === 0 ? '' : '']);
+      const rl = [...Array.from({ length: cols }, (_, i) => rule[i] || '---'), '---'];
+      const wider = (cells: string[]) => `| ${Array.from({ length: cols + 1 }, (_, i) => cells[i] || '').join(' | ')} |`;
+      void save([wider(rs[0]), wider(rl), ...rs.slice(1).map(wider)].join('\n'), { row: 0, col: cols });
+    }, 'plus');
+    col.type = 'button';
+    col.title = 'Add a column at the right';
+    col.setAttribute('aria-label', 'Add a column');
+    wrap.prepend(col);
+    wrap.classList.add('has-addcol');
+    const row = button('nb-table-addrow', 'Row', ev => {
+      ev.stopPropagation();
+      void save(md([...rows, Array.from({ length: cols }, () => '')], rule), { row: rows.length, col: 0 });
+    }, 'plus');
+    row.type = 'button';
+    row.title = 'Add a row at the foot';
+    row.setAttribute('aria-label', 'Add a row');
+    wrap.append(row);
+  }
+  const want = cellFocus;
+  if (want && want.page === id && want.n === b.n) {
+    cellFocus = null;
+    queueMicrotask(() => inputs[want.row]?.[want.col]?.focus());
+  }
+  return wrap;
 }
 
 function editTable(text: string, form: HTMLElement, changed: () => void): () => string {
@@ -1055,34 +1130,7 @@ const isView = (b: Blk) => b.kind === 'fence' && (b.lang || '').split(/\s/)[0].t
  * are listed each time the page is drawn (`wb page views`, the same rows as `wb view run`). Its head: the line (a click
  * writes it anew, `wb block view`) and how many it found; a row opens its note. A view reads; it never writes. */
 function viewBlock(b: Blk, id: string, host: Host): HTMLElement {
-  const box = h('div', 'nb-view');
-  const line = (b.text.split('\n').slice(1).find(l => l.trim() && !/^(```|~~~)/.test(l.trim())) || '').trim();
-  const head = h('div', 'nbv-head');
-  const lineBtn = h('button', 'nbv-line', line || 'notebook …') as HTMLButtonElement;
-  lineBtn.title = 'Click to change what this view lists';
-  const count = h('span', 'nbv-count muted small', '');
-  head.append(icon('filter', 14), lineBtn, h('span', 'grow'), count);
-  const body = h('div', 'nbv-rows');
-  body.append(h('p', 'muted small nbv-note', line ? 'Finding the notes…' : 'No line yet: click above and write one, like notebook @Num 25 questions.'));
-  box.append(head, body);
-  lineBtn.onclick = ev => {
-    ev.stopPropagation();
-    const block = lineBtn.closest<HTMLElement>('.nb-block');
-    block?.querySelector<HTMLButtonElement>('.nb-edit-structured')?.click();
-  };
-  if (line && host.state.views?.id === id) {
-    void host.state.views.got.then(d => {
-      const mine = (d?.blocks || []).find((x: any) => x.n === b.n);
-      if (!mine) return;
-      body.replaceChildren();
-      if (mine.error) { body.append(h('p', `small nbv-note${mine.blank ? ' muted' : ' nbv-error'}`, mine.error)); return; }
-      count.textContent = `${mine.count} found`;
-      const rows: any[] = mine.rows || [];
-      for (const r of rows.slice(0, 60)) body.append(viewRow(r, host));
-      if (rows.length > 60) body.append(h('p', 'muted small nbv-note', `and ${rows.length - 60} more: narrow the line to see them`));
-      if (!rows.length) body.append(h('p', 'muted small nbv-note', 'Nothing found yet. It fills as you write.'));
-    }).catch(x => { body.replaceChildren(h('p', 'small nbv-note nbv-error', String(x))); });
-  }
+  const box: HTMLElement = listBlock(b, id, host, () => box.closest<HTMLElement>('.nb-block')?.querySelector<HTMLButtonElement>('.nb-edit-structured')?.click());
   return box;
 }
 
@@ -1312,7 +1360,7 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
   { key: 'marks', label: 'Marks in a passage', what: 'Every mark on a passage with its Legend style', ico: 'pen', write: '', alias: ['marks', 'legend', 'highlights'], group: 'Study', glyph: '▤' },
   { key: 'question', label: 'Callout', what: 'Question, Answered, Key point, Note', ico: 'prompt', write: '> [!question] ', alias: ['callout', 'question', 'answered', 'key point', 'note', '?'], group: 'Study', hint: '/callout', glyph: '?' },
   { key: 'thread', label: 'Saved thing', what: 'A folder’s places, kept up to date', ico: 'threads', write: '', alias: ['thread', 'folder', '~'], group: 'Study', glyph: '~' },
-  { key: 'view', label: 'List in a page', what: 'A list kept up to date (a line of the command language)', ico: 'filter', write: '```view\nnotebook \n```', caret: 17, alias: ['view'], group: 'Study', glyph: '☰' },
+  { key: 'view', label: 'List in a page', what: 'The pages of a folder as rows: Table, List, Gallery or Board', ico: 'filter', write: '', alias: ['view', 'database', 'folder', 'board', 'gallery'], group: 'Study', glyph: '☰' },
 ];
 
 
@@ -1707,7 +1755,7 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
 function makeChoose(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>) {
   return async (m: typeof MENU[number]) => {
     if (m.key === 'inside') return askInside(ta, host, cur, finish);
-    if (m.key === 'thread' || m.key === 'word') {
+    if (m.key === 'thread' || m.key === 'word' || m.key === 'view') {
       const before = ta.value;
       ta.classList.add('asking');
       const cancel = () => {
@@ -1719,11 +1767,12 @@ function makeChoose(ta: Writer, data: Blocks, host: Host, cur: { n: number; coun
       };
       const pick = (id: string) => {
         if (!ta.isConnected) return;
-        ta.value = `\`\`\`${m.key}\n${id}\n\`\`\``;
+        // a List in a page names its folder on the line, then keeps its view as an option (notebook row 36)
+        ta.value = m.key === 'view' ? `\`\`\`view\nnotebook thread ${id}\nview: table\n\`\`\`` : `\`\`\`${m.key}\n${id}\n\`\`\``;
         ta.dispatchEvent(new Event('input'));
         void finish();
       };
-      if (m.key === 'thread') threadChooser(ta, (_name, id) => { if (id) pick(id); }, { existing: true, onClose: cancel });
+      if (m.key === 'thread' || m.key === 'view') threadChooser(ta, (_name, id) => { if (id) pick(id); }, { existing: true, onClose: cancel });
       else wordChooser(ta, pick, cancel);
       return;
     }
