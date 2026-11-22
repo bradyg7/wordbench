@@ -40,10 +40,20 @@ function placeOf(p: Picked): { place: string; label: string; v1: number } | null
 
 export function closeMarginNote() { open?.remove(); open = null; }
 
-/** Open an empty margin note beside the picked words. */
-export function startMarginNote(p: Picked, rect: DOMRect) {
+/** The verse's own margin note, when it has one (the note whose place is exactly these verses), read from the reader's store. */
+async function existingNote(at: { place: string; label: string }): Promise<{ id: string; text: string } | null> {
+  try {
+    const r = await wb(['mark', 'notes', at.label.replace(/:.*$/, '')]);
+    const mine = (Array.isArray(r?.notes) ? r.notes : []).find((n: any) => n.at === at.place);
+    return mine ? { id: String(mine.id), text: String(mine.text ?? '') } : null;
+  } catch { return null; }
+}
+
+/** Open the verse's margin note beside the picked words: the one it has (to read and change), else an empty one. */
+export async function startMarginNote(p: Picked, rect: DOMRect) {
   const at = placeOf(p);
   if (!at) return;
+  const had = await existingNote(at);
   closeMarginNote();
   const card = h('section', 'pm-card');
   card.setAttribute('role', 'dialog');
@@ -93,8 +103,8 @@ export function startMarginNote(p: Picked, rect: DOMRect) {
     grip.addEventListener('pointercancel', up);
   };
 
-  let id = '';
-  let text = '';
+  let id = had?.id ?? '';
+  let text = had?.text ?? '';
   let busy = false;
   const view = async () => {
     body.replaceChildren();
@@ -145,5 +155,5 @@ export function startMarginNote(p: Picked, rect: DOMRect) {
     if (ta) { ta.onblur = null; ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); } else closeMarginNote();
   };
   card.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !body.querySelector('textarea')) { ev.stopPropagation(); closeMarginNote(); } });
-  write();
+  if (id) await view(); else write();
 }

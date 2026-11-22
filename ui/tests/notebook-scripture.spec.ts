@@ -28,6 +28,7 @@ async function openPage(page: Page) {
     const input = decodeURIComponent(route.request().headers()['x-wb-input'] ?? '');
     const send = (json: unknown) => route.fulfill({ json });
     if (name === 'note-show-w1') return send({ id: 'w1', title: TITLE, kind: 'note', placed: false, text: [TITLE, ...bodies.map(b => b.text)].join('\n\n'), updated: '2026-11-20T14:02:00', linked_from: [], also: [], threads: [], refs: [] });
+    if (name === 'mark-notes-numbers-25') return send({ place: 'Numbers 25', count: 0, notes: [] });   // the verse has no margin note yet
     if (name === 'page-blocks-w1') return send(blocks());
     if (name === 'page-scripture-w1') return send({ blocks: [{ n: 2, reference: 'Numbers 25:11', label: verse.label, version: 'KJV', lines: false, marks: false, verses: verse.verses }] });
     let m: RegExpExecArray | null;
@@ -179,4 +180,25 @@ test('margin_note_beside_the_words', async ({ page }) => {
   const c1 = (await card.boundingBox())!;
   expect(Math.abs(c1.x - c0.x - dx)).toBeLessThan(2);
   expect(Math.abs(c1.y - c0.y - 90)).toBeLessThan(2);
+});
+
+test('margin_note_opens_the_verses_existing_note', async ({ page }) => {
+  const s = await openPage(page);
+  // the verse already has a margin note in the reader's store: the card shows it, and changing it edits that note
+  const mine = { id: 'note-9', at: 'NUM.25:11', label: 'Numbers 25:11', kind: 'verse', v1: 11, v2: 11, text: 'Already written here', grew: [] };
+  await page.route('**/fixtures/wb/mark-notes-numbers-25.json', route => route.fulfill({ json: { place: 'Numbers 25', count: 2, notes: [{ ...mine, id: 'note-8', at: 'NUM.25:10', text: 'Another verse' }, mine] } }));
+  await page.route('**/fixtures/wb/mark-note-note-9-text-*.json', route => { s.calls.push({ name: new URL(route.request().url()).pathname.split('/').at(-1)!.replace(/\.json$/, ''), input: '' }); return route.fulfill({ json: { ...mine, text: 'Changed words' } }); });
+  await select(page, W1.i, W2.i);
+  await bar(page).getByRole('button', { name: 'Margin note' }).click();
+  const card = page.locator('.pm-card');
+  await expect(card.locator('.pm-text')).toHaveText('Already written here');
+  expect(s.calls.length).toBe(0);
+  await card.locator('.pm-text').click();
+  const ta = card.locator('textarea');
+  await expect(ta).toHaveValue('Already written here');
+  await ta.fill('Changed words');
+  await page.keyboard.press('Control+Enter');
+  await expect.poll(() => s.calls.length).toBe(1);
+  expect(s.calls[0].name).toMatch(/^mark-note-note-9-text-/);
+  await expect(card.locator('.pm-text')).toHaveText('Changed words');
 });
