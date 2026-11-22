@@ -74,6 +74,11 @@ export async function wb(argv: string[], input?: string): Promise<any> {
     await flushPageWriters(directId ? [argv[2]] : undefined);
   }
   const result = await wbRaw(argv, input);
+  // a write to a page (the block commands, its title, a callout's kind) is told to the page's top bar: "Edited just now" (notebook row 29)
+  if (argv[0] === 'block' || (argv[0] === 'page' && argv[1] === 'title') || (argv[0] === 'callout' && argv[1] === 'kind')) {
+    const id = String(argv[2] ?? '').split('#')[0];
+    if (id && !id.startsWith('-')) window.dispatchEvent(new CustomEvent('wb-page-written', { detail: { id } }));
+  }
   const operations = argv[0] === 'page' && argv[1] === 'sweep' ? result.operations || [] : [result];
   for (const operation of operations) {
     if (!operation?.operation || !Array.isArray(operation.deleted)) continue;

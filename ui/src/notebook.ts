@@ -19,7 +19,9 @@ import { wb } from './api';
 import './notebook.css';
 import { registerPageWriter, flushPageWriters, removedPages } from './pagewriters';
 import { app, book, here, type At } from './app';
-import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, startWritingAtEnd, viewRow, type Blocks, type Host } from './blocks';
+import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, startWritingAtEnd, viewRow, wordsIn, type Blocks, type Host } from './blocks';
+import { applyLook, defaultLook, editedStatus, lockMark, openPageMenu, readLook, type PageLook, type PageMenu } from './pagemenu';
+import { pageToc } from './pagetoc';
 import { createEditor, inlineShortcut, insertBreak, insertPlain, lineStartShortcut, tidy, toggleMark, type Writer } from './blockedit';
 import { dock, refHover, openHelp, openStrong, threadChooser } from './panes';
 import { layers } from './layers';
@@ -992,6 +994,7 @@ function createNotebookSession(fixed?: PageTab) {
     blockHostNow = null;
     if (!openId && !draft) {
       shown = null;
+      applyLook(edEl, defaultLook());
       if (mainList) return mainListView();
       return [h('p', 'muted nb-empty nb-pick', 'Pick a page in the list, or start one with the pen.')];
     }
@@ -1007,6 +1010,9 @@ function createNotebookSession(fixed?: PageTab) {
       e = { id: '', kind: draft!.question ? 'question' : 'note', placed: !!draft!.at, anchor: draft!.at?.anchor || '', label: draft!.at?.label || '', text: draft!.text || '', time: '', created: '', updated: '', title: '', preview: '', also: [], threads: [], links: [], headings: [], linked_from: [] };
     }
     shown = e;
+    // the page's view choices (rows 31, 32, 45): its font, size, width, contents bar and lock
+    const look = e.id && !e.template ? await readLook(e.id) : defaultLook();
+    applyLook(edEl, look);
     // W5: a template shows its settings above its blocks, and how often it was used
     const tpl: Tpl | null = e.template && e.id ? await wb(['template', 'show', e.id]).catch(() => null) : null;
     // W3: a note written in is drawn block by block; a draft and a blank day's page keep the one box for the whole text
@@ -1027,10 +1033,18 @@ function createNotebookSession(fixed?: PageTab) {
       }, 'left'));
     }
     head.append(h('span', 'grow'));
+    head.dataset.page = e.id;
     if (e.kind === 'day') head.append(h('span', 'muted small', e.today ? 'today’s page' : 'a day’s page'));
     if (tpl) head.append(h('span', 'muted small nb-tpl-used', `a template · ${usedText(tpl.used)}`));
+    // row 29: the quiet "Edited just now" (no Save button: a page is kept as it is typed); row 32: the quiet lock
+    if (e.id && !e.template && !isT) head.append(editedStatus(e.id, e.updated || e.created));
+    if (look.locked) head.append(lockMark());
     if (e.id) {
-      const more = button('icon-btn small', '', () => editorMenu(more, e), 'more');
+      const more = button('icon-btn small nb-more', '', () => {
+        // row 30: an ordinary page has the searchable page menu; a day, a thread and a template keep their own
+        if ((e.kind === 'note' || e.kind === 'question') && !e.template) pageMenu(more, e, look, more.closest<HTMLElement>('.nb-editor'));
+        else editorMenu(more, e);
+      }, 'more');
       more.setAttribute('aria-label', 'Change this page');
       head.append(more);
     }
@@ -1050,6 +1064,7 @@ function createNotebookSession(fixed?: PageTab) {
     if (byBlocks) {
       blocksData = bd;
       blockHostNow = blockHost(e);
+      blockHostNow.locked = look.locked;
       const body = h('div', 'nb-body');
       body.append(drawBlocks(bd!, blockHostNow));
       out.push(body);
@@ -1079,7 +1094,13 @@ function createNotebookSession(fixed?: PageTab) {
       }
       out.push(lf);
     }
-    return out;
+    // the page's own column (centred, or the pane's whole width with Full width) and, with Table of contents on, the bar in its right side (rows 31, 45)
+    const col = h('div', 'nb-pagecol');
+    col.append(...out);
+    const wrapEl = h('div', 'nb-page-wrap');
+    wrapEl.append(col);
+    if (look.toc && byBlocks && bd && !tpl) wrapEl.append(pageToc(bd, edEl));
+    return [wrapEl];
   }
 
   /** The note's places and threads as chips (a click goes there; × takes it off), with + Place and + Thread. */
@@ -1808,8 +1829,68 @@ ${l}` : ''}`;
 
   // ---- the menus: a note's, the place picker, the Trash, settings ------------------------------------------------------
 
+  /** What a page's menu does besides its own rows (place, question, Pin, a page inside, a document, a template): one list, two menus. */
+  type PageAct = { id: string; label: string; run: () => void; sep?: boolean };
+  function pageActs(from: HTMLElement, e: Entry): PageAct[] {
+    const out: PageAct[] = [];
+    if (e.kind === 'day') return out;
+    const onThreadOnly = e.placed && !e.anchor;
+    if (e.placed && !onThreadOnly) out.push({ id: 'place-move', label: 'Move to another place…', run: () => placeMenu(from, e) });
+    if (!e.placed) out.push({ id: 'place', label: 'Place it…', run: () => placeMenu(from, e) });
+    if (e.placed && !onThreadOnly) for (const a of [{ anchor: e.anchor, label: e.label }, ...(e.also || [])]) out.push({ id: `off-${a.anchor}`, label: `Take it off ${a.label}`, run: () => takeOff(e.id, a) });
+    if (e.kind === 'question') out.push({ id: 'answered', label: e.status === 'done' ? 'Open it again' : 'Answered: mark it done', run: async () => { await wb(['note', 'answered', e.id, ...(e.status === 'done' ? ['--open'] : [])]); changed(); } });
+    if (!onThreadOnly) out.push({ id: 'question', label: e.kind === 'question' ? 'Make it a plain note' : 'Make it a question', run: async () => { await wb(['note', 'question', e.id, ...(e.kind === 'question' ? ['--plain'] : [])]); changed(); } });
+    // W3: pages inside pages, and Pinned
+    const pinned = e.pinned !== null && e.pinned !== undefined;
+    out.push({ id: 'pin', sep: true, label: pinned ? 'Unpin' : 'Pin', run: async () => {
+      try { await wb(['page', pinned ? 'unpin' : 'pin', e.id]); toast(pinned ? 'Taken out of Pinned' : 'Pinned'); changed(); } catch (x) { toast(String(x)); }
+    } });
+    out.push({ id: 'inside', label: 'A page inside', run: () => newNote({ at: null, question: false, parent: e.id, hint: `A page inside “${e.title}”: the first line is its title…` }) });
+    out.push({ id: 'move-inside', label: 'Move inside…', run: () => void moveInside(from, e) });
+    // W6 (sheet W7.1): a Speaker Script and Verse by Verse from this page and the pages inside it
+    out.push({ id: 'document', label: 'Make a document…', run: () => void makeFromPage(e.id) });
+    out.push({ id: 'template', label: 'Save as a template', run: async () => {
+      try {
+        const t = await wb(['template', 'save', e.id]);
+        toast(`“${t.title}” is a template now, its places taken out`);
+        changed();
+        openPage(t.id);
+      } catch (x) { toast(String(x)); }
+    } });
+    return out;
+  }
+
+  /** Page ⋯ (notebook row 30): the one searchable menu of the page: Copy link, Copy contents, Duplicate, Move to, Page history, Appearance ▸,
+   *  Lock page, Move to Trash; the older actions are folded under More. `look` is what the pane shows now. */
+  function pageMenu(from: HTMLElement | { x: number; y: number }, e: Entry, look: PageLook, edEl: HTMLElement | null) {
+    const anchor = from instanceof HTMLElement ? from : null;
+    const more: PageMenu['more'] = pageActs(anchor ?? pane?.el ?? document.body, e).filter(a => a.id !== 'move-inside').map(a => ({ id: a.id, label: a.label, run: a.run }));
+    if (!fixed) more.push({ id: 'tab', label: 'Open in a tab', run: () => { void openPageTab(pageTabKey(e.id)).catch(x => toast(String(x))); } });
+    openPageMenu({
+      id: e.id, at: from, look, words: wordsIn(e.text || ''), updated: e.updated || e.created,
+      duplicate: () => void (async () => {
+        try { await flushPageWriters([e.id]); const r = await wb(['page', 'duplicate', e.id]); toast(`Duplicated as “${r.title || 'a copy'}”`); changed(); void openNote(r.id); } catch (x) { toast(String(x)); }
+      })(),
+      moveTo: () => void moveInside(anchor ?? pane?.el ?? document.body, e),
+      trash: () => void remove(e),
+      more,
+      looked: (now, wasNow) => {
+        const was = { ...wasNow };
+        Object.assign(look, now);
+        if (edEl?.isConnected) applyLook(edEl, now);
+        // the contents bar and the lock change what is drawn: the page is drawn again; the rest is the pane's data at once
+        if (now.toc !== was.toc || now.locked !== was.locked) void pane?.refresh?.();
+      },
+    });
+  }
+
   function editorMenu(from: HTMLElement, e: Entry, at?: { x: number; y: number }) {
     if (e.kind === 'thread') return threadMenu(from, e, at);
+    // an ordinary page has the one searchable page menu, from its ⋯ or a right-click on its row (one builder, two ways to it)
+    if (e.id && (e.kind === 'note' || e.kind === 'question') && !e.template) {
+      void readLook(e.id).then(look => pageMenu(at ?? from, e, look, pane?.el.querySelector<HTMLElement>('.nb-editor') ?? null));
+      return;
+    }
     const box = h('div', 'menu-list');
     let close = () => {};
     const item = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
@@ -1821,31 +1902,9 @@ ${l}` : ''}`;
       close = popMenu(from, box, { align: at ? 'left' : 'right', width: 250, at });
       return;
     }
-    const onThreadOnly = e.placed && !e.anchor;
-    if (e.kind !== 'day') {
-      if (e.placed && !onThreadOnly) item('Move to another place…', () => placeMenu(from, e));
-      if (!e.placed) item('Place it…', () => placeMenu(from, e));
-      if (e.placed && !onThreadOnly) for (const a of [{ anchor: e.anchor, label: e.label }, ...(e.also || [])]) item(`Take it off ${a.label}`, () => takeOff(e.id, a));
-      if (e.kind === 'question') item(e.status === 'done' ? 'Open it again' : 'Answered: mark it done', async () => { await wb(['note', 'answered', e.id, ...(e.status === 'done' ? ['--open'] : [])]); changed(); });
-      if (!onThreadOnly) item(e.kind === 'question' ? 'Make it a plain note' : 'Make it a question', async () => { await wb(['note', 'question', e.id, ...(e.kind === 'question' ? ['--plain'] : [])]); changed(); });
-      // W3: pages inside pages, and Pinned
-      box.append(h('div', 'menu-sep'));
-      const pinned = e.pinned !== null && e.pinned !== undefined;
-      item(pinned ? 'Unpin' : 'Pin', async () => {
-        try { await wb(['page', pinned ? 'unpin' : 'pin', e.id]); toast(pinned ? 'Taken out of Pinned' : 'Pinned'); changed(); } catch (x) { toast(String(x)); }
-      });
-      item('A page inside', () => newNote({ at: null, question: false, parent: e.id, hint: `A page inside “${e.title}”: the first line is its title…` }));
-      item('Move inside…', () => void moveInside(from, e));
-      // W6 (sheet W7.1): a Speaker Script and Verse by Verse from this page and the pages inside it
-      item('Make a document…', () => void makeFromPage(e.id));
-      item('Save as a template', async () => {
-        try {
-          const t = await wb(['template', 'save', e.id]);
-          toast(`“${t.title}” is a template now, its places taken out`);
-          changed();
-          openPage(t.id);
-        } catch (x) { toast(String(x)); }
-      });
+    for (const a of pageActs(from, e)) {
+      if (a.sep) box.append(h('div', 'menu-sep'));
+      item(a.label, a.run);
     }
     if (!fixed) item('Open in a tab', () => { void openPageTab(pageTabKey(e.id)).catch(x => toast(String(x))); });
     item(e.kind === 'day' ? 'Delete this page' : 'Delete', () => remove(e));

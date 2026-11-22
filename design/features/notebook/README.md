@@ -115,6 +115,25 @@ folder, not as a Notebook tab.
   last line ends the callout), Tab and Shift+Tab nest a list line, Backspace at the start turns it into a plain block (tests
   `callout_kinds_write_their_marker`, `callout_kind_changes`, `old_question_callouts_still_read`, `callout_kinds_found`; Rust and window).
 
+- **The page's top bar, menu, look, lock and contents, NB11 (the lead, 2026-11-21, file forms by the most compatible form).** (1) A page's view
+  choices are in `settings/pages.json` under `look`, one entry a page id holding only what is not the default: `full_width`, `small_text`, `toc`
+  and `locked` as `true`, and `"font": "serif"`; nothing is written into the page. `wb page look ID [--font default|serif] [--toc on|off]
+  [--full-width on|off] [--small-text on|off]` changes them (with none it says what is set, with `locked`); `wb page lock ID on|off` is
+  Lock page. A lock is the window's: it stops typing and hides the handle, a title click and the callout and to-do clicks; `wb` still writes the
+  page, as it does for a page open in the window. (2) The page is a centred column 720 px wide; Full width lets it take its pane (rows 44 and 31:
+  the columns are drawn at Full width). Serif is Literata, the reading serif already shipped; Small text is 14 px. (3) "Edited just now",
+  "Edited 2m ago", "Edited 3h ago", "Edited 2d ago", then the date; it follows every write the window makes to the page (the `wb block …`
+  commands, its title, a callout's kind) and counts on. (4) Page ⋯ and a right-click on a page's row open the same menu: Copy link, Copy
+  contents, Duplicate, Move to, Page history, Appearance ▸, Lock page (Unlock page when locked), Move to Trash, and the older actions (Move to
+  another place, Make it a question, Pin, A page inside, Make a document, Save as a template, Open in a tab) folded under More; the foot is
+  Edited and the word count. A day, a thread and a template keep their own menus. Page history says that earlier versions of a page are not
+  kept yet (library L-16, marks MK-19). (5) Copy contents is `wb page text ID`: the page's Markdown, its title a `# ` heading, each scripture
+  block written out as `**Numbers 25:11-13** (KJV)` and one `> 11 words` line a verse read from the Bible (`> 25:11 words` when the passage runs
+  over chapters), no link ids; the file keeps only the reference. `wb page text ID` with new text after the id stays `wb note text` (it writes the page), as before. (6) The contents bar lists the page's headings (by level, three deep), lights the
+  one in view, scrolls only its own pane when one is clicked, and folds to a rail of one tick a heading; folded or open is kept while the window
+  is open, not on disk (tests `edited_status_updates`, `page_menu_items`, `appearance_changes_at_once`, `toc_bar_folds_to_rail`,
+  `locked_page_does_not_edit`, `copy_contents_expands_scripture`; Rust and window).
+
 ## The inventory (round 1)
 
 Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into the interaction table below.
@@ -287,12 +306,12 @@ person's existing pages read.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 29 | Top bar | Edit anything | "Edited just now" in quiet gray, later "Edited 2m ago"; no Save button | The page | Window only | `edited_status_updates` | [ ] approved 2026-11-20 |
-| 30 | Page ⋯ | Open | Searchable: Copy link, Copy contents, Duplicate, Move to, Page history, Appearance ▸, Lock page, Move to Trash; foot: Edited and word count | Nothing until used | Window only | `page_menu_items` | [ ] approved 2026-11-20 |
-| 31 | Appearance ▸ | Font Default or Serif; Small text; Full width; Table of contents | The page changes at once | settings/pages.json | `wb page look ID --font serif --toc on` (extends `page look`) | `appearance_changes_at_once` | [ ] approved 2026-11-20 |
-| 45 | Appearance › Table of contents | Turn on | The contents as a bar in the page's right side (45a); a button folds it to a thin rail of ticks and opens it again (45b); it stays inside its own pane among other panes (45c) | settings/pages.json | `wb page look ID --toc on` | `toc_bar_folds_to_rail` | [ ] approved 2026-11-20 |
-| 32 | Lock page | Toggle | Typing does nothing; a quiet lock in the top bar; the handle hides | settings/pages.json | `wb page lock ID on|off`, *proposed* | `locked_page_does_not_edit` | [ ] approved 2026-11-20 |
-| 33 | Copy contents | Click | The page's Markdown, scripture expanded verbatim from the database | Clipboard only | `wb page text ID`, *proposed* | `copy_contents_expands_scripture` | [ ] approved 2026-11-20 |
+| 29 | Top bar | Edit anything | "Edited just now" in quiet gray, later "Edited 2m ago"; no Save button | The page | Window only | `edited_status_updates` | built (NB11) · approved 2026-11-20 |
+| 30 | Page ⋯ | Open | Searchable: Copy link, Copy contents, Duplicate, Move to, Page history, Appearance ▸, Lock page, Move to Trash; foot: Edited and word count | Nothing until used | Window only | `page_menu_items` | built (NB11) · approved 2026-11-20 |
+| 31 | Appearance ▸ | Font Default or Serif; Small text; Full width; Table of contents | The page changes at once | settings/pages.json | `wb page look ID --font serif --toc on` (extends `page look`) | `appearance_changes_at_once` | built (NB11) · approved 2026-11-20 |
+| 45 | Appearance › Table of contents | Turn on | The contents as a bar in the page's right side (45a); a button folds it to a thin rail of ticks and opens it again (45b); it stays inside its own pane among other panes (45c) | settings/pages.json | `wb page look ID --toc on` | `toc_bar_folds_to_rail` | built (NB11) · approved 2026-11-20 |
+| 32 | Lock page | Toggle | Typing does nothing; a quiet lock in the top bar; the handle hides | settings/pages.json | `wb page lock ID on|off`, *proposed* | `locked_page_does_not_edit` | built (NB11) · approved 2026-11-20 |
+| 33 | Copy contents | Click | The page's Markdown, scripture expanded verbatim from the database | Clipboard only | `wb page text ID`, *proposed* | `copy_contents_expands_scripture` | built (NB11) · approved 2026-11-20 |
 
 ### Finding, N10 and N11
 

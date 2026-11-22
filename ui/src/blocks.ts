@@ -53,6 +53,8 @@ export interface Host {
   questionPlaces?: { anchor: string; label: string }[];
   /** When the page was last written (its `updated`): the block menu's foot says "Edited …". */
   updated?: string;
+  /** The page is locked (row 32): nothing in it takes typing, its handles are hidden. */
+  locked?: boolean;
 }
 
 /** Pending input belongs to one editor. Its data is refreshed separately on each draw. */
@@ -149,6 +151,7 @@ const blank = (t: string) => !t.replace(/^\s*(([-*+]|\d+[.)])(\s+\[[ xX]\])?|(>\
 export function drawBlocks(data: Blocks, host: Host): HTMLElement {
   const wrap = h('div', 'nb-page nb-blocks');
   wrap.dataset.id = data.id;
+  if (host.locked) wrap.classList.add('nb-locked');
   host.state.scripture = data.blocks.some(isScripture) ? { id: data.id, got: wb(['page', 'scripture', data.id]) } : null;
   host.state.scripture?.got.catch(() => {});
   host.state.views = data.blocks.some(isView) ? { id: data.id, got: wb(['page', 'views', data.id]) } : null;
@@ -329,6 +332,7 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
   };
   el.ondragleave = ev => { if (!el.contains(ev.relatedTarget as Node | null)) el.classList.remove(...drops); };
   el.ondrop = async ev => {
+    if (host.locked) return;
     const got = ev.dataTransfer?.getData('text/wb-block');
     const w = where(ev);
     el.classList.remove(...drops);
@@ -426,7 +430,7 @@ async function turnBlock(data: Blocks, host: Host, el: HTMLElement, b: Blk, key:
 /** Can this block be turned into another text kind? (A table, a fence, a divider, a toggle's line and a callout are not plain text.) */
 const turnable = (b: Blk) => ['paragraph', 'heading', 'item', 'numbered', 'todo', 'quote'].includes(b.kind) && !isStructured(b) && !toggleHead(b.text) && !isToggleEnd(b.text);
 
-const wordsIn = (md: string) => md.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
+export const wordsIn = (md: string) => md.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
 
 /** "Edited today, 14:02" or "Edited 2026-11-20" from the page's `updated`. */
 function editedText(updated?: string): string {
@@ -834,6 +838,7 @@ function isStructured(b: Blk) {
 }
 
 function editBlock(data: Blocks, b: Blk, el: HTMLElement, host: Host) {
+  if (host.locked) return;
   // a scripture block is edited in the reference field (the book completes, the words under it are the database's); a template's blank still uses the form
   if (isScripture(b) && !/{[a-z]+}/i.test(heldIn(b))) editScripture(data, b, el, host);
   else if (isStructured(b)) editStructured(data, b, el, host);
@@ -1296,6 +1301,7 @@ const MENU: { key: string; label: string; what: string; ico: string; write: stri
 
 /** Write in a new block after block `after` (0: first, right under the title). */
 function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number, text: string, at: 'start' | 'end' = 'end', pick?: string, menu = false) {
+  if (host.locked) return;
   const el = h('div', 'nb-block nb-new-block');
   // a block written under a toggle's line is inside the toggle
   const prev = beforeEl.parentElement?.querySelector<HTMLElement>(`.nb-block[data-n="${after}"]`);
@@ -1307,7 +1313,7 @@ function startNew(data: Blocks, host: Host, beforeEl: HTMLElement, after: number
 /** Write in a block (NB2b): the block is its own contenteditable element, drawn as the block it is and styled as it is
  *  typed; its Markdown is what is saved as it is typed (`wb block set`; a new block, `wb block add`). */
 function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start' | 'end' | number, newAfter?: number, pick?: string, menu = false) {
-  if (el.querySelector('.nb-block-input')) return;
+  if (host.locked || el.querySelector('.nb-block-input')) return;
   // a toggle's head is edited as its own line (with the heading shape it may have); the block saved is the head written around it
   const head0 = toggleHead(b.text);
   const ta = createEditor(head0 ? head0.inner : b.text);

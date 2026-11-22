@@ -124,6 +124,9 @@ try {
     try { browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`); } catch { await sleep(300); }
   }
   const page = browser.contexts()[0].pages()[0];
+  // the page's ⋯ (and a right-click on its row) is the one searchable menu: a row is found by typing its name, then Enter
+  const pageMenuPick = async (label) => { await page.locator('.wbm-input').fill(label); await page.keyboard.press('Enter'); };
+  const pageMenuHas = async (label) => { await page.locator('.wbm-input').fill(label); return (await page.locator('.wbm .wbm-row').count()) > 0; };
   page.on('pageerror', e => check('no page errors', false, String(e)));
   for (let i = 0; i < 100 && !/^(https?|tauri):/.test(page.url()); i++) await sleep(200);
   await page.waitForLoadState('load');
@@ -524,8 +527,8 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await page.waitForFunction(() => { const e = document.querySelector('.pane-notebook .nb-editor'); return e && e.textContent.includes('two numbers relate') && !e.querySelector('.nb-chips .question-pill'); }, null, { timeout: 10000 });
   check('a question is answered, then made a plain note by clicking its tag', true);
   await ed.locator('.nb-ed-head .icon-btn').click();
-  check('a placed note’s menu has Move and Delete', await page.locator('.menu .menu-item', { hasText: 'Move to another place' }).isVisible() && await page.locator('.menu .menu-item', { hasText: 'Delete' }).isVisible());
-  await page.locator('.menu .menu-item', { hasText: 'Move to another place' }).click();
+  check('a placed note’s menu has Move and Move to Trash', await page.locator('.wbm .wbm-row', { hasText: 'Move to Trash' }).isVisible() && (await pageMenuHas('Move to another place')));
+  await pageMenuPick('Move to another place');
   await page.locator('.place-other input').fill('Num 25:18');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('.pane-notebook .nb-editor .nb-chips')?.textContent.includes('25:18'), null, { timeout: 10000 });
@@ -586,7 +589,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   check('a thread holds pages: one put on it, one written on its page', tn.length === 2 && tn.some(n => n.text === 'a note on the thread itself' && n.anchor === ''));
   await page.screenshot({ path: shots + '1440-notes-on-a-thread.png' });
   await ed.locator('.nb-ed-head .icon-btn').last().click();
-  await page.locator('.menu .menu-item', { hasText: /^Delete$/ }).click();
+  await pageMenuPick('Move to Trash');
   const undoPage = page.getByRole('button', { name: 'Undo deletion of 1 page', exact: true });
   await undoPage.waitFor();
   const deletions = () => JSON.parse(execFileSync(wbExe, ['page', 'deletions'], { env }).toString()).operations;
@@ -615,7 +618,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
 
   // Expiry removes the operation snapshot when Undo is left unused.
   await ed.locator('.nb-ed-head .icon-btn').click();
-  await page.locator('.menu .menu-item', { hasText: /^Delete$/ }).click();
+  await pageMenuPick('Move to Trash');
   await undoPage.waitFor();
   const pending = deletions().find(op => op.deleted.includes(inInbox.id));
   await undoPage.waitFor({ state: 'hidden', timeout: 15000 });
@@ -843,20 +846,20 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await page.waitForFunction(n => document.querySelectorAll('.pane-notebook .nb-tree .nb-tree-row').length === n, treeTotal, { timeout: 10000 }).catch(() => {});
   check('Fold all leaves only the top pages and becomes Open all; Open all lists every page again', foldedRows === treeTop && foldedLabel === 'Open all' && await treeRowsNow() === treeTotal && await treeFold.getAttribute('aria-label') === 'Fold all', `${treeTotal} → ${foldedRows} → ${await treeRowsNow()}`);
   // debug-spec S3 (note b737): a right-click on a page row opens that page's menu where the pointer is: the same list as its ⋯
-  const menuItems = () => page.locator('.menu .menu-item').allTextContents();
+  const menuItems = () => page.locator('.wbm .wbm-row .wbm-label').allTextContents();
   await ed.locator('.nb-ed-head .icon-btn').click();
   const dotsItems = await menuItems();
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => !document.querySelector('.menu'), null, { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction(() => !document.querySelector('.menu, .wbm'), null, { timeout: 5000 }).catch(() => {});
   const parentRow = rowOf(parentId).locator('.nb-tree-open');
   const prBox = await parentRow.boundingBox();
   await parentRow.click({ button: 'right', position: { x: 30, y: 6 } });
-  await page.locator('.menu .menu-item').first().waitFor({ timeout: 5000 });
+  await page.locator('.wbm .wbm-row').first().waitFor({ timeout: 5000 });
   const ctxItems = await menuItems();
-  const ctxBox = await page.locator('.menu').boundingBox();
+  const ctxBox = await page.locator('.wbm').boundingBox();
   check('right-click on a page in the tree opens that page’s menu at the pointer: the same items as its ⋯', ctxItems.length > 3 && ctxItems.join('|') === dotsItems.join('|') && Math.abs(ctxBox.x - (prBox.x + 30)) < 40 && Math.abs(ctxBox.y - (prBox.y + 6)) < 40, `${ctxItems.join(', ')} at ${Math.round(ctxBox.x)},${Math.round(ctxBox.y)}`);
   await page.keyboard.press('Escape');
-  check('Esc closes the right-click menu', await page.waitForFunction(() => !document.querySelector('.menu'), null, { timeout: 5000 }).then(() => true, () => false));
+  check('Esc closes the right-click menu', await page.waitForFunction(() => !document.querySelector('.menu, .wbm'), null, { timeout: 5000 }).then(() => true, () => false));
   const qHead = page.locator('.pane-notebook .nb-side-head[data-part="questions"] .nb-ghead');
   const qWasShut = await qHead.getAttribute('aria-expanded') === 'false';
   if (qWasShut) await qHead.click();
@@ -956,7 +959,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   // Pin from the page's ⋯: its place in Pinned, in the page itself
   await page.waitForFunction(() => document.querySelectorAll('.pane-notebook .nb-blocks .nb-block').length === 5, null, { timeout: 10000 }).catch(() => {});
   await ed.locator('.nb-ed-head .icon-btn').click();
-  await page.locator('.menu .menu-item', { hasText: /^Pin$/ }).click();
+  await pageMenuPick('Pin');
   const pinnedNow = await waitFile(parentId, t => /\npinned: 1\n/.test(t));
   await page.locator('.pane-notebook .nb-pinned .nb-tree-row', { hasText: 'W3 parent page' }).waitFor({ timeout: 10000 }).catch(() => {});
   check('Pin in a page’s ⋯ puts it in Pinned: pinned: 1 in its file', pinnedNow && await page.locator('.pane-notebook .nb-pinned .nb-tree-row', { hasText: 'W3 parent page' }).count() === 1);
@@ -1345,7 +1348,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   await rowOf(w4).locator('.nb-tree-open').click();
   await ed.locator('.nb-title', { hasText: 'W4 the passage' }).waitFor({ timeout: 10000 });
   await ed.locator('.nb-ed-head .icon-btn').click();
-  await page.locator('.menu .menu-item', { hasText: 'Save as a template' }).click();
+  await pageMenuPick('Save as a template');
   await ed.locator('.nb-crumbs', { hasText: 'Templates' }).waitFor({ timeout: 10000 }).catch(() => {});
   const saved = wbj('template', 'list').templates.find(t => t.title === 'W4 the passage');
   const savedText = saved ? readFileSync(fileOf(saved.id), 'utf8').replace(/\r\n/g, '\n') : '';
@@ -1418,7 +1421,7 @@ ${results.length - bad.length} of ${results.length} checks passed`);
   check('a page with no documents has no Documents box at its foot', await ed.locator('.nb-docs .pd-doc').count() === 0);
   // W7.1: Make a document, from the page's ⋯
   await ed.locator('.nb-ed-head .icon-btn').click();
-  await page.locator('.menu .menu-item', { hasText: 'Make a document…' }).click();
+  await pageMenuPick('Make a document…');
   await page.locator('.pd-modal .pd-opt').first().waitFor({ timeout: 10000 });
   const w6Sub = await page.locator('.pd-modal .pd-sub').textContent();
   const w6Opts = await page.locator('.pd-modal .pd-opt').evaluateAll(els => els.map(e => [e.querySelector('.pd-opt-name').textContent, e.querySelector('input').checked, e.querySelector('input').disabled]));

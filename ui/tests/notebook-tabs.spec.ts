@@ -71,7 +71,9 @@ test('two Notebook page tabs keep their edits and Shelf ownership separate', asy
   await page.waitForFunction(() => (window as any).__wbReady);
   await page.getByRole('button', { name: 'Notebook', exact: true }).click();
   await page.getByText(entries[0].title, { exact: true }).first().click({ button: 'right' });
-  await page.getByRole('button', { name: 'Open in a tab', exact: true }).click();
+  // the page's menu is the one searchable menu; Open in a tab is among its older actions
+  await page.locator('.wbm-input').fill('Open in a tab');
+  await page.keyboard.press('Enter');
   const alpha = page.locator('[data-page-tab="alpha"]');
   await expect(alpha.getByText('Alpha block', { exact: true })).toBeVisible();
 
@@ -108,7 +110,7 @@ test('two Notebook page tabs keep their edits and Shelf ownership separate', asy
   await alpha.getByRole('heading', { name: 'Alpha scratch page', exact: true }).click();
   await alpha.getByRole('textbox', { name: 'The page’s title' }).fill('Edited scratch title');
   await alpha.getByRole('button', { name: 'Change this page' }).click();
-  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await page.locator('.wbm-row', { hasText: 'Move to Trash' }).click();
   await expect.poll(() => events).toEqual(['title', 'delete']);
   await expect(alpha.getByText(/That page is gone/)).toBeVisible();
   await page.getByRole('button', { name: /^Undo deletion of 1 page/ }).click();

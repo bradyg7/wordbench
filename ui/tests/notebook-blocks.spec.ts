@@ -60,6 +60,8 @@ async function openPage(page: Page, start: string[] = WORDS) {
       return send({ id: 'w1', n: Number(m[1]), block: 'abc123', title: TITLE, link: `[[${TITLE}#^abc123]]`, wrote: true });
     }
     if (name === 'page-blocks-w1') return send(blocks());
+    // columns are drawn "at Full width" (row 44): the page in these tests has Appearance › Full width on
+    if (name === 'page-look-w1') return send({ id: 'w1', full_width: true, small_text: false, font: 'default', toc: false, locked: false });
     if (name === 'page-scripture-w1') return send({ blocks: [] });
     if (name.startsWith('refs-plain-')) return send([]);
     if ((m = /^block-color-w1-(\d+)-(\w+)-count-(\d+)/.exec(name))) {

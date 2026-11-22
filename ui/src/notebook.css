@@ -106,3 +106,36 @@
 .pm-body { padding: 0 10px 10px; }
 .pm-text { margin: 0; line-height: 1.5; cursor: text; white-space: pre-wrap; }
 .pm-edit { display: block; width: 100%; box-sizing: border-box; min-height: 56px; resize: vertical; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; background: var(--bg); color: inherit; font: inherit; }
+
+/* The page's own chrome (notebook rows 29-33, 45; NB11). The page is a column; Full width lets it fill its pane. The page's choices are data on its pane:
+   data-font="serif", data-small, data-full, data-locked (pagemenu.ts applyLook). */
+.nb-page-wrap { display: flex; align-items: flex-start; min-width: 0; }
+.nb-pagecol { flex: 1; min-width: 0; max-width: 720px; margin: 0 auto; }
+.nb-editor[data-full] .nb-pagecol { max-width: none; }
+.nb-editor[data-font="serif"] .nb-title, .nb-editor[data-font="serif"] .nb-page, .nb-editor[data-font="serif"] .nb-block-input, .nb-editor[data-font="serif"] .nb-title-input { font-family: var(--scripture-font, Literata, serif); }
+.nb-editor[data-small] .nb-page, .nb-editor[data-small] .nb-block-input { font-size: 14px; line-height: 23px; }
+.nb-editor[data-small] .nb-title { font-size: 21px; line-height: 28px; }
+.nb-edited { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nb-lock { display: inline-flex; align-items: center; opacity: .8; }
+.nb-ed-head .nb-edited { margin-right: 2px; }
+/* a locked page: nothing in it takes typing, and the handle is gone */
+.nb-locked .nb-plus, .nb-locked .nb-grip, .nb-locked .nb-block-add, .nb-locked .nb-edit-structured { display: none; }
+.nb-locked .nb-page, .nb-locked .nb-block-body { cursor: default; }
+.nb-locked input[type="checkbox"], .nb-locked .nb-callout-icon { pointer-events: none; }
+.nb-editor[data-locked] .nb-title.editable { cursor: default; pointer-events: none; }
+/* the contents bar (row 45): in the page's right side, sticky inside its own pane; a button folds it to a thin rail of ticks */
+.nb-toc { flex: none; width: 210px; position: sticky; top: 0; align-self: flex-start; max-height: calc(100vh - 140px); overflow-y: auto; margin-left: 12px; padding: 6px 0 6px 10px; border-left: 1px solid var(--line); font-size: 13px; }
+.nb-toc-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 4px; color: var(--muted); font-size: 12px; }
+.nb-toc-fold { width: 22px; height: 22px; display: inline-grid; place-items: center; border: 0; border-radius: 4px; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+.nb-toc-fold:hover { background: var(--sunken); color: var(--fg); }
+.nb-toc-row { display: block; width: 100%; text-align: left; border: 0; border-radius: 6px; background: none; color: var(--muted); padding: 5px 8px; cursor: pointer; font: inherit; overflow-wrap: anywhere; }
+.nb-toc-row:hover { background: var(--sunken); color: var(--fg); }
+.nb-toc-row.on { background: var(--sunken); color: var(--fg); }
+.nb-toc-row.l2 { padding-left: 20px; } .nb-toc-row.l3 { padding-left: 32px; }
+.nb-toc-none { margin: 4px 8px; }
+.nb-toc.nb-toc-folded { width: 22px; margin-left: 8px; padding: 6px 0 6px 0; display: flex; flex-direction: column; align-items: center; border-left: 1px solid var(--line); cursor: pointer; }
+.nb-toc-ticks { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: 6px; width: 100%; }
+.nb-toc-tick { width: 14px; height: 9px; padding: 0; border: 0; background: none; position: relative; cursor: pointer; }
+.nb-toc-tick::after { content: ""; position: absolute; left: 50%; top: 4px; height: 2px; width: 10px; margin-left: -5px; border-radius: 1px; background: var(--line); }
+.nb-toc-tick.l2::after { width: 7px; margin-left: -3px; } .nb-toc-tick.l3::after { width: 5px; margin-left: -2px; }
+.nb-toc-tick.on::after, .nb-toc-tick:hover::after { background: var(--accent); }
