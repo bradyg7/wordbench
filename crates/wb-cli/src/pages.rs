@@ -284,15 +284,39 @@ pub fn commands() -> Vec<Command> {
                 let undo = serde_json::from_str(&text).map_err(|_| "Give the undo token returned by wb block rm --undo.")?;
                 j(pg::undo_block(c.bible()?, &mut *c.study()?, &a.s("id"), undo).map_err(e)?)
             }),
-        cmd("block move", "Move a block: wb block move ID 5 --to 2 (it then comes before what is now block 2), or --last.",
-            vec![Pos("id", N::One), Pos("n", N::One), Opt("to", None), Flag("last")], |c, a| {
+        cmd("block move", "Move a block: wb block move ID 5 --to 2 (it then comes before what is now block 2), or --last. --beside M puts it in a column beside block M, at M's right (--left: at M's left): the two blocks, or the column, sit between the page's <!-- columns --> markers; at most four columns, and a column or group left empty by the move loses its markers.",
+            vec![Pos("id", N::One), Pos("n", N::One), Opt("to", None), Opt("beside", None), Flag("left"), Flag("last")], |c, a| {
                 let n = nth(a, "n")?;
+                if let Some(m) = opt_n(a, "beside")? {
+                    if a.opt("to").is_some() || a.flag("last") {
+                        return Err("--beside, or --to, or --last: one of them.".into());
+                    }
+                    if m == 0 {
+                        return Err("Blocks are counted from 1.".into());
+                    }
+                    return j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Beside { n, m: m - 1, left: a.flag("left") }).map_err(e)?);
+                }
+                if a.flag("left") {
+                    return Err("--left goes with --beside.".into());
+                }
                 let to = match (opt_n(a, "to")?, a.flag("last")) {
                     (Some(t), false) => t - 1,
                     (None, true) => count(c, &a.s("id"))?,
-                    _ => return Err("Give --to N (it comes before block N) or --last.".into()),
+                    _ => return Err("Give --to N (it comes before block N), --beside N or --last.".into()),
                 };
                 j(pg::edit(c.bible()?, &mut *c.study()?, &a.s("id"), Edit::Move { n, to }).map_err(e)?)
+            }),
+        cmd("block color", "Give blocks a background color (the block menu's Color): wb block color ID 3 yellow (gray brown orange yellow green blue purple red, or default to take it off; --count K: K blocks from it). The color is a <span data-bg=\"…\"> around the block's whole text; blocks that are not text (scripture, a table, a divider) are left as they are. --undo returns a token for wb block undo; --expect TEXT requires the current page text to match.",
+            vec![Pos("id", N::One), Pos("n", N::One), Pos("color", N::One), Opt("count", None), Flag("undo"), Opt("expect", None)], |c, a| {
+                let n = nth(a, "n")?;
+                let count = opt_n(a, "count")?.unwrap_or(1);
+                let color = a.s("color");
+                let name = if color.eq_ignore_ascii_case("default") { None } else { Some(color.to_lowercase()) };
+                let what = Edit::Color { n, count, name: name.as_deref() };
+                if a.flag("undo") {
+                    return j(pg::edit_undoable(c.bible()?, &mut *c.study()?, &a.s("id"), what, a.opt("expect").as_deref()).map_err(e)?);
+                }
+                j(pg::edit_guarded(c.bible()?, &mut *c.study()?, &a.s("id"), what, a.opt("expect").as_deref()).map_err(e)?)
             }),
         cmd("block check", "Tick a to-do, or take its tick off (it turns over; --on or --off to say which).",
             vec![Pos("id", N::One), Pos("n", N::One), Flag("on"), Flag("off")], |c, a| {

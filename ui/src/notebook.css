@@ -64,3 +64,30 @@
 /* a reference drawn as a chip while its block is written (row 12): the words inside are ordinary text, so it stays inline */
 .nb-block-input .nb-chip-live { display: inline; padding: 0 5px; margin: 0 -1px; }
 .nb-block-input .nb-chip-live::before { content: ''; display: inline-block; width: 11px; height: 11px; margin-right: 4px; vertical-align: -1px; background: currentColor; opacity: .6; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6'%3E%3Cpath d='M8 3.5C6.5 2.5 4 2.3 2 2.8v9.5c2-.5 4.5-.3 6 .7 1.5-1 4-1.2 6-.7V2.8c-2-.5-4.5-.3-6 .7zM8 3.5V13'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6'%3E%3Cpath d='M8 3.5C6.5 2.5 4 2.3 2 2.8v9.5c2-.5 4.5-.3 6 .7 1.5-1 4-1.2 6-.7V2.8c-2-.5-4.5-.3-6 .7zM8 3.5V13'/%3E%3C/svg%3E") center / contain no-repeat; }
+
+/* a block's background (row 25b): data-block-bg washes the whole row; its whole-text span is not tinted twice */
+.nb-block[data-block-bg=gray] { background: color-mix(in srgb, var(--nbc-gray) 18%, transparent); } .nb-block[data-block-bg=brown] { background: color-mix(in srgb, var(--nbc-brown) 18%, transparent); }
+.nb-block[data-block-bg=orange] { background: color-mix(in srgb, var(--nbc-orange) 18%, transparent); } .nb-block[data-block-bg=yellow] { background: color-mix(in srgb, var(--nbc-yellow) 22%, transparent); }
+.nb-block[data-block-bg=green] { background: color-mix(in srgb, var(--nbc-green) 18%, transparent); } .nb-block[data-block-bg=blue] { background: color-mix(in srgb, var(--nbc-blue) 18%, transparent); }
+.nb-block[data-block-bg=purple] { background: color-mix(in srgb, var(--nbc-purple) 18%, transparent); } .nb-block[data-block-bg=red] { background: color-mix(in srgb, var(--nbc-red) 18%, transparent); }
+:root[data-theme="eink"] .nb-block[data-block-bg] { background: var(--hl-yellow); }
+.nb-block[data-block-bg].editing { background: none; }
+.nb-bg-whole { background: none !important; }
+
+/* several blocks (rows 21, 43): a pale wash on each picked block, and the band dragged from the margin */
+.nb-block.nb-picked { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.nb-block.nb-picked > .nb-grip, .nb-block.nb-picked > .nb-plus { opacity: 1; }
+.nb-picking, .nb-picking * { user-select: none; cursor: default; }
+.nb-band { position: fixed; z-index: 40; pointer-events: none; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+/* columns (rows 15, 44): comment markers in the page; the markers are not drawn. 700 px and narrower stacks them (library L-23) */
+.nb-blocks { container-type: inline-size; }
+.nb-col-marker { display: none; }
+.nb-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 12px; margin-left: calc(-1 * var(--nb-gut, 44px)); margin-bottom: 8px; align-items: start; }
+.nb-column { min-width: 0; padding-left: var(--nb-gut, 44px); }
+@container (max-width: 700px) { .nb-columns { grid-template-columns: 1fr; } }
+
+/* a block dropped at the side: a vertical blue line where the column will be */
+.nb-block.drop-left::before, .nb-block.drop-right::after { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; border-radius: 1px; background: var(--accent); pointer-events: none; }
+.nb-block.drop-left::before { left: calc(var(--nb-gut, 44px) - 6px); }
+.nb-block.drop-right::after { right: -6px; }

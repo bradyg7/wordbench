@@ -2714,3 +2714,47 @@ fn a_block_is_copied_below_itself_and_a_join_or_a_copy_can_be_undone() {
     let (code, _, _) = wb.run(&["block", "dup", &id, "9"], None);
     assert_ne!(code, 0);
 }
+
+#[test]
+fn a_block_gets_a_background_and_goes_beside_another_as_a_column() {
+    // notebook rows 25b, 44, 15 and 21 (NB6, NB7): `wb block color` wraps a text block's whole text in a data-bg span (several
+    // blocks with --count; scripture is left alone); `wb block move --beside` puts blocks in columns held by comment markers
+    let Some(wb) = Wb::new() else { return };
+    let id = wb.js(&["page", "new", "A column page"])["id"].as_str().unwrap().to_string();
+    for t in ["First line", "## A heading", "```scripture\nNum 25:11\n```", "Last line"] {
+        wb.js(&["block", "add", &id, t]);
+    }
+    let texts = |wb: &Wb| -> Vec<String> { wb.js(&["page", "blocks", &id])["blocks"].as_array().unwrap().iter().map(|b| b["text"].as_str().unwrap().to_string()).collect() };
+    wb.js(&["block", "color", &id, "1", "yellow", "--count", "4"]);
+    assert_eq!(texts(&wb), ["<span data-bg=\"yellow\">First line</span>", "## <span data-bg=\"yellow\">A heading</span>", "```scripture\nNum 25:11\n```", "<span data-bg=\"yellow\">Last line</span>"]);
+    let r = wb.js(&["block", "color", &id, "4", "default", "--undo"]);
+    assert_eq!(texts(&wb)[3], "Last line");
+    wb.js(&["block", "undo", &id, &r["undo"].to_string()]);
+    assert_eq!(texts(&wb)[3], "<span data-bg=\"yellow\">Last line</span>");
+    let (code, _, _) = wb.run(&["block", "color", &id, "3", "red"], None);
+    assert_ne!(code, 0, "a scripture block has no background");
+    let (code, _, _) = wb.run(&["block", "color", &id, "1", "mauve"], None);
+    assert_ne!(code, 0);
+    wb.js(&["block", "color", &id, "1", "default", "--count", "4"]);
+    // columns
+    wb.js(&["block", "move", &id, "3", "--beside", "1"]);
+    assert_eq!(texts(&wb), ["<!-- columns -->", "First line", "<!-- column -->", "```scripture\nNum 25:11\n```", "<!-- /columns -->", "## A heading", "Last line"]);
+    wb.js(&["block", "move", &id, "7", "--beside", "2", "--left"]);
+    let t = texts(&wb);
+    assert_eq!(t.iter().filter(|x| x.as_str() == "<!-- column -->").count(), 2);
+    assert_eq!(t[1], "Last line");
+    // blocks taken out of their columns: a column left empty loses its marker, a group left with one column is unwrapped
+    let (code, _, _) = wb.run(&["block", "move", &id, "2", "--beside", "2"], None);
+    assert_ne!(code, 0, "a block is not beside itself");
+    let at = |wb: &Wb, w: &str| (texts(wb).iter().position(|x| x == w).unwrap() + 1).to_string();
+    wb.js(&["block", "move", &id, &at(&wb, "First line"), "--last"]);
+    assert_eq!(texts(&wb).iter().filter(|x| x.as_str() == "<!-- column -->").count(), 1);
+    wb.js(&["block", "move", &id, &at(&wb, "Last line"), "--last"]);
+    assert!(texts(&wb).iter().all(|x| !x.starts_with("<!--")), "no markers left over: {:?}", texts(&wb));
+    assert_eq!(texts(&wb).len(), 4);
+    // a block of the group removed on its own (wb block rm) tidies the same way
+    wb.js(&["block", "move", &id, &at(&wb, "First line"), "--beside", &at(&wb, "Last line")]);
+    assert!(texts(&wb).contains(&"<!-- columns -->".to_string()));
+    wb.js(&["block", "rm", &id, &at(&wb, "First line")]);
+    assert!(texts(&wb).iter().all(|x| !x.starts_with("<!--")));
+}

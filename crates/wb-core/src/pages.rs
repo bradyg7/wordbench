@@ -449,7 +449,7 @@ fn indent_of(l: &str) -> usize {
 }
 
 /// A list item's mark: (spaces before it, its length with the space after it, numbered?).
-fn list_mark(l: &str) -> Option<(usize, usize, bool)> {
+pub(crate) fn list_mark(l: &str) -> Option<(usize, usize, bool)> {
     let ind = indent_of(l);
     let rest = l.trim_start_matches([' ', '\t']);
     let lead = l.len() - rest.len();
@@ -699,7 +699,7 @@ fn blocks_within(text: &str, titled: bool, a: usize, b: usize) -> (usize, usize)
     (first, n)
 }
 
-fn check_n(blocks: &[Block], n: usize, count: usize) -> Result<()> {
+pub(crate) fn check_n(blocks: &[Block], n: usize, count: usize) -> Result<()> {
     if count == 0 || n.saturating_add(count) > blocks.len() {
         return Err(missing(format!("The page has {} block{}; there is no block {}.", blocks.len(), if blocks.len() == 1 { "" } else { "s" }, n.saturating_add(count.max(1)))));
     }
@@ -914,6 +914,10 @@ pub enum Edit<'a> {
     Set { n: usize, count: usize, text: &'a str },
     Add { after: Option<usize>, text: &'a str },
     Move { n: usize, to: usize },
+    /// Block `n` beside block `m` as a column (right of it; `left`: left of it): see `blockops`.
+    Beside { n: usize, m: usize, left: bool },
+    /// A background colour (None: Default) on `count` blocks from `n`: see `blockops`.
+    Color { n: usize, count: usize, name: Option<&'a str> },
     Check { n: usize, done: Option<bool> },
     Title(&'a str),
 }
@@ -930,12 +934,21 @@ pub fn edit_guarded(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>, 
         return Err(bad("The page changed. Reopen it and try again."));
     }
     let (out, n, count) = match what {
-        Edit::Set { n, count, text: new } => set(&text, titled, n, count, new)?,
+        Edit::Set { n, count, text: new } => {
+            let (out, at, k) = set(&text, titled, n, count, new)?;
+            // taking blocks out may leave a column empty: its marker goes with it
+            if new.trim().is_empty() { (crate::blockops::tidy(&out, titled)?, at, k) } else { (out, at, k) }
+        }
         Edit::Add { after, text: new } => insert(&text, titled, after, new)?,
         Edit::Move { n, to } => {
             let (out, at) = move_block(&text, titled, n, to)?;
+            (crate::blockops::tidy(&out, titled)?, at, 1)
+        }
+        Edit::Beside { n, m, left } => {
+            let (out, at) = crate::blockops::move_beside(&text, titled, n, m, left)?;
             (out, at, 1)
         }
+        Edit::Color { n, count, name } => (crate::blockops::color_blocks(&text, titled, n, count, name)?, n, count),
         Edit::Check { n, done } => (check(&text, titled, n, done)?, n, 1),
         Edit::Title(t) => {
             if !titled {
@@ -977,6 +990,7 @@ pub fn remove_block(bible: &Bible, store: &mut Store, id: &str, n: usize, count:
         return Err(bad("The page changed. Reopen it and try again."));
     }
     let (out, at, remaining) = set(&before, titled, n, count, "")?;
+    let out = crate::blockops::tidy(&out, titled)?;
     let mut result = written(bible, store, &id, &out, titled, at, remaining)?;
     let (_, after, _) = text_of(store, &id)?;
     result["undo"] = json!(BlockUndo { page: id, before, after: body_digest(&after), n, count, removal: true });
@@ -1018,6 +1032,7 @@ pub fn undo_block(bible: &Bible, store: &mut Store, id: &str, undo: BlockUndo) -
     // Check the inverse before writing so a stale or damaged token cannot replace unrelated text.
     if undo.removal {
         let (after, _, _) = set(&undo.before, titled, undo.n, undo.count, "")?;
+        let after = crate::blockops::tidy(&after, titled)?;
         if after.trim() != current.trim() {
             return Err(bad("The block Undo does not match this page."));
         }

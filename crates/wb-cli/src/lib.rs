@@ -242,7 +242,7 @@ fn changes_page_files(command: &str) -> bool {
         "day add" | "day text" | "day rm" | "page new" | "page move" | "page pin" |
         "page unpin" | "page title" | "mark grow" |
         "block scripture" | "block thread" | "block word" | "block view" | "block set" |
-        "block add" | "block dup" | "block rm" | "block undo" | "block move" | "tether accept" | "template new" |
+        "block add" | "block color" | "block dup" | "block rm" | "block undo" | "block move" | "tether accept" | "template new" |
         "template save" | "template set" | "template rm" | "trash restore" | "history keep"
     )
 }

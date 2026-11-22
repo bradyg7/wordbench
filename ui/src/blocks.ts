@@ -18,6 +18,10 @@ import { scriptureField } from './scripturefield';
 import { caretAt, caretLine, chipRefs, clearShape, contentStart, continuation, createEditor, indentList, insertBreak, insertPlain, inlineShortcut, isEmpty, lineStartShortcut, shapeOf, splitAtCaret, tidy, toggleMark, turnedMd, undoTurn, type Turn, type Writer } from './blockedit';
 import { isToggleEnd, placeBlocks, toggleHead, toggleOf, wrapHead } from './toggles';
 import { KINDS, installSelectionBar, selectionBarBusy, shapeProps } from './selbar';
+import { COLORS, label as colorLabel } from './palette';
+import { bgOf, takesBackground } from './blockbg';
+import { columnGroups, isMarker, MAX_COLUMNS, type Group } from './columns';
+import { applyPicks, clearPick, installPicking, pick as pickBlocks, pickedRun } from './blockpick';
 
 export interface Blk { n: number; kind: string; text: string; start: number; end: number; level?: number; checked?: boolean; lang?: string; indent?: number; question?: { done: boolean; text: string } }
 export interface Blocks { id: string; title: { text: string; start: number; end: number } | null; blocks: Blk[]; /** the folded toggles, each named by its head's text (settings/pages.json) */ folds?: string[] }
@@ -153,6 +157,12 @@ export function drawBlocks(data: Blocks, host: Host): HTMLElement {
   host.state.words?.got.catch(() => {});
   installSelectionBar();
   const places = placeBlocks(data.blocks);
+  // columns (rows 15, 44): blocks between the markers of a balanced group are drawn side by side; the markers are blocks of
+  // the page too (they keep their numbers) but are not drawn: the opening one starts the first column, each `<!-- column -->`
+  // ends one, and the closing one ends the last, so a block added below the last of a column stays in it
+  const groups = columnGroups(data.blocks);
+  const groupOf = (n: number): Group | undefined => groups.find(g => n >= g.open && n <= g.close);
+  let grid: HTMLElement | null = null, column: HTMLElement | null = null;
   for (const b of data.blocks) {
     const el = blockEl(data, b, host);
     const p = places.get(b.n)!;
@@ -161,7 +171,23 @@ export function drawBlocks(data: Blocks, host: Host): HTMLElement {
       el.classList.add('nb-toggle');
       el.insertBefore(toggleTriangle(data, b, host), el.querySelector('.nb-block-body'));
     } else if (p.role === 'end') el.classList.add('nb-toggle-end');
-    wrap.append(el);
+    const g = groupOf(b.n);
+    if (g && isMarker(b.text)) {
+      el.classList.add('nb-col-marker');
+      if (b.n === g.open) {
+        grid = h('div', 'nb-columns');
+        grid.style.setProperty('--cols', String(Math.min(g.seps.length + 1, MAX_COLUMNS)));
+        grid.dataset.columns = String(g.seps.length + 1);
+        column = h('div', 'nb-column');
+        grid.append(column);
+        wrap.append(grid);
+      }
+      column?.append(el);
+      if (g.seps.includes(b.n) && grid) { column = h('div', 'nb-column'); grid.append(column); }
+      if (b.n === g.close) { grid = null; column = null; }
+      continue;
+    }
+    (column ?? wrap).append(el);
   }
   applyFolds(wrap, data);
   const add = h('button', 'link-btn nb-block-add muted', data.blocks.length ? 'Write here, or type / for a block' : 'Write the page here, or type / for a block');
@@ -220,7 +246,7 @@ function toggleTriangle(data: Blocks, b: Blk, host: Host): HTMLElement {
 function shownFrom(wrap: HTMLElement | null, n: number, step: 1 | -1, last: number): number {
   for (let k = n; k >= 1 && k <= last; k += step) {
     const el = wrap?.querySelector<HTMLElement>(`.nb-block[data-n="${k}"]`);
-    if (!el || (!el.classList.contains('nb-folded') && !el.classList.contains('nb-toggle-end'))) return k;
+    if (!el || (!el.classList.contains('nb-folded') && !el.classList.contains('nb-toggle-end') && !el.classList.contains('nb-col-marker'))) return k;
   }
   return n;
 }
@@ -232,6 +258,8 @@ function shifted<T extends { start: number; end: number }>(xs: T[], a: number, b
 function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
   const el = h('div', `nb-block nb-b-${b.kind}`);
   el.dataset.n = String(b.n);
+  const bg = bgOf(b);
+  if (bg) el.dataset.blockBg = bg;
   // the block handle (rows 13, 14, 16, 41): a + and a grip in the left gutter, shown on hover or focus; the gutter is always
   // there, so the text never shifts. + adds an empty line below with the / menu open; the grip drags the block, or opens its menu.
   const plus = h('button', 'nb-plus');
@@ -251,43 +279,66 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
   grip.onblur = () => { if (!document.querySelector('.wbm')) el.classList.remove('nb-selected'); };
   grip.onkeydown = ev => {
     const mod = ev.ctrlKey || ev.metaKey;
-    if ((ev.key === 'Delete' || ev.key === 'Backspace') && !mod && !ev.shiftKey && !ev.altKey) { ev.preventDefault(); void deleteBlock(data, host, el, b); }
+    const run = pickedRun(data.id);
+    if ((ev.key === 'Delete' || ev.key === 'Backspace') && !mod && !ev.shiftKey && !ev.altKey && run && run.to > run.from && b.n >= run.from && b.n <= run.to) { ev.preventDefault(); void deletePicked(data, host, el, run.from, run.to); }
+    else if ((ev.key === 'Delete' || ev.key === 'Backspace') && !mod && !ev.shiftKey && !ev.altKey) { ev.preventDefault(); void deleteBlock(data, host, el, b); }
     else if (mod && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'd') { ev.preventDefault(); void duplicateBlock(data, host, el, b); }
   };
   grip.draggable = true;
   grip.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-block', `${data.id} ${b.n}`); ev.dataTransfer!.effectAllowed = 'move'; el.classList.add('dragging'); };
-  grip.ondragend = () => el.classList.remove('dragging');
+  grip.ondragend = () => { el.classList.remove('dragging'); document.querySelectorAll('.drop-before, .drop-after, .drop-left, .drop-right').forEach(x => x.classList.remove('drop-before', 'drop-after', 'drop-left', 'drop-right')); };
   const body = h('div', 'nb-block-body');
   body.append(drawn(b, host, data.id));
   if (isStructured(b)) body.append(button('link-btn small nb-edit-structured', b.kind === 'table' ? 'Edit table' : 'Edit card', () => editBlock(data, b, el, host), 'pen'));
   body.onclick = ev => {
     const t = ev.target as HTMLElement;
     if (t.closest('a, input, button, textarea, label, select, .nb-structured-editor, .nb-block-input')) return;
+    if (ev.shiftKey) return;      // Shift+click picks blocks (blockpick.ts)
     editBlock(data, b, el, host);
   };
   el.append(plus, grip, body);
-  // a block dropped on another goes before it (the upper half) or after it (the lower half)
+  if (bg) {
+    // the span round the whole text would tint the lines a second time: the block's own wash does it
+    const whole = Array.from(body.querySelectorAll<HTMLElement>('[data-bg]')).find(x => x.textContent!.trim() === body.textContent!.trim());
+    whole?.classList.add('nb-bg-whole');
+  }
+  // a block dropped on another goes before it (the upper half) or after it (the lower half); at its far left or right edge, and
+  // when the page is wide enough for columns (700 px, library L-23), beside it, in a column (rows 15, 44)
+  const where = (ev: DragEvent): 'before' | 'after' | 'left' | 'right' => {
+    const r = el.getBoundingClientRect();
+    const bodyR = body.getBoundingClientRect();
+    const wide = (el.closest('.nb-blocks') as HTMLElement | null)?.clientWidth ?? 0;
+    if (wide >= 700 && !isMarker(b.text)) {
+      const edge = Math.min(72, bodyR.width * 0.18);
+      if (ev.clientX < bodyR.left + edge) return 'left';
+      if (ev.clientX > bodyR.right - edge) return 'right';
+    }
+    return ev.clientY < r.top + r.height / 2 ? 'before' : 'after';
+  };
+  const drops = ['drop-before', 'drop-after', 'drop-left', 'drop-right'];
   el.ondragover = ev => {
     if (!ev.dataTransfer?.types.includes('text/wb-block')) return;
     ev.preventDefault();
-    const r = el.getBoundingClientRect();
-    const before = ev.clientY < r.top + r.height / 2;
-    el.classList.toggle('drop-before', before);
-    el.classList.toggle('drop-after', !before);
+    const w = where(ev);
+    for (const c of drops) el.classList.toggle(c, c === `drop-${w}`);
   };
-  el.ondragleave = () => el.classList.remove('drop-before', 'drop-after');
+  el.ondragleave = ev => { if (!el.contains(ev.relatedTarget as Node | null)) el.classList.remove(...drops); };
   el.ondrop = async ev => {
     const got = ev.dataTransfer?.getData('text/wb-block');
-    const before = el.classList.contains('drop-before');
-    el.classList.remove('drop-before', 'drop-after');
+    const w = where(ev);
+    el.classList.remove(...drops);
     if (!got) return;
     ev.preventDefault();
+    ev.stopPropagation();
     const [id, n] = got.split(' ');
-    if (id !== data.id) return;
-    const to = before ? b.n : b.n + 1;
+    if (id !== data.id || Number(n) === b.n) return;
     try {
-      const last = to > data.blocks.length;
-      await wb(['block', 'move', data.id, n, ...(last ? ['--last'] : ['--to', String(to)])]);
+      if (w === 'left' || w === 'right') {
+        await wb(['block', 'move', data.id, n, '--beside', String(b.n), ...(w === 'left' ? ['--left'] : [])]);
+      } else {
+        const to = w === 'before' ? b.n : b.n + 1;
+        await wb(['block', 'move', data.id, n, ...(to > data.blocks.length ? ['--last'] : ['--to', String(to)])]);
+      }
       host.changed();
     } catch (x) { toast(String(x)); }
   };
@@ -389,10 +440,13 @@ function editedText(updated?: string): string {
 async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, grip: HTMLElement) {
   if (document.querySelector('.wbm[aria-label="Block actions"]')) return;
   if (liveEdit && liveEdit.el === el) { await liveEdit.save(); if (!liveEdit.cur.n) return; }
+  const run = pickedRun(data.id);
+  if (run && run.to > run.from && b.n >= run.from && b.n <= run.to) return openPickMenu(data, host, run.from, run.to, grip);
   el.classList.add('nb-selected');
   const words = data.blocks.reduce((n, x) => n + wordsIn(x.text), wordsIn(data.title?.text ?? ''));
   const items: MenuItem[] = [];
   if (turnable(b)) items.push({ id: 'turn', label: 'Turn into', icon: 'T', hint: '▸', keywords: ['turn', 'change', 'kind'] });
+  if (takesBackground(b)) items.push({ id: 'color', label: 'Color', icon: '◐', hint: '▸', keywords: ['background', 'highlight'] });
   items.push({ id: 'dup', label: 'Duplicate', icon: '⧉', hint: 'Ctrl+D', keywords: ['copy'] });
   items.push({ id: 'del', label: 'Delete', icon: '✕', hint: 'Del', danger: true, keywords: ['remove'] });
   const keep = host.state.menuClose;
@@ -403,6 +457,7 @@ async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, 
     onPick: it => {
       picked = true;
       if (it.id === 'turn') return turnMenu(data, host, el, b, grip);
+      if (it.id === 'color') return colorMenu(host, [b], grip, name => void colorBlocks(data, host, el, b, 1, name), el);
       if (it.id === 'dup') return void duplicateBlock(data, host, el, b);
       void deleteBlock(data, host, el, b);
     },
@@ -419,6 +474,88 @@ async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, 
     if (ev.key === 'Delete' && !q && !mod) { ev.preventDefault(); picked = true; handle.close(); void deleteBlock(data, host, el, b); }
     else if (mod && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'd') { ev.preventDefault(); picked = true; handle.close(); void duplicateBlock(data, host, el, b); }
   });
+}
+
+/** Color ▸ (row 25b): Background, Default and the 8 plain colors; a tick on the one the block has (the first one's, for several). */
+function colorMenu(host: Host, blocks: Blk[], grip: HTMLElement, pickName: (name: string | null) => void, el?: HTMLElement) {
+  const now = bgOf(blocks.find(takesBackground) ?? blocks[0]) ?? 'default';
+  const keep = host.state.menuClose;
+  const items: MenuItem[] = ['default', ...COLORS].map(name => ({
+    id: `bg:${name}`, label: name === 'default' ? 'Default' : colorLabel(name), icon: '', hint: now === name ? '✓' : undefined,
+    iconClass: 'nbc-sw', iconData: name === 'default' ? undefined : { bg: name }, keywords: ['background'],
+  }));
+  const handle = openMenu({
+    groups: [{ title: 'Background', items }], label: 'Color', placeholder: 'Color', at: grip,
+    onPick: it => pickName(it.id === 'bg:default' ? null : it.id.slice(3)),
+    onClose: () => { if (host.state.menuClose === handle.close) host.state.menuClose = keep ?? null; el?.classList.remove('nb-selected'); },
+  });
+  host.state.menuClose = handle.close;
+}
+
+/** A background on `count` blocks from block `b` (wb block color); the change is the page's Undo. */
+async function colorBlocks(data: Blocks, host: Host, el: HTMLElement, b: Blk, count: number, name: string | null) {
+  const root = el.closest<HTMLElement>('.nb-editor');
+  const t = await settle(el, b, host);
+  if (!t || !root) return;
+  const history = historyFor(root, data.id);
+  if (history.busy) return;
+  history.busy = true;
+  try {
+    const r = await wb(['block', 'color', data.id, String(t.n), name ?? 'default', '--count', String(count), '--undo', ...(t.expect === undefined ? [] : ['--expect', t.expect])]);
+    history.undo.push({ token: JSON.stringify(r.undo), n: t.n });
+    history.focus = t.n;
+    host.changed();
+  } catch (x) { toast(String(x)); }
+  finally { history.busy = false; }
+}
+
+/** The grip's menu on several picked blocks (row 21): Turn into, Color and Delete act on all of them. Move to comes with NB9. */
+function openPickMenu(data: Blocks, host: Host, from: number, to: number, grip: HTMLElement) {
+  if (document.querySelector('.wbm[aria-label="Block actions"]')) return;
+  const bs = data.blocks.filter(x => x.n >= from && x.n <= to && !isMarker(x.text));
+  const first = data.blocks.find(x => x.n === from)!;
+  const el = grip.closest<HTMLElement>('.nb-block')!;
+  const items: MenuItem[] = [];
+  if (bs.some(turnable)) items.push({ id: 'turn', label: 'Turn into', icon: 'T', hint: '▸', keywords: ['change', 'kind'] });
+  if (bs.some(takesBackground)) items.push({ id: 'color', label: 'Color', icon: '◐', hint: '▸', keywords: ['background'] });
+  items.push({ id: 'del', label: 'Delete', icon: '✕', hint: 'Del', danger: true, keywords: ['remove'] });
+  const keep = host.state.menuClose;
+  const handle = openMenu({
+    groups: [{ title: `${bs.length} blocks`, items }], label: 'Block actions', placeholder: 'Search actions', at: grip,
+    onPick: it => {
+      if (it.id === 'turn') return turnPickedMenu(data, host, bs.filter(turnable), grip);
+      if (it.id === 'color') return colorMenu(host, bs, grip, name => void colorBlocks(data, host, el, first, to - from + 1, name));
+      void deletePicked(data, host, el, from, to);
+    },
+    onClose: () => { if (host.state.menuClose === handle.close) host.state.menuClose = keep ?? null; },
+  });
+  host.state.menuClose = handle.close;
+}
+
+function turnPickedMenu(data: Blocks, host: Host, bs: Blk[], grip: HTMLElement) {
+  const keep = host.state.menuClose;
+  const handle = openMenu({
+    groups: [{ items: KINDS.map(k => ({ id: k.key, label: k.label })) }], label: 'Turn into', placeholder: 'Turn into', at: grip,
+    onPick: it => void (async () => {
+      const k = KINDS.find(x => x.key === it.id)!;
+      try {
+        for (const b of bs) {
+          const md = k.key === 'toggle' ? wrapHead(turnedMd(b.text, ''), true) : turnedMd(b.text, k.shape, shapeProps(k.key));
+          if (md !== b.text) await wb(['block', 'set', data.id, String(b.n), '-'], md);
+        }
+        host.changed();
+      } catch (x) { toast(String(x)); }
+    })(),
+    onClose: () => { if (host.state.menuClose === handle.close) host.state.menuClose = keep ?? null; },
+  });
+  host.state.menuClose = handle.close;
+}
+
+/** Delete the picked run of blocks, with the page's Undo. */
+async function deletePicked(data: Blocks, host: Host, el: HTMLElement, from: number, to: number) {
+  const root = el.closest<HTMLElement>('.nb-editor');
+  clearPick(root);
+  if (await removeBlock(root, data, host, from, to - from + 1, host.text)) blockUndoToast(root, data, host, 'Deleted');
 }
 
 /** Turn into ▸: the kinds, in the one menu component, hung under the grip. */
@@ -1199,7 +1336,14 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     if (ev.isComposing) return;
     const mod = ev.ctrlKey || ev.metaKey;
     const plainKey = !mod && !ev.altKey;
-    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); ta.blur(); return; }
+    if (ev.key === 'Escape') {
+      ev.preventDefault(); ev.stopPropagation();
+      // Esc ends the writing and picks the block the caret was in (row 21)
+      const wrap = el.closest<HTMLElement>('.nb-blocks');
+      if (wrap && cur.n && !isEmpty(ta)) pickBlocks(wrap, cur.n, cur.n + cur.count - 1, true);
+      ta.blur();
+      return;
+    }
     if (mod && !ev.shiftKey && !ev.altKey) {
       const k = ev.key.toLowerCase();
       if (k === 'z' && turned && undoTurn(ta, turned)) {
@@ -1334,6 +1478,8 @@ export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Hos
   if (!data || !host) { state.pending = null; state.focus = null; blockHistory.delete(root); return; }
   const wrap = root.querySelector<HTMLElement>('.nb-blocks');
   if (!wrap) return;
+  installPicking(root);
+  applyPicks(wrap, data.blocks.length);
   const history = historyFor(root, data.id);
   if (history.undo.length) {
     const undo = button('link-btn small nb-undo-block', 'Undo block change', () => void undoRemoval(root, data, host));

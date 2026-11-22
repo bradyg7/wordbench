@@ -23,6 +23,7 @@ pub mod marks;
 pub mod mycommands;
 pub mod notebook;
 pub mod pageindex;
+pub mod blockops;
 pub mod pages;
 pub mod overview;
 pub mod pageviews;

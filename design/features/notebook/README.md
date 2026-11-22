@@ -163,6 +163,18 @@ Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopte
 |---|---|---|---|
 | R1 | Days, Places, Questions (and Threads, Inbox, All) as tabs | skip | The person, 2026-11-20: a legacy workflow; round 4 already removed them (S27). Today stays a page you can show; questions are listed by the questions folder; a place is reached from the reader's margin |
 
+- **A block's background color, NB6 (the person, 2026-11-21).** A block's background is saved as a `<span data-bg="…">` around
+  the block's whole text (after its marker: `## `, `- `, `> [!key] `), the same form selected words use; a quote or callout holds
+  one span per line, inside its `> ` marks. So a block background applies only to text blocks (paragraph, headings, quote, callout,
+  list item text): Scripture and the other fenced blocks, tables, dividers and a toggle's line have none, and Color ▸ is not shown
+  for them. The block menu's Color ▸ offers Background only (Default and the 8 plain colors); `wb block color ID N NAME --count K`
+  writes it (tests `color_menu_plain_colors`, `block_background_color`).
+- **Columns in the file, NB7 (library L-23).** Comment markers, each a block of its own like a toggle's `</details>`:
+  `<!-- columns -->` opens, `<!-- column -->` starts the next column, `<!-- /columns -->` closes; two to four columns. Markers
+  that do not balance are read as plain blocks. `wb block move ID N --beside M [--left]` writes them and takes a column or a group
+  left empty by a move (or `wb block rm`) away again. Columns need a page 700 px wide or more; narrower, they stack. A block can go
+  beside any block, not only Scripture (row 15 says "dropping to the side makes columns").
+
 ## Interaction table
 
 Round 3. Every row has its own frame in `rows/` (steps as a, b, c…); rows marked approved keep their round 2 frame. Rows 27, 28 (page icons) and 38 were removed in round 3. Rows marked *proposed* name a `wb` command that does
@@ -185,7 +197,7 @@ person's existing pages read.
 | 5 | A line | Type `**word**`, `*word*`; Ctrl+B, Ctrl+I, Ctrl+U | Bold, italic, underline in place | The Markdown marks (underline as `<u>`) | `wb block set` | `inline_shortcuts_and_keys` | built (NB2, NB2b) · approved 2026-11-20 |
 | 6 | An empty line, or after a space | Type `/` | **One list** at the caret: Text, Heading 1–3, Bullet, Numbered, To-do, Toggle, Quote, Divider, Table, then **Study** folded at its end (Scripture, Word, Callout, Saved thing, List in a page); typing finds any command by name, folded or not ("scr" → Scripture); the same in a narrow pane and a floating tab (6a, 6b) | Nothing until picked | Window only | `slash_menu_one_list_finds_folded` | built (NB3) · approved 2026-11-20 |
 | 7 | / menu › Scripture | Type a reference | The book completes as you type ("josh" → Joshua, Tab), so names and numbers cannot be wrong; the verse text previews under the field; several verses and ranges across chapters make one block (7a, 7b) | The block's reference | `wb block add ID "Num 25:18-26:1" --scripture --after N` | `scripture_block_completes_and_previews` | built (NB3) · approved 2026-11-20 |
-| 44 | Scripture blocks | Drag one by its grip beside another | Up to 4 side by side at Full width (44a three, 44b four); fewer columns as the pane narrows, then one under another | The blocks' column form | `wb block move ID N --beside M`, *proposed* | `scripture_side_by_side_up_to_four` | [ ] approved 2026-11-20 |
+| 44 | Scripture blocks | Drag one by its grip beside another | Up to 4 side by side at Full width (44a three, 44b four); fewer columns as the pane narrows, then one under another | Comment markers `<!-- columns -->` … `<!-- column -->` … `<!-- /columns -->` (L-23) | `wb block move ID N --beside M [--left]` | `scripture_side_by_side_up_to_four` | built (NB7) · approved 2026-11-20 |
 | 8 | A list item | Enter; Enter on an empty item; Tab; Shift+Tab | A new item; leaves the list; indents; outdents | The items' Markdown and indent | `wb block set` | `list_enter_tab_rules` | built (NB2, NB2b) · approved 2026-11-20 |
 | 9 | A toggle | Click the triangle, or Ctrl+Enter | Its children fold and unfold; a heading can be a toggle too | `<details><summary>…</summary>…</details>` in the page; folded or not is kept in settings/pages.json | `wb block add ID "<details>…"` | `toggle_folds_children` | built (NB4) · approved 2026-11-20 |
 | 10 | Selected text | Select | A bar above the selection: Turn into ▾, B, I, U, S, link, color ▾, and on scripture text Mark ▾ and Margin note | Nothing until used | Window only | `selection_bar_on_intent` | built (NB4) · approved 2026-11-20 |
@@ -201,15 +213,15 @@ person's existing pages read.
 | 13 | A block | Hover, or focus it | A + and a grip (⋮⋮) in the left gutter; the text does not shift | Nothing | Window only | `handle_appears_without_shift` | built (NB6) · approved 2026-11-20 |
 | 41 | A block's gutter | Read what + and the grip do | + adds an empty line below with / open; the grip drags the block, or opens its menu when clicked | Nothing | Window only | `handle_controls_explained` | built (NB6) · approved 2026-11-20 |
 | 14 | + | Click | A new empty line below, with the / menu open | A new block | `wb block add` | `plus_adds_below_with_menu` | built (NB6) · approved 2026-11-20 |
-| 15 | Grip | Drag | A blue line shows where it lands; dropping moves it; dropping to the side makes columns at full width (library S30) | The block's place | `wb block move ID N --to M` | `drag_moves_block` | [ ] approved 2026-11-20 |
-| 16 | Grip | Click | The block menu: Turn into ▸, Color ▸, Copy link to block, Duplicate (Ctrl+D), Move to (Ctrl+Shift+P), Delete (Del); at the foot "Edited …" and its word count | Nothing until used | Window only | `block_menu_items_and_foot` | built (NB6: Turn into, Duplicate, Delete and the foot; Color ▸ waits on its file form, Copy link to block and Move to are NB9) · approved 2026-11-20 |
+| 15 | Grip | Drag | A blue line shows where it lands; dropping moves it; dropping to the side makes columns at full width (library S30) | The block's place | `wb block move ID N --to M`; `--beside M [--left]` for columns | `drag_moves_block` | built (NB7) · approved 2026-11-20 |
+| 16 | Grip | Click | The block menu: Turn into ▸, Color ▸, Copy link to block, Duplicate (Ctrl+D), Move to (Ctrl+Shift+P), Delete (Del); at the foot "Edited …" and its word count | Nothing until used | Window only | `block_menu_items_and_foot` | built (NB4, NB6) · approved 2026-11-20 (Copy link to block and Move to are NB9) |
 | 17 | Block menu | Turn into ▸ a kind | The block changes kind and keeps its text | The block's Markdown | `wb block set` | `turn_into_keeps_text` | built (NB6) · approved 2026-11-20 |
 | 42 | Block menu | Duplicate (Ctrl+D) | A copy right below, with the caret in it | The page | `wb block dup ID N`, *proposed* | `duplicate_block_below` | built (NB6) · approved 2026-11-20 |
 | 18 | Block menu | Copy link to block | The whole flow (18a–18c): copy in page A; paste in page B makes a chip "Page A › first words"; clicking it opens page A scrolled to the block, which glows briefly; Back returns. Scripture references stay references (found by the page index) | Page B holds the link | `wb block link ID N`, *proposed* | `link_to_block_flow` | [ ] approved 2026-11-20 |
 | 19 | Block menu | Move to | The page chooser; the block leaves this page and is last in the chosen one | Both pages | `wb block move ID N --page OTHER`, *proposed* | `move_block_to_another_page` | [ ] approved 2026-11-20 |
 | 20 | Block menu | Delete, or Del on a selected block | It goes; "Deleted · Undo" offers the page's Undo | The page | `wb block rm ID N --undo` | `delete_block_with_undo` | built (NB6) · approved 2026-11-20 |
-| 21 | Several blocks | Drag across them, or Shift+click; Esc selects the block the caret is in | A pale wash on each; the grip menu acts on all (Turn into, Color, Move to, Delete) | The blocks | `wb block … --count K` | `several_blocks_act_together` | [ ] approved 2026-11-20 |
-| 43 | The page's margin | Drag from the margin across blocks | A pale selection band follows the pointer; every block it touches is selected | Nothing | Window only | `band_selects_blocks` | [ ] approved 2026-11-20 |
+| 21 | Several blocks | Drag across them, or Shift+click; Esc selects the block the caret is in | A pale wash on each; the grip menu acts on all (Turn into, Color, Move to, Delete) | The blocks | `wb block color ID N NAME --count K`, `wb block rm ID N --count K`; Turn into is `wb block set` for each | `several_blocks_act_together` | built (NB7; Move to is NB9) · approved 2026-11-20 |
+| 43 | The page's margin | Drag from the margin across blocks | A pale selection band follows the pointer; every block it touches is selected | Nothing | Window only | `band_selects_blocks` | built (NB7) · approved 2026-11-20 |
 
 ### Callouts (questions are one kind), N6
 
@@ -224,7 +236,7 @@ person's existing pages read.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 25 | Selection bar or block menu | Color ▾ | Text or Background, 8 plain colors and Default, for emphasis only; text color means nothing (marks carry meaning) (25a); the 8 pale backgrounds on words and on a block (25b) | The text in a `<span>`, or the block's marker | `wb block set` | `color_menu_plain_colors` | built (NB4) · approved 2026-11-20 |
+| 25 | Selection bar or block menu | Color ▾ | Text or Background, 8 plain colors and Default, for emphasis only; text color means nothing (marks carry meaning) (25a); the 8 pale backgrounds on words and on a block (25b) | The words in a `<span data-bg>`, or the block's whole text in one (decided 2026-11-21) | `wb block set`; `wb block color ID N NAME --count K` | `color_menu_plain_colors`, `block_background_color` | built (NB4, NB6) · approved 2026-11-20 |
 | 26 | A folder's ⋯ › Color, or New folder | Pick one of the folder colors (as today) | The folder's color is the only organizing color: its pages show the folder's dot by the title and in the side list; nothing is added to any color list | The folder's color | `wb folder color NAME COLOR` | `folder_color_dots_its_pages` | [ ] approved 2026-11-20 |
 
 ### The page, N7 and N8
