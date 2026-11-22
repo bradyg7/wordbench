@@ -3503,3 +3503,86 @@ fn filters_on_the_librarys_lists() {
     assert_eq!(wb.js(&["folder", "show", "Salt", "--filter", "Save is Word"])["count"], 1);
     assert!(wb.fails(&["folder", "show", "Salt", "--filter", "Mood is Glad"]).contains("Save, Book"));
 }
+
+#[test]
+fn filters_on_the_other_lists() {
+    // filters-v2 rows 26-33 (NB17): margin notes, highlights and marks, findings, the Legend's where used, Colors across the Bible,
+    // Bible Search and Near, Every use and the Concordance take the one `--filter` form, and refuse a property they lack with the ones they have
+    let Some(wb) = Wb::new() else { return };
+    let group = |v: &Value, kind: &str| -> Vec<Value> { v["groups"].as_array().unwrap().iter().find(|g| g["kind"] == kind).map(|g| g["results"].as_array().unwrap().clone()).unwrap_or_default() };
+    // rows 26 and 27: margin notes and marks
+    wb.js(&["mark", "note", "Num 25:11", "Zeal in Numbers"]);
+    wb.js(&["mark", "note", "Prov 1:1", "A proverb"]);
+    wb.js(&["legend", "add", "--kind", "underline", "--color", "blue", "--name", "Warning"]);
+    wb.js(&["legend", "add", "--kind", "highlight", "--color", "yellow", "--name", "Promise"]);
+    wb.js(&["mark", "add", "Num 25:11", "--style", "Warning"]);
+    wb.js(&["mark", "add", "Num 25:12", "--style", "Promise"]);
+    wb.js(&["mark", "add", "Prov 1:1", "--style", "Promise"]);
+    let margin = wb.js(&["find", "--kind", "margin", "--filter", "Book is Numbers"]);
+    assert_eq!(group(&margin, "margin").len(), 1);
+    assert_eq!(margin["unfiltered"], 2);
+    let names: Vec<String> = margin["properties"].as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap().to_string()).collect();
+    assert_eq!(names, ["Book", "Written", "Edited", "Folder"]);
+    assert_eq!(group(&wb.js(&["find", "--kind", "margin", "--filter", "Book is Numbers 25"]), "margin").len(), 1);
+    assert_eq!(group(&wb.js(&["find", "--kind", "margin", "--filter", "Book is not Numbers"]), "margin").len(), 1);
+    assert_eq!(group(&wb.js(&["find", "--kind", "margin", "--filter", "Written today"]), "margin").len(), 2);
+    assert_eq!(group(&wb.js(&["find", "--kind", "margin", "--filter", "Folder is set"]), "margin").len(), 0);
+    assert!(wb.fails(&["find", "--kind", "margin", "--filter", "Legend entry is Promise"]).contains("Book, Written, Edited, Folder"));
+    let marks = wb.js(&["find", "--kind", "mark", "--filter", "Legend entry is Promise"]);
+    assert_eq!(group(&marks, "mark").len(), 2);
+    assert_eq!(group(&wb.js(&["find", "--kind", "mark", "--filter", "Kind is Underline"]), "mark").len(), 1);
+    assert_eq!(group(&wb.js(&["find", "--filter", "Kind is Marks", "--filter", "Book is Proverbs"]), "mark").len(), 1);
+    assert_eq!(group(&wb.js(&["find", "--kind", "mark", "--filter", "Legend entry is Promise", "--filter", "Book is Numbers"]), "mark").len(), 1);
+    // row 29: the Legend's where used
+    let uses = wb.js(&["legend", "uses", "Promise", "--filter", "Book is Proverbs"]);
+    assert_eq!((uses["count"].as_u64().unwrap(), uses["unfiltered"].as_u64().unwrap()), (1, 2));
+    assert!(wb.fails(&["legend", "uses", "Promise", "--filter", "Status is Open"]).contains("Book, Kind"));
+    // row 30: Colors across the Bible
+    let map = wb.js(&["marks", "map", "--filter", "Legend entry is Promise", "--filter", "Book is Numbers"]);
+    assert_eq!(map["books"].as_array().unwrap().len(), 1);
+    assert_eq!(map["total"], 1);
+    assert_eq!(wb.js(&["marks", "map", "--filter", "Legend entry is Promise, Warning"])["total"], 3);
+    assert_eq!(wb.js(&["marks", "map", "--filter", "Legend entry is not Promise"])["total"], 1);
+    assert!(wb.fails(&["marks", "map", "--filter", "Kind is Underline"]).contains("Legend entry, Book"));
+    // row 28: findings
+    let one = wb.js(&["finding", "add", "The first finding"]);
+    wb.js(&["finding", "add", "The second finding"]);
+    wb.js(&["finding", "handled", one["id"].as_str().unwrap()]);
+    assert_eq!(wb.js(&["findings"])["findings"].as_array().unwrap().len(), 1);
+    assert_eq!(wb.js(&["findings", "--filter", "Status is Handled"])["findings"].as_array().unwrap().len(), 1);
+    assert_eq!(wb.js(&["findings", "--filter", "Status is Open, Handled"])["findings"].as_array().unwrap().len(), 2);
+    assert_eq!(wb.js(&["findings", "--filter", "Written today"])["findings"].as_array().unwrap().len(), 1);
+    assert!(wb.fails(&["findings", "--filter", "Book is Numbers"]).contains("Status, Kind, Written"));
+    // rows 31-33: search, near, every use and the Concordance by book and testament
+    let all = wb.js(&["search", "zeal"]);
+    let nt = wb.js(&["search", "zeal", "--filter", "Testament is New Testament"]);
+    let ot = wb.js(&["search", "zeal", "--filter", "Testament is Old Testament"]);
+    assert_eq!(all["verses"].as_u64().unwrap(), nt["verses"].as_u64().unwrap() + ot["verses"].as_u64().unwrap());
+    assert!(nt["verses"].as_u64().unwrap() > 0 && ot["verses"].as_u64().unwrap() > 0);
+    let ph = wb.js(&["search", "Phinehas"]);
+    let num = wb.js(&["search", "Phinehas", "--filter", "Book is Numbers"]);
+    assert!(num["verses"].as_u64().unwrap() > 0 && num["verses"].as_u64().unwrap() < ph["verses"].as_u64().unwrap());
+    assert_eq!(wb.js(&["search", "Phinehas", "--filter", "Book is not Numbers"])["verses"].as_u64().unwrap(), ph["verses"].as_u64().unwrap() - num["verses"].as_u64().unwrap());
+    assert_eq!(wb.js(&["search", "zeal", "--filter", "Version is KJV"])["verses"], all["verses"]);
+    assert_eq!(wb.js(&["search", "zeal", "--filter", "Version is YLT"])["verses"], 0);
+    let props: Vec<String> = all["properties"].as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap().to_string()).collect();
+    assert_eq!(props, ["Book", "Testament", "Version"]);
+    assert!(wb.fails(&["search", "zeal", "--filter", "Status is Open"]).contains("Book, Testament, Version"));
+    let near_all = wb.js(&["near", "zeal", "jealousy"]);
+    let near_ot = wb.js(&["near", "zeal", "jealousy", "--filter", "Testament is Old Testament"]);
+    assert!(near_ot["verses"].as_u64().unwrap() <= near_all["verses"].as_u64().unwrap());
+    let u = wb.js(&["uses", "zeal"]);
+    let part = |t: &str| wb.js(&["uses", "zeal", "--filter", t])["verses"].as_u64().unwrap();
+    assert_eq!(part("Testament is New Testament") + part("Testament is Old Testament"), u["verses"].as_u64().unwrap());
+    let numbers = u["properties"].as_array().unwrap().iter().find(|p| p["name"] == "Strong's number").unwrap()["values"].as_array().unwrap().clone();
+    assert!(!numbers.is_empty());
+    let first = numbers[0]["value"].as_str().unwrap().to_string();
+    let by_number = wb.js(&["uses", "zeal", "--filter", &format!("Strong's number is {first}")]);
+    assert!(by_number["occurrences"].as_u64().unwrap() > 0 && by_number["occurrences"].as_u64().unwrap() <= u["occurrences"].as_u64().unwrap());
+    assert!(wb.fails(&["uses", "zeal", "--filter", "Version is KJV"]).contains("Book, Testament, Strong's number"));
+    let c = wb.js(&["concordance", "zeal"]);
+    let cn = wb.js(&["concordance", "zeal", "--filter", "Testament is New Testament"]);
+    let co = wb.js(&["concordance", "zeal", "--filter", "Testament is Old Testament"]);
+    assert_eq!(c["places"].as_u64().unwrap(), cn["places"].as_u64().unwrap() + co["places"].as_u64().unwrap());
+    assert!(wb.fails(&["concordance", "zeal", "--filter", "Version is KJV"]).contains("Book, Testament"));
+}

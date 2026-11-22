@@ -151,10 +151,8 @@ pub fn commands() -> Vec<Command> {
         }),
         cmd("mark in", "Every mark on a passage (a chapter, verses), old highlights too, in Bible order: each with its Legend name and style, its label and the marked words from the Bible. {\"place\", \"count\", \"marks\"}. wb mark in Num 25  |  wb mark in Num 25:9-13. The Marks in a passage block shows this.",
             vec![Pos("place", N::Many)], |c, a| j(marks::in_passage(c.bible()?, &*c.study()?, &a.s("place")).map_err(e)?)),
-        cmd("marks map", "Colors across the Bible: wb marks map [--style ENTRY|kind:color[:lines]] [--folder NAME]. Every book in order with its chapters. With no filter each chapter lists its styles (style, kind, color, count) and the colored folders with saves there; with a style or a folder, each chapter has only its count, and a chapter with 0 is a gap. Also {styles, folders, filter, total, chapters_with}.",
-            vec![Opt("style", None), Opt("folder", None)], |c, a| {
-                j(marks::marks_map(c.bible()?, &*c.study()?, a.opt("style").as_deref(), a.opt("folder").as_deref()).map_err(e)?)
-            }),
+        cmd("marks map", "Colors across the Bible: wb marks map [--style ENTRY|kind:color[:lines]] [--folder NAME]. Every book in order with its chapters. With no filter each chapter lists its styles (style, kind, color, count) and the colored folders with saves there; with a style or a folder, each chapter has only its count, and a chapter with 0 is a gap. Also {styles, folders, filter, total, chapters_with}. --filter \"Legend entry is Promise, Warning\" / \"Book is Numbers\" (repeatable; the same words as every list's chips) narrows it: a Legend entry shows only those counts, a Book only that book; `properties` is what it can be narrowed by.",
+            vec![Opt("style", None), Opt("folder", None), Append("filter")], |c, a| colors(c, a)),
         cmd("mark add", "Draw a mark on a place: wb mark add John 3:16 --kind highlight|underline|circle|box|arrow --color yellow (or #rrggbb) [--lines 1|2|3, underline only] [--to PLACE, arrow only, in the same chapter]; or --style <legend entry> (its name, or its style kind:color[:lines]) instead of --kind, --color and --lines. Kept in marks/<BOOK>.json.",
             vec![Pos("place", N::One), Opt("kind", None), Opt("color", None), Opt("lines", None), Opt("to", None), Opt("style", None)], |c, a| {
                 let mut lines = match a.opt("lines") {
@@ -276,8 +274,28 @@ pub fn commands() -> Vec<Command> {
         cmd("legend rm", "Remove an entry: wb legend rm NAME. Its marks stay, and then show as Unnamed.", vec![Pos("entry", N::Many)], |c, a| {
             j(marks::legend_rm(&*c.study()?, &a.s("entry")).map_err(e)?)
         }),
-        cmd("legend uses", "Where a style is used: wb legend uses NAME (an entry by its name, or any style kind:color[:lines]). {\"entry\", \"count\", \"marks\"}: each mark with its id, kind, color, lines, at, to, book, chapter, verse, label (its reference), words (from the Bible; an old highlight's own if none), created and old, in Bible order. Delete some with wb mark rm.",
-            vec![Pos("entry", N::Many)], |c, a| j(marks::legend_uses(c.bible()?, &*c.study()?, &a.s("entry")).map_err(e)?)),
+        cmd("legend uses", "Where a style is used: wb legend uses NAME (an entry by its name, or any style kind:color[:lines]). {\"entry\", \"count\", \"marks\"}: each mark with its id, kind, color, lines, at, to, book, chapter, verse, label (its reference), words (from the Bible; an old highlight's own if none), created and old, in Bible order. Delete some with wb mark rm. --filter \"Book is Numbers\" / \"Kind is Underline\" (repeatable) narrows the list; `properties` is what it can be narrowed by.",
+            vec![Pos("entry", N::Many), Append("filter")], |c, a| {
+                use wb_core::filters as fl;
+                let filters = fl::parse_all(&a.list("filter")).map_err(e)?;
+                let mut d = marks::legend_uses(c.bible()?, &*c.study()?, &a.s("entry")).map_err(e)?;
+                let names: Vec<String> = c.bible()?.books().iter().map(|b| b.name.clone()).collect();
+                let rows = d["marks"].as_array().cloned().unwrap_or_default();
+                let cap = |w: &str| w.chars().next().map(|f| f.to_uppercase().collect::<String>() + &w[f.len_utf8()..]).unwrap_or_default();
+                let facts = |r: &Value| {
+                    let mut m = fl::Facts::new();
+                    m.insert("book".into(), fl::book_facts(r["book"].as_str().unwrap_or(""), r["chapter"].as_u64().unwrap_or(0) as u32));
+                    m.insert("kind".into(), vec![cap(r["kind"].as_str().unwrap_or(""))]);
+                    m
+                };
+                let props = [fl::Prop { name: "Book", hint: "The book (and chapter) the mark is in" }, fl::Prop { name: "Kind", hint: "Highlight, underline, circle, box or arrow" }];
+                let before = rows.len();
+                let (kept, menu) = fl::narrow(rows, &facts, &props, &filters, &names).map_err(e)?;
+                d["count"] = json!(kept.len());
+                d["marks"] = json!(kept);
+                fl::attach(&mut d, menu, &filters, before);
+                j(d)
+            }),
         cmd("palette", "Your saved custom colors (c1 .. c8).", vec![], |c, _| j(json!({"colors": c.study()?.palette()}))),
         cmd("palette rm", "Forget a saved color (highlights already made in it stay).", vec![Pos("color", N::One)], |c, a| {
             j(json!({"colors": c.study()?.drop_palette_color(Some(&a.s("color"))).map_err(e)?}))
@@ -527,9 +545,30 @@ pub fn commands() -> Vec<Command> {
                 Opt("style", None), Opt("mark_kind", None), Opt("color", None), Opt("book", None), Opt("since", None), Opt("until", None), Append("filter")], |c, a| {
             let (mut kind, mut folder, mut edited, sort) = (a.opt("kind"), a.opt("folder"), a.opt("edited"), a.opt("sort"));
             // --filter \"Kind is Questions\" / \"Folder is Salt\" / \"Edited last 7 days\": Ctrl+K's chips, in the one filter form (filters-v2 row 14)
-            for text in a.list("filter") {
+            // the lists of margin notes, highlights and marks take more chips (filters-v2 rows 26-27); which list it is is read first
+            let mut extra: Vec<wb_core::filters::Filter> = vec![];
+            let find_kind = |v: &str| matches!(v.to_lowercase().trim_end_matches('s'), "page" | "question" | "key point" | "key" | "note" | "folder" | "save" | "margin note" | "margin" | "highlight" | "mark");
+            let parsed: Vec<wb_core::filters::Filter> = a.list("filter").iter().map(|t| wb_core::filters::parse(t)).collect::<Result<_, _>>().map_err(e)?;
+            if kind.is_none() {
+                for f in &parsed {
+                    if f.key() == "kind" && f.values.len() == 1 && f.way == wb_core::filters::Way::Is && find_kind(&f.values[0]) {
+                        kind = Some(match f.values[0].to_lowercase().trim_end_matches('s') { "margin note" => "margin".to_string(), "key point" => "key".to_string(), k => k.to_string() });
+                    }
+                }
+            }
+            let listed = matches!(kind.as_deref(), Some("margin" | "highlight" | "mark"));
+            let mut old_texts: Vec<String> = vec![];
+            for f in parsed {
+                let is_list_word = f.key() == "kind" && f.values.len() == 1 && find_kind(&f.values[0]) && f.values[0].to_lowercase().trim_end_matches('s') != "highlight";
+                if listed && !is_list_word && f.key() != "kind" || listed && f.key() == "kind" && !is_list_word {
+                    wb_core::filters::put(&mut extra, f);
+                } else if !listed || f.key() != "kind" || is_list_word {
+                    old_texts.push(f.text());
+                }
+            }
+            for text in old_texts {
                 let f = wb_core::filters::parse(&text).map_err(e)?;
-                let one = |f: &wb_core::filters::Filter| -> Result<String, String> {
+                let one =|f: &wb_core::filters::Filter| -> Result<String, String> {
                     if f.way != wb_core::filters::Way::Is || f.values.len() != 1 {
                         return Err(format!("wb find takes one value with “is”: {} is VALUE.", f.property));
                     }
@@ -570,7 +609,7 @@ pub fn commands() -> Vec<Command> {
             if kind.is_some() || folder.is_some() || edited.is_some() || sort.is_some() || a.flag("has_question") || style.is_some() || mark_kind.is_some() || color.is_some() || book.is_some() || since.is_some() || until.is_some() {
                 let f = wb_core::library::Find { words: &a.s("words"), kind: kind.as_deref().unwrap_or(""), folder: folder.as_deref(), has_question: a.flag("has_question"),
                     edited: edited.as_deref(), sort: sort.as_deref().unwrap_or(""),
-                    style: style.as_deref(), mark_kind: mark_kind.as_deref(), color: color.as_deref(), book: book.as_deref(), since: since.as_deref(), until: until.as_deref() };
+                    style: style.as_deref(), mark_kind: mark_kind.as_deref(), color: color.as_deref(), book: book.as_deref(), since: since.as_deref(), until: until.as_deref(), filters: extra };
                 return j(wb_core::library::find(c.bible()?, &*c.study()?, &f).map_err(e)?);
             }
             if a.s("words").trim().is_empty() {
@@ -613,6 +652,119 @@ pub fn commands() -> Vec<Command> {
             j(sa::lesson_check(c.bible()?, &*c.study()?, &a.s("name")).map_err(e)?)
         }),
     ]
+}
+
+/// `wb marks map` with `--filter` (filters-v2 row 30): Legend entry and Book.
+fn colors(c: &Ctx<'_>, a: &Args) -> Res {
+    use wb_core::filters as fl;
+    let filters = fl::parse_all(&a.list("filter")).map_err(e)?;
+    fl::check(&filters, &["Legend entry", "Book"]).map_err(e)?;
+    let (bible, st) = (c.bible()?, c.study()?);
+    let base = marks::marks_map(bible, &st, a.opt("style").as_deref(), a.opt("folder").as_deref()).map_err(e)?;
+    let every = marks::marks_map(bible, &st, None, None).map_err(e)?;
+    let mut d = base;
+    // the Filter menu: the legend's entries and the books with marks, counted from the unfiltered map
+    let mut by_style: Vec<(String, String, u64)> = vec![];
+    for sty in every["styles"].as_array().cloned().unwrap_or_default() {
+        by_style.push((sty["style"].as_str().unwrap_or("").to_string(), sty["label"].as_str().unwrap_or("").to_string(), 0));
+    }
+    let mut by_book: Vec<(String, u64)> = vec![];
+    for b in every["books"].as_array().cloned().unwrap_or_default() {
+        let mut n = 0u64;
+        for cell in b["cells"].as_array().into_iter().flatten() {
+            for sty in cell["styles"].as_array().into_iter().flatten() {
+                let k = sty["count"].as_u64().unwrap_or(0);
+                n += k;
+                if let Some(x) = by_style.iter_mut().find(|x| x.0 == sty["style"].as_str().unwrap_or("")) {
+                    x.2 += k;
+                }
+            }
+        }
+        by_book.push((b["name"].as_str().unwrap_or("").to_string(), n));
+    }
+    let menu = vec![
+        json!({"name": "Legend entry", "group": "page", "hint": "The Legend entry whose style the marks have", "type": "choice",
+            "values": by_style.iter().filter(|x| x.2 > 0).map(|x| json!({"value": x.1, "label": x.1, "count": x.2})).collect::<Vec<_>>()}),
+        json!({"name": "Book", "group": "page", "hint": "The book a chapter is in", "type": "choice",
+            "values": by_book.iter().filter(|x| x.1 > 0).map(|x| json!({"value": x.0, "label": x.0, "count": x.1})).collect::<Vec<_>>()}),
+    ];
+    // Legend entry: the styles it leaves, counted together (each value is run on its own and the counts are added)
+    if let Some(f) = filters.iter().find(|f| f.key() == "legend entry") {
+        let hit = |label: &str| f.values.iter().any(|v| v.eq_ignore_ascii_case(label));
+        let styles: Vec<&(String, String, u64)> = by_style.iter().filter(|x| match f.way {
+            fl::Way::Is => hit(&x.1),
+            fl::Way::IsNot => !hit(&x.1),
+            fl::Way::Set => true,
+            fl::Way::NotSet => false,
+        }).collect();
+        if a.opt("style").is_some() || a.opt("folder").is_some() {
+            return Err("Give a Legend entry as a filter, or --style or --folder, not both.".into());
+        }
+        let mut sum: Option<Value> = None;
+        for sty in &styles {
+            let one = marks::marks_map(bible, &st, Some(&sty.0), None).map_err(e)?;
+            match sum.as_mut() {
+                None => sum = Some(one),
+                Some(t) => {
+                    for (bi, b) in one["books"].as_array().into_iter().flatten().enumerate() {
+                        for (ci, cell) in b["cells"].as_array().into_iter().flatten().enumerate() {
+                            let n = t["books"][bi]["cells"][ci]["count"].as_u64().unwrap_or(0) + cell["count"].as_u64().unwrap_or(0);
+                            t["books"][bi]["cells"][ci]["count"] = json!(n);
+                        }
+                    }
+                }
+            }
+        }
+        d = match sum {
+            Some(mut t) => {
+                let (mut total, mut with) = (0u64, 0u64);
+                for b in t["books"].as_array().into_iter().flatten() {
+                    for cell in b["cells"].as_array().into_iter().flatten() {
+                        let n = cell["count"].as_u64().unwrap_or(0);
+                        total += n;
+                        with += (n > 0) as u64;
+                    }
+                }
+                t["total"] = json!(total);
+                t["chapters_with"] = json!(with);
+                t["filter"] = json!({"label": styles.iter().map(|x| x.1.clone()).collect::<Vec<_>>().join(", ")});
+                t
+            }
+            None => {
+                let mut t = match by_style.first() { Some(x) => marks::marks_map(bible, &st, Some(&x.0), None).map_err(e)?, None => d.clone() };
+                if let Some(bs) = t["books"].as_array_mut() {
+                    for b in bs {
+                        for cell in b["cells"].as_array_mut().into_iter().flatten() {
+                            cell["count"] = json!(0);
+                        }
+                    }
+                }
+                t["total"] = json!(0);
+                t["chapters_with"] = json!(0);
+                t
+            }
+        };
+    }
+    if let Some(f) = filters.iter().find(|f| f.key() == "book") {
+        let none: Vec<String> = vec![];
+        let _ = &none;
+        if let Some(bs) = d["books"].as_array_mut() {
+            bs.retain(|b| fl::passes(f, &[b["name"].as_str().unwrap_or("").to_string()]));
+        }
+        let (mut total, mut with) = (0u64, 0u64);
+        for b in d["books"].as_array().into_iter().flatten() {
+            for cell in b["cells"].as_array().into_iter().flatten() {
+                let n = cell["count"].as_u64().unwrap_or_else(|| cell["styles"].as_array().map(|v| v.iter().map(|x| x["count"].as_u64().unwrap_or(0)).sum()).unwrap_or(0));
+                total += n;
+                with += (n > 0) as u64;
+            }
+        }
+        d["total"] = json!(total);
+        d["chapters_with"] = json!(with);
+    }
+    let n = by_book.iter().map(|x| x.1).sum::<u64>() as usize;
+    fl::attach(&mut d, menu, &filters, n);
+    j(d)
 }
 
 fn labels(t: &Value) -> Vec<Value> {
@@ -742,7 +894,7 @@ fn from_uses(c: &Ctx<'_>, a: &Args) -> Res {
     let (st, wd, rd) = (some(&strong), some(&word), some(&rendering));
     let b = c.bible()?;
     let rows = every_row(&|offset| {
-        lookup::uses(b, &lookup::UsesQuery { strong: st.as_deref(), word: wd.as_deref(), cat: &cat, scope: &scope, offset, limit: lookup::PAGE, rendering: rd.as_deref() }).map_err(e)
+        lookup::uses(b, &lookup::UsesQuery { strong: st.as_deref(), word: wd.as_deref(), cat: &cat, scope: &scope, offset, limit: lookup::PAGE, rendering: rd.as_deref(), strong_filter: None }).map_err(e)
     })?;
     let rows = picked(c, rows, a.opt("only"))?;
     let places = if a.flag("verses") {

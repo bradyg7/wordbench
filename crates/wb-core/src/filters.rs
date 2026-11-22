@@ -217,6 +217,155 @@ pub fn apply_all(filters: &[Filter], facts: &Facts, has: &[&str]) -> Result<bool
     Ok(true)
 }
 
+// ---- the other lists (filters-v2 rows 26-33, NB17) ----------------------------------------------------------------------
+
+/// Several `--filter` words as filters: one per property (a later one for the same property replaces the earlier).
+pub fn parse_all(texts: &[String]) -> Result<Vec<Filter>> {
+    let mut out = vec![];
+    for t in texts {
+        put(&mut out, parse(t)?);
+    }
+    Ok(out)
+}
+
+/// Refuse a filter whose property the list does not have, naming the ones it has.
+pub fn check(filters: &[Filter], has: &[&str]) -> Result<()> {
+    for f in filters {
+        if !has.iter().any(|h| h.eq_ignore_ascii_case(&f.property)) {
+            return Err(bad(format!("No property called “{}” here; this list has {}.", f.property, has.join(", "))));
+        }
+    }
+    Ok(())
+}
+
+/// A book's facts: its name, and “Name chapter” (the chapter is picked inside the book).
+pub fn book_facts(name: &str, chapter: u32) -> Vec<String> {
+    let mut v = vec![name.to_string()];
+    if chapter > 0 {
+        v.push(format!("{name} {chapter}"));
+    }
+    v
+}
+
+/// One property a list offers: its name and a line saying what it is.
+pub struct Prop<'a> {
+    pub name: &'a str,
+    pub hint: &'a str,
+}
+
+/// The Filter menu of a list: each property with the values its rows hold and how many rows hold each (dates: the four fixed choices).
+/// `books` are the book names in Bible order (a Book's values follow it, each with its chapters).
+pub fn menu(props: &[Prop], facts: &[Facts], books: &[String]) -> Vec<Value> {
+    let mut out = vec![];
+    for p in props {
+        let key = p.name.to_lowercase();
+        let mut tally: BTreeMap<String, usize> = BTreeMap::new();
+        for f in facts {
+            let mut seen: Vec<&String> = vec![];
+            for v in f.get(&key).into_iter().flatten() {
+                if !seen.contains(&v) {
+                    seen.push(v);
+                    *tally.entry(v.clone()).or_insert(0) += 1;
+                }
+            }
+        }
+        let date = is_date_property(p.name);
+        let values: Vec<Value> = if date {
+            let labels = [("today", "Today"), ("last 7 days", "Last 7 days"), ("last 30 days", "Last 30 days"), ("last year", "Last year")];
+            labels
+                .iter()
+                .map(|(v, l)| json!({"value": v, "label": l, "count": facts.iter().filter(|f| f.get(&key).and_then(|d| d.first()).is_some_and(|d| date_in(v, d))).count()}))
+                .collect()
+        } else if key == "book" {
+            books
+                .iter()
+                .filter(|n| tally.contains_key(*n))
+                .map(|n| {
+                    let prefix = format!("{n} ");
+                    let mut ch: Vec<(u32, usize)> = tally.iter().filter_map(|(k, c)| k.strip_prefix(&prefix).and_then(|x| x.parse::<u32>().ok()).map(|x| (x, *c))).collect();
+                    ch.sort();
+                    json!({"value": n, "label": n, "count": tally[n], "chapters": ch.iter().map(|(c, k)| json!({"value": format!("{n} {c}"), "label": c.to_string(), "count": k})).collect::<Vec<_>>()})
+                })
+                .collect()
+        } else {
+            tally.iter().map(|(v, n)| json!({"value": v, "label": v, "count": n})).collect()
+        };
+        out.push(json!({"name": p.name, "group": "page", "hint": p.hint, "type": if date { "date" } else { "choice" }, "values": values}));
+    }
+    out
+}
+
+/// The rows that pass every filter, and the Filter menu worked out from all the rows. A filter on a property the list lacks is refused.
+pub fn narrow(rows: Vec<Value>, facts_of: &dyn Fn(&Value) -> Facts, props: &[Prop], filters: &[Filter], books: &[String]) -> Result<(Vec<Value>, Vec<Value>)> {
+    let names: Vec<&str> = props.iter().map(|p| p.name).collect();
+    check(filters, &names)?;
+    let facts: Vec<Facts> = rows.iter().map(|r| facts_of(r)).collect();
+    let menu = menu(props, &facts, books);
+    let none: Vec<String> = vec![];
+    let kept = rows.into_iter().zip(facts).filter(|(_, f)| filters.iter().all(|fl| passes(fl, f.get(&fl.key()).unwrap_or(&none)))).map(|(r, _)| r).collect();
+    Ok((kept, menu))
+}
+
+/// Put `properties` (the Filter menu), `filters` (the ones applied) and `unfiltered` (how many rows there were) on a list's answer.
+pub fn attach(answer: &mut Value, menu: Vec<Value>, filters: &[Filter], unfiltered: usize) {
+    answer["properties"] = json!(menu);
+    answer["filters"] = json!(filters.iter().map(json_of).collect::<Vec<_>>());
+    answer["unfiltered"] = json!(unfiltered);
+}
+
+/// The book scope (`all`, `OT`, `NT` or book ids joined by commas) a Book, Testament and Version filter leaves of `base`.
+/// Version: these lists read the KJV only, so any other version leaves nothing (scope `0`).
+pub fn scope_for(filters: &[Filter], books: &[crate::bible::Book], base: &str) -> Result<String> {
+    if filters.is_empty() {
+        return Ok(base.to_string());
+    }
+    let mut ids: Vec<u32> = books.iter().filter(|b| crate::places::in_scope(b, base)).map(|b| b.id).collect();
+    for f in filters {
+        let hit = |b: &crate::bible::Book| -> Result<bool> {
+            Ok(match f.key().as_str() {
+                "book" => f.values.iter().any(|v| crate::places::match_book(v, books).is_ok_and(|x| x.id == b.id)),
+                "testament" => f.values.iter().any(|v| {
+                    let w = v.to_lowercase();
+                    (b.testament == "OT" && (w == "ot" || w.starts_with("old"))) || (b.testament == "NT" && (w == "nt" || w.starts_with("new")))
+                }),
+                "version" => f.values.iter().any(|v| v.eq_ignore_ascii_case("KJV")),
+                _ => true,
+            })
+        };
+        let keep = |b: &crate::bible::Book| -> Result<bool> {
+            Ok(match f.way {
+                Way::Is => hit(b)?,
+                Way::IsNot => !hit(b)?,
+                Way::Set => true,
+                Way::NotSet => false,
+            })
+        };
+        let mut next = vec![];
+        for id in ids {
+            if keep(books.iter().find(|b| b.id == id).unwrap())? {
+                next.push(id);
+            }
+        }
+        ids = next;
+    }
+    Ok(if ids.is_empty() { "0".to_string() } else { ids.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(",") })
+}
+
+/// The Book and Testament (and Version) menu of a list kept by book: `by_book` is book id → count, as the lookups give it.
+pub fn book_menu(books: &[crate::bible::Book], by_book: &serde_json::Map<String, Value>, version: bool) -> Vec<Value> {
+    let count = |b: &crate::bible::Book| by_book.get(&b.id.to_string()).and_then(Value::as_u64).unwrap_or(0);
+    let mut out = vec![json!({"name": "Book", "group": "page", "hint": "The book a verse is in", "type": "choice",
+        "values": books.iter().filter(|b| count(b) > 0).map(|b| json!({"value": b.name, "label": b.name, "count": count(b)})).collect::<Vec<_>>()})];
+    let side = |t: &str| books.iter().filter(|b| b.testament == t).map(count).sum::<u64>();
+    out.push(json!({"name": "Testament", "group": "page", "hint": "Old Testament or New Testament", "type": "choice",
+        "values": [{"value": "Old Testament", "label": "Old Testament", "count": side("OT")}, {"value": "New Testament", "label": "New Testament", "count": side("NT")}]}));
+    if version {
+        let n: u64 = books.iter().map(count).sum();
+        out.push(json!({"name": "Version", "group": "page", "hint": "The Bible version searched (the KJV)", "type": "choice", "values": [{"value": "KJV", "label": "KJV", "count": n}]}));
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

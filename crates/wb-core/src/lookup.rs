@@ -220,6 +220,8 @@ pub struct UsesQuery<'a> {
     pub offset: usize,
     pub limit: usize,
     pub rendering: Option<&'a str>,
+    /// A Strong's number filter (filters-v2 row 32): keeps the occurrences whose original word's number passes it.
+    pub strong_filter: Option<&'a crate::filters::Filter>,
 }
 
 /// Every place an original-language word (Strong's number) and/or an English word occurs. An occurrence is a
@@ -289,6 +291,38 @@ pub fn uses(bible: &Bible, q: &UsesQuery) -> Result<Value> {
         occ.push((b, c, v, "e", vec![], vec![i]));
     }
     occ.sort_by_key(|o| (o.0, o.1, o.2, *o.4.first().or(o.5.first()).unwrap()));
+    // the original words behind the hits, by number, for the Strong's number filter's picker (one query, never per hit)
+    let mut strong_numbers: Vec<Value> = vec![];
+    if let Some(s) = &strong {
+        strong_numbers.push(json!({"value": s, "label": s, "count": units.len()}));
+    } else if let Some(w) = &word {
+        let mut stmt = bible.conn().prepare_cached("SELECT strong, COUNT(*) FROM words WHERE text = ? COLLATE NOCASE AND strong IS NOT NULL AND strong != '' GROUP BY strong ORDER BY 2 DESC, 1")?;
+        for x in stmt.query_map([w], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))? {
+            let (n, c) = x?;
+            strong_numbers.push(json!({"value": n, "label": n, "count": c}));
+        }
+    }
+    if let Some(f) = q.strong_filter {
+        let mut stmt = bible.conn().prepare_cached("SELECT strong FROM words WHERE book = ? AND chapter = ? AND verse = ? AND idx = ?")?;
+        let mut keep = vec![];
+        for o in occ {
+            let facts: Vec<String> = if !o.4.is_empty() {
+                strong.iter().cloned().collect()
+            } else {
+                let mut v = vec![];
+                for i in &o.5 {
+                    if let Some(n) = stmt.query_row(params![o.0, o.1, o.2, i], |r| r.get::<_, Option<String>>(0)).ok().flatten().filter(|n| !n.is_empty()) {
+                        v.push(n);
+                    }
+                }
+                v
+            };
+            if crate::filters::passes(f, &facts) {
+                keep.push(o);
+            }
+        }
+        occ = keep;
+    }
     let mut totals = Map::new();
     for k in ["both", "s", "e"] {
         totals.insert(k.into(), json!(occ.iter().filter(|o| o.3 == k).count()));
@@ -317,7 +351,7 @@ pub fn uses(bible: &Bible, q: &UsesQuery) -> Result<Value> {
     let rows: Vec<Value> = page.iter().map(|k| marked_row(book(k.0), *k, words.get(k).map(|w| &w[..]).unwrap_or(&[]), &verses[k])).collect();
     let mut out = json!({
         "strong": strong, "word": word, "rendering": rendering, "cat": q.cat, "scope": q.scope, "totals": totals,
-        "occurrences": scoped.len(), "verses": keys.len(), "by_book": by_book,
+        "occurrences": scoped.len(), "verses": keys.len(), "by_book": by_book, "strong_numbers": strong_numbers,
         "offset": q.offset, "rows": rows, "more": q.offset + q.limit < keys.len()});
     if let Some(w) = &word {
         if !e_words.iter().any(|e| in_scope(book(e.0), q.scope)) {

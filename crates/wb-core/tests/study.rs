@@ -797,7 +797,7 @@ fn scope_can_be_a_group_of_books() {
     let books: std::collections::HashSet<i64> = got["rows"].as_array().unwrap().iter().map(|r| r["ref"]["b"].as_i64().unwrap()).collect();
     assert_eq!(books, [43].into_iter().collect());
     assert_eq!(got["verses"], every["by_book"]["43"]);
-    let uses = |scope: &str| wb_core::lookup::uses(&b, &wb_core::lookup::UsesQuery { strong: Some("H7065"), word: None, cat: "all", scope, offset: 0, limit: 100, rendering: None }).unwrap();
+    let uses = |scope: &str| wb_core::lookup::uses(&b, &wb_core::lookup::UsesQuery { strong: Some("H7065"), word: None, cat: "all", scope, offset: 0, limit: 100, rendering: None, strong_filter: None }).unwrap();
     let u = uses("4,5");
     assert!(u["rows"].as_array().unwrap().iter().all(|r| [4, 5].contains(&r["ref"]["b"].as_i64().unwrap())));
     assert!(u["verses"].as_u64().unwrap() > 0 && u["verses"].as_u64() < uses("all")["verses"].as_u64());

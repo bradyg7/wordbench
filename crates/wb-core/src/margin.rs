@@ -535,7 +535,8 @@ pub fn rows(bible: &Bible, store: &Store, mut keep: impl FnMut(&str, &str, &str)
         let label = n.at.label(bible);
         let updated = if n.changed.is_empty() { &n.created } else { &n.changed };
         if keep(&label, &n.text, updated) {
-            out.push(json!({"kind": "margin", "id": n.id, "title": label, "snippet": n.text, "updated": updated, "at": n.at.id(), "question": question_of(&n.text).is_some()}));
+            out.push(json!({"kind": "margin", "id": n.id, "title": label, "snippet": n.text, "updated": updated, "at": n.at.id(), "question": question_of(&n.text).is_some(),
+            "created": n.created, "grew": n.grew, "code": n.at.code, "chapter": n.at.c}));
         }
     }
     (out, all.len())

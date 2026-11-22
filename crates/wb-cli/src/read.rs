@@ -1,6 +1,6 @@
 //! Reading and looking things up: the Python `wb`'s commands of the same names, with the same output.
 
-use crate::args::{Args, Flag, Opt, Pos, N};
+use crate::args::{Append, Args, Flag, Opt, Pos, N};
 use crate::{cmd, Command, Ctx, Out, Res};
 use serde_json::{json, Map, Value};
 use wb_core::{concordance, lookup, scripture, views};
@@ -11,6 +11,25 @@ fn e(x: wb_core::Error) -> String {
 
 fn strong_term(term: &str) -> String {
     if lookup::is_strong(&term.to_uppercase()) { term.to_uppercase() } else { String::new() }
+}
+
+/// The scope a list's `--scope` and `--filter` (Book, Testament, Version) leave, and the filters (filters-v2 rows 31-33).
+fn list_scope(c: &Ctx<'_>, a: &Args, has: &[&str]) -> Result<(String, Vec<wb_core::filters::Filter>), String> {
+    let filters = wb_core::filters::parse_all(&a.list("filter")).map_err(e)?;
+    wb_core::filters::check(&filters, has).map_err(e)?;
+    let base = c.scope(&a.opt_or("scope", "all"))?;
+    let scope = wb_core::filters::scope_for(&filters, c.bible()?.books(), &base).map_err(e)?;
+    Ok((scope, filters))
+}
+
+/// Put the Filter menu and the filters applied on a list's answer (its `by_book` counts are the menu's counts).
+fn list_menu(c: &Ctx<'_>, d: &mut Value, filters: &[wb_core::filters::Filter], version: bool, extra: Vec<Value>) -> Result<(), String> {
+    let by_book = d["by_book"].as_object().cloned().unwrap_or_default();
+    let mut menu = wb_core::filters::book_menu(c.bible()?.books(), &by_book, version);
+    menu.extend(extra);
+    let n = by_book.values().filter_map(Value::as_u64).sum::<u64>() as usize;
+    wb_core::filters::attach(d, menu, filters, n);
+    Ok(())
 }
 
 fn some(s: &str) -> Option<&str> {
@@ -72,13 +91,21 @@ pub fn commands() -> Vec<Command> {
             }),
         // The Concordance (design/features/concordance): the printed Strong's as a book.
         cmd("concordance", "The English page of the Concordance: every place of a word in Bible order, with words either side and the original word's number: wb concordance zeal [--forms all|one] [--book NUM].
-                     --forms: all (zeal, zealous, zealously) or one (the word alone); without it, the kept choice (wb settings concordance forms). More than 100 places are shown under their books, 4 lines each and \"more\"; the commonest small words (and, the, of) with references only. --book: that book's every line.",
-            vec![Pos("word", N::One), Opt("forms", None), Opt("book", None)], |c, a| {
+                     --forms: all (zeal, zealous, zealously) or one (the word alone); without it, the kept choice (wb settings concordance forms). More than 100 places are shown under their books, 4 lines each and \"more\"; the commonest small words (and, the, of) with references only. --book: that book's every line. --filter \"Book is Numbers\" / \"Testament is New Testament\" (repeatable) narrows the places.",
+            vec![Pos("word", N::One), Opt("forms", None), Opt("book", None), Append("filter")], |c, a| {
                 let mode = match a.opt("forms") {
                     Some(m) => m,
                     None => wb_core::concordance::forms_mode(&*c.study()?),
                 };
-                Ok(Out::Json(concordance::page(c.bible()?, &a.s("word"), &mode.to_lowercase(), a.opt("book").as_deref()).map_err(e)?))
+                let filters = wb_core::filters::parse_all(&a.list("filter")).map_err(e)?;
+                wb_core::filters::check(&filters, &["Book", "Testament"]).map_err(e)?;
+                let scope = wb_core::filters::scope_for(&filters, c.bible()?.books(), "all").map_err(e)?;
+                let mut d = concordance::page_in(c.bible()?, &a.s("word"), &mode.to_lowercase(), a.opt("book").as_deref(), &scope).map_err(e)?;
+                let counts = d["book_counts"].as_object().cloned().unwrap_or_default();
+                let menu = wb_core::filters::book_menu(c.bible()?.books(), &counts, false);
+                let n = counts.values().filter_map(Value::as_u64).sum::<u64>() as usize;
+                wb_core::filters::attach(&mut d, menu, &filters, n);
+                Ok(Out::Json(d))
             }),
         // Cross references (notebook row 52, proposed): the app has no source for them, so none is listed and the answer says so.
         cmd("xrefs", "The cross references of a place: wb xrefs Num 25:11. The app has no cross-reference source yet, so none is listed: {\"place\", \"count\": 0, \"references\": [], \"source\": null, \"message\"}. Proposed; a source is chosen first.",
@@ -93,15 +120,17 @@ pub fn commands() -> Vec<Command> {
         cmd("define", "The original words behind an English word, or a Strong's number, transliteration or spelling.", vec![Pos("word", N::One)], |c, a| {
             Ok(Out::Json(lookup::define(c.bible()?, &a.s("word")).map_err(e)?))
         }),
-        cmd("uses", "Every occurrence of an English word and/or Strong's number: wb uses zeal --scope gospels  |  wb uses H7065 --word zealous.",
-            vec![Pos("term", N::One), Opt("word", None), Opt("scope", Some("all")), Opt("rendering", None), Opt("cat", Some("all")), Opt("offset", Some("0")), Opt("by", None), Opt("group", None), Opt("around", None)], uses),
+        cmd("uses", "Every occurrence of an English word and/or Strong's number: wb uses zeal --scope gospels  |  wb uses H7065 --word zealous. --filter \"Book is Numbers\" / \"Testament is New Testament\" / \"Strong's number is H7068\" (repeatable) narrows it; `properties` is what the list can be narrowed by.",
+            vec![Pos("term", N::One), Opt("word", None), Opt("scope", Some("all")), Opt("rendering", None), Opt("cat", Some("all")), Opt("offset", Some("0")), Opt("by", None), Opt("group", None), Opt("around", None), Append("filter")], uses),
         cmd("count", "How many occurrences in each book: wb count zeal  |  wb count H7065.", vec![Pos("term", N::One)], count),
-        cmd("search", "Search the KJV (every word must be in the verse; \"quotes\" for a phrase; zeal* for endings).",
-            vec![Pos("query", N::Many), Opt("scope", Some("all")), Flag("case"), Flag("regex"), Opt("offset", Some("0"))], |c, a| {
-                let scope = c.scope(&a.opt_or("scope", "all"))?;
+        cmd("search", "Search the KJV (every word must be in the verse; \"quotes\" for a phrase; zeal* for endings). --filter \"Book is Numbers\" / \"Testament is New Testament\" / \"Version is KJV\" (repeatable, the same words as every list's chips) narrows it; the answer's `properties` is what the list can be narrowed by.",
+            vec![Pos("query", N::Many), Opt("scope", Some("all")), Flag("case"), Flag("regex"), Opt("offset", Some("0")), Append("filter")], |c, a| {
+                let (scope, filters) = list_scope(c, a, &["Book", "Testament", "Version"])?;
                 let q = a.s("query");
-                Ok(Out::Json(lookup::search(c.bible()?, &lookup::SearchQuery { q: &q, case: a.flag("case"), scope: &scope,
-                    offset: a.int("offset")?.max(0) as usize, limit: lookup::PAGE, regex: a.flag("regex") }).map_err(e)?))
+                let mut d = lookup::search(c.bible()?, &lookup::SearchQuery { q: &q, case: a.flag("case"), scope: &scope,
+                    offset: a.int("offset")?.max(0) as usize, limit: lookup::PAGE, regex: a.flag("regex") }).map_err(e)?;
+                list_menu(c, &mut d, &filters, true, vec![])?;
+                Ok(Out::Json(d))
             }),
         cmd("forms", "Every English form that starts with a word (zeal, zealous, zealously) with its count.", vec![Pos("word", N::One)], |c, a| {
             Ok(Out::Json(lookup::forms(c.bible()?, &a.s("word")).map_err(e)?))
@@ -109,10 +138,12 @@ pub fn commands() -> Vec<Command> {
         cmd("lexiconc", "Original words whose Strong's definition or KJV-usage line contains an English word (zeal* for endings).", vec![Pos("word", N::One)], |c, a| {
             Ok(Out::Json(lookup::lexiconc(c.bible()?, &a.s("word"), 150).map_err(e)?))
         }),
-        cmd("near", "Verses where two words (or Strong's numbers) come within N words of each other.",
-            vec![Pos("a", N::One), Pos("b", N::One), Opt("within", Some("10")), Opt("scope", Some("all")), Opt("offset", Some("0"))], |c, a| {
-                let scope = c.scope(&a.opt_or("scope", "all"))?;
-                Ok(Out::Json(lookup::near(c.bible()?, &a.s("a"), &a.s("b"), a.int("within")?, &scope, a.int("offset")?.max(0) as usize, lookup::PAGE).map_err(e)?))
+        cmd("near", "Verses where two words (or Strong's numbers) come within N words of each other. --filter \"Book is Numbers\" / \"Testament is Old Testament\" / \"Version is KJV\" (repeatable) narrows it.",
+            vec![Pos("a", N::One), Pos("b", N::One), Opt("within", Some("10")), Opt("scope", Some("all")), Opt("offset", Some("0")), Append("filter")], |c, a| {
+                let (scope, filters) = list_scope(c, a, &["Book", "Testament", "Version"])?;
+                let mut d = lookup::near(c.bible()?, &a.s("a"), &a.s("b"), a.int("within")?, &scope, a.int("offset")?.max(0) as usize, lookup::PAGE).map_err(e)?;
+                list_menu(c, &mut d, &filters, true, vec![])?;
+                Ok(Out::Json(d))
             }),
         cmd("interlinear", "The Greek or Hebrew word by word with the KJV above it: wb interlinear John 3:16.",
             vec![Pos("ref", N::Many), Opt("offset", Some("0"))], |c, a| {
@@ -234,18 +265,23 @@ fn uses(c: &Ctx<'_>, a: &Args) -> Res {
         return Ok(Out::Json(concordance::entry_places(c.bible()?, &strong, &by.to_lowercase(), a.opt("group").as_deref(), around).map_err(e)?));
     }
     let word = a.opt("word").unwrap_or_else(|| if strong.is_empty() { term.to_lowercase() } else { String::new() });
-    let scope = c.scope(&a.opt_or("scope", "all"))?;
+    let (scope, filters) = list_scope(c, a, &["Book", "Testament", "Strong's number"])?;
+    let sn = filters.iter().find(|f| f.key() == "strong's number");
     let rendering = a.opt("rendering").unwrap_or_default();
     let q = lookup::UsesQuery { strong: some(&strong), word: some(&word), cat: &a.opt_or("cat", "all"), scope: &scope,
-        offset: a.int("offset")?.max(0) as usize, limit: lookup::PAGE, rendering: some(&rendering) };
-    Ok(Out::Json(lookup::uses(c.bible()?, &q).map_err(e)?))
+        offset: a.int("offset")?.max(0) as usize, limit: lookup::PAGE, rendering: some(&rendering), strong_filter: sn };
+    let mut d = lookup::uses(c.bible()?, &q).map_err(e)?;
+    let numbers = d["strong_numbers"].clone();
+    let extra = vec![json!({"name": "Strong's number", "group": "page", "hint": "The original word behind the English, by its number", "type": "choice", "values": numbers})];
+    list_menu(c, &mut d, &filters, false, extra)?;
+    Ok(Out::Json(d))
 }
 
 fn count(c: &Ctx<'_>, a: &Args) -> Res {
     let term = a.s("term");
     let strong = strong_term(&term);
     let word = if strong.is_empty() { term.to_lowercase() } else { String::new() };
-    let d = lookup::uses(c.bible()?, &lookup::UsesQuery { strong: some(&strong), word: some(&word), cat: "all", scope: "all", offset: 1_000_000, limit: lookup::PAGE, rendering: None }).map_err(e)?;
+    let d = lookup::uses(c.bible()?, &lookup::UsesQuery { strong: some(&strong), word: some(&word), cat: "all", scope: "all", offset: 1_000_000, limit: lookup::PAGE, rendering: None, strong_filter: None }).map_err(e)?;
     let books = c.bible()?.books();
     let mut by: Vec<(u32, i64)> = d["by_book"].as_object().unwrap().iter().map(|(k, n)| (k.parse().unwrap(), n.as_i64().unwrap())).collect();
     by.sort_by_key(|x| x.0);

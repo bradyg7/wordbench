@@ -183,6 +183,12 @@ fn form_rows(bible: &Bible, word: &str) -> Result<Vec<Value>> {
 /// (kind "books"), 4 lines and "more" each; a small word shows references only (kind "refs", the same grouping). With
 /// `book`, only that book's group, every line of it.
 pub fn page(bible: &Bible, word: &str, mode: &str, book: Option<&str>) -> Result<Value> {
+    page_in(bible, word, mode, book, "all")
+}
+
+/// As `page`, with the places narrowed to a book scope (Book and Testament filters, filters-v2 row 33). `book_counts` is each book's count
+/// before the narrowing (the Filter menu's counts).
+pub fn page_in(bible: &Bible, word: &str, mode: &str, book: Option<&str>, scope: &str) -> Result<Value> {
     let word = word.trim().to_lowercase();
     if !lookup::is_word(&word) {
         return Err(bad("Give one English word, like zeal."));
@@ -209,10 +215,14 @@ pub fn page(bible: &Bible, word: &str, mode: &str, book: Option<&str>) -> Result
         occs.extend(token_occs(bible, n)?);
     }
     occs.sort_by_key(|o| (o.b, o.c, o.v, o.first));
+    let book_counts: serde_json::Map<String, Value> = count_by_book(bible, &occs).into_iter().map(|(id, n)| (id.to_string(), json!(n))).collect();
+    if scope != "all" {
+        occs.retain(|o| book_of(bible, o.b).is_ok_and(|b| crate::places::in_scope(&b, scope)));
+    }
     let by_book = count_by_book(bible, &occs);
     let verses = occs.iter().map(|o| (o.b, o.c, o.v)).collect::<std::collections::BTreeSet<_>>().len();
     let kind = if is_small { "refs" } else if occs.len() > PAGE { "books" } else { "run" };
-    let mut out = json!({"word": word, "mode": mode, "forms": forms, "words": names, "places": occs.len(), "verses": verses, "kind": kind, "small": is_small});
+    let mut out = json!({"book_counts": book_counts, "word": word, "mode": mode, "forms": forms, "words": names, "places": occs.len(), "verses": verses, "kind": kind, "small": is_small});
     let refs_only = kind == "refs";
     if kind == "run" {
         out["lines"] = json!(lines(bible, &occs.iter().collect::<Vec<_>>(), AROUND, false)?);

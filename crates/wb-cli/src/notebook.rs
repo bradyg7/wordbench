@@ -67,8 +67,33 @@ fn history() -> Vec<Command> {
 /// The person's findings about the app while it is built (findings/<id>.md, kept apart from the study; note 50c1).
 fn findings() -> Vec<Command> {
     vec![
-        cmd("findings", "Your findings about the app, newest first: the open ones (--all: the handled ones too), with what was on screen when each was written and their tags (--tag library: one design folder's).",
-            vec![Flag("all"), Opt("tag", None)], |c, a| j(fd::list_tagged(&c.root()?, a.flag("all"), a.opt("tag").as_deref()).map_err(e)?)),
+        cmd("findings", "Your findings about the app, newest first: the open ones (--all: the handled ones too), with what was on screen when each was written and their tags (--tag library: one design folder's). --filter \"Status is Open\" / \"Kind is library\" / \"Written last 7 days\" (repeatable; the same words as every list's chips) narrows them; `properties` is what the list can be narrowed by.",
+            vec![Flag("all"), Opt("tag", None), Append("filter")], |c, a| {
+                use wb_core::filters as fl;
+                let filters = fl::parse_all(&a.list("filter")).map_err(e)?;
+                fl::check(&filters, &["Status", "Kind", "Written"]).map_err(e)?;
+                // a Status chip decides which are shown; without one the open ones (or all with --all) are
+                let all = a.flag("all") || filters.iter().any(|f| f.key() == "status");
+                let mut d = fd::list_tagged(&c.root()?, all, a.opt("tag").as_deref()).map_err(e)?;
+                let rows = d["findings"].as_array().cloned().unwrap_or_default();
+                let facts = |r: &Value| {
+                    let mut m = fl::Facts::new();
+                    m.insert("status".into(), vec![if r["status"] == "handled" { "Handled" } else { "Open" }.to_string()]);
+                    m.insert("kind".into(), r["tags"].as_array().into_iter().flatten().filter_map(Value::as_str).map(String::from).collect());
+                    m.insert("written".into(), vec![r["created"].as_str().unwrap_or("").to_string()].into_iter().filter(|x| !x.is_empty()).collect());
+                    m
+                };
+                let props = [
+                    fl::Prop { name: "Status", hint: "Open, or handled" },
+                    fl::Prop { name: "Kind", hint: "The design folders a finding is tagged with" },
+                    fl::Prop { name: "Written", hint: "When the finding was written" },
+                ];
+                let before = rows.len();
+                let (kept, menu) = fl::narrow(rows, &facts, &props, &filters, &[]).map_err(e)?;
+                d["findings"] = json!(kept);
+                fl::attach(&mut d, menu, &filters, before);
+                j(d)
+            }),
         cmd("finding tag", "Tag a finding with the design folders it touches: wb finding tag 1b2d library marks (names from design/features/coverage.md).",
             vec![Pos("id", N::One), Pos("tags", N::Many)], |c, a| j(fd::tag(&c.root()?, &a.s("id"), &a.list("tags"), false).map_err(e)?)),
         cmd("finding tags", "The names a finding's tag can take: the design folders in design/features/coverage.md.",
