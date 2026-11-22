@@ -3586,3 +3586,43 @@ fn filters_on_the_other_lists() {
     assert_eq!(c["places"].as_u64().unwrap(), cn["places"].as_u64().unwrap() + co["places"].as_u64().unwrap());
     assert!(wb.fails(&["concordance", "zeal", "--filter", "Version is KJV"]).contains("Book, Testament"));
 }
+
+#[test]
+fn a_days_page_reads_and_writes_as_before() {
+    // The Notebook's last line (decisions of 2026-11-22): a day's page is written with the block editor like every other page, and its
+    // file form does not change. A day made with `wb day text` (what the window's first line writes), then added to and changed through
+    // the block commands (what the block editor writes), is the same file as the same words written whole.
+    let Some(wb) = Wb::new() else { return };
+    let day = "2026-11-03";
+    let file = |wb: &Wb| -> String {
+        let dir = wb.dir.join("notes").join("_days");
+        let mut files: Vec<_> = std::fs::read_dir(&dir).unwrap().filter_map(|e| e.ok()).map(|e| e.path()).collect();
+        files.sort();
+        assert_eq!(files.len(), 1, "one file for the day");
+        std::fs::read_to_string(&files[0]).unwrap().replace("\r\n", "\n")
+    };
+    // written whole, as it always was
+    let made = wb.js(&["day", "text", "-", "--day", day]);
+    assert_eq!(made["exists"], false);
+    let (code, _, err) = wb.run(&["day", "text", "-", "--day", day], Some("First line\n\nSecond line\n"));
+    assert_eq!(code, 0, "{err}");
+    let whole = file(&wb);
+    let page = wb.js(&["day", day]);
+    assert_eq!(page["exists"], true);
+    let id = page["id"].as_str().unwrap().to_string();
+    // the blocks of the same file, as the block editor reads them
+    let blocks = wb.js(&["page", "blocks", &id]);
+    let texts: Vec<String> = blocks["blocks"].as_array().unwrap().iter().map(|b| b["text"].as_str().unwrap().to_string()).collect();
+    assert!(texts.contains(&"First line".to_string()) && texts.contains(&"Second line".to_string()), "{texts:?}");
+    // a block written in place (what a keystroke saves) and put back leaves the file exactly as it was
+    let n = blocks["blocks"].as_array().unwrap().iter().position(|b| b["text"] == "Second line").unwrap() + 1;
+    wb.js(&["block", "set", &id, &n.to_string(), "Second line changed"]);
+    assert_ne!(file(&wb), whole);
+    wb.js(&["block", "set", &id, &n.to_string(), "Second line"]);
+    assert_eq!(file(&wb), whole, "the day's file is the same bytes after a block was changed and put back");
+    // the same words written whole into another day give the same file shape (front matter and body)
+    let other = Wb::new().unwrap();
+    other.run(&["day", "text", "-", "--day", day], Some("First line\n\nSecond line\n"));
+    let shape = |t: &str| t.lines().filter(|l| !l.starts_with("created") && !l.starts_with("updated") && !l.starts_with("id")).collect::<Vec<_>>().join("\n");
+    assert_eq!(shape(&file(&other)), shape(&whole));
+}

@@ -206,7 +206,7 @@ test('folder_color_dots_its_pages', async ({ page }) => {
   // ⋯ on the folder row opens its menu; Color… opens the folder colors, None first, as they are today
   await row.hover();
   await row.locator('.nb-folder-more').click();
-  await page.locator('.menu-item', { hasText: 'Color…' }).click();
+  await page.locator('.wbm-row', { hasText: 'Color…' }).click();
   const menu = page.locator('.wbm');
   await expect(menu.locator('.wbm-group')).toHaveText('Phinehas · Color');
   await expect(menu.locator('.wbm-row .wbm-label')).toHaveText(['None', 'Yellow', 'Green', 'Blue', 'Pink', 'Orange']);

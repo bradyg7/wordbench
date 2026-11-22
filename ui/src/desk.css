@@ -278,7 +278,6 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .menu-item:hover { background: var(--accent-soft); }
 .menu-item.check { color: var(--muted); }
 .menu-item.check.on { color: var(--fg); }
-.menu-form .field { margin-top: 4px; }
 .chooser-list { display: flex; flex-direction: column; margin-top: 6px; max-height: 300px; overflow-y: auto; }
 .chooser-row { display: flex; align-items: center; gap: 4px; padding: 8px; border-radius: var(--radius-control); text-align: left; font: var(--type-small); }
 .chooser-row:hover { background: var(--accent-soft); }
@@ -329,7 +328,6 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-section.on { color: var(--accent); background: var(--accent-soft); }
 .nb-follow { display: flex; align-items: center; gap: 8px; margin: 6px 16px 0; font: var(--type-small-strong); }
 .nb-follow .muted { flex: 1; font-weight: 400; }
-.nb-set-opens .nb-set-group { width: auto; min-width: 140px; }
 .nb-scroll { flex: 1; overflow-y: auto; padding: 4px 12px 24px; min-height: 0; }
 .nb-ghead { display: flex; align-items: center; gap: 6px; width: calc(100% - 8px); background: none; border: 0; border-radius: var(--radius-control); padding: 4px 4px; text-align: left; font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); margin: 10px 4px 4px; cursor: pointer; }
 .nb-ghead:hover { color: var(--fg); background: var(--sunken); }
@@ -418,9 +416,6 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-side-link { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font: var(--type-small); }
 .nb-side-link:hover { color: var(--fg); }
 .menu-sep { height: 1px; background: var(--line); margin: 4px 2px; }
-.nb-move-list { max-height: min(360px, 50vh); overflow-y: auto; display: flex; flex-direction: column; }
-.nb-move-row .ico { flex: none; color: var(--muted); }
-.nb-move-row:disabled { color: var(--accent); opacity: .7; }
 .nb-list-about { margin: -4px 0 12px; }
 .nb-main-list { max-width: 640px; }
 /* the page's path, its title written in place, the pages inside it */
@@ -474,8 +469,6 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-new-title { display: block; width: 100%; font: inherit; font-size: 32px; font-weight: 650; border: 0; background: transparent; outline: 0; padding: 0; margin: 0 0 12px; color: inherit; }
 .nb-new-title::placeholder { color: var(--muted, #bbb); opacity: .5; }
 .nb-new-line { display: block; width: 100%; font: inherit; font-size: 16px; line-height: 26px; border: 0; background: transparent; outline: 0; resize: none; padding: 0; color: inherit; }
-.nb-block-input.nb-whole.nb-input { min-height: 160px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); overflow: auto; }
-.nb-block-input.nb-whole.nb-input:focus { border: 1px solid var(--accent); }
 .nb-gap { cursor: text; }
 .nb-gap .nb-gap-line { min-height: 26px; }
 .nb-block-input.asking { box-shadow: 0 1px 0 0 var(--line); }
@@ -502,23 +495,7 @@ details.doc summary code { font: var(--type-small-strong); color: var(--accent);
 .nb-blockmenu-what { font: var(--type-caption); color: var(--muted); }
 .nb-trash-title { font: var(--type-heading); margin-left: 6px; }
 .nb-menu-note { padding: 6px 10px; }
-.nb-suggest { display: flex; flex-direction: column; max-height: min(340px, 50vh); }
-.nb-suggest-head { font: var(--type-caption); color: var(--muted); padding: 2px 10px 6px; border-bottom: 1px solid var(--line); margin: 0 -4px 4px; }
-.nb-suggest-list { overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
-.nb-suggest-group { font: var(--type-label); letter-spacing: var(--type-label-tracking); text-transform: uppercase; color: var(--muted); padding: 8px 10px 4px; }
-.nb-suggest-row { display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left; padding: 7px 10px; border-radius: var(--radius-control); font: var(--type-small); color: var(--fg); background: none; border: 0; }
-.nb-suggest-row.on { background: var(--accent-soft); }
-.nb-suggest-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nb-suggest-label { flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: var(--type-caption); }
-.nb-suggest-row.new .nb-suggest-title { color: var(--accent); }
-.nb-suggest-row.new { border-top: 1px solid var(--line); border-radius: 0; margin-top: 4px; }
-.nb-suggest-empty { padding: 6px 10px; margin: 0; }
 .nb-relink { position: fixed; left: 50%; bottom: calc(var(--tabs-h) + 90px); transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 12px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(0, 0, 0, .18); padding: 8px 8px 8px 14px; border-radius: var(--radius-card); font: var(--type-small); }
-.nb-settings { display: flex; flex-direction: column; gap: 6px; }
-.nb-settings-head { font: var(--type-small-strong); font-size: 15px; padding: 4px 4px 6px; }
-.nb-set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-control); }
-.nb-set-label { font: var(--type-small-strong); }
-.nb-set-key { width: 110px; text-align: center; }
 .seg.small button { padding: 4px 8px; min-height: 28px; font: var(--type-small); }
 input.switch { appearance: none; -webkit-appearance: none; width: 36px; height: 20px; flex: none; border-radius: 10px; background: var(--line); position: relative; cursor: pointer; transition: background .15s; }
 input.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); transition: left .15s; }
@@ -570,13 +547,6 @@ button.question-pill:hover { text-decoration: line-through; }
 /* the small writing boxes in Notes & lookup and on a thread */
 .nb-write { margin: 0 12px 12px; border: 1.5px solid var(--accent); border-radius: var(--radius-card); background: var(--surface); padding: 10px 12px; flex: none; }
 .nb-write .nb-input { min-height: 0; border: 0; border-radius: 0; padding: 0; background: none; font-size: 15px; line-height: 23px; }
-.place-menu { display: flex; flex-direction: column; gap: 6px; }
-.place-opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-control); text-align: left; color: var(--fg); }
-.place-opt .ico { color: var(--accent); }
-.place-opt.first, .place-opt:hover { background: var(--accent-soft); }
-.place-opt-label { font: var(--type-small-strong); font-size: 15px; }
-.place-other { display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius-control); color: var(--muted); }
-.place-other .field { border: 0; padding-left: 0; }
 
 /* the color bar's extras: saved colors, ×, recent threads */
 .swatch.clear { color: var(--muted); font-size: 16px; line-height: 1; background: var(--surface); }
@@ -915,7 +885,6 @@ button.question-pill:hover { text-decoration: line-through; }
 .vc-def-text { white-space: pre-line; margin: 4px 0; max-height: 40vh; overflow: auto; }
 .nb-reader-row.second .ico { color: var(--accent); }
 .nb-list-which { white-space: nowrap; }
-.nb-set-open { width: 150px; }
 /* ---- W5: views and templates (sheets W4, W6.1–W6.3) ---- */
 .nb-view { border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); padding: 6px; margin: 4px 0; }
 .nbv-head { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: var(--sunken); }
@@ -958,7 +927,6 @@ button.nbv-line:hover { color: var(--accent); text-decoration: underline; }
 .tp-name { font: var(--type-small-strong); font-size: 16px; }
 .tp-holds { white-space: normal; overflow-wrap: anywhere; }
 .tp-used { flex: 0 1 auto; max-width: 30%; text-align: right; overflow-wrap: anywhere; }
-.nb-set-templates { display: inline-flex; align-items: center; gap: 6px; margin: 6px 4px 2px; color: var(--accent); font: var(--type-small-strong); }
 .np-modal { width: min(820px, 100%); }
 .np-grid { display: grid; grid-template-columns: 250px 1fr; gap: 18px; margin-top: 14px; }
 .np-left { display: flex; flex-direction: column; gap: 4px; }

@@ -227,6 +227,19 @@ folder, not as a Notebook tab.
   `popMenu` lists in `notebook.ts` for places, thread choosers, templates and the question target; a design for how Today's page starts, and whether
   `[[` becomes the `@` menu, is the person's to give.
 
+- **The last of the old page code, NB15 follow-up (the lead, 2026-11-22, by the most compatible form).** (1) The `[[` link list and every older
+  `popMenu` list in `ui/src/notebook.ts` are the one menu (`ui/src/menu.ts`, row 1): `[[` opens it as `@` does (it takes the typing, filters the
+  pages by title, offers "Link to “words”" when none is titled so; a pick writes `[[Title]]` and a day as its date; Esc leaves the `[[` as typed); the
+  rows of a page's, a template's, a folder's and a deleted page's menus, Move inside, Fold into a page, the place picker (a typed place is one more row),
+  Insert field, the rename field and the Notebook's settings (switches and choices as ticked rows; Quick capture asks its key in the same menu) are
+  all `actionMenu` or `openMenu`. Nothing in `notebook.ts` calls `popMenu` any more (it stays in `ui.ts` for other files). (2) A day's page uses the
+  block editor like every other page: a blank day opens as the first line of a block page (no title to type, the date is its title), the first line
+  written is `wb day text - --day DAY` as before, and the page then draws block by block. The whole-text box (`startEditing`, `page()`, `.nb-whole`)
+  is gone: a draft that starts with words ("Start “x”" from a link to nothing) fills the new-page form's title and first line, and a page whose
+  blocks cannot be read is shown, not written in a box. A day's file does not change (test `a_days_page_reads_and_writes_as_before`, Rust: a block
+  changed and put back leaves the same bytes; window: `a_days_page_is_written_with_the_block_editor`, `link_list_is_the_one_menu`,
+  `link_list_esc_leaves_the_brackets` in `ui/tests/notebook-menus.spec.ts`).
+
 ## The inventory (round 1)
 
 Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into the interaction table below.
@@ -470,7 +483,7 @@ A ticket is done when every row in it has its passing test and its Built cell sa
 - [x] The floating pane drags smoothly (row 6; checked in the build). (`floating_pane_drags_smoothly`.)
 - [x] The interlinear block (row 51) scrolls sideways inside itself when a verse is long, grows in height with its words, and is as wide as the column (wider at Full width); it has no drag-to-resize.
 - [x] A page of 400 blocks types, opens menus and drags inside the typing budget of `npm run measure`; nothing jumps (was row 38). (`page_of_400_blocks_types_menus_drags`, Chromium at 4x; the budget is in Decisions, NB15. **Not run: the real app** — `npm run measure` has no typing section and `npx tauri build --no-bundle` was not run.)
-- [ ] The page is rebuilt on this design; the old page code and its ways are taken out, not built around. (Partly: the old format bar and the dead code are out, listed in Decisions, NB15; the whole-text box for a day's page not yet written, the `[[` link list and the older `popMenu` lists in `notebook.ts` stay until the person gives a design for how Today's page starts and for `[[`.)
+- [x] The page is rebuilt on this design; the old page code and its ways are taken out, not built around. (The old format bar, the whole-text box, the `[[` list and the older `popMenu` lists are gone: Decisions, NB15 and the follow-up of 2026-11-22; tests `link_list_is_the_one_menu`, `a_days_page_is_written_with_the_block_editor`, `a_days_page_reads_and_writes_as_before`.)
 
 ## Data the sheets show
 

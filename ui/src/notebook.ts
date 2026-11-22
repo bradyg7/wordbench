@@ -21,7 +21,6 @@ import { registerPageWriter, flushPageWriters, removedPages } from './pagewriter
 import { app, book, here, type At } from './app';
 import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, startWritingAtEnd, viewRow, wordsIn, type Blocks, type Host } from './blocks';
 import { applyLook, defaultLook, editedStatus, lockMark, openPageMenu, readLook, type PageLook, type PageMenu } from './pagemenu';
-import { openMenu } from './menu';
 import { pageToc } from './pagetoc';
 import { createEditor, inlineShortcut, insertBreak, insertPlain, lineStartShortcut, tidy, toggleMark, type Writer } from './blockedit';
 import { dock, refHover, openHelp, openStrong, threadChooser } from './panes';
@@ -31,7 +30,8 @@ import type { Change, Pane } from './dock';
 import { toast } from './sheets';
 import { pageStep } from './trail';
 import { chipRow, chipWords, parseFilterText, type Chip, type FilterProp } from './chips';
-import { button, h, icon, placePill, popMenu, type Found } from './ui';
+import { button, h, icon, placePill, type Found } from './ui';
+import { openMenu, type MenuGroup, type MenuItem } from './menu';
 import { opens, placeOpen, verseCard, type Where } from './verses';
 import { makeFromPage, pageDocuments } from './pagedocs';
 
@@ -167,7 +167,7 @@ function createNotebookSession(fixed?: PageTab) {
       const p = dock.open('notebook', fixed.title, fixed.key, 'right', (el, p) => drawFixed(el, p, fixed.id));
       pane = p;
       p.beforeClose = () => flushPageWriters([fixed.id]);
-      p.onClose = () => { pane = null; blockState.menuClose?.(); suggestClose?.(); };
+      p.onClose = () => { pane = null; blockState.menuClose?.(); };
       watchDrag(p);
       return p;
     }
@@ -1127,7 +1127,7 @@ function createNotebookSession(fixed?: PageTab) {
     else if (byBlocks && e.kind !== 'day' && bd!.title) editableTitle(title, e, bd!);
     else title.textContent = e.kind === 'day' ? e.title : e.title || (draft?.parent ? 'A new page' : draft?.question ? 'A new question' : 'A new page');
     { const fc = !isT ? e.threads?.find(x => x.color)?.color : null; if (fc) { const d = folderDot(fc, true); d.classList.add('nb-title-dot'); title.prepend(d); } }
-    if (!plainDraft(e)) out.push(title);
+    if (!plainDraft(e) || e.kind === 'day') out.push(title);
     if (tpl) out.push(templateAbout(), templateSettings(tpl));
     else if (isT) out.push(threadControls(e));
     else if (!e.template) out.push(chipsRow(e));
@@ -1140,7 +1140,7 @@ function createNotebookSession(fixed?: PageTab) {
       const body = h('div', 'nb-body');
       body.append(drawBlocks(bd!, blockHostNow));
       out.push(body);
-    } else out.push(page(e));
+    } else out.push(readOnly(e));
     if (isT) out.push(await threadPlaces(e));
     if (e.inside?.length || isT) {
       const box = h('div', 'nb-inside');
@@ -1233,35 +1233,38 @@ function createNotebookSession(fixed?: PageTab) {
     return bar;
   }
 
-  /** The note's text: shown as a page (headings, lists, references and [[links]] working), and written as plain
-   * Markdown in a box when clicked. It is saved as it is typed. */
   /** A page not made yet, with no text to start from (NB2, row 3): it opens as a title and a first line. */
-  const plainDraft = (e: Entry) => !e.id && e.kind !== 'day' && !e.template && !!draft && !draft.day && !draft.text;
+  const plainDraft = (e: Entry) => !e.id && !e.template && !!draft;
 
   /** Row 3: the caret is in the title (a faint "Untitled"); Enter moves to the first line ("Press / for blocks"). The page
    *  file is made when the writing is left or the first line is ended; typing never waits for it. */
   function newPageForm(e: Entry): HTMLElement {
     const wrapEl = h('div', 'nb-body nb-newpage');
+    // a day's page has no title to type (its title is the date); a draft that starts with words (a link to nothing yet) has its title and first line filled
+    const isDay = e.kind === 'day';
+    const [firstLine = '', ...afterFirst] = (draft?.text ?? '').replace(/\n+$/, '').split('\n');
     const title = h('input', 'nb-new-title') as HTMLInputElement;
     title.placeholder = 'Untitled';
     title.setAttribute('aria-label', 'The page’s title');
-    const line = createEditor('');
+    title.value = isDay ? '' : firstLine;
+    const line = createEditor(isDay ? [firstLine, ...afterFirst].join('\n') : afterFirst.join('\n').trim());
     line.classList.add('nb-new-line');
-    line.placeholder = 'Press / for blocks';
+    line.placeholder = isDay ? placeholderFor(e) : 'Press / for blocks';
     line.setAttribute('aria-label', 'The first line');
-    wrapEl.append(title, line);
+    wrapEl.append(...(isDay ? [line] : [title, line]));
     let made = false;
     const make = async (): Promise<boolean> => {
       if (made) return true;
       const t = title.value.trim(), l = line.value.trim();
-      if (!t && !l) return false;
+      if (isDay ? !l : !t && !l) return false;
       made = true;
-      const text = `${t || 'Untitled'}${l ? `
+      const text = isDay ? l : `${t || 'Untitled'}${l ? `
 
 ${l}` : ''}`;
       try {
         const d = draft;
-        const r: Entry = d?.parent ? await wb(['page', 'new', '-', '--parent', d.parent], text)
+        // a day's page is written as it always was: `wb day text`, the whole text of the page
+        const r: Entry = isDay && d?.day ? await wb(['day', 'text', '-', '--day', d.day], text) : d?.parent ? await wb(['page', 'new', '-', '--parent', d.parent], text)
           : await wb(['note', 'new', '-', ...(d?.at ? ['--at', d.at.anchor] : []), ...(d?.question ? ['--question'] : [])], text);
         openId = r.id; draft = null; e.id = r.id;
         changed();
@@ -1290,29 +1293,24 @@ ${l}` : ''}`;
       if (to && wrapEl.contains(to)) return;
       setTimeout(() => { if (!wrapEl.contains(document.activeElement) && !made) void make().then(ok => { if (ok) void pane?.refresh?.(); }); }, 150);
     });
-    registerPageWriter(title, '', async () => { await make(); }, () => { made = true; });
+    registerPageWriter(isDay ? line : title, '', async () => { await make(); }, () => { made = true; });
     // The form is built before the page is on the screen (the rest of the page is still being fetched), so the title is focused when it
     // gets there, not at a fixed time after it was built; and once more a moment later, for a draw that took the focus back.
     let frames = 0;
-    const focus = () => { if (wrapEl.isConnected && !wrapEl.contains(document.activeElement)) title.focus(); };
+    const focus = () => { if (wrapEl.isConnected && !wrapEl.contains(document.activeElement)) (isDay ? line : title).focus(); };
     const whenThere = () => { if (wrapEl.isConnected) { focus(); setTimeout(focus, 150); } else if (frames++ < 300) requestAnimationFrame(whenThere); };
     requestAnimationFrame(whenThere);
     return wrapEl;
   }
 
-  function page(e: Entry): HTMLElement {
+  /** A page whose blocks could not be read (`wb page blocks` failed): its text, shown, never written in a box. */
+  function readOnly(e: Entry): HTMLElement {
     if (plainDraft(e)) return newPageForm(e);
     const wrapEl = h('div', 'nb-body');
     const view = h('div', 'nb-page');
     if (e.text) view.append(render(e.text, e.refs || [], nbSettings.links ? e.links || [] : []));
     else view.append(h('p', 'muted nb-placeholder', placeholderFor(e)));
-    view.onclick = ev => {
-      if ((ev.target as HTMLElement).closest('a')) return;
-      startEditing(wrapEl, e);
-    };
     wrapEl.append(view);
-    // a new note or a blank page opens ready to type
-    if (!e.id || !e.text) requestAnimationFrame(() => { if (wrapEl.isConnected && !wrapEl.querySelector('.nb-input')) startEditing(wrapEl, e); });
     return wrapEl;
   }
 
@@ -1323,38 +1321,28 @@ ${l}` : ''}`;
     return 'The first line is its title…';
   }
 
-  /** The box being written in; with none, one is started: a new block at the page's end, or the whole-text box. */
+  /** The box being written in; with none, one is started: a new block at the page's end. */
   const editText = (): Writer | null => pane?.el.querySelector<Writer>('.nb-editor .nb-input') ?? (() => {
     const w = pane?.el.querySelector<HTMLElement>('.nb-editor .nb-body');
     if (w && blocksData && blockHostNow) startWritingAtEnd(w, blocksData, blockHostNow);
-    else if (w && shown) startEditing(w, shown);
     return pane?.el.querySelector<Writer>('.nb-editor .nb-input') ?? null;
   })();
 
   /** The destination already holds the exact place, so folding does not add a new place to a page. */
   async function foldQuestion(from: HTMLElement, question: Entry) {
-    const box = h('div', 'menu-list nb-move-menu');
-    const list = h('div', 'nb-move-list');
-    box.append(h('p', 'muted small nb-menu-note', `Fold into a page at ${question.label}`), list);
     try {
       const d: { groups: GroupOf[] } = await wb(['notebook', '--group', 'none', '--no-days']);
       if (!from.isConnected) return;
       const candidates = d.groups.flatMap(g => g.entries).filter(e => e.kind === 'note' && e.placed &&
         (e.anchor === question.anchor || e.also?.some(a => a.anchor === question.anchor)));
-      for (const e of candidates) {
-        list.append(button('menu-item nb-question-target', e.title || 'Untitled', async () => {
-          close();
-          try {
-            await wb(['question', 'fold', question.id, e.id]);
-            openPage(e.id);
-            changed();
-            toast('Question folded into the page');
-          } catch (x) { toast(String(x)); }
-        }, 'notebook'));
-      }
-      if (!candidates.length) list.append(h('p', 'muted small nb-menu-note', 'There are no pages at this place yet.'));
-      const close = popMenu(from, box, { width: 280 });
-      (list.querySelector('button') || from).focus();
+      actionMenu(from, `Fold into a page at ${question.label}`, candidates.map(e => ({ label: e.title || 'Untitled', run: async () => {
+        try {
+          await wb(['question', 'fold', question.id, e.id]);
+          openPage(e.id);
+          changed();
+          toast('Question folded into the page');
+        } catch (x) { toast(String(x)); }
+      } })), { foot: candidates.length ? `Fold into a page at ${question.label}` : 'There are no pages at this place yet.' });
     } catch (x) { toast(String(x)); }
   }
 
@@ -1369,7 +1357,7 @@ ${l}` : ''}`;
       linkSuggest,
       titles: async () => (await allTitles()).map(t => ({ id: t.id, title: t.title, insert: t.insert, kind: t.kind })),
       maybeSuggest: ta => { if (nbSettings.links) maybeSuggest(ta); },
-      suggestKey: ev => !!suggestKey?.(ev),
+      suggestKey: () => false,
       changed: () => changed(),
       redraw: () => void pane?.refresh?.(),
       open: id => openFromList(id),
@@ -1451,81 +1439,6 @@ ${l}` : ''}`;
     };
   }
 
-  let saving: Promise<void> = Promise.resolve();
-
-  function startEditing(wrapEl: HTMLElement, e: Entry) {
-    if (wrapEl.querySelector('.nb-input')) return;
-    // the whole text of a page with no blocks yet (a draft, a day not written): the same in-place editor as a block
-    const ta = createEditor(e.text);
-    ta.classList.add('nb-whole');
-    ta.placeholder = placeholderFor(e);
-    wrapEl.replaceChildren(ta);
-    const titleEl = pane?.el.querySelector<HTMLElement>('.nb-editor .nb-title');
-    const firstTitle = e.title;
-    let id = e.id;
-    let last = e.text;
-    let timer = 0;
-    const save = () => {
-      clearTimeout(timer);
-      const text = ta.value;
-      if (removedPages.has(id) || text.trim() === last.trim()) return saving;
-      saving = saving.then(async () => {
-        if (removedPages.has(id) || text.trim() === last.trim()) return;
-        try {
-          if (!text.trim()) { if (id) toast('An empty note is not saved; delete it from ⋯ if it should go'); return; }
-          let r: Entry;
-          if (id) r = await wb(['note', 'text', id, '-'], text);
-          else if (draft?.day) r = await wb(['day', 'text', '-', '--day', draft.day], text);
-          else if (draft?.parent) r = await wb(['page', 'new', '-', '--parent', draft.parent], text);
-          else r = await wb(['note', 'new', '-', ...(draft?.at ? ['--at', draft.at.anchor] : []), ...(draft?.question ? ['--question'] : [])], text);
-          last = text;
-          if (!id) { id = r.id; openId = r.id; draft = null; e.id = r.id; }
-          changed();
-        } catch (x) { toast(String(x)); }
-      });
-      return saving;
-    };
-    registerPageWriter(ta, id, async () => {
-      await save();
-      if (ta.value.trim() !== last.trim()) throw new Error('Save or cancel the current page text before deleting it.');
-    }, () => { clearTimeout(timer); ta.disabled = true; });
-    ta.oninput = ev => {
-      tidy(ta);
-      if ((ev as InputEvent).inputType === 'insertText') inlineShortcut(ta, (ev as InputEvent).data ?? null);
-      if (titleEl && e.kind !== 'day') titleEl.textContent = titleOf(ta.value) || (e.kind === 'question' ? 'A new question' : 'A new page');
-      clearTimeout(timer);
-      timer = window.setTimeout(save, 700);
-      if (nbSettings.links) maybeSuggest(ta);
-    };
-    ta.onkeydown = ev => {
-      if (suggestKey?.(ev)) return;
-      if (ev.isComposing) return;
-      const k = ev.key.toLowerCase();
-      if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && !ev.altKey && (k === 'b' || k === 'i' || k === 'u')) { ev.preventDefault(); toggleMark(ta, k); }
-      else if (ev.key === 'Enter' && !ev.ctrlKey && !ev.metaKey && !ev.altKey) { ev.preventDefault(); insertBreak(ta); ta.dispatchEvent(new Event('input')); }
-      else if (ev.key === 'Escape' || ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter')) { ev.preventDefault(); ev.stopPropagation(); ta.blur(); }
-    };
-    ta.onpaste = ev => { ev.preventDefault(); const t = ev.clipboardData?.getData('text/plain') || ''; if (t) { insertPlain(ta, t); ta.dispatchEvent(new Event('input')); } };
-    ta.onblur = () => {
-      // a click on the format bar or a suggestion keeps the box
-      setTimeout(async () => {
-        if (document.activeElement === ta || !ta.isConnected) return;
-        await save();
-        const newTitle = titleOf(ta.value);
-        if (id && nbSettings.links && firstTitle && newTitle && newTitle !== firstTitle && (e.linked_from?.length ?? 0) > 0) offerRelink(id, firstTitle, e.linked_from!.length);
-        void pane?.refresh?.();
-      }, 120);
-    };
-    ta.focus();
-    if (focusEditor === 'end' || !e.text) ta.setSelectionRange(ta.value.length, ta.value.length);
-    else ta.setSelectionRange(ta.value.length, ta.value.length);
-  }
-
-  function titleOf(text: string) {
-    const first = text.split('\n').map(l => l.trim()).find(l => l) || '';
-    return first.replace(/^#+\s*/, '');
-  }
-
   /** Renaming a note's title offers to update the links to it (wb note relink). */
   function offerRelink(id: string, old: string, n: number) {
     const box = h('div', 'toast nb-relink');
@@ -1539,6 +1452,10 @@ ${l}` : ''}`;
     document.getElementById('overlay')!.append(box);
     setTimeout(() => box.remove(), 12000);
   }
+
+
+  /** Writes in flight (a delete waits for them). */
+  const saving: Promise<void> = Promise.resolve();
 
   function afterEditorDrawn(edEl: HTMLElement) {
     const f = focusEditor;
@@ -1557,7 +1474,6 @@ ${l}` : ''}`;
     } else if (f === 'end') {
       const w = edEl.querySelector<HTMLElement>('.nb-body');
       if (w && blocksData && blockHostNow) startWritingAtEnd(w, blocksData, blockHostNow);
-      else if (w && shown && !w.querySelector('.nb-input')) startEditing(w, shown);
       return;
     }
     // a page drawn block by block: the writing Enter, Backspace or an arrow key asked for goes on in its block
@@ -1687,19 +1603,28 @@ ${l}` : ''}`;
       if (routePage(l.to, { heading: l.heading }, here)) return;
     }
     if (l.to) return void openNote(l.to, l.heading || undefined);
-    const box = h('div', 'menu-list');
-    box.append(h('div', 'muted small nb-menu-note', `No note is titled “${l.title}” yet.`));
-    box.append(button('menu-item', `Start “${l.title}”`, () => { close(); newNote({ at: null, question: false, text: `${l.title}\n` }); }));
-    const close = popMenu(a, box, { width: 260 });
+    actionMenu(a, 'A link to nothing yet', [{ label: `Start “${l.title}”`, run: () => newNote({ at: null, question: false, text: `${l.title}\n` }) }], { foot: `No note is titled “${l.title}” yet.` });
   }
 
-  // Typing [[ offers the notes' titles; a pick writes the title and ]] (finding ad58: every note, not 8; a list that
-  // scrolls, grouped, recent first; the arrow keys and Enter; beside the cursor, not under the whole page).
+  type Act = { label: string; run: () => void; danger?: boolean; hint?: string; sepBefore?: boolean };
+  /** A short list of actions as the one menu (Notebook row 1): the old hand-made popovers are all this. `foot` says what the list is for. */
+  function actionMenu(from: HTMLElement, label: string, acts: Act[], o: { at?: { x: number; y: number }; foot?: string } = {}) {
+    const groups: MenuGroup[] = [];
+    let cur: MenuItem[] = [];
+    const runs = new Map<string, () => void>();
+    acts.forEach((a, i) => {
+      if (a.sepBefore && cur.length) { groups.push({ items: cur }); cur = []; }
+      runs.set(`a${i}`, a.run);
+      cur.push({ id: `a${i}`, label: a.label, hint: a.hint, danger: a.danger });
+    });
+    if (cur.length) groups.push({ items: cur });
+    return openMenu({ groups, at: o.at ?? from, label, placeholder: 'Find an action', foot: o.foot, onPick: it => runs.get(it.id)?.() });
+  }
+
+  // Typing [[ opens the one menu (ui/src/menu.ts, as @ does): the notes' titles, recent first, grouped; the menu's own field takes what is typed next,
+  // a pick writes the title and ]], Esc leaves the [[ as it was typed.
   type Titled = { id: string; title: string; insert: string; kind: string; label: string; placed: boolean; updated: string };
   let titlesCache: { at: number; list: Titled[] } | null = null;
-  let suggestClose: (() => void) | null = null;
-  /** While the list is open, the editor's keys go here first; true when the key was the list's. */
-  let suggestKey: ((ev: KeyboardEvent) => boolean) | null = null;
 
   async function allTitles(): Promise<Titled[]> {
     if (titlesCache && performance.now() - titlesCache.at < 5000) return titlesCache.list;
@@ -1742,98 +1667,51 @@ ${l}` : ''}`;
   }
 
   function linkSuggest(ta: Writer) {
-    void allTitles().then(all => {
-      const before = ta.value.slice(0, ta.selectionStart);
-      const open = before.lastIndexOf('[[');
-      // (the titles came after the typing went on: a link already closed, or the box gone, opens no list)
-      if (open < 0 || !ta.isConnected || before.slice(open).includes(']]') || before.slice(open).includes('\n')) return;
-      const raw = before.slice(open + 2).trim();
-      const typed = raw.toLowerCase();
-      const list = all.filter(t => t.id !== shown?.id);
-      const hits = typed ? list.filter(t => t.title.toLowerCase().includes(typed) || t.insert.toLowerCase().includes(typed)) : list;
-      if (typed) hits.sort((a, b) => Number(!a.title.toLowerCase().startsWith(typed)) - Number(!b.title.toLowerCase().startsWith(typed)));
-      suggestClose?.();
-      const pick = (insert: string) => {
-        close();
-        const v = ta.value, end = ta.selectionStart;
-        const after = v.slice(end).startsWith(']]') ? v.slice(end + 2) : v.slice(end);
-        ta.value = v.slice(0, open) + `[[${insert}]]` + after;
-        const at = open + insert.length + 4;
-        ta.setSelectionRange(at, at);
-        ta.focus();
-        ta.dispatchEvent(new Event('input'));
-      };
-      const box = h('div', 'nb-suggest');
-      box.append(h('div', 'nb-suggest-head', typed ? `Link to a note · ${hits.length} found` : 'Link to a note'));
-      const scroll = h('div', 'nb-suggest-list');
-      scroll.setAttribute('role', 'listbox');
-      const rows: HTMLButtonElement[] = [];
-      let on = -1;
-      const mark = (i: number) => {
-        rows[on]?.classList.remove('on');
-        rows[on]?.removeAttribute('aria-selected');
-        on = Math.max(0, Math.min(rows.length - 1, i));
-        rows[on]?.classList.add('on');
-        rows[on]?.setAttribute('aria-selected', 'true');
-      };
-      const row = (t: { title: string; label: string; insert: string }, cls = '') => {
-        const b = button(`nb-suggest-row${cls}`, '', () => pick(t.insert));
-        b.setAttribute('role', 'option');
-        b.onmousedown = ev => ev.preventDefault();
-        b.onmousemove = () => { if (rows[on] !== b) mark(rows.indexOf(b)); };
-        b.append(h('span', 'nb-suggest-title', t.title));
-        if (t.label) b.append(h('span', 'nb-suggest-label', t.label));
-        rows.push(b);
-        return b;
-      };
-      const section = (name: string, items: Titled[]) => {
-        if (items.length) scroll.append(h('div', 'nb-suggest-group', name), ...items.map(t => row(t)));
-      };
-      if (typed) section('Notes', hits);
+    const at = ta.selectionStart - 2;
+    if (at < 0 || ta.value.slice(at, at + 2) !== '[[') return;
+    blockState.menuClose?.();
+    let picked = false;
+    let titles: Titled[] = [];
+    let handle: ReturnType<typeof openMenu> | null = null;
+    const place = (insert: string) => {
+      if (!ta.isConnected || ta.value.slice(at, at + 2) !== '[[') return;
+      const v = ta.value, end = at + 2;
+      const after = v.slice(end).startsWith(']]') ? v.slice(end + 2) : v.slice(end);
+      ta.value = v.slice(0, at) + `[[${insert}]]` + after;
+      const c = at + insert.length + 4;
+      ta.setSelectionRange(c, c);
+      ta.focus();
+      ta.dispatchEvent(new Event('input'));
+    };
+    const item = (t: Titled): MenuItem => ({ id: `t:${t.insert}`, label: t.title, hint: t.label || undefined, keywords: [t.insert] });
+    const groupsFor = (q: string): MenuGroup[] => {
+      const typed = q.trim().toLowerCase();
+      const hits = typed ? titles.filter(t => t.title.toLowerCase().includes(typed) || t.insert.toLowerCase().includes(typed)) : titles;
+      if (typed) hits.sort((x, y) => Number(!x.title.toLowerCase().startsWith(typed)) - Number(!y.title.toLowerCase().startsWith(typed)));
+      const out: MenuGroup[] = [];
+      if (typed) out.push({ title: 'Pages', items: hits.map(item) });
       else {
         const rest = hits.slice(5);
-        section('Recent', hits.slice(0, 5));
-        section('Days', rest.filter(t => t.kind === 'day'));
-        section('At places', rest.filter(t => t.kind !== 'day' && t.placed));
-        section('Not placed yet', rest.filter(t => t.kind !== 'day' && !t.placed));
+        out.push({ title: 'Recent', items: hits.slice(0, 5).map(item) }, { title: 'Days', items: rest.filter(t => t.kind === 'day').map(item) },
+          { title: 'At places', items: rest.filter(t => t.kind !== 'day' && t.placed).map(item) }, { title: 'Not placed yet', items: rest.filter(t => t.kind !== 'day' && !t.placed).map(item) });
       }
-      if (raw && !all.some(t => t.title.toLowerCase() === typed || t.insert.toLowerCase() === typed)) {
-        scroll.append(row({ title: `Link to “${raw}”`, label: 'no note yet', insert: raw }, ' new'));
-      }
-      if (!rows.length) box.append(h('p', 'muted small nb-suggest-empty', 'No notes yet to link to.'));
-      box.append(scroll);
-      if (rows.length) mark(0);
-      // the list opens at the cursor: a 1-pixel mark there for the menu to sit beside
-      const c = caretRect(ta);
-      const at = h('div', 'nb-suggest-anchor');
-      Object.assign(at.style, { position: 'fixed', left: `${c.left}px`, top: `${c.top}px`, width: '1px', height: `${c.height}px`, pointerEvents: 'none' });
-      document.body.append(at);
-      const closeMenu = popMenu(at, box, { width: 340 });
-      at.remove(); // the menu is placed; the mark is not needed after
-      const close = () => { closeMenu(); suggestKey = null; if (suggestClose === close) suggestClose = null; };
-      suggestClose = close;
-      suggestKey = ev => {
-        if (!rows.length || !box.isConnected) return false;
-        if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
-          ev.preventDefault();
-          mark(on + (ev.key === 'ArrowDown' ? 1 : -1));
-          rows[on].scrollIntoView({ block: 'nearest' });
-          return true;
-        }
-        if ((ev.key === 'Enter' && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey) || ev.key === 'Tab') {
-          ev.preventDefault();
-          rows[on]?.click();
-          return true;
-        }
-        return false;
-      };
+      if (typed && !titles.some(t => t.title.toLowerCase() === typed || t.insert.toLowerCase() === typed)) out.push({ title: 'New', items: [{ id: `t:${q.trim()}`, label: `Link to “${q.trim()}”`, hint: 'no page yet' }] });
+      return out;
+    };
+    const c = caretRect(ta);
+    handle = openMenu({
+      groups: [], groupsFor, label: 'Link to a page', placeholder: 'A page to link to', at: { x: c.left, y: c.bottom + 6 },
+      onPick: it => { picked = true; place(it.id.slice(2)); },
+      onClose: () => { if (blockState.menuClose === handle?.close) { blockState.menuClose = null; blockState.menuKey = null; } },
     });
+    void picked;
+    blockState.menuClose = handle.close;
+    void allTitles().then(all => { titles = all.filter(t => t.id !== shown?.id); if (handle?.open) handle.refresh(); }).catch(() => {});
   }
 
+  /** `[[` was just typed: the menu opens there. */
   function maybeSuggest(ta: Writer) {
-    const before = ta.value.slice(0, ta.selectionStart);
-    const open = before.lastIndexOf('[[');
-    if (open < 0 || before.slice(open).includes(']]') || before.slice(open).includes('\n')) { suggestClose?.(); return; }
+    if (!ta.value.slice(0, ta.selectionStart).endsWith('[[')) return;
     linkSuggest(ta);
   }
 
@@ -1901,24 +1779,16 @@ ${l}` : ''}`;
       void readLook(e.id).then(look => pageMenu(at ?? from, e, look, pane?.el.querySelector<HTMLElement>('.nb-editor') ?? null));
       return;
     }
-    const box = h('div', 'menu-list');
-    let close = () => {};
-    const item = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
+    const o = { at };
     // W5: a template's own: a page from it, or delete it
     if (e.template) {
-      item('Make a page from it…', () => void newPage(undefined, e.id));
-      box.append(h('div', 'menu-sep'));
-      item('Delete this template', () => remove(e));
-      close = popMenu(from, box, { align: at ? 'left' : 'right', width: 250, at });
+      actionMenu(from, 'This template', [{ label: 'Make a page from it…', run: () => void newPage(undefined, e.id) }, { label: 'Delete this template', sepBefore: true, run: () => remove(e) }], o);
       return;
     }
-    for (const a of pageActs(from, e)) {
-      if (a.sep) box.append(h('div', 'menu-sep'));
-      item(a.label, a.run);
-    }
-    if (!fixed) item('Open in a tab', () => { void openPageTab(pageTabKey(e.id)).catch(x => toast(String(x))); });
-    item(e.kind === 'day' ? 'Delete this page' : 'Delete', () => remove(e));
-    close = popMenu(from, box, { align: at ? 'left' : 'right', width: 230, at });
+    const acts: Act[] = pageActs(from, e).map(a => ({ label: a.label, run: a.run, sepBefore: a.sep }));
+    if (!fixed) acts.push({ label: 'Open in a tab', run: () => { void openPageTab(pageTabKey(e.id)).catch(x => toast(String(x))); } });
+    acts.push({ label: e.kind === 'day' ? 'Delete this page' : 'Delete', run: () => remove(e) });
+    actionMenu(from, 'This page', acts, o);
   }
 
   // ---- right-click (debug-spec S3, finding b737): a page's menu at the pointer ------------------------------------------------
@@ -1959,28 +1829,20 @@ ${l}` : ''}`;
   /** Move inside…: every page it can go inside (not itself, nor a page inside it), as the tree; or the top of Pages. */
   async function moveInside(from: HTMLElement, e: Entry) {
     const t = await wb(['page', 'tree']);
-    const box = h('div', 'menu-list nb-move-menu');
-    box.append(h('div', 'muted small nb-menu-note', `Put “${e.title}” inside`));
-    const scroll = h('div', 'nb-move-list');
     const go = async (argv: string[], said: string) => {
-      close();
       try { await wb(['page', 'move', e.id, ...argv]); toast(said); changed(); } catch (x) { toast(String(x)); }
     };
-    if (e.parent) scroll.append(button('menu-item', 'Pages (inside no page)', () => go(['--top'], 'Moved to the top of Pages'), 'notebook'));
+    const acts: Act[] = [];
+    if (e.parent) acts.push({ label: 'Pages (inside no page)', run: () => void go(['--top'], 'Moved to the top of Pages') });
     const walk = (rows: Row[], depth: number) => {
       for (const r of rows) {
         if (r.id === e.id) continue; // itself, and the pages inside it, are not offered
-        const b = button(`menu-item nb-move-row${r.id === e.parent ? ' on' : ''}`, r.title || 'Untitled', () => go(['--parent', r.id], `Put inside “${r.title}”`), r.placed ? 'pin' : 'notebook');
-        b.style.paddingLeft = `${10 + depth * 16}px`;
-        if (r.id === e.parent) b.disabled = true;
-        scroll.append(b);
+        if (r.id !== e.parent) acts.push({ label: `${'\u00a0\u00a0\u00a0'.repeat(depth)}${r.title || 'Untitled'}`, run: () => void go(['--parent', r.id], `Put inside “${r.title}”`) });
         walk(r.children || [], depth + 1);
       }
     };
     walk(t.pages, 0);
-    if (!scroll.childElementCount) scroll.append(h('p', 'muted small nb-menu-note', 'No other pages yet.'));
-    box.append(scroll);
-    const close = popMenu(from, box, { align: 'right', width: 300 });
+    actionMenu(from, `Put “${e.title}” inside`, acts, { foot: acts.length ? `Put “${e.title}” inside` : 'No other pages yet.' });
   }
 
   /** A note's place as a pill (a click goes there) with × to take it off: its first place too, the next then being its
@@ -2126,10 +1988,8 @@ ${l}` : ''}`;
   // the reader, its chapter and its book, the place the note names, or another typed. `pick` takes the place instead of
   // writing it (a new note not saved yet).
   function placeMenu(from: HTMLElement, e: Pick<Entry, 'id' | 'placed' | 'label' | 'offer'>, mode?: 'also', pick?: (at: At) => void) {
-    const box = h('div', 'place-menu');
-    box.append(h('div', 'muted small', pick ? 'Put this note on' : mode === 'also' ? `Put this note on another place too (it stays on ${e.label})` : e.placed ? `Move this note from ${e.label} to` : 'Place this note on'));
+    const heading = pick ? 'Put this note on' : mode === 'also' ? `Put this note on another place too (it stays on ${e.label})` : e.placed ? `Move this note from ${e.label} to` : 'Place this note on';
     const go = async (at: At) => {
-      close();
       if (pick) return pick(at);
       try {
         const argv = mode === 'also' ? ['note', 'also', e.id, at.anchor] : e.placed ? ['note', 'move', e.id, at.anchor] : ['note', 'place', e.id, at.anchor];
@@ -2138,28 +1998,21 @@ ${l}` : ''}`;
         changed();
       } catch (x) { toast(String(x)); }
     };
-    const opt = (at: At, why: string, first: boolean) => {
-      const b = h('button', `place-opt${first ? ' first' : ''}`);
-      const t = h('div');
-      t.append(h('div', 'place-opt-label', at.label), h('div', 'muted small', why));
-      b.append(icon('pin'), t);
-      b.onclick = () => go(at);
-      box.append(b);
-    };
+    const places = new Map<string, At>();
+    const items: MenuItem[] = [];
+    const opt = (at: At, why: string) => { const id = `p:${places.size}`; places.set(id, at); items.push({ id, label: at.label, description: why, icon: '⌖' }); };
     const picked = app.picked;
     const base = picked ?? here();
-    opt(base, picked ? 'selected in the reader' : 'at the top of the reader', true);
-    for (const w of wider(base)) opt(w.at, w.why, false);
+    opt(base, picked ? 'selected in the reader' : 'at the top of the reader');
+    for (const w of wider(base)) opt(w.at, w.why);
     const offer = e.placed ? null : e.offer ?? null;
-    if (offer && offer.anchor !== base.anchor) opt(offer, 'named in the note', false);
-    const f = h('form', 'place-other');
-    f.append(icon('pin'));
-    const i = h('input', 'field') as HTMLInputElement;
-    i.placeholder = 'Another place… (a verse, a chapter, a book)';
-    f.append(i);
-    f.onsubmit = ev => { ev.preventDefault(); if (i.value.trim()) go({ anchor: i.value.trim(), label: i.value.trim() }); };
-    box.append(f);
-    const close = popMenu(from, box, { width: 300 });
+    if (offer && offer.anchor !== base.anchor) opt(offer, 'named in the note');
+    // a place typed (a verse, a chapter, a book) is one more row
+    openMenu({
+      groups: [], at: from, label: heading, placeholder: 'Another place… (a verse, a chapter, a book)',
+      groupsFor: q => [{ title: heading, items: q.trim() ? [...items.filter(i => i.label.toLowerCase().includes(q.trim().toLowerCase())), { id: `t:${q.trim()}`, label: q.trim(), description: 'another place', icon: '⌖' }] : items }],
+      onPick: it => void go(it.id.startsWith('t:') ? { anchor: it.id.slice(2), label: it.id.slice(2) } : places.get(it.id)!),
+    });
   }
 
   /** The way to the Trash (trash T6, the person, 2026-11-13): a quiet line with its count at the foot of the list,
@@ -2217,10 +2070,7 @@ ${l}` : ''}`;
       c.append(acts);
       // S3: a right-click on a deleted note offers the same two
       onContext(c, (x, y) => {
-        const box = h('div', 'menu-list');
-        let close = () => {};
-        box.append(button('menu-item', 'Put it back', () => { close(); void putBack(); }), button('menu-item', 'Erase now', () => { close(); void eraseNow(); }));
-        close = popMenu(c, box, { width: 190, at: { x, y } });
+        actionMenu(c, 'A deleted page', [{ label: 'Put it back', run: () => void putBack() }, { label: 'Erase now', danger: true, run: () => void eraseNow() }], { at: { x, y } });
       });
       return c;
     };
@@ -2261,64 +2111,26 @@ ${l}` : ''}`;
 
   // Settings → Notebook (N4). Until the Settings window (tier 5), in the Notebook's ⋯ menu; kept in settings/notebook.json.
   function settingsMenu(from: HTMLElement) {
-    const box = h('div', 'nb-settings');
-    box.append(h('div', 'nb-settings-head', 'Notebook settings'));
-    const toggle = (key: keyof NotebookSettings, label: string, what: string) => {
-      const row = h('label', 'nb-set-row');
-      const t = h('div');
-      t.append(h('div', 'nb-set-label', label), h('div', 'muted small', what));
-      const cb = h('input') as HTMLInputElement;
-      cb.type = 'checkbox';
-      cb.className = 'switch';
-      cb.checked = !!nbSettings[key];
-      cb.onchange = () => save(key, cb.checked ? 'on' : 'off');
-      row.append(t, cb);
-      box.append(row);
-    };
-    const save = saveSetting;
-    // W1 (finding e09e): what is left is what acts on the whole Notebook. Follow the reader moved to Places itself; notes
-    // on chapters and books are always offered; the Inbox is gone (a note with no place is a page). `wb settings notebook`
-    // still sets every key.
-    toggle('today', 'Today’s page', 'A note for each day, made when you first write in it');
-    toggle('links', 'Links between notes', '[[title]] and [[title#heading]], as in Obsidian');
-    const g = h('div', 'nb-set-row nb-set-opens');
-    g.append(h('div', 'nb-set-label', 'Opens with'));
-    const sel = h('select', 'field nb-set-group') as HTMLSelectElement;
-    for (const [v, label] of SECTIONS) {
-      const o = h('option', '', label) as HTMLOptionElement;
-      o.value = v;
-      o.selected = nbSettings.group === v;
-      sel.append(o);
-    }
-    sel.onchange = () => void save('group', sel.value);
-    g.append(sel);
-    box.append(g);
-    // W4: what a plain click on a place does (Ctrl+click does the other)
-    const pl = h('div', 'nb-set-row nb-set-places');
-    const plt = h('div');
-    plt.append(h('div', 'nb-set-label', 'Places open in…'), h('div', 'muted small', 'What a click on a place does; Ctrl+click does the other'));
-    const ps = h('select', 'field nb-set-open') as HTMLSelectElement;
-    for (const [v, label] of [['reader', 'The reader'], ['new', 'A new reader']] as const) {
-      const o = h('option', '', label) as HTMLOptionElement;
-      o.value = v;
-      o.selected = nbSettings.places === v;
-      ps.append(o);
-    }
-    ps.onchange = () => void save('places', ps.value);
-    pl.append(plt, ps);
-    box.append(pl);
-    const k = h('form', 'nb-set-row');
-    k.append(h('div', 'nb-set-label', 'Quick capture'));
-    const key = h('input', 'field nb-set-key') as HTMLInputElement;
-    key.value = nbSettings.capture;
-    key.onchange = () => void save('capture', key.value);
-    k.onsubmit = ev => { ev.preventDefault(); void save('capture', key.value); };
-    k.append(key);
-    box.append(k);
-    const tp = button('link-btn nb-set-templates', 'Templates…', () => { closeSet(); showTemplates(); }, 'notebook');
-    tp.title = 'Your templates: pages that new pages start from';
-    box.append(tp);
-    const closeSet = popMenu(from, box, { align: 'right', width: 340 });
+    const mark = (on: boolean) => (on ? '✓' : '');
+    const draw = (): MenuGroup[] => [
+      { title: 'Notebook settings', items: [
+        { id: 'today', label: 'Today’s page', description: 'A note for each day, made when you first write in it', hint: mark(!!nbSettings.today), stay: true },
+        { id: 'links', label: 'Links between notes', description: '[[title]] and [[title#heading]], as in Obsidian', hint: mark(!!nbSettings.links), stay: true },
+      ] },
+      { title: 'Opens with', items: SECTIONS.map(([v, label]) => ({ id: `group:${v}`, label, hint: mark(nbSettings.group === v), stay: true })) },
+      { title: 'Places open in…', items: [['reader', 'The reader'], ['new', 'A new reader']].map(([v, label]) => ({ id: `places:${v}`, label, hint: mark(nbSettings.places === v), stay: true })) },
+      { items: [{ id: 'capture', label: `Quick capture: ${nbSettings.capture}` }, { id: 'templates', label: 'Templates…', description: 'Your templates: pages that new pages start from', icon: '▯' }] },
+    ];
+    const handle = openMenu({
+      groups: [], groupsFor: () => draw(), at: from, label: 'Notebook settings', placeholder: 'Find a setting',
+      onPick: it => {
+        const [k, v] = it.id.split(':');
+        if (it.id === 'templates') return showTemplates();
+        if (it.id === 'capture') return askText(from, 'Quick capture key', nbSettings.capture, val => void saveSetting('capture', val));
+        if (k === 'today' || k === 'links') return void saveSetting(k, nbSettings[k] ? 'off' : 'on').then(() => handle.refresh());
+        void saveSetting(k, v).then(() => handle.refresh());
+      },
+    });
   }
 
   async function saveSetting(key: string, value: string) {
@@ -2401,12 +2213,11 @@ ${l}` : ''}`;
       open.append(icon('notebook'), txt);
       open.onclick = () => openFromList(t.id);
       const more = button('icon-btn small tp-more', '', () => {
-        const box = h('div', 'menu-list');
-        const it = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
-        it('Open it', () => openFromList(t.id));
-        it('Make a page from it…', () => void newPage(undefined, t.id));
-        it('Delete', () => void remove({ id: t.id, placed: false, kind: 'note', template: true } as Entry));
-        const close = popMenu(more, box, { align: 'right', width: 220 });
+        actionMenu(more, `Change ${t.title}`, [
+          { label: 'Open it', run: () => openFromList(t.id) },
+          { label: 'Make a page from it…', run: () => void newPage(undefined, t.id) },
+          { label: 'Delete', danger: true, run: () => void remove({ id: t.id, placed: false, kind: 'note', template: true } as Entry) },
+        ]);
       }, 'more');
       more.setAttribute('aria-label', `Change ${t.title}`);
       card.append(open, h('span', 'muted small tp-used', usedText(t.used)), more);
@@ -2438,23 +2249,16 @@ ${l}` : ''}`;
       if (!text) return;
       const start = text.selectionStart ?? text.value.length;
       const end = text.selectionEnd ?? start;
-      const menu = h('div', 'nb-blockmenu nb-template-fields');
       const labels = ['Place', 'Date', 'Page name', 'Reader chapter'];
-      for (const [i, field] of BLANKS.entries()) {
-        const option = button('nb-blockmenu-row', '', () => {
-          close();
-          text.setRangeText(field.key, start, end, 'end');
+      openMenu({
+        groups: [{ items: BLANKS.map((field, i) => ({ id: field.key, label: labels[i], description: field.what, icon: '+' })) }],
+        at: pick, label: 'Insert a field', placeholder: 'Find a field',
+        onPick: it => {
+          text.setRangeText(it.id, start, end, 'end');
           text.focus();
           text.dispatchEvent(new Event('input'));
-        }, field.ico);
-        option.onmousedown = ev => ev.preventDefault();
-        const label = h('div');
-        label.append(h('div', 'nb-blockmenu-label', labels[i]), h('div', 'nb-blockmenu-what', field.what));
-        option.append(label);
-        menu.append(option);
-      }
-      const close = popMenu(pick, menu, { width: 240 });
-      if (document.activeElement !== text) menu.querySelector('button')?.focus();
+        },
+      });
     }, 'plus');
     pick.onmousedown = ev => ev.preventDefault();
     return pick;
@@ -2796,14 +2600,11 @@ ${l}` : ''}`;
   const THREAD_COLORS = ['yellow', 'green', 'blue', 'pink', 'orange'];
 
   function askText(from: HTMLElement, label: string, value: string, done: (v: string) => void) {
-    const f = h('form', 'menu-form');
-    const i = h('input', 'field') as HTMLInputElement;
-    i.value = value;
-    f.append(h('div', 'label', label), i);
-    const close = popMenu(from, f, { align: 'right', width: 300 });
-    f.onsubmit = ev => { ev.preventDefault(); close(); done(i.value); };
-    i.focus();
-    i.select();
+    openMenu({
+      groups: [], at: from, label, placeholder: label, query: value,
+      groupsFor: q => (q.trim() ? [{ items: [{ id: `v:${q.trim()}`, label: `${label}: ${q.trim()}`, hint: 'Enter' }] }] : []),
+      onPick: it => done(it.id.slice(2)),
+    });
   }
 
   /** The head of a thread's page: its color, the order of its places, whether it is drawn in the reader, Make a document. */
@@ -2863,24 +2664,20 @@ ${l}` : ''}`;
   }
 
   function threadMenu(from: HTMLElement, e: Entry, at?: { x: number; y: number }) {
-    const box = h('div', 'menu-list');
-    let close = () => {};
-    const item = (label: string, fn: () => void) => box.append(button('menu-item', label, () => { close(); fn(); }));
     const slug = e.slug!;
-    item('Add the place you are at', async () => { try { await wb(['thread', 'add', slug, here().anchor]); changed('threads'); toast(`${here().label} added`); } catch (x) { toast(String(x)); } });
-    item('Rename…', () => askText(from, 'New name', e.title, async v => { try { await wb(['thread', 'edit', slug, '--rename', v]); changed('threads', 'notes'); } catch (x) { toast(String(x)); } }));
-    item('Color…', () => threadColorMenu(from, e));
-    item('Put it in Bible order', async () => { try { await wb(['thread', 'sort', slug]); changed('threads'); } catch (x) { toast(String(x)); } });
-    box.append(h('div', 'menu-sep'));
     const pinned = e.pinned !== null && e.pinned !== undefined;
-    item(pinned ? 'Unpin' : 'Pin', async () => { try { await wb(['thread', pinned ? 'unpin' : 'pin', slug]); toast(pinned ? 'Taken out of Pinned' : 'Pinned'); changed('threads'); } catch (x) { toast(String(x)); } });
-    item('Make a document…', () => pane?.el.querySelector('.nb-docs')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
-    box.append(h('div', 'menu-sep'));
-    item('Delete the thread', async () => {
-      if (!confirm(`Delete the thread “${e.title}”? It goes to .trash in the study folder.`)) return;
-      try { await wb(['thread', 'delete', slug]); openId = null; changed('threads', 'notes'); } catch (x) { toast(String(x)); }
-    });
-    close = popMenu(from, box, { align: at ? 'left' : 'right', width: 240, at });
+    actionMenu(from, 'This folder', [
+      { label: 'Add the place you are at', run: async () => { try { await wb(['thread', 'add', slug, here().anchor]); changed('threads'); toast(`${here().label} added`); } catch (x) { toast(String(x)); } } },
+      { label: 'Rename…', run: () => askText(from, 'New name', e.title, async v => { try { await wb(['thread', 'edit', slug, '--rename', v]); changed('threads', 'notes'); } catch (x) { toast(String(x)); } }) },
+      { label: 'Color…', run: () => threadColorMenu(from, e) },
+      { label: 'Put it in Bible order', run: async () => { try { await wb(['thread', 'sort', slug]); changed('threads'); } catch (x) { toast(String(x)); } } },
+      { label: pinned ? 'Unpin' : 'Pin', sepBefore: true, run: async () => { try { await wb(['thread', pinned ? 'unpin' : 'pin', slug]); toast(pinned ? 'Taken out of Pinned' : 'Pinned'); changed('threads'); } catch (x) { toast(String(x)); } } },
+      { label: 'Make a document…', run: () => pane?.el.querySelector('.nb-docs')?.scrollIntoView({ block: 'center', behavior: 'smooth' }) },
+      { label: 'Delete the thread', danger: true, sepBefore: true, run: async () => {
+        if (!confirm(`Delete the thread “${e.title}”? It goes to .trash in the study folder.`)) return;
+        try { await wb(['thread', 'delete', slug]); openId = null; changed('threads', 'notes'); } catch (x) { toast(String(x)); }
+      } },
+    ], { at });
   }
 
   /** A thread's places, each a block: its reference and the text from the database, in the thread's own order. */

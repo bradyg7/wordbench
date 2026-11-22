@@ -72,7 +72,7 @@ function targetOf(range: Range): { ed: Writer } | null {
   const el = node instanceof HTMLElement ? node : node.parentElement;
   if (!el) return null;
   const ed = el.closest<HTMLElement>('.nb-block-input');
-  if (ed && ed.isContentEditable && !ed.classList.contains('asking') && !ed.classList.contains('nb-whole') && ed.closest('.nb-blocks')) return { ed: ed as Writer };
+  if (ed && ed.isContentEditable && !ed.classList.contains('asking') && ed.closest('.nb-blocks')) return { ed: ed as Writer };
   return null;
 }
 
