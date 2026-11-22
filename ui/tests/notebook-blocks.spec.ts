@@ -371,6 +371,8 @@ test('move_block_to_another_page', async ({ page }) => {
   await expect(page.locator('.wbm[aria-label="Move to"] .wbm-row')).toHaveCount(1);
   await page.keyboard.press('Enter');
   await expect.poll(() => s.other()).toEqual([WORDS[1], WORDS[0]]);
+  await expect(page.locator('.nb-block')).toHaveCount(3);
+  await expect(page.locator('.wbm')).toHaveCount(0);
   // several picked blocks go together, in the page's order, last in the other page
   await block(page, 1).locator('.nb-block-body').click();
   await block(page, 3).locator('.nb-block-body').click({ modifiers: ['Shift'] });
@@ -384,8 +386,8 @@ test('move_block_to_another_page', async ({ page }) => {
   expect(s.calls.at(-1)!.name).toBe('block-move-w1-1-page-w2-count-3');
 });
 
-test('link_to_block_flow', async ({ page, context }) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+test('link_to_block_flow', async ({ page, context, browserName }) => {
+  if (browserName === 'chromium') await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const LINK = '[[Other page#^abc123]]';
   const s = await openPage(page, ['Before the link', `See ${LINK} for more`, 'See [[Other page#^zzzzzz]] too']);
   // 18a: Copy link to block is in the block menu of a text block; it asks wb-core for the link (which writes the id) and copies it
@@ -393,7 +395,7 @@ test('link_to_block_flow', async ({ page, context }) => {
   await page.locator('.wbm-row', { hasText: 'Copy link to block' }).click();
   await expect.poll(() => s.calls.at(-1)?.name).toBe('block-link-w1-1');
   await expect(page.locator('.toast, [role=status]').filter({ hasText: 'Link to block copied' }).first()).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('[[Blocks page#^abc123]]');
+  if (browserName === 'chromium') expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('[[Blocks page#^abc123]]');
   // 18b: pasted in another page the link is a chip "Page A › first words", not the brackets
   const chip = block(page, 2).locator('a.nb-blocklink');
   await expect(chip).toHaveText('Other page › Read the chapter twice');
