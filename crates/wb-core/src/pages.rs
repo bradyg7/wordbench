@@ -1035,7 +1035,7 @@ pub fn duplicate_block(bible: &Bible, store: &mut Store, id: &str, n: usize, und
 
 /// A block's link id (notebook row 18): ` ^` and six lowercase letters or digits at the very end of the block's text (the Obsidian
 /// form). It is how a `[[Page#^id]]` link finds the block after the page is edited; the window never shows it.
-pub fn block_id_of(text: &str) -> Option<(usize, String)> {
+pub(crate) fn block_id_of(text: &str) -> Option<(usize, String)> {
     let t = text.trim_end();
     let tail: Vec<char> = t.chars().rev().take(8).collect();
     if tail.len() < 8 || !tail[7].is_whitespace() || tail[6] != '^' {
@@ -1049,7 +1049,7 @@ pub fn block_id_of(text: &str) -> Option<(usize, String)> {
 }
 
 /// The block's words without its link id.
-pub fn without_block_id(text: &str) -> String {
+pub(crate) fn without_block_id(text: &str) -> String {
     match block_id_of(text) {
         Some((at, _)) => text.chars().take(at).collect(),
         None => text.to_string(),
