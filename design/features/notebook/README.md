@@ -174,6 +174,9 @@ Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopte
   that do not balance are read as plain blocks. `wb block move ID N --beside M [--left]` writes them and takes a column or a group
   left empty by a move (or `wb block rm`) away again. Columns need a page 700 px wide or more; narrower, they stack. A block can go
   beside any block, not only Scripture (row 15 says "dropping to the side makes columns").
+  The lead accepted this spelling (2026-11-21): `<!-- columns -->`, `<!-- column -->`, `<!-- /columns -->`, no other form. Several blocks
+  picked in a page with columns are only the blocks the drag or the margin band touched (or Shift+click ran over), never every number
+  between them (test `picks_only_the_blocks_touched_in_columns`).
 
 ## Interaction table
 

@@ -293,3 +293,38 @@ test('band_selects_blocks', async ({ page }) => {
   // nothing was written
   await expect(page.locator('.nb-block-input')).toHaveCount(0);
 });
+
+test('picks_only_the_blocks_touched_in_columns', async ({ page }) => {
+  // two columns of three: after a lead line, block numbers run down the first column then the second, so a run of numbers is not what was touched
+  await page.setViewportSize({ width: 2800, height: 900 });
+  const col = ['A one', 'A two', 'A three', 'B one', 'B two', 'B three'];
+  const s = await openPage(page, ['Lead line', OPEN, col[0], col[1], col[2], SEP, col[3], col[4], col[5], CLOSE]);
+  await expect(page.locator('.nb-column')).toHaveCount(2);
+  const picked = () => page.locator('.nb-block.nb-picked').evaluateAll(els => els.map(e => Number((e as HTMLElement).dataset.n)));
+  // the margin's band across the middle row touches A two (4) and B two (8) only
+  const wrap = (await page.locator('.nb-blocks').boundingBox())!;
+  const a2 = (await block(page, 4).boundingBox())!;
+  await page.mouse.move(wrap.x + wrap.width + 8, a2.y + 2);
+  await page.mouse.down();
+  await page.mouse.move(wrap.x + 40, a2.y + a2.height - 2, { steps: 8 });
+  await expect.poll(picked).toEqual([4, 8]);
+  await page.mouse.up();
+  // a drag from A one to B two picks the four blocks the pointer crossed, not A three
+  await page.keyboard.press('Escape');
+  await page.mouse.click(wrap.x - 20, wrap.y - 20);
+  await expect(page.locator('.nb-block.nb-picked')).toHaveCount(0);
+  const a1 = (await block(page, 3).locator('.nb-block-body').boundingBox())!, b2 = (await block(page, 8).locator('.nb-block-body').boundingBox())!;
+  await page.mouse.move(a1.x + 20, a1.y + a1.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b2.x + b2.width / 2, b2.y + b2.height / 2, { steps: 8 });
+  await page.mouse.up();
+  expect(await picked()).toEqual([3, 4, 7, 8]);
+  // the grip menu acts on those four only
+  await grip(page, 4).click({ force: true });
+  await page.locator('.wbm-row', { hasText: 'Color' }).click();
+  await page.locator('.wbm-row', { hasText: 'Green' }).click();
+  await expect.poll(() => s.calls.filter(c => c.name.startsWith('block-color-')).map(c => c.name.replace(/-count.*/, ''))).toEqual(['block-color-w1-3-green', 'block-color-w1-7-green']);
+  const t = s.texts();
+  expect(t[4]).toBe(col[2]);                    // A three is untouched
+  expect(t[8]).toBe(col[5]);                    // so is B three
+});

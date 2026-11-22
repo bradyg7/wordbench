@@ -280,7 +280,7 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
   grip.onkeydown = ev => {
     const mod = ev.ctrlKey || ev.metaKey;
     const run = pickedRun(data.id);
-    if ((ev.key === 'Delete' || ev.key === 'Backspace') && !mod && !ev.shiftKey && !ev.altKey && run && run.to > run.from && b.n >= run.from && b.n <= run.to) { ev.preventDefault(); void deletePicked(data, host, el, run.from, run.to); }
+    if ((ev.key === 'Delete' || ev.key === 'Backspace') && !mod && !ev.shiftKey && !ev.altKey && run && run.ns.length > 1 && run.ns.includes(b.n)) { ev.preventDefault(); void deletePicked(data, host, el, run.ns); }
     else if ((ev.key === 'Delete' || ev.key === 'Backspace') && !mod && !ev.shiftKey && !ev.altKey) { ev.preventDefault(); void deleteBlock(data, host, el, b); }
     else if (mod && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'd') { ev.preventDefault(); void duplicateBlock(data, host, el, b); }
   };
@@ -441,7 +441,7 @@ async function openBlockMenu(data: Blocks, host: Host, el: HTMLElement, b: Blk, 
   if (document.querySelector('.wbm[aria-label="Block actions"]')) return;
   if (liveEdit && liveEdit.el === el) { await liveEdit.save(); if (!liveEdit.cur.n) return; }
   const run = pickedRun(data.id);
-  if (run && run.to > run.from && b.n >= run.from && b.n <= run.to) return openPickMenu(data, host, run.from, run.to, grip);
+  if (run && run.ns.length > 1 && run.ns.includes(b.n)) return openPickMenu(data, host, run.ns, grip);
   el.classList.add('nb-selected');
   const words = data.blocks.reduce((n, x) => n + wordsIn(x.text), wordsIn(data.title?.text ?? ''));
   const items: MenuItem[] = [];
@@ -510,10 +510,10 @@ async function colorBlocks(data: Blocks, host: Host, el: HTMLElement, b: Blk, co
 }
 
 /** The grip's menu on several picked blocks (row 21): Turn into, Color and Delete act on all of them. Move to comes with NB9. */
-function openPickMenu(data: Blocks, host: Host, from: number, to: number, grip: HTMLElement) {
+function openPickMenu(data: Blocks, host: Host, ns: number[], grip: HTMLElement) {
   if (document.querySelector('.wbm[aria-label="Block actions"]')) return;
-  const bs = data.blocks.filter(x => x.n >= from && x.n <= to && !isMarker(x.text));
-  const first = data.blocks.find(x => x.n === from)!;
+  const bs = data.blocks.filter(x => ns.includes(x.n) && !isMarker(x.text));
+  const runs = runsOf(ns);
   const el = grip.closest<HTMLElement>('.nb-block')!;
   const items: MenuItem[] = [];
   if (bs.some(turnable)) items.push({ id: 'turn', label: 'Turn into', icon: 'T', hint: '▸', keywords: ['change', 'kind'] });
@@ -524,8 +524,8 @@ function openPickMenu(data: Blocks, host: Host, from: number, to: number, grip: 
     groups: [{ title: `${bs.length} blocks`, items }], label: 'Block actions', placeholder: 'Search actions', at: grip,
     onPick: it => {
       if (it.id === 'turn') return turnPickedMenu(data, host, bs.filter(turnable), grip);
-      if (it.id === 'color') return colorMenu(host, bs, grip, name => void colorBlocks(data, host, el, first, to - from + 1, name));
-      void deletePicked(data, host, el, from, to);
+      if (it.id === 'color') return colorMenu(host, bs, grip, name => void colorRuns(data, host, el, runs, name));
+      void deletePicked(data, host, el, ns);
     },
     onClose: () => { if (host.state.menuClose === handle.close) host.state.menuClose = keep ?? null; },
   });
@@ -552,10 +552,35 @@ function turnPickedMenu(data: Blocks, host: Host, bs: Blk[], grip: HTMLElement) 
 }
 
 /** Delete the picked run of blocks, with the page's Undo. */
-async function deletePicked(data: Blocks, host: Host, el: HTMLElement, from: number, to: number) {
+async function deletePicked(data: Blocks, host: Host, el: HTMLElement, ns: number[]) {
   const root = el.closest<HTMLElement>('.nb-editor');
   clearPick(root);
-  if (await removeBlock(root, data, host, from, to - from + 1, host.text)) blockUndoToast(root, data, host, 'Deleted');
+  // each run of block numbers on its own, the last first, so the numbers of the ones still to go do not move
+  let done = false;
+  for (const [from, to] of runsOf(ns).reverse()) {
+    if (await removeBlock(root, data, host, from, to - from + 1, done ? undefined : host.text)) done = true; else break;
+  }
+  if (done) blockUndoToast(root, data, host, 'Deleted');
+}
+
+/** Block numbers as runs of neighbours: [1,2,3,6] → [[1,3],[6,6]]. Blocks picked across columns are not a run of numbers. */
+function runsOf(ns: number[]): [number, number][] {
+  const out: [number, number][] = [];
+  for (const n of [...ns].sort((a, b) => a - b)) {
+    const last = out[out.length - 1];
+    if (last && n === last[1] + 1) last[1] = n; else out.push([n, n]);
+  }
+  return out;
+}
+
+/** Color each run of the picked blocks (one call a run, in the page's order). */
+async function colorRuns(data: Blocks, host: Host, el: HTMLElement, runs: [number, number][], name: string | null) {
+  for (const [from, to] of runs) {
+    const first = data.blocks.find(x => x.n === from);
+    if (!first) continue;
+    const at = el.closest<HTMLElement>('.nb-editor')?.querySelector<HTMLElement>(`.nb-block[data-n="${from}"]`) ?? el;
+    await colorBlocks(data, host, at, first, to - from + 1, name);
+  }
 }
 
 /** Turn into ▸: the kinds, in the one menu component, hung under the grip. */

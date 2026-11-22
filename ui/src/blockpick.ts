@@ -4,7 +4,8 @@
 // written (that block). Nothing is written to the page by picking, and the numbers survive the page being drawn again
 // (the writing in a block ends when the pointer leaves it, and the page is drawn again then).
 
-export interface Picked { id: string; from: number; to: number }
+/** `ns`: the block numbers picked, in order. A run in one column is contiguous; blocks across columns are only the ones touched (not every number between). */
+export interface Picked { id: string; from: number; to: number; ns: number[] }
 
 let saved: Picked | null = null;
 let focusNext = false;
@@ -18,8 +19,10 @@ const blocksOf = (root: ParentNode) => Array.from(root.querySelectorAll<HTMLElem
 const shown = (el: HTMLElement) => !el.classList.contains('nb-col-marker');
 
 /** Pick blocks `a` to `b` (either order) of the page drawn in `wrap`. `focus`: the first one's grip takes the focus, so Del and Esc act on them. */
-export function pick(wrap: HTMLElement, a: number, b: number, focus = false) {
-  saved = { id: wrap.dataset.id || '', from: Math.min(a, b), to: Math.max(a, b) };
+export function pick(wrap: HTMLElement, a: number, b: number, focus = false, only?: number[]) {
+  const from = Math.min(a, b), to = Math.max(a, b);
+  const ns = only ? [...new Set(only)].sort((x, y) => x - y) : Array.from({ length: to - from + 1 }, (_, i) => from + i);
+  saved = { id: wrap.dataset.id || '', from: ns[0] ?? from, to: ns[ns.length - 1] ?? to, ns };
   if (focus) focusNext = true;
   paint(wrap);
 }
@@ -27,7 +30,7 @@ export function pick(wrap: HTMLElement, a: number, b: number, focus = false) {
 function paint(wrap: HTMLElement) {
   for (const el of blocksOf(wrap)) {
     const n = Number(el.dataset.n);
-    el.classList.toggle('nb-picked', !!saved && n >= saved.from && n <= saved.to && shown(el));
+    el.classList.toggle('nb-picked', !!saved && saved.ns.includes(n) && shown(el));
   }
 }
 
@@ -47,6 +50,20 @@ export function applyPicks(wrap: HTMLElement, blockCount: number) {
     focusNext = false;
     wrap.querySelector<HTMLElement>('.nb-block.nb-picked > .nb-grip')?.focus({ preventScroll: true });
   }
+}
+
+/** Blocks touched in one column are a run: the ones between them in that column (a folded toggle's hidden blocks too) are picked with them; other columns' blocks are not. */
+function withinColumns(wrap: HTMLElement, touched: number[]): number[] {
+  const all = blocksOf(wrap).filter(shown);
+  const where = (el: HTMLElement) => el.closest('.nb-column');
+  const got = new Set(touched);
+  for (const col of new Set(all.filter(el => got.has(Number(el.dataset.n))).map(where))) {
+    const mine = all.filter(el => where(el) === col);
+    const ns = mine.map(el => Number(el.dataset.n)).filter(n => got.has(n));
+    const lo = Math.min(...ns), hi = Math.max(...ns);
+    for (const el of mine) { const n = Number(el.dataset.n); if (n >= lo && n <= hi) got.add(n); }
+  }
+  return [...got];
 }
 
 const blockAt = (x: number, y: number): HTMLElement | null => document.elementFromPoint(x, y)?.closest<HTMLElement>('.nb-block[data-n]') ?? null;
@@ -117,12 +134,23 @@ function start(root: HTMLElement, down: MouseEvent, startN: number | null) {
         const r = el.getBoundingClientRect();
         return r.width > 0 && r.height > 0 && r.right >= x1 && r.left <= x2 && r.bottom >= y1 && r.top <= y2;
       }).map(el => Number(el.dataset.n));
-      if (touched.length) pick(wrap, Math.min(...touched), Math.max(...touched));
+      if (touched.length) pick(wrap, Math.min(...touched), Math.max(...touched), false, withinColumns(wrap, touched));
       else { saved = null; paint(wrap); }
       return;
     }
     const cur = blockAt(ev.clientX, ev.clientY);
-    if (cur && wrap.contains(cur)) pick(wrap, startN, Number(cur.dataset.n));
+    if (cur && wrap.contains(cur)) {
+      // the blocks the drag touches (the box from where it began to the pointer), and the two ends: in columns, not every number between
+      const x1 = Math.min(down.clientX, ev.clientX), x2 = Math.max(down.clientX, ev.clientX);
+      const y1 = Math.min(down.clientY, ev.clientY), y2 = Math.max(down.clientY, ev.clientY);
+      const ends = [startN, Number(cur.dataset.n)];
+      const touched = blocksOf(wrap).filter(el => shown(el) && !el.classList.contains('nb-folded')).filter(el => {
+        if (ends.includes(Number(el.dataset.n))) return true;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.right >= x1 && r.left <= x2 && r.bottom >= y1 && r.top <= y2;
+      }).map(el => Number(el.dataset.n));
+      pick(wrap, Math.min(...touched), Math.max(...touched), false, withinColumns(wrap, touched));
+    }
   };
   const up = () => {
     document.removeEventListener('mousemove', move, true);
