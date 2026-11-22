@@ -21,6 +21,7 @@ import { registerPageWriter, flushPageWriters, removedPages } from './pagewriter
 import { app, book, here, type At } from './app';
 import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, startWritingAtEnd, viewRow, wordsIn, type Blocks, type Host } from './blocks';
 import { applyLook, defaultLook, editedStatus, lockMark, openPageMenu, readLook, type PageLook, type PageMenu } from './pagemenu';
+import { openMenu } from './menu';
 import { pageToc } from './pagetoc';
 import { createEditor, inlineShortcut, insertBreak, insertPlain, lineStartShortcut, tidy, toggleMark, type Writer } from './blockedit';
 import { dock, refHover, openHelp, openStrong, threadChooser } from './panes';
@@ -28,6 +29,7 @@ import { layers } from './layers';
 import { threadDocuments } from './documents';
 import type { Change, Pane } from './dock';
 import { toast } from './sheets';
+import { pageStep } from './trail';
 import { button, h, icon, placePill, popMenu, type Found } from './ui';
 import { opens, placeOpen, verseCard, type Where } from './verses';
 import { makeFromPage, pageDocuments } from './pagedocs';
@@ -48,7 +50,7 @@ interface Entry {
   id: string; kind: 'note' | 'question' | 'day' | 'thread'; placed: boolean; anchor: string; label: string; text: string; time: string; created: string; updated: string;
   title: string; preview: string; whole?: string; day?: string; today?: boolean; exists?: boolean;
   status?: string; refs?: Found[]; offer?: At | null;
-  also?: At[]; threads?: { id: string; name: string }[];
+  also?: At[]; threads?: { id: string; name: string; color?: string | null }[];
   links?: Link[]; headings?: string[]; linked_from?: { id: string; title: string; kind: string; label: string; day: string; today: boolean }[];
   pinned?: number | null; parent?: string | null; order?: number | null;
   /** W3: the pages above it, from the top, and the pages inside it (`wb note show`). */
@@ -69,6 +71,8 @@ interface Row {
   pinned?: number | null; order?: number | null; parent?: string | null; children?: Row[];
   /** R1: a thread's color (a thread is a page in the tree); a question written in a page: where. */
   color?: string | null; page?: string; block?: number;
+  /** Row 26: the color a page carries from its folder (null: none, and for a folder itself); Recents: when it was last opened. */
+  dot?: string | null; at?: string;
 }
 interface GroupOf { key: string; label: string; count: number; today?: boolean; following?: boolean; entries: Entry[] }
 
@@ -475,6 +479,7 @@ function createNotebookSession(fixed?: PageTab) {
   }
 
   let kind = '';
+  let questionKind: '' | 'question' | 'answered' = '';
   async function drawList(): Promise<HTMLElement[]> {
     const head = listHead(false);
     if (kind) return [head, await kindResults(kind, search, { openPage: id => void openNote(id) })];
@@ -774,6 +779,26 @@ function createNotebookSession(fixed?: PageTab) {
     } catch (x) { toast(String(x)); }
   }
 
+  /** A folder's color as a small round dot (row 26): a named color from the palette, or the hex it was given. */
+  function folderDot(color: string | null | undefined, big = false): HTMLElement {
+    const named = !!color && /^[a-z]+$/.test(color);
+    const d = h('i', `dot${big ? ' big' : ''}${named ? ` c-${color}` : ' c-'}`);
+    d.dataset.color = color || '';
+    if (color && !named) d.style.background = color;
+    return d;
+  }
+
+  /** A folder's ⋯ (row 26): its menu, with Color, from the row. */
+  function folderMore(row: HTMLElement, id: string): HTMLElement {
+    const more = button('icon-btn nb-tree-add nb-folder-more', '', ev => {
+      ev.stopPropagation();
+      void wb(['note', 'show', id]).then(e => threadMenu(more, e)).catch(x => toast(String(x)));
+    }, 'more');
+    more.title = 'Folder options: Color, Rename…';
+    more.setAttribute('aria-label', 'Folder options');
+    return more;
+  }
+
   /** A page's row: ▾ folds the pages inside it, a click opens it, + starts a page inside it; it is dragged to move it
    * (and a page with no place onto a verse, to place it there). */
   function pageRow(r: Row, depth: number, where: 'tree' | 'pinned', siblings: Row[]): HTMLElement {
@@ -791,7 +816,8 @@ function createNotebookSession(fixed?: PageTab) {
     const isThread = r.kind === 'thread';
     const open = button('nb-tree-open', '', () => openPage(r.id), r.kind === 'question' || isThread ? undefined : r.placed ? 'pin' : 'notebook');
     if (r.kind === 'question') open.append(h('span', 'nb-tree-q', '?'));
-    if (isThread) open.append(h('i', `dot c-${r.color || ''}`));
+    if (isThread) open.append(folderDot(r.color));
+    else if (r.dot) open.append(folderDot(r.dot));
     open.append(h('span', 'nb-tree-title', r.title || 'Untitled'));
     open.title = r.placed && r.label ? `${r.title} · on ${r.label}` : r.title;
     row.append(open);
@@ -801,6 +827,7 @@ function createNotebookSession(fixed?: PageTab) {
       add.setAttribute('aria-label', add.title);
       row.append(add);
     }
+    if (where === 'tree' && isThread) row.append(folderMore(row, r.id));
     pageContext(row, r.id);
     row.draggable = !isThread;
     row.ondragstart = ev => {
@@ -882,18 +909,17 @@ function createNotebookSession(fixed?: PageTab) {
     const s = await wb(['notebook', 'sidebar', ...(ats.length ? ['--at', ats.join('; ')] : [])]);
     const side = h('nav', 'nb-scroll nb-side');
     side.setAttribute('aria-label', 'Notebook');
-    if (s.today.length) {
-      side.append(sideHead('today', 'Today', null, false));
-      if (!isShut('today', false)) for (const d of s.today) {
-        const on = d.exists ? openId === d.id : !openId && draft?.day === d.day;
-        const dayRow = sideRow('nb-day-row', 'pen', d.title, d.today ? 'today' : '', on, () => {
-          if (d.exists) return openPage(d.id);
-          openId = null; mainList = null; draft = { at: null, question: false, day: d.day }; editorShown = true; showTrash = false;
-          void pane?.refresh?.();
-        });
-        if (d.exists) pageContext(dayRow, d.id);
-        side.append(dayRow);
-      }
+    // row 35: Recents replaces Today: the last 8 pages opened, newest first, above Pinned and Pages
+    const recents: Row[] = s.recents || [];
+    side.append(sideHead('recents', 'Recents', recents.length, false));
+    if (!isShut('recents', false)) {
+      if (recents.length) for (const r of recents) {
+        const row = sideRow('nb-recent-row', 'notebook', r.title || 'Untitled', '', openId === r.id, () => openPage(r.id));
+        row.dataset.id = r.id;
+        if (r.dot) row.querySelector('.nb-tree-title')?.before(folderDot(r.dot));
+        pageContext(row, r.id);
+        side.append(row);
+      } else side.append(h('p', 'muted small nb-side-hint', 'The pages you open are listed here.'));
     }
     side.append(sideHead('pinned', 'Pinned', s.pinned.length, false));
     if (!isShut('pinned', false)) side.append(s.pinned.length ? pinnedRows(s.pinned) : h('p', 'muted small nb-side-hint', 'Drag a page here, or ⋯ → Pin on a page.'));
@@ -914,8 +940,25 @@ function createNotebookSession(fixed?: PageTab) {
         side.append(row);
       });
     }
-    side.append(sideHead('questions', 'Questions', s.questions.length, true));
-    if (!isShut('questions', true)) for (const q of s.questions as Row[]) {
+    // row 46b: the Questions list filters by kind, Question or Answered (`wb question list --kind`); All is the whole list
+    let questions: Row[] = s.questions;
+    if (questionKind) {
+      try { questions = (await wb(['question', 'list', '--kind', questionKind])).questions as Row[]; } catch { questions = []; }
+    }
+    side.append(sideHead('questions', 'Questions', questions.length, true));
+    if (!isShut('questions', true)) {
+      const chips = h('div', 'nb-qkinds');
+      chips.setAttribute('role', 'group');
+      chips.setAttribute('aria-label', 'Questions by kind');
+      for (const [k, name] of [['', 'All'], ['question', 'Question'], ['answered', 'Answered']] as const) {
+        const c = button(`chip nb-qkind${questionKind === k ? ' on' : ''}`, name, () => { questionKind = k; void pane?.refresh?.(); });
+        c.dataset.kind = k;
+        c.setAttribute('aria-pressed', String(questionKind === k));
+        chips.append(c);
+      }
+      side.append(chips);
+    }
+    if (!isShut('questions', true)) for (const q of questions) {
       // a callout of several lines shows its first line, and says what follows it (row 46b): "2 more lines, a list"
       const qx = q as any, more = Number(qx.more_lines) || 0;
       const follows = more ? `${more} more line${more === 1 ? '' : 's'}${qx.has_list ? ', a list' : ''}` : '';
@@ -935,6 +978,9 @@ function createNotebookSession(fixed?: PageTab) {
       }
     }
     const foot = h('div', 'nb-side-foot');
+    const fbtn = button('link-btn nb-side-link nb-side-newfolder', 'New folder', () => newFolder(fbtn), 'folder');
+    fbtn.title = 'A folder with a color: its pages carry the color';
+    foot.append(fbtn);
     const tbtn = button('link-btn nb-side-link nb-side-templates', 'Templates', () => showTemplates(), 'notebook');
     tbtn.title = 'Your templates: pages that new pages start from';
     foot.append(tbtn);
@@ -981,6 +1027,7 @@ function createNotebookSession(fixed?: PageTab) {
   // ---- the editor ---------------------------------------------------------------------------------------------------------
 
   let shown: Entry | null = null;
+  let recorded = '';
 
   /** The person is writing in this editor: it is left as it is (the list still redraws beside it). */
   function writingIn(edEl: HTMLElement) {
@@ -994,6 +1041,7 @@ function createNotebookSession(fixed?: PageTab) {
     blockHostNow = null;
     if (!openId && !draft) {
       shown = null;
+      recorded = '';
       applyLook(edEl, defaultLook());
       if (mainList) return mainListView();
       return [h('p', 'muted nb-empty nb-pick', 'Pick a page in the list, or start one with the pen.')];
@@ -1010,6 +1058,8 @@ function createNotebookSession(fixed?: PageTab) {
       e = { id: '', kind: draft!.question ? 'question' : 'note', placed: !!draft!.at, anchor: draft!.at?.anchor || '', label: draft!.at?.label || '', text: draft!.text || '', time: '', created: '', updated: '', title: '', preview: '', also: [], threads: [], links: [], headings: [], linked_from: [] };
     }
     shown = e;
+    // row 35: a page opened is a step of the trail (kind page), which Recents in the side list reads; a redraw of the same page is not another
+    if (e.id && e.kind !== 'thread' && !e.template && recorded !== e.id) { recorded = e.id; pageStep(e.id, e.title); }
     // the page's view choices (rows 31, 32, 45): its font, size, width, contents bar and lock
     const look = e.id && !e.template ? await readLook(e.id) : defaultLook();
     applyLook(edEl, look);
@@ -1052,9 +1102,10 @@ function createNotebookSession(fixed?: PageTab) {
     const crumbs = pathOf(e);
     if (crumbs) out.push(crumbs);
     const title = h('h2', 'nb-title');
-    if (isT) { title.append(h('i', `dot big c-${e.color || ''}`), document.createTextNode(` ${e.title}`)); title.title = 'A thread: rename it from ⋯'; }
+    if (isT) { title.append(folderDot(e.color, true), document.createTextNode(` ${e.title}`)); title.title = 'A thread: rename it from ⋯'; }
     else if (byBlocks && e.kind !== 'day' && bd!.title) editableTitle(title, e, bd!);
     else title.textContent = e.kind === 'day' ? e.title : e.title || (draft?.parent ? 'A new page' : draft?.question ? 'A new question' : 'A new page');
+    { const fc = !isT ? e.threads?.find(x => x.color)?.color : null; if (fc) { const d = folderDot(fc, true); d.classList.add('nb-title-dot'); title.prepend(d); } }
     if (!plainDraft(e)) out.push(title);
     if (tpl) out.push(templateAbout(), templateSettings(tpl));
     else if (isT) out.push(threadControls(e));
@@ -2817,19 +2868,39 @@ ${l}` : ''}`;
     return row;
   }
 
+  /** A folder's color (row 26): None and the folder colors as they are today, in the one menu; nothing is added to any list of colors. */
+  function colorChoice(from: HTMLElement, name: string, current: string | null | undefined, pick: (color: string) => void) {
+    openMenu({
+      groups: [{ title: `${name} · Color`, items: ['none', ...THREAD_COLORS].map(c => ({
+        id: c, label: c === 'none' ? 'None' : c[0].toUpperCase() + c.slice(1), icon: c === 'none' ? 'A' : '', hint: (current || 'none') === c ? '✓' : undefined,
+        iconStyle: c === 'none' ? undefined : `display:inline-block;width:16px;height:16px;border-radius:4px;background:var(--hl-${c})`,
+        iconData: { color: c },
+      })) }],
+      label: 'Folder color', placeholder: 'Color', at: from,
+      onPick: it => pick(it.id),
+    });
+  }
+
   function threadColorMenu(from: HTMLElement, e: Entry) {
-    const box = h('div', 'menu-list');
-    const colors = h('div', 'colors');
-    let close = () => {};
-    for (const c of [...THREAD_COLORS, 'none']) {
-      const s = h('button', `swatch c-${c}${(e.color || 'none') === c ? ' on' : ''}`);
-      s.setAttribute('aria-label', c);
-      s.title = c === 'none' ? 'No color: not drawn in the reader' : c;
-      s.onclick = async () => { close(); try { await wb(['thread', 'edit', e.slug!, '--color', c]); changed('threads'); } catch (x) { toast(String(x)); } };
-      colors.append(s);
-    }
-    box.append(h('div', 'label', 'Color'), colors);
-    close = popMenu(from, box, { width: 240 });
+    colorChoice(from, e.title, e.color, async c => {
+      try { await wb(['folder', 'color', e.slug!, c]); changed('threads', 'notes'); } catch (x) { toast(String(x)); }
+    });
+  }
+
+  /** New folder: a name, then its color (or none). It is a folder with a color, as a thread was. */
+  function newFolder(from: HTMLElement) {
+    askText(from, 'New folder', '', async name => {
+      const n = name.trim();
+      if (!n) return;
+      colorChoice(from, n, null, async c => {
+        try {
+          await wb(['thread', 'new', n]);
+          if (c !== 'none') await wb(['folder', 'color', n, c]);
+          changed('threads', 'notes');
+          toast(`Folder “${n}” made`);
+        } catch (x) { toast(String(x)); }
+      });
+    });
   }
 
   function threadMenu(from: HTMLElement, e: Entry, at?: { x: number; y: number }) {

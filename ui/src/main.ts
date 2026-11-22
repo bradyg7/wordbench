@@ -36,6 +36,7 @@ import { isCaptureKey, notebookBadge, openNote, openNotebook, quickCapture, read
 import type { Change } from './dock';
 import { attachCommandField, box as cmdBox, initPopOff, loadThreads } from './command';
 import { findInPane, paneForFind } from './panefind';
+import { toggleQuickSearch } from './ctrlk';
 import { findingBox, openFindings } from './findings';
 import { openDocuments } from './documents';
 import { canReopen, parse, reopen, runLine, written } from './actions';
@@ -1458,6 +1459,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeSheet(); clearSelection(); hideCard(); }
   // Ctrl+F finds in the pane last clicked or typed in, else in the chapter (note 5c4a)
   if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); const p = paneForFind(); if (p) findInPane(p); else findInChapter(finding); return; }
+  // Ctrl+K, anywhere: the Library's one search with its live preview (notebook row 34)
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') { e.preventDefault(); toggleQuickSearch(); return; }
   if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); setSize(sizePct + 10); return; }
   if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key === '-') { e.preventDefault(); setSize(sizePct - 10); return; }
   { const kc = commandByKey(e); if (kc) { e.preventDefault(); void runKeptCommand(kc); return; } }

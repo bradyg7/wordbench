@@ -176,3 +176,13 @@
   .nbk-row { flex-wrap: wrap; }
   .nbk-words { flex-basis: 100%; white-space: normal; }
 }
+
+/* Row 26: a folder's color dots its pages, by the title and in the side list. */
+.nb-title { position: relative; }
+.nb-title .nb-title-dot { position: absolute; left: -22px; top: 0.55em; margin: 0; }
+.nb-recent-row .dot, .nb-tree-open .dot { margin-right: 6px; }
+
+/* Row 46b: the Questions list's kind chips. */
+.nb-qkinds { display: flex; gap: 6px; padding: 2px 8px 6px; }
+.nb-qkind { padding: 2px 10px; font-size: 12px; }
+.nb-qkind.on { background: var(--accent-soft); color: var(--accent); }

@@ -148,6 +148,26 @@ folder, not as a Notebook tab.
   `study_cross_references`, `study_concordance_block`, `study_margin_notes_block`, `study_marks_block` (window) and
   `study_blocks_hold_only_a_reference_or_a_word_and_read_the_rest` (Rust).
 
+- **Ctrl+K, Recents and the folder color, NB13 (the lead, 2026-11-22, file forms by the most compatible form).** (1) Ctrl+K is one menu (`openMenu`, with a
+  preview pane on its right and `center`): empty it lists Recents; with words it lists `wb find WORDS --sort edited` as groups Folders, Pages, Questions, Key
+  points, Notes, Saves, Margin notes, Highlights (eight rows a group). A folder row carries its color as a dot and "N pages and saves" (`wb find` gives each
+  folder row `color`, `pages`, `saves`, `count`; the group now holds thread files, the folders with a color, as well as set folders, and a thread's id is
+  `thread:<slug>`); a page row carries `folder` (the first folder it is in) and `has` ("a list", "callouts" or "a table"), shown as its second line, "Pages"
+  standing for no folder. The highlighted result is previewed from `wb page blocks`: its title, a list as bullets, a callout in its kind's own color and
+  label, a table's first six rows, a fenced block as its first line. Enter opens: a page in the Notebook, a folder (a thread file) as its page, a callout
+  at its page, a margin note in the reader; Esc closes and focus returns; a second Ctrl+K closes it. (2) Recents are steps of the trail: opening a page in the
+  Notebook writes a step of kind `page` with the line `page <id>` (`wb history add page "Title" --line "page <id>"`; the same page again in a row is one
+  step); `wb page recents [--limit 8]` is the last pages opened, newest first, each once, a deleted page left out; `wb notebook sidebar` gives the same as
+  `recents`. The side list's first group is Recents (folding, with its count) and Today is no longer in it (a day's page is still reached by `@ Today`
+  and the Days list). A step of kind `page` reopens its page from the trail. (3) A page in a folder with a color carries `dot` in `wb page tree` and
+  `wb notebook sidebar` (its folder's color; null for a folder itself), and `wb note show` gives each of its `threads` the folder's `color`; the page shows
+  the dot in the tree, in Recents and by its title. A folder row in the tree has a ⋯ (its menu: Rename…, Color…, Pin, Delete); Color… is the one menu, None
+  and the five folder colors as today, and writes `wb folder color NAME COLOR`; nothing is added to any list of colors. **New folder** (the side list's foot)
+  asks a name, then the same color menu, and writes `wb thread new NAME` then `wb folder color` (a folder is a thread file with a color, as today). The frame's sixth
+  color, Purple, is not one of today's folder colors and is not added (the person: "as today"). (4) Row 46b: the side list's Questions has the chips All,
+  Question and Answered; a chip reads `wb question list --kind question|answered`. Tests `quick_search_preview_and_recents` (Rust and window),
+  `side_list_recents_replaces_today`, `folder_color_dots_its_pages` (Rust and window), `questions_list_filters_by_kind` (window).
+
 ## The inventory (round 1)
 
 Each line is a Notion line marked adopt, adapt or skip. Round 2 turns the adopted lines into the interaction table below.
@@ -307,14 +327,14 @@ person's existing pages read.
 | 22 | / menu (`/callout`) or Turn into | Callout | A soft box with an icon and a kind: Question, Answered, Key point, Note | `> [!question]`, `> [!done]`, `> [!key]`, `> [!note]`; later lines `> …`, a nested list `>   - …` | `wb block add ID "> [!key] …"` | `callout_kinds_write_their_marker` | built (NB10) · approved 2026-11-20 |
 | 23 | A callout's icon | Click | Its kind menu; a Question becomes Answered and back | The marker's word only | `wb callout kind ID#N KIND` (`wb block set` writes the whole block) | `callout_kind_changes` | built (NB10) · approved 2026-11-20 |
 | 24 | Today's pages | Open one with `> [!question]` or `> [!done]` | They show as Question and Answered callouts; the questions list still finds them | Nothing | `wb question list` | `old_question_callouts_still_read` | built (NB10) · approved 2026-11-20 |
-| 46 | A callout | Write several lines and a nested list in it | It holds them all (46a); the Questions list (Library) filters by kind, Question or Answered (46b); Key points and Notes are found by Ctrl+K (46c) and by a List in a page grouped by callout kind (46d) | The callout's lines | `wb question list [--kind question\|answered]`, `wb callout list [--kind key\|note]`, `wb find WORDS --kind key\|note` | `callout_kinds_found` | [ ] partly (NB10; 46b–d lists come with NB13/NB14) · approved 2026-11-20 |
+| 46 | A callout | Write several lines and a nested list in it | It holds them all (46a); the Questions list (Library) filters by kind, Question or Answered (46b); Key points and Notes are found by Ctrl+K (46c) and by a List in a page grouped by callout kind (46d) | The callout's lines | `wb question list [--kind question\|answered]`, `wb callout list [--kind key\|note]`, `wb find WORDS --kind key\|note` | `callout_kinds_found` | [ ] partly (NB10: 46a and `wb`; NB13: 46b the Questions list's Question/Answered chips, 46c Key points and Notes in Ctrl+K; 46d the List in a page grouped by callout kind comes with NB14) · approved 2026-11-20 |
 
 ### Color, N9
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
 | 25 | Selection bar or block menu | Color ▾ | Text or Background, 8 plain colors and Default, for emphasis only; text color means nothing (marks carry meaning) (25a); the 8 pale backgrounds on words and on a block (25b) | The words in a `<span data-bg>`, or the block's whole text in one (decided 2026-11-21) | `wb block set`; `wb block color ID N NAME --count K` | `color_menu_plain_colors`, `block_background_color` | built (NB4, NB6) · approved 2026-11-20 |
-| 26 | A folder's ⋯ › Color, or New folder | Pick one of the folder colors (as today) | The folder's color is the only organizing color: its pages show the folder's dot by the title and in the side list; nothing is added to any color list | The folder's color | `wb folder color NAME COLOR` | `folder_color_dots_its_pages` | [ ] approved 2026-11-20 |
+| 26 | A folder's ⋯ › Color, or New folder | Pick one of the folder colors (as today) | The folder's color is the only organizing color: its pages show the folder's dot by the title and in the side list; nothing is added to any color list | The folder's color | `wb folder color NAME COLOR` | `folder_color_dots_its_pages` | built (NB13) · approved 2026-11-20 |
 
 ### The page, N7 and N8
 
@@ -331,8 +351,8 @@ person's existing pages read.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Proposed test | Built |
 |---|---|---|---|---|---|---|---|
-| 34 | Anywhere | Ctrl+K | The Library's one search: Recents when empty; results grouped; a live preview of the highlighted result on the right, showing lists, callouts and tables as in the page (34a–34c); folders show with their color and page count (34d); Enter opens; Esc returns | Nothing | `wb find WORDS` | `quick_search_preview_and_recents` | [ ] approved 2026-11-20 |
-| 35 | Side list | Recents | **Recents replaces Today:** a folding group of the last 8 pages opened, newest first, above Pinned, Folders, Pages | Nothing (read from the trail) | `wb history list` | `side_list_recents_replaces_today` | [ ] approved 2026-11-20 |
+| 34 | Anywhere | Ctrl+K | The Library's one search: Recents when empty; results grouped; a live preview of the highlighted result on the right, showing lists, callouts and tables as in the page (34a–34c); folders show with their color and page count (34d); Enter opens; Esc returns | Nothing | `wb find WORDS` | `quick_search_preview_and_recents` | built (NB13) · approved 2026-11-20 |
+| 35 | Side list | Recents | **Recents replaces Today:** a folding group of the last 8 pages opened, newest first, above Pinned, Folders, Pages | Nothing (read from the trail) | `wb history list` | `side_list_recents_replaces_today` | built (NB13) · approved 2026-11-20 |
 | 36 | / menu | List in a page | A folder acts as the database: each page in it is a row; a column is a page property from its front matter; + New page adds a page to the folder; + Property adds a column; Filters above | One `view` fence; a new page; a property in front matter | `wb block add ID` with a `view` fence; `wb page views`; `wb page prop ID NAME VALUE`, *proposed* | `list_in_a_page_folder_as_database` | [ ] approved 2026-11-20 |
 | 48 | / menu | Table | A plain table you type into: + adds a row at the foot or a column at the right; nothing is linked | The table in Markdown | `wb block add ID` with a table | `plain_table_add_row_column` | [ ] approved 2026-11-20 |
 | 47 | A list in a page | View ▾, Group by | Table, List, Gallery, Board; Calendar and Timeline later (47a–47d); Group by gathers rows under a heading per folder, callout kind or property, each foldable with its count (47e) | The `view` fence's view and grouping | `wb page views`, *proposed* `--view board --group folder` | `list_views_and_group_by` | [ ] approved 2026-11-20 |

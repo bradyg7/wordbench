@@ -3,7 +3,7 @@
 // ↑ ↓ move the highlight, Enter picks, Esc or a click outside closes and focus returns to where it was.
 // The menu is fixed-position, so opening it never moves anything on the page.
 
-export type MenuItem = { id: string; label: string; icon?: string; iconClass?: string; iconData?: Record<string, string>; /** inline style of the icon (a swatch's color) */ iconStyle?: string; hint?: string; /** a second, quieter line under the label (the / menu's Callout: its kinds) */ description?: string; keywords?: string[]; /** drawn in the warning color (Delete) */ danger?: boolean };
+export type MenuItem = { id: string; label: string; icon?: string; iconClass?: string; iconData?: Record<string, string>; /** inline style of the icon (a swatch's color) */ iconStyle?: string; hint?: string; /** a small round color after the icon (a folder's color) */ dot?: string; /** a second, quieter line under the label (the / menu's Callout: its kinds) */ description?: string; keywords?: string[]; /** drawn in the warning color (Delete) */ danger?: boolean };
 // `folded`: with nothing typed the group is one row (its title and what is in it); Enter or a click opens it. Typing finds its rows.
 export type MenuGroup = { title?: string; items: MenuItem[]; folded?: boolean };
 export type MenuOptions = {
@@ -16,6 +16,10 @@ export type MenuOptions = {
   label?: string;                                // the menu's accessible name
   /** Words at the foot in place of the key hints (the block menu's "Edited …" and word count); a line break makes a second line. */
   foot?: string;
+  /** Opens in the middle of the window (Ctrl+K), not under an element or a point. */
+  center?: boolean;
+  /** A pane on the right that shows the highlighted row (Ctrl+K's live preview); called each time the highlight moves, with null when there is no row. */
+  preview?: (item: MenuItem | null, into: HTMLElement) => void;
   onPick: (item: MenuItem) => void;
   onClose?: () => void;
 };
@@ -55,6 +59,15 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   foot.textContent = opts.foot ?? '↑↓ to move · Enter to pick · Esc to close';
   if (opts.foot) foot.style.whiteSpace = 'pre-line';
   el.append(input, list, foot);
+  let pv: HTMLElement | null = null;
+  let shownId: string | null | undefined;
+  if (opts.preview) {
+    el.classList.add('wbm-split');
+    pv = document.createElement('div');
+    pv.className = 'wbm-preview';
+    pv.setAttribute('aria-label', 'Preview');
+    el.append(pv);
+  }
 
   let rows: { item: MenuItem; el: HTMLElement }[] = [];
   let hi = 0;
@@ -65,6 +78,10 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   const mark = () => {
     rows.forEach((r, n) => { r.el.classList.toggle('on', n === hi); r.el.setAttribute('aria-selected', String(n === hi)); });
     rows[hi]?.el.scrollIntoView({ block: 'nearest' });
+    if (pv && opts.preview) {
+      const id = rows[hi]?.item.id ?? null;
+      if (id !== shownId) { shownId = id; opts.preview(rows[hi]?.item ?? null, pv); }
+    }
   };
   const render = () => {
     list.textContent = '';
@@ -106,13 +123,15 @@ export function openMenu(opts: MenuOptions): MenuHandle {
         const icon = document.createElement('span'); icon.className = `wbm-icon${item.iconClass ? ` ${item.iconClass}` : ''}`; icon.textContent = item.icon ?? '';
         if (item.iconData) Object.assign(icon.dataset, item.iconData);
         if (item.iconStyle) icon.style.cssText = item.iconStyle;
+        const dot = item.dot ? document.createElement('span') : null;
+        if (dot) { dot.className = 'wbm-dot'; dot.style.background = item.dot!; }
         const label = document.createElement('span'); label.className = 'wbm-label'; label.textContent = item.label;
         if (item.description) {
           const text = document.createElement('span'); text.className = 'wbm-text';
           const desc = document.createElement('span'); desc.className = 'wbm-desc'; desc.textContent = item.description;
           text.append(label, desc);
-          row.append(icon, text);
-        } else row.append(icon, label);
+          row.append(icon, ...(dot ? [dot] : []), text);
+        } else row.append(icon, ...(dot ? [dot] : []), label);
         if (item.hint) { const k = document.createElement('span'); k.className = 'wbm-hint'; k.textContent = item.hint; row.append(k); }
         row.addEventListener('mousedown', (e) => e.preventDefault());   // keep the filter field focused
         row.addEventListener('click', () => pick(item));
@@ -127,6 +146,11 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   const place = () => {
     const at = opts.at;
     let x = 0, y = 0;
+    if (opts.center) {
+      el.style.left = `${Math.max(8, (window.innerWidth - el.offsetWidth) / 2)}px`;
+      el.style.top = `${Math.max(8, Math.round(window.innerHeight * 0.12))}px`;
+      return;
+    }
     if (at instanceof HTMLElement) { const r = at.getBoundingClientRect(); x = r.left; y = r.bottom + 4; }
     else if (at) { x = at.x; y = at.y; }
     const w = el.offsetWidth, h = el.offsetHeight;
@@ -177,7 +201,7 @@ export function openMenu(opts: MenuOptions): MenuHandle {
   const handle: MenuHandle = {
     el, close: () => close(),
     setQuery: (q) => { input.value = q; render(); place(); },
-    refresh: () => { const keep = hi; render(); place(); hi = Math.min(keep, Math.max(0, rows.length - 1)); mark(); },
+    refresh: () => { const keep = hi; shownId = undefined; render(); place(); hi = Math.min(keep, Math.max(0, rows.length - 1)); mark(); },
     get open() { return isOpen; },
   };
   current = handle;
