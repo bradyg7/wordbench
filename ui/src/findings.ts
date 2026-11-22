@@ -9,6 +9,7 @@
 // drop whose File objects the page reads, so the bytes go to Rust as they are (attachToFinding).
 import { attachToFinding, wb } from './api';
 import { app, here } from './app';
+import { listChips } from './chips';
 import { dock } from './panes';
 import { toast } from './sheets';
 import { button, h, icon, movable, sizeClass } from './ui';
@@ -171,13 +172,13 @@ export function findingBox() {
   input.focus();
 }
 
-let tagFilter = '';
+const chips = listChips('findings');
 let showHandled = false;
 
 /** The Findings pane: the open findings, newest first, each with what was on screen; Handled, Open again, Delete. */
 export function openFindings() {
   return dock.open('findings', 'Findings', 'findings', 'right', async el => {
-    const d = await wb(['findings', ...(showHandled ? ['--all'] : []), ...(tagFilter ? ['--tag', tagFilter] : [])]);
+    const d = await wb(['findings', ...(showHandled ? ['--all'] : []), ...chips.argv()]);
     el.replaceChildren();
     const hd = h('header', 'pane-head');
     hd.append(h('h2', 'pane-title', 'Findings'), h('div', 'pane-sub', `About the app, apart from your study · ${d.counts.open} open, ${d.counts.handled} handled · wb findings`));
@@ -186,15 +187,10 @@ export function openFindings() {
     acts.append(button('btn small primary', '+ A finding', () => findingBox()));
     acts.append(button('btn small', showHandled ? 'Only the open ones' : 'Show the handled too', () => { showHandled = !showHandled; void dock.find('findings')?.refresh?.(); }));
     el.append(acts);
-    // one chip per design folder the open (or shown) findings touch; a click narrows the list to that folder
-    if (tagFilter || d.findings.some((f: any) => f.tags?.length)) {
-      const all = tagFilter ? [tagFilter] : [...new Set<string>(d.findings.flatMap((f: any) => f.tags ?? []))].sort();
-      const tags = h('div', 'wrap finding-tags finding-tag-filter');
-      for (const t of all) tags.append(button(`pill finding-tag${t === tagFilter ? ' on' : ''}`, t, () => { tagFilter = t === tagFilter ? '' : t; void dock.find('findings')?.refresh?.(); }));
-      if (tagFilter) tags.append(button('link-btn', 'Every tag', () => { tagFilter = ''; void dock.find('findings')?.refresh?.(); }));
-      el.append(tags);
-    }
-    if (!d.findings.length) el.append(h('p', 'muted small', showHandled ? 'No findings yet.' : 'No open findings. Ctrl+Shift+J writes one from anywhere.'));
+    // Add filter (filters-v2 row 28): Status, Kind (the design folders a finding is tagged with) and Written, the one chip component
+    chips.absorb(d);
+    el.append(chips.row(() => void dock.find('findings')?.refresh?.()));
+    if (!d.findings.length) el.append(h('p', 'muted small', chips.chips.length ? 'No findings match these filters.' : showHandled ? 'No findings yet.' : 'No open findings. Ctrl+Shift+J writes one from anywhere.'));
     for (const f of d.findings) {
       const c = h('div', `note-card finding${f.status === 'handled' ? ' done' : ''}`);
       c.dataset.id = f.id;

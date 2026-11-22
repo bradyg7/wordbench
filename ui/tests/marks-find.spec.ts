@@ -29,7 +29,7 @@ async function openSearch(page: Page, kind: string, extra: Record<string, unknow
 
 test.beforeEach(async ({}, info) => { test.skip(info.project.name === 'webkit-phone' && !info.title.startsWith('phone:'), 'desktop'); });
 
-test('row 51: the kinds menu has Marks (and Margin notes); Marks shows the filters and every mark with its words and reference', async ({ page }) => {
+test('row 51: the kinds menu has Marks (and Margin notes); Marks shows the chip row and every mark with its words and reference', async ({ page }) => {
   await openSearch(page, 'mark');
   await expect(page.locator('.nb-kind')).toHaveText('Marks ▾');
   const rows = page.locator('.nb-marks .nb-mrow');
@@ -44,59 +44,10 @@ test('row 51: the kinds menu has Marks (and Margin notes); Marks shows the filte
   }
   // the old highlight is among them, with its words
   expect(marksAll.some(m => m.old && m.snippet)).toBe(true);
-  // the simple controls: kind, legend entry, book, date
-  const f = page.locator('.nb-mfilters');
-  await expect(f.getByLabel('Kind of mark')).toBeVisible();
-  await expect(f.getByLabel('Legend entry')).toBeVisible();
-  await expect(f.getByLabel('Book')).toBeVisible();
-  await expect(f.getByLabel('Since')).toBeVisible();
-  await expect(f.getByLabel('Until')).toBeVisible();
-  // the legend's entries are the style choices
-  const names = await f.getByLabel('Legend entry').locator('option').allTextContents();
-  const legend = fx('legend');
-  expect(names).toEqual(['Any style', ...[...legend.entries, ...legend.unlisted].map((e: any) => e.label)]);
+  // the T12 controls are retired into the one chip row (filters-v2 rows 26 and 27, NB17: `highlights_chips` in lists-chips.spec.ts)
+  await expect(page.locator('.nb-kind-chips').getByRole('button', { name: 'Add filter' })).toBeVisible();
+  await expect(page.locator('.nb-mfilters')).toHaveCount(0);
   await page.locator('.pane-notebook').screenshot({ path: fileURLToPath(new URL('../../design/features/marks/build/t12.png', import.meta.url)) });
-});
-
-test('row 51: each filter asks `wb find --kind mark` with it, and the list is what came back', async ({ page }) => {
-  const asked = await openSearch(page, 'mark');
-  const f = page.locator('.nb-mfilters');
-  const rows = page.locator('.nb-marks .nb-mrow');
-  const was = () => asked.filter(a => a.startsWith('find-kind-mark')).at(-1);
-
-  await f.getByLabel('Kind of mark').selectOption('underline');
-  await expect.poll(was).toBe('find-kind-mark-mark-kind-underline');
-  const under = fx('find-kind-mark-mark-kind-underline');
-  await expect(rows).toHaveCount(under.count);
-  expect(under.count).toBeLessThan(marksAll.length);
-  await expect(page.locator('.nb-kind-line')).toHaveText(new RegExp(`^Marks · ${under.count} of ${under.total}`));
-  await f.getByLabel('Kind of mark').selectOption('');
-
-  await f.getByLabel('Legend entry').selectOption('underline:blue:2');
-  await expect.poll(was).toBe('find-kind-mark-style-underline-blue-2');
-  await expect(rows).toHaveCount(fx('find-kind-mark-style-underline-blue-2').count);
-  await f.getByLabel('Legend entry').selectOption('');
-
-  await f.getByLabel('Book').fill('Numbers');
-  await f.getByLabel('Book').press('Enter');
-  await f.getByLabel('Book').blur();
-  await expect.poll(was).toBe('find-kind-mark-book-numbers');
-  await expect(rows).toHaveCount(fx('find-kind-mark-book-numbers').count);
-  await f.getByLabel('Book').fill('Psalms');
-  await f.getByLabel('Book').blur();
-  await expect.poll(was).toBe('find-kind-mark-book-psalms');
-  await expect(rows).toHaveCount(0);
-  await expect(page.locator('.nb-marks .nb-empty')).toHaveText('No marks found.');
-  await f.getByLabel('Book').fill('');
-  await f.getByLabel('Book').blur();
-
-  await f.getByLabel('Since').fill('2020-01-01');
-  await expect.poll(was).toBe('find-kind-mark-since-2020-01-01');
-  await expect(rows).toHaveCount(fx('find-kind-mark-since-2020-01-01').count);
-  await f.getByLabel('Since').fill('');
-  await f.getByLabel('Until').fill('2020-01-01');
-  await expect.poll(was).toBe('find-kind-mark-until-2020-01-01');
-  await expect(rows).toHaveCount(0);
 });
 
 test('row 51: a click on a mark opens the reader there, and Back returns it', async ({ page }) => {

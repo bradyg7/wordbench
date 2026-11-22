@@ -205,3 +205,43 @@ function openPicker(host: ChipHost, p: FilterProp, at: HTMLElement, chip?: Chip)
   });
   return handle;
 }
+
+// ---- the other lists (filters-v2 rows 26-33, NB17) -------------------------------------------------------------------------------
+// A list that is not a list in a page keeps its chips for the life of the window (not on disk) and asks its `wb` command with the same
+// words: `--filter "Book is Numbers"`, repeatable. The command's answer holds `properties` (what the list can be narrowed by, with counts)
+// and the list shows only those.
+
+const kept = new Map<string, Chip[]>();
+
+export interface ListChips {
+  chips: Chip[];
+  props: FilterProp[];
+  /** `--filter "…"` for each chip, for the command's argv. */
+  argv(): string[];
+  /** Read the answer's `properties`. */
+  absorb(answer: { properties?: FilterProp[] } | null | undefined): void;
+  /** The chip row; `redo` draws the list again after any change. */
+  row(redo: () => void, opts?: { nested?: boolean }): HTMLElement;
+}
+
+export function listChips(key: string): ListChips {
+  const state: ListChips = {
+    get chips() { return kept.get(key) ?? []; },
+    props: [],
+    argv: () => (kept.get(key) ?? []).flatMap(c => ['--filter', chipWords(c)]),
+    absorb(answer) { state.props = (answer?.properties ?? []).map(p => ({ ...p, group: p.group ?? 'page' })); },
+    row(redo, opts) {
+      const set = (v: Chip[]) => { if (v.length) kept.set(key, v); else kept.delete(key); redo(); };
+      return chipRow({
+        props: state.props, chips: state.chips, nested: opts?.nested,
+        apply: text => { const c = parseFilterText(text); if (c) set([...state.chips.filter(x => x.property.toLowerCase() !== c.property.toLowerCase()), c]); },
+        remove: property => set(state.chips.filter(x => x.property.toLowerCase() !== property.toLowerCase())),
+        clear: () => set([]),
+      });
+    },
+  } as ListChips;
+  return state;
+}
+
+/** Drop a list's chips (a new search starts with none). */
+export function forgetChips(key: string) { kept.delete(key); }

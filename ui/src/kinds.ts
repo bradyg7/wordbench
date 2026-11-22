@@ -2,14 +2,16 @@
 // - The kinds are one menu at the start of the search field, with counts; choosing one narrows the results and shows as one
 //   line of text. No chips, no side list of kinds.
 // - Margin notes (row 52): a result opens the reader at that chapter with the margin showing that note; Back returns.
-// - Marks (row 51): `wb find --kind mark` with its filters as simple controls (kind, legend entry, book, date); a result
-//   opens the reader there; Back returns.
+// - Marks (row 51): `wb find --kind mark`; a result opens the reader there; Back returns. Its filters are the one chip component
+//   (filters-v2 rows 26 and 27, NB17: the T12 controls are retired into a Kind chip and a Legend entry chip, with Book and Written).
+//   Margin notes and Highlights take the same chips, each only the properties it has.
 import { wb } from './api';
 import { app, goTo } from './app';
 import { sampleOf, type Kind } from './markbar';
 import { toast } from './sheets';
 import { openColormap } from './colormap';
 import { button, h, popMenu } from './ui';
+import { listChips } from './chips';
 
 export const KINDS: [string, string][] = [['', 'Everything'], ['page', 'Pages'], ['save', 'Saves'], ['question', 'Questions'], ['margin', 'Margin notes'], ['highlight', 'Highlights'], ['mark', 'Marks']];
 export const kindName = (k: string) => KINDS.find(x => x[0] === k)?.[1] || 'Everything';
@@ -63,110 +65,59 @@ function showReturn(host: HTMLElement) {
   host.prepend(b);
 }
 
-/** What a kind's search finds, as plain rows: each opens where it lives. */
+/** What a kind's search finds, as plain rows: each opens where it lives. Margin notes, Highlights and Marks take the one chip row. */
 export async function kindResults(kind: string, words: string, host: { openPage: (id: string) => void }): Promise<HTMLElement> {
-  if (kind === 'mark') return markResults(words);
-  const r = await wb(['find', ...(words.trim() ? [words.trim()] : []), '--kind', kind]);
-  const scroll = h('div', 'nb-scroll nb-kind-results');
-  const list = h('div', 'nb-klist');
-  scroll.append(h('p', 'muted small nb-kind-line', `${kindName(kind)} · ${r.count}${r.total !== r.count ? ` of ${r.total}` : ''}`), list);
-  for (const g of r.groups) {
-    for (const row of g.results) {
-      const it = h('button', 'nb-item');
-      it.dataset.id = String(row.id);
-      it.append(h('div', 'nb-item-title', row.title || 'Untitled'));
-      if (row.snippet) it.append(h('div', 'nb-item-preview', String(row.snippet).split('\n')[0]));
-      it.onclick = () => {
-        if (g.kind === 'highlight') void goTo(row.title);
-        else if (g.kind === 'save') void goTo(row.ref || row.title);
-        else if (g.kind === 'margin') openFromResult(list, () => app.showMarginNote(row.id, row.at));   // row 52
-        else host.openPage(row.page || row.id);   // a callout (row 46c) opens its page
-      };
-      list.append(it);
-    }
-  }
-  if (!r.count) list.append(h('p', 'muted nb-empty', `No ${kindName(kind).toLowerCase()} found.`));
-  if (kind === 'margin') showReturn(list);
-  return scroll;
-}
-
-// ---- the Marks search (row 51) -------------------------------------------------------------------------------------------
-
-/** What was chosen last, kept while the window is open. `style` is `kind:color[:lines]`, as the legend lists them. */
-const markFilter = { kind: '', style: '', book: '', since: '', until: '' };
-const MARK_KINDS: [string, string][] = [['', 'Any kind'], ['highlight', 'Highlight'], ['underline', 'Underline'], ['circle', 'Circle'], ['box', 'Box'], ['arrow', 'Arrow']];
-
-async function markResults(words: string): Promise<HTMLElement> {
-  const scroll = h('div', 'nb-scroll nb-kind-results nb-marks');
-  const filters = h('div', 'nb-mfilters');
+  const chipped = kind === 'margin' || kind === 'highlight' || kind === 'mark';
+  const chips = chipped ? listChips(`find:${kind}`) : null;
+  const scroll = h('div', `nb-scroll nb-kind-results${kind === 'mark' ? ' nb-marks' : ''}`);
+  const chipBox = h('div', 'nb-kind-chips');
   const line = h('p', 'muted small nb-kind-line', '');
-  const list = h('div', 'nb-mlist');
-  let legend: { entries: any[]; unlisted: any[] } = { entries: [], unlisted: [] };
-  try { legend = await wb(['legend']); } catch { /* no legend to choose from */ }
-  const styles: [string, string][] = [['', 'Any style'], ...[...(legend.entries || []), ...(legend.unlisted || [])].map((e: any): [string, string] => [e.style, e.label])];
-
-  const select = (label: string, options: [string, string][], value: string, set: (v: string) => void) => {
-    const s = h('select', 'field nb-mfilter') as HTMLSelectElement;
-    s.setAttribute('aria-label', label);
-    for (const [v, text] of options) s.append(new Option(text, v));
-    s.value = options.some(o => o[0] === value) ? value : '';
-    s.onchange = () => { set(s.value); void load(); };
-    return s;
-  };
-  const book = h('input', 'field nb-mfilter nb-mbook') as HTMLInputElement;
-  book.setAttribute('aria-label', 'Book');
-  book.placeholder = 'Any book';
-  book.setAttribute('list', 'nb-mbooks');
-  book.value = markFilter.book;
-  const names = h('datalist') as HTMLDataListElement;
-  names.id = 'nb-mbooks';
-  for (const b of app.books) names.append(new Option(b.name));
-  book.onchange = () => { markFilter.book = book.value.trim(); void load(); };
-  const date = (label: string, key: 'since' | 'until') => {
-    const wrap = h('label', '', `${label} `);
-    const i = h('input', 'field nb-mfilter') as HTMLInputElement;
-    i.type = 'date';
-    i.setAttribute('aria-label', label);
-    i.value = markFilter[key];
-    i.onchange = i.oninput = () => { if (markFilter[key] === i.value) return; markFilter[key] = i.value; void load(); };
-    wrap.append(i);
-    return wrap;
-  };
-  filters.append(
-    select('Kind of mark', MARK_KINDS, markFilter.kind, v => { markFilter.kind = v; }),
-    select('Legend entry', styles, markFilter.style, v => { markFilter.style = v; }),
-    book, names, date('Since', 'since'), date('Until', 'until'),
-  );
-  const colors = h('button', 'btn small nb-colors', 'Colors across the Bible') as HTMLButtonElement;
-  colors.type = 'button';
-  colors.onclick = () => void openColormap();
-  scroll.append(colors, filters, line, list);
+  const list = h('div', kind === 'mark' ? 'nb-mlist' : 'nb-klist');
+  if (kind === 'mark') {
+    const colors = h('button', 'btn small nb-colors', 'Colors across the Bible') as HTMLButtonElement;
+    colors.type = 'button';
+    colors.onclick = () => void openColormap();
+    scroll.append(colors);
+  }
+  scroll.append(chipBox, line, list);
 
   async function load() {
-    // the order is fixed, so the same filters are the same `wb` line: find [words] --kind mark [--style] [--mark-kind] [--book] [--since] [--until]
-    const argv = ['find', ...(words.trim() ? [words.trim()] : []), '--kind', 'mark'];
-    if (markFilter.style && styles.some(s => s[0] === markFilter.style)) argv.push('--style', markFilter.style);
-    if (markFilter.kind) argv.push('--mark-kind', markFilter.kind);
-    if (markFilter.book) argv.push('--book', markFilter.book);
-    if (markFilter.since) argv.push('--since', markFilter.since);
-    if (markFilter.until) argv.push('--until', markFilter.until);
+    // the order is fixed, so the same chips are the same `wb` line: find [words] --kind K [--filter "…"]…
+    const argv = ['find', ...(words.trim() ? [words.trim()] : []), '--kind', kind, ...(chips?.argv() ?? [])];
     list.replaceChildren();
     let r: any;
     try { r = await wb(argv); } catch (x) { line.textContent = String((x as Error)?.message ?? x); return; }
-    line.textContent = `Marks · ${r.count}${r.total !== r.count ? ` of ${r.total}` : ''}`;
-    for (const row of r.groups?.[0]?.results ?? []) {
-      const it = h('button', 'nb-item nb-mrow');
-      it.dataset.id = String(row.id);
-      const top = h('div', 'nb-mtop');
-      top.append(sampleOf(row.mark_kind as Kind, row.color, row.lines), h('span', 'nb-item-title', row.title), h('span', 'nb-mlegend', row.legend || ''));
-      it.append(top);
-      if (row.snippet) it.append(h('div', 'nb-mwords', `“${row.snippet}”`));
-      // the reader goes there; Back returns it to where it was
-      it.onclick = () => openFromResult(list, () => goTo(row.at));
-      list.append(it);
+    if (chips) { chips.absorb(r); chipBox.replaceChildren(chips.row(() => void load())); }
+    line.textContent = `${kindName(kind)} · ${r.count}${r.total !== r.count ? ` of ${r.total}` : ''}`;
+    for (const g of r.groups) {
+      for (const row of g.results) {
+        if (g.kind === 'mark') {
+          const it = h('button', 'nb-item nb-mrow');
+          it.dataset.id = String(row.id);
+          const top = h('div', 'nb-mtop');
+          top.append(sampleOf(row.mark_kind as Kind, row.color, row.lines), h('span', 'nb-item-title', row.title), h('span', 'nb-mlegend', row.legend || ''));
+          it.append(top);
+          if (row.snippet) it.append(h('div', 'nb-mwords', `“${row.snippet}”`));
+          // the reader goes there; Back returns it to where it was
+          it.onclick = () => openFromResult(list, () => goTo(row.at));
+          list.append(it);
+          continue;
+        }
+        const it = h('button', 'nb-item');
+        it.dataset.id = String(row.id);
+        it.append(h('div', 'nb-item-title', row.title || 'Untitled'));
+        if (row.snippet) it.append(h('div', 'nb-item-preview', String(row.snippet).split('\n')[0]));
+        it.onclick = () => {
+          if (g.kind === 'highlight') void goTo(row.title);
+          else if (g.kind === 'save') void goTo(row.ref || row.title);
+          else if (g.kind === 'margin') openFromResult(list, () => app.showMarginNote(row.id, row.at));   // row 52
+          else host.openPage(row.page || row.id);   // a callout (row 46c) opens its page
+        };
+        list.append(it);
+      }
     }
-    if (!r.count) list.append(h('p', 'muted nb-empty', 'No marks found.'));
-    showReturn(list);
+    if (!r.count) list.append(h('p', 'muted nb-empty', chips?.chips.length ? `No ${kindName(kind).toLowerCase()} match these filters.` : `No ${kindName(kind).toLowerCase()} found.`));
+    if (kind === 'margin' || kind === 'mark') showReturn(list);
   }
   await load();
   return scroll;

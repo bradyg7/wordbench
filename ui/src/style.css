@@ -278,16 +278,13 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 .nb-kind { flex: none; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .nb-kind-line { margin: 4px 8px; }
-/* the Marks search (marks T12, row 51): filters as simple controls, then the marks with their words */
-.nb-mfilters { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px; }
-.nb-mfilters :is(select, input) { min-width: 0; max-width: 100%; font: var(--type-small); }
-.nb-mfilters .nb-mbook { width: 120px; }
-.nb-mfilters label { display: inline-flex; align-items: center; gap: 4px; font: var(--type-caption); color: var(--muted); }
+/* the Marks search (marks T12, row 51): its filters are the one chip row (filters-v2 NB17), then the marks with their words */
+.nb-kind-chips { padding: 0 8px; }
 .nb-mrow .nb-mtop { display: flex; align-items: center; gap: 8px; }
 .nb-mrow .nb-mlegend { font: var(--type-caption); color: var(--muted); }
 .nb-mrow .nb-mwords { font: var(--type-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nb-return { margin: 4px 8px; }
-@media (pointer: coarse), (max-width: 600px) { .nb-mfilters :is(select, input) { min-height: 44px; } .nb-mrow { min-height: 44px; } }
+@media (pointer: coarse), (max-width: 600px) { .nb-mrow { min-height: 44px; } }
 /* what is on a verse, in its card (marks T12, row 53) */
 .vm { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
 .vm[hidden] { display: none; }

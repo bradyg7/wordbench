@@ -7,6 +7,7 @@ import { layers } from './layers';
 import { closeSheet, compact, hideCard, openSheet, sheetOpen, showCard, toast } from './sheets';
 import { button, h, hoverMode, icon, linkedText, placeGo, placePill, popMenu, refChoice } from './ui';
 import { openSettings } from './settings';
+import { listChips } from './chips';
 import { openNotebook, openThreadPage, placeMenu, remove as removeNote, takeOff } from './notebook';
 
 export let dock: Dock;
@@ -249,11 +250,16 @@ export function openSearch(query: string, scope = 'all') {
     let rows: any[] = [], d: any;
     const hd = head(el, q(query), '');
     resultsBar(el, list);
+    // Add filter (filters-v2 row 31): Book, Testament and Version, the one chip component, kept while the window is open
+    const lc = listChips(`search|${query}|${scope}`);
+    const cbox = h('div', 'list-chips');
     const body = h('div', 'rows');
     const more = button('btn wide', 'More', async () => { await page(rows.length); });
-    el.append(body, more);
+    el.append(cbox, body, more);
     const page = async (offset: number) => {
-      d = await wb(['search', query, '--scope', scope, '--offset', String(offset)]);
+      d = await wb(['search', query, '--scope', scope, '--offset', String(offset), ...lc.argv()]);
+      lc.absorb(d);
+      cbox.replaceChildren(lc.row(() => void page(0)));
       rows = offset ? rows.concat(d.rows) : d.rows;
       (hd.querySelector('.pane-sub') as HTMLElement).textContent = `${d.verses} verse${d.verses === 1 ? '' : 's'} in ${scopeLabel(scope)}`;
       more.hidden = !d.more;
@@ -276,7 +282,7 @@ export function openSearch(query: string, scope = 'all') {
         tickable(list, row, `${r.ref.code}.${r.ref.c}:${r.ref.v}`);
         return row;
       });
-      if (!rows.length) body.append(h('p', 'muted', 'No verse has all of these words.'));
+      if (!rows.length) body.append(h('p', 'muted', lc.chips.length ? 'No verse matches these filters.' : 'No verse has all of these words.'));
     };
     frontResults = list;
     await page(0);
@@ -291,12 +297,12 @@ const MARK_NAMES: Record<string, string> = { both: 'both', s: 'only the original
  * `cat` narrows to one kind of mark (both, s: only the original, e: only the English). */
 export interface UsesOpts { rendering?: string; cat?: string }
 
-export async function usesArgs(strong: string, word: string, scope: string, offset = 0, o: UsesOpts = {}) {
+export async function usesArgs(strong: string, word: string, scope: string, offset = 0, o: UsesOpts = {}, extra: string[] = []) {
   const argv = ['uses', strong || word];
   if (strong && o.rendering) argv.push('--rendering', o.rendering);
   else if (strong && word) argv.push('--word', word);
   if (o.cat && o.cat !== 'all') argv.push('--cat', o.cat);
-  argv.push('--scope', scope || 'all', '--offset', String(offset));
+  argv.push('--scope', scope || 'all', '--offset', String(offset), ...extra);
   return wb(argv);
 }
 
@@ -314,12 +320,18 @@ export function openUses(strong: string, word: string, scope = 'all', o: UsesOpt
     const hd = head(el, label, '');
     const chips = h('div', 'chips');
     el.append(chips);
+    // Add filter (filters-v2 row 32): Book, Testament and Strong's number, the one chip component, kept while the window is open
+    const lc = listChips(`uses|${strong}|${word}|${scope}|${o.rendering ?? ''}`);
+    const cbox = h('div', 'list-chips');
+    el.append(cbox);
     resultsBar(el, list);
     const body = h('div', 'rows');
     const more = button('btn wide', 'More', () => page(rows.length));
     el.append(body, more);
     const page = async (offset: number) => {
-      const d = await usesArgs(strong, word, scope, offset, { ...o, cat });
+      const d = await usesArgs(strong, word, scope, offset, { ...o, cat }, lc.argv());
+      lc.absorb(d);
+      cbox.replaceChildren(lc.row(() => void page(0)));
       rows = offset ? rows.concat(d.rows) : d.rows;
       (hd.querySelector('.pane-sub') as HTMLElement).textContent = `${d.occurrences} time${d.occurrences === 1 ? '' : 's'} in ${d.verses} verse${d.verses === 1 ? '' : 's'}, ${scopeLabel(scope)}`;
       // each kind of mark is a filter: a click shows only those verses, a second click all of them again
@@ -504,11 +516,16 @@ export function openNear(a: string, b: string, within: number, scope: string) {
     const list: ResultList = { pane, ticked: new Set(), shape: 'verses', redraw: () => draw(), anchors: () => rows.map(r => `${r.ref.code}.${r.ref.c}:${r.ref.v}`) };
     const hd = head(el, `${a} · ${b}`, '');
     resultsBar(el, list);
+    // Add filter (filters-v2 row 31): Book, Testament and Version, the one chip component, kept while the window is open
+    const lc = listChips(`near|${a}|${b}|${within}|${scope}`);
+    const cbox = h('div', 'list-chips');
     const body = h('div', 'rows');
     const more = button('btn wide', 'More', () => page(rows.length));
-    el.append(body, more);
+    el.append(cbox, body, more);
     const page = async (offset: number) => {
-      const d = await wb(['near', a, b, '--within', String(within), '--scope', scope, '--offset', String(offset)]);
+      const d = await wb(['near', a, b, '--within', String(within), '--scope', scope, '--offset', String(offset), ...lc.argv()]);
+      lc.absorb(d);
+      cbox.replaceChildren(lc.row(() => void page(0)));
       rows = offset ? rows.concat(d.rows) : d.rows;
       (hd.querySelector('.pane-sub') as HTMLElement).textContent = `${d.verses} verses where they come within ${within} words, ${scopeLabel(scope)}`;
       more.hidden = !d.more;
@@ -526,7 +543,7 @@ export function openNear(a: string, b: string, within: number, scope: string) {
         tickable(list, row, `${r.ref.code}.${r.ref.c}:${r.ref.v}`);
         return row;
       }));
-      if (!rows.length) body.append(h('p', 'muted', 'They do not come that close anywhere here.'));
+      if (!rows.length) body.append(h('p', 'muted', lc.chips.length ? 'No verse matches these filters.' : 'They do not come that close anywhere here.'));
     };
     await page(0);
   });

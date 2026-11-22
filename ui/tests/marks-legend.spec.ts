@@ -34,10 +34,17 @@ async function ready(page: Page, opts: { state?: State; uses?: Record<string, an
     const name = new URL(route.request().url()).pathname.split('/').pop()!.replace(/\.json$/, '');
     if (name === 'legend') return route.fulfill({ json: run.state });
     if (name.startsWith('legend-uses-')) {
-      const style = Object.keys(run.uses).find(s => name === `legend-uses-${slug(s)}`);
+      const style = Object.keys(run.uses).find(s => name === `legend-uses-${slug(s)}` || name.startsWith(`legend-uses-${slug(s)}-filter-`));
       if (!style) return route.fallback();
+      // `--filter "Book is X"` (filters-v2 row 29): the rows narrowed by the exact words the window sent
+      const argv: string[] = JSON.parse(decodeURIComponent(route.request().headers()['x-wb-argv'] ?? '[]'));
+      const books = argv.flatMap((a, i) => (argv[i - 1] === '--filter' ? [/^Book is (.+)$/.exec(a)?.[1]] : [])).filter(Boolean) as string[];
+      const all = run.uses[style];
+      const list = books.length ? all.filter(m => books.some(b => b === m.book)) : all;
+      const names = [...new Set(all.map(m => m.book))];
       const e = [...run.state.entries, ...run.state.unlisted].find(x => slug(x.style) === slug(style)) ?? { label: style, style, kind: 'underline', color: 'blue', lines: 2, listed: true };
-      return route.fulfill({ json: { entry: e, count: run.uses[style].length, marks: run.uses[style] } });
+      return route.fulfill({ json: { entry: e, count: list.length, unfiltered: all.length, marks: list, filters: [],
+        properties: [{ name: 'Book', group: 'page', hint: 'The book (and chapter) the mark is in', type: 'choice', values: names.map(n => ({ value: n, label: n, count: all.filter(m => m.book === n).length })) }, { name: 'Kind', group: 'page', hint: 'Highlight, underline, circle, box or arrow', type: 'choice', values: [{ value: 'Underline', label: 'Underline', count: all.length }] }] } });
     }
     if (/^(legend-(set|add|move|rm)|mark-(rm|restore))-/.test(name)) {
       run.calls.push(name);
@@ -268,12 +275,15 @@ test('row 40: a count lists where the style is used: each mark with its words an
   await expect(rows.nth(0).locator('.lg-ref')).toHaveText('Numbers 25:11');
   await expect(rows.nth(0).locator('.lg-words')).toHaveText(`“${FOUR[0].words}”`);
   await expect(rows.nth(3).locator('.lg-ref')).toHaveText('Psalm 119:1');
-  // filter by book
-  await pane(page).getByLabel('Filter by book').fill('psa');
+  // Add filter (filters-v2 row 29): Book, picked from the books the style is used in; no typed field
+  await pane(page).getByRole('button', { name: 'Add filter' }).click();
+  await page.locator('.wbm-row .wbm-label').getByText('Book', { exact: true }).click();
+  await page.locator('.wbm-row .wbm-label').getByText('Psalms', { exact: true }).click();
+  await page.locator('.wbm-done').click();
   await expect(rows).toHaveCount(1);
-  await pane(page).getByLabel('Filter by book').fill('num');
-  await expect(rows).toHaveCount(3);
-  await pane(page).getByLabel('Filter by book').fill('');
+  await expect(pane(page).locator('.lg-title')).toHaveText('Fixture double · 1 of 4 marks');
+  await pane(page).getByRole('button', { name: 'Clear' }).click();
+  await expect(rows).toHaveCount(4);
   // a click opens the reader there
   await rows.nth(3).locator('.lg-use-go').click();
   await expect.poll(() => page.evaluate(() => (window as any).__wb.drawn.chapter.code + (window as any).__wb.drawn.chapter.chapter)).toBe('PSA119');

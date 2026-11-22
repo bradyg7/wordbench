@@ -727,7 +727,9 @@ fn colors(c: &Ctx<'_>, a: &Args) -> Res {
                 }
                 t["total"] = json!(total);
                 t["chapters_with"] = json!(with);
-                t["filter"] = json!({"label": styles.iter().map(|x| x.1.clone()).collect::<Vec<_>>().join(", ")});
+                if styles.len() != 1 {
+                    t["filter"] = json!({"label": styles.iter().map(|x| x.1.clone()).collect::<Vec<_>>().join(", ")});
+                }
                 t
             }
             None => {

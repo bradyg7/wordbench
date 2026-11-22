@@ -13,13 +13,14 @@ import { inkOf } from './markdraw';
 import { panel } from './markpanel';
 import { toast } from './sheets';
 import { h } from './ui';
+import { listChips, type FilterProp } from './chips';
 
 interface Sty { style: string; kind: Kind; color: string; lines?: number; label?: string; listed?: boolean }
 interface Fol { key: string; name: string; color: string }
 interface Cell { chapter: number; count?: number; styles?: (Sty & { count: number })[]; folders?: (Fol & { count: number })[] }
 interface MapBook { code: string; name: string; chapters: number; cells: Cell[] }
 interface Filter { style?: string; folder?: string; label: string; color?: string; kind?: Kind }
-interface MapAnswer { books: MapBook[]; styles: Sty[]; folders: Fol[]; filter: Filter | null; total: number; chapters_with: number }
+interface MapAnswer { properties?: FilterProp[]; books: MapBook[]; styles: Sty[]; folders: Fol[]; filter: Filter | null; total: number; chapters_with: number }
 
 const said = (x: unknown) => String((x as any)?.message ?? x).replace(/^Error:\s*/, '');
 const NAMED = ['yellow', 'green', 'blue', 'pink', 'orange'];
@@ -34,6 +35,8 @@ export function openColormap(pick?: { style?: string; folder?: string }) {
 class ColorMap {
   private view: { style?: string; folder?: string; back?: string };
   private labels = new Map<string, string>();
+  /** Add filter (filters-v2 row 30): Legend entry and Book, the one chip component, kept while the window is open */
+  private cc = listChips('colormap');
 
   constructor(private el: HTMLElement, pane: Pane, pick?: { style?: string; folder?: string }) {
     const p = pane as any;
@@ -43,7 +46,7 @@ class ColorMap {
   }
 
   async show(): Promise<void> {
-    const argv = ['marks', 'map', ...(this.view.style ? ['--style', this.view.style] : this.view.folder ? ['--folder', this.view.folder] : [])];
+    const argv = ['marks', 'map', ...(this.cc.chips.some(c => c.property === 'Legend entry') ? [] : this.view.style ? ['--style', this.view.style] : this.view.folder ? ['--folder', this.view.folder] : []), ...this.cc.argv()];
     let m: MapAnswer;
     try { m = await wb(argv); } catch (x) {
       // a style or folder that is gone: the whole map instead
@@ -51,6 +54,7 @@ class ColorMap {
       this.el.replaceChildren(h('p', 'muted small', said(x)));
       return;
     }
+    this.cc.absorb(m);
     this.draw(m);
   }
 
@@ -67,6 +71,7 @@ class ColorMap {
       : `Every style and folder color, chapter by chapter · ${some(m.chapters_with, 'chapter has', 'chapters have')} something`;
     el.append(h('p', 'muted small cm-sub', sub));
     el.append(this.chips(m));
+    el.append(this.cc.row(() => void this.show()));
     if (this.view.back) {
       const where = h('div', 'lg-where cm-where');
       const b = h('button', 'link-btn cm-return', `Back to ${this.view.back}`);

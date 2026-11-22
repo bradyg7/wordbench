@@ -9,6 +9,7 @@ import type { Pane } from './dock';
 import { verseCard } from './verses';
 import { toast } from './sheets';
 import { button, h } from './ui';
+import { listChips } from './chips';
 
 type Tab = 'english' | 'hebrew' | 'greek' | 'interlinear';
 const TABS: [Tab, string][] = [['english', 'English'], ['hebrew', 'Hebrew'], ['greek', 'Greek'], ['interlinear', 'Interlinear']];
@@ -89,6 +90,7 @@ class Book {
   private tabs = h('div', 'conc-tabs');
   private input = h('input', 'field conc-input') as HTMLInputElement;
   private seq = 0;
+  private lc = listChips('concordance');
   private letters: { letter: string; words: number; places: number }[] = [];
 
   constructor(private el: HTMLElement, private pane: Pane, private st: State) {}
@@ -242,7 +244,8 @@ class Book {
       this.body.append(h('p', 'muted conc-hint', 'Type a word above, or press a letter, to open its page. The page lists every place of the word in Bible order, like the printed Strong’s.'));
       return;
     }
-    const d = await wb(['concordance', st.word, '--forms', st.mode]);
+    const d = await wb(['concordance', st.word, '--forms', st.mode, ...this.lc.argv()]);
+    this.lc.absorb(d);
     this.step(`english ${st.word}`);
     const head = h('header', 'conc-head');
     head.append(h('h2', 'conc-word', st.word), h('span', 'muted small conc-count', `${d.places} places in ${d.verses} verses`));
@@ -262,12 +265,15 @@ class Book {
       head.append(sw);
     }
     this.body.append(head);
+    // Add filter (filters-v2 row 33): Book and Testament, the one chip component, kept while the window is open
+    this.body.append(this.lc.row(() => void this.draw()));
     if (d.kind === 'run') {
       const list = h('div', 'conc-lines');
       for (const l of d.lines) list.append(this.line(l, true));
       this.body.append(list);
     } else {
-      for (const g of d.groups) this.body.append(this.group(g, async () => (await wb(['concordance', st.word, '--forms', st.mode, '--book', g.code])).groups[0], d.kind === 'books'));
+      if (!d.places && this.lc.chips.length) this.body.append(h('p', 'muted', 'No place matches these filters.'));
+      for (const g of d.groups ?? []) this.body.append(this.group(g, async () => (await wb(['concordance', st.word, '--forms', st.mode, '--book', g.code, ...this.lc.argv()])).groups[0], d.kind === 'books'));
     }
     // the other forms, a click away (C22)
     const others = (d.forms || []).filter((f: any) => f.form !== st.word);

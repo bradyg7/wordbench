@@ -9,12 +9,13 @@ import { dock } from './panes';
 import type { Pane } from './dock';
 import { sampleOf, type Kind } from './markbar';
 import { openColormap } from './colormap';
+import { listChips, type FilterProp } from './chips';
 import { toast, toastUndo } from './sheets';
 import { h, icon, popMenu } from './ui';
 
 interface Entry { kind: Kind; color: string; lines?: number; name?: string; meaning?: string; quick?: boolean; key?: string; label: string; style: string; count: number; listed: boolean }
 interface Used { id: string; kind: string; color: string; lines?: number; at: string; code: string; book: string; chapter: number; verse: number; label: string; words: string; old: boolean }
-interface Uses { entry: Entry; count: number; marks: Used[] }
+interface Uses { entry: Entry; count: number; marks: Used[]; unfiltered?: number; properties?: FilterProp[] }
 
 const PEN_KINDS: [Kind, string][] = [['highlight', 'Highlight'], ['underline', 'Underline'], ['circle', 'Circle'], ['box', 'Box'], ['arrow', 'Arrow']];
 const KEYS = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `Ctrl+${n}`);
@@ -366,7 +367,8 @@ class LegendPane {
   private async showUses(): Promise<void> {
     const style = this.view.uses!;
     let u: Uses;
-    try { u = await wb(['legend', 'uses', style]); } catch (x) { toast(said(x)); this.view.uses = undefined; return this.show(); }
+    const chips = listChips(`legend:${style}`);
+    try { u = await wb(['legend', 'uses', style, ...chips.argv()]); } catch (x) { toast(said(x)); this.view.uses = undefined; return this.show(); }
     const el = this.el;
     el.replaceChildren();
     const hd = h('header', 'lg-head lg-uses-head');
@@ -376,7 +378,7 @@ class LegendPane {
     back.setAttribute('aria-label', 'Back to the legend');
     back.append(icon('left', 16));
     back.onclick = () => { this.view.uses = undefined; this.view.picked.clear(); void this.show(); };
-    hd.append(back, sampleOf(u.entry.kind, u.entry.color, u.entry.lines), h('h2', 'pane-title lg-title', `${u.entry.label} · ${marksOf(u.count)}`));
+    hd.append(back, sampleOf(u.entry.kind, u.entry.color, u.entry.lines), h('h2', 'pane-title lg-title', `${u.entry.label} · ${u.unfiltered !== undefined && u.unfiltered !== u.count ? `${u.count} of ${marksOf(u.unfiltered)}` : marksOf(u.count)}`));
     el.append(hd);
     if (this.view.back) {
       const where = h('div', 'lg-where');
@@ -386,11 +388,9 @@ class LegendPane {
       where.append(h('span', 'muted small', 'In the reader. '), b);
       el.append(where);
     }
-    const filter = h('input', 'field small lg-filter') as HTMLInputElement;
-    filter.placeholder = 'Filter by book';
-    filter.setAttribute('aria-label', 'Filter by book');
-    filter.value = this.view.filter;
-    el.append(filter);
+    // Add filter (filters-v2 row 29): Book (and its chapter) and Kind, the one chip component, for the life of the window
+    chips.absorb(u);
+    el.append(chips.row(() => void this.showUses()));
     const rows = h('div', 'lg-uses');
     rows.setAttribute('role', 'list');
     el.append(rows);
@@ -402,22 +402,17 @@ class LegendPane {
     del.append(icon('trash', 14), document.createTextNode(' Delete'));
     foot.append(all, h('span', 'grow'), del);
     el.append(foot);
-    const shown = () => {
-      const q = filter.value.trim().toLowerCase();
-      return u.marks.filter(m => !q || m.book.toLowerCase().includes(q));
-    };
+    const shown = () => u.marks;
     const paint = () => {
-      this.view.filter = filter.value;
       const list = shown();
       rows.replaceChildren();
-      if (!list.length) rows.append(h('p', 'muted small', u.marks.length ? 'No mark in a book by that name.' : 'No mark uses this style.'));
+      if (!list.length) rows.append(h('p', 'muted small', chips.chips.length ? 'No mark matches these filters.' : 'No mark uses this style.'));
       for (const m of list) rows.append(this.useRow(m, paint, style));
       const n = [...this.view.picked].filter(id => u.marks.some(m => m.id === id)).length;
       del.hidden = n === 0;
       del.lastChild!.textContent = ` Delete ${n} mark${n === 1 ? '' : 's'}`;
       all.hidden = !list.length;
     };
-    filter.oninput = paint;
     all.onclick = () => { const l = shown(); const every = l.every(m => this.view.picked.has(m.id)); l.forEach(m => (every ? this.view.picked.delete(m.id) : this.view.picked.add(m.id))); paint(); };
     del.onclick = () => void this.deleteMarks(u);
     paint();
