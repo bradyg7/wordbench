@@ -107,6 +107,7 @@ test('callout_kinds_write_their_marker', async ({ page }) => {
   await page.locator('.wbm-input').fill('callout');
   const row = page.locator('.wbm-row', { hasText: 'Callout' });
   await expect(row.locator('.wbm-hint')).toHaveText('/callout');
+  await expect(row.locator('.wbm-desc')).toHaveText('Question, Answered, Key point, Note');
   await row.click();
   const ed = page.locator('.nb-block-input');
   await expect(ed).toHaveAttribute('data-shape', 'callout');

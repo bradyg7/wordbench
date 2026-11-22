@@ -93,7 +93,8 @@ test('at_verse_chip_popup', async ({ page }) => {
   await page.keyboard.press('Escape');   // leave the block (a save is refused in this test)
 
   // the page draws a reference as a chip; its words stay the reference
-  const chip = page.locator('.nb-chip');
+  // the chip of block 2, whose text holds the reference (block 1, written in above, may draw one too)
+  const chip = page.locator('.nb-block[data-n="2"] .nb-chip', { hasText: 'Numbers 25:11' });
   await expect(chip).toHaveCount(1);
   await expect(chip).toHaveText('Numbers 25:11');
   await chip.click();

@@ -1771,7 +1771,7 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
     ta.setSelectionRange(ta.value.length, ta.value.length);
     ta.dispatchEvent(new Event('input'));
   };
-  const item = (m: typeof MENU[number]): MenuItem => ({ id: m.key, label: m.label, icon: m.glyph, hint: m.hint, keywords: [m.key, ...(m.alias || [])] });
+  const item = (m: typeof MENU[number]): MenuItem => ({ id: m.key, label: m.label, icon: m.glyph, hint: m.hint, description: m.key === 'question' ? m.what : undefined, keywords: [m.key, ...(m.alias || [])] });
   const groups: MenuGroup[] = [
     { title: 'Basic', items: MENU.filter(m => m.group === 'Basic').map(item) },
     { title: 'Study', folded: true, items: MENU.filter(m => m.group === 'Study').map(item) },

@@ -3,7 +3,7 @@
 // ↑ ↓ move the highlight, Enter picks, Esc or a click outside closes and focus returns to where it was.
 // The menu is fixed-position, so opening it never moves anything on the page.
 
-export type MenuItem = { id: string; label: string; icon?: string; iconClass?: string; iconData?: Record<string, string>; /** inline style of the icon (a swatch's color) */ iconStyle?: string; hint?: string; keywords?: string[]; /** drawn in the warning color (Delete) */ danger?: boolean };
+export type MenuItem = { id: string; label: string; icon?: string; iconClass?: string; iconData?: Record<string, string>; /** inline style of the icon (a swatch's color) */ iconStyle?: string; hint?: string; /** a second, quieter line under the label (the / menu's Callout: its kinds) */ description?: string; keywords?: string[]; /** drawn in the warning color (Delete) */ danger?: boolean };
 // `folded`: with nothing typed the group is one row (its title and what is in it); Enter or a click opens it. Typing finds its rows.
 export type MenuGroup = { title?: string; items: MenuItem[]; folded?: boolean };
 export type MenuOptions = {
@@ -107,7 +107,12 @@ export function openMenu(opts: MenuOptions): MenuHandle {
         if (item.iconData) Object.assign(icon.dataset, item.iconData);
         if (item.iconStyle) icon.style.cssText = item.iconStyle;
         const label = document.createElement('span'); label.className = 'wbm-label'; label.textContent = item.label;
-        row.append(icon, label);
+        if (item.description) {
+          const text = document.createElement('span'); text.className = 'wbm-text';
+          const desc = document.createElement('span'); desc.className = 'wbm-desc'; desc.textContent = item.description;
+          text.append(label, desc);
+          row.append(icon, text);
+        } else row.append(icon, label);
         if (item.hint) { const k = document.createElement('span'); k.className = 'wbm-hint'; k.textContent = item.hint; row.append(k); }
         row.addEventListener('mousedown', (e) => e.preventDefault());   // keep the filter field focused
         row.addEventListener('click', () => pick(item));
