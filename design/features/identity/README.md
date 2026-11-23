@@ -45,9 +45,59 @@ is built in its tokens, then the rest of the app is reskinned pane by pane.
   student's rabbit holes; (3) the trail becomes the app's history you can turn back in time, for one window and for a
   whole desk. Each gets an in-depth interaction table, frames for every row, and a working demo to feel it, not only
   pictures.
+- **Round 3 answers (the person, 2026-11-22), after trying the round 2 demo:**
+  - The fanned cards are clunky; dragging is only somewhat fluid; a bubble must go **above or below** another, not only
+    behind; the liquid glass was lost; the dock is not fluid; the interactions are too basic.
+  - **Quality first:** "committed to premium quality design: smooth transitions, not breaking cards, clean and
+    user-friendly UI." Goals decide the rules, the rules decide the style (see Goals and the rules, below).
+  - **Desk limit:** by screen size, never more than 4 columns × 3 high (R2).
+  - **When full:** the oldest bubble goes to the tray (R3), not into a pile.
+  - **Glass:** controls are liquid glass, reading and writing sit on paper (R7).
+  - **Decisions are written down as they are made**, in this folder, and committed each time.
 - **Panes are open to replacement.** The one need: several things working together and on screen at once. If a better
   idea than panes wins, panes are scrapped. Opening an app from the dock (full screen and snap, panes, attachments,
   or something else) is sketched together in round 1, not decided now.
+
+## Goals and the rules that keep them (the person, 2026-11-22, round 3)
+
+The person, after trying the round 2 demo: the fanned cards are clunky, the dragging is only somewhat fluid, a bubble
+must go *above or below* another and not only behind, the liquid glass was lost, the dock is not fluid, and the
+interactions are basic. "Whatever we choose, we have to be committed to premium quality design: smooth transitions, not
+breaking cards, clean and user-friendly UI. If we knew what goals we were trying to accomplish, we'd be able to choose
+what UI style would be best." So the goals come first, the rules follow from them, and the style follows from both.
+**Every future feature is checked against these rules before it is designed; a design that breaks one is redrawn, not
+excused.**
+
+### The goals
+
+| # | Goal | Whose words |
+|---|---|---|
+| G1 | **Study deeply without losing your way.** Many passages, words, pages and folders open at once, for a pastor's, teacher's or student's rabbit holes, and always knowing what led where. | the person, rows 29–36 |
+| G2 | **Never lose anything.** Every step can be turned back, for one bubble, a desk or the whole app; going back keeps the later path as a branch. | the person, history answers |
+| G3 | **The text comes first.** Scripture and the person's writing are calm and readable; everything else recedes until it is wanted. | the identity decisions |
+| G4 | **Premium in the hand.** Smooth, physical, never broken; it should feel as good as the best software on the machine. | the person, round 3 |
+| G5 | **Light everywhere.** The same app on a phone and a desktop, quick on a modest laptop. | the person, history answers |
+
+### The rules (every feature keeps all of them)
+
+| # | Rule | Serves | How it is checked |
+|---|---|---|---|
+| R1 | **Nothing hides.** A desk is columns; a column holds bubbles above and below. No bubble ever overlaps or sits behind another. | G1, G3 | After any action, no two bubbles' rectangles intersect (a test runs this after every row's script). |
+| R2 | **The desk has a limit, set by the screen.** A bubble has a smallest readable size (360 × 220 px); a desk shows as many as fit, never more than 4 columns × 3 high. | G3, G5 | Opening one more never shrinks a bubble below its smallest size. |
+| R3 | **Full means the tray, not a pile.** When one more will not fit, the bubble used longest ago shrinks into a pill in the tray beside the dock; one click brings it back (and the next-oldest takes its place in the tray). Nothing is closed. | G1, G2 | The count of bubbles plus pills never drops when opening. |
+| R4 | **What you see while dragging is what you get.** As a bubble is dragged, the others make room live, and an outline shows exactly where it will land; letting go only completes what was shown. | G4 | The landed rectangle equals the last outline drawn. |
+| R5 | **One motion for everything.** Every change of place or size moves on one spring (stiffness 420, damping 34: settles in about 0.3 s with no wobble you notice); nothing jumps, nothing fades in from nowhere. Only the dragged bubble follows the pointer directly. | G4 | No frame changes a bubble's rectangle by more than its spring allows. |
+| R6 | **One gesture, one meaning, everywhere.** Drag a title to move. Drop on a bubble's left or right side for a column beside it, its top or bottom for above or below it, its middle to swap. Drag a gap between bubbles to resize both. Drag to the window's top edge for a layout. Nowhere does the same gesture mean something else. | G4 | The drop zones are the same for every app's bubble. |
+| R7 | **Controls are glass, reading is paper.** The dock, the desks line, menus, the history bar and each bubble's title bar are liquid glass (light bends through them, a highlight follows the pointer). The text you read and write sits on solid paper and is never behind glass. | G3, G4 | Text contrast on paper meets WCAG AA in every theme. |
+| R8 | **Never broken.** Titles end with an ellipsis, never mid-glyph; a bubble never renders smaller than its smallest size; a resize stops at the neighbour's smallest size; the layout is valid after every action, undo and history jump. | G4 | The layout check runs after every action in the tests. |
+| R9 | **Everything can be turned back.** Every action is one step in history (G2), including layouts, resizes, moves to the tray and desk switches. | G2 | Each row's action adds exactly one step. |
+| R10 | **Every action has a key and a `wb` command.** The pointer is never the only way. | G1, AGENTS.md | Each table row names both. |
+
+### The style that follows
+
+A **tiling desk with springs** (columns that split into above and below, the way the best tiling window managers and
+iPad's Split View keep things orderly), **under liquid-glass controls** (R7), with **a tray for overflow** (R3) instead
+of piles. Free canvas, always-tiled without rows, Stage and the fanned cards of round 2 are retired by R1, R3 and R4.
 
 ## Round 2: desks that flow, many of one app, the trail as history (2026-11-22)
 
