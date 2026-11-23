@@ -13,3 +13,4 @@ decides.
 | 2026-11-23 | B1 reviewer's leftovers: argument sets for the 8 commands the lent sweep does not reach (folded into step 2, item 3) | Tier 0 review | finding |
 | 2026-11-23 | The 23 principles conflicts (settled in step 4) | principles round 1 | question for the person |
 | 2026-11-23 | Save `docs/drafts/` (3 drafts) and the `site` server in `.claude/launch.json` from `bible-workbench-rs` before that checkout is retired | step 1 grilling | finding (step 3) |
+| 2026-11-23 | B14 leftovers: a chooser (Thread, Word, Scripture, Concordance) cancelled from an empty list line drops the mark; a line of only " /" keeps a space after a close | B14 review (93/100) | finding |
