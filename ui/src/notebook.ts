@@ -1299,12 +1299,26 @@ ${l}` : ''}`;
           if (ok) {
             // made, but with no id to open it by: the page is drawn again from the list, and what was typed meanwhile is shown
             void pane?.refresh?.();
-            if (typed.trim()) toast(`Not saved, what you typed: ${typed.replace(/\n+/g, ' / ')}`);
+            if (typed.trim()) toast(`Not saved, what you typed: ${typed.replace(/\n+/g, ' / ')}`, 10000);
             return;
           }
-          // not made (the message is shown): the form stays, with what was typed meanwhile back in its line
-          line.focus();
-          if (typed) insertPlain(line, typed);
+          // not made (the message is shown): the form stays, with what was typed meanwhile back in its line. A redraw meanwhile
+          // built the form again: the words go into the new one (its title and first line), never into the one left behind
+          let into = line;
+          if (!line.isConnected) {
+            const t2 = pane?.el.querySelector<HTMLInputElement>('.nb-new-title');
+            const l2 = pane?.el.querySelector<typeof line>('.nb-new-line');
+            if (!l2) {
+              const all = [title.value, line.value, typed].map(s => s.trim()).filter(Boolean).join(' / ');
+              if (all) toast(`Not saved, what you typed: ${all.replace(/\n+/g, ' / ')}`, 10000);
+              return;
+            }
+            if (t2 && !t2.value && !isDay) t2.value = title.value;
+            if (!l2.value.trim() && line.value) { l2.focus(); insertPlain(l2, line.value); }
+            into = l2;
+          }
+          into.focus();
+          if (typed) insertPlain(into, typed);
         });
       } else if (ev.key === 'Enter' && ev.shiftKey && !mod) { ev.preventDefault(); insertBreak(line); }
     };

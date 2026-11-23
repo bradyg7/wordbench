@@ -92,7 +92,11 @@ async function newPageRun(page: Page, slow = 0, failFirst = false, redrawMid = f
     const name = new URL(route.request().url()).pathname.split('/').at(-1)!;
     const input = decodeURIComponent(route.request().headers()['x-wb-input'] ?? '');
     const send = (json: unknown) => route.fulfill({ json });
-    if (name === 'note-new.json' && failFirst && !refused) { refused = true; return route.fulfill({ status: 500, body: 'disk full' }); }
+    if (name === 'note-new.json' && failFirst && !refused) {
+      refused = true;
+      if (redrawMid) { await page.evaluate(() => (window as any).__wb.changed()); await new Promise(r => setTimeout(r, 300)); }
+      return route.fulfill({ status: 500, body: 'disk full' });
+    }
     if (name === 'note-new.json') {
       // something else redraws the Notebook while the page is being made (a list refresh, another window's change)
       if (redrawMid) { await page.evaluate(() => (window as any).__wb.changed()); await new Promise(r => setTimeout(r, 300)); }
@@ -153,6 +157,8 @@ test('new_page_keeps_every_line_with_slow_saves', ({ page }) => newPageRun(page,
 test('new_page_refused_once_keeps_the_words_and_goes_on', ({ page }) => newPageRun(page, 0, true));
 // B8 re-review: a redraw while the page is being made does not take the held keys
 test('new_page_redrawn_while_made_keeps_every_line', ({ page }) => newPageRun(page, 500, false, true));
+// and when that making is refused, the words are in the form drawn again, not the one left behind
+test('new_page_redrawn_and_refused_keeps_the_words', ({ page }) => newPageRun(page, 0, true, true));
 
 
 // B11 (play-test of 0.3.0): Enter pressed while the block before is still being saved is kept, not lost: three lines typed
