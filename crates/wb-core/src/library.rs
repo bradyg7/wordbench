@@ -27,7 +27,12 @@ pub fn item_of(bible: &Bible, store: &Store, thing: &str) -> Result<Value> {
         return Err(bad("Name what to save: a place (Num 25:11), H7065, page:<id>, search:\"words\", document:<name> or sitting:<id>."));
     }
     let (head, rest) = match t.split_once(':') {
-        Some((h, r)) if ["page", "search", "document", "sitting", "thread"].contains(&h.to_lowercase().as_str()) => (h.to_lowercase(), r.trim()),
+        Some((h, r))
+            if ["page", "search", "document", "sitting", "thread"]
+                .contains(&h.to_lowercase().as_str()) =>
+        {
+            (h.to_lowercase(), r.trim())
+        }
         _ => (String::new(), t),
     };
     match head.as_str() {
@@ -50,7 +55,9 @@ pub fn item_of(bible: &Bible, store: &Store, thing: &str) -> Result<Value> {
             }
             crate::shelf::item_from_key(bible, &format!("search|{q}|all"), q)
         }
-        "document" => Ok(json!({"kind": "document", "ref": crate::shelf::document_id(store, rest.trim_matches('"'))?})),
+        "document" => Ok(
+            json!({"kind": "document", "ref": crate::shelf::document_id(store, rest.trim_matches('"'))?}),
+        ),
         "sitting" => {
             let sit = crate::history::sitting(&store.root, rest)?;
             Ok(json!({"kind": "sitting", "ref": sit["start"]}))
@@ -63,11 +70,18 @@ pub fn item_of(bible: &Bible, store: &Store, thing: &str) -> Result<Value> {
 fn find_in(store: &Store, item: &Value) -> (Vec<(String, String, String)>, Option<String>) {
     let mut folders = vec![];
     for t in store.sets() {
-        if let Some(i) = t["items"].as_array().and_then(|a| a.iter().find(|i| i.as_object().is_some_and(|o| Store::same_item(item, o)))) {
+        if let Some(i) = t["items"].as_array().and_then(|a| {
+            a.iter()
+                .find(|i| i.as_object().is_some_and(|o| Store::same_item(item, o)))
+        }) {
             folders.push((s(&t, "id"), s(&t, "name"), s_of(i, "key")));
         }
     }
-    let shelf = store.shelf_saves().iter().find(|i| i.as_object().is_some_and(|o| Store::same_item(item, o))).map(|i| s_of(i, "key"));
+    let shelf = store
+        .shelf_saves()
+        .iter()
+        .find(|i| i.as_object().is_some_and(|o| Store::same_item(item, o)))
+        .map(|i| s_of(i, "key"));
     (folders, shelf)
 }
 
@@ -79,16 +93,21 @@ fn s_of(v: &Value, k: &str) -> String {
 pub fn where_saved(bible: &Bible, store: &Store, thing: &str) -> Result<Value> {
     let item = item_of(bible, store, thing)?;
     let (folders, shelf) = find_in(store, &item);
-    Ok(json!({"thing": thing.trim(), "item": item, "saved": !folders.is_empty() || shelf.is_some(),
+    Ok(
+        json!({"thing": thing.trim(), "item": item, "saved": !folders.is_empty() || shelf.is_some(),
         "folders": folders.iter().map(|(id, name, key)| json!({"id": id, "name": name, "key": key})).collect::<Vec<_>>(),
-        "shelf": shelf.is_some()}))
+        "shelf": shelf.is_some()}),
+    )
 }
 
 /// Save a thing (K): in each folder named (an id or a name, as `wb set show` finds one), or on the Shelf when none is
 /// named. A thing already in a folder and saved with no folder stays where it is. → `where_saved`'s answer.
 pub fn save(bible: &Bible, store: &mut Store, thing: &str, folders: &[String]) -> Result<Value> {
     let item = item_of(bible, store, thing)?;
-    let ids: Vec<String> = folders.iter().map(|f| store.find_set(f).map(|t| s(&t, "id"))).collect::<Result<_>>()?;
+    let ids: Vec<String> = folders
+        .iter()
+        .map(|f| store.find_set(f).map(|t| s(&t, "id")))
+        .collect::<Result<_>>()?;
     let (in_folders, on_shelf) = find_in(store, &item);
     if ids.is_empty() {
         if in_folders.is_empty() && on_shelf.is_none() {
@@ -107,7 +126,12 @@ pub fn save(bible: &Bible, store: &mut Store, thing: &str, folders: &[String]) -
 
 /// Take a save out of one folder (`folder`), leaving it saved: on the Shelf if that was its last folder. Without a folder,
 /// unsave it everywhere. The thing and its tab are not touched.
-pub fn unsave(bible: &Bible, store: &mut Store, thing: &str, folder: Option<&str>) -> Result<Value> {
+pub fn unsave(
+    bible: &Bible,
+    store: &mut Store,
+    thing: &str,
+    folder: Option<&str>,
+) -> Result<Value> {
     let item = item_of(bible, store, thing)?;
     let (in_folders, on_shelf) = find_in(store, &item);
     match folder {
@@ -148,7 +172,13 @@ pub fn shelf_view(bible: &Bible, store: &Store) -> Result<Value> {
 pub fn folder_list(store: &Store) -> Value {
     let tree = crate::shelf::parent_map(store);
     let mut out = vec![];
-    fn walk(store: &Store, par: &std::collections::HashMap<String, String>, of: &str, depth: usize, out: &mut Vec<Value>) {
+    fn walk(
+        store: &Store,
+        par: &std::collections::HashMap<String, String>,
+        of: &str,
+        depth: usize,
+        out: &mut Vec<Value>,
+    ) {
         for t in crate::shelf::children_of(store, par, of) {
             let id = s(&t, "id");
             let kids = crate::shelf::children_of(store, par, &id).len();
@@ -166,18 +196,27 @@ pub fn folder_list(store: &Store) -> Value {
 /// Items a folder or the Shelf holds whose thing is gone (a page file deleted by hand, a removed document): each
 /// `{folder, key, kind, ref}`. Nothing is shown broken and nothing is removed; `wb study check` reports them (L-22).
 pub fn dangling(bible: &Bible, store: &Store) -> Result<Vec<Value>> {
-    let docs: Vec<String> = crate::docs::records(store).iter().map(|d| s(d, "id")).collect();
+    let docs: Vec<String> = crate::docs::records(store)
+        .iter()
+        .map(|d| s(d, "id"))
+        .collect();
     let mut out = vec![];
     let mut check = |folder: &str, view: &Value| {
         for i in view["items"].as_array().cloned().unwrap_or_default() {
-            let gone = i["gone"] == true || (i["kind"] == "document" && !docs.contains(&s_of(&i, "ref")));
+            let gone =
+                i["gone"] == true || (i["kind"] == "document" && !docs.contains(&s_of(&i, "ref")));
             if gone {
-                out.push(json!({"folder": folder, "key": i["key"], "kind": i["kind"], "ref": i["ref"]}));
+                out.push(
+                    json!({"folder": folder, "key": i["key"], "kind": i["kind"], "ref": i["ref"]}),
+                );
             }
         }
     };
     for t in store.sets() {
-        check(&s(&t, "name"), &crate::studyapi::set_view(bible, store, &t)?);
+        check(
+            &s(&t, "name"),
+            &crate::studyapi::set_view(bible, store, &t)?,
+        );
     }
     check("Shelf", &shelf_view(bible, store)?);
     Ok(out)
@@ -185,16 +224,34 @@ pub fn dangling(bible: &Bible, store: &Store) -> Result<Vec<Value>> {
 
 /// A place's words without asking the database: "Numbers 25:11", "Numbers 25:10–13" (the anchor's own book and numbers).
 fn anchor_label(bible: &Bible, anchor: &str) -> String {
-    let Ok(a) = crate::anchors::parse(anchor) else { return anchor.to_string() };
+    let Ok(a) = crate::anchors::parse(anchor) else {
+        return anchor.to_string();
+    };
     if a.strong.is_some() {
         return anchor.to_string();
     }
-    let name = bible.books().iter().find(|b| b.code == a.code).map(|b| b.name.clone()).unwrap_or_else(|| a.code.clone());
-    crate::anchors::py_label(&name, a.c1 as i64, a.v1 as i64, a.c2.unwrap_or(a.c1) as i64, a.v2.unwrap_or(a.v1) as i64, a.c2.is_some())
+    let name = bible
+        .books()
+        .iter()
+        .find(|b| b.code == a.code)
+        .map(|b| b.name.clone())
+        .unwrap_or_else(|| a.code.clone());
+    crate::anchors::py_label(
+        &name,
+        a.c1 as i64,
+        a.v1 as i64,
+        a.c2.unwrap_or(a.c1) as i64,
+        a.v2.unwrap_or(a.v1) as i64,
+        a.c2.is_some(),
+    )
 }
 
 /// What a saved item is called in the search: a page by its title, a place by its words, anything else by what it names.
-fn cheap_label(bible: &Bible, titles: &std::collections::HashMap<String, String>, i: &Value) -> String {
+fn cheap_label(
+    bible: &Bible,
+    titles: &std::collections::HashMap<String, String>,
+    i: &Value,
+) -> String {
     let r = s_of(i, "ref");
     match s_of(i, "kind").as_str() {
         "note" => titles.get(&r).cloned().unwrap_or(r),
@@ -233,11 +290,19 @@ pub struct Find<'a> {
 fn folders_of_page(store: &Store, id: &str) -> Vec<String> {
     let mut v: Vec<String> = vec![];
     for t in store.sets() {
-        if t["items"].as_array().is_some_and(|a| a.iter().any(|i| s_of(i, "kind") == "note" && s_of(i, "ref") == id)) {
+        if t["items"].as_array().is_some_and(|a| {
+            a.iter()
+                .any(|i| s_of(i, "kind") == "note" && s_of(i, "ref") == id)
+        }) {
             v.push(s(&t, "name"));
         }
     }
-    if let Some(r) = store.notes().into_iter().chain(store.on_thread()).find(|r| s(r, "id") == id) {
+    if let Some(r) = store
+        .notes()
+        .into_iter()
+        .chain(store.on_thread())
+        .find(|r| s(r, "id") == id)
+    {
         for tid in crate::store::threads_of(r) {
             if let Some(t) = store.threads().into_iter().find(|t| s(t, "id") == tid) {
                 v.push(s(t, "name"));
@@ -250,18 +315,24 @@ fn folders_of_page(store: &Store, id: &str) -> Vec<String> {
 
 fn cap(w: &str) -> String {
     let mut c = w.chars();
-    c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
+    c.next()
+        .map(|f| f.to_uppercase().collect::<String>() + c.as_str())
+        .unwrap_or_default()
 }
 
 fn since(text: &str, flag: &str) -> Result<String> {
     let t = text.trim();
     if let Some(n) = t.strip_suffix('d').and_then(|n| n.parse::<i64>().ok()) {
-        return Ok((chrono::Utc::now() - chrono::Duration::days(n)).format("%Y-%m-%d").to_string());
+        return Ok((chrono::Utc::now() - chrono::Duration::days(n))
+            .format("%Y-%m-%d")
+            .to_string());
     }
     if crate::store::is_day(t) {
         return Ok(t.to_string());
     }
-    Err(bad(format!("{flag} takes a number of days (7d) or a date (2026-11-01).")))
+    Err(bad(format!(
+        "{flag} takes a number of days (7d) or a date (2026-11-01)."
+    )))
 }
 
 /// Pages, folders, saves and questions in one list, grouped by kind: `{q, count, total, groups: [{kind, count, results}]}`.
@@ -269,11 +340,20 @@ fn since(text: &str, flag: &str) -> Result<String> {
 /// What a page holds besides paragraphs, for the one search's second line (notebook row 34): "a table", "callouts" or "a list"; "" for plain text.
 fn shape_of(text: &str) -> &'static str {
     let lines: Vec<&str> = text.lines().map(str::trim_start).collect();
-    if lines.windows(2).any(|w| w[0].starts_with('|') && w[1].starts_with('|') && w[1].contains("---")) {
+    if lines
+        .windows(2)
+        .any(|w| w[0].starts_with('|') && w[1].starts_with('|') && w[1].contains("---"))
+    {
         "a table"
     } else if lines.iter().any(|l| l.starts_with("> [!")) {
         "callouts"
-    } else if lines.iter().any(|l| l.starts_with("- ") || l.starts_with("* ") || l.chars().next().is_some_and(|c| c.is_ascii_digit()) && l.split_once(". ").is_some_and(|(n, _)| n.chars().all(|c| c.is_ascii_digit()))) {
+    } else if lines.iter().any(|l| {
+        l.starts_with("- ")
+            || l.starts_with("* ")
+            || l.chars().next().is_some_and(|c| c.is_ascii_digit())
+                && l.split_once(". ")
+                    .is_some_and(|(n, _)| n.chars().all(|c| c.is_ascii_digit()))
+    }) {
         "a list"
     } else {
         ""
@@ -281,33 +361,82 @@ fn shape_of(text: &str) -> &'static str {
 }
 
 pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
-    if !["", "page", "folder", "save", "question", "key", "note", "margin", "highlight", "mark"].contains(&f.kind) {
-        return Err(bad("--kind is page, folder, save, question, key, note, margin, highlight or mark."));
+    if ![
+        "",
+        "page",
+        "folder",
+        "save",
+        "question",
+        "key",
+        "note",
+        "margin",
+        "highlight",
+        "mark",
+    ]
+    .contains(&f.kind)
+    {
+        return Err(bad(
+            "--kind is page, folder, save, question, key, note, margin, highlight or mark.",
+        ));
     }
-    let marks_only = f.style.is_some() || f.mark_kind.is_some() || f.color.is_some() || f.book.is_some() || f.since.is_some() || f.until.is_some();
+    let marks_only = f.style.is_some()
+        || f.mark_kind.is_some()
+        || f.color.is_some()
+        || f.book.is_some()
+        || f.since.is_some()
+        || f.until.is_some();
     if marks_only && f.kind != "mark" {
         return Err(bad("--style, --mark-kind, --color, --book, --since and --until find marks: add --kind mark."));
     }
     if !["", "edited", "title"].contains(&f.sort) {
         return Err(bad("--sort is edited or title."));
     }
-    let words: Vec<String> = f.words.to_lowercase().split_whitespace().map(String::from).collect();
-    let has = |blob: &str| words.iter().all(|w| blob.to_lowercase().contains(w.as_str()));
+    let words: Vec<String> = f
+        .words
+        .to_lowercase()
+        .split_whitespace()
+        .map(String::from)
+        .collect();
+    let has = |blob: &str| {
+        words
+            .iter()
+            .all(|w| blob.to_lowercase().contains(w.as_str()))
+    };
     let cutoff = f.edited.map(|e| since(e, "--edited")).transpose()?;
     let want = |k: &str| f.kind.is_empty() || f.kind == k;
     // a folder is a set folder or a thread file (a folder with a color); the thread's saves are its places, its pages those written on it
     let thread_folder: Option<Rec> = f.folder.and_then(|name| {
         let n = name.trim().to_lowercase();
-        store.threads().into_iter().find(|t| s(t, "name").to_lowercase() == n || s(t, "id") == n).cloned()
+        store
+            .threads()
+            .into_iter()
+            .find(|t| s(t, "name").to_lowercase() == n || s(t, "id") == n)
+            .cloned()
     });
     let in_folder: Option<Vec<(String, String)>> = match (f.folder, &thread_folder) {
         (_, Some(t)) => {
             let id = s(t, "id");
-            Some(store.notes().into_iter().chain(store.on_thread()).filter(|r| crate::store::threads_of(r).contains(&id)).map(|r| ("note".to_string(), s(r, "id"))).collect())
+            Some(
+                store
+                    .notes()
+                    .into_iter()
+                    .chain(store.on_thread())
+                    .filter(|r| crate::store::threads_of(r).contains(&id))
+                    .map(|r| ("note".to_string(), s(r, "id")))
+                    .collect(),
+            )
         }
         (Some(name), None) => {
             let t = store.find_set(name)?;
-            Some(t["items"].as_array().cloned().unwrap_or_default().iter().map(|i| (s_of(i, "kind"), s_of(i, "ref"))).collect())
+            Some(
+                t["items"]
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|i| (s_of(i, "kind"), s_of(i, "ref")))
+                    .collect(),
+            )
         }
         (None, None) => None,
     };
@@ -317,7 +446,11 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         (None, None) => None,
     };
     let clock = std::time::Instant::now();
-    let lap = |what: &str| { if std::env::var("WB_FIND_TIMES").is_ok() { eprintln!("find {what}: {:?}", clock.elapsed()); } };
+    let lap = |what: &str| {
+        if std::env::var("WB_FIND_TIMES").is_ok() {
+            eprintln!("find {what}: {:?}", clock.elapsed());
+        }
+    };
     let mut groups = vec![];
     let mut out_groups: Vec<(String, Vec<Value>)> = vec![];
     let mut all_total = 0usize;
@@ -340,7 +473,12 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     if want("folder") && in_folder.is_none() && !f.has_question && cutoff.is_none() {
         // a folder is a set folder or a thread file (a folder with a color); each shows its color and how many pages and saves it holds
         // (notebook row 34d): the pages written in it plus its saves
-        let on: Vec<Vec<String>> = store.notes().into_iter().chain(store.on_thread()).map(crate::store::threads_of).collect();
+        let on: Vec<Vec<String>> = store
+            .notes()
+            .into_iter()
+            .chain(store.on_thread())
+            .map(crate::store::threads_of)
+            .collect();
         let sets = store.sets();
         let threads = store.threads();
         all_total += sets.len() + threads.len();
@@ -397,7 +535,10 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         if let Some(t) = &thread_folder {
             let name = s(t, "name");
             for m in t["members"].as_array().into_iter().flatten() {
-                take(&name, &json!({"key": m["anchor"], "kind": "place", "ref": m["anchor"]}));
+                take(
+                    &name,
+                    &json!({"key": m["anchor"], "kind": "place", "ref": m["anchor"]}),
+                );
             }
         }
         if in_folder.is_none() {
@@ -424,7 +565,11 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     // Key points and Notes (notebook row 46c): the callouts that are not questions, grouped as Key points and Notes, each with its page.
     // They are in the one search only when it is given words (a search with none lists pages, folders and saves as before).
     for (kind, name) in [("key", "Key point"), ("note", "Note")] {
-        if !(f.kind == kind || f.kind.is_empty() && !words.is_empty()) || in_folder.is_some() || f.has_question || cutoff.is_some() {
+        if !(f.kind == kind || f.kind.is_empty() && !words.is_empty())
+            || in_folder.is_some()
+            || f.has_question
+            || cutoff.is_some()
+        {
             continue;
         }
         let all = crate::questions::callouts(store, Some(kind), None)?;
@@ -454,9 +599,25 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     lap("before mark");
     // marks (row 51): the one scanner `legend_uses` uses, then the words, if any; a mark's `updated` is the day it was made
     if f.kind == "mark" {
-        let (sn, un) = (f.since.map(|d| since(d, "--since")).transpose()?, f.until.map(|d| since(d, "--until")).transpose()?);
-        let found = crate::marks::find_marks(bible, store, &crate::marks::MarkFilter { style: f.style, kind: f.mark_kind, color: f.color, book: f.book, since: sn.as_deref(), until: un.as_deref() })?;
-        let every = crate::marks::find_marks(bible, store, &Default::default())?["count"].as_u64().unwrap_or(0) as usize;
+        let (sn, un) = (
+            f.since.map(|d| since(d, "--since")).transpose()?,
+            f.until.map(|d| since(d, "--until")).transpose()?,
+        );
+        let found = crate::marks::find_marks(
+            bible,
+            store,
+            &crate::marks::MarkFilter {
+                style: f.style,
+                kind: f.mark_kind,
+                color: f.color,
+                book: f.book,
+                since: sn.as_deref(),
+                until: un.as_deref(),
+            },
+        )?;
+        let every = crate::marks::find_marks(bible, store, &Default::default())?["count"]
+            .as_u64()
+            .unwrap_or(0) as usize;
         all_total += every;
         let rows = found["marks"]
             .as_array()
@@ -483,7 +644,9 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         let mut rows: Vec<Value> = vec![];
         let mut every = 0usize;
         // labels are worked out once per place and kept (18,000 highlights make one search, not 18,000 lookups)
-        static LABELS: std::sync::Mutex<Option<std::collections::HashMap<String, (String, String)>>> = std::sync::Mutex::new(None);
+        static LABELS: std::sync::Mutex<
+            Option<std::collections::HashMap<String, (String, String)>>,
+        > = std::sync::Mutex::new(None);
         let mut cache = LABELS.lock().unwrap_or_else(|e| e.into_inner());
         let cache = cache.get_or_insert_with(Default::default);
         store.each_highlight(|h| {
@@ -515,34 +678,74 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
     let mut before = 0usize;
     if matches!(f.kind, "margin" | "highlight" | "mark") {
         let book_names: Vec<String> = bible.books().iter().map(|b| b.name.clone()).collect();
-        let book_of = |code: &str| bible.books().iter().find(|b| b.code == code).map(|b| b.name.clone()).unwrap_or_default();
-        let legend_names: std::collections::HashMap<String, String> = crate::marks::legend(store)["entries"]
+        let book_of = |code: &str| {
+            bible
+                .books()
+                .iter()
+                .find(|b| b.code == code)
+                .map(|b| b.name.clone())
+                .unwrap_or_default()
+        };
+        let legend_names: std::collections::HashMap<String, String> = crate::marks::legend(store)
+            ["entries"]
             .as_array()
             .into_iter()
             .flatten()
             .map(|e| (s_of(e, "style"), s_of(e, "label")))
             .collect();
-        let dates = |r: &Value, key: &str| vec![s_of(r, key)].into_iter().filter(|x| !x.is_empty()).collect::<Vec<_>>();
+        let dates = |r: &Value, key: &str| {
+            vec![s_of(r, key)]
+                .into_iter()
+                .filter(|x| !x.is_empty())
+                .collect::<Vec<_>>()
+        };
         for (kind, rows) in out_groups.iter_mut() {
             if kind != f.kind {
                 continue;
             }
             let taken = std::mem::take(rows);
             before = taken.len();
-            let (props, facts): (Vec<crate::filters::Prop>, Box<dyn Fn(&Value) -> crate::filters::Facts>) = match kind.as_str() {
+            let (props, facts): (
+                Vec<crate::filters::Prop>,
+                Box<dyn Fn(&Value) -> crate::filters::Facts>,
+            ) = match kind.as_str() {
                 "margin" => (
                     vec![
-                        crate::filters::Prop { name: "Book", hint: "The book (and chapter) the note is in" },
-                        crate::filters::Prop { name: "Written", hint: "When the note was first written" },
-                        crate::filters::Prop { name: "Edited", hint: "When the note was last changed" },
-                        crate::filters::Prop { name: "Folder", hint: "The folders of the pages the note grew into" },
+                        crate::filters::Prop {
+                            name: "Book",
+                            hint: "The book (and chapter) the note is in",
+                        },
+                        crate::filters::Prop {
+                            name: "Written",
+                            hint: "When the note was first written",
+                        },
+                        crate::filters::Prop {
+                            name: "Edited",
+                            hint: "When the note was last changed",
+                        },
+                        crate::filters::Prop {
+                            name: "Folder",
+                            hint: "The folders of the pages the note grew into",
+                        },
                     ],
                     Box::new(|r: &Value| {
                         let mut m = crate::filters::Facts::new();
-                        m.insert("book".into(), crate::filters::book_facts(&book_of(&s_of(r, "code")), r["chapter"].as_u64().unwrap_or(0) as u32));
+                        m.insert(
+                            "book".into(),
+                            crate::filters::book_facts(
+                                &book_of(&s_of(r, "code")),
+                                r["chapter"].as_u64().unwrap_or(0) as u32,
+                            ),
+                        );
                         m.insert("written".into(), dates(r, "created"));
                         m.insert("edited".into(), dates(r, "updated"));
-                        let mut fo: Vec<String> = r["grew"].as_array().into_iter().flatten().filter_map(Value::as_str).flat_map(|id| folders_of_page(store, id)).collect();
+                        let mut fo: Vec<String> = r["grew"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(Value::as_str)
+                            .flat_map(|id| folders_of_page(store, id))
+                            .collect();
                         fo.sort();
                         fo.dedup();
                         m.insert("folder".into(), fo);
@@ -551,28 +754,59 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
                 ),
                 _ => (
                     vec![
-                        crate::filters::Prop { name: "Kind", hint: "Highlight, underline, circle, box or arrow" },
-                        crate::filters::Prop { name: "Legend entry", hint: "The Legend entry whose style the mark has" },
-                        crate::filters::Prop { name: "Book", hint: "The book (and chapter) the mark is in" },
-                        crate::filters::Prop { name: "Written", hint: "The day the mark was made" },
+                        crate::filters::Prop {
+                            name: "Kind",
+                            hint: "Highlight, underline, circle, box or arrow",
+                        },
+                        crate::filters::Prop {
+                            name: "Legend entry",
+                            hint: "The Legend entry whose style the mark has",
+                        },
+                        crate::filters::Prop {
+                            name: "Book",
+                            hint: "The book (and chapter) the mark is in",
+                        },
+                        crate::filters::Prop {
+                            name: "Written",
+                            hint: "The day the mark was made",
+                        },
                     ],
                     Box::new(|r: &Value| {
                         let mut m = crate::filters::Facts::new();
                         let is_mark = s_of(r, "kind") == "mark";
-                        m.insert("kind".into(), vec![if is_mark { cap(&s_of(r, "mark_kind")) } else { "Highlight".to_string() }]);
+                        m.insert(
+                            "kind".into(),
+                            vec![if is_mark {
+                                cap(&s_of(r, "mark_kind"))
+                            } else {
+                                "Highlight".to_string()
+                            }],
+                        );
                         let legend = if is_mark {
                             s_of(r, "legend")
                         } else {
-                            legend_names.get(&format!("highlight:{}", s_of(r, "color").to_lowercase())).cloned().unwrap_or_else(|| format!("Unnamed {} highlight", s_of(r, "color")))
+                            legend_names
+                                .get(&format!("highlight:{}", s_of(r, "color").to_lowercase()))
+                                .cloned()
+                                .unwrap_or_else(|| {
+                                    format!("Unnamed {} highlight", s_of(r, "color"))
+                                })
                         };
                         m.insert("legend entry".into(), vec![legend]);
-                        m.insert("book".into(), crate::filters::book_facts(&book_of(&s_of(r, "code")), r["chapter"].as_u64().unwrap_or(0) as u32));
+                        m.insert(
+                            "book".into(),
+                            crate::filters::book_facts(
+                                &book_of(&s_of(r, "code")),
+                                r["chapter"].as_u64().unwrap_or(0) as u32,
+                            ),
+                        );
                         m.insert("written".into(), dates(r, "updated"));
                         m
                     }),
                 ),
             };
-            let (kept, m) = crate::filters::narrow(taken, &*facts, &props, &f.filters, &book_names)?;
+            let (kept, m) =
+                crate::filters::narrow(taken, &*facts, &props, &f.filters, &book_names)?;
             *rows = kept;
             menu = Some(m);
         }
@@ -584,12 +818,18 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
         } else if f.sort == "title" {
             rows.sort_by_key(|r| r["title"].as_str().unwrap_or("").to_lowercase());
         } else {
-            rows.sort_by(|a, b| b["updated"].as_str().unwrap_or("").cmp(a["updated"].as_str().unwrap_or("")));
+            rows.sort_by(|a, b| {
+                b["updated"]
+                    .as_str()
+                    .unwrap_or("")
+                    .cmp(a["updated"].as_str().unwrap_or(""))
+            });
         }
         count += rows.len();
         groups.push(json!({"kind": kind, "count": rows.len(), "results": rows}));
     }
-    let mut answer = json!({"q": f.words.trim(), "count": count, "total": all_total, "groups": groups});
+    let mut answer =
+        json!({"q": f.words.trim(), "count": count, "total": all_total, "groups": groups});
     if let Some(m) = menu {
         crate::filters::attach(&mut answer, m, &f.filters, before);
     }

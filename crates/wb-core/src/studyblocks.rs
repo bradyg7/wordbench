@@ -27,14 +27,25 @@ const XREFS_NOTE: &str = "Proposed: wb xrefs REF, after a source is chosen.";
 /// The cross references of a reference (`wb xrefs`). The app has no source for them, so none is listed and the answer says so.
 pub fn xrefs(bible: &Bible, place: &str) -> Result<Value> {
     let sp = parse_span(place, bible.books())?;
-    Ok(json!({"place": span_label(&sp), "count": 0, "references": [], "source": null, "message": NO_XREFS, "note": XREFS_NOTE}))
+    Ok(
+        json!({"place": span_label(&sp), "count": 0, "references": [], "source": null, "message": NO_XREFS, "note": XREFS_NOTE}),
+    )
 }
 
 /// A passage's original words (`wb interlinear`), trimmed to what the block draws: per verse its words, each with the
 /// original, sound, gloss and Strong's number.
 fn interlinear(bible: &Bible, sp: &Span) -> Result<Value> {
     let c2 = (sp.c2 != sp.c1).then_some(sp.c2);
-    let d = crate::lookup::interlinear(bible, sp.book.id, sp.c1, sp.v1 as i64, c2, sp.v2 as i64, 0, crate::lookup::INTERLINEAR_VERSES)?;
+    let d = crate::lookup::interlinear(
+        bible,
+        sp.book.id,
+        sp.c1,
+        sp.v1 as i64,
+        c2,
+        sp.v2 as i64,
+        0,
+        crate::lookup::INTERLINEAR_VERSES,
+    )?;
     let verses: Vec<Value> = d["verses"]
         .as_array()
         .map(|vs| {
@@ -49,7 +60,9 @@ fn interlinear(bible: &Bible, sp: &Span) -> Result<Value> {
                 .collect()
         })
         .unwrap_or_default();
-    Ok(json!({"label": span_label(sp), "lang": d["lang"], "verses": verses, "total": d["total"], "more": d["more"]}))
+    Ok(
+        json!({"label": span_label(sp), "lang": d["lang"], "verses": verses, "total": d["total"], "more": d["more"]}),
+    )
 }
 
 /// The margin notes on a passage, by verse (`wb mark notes` for a chapter; the notes covering the verses of a verse passage).
@@ -62,7 +75,13 @@ fn margin(bible: &Bible, store: &Store, sp: &Span) -> Result<Value> {
             notes.extend(d["notes"].as_array().cloned().unwrap_or_default());
         }
     } else {
-        notes = crate::margin::covering(bible, store, code, (sp.c1, sp.v1), (sp.c2, if sp.v2 == 0 { sp.v1 } else { sp.v2 }));
+        notes = crate::margin::covering(
+            bible,
+            store,
+            code,
+            (sp.c1, sp.v1),
+            (sp.c2, if sp.v2 == 0 { sp.v1 } else { sp.v2 }),
+        );
     }
     Ok(json!({"label": span_label(sp), "count": notes.len(), "notes": notes}))
 }
@@ -79,7 +98,12 @@ pub fn page(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
             continue;
         }
         let md = sub(&c, b.start, b.end);
-        let Some((lang, held)) = LANGS.iter().find_map(|l| value_fence(&md, l).map(|h| (*l, h))) else { continue };
+        let Some((lang, held)) = LANGS
+            .iter()
+            .find_map(|l| value_fence(&md, l).map(|h| (*l, h)))
+        else {
+            continue;
+        };
         let mut v = json!({"n": i + 1, "lang": lang, "held": held});
         match show(bible, store, lang, &held) {
             Ok(d) => v["data"] = d,
@@ -98,7 +122,9 @@ pub fn checked(bible: &Bible, lang: &str, value: &str) -> Result<String> {
         "word" => {
             let st = v.to_uppercase();
             if !crate::lookup::is_strong(&st) || crate::lookup::strong(bible, &st)?.is_none() {
-                return Err(bad(format!("“{v}” is not a Strong's number the lexicon has (H7065, G25).")));
+                return Err(bad(format!(
+                    "“{v}” is not a Strong's number the lexicon has (H7065, G25)."
+                )));
             }
             Ok(st)
         }
@@ -113,7 +139,10 @@ pub fn checked(bible: &Bible, lang: &str, value: &str) -> Result<String> {
             parse_span(v, bible.books())?;
             Ok(v.to_string())
         }
-        _ => Err(bad(format!("“{lang}” is not a Study block: word, {}.", LANGS.join(", ")))),
+        _ => Err(bad(format!(
+            "“{lang}” is not a Study block: word, {}.",
+            LANGS.join(", ")
+        ))),
     }
 }
 
@@ -128,11 +157,26 @@ pub fn set(bible: &Bible, store: &mut Store, id: &str, n: usize, value: &str) ->
     let (_, text, titled) = text_of(store, id)?;
     let c = chars(&text);
     let bs = split(&text, titled).1;
-    let b = bs.get(n).ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
+    let b = bs
+        .get(n)
+        .ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
     let md = sub(&c, b.start, b.end);
-    let lang = ["word"].into_iter().chain(LANGS).find(|l| value_fence(&md, l).is_some()).ok_or_else(|| bad(format!("Block {} is not a Study block.", n + 1)))?;
+    let lang = ["word"]
+        .into_iter()
+        .chain(LANGS)
+        .find(|l| value_fence(&md, l).is_some())
+        .ok_or_else(|| bad(format!("Block {} is not a Study block.", n + 1)))?;
     let held = checked(bible, lang, value)?;
-    edit(bible, store, id, Edit::Set { n, count: 1, text: &fence_text(lang, &held) })
+    edit(
+        bible,
+        store,
+        id,
+        Edit::Set {
+            n,
+            count: 1,
+            text: &fence_text(lang, &held),
+        },
+    )
 }
 
 fn show(bible: &Bible, store: &Store, lang: &str, held: &str) -> Result<Value> {
@@ -168,7 +212,10 @@ mod tests {
     #[test]
     fn each_fence_holds_one_value() {
         for l in LANGS {
-            assert_eq!(value_fence(&format!("```{l}\nNum 25:11\n```"), l).as_deref(), Some("Num 25:11"));
+            assert_eq!(
+                value_fence(&format!("```{l}\nNum 25:11\n```"), l).as_deref(),
+                Some("Num 25:11")
+            );
             assert_eq!(value_fence(&format!("```{l}\n```"), l).as_deref(), Some(""));
         }
         assert_eq!(value_fence("```word\nH7065\n```", "marks"), None);

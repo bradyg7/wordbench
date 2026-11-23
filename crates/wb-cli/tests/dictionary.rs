@@ -20,13 +20,25 @@ fn dict(dir: &std::path::Path) -> std::path::PathBuf {
 
 fn wb(db: &std::path::Path, args: &[&str]) -> (i32, Value, String) {
     let study = db.parent().unwrap().join("study");
-    let o = Command::new(env!("CARGO_BIN_EXE_wb")).args(args).env("WB_DICT_DB", db).env("WB_STUDY_DIR", study).output().unwrap();
+    let o = Command::new(env!("CARGO_BIN_EXE_wb"))
+        .args(args)
+        .env("WB_DICT_DB", db)
+        .env("WB_STUDY_DIR", study)
+        .output()
+        .unwrap();
     let out = String::from_utf8_lossy(&o.stdout).to_string();
-    (o.status.code().unwrap_or(-1), serde_json::from_str(&out).unwrap_or(Value::Null), String::from_utf8_lossy(&o.stderr).into())
+    (
+        o.status.code().unwrap_or(-1),
+        serde_json::from_str(&out).unwrap_or(Value::Null),
+        String::from_utf8_lossy(&o.stderr).into(),
+    )
 }
 
 fn scratch(name: &str) -> std::path::PathBuf {
-    let d = std::env::temp_dir().join("bible-workbench-rs").join("dict-tests").join(format!("{name}-{}", std::process::id()));
+    let d = std::env::temp_dir()
+        .join("bible-workbench-rs")
+        .join("dict-tests")
+        .join(format!("{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
@@ -73,13 +85,22 @@ fn the_words_of_a_place_each_once_with_their_entry() {
     let (code, v, err) = wb(&db, &["word-define", "--verse", "Ps 37:1"]);
     assert_eq!(code, 0, "{err}");
     let words = v["words"].as_array().unwrap();
-    let names: Vec<String> = words.iter().map(|w| w["word"].as_str().unwrap().to_lowercase()).collect();
+    let names: Vec<String> = words
+        .iter()
+        .map(|w| w["word"].as_str().unwrap().to_lowercase())
+        .collect();
     let mut once = names.clone();
     once.sort();
     once.dedup();
     assert_eq!(once.len(), names.len(), "a word once: {names:?}");
-    let envious = words.iter().find(|w| w["word"].as_str().unwrap().eq_ignore_ascii_case("envious")).expect("envious is in the verse");
+    let envious = words
+        .iter()
+        .find(|w| w["word"].as_str().unwrap().eq_ignore_ascii_case("envious"))
+        .expect("envious is in the verse");
     assert_eq!(envious["text"], "ENVIOUS ENTRY");
-    assert!(words.iter().any(|w| w.get("text").is_none()), "words without an entry are listed without text");
+    assert!(
+        words.iter().any(|w| w.get("text").is_none()),
+        "words without an entry are listed without text"
+    );
     let _ = std::fs::remove_dir_all(&d);
 }

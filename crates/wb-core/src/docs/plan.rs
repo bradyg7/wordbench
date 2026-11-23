@@ -45,43 +45,183 @@ pub struct Theme {
 }
 
 pub const THEMES: &[Theme] = &[
-    Theme { key: "vellum", name: "Vellum", best_for: "Bright rooms, daylight, printing", paper: "F7F3E8", ink: "231A12",
-        muted: "675A4B", panel: "ECE5D2", accent: "8E1B14", accent2: "A67C1E", mark: "F3DE9A", mark_ink: "231A12",
-        divider_bg: "8E1B14", divider_fg: "F7F3E8", heading: "Palatino Linotype", body: "Palatino Linotype", width: 0.47,
-        dark: false, doc_ink: "231A12", doc_accent: "8E1B14", doc_tint: "F4EEDF", doc_rule: "C9B98F", band_bg: None,
-        band_ink: "8E1B14", chrome: &[("accent1", 64.0, 26.0, 832.0, 2.0), ("accent1", 64.0, 31.0, 832.0, 0.75)], left: 64.0 },
-    Theme { key: "vigil", name: "Vigil", best_for: "Dim sanctuaries, evening services", paper: "0E1524", ink: "F4EFE3",
-        muted: "A7ADBB", panel: "1B2438", accent: "E0B85C", accent2: "8FA8D8", mark: "3D3417", mark_ink: "F7E2A6",
-        divider_bg: "1B2438", divider_fg: "E0B85C", heading: "Cambria", body: "Cambria", width: 0.47, dark: true,
-        doc_ink: "1A2030", doc_accent: "1F3160", doc_tint: "F1F3F8", doc_rule: "B48C2E", band_bg: Some("0E1524"),
-        band_ink: "F4EFE3", chrome: &[("accent1", 64.0, 74.0, 56.0, 2.0)], left: 64.0 },
-    Theme { key: "olivet", name: "Olivet", best_for: "Small rooms, classrooms, LED screens", paper: "1A2419", ink: "F2F0DE",
-        muted: "B2B79B", panel: "27331F", accent: "BFCB6B", accent2: "D9A441", mark: "3C4A1F", mark_ink: "ECF3B5",
-        divider_bg: "27331F", divider_fg: "BFCB6B", heading: "Trebuchet MS", body: "Georgia", width: 0.49, dark: true,
-        doc_ink: "1F2A1C", doc_accent: "4A5D23", doc_tint: "F2F4E6", doc_rule: "9AA65A", band_bg: Some("1A2419"),
-        band_ink: "F2F0DE", chrome: &[("accent1", 0.0, 0.0, 16.0, 540.0)], left: 72.0 },
-    Theme { key: "veil", name: "Veil", best_for: "Evening teaching, special services", paper: "24123A", ink: "F7F0F5",
-        muted: "C2B3CC", panel: "341E4E", accent: "F0705F", accent2: "86AEEF", mark: "56233F", mark_ink: "FFD3CB",
-        divider_bg: "341E4E", divider_fg: "F0705F", heading: "Bookman Old Style", body: "Bookman Old Style", width: 0.58,
-        dark: true, doc_ink: "24123A", doc_accent: "A32A22", doc_tint: "F6F1F8", doc_rule: "6B4A8A", band_bg: Some("24123A"),
+    Theme {
+        key: "vellum",
+        name: "Vellum",
+        best_for: "Bright rooms, daylight, printing",
+        paper: "F7F3E8",
+        ink: "231A12",
+        muted: "675A4B",
+        panel: "ECE5D2",
+        accent: "8E1B14",
+        accent2: "A67C1E",
+        mark: "F3DE9A",
+        mark_ink: "231A12",
+        divider_bg: "8E1B14",
+        divider_fg: "F7F3E8",
+        heading: "Palatino Linotype",
+        body: "Palatino Linotype",
+        width: 0.47,
+        dark: false,
+        doc_ink: "231A12",
+        doc_accent: "8E1B14",
+        doc_tint: "F4EEDF",
+        doc_rule: "C9B98F",
+        band_bg: None,
+        band_ink: "8E1B14",
+        chrome: &[
+            ("accent1", 64.0, 26.0, 832.0, 2.0),
+            ("accent1", 64.0, 31.0, 832.0, 0.75),
+        ],
+        left: 64.0,
+    },
+    Theme {
+        key: "vigil",
+        name: "Vigil",
+        best_for: "Dim sanctuaries, evening services",
+        paper: "0E1524",
+        ink: "F4EFE3",
+        muted: "A7ADBB",
+        panel: "1B2438",
+        accent: "E0B85C",
+        accent2: "8FA8D8",
+        mark: "3D3417",
+        mark_ink: "F7E2A6",
+        divider_bg: "1B2438",
+        divider_fg: "E0B85C",
+        heading: "Cambria",
+        body: "Cambria",
+        width: 0.47,
+        dark: true,
+        doc_ink: "1A2030",
+        doc_accent: "1F3160",
+        doc_tint: "F1F3F8",
+        doc_rule: "B48C2E",
+        band_bg: Some("0E1524"),
+        band_ink: "F4EFE3",
+        chrome: &[("accent1", 64.0, 74.0, 56.0, 2.0)],
+        left: 64.0,
+    },
+    Theme {
+        key: "olivet",
+        name: "Olivet",
+        best_for: "Small rooms, classrooms, LED screens",
+        paper: "1A2419",
+        ink: "F2F0DE",
+        muted: "B2B79B",
+        panel: "27331F",
+        accent: "BFCB6B",
+        accent2: "D9A441",
+        mark: "3C4A1F",
+        mark_ink: "ECF3B5",
+        divider_bg: "27331F",
+        divider_fg: "BFCB6B",
+        heading: "Trebuchet MS",
+        body: "Georgia",
+        width: 0.49,
+        dark: true,
+        doc_ink: "1F2A1C",
+        doc_accent: "4A5D23",
+        doc_tint: "F2F4E6",
+        doc_rule: "9AA65A",
+        band_bg: Some("1A2419"),
+        band_ink: "F2F0DE",
+        chrome: &[("accent1", 0.0, 0.0, 16.0, 540.0)],
+        left: 72.0,
+    },
+    Theme {
+        key: "veil",
+        name: "Veil",
+        best_for: "Evening teaching, special services",
+        paper: "24123A",
+        ink: "F7F0F5",
+        muted: "C2B3CC",
+        panel: "341E4E",
+        accent: "F0705F",
+        accent2: "86AEEF",
+        mark: "56233F",
+        mark_ink: "FFD3CB",
+        divider_bg: "341E4E",
+        divider_fg: "F0705F",
+        heading: "Bookman Old Style",
+        body: "Bookman Old Style",
+        width: 0.58,
+        dark: true,
+        doc_ink: "24123A",
+        doc_accent: "A32A22",
+        doc_tint: "F6F1F8",
+        doc_rule: "6B4A8A",
+        band_bg: Some("24123A"),
         band_ink: "F7F0F5",
-        chrome: &[("accent2", 0.0, 530.0, 320.0, 10.0), ("#7A5BA6", 320.0, 530.0, 320.0, 10.0), ("accent1", 640.0, 530.0, 320.0, 10.0)],
-        left: 64.0 },
-    Theme { key: "daylight", name: "Daylight", best_for: "Washed-out projectors, photocopies, low vision", paper: "FFFFFF",
-        ink: "0F1115", muted: "4E5563", panel: "EEF1F6", accent: "123FA8", accent2: "B3261E", mark: "FFE680", mark_ink: "0F1115",
-        divider_bg: "123FA8", divider_fg: "FFFFFF", heading: "Tahoma", body: "Tahoma", width: 0.53, dark: false,
-        doc_ink: "0F1115", doc_accent: "123FA8", doc_tint: "EEF1F6", doc_rule: "123FA8", band_bg: None, band_ink: "123FA8",
-        chrome: &[("accent1", 0.0, 0.0, 960.0, 12.0)], left: 64.0 },
-    Theme { key: "print", name: "Print", best_for: "Printing at home or the office: black on white, no fills, little ink",
-        paper: "FFFFFF", ink: "000000", muted: "4D4D4D", panel: "FFFFFF", accent: "000000", accent2: "4D4D4D", mark: "E6E6E6",
-        mark_ink: "000000", divider_bg: "FFFFFF", divider_fg: "000000", heading: "Georgia", body: "Georgia", width: 0.5,
-        dark: false, doc_ink: "000000", doc_accent: "000000", doc_tint: "FFFFFF", doc_rule: "808080", band_bg: None,
-        band_ink: "000000", chrome: &[("accent1", 64.0, 26.0, 832.0, 0.75)], left: 64.0 },
+        chrome: &[
+            ("accent2", 0.0, 530.0, 320.0, 10.0),
+            ("#7A5BA6", 320.0, 530.0, 320.0, 10.0),
+            ("accent1", 640.0, 530.0, 320.0, 10.0),
+        ],
+        left: 64.0,
+    },
+    Theme {
+        key: "daylight",
+        name: "Daylight",
+        best_for: "Washed-out projectors, photocopies, low vision",
+        paper: "FFFFFF",
+        ink: "0F1115",
+        muted: "4E5563",
+        panel: "EEF1F6",
+        accent: "123FA8",
+        accent2: "B3261E",
+        mark: "FFE680",
+        mark_ink: "0F1115",
+        divider_bg: "123FA8",
+        divider_fg: "FFFFFF",
+        heading: "Tahoma",
+        body: "Tahoma",
+        width: 0.53,
+        dark: false,
+        doc_ink: "0F1115",
+        doc_accent: "123FA8",
+        doc_tint: "EEF1F6",
+        doc_rule: "123FA8",
+        band_bg: None,
+        band_ink: "123FA8",
+        chrome: &[("accent1", 0.0, 0.0, 960.0, 12.0)],
+        left: 64.0,
+    },
+    Theme {
+        key: "print",
+        name: "Print",
+        best_for: "Printing at home or the office: black on white, no fills, little ink",
+        paper: "FFFFFF",
+        ink: "000000",
+        muted: "4D4D4D",
+        panel: "FFFFFF",
+        accent: "000000",
+        accent2: "4D4D4D",
+        mark: "E6E6E6",
+        mark_ink: "000000",
+        divider_bg: "FFFFFF",
+        divider_fg: "000000",
+        heading: "Georgia",
+        body: "Georgia",
+        width: 0.5,
+        dark: false,
+        doc_ink: "000000",
+        doc_accent: "000000",
+        doc_tint: "FFFFFF",
+        doc_rule: "808080",
+        band_bg: None,
+        band_ink: "000000",
+        chrome: &[("accent1", 64.0, 26.0, 832.0, 0.75)],
+        left: 64.0,
+    },
 ];
 pub const DEFAULT_THEME: &str = "vellum";
 
 pub fn theme(key: &str) -> Result<&'static Theme> {
-    THEMES.iter().find(|t| t.key == key).ok_or_else(|| Error(format!("Themes: {}.", theme_keys())))
+    THEMES
+        .iter()
+        .find(|t| t.key == key)
+        .ok_or_else(|| Error(format!("Themes: {}.", theme_keys())))
 }
 
 pub fn theme_keys() -> String {
@@ -119,7 +259,11 @@ pub const DOCS: &[Structure] = &[
 /// The structures of a kind of file: `word` (Word), `deck` (slides, as PowerPoint by the Python app) or `pdf` (slides as
 /// PDF pages, made here).
 pub fn table(to: &str) -> &'static [Structure] {
-    if to == "word" { DOCS } else { DECKS }
+    if to == "word" {
+        DOCS
+    } else {
+        DECKS
+    }
 }
 
 pub fn structure(to: &str, key: &str) -> Option<&'static Structure> {
@@ -142,15 +286,35 @@ pub fn default_structure(to: &str, source: &str) -> &'static str {
 /// in this app yet.
 pub fn structure_of(to: &str, name: Option<&str>, source: &str) -> Result<&'static Structure> {
     let t = table(to);
-    let key = name.filter(|n| !n.is_empty()).unwrap_or_else(|| default_structure(to, source));
+    let key = name
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| default_structure(to, source));
     let what = if to == "word" { "Word" } else { "Slides" };
-    let st = t.iter().find(|s| s.key == key).ok_or_else(|| Error(format!("{what}: {}.", t.iter().map(|s| s.key).collect::<Vec<_>>().join(", "))))?;
+    let st = t.iter().find(|s| s.key == key).ok_or_else(|| {
+        Error(format!(
+            "{what}: {}.",
+            t.iter().map(|s| s.key).collect::<Vec<_>>().join(", ")
+        ))
+    })?;
     if !st.sources.contains(&source) {
-        let fits: Vec<&str> = t.iter().filter(|s| s.sources.contains(&source)).map(|s| s.key).collect();
-        return Err(Error(format!("{} is made from a {}. From a {source}: {}.", st.label, st.sources.join(" or "), fits.join(", "))));
+        let fits: Vec<&str> = t
+            .iter()
+            .filter(|s| s.sources.contains(&source))
+            .map(|s| s.key)
+            .collect();
+        return Err(Error(format!(
+            "{} is made from a {}. From a {source}: {}.",
+            st.label,
+            st.sources.join(" or "),
+            fits.join(", ")
+        )));
     }
     if !st.made_here {
-        let here: Vec<&str> = t.iter().filter(|s| s.made_here && s.sources.contains(&source)).map(|s| s.key).collect();
+        let here: Vec<&str> = t
+            .iter()
+            .filter(|s| s.made_here && s.sources.contains(&source))
+            .map(|s| s.key)
+            .collect();
         return Err(Error(format!(
             "{} is still made by the Python app (the rest of the structures come in phase 5). Here: --structure {}.",
             st.label,
@@ -184,15 +348,35 @@ fn int(v: &Value) -> Option<i64> {
 
 impl<'a> Margin<'a> {
     pub fn new(bible: &'a Bible, store: &'a Store) -> Result<Margin<'a>> {
-        let codes = bible.books().iter().map(|b| (b.name.clone(), (b.code.clone(), b.id as i64))).collect();
-        let mut m = Margin { bible, store, codes, by_verse: vec![], at: HashMap::new(), by_lemma: HashMap::new(), offsets: HashMap::new(),
-            marks: HashMap::new(), seen: HashSet::new() };
+        let codes = bible
+            .books()
+            .iter()
+            .map(|b| (b.name.clone(), (b.code.clone(), b.id as i64)))
+            .collect();
+        let mut m = Margin {
+            bible,
+            store,
+            codes,
+            by_verse: vec![],
+            at: HashMap::new(),
+            by_lemma: HashMap::new(),
+            offsets: HashMap::new(),
+            marks: HashMap::new(),
+            seen: HashSet::new(),
+        };
         for n in store.notes() {
             let p = anchors::py_parse(&s(n, "anchor"))?;
             if p["kind"] == "lemma" {
-                m.by_lemma.entry(s(&p, "strong")).or_default().push(s(n, "text").trim().to_string());
+                m.by_lemma
+                    .entry(s(&p, "strong"))
+                    .or_default()
+                    .push(s(n, "text").trim().to_string());
             } else {
-                let key = (s(&p, "code"), int(&p["c1"]).unwrap_or(0), int(&p["v1"]).unwrap_or(0));
+                let key = (
+                    s(&p, "code"),
+                    int(&p["c1"]).unwrap_or(0),
+                    int(&p["v1"]).unwrap_or(0),
+                );
                 let i = *m.at.entry(key.clone()).or_insert_with(|| {
                     m.by_verse.push((key, vec![]));
                     m.by_verse.len() - 1
@@ -208,7 +392,10 @@ impl<'a> Margin<'a> {
     }
 
     fn code(&self, verse: &Value) -> String {
-        self.codes.get(verse["book"].as_str().unwrap_or("")).map(|c| c.0.clone()).unwrap_or_default()
+        self.codes
+            .get(verse["book"].as_str().unwrap_or(""))
+            .map(|c| c.0.clone())
+            .unwrap_or_default()
     }
 
     /// Your notes that start on these verses, each given once in a plan however often the place comes round. A note on a
@@ -216,14 +403,29 @@ impl<'a> Margin<'a> {
     pub fn notes(&mut self, verses: &[Value]) -> Vec<String> {
         let mut out = vec![];
         for v in verses {
-            let key = (self.code(v), int(&v["c"]).unwrap_or(0), int(&v["v"]).unwrap_or(-1));
-            let Some(&i) = self.at.get(&key) else { continue };
+            let key = (
+                self.code(v),
+                int(&v["c"]).unwrap_or(0),
+                int(&v["v"]).unwrap_or(-1),
+            );
+            let Some(&i) = self.at.get(&key) else {
+                continue;
+            };
             for n in &self.by_verse[i].1 {
                 let id = s(n, "id");
                 if self.seen.insert(id) {
                     let quote = s(n, "quote");
-                    let part = (s(n, "kind") == "word" || s(n, "kind") == "phrase") && !quote.is_empty();
-                    out.push(format!("{}{}", if part { format!("“{}”: ", one_line(&quote)) } else { String::new() }, s(n, "text").trim()));
+                    let part =
+                        (s(n, "kind") == "word" || s(n, "kind") == "phrase") && !quote.is_empty();
+                    out.push(format!(
+                        "{}{}",
+                        if part {
+                            format!("“{}”: ", one_line(&quote))
+                        } else {
+                            String::new()
+                        },
+                        s(n, "text").trim()
+                    ));
                 }
             }
         }
@@ -236,11 +438,22 @@ impl<'a> Margin<'a> {
 
     /// Notes on exactly this anchor, in the order the margin holds them.
     fn anchor_notes(&self, anchor: &str) -> Vec<String> {
-        self.by_verse.iter().flat_map(|(_, ns)| ns).filter(|n| s(n, "anchor") == anchor).map(|n| s(n, "text").trim().to_string()).collect()
+        self.by_verse
+            .iter()
+            .flat_map(|(_, ns)| ns)
+            .filter(|n| s(n, "anchor") == anchor)
+            .map(|n| s(n, "text").trim().to_string())
+            .collect()
     }
 
     /// [(start, end)] of each KJV word in its verse's text (in characters), or None if the two do not line up.
-    pub(super) fn word_offsets(&mut self, book_id: i64, c: i64, v: i64, text: &str) -> Option<Vec<(usize, usize)>> {
+    pub(super) fn word_offsets(
+        &mut self,
+        book_id: i64,
+        c: i64,
+        v: i64,
+        text: &str,
+    ) -> Option<Vec<(usize, usize)>> {
         let key = (book_id, c, v);
         if !self.offsets.contains_key(&key) {
             let low: Vec<char> = text.to_lowercase().chars().collect();
@@ -282,14 +495,26 @@ impl<'a> Margin<'a> {
             return vec![];
         }
         let text = verse["text"].as_str().unwrap_or("");
-        let Some(i1) = int(&p["i1"]) else { return vec![(0, text.chars().count())] };
-        let book_id = self.codes.get(verse["book"].as_str().unwrap_or("")).map(|c| c.1).unwrap_or(0);
-        let Some(words) = self.word_offsets(book_id, here.0, here.1, text) else { return vec![] };
+        let Some(i1) = int(&p["i1"]) else {
+            return vec![(0, text.chars().count())];
+        };
+        let book_id = self
+            .codes
+            .get(verse["book"].as_str().unwrap_or(""))
+            .map(|c| c.1)
+            .unwrap_or(0);
+        let Some(words) = self.word_offsets(book_id, here.0, here.1, text) else {
+            return vec![];
+        };
         if words.is_empty() {
             return vec![];
         }
         let a = if here == first { i1 } else { 0 };
-        let b = if here == last { int(&p["i2"]).unwrap_or(i1) } else { words.len() as i64 - 1 };
+        let b = if here == last {
+            int(&p["i2"]).unwrap_or(i1)
+        } else {
+            words.len() as i64 - 1
+        };
         if !(0 <= a && a <= b && b < words.len() as i64) {
             return vec![];
         }
@@ -301,7 +526,11 @@ impl<'a> Margin<'a> {
         if version != "KJV" {
             return vec![];
         }
-        let key = (self.code(verse), int(&verse["c"]).unwrap_or(0), int(&verse["v"]).unwrap_or(0));
+        let key = (
+            self.code(verse),
+            int(&verse["c"]).unwrap_or(0),
+            int(&verse["v"]).unwrap_or(0),
+        );
         if !self.marks.contains_key(&key) {
             let mut spans = vec![];
             for h in self.store.highlights(&key.0) {
@@ -319,7 +548,8 @@ fn find_chars(hay: &[char], needle: &[char], from: usize) -> Option<usize> {
     if needle.is_empty() {
         return (from <= hay.len()).then_some(from);
     }
-    (from..=hay.len().saturating_sub(needle.len())).find(|&i| i + needle.len() <= hay.len() && hay[i..i + needle.len()] == *needle)
+    (from..=hay.len().saturating_sub(needle.len()))
+        .find(|&i| i + needle.len() <= hay.len() && hay[i..i + needle.len()] == *needle)
 }
 
 pub fn merge_spans(mut spans: Vec<(usize, usize)>) -> Vec<(usize, usize)> {
@@ -343,18 +573,25 @@ pub fn one_line(text: &str) -> String {
 }
 
 fn clean_definition(text: &str) -> String {
-    regex::Regex::new(r"\[\[([HG]\d+)\]\]").unwrap().replace_all(text, "$1").into_owned()
+    regex::Regex::new(r"\[\[([HG]\d+)\]\]")
+        .unwrap()
+        .replace_all(text, "$1")
+        .into_owned()
 }
 
 /// A word card's facts, all from the lexicon. None if there is no such number.
 pub(crate) fn word_entry(bible: &Bible, strong: &str) -> Result<Option<Value>> {
-    let Some(e) = lookup::strong(bible, strong)? else { return Ok(None) };
+    let Some(e) = lookup::strong(bible, strong)? else {
+        return Ok(None);
+    };
     let rows = e["renderings"].as_array().cloned().unwrap_or_default();
     let occ: i64 = rows.iter().map(|r| r["n"].as_i64().unwrap_or(0)).sum();
     let str_or = |k: &str| e[k].as_str().unwrap_or("").to_string();
-    Ok(Some(json!({"strong": strong, "lemma": str_or("lemma"), "translit": str_or("translit"),
+    Ok(Some(
+        json!({"strong": strong, "lemma": str_or("lemma"), "translit": str_or("translit"),
         "definition": clean_definition(&str_or("definition")),
-        "renderings": rows.iter().take(4).map(|r| json!([r["w"], r["n"]])).collect::<Vec<_>>(), "occurrences": occ, "notes": []})))
+        "renderings": rows.iter().take(4).map(|r| json!([r["w"], r["n"]])).collect::<Vec<_>>(), "occurrences": occ, "notes": []}),
+    ))
 }
 
 // ---- sources ---------------------------------------------------------------------------------------------------------
@@ -367,7 +604,12 @@ pub fn thread_source(bible: &Bible, view: &Value, margin: &mut Margin) -> Result
         .as_array()
         .unwrap()
         .iter()
-        .map(|m| Ok((m.clone(), anchors::py_parse(m["anchor"].as_str().unwrap_or(""))?)))
+        .map(|m| {
+            Ok((
+                m.clone(),
+                anchors::py_parse(m["anchor"].as_str().unwrap_or(""))?,
+            ))
+        })
         .collect::<Result<_>>()?;
     let ok = |m: &Value| m.get("ok").map(|o| o != false).unwrap_or(true);
     let span_of = |p: &Map<String, Value>| {
@@ -378,7 +620,9 @@ pub fn thread_source(bible: &Bible, view: &Value, margin: &mut Margin) -> Result
         };
         (first, last)
     };
-    let whole: Vec<usize> = (0..members.len()).filter(|&i| matches!(s_(&members[i].0, "kind"), "verse" | "verses") && ok(&members[i].0)).collect();
+    let whole: Vec<usize> = (0..members.len())
+        .filter(|&i| matches!(s_(&members[i].0, "kind"), "verse" | "verses") && ok(&members[i].0))
+        .collect();
     let host_of = |i: usize| -> Option<usize> {
         let (m, p) = &members[i];
         if !matches!(s_(m, "kind"), "word" | "phrase") {
@@ -393,7 +637,10 @@ pub fn thread_source(bible: &Bible, view: &Value, margin: &mut Margin) -> Result
     let mut hosted: HashMap<String, Vec<usize>> = HashMap::new();
     for i in 0..members.len() {
         if let Some(h) = host_of(i) {
-            hosted.entry(s_(&members[h].0, "anchor").to_string()).or_default().push(i);
+            hosted
+                .entry(s_(&members[h].0, "anchor").to_string())
+                .or_default()
+                .push(i);
         }
     }
     let (mut places, mut words): (Vec<Value>, Vec<Value>) = (vec![], vec![]);
@@ -416,7 +663,11 @@ pub fn thread_source(bible: &Bible, view: &Value, margin: &mut Margin) -> Result
             continue;
         }
         if kind == "word" {
-            if let Some(first) = m["strongs"].as_array().and_then(|a| a.first()).and_then(|x| x.as_str()) {
+            if let Some(first) = m["strongs"]
+                .as_array()
+                .and_then(|a| a.first())
+                .and_then(|x| x.as_str())
+            {
                 add_word(first, margin)?;
             }
         }
@@ -439,8 +690,18 @@ pub fn thread_source(bible: &Bible, view: &Value, margin: &mut Margin) -> Result
             vec![json!({"v": null, "text": one_line(s_(m, "quote")), "emph": []})]
         } else {
             let (first, last) = span_of(p);
-            let book = books.iter().find(|b| b.code == s(p, "code")).ok_or_else(|| Error(format!("No such book: {}", s(p, "code"))))?.clone();
-            let span = Span { book, c1: first.0 as u32, v1: first.1 as u32, c2: last.0 as u32, v2: last.1 as u32 };
+            let book = books
+                .iter()
+                .find(|b| b.code == s(p, "code"))
+                .ok_or_else(|| Error(format!("No such book: {}", s(p, "code"))))?
+                .clone();
+            let span = Span {
+                book,
+                c1: first.0 as u32,
+                v1: first.1 as u32,
+                c2: last.0 as u32,
+                v2: last.1 as u32,
+            };
             let mut vs = scripture::verses(bible, &span, "KJV")?;
             for v in vs.iter_mut() {
                 let mut sp = vec![];
@@ -458,11 +719,24 @@ pub fn thread_source(bible: &Bible, view: &Value, margin: &mut Margin) -> Result
         } else {
             String::new()
         };
-        let quote = shorten(&if mark.is_empty() { verses.iter().map(|v| v["text"].as_str().unwrap_or("")).collect::<Vec<_>>().join(" ") } else { mark.clone() }, 72);
+        let quote = shorten(
+            &if mark.is_empty() {
+                verses
+                    .iter()
+                    .map(|v| v["text"].as_str().unwrap_or(""))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            } else {
+                mark.clone()
+            },
+            72,
+        );
         places.push(json!({"label": m["label"], "version": "KJV", "verses": verses, "notes": notes, "marked": mark, "quote": quote}));
     }
-    Ok(json!({"name": one_line(view["name"].as_str().unwrap_or("")), "note": view["note"].as_str().unwrap_or("").trim(),
-        "places": places, "words": words}))
+    Ok(
+        json!({"name": one_line(view["name"].as_str().unwrap_or("")), "note": view["note"].as_str().unwrap_or("").trim(),
+        "places": places, "words": words}),
+    )
 }
 
 fn s_<'v>(v: &'v Value, k: &str) -> &'v str {
@@ -475,7 +749,12 @@ fn shorten(text: &str, width: usize) -> String {
         return text;
     }
     let cut: String = text.chars().take(width).collect();
-    format!("{}…", cut.rsplit_once(' ').map(|(a, _)| a.to_string()).unwrap_or(cut.clone()))
+    format!(
+        "{}…",
+        cut.rsplit_once(' ')
+            .map(|(a, _)| a.to_string())
+            .unwrap_or(cut.clone())
+    )
 }
 
 /// A block of a plan's source, as the Python app's (kind, value) tuples.
@@ -490,9 +769,18 @@ pub fn thread_blocks(thread: &Value) -> Vec<Block> {
         blocks.push(("speech".into(), json!(one_line(note))));
     }
     for p in thread["places"].as_array().unwrap() {
-        let verses: Vec<Value> = p["verses"].as_array().unwrap().iter().filter(|v| !v["v"].is_null()).cloned().collect();
+        let verses: Vec<Value> = p["verses"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|v| !v["v"].is_null())
+            .cloned()
+            .collect();
         if !verses.is_empty() {
-            blocks.push(("scripture".into(), json!({"label": p["label"], "version": p["version"], "verses": verses})));
+            blocks.push((
+                "scripture".into(),
+                json!({"label": p["label"], "version": p["version"], "verses": verses}),
+            ));
         }
     }
     for w in thread["words"].as_array().unwrap() {
@@ -514,7 +802,13 @@ pub fn source_verses(blocks: &[Block]) -> Vec<String> {
     let mut out = vec![];
     for (what, val) in blocks {
         for passage in block_passages(what, val) {
-            out.extend(passage["verses"].as_array().unwrap().iter().map(|v| s_(v, "text").to_string()));
+            out.extend(
+                passage["verses"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|v| s_(v, "text").to_string()),
+            );
         }
     }
     out
@@ -526,7 +820,13 @@ pub fn source_refs(blocks: &[Block]) -> Vec<String> {
     let mut out = vec![];
     for (what, val) in blocks {
         for passage in block_passages(what, val) {
-            out.extend(passage["verses"].as_array().unwrap().iter().map(|v| format!("{} ({})", s_(v, "ref"), s_(passage, "version"))));
+            out.extend(
+                passage["verses"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|v| format!("{} ({})", s_(v, "ref"), s_(passage, "version"))),
+            );
         }
     }
     out
@@ -543,7 +843,10 @@ fn split_verses(verses: &[Value]) -> Vec<Vec<Value>> {
     for v in verses {
         let len = s_(v, "text").chars().count();
         if let Some(last) = rows.last() {
-            if rows.len() >= SLIDE_VERSES || size + len > SLIDE_CHARS || v.get("span") != last.get("span") {
+            if rows.len() >= SLIDE_VERSES
+                || size + len > SLIDE_CHARS
+                || v.get("span") != last.get("span")
+            {
                 out.push(std::mem::take(&mut rows));
                 size = 0;
             }
@@ -558,7 +861,11 @@ fn split_verses(verses: &[Value]) -> Vec<Vec<Value>> {
 }
 
 fn title_of(blocks: &[Block]) -> String {
-    blocks.iter().find(|(k, _)| k == "title").map(|(_, v)| v.as_str().unwrap_or("").to_string()).unwrap_or_else(|| "Lesson".into())
+    blocks
+        .iter()
+        .find(|(k, _)| k == "title")
+        .map(|(_, v)| v.as_str().unwrap_or("").to_string())
+        .unwrap_or_else(|| "Lesson".into())
 }
 
 fn run_label(rows: &[Value]) -> String {
@@ -609,7 +916,13 @@ pub fn deck_verse(blocks: &[Block], margin: &mut Margin) -> Vec<Value> {
                     let version = s_(passage, "version");
                     let vs = passage["verses"].as_array().unwrap();
                     for (i, v) in vs.iter().enumerate() {
-                        let near = |o: &Value| if o.get("span") == v.get("span") { o.clone() } else { Value::Null };
+                        let near = |o: &Value| {
+                            if o.get("span") == v.get("span") {
+                                o.clone()
+                            } else {
+                                Value::Null
+                            }
+                        };
                         let marks = margin.marks(v, version);
                         let notes = margin.notes(std::slice::from_ref(v)).join("\n\n");
                         out.push(json!({"kind": "verse", "ref": format!("{} ({version})", s_(v, "ref")), "verse": v,
@@ -662,11 +975,32 @@ fn verse_runs(verses: &[Value]) -> Vec<Value> {
 
 fn word_ops(e: &Value, notes: &[String]) -> Vec<Value> {
     // "%s (%d)" % (word, count): a word the lexicon has as null reads None there too
-    let rendered: Vec<String> =
-        e["renderings"].as_array().unwrap().iter().map(|r| format!("{} ({})", r[0].as_str().unwrap_or("None"), r[1])).collect();
+    let rendered: Vec<String> = e["renderings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| format!("{} ({})", r[0].as_str().unwrap_or("None"), r[1]))
+        .collect();
     let mut ops = vec![
-        plain("Heading 2", &format!("{}  ·  {} uses in the KJV", s_(e, "strong"), e["occurrences"])),
-        para("Word Line", vec![run(&format!("{} ", s_(e, "lemma")), Some("lemma")), run(&format!("{}: {}", s_(e, "translit"), s_(e, "definition")), None)], false),
+        plain(
+            "Heading 2",
+            &format!(
+                "{}  ·  {} uses in the KJV",
+                s_(e, "strong"),
+                e["occurrences"]
+            ),
+        ),
+        para(
+            "Word Line",
+            vec![
+                run(&format!("{} ", s_(e, "lemma")), Some("lemma")),
+                run(
+                    &format!("{}: {}", s_(e, "translit"), s_(e, "definition")),
+                    None,
+                ),
+            ],
+            false,
+        ),
         plain("Study Note", &format!("Rendered: {}", rendered.join(", "))),
     ];
     ops.extend(notes.iter().map(|n| plain("Study Note", n)));
@@ -674,7 +1008,10 @@ fn word_ops(e: &Value, notes: &[String]) -> Vec<Value> {
 }
 
 fn scripture_block(rf: &str, verses: &[Value]) -> Vec<Value> {
-    vec![plain("Scripture Reference", rf), para("Scripture End", verse_runs(verses), false)]
+    vec![
+        plain("Scripture Reference", rf),
+        para("Scripture End", verse_runs(verses), false),
+    ]
 }
 
 /// The Speaker Script: everything in large print, with a cue where each Pulpit slide comes up (craft_plan.doc_script).
@@ -685,12 +1022,28 @@ pub fn doc_script(blocks: &[Block], margin: &mut Margin) -> Vec<Value> {
     }
     margin.reset();
     let mut cue = |kind: &str, key: &str, label: &str| -> Vec<Value> {
-        match numbers.get_mut(&(kind.to_string(), key.to_string())).and_then(|q| q.pop_front()) {
-            Some(n) => vec![plain("Slide Cue", &format!("SLIDE {n}{}", if label.is_empty() { String::new() } else { format!("  ·  {label}") }))],
+        match numbers
+            .get_mut(&(kind.to_string(), key.to_string()))
+            .and_then(|q| q.pop_front())
+        {
+            Some(n) => vec![plain(
+                "Slide Cue",
+                &format!(
+                    "SLIDE {n}{}",
+                    if label.is_empty() {
+                        String::new()
+                    } else {
+                        format!("  ·  {label}")
+                    }
+                ),
+            )],
             None => vec![],
         }
     };
-    let mut ops = vec![plain("Title", &title_of(blocks)), plain("Subtitle", "Speaker's script")];
+    let mut ops = vec![
+        plain("Title", &title_of(blocks)),
+        plain("Subtitle", "Speaker's script"),
+    ];
     let mut first = true;
     for (what, val) in blocks {
         match what.as_str() {
@@ -701,7 +1054,10 @@ pub fn doc_script(blocks: &[Block], margin: &mut Margin) -> Vec<Value> {
                 ops.extend(cue("section", t, ""));
             }
             "speech" => ops.push(plain("Normal", val.as_str().unwrap_or(""))),
-            "note" => ops.push(plain("Delivery Note", &format!("Note: {}", val.as_str().unwrap_or("")))),
+            "note" => ops.push(plain(
+                "Delivery Note",
+                &format!("Note: {}", val.as_str().unwrap_or("")),
+            )),
             "word" => {
                 let strong = s_(val, "strong").to_string();
                 ops.extend(cue("word", &strong, &strong));
@@ -712,7 +1068,12 @@ pub fn doc_script(blocks: &[Block], margin: &mut Margin) -> Vec<Value> {
                     let rf = ref_of(&rows, s_(val, "version"));
                     ops.extend(cue("scripture", &rf, ""));
                     ops.extend(scripture_block(&rf, &rows));
-                    ops.extend(margin.notes(&rows).into_iter().map(|n| plain("Study Note", &format!("Study: {n}"))));
+                    ops.extend(
+                        margin
+                            .notes(&rows)
+                            .into_iter()
+                            .map(|n| plain("Study Note", &format!("Study: {n}"))),
+                    );
                 }
             }
             "parallel" => {
@@ -720,10 +1081,19 @@ pub fn doc_script(blocks: &[Block], margin: &mut Margin) -> Vec<Value> {
                 if let Some(first) = passages.first() {
                     ops.extend(cue("parallel", s_(first, "label"), "both versions"));
                     for passage in passages {
-                        let reference = format!("{} ({})", s_(passage, "label"), s_(passage, "version"));
-                        ops.extend(scripture_block(&reference, passage["verses"].as_array().unwrap()));
+                        let reference =
+                            format!("{} ({})", s_(passage, "label"), s_(passage, "version"));
+                        ops.extend(scripture_block(
+                            &reference,
+                            passage["verses"].as_array().unwrap(),
+                        ));
                     }
-                    ops.extend(margin.notes(first["verses"].as_array().unwrap()).into_iter().map(|n| plain("Study Note", &format!("Study: {n}"))));
+                    ops.extend(
+                        margin
+                            .notes(first["verses"].as_array().unwrap())
+                            .into_iter()
+                            .map(|n| plain("Study Note", &format!("Study: {n}"))),
+                    );
                 }
             }
             _ => {}
@@ -744,12 +1114,22 @@ pub fn doc_type(structure: &str) -> (f64, f64) {
 }
 
 /// The plan of a structure from a thread's places (`to`: word, deck or pdf; a deck's plan is the same in PDF pages).
-pub fn plan_of(to: &str, structure: &str, thread: &Value, margin: &mut Margin) -> Result<Vec<Value>> {
+pub fn plan_of(
+    to: &str,
+    structure: &str,
+    thread: &Value,
+    margin: &mut Margin,
+) -> Result<Vec<Value>> {
     plan_of_blocks(to, structure, &thread_blocks(thread), margin)
 }
 
 /// The plan of a structure from a source read as blocks (a thread's, or a page's: docs/page.rs).
-pub fn plan_of_blocks(to: &str, structure: &str, blocks: &[Block], margin: &mut Margin) -> Result<Vec<Value>> {
+pub fn plan_of_blocks(
+    to: &str,
+    structure: &str,
+    blocks: &[Block],
+    margin: &mut Margin,
+) -> Result<Vec<Value>> {
     match (to == "word", structure) {
         (true, "script") => Ok(doc_script(blocks, margin)),
         (false, "verse") => Ok(deck_verse(blocks, margin)),
@@ -774,7 +1154,13 @@ pub fn plan_of_blocks(to: &str, structure: &str, blocks: &[Block], margin: &mut 
 
 /// A Word template made from the Speaker Script's plan: its own subtitle, some styles left out, and (`room`) three
 /// lines to write on after each passage.
-fn from_script(blocks: &[Block], margin: &mut Margin, subtitle: &str, leave_out: &[&str], room: bool) -> Vec<Value> {
+fn from_script(
+    blocks: &[Block],
+    margin: &mut Margin,
+    subtitle: &str,
+    leave_out: &[&str],
+    room: bool,
+) -> Vec<Value> {
     let mut out = vec![];
     let mut pending = false;
     for op in doc_script(blocks, margin) {
@@ -801,7 +1187,9 @@ fn from_script(blocks: &[Block], margin: &mut Margin, subtitle: &str, leave_out:
 }
 
 pub fn structure_label(to: &str, structure: &str) -> &'static str {
-    self::structure(to, structure).map(|s| s.label).unwrap_or("That structure")
+    self::structure(to, structure)
+        .map(|s| s.label)
+        .unwrap_or("That structure")
 }
 
 // ---- the fingerprint --------------------------------------------------------------------------------------------------
@@ -814,7 +1202,11 @@ pub fn fingerprint(plan: &[Value]) -> String {
             Value::Object(m) => {
                 let mut keys: Vec<&String> = m.keys().collect();
                 keys.sort();
-                Value::Object(keys.into_iter().map(|k| (k.clone(), sorted(&m[k]))).collect())
+                Value::Object(
+                    keys.into_iter()
+                        .map(|k| (k.clone(), sorted(&m[k])))
+                        .collect(),
+                )
             }
             Value::Array(a) => Value::Array(a.iter().map(sorted).collect()),
             x => x.clone(),
@@ -825,5 +1217,8 @@ pub fn fingerprint(plan: &[Value]) -> String {
 
 pub fn sha256_hex(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
-    Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }

@@ -12,7 +12,8 @@ fn e(x: wb_core::Error) -> String {
 
 fn day(a: &crate::args::Args) -> Result<chrono::NaiveDate, String> {
     match a.opt("on") {
-        Some(d) => chrono::NaiveDate::parse_from_str(&d, "%Y-%m-%d").map_err(|_| "A day looks like 2026-11-03.".to_string()),
+        Some(d) => chrono::NaiveDate::parse_from_str(&d, "%Y-%m-%d")
+            .map_err(|_| "A day looks like 2026-11-03.".to_string()),
         None => Ok(rd::today()),
     }
 }
@@ -31,24 +32,40 @@ fn summary(p: &Value) -> Value {
 /// What the form holds, from the options `plan start` and `plan layout` share.
 fn spec_of(a: &crate::args::Args) -> Result<(pl::PlanSpec, String), String> {
     let named = a.opt("books").is_some() || a.opt("passages").is_some();
-    let kind = a.opt("kind").unwrap_or_else(|| (if named { "custom" } else { "canonical" }).to_string());
-    let usual = rd::KINDS.iter().find(|k| k.0 == kind).map(|k| k.2).unwrap_or(30);
+    let kind = a
+        .opt("kind")
+        .unwrap_or_else(|| (if named { "custom" } else { "canonical" }).to_string());
+    let usual = rd::KINDS
+        .iter()
+        .find(|k| k.0 == kind)
+        .map(|k| k.2)
+        .unwrap_or(30);
     if a.opt("pace").is_some() && a.opt("days").is_some() {
         return Err("Give --pace or --days, not both.".into());
     }
     let pace = match (a.opt("pace"), a.opt("days")) {
         (Some(p), _) => pl::Pace::parse(&p).map_err(e)?,
-        (None, Some(d)) => pl::Pace::Days(d.parse().map_err(|_| format!("argument --days: invalid int value: '{d}'"))?),
+        (None, Some(d)) => pl::Pace::Days(
+            d.parse()
+                .map_err(|_| format!("argument --days: invalid int value: '{d}'"))?,
+        ),
         (None, None) => pl::Pace::Days(usual),
     };
     if !rd::KINDS.iter().any(|k| k.0 == kind) && kind != "custom" {
-        return Err(format!("No plan kind “{kind}”. Kinds: {}.", rd::KINDS.iter().map(|k| k.0).collect::<Vec<_>>().join(", ")));
+        return Err(format!(
+            "No plan kind “{kind}”. Kinds: {}.",
+            rd::KINDS.iter().map(|k| k.0).collect::<Vec<_>>().join(", ")
+        ));
     }
     let spec = pl::PlanSpec {
         kind: kind.clone(),
         books: a.opt("books"),
         passages: a.opt("passages"),
-        order: a.opt("order").map(|o| pl::Order::parse(&o)).transpose().map_err(e)?,
+        order: a
+            .opt("order")
+            .map(|o| pl::Order::parse(&o))
+            .transpose()
+            .map_err(e)?,
         pace,
         days_off: pl::parse_days_off(&a.opt("days_off").unwrap_or_default()).map_err(e)?,
     };
@@ -57,7 +74,8 @@ fn spec_of(a: &crate::args::Args) -> Result<(pl::PlanSpec, String), String> {
 
 fn start_day(a: &crate::args::Args) -> Result<chrono::NaiveDate, String> {
     match a.opt("start") {
-        Some(s) => chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d").map_err(|_| "A day looks like 2026-11-03.".to_string()),
+        Some(s) => chrono::NaiveDate::parse_from_str(&s, "%Y-%m-%d")
+            .map_err(|_| "A day looks like 2026-11-03.".to_string()),
         None => Ok(rd::today()),
     }
 }
@@ -77,15 +95,26 @@ fn horner(c: &crate::Ctx<'_>, a: &crate::args::Args) -> Res {
     if a.flag("dry_run") {
         return j(wb_core::published::summarize(b, &a.s("name"), start, &imp));
     }
-    let p = rd::start_plan_with(&c.root()?, &a.s("name"), imp.kind, a.opt("start").as_deref(), imp.days, imp.extra).map_err(e)?;
-    j(summary(&rd::progress(b, &c.root()?, &p, rd::today()).map_err(e)?))
+    let p = rd::start_plan_with(
+        &c.root()?,
+        &a.s("name"),
+        imp.kind,
+        a.opt("start").as_deref(),
+        imp.days,
+        imp.extra,
+    )
+    .map_err(e)?;
+    j(summary(
+        &rd::progress(b, &c.root()?, &p, rd::today()).map_err(e)?,
+    ))
 }
 
 /// The builder's view of Horner's lists: each list's books and its first chapters, side by side as columns.
 fn horner_layout(c: &crate::Ctx<'_>, a: &crate::args::Args) -> Res {
     let b = c.bible()?;
     let imp = wb_core::published::horner_kind(b).map_err(e)?;
-    let mut v = wb_core::published::summarize(b, &a.opt("name").unwrap_or_default(), start_day(a)?, &imp);
+    let mut v =
+        wb_core::published::summarize(b, &a.opt("name").unwrap_or_default(), start_day(a)?, &imp);
     let lists: Vec<Value> = imp.extra["lists"].as_array().unwrap().iter().zip(wb_core::published::HORNER_LISTS).map(|(l, name)| {
         let chs: Vec<&str> = l.as_array().unwrap().iter().filter_map(|x| x.as_str()).collect();
         json!({"books": name, "chapters": chs.len(), "first": chs.iter().take(7).map(|e| rd::label(b, std::slice::from_ref(&e.to_string()))).collect::<Vec<_>>()})
@@ -98,8 +127,13 @@ fn horner_layout(c: &crate::Ctx<'_>, a: &crate::args::Args) -> Res {
 
 /// An arrangement from a file, or from the input with `-`: {"days": [["MAT.1", "MAT.2"], …], "kept": [2]}.
 fn arranged(c: &crate::Ctx<'_>, from: &str) -> Result<pl::Arranged, String> {
-    let text = if from == "-" { c.stdin()? } else { std::fs::read_to_string(from).map_err(|x| format!("{from}: {x}"))? };
-    let v: Value = serde_json::from_str(&text).map_err(|x| format!("The arrangement is not JSON: {x}"))?;
+    let text = if from == "-" {
+        c.stdin()?
+    } else {
+        std::fs::read_to_string(from).map_err(|x| format!("{from}: {x}"))?
+    };
+    let v: Value =
+        serde_json::from_str(&text).map_err(|x| format!("The arrangement is not JSON: {x}"))?;
     pl::Arranged::from_json(c.bible()?, &v).map_err(e)
 }
 
@@ -352,4 +386,3 @@ pub fn commands() -> Vec<Command> {
         }),
     ]
 }
-

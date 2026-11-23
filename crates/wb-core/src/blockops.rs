@@ -11,7 +11,7 @@
 //! hand) are read as plain blocks, and nothing is lost. Taking the last block out of a column takes its marker too, and a
 //! group left with one column is unwrapped.
 
-use crate::pages::{check_n, chars, insert, list_mark, set, split, sub};
+use crate::pages::{chars, check_n, insert, list_mark, set, split, sub};
 use crate::store::{bad, missing};
 use crate::Result;
 
@@ -21,7 +21,9 @@ pub const CLOSE: &str = "<!-- /columns -->";
 /// The most columns a group holds.
 pub const MAX_COLUMNS: usize = 4;
 
-pub const COLORS: [&str; 8] = ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "red"];
+pub const COLORS: [&str; 8] = [
+    "gray", "brown", "orange", "yellow", "green", "blue", "purple", "red",
+];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Mark {
@@ -63,7 +65,11 @@ impl Group {
 
 fn block_texts(text: &str, titled: bool) -> Vec<String> {
     let c = chars(text);
-    split(text, titled).1.iter().map(|b| sub(&c, b.start, b.end)).collect()
+    split(text, titled)
+        .1
+        .iter()
+        .map(|b| sub(&c, b.start, b.end))
+        .collect()
 }
 
 /// The balanced groups among these blocks, in order.
@@ -86,7 +92,11 @@ pub fn groups_of(texts: &[String]) -> Vec<Group> {
                 }
             }
             if let Some(close) = close {
-                out.push(Group { open: i, seps, close });
+                out.push(Group {
+                    open: i,
+                    seps,
+                    close,
+                });
                 i = close + 1;
                 continue;
             }
@@ -119,7 +129,9 @@ fn repair(texts: &[String]) -> Option<Vec<usize>> {
 pub fn tidy(text: &str, titled: bool) -> Result<String> {
     let mut text = text.to_string();
     for _ in 0..32 {
-        let Some(mut gone) = repair(&block_texts(&text, titled)) else { return Ok(text) };
+        let Some(mut gone) = repair(&block_texts(&text, titled)) else {
+            return Ok(text);
+        };
         gone.sort_unstable_by(|a, b| b.cmp(a));
         for at in gone {
             text = set(&text, titled, at, 1, "")?.0;
@@ -131,7 +143,13 @@ pub fn tidy(text: &str, titled: bool) -> Result<String> {
 /// Put block `n` beside block `m` (`wb block move ID N --beside M`): at M's right (`left`: its left). When M is not in a
 /// group the two become a group of two columns; when it is, N becomes a column next to M's column (at most four). N leaves
 /// its old place, and a column or a group that leaves empty goes. → the text, and where N is now (from 0).
-pub fn move_beside(text: &str, titled: bool, n: usize, m: usize, left: bool) -> Result<(String, usize)> {
+pub fn move_beside(
+    text: &str,
+    titled: bool,
+    n: usize,
+    m: usize,
+    left: bool,
+) -> Result<(String, usize)> {
     let texts = block_texts(text, titled);
     check_n_len(&texts, n)?;
     check_n_len(&texts, m)?;
@@ -139,7 +157,9 @@ pub fn move_beside(text: &str, titled: bool, n: usize, m: usize, left: bool) -> 
         return Err(bad("A block cannot go beside itself."));
     }
     if mark(&texts[n]).is_some() || mark(&texts[m]).is_some() {
-        return Err(bad("A column marker is not a block; move the blocks, not the markers."));
+        return Err(bad(
+            "A column marker is not a block; move the blocks, not the markers.",
+        ));
     }
     let groups = groups_of(&texts);
     let moving = texts[n].clone();
@@ -149,7 +169,10 @@ pub fn move_beside(text: &str, titled: bool, n: usize, m: usize, left: bool) -> 
     match around(m) {
         None if left => {
             ops.push((Some(m), vec![CLOSE.into()]));
-            ops.push((m.checked_sub(1), vec![OPEN.into(), moving.clone(), SEP.into()]));
+            ops.push((
+                m.checked_sub(1),
+                vec![OPEN.into(), moving.clone(), SEP.into()],
+            ));
         }
         None => {
             ops.push((Some(m), vec![SEP.into(), moving.clone(), CLOSE.into()]));
@@ -157,7 +180,8 @@ pub fn move_beside(text: &str, titled: bool, n: usize, m: usize, left: bool) -> 
         }
         Some(g) => {
             let cols = g.columns();
-            let alone = around(n).is_some_and(|h| h == g) && cols.iter().any(|(a, b)| *a <= n && n < *b && b - a == 1);
+            let alone = around(n).is_some_and(|h| h == g)
+                && cols.iter().any(|(a, b)| *a <= n && n < *b && b - a == 1);
             if cols.len() + 1 - usize::from(alone) > MAX_COLUMNS {
                 return Err(bad(format!("A group holds at most {MAX_COLUMNS} columns.")));
             }
@@ -202,7 +226,12 @@ pub fn move_beside(text: &str, titled: bool, n: usize, m: usize, left: bool) -> 
 
 fn check_n_len(texts: &[String], n: usize) -> Result<()> {
     if n >= texts.len() {
-        return Err(missing(format!("The page has {} block{}; there is no block {}.", texts.len(), if texts.len() == 1 { "" } else { "s" }, n + 1)));
+        return Err(missing(format!(
+            "The page has {} block{}; there is no block {}.",
+            texts.len(),
+            if texts.len() == 1 { "" } else { "s" },
+            n + 1
+        )));
     }
     Ok(())
 }
@@ -212,13 +241,23 @@ fn check_n_len(texts: &[String], n: usize) -> Result<()> {
 /// Is this block text a block that can have a background?
 pub fn takes_background(kind: &str, text: &str) -> bool {
     let t = text.trim();
-    matches!(kind, "paragraph" | "heading" | "item" | "numbered" | "todo" | "quote") && !t.starts_with("<details") && !t.starts_with("</details>") && !t.starts_with("<!--")
+    matches!(
+        kind,
+        "paragraph" | "heading" | "item" | "numbered" | "todo" | "quote"
+    ) && !t.starts_with("<details")
+        && !t.starts_with("</details>")
+        && !t.starts_with("<!--")
 }
 
 /// The characters a line's marker takes before its text (`## `, `- [ ] `, `> `, `> [!key] `).
 fn lead_len(line: &str, kind: &str, first: bool) -> usize {
     let cs: Vec<char> = line.chars().collect();
-    let spaces = |from: usize| cs[from.min(cs.len())..].iter().take_while(|c| **c == ' ' || **c == '\t').count();
+    let spaces = |from: usize| {
+        cs[from.min(cs.len())..]
+            .iter()
+            .take_while(|c| **c == ' ' || **c == '\t')
+            .count()
+    };
     match kind {
         "heading" if first => {
             let lead = spaces(0);
@@ -229,7 +268,10 @@ fn lead_len(line: &str, kind: &str, first: bool) -> usize {
             let mut n = list_mark(line).map(|m| m.1).unwrap_or(0).min(cs.len());
             if kind == "todo" {
                 let rest: String = cs[n..].iter().collect();
-                if let Some(c) = ["[ ] ", "[x] ", "[X] ", "[ ]", "[x]", "[X]"].iter().find(|c| rest.starts_with(**c)) {
+                if let Some(c) = ["[ ] ", "[x] ", "[X] ", "[ ]", "[x]", "[X]"]
+                    .iter()
+                    .find(|c| rest.starts_with(**c))
+                {
                     n += c.chars().count();
                 }
             }
@@ -305,7 +347,9 @@ pub fn colored(kind: &str, text: &str, name: Option<&str>) -> Option<String> {
     }
     let wrap = |body: &str| -> String {
         let body = body.trim_end();
-        let inner = bg_wrap(body).map(|x| x.1).unwrap_or_else(|| body.to_string());
+        let inner = bg_wrap(body)
+            .map(|x| x.1)
+            .unwrap_or_else(|| body.to_string());
         match name {
             Some(c) if !inner.is_empty() => format!("<span data-bg=\"{c}\">{inner}</span>"),
             _ => inner,
@@ -336,10 +380,19 @@ pub fn colored(kind: &str, text: &str, name: Option<&str>) -> Option<String> {
 
 /// Give `count` blocks from block `n` a background (`wb block color ID N NAME --count K`; `None`: Default). A block that is
 /// not text is left as it is; if none of them is text it is an error. → the text.
-pub fn color_blocks(text: &str, titled: bool, n: usize, count: usize, name: Option<&str>) -> Result<String> {
+pub fn color_blocks(
+    text: &str,
+    titled: bool,
+    n: usize,
+    count: usize,
+    name: Option<&str>,
+) -> Result<String> {
     if let Some(c) = name {
         if !COLORS.contains(&c) {
-            return Err(bad(format!("The colors are {} and default.", COLORS.join(", "))));
+            return Err(bad(format!(
+                "The colors are {} and default.",
+                COLORS.join(", ")
+            )));
         }
     }
     let bs = split(text, titled).1;
@@ -349,7 +402,9 @@ pub fn color_blocks(text: &str, titled: bool, n: usize, count: usize, name: Opti
     let mut any = false;
     for i in (n..n + count).rev() {
         let old = sub(&c, bs[i].start, bs[i].end);
-        let Some(new) = colored(bs[i].kind, &old, name) else { continue };
+        let Some(new) = colored(bs[i].kind, &old, name) else {
+            continue;
+        };
         any = true;
         if new != old {
             out = set(&out, titled, i, 1, &new)?.0;
@@ -386,10 +441,19 @@ mod tests {
         // read back, and replaced, and taken off
         let blocks = split(&out, true).1;
         let c = chars(&out);
-        assert_eq!(bg_of(blocks[1].kind, &sub(&c, blocks[1].start, blocks[1].end)).as_deref(), Some("yellow"));
-        assert_eq!(bg_of("quote", &kinds_texts(&out)[4]).as_deref(), Some("yellow"));
+        assert_eq!(
+            bg_of(blocks[1].kind, &sub(&c, blocks[1].start, blocks[1].end)).as_deref(),
+            Some("yellow")
+        );
+        assert_eq!(
+            bg_of("quote", &kinds_texts(&out)[4]).as_deref(),
+            Some("yellow")
+        );
         let blue = color_blocks(&out, true, 0, 5, Some("blue")).unwrap();
-        assert!(blue.contains("<span data-bg=\"blue\">Plain words here</span>") && !blue.contains("yellow"));
+        assert!(
+            blue.contains("<span data-bg=\"blue\">Plain words here</span>")
+                && !blue.contains("yellow")
+        );
         assert_eq!(color_blocks(&blue, true, 0, 5, None).unwrap(), t);
     }
 
@@ -420,27 +484,49 @@ mod tests {
         let t = page(&["one", "two", "three"]);
         let out = beside(&t, "three", "one", false).unwrap();
         assert_eq!(kinds_texts(&out), [OPEN, "one", SEP, "three", CLOSE, "two"]);
-        assert_eq!(move_beside(&t, true, 2, 0, false).unwrap().1, 3, "the moved block's number");
+        assert_eq!(
+            move_beside(&t, true, 2, 0, false).unwrap().1,
+            3,
+            "the moved block's number"
+        );
         // a third column, and a fourth is the most a group holds
         let out = beside(&out, "two", "three", false).unwrap();
-        assert_eq!(kinds_texts(&out), [OPEN, "one", SEP, "three", SEP, "two", CLOSE]);
+        assert_eq!(
+            kinds_texts(&out),
+            [OPEN, "one", SEP, "three", SEP, "two", CLOSE]
+        );
         let t4 = page(&["a", "b", "c", "d", "e"]);
         let mut o = beside(&t4, "b", "a", false).unwrap();
         o = beside(&o, "c", "b", false).unwrap();
         o = beside(&o, "d", "c", false).unwrap();
-        assert_eq!(kinds_texts(&o), [OPEN, "a", SEP, "b", SEP, "c", SEP, "d", CLOSE, "e"]);
-        assert!(beside(&o, "e", "a", false).is_err(), "a fifth column is refused");
+        assert_eq!(
+            kinds_texts(&o),
+            [OPEN, "a", SEP, "b", SEP, "c", SEP, "d", CLOSE, "e"]
+        );
+        assert!(
+            beside(&o, "e", "a", false).is_err(),
+            "a fifth column is refused"
+        );
         // a block taken out of a column of several keeps the others; the last of a column takes its marker
         let o = beside(&o, "a", "d", false).unwrap();
-        assert_eq!(kinds_texts(&o), [OPEN, "b", SEP, "c", SEP, "d", SEP, "a", CLOSE, "e"]);
+        assert_eq!(
+            kinds_texts(&o),
+            [OPEN, "b", SEP, "c", SEP, "d", SEP, "a", CLOSE, "e"]
+        );
         // moving into the same group when it is full is allowed when the block leaves a column of its own
         let left = beside(&o, "a", "b", true).unwrap();
-        assert_eq!(kinds_texts(&left), [OPEN, "a", SEP, "b", SEP, "c", SEP, "d", CLOSE, "e"]);
+        assert_eq!(
+            kinds_texts(&left),
+            [OPEN, "a", SEP, "b", SEP, "c", SEP, "d", CLOSE, "e"]
+        );
         // two columns left: one leaves and the group is unwrapped
         let two = beside(&t, "three", "one", true).unwrap();
         assert_eq!(kinds_texts(&two), [OPEN, "three", SEP, "one", CLOSE, "two"]);
         let gone = crate::pages::move_block(&two, true, 3, 6).unwrap().0;
-        assert_eq!(kinds_texts(&tidy(&gone, true).unwrap()), ["three", "two", "one"]);
+        assert_eq!(
+            kinds_texts(&tidy(&gone, true).unwrap()),
+            ["three", "two", "one"]
+        );
         // the same through an edit that removes a block
         let rm = set(&two, true, 3, 1, "").unwrap().0;
         assert_eq!(kinds_texts(&tidy(&rm, true).unwrap()), ["three", "two"]);

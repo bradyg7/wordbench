@@ -1,7 +1,10 @@
 //! Discovery of standalone saved PDFs, including exports with no document record.
 
 use super::{checked_name, open_file, ExportFolders};
-use crate::{store::{bad, missing}, Result};
+use crate::{
+    store::{bad, missing},
+    Result,
+};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -20,11 +23,17 @@ pub struct Pdf {
 }
 
 fn safe_name(name: &str) -> bool {
-    checked_name(name).is_ok() && !name.chars().any(|c| c.is_control() || "<>\"|?*".contains(c))
+    checked_name(name).is_ok()
+        && !name
+            .chars()
+            .any(|c| c.is_control() || "<>\"|?*".contains(c))
 }
 
 fn stem(name: &str) -> &str {
-    if name.get(name.len().saturating_sub(4)..).is_some_and(|suffix| suffix.eq_ignore_ascii_case(".pdf")) {
+    if name
+        .get(name.len().saturating_sub(4)..)
+        .is_some_and(|suffix| suffix.eq_ignore_ascii_case(".pdf"))
+    {
         &name[..name.len() - 4]
     } else {
         name
@@ -45,19 +54,37 @@ pub fn list(folders: &ExportFolders) -> Result<Vec<Pdf>> {
         }
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
-            let Ok(name) = entry.file_name().into_string() else { continue };
+            let Ok(name) = entry.file_name().into_string() else {
+                continue;
+            };
             let base = stem(&name);
-            if base.is_empty() || base.len() == name.len() || !safe_name(&name) || !entry.file_type()?.is_file() {
+            if base.is_empty()
+                || base.len() == name.len()
+                || !safe_name(&name)
+                || !entry.file_type()?.is_file()
+            {
                 continue;
             }
             let meta = entry.metadata()?;
             let modified_time = meta.modified().ok();
-            let modified = modified_time.map(chrono::DateTime::<chrono::Local>::from)
-                .map(|t| t.format("%Y-%m-%d %H:%M").to_string()).unwrap_or_default();
-            found.push(Pdf { name, path: entry.path(), size: meta.len(), modified, modified_time });
+            let modified = modified_time
+                .map(chrono::DateTime::<chrono::Local>::from)
+                .map(|t| t.format("%Y-%m-%d %H:%M").to_string())
+                .unwrap_or_default();
+            found.push(Pdf {
+                name,
+                path: entry.path(),
+                size: meta.len(),
+                modified,
+                modified_time,
+            });
         }
     }
-    found.sort_by(|a, b| b.modified_time.cmp(&a.modified_time).then_with(|| a.path.cmp(&b.path)));
+    found.sort_by(|a, b| {
+        b.modified_time
+            .cmp(&a.modified_time)
+            .then_with(|| a.path.cmp(&b.path))
+    });
     Ok(found)
 }
 
@@ -81,10 +108,18 @@ pub fn find<'a>(files: &'a [Pdf], name: &str, exact: bool) -> Result<&'a Pdf> {
             contains.push(file);
         }
     }
-    match [direct, starts, contains].into_iter().find(|hits| !hits.is_empty()).as_deref() {
+    match [direct, starts, contains]
+        .into_iter()
+        .find(|hits| !hits.is_empty())
+        .as_deref()
+    {
         Some([one]) => Ok(one),
-        Some(_) => Err(bad(format!("More than one saved PDF matches “{name}”. wb pdfs lists their paths."))),
-        None => Err(missing(format!("No saved PDF called “{name}”. wb pdfs lists them."))),
+        Some(_) => Err(bad(format!(
+            "More than one saved PDF matches “{name}”. wb pdfs lists their paths."
+        ))),
+        None => Err(missing(format!(
+            "No saved PDF called “{name}”. wb pdfs lists them."
+        ))),
     }
 }
 

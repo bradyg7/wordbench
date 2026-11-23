@@ -10,7 +10,13 @@ use wb_core::store::{s, Store};
 
 fn many_notes(st: &mut Store, n: usize) {
     for i in 0..n {
-        st.add_note(&format!("PSA.{}:{}", 1 + i % 150, 1 + i % 20), &format!("note {i}"), "", "").unwrap();
+        st.add_note(
+            &format!("PSA.{}:{}", 1 + i % 150, 1 + i % 20),
+            &format!("note {i}"),
+            "",
+            "",
+        )
+        .unwrap();
     }
 }
 
@@ -45,29 +51,69 @@ fn a_write_reads_one_file_not_all_of_them() {
 fn every_kind_of_write_goes_straight_into_memory() {
     let t = Scratch::new();
     let mut st = Store::open(t.path()).unwrap();
-    let th = s(&st.create_thread("Zeal", "why", Some("blue")).unwrap(), "id");
+    let th = s(
+        &st.create_thread("Zeal", "why", Some("blue")).unwrap(),
+        "id",
+    );
     st.add_to_thread(&th, "NUM.25:11", "q").unwrap();
-    let n = s(&st.add_note("NUM.25:11", "he was jealous", "", "").unwrap(), "id");
+    let n = s(
+        &st.add_note("NUM.25:11", "he was jealous", "", "").unwrap(),
+        "id",
+    );
     st.set_highlight("NUM.25:11", Some("yellow"), "").unwrap();
-    let q = s(&st.add_trail("NUM.25:11", "what about Rom 10:2?", "").unwrap(), "id");
+    let q = s(
+        &st.add_trail("NUM.25:11", "what about Rom 10:2?", "")
+            .unwrap(),
+        "id",
+    );
     st.loads = 0;
-    assert_eq!(st.threads().iter().map(|x| s(x, "name")).collect::<Vec<_>>(), vec!["Zeal"]);
+    assert_eq!(
+        st.threads()
+            .iter()
+            .map(|x| s(x, "name"))
+            .collect::<Vec<_>>(),
+        vec!["Zeal"]
+    );
     assert_eq!(st.thread(&th).unwrap()["members"][0]["anchor"], "NUM.25:11");
-    assert_eq!(st.notes().iter().map(|x| s(x, "text")).collect::<Vec<_>>(), vec!["he was jealous"]);
-    assert_eq!(st.highlights("NUM").iter().map(|h| s(h, "color")).collect::<Vec<_>>(), vec!["yellow"]);
-    assert_eq!(st.trails().iter().map(|x| s(x, "status")).collect::<Vec<_>>(), vec!["open"]);
+    assert_eq!(
+        st.notes().iter().map(|x| s(x, "text")).collect::<Vec<_>>(),
+        vec!["he was jealous"]
+    );
+    assert_eq!(
+        st.highlights("NUM")
+            .iter()
+            .map(|h| s(h, "color"))
+            .collect::<Vec<_>>(),
+        vec!["yellow"]
+    );
+    assert_eq!(
+        st.trails()
+            .iter()
+            .map(|x| s(x, "status"))
+            .collect::<Vec<_>>(),
+        vec!["open"]
+    );
     st.update_note(&n, "changed").unwrap();
     st.set_trail_status(&q, "done").unwrap();
-    st.update_thread(&th, None, Some("new note"), Some(Some("pink"))).unwrap();
+    st.update_thread(&th, None, Some("new note"), Some(Some("pink")))
+        .unwrap();
     assert_eq!(s(st.notes()[0], "text"), "changed");
     assert_eq!(s(st.trails()[0], "status"), "done");
-    assert_eq!((s(st.threads()[0], "note"), s(st.threads()[0], "color")), ("new note".into(), "pink".into()));
+    assert_eq!(
+        (s(st.threads()[0], "note"), s(st.threads()[0], "color")),
+        ("new note".into(), "pink".into())
+    );
     assert_eq!(st.loads, 3); // the three files just written, and nothing else
     st.delete_note(&n).unwrap();
     st.delete_trail(&q).unwrap();
     st.delete_thread(&th).unwrap();
     st.set_highlight("NUM.25:11", None, "").unwrap();
-    assert!(st.notes().is_empty() && st.trails().is_empty() && st.threads().is_empty() && st.all_highlights().is_empty());
+    assert!(
+        st.notes().is_empty()
+            && st.trails().is_empty()
+            && st.threads().is_empty()
+            && st.all_highlights().is_empty()
+    );
     assert!(fs::read_dir(t.path().join(".trash")).unwrap().count() > 0); // nothing is erased
 }
 
@@ -97,22 +143,47 @@ fn a_hand_edit_a_new_file_and_a_removed_file_are_noticed() {
     let b = s(&st.add_note("JHN.3:17", "Second.", "", "").unwrap(), "id");
     let path = note_file(&t, &a);
     tick();
-    fs::write(&path, fs::read_to_string(&path).unwrap().replace("Original.", "Edited by hand.")).unwrap();
+    fs::write(
+        &path,
+        fs::read_to_string(&path)
+            .unwrap()
+            .replace("Original.", "Edited by hand."),
+    )
+    .unwrap();
     st.refresh().unwrap();
     let mut texts: Vec<String> = st.notes().iter().map(|n| s(n, "text")).collect();
     texts.sort();
     assert_eq!(texts, vec!["Edited by hand.", "Second."]);
     fs::remove_file(note_file(&t, &b)).unwrap();
     st.refresh().unwrap();
-    assert_eq!(st.notes().iter().map(|n| s(n, "text")).collect::<Vec<_>>(), vec!["Edited by hand."]);
+    assert_eq!(
+        st.notes().iter().map(|n| s(n, "text")).collect::<Vec<_>>(),
+        vec!["Edited by hand."]
+    );
     fs::create_dir_all(t.path().join("threads")).unwrap();
-    fs::write(t.path().join("threads").join("by-hand.md"), "---\nname: \"By hand\"\n---\n\nnote\n\n<!-- anchors -->\n- JHN.3:16 | \"q\"\n").unwrap();
+    fs::write(
+        t.path().join("threads").join("by-hand.md"),
+        "---\nname: \"By hand\"\n---\n\nnote\n\n<!-- anchors -->\n- JHN.3:16 | \"q\"\n",
+    )
+    .unwrap();
     st.refresh().unwrap();
-    assert_eq!(st.threads().iter().map(|x| s(x, "name")).collect::<Vec<_>>(), vec!["By hand"]);
+    assert_eq!(
+        st.threads()
+            .iter()
+            .map(|x| s(x, "name"))
+            .collect::<Vec<_>>(),
+        vec!["By hand"]
+    );
     fs::create_dir_all(t.path().join("highlights")).unwrap();
     fs::write(t.path().join("highlights").join("JHN.json"), r#"{"highlights": [{"id": "h1", "anchor": "JHN.3:16", "color": "green", "quote": "", "created": "2026-01-01T00:00:00Z"}]}"#).unwrap();
     st.refresh().unwrap();
-    assert_eq!(st.highlights("JHN").iter().map(|h| s(h, "color")).collect::<Vec<_>>(), vec!["green"]);
+    assert_eq!(
+        st.highlights("JHN")
+            .iter()
+            .map(|h| s(h, "color"))
+            .collect::<Vec<_>>(),
+        vec!["green"]
+    );
     tick();
     fs::write(t.path().join("highlights").join("JHN.json"), "not json").unwrap();
     st.refresh().unwrap();
@@ -129,7 +200,13 @@ fn a_store_that_looks_every_minute_sees_a_hand_edit_when_the_time_comes() {
     let path = note_file(&t, &a);
     st.refresh().unwrap();
     tick();
-    fs::write(&path, fs::read_to_string(&path).unwrap().replace("Original.", "Edited.")).unwrap();
+    fs::write(
+        &path,
+        fs::read_to_string(&path)
+            .unwrap()
+            .replace("Original.", "Edited."),
+    )
+    .unwrap();
     st.refresh().unwrap();
     assert_eq!(s(st.notes()[0], "text"), "Original."); // not looked at yet
     st.look_again(); // the time to look comes round
@@ -156,13 +233,30 @@ fn a_note_that_moves_to_another_book_stays_in_memory() {
     let mut st = Store::open(t.path()).unwrap();
     let n = s(&st.add_note("NUM.25:11", "his zeal", "", "").unwrap(), "id");
     st.set_note_also(&n, "PSA.106:30", true).unwrap();
-    st.unplace(&n, "NUM.25:11", Some(("PSA.106:30", "verse", "", ""))).unwrap();
-    assert_eq!(st.notes().iter().map(|x| (s(x, "id"), s(x, "anchor"))).collect::<Vec<_>>(), vec![(n.clone(), "PSA.106:30".to_string())]);
-    st.replace_placed(&n, "JHN.3:16", "verse", "", "", None).unwrap();
-    assert_eq!(st.notes().iter().map(|x| (s(x, "id"), s(x, "anchor"))).collect::<Vec<_>>(), vec![(n.clone(), "JHN.3:16".to_string())]);
+    st.unplace(&n, "NUM.25:11", Some(("PSA.106:30", "verse", "", "")))
+        .unwrap();
+    assert_eq!(
+        st.notes()
+            .iter()
+            .map(|x| (s(x, "id"), s(x, "anchor")))
+            .collect::<Vec<_>>(),
+        vec![(n.clone(), "PSA.106:30".to_string())]
+    );
+    st.replace_placed(&n, "JHN.3:16", "verse", "", "", None)
+        .unwrap();
+    assert_eq!(
+        st.notes()
+            .iter()
+            .map(|x| (s(x, "id"), s(x, "anchor")))
+            .collect::<Vec<_>>(),
+        vec![(n.clone(), "JHN.3:16".to_string())]
+    );
     st.unplace(&n, "JHN.3:16", None).unwrap();
     assert!(st.notes().is_empty());
-    assert_eq!(st.inbox().iter().map(|x| s(x, "id")).collect::<Vec<_>>(), vec![n]);
+    assert_eq!(
+        st.inbox().iter().map(|x| s(x, "id")).collect::<Vec<_>>(),
+        vec![n]
+    );
 }
 
 #[test]

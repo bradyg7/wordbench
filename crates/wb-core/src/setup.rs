@@ -33,13 +33,21 @@ fn os_app_dir() -> Option<PathBuf> {
     }
     #[cfg(target_os = "macos")]
     {
-        env::var_os("HOME").map(|home| PathBuf::from(home).join("Library").join("Application Support").join(APP_DIR_NAME))
+        env::var_os("HOME").map(|home| {
+            PathBuf::from(home)
+                .join("Library")
+                .join("Application Support")
+                .join(APP_DIR_NAME)
+        })
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         env::var_os("XDG_CONFIG_HOME")
             .map(|base| PathBuf::from(base).join("bible-workbench"))
-            .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".config").join("bible-workbench")))
+            .or_else(|| {
+                env::var_os("HOME")
+                    .map(|home| PathBuf::from(home).join(".config").join("bible-workbench"))
+            })
     }
     #[cfg(not(any(windows, unix)))]
     {
@@ -97,7 +105,8 @@ pub fn set_setting(key: &str, value: &str) -> crate::Result<()> {
         map.insert(key.to_string(), Value::String(value.to_string()));
     }
     fs::create_dir_all(app_dir()).map_err(io)?;
-    let text = serde_json::to_string_pretty(&Value::Object(map)).map_err(|e| crate::Error(e.to_string()))?;
+    let text = serde_json::to_string_pretty(&Value::Object(map))
+        .map_err(|e| crate::Error(e.to_string()))?;
     let path = settings_path();
     let tmp = path.with_file_name("settings.json.tmp");
     fs::write(&tmp, text).map_err(io)?;
@@ -113,7 +122,10 @@ fn io(e: std::io::Error) -> crate::Error {
 
 /// The study folder was chosen by the person (a setting or WB_STUDY_DIR), rather than being the development scratch copy.
 pub fn study_configured() -> bool {
-    env::var("WB_STUDY_DIR").map(|v| !v.trim().is_empty()).unwrap_or(false) || setting("study_dir").is_some()
+    env::var("WB_STUDY_DIR")
+        .map(|v| !v.trim().is_empty())
+        .unwrap_or(false)
+        || setting("study_dir").is_some()
 }
 
 /// The folder offered on the setup screen when none has been chosen yet.
@@ -138,7 +150,10 @@ pub fn db_candidates() -> Vec<PathBuf> {
     if let Some(p) = setting("bible_db") {
         add(PathBuf::from(p));
     }
-    if let Some(dir) = env::current_exe().ok().and_then(|e| e.parent().map(Path::to_path_buf)) {
+    if let Some(dir) = env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(Path::to_path_buf))
+    {
         add(dir.join("datasets").join(DB_FILE));
         add(dir.join(DB_FILE));
     }

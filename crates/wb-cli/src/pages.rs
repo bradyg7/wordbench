@@ -16,7 +16,11 @@ fn j(v: Value) -> Res {
 }
 
 fn text_of(c: &Ctx<'_>, words: &str) -> Result<String, String> {
-    if words.trim() == "-" { c.stdin() } else { Ok(words.to_string()) }
+    if words.trim() == "-" {
+        c.stdin()
+    } else {
+        Ok(words.to_string())
+    }
 }
 
 /// A block's number as typed (from 1) → the core's (from 0).
@@ -24,7 +28,9 @@ fn nth(a: &crate::args::Args, name: &str) -> Result<usize, String> {
     let v = a.s(name);
     match v.trim().parse::<usize>() {
         Ok(n) if n >= 1 => Ok(n - 1),
-        _ => Err(format!("A block is named by its number, from 1 (wb page blocks lists them), not “{v}”.")),
+        _ => Err(format!(
+            "A block is named by its number, from 1 (wb page blocks lists them), not “{v}”."
+        )),
     }
 }
 
@@ -34,14 +40,19 @@ fn opt_n(a: &crate::args::Args, name: &str) -> Result<Option<usize>, String> {
         None => Ok(None),
         Some(v) => match v.trim().parse::<usize>() {
             Ok(n) if n >= 1 => Ok(Some(n)),
-            _ => Err(format!("--{name} takes a block's number, from 1, not “{v}”.")),
+            _ => Err(format!(
+                "--{name} takes a block's number, from 1, not “{v}”."
+            )),
         },
     }
 }
 
 /// How many blocks a page has.
 fn count(c: &Ctx<'_>, id: &str) -> Result<usize, String> {
-    Ok(pg::blocks(&*c.study()?, id).map_err(e)?["blocks"].as_array().map(|b| b.len()).unwrap_or(0))
+    Ok(pg::blocks(&*c.study()?, id).map_err(e)?["blocks"]
+        .as_array()
+        .map(|b| b.len())
+        .unwrap_or(0))
 }
 
 pub fn commands() -> Vec<Command> {

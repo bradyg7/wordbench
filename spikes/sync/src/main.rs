@@ -9,7 +9,10 @@
 
 mod merge;
 
-use git2::{build::CheckoutBuilder, build::RepoBuilder, IndexAddOption, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
+use git2::{
+    build::CheckoutBuilder, build::RepoBuilder, IndexAddOption, Oid, PushOptions, RemoteCallbacks,
+    Repository, Signature,
+};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -23,7 +26,9 @@ const OTHER_NOTE: &str = "notes/NUM/n_20261018005703_8843.md";
 const HL: &str = "highlights/NUM.json";
 
 fn main() -> Res<()> {
-    let root = std::env::temp_dir().join("bible-workbench-rs").join("sync-spike");
+    let root = std::env::temp_dir()
+        .join("bible-workbench-rs")
+        .join("sync-spike");
     let scratch = wb_core::default_study_dir();
     wb_core::store::guard(&scratch)?; // refuses the real folder
     if root.exists() {
@@ -42,7 +47,11 @@ fn main() -> Res<()> {
     let c = commit_all(&seed, "Seed from the scratch study folder")?;
     seed.remote("origin", url(&remote_path).as_str())?;
     push(&seed)?;
-    log.step("seed: init bare remote, commit the scratch study folder, push", t, format!("commit {}", short(c)));
+    log.step(
+        "seed: init bare remote, commit the scratch study folder, push",
+        t,
+        format!("commit {}", short(c)),
+    );
 
     // Two devices.
     let t = Instant::now();
@@ -51,8 +60,18 @@ fn main() -> Res<()> {
     log.step("clone to device A and device B", t, String::new());
 
     // Round 1: different notes on each device. Different notes never conflict.
-    edit_note(&a, OTHER_NOTE, "Round 1, written on device A.", "2026-11-02T15:00:00Z")?;
-    edit_note(&b, NOTE, "Round 1, written on device B.", "2026-11-02T15:00:05Z")?;
+    edit_note(
+        &a,
+        OTHER_NOTE,
+        "Round 1, written on device A.",
+        "2026-11-02T15:00:00Z",
+    )?;
+    edit_note(
+        &b,
+        NOTE,
+        "Round 1, written on device B.",
+        "2026-11-02T15:00:05Z",
+    )?;
     let t = Instant::now();
     commit_all(&a, "A: note")?;
     push(&a)?;
@@ -60,7 +79,15 @@ fn main() -> Res<()> {
     commit_all(&b, "B: note")?;
     let t = Instant::now();
     let rejected = push(&b).is_err();
-    log.step("B: push before pulling", t, if rejected { "rejected (not a fast-forward), as it should be".into() } else { "accepted?!".into() });
+    log.step(
+        "B: push before pulling",
+        t,
+        if rejected {
+            "rejected (not a fast-forward), as it should be".into()
+        } else {
+            "accepted?!".into()
+        },
+    );
     let t = Instant::now();
     let r = pull(&b, &bible)?;
     log.step("B: pull (fetch + merge)", t, r.summary());
@@ -72,18 +99,53 @@ fn main() -> Res<()> {
     log.note("round 1: A and B have the same tree");
 
     // Round 2: the same note on both devices, and overlapping highlights.
-    edit_note(&a, NOTE, "Round 2, device A: the plague was stayed (verse 8).", "2026-11-02T16:00:00Z")?;
-    edit_note(&b, NOTE, "Round 2, device B: compare Psalm 106:30.", "2026-11-02T16:00:09Z")?;
+    edit_note(
+        &a,
+        NOTE,
+        "Round 2, device A: the plague was stayed (verse 8).",
+        "2026-11-02T16:00:00Z",
+    )?;
+    edit_note(
+        &b,
+        NOTE,
+        "Round 2, device B: compare Psalm 106:30.",
+        "2026-11-02T16:00:09Z",
+    )?;
     let words = merge::Words::load(&bible, "NUM", &BTreeSet::from([25]))?;
-    add_highlight(&a, &words, "h_spike_a", "NUM.25:7.3-25:7.9", "green", "2026-11-02T16:00:01Z")?; // "the son of Eleazar, the son of"
-    add_highlight(&b, &words, "h_spike_b", "NUM.25:7.6-25:7.14", "pink", "2026-11-02T16:00:02Z")?; // overlaps A's, made later
-    add_highlight(&b, &words, "h_spike_c", "NUM.25:8", "blue", "2026-11-02T16:00:03Z")?;
+    add_highlight(
+        &a,
+        &words,
+        "h_spike_a",
+        "NUM.25:7.3-25:7.9",
+        "green",
+        "2026-11-02T16:00:01Z",
+    )?; // "the son of Eleazar, the son of"
+    add_highlight(
+        &b,
+        &words,
+        "h_spike_b",
+        "NUM.25:7.6-25:7.14",
+        "pink",
+        "2026-11-02T16:00:02Z",
+    )?; // overlaps A's, made later
+    add_highlight(
+        &b,
+        &words,
+        "h_spike_c",
+        "NUM.25:8",
+        "blue",
+        "2026-11-02T16:00:03Z",
+    )?;
     commit_all(&a, "A: note and highlight")?;
     push(&a)?;
     commit_all(&b, "B: note and highlights")?;
     let t = Instant::now();
     let r = pull(&b, &bible)?;
-    log.step("B: pull with the same note and overlapping highlights", t, r.summary());
+    log.step(
+        "B: pull with the same note and overlapping highlights",
+        t,
+        r.summary(),
+    );
     for c in &r.cut {
         log.note(&format!("  no-overlap rule: {c}"));
     }
@@ -97,16 +159,35 @@ fn main() -> Res<()> {
     log.note("round 2: A and B have the same tree");
 
     let note = fs::read_to_string(root.join("device-a").join(NOTE))?;
-    assert!(note.contains(merge::NEEDS_A_LOOK) && note.contains("device A") && note.contains("device B"), "both texts kept");
-    let hl: serde_json::Value = serde_json::from_str(&fs::read_to_string(root.join("device-a").join(HL))?)?;
-    let spike: Vec<_> = hl["highlights"].as_array().unwrap().iter().filter(|h| h["id"].as_str().unwrap().starts_with("h_spike")).collect();
-    let trash = fs::read_dir(root.join("device-b").join(".trash")).map(|d| d.count()).unwrap_or(0);
+    assert!(
+        note.contains(merge::NEEDS_A_LOOK)
+            && note.contains("device A")
+            && note.contains("device B"),
+        "both texts kept"
+    );
+    let hl: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(root.join("device-a").join(HL))?)?;
+    let spike: Vec<_> = hl["highlights"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|h| h["id"].as_str().unwrap().starts_with("h_spike"))
+        .collect();
+    let trash = fs::read_dir(root.join("device-b").join(".trash"))
+        .map(|d| d.count())
+        .unwrap_or(0);
 
     println!("{}", log.text());
     println!("--- the merged note ({NOTE}) ---\n{note}");
     println!("--- the spike's highlights after the merge ---");
     for h in &spike {
-        println!("{} {:6} {:22} {}", h["id"], h["color"].as_str().unwrap(), h["anchor"].as_str().unwrap(), h["quote"]);
+        println!(
+            "{} {:6} {:22} {}",
+            h["id"],
+            h["color"].as_str().unwrap(),
+            h["anchor"].as_str().unwrap(),
+            h["quote"]
+        );
     }
     println!("--- .trash on device B: {trash} file(s) (both sides of every resolved file) ---");
     println!("folders: {}", root.display());
@@ -120,7 +201,10 @@ fn url(p: &Path) -> String {
 }
 
 fn sig() -> Res<Signature<'static>> {
-    Ok(Signature::now("Bible Workbench (spike)", "spike@localhost")?)
+    Ok(Signature::now(
+        "Bible Workbench (spike)",
+        "spike@localhost",
+    )?)
 }
 
 fn clone(remote: &Path, to: &Path) -> Res<Repository> {
@@ -133,7 +217,12 @@ fn commit_all(repo: &Repository, msg: &str) -> Res<Oid> {
     index.update_all(["*"], None)?;
     index.write()?;
     let tree = repo.find_tree(index.write_tree()?)?;
-    let parents: Vec<_> = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).into_iter().collect();
+    let parents: Vec<_> = repo
+        .head()
+        .ok()
+        .and_then(|h| h.peel_to_commit().ok())
+        .into_iter()
+        .collect();
     let refs: Vec<&git2::Commit> = parents.iter().collect();
     let s = sig()?;
     let oid = repo.commit(Some("HEAD"), &s, &s, msg, &tree, &refs)?;
@@ -157,7 +246,8 @@ fn push(repo: &Repository) -> Res<()> {
         });
         let mut opts = PushOptions::new();
         opts.remote_callbacks(cb);
-        repo.find_remote("origin")?.push(&["refs/heads/main:refs/heads/main"], Some(&mut opts))?;
+        repo.find_remote("origin")?
+            .push(&["refs/heads/main:refs/heads/main"], Some(&mut opts))?;
     }
     match rejected {
         Some(s) => Err(format!("push rejected: {s}").into()),
@@ -177,7 +267,11 @@ impl Pulled {
         if self.resolved.is_empty() {
             self.kind.clone()
         } else {
-            format!("{}; resolved by the rules: {}", self.kind, self.resolved.join(", "))
+            format!(
+                "{}; resolved by the rules: {}",
+                self.kind,
+                self.resolved.join(", ")
+            )
         }
     }
 }
@@ -196,7 +290,8 @@ fn pull(repo: &Repository, bible: &Bible) -> Res<Pulled> {
         return Ok(out);
     }
     if analysis.is_fast_forward() {
-        repo.find_reference("refs/heads/main")?.set_target(theirs.id(), "fast-forward")?;
+        repo.find_reference("refs/heads/main")?
+            .set_target(theirs.id(), "fast-forward")?;
         repo.checkout_head(Some(CheckoutBuilder::new().force()))?;
         out.kind = "fast-forward".into();
         return Ok(out);
@@ -206,9 +301,20 @@ fn pull(repo: &Repository, bible: &Bible) -> Res<Pulled> {
     let base = repo.find_commit(repo.merge_base(ours.id(), theirs.id())?)?;
     let changed = |from: &git2::Commit, to: &git2::Commit| -> Res<BTreeSet<String>> {
         let diff = repo.diff_tree_to_tree(Some(&from.tree()?), Some(&to.tree()?), None)?;
-        Ok(diff.deltas().filter_map(|d| d.new_file().path().or(d.old_file().path()).map(|p| p.to_string_lossy().replace('\\', "/"))).collect())
+        Ok(diff
+            .deltas()
+            .filter_map(|d| {
+                d.new_file()
+                    .path()
+                    .or(d.old_file().path())
+                    .map(|p| p.to_string_lossy().replace('\\', "/"))
+            })
+            .collect())
     };
-    let both: Vec<String> = changed(&base, &ours)?.intersection(&changed(&base, &theirs)?).cloned().collect();
+    let both: Vec<String> = changed(&base, &ours)?
+        .intersection(&changed(&base, &theirs)?)
+        .cloned()
+        .collect();
     let mut index = repo.merge_commits(&ours, &theirs, None)?;
     let blob = |c: &git2::Commit, p: &str| -> Option<String> {
         let e = c.tree().ok()?.get_path(Path::new(p)).ok()?;
@@ -225,14 +331,28 @@ fn pull(repo: &Repository, bible: &Bible) -> Res<Pulled> {
         let (Some(o), Some(t)) = (o, t) else { continue }; // deleted on a side: git's result stands (spike)
         let merged = if path.starts_with("notes/") && path.ends_with(".md") {
             let (text, look) = merge::merge_note(b.as_deref(), &o, &t);
-            out.resolved.push(format!("{path}{}", if look { " (both texts kept, needs a look)" } else { "" }));
+            out.resolved.push(format!(
+                "{path}{}",
+                if look {
+                    " (both texts kept, needs a look)"
+                } else {
+                    ""
+                }
+            ));
             text
         } else if path.starts_with("highlights/") && path.ends_with(".json") {
-            let code = Path::new(path).file_stem().unwrap().to_string_lossy().to_string();
+            let code = Path::new(path)
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
             let chapters = merge::chapters_of(&[b.as_deref(), Some(&o), Some(&t)]);
             let words = merge::Words::load(bible, &code, &chapters)?;
             let m = merge::merge_highlights(&words, b.as_deref(), &o, &t, &mut new_id);
-            out.resolved.push(format!("{path} (by id, {} cut by the no-overlap rule)", m.cut.len()));
+            out.resolved.push(format!(
+                "{path} (by id, {} cut by the no-overlap rule)",
+                m.cut.len()
+            ));
             out.cut.extend(m.cut);
             m.json
         } else {
@@ -264,12 +384,23 @@ fn pull(repo: &Repository, bible: &Bible) -> Res<Pulled> {
         })?;
     }
     if index.has_conflicts() {
-        let left: Vec<String> = index.conflicts()?.flatten().filter_map(|c| c.our.map(|e| String::from_utf8_lossy(&e.path).to_string())).collect();
+        let left: Vec<String> = index
+            .conflicts()?
+            .flatten()
+            .filter_map(|c| c.our.map(|e| String::from_utf8_lossy(&e.path).to_string()))
+            .collect();
         return Err(format!("conflicts no rule covers: {left:?}").into());
     }
     let tree = repo.find_tree(index.write_tree_to(repo)?)?;
     let s = sig()?;
-    let oid = repo.commit(Some("HEAD"), &s, &s, "Merge from the other device (by the study rules)", &tree, &[&ours, &theirs])?;
+    let oid = repo.commit(
+        Some("HEAD"),
+        &s,
+        &s,
+        "Merge from the other device (by the study rules)",
+        &tree,
+        &[&ours, &theirs],
+    )?;
     repo.checkout_head(Some(CheckoutBuilder::new().force()))?;
     out.kind = format!("merged, commit {}", short(oid));
     Ok(out)
@@ -306,7 +437,14 @@ fn edit_note(repo: &Repository, rel: &str, add: &str, updated: &str) -> Res<()> 
     Ok(())
 }
 
-fn add_highlight(repo: &Repository, words: &merge::Words, id: &str, anchor: &str, color: &str, created: &str) -> Res<()> {
+fn add_highlight(
+    repo: &Repository,
+    words: &merge::Words,
+    id: &str,
+    anchor: &str,
+    color: &str,
+    created: &str,
+) -> Res<()> {
     let path = repo.workdir().unwrap().join(HL);
     let mut v: serde_json::Value = serde_json::from_str(&fs::read_to_string(&path)?)?;
     let quote = words.quote_of(anchor).unwrap_or_default();
@@ -339,7 +477,14 @@ struct Log(Vec<String>);
 impl Log {
     fn step(&mut self, what: &str, t: Instant, detail: String) {
         let ms = t.elapsed().as_secs_f64() * 1000.0;
-        self.0.push(format!("{ms:8.1} ms  {what}{}", if detail.is_empty() { String::new() } else { format!(": {detail}") }));
+        self.0.push(format!(
+            "{ms:8.1} ms  {what}{}",
+            if detail.is_empty() {
+                String::new()
+            } else {
+                format!(": {detail}")
+            }
+        ));
     }
     fn note(&mut self, s: &str) {
         self.0.push(format!("             {s}"));

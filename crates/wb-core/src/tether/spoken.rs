@@ -31,7 +31,11 @@ fn tokens(chars: &[char]) -> Vec<Tok> {
             while i < chars.len() && chars[i].is_alphanumeric() {
                 i += 1;
             }
-            out.push(Tok { s, e: i, w: chars[s..i].iter().collect::<String>().to_lowercase() });
+            out.push(Tok {
+                s,
+                e: i,
+                w: chars[s..i].iter().collect::<String>().to_lowercase(),
+            });
         } else {
             i += 1;
         }
@@ -160,7 +164,9 @@ struct Pass<'a> {
 
 impl Pass<'_> {
     fn sep_plain(&self, a: usize, b: usize) -> bool {
-        self.chars[self.toks[a].e..self.toks[b].s].iter().all(|c| c.is_whitespace() || *c == '-')
+        self.chars[self.toks[a].e..self.toks[b].s]
+            .iter()
+            .all(|c| c.is_whitespace() || *c == '-')
     }
 
     /// A number at token `i`: up to 3 digits, or (when asked) number words.
@@ -168,7 +174,11 @@ impl Pass<'_> {
         let t = self.toks.get(i)?;
         if t.w.len() <= 3 && t.w.chars().all(|c| c.is_ascii_digit()) {
             let n: u32 = t.w.parse().ok()?;
-            return (n > 0).then_some(Num { atoms: vec![n], next: i + 1, words: false });
+            return (n > 0).then_some(Num {
+                atoms: vec![n],
+                next: i + 1,
+                words: false,
+            });
         }
         if !self.words || !is_number_word(&t.w) {
             return None;
@@ -178,7 +188,9 @@ impl Pass<'_> {
         while j < self.toks.len() {
             let w = self.toks[j].w.as_str();
             let hundred_before = ws.last() == Some(&"hundred");
-            if !(is_number_word(w) || (w == "and" && hundred_before)) || (j > i && !self.sep_plain(j - 1, j)) {
+            if !(is_number_word(w) || (w == "and" && hundred_before))
+                || (j > i && !self.sep_plain(j - 1, j))
+            {
                 break;
             }
             ws.push(w);
@@ -190,7 +202,11 @@ impl Pass<'_> {
         // the longest run that reads as numbers
         while !ws.is_empty() {
             if let Some(a) = atoms(&ws) {
-                return Some(Num { atoms: a, next: i + ws.len(), words: true });
+                return Some(Num {
+                    atoms: a,
+                    next: i + ws.len(),
+                    words: true,
+                });
             }
             ws.pop();
         }
@@ -217,7 +233,11 @@ struct Normal {
 /// The text with its spoken forms written out. `concat_reading`: read "one twenty three" as 123 where it could also be 1:23.
 fn normalize(text: &str, words: bool, concat_reading: bool) -> Normal {
     let chars: Vec<char> = text.chars().collect();
-    let p = Pass { chars: &chars, toks: tokens(&chars), words };
+    let p = Pass {
+        chars: &chars,
+        toks: tokens(&chars),
+        words,
+    };
     let (mut out, mut map): (Vec<char>, Vec<(usize, usize)>) = (vec![], vec![]);
     let (mut replaced, mut ambiguous) = (vec![], vec![]);
     let mut pos = 0usize; // next original char to copy
@@ -240,14 +260,21 @@ fn normalize(text: &str, words: bool, concat_reading: bool) -> Normal {
         };
         if words
             && ordinal(&t.w).is_some()
-            && p.toks.get(i + 1).is_some_and(|n| !is_number_word(&n.w) && !p.is(i + 1, &["chapter", "verse", "verses"]) && p.sep_plain(i, i + 1))
+            && p.toks.get(i + 1).is_some_and(|n| {
+                !is_number_word(&n.w)
+                    && !p.is(i + 1, &["chapter", "verse", "verses"])
+                    && p.sep_plain(i, i + 1)
+            })
         {
             rewrite = Some((ordinal(&t.w).unwrap().to_string(), i + 1, false));
         } else if p.is(i, &["chapter"]) {
             if let Some(n1) = p.num(i + 1) {
                 if p.is(n1.next, &["verse", "verses"]) {
                     if let Some(n2) = p.num(n1.next + 1) {
-                        let (piece, next) = through(n2.next, format!("{}:{}", concat(&n1.atoms), concat(&n2.atoms)));
+                        let (piece, next) = through(
+                            n2.next,
+                            format!("{}:{}", concat(&n1.atoms), concat(&n2.atoms)),
+                        );
                         rewrite = Some((piece, next, false));
                     }
                 }
@@ -255,15 +282,26 @@ fn normalize(text: &str, words: bool, concat_reading: bool) -> Normal {
                     rewrite = Some((concat(&n1.atoms), n1.next, false));
                 }
             }
-        } else if i > 0 && p.sep_plain(i - 1, i) && !is_number_word(&p.toks[i - 1].w) && !p.toks[i - 1].w.chars().all(|c| c.is_ascii_digit()) {
+        } else if i > 0
+            && p.sep_plain(i - 1, i)
+            && !is_number_word(&p.toks[i - 1].w)
+            && !p.toks[i - 1].w.chars().all(|c| c.is_ascii_digit())
+        {
             if let Some(n1) = p.num(i) {
                 if p.is(n1.next, &["verse", "verses"]) {
                     if let Some(n2) = p.num(n1.next + 1) {
-                        let (piece, next) = through(n2.next, format!("{}:{}", concat(&n1.atoms), concat(&n2.atoms)));
+                        let (piece, next) = through(
+                            n2.next,
+                            format!("{}:{}", concat(&n1.atoms), concat(&n2.atoms)),
+                        );
                         rewrite = Some((piece, next, false));
                     }
                 } else if n1.words && n1.atoms.len() == 2 {
-                    let base = if concat_reading { concat(&n1.atoms) } else { format!("{}:{}", n1.atoms[0], n1.atoms[1]) };
+                    let base = if concat_reading {
+                        concat(&n1.atoms)
+                    } else {
+                        format!("{}:{}", n1.atoms[0], n1.atoms[1])
+                    };
                     let (piece, next) = through(n1.next, base);
                     rewrite = Some((piece, next, true));
                 }
@@ -299,7 +337,12 @@ fn normalize(text: &str, words: bool, concat_reading: bool) -> Normal {
         map.push((pos, pos + 1));
         pos += 1;
     }
-    Normal { text: out.into_iter().collect(), map, replaced, ambiguous }
+    Normal {
+        text: out.into_iter().collect(),
+        map,
+        replaced,
+        ambiguous,
+    }
 }
 
 fn overlaps(a: (usize, usize), rs: &[(usize, usize)]) -> bool {
@@ -310,7 +353,13 @@ fn found(n: &Normal, books: &[Book], only_in: Option<&[(usize, usize)]>) -> Vec<
     find_refs(&n.text, books)
         .into_iter()
         .filter(|f| only_in.is_none_or(|r| overlaps((f.start, f.end), r)))
-        .map(|f| Said { start: n.map[f.start].0, end: n.map[f.end - 1].1, place: f.place.clone(), spoken: overlaps((f.start, f.end), &n.replaced), hash: f.hash.clone() })
+        .map(|f| Said {
+            start: n.map[f.start].0,
+            end: n.map[f.end - 1].1,
+            place: f.place.clone(),
+            spoken: overlaps((f.start, f.end), &n.replaced),
+            hash: f.hash.clone(),
+        })
         .collect()
 }
 
@@ -323,7 +372,10 @@ pub fn find_said(text: &str, books: &[Book], words: bool) -> Vec<Said> {
     if words && !a.ambiguous.is_empty() {
         let b = normalize(text, true, true);
         for s in found(&b, books, Some(&b.ambiguous)) {
-            if !out.iter().any(|o| o.start == s.start && o.end == s.end && o.place == s.place) {
+            if !out
+                .iter()
+                .any(|o| o.start == s.start && o.end == s.end && o.place == s.place)
+            {
                 out.push(s);
             }
         }
@@ -337,7 +389,8 @@ mod tests {
     use super::*;
 
     fn books() -> Vec<Book> {
-        let raw: serde_json::Value = serde_json::from_str(include_str!("../../tests/books.json")).unwrap();
+        let raw: serde_json::Value =
+            serde_json::from_str(include_str!("../../tests/books.json")).unwrap();
         raw.as_array()
             .unwrap()
             .iter()
@@ -353,20 +406,53 @@ mod tests {
 
     fn one(text: &str, words: bool) -> Vec<(String, String, bool)> {
         let cs: Vec<char> = text.chars().collect();
-        find_said(text, &books(), words).into_iter().map(|s| (cs[s.start..s.end].iter().collect(), s.place, s.spoken)).collect()
+        find_said(text, &books(), words)
+            .into_iter()
+            .map(|s| (cs[s.start..s.end].iter().collect(), s.place, s.spoken))
+            .collect()
     }
 
     #[test]
     fn spoken_forms() {
         let say = |t: &str| one(t, true);
-        assert_eq!(say("so second Timothy two fifteen is it"), vec![("second Timothy two fifteen".into(), "2TI 2:15".into(), true)]);
-        assert_eq!(say("turn to Romans eight verse twenty eight now"), vec![("Romans eight verse twenty eight".into(), "ROM 8:28".into(), true)]);
-        assert_eq!(say("John chapter three verse sixteen."), vec![("John chapter three verse sixteen".into(), "JHN 3:16".into(), true)]);
-        assert_eq!(say("see Romans 8 verse 28 here"), vec![("Romans 8 verse 28".into(), "ROM 8:28".into(), true)]);
-        assert_eq!(say("John three sixteen through eighteen"), vec![("John three sixteen through eighteen".into(), "JHN 3:16-18".into(), true)]);
+        assert_eq!(
+            say("so second Timothy two fifteen is it"),
+            vec![("second Timothy two fifteen".into(), "2TI 2:15".into(), true)]
+        );
+        assert_eq!(
+            say("turn to Romans eight verse twenty eight now"),
+            vec![(
+                "Romans eight verse twenty eight".into(),
+                "ROM 8:28".into(),
+                true
+            )]
+        );
+        assert_eq!(
+            say("John chapter three verse sixteen."),
+            vec![(
+                "John chapter three verse sixteen".into(),
+                "JHN 3:16".into(),
+                true
+            )]
+        );
+        assert_eq!(
+            say("see Romans 8 verse 28 here"),
+            vec![("Romans 8 verse 28".into(), "ROM 8:28".into(), true)]
+        );
+        assert_eq!(
+            say("John three sixteen through eighteen"),
+            vec![(
+                "John three sixteen through eighteen".into(),
+                "JHN 3:16-18".into(),
+                true
+            )]
+        );
         assert_eq!(
             say("Romans 8:28 and Rom. 8:28"),
-            vec![("Romans 8:28".into(), "ROM 8:28".into(), false), ("Rom. 8:28".into(), "ROM 8:28".into(), false)]
+            vec![
+                ("Romans 8:28".into(), "ROM 8:28".into(), false),
+                ("Rom. 8:28".into(), "ROM 8:28".into(), false)
+            ]
         );
     }
 
@@ -374,7 +460,10 @@ mod tests {
     fn two_readings_and_what_is_not_read() {
         let r = one("Psalm one twenty three", true);
         let places: Vec<&str> = r.iter().map(|x| x.1.as_str()).collect();
-        assert!(places.contains(&"PSA 123") && places.contains(&"PSA 1:23"), "{places:?}");
+        assert!(
+            places.contains(&"PSA 123") && places.contains(&"PSA 1:23"),
+            "{places:?}"
+        );
         assert!(one("then verse twenty eight says", true).is_empty());
         assert!(one("there is one of two ways", true).is_empty());
         assert!(one("second Timothy two fifteen", false).is_empty());

@@ -22,9 +22,17 @@ fn dir(root: &Path) -> PathBuf {
 }
 
 fn title_of(text: &str) -> String {
-    let first = text.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("");
+    let first = text
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or("");
     let first = first.trim_start_matches('#').trim();
-    if first.chars().count() > 90 { format!("{}…", first.chars().take(88).collect::<String>()) } else { first.to_string() }
+    if first.chars().count() > 90 {
+        format!("{}…", first.chars().take(88).collect::<String>())
+    } else {
+        first.to_string()
+    }
 }
 
 /// The most one attached file may hold: 10 MB (the window says so when a file is over).
@@ -63,7 +71,14 @@ fn public(root: &Path, meta: &Rec, body: &str) -> Value {
 /// The design folders a finding touches (`tags`, a list of folder names; the findings design, 2026-11-12). A finding
 /// without `tags` is untagged.
 fn tags_of(meta: &Rec) -> Vec<String> {
-    meta.get("tags").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect()).unwrap_or_default()
+    meta.get("tags")
+        .and_then(Value::as_array)
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// The names a tag may take: the design folders `design/features/coverage.md` links to, read when the app is built.
@@ -85,7 +100,10 @@ fn check_tags(tags: &[String]) -> Result<Vec<String>> {
     for t in tags {
         let t = t.trim().to_lowercase();
         if !names.contains(&t) {
-            return Err(bad(format!("{t} is not a design folder. Tags are one of: {}.", names.join(", "))));
+            return Err(bad(format!(
+                "{t} is not a design folder. Tags are one of: {}.",
+                names.join(", ")
+            )));
         }
         if !out.contains(&t) {
             out.push(t);
@@ -142,13 +160,32 @@ pub fn list_tagged(root: &Path, all: bool, tag: Option<&str>) -> Result<Value> {
         check_tags(&[t.to_string()])?;
     }
     let mut items: Vec<(Rec, String)> = fs::read_dir(dir(root))
-        .map(|rd| rd.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "md")).filter_map(|p| read_one(&p)).collect())
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| p.extension().is_some_and(|x| x == "md"))
+                .filter_map(|p| read_one(&p))
+                .collect()
+        })
         .unwrap_or_default();
-    items.sort_by(|a, b| s(&b.0, "created").cmp(&s(&a.0, "created")).then(s(&b.0, "id").cmp(&s(&a.0, "id"))));
-    let open = items.iter().filter(|(m, _)| s(m, "status") != "handled").count();
+    items.sort_by(|a, b| {
+        s(&b.0, "created")
+            .cmp(&s(&a.0, "created"))
+            .then(s(&b.0, "id").cmp(&s(&a.0, "id")))
+    });
+    let open = items
+        .iter()
+        .filter(|(m, _)| s(m, "status") != "handled")
+        .count();
     let handled = items.len() - open;
-    let out: Vec<Value> = items.iter().filter(|(m, _)| all || s(m, "status") != "handled")
-        .filter(|(m, _)| tag.is_none_or(|t| tags_of(m).iter().any(|x| x == &t.trim().to_lowercase()))).map(|(m, b)| public(root, m, b)).collect();
+    let out: Vec<Value> = items
+        .iter()
+        .filter(|(m, _)| all || s(m, "status") != "handled")
+        .filter(|(m, _)| {
+            tag.is_none_or(|t| tags_of(m).iter().any(|x| x == &t.trim().to_lowercase()))
+        })
+        .map(|(m, b)| public(root, m, b))
+        .collect();
     Ok(json!({"findings": out, "counts": {"open": open, "handled": handled}}))
 }
 
@@ -163,7 +200,16 @@ fn find(root: &Path, id: &str) -> Result<(PathBuf, Rec, String)> {
         return Ok((exact, m, b));
     }
     let hits: Vec<PathBuf> = fs::read_dir(dir(root))
-        .map(|rd| rd.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "md") && p.file_stem().is_some_and(|x| x.to_string_lossy().ends_with(id))).collect())
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| {
+                    p.extension().is_some_and(|x| x == "md")
+                        && p.file_stem()
+                            .is_some_and(|x| x.to_string_lossy().ends_with(id))
+                })
+                .collect()
+        })
         .unwrap_or_default();
     match hits.as_slice() {
         [one] => {
@@ -204,7 +250,10 @@ pub fn add(root: &Path, text: &str, context: Option<Value>) -> Result<Value> {
 pub fn set_status(root: &Path, id: &str, handled: bool) -> Result<Value> {
     guard(root)?;
     let (p, mut meta, body) = find(root, id)?;
-    meta.insert("status".into(), json!(if handled { "handled" } else { "open" }));
+    meta.insert(
+        "status".into(),
+        json!(if handled { "handled" } else { "open" }),
+    );
     meta.insert("updated".into(), json!(now()));
     write_atomic(&p, &dump_md(&meta, &body))?;
     Ok(public(root, &meta, &body))
@@ -215,7 +264,9 @@ pub fn edit(root: &Path, id: &str, text: &str) -> Result<Value> {
     guard(root)?;
     let text = text.trim();
     if text.is_empty() {
-        return Err(bad("A finding needs some words (to remove it: wb finding rm)."));
+        return Err(bad(
+            "A finding needs some words (to remove it: wb finding rm).",
+        ));
     }
     let (p, mut meta, _) = find(root, id)?;
     meta.insert("updated".into(), json!(now()));
@@ -227,7 +278,11 @@ pub fn edit(root: &Path, id: &str, text: &str) -> Result<Value> {
 pub fn remove(root: &Path, id: &str) -> Result<Value> {
     guard(root)?;
     let (p, meta, _) = find(root, id)?;
-    let dest = root.join(".trash").join(format!("{}-finding-{}.md", chrono::Utc::now().format("%Y%m%d-%H%M%S"), s(&meta, "id")));
+    let dest = root.join(".trash").join(format!(
+        "{}-finding-{}.md",
+        chrono::Utc::now().format("%Y%m%d-%H%M%S"),
+        s(&meta, "id")
+    ));
     fs::create_dir_all(dest.parent().unwrap())?;
     fs::rename(&p, &dest)?;
     // its attached files go to .trash as well, one by one (nothing is erased)
@@ -248,8 +303,22 @@ pub fn show(root: &Path, id: &str) -> Result<Value> {
 /// A name that is safe as a file name on any system: no folders, no characters Windows refuses, no reserved device names.
 fn clean_name(name: &str) -> String {
     let base = name.rsplit(['/', '\\']).next().unwrap_or("");
-    let mut out: String = base.chars().map(|c| if c.is_control() || "<>:\"|?*".contains(c) { '_' } else { c }).collect();
-    out = out.trim().trim_end_matches(['.', ' ']).trim_start_matches('.').trim().to_string();
+    let mut out: String = base
+        .chars()
+        .map(|c| {
+            if c.is_control() || "<>:\"|?*".contains(c) {
+                '_'
+            } else {
+                c
+            }
+        })
+        .collect();
+    out = out
+        .trim()
+        .trim_end_matches(['.', ' '])
+        .trim_start_matches('.')
+        .trim()
+        .to_string();
     if out.is_empty() {
         out = "file".into();
     }
@@ -258,13 +327,22 @@ fn clean_name(name: &str) -> String {
             Some(i) if out.len() - i <= 12 => out[i..].to_string(),
             _ => String::new(),
         };
-        let stem: String = out[..out.len() - ext.len()].chars().take(120 - ext.chars().count()).collect();
+        let stem: String = out[..out.len() - ext.len()]
+            .chars()
+            .take(120 - ext.chars().count())
+            .collect();
         out = format!("{}{ext}", stem.trim_end());
     }
     let stem = out.split('.').next().unwrap_or("").trim().to_uppercase();
     let reserved = ["CON", "PRN", "AUX", "NUL"].contains(&stem.as_str())
-        || ((stem.starts_with("COM") || stem.starts_with("LPT")) && stem.len() == 4 && stem.ends_with(|c: char| c.is_ascii_digit()));
-    if reserved { format!("_{out}") } else { out }
+        || ((stem.starts_with("COM") || stem.starts_with("LPT"))
+            && stem.len() == 4
+            && stem.ends_with(|c: char| c.is_ascii_digit()));
+    if reserved {
+        format!("_{out}")
+    } else {
+        out
+    }
 }
 
 /// `name`, or `name (2).ext`, `name (3).ext` … when the finding already holds a file of that name.
@@ -277,15 +355,26 @@ fn free_name(folder: &Path, name: &str) -> String {
         Some(i) if i > 0 => (&name[..i], &name[i..]),
         _ => (name, ""),
     };
-    (2..).map(|n| format!("{stem} ({n}){ext}")).find(|c| !taken(c)).unwrap()
+    (2..)
+        .map(|n| format!("{stem} ({n}){ext}"))
+        .find(|c| !taken(c))
+        .unwrap()
 }
 
 fn too_big(name: &str, size: u64) -> crate::Error {
-    bad(format!("{name} is over the limit ({size} bytes): a finding's file can be {} MB at most.", MAX_ATTACH_BYTES / 1_048_576))
+    bad(format!(
+        "{name} is over the limit ({size} bytes): a finding's file can be {} MB at most.",
+        MAX_ATTACH_BYTES / 1_048_576
+    ))
 }
 
 /// Writes into `findings/<id>/` under a free name, through a `.tmp` file so a half-written file is never listed.
-fn put(root: &Path, id: &str, name: &str, write: impl FnOnce(&Path) -> std::io::Result<()>) -> Result<String> {
+fn put(
+    root: &Path,
+    id: &str,
+    name: &str,
+    write: impl FnOnce(&Path) -> std::io::Result<()>,
+) -> Result<String> {
     let folder = files_dir(root, id);
     fs::create_dir_all(&folder)?;
     let name = free_name(&folder, &clean_name(name));
@@ -305,9 +394,15 @@ pub fn attach(root: &Path, id: &str, from: &Path) -> Result<Value> {
     let id = s(&meta, "id");
     let md = fs::metadata(from).map_err(|_| missing(format!("No file at {}.", from.display())))?;
     if !md.is_file() {
-        return Err(bad(format!("{} is a folder; attach the files in it one by one.", from.display())));
+        return Err(bad(format!(
+            "{} is a folder; attach the files in it one by one.",
+            from.display()
+        )));
     }
-    let shown = from.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    let shown = from
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
     if md.len() > MAX_ATTACH_BYTES {
         return Err(too_big(&shown, md.len()));
     }
@@ -329,7 +424,10 @@ pub fn attach_bytes(root: &Path, id: &str, name: &str, bytes: &[u8]) -> Result<V
 
 fn trash_attachment(root: &Path, id: &str, name: &str) -> Result<()> {
     let from = files_dir(root, id).join(name);
-    let dest = root.join(".trash").join(format!("{}-finding-{id}-{name}", chrono::Utc::now().format("%Y%m%d-%H%M%S")));
+    let dest = root.join(".trash").join(format!(
+        "{}-finding-{id}-{name}",
+        chrono::Utc::now().format("%Y%m%d-%H%M%S")
+    ));
     fs::create_dir_all(dest.parent().unwrap())?;
     fs::rename(&from, &dest)?;
     Ok(())
@@ -341,16 +439,26 @@ fn attached_name(root: &Path, id: &str, name: &str) -> Result<String> {
     if name.is_empty() {
         return Err(bad("Name an attached file (wb finding show lists them)."));
     }
-    let names: Vec<String> = files_of(root, id).iter().filter_map(|f| f["name"].as_str().map(String::from)).collect();
+    let names: Vec<String> = files_of(root, id)
+        .iter()
+        .filter_map(|f| f["name"].as_str().map(String::from))
+        .collect();
     if let Some(n) = names.iter().find(|n| n.as_str() == name) {
         return Ok(n.clone());
     }
     let lower = name.to_lowercase();
-    let hits: Vec<&String> = names.iter().filter(|n| n.to_lowercase().starts_with(&lower)).collect();
+    let hits: Vec<&String> = names
+        .iter()
+        .filter(|n| n.to_lowercase().starts_with(&lower))
+        .collect();
     match hits.as_slice() {
         [one] => Ok((*one).clone()),
-        [] => Err(missing(format!("No file called {name} is attached to this finding."))),
-        _ => Err(bad("More than one attached file starts so: give more of its name.")),
+        [] => Err(missing(format!(
+            "No file called {name} is attached to this finding."
+        ))),
+        _ => Err(bad(
+            "More than one attached file starts so: give more of its name.",
+        )),
     }
 }
 
@@ -367,10 +475,42 @@ pub fn detach(root: &Path, id: &str, name: &str) -> Result<Value> {
 
 /// Programs and scripts: shown in their folder rather than run by opening them.
 fn runs_code(name: &str) -> bool {
-    let Some((_, ext)) = name.rsplit_once('.') else { return false };
-    ["exe", "com", "bat", "cmd", "scr", "pif", "msi", "msp", "ps1", "psm1", "vbs", "vbe", "js", "jse", "wsf", "wsh", "hta", "lnk",
-        "url", "reg", "dll", "jar", "cpl", "gadget", "sh", "command", "app", "appimage", "application", "settingcontent-ms"]
-        .contains(&ext.to_lowercase().as_str())
+    let Some((_, ext)) = name.rsplit_once('.') else {
+        return false;
+    };
+    [
+        "exe",
+        "com",
+        "bat",
+        "cmd",
+        "scr",
+        "pif",
+        "msi",
+        "msp",
+        "ps1",
+        "psm1",
+        "vbs",
+        "vbe",
+        "js",
+        "jse",
+        "wsf",
+        "wsh",
+        "hta",
+        "lnk",
+        "url",
+        "reg",
+        "dll",
+        "jar",
+        "cpl",
+        "gadget",
+        "sh",
+        "command",
+        "app",
+        "appimage",
+        "application",
+        "settingcontent-ms",
+    ]
+    .contains(&ext.to_lowercase().as_str())
 }
 
 /// An attached file's full name and path.
@@ -390,7 +530,9 @@ pub fn open_attachment(root: &Path, id: &str, name: &str) -> Result<Value> {
     if runs_code(&name) {
         let spawned = crate::platform::show(&path, true);
         spawned.map_err(|e| bad(format!("Could not show {} ({e}).", path.display())))?;
-        return Ok(json!({"ok": true, "name": name, "path": path.to_string_lossy(), "shown_in_folder": true}));
+        return Ok(
+            json!({"ok": true, "name": name, "path": path.to_string_lossy(), "shown_in_folder": true}),
+        );
     }
     if std::env::var("WB_NO_OPEN").as_deref() != Ok("1") {
         crate::docs::open_file(&path)?;
@@ -405,25 +547,54 @@ mod tests {
     #[test]
     fn tags_are_design_folders() {
         let names = tag_names();
-        assert!(names.contains(&"library".to_string()) && names.contains(&"findings".to_string()) && names.contains(&"reading-plans".to_string()));
+        assert!(
+            names.contains(&"library".to_string())
+                && names.contains(&"findings".to_string())
+                && names.contains(&"reading-plans".to_string())
+        );
         assert!(!names.iter().any(|n| n == "_template"));
-        let root = std::env::temp_dir().join("bible-workbench-rs").join(format!("tags-{}", std::process::id()));
+        let root = std::env::temp_dir()
+            .join("bible-workbench-rs")
+            .join(format!("tags-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         let f = add(&root, "a finding", None).unwrap();
         let id = f["id"].as_str().unwrap().to_string();
         assert_eq!(f["tags"], json!([]));
         let raw = fs::read_to_string(dir(&root).join(format!("{id}.md"))).unwrap();
-        assert!(!raw.contains("tags"), "an untagged finding has no tags line");
+        assert!(
+            !raw.contains("tags"),
+            "an untagged finding has no tags line"
+        );
         assert!(tag(&root, &id, &["nope".into()], false).is_err());
-        let t = tag(&root, &id, &["marks".into(), "Library".into(), "marks".into()], false).unwrap();
+        let t = tag(
+            &root,
+            &id,
+            &["marks".into(), "Library".into(), "marks".into()],
+            false,
+        )
+        .unwrap();
         assert_eq!(t["tags"], json!(["library", "marks"]));
-        assert_eq!(list_tagged(&root, false, Some("marks")).unwrap()["findings"].as_array().unwrap().len(), 1);
-        assert_eq!(list_tagged(&root, false, Some("reader")).unwrap()["findings"].as_array().unwrap().len(), 0);
+        assert_eq!(
+            list_tagged(&root, false, Some("marks")).unwrap()["findings"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            list_tagged(&root, false, Some("reader")).unwrap()["findings"]
+                .as_array()
+                .unwrap()
+                .len(),
+            0
+        );
         assert!(list_tagged(&root, false, Some("nope")).is_err());
         let t = tag(&root, &id, &["library".into(), "marks".into()], true).unwrap();
         assert_eq!(t["tags"], json!([]));
-        assert!(!fs::read_to_string(dir(&root).join(format!("{id}.md"))).unwrap().contains("tags"));
+        assert!(!fs::read_to_string(dir(&root).join(format!("{id}.md")))
+            .unwrap()
+            .contains("tags"));
         assert_eq!(show(&root, &id).unwrap()["text"], "a finding");
         fs::remove_dir_all(&root).unwrap();
     }
@@ -439,8 +610,12 @@ mod tests {
         assert_eq!(clean_name("COMMON.txt"), "COMMON.txt");
         let long = format!("{}.png", "x".repeat(300));
         assert!(clean_name(&long).ends_with(".png") && clean_name(&long).chars().count() == 120);
-        assert!(runs_code("a.EXE") && runs_code("x.ps1") && !runs_code("a.png") && !runs_code("pdf"));
-        let d = std::env::temp_dir().join("bible-workbench-rs").join(format!("free-name-{}", std::process::id()));
+        assert!(
+            runs_code("a.EXE") && runs_code("x.ps1") && !runs_code("a.png") && !runs_code("pdf")
+        );
+        let d = std::env::temp_dir()
+            .join("bible-workbench-rs")
+            .join(format!("free-name-{}", std::process::id()));
         fs::create_dir_all(&d).unwrap();
         fs::write(d.join("a.png"), b"1").unwrap();
         fs::write(d.join("a (2).png"), b"1").unwrap();

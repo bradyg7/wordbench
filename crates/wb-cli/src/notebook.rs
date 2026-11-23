@@ -26,7 +26,11 @@ fn day_of(a: &crate::args::Args) -> Option<String> {
 }
 
 fn text_of(c: &Ctx<'_>, words: &str) -> Result<String, String> {
-    if words.trim() == "-" { c.stdin() } else { Ok(words.to_string()) }
+    if words.trim() == "-" {
+        c.stdin()
+    } else {
+        Ok(words.to_string())
+    }
 }
 
 pub fn commands() -> Vec<Command> {

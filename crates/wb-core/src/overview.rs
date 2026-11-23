@@ -35,7 +35,11 @@ pub fn page(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
                     i.at.push(w)
                 }
             }
-            None => items.push(Item { span: sp, label, at: vec![w] }),
+            None => items.push(Item {
+                span: sp,
+                label,
+                at: vec![w],
+            }),
         }
     };
     // where in the page each reference of its text falls: the title is block 0, a block's number counts from 1
@@ -44,7 +48,18 @@ pub fn page(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
             return (0, "title".into());
         }
         match blocks.iter().position(|b| at >= b.start && at <= b.end) {
-            Some(k) => (k + 1, if blocks[k].kind == "fence" { if scripture_fence(&sub(&c, blocks[k].start, blocks[k].end)).is_some() { "scripture block".into() } else { "block".into() } } else { format!("¶{}", k + 1) }),
+            Some(k) => (
+                k + 1,
+                if blocks[k].kind == "fence" {
+                    if scripture_fence(&sub(&c, blocks[k].start, blocks[k].end)).is_some() {
+                        "scripture block".into()
+                    } else {
+                        "block".into()
+                    }
+                } else {
+                    format!("¶{}", k + 1)
+                },
+            ),
             None => (0, "title".into()),
         }
     };
@@ -65,7 +80,9 @@ pub fn page(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
             }
         } else if let Some(v) = word_fence(&md) {
             if !v.trim().is_empty() {
-                words.push(json!({"number": v.trim().to_uppercase(), "n": k + 1, "in": "word block"}));
+                words.push(
+                    json!({"number": v.trim().to_uppercase(), "n": k + 1, "in": "word block"}),
+                );
             }
         }
     }
@@ -75,20 +92,47 @@ pub fn page(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
         for i in &items {
             match out.iter_mut().find(|b| b.0 == i.span.book.code) {
                 Some(b) => b.2.push(i.label.clone()),
-                None => out.push((i.span.book.code.clone(), i.span.book.name.clone(), vec![i.label.clone()])),
+                None => out.push((
+                    i.span.book.code.clone(),
+                    i.span.book.name.clone(),
+                    vec![i.label.clone()],
+                )),
             }
         }
-        out.into_iter().map(|(code, name, l)| json!({"code": code, "name": name, "count": l.len(), "items": l})).collect()
+        out.into_iter()
+            .map(
+                |(code, name, l)| json!({"code": code, "name": name, "count": l.len(), "items": l}),
+            )
+            .collect()
     };
-    Ok(json!({"id": id, "count": items.len(), "folded": items.len() > FOLD,
+    Ok(
+        json!({"id": id, "count": items.len(), "folded": items.len() > FOLD,
         "items": items.iter().map(|i| json!({"label": i.label, "ref": span_ref(i), "book": i.span.book.code, "where": i.at, "first": i.at[0]["n"]})).collect::<Vec<_>>(),
-        "books": books, "words": words}))
+        "books": books, "words": words}),
+    )
 }
 
 fn span_ref(i: &Item) -> String {
     let s = &i.span;
-    format!("{} {}{}", s.book.name, s.c1, if s.v1 != 0 { format!(":{}", s.v1) } else { String::new() }) + &match (s.c2 != s.c1, s.v2 != 0 && s.v2 != s.v1) {
-        (true, _) => format!("-{}{}", s.c2, if s.v2 != 0 { format!(":{}", s.v2) } else { String::new() }),
+    format!(
+        "{} {}{}",
+        s.book.name,
+        s.c1,
+        if s.v1 != 0 {
+            format!(":{}", s.v1)
+        } else {
+            String::new()
+        }
+    ) + &match (s.c2 != s.c1, s.v2 != 0 && s.v2 != s.v1) {
+        (true, _) => format!(
+            "-{}{}",
+            s.c2,
+            if s.v2 != 0 {
+                format!(":{}", s.v2)
+            } else {
+                String::new()
+            }
+        ),
         (false, true) => format!("-{}", s.v2),
         _ => String::new(),
     }

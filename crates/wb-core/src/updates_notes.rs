@@ -26,7 +26,13 @@ pub struct Parts {
 pub const NOTHING_MOVED: &str = "Nothing was moved or removed.";
 
 /// The four headings, then the study-folder line's.
-pub const HEADINGS: [&str; 5] = ["Moved or removed", "New", "Changed", "Fixed", "Your study folder"];
+pub const HEADINGS: [&str; 5] = [
+    "Moved or removed",
+    "New",
+    "Changed",
+    "Fixed",
+    "Your study folder",
+];
 
 /// The notes of this very version, which come with the program (so they read offline after an update, U-9).
 pub fn installed_notes() -> &'static str {
@@ -41,11 +47,19 @@ pub fn parts(notes: &str) -> Parts {
     for line in notes.lines() {
         let t = line.trim();
         if t.starts_with('#') {
-            let name = t.trim_start_matches('#').trim().trim_end_matches(':').to_lowercase();
+            let name = t
+                .trim_start_matches('#')
+                .trim()
+                .trim_end_matches(':')
+                .to_lowercase();
             under = HEADINGS.iter().position(|h| h.to_lowercase() == name);
             continue;
         }
-        let text = t.strip_prefix("- ").or_else(|| t.strip_prefix("* ")).unwrap_or(t).trim();
+        let text = t
+            .strip_prefix("- ")
+            .or_else(|| t.strip_prefix("* "))
+            .unwrap_or(t)
+            .trim();
         if text.is_empty() {
             continue;
         }
@@ -96,7 +110,12 @@ fn head(r: &Release) -> String {
 pub fn render_full(r: &Release) -> String {
     let p = parts(&r.notes);
     let mut out = vec![head(r), String::new()];
-    let sections: [(&str, Vec<String>); 4] = [("Moved or removed", p.moved_lines()), ("New", p.new.clone()), ("Changed", p.changed.clone()), ("Fixed", p.fixed.clone())];
+    let sections: [(&str, Vec<String>); 4] = [
+        ("Moved or removed", p.moved_lines()),
+        ("New", p.new.clone()),
+        ("Changed", p.changed.clone()),
+        ("Fixed", p.fixed.clone()),
+    ];
     for (name, lines) in sections {
         out.push(name.to_string());
         out.extend(lines.into_iter().map(|l| format!("- {l}")));
@@ -122,7 +141,11 @@ pub fn render_folded(r: &Release) -> String {
 pub fn render_all(releases: &[Release]) -> String {
     let mut parts = vec![];
     for (i, r) in releases.iter().enumerate() {
-        parts.push(if i == 0 { render_full(r) } else { render_folded(r) });
+        parts.push(if i == 0 {
+            render_full(r)
+        } else {
+            render_folded(r)
+        });
     }
     parts.join("\n\n")
 }

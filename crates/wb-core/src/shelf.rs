@@ -21,7 +21,11 @@ use std::collections::{HashMap, HashSet};
 const PART: &str = "shelf";
 
 fn placing(store: &Store) -> Map<String, Value> {
-    store.settings(PART).get("folders").and_then(|v| v.as_object().cloned()).unwrap_or_default()
+    store
+        .settings(PART)
+        .get("folders")
+        .and_then(|v| v.as_object().cloned())
+        .unwrap_or_default()
 }
 
 /// Each set's parent as read: only a parent that is a set, never a loop. → id → parent id ("" for the top).
@@ -30,12 +34,32 @@ fn parents(store: &Store) -> HashMap<String, String> {
     let sets = store.sets();
     let ids: HashSet<String> = sets.iter().map(|t| s(t, "id")).collect();
     // L-22: the folder's own file says where it sits (`parent:`); a file without it is read from settings/shelf.json
-    let own: HashMap<String, String> = sets.iter().filter_map(|t| t.get("parent").and_then(|p| p.as_str()).map(|p| (s(t, "id"), p.to_string()))).collect();
+    let own: HashMap<String, String> = sets
+        .iter()
+        .filter_map(|t| {
+            t.get("parent")
+                .and_then(|p| p.as_str())
+                .map(|p| (s(t, "id"), p.to_string()))
+        })
+        .collect();
     let raw: HashMap<String, String> = ids
         .iter()
         .map(|id| {
-            let p = own.get(id).cloned().unwrap_or_else(|| pl.get(id).and_then(|v| v.get("parent")).and_then(|v| v.as_str()).unwrap_or("").to_string());
-            (id.clone(), if ids.contains(&p) && &p != id { p } else { String::new() })
+            let p = own.get(id).cloned().unwrap_or_else(|| {
+                pl.get(id)
+                    .and_then(|v| v.get("parent"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string()
+            });
+            (
+                id.clone(),
+                if ids.contains(&p) && &p != id {
+                    p
+                } else {
+                    String::new()
+                },
+            )
         })
         .collect();
     // a parent chain that comes back to itself is cut where it loops: that folder goes to the top
@@ -55,15 +79,29 @@ fn parents(store: &Store) -> HashMap<String, String> {
 }
 
 fn order_of(pl: &Map<String, Value>, id: &str) -> f64 {
-    pl.get(id).and_then(|v| v.get("order")).and_then(|v| v.as_f64()).unwrap_or(f64::MAX)
+    pl.get(id)
+        .and_then(|v| v.get("order"))
+        .and_then(|v| v.as_f64())
+        .unwrap_or(f64::MAX)
 }
 
 /// The children of a folder ("" for the top), in their order (by name where none is kept).
 fn children(store: &Store, par: &HashMap<String, String>, of: &str) -> Vec<Rec> {
     let pl = placing(store);
-    let mut kids: Vec<Rec> = store.sets().into_iter().filter(|t| par.get(&s(t, "id")).map(String::as_str) == Some(of)).collect();
+    let mut kids: Vec<Rec> = store
+        .sets()
+        .into_iter()
+        .filter(|t| par.get(&s(t, "id")).map(String::as_str) == Some(of))
+        .collect();
     kids.sort_by(|a, b| {
-        order_of(&pl, &s(a, "id")).partial_cmp(&order_of(&pl, &s(b, "id"))).unwrap().then_with(|| s(a, "name").to_lowercase().cmp(&s(b, "name").to_lowercase()))
+        order_of(&pl, &s(a, "id"))
+            .partial_cmp(&order_of(&pl, &s(b, "id")))
+            .unwrap()
+            .then_with(|| {
+                s(a, "name")
+                    .to_lowercase()
+                    .cmp(&s(b, "name").to_lowercase())
+            })
     });
     kids
 }
@@ -72,26 +110,44 @@ fn children(store: &Store, par: &HashMap<String, String>, of: &str) -> Vec<Rec> 
 /// for it, as `wb set open`), with its own `folders` inside.
 pub fn tree(bible: &Bible, store: &Store) -> Result<Value> {
     let par = parents(store);
-    fn node(bible: &Bible, store: &Store, par: &HashMap<String, String>, t: &Rec, depth: usize) -> Result<Value> {
+    fn node(
+        bible: &Bible,
+        store: &Store,
+        par: &HashMap<String, String>,
+        t: &Rec,
+        depth: usize,
+    ) -> Result<Value> {
         let mut v = set_view(bible, store, t)?;
         v["items"] = open_plan(bible, store, t)?["items"].clone();
         let kids = children(store, par, &s(t, "id"));
         v["parent"] = json!(par.get(&s(t, "id")).cloned().unwrap_or_default());
         v["depth"] = json!(depth);
-        v["folders"] = json!(kids.iter().map(|k| node(bible, store, par, k, depth + 1)).collect::<Result<Vec<_>>>()?);
+        v["folders"] = json!(kids
+            .iter()
+            .map(|k| node(bible, store, par, k, depth + 1))
+            .collect::<Result<Vec<_>>>()?);
         Ok(v)
     }
     let top = children(store, &par, "");
     // thread files are folders with a color (TH-1), listed apart so a set's own operations never meet one
-    Ok(json!({"folders": top.iter().map(|t| node(bible, store, &par, t, 0)).collect::<Result<Vec<_>>>()?, "thread_folders": crate::folders::thread_folders(store)}))
+    Ok(
+        json!({"folders": top.iter().map(|t| node(bible, store, &par, t, 0)).collect::<Result<Vec<_>>>()?, "thread_folders": crate::folders::thread_folders(store)}),
+    )
 }
 
 /// Write where every folder sits, from the parents and the order of each folder's children (sets that are gone are left out).
-fn write_placing(store: &mut Store, par: &HashMap<String, String>, lists: &HashMap<String, Vec<String>>) -> Result<()> {
+fn write_placing(
+    store: &mut Store,
+    par: &HashMap<String, String>,
+    lists: &HashMap<String, Vec<String>>,
+) -> Result<()> {
     let old = placing(store);
     let mut out = Map::new();
     for (id, p) in par {
-        let mut e = old.get(id).and_then(|v| v.as_object().cloned()).unwrap_or_default();
+        let mut e = old
+            .get(id)
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default();
         e.insert("parent".into(), json!(p));
         out.insert(id.clone(), Value::Object(e));
     }
@@ -103,7 +159,15 @@ fn write_placing(store: &mut Store, par: &HashMap<String, String>, lists: &HashM
     // only a folder whose place this edit changes has its own file written (L-22); a legacy set file whose place is only
     // in settings/shelf.json stays byte for byte as it is, with its `updated` untouched
     let before = parents(store);
-    let own: HashMap<String, String> = store.sets().iter().filter_map(|t| t.get("parent").and_then(|p| p.as_str()).map(|p| (s(t, "id"), p.to_string()))).collect();
+    let own: HashMap<String, String> = store
+        .sets()
+        .iter()
+        .filter_map(|t| {
+            t.get("parent")
+                .and_then(|p| p.as_str())
+                .map(|p| (s(t, "id"), p.to_string()))
+        })
+        .collect();
     for (id, p) in par {
         // a file with its own `parent:` is changed when that differs (a parent that is gone is cleared); a legacy file only
         // when this edit changes where the folder sits
@@ -117,12 +181,19 @@ fn write_placing(store: &mut Store, par: &HashMap<String, String>, lists: &HashM
     }
     let mut sorted: Vec<(String, Value)> = out.into_iter().collect();
     sorted.sort_by(|a, b| a.0.cmp(&b.0));
-    store.set_setting(PART, "folders", Some(Value::Object(sorted.into_iter().collect())))?;
+    store.set_setting(
+        PART,
+        "folders",
+        Some(Value::Object(sorted.into_iter().collect())),
+    )?;
     Ok(())
 }
 
 fn kids_ids(store: &Store, par: &HashMap<String, String>, of: &str) -> Vec<String> {
-    children(store, par, of).iter().map(|t| s(t, "id")).collect()
+    children(store, par, of)
+        .iter()
+        .map(|t| s(t, "id"))
+        .collect()
 }
 
 fn is_inside(par: &HashMap<String, String>, id: &str, of: &str) -> bool {
@@ -147,7 +218,9 @@ pub fn move_folder(store: &mut Store, id: &str, parent: &str, before: Option<&st
         return Err(missing("No such folder to put it in."));
     }
     if parent == id || is_inside(&par, parent, id) {
-        return Err(bad("A folder cannot go inside itself or a folder inside it."));
+        return Err(bad(
+            "A folder cannot go inside itself or a folder inside it.",
+        ));
     }
     let old = par[id].clone();
     let mut lists = HashMap::new();
@@ -155,9 +228,19 @@ pub fn move_folder(store: &mut Store, id: &str, parent: &str, before: Option<&st
     from.retain(|x| x != id);
     lists.insert(old.clone(), from);
     par.insert(id.to_string(), parent.to_string());
-    let mut to = if parent == old { lists[&old].clone() } else { kids_ids(store, &par, parent).into_iter().filter(|x| x != id).collect() };
+    let mut to = if parent == old {
+        lists[&old].clone()
+    } else {
+        kids_ids(store, &par, parent)
+            .into_iter()
+            .filter(|x| x != id)
+            .collect()
+    };
     let at = match before {
-        Some(b) if b != id => to.iter().position(|x| x == b).ok_or_else(|| missing("No such folder to put it before."))?,
+        Some(b) if b != id => to
+            .iter()
+            .position(|x| x == b)
+            .ok_or_else(|| missing("No such folder to put it before."))?,
         _ => to.len(),
     };
     to.insert(at, id.to_string());
@@ -197,7 +280,14 @@ pub fn remove_folder(store: &mut Store, id: &str) -> Result<()> {
 }
 
 /// Move (or, with `copy`, also keep) an item: inside its folder before another, or into another folder.
-pub fn move_item(store: &mut Store, from: &str, key: &str, to: &str, before: Option<&str>, copy: bool) -> Result<Value> {
+pub fn move_item(
+    store: &mut Store,
+    from: &str,
+    key: &str,
+    to: &str,
+    before: Option<&str>,
+    copy: bool,
+) -> Result<Value> {
     if from == to {
         if copy {
             return Err(bad("It is already in that folder."));
@@ -222,7 +312,11 @@ pub fn move_item(store: &mut Store, from: &str, key: &str, to: &str, before: Opt
 
 fn book_name(bible: &Bible, id: &Value) -> Option<String> {
     let n = id.as_u64()? as u32;
-    bible.books().iter().find(|b| b.id == n).map(|b| b.name.clone())
+    bible
+        .books()
+        .iter()
+        .find(|b| b.id == n)
+        .map(|b| b.name.clone())
 }
 
 fn num(p: &Value, k: &str) -> u64 {
@@ -241,12 +335,21 @@ pub fn pane_key(bible: &Bible, item: &Value) -> std::result::Result<String, Stri
     match ty {
         "passage" => {
             let b = book_name(bible, &p["book"]).ok_or_else(cannot)?;
-            let ver = if st(&p, "version").eq_ignore_ascii_case("ylt") { "YLT" } else { "KJV" };
+            let ver = if st(&p, "version").eq_ignore_ascii_case("ylt") {
+                "YLT"
+            } else {
+                "KJV"
+            };
             Ok(format!("reader2|{b} {}|{ver}", num(&p, "ch").max(1)))
         }
         "interlinear" => {
             let b = book_name(bible, &p["book"]).ok_or_else(cannot)?;
-            let (c1, v1, c2, v2) = (num(&p, "c1").max(1), num(&p, "v1"), num(&p, "c2"), num(&p, "v2"));
+            let (c1, v1, c2, v2) = (
+                num(&p, "c1").max(1),
+                num(&p, "v1"),
+                num(&p, "c2"),
+                num(&p, "v2"),
+            );
             let c2 = c2.max(c1);
             let place = if v1 == 0 {
                 format!("{b} {c1}")
@@ -261,22 +364,34 @@ pub fn pane_key(bible: &Bible, item: &Value) -> std::result::Result<String, Stri
         }
         "entry" => {
             let sid = st(&p, "sid");
-            if sid.is_empty() { Err(cannot()) } else { Ok(format!("strong|{sid}")) }
+            if sid.is_empty() {
+                Err(cannot())
+            } else {
+                Ok(format!("strong|{sid}"))
+            }
         }
         "uses" => {
             let sid = st(&p, "strong");
             if sid.is_empty() {
                 return Err(cannot());
             }
-            let scope = Some(st(&p, "scope")).filter(|x| !x.is_empty()).unwrap_or_else(|| "all".into());
-            Ok(format!("uses|{sid}|{}|{scope}|{}", st(&p, "word"), st(&p, "rendering")))
+            let scope = Some(st(&p, "scope"))
+                .filter(|x| !x.is_empty())
+                .unwrap_or_else(|| "all".into());
+            Ok(format!(
+                "uses|{sid}|{}|{scope}|{}",
+                st(&p, "word"),
+                st(&p, "rendering")
+            ))
         }
         "search" => {
             let q = st(&p, "q");
             if q.is_empty() {
                 return Err(cannot());
             }
-            let scope = Some(st(&p, "scope")).filter(|x| !x.is_empty()).unwrap_or_else(|| "all".into());
+            let scope = Some(st(&p, "scope"))
+                .filter(|x| !x.is_empty())
+                .unwrap_or_else(|| "all".into());
             Ok(format!("search|{q}|{scope}"))
         }
         "help" => Ok("help".into()),
@@ -293,7 +408,11 @@ pub fn open_plan(bible: &Bible, store: &Store, t: &Rec) -> Result<Value> {
     let mut items = vec![];
     for it in view["items"].as_array().cloned().unwrap_or_default() {
         let kind = it["kind"].as_str().unwrap_or("").to_string();
-        let r = it.get("ref").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let r = it
+            .get("ref")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         let gone = it["gone"] == true;
         let open: std::result::Result<String, String> = if gone {
             Err("It is gone.".into())
@@ -308,8 +427,13 @@ pub fn open_plan(bible: &Bible, store: &Store, t: &Rec) -> Result<Value> {
                     Some(d) => Ok(format!("doc|{r}|{}", s(d, "name"))),
                     None => Err("That document is gone.".into()),
                 },
-                "pdf" => match pdfs.get_or_insert_with(|| crate::docs::ExportFolders::for_study(&store.root).and_then(|out| crate::docs::pdfs::list(&out))) {
-                    Ok(files) => crate::docs::pdfs::find(files, &r, true).map(|pdf| format!("pdf|{}", pdf.name)).map_err(|e| e.0),
+                "pdf" => match pdfs.get_or_insert_with(|| {
+                    crate::docs::ExportFolders::for_study(&store.root)
+                        .and_then(|out| crate::docs::pdfs::list(&out))
+                }) {
+                    Ok(files) => crate::docs::pdfs::find(files, &r, true)
+                        .map(|pdf| format!("pdf|{}", pdf.name))
+                        .map_err(|e| e.0),
                     Err(e) => Err(e.0.clone()),
                 },
                 _ => Err("This item cannot be opened here.".into()),
@@ -335,23 +459,47 @@ pub fn document_id(store: &Store, name: &str) -> Result<String> {
 pub fn item_from_key(bible: &Bible, key: &str, title: &str) -> Result<Value> {
     let parts: Vec<&str> = key.split('|').collect();
     let x = |i: usize| parts.get(i).copied().unwrap_or("").to_string();
-    let title = if title.trim().is_empty() { "Pane".to_string() } else { title.trim().to_string() };
+    let title = if title.trim().is_empty() {
+        "Pane".to_string()
+    } else {
+        title.trim().to_string()
+    };
     let pane = |ty: &str, id: &str, params: Value| json!({"kind": "pane", "type": ty, "id": id, "title": title, "params": params});
     let span = |text: &str| crate::places::parse_span(text, bible.books());
     Ok(match parts[0] {
-        "strong" => pane("entry", "word", json!({"sid": x(1), "english": "", "paneId": "word", "word": "", "anchor": ""})),
-        "uses" => pane("uses", "uses", json!({"strong": x(1), "word": x(2), "rendering": x(4), "cat": "all", "scope": if x(3).is_empty() { "all".into() } else { x(3) }})),
-        "search" => pane("search", "search", json!({"q": x(1), "case": false, "regex": false, "scope": if x(2).is_empty() { "all".into() } else { x(2) }})),
+        "strong" => pane(
+            "entry",
+            "word",
+            json!({"sid": x(1), "english": "", "paneId": "word", "word": "", "anchor": ""}),
+        ),
+        "uses" => pane(
+            "uses",
+            "uses",
+            json!({"strong": x(1), "word": x(2), "rendering": x(4), "cat": "all", "scope": if x(3).is_empty() { "all".into() } else { x(3) }}),
+        ),
+        "search" => pane(
+            "search",
+            "search",
+            json!({"q": x(1), "case": false, "regex": false, "scope": if x(2).is_empty() { "all".into() } else { x(2) }}),
+        ),
         "help" => pane("help", "help", json!({"topic": "", "open": []})),
         "interlinear" => {
             let sp = span(&x(1))?;
-            pane("interlinear", "interlinear", json!({"book": sp.book.id, "c1": sp.c1, "v1": sp.v1, "c2": sp.c2, "v2": sp.v2}))
+            pane(
+                "interlinear",
+                "interlinear",
+                json!({"book": sp.book.id, "c1": sp.c1, "v1": sp.v1, "c2": sp.c2, "v2": sp.v2}),
+            )
         }
         "reader2" => {
             let sp = span(&x(1))?;
             match crate::places::span_anchor(&sp) {
                 Some(a) => json!({"kind": "place", "ref": a}),
-                None => pane("passage", "passage", json!({"book": sp.book.id, "ch": sp.c1, "v": 0, "version": if x(2) == "YLT" { "YLT" } else { "KJV" }})),
+                None => pane(
+                    "passage",
+                    "passage",
+                    json!({"book": sp.book.id, "ch": sp.c1, "v": 0, "version": if x(2) == "YLT" { "YLT" } else { "KJV" }}),
+                ),
             }
         }
         "thread" => json!({"kind": "thread", "ref": x(1)}),

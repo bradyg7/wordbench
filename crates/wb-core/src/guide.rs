@@ -92,12 +92,17 @@ pub fn guide_entry(topic: &str) -> Option<Value> {
     if t.is_empty() {
         return None;
     }
-    let exact = ENTRIES.iter().find(|e| e.0 == t || e.1.to_lowercase() == t || format!("{}s", e.0.trim_end_matches('s')) == format!("{}s", t.trim_end_matches('s')));
-    exact.or_else(|| {
-        let hits: Vec<_> = ENTRIES.iter().filter(|e| e.0.starts_with(&t)).collect();
-        (hits.len() == 1).then(|| hits[0])
-    })
-    .map(entry)
+    let exact = ENTRIES.iter().find(|e| {
+        e.0 == t
+            || e.1.to_lowercase() == t
+            || format!("{}s", e.0.trim_end_matches('s')) == format!("{}s", t.trim_end_matches('s'))
+    });
+    exact
+        .or_else(|| {
+            let hits: Vec<_> = ENTRIES.iter().filter(|e| e.0.starts_with(&t)).collect();
+            (hits.len() == 1).then(|| hits[0])
+        })
+        .map(entry)
 }
 
 /// An entry as plain text, for a terminal.

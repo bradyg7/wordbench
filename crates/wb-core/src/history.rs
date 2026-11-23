@@ -29,7 +29,9 @@ fn day_file(root: &Path, at: &str) -> PathBuf {
 }
 
 fn when(at: &str) -> Option<DateTime<Utc>> {
-    DateTime::parse_from_rfc3339(at).ok().map(|d| d.with_timezone(&Utc))
+    DateTime::parse_from_rfc3339(at)
+        .ok()
+        .map(|d| d.with_timezone(&Utc))
 }
 
 fn one_line(s: &str) -> String {
@@ -41,15 +43,24 @@ pub fn add(root: &Path, kind: &str, title: &str, line: &str, from: Option<&str>)
     guard(root)?;
     let (kind, title, line) = (one_line(kind), one_line(title), one_line(line));
     if kind.is_empty() || title.is_empty() {
-        return Err(bad("A step needs a kind and a title (wb history add <kind> <title> --line \"…\")."));
+        return Err(bad(
+            "A step needs a kind and a title (wb history add <kind> <title> --line \"…\").",
+        ));
     }
     let at = now();
     let step = json!({"id": new_id("s"), "at": at, "from": from.map(str::trim).unwrap_or(""), "kind": kind,
         "title": title, "line": line});
     let path = day_file(root, &at);
     fs::create_dir_all(dir(root))?;
-    let mut f = fs::OpenOptions::new().create(true).append(true).open(&path)?;
-    writeln!(f, "{}", serde_json::to_string(&step).map_err(|e| bad(e.to_string()))?)?;
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)?;
+    writeln!(
+        f,
+        "{}",
+        serde_json::to_string(&step).map_err(|e| bad(e.to_string()))?
+    )?;
     Ok(step)
 }
 
@@ -57,7 +68,11 @@ pub fn add(root: &Path, kind: &str, title: &str, line: &str, from: Option<&str>)
 /// is passed over, so one bad line never hides the rest.
 pub fn steps(root: &Path, days: usize) -> Result<Vec<Value>> {
     let mut files: Vec<PathBuf> = match fs::read_dir(dir(root)) {
-        Ok(rd) => rd.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "jsonl")).collect(),
+        Ok(rd) => rd
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|x| x == "jsonl"))
+            .collect(),
         Err(_) => return Ok(vec![]),
     };
     files.sort();
@@ -68,7 +83,9 @@ pub fn steps(root: &Path, days: usize) -> Result<Vec<Value>> {
     for f in files {
         for ln in fs::read_to_string(&f)?.lines() {
             if let Ok(v) = serde_json::from_str::<Value>(ln) {
-                if v.get("id").and_then(Value::as_str).is_some() && v.get("at").and_then(Value::as_str).is_some() {
+                if v.get("id").and_then(Value::as_str).is_some()
+                    && v.get("at").and_then(Value::as_str).is_some()
+                {
                     out.push(v);
                 }
             }
@@ -86,7 +103,14 @@ pub fn page_opens(root: &Path) -> Result<Vec<(String, String)>> {
         if s["kind"] != "page" {
             continue;
         }
-        let Some(id) = s["line"].as_str().and_then(|l| l.strip_prefix("page ")).map(str::trim).filter(|i| !i.is_empty()) else { continue };
+        let Some(id) = s["line"]
+            .as_str()
+            .and_then(|l| l.strip_prefix("page "))
+            .map(str::trim)
+            .filter(|i| !i.is_empty())
+        else {
+            continue;
+        };
         if seen.insert(id.to_string()) {
             out.push((id.to_string(), s["at"].as_str().unwrap_or("").to_string()));
         }
@@ -136,19 +160,33 @@ pub fn sitting(root: &Path, start: &str) -> Result<Value> {
     let list = all["sittings"].as_array().cloned().unwrap_or_default();
     // a sitting's first step, or any step in it: the window that opened again within 30 minutes goes on with the
     // sitting kept on disk, whose start came before the window's own first step
-    let has = |s: &Value| s["steps"].as_array().is_some_and(|v| v.iter().any(|x| x["id"] == start));
+    let has = |s: &Value| {
+        s["steps"]
+            .as_array()
+            .is_some_and(|v| v.iter().any(|x| x["id"] == start))
+    };
     let found = if start == "last" {
         list.first().cloned()
     } else {
-        list.iter().find(|s| s["start"] == start).or_else(|| list.iter().find(|s| has(s))).cloned()
+        list.iter()
+            .find(|s| s["start"] == start)
+            .or_else(|| list.iter().find(|s| has(s)))
+            .cloned()
     };
-    found.ok_or_else(|| bad(format!("No sitting holds the step {start} (wb history sittings lists them).")))
+    found.ok_or_else(|| {
+        bad(format!(
+            "No sitting holds the step {start} (wb history sittings lists them)."
+        ))
+    })
 }
 
 /// A sitting written out as a page's text: a title line, then one line per step, indented under the step it came from.
 pub fn as_page_text(sitting: &Value) -> String {
     let steps = sitting["steps"].as_array().cloned().unwrap_or_default();
-    let ids: Vec<&str> = steps.iter().map(|s| s["id"].as_str().unwrap_or("")).collect();
+    let ids: Vec<&str> = steps
+        .iter()
+        .map(|s| s["id"].as_str().unwrap_or(""))
+        .collect();
     let depth_of = |i: usize| {
         let mut d = 0;
         let mut at = steps[i]["from"].as_str().unwrap_or("").to_string();
@@ -161,19 +199,38 @@ pub fn as_page_text(sitting: &Value) -> String {
         }
         d
     };
-    let head = format!("Trail: {} · {}", short_time(sitting["at"].as_str().unwrap_or("")), sitting["title"].as_str().unwrap_or(""));
+    let head = format!(
+        "Trail: {} · {}",
+        short_time(sitting["at"].as_str().unwrap_or("")),
+        sitting["title"].as_str().unwrap_or("")
+    );
     let mut out = format!("# {head}\n\n");
     for (i, s) in steps.iter().enumerate() {
         let line = s["line"].as_str().unwrap_or("");
-        out.push_str(&format!("{}- {} {}{}\n", "  ".repeat(depth_of(i)), short_time(s["at"].as_str().unwrap_or("")),
-            s["title"].as_str().unwrap_or(""), if line.is_empty() { String::new() } else { format!(" (`{line}`)") }));
+        out.push_str(&format!(
+            "{}- {} {}{}\n",
+            "  ".repeat(depth_of(i)),
+            short_time(s["at"].as_str().unwrap_or("")),
+            s["title"].as_str().unwrap_or(""),
+            if line.is_empty() {
+                String::new()
+            } else {
+                format!(" (`{line}`)")
+            }
+        ));
     }
     out
 }
 
 /// A step's time as the person reads it: the computer's own time zone (the files keep UTC).
 fn short_time(at: &str) -> String {
-    when(at).map(|d| d.with_timezone(&chrono::Local).format("%Y-%m-%d %H:%M").to_string()).unwrap_or_else(|| at.to_string())
+    when(at)
+        .map(|d| {
+            d.with_timezone(&chrono::Local)
+                .format("%Y-%m-%d %H:%M")
+                .to_string()
+        })
+        .unwrap_or_else(|| at.to_string())
 }
 
 #[cfg(test)]
@@ -189,7 +246,11 @@ mod tests {
     fn put(root: &Path, at: &str, id: &str, from: &str, title: &str) {
         let line = json!({"id": id, "at": at, "from": from, "kind": "verse", "title": title, "line": format!("go {title}")});
         fs::create_dir_all(dir(root)).unwrap();
-        let mut f = fs::OpenOptions::new().create(true).append(true).open(day_file(root, at)).unwrap();
+        let mut f = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(day_file(root, at))
+            .unwrap();
         writeln!(f, "{line}").unwrap();
     }
 
@@ -222,7 +283,13 @@ mod tests {
         assert_eq!(s[1]["start"], "s4");
         assert_eq!(s[2]["start"], "s1");
         assert_eq!(s[2]["count"], 3);
-        assert_eq!(sittings(&root, 1, false).unwrap()["sittings"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            sittings(&root, 1, false).unwrap()["sittings"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -240,7 +307,10 @@ mod tests {
     fn a_bad_line_is_passed_over() {
         let root = scratch();
         put(&root, "2026-11-13T09:14:00Z", "s1", "", "Numbers 25:11");
-        let mut f = fs::OpenOptions::new().append(true).open(day_file(&root, "2026-11-13")).unwrap();
+        let mut f = fs::OpenOptions::new()
+            .append(true)
+            .open(day_file(&root, "2026-11-13"))
+            .unwrap();
         writeln!(f, "not json").unwrap();
         assert_eq!(steps(&root, 0).unwrap().len(), 1);
     }
@@ -254,8 +324,14 @@ mod tests {
         let s = sitting(&root, "last").unwrap();
         let text = as_page_text(&s);
         // the page is in the computer's own time; the files keep UTC
-        assert!(text.starts_with(&format!("# Trail: {} · Numbers 25:11\n", short_time("2026-11-13T09:14:00Z"))));
-        assert!(text.contains(&format!("\n    - {} Every use: zeal (`go Every use: zeal`)\n", short_time("2026-11-13T09:16:00Z"))));
+        assert!(text.starts_with(&format!(
+            "# Trail: {} · Numbers 25:11\n",
+            short_time("2026-11-13T09:14:00Z")
+        )));
+        assert!(text.contains(&format!(
+            "\n    - {} Every use: zeal (`go Every use: zeal`)\n",
+            short_time("2026-11-13T09:16:00Z")
+        )));
         assert!(sitting(&root, "nope").is_err());
     }
 }

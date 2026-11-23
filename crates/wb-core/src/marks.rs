@@ -39,7 +39,11 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: u32) -> Result<ChapterM
     for h in store.highlights(code) {
         if let Ok(a) = anchors::parse(&s(&h, "anchor")) {
             if inside(&a, code, chapter) {
-                m.highlights.push(Mark { at: a, id: s(&h, "id"), color: s(&h, "color") });
+                m.highlights.push(Mark {
+                    at: a,
+                    id: s(&h, "id"),
+                    color: s(&h, "color"),
+                });
             }
         }
     }
@@ -47,7 +51,11 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: u32) -> Result<ChapterM
         for place in places_of(n) {
             if let Ok(a) = anchors::parse(&place) {
                 if inside(&a, code, chapter) {
-                    m.notes.push(Mark { at: a, id: s(n, "id"), color: String::new() });
+                    m.notes.push(Mark {
+                        at: a,
+                        id: s(n, "id"),
+                        color: String::new(),
+                    });
                 }
             }
         }
@@ -71,7 +79,11 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: u32) -> Result<ChapterM
             if let Ok(a) = anchors::parse(i["ref"].as_str().unwrap_or("")) {
                 if inside(&a, code, chapter) {
                     m.thread_names.insert(id.clone(), s(&t, "name"));
-                    m.threads.push(Mark { at: a, id: id.clone(), color: color.clone() });
+                    m.threads.push(Mark {
+                        at: a,
+                        id: id.clone(),
+                        color: color.clone(),
+                    });
                 }
             }
         }
@@ -85,7 +97,11 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: u32) -> Result<ChapterM
             if let Ok(a) = anchors::parse(member["anchor"].as_str().unwrap_or("")) {
                 if inside(&a, code, chapter) {
                     m.thread_names.insert(id.clone(), s(t, "name"));
-                    m.threads.push(Mark { at: a, id: id.clone(), color: color.clone() });
+                    m.threads.push(Mark {
+                        at: a,
+                        id: id.clone(),
+                        color: color.clone(),
+                    });
                 }
             }
         }
@@ -118,9 +134,29 @@ pub fn verse_level(m: ChapterMarks) -> ChapterMarks {
         })
         .collect();
     let threads: Vec<Mark> = m.threads.into_iter().filter(whole).collect();
-    let thread_names = m.thread_names.into_iter().filter(|(id, _)| threads.iter().any(|t| &t.id == id)).collect();
-    let marks = m.marks.into_iter().filter(|x| x["at"].as_str().and_then(|a| anchors::parse(a).ok()).is_some_and(|a| matches!(a.kind, Kind::Verse | Kind::Verses))).collect();
-    ChapterMarks { highlights: m.highlights.into_iter().filter(whole).collect(), notes, threads, thread_names, hidden: m.hidden, marks }
+    let thread_names = m
+        .thread_names
+        .into_iter()
+        .filter(|(id, _)| threads.iter().any(|t| &t.id == id))
+        .collect();
+    let marks = m
+        .marks
+        .into_iter()
+        .filter(|x| {
+            x["at"]
+                .as_str()
+                .and_then(|a| anchors::parse(a).ok())
+                .is_some_and(|a| matches!(a.kind, Kind::Verse | Kind::Verses))
+        })
+        .collect();
+    ChapterMarks {
+        highlights: m.highlights.into_iter().filter(whole).collect(),
+        notes,
+        threads,
+        thread_names,
+        hidden: m.hidden,
+        marks,
+    }
 }
 
 // ---- the drawn marks (design/features/marks, round 7, T1) ----------------------------------------------------------
@@ -160,7 +196,9 @@ fn marks_file(store: &Store, code: &str) -> PathBuf {
 }
 
 fn read_book(store: &Store, code: &str) -> Vec<DrawnMark> {
-    let Ok(text) = std::fs::read_to_string(marks_file(store, code)) else { return vec![] };
+    let Ok(text) = std::fs::read_to_string(marks_file(store, code)) else {
+        return vec![];
+    };
     serde_json::from_str::<Value>(&text)
         .ok()
         .and_then(|v| v.get("marks").cloned())
@@ -174,7 +212,10 @@ fn write_book(store: &Store, code: &str, marks: &[DrawnMark]) -> Result<()> {
         let _ = std::fs::remove_file(&path);
         return Ok(());
     }
-    write_atomic(&path, &(serde_json::to_string_pretty(&json!({"marks": marks})).unwrap() + "\n"))
+    write_atomic(
+        &path,
+        &(serde_json::to_string_pretty(&json!({"marks": marks})).unwrap() + "\n"),
+    )
 }
 
 /// An old highlight as a mark: its id, color, words and date; nothing is written.
@@ -199,7 +240,15 @@ fn one_chapter(a: &Anchor) -> Option<u32> {
 }
 
 /// Make a mark. `at` and `to` are anchor texts (a verse, words, a phrase, a run of verses).
-pub fn mark_add(bible: &Bible, store: &Store, at: &str, kind: &str, color: &str, lines: Option<u8>, to: Option<&str>) -> Result<Value> {
+pub fn mark_add(
+    bible: &Bible,
+    store: &Store,
+    at: &str,
+    kind: &str,
+    color: &str,
+    lines: Option<u8>,
+    to: Option<&str>,
+) -> Result<Value> {
     guard(&store.root)?;
     if !MARK_KINDS.contains(&kind) {
         return Err(bad(format!("A mark is one of: {}.", MARK_KINDS.join(", "))));
@@ -209,7 +258,9 @@ pub fn mark_add(bible: &Bible, store: &Store, at: &str, kind: &str, color: &str,
     }
     let color = check_color(Some(&color.to_lowercase()))?.unwrap();
     match (kind, lines) {
-        ("underline", Some(n)) if !(1..=3).contains(&n) => return Err(bad("An underline has 1, 2 or 3 lines.")),
+        ("underline", Some(n)) if !(1..=3).contains(&n) => {
+            return Err(bad("An underline has 1, 2 or 3 lines."))
+        }
         ("underline", _) => {}
         (_, Some(_)) => return Err(bad("Only an underline has lines.")),
         _ => {}
@@ -232,8 +283,13 @@ pub fn mark_add(bible: &Bible, store: &Store, at: &str, kind: &str, color: &str,
         ("arrow", None) => return Err(bad("An arrow needs where it points: --to.")),
         ("arrow", Some(t)) => {
             let t = place(t)?;
-            if t.code != from.code || one_chapter(&from).is_none() || one_chapter(&from) != one_chapter(&t) {
-                return Err(bad("An arrow stays in one chapter: both ends must be in the same chapter."));
+            if t.code != from.code
+                || one_chapter(&from).is_none()
+                || one_chapter(&from) != one_chapter(&t)
+            {
+                return Err(bad(
+                    "An arrow stays in one chapter: both ends must be in the same chapter.",
+                ));
             }
             Some(t.id())
         }
@@ -257,22 +313,36 @@ pub fn mark_add(bible: &Bible, store: &Store, at: &str, kind: &str, color: &str,
 }
 
 fn touches(m: &DrawnMark, code: &str, chapter: u32) -> bool {
-    anchors::parse(&m.at).is_ok_and(|a| a.kind != Kind::Lemma && a.code == code && a.c1 <= chapter && chapter <= a.last_chapter())
+    anchors::parse(&m.at).is_ok_and(|a| {
+        a.kind != Kind::Lemma && a.code == code && a.c1 <= chapter && chapter <= a.last_chapter()
+    })
 }
 
 /// Every mark on a chapter: the ones in `marks/` and the old highlights, by date made. It reads the book's two small
 /// files, never a page.
 pub fn drawn_in_chapter(store: &Store, code: &str, chapter: u32) -> Vec<DrawnMark> {
     // old highlights first: made in the same second, they are the older (the sort below is stable)
-    let mut out: Vec<DrawnMark> = store.highlights(code).iter().filter_map(legacy).filter(|m| touches(m, code, chapter)).collect();
-    out.extend(read_book(store, code).into_iter().filter(|m| touches(m, code, chapter)));
+    let mut out: Vec<DrawnMark> = store
+        .highlights(code)
+        .iter()
+        .filter_map(legacy)
+        .filter(|m| touches(m, code, chapter))
+        .collect();
+    out.extend(
+        read_book(store, code)
+            .into_iter()
+            .filter(|m| touches(m, code, chapter)),
+    );
     out.sort_by(|a, b| a.created.cmp(&b.created));
     out
 }
 
 /// Where a mark is kept: its book, the mark, and whether it is an old highlight.
 fn find_mark(store: &Store, id: &str) -> Option<(String, DrawnMark, bool)> {
-    let files = std::fs::read_dir(store.root.join("marks")).into_iter().flatten().flatten();
+    let files = std::fs::read_dir(store.root.join("marks"))
+        .into_iter()
+        .flatten()
+        .flatten();
     for e in files {
         let name = e.file_name().to_string_lossy().into_owned();
         if let Some(code) = name.strip_suffix(".json") {
@@ -327,7 +397,9 @@ pub fn mark_at(bible: &Bible, store: &Store, place: &str) -> Result<Value> {
     let mut out: Vec<DrawnMark> = Vec::new();
     for ch in a.c1..=a.last_chapter() {
         for m in drawn_in_chapter(store, &a.code, ch) {
-            let Ok(ma) = anchors::parse(&m.at) else { continue };
+            let Ok(ma) = anchors::parse(&m.at) else {
+                continue;
+            };
             let (s1, e1) = span_of(&ma);
             if s1 <= e0 && s0 <= e1 && !out.iter().any(|o| o.id == m.id) {
                 out.push(m);
@@ -336,22 +408,39 @@ pub fn mark_at(bible: &Bible, store: &Store, place: &str) -> Result<Value> {
     }
     // made in the same second: the one kept later (drawn_in_chapter lists in the order made) is the newer
     out.reverse();
-    out.sort_by(|x, y| layer(&x.kind).cmp(&layer(&y.kind)).then_with(|| y.created.cmp(&x.created)));
+    out.sort_by(|x, y| {
+        layer(&x.kind)
+            .cmp(&layer(&y.kind))
+            .then_with(|| y.created.cmp(&x.created))
+    });
     let entries = read_legend(store);
     let out: Vec<Value> = out.iter().map(|m| with_legend(&entries, m)).collect();
     // the margin notes covering the verses it names (row 53): `wb mark notes` rows, in the order of their verses
-    let notes = crate::margin::covering(bible, store, &a.code, (a.c1, a.v1), (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1)));
+    let notes = crate::margin::covering(
+        bible,
+        store,
+        &a.code,
+        (a.c1, a.v1),
+        (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1)),
+    );
     Ok(json!({"place": a.id(), "marks": out, "notes": notes}))
 }
 
 /// Replace one mark's style (kind, color, lines); its id, place and `created` stay and `changed` is set. It refuses what
 /// `mark_add` refuses. An old highlight keeps its highlights file: only its color may change, there.
-pub fn mark_style(store: &mut Store, id: &str, kind: Option<&str>, color: Option<&str>, lines: Option<u8>) -> Result<Value> {
+pub fn mark_style(
+    store: &mut Store,
+    id: &str,
+    kind: Option<&str>,
+    color: Option<&str>,
+    lines: Option<u8>,
+) -> Result<Value> {
     guard(&store.root)?;
     if kind.is_none() && color.is_none() && lines.is_none() {
         return Err(bad("Say what to change: --kind, --color or --lines."));
     }
-    let (code, old, is_old) = find_mark(store, id).ok_or_else(|| missing("No mark with that id."))?;
+    let (code, old, is_old) =
+        find_mark(store, id).ok_or_else(|| missing("No mark with that id."))?;
     let kind = kind.unwrap_or(&old.kind).to_string();
     if !MARK_KINDS.contains(&kind.as_str()) {
         return Err(bad(format!("A mark is one of: {}.", MARK_KINDS.join(", "))));
@@ -362,30 +451,47 @@ pub fn mark_style(store: &mut Store, id: &str, kind: Option<&str>, color: Option
         None => old.color.clone(),
     };
     let new_lines = match (kind.as_str(), lines) {
-        ("underline", Some(n)) if !(1..=3).contains(&n) => return Err(bad("An underline has 1, 2 or 3 lines.")),
+        ("underline", Some(n)) if !(1..=3).contains(&n) => {
+            return Err(bad("An underline has 1, 2 or 3 lines."))
+        }
         ("underline", Some(n)) => Some(n),
         ("underline", None) => Some(old.lines.unwrap_or(1)),
         (_, Some(_)) => return Err(bad("Only an underline has lines.")),
         _ => None,
     };
     if kind == "arrow" && old.to.is_none() {
-        return Err(bad("An arrow needs where it points: draw a new arrow with wb mark add --to."));
+        return Err(bad(
+            "An arrow needs where it points: draw a new arrow with wb mark add --to.",
+        ));
     }
     if is_old && (kind != "highlight") {
         return Err(bad("An old highlight keeps its kind: only its color can change. Delete it and draw a new mark instead."));
     }
     let stamp = now();
-    let mut mark = DrawnMark { kind: kind.clone(), color: color.clone(), lines: new_lines, changed: Some(stamp.clone()), ..old };
+    let mut mark = DrawnMark {
+        kind: kind.clone(),
+        color: color.clone(),
+        lines: new_lines,
+        changed: Some(stamp.clone()),
+        ..old
+    };
     if kind != "arrow" {
         mark.to = None;
     }
     if is_old {
-        let mut h = store.highlights(&code).into_iter().find(|h| s(h, "id") == id).ok_or_else(|| missing("No mark with that id."))?;
+        let mut h = store
+            .highlights(&code)
+            .into_iter()
+            .find(|h| s(h, "id") == id)
+            .ok_or_else(|| missing("No mark with that id."))?;
         h.insert("color".into(), json!(color));
         h.insert("changed".into(), json!(stamp));
         store.edit_highlights(&code, &[id.to_string()], vec![h])?;
     } else {
-        let all: Vec<DrawnMark> = read_book(store, &code).into_iter().map(|m| if m.id == id { mark.clone() } else { m }).collect();
+        let all: Vec<DrawnMark> = read_book(store, &code)
+            .into_iter()
+            .map(|m| if m.id == id { mark.clone() } else { m })
+            .collect();
         write_book(store, &code, &all)?;
     }
     Ok(serde_json::to_value(&mark).unwrap())
@@ -394,18 +500,29 @@ pub fn mark_style(store: &mut Store, id: &str, kind: Option<&str>, color: Option
 /// Delete a mark: it goes to `.trash/<stamp>-<id>.json` (kept the same 7 days as a note) and can be put back.
 pub fn mark_rm(store: &mut Store, id: &str) -> Result<Value> {
     guard(&store.root)?;
-    let (code, mark, is_old) = find_mark(store, id).ok_or_else(|| missing("No mark with that id."))?;
+    let (code, mark, is_old) =
+        find_mark(store, id).ok_or_else(|| missing("No mark with that id."))?;
     let name = format!("{}-{}.json", chrono::Utc::now().format("%Y%m%d-%H%M%S"), id);
     let mut record = json!({"book": code, "old_highlight": is_old, "mark": mark});
     if is_old {
-        let h = store.highlights(&code).into_iter().find(|h| s(h, "id") == id).unwrap();
+        let h = store
+            .highlights(&code)
+            .into_iter()
+            .find(|h| s(h, "id") == id)
+            .unwrap();
         record["highlight"] = Value::Object(h);
     }
-    write_atomic(&store.root.join(".trash").join(&name), &(serde_json::to_string_pretty(&record).unwrap() + "\n"))?;
+    write_atomic(
+        &store.root.join(".trash").join(&name),
+        &(serde_json::to_string_pretty(&record).unwrap() + "\n"),
+    )?;
     if is_old {
         store.edit_highlights(&code, &[id.to_string()], vec![])?;
     } else {
-        let rest: Vec<DrawnMark> = read_book(store, &code).into_iter().filter(|m| m.id != id).collect();
+        let rest: Vec<DrawnMark> = read_book(store, &code)
+            .into_iter()
+            .filter(|m| m.id != id)
+            .collect();
         write_book(store, &code, &rest)?;
     }
     Ok(json!({"deleted": id, "trash": name, "days": crate::store::TRASH_DAYS}))
@@ -418,15 +535,25 @@ pub fn mark_restore(store: &mut Store, id: &str) -> Result<Value> {
         return Err(bad("That mark is already there."));
     }
     let tail = format!("{id}.json");
-    let mut names: Vec<String> = trashed_names(store).into_iter().filter(|n| n.get(16..) == Some(tail.as_str())).collect();
+    let mut names: Vec<String> = trashed_names(store)
+        .into_iter()
+        .filter(|n| n.get(16..) == Some(tail.as_str()))
+        .collect();
     names.sort();
-    let name = names.pop().ok_or_else(|| missing("No such mark in the trash."))?;
+    let name = names
+        .pop()
+        .ok_or_else(|| missing("No such mark in the trash."))?;
     let path = store.root.join(".trash").join(&name);
-    let rec: Value = serde_json::from_str(&std::fs::read_to_string(&path)?).map_err(|_| bad("That file in the trash is not a mark."))?;
+    let rec: Value = serde_json::from_str(&std::fs::read_to_string(&path)?)
+        .map_err(|_| bad("That file in the trash is not a mark."))?;
     let code = rec["book"].as_str().unwrap_or("").to_string();
-    let mark: DrawnMark = serde_json::from_value(rec["mark"].clone()).map_err(|_| bad("That file in the trash is not a mark."))?;
+    let mark: DrawnMark = serde_json::from_value(rec["mark"].clone())
+        .map_err(|_| bad("That file in the trash is not a mark."))?;
     if rec["old_highlight"] == true {
-        let h = rec["highlight"].as_object().cloned().ok_or_else(|| bad("That file in the trash is not a mark."))?;
+        let h = rec["highlight"]
+            .as_object()
+            .cloned()
+            .ok_or_else(|| bad("That file in the trash is not a mark."))?;
         store.edit_highlights(&code, &[], vec![h])?;
     } else {
         let mut all = read_book(store, &code);
@@ -448,7 +575,13 @@ pub fn is_trash_file(name: &str) -> bool {
 }
 
 fn trashed_names(store: &Store) -> Vec<String> {
-    std::fs::read_dir(store.root.join(".trash")).into_iter().flatten().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| is_trash_file(n)).collect()
+    std::fs::read_dir(store.root.join(".trash"))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| is_trash_file(n))
+        .collect()
 }
 
 /// The deleted marks in the trash, newest first: {name, id, book, kind, color, at, deleted, days_left}.
@@ -499,14 +632,25 @@ fn legend_file(store: &Store) -> PathBuf {
 }
 
 fn read_legend(store: &Store) -> Vec<LegendEntry> {
-    let Ok(text) = std::fs::read_to_string(legend_file(store)) else { return vec![] };
-    let Ok(v) = serde_json::from_str::<Value>(&text) else { return vec![] };
-    let list = if v.is_array() { v } else { v.get("entries").cloned().unwrap_or(Value::Null) };
+    let Ok(text) = std::fs::read_to_string(legend_file(store)) else {
+        return vec![];
+    };
+    let Ok(v) = serde_json::from_str::<Value>(&text) else {
+        return vec![];
+    };
+    let list = if v.is_array() {
+        v
+    } else {
+        v.get("entries").cloned().unwrap_or(Value::Null)
+    };
     serde_json::from_value(list).unwrap_or_default()
 }
 
 fn write_legend(store: &Store, entries: &[LegendEntry]) -> Result<()> {
-    write_atomic(&legend_file(store), &(serde_json::to_string_pretty(&json!({"entries": entries})).unwrap() + "\n"))
+    write_atomic(
+        &legend_file(store),
+        &(serde_json::to_string_pretty(&json!({"entries": entries})).unwrap() + "\n"),
+    )
 }
 
 /// `kind:color` or, for an underline, `kind:color:lines`.
@@ -563,7 +707,11 @@ fn find_entry(entries: &[LegendEntry], text: &str) -> Option<usize> {
     entries
         .iter()
         .position(|e| e.name.as_deref().is_some_and(|n| n.to_lowercase() == t))
-        .or_else(|| entries.iter().position(|e| e.name.as_deref().is_none_or(str::is_empty) && entry_label(e).to_lowercase() == t))
+        .or_else(|| {
+            entries.iter().position(|e| {
+                e.name.as_deref().is_none_or(str::is_empty) && entry_label(e).to_lowercase() == t
+            })
+        })
         .or_else(|| {
             let st = parse_style(text)?;
             entries.iter().position(|e| entry_style(e) == st)
@@ -576,14 +724,19 @@ fn need_entry(entries: &[LegendEntry], text: &str) -> Result<usize> {
 
 fn check_style(kind: &str, color: &str, lines: Option<u8>) -> Result<(String, String, Option<u8>)> {
     if !MARK_KINDS.contains(&kind) {
-        return Err(bad(format!("A style is one of: {}.", MARK_KINDS.join(", "))));
+        return Err(bad(format!(
+            "A style is one of: {}.",
+            MARK_KINDS.join(", ")
+        )));
     }
     if color.trim().is_empty() {
         return Err(bad("A style needs a color."));
     }
     let color = check_color(Some(&color.trim().to_lowercase()))?.unwrap();
     let lines = match (kind, lines) {
-        ("underline", Some(n)) if !(1..=3).contains(&n) => return Err(bad("An underline has 1, 2 or 3 lines.")),
+        ("underline", Some(n)) if !(1..=3).contains(&n) => {
+            return Err(bad("An underline has 1, 2 or 3 lines."))
+        }
         ("underline", l) => Some(l.unwrap_or(1)),
         (_, Some(_)) => return Err(bad("Only an underline has lines.")),
         _ => None,
@@ -594,7 +747,9 @@ fn check_style(kind: &str, color: &str, lines: Option<u8>) -> Result<(String, St
 fn check_key(key: &str) -> Result<String> {
     let k = key.trim().to_lowercase();
     match k.strip_prefix("ctrl+") {
-        Some(n) if n.len() == 1 && matches!(n.as_bytes()[0], b'1'..=b'9') => Ok(format!("Ctrl+{n}")),
+        Some(n) if n.len() == 1 && matches!(n.as_bytes()[0], b'1'..=b'9') => {
+            Ok(format!("Ctrl+{n}"))
+        }
         _ => Err(bad("A key is Ctrl+1 to Ctrl+9.")),
     }
 }
@@ -606,8 +761,14 @@ fn clean(text: &str) -> Option<String> {
 
 fn name_free(entries: &[LegendEntry], name: &str, except: Option<usize>) -> Result<()> {
     let n = name.to_lowercase();
-    if entries.iter().enumerate().any(|(i, e)| Some(i) != except && entry_label(e).to_lowercase() == n) {
-        return Err(bad(format!("Another legend entry is already called “{name}”.")));
+    if entries
+        .iter()
+        .enumerate()
+        .any(|(i, e)| Some(i) != except && entry_label(e).to_lowercase() == n)
+    {
+        return Err(bad(format!(
+            "Another legend entry is already called “{name}”."
+        )));
     }
     Ok(())
 }
@@ -615,7 +776,10 @@ fn name_free(entries: &[LegendEntry], name: &str, except: Option<usize>) -> Resu
 /// Every mark there is: the ones in `marks/` and the old highlights.
 fn all_marks(store: &Store) -> Vec<DrawnMark> {
     let mut out: Vec<DrawnMark> = store.all_highlights().iter().filter_map(legacy).collect();
-    let files = std::fs::read_dir(store.root.join("marks")).into_iter().flatten().flatten();
+    let files = std::fs::read_dir(store.root.join("marks"))
+        .into_iter()
+        .flatten()
+        .flatten();
     for e in files {
         if let Some(code) = e.file_name().to_string_lossy().strip_suffix(".json") {
             out.extend(read_book(store, code));
@@ -649,7 +813,11 @@ fn counts(store: &Store) -> std::collections::BTreeMap<String, usize> {
 pub fn legend(store: &Store) -> Value {
     let entries = read_legend(store);
     let mut c = counts(store);
-    let listed: Vec<Value> = entries.iter().enumerate().map(|(i, e)| entry_json(e, i + 1, c.remove(&entry_style(e)).unwrap_or(0))).collect();
+    let listed: Vec<Value> = entries
+        .iter()
+        .enumerate()
+        .map(|(i, e)| entry_json(e, i + 1, c.remove(&entry_style(e)).unwrap_or(0)))
+        .collect();
     let mut rest: Vec<(String, usize)> = c.into_iter().collect();
     rest.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     let unlisted: Vec<Value> = rest
@@ -668,19 +836,37 @@ pub fn legend(store: &Store) -> Value {
 }
 
 /// Add an entry (a pen picked up). The same style twice is refused; the name, if any, is unused.
-pub fn legend_add(store: &Store, kind: &str, color: &str, lines: Option<u8>, name: Option<&str>, meaning: Option<&str>) -> Result<Value> {
+pub fn legend_add(
+    store: &Store,
+    kind: &str,
+    color: &str,
+    lines: Option<u8>,
+    name: Option<&str>,
+    meaning: Option<&str>,
+) -> Result<Value> {
     guard(&store.root)?;
     let (kind, color, lines) = check_style(kind, color, lines)?;
     let mut entries = read_legend(store);
     let style = style_key(&kind, &color, lines);
     if let Some(i) = entries.iter().position(|e| entry_style(e) == style) {
-        return Err(bad(format!("The legend already has {style}: “{}”. Change it with wb legend set.", entry_label(&entries[i]))));
+        return Err(bad(format!(
+            "The legend already has {style}: “{}”. Change it with wb legend set.",
+            entry_label(&entries[i])
+        )));
     }
     let name = name.and_then(clean);
     if let Some(n) = &name {
         name_free(&entries, n, None)?;
     }
-    let e = LegendEntry { kind, color, lines, name, meaning: meaning.and_then(clean), quick: false, key: None };
+    let e = LegendEntry {
+        kind,
+        color,
+        lines,
+        name,
+        meaning: meaning.and_then(clean),
+        quick: false,
+        key: None,
+    };
     entries.push(e.clone());
     write_legend(store, &entries)?;
     let n = counts(store).get(&entry_style(&e)).copied().unwrap_or(0);
@@ -707,7 +893,12 @@ fn restyle(store: &mut Store, old: &str, color: &str) -> Result<usize> {
         .into_iter()
         .flatten()
         .flatten()
-        .filter_map(|e| e.file_name().to_string_lossy().strip_suffix(".json").map(String::from))
+        .filter_map(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .strip_suffix(".json")
+                .map(String::from)
+        })
         .collect();
     for code in files {
         let mut all = read_book(store, &code);
@@ -722,7 +913,8 @@ fn restyle(store: &mut Store, old: &str, color: &str) -> Result<usize> {
             n += hit;
         }
     }
-    let mut by_book: std::collections::BTreeMap<String, Vec<crate::store::Rec>> = Default::default();
+    let mut by_book: std::collections::BTreeMap<String, Vec<crate::store::Rec>> =
+        Default::default();
     for h in store.all_highlights() {
         if legacy(&h).is_some_and(|m| style_of(&m) == old) {
             if let Ok(a) = anchors::parse(&s(&h, "anchor")) {
@@ -751,8 +943,15 @@ pub fn legend_set(store: &mut Store, target: &str, ch: &LegendChange) -> Result<
     guard(&store.root)?;
     let mut entries = read_legend(store);
     let i = need_entry(&entries, target)?;
-    if ch.name.is_none() && ch.meaning.is_none() && ch.color.is_none() && ch.quick.is_none() && ch.key.is_none() {
-        return Err(bad("Say what to change: --name, --meaning, --color, --quick or --key."));
+    if ch.name.is_none()
+        && ch.meaning.is_none()
+        && ch.color.is_none()
+        && ch.quick.is_none()
+        && ch.key.is_none()
+    {
+        return Err(bad(
+            "Say what to change: --name, --meaning, --color, --quick or --key.",
+        ));
     }
     if ch.restyle.is_some() && ch.color.is_none() {
         return Err(bad("--restyle and --no-restyle go with --color."));
@@ -772,7 +971,10 @@ pub fn legend_set(store: &mut Store, target: &str, ch: &LegendChange) -> Result<
         if color != e.color {
             let style = style_key(&e.kind, &color, e.lines);
             if let Some(o) = entries.iter().position(|x| entry_style(x) == style) {
-                return Err(bad(format!("The legend already has {style}: “{}”.", entry_label(&entries[o]))));
+                return Err(bad(format!(
+                    "The legend already has {style}: “{}”.",
+                    entry_label(&entries[o])
+                )));
             }
             if ch.restyle.is_none() && counts(store).get(&old_style).copied().unwrap_or(0) > 0 {
                 return Err(bad("Marks use this style. Say --restyle to change them too, or --no-restyle to change the entry only."));
@@ -782,7 +984,14 @@ pub fn legend_set(store: &mut Store, target: &str, ch: &LegendChange) -> Result<
         }
     }
     if let Some(q) = ch.quick {
-        if q && !e.quick && entries.iter().enumerate().filter(|(j, x)| *j != i && x.quick).count() >= QUICK_MAX {
+        if q && !e.quick
+            && entries
+                .iter()
+                .enumerate()
+                .filter(|(j, x)| *j != i && x.quick)
+                .count()
+                >= QUICK_MAX
+        {
             return Err(bad(format!("There are already {QUICK_MAX} quick styles. Turn one off first (wb legend set <entry> --quick off).")));
         }
         e.quick = q;
@@ -792,9 +1001,16 @@ pub fn legend_set(store: &mut Store, target: &str, ch: &LegendChange) -> Result<
             e.key = None;
         } else {
             let k = check_key(k)?;
-            if let Some(o) = entries.iter().position(|x| x.key.as_deref() == Some(k.as_str())).filter(|o| *o != i) {
+            if let Some(o) = entries
+                .iter()
+                .position(|x| x.key.as_deref() == Some(k.as_str()))
+                .filter(|o| *o != i)
+            {
                 if !ch.move_key {
-                    return Err(bad(format!("{k} is already used by “{}”. Say --move-key to move it here.", entry_label(&entries[o]))));
+                    return Err(bad(format!(
+                        "{k} is already used by “{}”. Say --move-key to move it here.",
+                        entry_label(&entries[o])
+                    )));
                 }
                 entries[o].key = None;
             }
@@ -817,7 +1033,11 @@ pub fn legend_move(store: &Store, target: &str, to: usize) -> Result<Value> {
     let mut entries = read_legend(store);
     let i = need_entry(&entries, target)?;
     if to < 1 || to > entries.len() {
-        return Err(bad(format!("The legend has {} entries: --to is 1 to {}.", entries.len(), entries.len())));
+        return Err(bad(format!(
+            "The legend has {} entries: --to is 1 to {}.",
+            entries.len(),
+            entries.len()
+        )));
     }
     let e = entries.remove(i);
     entries.insert(to - 1, e);
@@ -843,16 +1063,36 @@ fn words_under(bible: &Bible, a: &anchors::Anchor) -> String {
     match a.kind {
         Kind::Verse | Kind::Verses => {
             let (c2, v2) = (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1));
-            bible.verses(&a.code, a.c1, a.v1, c2, v2).map(|v| v.into_iter().map(|(_, _, t)| t).collect::<Vec<_>>().join(" ")).unwrap_or_default()
+            bible
+                .verses(&a.code, a.c1, a.v1, c2, v2)
+                .map(|v| {
+                    v.into_iter()
+                        .map(|(_, _, t)| t)
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                })
+                .unwrap_or_default()
         }
         Kind::Word | Kind::Phrase => {
-            let (c2, v2, i2) = (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1), a.i2.or(a.i1).unwrap_or(0));
+            let (c2, v2, i2) = (
+                a.c2.unwrap_or(a.c1),
+                a.v2.unwrap_or(a.v1),
+                a.i2.or(a.i1).unwrap_or(0),
+            );
             let i1 = a.i1.unwrap_or(0);
             let mut out = String::new();
             for c in a.c1..=c2 {
-                let Ok(ch) = bible.chapter(&a.code, c) else { continue };
-                for v in ch.verses.iter().filter(|v| (c, v.v) >= (a.c1, a.v1) && (c, v.v) <= (c2, v2)) {
-                    for w in v.words.iter().filter(|w| (c, v.v, w.i) >= (a.c1, a.v1, i1) && (c, v.v, w.i) <= (c2, v2, i2)) {
+                let Ok(ch) = bible.chapter(&a.code, c) else {
+                    continue;
+                };
+                for v in ch
+                    .verses
+                    .iter()
+                    .filter(|v| (c, v.v) >= (a.c1, a.v1) && (c, v.v) <= (c2, v2))
+                {
+                    for w in v.words.iter().filter(|w| {
+                        (c, v.v, w.i) >= (a.c1, a.v1, i1) && (c, v.v, w.i) <= (c2, v2, i2)
+                    }) {
                         if !out.is_empty() && !out.ends_with(' ') {
                             out.push(' ');
                         }
@@ -874,15 +1114,35 @@ fn mark_rows(bible: &Bible, store: &Store, keep: impl Fn(&DrawnMark) -> bool) ->
 }
 
 /// `mark_rows`, with or without the words under each mark (`with_words: false` reads no verse text: the whole-Bible map, row 57).
-fn mark_rows_with(bible: &Bible, store: &Store, keep: impl Fn(&DrawnMark) -> bool, with_words: bool) -> Vec<Value> {
-    let legacy_ids: std::collections::HashSet<String> = store.all_highlights().iter().map(|h| s(h, "id")).collect();
+fn mark_rows_with(
+    bible: &Bible,
+    store: &Store,
+    keep: impl Fn(&DrawnMark) -> bool,
+    with_words: bool,
+) -> Vec<Value> {
+    let legacy_ids: std::collections::HashSet<String> =
+        store.all_highlights().iter().map(|h| s(h, "id")).collect();
     let mut found: Vec<(usize, u32, u32, u32, String, Value)> = vec![];
     for m in all_marks(store).into_iter().filter(|m| keep(m)) {
-        let Ok(a) = anchors::parse(&m.at) else { continue };
-        let Some(bi) = bible.books().iter().position(|b| b.code == a.code) else { continue };
+        let Ok(a) = anchors::parse(&m.at) else {
+            continue;
+        };
+        let Some(bi) = bible.books().iter().position(|b| b.code == a.code) else {
+            continue;
+        };
         let book = &bible.books()[bi];
-        let label = crate::places::span_label(&crate::places::Span { book: book.clone(), c1: a.c1, v1: a.v1, c2: a.c2.unwrap_or(a.c1), v2: a.v2.unwrap_or(a.v1) });
-        let mut words = if with_words { words_under(bible, &a) } else { String::new() };
+        let label = crate::places::span_label(&crate::places::Span {
+            book: book.clone(),
+            c1: a.c1,
+            v1: a.v1,
+            c2: a.c2.unwrap_or(a.c1),
+            v2: a.v2.unwrap_or(a.v1),
+        });
+        let mut words = if with_words {
+            words_under(bible, &a)
+        } else {
+            String::new()
+        };
         if words.is_empty() && with_words {
             words = m.words.clone().unwrap_or_default();
         }
@@ -930,7 +1190,12 @@ fn style_json(k: &str) -> Value {
 /// A mark or a place that runs over chapters counts in each. One pass over `marks/` and `highlights/`; no page file and no
 /// verse text is read. Top level: `books`, `styles` (the legend's entries in order, then the styles in use that none names,
 /// each with `label`), `folders` (colored folders), `filter`, `total` and `chapters_with` (chapters with any count).
-pub fn marks_map(bible: &Bible, store: &Store, style: Option<&str>, folder: Option<&str>) -> Result<Value> {
+pub fn marks_map(
+    bible: &Bible,
+    store: &Store,
+    style: Option<&str>,
+    folder: Option<&str>,
+) -> Result<Value> {
     if style.is_some() && folder.is_some() {
         return Err(bad("Choose one: --style or --folder."));
     }
@@ -952,8 +1217,14 @@ pub fn marks_map(bible: &Bible, store: &Store, style: Option<&str>, folder: Opti
     {
         let rows = mark_rows_with(bible, store, |_| true, false);
         for r in &rows {
-            let Ok(a) = anchors::parse(r["at"].as_str().unwrap_or("")) else { continue };
-            let st = style_key(r["kind"].as_str().unwrap_or(""), r["color"].as_str().unwrap_or(""), r["lines"].as_u64().map(|n| n as u8));
+            let Ok(a) = anchors::parse(r["at"].as_str().unwrap_or("")) else {
+                continue;
+            };
+            let st = style_key(
+                r["kind"].as_str().unwrap_or(""),
+                r["color"].as_str().unwrap_or(""),
+                r["lines"].as_u64().map(|n| n as u8),
+            );
             if !used.contains(&st) {
                 used.push(st.clone());
             }
@@ -971,9 +1242,34 @@ pub fn marks_map(bible: &Bible, store: &Store, style: Option<&str>, folder: Opti
         };
         for f in every {
             let places: Vec<String> = if f.thread {
-                store.thread(&f.id).ok().map(|t| t["members"].as_array().cloned().unwrap_or_default().iter().map(|m| m["anchor"].as_str().unwrap_or("").to_string()).collect()).unwrap_or_default()
+                store
+                    .thread(&f.id)
+                    .ok()
+                    .map(|t| {
+                        t["members"]
+                            .as_array()
+                            .cloned()
+                            .unwrap_or_default()
+                            .iter()
+                            .map(|m| m["anchor"].as_str().unwrap_or("").to_string())
+                            .collect()
+                    })
+                    .unwrap_or_default()
             } else {
-                store.find_set(&f.id).ok().map(|t| t["items"].as_array().cloned().unwrap_or_default().iter().filter(|i| i["kind"] == "place").map(|i| i["ref"].as_str().unwrap_or("").to_string()).collect()).unwrap_or_default()
+                store
+                    .find_set(&f.id)
+                    .ok()
+                    .map(|t| {
+                        t["items"]
+                            .as_array()
+                            .cloned()
+                            .unwrap_or_default()
+                            .iter()
+                            .filter(|i| i["kind"] == "place")
+                            .map(|i| i["ref"].as_str().unwrap_or("").to_string())
+                            .collect()
+                    })
+                    .unwrap_or_default()
             };
             let mut g = Grid::new();
             for p in places {
@@ -1001,7 +1297,10 @@ pub fn marks_map(bible: &Bible, store: &Store, style: Option<&str>, folder: Opti
         for c in 1..=b.chapters {
             if filtered {
                 let n = match (&want_style, by_folder.first()) {
-                    (Some(st), _) => by_style.get(st).map(|g| count_of(g, &b.code, c)).unwrap_or(0),
+                    (Some(st), _) => by_style
+                        .get(st)
+                        .map(|g| count_of(g, &b.code, c))
+                        .unwrap_or(0),
                     (None, Some((_, g))) => count_of(g, &b.code, c),
                     _ => 0,
                 };
@@ -1011,7 +1310,10 @@ pub fn marks_map(bible: &Bible, store: &Store, style: Option<&str>, folder: Opti
             } else {
                 let mut styles: Vec<Value> = vec![];
                 for k in &keys {
-                    let n = by_style.get(k).map(|g| count_of(g, &b.code, c)).unwrap_or(0);
+                    let n = by_style
+                        .get(k)
+                        .map(|g| count_of(g, &b.code, c))
+                        .unwrap_or(0);
                     if n > 0 {
                         let mut v = style_json(k);
                         v["count"] = json!(n);
@@ -1024,7 +1326,9 @@ pub fn marks_map(bible: &Bible, store: &Store, style: Option<&str>, folder: Opti
                     let n = count_of(g, &b.code, c);
                     if n > 0 {
                         total += n as u64;
-                        folders.push(json!({"key": f.key, "name": f.name, "color": f.color, "count": n}));
+                        folders.push(
+                            json!({"key": f.key, "name": f.name, "color": f.color, "count": n}),
+                        );
                     }
                 }
                 with += (!styles.is_empty() || !folders.is_empty()) as u64;
@@ -1050,13 +1354,24 @@ pub fn marks_map(bible: &Bible, store: &Store, style: Option<&str>, folder: Opti
             v
         })
         .collect();
-    let folders: Vec<Value> = crate::folders::colored(store).iter().map(|f| json!({"key": f.key, "name": f.name, "color": f.color})).collect();
+    let folders: Vec<Value> = crate::folders::colored(store)
+        .iter()
+        .map(|f| json!({"key": f.key, "name": f.name, "color": f.color}))
+        .collect();
     let filter = match (&want_style, &want_folder) {
         (Some(st), _) => {
-            let label = legend_styles.iter().find(|v| v["style"] == json!(st)).map(|v| v["label"].clone()).unwrap_or_else(|| {
-                let p: Vec<&str> = st.split(':').collect();
-                json!(unnamed_words(p[0], p[1], p.get(2).and_then(|n| n.parse::<u8>().ok())))
-            });
+            let label = legend_styles
+                .iter()
+                .find(|v| v["style"] == json!(st))
+                .map(|v| v["label"].clone())
+                .unwrap_or_else(|| {
+                    let p: Vec<&str> = st.split(':').collect();
+                    json!(unnamed_words(
+                        p[0],
+                        p[1],
+                        p.get(2).and_then(|n| n.parse::<u8>().ok())
+                    ))
+                });
             let mut f = style_json(st);
             f["label"] = label;
             f
@@ -1064,7 +1379,9 @@ pub fn marks_map(bible: &Bible, store: &Store, style: Option<&str>, folder: Opti
         (None, Some(f)) => json!({"folder": f.key, "label": f.name, "color": f.color}),
         _ => Value::Null,
     };
-    Ok(json!({"books": books, "styles": legend_styles, "folders": folders, "filter": filter, "total": total, "chapters_with": with}))
+    Ok(
+        json!({"books": books, "styles": legend_styles, "folders": folders, "filter": filter, "total": total, "chapters_with": with}),
+    )
 }
 
 /// What finds marks (row 51). Every filter that is set must hold. `style` is a legend entry (its name) or `kind:color[:lines]`;
@@ -1092,11 +1409,20 @@ pub fn find_marks(bible: &Bible, store: &Store, f: &MarkFilter<'_>) -> Result<Va
     };
     if let Some(k) = f.kind {
         if !MARK_KINDS.contains(&k.trim().to_lowercase().as_str()) {
-            return Err(bad(format!("--mark-kind is one of: {}.", MARK_KINDS.join(", "))));
+            return Err(bad(format!(
+                "--mark-kind is one of: {}.",
+                MARK_KINDS.join(", ")
+            )));
         }
     }
     let code = match f.book {
-        Some(b) => Some(bible.find_book(b).ok_or_else(|| missing(format!("No book “{}”.", b.trim())))?.code.clone()),
+        Some(b) => Some(
+            bible
+                .find_book(b)
+                .ok_or_else(|| missing(format!("No book “{}”.", b.trim())))?
+                .code
+                .clone(),
+        ),
         None => None,
     };
     let kind = f.kind.map(|k| k.trim().to_lowercase());
@@ -1106,7 +1432,9 @@ pub fn find_marks(bible: &Bible, store: &Store, f: &MarkFilter<'_>) -> Result<Va
         style.as_ref().is_none_or(|s| style_of(m) == *s)
             && kind.as_ref().is_none_or(|k| m.kind == *k)
             && color.as_ref().is_none_or(|c| m.color.to_lowercase() == *c)
-            && code.as_ref().is_none_or(|c| anchors::parse(&m.at).is_ok_and(|a| a.code == *c))
+            && code
+                .as_ref()
+                .is_none_or(|c| anchors::parse(&m.at).is_ok_and(|a| a.code == *c))
             && f.since.is_none_or(|d| day(m).as_str() >= d)
             && f.until.is_none_or(|d| day(m).as_str() <= d)
     });
@@ -1117,8 +1445,20 @@ pub fn find_marks(bible: &Bible, store: &Store, f: &MarkFilter<'_>) -> Result<Va
 /// Give each mark row its `legend` name (or "Unnamed <color> <kind>") and its `style`.
 fn name_styles(entries: &[LegendEntry], marks: &mut [Value]) {
     for m in marks.iter_mut() {
-        let st = style_key(m["kind"].as_str().unwrap_or(""), m["color"].as_str().unwrap_or(""), m["lines"].as_u64().map(|n| n as u8));
-        m["legend"] = json!(entries.iter().find(|e| entry_style(e) == st).map(entry_label).unwrap_or_else(|| unnamed_words(m["kind"].as_str().unwrap_or(""), m["color"].as_str().unwrap_or(""), m["lines"].as_u64().map(|n| n as u8))));
+        let st = style_key(
+            m["kind"].as_str().unwrap_or(""),
+            m["color"].as_str().unwrap_or(""),
+            m["lines"].as_u64().map(|n| n as u8),
+        );
+        m["legend"] = json!(entries
+            .iter()
+            .find(|e| entry_style(e) == st)
+            .map(entry_label)
+            .unwrap_or_else(|| unnamed_words(
+                m["kind"].as_str().unwrap_or(""),
+                m["color"].as_str().unwrap_or(""),
+                m["lines"].as_u64().map(|n| n as u8)
+            )));
         m["style"] = json!(st);
     }
 }
@@ -1132,7 +1472,9 @@ pub fn in_passage(bible: &Bible, store: &Store, place: &str) -> Result<Value> {
     let e0 = (sp.c2, if sp.v2 == 0 { u32::MAX } else { sp.v2 }, u32::MAX);
     let code = sp.book.code.clone();
     let mut marks = mark_rows(bible, store, |m| {
-        let Ok(a) = anchors::parse(&m.at) else { return false };
+        let Ok(a) = anchors::parse(&m.at) else {
+            return false;
+        };
         if a.code != code {
             return false;
         }
@@ -1156,7 +1498,10 @@ pub fn legend_uses(bible: &Bible, store: &Store, target: &str) -> Result<Value> 
     let marks = mark_rows(bible, store, |m| style_of(m) == style);
     let p: Vec<&str> = style.split(':').collect();
     let lines = p.get(2).and_then(|n| n.parse::<u8>().ok());
-    let label = entry.as_ref().map(entry_label).unwrap_or_else(|| unnamed_words(p[0], p[1], lines));
+    let label = entry
+        .as_ref()
+        .map(entry_label)
+        .unwrap_or_else(|| unnamed_words(p[0], p[1], lines));
     let mut e = json!({"label": label, "style": style, "kind": p[0], "color": p[1], "listed": entry.is_some(), "count": marks.len()});
     if let Some(n) = lines {
         e["lines"] = json!(n);
@@ -1175,7 +1520,11 @@ pub fn legend_style(store: &Store, target: &str) -> Result<(String, String, Opti
 fn with_legend(entries: &[LegendEntry], m: &DrawnMark) -> Value {
     let mut v = serde_json::to_value(m).unwrap();
     let st = style_of(m);
-    v["legend"] = json!(entries.iter().find(|e| entry_style(e) == st).map(entry_label).unwrap_or_else(|| unnamed_words(&m.kind, &m.color, m.lines)));
+    v["legend"] = json!(entries
+        .iter()
+        .find(|e| entry_style(e) == st)
+        .map(entry_label)
+        .unwrap_or_else(|| unnamed_words(&m.kind, &m.color, m.lines)));
     v
 }
 
@@ -1200,14 +1549,24 @@ pub fn chapter_drawn(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
 // changed. Other keys in the file (the margin's, later) are kept as they are.
 
 fn names_in(v: Option<&Value>) -> Vec<String> {
-    v.and_then(|x| x.as_array()).map(|a| a.iter().filter_map(|s| s.as_str().map(String::from)).collect()).unwrap_or_default()
+    v.and_then(|x| x.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|s| s.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// What the panel has switched: `{"hidden_kinds": [...], "hidden_styles": [...], "reading": false, "margin": "open"}`.
 /// `margin` is `open` (the notes in full beside the text) or `signs` (only a notepad sign beside each verse with a note).
 pub fn panel_settings(store: &Store) -> Value {
     let all = store.settings("marks");
-    let margin = if all.get("margin").and_then(|m| m.as_str()) == Some("signs") { "signs" } else { "open" };
+    let margin = if all.get("margin").and_then(|m| m.as_str()) == Some("signs") {
+        "signs"
+    } else {
+        "open"
+    };
     json!({"hidden_kinds": names_in(all.get("hidden_kinds")), "hidden_styles": names_in(all.get("hidden_styles")), "reading": all.get("reading").and_then(|r| r.as_bool()).unwrap_or(false), "margin": margin})
 }
 
@@ -1217,7 +1576,9 @@ fn hide(store: &mut Store, key: &str, item: String, hidden: bool) -> Result<()> 
     if hidden {
         now.push(item);
     }
-    store.set_setting("marks", key, Some(json!(now))).map(|_| ())
+    store
+        .set_setting("marks", key, Some(json!(now)))
+        .map(|_| ())
 }
 
 /// Switch one thing: `what` is `kind` (target: highlight, underline, circle, box, arrow), `entry` (target: a legend entry's
@@ -1255,7 +1616,9 @@ pub fn panel_margin(store: &mut Store, how: &str) -> Result<Value> {
     guard(&store.root)?;
     let how = how.trim().to_lowercase();
     if how != "open" && how != "signs" {
-        return Err(bad("The margin is open or signs: wb settings marks margin open | signs."));
+        return Err(bad(
+            "The margin is open or signs: wb settings marks margin open | signs.",
+        ));
     }
     store.set_setting("marks", "margin", Some(json!(how)))?;
     Ok(panel_settings(store))
@@ -1295,19 +1658,44 @@ fn move_one(r: &Value, pencil: bool) -> std::result::Result<DrawnMark, String> {
             Some(_) => Err(format!("`{k}` is not text")),
         }
     };
-    let id = text("id")?.filter(|i| !i.is_empty()).ok_or("it has no id")?;
-    let a = anchors::parse(&text("anchor")?.ok_or("it has no anchor")?).map_err(|e| format!("its place cannot be read ({e})"))?;
+    let id = text("id")?
+        .filter(|i| !i.is_empty())
+        .ok_or("it has no id")?;
+    let a = anchors::parse(&text("anchor")?.ok_or("it has no anchor")?)
+        .map_err(|e| format!("its place cannot be read ({e})"))?;
     if a.kind == Kind::Lemma {
         return Err("its place is a word number, not words or verses".into());
     }
     let created = text("created")?.unwrap_or_default();
     if pencil {
-        return Ok(DrawnMark { id, kind: "underline".into(), color: PENCIL_COLOR.into(), lines: Some(1), at: a.id(), to: None, created, changed: None, words: None });
+        return Ok(DrawnMark {
+            id,
+            kind: "underline".into(),
+            color: PENCIL_COLOR.into(),
+            lines: Some(1),
+            at: a.id(),
+            to: None,
+            created,
+            changed: None,
+            words: None,
+        });
     }
-    let color = text("color")?.filter(|c| !c.is_empty()).ok_or("it has no color")?;
+    let color = text("color")?
+        .filter(|c| !c.is_empty())
+        .ok_or("it has no color")?;
     let quote = text("quote")?.unwrap_or_default();
     let changed = text("changed")?.filter(|c| !c.is_empty());
-    Ok(DrawnMark { id, kind: "highlight".into(), color, lines: None, at: a.id(), to: None, created, changed, words: (!quote.is_empty()).then_some(quote) })
+    Ok(DrawnMark {
+        id,
+        kind: "highlight".into(),
+        color,
+        lines: None,
+        at: a.id(),
+        to: None,
+        created,
+        changed,
+        words: (!quote.is_empty()).then_some(quote),
+    })
 }
 
 /// The dry run (`go` false) or the move (`go` true). → {dry_run, books: [{book, highlights, pencil, marks}], unreadable,
@@ -1318,13 +1706,23 @@ pub fn move_marks(store: &mut Store, go: bool) -> Result<Value> {
     let mut found: Vec<(String, DrawnMark, bool, PathBuf)> = vec![];
     let mut unreadable: Vec<Value> = vec![];
     let mut sources: Vec<(PathBuf, &str)> = vec![];
-    let rel = |p: &std::path::Path| p.strip_prefix(&root).unwrap_or(p).to_string_lossy().replace('\\', "/");
+    let rel = |p: &std::path::Path| {
+        p.strip_prefix(&root)
+            .unwrap_or(p)
+            .to_string_lossy()
+            .replace('\\', "/")
+    };
     for (folder, pencil) in [("highlights", false), ("pencil", true)] {
         let key = folder;
         for path in move_files(&root.join(folder)) {
             sources.push((path.clone(), folder));
-            let Some(v) = std::fs::read_to_string(&path).ok().and_then(|t| serde_json::from_str::<Value>(&t).ok()) else {
-                unreadable.push(json!({"file": rel(&path), "id": null, "why": "the file is not readable JSON"}));
+            let Some(v) = std::fs::read_to_string(&path)
+                .ok()
+                .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+            else {
+                unreadable.push(
+                    json!({"file": rel(&path), "id": null, "why": "the file is not readable JSON"}),
+                );
                 continue;
             };
             let Some(items) = v.get(key).and_then(|a| a.as_array()) else {
@@ -1372,7 +1770,9 @@ pub fn move_marks(store: &mut Store, go: bool) -> Result<Value> {
         let held = existing.values().flatten().find(|e| e.id == m.id);
         match held {
             Some(e) if *e == m => already += 1, // an earlier run wrote it and stopped before archiving: nothing to write
-            Some(_) => collisions.push(json!({"id": m.id, "file": rel(&path), "with": "a mark in marks/"})),
+            Some(_) => {
+                collisions.push(json!({"id": m.id, "file": rel(&path), "with": "a mark in marks/"}))
+            }
             None => fresh.push((code, m, pencil, path)),
         }
     }
@@ -1380,7 +1780,10 @@ pub fn move_marks(store: &mut Store, go: bool) -> Result<Value> {
     let mut conflicts: Vec<Value> = vec![];
     let mut moves: Vec<(PathBuf, PathBuf)> = vec![];
     for (path, folder) in &sources {
-        let dest = root.join(".archive").join(folder).join(path.file_name().unwrap());
+        let dest = root
+            .join(".archive")
+            .join(folder)
+            .join(path.file_name().unwrap());
         if dest.exists() && std::fs::read(&dest).ok() != std::fs::read(path).ok() {
             conflicts.push(json!({"file": rel(path), "archive": rel(&dest), "why": "the archive already holds a different file of that name"}));
         } else {
@@ -1396,7 +1799,10 @@ pub fn move_marks(store: &mut Store, go: bool) -> Result<Value> {
             e.0 += 1
         }
     }
-    let (hl, pen) = (fresh.iter().filter(|f| !f.2).count(), fresh.iter().filter(|f| f.2).count());
+    let (hl, pen) = (
+        fresh.iter().filter(|f| !f.2).count(),
+        fresh.iter().filter(|f| f.2).count(),
+    );
     let can_go = unreadable.is_empty() && collisions.is_empty() && conflicts.is_empty();
     let mut out = json!({
         "dry_run": !go,
@@ -1422,9 +1828,18 @@ pub fn move_marks(store: &mut Store, go: bool) -> Result<Value> {
     guard(&root)?;
     // the marks first (each book's file whole and atomic), then the old files, whole, into the archive
     for code in books.keys() {
-        let mut all: Vec<DrawnMark> = fresh.iter().filter(|f| &f.0 == code && !f.2).map(|f| f.1.clone()).collect();
+        let mut all: Vec<DrawnMark> = fresh
+            .iter()
+            .filter(|f| &f.0 == code && !f.2)
+            .map(|f| f.1.clone())
+            .collect();
         all.extend(existing.get(code).cloned().unwrap_or_default());
-        all.extend(fresh.iter().filter(|f| &f.0 == code && f.2).map(|f| f.1.clone()));
+        all.extend(
+            fresh
+                .iter()
+                .filter(|f| &f.0 == code && f.2)
+                .map(|f| f.1.clone()),
+        );
         all.sort_by(|a, b| a.created.cmp(&b.created)); // stable: highlights, then marks already there, then pencil lines
         write_book(store, code, &all)?;
     }

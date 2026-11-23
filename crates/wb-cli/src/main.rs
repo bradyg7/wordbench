@@ -9,21 +9,42 @@ fn main() {
     {
         let result = (|| -> Result<bool, String> {
             let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-            let roots = wb_core::runtime::initialize(exe.parent().ok_or("No installation directory")?.join("resources")).map_err(|e| e.to_string())?;
+            let roots = wb_core::runtime::initialize(
+                exe.parent()
+                    .ok_or("No installation directory")?
+                    .join("resources"),
+            )
+            .map_err(|e| e.to_string())?;
             if argv.first().map(String::as_str) == Some("license") {
                 let license = wb_core::runtime::licensing();
                 match argv.get(1).map(String::as_str) {
-                    Some("status") if argv.len() == 2 => println!("{}", serde_json::to_string_pretty(&license.status()).unwrap()),
+                    Some("status") if argv.len() == 2 => println!(
+                        "{}",
+                        serde_json::to_string_pretty(&license.status()).unwrap()
+                    ),
                     Some("request") if argv.len() == 2 => println!("{}", license.request()?),
                     Some("import") if argv.len() == 3 => {
                         use std::io::Read;
                         let mut bytes = vec![];
-                        std::fs::File::open(&argv[2]).map_err(|e| e.to_string())?.take(32769).read_to_end(&mut bytes).map_err(|e| e.to_string())?;
-                        license.import(std::str::from_utf8(&bytes).map_err(|_| "Invalid license encoding")?)?;
+                        std::fs::File::open(&argv[2])
+                            .map_err(|e| e.to_string())?
+                            .take(32769)
+                            .read_to_end(&mut bytes)
+                            .map_err(|e| e.to_string())?;
+                        license.import(
+                            std::str::from_utf8(&bytes).map_err(|_| "Invalid license encoding")?,
+                        )?;
                         println!("Pilot license activated. Offline use does not expire.");
                     }
-                    Some("recovery") if argv.len() == 2 => println!("{}", serde_json::json!({"study_dir": roots.load_study().map_err(|e| e.to_string())?, "message":"Your study files remain readable without a license. Open this folder in your file manager to copy or back them up."})),
-                    _ => return Err("Usage: wb license status | request | import <file> | recovery".into()),
+                    Some("recovery") if argv.len() == 2 => println!(
+                        "{}",
+                        serde_json::json!({"study_dir": roots.load_study().map_err(|e| e.to_string())?, "message":"Your study files remain readable without a license. Open this folder in your file manager to copy or back them up."})
+                    ),
+                    _ => {
+                        return Err(
+                            "Usage: wb license status | request | import <file> | recovery".into(),
+                        )
+                    }
                 }
                 return Ok(true);
             }
@@ -39,15 +60,27 @@ fn main() {
                 return Ok(true);
             }
             let status = roots.status();
-            if !status.ready { return Err(status.problem.unwrap_or_else(|| "Choose a study folder in the app, or run wb setup new/open <absolute-folder>.".into())); }
+            if !status.ready {
+                return Err(status.problem.unwrap_or_else(|| "Choose a study folder in the app, or run wb setup new/open <absolute-folder>.".into()));
+            }
             Ok(false)
         })();
-        match result { Ok(true) => return, Ok(false) => (), Err(e) => { eprintln!("error: {e}"); std::process::exit(1); } }
+        match result {
+            Ok(true) => return,
+            Ok(false) => (),
+            Err(e) => {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            }
+        }
     }
     match run(&Ctx::new(), &argv) {
         Ok((Out::Nothing, _)) => {}
         Ok((Out::Text(t), false)) => println!("{t}"),
-        Ok((Out::Text(t), true)) => println!("{}", serde_json::to_string_pretty(&Value::String(t)).unwrap()),
+        Ok((Out::Text(t), true)) => println!(
+            "{}",
+            serde_json::to_string_pretty(&Value::String(t)).unwrap()
+        ),
         Ok((Out::Json(v), _)) => println!("{}", serde_json::to_string_pretty(&v).unwrap()),
         Err(Fail::Usage(msg)) => {
             // as argparse does: the usage line, the error, exit code 2

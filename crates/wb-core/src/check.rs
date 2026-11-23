@@ -11,12 +11,30 @@ use std::fs;
 use std::path::Path;
 
 fn files_in(dir: &Path, ending: &str) -> usize {
-    fs::read_dir(dir).map(|rd| rd.flatten().filter(|e| e.path().to_string_lossy().ends_with(ending)).count()).unwrap_or(0)
+    fs::read_dir(dir)
+        .map(|rd| {
+            rd.flatten()
+                .filter(|e| e.path().to_string_lossy().ends_with(ending))
+                .count()
+        })
+        .unwrap_or(0)
 }
 
 /// Every file under a folder, at any depth (the margin's `<BOOK>/<chapter>.md` files).
 fn count_files(dir: &Path) -> usize {
-    fs::read_dir(dir).map(|rd| rd.flatten().map(|e| if e.path().is_dir() { count_files(&e.path()) } else { 1 }).sum()).unwrap_or(0)
+    fs::read_dir(dir)
+        .map(|rd| {
+            rd.flatten()
+                .map(|e| {
+                    if e.path().is_dir() {
+                        count_files(&e.path())
+                    } else {
+                        1
+                    }
+                })
+                .sum()
+        })
+        .unwrap_or(0)
 }
 
 /// What the study folder holds, and what a build of R1 would write to it (nothing it does not already write: the new
@@ -24,10 +42,24 @@ fn count_files(dir: &Path) -> usize {
 pub fn study_check(store: &mut Store) -> Result<Value> {
     let to_move = crate::marks::move_marks(store, false)?;
     let placed = store.notes();
-    let words = placed.iter().filter(|n| matches!(s(n, "anchor").chars().next(), Some('H' | 'G')) && s(n, "anchor").len() > 1 && s(n, "anchor")[1..].chars().all(|c| c.is_ascii_digit())).count();
+    let words = placed
+        .iter()
+        .filter(|n| {
+            matches!(s(n, "anchor").chars().next(), Some('H' | 'G'))
+                && s(n, "anchor").len() > 1
+                && s(n, "anchor")[1..].chars().all(|c| c.is_ascii_digit())
+        })
+        .count();
     let threads = store.threads();
-    let places: usize = threads.iter().map(|t| t["members"].as_array().map(|a| a.len()).unwrap_or(0)).sum();
-    let colors: BTreeSet<String> = threads.iter().map(|t| s(t, "color")).filter(|c| !c.is_empty()).collect();
+    let places: usize = threads
+        .iter()
+        .map(|t| t["members"].as_array().map(|a| a.len()).unwrap_or(0))
+        .sum();
+    let colors: BTreeSet<String> = threads
+        .iter()
+        .map(|t| s(t, "color"))
+        .filter(|c| !c.is_empty())
+        .collect();
     let trails = store.trails();
     let open = trails.iter().filter(|t| s(t, "status") != "done").count();
     let inbox = store.inbox();
@@ -62,7 +94,12 @@ pub fn study_check(store: &mut Store) -> Result<Value> {
 /// and first line differ (the field wins). Read only.
 pub fn library_check(bible: &crate::bible::Bible, store: &Store) -> Result<Value> {
     let mut titles = vec![];
-    for n in store.notes().into_iter().chain(store.inbox()).chain(store.on_thread()) {
+    for n in store
+        .notes()
+        .into_iter()
+        .chain(store.inbox())
+        .chain(store.on_thread())
+    {
         let field = s(n, "title");
         let field = field.trim();
         if !field.is_empty() && field != crate::notebook::title_of(&s(n, "text")) {

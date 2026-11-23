@@ -33,7 +33,9 @@ pub const PALETTE_MAX: usize = 8;
 pub const ANCHORS_MARK: &str = "<!-- anchors -->";
 /// What a set can hold. `document` (a record in documents/, R2) is new here: the Python app passes over it when it reads a
 /// set, and drops it if it rewrites that set (docs/archive/2026-11-10/docs/redesign-R2.md section 4).
-pub const SET_KINDS: &[&str] = &["pane", "thread", "place", "note", "lesson", "pdf", "document", "sitting"];
+pub const SET_KINDS: &[&str] = &[
+    "pane", "thread", "place", "note", "lesson", "pdf", "document", "sitting",
+];
 
 /// A request the person can fix (the Python app's BadStudy, sent with status 400).
 pub fn bad(msg: impl Into<String>) -> Error {
@@ -52,13 +54,22 @@ pub fn now() -> String {
 fn random_hex(bytes: usize) -> String {
     use std::hash::{BuildHasher, Hasher};
     let mut h = std::collections::hash_map::RandomState::new().build_hasher();
-    h.write_u128(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos());
+    h.write_u128(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos(),
+    );
     h.write_u32(std::process::id());
     format!("{:016x}", h.finish())[..bytes * 2].to_string()
 }
 
 pub fn new_id(prefix: &str) -> String {
-    format!("{prefix}_{}_{}", chrono::Utc::now().format("%Y%m%d%H%M%S"), random_hex(2))
+    format!(
+        "{prefix}_{}_{}",
+        chrono::Utc::now().format("%Y%m%d%H%M%S"),
+        random_hex(2)
+    )
 }
 
 // ---- the files' text forms ------------------------------------------------------------------------------------------
@@ -67,13 +78,32 @@ pub fn new_id(prefix: &str) -> String {
 pub fn py_dumps(v: &Value) -> String {
     struct Py;
     impl serde_json::ser::Formatter for Py {
-        fn begin_array_value<W: ?Sized + std::io::Write>(&mut self, w: &mut W, first: bool) -> std::io::Result<()> {
-            if first { Ok(()) } else { w.write_all(b", ") }
+        fn begin_array_value<W: ?Sized + std::io::Write>(
+            &mut self,
+            w: &mut W,
+            first: bool,
+        ) -> std::io::Result<()> {
+            if first {
+                Ok(())
+            } else {
+                w.write_all(b", ")
+            }
         }
-        fn begin_object_key<W: ?Sized + std::io::Write>(&mut self, w: &mut W, first: bool) -> std::io::Result<()> {
-            if first { Ok(()) } else { w.write_all(b", ") }
+        fn begin_object_key<W: ?Sized + std::io::Write>(
+            &mut self,
+            w: &mut W,
+            first: bool,
+        ) -> std::io::Result<()> {
+            if first {
+                Ok(())
+            } else {
+                w.write_all(b", ")
+            }
         }
-        fn begin_object_value<W: ?Sized + std::io::Write>(&mut self, w: &mut W) -> std::io::Result<()> {
+        fn begin_object_value<W: ?Sized + std::io::Write>(
+            &mut self,
+            w: &mut W,
+        ) -> std::io::Result<()> {
             w.write_all(b": ")
         }
     }
@@ -86,7 +116,10 @@ pub fn py_dumps(v: &Value) -> String {
 /// `json.dumps(v, ensure_ascii=False, indent=1)`.
 pub fn py_dumps_indent1(v: &Value) -> String {
     let mut buf = Vec::new();
-    let mut ser = serde_json::Serializer::with_formatter(&mut buf, serde_json::ser::PrettyFormatter::with_indent(b" "));
+    let mut ser = serde_json::Serializer::with_formatter(
+        &mut buf,
+        serde_json::ser::PrettyFormatter::with_indent(b" "),
+    );
     serde::Serialize::serialize(v, &mut ser).unwrap();
     String::from_utf8(buf).unwrap()
 }
@@ -94,14 +127,21 @@ pub fn py_dumps_indent1(v: &Value) -> String {
 /// A Markdown file's header of `key: json-value` lines between `---` fences, and the text after it.
 pub fn parse_md(text: &str) -> (Rec, String) {
     let text = text.replace("\r\n", "\n");
-    let Some(rest) = text.strip_prefix("---\n") else { return (Rec::new(), text) };
-    let Some(at) = rest.find("\n---\n") else { return (Rec::new(), text.clone()) };
+    let Some(rest) = text.strip_prefix("---\n") else {
+        return (Rec::new(), text);
+    };
+    let Some(at) = rest.find("\n---\n") else {
+        return (Rec::new(), text.clone());
+    };
     let (head, body) = (&rest[..at], &rest[at + 5..]);
     let mut meta = Rec::new();
     for line in head.lines() {
         if let Some((k, v)) = line.split_once(": ") {
             if !k.is_empty() && !v.is_empty() {
-                meta.insert(k.into(), serde_json::from_str(v).unwrap_or_else(|_| Value::String(v.into())));
+                meta.insert(
+                    k.into(),
+                    serde_json::from_str(v).unwrap_or_else(|_| Value::String(v.into())),
+                );
             }
         }
     }
@@ -109,7 +149,10 @@ pub fn parse_md(text: &str) -> (Rec, String) {
 }
 
 pub fn dump_md(meta: &Rec, body: &str) -> String {
-    let head: String = meta.iter().map(|(k, v)| format!("{k}: {}\n", py_dumps(v))).collect();
+    let head: String = meta
+        .iter()
+        .map(|(k, v)| format!("{k}: {}\n", py_dumps(v)))
+        .collect();
     format!("---\n{head}---\n\n{}\n", body.trim_matches('\n'))
 }
 
@@ -117,7 +160,10 @@ pub fn write_atomic(path: &Path, text: &str) -> Result<()> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
-    let tmp = path.with_file_name(format!("{}.tmp", path.file_name().unwrap().to_string_lossy()));
+    let tmp = path.with_file_name(format!(
+        "{}.tmp",
+        path.file_name().unwrap().to_string_lossy()
+    ));
     fs::write(&tmp, text)?;
     fs::rename(&tmp, path)?;
     Ok(())
@@ -130,7 +176,12 @@ pub fn write_atomic_unique(path: &Path, text: &str) -> Result<()> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
-    let tmp = path.with_file_name(format!("{}.{}.{}.tmp", path.file_name().unwrap().to_string_lossy(), std::process::id(), N.fetch_add(1, std::sync::atomic::Ordering::SeqCst)));
+    let tmp = path.with_file_name(format!(
+        "{}.{}.{}.tmp",
+        path.file_name().unwrap().to_string_lossy(),
+        std::process::id(),
+        N.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+    ));
     if let Err(e) = fs::write(&tmp, text).and_then(|_| fs::rename(&tmp, path)) {
         let _ = fs::remove_file(&tmp);
         return Err(e.into());
@@ -160,7 +211,11 @@ fn slug_base(name: &str, fallback: &str) -> String {
         }
     }
     let t: String = out.trim_matches('-').chars().take(40).collect();
-    if t.is_empty() { fallback.to_string() } else { t }
+    if t.is_empty() {
+        fallback.to_string()
+    } else {
+        t
+    }
 }
 
 /// Up to `n` characters (Python's s[:n]).
@@ -172,8 +227,17 @@ pub fn check_color(color: Option<&str>) -> Result<Option<String>> {
     match color {
         None => Ok(None),
         Some(c) if COLORS.contains(&c) => Ok(Some(c.into())),
-        Some(c) if c.len() == 7 && c.starts_with('#') && c[1..].chars().all(|x| x.is_ascii_hexdigit()) => Ok(Some(c.to_lowercase())),
-        Some(_) => Err(bad(format!("Colors are: {}, or a custom color like #e07b39.", COLORS.join(", ")))),
+        Some(c)
+            if c.len() == 7
+                && c.starts_with('#')
+                && c[1..].chars().all(|x| x.is_ascii_hexdigit()) =>
+        {
+            Ok(Some(c.to_lowercase()))
+        }
+        Some(_) => Err(bad(format!(
+            "Colors are: {}, or a custom color like #e07b39.",
+            COLORS.join(", ")
+        ))),
     }
 }
 
@@ -196,7 +260,9 @@ enum Kind {
 
 /// Inbox notes live in notes/_inbox/, inside the notes folder the Python app reads (it skips them: no anchor).
 fn in_inbox(p: &Path) -> bool {
-    p.parent().and_then(|d| d.file_name()).is_some_and(|n| n == INBOX)
+    p.parent()
+        .and_then(|d| d.file_name())
+        .is_some_and(|n| n == INBOX)
 }
 
 pub const INBOX: &str = "_inbox";
@@ -205,14 +271,18 @@ pub const INBOX: &str = "_inbox";
 pub const ON_THREADS: &str = "_threads";
 
 fn on_threads(p: &Path) -> bool {
-    p.parent().and_then(|d| d.file_name()).is_some_and(|n| n == ON_THREADS)
+    p.parent()
+        .and_then(|d| d.file_name())
+        .is_some_and(|n| n == ON_THREADS)
 }
 
 /// Today's page and the days before it live in notes/_days/<YYYY-MM-DD>.md (the Python app skips them: no anchor).
 pub const DAYS: &str = "_days";
 
 fn in_days(p: &Path) -> bool {
-    p.parent().and_then(|d| d.file_name()).is_some_and(|n| n == DAYS)
+    p.parent()
+        .and_then(|d| d.file_name())
+        .is_some_and(|n| n == DAYS)
 }
 
 /// A day as its file names it: 2026-11-04.
@@ -240,13 +310,26 @@ pub fn places_of(n: &Rec) -> Vec<String> {
     if !s(n, "anchor").is_empty() {
         v.push(s(n, "anchor"));
     }
-    v.extend(n.get("also").and_then(|a| a.as_array()).into_iter().flatten().filter_map(|x| x.as_str()).map(String::from));
+    v.extend(
+        n.get("also")
+            .and_then(|a| a.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|x| x.as_str())
+            .map(String::from),
+    );
     v
 }
 
 /// The threads a note is on (`threads`: thread ids, new in the Rust app).
 pub fn threads_of(n: &Rec) -> Vec<String> {
-    n.get("threads").and_then(|a| a.as_array()).into_iter().flatten().filter_map(|x| x.as_str()).map(String::from).collect()
+    n.get("threads")
+        .and_then(|a| a.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|x| x.as_str())
+        .map(String::from)
+        .collect()
 }
 
 /// A page's place in the Notebook's tree (W3 of "The Notebook as a workspace", 2026-11-07): the page it is inside
@@ -261,7 +344,18 @@ pub fn threads_of(n: &Rec) -> Vec<String> {
 ///
 /// Library L-21 (2026-11-17): `title` is the page's own title field. A page without it is titled by its first line (read,
 /// never rewritten until edited); where both exist and differ, the field wins and `wb study check` reports it.
-pub const PAGE_FIELDS: &[&str] = &["props", "parent", "order", "pinned", "title", "template", "new_name", "asks", "goes_in", "from_template"];
+pub const PAGE_FIELDS: &[&str] = &[
+    "props",
+    "parent",
+    "order",
+    "pinned",
+    "title",
+    "template",
+    "new_name",
+    "asks",
+    "goes_in",
+    "from_template",
+];
 
 /// A note's page fields, kept when its file is written anew (placed, moved, a place taken off).
 fn carry(old: &Rec, meta: &mut Rec) {
@@ -312,7 +406,10 @@ pub struct Store {
 }
 
 fn stem(p: &Path) -> String {
-    p.file_stem().unwrap_or_default().to_string_lossy().into_owned()
+    p.file_stem()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned()
 }
 
 fn read(p: &Path) -> Option<String> {
@@ -321,7 +418,12 @@ fn read(p: &Path) -> Option<String> {
 
 fn sig_of(p: &Path) -> Option<Sig> {
     let m = fs::metadata(p).ok()?;
-    let t = m.modified().ok()?.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    let t = m
+        .modified()
+        .ok()?
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
     Some((t, m.len()))
 }
 
@@ -332,7 +434,8 @@ pub fn guard(root: &Path) -> Result<()> {
     }
     // An installed release opens the folder the person chose (the person, 2026-11-18); only builds without the
     // `installed` feature, every test among them, refuse the real one.
-    let open_allowed = cfg!(feature = "installed") || std::env::var("WB_ALLOW_REAL_STUDY").as_deref() == Ok("1");
+    let open_allowed =
+        cfg!(feature = "installed") || std::env::var("WB_ALLOW_REAL_STUDY").as_deref() == Ok("1");
     let installed_settings = crate::setup::installed_settings_path();
     let mut guarded = crate::guarded_study_dirs(&crate::home(), installed_settings.as_deref());
     // The saved choice may be a scratch copy in the temp folder, which is never the person's real work; guarding it
@@ -375,7 +478,9 @@ fn comparable(p: &Path) -> PathBuf {
 
 /// Files of a folder in name order (as the Python app's scandir returns them on Windows), optionally in subfolders.
 fn files(dir: &Path, ending: &str, deep: bool) -> Vec<PathBuf> {
-    let Ok(rd) = fs::read_dir(dir) else { return vec![] };
+    let Ok(rd) = fs::read_dir(dir) else {
+        return vec![];
+    };
     let mut es: Vec<_> = rd.flatten().collect();
     es.sort_by_key(|e| e.file_name());
     let mut out = vec![];
@@ -420,7 +525,10 @@ impl Store {
     /// Look at the folder (at most every `recheck`) and read again what changed. → true if anything did.
     pub fn refresh(&mut self) -> Result<bool> {
         if !self.root.is_dir() {
-            return Err(bad(format!("The study-data folder was not found: {}", self.root.display())));
+            return Err(bad(format!(
+                "The study-data folder was not found: {}",
+                self.root.display()
+            )));
         }
         if let Some(t) = self.checked {
             if t.elapsed() < self.recheck {
@@ -432,7 +540,11 @@ impl Store {
         for (kind, sub, ending, deep) in TRACKED {
             for p in files(&self.root.join(sub), ending, *deep) {
                 if let Some(sig) = sig_of(&p) {
-                    let kind = if *kind == Kind::Note { note_kind(&p) } else { *kind };
+                    let kind = if *kind == Kind::Note {
+                        note_kind(&p)
+                    } else {
+                        *kind
+                    };
                     found.push((p, sig, kind));
                 }
             }
@@ -444,7 +556,12 @@ impl Store {
                 changed = true;
             }
         }
-        let gone: Vec<PathBuf> = self.sigs.keys().filter(|p| !found.iter().any(|f| &f.0 == *p)).cloned().collect();
+        let gone: Vec<PathBuf> = self
+            .sigs
+            .keys()
+            .filter(|p| !found.iter().any(|f| &f.0 == *p))
+            .cloned()
+            .collect();
         for p in gone {
             self.drop_file(&p);
             changed = true;
@@ -462,7 +579,10 @@ impl Store {
     fn drop_file(&mut self, path: &Path) {
         self.sigs.remove(path);
         if let Some((kind, key)) = self.paths.remove(path) {
-            if matches!(kind, Kind::Note | Kind::Trail | Kind::OnThread | Kind::Inbox) {
+            if matches!(
+                kind,
+                Kind::Note | Kind::Trail | Kind::OnThread | Kind::Inbox
+            ) {
                 self.index.get_mut().forget(&key);
             }
             match kind {
@@ -487,14 +607,26 @@ impl Store {
         self.sigs.insert(path.to_path_buf(), sig); // recorded even when the file holds nothing usable
         let key = match kind {
             Kind::Hl => {
-                let items = serde_json::from_str::<Value>(&text).ok().and_then(|v| v.get("highlights").and_then(|h| h.as_array().cloned()));
+                let items = serde_json::from_str::<Value>(&text)
+                    .ok()
+                    .and_then(|v| v.get("highlights").and_then(|h| h.as_array().cloned()));
                 let Some(items) = items else { return };
                 let key = stem(path);
-                self.hl.push((key.clone(), items.into_iter().filter_map(|h| h.as_object().cloned()).collect()));
+                self.hl.push((
+                    key.clone(),
+                    items
+                        .into_iter()
+                        .filter_map(|h| h.as_object().cloned())
+                        .collect(),
+                ));
                 key
             }
             Kind::Thread | Kind::Set => {
-                let t = if kind == Kind::Thread { parse_thread(&stem(path), &text) } else { parse_set(&stem(path), &text) };
+                let t = if kind == Kind::Thread {
+                    parse_thread(&stem(path), &text)
+                } else {
+                    parse_set(&stem(path), &text)
+                };
                 let Some(t) = t else { return };
                 let key = s(&t, "id");
                 if kind == Kind::Thread {
@@ -536,7 +668,11 @@ impl Store {
                 }
                 meta.insert("text".into(), json!(body.trim()));
                 let key = s(&meta, "id");
-                let list = if kind == Kind::Note { &mut self.notes } else { &mut self.trails };
+                let list = if kind == Kind::Note {
+                    &mut self.notes
+                } else {
+                    &mut self.trails
+                };
                 list.retain(|n| s(n, "id") != key);
                 list.push(meta);
                 key
@@ -546,11 +682,26 @@ impl Store {
     }
 
     fn kind_of(&self, path: &Path) -> Option<Kind> {
-        let rel: Vec<String> = path.strip_prefix(&self.root).ok()?.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
+        let rel: Vec<String> = path
+            .strip_prefix(&self.root)
+            .ok()?
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect();
         TRACKED
             .iter()
-            .find(|(_, sub, ending, deep)| rel.first().map(String::as_str) == Some(*sub) && rel.last().is_some_and(|l| l.ends_with(ending)) && (*deep || rel.len() == 2))
-            .map(|t| if t.0 == Kind::Note { note_kind(path) } else { t.0 })
+            .find(|(_, sub, ending, deep)| {
+                rel.first().map(String::as_str) == Some(*sub)
+                    && rel.last().is_some_and(|l| l.ends_with(ending))
+                    && (*deep || rel.len() == 2)
+            })
+            .map(|t| {
+                if t.0 == Kind::Note {
+                    note_kind(path)
+                } else {
+                    t.0
+                }
+            })
     }
 
     /// Write a tracked file and take it into memory (nothing else is read again).
@@ -569,7 +720,11 @@ impl Store {
     }
 
     fn trash(&mut self, path: &Path) -> Result<()> {
-        let dest = self.root.join(".trash").join(format!("{}-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S"), path.file_name().unwrap().to_string_lossy()));
+        let dest = self.root.join(".trash").join(format!(
+            "{}-{}",
+            chrono::Utc::now().format("%Y%m%d-%H%M%S"),
+            path.file_name().unwrap().to_string_lossy()
+        ));
         fs::create_dir_all(dest.parent().unwrap())?;
         fs::rename(path, dest)?;
         self.drop_file(path);
@@ -579,8 +734,15 @@ impl Store {
     // ---- notes ----
 
     fn note_path(&self, n: &Rec) -> PathBuf {
-        let folder = if s(n, "kind") == "lemma" { "_words".to_string() } else { cut(&s(n, "anchor"), 3) };
-        self.root.join("notes").join(folder).join(format!("{}.md", s(n, "id")))
+        let folder = if s(n, "kind") == "lemma" {
+            "_words".to_string()
+        } else {
+            cut(&s(n, "anchor"), 3)
+        };
+        self.root
+            .join("notes")
+            .join(folder)
+            .join(format!("{}.md", s(n, "id")))
     }
 
     /// Every note, oldest first.
@@ -607,9 +769,15 @@ impl Store {
     pub fn update_note(&mut self, id: &str, text: &str) -> Result<Rec> {
         let text = text.trim();
         if text.is_empty() {
-            return Err(bad("A note needs some text. To remove it, delete the note."));
+            return Err(bad(
+                "A note needs some text. To remove it, delete the note.",
+            ));
         }
-        let at = self.notes.iter().position(|n| s(n, "id") == id).ok_or_else(|| missing("No such note."))?;
+        let at = self
+            .notes
+            .iter()
+            .position(|n| s(n, "id") == id)
+            .ok_or_else(|| missing("No such note."))?;
         let mut meta = self.notes[at].clone();
         meta.shift_remove("text");
         meta.insert("updated".into(), json!(now()));
@@ -619,7 +787,11 @@ impl Store {
     }
 
     pub fn delete_note(&mut self, id: &str) -> Result<()> {
-        let at = self.notes.iter().position(|n| s(n, "id") == id).ok_or_else(|| missing("No such note."))?;
+        let at = self
+            .notes
+            .iter()
+            .position(|n| s(n, "id") == id)
+            .ok_or_else(|| missing("No such note."))?;
         let path = self.note_path(&self.notes[at]);
         self.trash(&path)
     }
@@ -628,7 +800,11 @@ impl Store {
 
     /// A book's highlights, in their file's order.
     pub fn highlights(&self, code: &str) -> Vec<Rec> {
-        self.hl.iter().find(|(c, _)| c == code).map(|(_, v)| v.clone()).unwrap_or_default()
+        self.hl
+            .iter()
+            .find(|(c, _)| c == code)
+            .map(|(_, v)| v.clone())
+            .unwrap_or_default()
     }
 
     /// Each highlight in turn, without copying them (the one search goes over all of them).
@@ -645,12 +821,19 @@ impl Store {
 
     /// Take highlights out of a book's file by id and put new ones in, in one write.
     pub fn edit_highlights(&mut self, code: &str, drop: &[String], add: Vec<Rec>) -> Result<()> {
-        let mut items: Vec<Rec> = self.highlights(code).into_iter().filter(|h| !drop.contains(&s(h, "id"))).collect();
+        let mut items: Vec<Rec> = self
+            .highlights(code)
+            .into_iter()
+            .filter(|h| !drop.contains(&s(h, "id")))
+            .collect();
         items.extend(add);
         items.sort_by_key(|h| s(h, "created"));
         let path = self.root.join("highlights").join(format!("{code}.json"));
         if !items.is_empty() {
-            self.put(&path, &(py_dumps_indent1(&json!({"highlights": items})) + "\n"))?;
+            self.put(
+                &path,
+                &(py_dumps_indent1(&json!({"highlights": items})) + "\n"),
+            )?;
         } else if path.exists() {
             self.trash(&path)?;
         }
@@ -667,7 +850,12 @@ impl Store {
         let color = check_color(color)?;
         let code = s(&p, "code");
         let id = s(&p, "id");
-        let drop: Vec<String> = self.highlights(&code).iter().filter(|h| s(h, "anchor") == id).map(|h| s(h, "id")).collect();
+        let drop: Vec<String> = self
+            .highlights(&code)
+            .iter()
+            .filter(|h| s(h, "anchor") == id)
+            .map(|h| s(h, "id"))
+            .collect();
         let add = match color {
             Some(c) => vec![json!({"id": new_id("h"), "anchor": id, "color": c, "quote": quote, "created": now()}).as_object().unwrap().clone()],
             None => vec![],
@@ -682,11 +870,19 @@ impl Store {
     }
 
     pub fn palette(&self) -> Vec<String> {
-        let Some(v) = read(&self.palette_path()).and_then(|t| serde_json::from_str::<Value>(&t).ok()) else { return vec![] };
-        let Some(cs) = v.get("colors").and_then(|c| c.as_array()) else { return vec![] };
+        let Some(v) =
+            read(&self.palette_path()).and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        else {
+            return vec![];
+        };
+        let Some(cs) = v.get("colors").and_then(|c| c.as_array()) else {
+            return vec![];
+        };
         cs.iter()
             .filter_map(|c| c.as_str())
-            .filter(|c| c.len() == 7 && c.starts_with('#') && c[1..].chars().all(|x| x.is_ascii_hexdigit()))
+            .filter(|c| {
+                c.len() == 7 && c.starts_with('#') && c[1..].chars().all(|x| x.is_ascii_hexdigit())
+            })
             .map(|c| c.to_lowercase())
             .take(PALETTE_MAX)
             .collect()
@@ -695,7 +891,10 @@ impl Store {
     fn write_palette(&self, colors: Vec<String>) -> Result<Vec<String>> {
         let colors: Vec<String> = colors.into_iter().take(PALETTE_MAX).collect();
         // json.dumps(..., indent=1) without ensure_ascii=False; the colors are ASCII
-        write_atomic(&self.palette_path(), &(py_dumps_indent1(&json!({"colors": colors})) + "\n"))?;
+        write_atomic(
+            &self.palette_path(),
+            &(py_dumps_indent1(&json!({"colors": colors})) + "\n"),
+        )?;
         Ok(colors)
     }
 
@@ -708,7 +907,12 @@ impl Store {
 
     pub fn drop_palette_color(&self, color: Option<&str>) -> Result<Vec<String>> {
         let color = check_color(color)?;
-        self.write_palette(self.palette().into_iter().filter(|c| Some(c) != color.as_ref()).collect())
+        self.write_palette(
+            self.palette()
+                .into_iter()
+                .filter(|c| Some(c) != color.as_ref())
+                .collect(),
+        )
     }
 
     // ---- threads ----
@@ -721,7 +925,11 @@ impl Store {
     }
 
     pub fn thread(&self, id: &str) -> Result<Rec> {
-        self.threads.iter().find(|t| s(t, "id") == id).cloned().ok_or_else(|| missing("No such thread."))
+        self.threads
+            .iter()
+            .find(|t| s(t, "id") == id)
+            .cloned()
+            .ok_or_else(|| missing("No such thread."))
     }
 
     fn write_thread(&mut self, t: &mut Rec) -> Result<()> {
@@ -733,11 +941,25 @@ impl Store {
         if !s(t, "color").is_empty() {
             meta.insert("color".into(), t["color"].clone());
         }
-        let bullets: Vec<String> = t["members"].as_array().unwrap().iter().map(|m| format!("- {} | {}", m["anchor"].as_str().unwrap(), py_dumps(&m["quote"]))).collect();
+        let bullets: Vec<String> = t["members"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| {
+                format!(
+                    "- {} | {}",
+                    m["anchor"].as_str().unwrap(),
+                    py_dumps(&m["quote"])
+                )
+            })
+            .collect();
         let note = s(t, "note").replace(ANCHORS_MARK, "");
         let body = format!("{}\n\n{ANCHORS_MARK}\n{}", note.trim(), bullets.join("\n"));
         let id = s(t, "id");
-        self.put(&self.root.join("threads").join(format!("{id}.md")), &dump_md(&meta, &body))
+        self.put(
+            &self.root.join("threads").join(format!("{id}.md")),
+            &dump_md(&meta, &body),
+        )
     }
 
     fn slug(&self, name: &str, folder: &str) -> String {
@@ -766,7 +988,13 @@ impl Store {
     }
 
     /// name/note: None leaves them; color: None leaves it, Some(None or "") clears it, Some(color) sets it.
-    pub fn update_thread(&mut self, id: &str, name: Option<&str>, note: Option<&str>, color: Option<Option<&str>>) -> Result<Rec> {
+    pub fn update_thread(
+        &mut self,
+        id: &str,
+        name: Option<&str>,
+        note: Option<&str>,
+        color: Option<Option<&str>>,
+    ) -> Result<Rec> {
         let color = match color {
             Some(c) => Some(check_color(c.filter(|x| !x.is_empty()))?.unwrap_or_default()),
             None => None,
@@ -803,10 +1031,17 @@ impl Store {
     }
 
     /// Those not yet in the thread go in, in one write. → the anchors added.
-    pub fn add_many_to_thread(&mut self, id: &str, items: &[(String, String)]) -> Result<Vec<String>> {
+    pub fn add_many_to_thread(
+        &mut self,
+        id: &str,
+        items: &[(String, String)],
+    ) -> Result<Vec<String>> {
         let mut t = self.thread(id)?;
         let members = t["members"].as_array_mut().unwrap();
-        let mut have: Vec<String> = members.iter().map(|m| m["anchor"].as_str().unwrap().to_string()).collect();
+        let mut have: Vec<String> = members
+            .iter()
+            .map(|m| m["anchor"].as_str().unwrap().to_string())
+            .collect();
         let mut added = vec![];
         for (a, q) in items {
             if !have.contains(a) {
@@ -824,17 +1059,26 @@ impl Store {
     pub fn remove_from_thread(&mut self, id: &str, anchor: &str) -> Result<Rec> {
         let a = anchors::canonical(anchor)?;
         let mut t = self.thread(id)?;
-        t["members"].as_array_mut().unwrap().retain(|m| m["anchor"] != a);
+        t["members"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|m| m["anchor"] != a);
         self.write_thread(&mut t)?;
         Ok(t)
     }
 
     /// Every anchor the thread holds, once, in this order. → true if that changed anything.
     pub fn order_thread(&mut self, id: &str, order: &[String]) -> Result<bool> {
-        let order: Vec<String> = order.iter().map(|a| anchors::canonical(a)).collect::<Result<_>>()?;
+        let order: Vec<String> = order
+            .iter()
+            .map(|a| anchors::canonical(a))
+            .collect::<Result<_>>()?;
         let mut t = self.thread(id)?;
         let held: Vec<Value> = t["members"].as_array().unwrap().clone();
-        let names: Vec<String> = held.iter().map(|m| m["anchor"].as_str().unwrap().to_string()).collect();
+        let names: Vec<String> = held
+            .iter()
+            .map(|m| m["anchor"].as_str().unwrap().to_string())
+            .collect();
         let (mut a, mut b) = (order.clone(), names.clone());
         a.sort();
         a.dedup();
@@ -845,7 +1089,10 @@ impl Store {
         if order == names {
             return Ok(false);
         }
-        let new: Vec<Value> = order.iter().map(|a| held.iter().find(|m| m["anchor"] == *a).unwrap().clone()).collect();
+        let new: Vec<Value> = order
+            .iter()
+            .map(|a| held.iter().find(|m| m["anchor"] == *a).unwrap().clone())
+            .collect();
         t.insert("members".into(), json!(new));
         self.write_thread(&mut t)?;
         Ok(true)
@@ -870,7 +1117,11 @@ impl Store {
     }
 
     fn jotted(&self, id: &str) -> Result<Rec> {
-        self.inbox.iter().find(|n| s(n, "id") == id).cloned().ok_or_else(|| missing("No such note in the Inbox."))
+        self.inbox
+            .iter()
+            .find(|n| s(n, "id") == id)
+            .cloned()
+            .ok_or_else(|| missing("No such note in the Inbox."))
     }
 
     /// A thought with no place yet, into the Inbox; a question (`question`) waits there to be placed and answered.
@@ -890,10 +1141,19 @@ impl Store {
     }
 
     /// Change an Inbox note's text, or make it a question (or a plain note again).
-    pub fn update_jot(&mut self, id: &str, text: Option<&str>, question: Option<bool>) -> Result<Rec> {
+    pub fn update_jot(
+        &mut self,
+        id: &str,
+        text: Option<&str>,
+        question: Option<bool>,
+    ) -> Result<Rec> {
         let mut meta = self.jotted(id)?;
         let text = match text {
-            Some(t) if t.trim().is_empty() => return Err(bad("A note needs some text. To remove it, delete the note.")),
+            Some(t) if t.trim().is_empty() => {
+                return Err(bad(
+                    "A note needs some text. To remove it, delete the note.",
+                ))
+            }
             Some(t) => t.trim().to_string(),
             None => s(&meta, "text"),
         };
@@ -915,14 +1175,25 @@ impl Store {
     /// Give an Inbox note its place: a note moves to notes/<BOOK>/ (or notes/_words/ for H7065), a question becomes a
     /// trail (trails/), both in the Python app's formats, keeping the id and the day it was written. `anchor` is
     /// canonical; `kind`, `quote` and `strong` come from resolving it against the text.
-    pub fn place_jot(&mut self, id: &str, anchor: &str, kind: &str, quote: &str, strong: &str) -> Result<Rec> {
+    pub fn place_jot(
+        &mut self,
+        id: &str,
+        anchor: &str,
+        kind: &str,
+        quote: &str,
+        strong: &str,
+    ) -> Result<Rec> {
         let old = self.jotted(id)?;
         let question = s(&old, "kind") == "question";
         if question && kind == "lemma" {
             return Err(bad("A question is placed on words or verses in the text, not on a Strong's number everywhere."));
         }
         let text = s(&old, "text");
-        let status = if s(&old, "status") == "done" { "done" } else { "open" };
+        let status = if s(&old, "status") == "done" {
+            "done"
+        } else {
+            "open"
+        };
         let mut meta = if question {
             json!({"id": id, "anchor": anchor, "kind": kind, "quote": quote, "status": status, "created": old["created"], "updated": now()})
         } else {
@@ -932,7 +1203,11 @@ impl Store {
         .unwrap()
         .clone();
         carry(&old, &mut meta);
-        let path = if question { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&meta) };
+        let path = if question {
+            self.root.join("trails").join(format!("{id}.md"))
+        } else {
+            self.note_path(&meta)
+        };
         self.put(&path, &dump_md(&meta, &text))?;
         // the note now lives at its place; the Inbox file is removed only after that is written
         let from = self.inbox_path(id);
@@ -963,16 +1238,35 @@ impl Store {
     /// A placed note or question somewhere else, or turned from one into the other (`question`): the file is written at
     /// its new place first and the old one removed after, keeping the id, the text and the day it was written. `anchor`
     /// is canonical; `kind`, `quote` and `strong` come from resolving it against the text.
-    pub fn replace_placed(&mut self, id: &str, anchor: &str, kind: &str, quote: &str, strong: &str, question: Option<bool>) -> Result<Rec> {
+    pub fn replace_placed(
+        &mut self,
+        id: &str,
+        anchor: &str,
+        kind: &str,
+        quote: &str,
+        strong: &str,
+        question: Option<bool>,
+    ) -> Result<Rec> {
         let (old, was_q) = match self.notes.iter().find(|n| s(n, "id") == id) {
             Some(n) => (n.clone(), false),
-            None => (self.trails.iter().find(|t| s(t, "id") == id).cloned().ok_or_else(|| missing("No such note."))?, true),
+            None => (
+                self.trails
+                    .iter()
+                    .find(|t| s(t, "id") == id)
+                    .cloned()
+                    .ok_or_else(|| missing("No such note."))?,
+                true,
+            ),
         };
         let to_q = question.unwrap_or(was_q);
         if to_q && kind == "lemma" {
             return Err(bad("A question is placed on words or verses in the text, not on a Strong's number everywhere."));
         }
-        let from = if was_q { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&old) };
+        let from = if was_q {
+            self.root.join("trails").join(format!("{id}.md"))
+        } else {
+            self.note_path(&old)
+        };
         let text = s(&old, "text");
         let mut meta = if to_q {
             let status = if was_q { s(&old, "status") } else { "open".into() };
@@ -989,7 +1283,11 @@ impl Store {
             }
         }
         carry(&old, &mut meta);
-        let path = if to_q { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&meta) };
+        let path = if to_q {
+            self.root.join("trails").join(format!("{id}.md"))
+        } else {
+            self.note_path(&meta)
+        };
         self.put(&path, &dump_md(&meta, &text))?;
         self.moved(&from, &path)?;
         meta.insert("text".into(), json!(text));
@@ -1026,10 +1324,17 @@ impl Store {
         if self.day(day).is_none() {
             return Err(missing("That day has no page."));
         }
-        self.write_day_body(day, text, false, true)?.ok_or_else(|| missing("That day has no page."))
+        self.write_day_body(day, text, false, true)?
+            .ok_or_else(|| missing("That day has no page."))
     }
 
-    fn write_day_body(&mut self, day: &str, text: &str, append: bool, keep_empty: bool) -> Result<Option<Rec>> {
+    fn write_day_body(
+        &mut self,
+        day: &str,
+        text: &str,
+        append: bool,
+        keep_empty: bool,
+    ) -> Result<Option<Rec>> {
         if !is_day(day) {
             return Err(bad("A day looks like 2026-11-04."));
         }
@@ -1063,7 +1368,8 @@ impl Store {
 
     /// Delete a day's page (moved to .trash, as any note is).
     pub fn delete_day(&mut self, day: &str) -> Result<()> {
-        self.day(day).ok_or_else(|| missing("That day has no page."))?;
+        self.day(day)
+            .ok_or_else(|| missing("That day has no page."))?;
         self.trash(&self.day_path(day))
     }
 
@@ -1075,7 +1381,10 @@ impl Store {
 
     /// What is saved for a part of the window (an empty object when nothing is).
     pub fn settings(&self, part: &str) -> Rec {
-        read(&self.settings_path(part)).and_then(|t| serde_json::from_str::<Value>(&t).ok()).and_then(|v| v.as_object().cloned()).unwrap_or_default()
+        read(&self.settings_path(part))
+            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default()
     }
 
     /// Save one setting; the others in the file are kept as they are. `None` forgets it (the default stands again).
@@ -1092,7 +1401,10 @@ impl Store {
                 all.shift_remove(key);
             }
         }
-        write_atomic(&self.settings_path(part), &(py_dumps_indent1(&Value::Object(all.clone())) + "\n"))?;
+        write_atomic(
+            &self.settings_path(part),
+            &(py_dumps_indent1(&Value::Object(all.clone())) + "\n"),
+        )?;
         Ok(all)
     }
 
@@ -1106,7 +1418,10 @@ impl Store {
     }
 
     fn on_thread_path(&self, id: &str) -> PathBuf {
-        self.root.join("notes").join(ON_THREADS).join(format!("{id}.md"))
+        self.root
+            .join("notes")
+            .join(ON_THREADS)
+            .join(format!("{id}.md"))
     }
 
     /// A note written on a thread, with no place in the text (notes/_threads/).
@@ -1153,7 +1468,9 @@ impl Store {
     /// taking a field away. Its text and its time of change stay as they are: moving a page is not writing in it.
     pub fn set_fields(&mut self, id: &str, fields: &[(&str, Option<Value>)]) -> Result<Rec> {
         if self.days.iter().any(|n| s(n, "id") == id) {
-            return Err(bad("A day's page stays under Today; it is not put inside another page."));
+            return Err(bad(
+                "A day's page stays under Today; it is not put inside another page.",
+            ));
         }
         let (mut meta, path) = self.any_note(id)?;
         let mut same = true;
@@ -1193,9 +1510,16 @@ impl Store {
     pub fn update_thread_note(&mut self, id: &str, text: &str) -> Result<Rec> {
         let text = text.trim();
         if text.is_empty() {
-            return Err(bad("A note needs some text. To remove it, delete the note."));
+            return Err(bad(
+                "A note needs some text. To remove it, delete the note.",
+            ));
         }
-        let mut meta = self.on_thread.iter().find(|n| s(n, "id") == id).cloned().ok_or_else(|| missing("No such note."))?;
+        let mut meta = self
+            .on_thread
+            .iter()
+            .find(|n| s(n, "id") == id)
+            .cloned()
+            .ok_or_else(|| missing("No such note."))?;
         meta.insert("text".into(), json!(text));
         let path = self.on_thread_path(id);
         self.rewrite(meta, &path)
@@ -1247,7 +1571,12 @@ impl Store {
     /// Give a placed note one more place (`on`), or take one away. Its first place (the anchor, where its file lives)
     /// changes by moving the note (`replace_placed`). `anchor` is canonical.
     pub fn set_note_also(&mut self, id: &str, anchor: &str, on: bool) -> Result<Rec> {
-        let mut meta = self.notes.iter().find(|n| s(n, "id") == id).cloned().ok_or_else(|| missing("No placed note with that id."))?;
+        let mut meta = self
+            .notes
+            .iter()
+            .find(|n| s(n, "id") == id)
+            .cloned()
+            .ok_or_else(|| missing("No placed note with that id."))?;
         let mut also: Vec<String> = places_of(&meta).into_iter().skip(1).collect();
         if on {
             if s(&meta, "anchor") == anchor || also.iter().any(|a| a == anchor) {
@@ -1259,7 +1588,9 @@ impl Store {
             also.push(anchor.to_string());
         } else {
             if s(&meta, "anchor") == anchor {
-                return Err(bad("That is the note's first place; move the note (wb note move) to change it."));
+                return Err(bad(
+                    "That is the note's first place; move the note (wb note move) to change it.",
+                ));
             }
             if !also.iter().any(|a| a == anchor) {
                 return Err(missing("The note is not on that place."));
@@ -1280,10 +1611,22 @@ impl Store {
     /// by the caller) becomes its place and its file moves there; its last place taken off, it goes to the Inbox (a
     /// note still on a thread goes to notes/_threads/, the thread being its place). It keeps its id, its text, its
     /// threads and the day it was written; the new file is written before the old one is removed.
-    pub fn unplace(&mut self, id: &str, anchor: &str, next: Option<(&str, &str, &str, &str)>) -> Result<Rec> {
+    pub fn unplace(
+        &mut self,
+        id: &str,
+        anchor: &str,
+        next: Option<(&str, &str, &str, &str)>,
+    ) -> Result<Rec> {
         let (old, was_q) = match self.notes.iter().find(|n| s(n, "id") == id) {
             Some(n) => (n.clone(), false),
-            None => (self.trails.iter().find(|t| s(t, "id") == id).cloned().ok_or_else(|| missing("No placed note or question with that id."))?, true),
+            None => (
+                self.trails
+                    .iter()
+                    .find(|t| s(t, "id") == id)
+                    .cloned()
+                    .ok_or_else(|| missing("No placed note or question with that id."))?,
+                true,
+            ),
         };
         let places = places_of(&old);
         if !places.iter().any(|p| p == anchor) {
@@ -1294,9 +1637,15 @@ impl Store {
         }
         let rest: Vec<String> = places.into_iter().skip(1).collect();
         if rest.is_empty() != next.is_none() {
-            return Err(bad("The note's next place is needed to take off its first."));
+            return Err(bad(
+                "The note's next place is needed to take off its first.",
+            ));
         }
-        let from = if was_q { self.root.join("trails").join(format!("{id}.md")) } else { self.note_path(&old) };
+        let from = if was_q {
+            self.root.join("trails").join(format!("{id}.md"))
+        } else {
+            self.note_path(&old)
+        };
         let text = s(&old, "text");
         let threads = threads_of(&old);
         let mut meta = match next {
@@ -1360,12 +1709,16 @@ impl Store {
     fn is_note_file(name: &str) -> bool {
         let rest = name.get(16..).unwrap_or("");
         let day = rest.strip_suffix(".md").is_some_and(is_day);
-        Self::trashed_at(name).is_some() && (rest.starts_with("n_") || rest.starts_with("q_") || day) && rest.ends_with(".md")
+        Self::trashed_at(name).is_some()
+            && (rest.starts_with("n_") || rest.starts_with("q_") || day)
+            && rest.ends_with(".md")
     }
 
     /// The notes and questions in .trash, newest first: {name, id, anchor, kind, question, text, deleted, days_left}.
     pub fn trashed(&self) -> Vec<Value> {
-        let Ok(rd) = fs::read_dir(self.root.join(".trash")) else { return vec![] };
+        let Ok(rd) = fs::read_dir(self.root.join(".trash")) else {
+            return vec![];
+        };
         let now = chrono::Utc::now().naive_utc();
         let mut out: Vec<Value> = rd
             .flatten()
@@ -1397,7 +1750,11 @@ impl Store {
         let (mut meta, body) = parse_md(&text);
         let id = s(&meta, "id");
         let anchor = s(&meta, "anchor");
-        let day = name.get(16..).unwrap_or("").trim_end_matches(".md").to_string();
+        let day = name
+            .get(16..)
+            .unwrap_or("")
+            .trim_end_matches(".md")
+            .to_string();
         let to = if is_day(&day) {
             self.day_path(&day)
         } else if meta.contains_key("status") && !anchor.is_empty() {
@@ -1410,7 +1767,10 @@ impl Store {
             self.note_path(&meta)
         };
         if to.exists() {
-            return Err(bad(format!("{} is already there; it was not put back.", to.display())));
+            return Err(bad(format!(
+                "{} is already there; it was not put back.",
+                to.display()
+            )));
         }
         fs::create_dir_all(to.parent().unwrap())?;
         fs::rename(&from, &to)?;
@@ -1424,12 +1784,19 @@ impl Store {
     /// Erase the notes and questions deleted at least `days` ago; other files in .trash stay. → their names.
     pub fn empty_trash(&mut self, days: i64) -> Result<Vec<String>> {
         guard(&self.root)?;
-        let Ok(rd) = fs::read_dir(self.root.join(".trash")) else { return Ok(vec![]) };
+        let Ok(rd) = fs::read_dir(self.root.join(".trash")) else {
+            return Ok(vec![]);
+        };
         let now = chrono::Utc::now().naive_utc();
         let mut gone = vec![];
         for e in rd.flatten() {
             let name = e.file_name().to_string_lossy().into_owned();
-            if let (true, Some(at)) = (Self::is_note_file(&name) || crate::marks::is_trash_file(&name) || crate::margin::is_trash_file(&name), Self::trashed_at(&name)) {
+            if let (true, Some(at)) = (
+                Self::is_note_file(&name)
+                    || crate::marks::is_trash_file(&name)
+                    || crate::margin::is_trash_file(&name),
+                Self::trashed_at(&name),
+            ) {
                 if (now - at).num_days() >= days {
                     fs::remove_file(e.path())?;
                     gone.push(name);
@@ -1475,7 +1842,13 @@ impl Store {
         }
         let meta = json!({"id": new_id("q"), "anchor": p["id"], "kind": p["kind"], "quote": quote, "status": "open", "created": now(), "updated": now()});
         let meta = meta.as_object().unwrap().clone();
-        self.put(&self.root.join("trails").join(format!("{}.md", s(&meta, "id"))), &dump_md(&meta, text))?;
+        self.put(
+            &self
+                .root
+                .join("trails")
+                .join(format!("{}.md", s(&meta, "id"))),
+            &dump_md(&meta, text),
+        )?;
         let mut t = meta;
         t.insert("text".into(), json!(text));
         Ok(t)
@@ -1485,7 +1858,10 @@ impl Store {
         let text = s(&t, "text");
         t.shift_remove("text");
         t.insert("updated".into(), json!(now()));
-        self.put(&self.root.join("trails").join(format!("{}.md", s(&t, "id"))), &dump_md(&t, &text))?;
+        self.put(
+            &self.root.join("trails").join(format!("{}.md", s(&t, "id"))),
+            &dump_md(&t, &text),
+        )?;
         t.insert("text".into(), json!(text));
         Ok(t)
     }
@@ -1494,7 +1870,12 @@ impl Store {
         if status != "open" && status != "done" {
             return Err(bad("A trail is either open or done."));
         }
-        let mut t = self.trails.iter().find(|t| s(t, "id") == id).cloned().ok_or_else(|| missing("No such trail."))?;
+        let mut t = self
+            .trails
+            .iter()
+            .find(|t| s(t, "id") == id)
+            .cloned()
+            .ok_or_else(|| missing("No such trail."))?;
         t.insert("status".into(), json!(status));
         self.trail_write(t)
     }
@@ -1502,9 +1883,16 @@ impl Store {
     pub fn update_trail(&mut self, id: &str, text: &str) -> Result<Rec> {
         let text = text.trim();
         if text.is_empty() {
-            return Err(bad("A trail needs some text. To remove it, delete the trail."));
+            return Err(bad(
+                "A trail needs some text. To remove it, delete the trail.",
+            ));
         }
-        let mut t = self.trails.iter().find(|t| s(t, "id") == id).cloned().ok_or_else(|| missing("No such trail."))?;
+        let mut t = self
+            .trails
+            .iter()
+            .find(|t| s(t, "id") == id)
+            .cloned()
+            .ok_or_else(|| missing("No such trail."))?;
         t.insert("text".into(), json!(text));
         self.trail_write(t)
     }
@@ -1525,7 +1913,11 @@ impl Store {
     }
 
     fn set(&self, id: &str) -> Result<Rec> {
-        self.sets.iter().find(|t| s(t, "id") == id).cloned().ok_or_else(|| missing("No such set."))
+        self.sets
+            .iter()
+            .find(|t| s(t, "id") == id)
+            .cloned()
+            .ok_or_else(|| missing("No such set."))
     }
 
     /// A set by exact name or id, else a unique start of a name, else a unique part of one.
@@ -1533,16 +1925,41 @@ impl Store {
         let n = name.trim().to_lowercase();
         let every = self.sets();
         let pools: [Vec<&Rec>; 3] = [
-            every.iter().filter(|t| s(t, "id") == n || s(t, "name").to_lowercase() == n).collect(),
-            every.iter().filter(|t| s(t, "name").to_lowercase().starts_with(&n)).collect(),
-            every.iter().filter(|t| s(t, "name").to_lowercase().contains(&n)).collect(),
+            every
+                .iter()
+                .filter(|t| s(t, "id") == n || s(t, "name").to_lowercase() == n)
+                .collect(),
+            every
+                .iter()
+                .filter(|t| s(t, "name").to_lowercase().starts_with(&n))
+                .collect(),
+            every
+                .iter()
+                .filter(|t| s(t, "name").to_lowercase().contains(&n))
+                .collect(),
         ];
-        let hit: Vec<&Rec> = if n.is_empty() { vec![] } else { pools.into_iter().find(|p| !p.is_empty()).unwrap_or_default() };
+        let hit: Vec<&Rec> = if n.is_empty() {
+            vec![]
+        } else {
+            pools
+                .into_iter()
+                .find(|p| !p.is_empty())
+                .unwrap_or_default()
+        };
         if hit.is_empty() {
-            return Err(missing(format!("No set called “{}”.", cut(name.trim(), 60))));
+            return Err(missing(format!(
+                "No set called “{}”.",
+                cut(name.trim(), 60)
+            )));
         }
         if hit.len() > 1 {
-            return Err(bad(format!("Which set? {}", hit.iter().map(|t| s(t, "name")).collect::<Vec<_>>().join(", "))));
+            return Err(bad(format!(
+                "Which set? {}",
+                hit.iter()
+                    .map(|t| s(t, "name"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )));
         }
         Ok(hit[0].clone())
     }
@@ -1554,38 +1971,71 @@ impl Store {
             meta.insert(k.into(), t[k].clone());
         }
         // where the folder sits (L-22): a parent set's id, only when it sits inside one
-        if let Some(p) = t.get("parent").and_then(|p| p.as_str()).filter(|p| !p.is_empty()) {
+        if let Some(p) = t
+            .get("parent")
+            .and_then(|p| p.as_str())
+            .filter(|p| !p.is_empty())
+        {
             meta.insert("parent".into(), json!(p));
         }
         // a folder's color (what a thread was, TH-1): written only when it has one
         if !s(t, "color").is_empty() {
             meta.insert("color".into(), t["color"].clone());
         }
-        let bullets: Vec<String> = t["items"].as_array().unwrap().iter().map(|i| format!("- {}", py_dumps(i))).collect();
+        let bullets: Vec<String> = t["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| format!("- {}", py_dumps(i)))
+            .collect();
         let body = format!("{}\n\n{}", s(t, "note"), bullets.join("\n"));
         let id = s(t, "id");
-        self.put(&self.root.join("sets").join(format!("{id}.md")), &dump_md(&meta, &body))
+        self.put(
+            &self.root.join("sets").join(format!("{id}.md")),
+            &dump_md(&meta, &body),
+        )
     }
 
     fn set_item(raw: &Value) -> Result<Rec> {
         let kind = raw.get("kind").and_then(|k| k.as_str()).unwrap_or("");
         if !SET_KINDS.contains(&kind) {
-            return Err(bad("A set holds panes, threads, places, notes, lessons, PDFs, documents and sittings."));
+            return Err(bad(
+                "A set holds panes, threads, places, notes, lessons, PDFs, documents and sittings.",
+            ));
         }
         if kind == "pane" {
             let params = raw.get("params").cloned().unwrap_or(json!({}));
-            if raw.get("type").is_none_or(|v| v.as_str() == Some("")) || raw.get("id").is_none_or(|v| v.as_str() == Some("")) || !params.is_object() {
+            if raw.get("type").is_none_or(|v| v.as_str() == Some(""))
+                || raw.get("id").is_none_or(|v| v.as_str() == Some(""))
+                || !params.is_object()
+            {
                 return Err(bad("That pane cannot be kept in a set."));
             }
-            let title = raw.get("title").and_then(|t| t.as_str()).filter(|t| !t.is_empty()).unwrap_or("Pane");
+            let title = raw
+                .get("title")
+                .and_then(|t| t.as_str())
+                .filter(|t| !t.is_empty())
+                .unwrap_or("Pane");
             return Ok(json!({"kind": kind, "type": raw["type"].as_str().unwrap_or_default(), "id": raw["id"].as_str().unwrap_or_default(),
                 "title": cut(title, 200), "params": params}).as_object().unwrap().clone());
         }
-        let r = raw.get("ref").and_then(|r| r.as_str()).unwrap_or("").trim().to_string();
+        let r = raw
+            .get("ref")
+            .and_then(|r| r.as_str())
+            .unwrap_or("")
+            .trim()
+            .to_string();
         if r.is_empty() {
-            return Err(bad(format!("Say which {} to add.", if kind == "pdf" { "PDF" } else { kind })));
+            return Err(bad(format!(
+                "Say which {} to add.",
+                if kind == "pdf" { "PDF" } else { kind }
+            )));
         }
-        let r = if kind == "place" { anchors::canonical(&r)? } else { r };
+        let r = if kind == "place" {
+            anchors::canonical(&r)?
+        } else {
+            r
+        };
         Ok(json!({"kind": kind, "ref": r}).as_object().unwrap().clone())
     }
 
@@ -1625,7 +2075,11 @@ impl Store {
         if name.is_empty() {
             return Err(bad("A set needs a name."));
         }
-        if self.sets.iter().any(|t| s(t, "name").to_lowercase() == name.to_lowercase()) {
+        if self
+            .sets
+            .iter()
+            .any(|t| s(t, "name").to_lowercase() == name.to_lowercase())
+        {
             return Err(bad(format!("There is already a set called “{name}”.")));
         }
         let mut t = json!({"id": self.slug(name, "sets"), "name": cut(name, 120), "created": now(), "updated": now(), "note": "", "items": []}).as_object().unwrap().clone();
@@ -1645,7 +2099,10 @@ impl Store {
 
     pub fn remove_from_set(&mut self, id: &str, keys: &[String]) -> Result<Rec> {
         let mut t = self.set(id)?;
-        t["items"].as_array_mut().unwrap().retain(|i| !keys.iter().any(|k| i["key"] == *k));
+        t["items"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|i| !keys.iter().any(|k| i["key"] == *k));
         self.write_set(&mut t)?;
         Ok(t)
     }
@@ -1654,10 +2111,15 @@ impl Store {
     pub fn move_in_set(&mut self, id: &str, key: &str, before: Option<&str>) -> Result<Rec> {
         let mut t = self.set(id)?;
         let items = t["items"].as_array_mut().unwrap();
-        let Some(at) = items.iter().position(|i| i["key"] == key) else { return Err(missing("No such item in that set.")) };
+        let Some(at) = items.iter().position(|i| i["key"] == key) else {
+            return Err(missing("No such item in that set."));
+        };
         let item = items.remove(at);
         let to = match before {
-            Some(b) => items.iter().position(|i| i["key"] == b).ok_or_else(|| missing("No such item to put it before."))?,
+            Some(b) => items
+                .iter()
+                .position(|i| i["key"] == b)
+                .ok_or_else(|| missing("No such item to put it before."))?,
             None => items.len(),
         };
         items.insert(to, item);
@@ -1668,7 +2130,13 @@ impl Store {
     /// One item of a set as it is kept (with its key), for moving it into another set.
     pub fn set_item_of(&self, id: &str, key: &str) -> Result<Rec> {
         let t = self.set(id)?;
-        t["items"].as_array().unwrap().iter().find(|i| i["key"] == key).and_then(|i| i.as_object().cloned()).ok_or_else(|| missing("No such item in that set."))
+        t["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["key"] == key)
+            .and_then(|i| i.as_object().cloned())
+            .ok_or_else(|| missing("No such item in that set."))
     }
 
     /// Where a folder sits, in its own set file (`parent:` in the front matter, L-22): the id of the folder it is inside,
@@ -1708,17 +2176,31 @@ impl Store {
 
     /// The saves in no folder, in the order they were made (each with its key, as a set's item).
     pub fn shelf_saves(&self) -> Vec<Value> {
-        self.settings("shelf").get("saves").and_then(|v| v.as_array().cloned()).unwrap_or_default()
+        self.settings("shelf")
+            .get("saves")
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default()
     }
 
     fn write_shelf_saves(&mut self, items: Vec<Value>) -> Result<()> {
-        self.set_setting("shelf", "saves", if items.is_empty() { None } else { Some(Value::Array(items)) })?;
+        self.set_setting(
+            "shelf",
+            "saves",
+            if items.is_empty() {
+                None
+            } else {
+                Some(Value::Array(items))
+            },
+        )?;
         Ok(())
     }
 
     /// Put items on the Shelf (a thing already there is not added twice). → their keys.
     pub fn shelf_add(&mut self, raw: &[Value]) -> Result<Vec<String>> {
-        let mut t = json!({"items": self.shelf_saves()}).as_object().unwrap().clone();
+        let mut t = json!({"items": self.shelf_saves()})
+            .as_object()
+            .unwrap()
+            .clone();
         let keys = Self::add_items(&mut t, raw)?;
         self.write_shelf_saves(t["items"].as_array().cloned().unwrap_or_default())?;
         Ok(keys)
@@ -1726,7 +2208,11 @@ impl Store {
 
     /// Take items off the Shelf by key (the things themselves are not touched).
     pub fn shelf_remove(&mut self, keys: &[String]) -> Result<()> {
-        let items: Vec<Value> = self.shelf_saves().into_iter().filter(|i| !keys.iter().any(|k| i["key"] == *k)).collect();
+        let items: Vec<Value> = self
+            .shelf_saves()
+            .into_iter()
+            .filter(|i| !keys.iter().any(|k| i["key"] == *k))
+            .collect();
         self.write_shelf_saves(items)
     }
 
@@ -1743,17 +2229,31 @@ impl Store {
             if name.is_empty() {
                 return Err(bad("A set needs a name."));
             }
-            if self.sets.iter().any(|o| s(o, "id") != id && s(o, "name").to_lowercase() == name.to_lowercase()) {
+            if self
+                .sets
+                .iter()
+                .any(|o| s(o, "id") != id && s(o, "name").to_lowercase() == name.to_lowercase())
+            {
                 return Err(bad(format!("There is already a set called “{name}”.")));
             }
             t.insert("name".into(), json!(cut(name, 120)));
         }
         for i in t["items"].as_array_mut().unwrap() {
-            let Some(p) = panes.iter().find(|p| p.get("key") == i.get("key")) else { continue };
+            let Some(p) = panes.iter().find(|p| p.get("key") == i.get("key")) else {
+                continue;
+            };
             if i["kind"] == "pane" {
-                let title = p.get("title").and_then(|x| x.as_str()).filter(|x| !x.is_empty()).map(String::from).unwrap_or_else(|| i["title"].as_str().unwrap_or("").to_string());
+                let title = p
+                    .get("title")
+                    .and_then(|x| x.as_str())
+                    .filter(|x| !x.is_empty())
+                    .map(String::from)
+                    .unwrap_or_else(|| i["title"].as_str().unwrap_or("").to_string());
                 i["title"] = json!(cut(&title, 200));
-                i["params"] = p.get("params").cloned().unwrap_or_else(|| i["params"].clone());
+                i["params"] = p
+                    .get("params")
+                    .cloned()
+                    .unwrap_or_else(|| i["params"].clone());
             }
         }
         self.write_set(&mut t)?;
@@ -1774,10 +2274,16 @@ impl Store {
         }
         let local = chrono::Local::now();
         let entry = json!({"t": local.format("%H:%M:%S").to_string(), "text": text, "result": cut(&result.split_whitespace().collect::<Vec<_>>().join(" "), 300)});
-        let path = self.root.join("sessions").join(format!("{}.jsonl", local.format("%Y-%m-%d")));
+        let path = self
+            .root
+            .join("sessions")
+            .join(format!("{}.jsonl", local.format("%Y-%m-%d")));
         fs::create_dir_all(path.parent().unwrap())?;
         use std::io::Write;
-        let mut f = fs::OpenOptions::new().create(true).append(true).open(&path)?;
+        let mut f = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)?;
         f.write_all((py_dumps(&entry) + "\n").as_bytes())?;
         Ok(entry)
     }
@@ -1785,14 +2291,28 @@ impl Store {
     pub fn log_day(&self, day: Option<&str>) -> Result<Value> {
         let today = chrono::Local::now().format("%Y-%m-%d").to_string();
         let day = day.filter(|d| !d.is_empty()).unwrap_or(&today).to_string();
-        let ok = day.len() == 10 && day.chars().enumerate().all(|(i, c)| if i == 4 || i == 7 { c == '-' } else { c.is_ascii_digit() });
+        let ok = day.len() == 10
+            && day.chars().enumerate().all(|(i, c)| {
+                if i == 4 || i == 7 {
+                    c == '-'
+                } else {
+                    c.is_ascii_digit()
+                }
+            });
         if !ok {
             return Err(bad("A day looks like 2026-10-18."));
         }
         let entries: Vec<Value> = read(&self.root.join("sessions").join(format!("{day}.jsonl")))
-            .map(|t| t.lines().filter_map(|l| serde_json::from_str(l).ok()).collect())
+            .map(|t| {
+                t.lines()
+                    .filter_map(|l| serde_json::from_str(l).ok())
+                    .collect()
+            })
             .unwrap_or_default();
-        let mut days: Vec<String> = files(&self.root.join("sessions"), ".jsonl", false).iter().map(|p| stem(p)).collect();
+        let mut days: Vec<String> = files(&self.root.join("sessions"), ".jsonl", false)
+            .iter()
+            .map(|p| stem(p))
+            .collect();
         days.sort_by(|a, b| b.cmp(a));
         Ok(json!({"day": day, "entries": entries, "days": days}))
     }
@@ -1806,8 +2326,16 @@ impl Store {
             return Err(bad("There is no layout to save."));
         }
         let slug = slug_base(&name, "layout");
-        let text = py_dumps_indent1(&json!({"name": name, "saved": now(), "layout": layout})) + "\n";
-        write_atomic(&self.root.join("sessions").join("layouts").join(format!("{slug}.json")), &text)?;
+        let text =
+            py_dumps_indent1(&json!({"name": name, "saved": now(), "layout": layout})) + "\n";
+        write_atomic(
+            &self
+                .root
+                .join("sessions")
+                .join("layouts")
+                .join(format!("{slug}.json")),
+            &text,
+        )?;
         Ok(json!({"name": name, "id": slug}))
     }
 
@@ -1826,15 +2354,38 @@ impl Store {
     pub fn layout(&self, name: &str) -> Result<Value> {
         let n = name.trim().to_lowercase();
         let every = self.layouts();
-        let exact: Vec<&Value> = every.iter().filter(|x| x["name"].as_str().unwrap().to_lowercase() == n || x["id"] == n.as_str()).collect();
-        let hit = if exact.is_empty() { every.iter().filter(|x| x["name"].as_str().unwrap().to_lowercase().starts_with(&n)).collect() } else { exact };
+        let exact: Vec<&Value> = every
+            .iter()
+            .filter(|x| x["name"].as_str().unwrap().to_lowercase() == n || x["id"] == n.as_str())
+            .collect();
+        let hit = if exact.is_empty() {
+            every
+                .iter()
+                .filter(|x| x["name"].as_str().unwrap().to_lowercase().starts_with(&n))
+                .collect()
+        } else {
+            exact
+        };
         if hit.is_empty() {
-            return Err(missing(format!("No saved layout called “{}”.", cut(name.trim(), 60))));
+            return Err(missing(format!(
+                "No saved layout called “{}”.",
+                cut(name.trim(), 60)
+            )));
         }
         if hit.len() > 1 {
-            return Err(bad(format!("Which layout? {}", hit.iter().map(|x| x["name"].as_str().unwrap()).collect::<Vec<_>>().join(", "))));
+            return Err(bad(format!(
+                "Which layout? {}",
+                hit.iter()
+                    .map(|x| x["name"].as_str().unwrap())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )));
         }
-        let p = self.root.join("sessions").join("layouts").join(format!("{}.json", hit[0]["id"].as_str().unwrap()));
+        let p = self
+            .root
+            .join("sessions")
+            .join("layouts")
+            .join(format!("{}.json", hit[0]["id"].as_str().unwrap()));
         serde_json::from_str(&read(&p).unwrap_or_default()).map_err(|_| bad("bad request"))
     }
 
@@ -1842,8 +2393,17 @@ impl Store {
     pub fn delete_layout(&mut self, name: &str) -> Result<Value> {
         let found = self.layout(name)?;
         let n = found["name"].as_str().unwrap_or(name).to_string();
-        let id = self.layouts().into_iter().find(|x| x["name"].as_str() == Some(n.as_str())).and_then(|x| x["id"].as_str().map(String::from)).ok_or_else(|| missing("No saved layout by that name."))?;
-        let p = self.root.join("sessions").join("layouts").join(format!("{id}.json"));
+        let id = self
+            .layouts()
+            .into_iter()
+            .find(|x| x["name"].as_str() == Some(n.as_str()))
+            .and_then(|x| x["id"].as_str().map(String::from))
+            .ok_or_else(|| missing("No saved layout by that name."))?;
+        let p = self
+            .root
+            .join("sessions")
+            .join("layouts")
+            .join(format!("{id}.json"));
         self.trash(&p)?;
         Ok(json!({"name": n, "deleted": true}))
     }
@@ -1855,21 +2415,34 @@ pub fn parse_thread(stem: &str, text: &str) -> Option<Rec> {
         return None;
     }
     let (note, tail) = match body.rfind(ANCHORS_MARK) {
-        Some(at) => (body[..at].to_string(), body[at + ANCHORS_MARK.len()..].to_string()),
+        Some(at) => (
+            body[..at].to_string(),
+            body[at + ANCHORS_MARK.len()..].to_string(),
+        ),
         None => (body.clone(), String::new()),
     };
     let mut members = vec![];
     for line in tail.lines() {
         // ^- (\S+) \| (.*)$
-        let Some(rest) = line.strip_prefix("- ") else { continue };
-        let Some((a, q)) = rest.split_once(" | ") else { continue };
+        let Some(rest) = line.strip_prefix("- ") else {
+            continue;
+        };
+        let Some((a, q)) = rest.split_once(" | ") else {
+            continue;
+        };
         if a.is_empty() || a.contains(char::is_whitespace) {
             continue;
         }
-        let (Ok(quote), Ok(anchor)) = (serde_json::from_str::<Value>(q), anchors::canonical(a)) else { continue };
+        let (Ok(quote), Ok(anchor)) = (serde_json::from_str::<Value>(q), anchors::canonical(a))
+        else {
+            continue;
+        };
         members.push(json!({"anchor": anchor, "quote": quote}));
     }
-    let color = check_color(meta.get("color").and_then(|c| c.as_str())).ok().flatten().unwrap_or_default();
+    let color = check_color(meta.get("color").and_then(|c| c.as_str()))
+        .ok()
+        .flatten()
+        .unwrap_or_default();
     Some(json!({"id": stem, "name": meta["name"], "created": s(&meta, "created"), "updated": s(&meta, "updated"), "color": color,
         "note": note.trim(), "members": members}).as_object().unwrap().clone())
 }
@@ -1885,17 +2458,34 @@ fn parse_set(stem: &str, text: &str) -> Option<Rec> {
             note.push(line);
             continue;
         }
-        let Ok(item) = serde_json::from_str::<Value>(&line[2..]) else { continue };
-        if item.get("key").and_then(|k| k.as_str()).is_some_and(|k| !k.is_empty()) && item.get("kind").and_then(|k| k.as_str()).is_some_and(|k| SET_KINDS.contains(&k)) {
+        let Ok(item) = serde_json::from_str::<Value>(&line[2..]) else {
+            continue;
+        };
+        if item
+            .get("key")
+            .and_then(|k| k.as_str())
+            .is_some_and(|k| !k.is_empty())
+            && item
+                .get("kind")
+                .and_then(|k| k.as_str())
+                .is_some_and(|k| SET_KINDS.contains(&k))
+        {
             items.push(item);
         }
     }
     let mut rec = json!({"id": stem, "name": meta["name"], "created": s(&meta, "created"), "updated": s(&meta, "updated"),
         "note": note.join("\n").trim(), "items": items}).as_object().unwrap().clone();
-    if let Some(p) = meta.get("parent").and_then(|p| p.as_str()).filter(|p| !p.is_empty()) {
+    if let Some(p) = meta
+        .get("parent")
+        .and_then(|p| p.as_str())
+        .filter(|p| !p.is_empty())
+    {
         rec.insert("parent".into(), json!(p));
     }
-    if let Some(c) = check_color(meta.get("color").and_then(|c| c.as_str())).ok().flatten() {
+    if let Some(c) = check_color(meta.get("color").and_then(|c| c.as_str()))
+        .ok()
+        .flatten()
+    {
         rec.insert("color".into(), json!(c));
     }
     Some(rec)
@@ -1914,7 +2504,11 @@ mod tests {
             fs::create_dir_all(d).unwrap();
         }
         let settings = home.path().join("settings.json");
-        fs::write(&settings, json!({"study_dir": chosen.to_string_lossy()}).to_string()).unwrap();
+        fs::write(
+            &settings,
+            json!({"study_dir": chosen.to_string_lossy()}).to_string(),
+        )
+        .unwrap();
         let guarded = crate::guarded_study_dirs(home.path(), Some(&settings));
         (home, guarded)
     }
@@ -1923,7 +2517,11 @@ mod tests {
     fn each_real_study_location_is_refused() {
         let (home, guarded) = guarded_fixture();
         assert_eq!(guarded.len(), 3);
-        for rel in ["github/bible-study-data", "Documents/wordbench-study-data", "elsewhere/my-study"] {
+        for rel in [
+            "github/bible-study-data",
+            "Documents/wordbench-study-data",
+            "elsewhere/my-study",
+        ] {
             let err = guard_against(&home.path().join(rel), &guarded, false).unwrap_err();
             assert!(err.0.contains("scratch-study.ps1"), "{}", err.0);
         }
@@ -1932,10 +2530,18 @@ mod tests {
     #[test]
     fn a_folder_inside_a_real_study_folder_is_refused() {
         let (home, guarded) = guarded_fixture();
-        let inside = home.path().join("Documents").join("wordbench-study-data").join("notes");
+        let inside = home
+            .path()
+            .join("Documents")
+            .join("wordbench-study-data")
+            .join("notes");
         fs::create_dir_all(&inside).unwrap();
         assert!(guard_against(&inside, &guarded, false).is_err());
-        let spelled = PathBuf::from(format!("{}{}", home.path().join("elsewhere").join("my-study").display(), std::path::MAIN_SEPARATOR));
+        let spelled = PathBuf::from(format!(
+            "{}{}",
+            home.path().join("elsewhere").join("my-study").display(),
+            std::path::MAIN_SEPARATOR
+        ));
         assert!(guard_against(&spelled, &guarded, false).is_err());
     }
 
@@ -1943,7 +2549,13 @@ mod tests {
     #[test]
     fn windows_ignores_case_when_matching() {
         let (home, guarded) = guarded_fixture();
-        let shouted = PathBuf::from(home.path().join("Documents").join("wordbench-study-data").to_string_lossy().to_uppercase());
+        let shouted = PathBuf::from(
+            home.path()
+                .join("Documents")
+                .join("wordbench-study-data")
+                .to_string_lossy()
+                .to_uppercase(),
+        );
         assert!(guard_against(&shouted, &guarded, false).is_err());
     }
 
@@ -1953,13 +2565,18 @@ mod tests {
         let scratch = home.path().join("scratch");
         fs::create_dir_all(&scratch).unwrap();
         assert!(guard_against(&scratch, &guarded, false).is_ok());
-        assert!(guard_against(&home.path().join("github/bible-study-data"), &guarded, true).is_ok());
+        assert!(
+            guard_against(&home.path().join("github/bible-study-data"), &guarded, true).is_ok()
+        );
     }
 
     #[test]
     fn a_missing_or_unreadable_settings_file_adds_nothing() {
         let home = tempfile::tempdir().unwrap();
-        assert_eq!(crate::guarded_study_dirs(home.path(), Some(&home.path().join("none.json"))).len(), 2);
+        assert_eq!(
+            crate::guarded_study_dirs(home.path(), Some(&home.path().join("none.json"))).len(),
+            2
+        );
         let junk = home.path().join("settings.json");
         fs::write(&junk, "{ not json").unwrap();
         assert_eq!(crate::guarded_study_dirs(home.path(), Some(&junk)).len(), 2);
@@ -1968,9 +2585,15 @@ mod tests {
 
     #[test]
     fn markdown_round_trip() {
-        let meta = json!({"id": "n_1", "quote": "a “b”", "n": 3}).as_object().unwrap().clone();
+        let meta = json!({"id": "n_1", "quote": "a “b”", "n": 3})
+            .as_object()
+            .unwrap()
+            .clone();
         let text = dump_md(&meta, "\nThe note.\n\n");
-        assert_eq!(text, "---\nid: \"n_1\"\nquote: \"a “b”\"\nn: 3\n---\n\nThe note.\n");
+        assert_eq!(
+            text,
+            "---\nid: \"n_1\"\nquote: \"a “b”\"\nn: 3\n---\n\nThe note.\n"
+        );
         let (m, body) = parse_md(&text);
         assert_eq!(m, meta);
         assert_eq!(body, "The note.\n");
@@ -1978,7 +2601,10 @@ mod tests {
 
     #[test]
     fn python_separators() {
-        assert_eq!(py_dumps(&json!({"key": "i1", "kind": "place", "params": {"a": [1, 2]}})), r#"{"key": "i1", "kind": "place", "params": {"a": [1, 2]}}"#);
+        assert_eq!(
+            py_dumps(&json!({"key": "i1", "kind": "place", "params": {"a": [1, 2]}})),
+            r#"{"key": "i1", "kind": "place", "params": {"a": [1, 2]}}"#
+        );
         assert_eq!(slug_base("Phinehas echoes!", "thread"), "phinehas-echoes");
         assert_eq!(slug_base("—", "thread"), "thread");
     }

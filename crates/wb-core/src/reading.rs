@@ -71,12 +71,20 @@ pub(crate) fn parse_day(s: &str) -> Result<NaiveDate> {
 /// Every chapter of these books with its number of words, book by book in the order the books are given (the Bible's
 /// order when the ids ascend).
 pub(crate) fn chapters(bible: &Bible, books: &[u32]) -> Result<Vec<(String, u32)>> {
-    let mut stmt = bible.conn().prepare_cached("SELECT book, chapter, COUNT(*) FROM words GROUP BY book, chapter ORDER BY book, chapter")?;
-    let rows: Vec<(u32, u32, u32)> = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?.collect::<rusqlite::Result<_>>()?;
+    let mut stmt = bible.conn().prepare_cached(
+        "SELECT book, chapter, COUNT(*) FROM words GROUP BY book, chapter ORDER BY book, chapter",
+    )?;
+    let rows: Vec<(u32, u32, u32)> = stmt
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+        .collect::<rusqlite::Result<_>>()?;
     let mut out = vec![];
     for id in books {
         let code = &bible.books().iter().find(|x| x.id == *id).unwrap().code;
-        out.extend(rows.iter().filter(|r| r.0 == *id).map(|(_, c, n)| (format!("{code}.{c}"), *n)));
+        out.extend(
+            rows.iter()
+                .filter(|r| r.0 == *id)
+                .map(|(_, c, n)| (format!("{code}.{c}"), *n)),
+        );
     }
     Ok(out)
 }
@@ -92,7 +100,10 @@ pub(crate) fn spread(chs: &[(String, u32)], days: usize) -> Vec<Vec<String>> {
         let left_days = days - out.len();
         let left_chs = chs.len() - k;
         // close the day before this chapter when that lands nearer the target, or when every later day needs one
-        if !cur.is_empty() && out.len() + 1 < days && (left_chs < left_days || (acc - target).abs() < (acc + *n as f64 - target).abs()) {
+        if !cur.is_empty()
+            && out.len() + 1 < days
+            && (left_chs < left_days || (acc - target).abs() < (acc + *n as f64 - target).abs())
+        {
             out.push(std::mem::take(&mut cur));
         }
         cur.push(ch.clone());
@@ -129,21 +140,42 @@ pub(crate) fn books_named(bible: &Bible, named: &str) -> Result<Vec<u32>> {
     let one = |p: &str| -> Result<String> {
         match p.split_once('-') {
             Some((a, b)) if scope_of(p, bible.books()).is_err() => {
-                let (a, b) = (match_book(a, bible.books())?.id, match_book(b, bible.books())?.id);
-                Ok((a.min(b)..=a.max(b)).map(|i| i.to_string()).collect::<Vec<_>>().join(","))
+                let (a, b) = (
+                    match_book(a, bible.books())?.id,
+                    match_book(b, bible.books())?.id,
+                );
+                Ok((a.min(b)..=a.max(b))
+                    .map(|i| i.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","))
             }
             _ => scope_of(p, bible.books()),
         }
     };
     let scopes = match one(named) {
         Ok(s) => vec![s],
-        Err(_) => named.split([',', ';']).map(str::trim).filter(|p| !p.is_empty()).map(one).collect::<Result<_>>()?,
+        Err(_) => named
+            .split([',', ';'])
+            .map(str::trim)
+            .filter(|p| !p.is_empty())
+            .map(one)
+            .collect::<Result<_>>()?,
     };
-    Ok(bible.books().iter().filter(|b| scopes.iter().any(|s| in_scope(b, s))).map(|b| b.id).collect())
+    Ok(bible
+        .books()
+        .iter()
+        .filter(|b| scopes.iter().any(|s| in_scope(b, s)))
+        .map(|b| b.id)
+        .collect())
 }
 
 /// The days of a built-in plan.
-pub fn schedule(bible: &Bible, kind: &str, days: u32, books: Option<&str>) -> Result<Vec<Vec<String>>> {
+pub fn schedule(
+    bible: &Bible,
+    kind: &str,
+    days: u32,
+    books: Option<&str>,
+) -> Result<Vec<Vec<String>>> {
     let days = days as usize;
     if days == 0 || days > 3650 {
         return Err(bad("A plan is 1 to 3650 days."));
@@ -151,7 +183,10 @@ pub fn schedule(bible: &Bible, kind: &str, days: u32, books: Option<&str>) -> Re
     let make = |b: Vec<u32>| -> Result<Vec<Vec<String>>> {
         let chs = chapters(bible, &b)?;
         if chs.len() < days {
-            return Err(bad(format!("That is {} chapters; a plan of {days} days needs at least one a day.", chs.len())));
+            return Err(bad(format!(
+                "That is {} chapters; a plan of {days} days needs at least one a day.",
+                chs.len()
+            )));
         }
         Ok(spread(&chs, days))
     };
@@ -161,18 +196,32 @@ pub fn schedule(bible: &Bible, kind: &str, days: u32, books: Option<&str>) -> Re
         "psalms-proverbs" => make(vec![19, 20]),
         "ot-nt" => {
             let nt_chs = chapters(bible, &ids(40, 66))?;
-            let nt = if nt_chs.len() < days { sparse(&nt_chs, days) } else { spread(&nt_chs, days) };
+            let nt = if nt_chs.len() < days {
+                sparse(&nt_chs, days)
+            } else {
+                spread(&nt_chs, days)
+            };
             let ot = make(ids(1, 39))?;
-            Ok(ot.into_iter().zip(nt).map(|(mut a, b)| {
-                a.extend(b);
-                a
-            }).collect())
+            Ok(ot
+                .into_iter()
+                .zip(nt)
+                .map(|(mut a, b)| {
+                    a.extend(b);
+                    a
+                })
+                .collect())
         }
         "books" => {
-            let named = books.map(str::trim).filter(|b| !b.is_empty()).ok_or_else(|| bad("Name the books, like gospels, rom, ot or Gen-Deut."))?;
+            let named = books
+                .map(str::trim)
+                .filter(|b| !b.is_empty())
+                .ok_or_else(|| bad("Name the books, like gospels, rom, ot or Gen-Deut."))?;
             make(books_named(bible, named)?)
         }
-        other => Err(bad(format!("No plan kind “{other}”. Kinds: {}.", KINDS.iter().map(|k| k.0).collect::<Vec<_>>().join(", ")))),
+        other => Err(bad(format!(
+            "No plan kind “{other}”. Kinds: {}.",
+            KINDS.iter().map(|k| k.0).collect::<Vec<_>>().join(", ")
+        ))),
     }
 }
 
@@ -185,7 +234,8 @@ pub fn parse_plan_text(bible: &Bible, text: &str) -> Result<Vec<Vec<String>>> {
         if line.is_empty() {
             continue;
         }
-        let spans = parse_spans(line, bible.books()).map_err(|e| bad(format!("Line {} ({}): {}", n + 1, cut(line, 40), e.0)))?;
+        let spans = parse_spans(line, bible.books())
+            .map_err(|e| bad(format!("Line {} ({}): {}", n + 1, cut(line, 40), e.0)))?;
         let mut day = vec![];
         for s in spans {
             day.extend(entries(&s));
@@ -193,7 +243,9 @@ pub fn parse_plan_text(bible: &Bible, text: &str) -> Result<Vec<Vec<String>>> {
         out.push(day);
     }
     if out.is_empty() {
-        return Err(bad("The plan has no days: one day to a line, like Gen 1-3."));
+        return Err(bad(
+            "The plan has no days: one day to a line, like Gen 1-3.",
+        ));
     }
     Ok(out)
 }
@@ -204,7 +256,11 @@ fn entries(s: &Span) -> Vec<String> {
     if s.v1 == 0 && s.v2 == 0 {
         return (s.c1..=s.c2).map(|c| format!("{code}.{c}")).collect();
     }
-    let end = if s.v2 == 0 { format!("{}:999", s.c2) } else { format!("{}:{}", s.c2, s.v2) };
+    let end = if s.v2 == 0 {
+        format!("{}:999", s.c2)
+    } else {
+        format!("{}:{}", s.c2, s.v2)
+    };
     vec![format!("{code}.{}:{}-{end}", s.c1, s.v1.max(1))]
 }
 
@@ -212,10 +268,21 @@ fn entries(s: &Span) -> Vec<String> {
 pub fn label(bible: &Bible, day: &[String]) -> String {
     let mut parts: Vec<String> = vec![];
     let mut run: Option<(String, u32, u32)> = None; // book code, first and last chapter
-    let name = |code: &str| bible.books().iter().find(|b| b.code == code).map(|b| b.name.clone()).unwrap_or_else(|| code.to_string());
+    let name = |code: &str| {
+        bible
+            .books()
+            .iter()
+            .find(|b| b.code == code)
+            .map(|b| b.name.clone())
+            .unwrap_or_else(|| code.to_string())
+    };
     let flush = |run: &mut Option<(String, u32, u32)>, parts: &mut Vec<String>| {
         if let Some((code, a, b)) = run.take() {
-            parts.push(if a == b { format!("{} {a}", name(&code)) } else { format!("{} {a}–{b}", name(&code)) });
+            parts.push(if a == b {
+                format!("{} {a}", name(&code))
+            } else {
+                format!("{} {a}–{b}", name(&code))
+            });
         }
     };
     for e in day {
@@ -233,8 +300,16 @@ pub fn label(bible: &Bible, day: &[String]) -> String {
                 let (c1, rest) = rest.split_once(':').unwrap_or((rest, ""));
                 let (v1, end) = rest.split_once('-').unwrap_or((rest, ""));
                 let (c2, v2) = end.split_once(':').unwrap_or((c1, end));
-                let v2 = if v2 == "999" { "end".to_string() } else { v2.to_string() };
-                parts.push(if c1 == c2 { format!("{} {c1}:{v1}–{v2}", name(code)) } else { format!("{} {c1}:{v1}–{c2}:{v2}", name(code)) });
+                let v2 = if v2 == "999" {
+                    "end".to_string()
+                } else {
+                    v2.to_string()
+                };
+                parts.push(if c1 == c2 {
+                    format!("{} {c1}:{v1}–{v2}", name(code))
+                } else {
+                    format!("{} {c1}:{v1}–{c2}:{v2}", name(code))
+                });
             }
         }
     }
@@ -246,16 +321,25 @@ pub fn label(bible: &Bible, day: &[String]) -> String {
 
 pub fn read_plan(root: &Path, id: &str) -> Result<Value> {
     let text = fs::read_to_string(plan_path(root, id)).map_err(|_| missing("No such plan."))?;
-    let mut v: Value = serde_json::from_str(&text).map_err(|_| bad(format!("reading/plans/{id}.json is not a plan file")))?;
+    let mut v: Value = serde_json::from_str(&text)
+        .map_err(|_| bad(format!("reading/plans/{id}.json is not a plan file")))?;
     v["id"] = json!(id);
     Ok(v)
 }
 
 pub fn plans(root: &Path) -> Vec<Value> {
-    let Ok(rd) = fs::read_dir(folder(root).join("plans")) else { return vec![] };
-    let mut ps: Vec<PathBuf> = rd.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "json")).collect();
+    let Ok(rd) = fs::read_dir(folder(root).join("plans")) else {
+        return vec![];
+    };
+    let mut ps: Vec<PathBuf> = rd
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|x| x == "json"))
+        .collect();
     ps.sort();
-    ps.iter().filter_map(|p| read_plan(root, &p.file_stem()?.to_string_lossy()).ok()).collect()
+    ps.iter()
+        .filter_map(|p| read_plan(root, &p.file_stem()?.to_string_lossy()).ok())
+        .collect()
 }
 
 /// A plan by exact id or name, else a unique start of a name, else a unique part of one.
@@ -264,26 +348,58 @@ pub fn find_plan(root: &Path, name: &str) -> Result<Value> {
     let every = plans(root);
     let low = |p: &Value| p["name"].as_str().unwrap_or("").to_lowercase();
     let pools: [Vec<&Value>; 3] = [
-        every.iter().filter(|p| p["id"] == n.as_str() || low(p) == n).collect(),
+        every
+            .iter()
+            .filter(|p| p["id"] == n.as_str() || low(p) == n)
+            .collect(),
         every.iter().filter(|p| low(p).starts_with(&n)).collect(),
         every.iter().filter(|p| low(p).contains(&n)).collect(),
     ];
-    let hit = if n.is_empty() { vec![] } else { pools.into_iter().find(|p| !p.is_empty()).unwrap_or_default() };
+    let hit = if n.is_empty() {
+        vec![]
+    } else {
+        pools
+            .into_iter()
+            .find(|p| !p.is_empty())
+            .unwrap_or_default()
+    };
     match hit.len() {
-        0 => Err(missing(format!("No reading plan called “{}”.", cut(name.trim(), 60)))),
+        0 => Err(missing(format!(
+            "No reading plan called “{}”.",
+            cut(name.trim(), 60)
+        ))),
         1 => Ok(hit[0].clone()),
-        _ => Err(bad(format!("Which plan? {}", hit.iter().map(|p| p["name"].as_str().unwrap_or("")).collect::<Vec<_>>().join(", ")))),
+        _ => Err(bad(format!(
+            "Which plan? {}",
+            hit.iter()
+                .map(|p| p["name"].as_str().unwrap_or(""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ))),
     }
 }
 
 /// Start a plan: its whole schedule is written to reading/plans/<id>.json.
-pub fn start_plan(root: &Path, name: &str, kind: &str, start: Option<&str>, days: Vec<Vec<String>>) -> Result<Value> {
+pub fn start_plan(
+    root: &Path,
+    name: &str,
+    kind: &str,
+    start: Option<&str>,
+    days: Vec<Vec<String>>,
+) -> Result<Value> {
     start_plan_with(root, name, kind, start, days, json!({}))
 }
 
 /// Start a plan with more fields in its file (`days_off`, `dated`, `pace`, `order`, `books`, `passages`, `source`): new
 /// fields are added to the file, none is renamed.
-pub fn start_plan_with(root: &Path, name: &str, kind: &str, start: Option<&str>, days: Vec<Vec<String>>, extra: Value) -> Result<Value> {
+pub fn start_plan_with(
+    root: &Path,
+    name: &str,
+    kind: &str,
+    start: Option<&str>,
+    days: Vec<Vec<String>>,
+    extra: Value,
+) -> Result<Value> {
     crate::store::guard(root)?;
     let name = name.trim();
     let id = slug(name);
@@ -310,15 +426,31 @@ pub fn start_plan_with(root: &Path, name: &str, kind: &str, start: Option<&str>,
 /// A plan's days as text, one day to a line, in the form `plan import` and `plan edit --text` read back
 /// ("Genesis 1-3; Matthew 1", "Psalms 119:89-176").
 pub fn plan_text(bible: &Bible, plan: &Value) -> Result<String> {
-    let name = |code: &str| bible.books().iter().find(|b| b.code == code).map(|b| b.name.clone()).unwrap_or_else(|| code.to_string());
+    let name = |code: &str| {
+        bible
+            .books()
+            .iter()
+            .find(|b| b.code == code)
+            .map(|b| b.name.clone())
+            .unwrap_or_else(|| code.to_string())
+    };
     let mut lines = vec![];
     for d in plan["days"].as_array().cloned().unwrap_or_default() {
-        let es: Vec<String> = d.as_array().unwrap_or(&vec![]).iter().filter_map(|e| e.as_str().map(String::from)).collect();
+        let es: Vec<String> = d
+            .as_array()
+            .unwrap_or(&vec![])
+            .iter()
+            .filter_map(|e| e.as_str().map(String::from))
+            .collect();
         let mut parts: Vec<String> = vec![];
         let mut run: Option<(String, u32, u32)> = None;
         let flush = |run: &mut Option<(String, u32, u32)>, parts: &mut Vec<String>| {
             if let Some((code, a, b)) = run.take() {
-                parts.push(if a == b { format!("{} {a}", name(&code)) } else { format!("{} {a}-{b}", name(&code)) });
+                parts.push(if a == b {
+                    format!("{} {a}", name(&code))
+                } else {
+                    format!("{} {a}-{b}", name(&code))
+                });
             }
         };
         for e in &es {
@@ -337,20 +469,38 @@ pub fn plan_text(bible: &Bible, plan: &Value) -> Result<String> {
             let (c1, rest) = rest.split_once(':').unwrap_or((rest, ""));
             let (v1, end) = rest.split_once('-').unwrap_or((rest, ""));
             let (c2, v2) = end.split_once(':').unwrap_or((c1, end));
-            let v2 = if v2 == "999" { last_verse(bible, code, c2.parse().unwrap_or(0))?.to_string() } else { v2.to_string() };
-            parts.push(if c1 == c2 { format!("{} {c1}:{v1}-{v2}", name(code)) } else { format!("{} {c1}:{v1}-{c2}:{v2}", name(code)) });
+            let v2 = if v2 == "999" {
+                last_verse(bible, code, c2.parse().unwrap_or(0))?.to_string()
+            } else {
+                v2.to_string()
+            };
+            parts.push(if c1 == c2 {
+                format!("{} {c1}:{v1}-{v2}", name(code))
+            } else {
+                format!("{} {c1}:{v1}-{c2}:{v2}", name(code))
+            });
         }
         flush(&mut run, &mut parts);
-        lines.push(if parts.is_empty() { "# (no reading this day)".to_string() } else { parts.join("; ") });
+        lines.push(if parts.is_empty() {
+            "# (no reading this day)".to_string()
+        } else {
+            parts.join("; ")
+        });
     }
-    Ok(lines.join("
-") + "
+    Ok(lines.join(
+        "
+",
+    ) + "
 ")
 }
 
 pub(crate) fn last_verse(bible: &Bible, code: &str, ch: u32) -> Result<u32> {
     let id = bible.book(code)?.id;
-    Ok(bible.conn().query_row("SELECT COALESCE(MAX(verse), 0) FROM verses WHERE book = ?1 AND chapter = ?2", rusqlite::params![id, ch], |r| r.get(0))?)
+    Ok(bible.conn().query_row(
+        "SELECT COALESCE(MAX(verse), 0) FROM verses WHERE book = ?1 AND chapter = ?2",
+        rusqlite::params![id, ch],
+        |r| r.get(0),
+    )?)
 }
 
 /// The number of words an entry reads (a chapter, or a part of one), to balance days.
@@ -363,7 +513,12 @@ pub(crate) fn entry_words(bible: &Bible, entry: &str) -> Result<u32> {
             let (c1, rest) = rest.split_once(':').unwrap_or((rest, ""));
             let (v1, end) = rest.split_once('-').unwrap_or((rest, ""));
             let (c2, v2) = end.split_once(':').unwrap_or((c1, end));
-            (c1.parse().unwrap_or(0), v1.parse().unwrap_or(0), c2.parse().unwrap_or(0), v2.parse().unwrap_or(999))
+            (
+                c1.parse().unwrap_or(0),
+                v1.parse().unwrap_or(0),
+                c2.parse().unwrap_or(0),
+                v2.parse().unwrap_or(999),
+            )
         }
     };
     Ok(bible.conn().query_row(
@@ -396,7 +551,9 @@ pub fn edit_plan(bible: &Bible, root: &Path, id: &str, ch: PlanChange) -> Result
         if n.is_empty() {
             return Err(bad("A plan needs a name."));
         }
-        if plans(root).iter().any(|p| p["id"] != id && p["name"].as_str().unwrap_or("").to_lowercase() == n.to_lowercase()) {
+        if plans(root).iter().any(|p| {
+            p["id"] != id && p["name"].as_str().unwrap_or("").to_lowercase() == n.to_lowercase()
+        }) {
             return Err(bad(format!("There is already a plan called “{n}”.")));
         }
         plan["name"] = json!(cut(n, 120));
@@ -411,27 +568,49 @@ pub fn edit_plan(bible: &Bible, root: &Path, id: &str, ch: PlanChange) -> Result
     if ch.spread.is_some() || ch.catch_up {
         let pr = progress(bible, root, &plan, today())?;
         let rows = pr["schedule"].as_array().cloned().unwrap_or_default();
-        let Some(first) = rows.iter().position(|r| r["done"] == false && r["skipped"] == false) else {
+        let Some(first) = rows
+            .iter()
+            .position(|r| r["done"] == false && r["skipped"] == false)
+        else {
             return Err(bad("Every day of this plan is done."));
         };
         if let Some(n) = ch.spread {
             if n == 0 || n > 3650 {
                 return Err(bad("A plan is 1 to 3650 days."));
             }
-            let rest: Vec<String> = rows[first..].iter().flat_map(|r| r["entries"].as_array().unwrap().iter().filter_map(|e| e.as_str().map(String::from))).collect();
+            let rest: Vec<String> = rows[first..]
+                .iter()
+                .flat_map(|r| {
+                    r["entries"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter_map(|e| e.as_str().map(String::from))
+                })
+                .collect();
             if rest.len() < n as usize {
                 return Err(bad(format!("What is left is {} readings; spread over {n} days it needs at least one a day.", rest.len())));
             }
-            let weighed = rest.iter().map(|e| Ok((e.clone(), entry_words(bible, e)?.max(1)))).collect::<Result<Vec<_>>>()?;
+            let weighed = rest
+                .iter()
+                .map(|e| Ok((e.clone(), entry_words(bible, e)?.max(1))))
+                .collect::<Result<Vec<_>>>()?;
             let mut days: Vec<Value> = plan["days"].as_array().unwrap()[..first].to_vec();
             days.extend(spread(&weighed, n as usize).into_iter().map(|d| json!(d)));
             plan["days"] = json!(days);
             plan.as_object_mut().unwrap().shift_remove("kept");
         }
-        plan["start"] = json!(crate::plans::start_for(first, today(), &crate::plans::days_off_of(&plan)).format("%Y-%m-%d").to_string());
+        plan["start"] =
+            json!(
+                crate::plans::start_for(first, today(), &crate::plans::days_off_of(&plan))
+                    .format("%Y-%m-%d")
+                    .to_string()
+            );
     }
     if plan["days"].as_array().is_none_or(|d| d.is_empty()) {
-        return Err(bad("The plan has no days: one day to a line, like Gen 1-3."));
+        return Err(bad(
+            "The plan has no days: one day to a line, like Gen 1-3.",
+        ));
     }
     save_plan(root, id, &plan, true)
 }
@@ -446,15 +625,21 @@ pub(crate) fn save_plan(root: &Path, id: &str, plan: &Value, keep_old: bool) -> 
             if !dest.exists() {
                 break;
             }
-            dest = root.join(".trash").join(format!("{stamp}-plan-{id}-{n}.json")); // two changes in one second keep both
+            dest = root
+                .join(".trash")
+                .join(format!("{stamp}-plan-{id}-{n}.json")); // two changes in one second keep both
         }
         fs::create_dir_all(dest.parent().unwrap())?;
         fs::copy(&path, dest)?;
     }
     let mut out = plan.clone();
     out.as_object_mut().unwrap().shift_remove("id");
-    write_atomic(&path, &(py_dumps_indent1(&out) + "
-"))?;
+    write_atomic(
+        &path,
+        &(py_dumps_indent1(&out)
+            + "
+"),
+    )?;
     read_plan(root, id)
 }
 
@@ -463,7 +648,10 @@ pub fn remove_plan(root: &Path, id: &str) -> Result<()> {
     if !p.exists() {
         return Err(missing("No such plan."));
     }
-    let dest = root.join(".trash").join(format!("{}-plan-{id}.json", chrono::Utc::now().format("%Y%m%d-%H%M%S")));
+    let dest = root.join(".trash").join(format!(
+        "{}-plan-{id}.json",
+        chrono::Utc::now().format("%Y%m%d-%H%M%S")
+    ));
     fs::create_dir_all(dest.parent().unwrap())?;
     fs::rename(p, dest)?;
     Ok(())
@@ -471,13 +659,23 @@ pub fn remove_plan(root: &Path, id: &str) -> Result<()> {
 
 /// Every line of the reading log, oldest first.
 pub fn log(root: &Path) -> Vec<Value> {
-    fs::read_to_string(folder(root).join("log.jsonl")).map(|t| t.lines().filter_map(|l| serde_json::from_str(l).ok()).collect()).unwrap_or_default()
+    fs::read_to_string(folder(root).join("log.jsonl"))
+        .map(|t| {
+            t.lines()
+                .filter_map(|l| serde_json::from_str(l).ok())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Record readings: one log line each (`entries` are chapters, NUM.25, or plan entries).
 pub fn mark(root: &Path, entries: &[String], plan: &str) -> Result<Vec<Value>> {
     crate::store::guard(root)?;
-    append(root, entries.iter().map(|e| (e.clone(), None)).collect(), plan)
+    append(
+        root,
+        entries.iter().map(|e| (e.clone(), None)).collect(),
+        plan,
+    )
 }
 
 // ---- what the log says is read: whole chapters and parts of them (RP-5, RP-6) -----------------------------------------
@@ -504,7 +702,16 @@ pub fn covers(r: &Ranges, a: u32, b: u32) -> bool {
 
 /// "1-5, 20-25"; a single verse as "7".
 pub fn ranges_text(r: &Ranges) -> String {
-    r.iter().map(|(a, b)| if a == b { a.to_string() } else { format!("{a}-{b}") }).collect::<Vec<_>>().join(", ")
+    r.iter()
+        .map(|(a, b)| {
+            if a == b {
+                a.to_string()
+            } else {
+                format!("{a}-{b}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// "1-9", "7", "1-5, 20-25" → ranges; None when it is not that.
@@ -547,7 +754,11 @@ impl Cover {
         if self.verses == 0 {
             return 0.0;
         }
-        let n: u32 = self.ranges.iter().map(|(a, b)| b.min(&self.verses).saturating_sub(*a) + 1).sum();
+        let n: u32 = self
+            .ranges
+            .iter()
+            .map(|(a, b)| b.min(&self.verses).saturating_sub(*a) + 1)
+            .sum();
         (n as f64 / self.verses as f64).min(1.0)
     }
     pub fn to_json(&self) -> Value {
@@ -587,11 +798,16 @@ pub fn coverage_of(bible: &Bible, lines: &[Value]) -> std::collections::BTreeMap
     let mut out: std::collections::BTreeMap<String, Cover> = Default::default();
     let mut pending: std::collections::HashMap<String, Ranges> = Default::default();
     for l in lines {
-        let Some((ch, part)) = line_part(l) else { continue };
+        let Some((ch, part)) = line_part(l) else {
+            continue;
+        };
         let Some(t) = l["t"].as_str() else { continue };
         let c = out.entry(ch.clone()).or_default();
         if c.verses == 0 {
-            c.verses = ch.split_once('.').and_then(|(code, n)| last_verse(bible, code, n.parse().unwrap_or(0)).ok()).unwrap_or(0);
+            c.verses = ch
+                .split_once('.')
+                .and_then(|(code, n)| last_verse(bible, code, n.parse().unwrap_or(0)).ok())
+                .unwrap_or(0);
         }
         let top = if c.verses == 0 { 999 } else { c.verses };
         c.last = t.to_string();
@@ -665,7 +881,9 @@ pub fn unmark(bible: &Bible, root: &Path, place: &str) -> Result<Value> {
     let mut off: Vec<String> = vec![];
     for (ch, part) in &items {
         let at = lines.iter().rposition(|l| {
-            let Ok(v) = serde_json::from_str::<Value>(l) else { return false };
+            let Ok(v) = serde_json::from_str::<Value>(l) else {
+                return false;
+            };
             if v["ch"].as_str() != Some(ch.as_str()) {
                 return false;
             }
@@ -682,14 +900,20 @@ pub fn unmark(bible: &Bible, root: &Path, place: &str) -> Result<Value> {
         let trash = root.join(".trash").join("reading-unmarked.jsonl");
         fs::create_dir_all(trash.parent().unwrap())?;
         use std::io::Write;
-        let mut f = fs::OpenOptions::new().create(true).append(true).open(&trash)?;
+        let mut f = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&trash)?;
         for l in &off {
             f.write_all((l.to_string() + "\n").as_bytes())?;
         }
         let body: String = lines.iter().map(|l| format!("{l}\n")).collect();
         write_atomic(&path, &body)?;
     }
-    let taken: Vec<Value> = off.iter().filter_map(|l| serde_json::from_str(l).ok()).collect();
+    let taken: Vec<Value> = off
+        .iter()
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect();
     let chs: Vec<String> = items.iter().map(|i| i.0.clone()).collect();
     Ok(json!({"unmarked": taken, "now": read_times(bible, root, &chs)}))
 }
@@ -716,7 +940,15 @@ pub fn place_parts(bible: &Bible, place: &str) -> Result<Vec<(String, Option<(u3
             }
             let from = if c == s.c1 { s.v1 } else { 1 };
             let to = if c == s.c2 {
-                if s.v2 == 0 { if s.c1 == s.c2 { s.v1 } else { last_verse(bible, &s.book.code, c)? } } else { s.v2 }
+                if s.v2 == 0 {
+                    if s.c1 == s.c2 {
+                        s.v1
+                    } else {
+                        last_verse(bible, &s.book.code, c)?
+                    }
+                } else {
+                    s.v2
+                }
             } else {
                 last_verse(bible, &s.book.code, c)?
             };
@@ -731,7 +963,14 @@ pub fn place_parts(bible: &Bible, place: &str) -> Result<Vec<(String, Option<(u3
 pub fn mark_place(bible: &Bible, root: &Path, place: &str, plan: &str) -> Result<Vec<Value>> {
     crate::store::guard(root)?;
     let items = place_parts(bible, place)?;
-    append(root, items.iter().map(|(ch, part)| (ch.clone(), part.map(|(a, b)| ranges_text(&vec![(a, b)])))).collect(), plan)
+    append(
+        root,
+        items
+            .iter()
+            .map(|(ch, part)| (ch.clone(), part.map(|(a, b)| ranges_text(&vec![(a, b)]))))
+            .collect(),
+        plan,
+    )
 }
 
 /// Mark read to here: the verses from the end of what is read from verse 1 up to this verse (`Gen 2:9`). A verse already read
@@ -751,7 +990,11 @@ pub fn read_to_here(bible: &Bible, root: &Path, place: &str, plan: &str) -> Resu
         if from > v {
             continue; // already read
         }
-        out.extend(append(root, vec![(ch, Some(ranges_text(&vec![(from, v)])))], plan)?);
+        out.extend(append(
+            root,
+            vec![(ch, Some(ranges_text(&vec![(from, v)])))],
+            plan,
+        )?);
     }
     Ok(out)
 }
@@ -771,7 +1014,10 @@ fn append(root: &Path, items: Vec<(String, Option<String>)>, plan: &str) -> Resu
         })
         .collect();
     use std::io::Write;
-    let mut f = fs::OpenOptions::new().create(true).append(true).open(&path)?;
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)?;
     for l in &lines {
         f.write_all((py_dumps(l) + "\n").as_bytes())?;
     }
@@ -780,7 +1026,9 @@ fn append(root: &Path, items: Vec<(String, Option<String>)>, plan: &str) -> Resu
 
 /// The person's own day of a log time (the log is in UTC; a plan's days are the person's local days).
 fn local_day(t: &str) -> Option<NaiveDate> {
-    chrono::DateTime::parse_from_rfc3339(t).ok().map(|d| d.with_timezone(&chrono::Local).date_naive())
+    chrono::DateTime::parse_from_rfc3339(t)
+        .ok()
+        .map(|d| d.with_timezone(&chrono::Local).date_naive())
 }
 
 /// A plan entry as its chapter and the verses it names (None: the whole chapter); None for one that runs across chapters.
@@ -794,7 +1042,9 @@ fn entry_verses(e: &str) -> Option<(String, Option<(u32, u32)>)> {
 /// What is read of an entry's chapter: `{"read_to": 9 or null, "parts": "20-25", "verses": "1-9, 20-25"}` (parts are the ranges after
 /// the run from verse 1). A chapter nothing of is read gives nulls.
 fn entry_parts(cov: &std::collections::BTreeMap<String, Cover>, e: &str) -> Value {
-    let Some(c) = entry_verses(e).and_then(|(ch, _)| cov.get(&ch)) else { return json!({"read_to": null, "parts": "", "verses": "", "fraction": 0.0, "whole": false}) };
+    let Some(c) = entry_verses(e).and_then(|(ch, _)| cov.get(&ch)) else {
+        return json!({"read_to": null, "parts": "", "verses": "", "fraction": 0.0, "whole": false});
+    };
     let to = read_to_of(&c.ranges);
     let rest: Ranges = c.ranges.iter().filter(|r| !(r.0 == 1)).cloned().collect();
     json!({"read_to": to, "parts": ranges_text(&rest), "verses": ranges_text(&c.ranges), "fraction": (c.fraction() * 100.0).round() / 100.0, "whole": c.whole()})
@@ -817,18 +1067,29 @@ pub fn progress(bible: &Bible, root: &Path, plan: &Value, on: NaiveDate) -> Resu
         .into_iter()
         .filter(|l| {
             let p = l["plan"].as_str().unwrap_or("");
-            p == id || (p.is_empty() && l["t"].as_str().and_then(local_day).is_some_and(|d| d >= start))
+            p == id
+                || (p.is_empty()
+                    && l["t"]
+                        .as_str()
+                        .and_then(local_day)
+                        .is_some_and(|d| d >= start))
         })
         .collect();
     // an entry is read when a whole-chapter line names it as it is written, or the verses logged cover it (RP-6)
-    let exact: std::collections::HashSet<String> = lines.iter().filter(|l| l.get("v").is_none()).filter_map(|l| l["ch"].as_str().map(String::from)).collect();
+    let exact: std::collections::HashSet<String> = lines
+        .iter()
+        .filter(|l| l.get("v").is_none())
+        .filter_map(|l| l["ch"].as_str().map(String::from))
+        .collect();
     let cov = coverage_of(bible, &lines);
     let is_read = |e: &str| -> bool {
         if exact.contains(e) {
             return true;
         }
         match entry_verses(e) {
-            Some((ch, Some((a, b)))) => cov.get(&ch).is_some_and(|c| covers(&c.ranges, a, b.min(c.verses.max(a)))),
+            Some((ch, Some((a, b)))) => cov
+                .get(&ch)
+                .is_some_and(|c| covers(&c.ranges, a, b.min(c.verses.max(a)))),
             Some((ch, None)) => cov.get(&ch).is_some_and(|c| c.whole()),
             None => false,
         }
@@ -838,21 +1099,39 @@ pub fn progress(bible: &Bible, root: &Path, plan: &Value, on: NaiveDate) -> Resu
     // (day numbers marked skipped, not read), stopped (the day it was stopped)
     let off = crate::plans::days_off_of(plan);
     let dated = plan["dated"] != false;
-    let skipped: std::collections::HashSet<u64> = plan["skipped"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64()).collect()).unwrap_or_default();
-    let kept: std::collections::HashSet<u64> = plan["kept"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64()).collect()).unwrap_or_default();
+    let skipped: std::collections::HashSet<u64> = plan["skipped"]
+        .as_array()
+        .map(|a| a.iter().filter_map(|x| x.as_u64()).collect())
+        .unwrap_or_default();
+    let kept: std::collections::HashSet<u64> = plan["kept"]
+        .as_array()
+        .map(|a| a.iter().filter_map(|x| x.as_u64()).collect())
+        .unwrap_or_default();
     let cycle = plan["cycle"] == true;
-    let dates = if dated { crate::plans::plan_dates(start, &off, days.len()) } else { vec![] };
+    let dates = if dated {
+        crate::plans::plan_dates(start, &off, days.len())
+    } else {
+        vec![]
+    };
     let mut rows = vec![];
     let (mut done_days, mut settled_days) = (0, 0);
     for (k, d) in days.iter().enumerate() {
-        let es: Vec<String> = d.as_array().unwrap_or(&vec![]).iter().filter_map(|e| e.as_str().map(String::from)).collect();
+        let es: Vec<String> = d
+            .as_array()
+            .unwrap_or(&vec![])
+            .iter()
+            .filter_map(|e| e.as_str().map(String::from))
+            .collect();
         let done: Vec<bool> = es.iter().map(|e| is_read(e)).collect();
         let parts: Vec<Value> = es.iter().map(|e| entry_parts(&cov, e)).collect();
         let all = done.iter().all(|x| *x);
         let skip = skipped.contains(&(k as u64 + 1)) && !all;
         done_days += all as usize;
         settled_days += (all || skip) as usize;
-        let date = dates.get(k).map(|d| json!(d.format("%Y-%m-%d").to_string())).unwrap_or(json!(null));
+        let date = dates
+            .get(k)
+            .map(|d| json!(d.format("%Y-%m-%d").to_string()))
+            .unwrap_or(json!(null));
         rows.push(json!({"day": k + 1, "date": date, "label": label(bible, &es), "entries": es, "read": done, "parts": parts, "done": all, "skipped": skip, "kept": kept.contains(&(k as u64 + 1))}));
     }
     let due = dates.iter().filter(|d| **d <= on).count(); // the days whose date has come
@@ -860,28 +1139,43 @@ pub fn progress(bible: &Bible, root: &Path, plan: &Value, on: NaiveDate) -> Resu
     let settled = |r: &Value| r["done"] == true || r["skipped"] == true;
     let behind = rows.iter().take(due).filter(|r| !settled(r)).count();
     let next = rows.iter().find(|r| !settled(r)).cloned();
-    Ok(json!({"id": id, "name": plan["name"], "kind": plan["kind"], "start": plan["start"], "days": days.len(), "done": done_days,
+    Ok(
+        json!({"id": id, "name": plan["name"], "kind": plan["kind"], "start": plan["start"], "days": days.len(), "done": done_days,
         "today": today_n, "due": due, "dated": dated, "days_off": off, "finish": if cycle { None } else { dates.last().map(|d| d.format("%Y-%m-%d").to_string()) },
         "cycle": cycle, "source": plan.get("source").cloned().unwrap_or(json!(null)),
         "skipped": rows.iter().filter(|r| r["skipped"] == true).count(), "stopped": plan.get("stopped").cloned().unwrap_or(json!(null)),
         "behind": behind, "ahead": settled_days.saturating_sub(due), "finished": !cycle && settled_days == days.len(),
-        "next": next, "schedule": rows, "weekday": on.weekday().to_string()}))
+        "next": next, "schedule": rows, "weekday": on.weekday().to_string()}),
+    )
 }
 
 /// What to read today in each plan: today's day, and any earlier day not yet done. A plan stopped is left out; a plan with
 /// no dates ("my own pace") offers its next day.
 pub fn today_view(bible: &Bible, root: &Path, on: NaiveDate) -> Result<Value> {
     let mut out = vec![];
-    for p in plans(root).into_iter().filter(|p| p.get("stopped").is_none_or(|s| s.is_null())) {
+    for p in plans(root)
+        .into_iter()
+        .filter(|p| p.get("stopped").is_none_or(|s| s.is_null()))
+    {
         let pr = progress(bible, root, &p, on)?;
         let due = pr["due"].as_u64().unwrap_or(0);
         let rows = pr["schedule"].as_array().unwrap();
         let open: Vec<Value> = if pr["dated"] == false {
-            pr["next"].as_object().map(|_| vec![pr["next"].clone()]).unwrap_or_default()
+            pr["next"]
+                .as_object()
+                .map(|_| vec![pr["next"].clone()])
+                .unwrap_or_default()
         } else {
-            rows.iter().filter(|r| r["done"] == false && r["skipped"] == false && r["day"].as_u64().unwrap() <= due).cloned().collect()
+            rows.iter()
+                .filter(|r| {
+                    r["done"] == false && r["skipped"] == false && r["day"].as_u64().unwrap() <= due
+                })
+                .cloned()
+                .collect()
         };
-        let this_day = pr["today"].as_u64().and_then(|t| rows.get(t as usize - 1).cloned());
+        let this_day = pr["today"]
+            .as_u64()
+            .and_then(|t| rows.get(t as usize - 1).cloned());
         out.push(json!({"plan": pr["name"], "id": pr["id"], "day": pr["today"], "of": pr["days"], "today": this_day, "dated": pr["dated"],
             "behind": pr["behind"], "ahead": pr["ahead"], "finished": pr["finished"], "to_read": open, "next": pr["next"]}));
     }
@@ -895,7 +1189,12 @@ pub fn overall(bible: &Bible, root: &Path) -> Result<Value> {
     let mut books = vec![];
     let (mut total, mut got) = (0u32, 0u32);
     for b in bible.books() {
-        let n = (1..=b.chapters).filter(|c| cov.get(&format!("{}.{c}", b.code)).is_some_and(|x| x.times > 0)).count() as u32;
+        let n = (1..=b.chapters)
+            .filter(|c| {
+                cov.get(&format!("{}.{c}", b.code))
+                    .is_some_and(|x| x.times > 0)
+            })
+            .count() as u32;
         total += b.chapters;
         got += n;
         if n > 0 {
@@ -905,9 +1204,10 @@ pub fn overall(bible: &Bible, root: &Path) -> Result<Value> {
     // chapters read in part and not through: what is read of each
     let partial: Vec<Value> = cov.iter().filter(|(_, c)| c.times == 0).map(|(ch, c)| json!({"ch": ch, "read_to": read_to_of(&c.ranges), "parts": ranges_text(&c.ranges), "last": c.last})).collect();
     let last = lines.last().map(|l| json!({"t": l["t"], "ch": l["ch"]}));
-    Ok(json!({"chapters": got, "of": total, "percent": (got as f64 * 1000.0 / total as f64).round() / 10.0, "books": books, "partial": partial, "last": last, "lines": lines.len()}))
+    Ok(
+        json!({"chapters": got, "of": total, "percent": (got as f64 * 1000.0 / total as f64).round() / 10.0, "books": books, "partial": partial, "last": last, "lines": lines.len()}),
+    )
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -915,16 +1215,27 @@ mod tests {
 
     #[test]
     fn spread_keeps_order_whole_chapters_and_balances_days() {
-        let chs: Vec<(String, u32)> = (1..=10).map(|c| (format!("GEN.{c}"), if c == 5 { 50 } else { 10 })).collect();
+        let chs: Vec<(String, u32)> = (1..=10)
+            .map(|c| (format!("GEN.{c}"), if c == 5 { 50 } else { 10 }))
+            .collect();
         let days = spread(&chs, 4);
         assert_eq!(days.len(), 4);
-        assert_eq!(days.concat(), chs.iter().map(|c| c.0.clone()).collect::<Vec<_>>());
+        assert_eq!(
+            days.concat(),
+            chs.iter().map(|c| c.0.clone()).collect::<Vec<_>>()
+        );
         assert!(days.iter().all(|d| !d.is_empty()));
         let sp = sparse(&chs, 20);
         assert_eq!(sp.len(), 20);
-        assert_eq!(sp.concat(), chs.iter().map(|c| c.0.clone()).collect::<Vec<_>>()); // in order, each chapter once
+        assert_eq!(
+            sp.concat(),
+            chs.iter().map(|c| c.0.clone()).collect::<Vec<_>>()
+        ); // in order, each chapter once
         let one: Vec<(String, u32)> = (1..=3).map(|c| (format!("JUD.{c}"), 1)).collect();
-        assert_eq!(spread(&one, 3), vec![vec!["JUD.1"], vec!["JUD.2"], vec!["JUD.3"]]);
+        assert_eq!(
+            spread(&one, 3),
+            vec![vec!["JUD.1"], vec!["JUD.2"], vec!["JUD.3"]]
+        );
     }
 
     #[test]
@@ -933,7 +1244,10 @@ mod tests {
         add_range(&mut r, 20, 25);
         add_range(&mut r, 1, 5);
         assert_eq!(r, vec![(1, 5), (20, 25)]);
-        assert_eq!((read_to_of(&r), ranges_text(&r)), (Some(5), "1-5, 20-25".to_string()));
+        assert_eq!(
+            (read_to_of(&r), ranges_text(&r)),
+            (Some(5), "1-5, 20-25".to_string())
+        );
         add_range(&mut r, 6, 19);
         assert_eq!(r, vec![(1, 25)]);
         assert!(covers(&r, 1, 25) && !covers(&r, 1, 26));
@@ -949,8 +1263,18 @@ mod tests {
     fn a_log_line_with_a_plan_part_entry_is_that_chapters_verses() {
         let l = json!({"ch": "PSA.119:1-119:88"});
         assert_eq!(line_part(&l), Some(("PSA.119".to_string(), Some((1, 88)))));
-        assert_eq!(line_part(&json!({"ch": "GEN.2"})), Some(("GEN.2".to_string(), None)));
-        assert_eq!(line_part(&json!({"ch": "GEN.2", "v": "1-9"})), Some(("GEN.2".to_string(), Some((1, 9)))));
-        assert_eq!(line_part(&json!({"ch": "GEN.1:5-2:3"})), None, "across chapters is no part of one");
+        assert_eq!(
+            line_part(&json!({"ch": "GEN.2"})),
+            Some(("GEN.2".to_string(), None))
+        );
+        assert_eq!(
+            line_part(&json!({"ch": "GEN.2", "v": "1-9"})),
+            Some(("GEN.2".to_string(), Some((1, 9))))
+        );
+        assert_eq!(
+            line_part(&json!({"ch": "GEN.1:5-2:3"})),
+            None,
+            "across chapters is no part of one"
+        );
     }
 }

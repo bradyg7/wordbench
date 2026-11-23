@@ -19,21 +19,45 @@ pub fn pages_naming(bible: &Bible, store: &Store, anchor: &str) -> Result<Value>
     };
     let hits: Vec<Value> = if a.kind == Kind::Lemma {
         let number = a.strong.as_deref().unwrap_or("").to_uppercase();
-        let mut v: Vec<(String, crate::pageindex::Entry)> = crate::pageindex::all(bible, store).into_iter().filter(|(_, e)| e.numbers.contains(&number)).collect();
+        let mut v: Vec<(String, crate::pageindex::Entry)> = crate::pageindex::all(bible, store)
+            .into_iter()
+            .filter(|(_, e)| e.numbers.contains(&number))
+            .collect();
         v.sort_by(|x, y| y.1.created.cmp(&x.1.created));
         v.iter().map(|(id, e)| row(id, e, 1, false)).collect()
     } else {
         let (lo, hi) = ((a.c1, a.v1), (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1)));
-        crate::pageindex::naming(bible, store, &a.code, lo, hi).iter().map(|(id, e, t, b)| row(id, e, *t, *b)).collect()
+        crate::pageindex::naming(bible, store, &a.code, lo, hi)
+            .iter()
+            .map(|(id, e, t, b)| row(id, e, *t, *b))
+            .collect()
     };
     // margin notes whose own words name it (found like a page's references, after the pages)
     let mut hits = hits;
     let notes = if a.kind == Kind::Lemma {
-        crate::margin::naming(bible, store, "", (0, 0), (0, 0), Some(&a.strong.as_deref().unwrap_or("").to_uppercase()))
+        crate::margin::naming(
+            bible,
+            store,
+            "",
+            (0, 0),
+            (0, 0),
+            Some(&a.strong.as_deref().unwrap_or("").to_uppercase()),
+        )
     } else {
-        crate::margin::naming(bible, store, &a.code, (a.c1, a.v1), (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1)), None)
+        crate::margin::naming(
+            bible,
+            store,
+            &a.code,
+            (a.c1, a.v1),
+            (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1)),
+            None,
+        )
     };
-    hits.extend(notes.iter().map(|(n, t)| crate::margin::naming_row(bible, n, *t)));
+    hits.extend(
+        notes
+            .iter()
+            .map(|(n, t)| crate::margin::naming_row(bible, n, *t)),
+    );
     let mut out = json!({"anchor": anchor, "count": hits.len(), "pages": hits});
     if out["count"].as_u64().unwrap_or(0) > 20 {
         // past 20 the list is grouped by folder (marks M37)
@@ -45,7 +69,10 @@ pub fn pages_naming(bible: &Bible, store: &Store, anchor: &str) -> Result<Value>
                 None => groups.push((f, vec![p.clone()])),
             }
         }
-        out["groups"] = json!(groups.into_iter().map(|(f, p)| json!({"folder": f, "count": p.len(), "pages": p})).collect::<Vec<_>>());
+        out["groups"] = json!(groups
+            .into_iter()
+            .map(|(f, p)| json!({"folder": f, "count": p.len(), "pages": p}))
+            .collect::<Vec<_>>());
     }
     Ok(out)
 }
@@ -56,7 +83,9 @@ fn folders_of(store: &Store) -> std::collections::HashMap<String, Vec<String>> {
     for t in store.sets() {
         for i in t["items"].as_array().cloned().unwrap_or_default() {
             if i["kind"] == "note" {
-                out.entry(i["ref"].as_str().unwrap_or("").to_string()).or_default().push(t["name"].as_str().unwrap_or("").to_string());
+                out.entry(i["ref"].as_str().unwrap_or("").to_string())
+                    .or_default()
+                    .push(t["name"].as_str().unwrap_or("").to_string());
             }
         }
     }

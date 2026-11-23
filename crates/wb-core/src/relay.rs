@@ -22,7 +22,12 @@ fn token() -> String {
     let mut out = String::new();
     for k in 0..2u32 {
         let mut h = std::collections::hash_map::RandomState::new().build_hasher();
-        h.write_u128(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos());
+        h.write_u128(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos(),
+        );
         h.write_u32(std::process::id() ^ k);
         out.push_str(&format!("{:016x}", h.finish()));
     }
@@ -50,7 +55,10 @@ pub fn read_request(stream: &TcpStream, token: &str) -> Option<(String, u64)> {
     if v["token"].as_str() != Some(token) {
         return None;
     }
-    Some((v["line"].as_str()?.to_string(), v["wait_ms"].as_u64().unwrap_or(10_000)))
+    Some((
+        v["line"].as_str()?.to_string(),
+        v["wait_ms"].as_u64().unwrap_or(10_000),
+    ))
 }
 
 pub fn answer(mut stream: &TcpStream, v: &Value) {
@@ -59,13 +67,28 @@ pub fn answer(mut stream: &TcpStream, v: &Value) {
 
 /// `wb do`'s side: send a line to the running app and wait (at most `wait`) for what it did.
 pub fn send(line: &str, wait: Duration) -> Result<Value> {
-    let none = || Error("The app is not running (start it, then try again). wb do sends lines to the open window.".into());
-    let info: Value = std::fs::read_to_string(address_file()).ok().and_then(|t| serde_json::from_str(&t).ok()).ok_or_else(none)?;
+    let none = || {
+        Error("The app is not running (start it, then try again). wb do sends lines to the open window.".into())
+    };
+    let info: Value = std::fs::read_to_string(address_file())
+        .ok()
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .ok_or_else(none)?;
     let port = info["port"].as_u64().ok_or_else(none)? as u16;
-    let mut s = TcpStream::connect_timeout(&(Ipv4Addr::LOCALHOST, port).into(), Duration::from_secs(2)).map_err(|_| none())?;
+    let mut s =
+        TcpStream::connect_timeout(&(Ipv4Addr::LOCALHOST, port).into(), Duration::from_secs(2))
+            .map_err(|_| none())?;
     s.set_read_timeout(Some(wait + Duration::from_secs(1)))?;
-    s.write_all(format!("{}\n", json!({"token": info["token"], "line": line, "wait_ms": wait.as_millis() as u64})).as_bytes())?;
+    s.write_all(
+        format!(
+            "{}\n",
+            json!({"token": info["token"], "line": line, "wait_ms": wait.as_millis() as u64})
+        )
+        .as_bytes(),
+    )?;
     let mut reply = String::new();
-    BufReader::new(&s).read_line(&mut reply).map_err(|_| Error("The app took the line but did not answer in time.".into()))?;
+    BufReader::new(&s)
+        .read_line(&mut reply)
+        .map_err(|_| Error("The app took the line but did not answer in time.".into()))?;
     serde_json::from_str(&reply).map_err(|_| Error("The app's answer could not be read.".into()))
 }

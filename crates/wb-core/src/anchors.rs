@@ -61,7 +61,10 @@ impl Anchor {
 
 fn is_lemma(s: &str) -> bool {
     let b = s.as_bytes();
-    b.len() >= 2 && b.len() <= 5 && (b[0] == b'H' || b[0] == b'G') && b[1..].iter().all(u8::is_ascii_digit)
+    b.len() >= 2
+        && b.len() <= 5
+        && (b[0] == b'H' || b[0] == b'G')
+        && b[1..].iter().all(u8::is_ascii_digit)
 }
 
 /// `25:11` or `25:11.24` → (chapter, verse, word).
@@ -76,12 +79,31 @@ fn point(s: &str) -> Option<(u32, u32, Option<u32>)> {
 
 pub fn parse(text: &str) -> crate::Result<Anchor> {
     let a = text.trim();
-    let bad = || crate::Error(format!("That is not an anchor: {:?}", a.chars().take(60).collect::<String>()));
+    let bad = || {
+        crate::Error(format!(
+            "That is not an anchor: {:?}",
+            a.chars().take(60).collect::<String>()
+        ))
+    };
     if is_lemma(a) {
-        return Ok(Anchor { kind: Kind::Lemma, code: String::new(), c1: 0, v1: 0, i1: None, c2: None, v2: None, i2: None, strong: Some(a.into()) });
+        return Ok(Anchor {
+            kind: Kind::Lemma,
+            code: String::new(),
+            c1: 0,
+            v1: 0,
+            i1: None,
+            c2: None,
+            v2: None,
+            i2: None,
+            strong: Some(a.into()),
+        });
     }
     let (code, rest) = a.split_once('.').ok_or_else(bad)?;
-    if code.len() != 3 || !code.bytes().all(|b| b.is_ascii_uppercase() || b.is_ascii_digit()) {
+    if code.len() != 3
+        || !code
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
+    {
         return Err(bad());
     }
     let (start, end) = match rest.split_once('-') {
@@ -93,10 +115,14 @@ pub fn parse(text: &str) -> crate::Result<Anchor> {
     if let Some(e) = end {
         let (c, v, i) = point(e).ok_or_else(bad)?;
         if i1.is_some() != i.is_some() {
-            return Err(crate::Error("A phrase needs a word position at both ends.".into()));
+            return Err(crate::Error(
+                "A phrase needs a word position at both ends.".into(),
+            ));
         }
         if (c, v, i.unwrap_or(0)) < (c1, v1, i1.unwrap_or(0)) {
-            return Err(crate::Error("The end of the anchor comes before its start.".into()));
+            return Err(crate::Error(
+                "The end of the anchor comes before its start.".into(),
+            ));
         }
         // A one-word phrase is a word; a one-verse run is a verse.
         let same = (c, v, i) == (c1, v1, i1) || (i1.is_none() && (c, v) == (c1, v1));
@@ -110,7 +136,17 @@ pub fn parse(text: &str) -> crate::Result<Anchor> {
         (true, true) => Kind::Phrase,
         (true, false) => Kind::Verses,
     };
-    Ok(Anchor { kind, code: code.into(), c1, v1, i1, c2, v2, i2, strong: None })
+    Ok(Anchor {
+        kind,
+        code: code.into(),
+        c1,
+        v1,
+        i1,
+        c2,
+        v2,
+        i2,
+        strong: None,
+    })
 }
 
 #[cfg(test)]
@@ -119,7 +155,14 @@ mod tests {
 
     #[test]
     fn forms_round_trip() {
-        for s in ["NUM.25:11", "NUM.25:11.24", "NUM.25:11.3-25:12.5", "NUM.25:7-25:13", "H7065", "1SA.4:11"] {
+        for s in [
+            "NUM.25:11",
+            "NUM.25:11.24",
+            "NUM.25:11.3-25:12.5",
+            "NUM.25:7-25:13",
+            "H7065",
+            "1SA.4:11",
+        ] {
             assert_eq!(parse(s).unwrap().id(), s);
         }
     }
@@ -144,7 +187,11 @@ use serde_json::{json, Map, Value};
 
 /// Python's repr() of a string, as its error messages show one.
 pub fn py_repr(s: &str) -> String {
-    let q = if s.contains('\'') && !s.contains('"') { '"' } else { '\'' };
+    let q = if s.contains('\'') && !s.contains('"') {
+        '"'
+    } else {
+        '\''
+    };
     let mut out = String::from(q);
     for c in s.chars() {
         match c {
@@ -168,14 +215,20 @@ pub fn py_parse(text: &str) -> crate::Result<Map<String, Value>> {
     let a = text.trim();
     let p = parse(a).map_err(|e| {
         if e.0.starts_with("That is not") {
-            crate::Error(format!("That is not an anchor: {}", py_repr(&a.chars().take(60).collect::<String>())))
+            crate::Error(format!(
+                "That is not an anchor: {}",
+                py_repr(&a.chars().take(60).collect::<String>())
+            ))
         } else {
             e
         }
     })?;
     if p.kind == Kind::Lemma {
         let s = p.strong.clone().unwrap();
-        return Ok(json!({"kind": "lemma", "strong": s, "id": s}).as_object().unwrap().clone());
+        return Ok(json!({"kind": "lemma", "strong": s, "id": s})
+            .as_object()
+            .unwrap()
+            .clone());
     }
     let kind = match p.kind {
         Kind::Word => "word",
@@ -199,7 +252,11 @@ pub fn py_label(name: &str, c1: i64, v1: i64, c2: i64, v2: i64, ranged: bool) ->
         return format!("{name} {c1}:{v1}");
     }
     if c1 == c2 {
-        return if v1 != v2 { format!("{name} {c1}:{v1}–{v2}") } else { format!("{name} {c1}:{v1}") };
+        return if v1 != v2 {
+            format!("{name} {c1}:{v1}–{v2}")
+        } else {
+            format!("{name} {c1}:{v1}")
+        };
     }
     format!("{name} {c1}:{v1}–{c2}:{v2}")
 }
@@ -217,24 +274,43 @@ pub fn resolve(bible: &Bible, text: &str) -> crate::Result<Map<String, Value>> {
     use rusqlite::OptionalExtension;
     if p["kind"] == "lemma" {
         let row: Option<(String, Option<String>, Option<String>)> = conn
-            .query_row("SELECT lemma, translit, definition FROM lexicon WHERE strong = ?", [p["strong"].as_str().unwrap()], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .query_row(
+                "SELECT lemma, translit, definition FROM lexicon WHERE strong = ?",
+                [p["strong"].as_str().unwrap()],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
             .optional()?;
         if let Some((lemma, translit, def)) = row {
             out.insert("ok".into(), json!(true));
             out.insert("label".into(), p["strong"].clone());
-            out.insert("quote".into(), json!(format!("{lemma} ({})", translit.unwrap_or_else(|| "None".into()))));
+            out.insert(
+                "quote".into(),
+                json!(format!(
+                    "{lemma} ({})",
+                    translit.unwrap_or_else(|| "None".into())
+                )),
+            );
             out.insert("strongs".into(), json!([p["strong"]]));
             out.insert("gloss".into(), json!(def));
         }
         return Ok(out);
     }
     let code = p["code"].as_str().unwrap();
-    let Some(book) = bible.books().iter().find(|b| b.code == code).cloned() else { return Ok(out) };
+    let Some(book) = bible.books().iter().find(|b| b.code == code).cloned() else {
+        return Ok(out);
+    };
     let n = |k: &str| p[k].as_i64();
     let (c1, v1, i1) = (n("c1").unwrap(), n("v1").unwrap(), n("i1"));
     let ranged = !p["c2"].is_null();
-    let (c2, v2, i2) = if ranged { (n("c2").unwrap(), n("v2").unwrap(), n("i2")) } else { (c1, v1, i1) };
-    out.insert("ref".into(), json!({"b": book.id, "code": code, "name": book.name, "c": c1, "v": v1}));
+    let (c2, v2, i2) = if ranged {
+        (n("c2").unwrap(), n("v2").unwrap(), n("i2"))
+    } else {
+        (c1, v1, i1)
+    };
+    out.insert(
+        "ref".into(),
+        json!({"b": book.id, "code": code, "name": book.name, "c": c1, "v": v1}),
+    );
     let kind = p["kind"].as_str().unwrap();
     if kind == "word" || kind == "phrase" {
         let mut stmt = conn.prepare_cached(
@@ -242,10 +318,21 @@ pub fn resolve(bible: &Bible, text: &str) -> crate::Result<Map<String, Value>> {
              AND (chapter, verse, idx) >= (?, ?, ?) AND (chapter, verse, idx) <= (?, ?, ?) ORDER BY chapter, verse, idx",
         )?;
         let rows: Vec<(u32, u32, u32, String, String, Option<String>)> = stmt
-            .query_map(rusqlite::params![book.id, c1, v1, i1, c2, v2, i2], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(4)?, r.get(5)?, r.get(6)?)))?
+            .query_map(rusqlite::params![book.id, c1, v1, i1, c2, v2, i2], |r| {
+                Ok((
+                    r.get(0)?,
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                ))
+            })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         if let (Some(f), Some(l)) = (rows.first(), rows.last()) {
-            if (f.0 as i64, f.1 as i64, Some(f.2 as i64)) == (c1, v1, i1) && (l.0 as i64, l.1 as i64, Some(l.2 as i64)) == (c2, v2, i2) {
+            if (f.0 as i64, f.1 as i64, Some(f.2 as i64)) == (c1, v1, i1)
+                && (l.0 as i64, l.1 as i64, Some(l.2 as i64)) == (c2, v2, i2)
+            {
                 let mut t = String::new();
                 for (k, r) in rows.iter().enumerate() {
                     t += &r.3;
@@ -261,7 +348,10 @@ pub fn resolve(bible: &Bible, text: &str) -> crate::Result<Map<String, Value>> {
                         }
                     }
                 }
-                out.insert("quote".into(), json!(t.split_whitespace().collect::<Vec<_>>().join(" ")));
+                out.insert(
+                    "quote".into(),
+                    json!(t.split_whitespace().collect::<Vec<_>>().join(" ")),
+                );
                 out.insert("strongs".into(), json!(seen));
                 out.insert("ok".into(), json!(true));
             }
@@ -270,12 +360,17 @@ pub fn resolve(bible: &Bible, text: &str) -> crate::Result<Map<String, Value>> {
         let mut stmt = conn.prepare_cached(
             "SELECT text FROM verses WHERE book = ? AND (chapter, verse) >= (?, ?) AND (chapter, verse) <= (?, ?) ORDER BY chapter, verse",
         )?;
-        let rows: Vec<String> = stmt.query_map(rusqlite::params![book.id, c1, v1, c2, v2], |r| r.get(0))?.collect::<rusqlite::Result<Vec<_>>>()?;
+        let rows: Vec<String> = stmt
+            .query_map(rusqlite::params![book.id, c1, v1, c2, v2], |r| r.get(0))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
         if !rows.is_empty() {
             out.insert("quote".into(), json!(rows.join(" ")));
             out.insert("ok".into(), json!(true));
         }
     }
-    out.insert("label".into(), json!(py_label(&book.name, c1, v1, c2, v2, ranged)));
+    out.insert(
+        "label".into(),
+        json!(py_label(&book.name, c1, v1, c2, v2, ranged)),
+    );
     Ok(out)
 }

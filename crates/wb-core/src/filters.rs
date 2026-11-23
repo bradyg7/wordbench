@@ -82,7 +82,10 @@ fn split_values(s: &str) -> Vec<String> {
 }
 
 fn join_values(v: &[String]) -> String {
-    v.iter().map(|x| x.replace(',', "\\,")).collect::<Vec<_>>().join(", ")
+    v.iter()
+        .map(|x| x.replace(',', "\\,"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn find_ci(hay: &str, needle: &str) -> Option<usize> {
@@ -101,20 +104,38 @@ pub fn parse(text: &str) -> Result<Filter> {
         if let Some(rest) = low.strip_prefix(p).filter(|r| r.starts_with(' ')) {
             let choice = rest.trim();
             if choice == "any time" {
-                return Ok(Filter { property: canon(p), way: Way::Is, values: vec![] });
+                return Ok(Filter {
+                    property: canon(p),
+                    way: Way::Is,
+                    values: vec![],
+                });
             }
             if !DATE_CHOICES.contains(&choice) {
                 return Err(bad(format!("{} is today, last 7 days, last 30 days, last year or any time (no dates typed).", canon(p))));
             }
-            return Ok(Filter { property: canon(p), way: Way::Is, values: vec![choice.to_string()] });
+            return Ok(Filter {
+                property: canon(p),
+                way: Way::Is,
+                values: vec![choice.to_string()],
+            });
         }
     }
-    let wrong = || bad(format!("A filter reads like Status is Open, Status is not Open, Status is not set, Status is set or Edited last 7 days, not “{t}”."));
+    let wrong = || {
+        bad(format!("A filter reads like Status is Open, Status is not Open, Status is not set, Status is set or Edited last 7 days, not “{t}”."))
+    };
     if let Some(p) = low.strip_suffix(" is not set") {
-        return Ok(Filter { property: canon(&t[..p.len()]), way: Way::NotSet, values: vec![] });
+        return Ok(Filter {
+            property: canon(&t[..p.len()]),
+            way: Way::NotSet,
+            values: vec![],
+        });
     }
     if let Some(p) = low.strip_suffix(" is set") {
-        return Ok(Filter { property: canon(&t[..p.len()]), way: Way::Set, values: vec![] });
+        return Ok(Filter {
+            property: canon(&t[..p.len()]),
+            way: Way::Set,
+            values: vec![],
+        });
     }
     let (way, at, len) = match (find_ci(t, " is not "), find_ci(t, " is ")) {
         (Some(a), Some(b)) if a <= b => (Way::IsNot, a, " is not ".len()),
@@ -132,18 +153,31 @@ pub fn parse(text: &str) -> Result<Filter> {
     if is_date_property(&property) {
         return Err(bad(format!("{property} reads like “{property} last 7 days”: today, last 7 days, last 30 days or last year.")));
     }
-    Ok(Filter { property, way, values })
+    Ok(Filter {
+        property,
+        way,
+        values,
+    })
 }
 
 impl Filter {
     /// The filter's words, as the file writes them.
     pub fn text(&self) -> String {
         if is_date_property(&self.property) {
-            return format!("{} {}", self.property, self.values.first().cloned().unwrap_or_default());
+            return format!(
+                "{} {}",
+                self.property,
+                self.values.first().cloned().unwrap_or_default()
+            );
         }
         match self.way {
             Way::NotSet | Way::Set => format!("{} {}", self.property, self.way.words()),
-            _ => format!("{} {} {}", self.property, self.way.words(), join_values(&self.values)),
+            _ => format!(
+                "{} {} {}",
+                self.property,
+                self.way.words(),
+                join_values(&self.values)
+            ),
         }
     }
     pub fn is_date(&self) -> bool {
@@ -175,9 +209,15 @@ pub fn date_in(choice: &str, date: &str) -> bool {
 /// one date.
 pub fn passes(f: &Filter, facts: &[String]) -> bool {
     if f.is_date() {
-        return f.values.first().is_none_or(|c| facts.first().is_some_and(|d| date_in(c, d)));
+        return f
+            .values
+            .first()
+            .is_none_or(|c| facts.first().is_some_and(|d| date_in(c, d)));
     }
-    let hit = f.values.iter().any(|v| facts.iter().any(|x| x.eq_ignore_ascii_case(v)));
+    let hit = f
+        .values
+        .iter()
+        .any(|v| facts.iter().any(|x| x.eq_ignore_ascii_case(v)));
     match f.way {
         Way::Is => hit,
         Way::IsNot => !hit,
@@ -211,7 +251,13 @@ pub fn apply_all(filters: &[Filter], facts: &Facts, has: &[&str]) -> Result<bool
                     return Ok(false);
                 }
             }
-            None => return Err(bad(format!("No property called “{}” here; this list has {}.", f.property, has.join(", ")))),
+            None => {
+                return Err(bad(format!(
+                    "No property called “{}” here; this list has {}.",
+                    f.property,
+                    has.join(", ")
+                )))
+            }
         }
     }
     Ok(true)
@@ -232,7 +278,11 @@ pub fn parse_all(texts: &[String]) -> Result<Vec<Filter>> {
 pub fn check(filters: &[Filter], has: &[&str]) -> Result<()> {
     for f in filters {
         if !has.iter().any(|h| h.eq_ignore_ascii_case(&f.property)) {
-            return Err(bad(format!("No property called “{}” here; this list has {}.", f.property, has.join(", "))));
+            return Err(bad(format!(
+                "No property called “{}” here; this list has {}.",
+                f.property,
+                has.join(", ")
+            )));
         }
     }
     Ok(())
@@ -271,7 +321,12 @@ pub fn menu(props: &[Prop], facts: &[Facts], books: &[String]) -> Vec<Value> {
         }
         let date = is_date_property(p.name);
         let values: Vec<Value> = if date {
-            let labels = [("today", "Today"), ("last 7 days", "Last 7 days"), ("last 30 days", "Last 30 days"), ("last year", "Last year")];
+            let labels = [
+                ("today", "Today"),
+                ("last 7 days", "Last 7 days"),
+                ("last 30 days", "Last 30 days"),
+                ("last year", "Last year"),
+            ];
             labels
                 .iter()
                 .map(|(v, l)| json!({"value": v, "label": l, "count": facts.iter().filter(|f| f.get(&key).and_then(|d| d.first()).is_some_and(|d| date_in(v, d))).count()}))
@@ -288,7 +343,10 @@ pub fn menu(props: &[Prop], facts: &[Facts], books: &[String]) -> Vec<Value> {
                 })
                 .collect()
         } else {
-            tally.iter().map(|(v, n)| json!({"value": v, "label": v, "count": n})).collect()
+            tally
+                .iter()
+                .map(|(v, n)| json!({"value": v, "label": v, "count": n}))
+                .collect()
         };
         out.push(json!({"name": p.name, "group": "page", "hint": p.hint, "type": if date { "date" } else { "choice" }, "values": values}));
     }
@@ -296,13 +354,28 @@ pub fn menu(props: &[Prop], facts: &[Facts], books: &[String]) -> Vec<Value> {
 }
 
 /// The rows that pass every filter, and the Filter menu worked out from all the rows. A filter on a property the list lacks is refused.
-pub fn narrow(rows: Vec<Value>, facts_of: &dyn Fn(&Value) -> Facts, props: &[Prop], filters: &[Filter], books: &[String]) -> Result<(Vec<Value>, Vec<Value>)> {
+pub fn narrow(
+    rows: Vec<Value>,
+    facts_of: &dyn Fn(&Value) -> Facts,
+    props: &[Prop],
+    filters: &[Filter],
+    books: &[String],
+) -> Result<(Vec<Value>, Vec<Value>)> {
     let names: Vec<&str> = props.iter().map(|p| p.name).collect();
     check(filters, &names)?;
     let facts: Vec<Facts> = rows.iter().map(|r| facts_of(r)).collect();
     let menu = menu(props, &facts, books);
     let none: Vec<String> = vec![];
-    let kept = rows.into_iter().zip(facts).filter(|(_, f)| filters.iter().all(|fl| passes(fl, f.get(&fl.key()).unwrap_or(&none)))).map(|(r, _)| r).collect();
+    let kept = rows
+        .into_iter()
+        .zip(facts)
+        .filter(|(_, f)| {
+            filters
+                .iter()
+                .all(|fl| passes(fl, f.get(&fl.key()).unwrap_or(&none)))
+        })
+        .map(|(r, _)| r)
+        .collect();
     Ok((kept, menu))
 }
 
@@ -319,14 +392,22 @@ pub fn scope_for(filters: &[Filter], books: &[crate::bible::Book], base: &str) -
     if filters.is_empty() {
         return Ok(base.to_string());
     }
-    let mut ids: Vec<u32> = books.iter().filter(|b| crate::places::in_scope(b, base)).map(|b| b.id).collect();
+    let mut ids: Vec<u32> = books
+        .iter()
+        .filter(|b| crate::places::in_scope(b, base))
+        .map(|b| b.id)
+        .collect();
     for f in filters {
         let hit = |b: &crate::bible::Book| -> Result<bool> {
             Ok(match f.key().as_str() {
-                "book" => f.values.iter().any(|v| crate::places::match_book(v, books).is_ok_and(|x| x.id == b.id)),
+                "book" => f
+                    .values
+                    .iter()
+                    .any(|v| crate::places::match_book(v, books).is_ok_and(|x| x.id == b.id)),
                 "testament" => f.values.iter().any(|v| {
                     let w = v.to_lowercase();
-                    (b.testament == "OT" && (w == "ot" || w.starts_with("old"))) || (b.testament == "NT" && (w == "nt" || w.starts_with("new")))
+                    (b.testament == "OT" && (w == "ot" || w.starts_with("old")))
+                        || (b.testament == "NT" && (w == "nt" || w.starts_with("new")))
                 }),
                 "version" => f.values.iter().any(|v| v.eq_ignore_ascii_case("KJV")),
                 _ => true,
@@ -348,15 +429,39 @@ pub fn scope_for(filters: &[Filter], books: &[crate::bible::Book], base: &str) -
         }
         ids = next;
     }
-    Ok(if ids.is_empty() { "0".to_string() } else { ids.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(",") })
+    Ok(if ids.is_empty() {
+        "0".to_string()
+    } else {
+        ids.iter()
+            .map(|i| i.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    })
 }
 
 /// The Book and Testament (and Version) menu of a list kept by book: `by_book` is book id → count, as the lookups give it.
-pub fn book_menu(books: &[crate::bible::Book], by_book: &serde_json::Map<String, Value>, version: bool) -> Vec<Value> {
-    let count = |b: &crate::bible::Book| by_book.get(&b.id.to_string()).and_then(Value::as_u64).unwrap_or(0);
-    let mut out = vec![json!({"name": "Book", "group": "page", "hint": "The book a verse is in", "type": "choice",
-        "values": books.iter().filter(|b| count(b) > 0).map(|b| json!({"value": b.name, "label": b.name, "count": count(b)})).collect::<Vec<_>>()})];
-    let side = |t: &str| books.iter().filter(|b| b.testament == t).map(count).sum::<u64>();
+pub fn book_menu(
+    books: &[crate::bible::Book],
+    by_book: &serde_json::Map<String, Value>,
+    version: bool,
+) -> Vec<Value> {
+    let count = |b: &crate::bible::Book| {
+        by_book
+            .get(&b.id.to_string())
+            .and_then(Value::as_u64)
+            .unwrap_or(0)
+    };
+    let mut out = vec![
+        json!({"name": "Book", "group": "page", "hint": "The book a verse is in", "type": "choice",
+        "values": books.iter().filter(|b| count(b) > 0).map(|b| json!({"value": b.name, "label": b.name, "count": count(b)})).collect::<Vec<_>>()}),
+    ];
+    let side = |t: &str| {
+        books
+            .iter()
+            .filter(|b| b.testament == t)
+            .map(count)
+            .sum::<u64>()
+    };
     out.push(json!({"name": "Testament", "group": "page", "hint": "Old Testament or New Testament", "type": "choice",
         "values": [{"value": "Old Testament", "label": "Old Testament", "count": side("OT")}, {"value": "New Testament", "label": "New Testament", "count": side("NT")}]}));
     if version {
@@ -372,14 +477,30 @@ mod tests {
 
     #[test]
     fn the_four_ways_and_the_dates_read_and_write() {
-        for t in ["Status is Open", "Status is Open, Done", "Status is not Open", "Status is not set", "Status is set", "Edited last 7 days", "Written today", "Book is Numbers 25", "Callout kind is Question"] {
+        for t in [
+            "Status is Open",
+            "Status is Open, Done",
+            "Status is not Open",
+            "Status is not set",
+            "Status is set",
+            "Edited last 7 days",
+            "Written today",
+            "Book is Numbers 25",
+            "Callout kind is Question",
+        ] {
             assert_eq!(parse(t).unwrap().text(), t);
         }
         assert_eq!(parse("status IS Open").unwrap().property, "status");
         assert!(parse("Edited 2026-11-01").is_err());
         assert!(parse("Status Open").is_err());
-        assert_eq!(parse("Speaker is Moore\\, J., Smith").unwrap().values, vec!["Moore, J.".to_string(), "Smith".to_string()]);
-        assert_eq!(parse("Speaker is Moore\\, J.").unwrap().text(), "Speaker is Moore\\, J.");
+        assert_eq!(
+            parse("Speaker is Moore\\, J., Smith").unwrap().values,
+            vec!["Moore, J.".to_string(), "Smith".to_string()]
+        );
+        assert_eq!(
+            parse("Speaker is Moore\\, J.").unwrap().text(),
+            "Speaker is Moore\\, J."
+        );
     }
 
     #[test]
@@ -390,7 +511,13 @@ mod tests {
         assert!(!passes(&f("Status is not Open"), &has));
         assert!(passes(&f("Status is not set"), &[]));
         assert!(passes(&f("Status is set"), &has));
-        assert!(passes(&f("Edited today"), &[Local::now().format("%Y-%m-%dT10:00:00").to_string()]));
-        assert!(!passes(&f("Edited last 7 days"), &["2001-01-01".to_string()]));
+        assert!(passes(
+            &f("Edited today"),
+            &[Local::now().format("%Y-%m-%dT10:00:00").to_string()]
+        ));
+        assert!(!passes(
+            &f("Edited last 7 days"),
+            &["2001-01-01".to_string()]
+        ));
     }
 }

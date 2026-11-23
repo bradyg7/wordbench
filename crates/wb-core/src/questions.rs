@@ -30,7 +30,12 @@ pub struct Question {
 /// The four kinds of a callout (notebook rows 22, 23): the word its marker `> [!word]` holds, and the name the window shows.
 /// Question and Answered are the questions of the study; Key point and Note are plain callouts. `> [!question]` and `> [!done]` are
 /// what every earlier page already holds.
-pub const CALLOUT_KINDS: [(&str, &str); 4] = [("question", "Question"), ("done", "Answered"), ("key", "Key point"), ("note", "Note")];
+pub const CALLOUT_KINDS: [(&str, &str); 4] = [
+    ("question", "Question"),
+    ("done", "Answered"),
+    ("key", "Key point"),
+    ("note", "Note"),
+];
 
 /// A kind as a person says it (`answered`, `key point`, `Key-point`) → the word of its marker.
 pub fn kind_word(said: &str) -> Option<&'static str> {
@@ -45,7 +50,11 @@ pub fn kind_word(said: &str) -> Option<&'static str> {
 }
 
 pub(crate) fn kind_label(word: &str) -> &'static str {
-    CALLOUT_KINDS.iter().find(|(w, _)| *w == word).map(|(_, l)| *l).unwrap_or("Note")
+    CALLOUT_KINDS
+        .iter()
+        .find(|(w, _)| *w == word)
+        .map(|(_, l)| *l)
+        .unwrap_or("Note")
 }
 
 /// A block's Markdown → the question it holds, when it is a callout `[!question]` (open) or `[!done]` (answered).
@@ -59,7 +68,11 @@ pub fn callout_of(md: &str) -> Option<Question> {
 }
 
 fn read_callout(md: &str, keep_lines: bool) -> Option<Question> {
-    let mut lines = md.lines().map(|l| l.trim_start().strip_prefix('>').map(|r| r.strip_prefix(' ').unwrap_or(r)));
+    let mut lines = md.lines().map(|l| {
+        l.trim_start()
+            .strip_prefix('>')
+            .map(|r| r.strip_prefix(' ').unwrap_or(r))
+    });
     let first = lines.next()??.trim();
     let rest = first.strip_prefix("[!")?;
     let (kind, after) = rest.split_once(']')?;
@@ -90,16 +103,33 @@ fn read_callout(md: &str, keep_lines: bool) -> Option<Question> {
     }
     let list = shown.iter().any(|l| {
         let t = l.trim_start();
-        t.starts_with("- ") || t.starts_with("* ") || t.starts_with("+ ") || t.split_once(['.', ')']).is_some_and(|(n, r)| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()) && r.starts_with(' '))
+        t.starts_with("- ")
+            || t.starts_with("* ")
+            || t.starts_with("+ ")
+            || t.split_once(['.', ')']).is_some_and(|(n, r)| {
+                !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()) && r.starts_with(' ')
+            })
     });
-    Some(Question { text: words.join(if keep_lines { "\n" } else { " " }), done, kind, first: shown.first().map(|l| l.trim().to_string()).unwrap_or_default(), more: shown.len().saturating_sub(1), list })
+    Some(Question {
+        text: words.join(if keep_lines { "\n" } else { " " }),
+        done,
+        kind,
+        first: shown
+            .first()
+            .map(|l| l.trim().to_string())
+            .unwrap_or_default(),
+        more: shown.len().saturating_sub(1),
+        list,
+    })
 }
 
 /// A question as its block is written: `> [!question] text`, or `[!done]` when answered. Words on several lines keep them.
 pub fn question_md(done: bool, text: &str) -> String {
     let mark = if done { "[!done]" } else { "[!question]" };
     let mut ls = text.trim().lines();
-    let mut out = format!("> {mark} {}", ls.next().unwrap_or("").trim()).trim_end().to_string();
+    let mut out = format!("> {mark} {}", ls.next().unwrap_or("").trim())
+        .trim_end()
+        .to_string();
     for l in ls {
         out += &format!("\n> {l}");
     }
@@ -109,7 +139,11 @@ pub fn question_md(done: bool, text: &str) -> String {
 /// A question block with its mark turned over: only the mark is written anew, so the person's words, their line breaks and
 /// whatever Obsidian put after the mark (+ or -) stay as they were.
 pub fn with_marker(md: &str, done: bool) -> String {
-    let (from, to) = if done { ("[!question]", "[!done]") } else { ("[!done]", "[!question]") };
+    let (from, to) = if done {
+        ("[!question]", "[!done]")
+    } else {
+        ("[!done]", "[!question]")
+    };
     let lower = md.to_lowercase();
     match lower.find(from) {
         Some(i) => format!("{}{}{}", &md[..i], to, &md[i + from.len()..]),
@@ -120,7 +154,10 @@ pub fn with_marker(md: &str, done: bool) -> String {
 /// A callout with its kind changed: only the word in its first line's marker is written anew (`> [!question] …` → `> [!key] …`),
 /// so the words, the lines, the nested list and whatever Obsidian put after the marker (+ or -) stay as they were.
 pub(crate) fn with_kind(md: &str, kind: &str) -> String {
-    let (first, rest) = md.split_once('\n').map(|(a, b)| (a, Some(b))).unwrap_or((md, None));
+    let (first, rest) = md
+        .split_once('\n')
+        .map(|(a, b)| (a, Some(b)))
+        .unwrap_or((md, None));
     let out = match (first.find("[!"), first.find(']')) {
         (Some(a), Some(b)) if a < b => format!("{}[!{kind}{}", &first[..a], &first[b..]),
         _ => first.to_string(),
@@ -150,7 +187,16 @@ impl Found {
     }
 }
 
-fn scan(out: &mut Vec<Found>, r: &Rec, id: String, text: &str, titled: bool, title: String, kind: &'static str, every_kind: bool) {
+fn scan(
+    out: &mut Vec<Found>,
+    r: &Rec,
+    id: String,
+    text: &str,
+    titled: bool,
+    title: String,
+    kind: &'static str,
+    every_kind: bool,
+) {
     if r.get("template") == Some(&json!(true)) || !text.contains("[!") {
         return;
     }
@@ -160,8 +206,21 @@ fn scan(out: &mut Vec<Found>, r: &Rec, id: String, text: &str, titled: bool, tit
             continue;
         }
         let md = sub(&c, b.start, b.end);
-        if let Some(q) = if every_kind { callout_of(&md) } else { question_of(&md) } {
-            out.push(Found { page: id.clone(), n: i + 1, q, places: places_of(r), title: title.clone(), created: s(r, "created"), updated: s(r, "updated"), kind });
+        if let Some(q) = if every_kind {
+            callout_of(&md)
+        } else {
+            question_of(&md)
+        } {
+            out.push(Found {
+                page: id.clone(),
+                n: i + 1,
+                q,
+                places: places_of(r),
+                title: title.clone(),
+                created: s(r, "created"),
+                updated: s(r, "updated"),
+                kind,
+            });
         }
     }
 }
@@ -179,18 +238,54 @@ fn found_callouts(store: &Store) -> Vec<Found> {
 
 fn found_of(store: &Store, every_kind: bool) -> Vec<Found> {
     let mut out = vec![];
-    for r in store.notes().into_iter().chain(store.inbox()).chain(store.on_thread()) {
-        let kind = if s(r, "kind") == "question" { "question" } else { "note" };
-        scan(&mut out, r, s(r, "id"), &s(r, "text"), true, nb::title_of(&s(r, "text")), kind, every_kind);
+    for r in store
+        .notes()
+        .into_iter()
+        .chain(store.inbox())
+        .chain(store.on_thread())
+    {
+        let kind = if s(r, "kind") == "question" {
+            "question"
+        } else {
+            "note"
+        };
+        scan(
+            &mut out,
+            r,
+            s(r, "id"),
+            &s(r, "text"),
+            true,
+            nb::title_of(&s(r, "text")),
+            kind,
+            every_kind,
+        );
     }
     for r in store.days() {
-        scan(&mut out, r, s(r, "id"), &s(r, "text"), false, s(r, "day"), "day", every_kind);
+        scan(
+            &mut out,
+            r,
+            s(r, "id"),
+            &s(r, "text"),
+            false,
+            s(r, "day"),
+            "day",
+            every_kind,
+        );
     }
     for t in store.threads() {
         let mut r = Rec::new();
         r.insert("created".into(), t["created"].clone());
         r.insert("updated".into(), t["updated"].clone());
-        scan(&mut out, &r, crate::threadpage::page_id(&s(t, "id")), &s(t, "note"), false, s(t, "name"), "thread", every_kind);
+        scan(
+            &mut out,
+            &r,
+            crate::threadpage::page_id(&s(t, "id")),
+            &s(t, "note"),
+            false,
+            s(t, "name"),
+            "thread",
+            every_kind,
+        );
     }
     out
 }
@@ -200,13 +295,25 @@ pub fn in_chapter(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
     let mut out = vec![];
     for f in found(store).into_iter().filter(|f| !f.q.done) {
         for p in &f.places {
-            let Ok(a) = crate::anchors::py_parse(p) else { continue };
+            let Ok(a) = crate::anchors::py_parse(p) else {
+                continue;
+            };
             if a["kind"] == "lemma" || s(&a, "code") != code {
                 continue;
             }
-            let (c1, c2) = (a["c1"].as_u64().unwrap_or(0) as u32, a.get("c2").and_then(|x| x.as_u64()).map(|x| x as u32).unwrap_or(a["c1"].as_u64().unwrap_or(0) as u32));
+            let (c1, c2) = (
+                a["c1"].as_u64().unwrap_or(0) as u32,
+                a.get("c2")
+                    .and_then(|x| x.as_u64())
+                    .map(|x| x as u32)
+                    .unwrap_or(a["c1"].as_u64().unwrap_or(0) as u32),
+            );
             if c1 <= chapter && chapter <= c2 {
-                let v = if c1 == chapter { a["v1"].as_u64().unwrap_or(1) } else { 1 };
+                let v = if c1 == chapter {
+                    a["v1"].as_u64().unwrap_or(1)
+                } else {
+                    1
+                };
                 out.push(json!({"id": f.id(), "v": v, "text": f.q.text}));
                 break;
             }
@@ -219,7 +326,11 @@ pub fn in_chapter(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
 /// `page`: where it is written).
 pub fn entry(bible: &Bible, f: &Found) -> Value {
     let anchor = f.places.first().cloned().unwrap_or_default();
-    let label = if anchor.is_empty() { String::new() } else { nb::label(bible, &anchor) };
+    let label = if anchor.is_empty() {
+        String::new()
+    } else {
+        nb::label(bible, &anchor)
+    };
     json!({
         "id": f.id(), "kind": "question", "block": f.n, "page": f.page, "page_title": f.title, "page_kind": f.kind,
         "status": if f.q.done { "done" } else { "open" }, "placed": !anchor.is_empty(), "anchor": anchor, "label": label,
@@ -245,24 +356,49 @@ fn block_md(store: &Store, page: &str, n: usize) -> Result<(String, Question)> {
     let (_, text, titled) = pages::text_of(store, page)?;
     let c = chars(&text);
     let bs = split(&text, titled).1;
-    let b = bs.get(n - 1).ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
+    let b = bs
+        .get(n - 1)
+        .ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
     let md = sub(&c, b.start, b.end);
-    let q = question_of(&md).ok_or_else(|| bad(format!("Block {n} is not a question (a callout: > [!question] …).")))?;
+    let q = question_of(&md).ok_or_else(|| {
+        bad(format!(
+            "Block {n} is not a question (a callout: > [!question] …)."
+        ))
+    })?;
     Ok((md, q))
 }
 
 /// A question block answered (`done`), opened again, or (None) turned over: the callout's mark is written anew.
 pub fn set_done(bible: &Bible, store: &mut Store, id: &str, done: Option<bool>) -> Result<Value> {
-    let (page, n) = split_id(id).ok_or_else(|| bad("A question written in a page is named <page id>#<block number>."))?;
+    let (page, n) = split_id(id)
+        .ok_or_else(|| bad("A question written in a page is named <page id>#<block number>."))?;
     let (md, q) = block_md(store, page, n)?;
     let done = done.unwrap_or(!q.done);
-    pages::edit(bible, store, page, Edit::Set { n: n - 1, count: 1, text: &with_marker(&md, done) })?;
-    let f = found(store).into_iter().find(|f| f.page == page && f.n == n).ok_or_else(|| missing("That question is gone."))?;
+    pages::edit(
+        bible,
+        store,
+        page,
+        Edit::Set {
+            n: n - 1,
+            count: 1,
+            text: &with_marker(&md, done),
+        },
+    )?;
+    let f = found(store)
+        .into_iter()
+        .find(|f| f.page == page && f.n == n)
+        .ok_or_else(|| missing("That question is gone."))?;
     Ok(entry(bible, &f))
 }
 
 /// A new question block at the end of a page, or after block `after` (from 1). → the question.
-pub fn add(bible: &Bible, store: &mut Store, page: &str, text: &str, after: Option<usize>) -> Result<Value> {
+pub fn add(
+    bible: &Bible,
+    store: &mut Store,
+    page: &str,
+    text: &str,
+    after: Option<usize>,
+) -> Result<Value> {
     if text.trim().is_empty() {
         return Err(bad("Write the question."));
     }
@@ -274,29 +410,58 @@ pub fn add(bible: &Bible, store: &mut Store, page: &str, text: &str, after: Opti
         Some(_) => return Err(bad(format!("The page has {count} blocks."))),
         None => count.checked_sub(1),
     };
-    let v = pages::edit(bible, store, page, Edit::Add { after: at, text: &question_md(false, text) })?;
+    let v = pages::edit(
+        bible,
+        store,
+        page,
+        Edit::Add {
+            after: at,
+            text: &question_md(false, text),
+        },
+    )?;
     let n = v["n"].as_u64().unwrap_or(1) as usize;
-    let f = found(store).into_iter().find(|f| f.page == v["id"].as_str().unwrap_or(page) && f.n == n).ok_or_else(|| missing("That question is gone."))?;
+    let f = found(store)
+        .into_iter()
+        .find(|f| f.page == v["id"].as_str().unwrap_or(page) && f.n == n)
+        .ok_or_else(|| missing("That question is gone."))?;
     Ok(entry(bible, &f))
 }
 
 /// A callout's kind changed (`wb callout kind <page id>#<block number> KIND`; the window's kind menu on a callout's icon): the word in
 /// its marker is written anew and nothing else. → the callout as `callouts` lists it.
 pub fn set_kind(bible: &Bible, store: &mut Store, id: &str, kind: &str) -> Result<Value> {
-    let word = kind_word(kind).ok_or_else(|| bad("A callout's kind is question, answered, key or note."))?;
-    let (page, n) = split_id(id).ok_or_else(|| bad("A callout is named <page id>#<block number>."))?;
+    let word = kind_word(kind)
+        .ok_or_else(|| bad("A callout's kind is question, answered, key or note."))?;
+    let (page, n) =
+        split_id(id).ok_or_else(|| bad("A callout is named <page id>#<block number>."))?;
     let (_, text, titled) = pages::text_of(store, page)?;
     let c = chars(&text);
     let bs = split(&text, titled).1;
-    let b = bs.get(n - 1).ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
+    let b = bs
+        .get(n - 1)
+        .ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
     let md = sub(&c, b.start, b.end);
     if b.kind != "quote" || callout_of(&md).is_none() {
-        return Err(bad(format!("Block {n} is not a callout (> [!question] …, [!done], [!key], [!note]).")));
+        return Err(bad(format!(
+            "Block {n} is not a callout (> [!question] …, [!done], [!key], [!note])."
+        )));
     }
     // a block's link id (^abc123) is kept by the page's own rule for a rewrite
-    let out = pages::edit(bible, store, page, Edit::Set { n: n - 1, count: 1, text: &with_kind(&pages::without_block_id(&md), word) })?;
+    let out = pages::edit(
+        bible,
+        store,
+        page,
+        Edit::Set {
+            n: n - 1,
+            count: 1,
+            text: &with_kind(&pages::without_block_id(&md), word),
+        },
+    )?;
     let (pid, _, _) = pages::text_of(store, page)?;
-    let f = found_callouts(store).into_iter().find(|f| f.page == pid && f.n == n).ok_or_else(|| missing("That callout is gone."))?;
+    let f = found_callouts(store)
+        .into_iter()
+        .find(|f| f.page == pid && f.n == n)
+        .ok_or_else(|| missing("That callout is gone."))?;
     let _ = out;
     Ok(callout_entry(&f))
 }
@@ -313,21 +478,41 @@ fn callout_entry(f: &Found) -> Value {
 /// Ctrl+K and by a List in a page grouped by callout kind. `{callouts: [...], counts: {question, done, key, note}}`; the counts are
 /// of the pages asked about, before `kind`.
 pub fn callouts(store: &Store, kind: Option<&str>, page: Option<&str>) -> Result<Value> {
-    let want = match kind.map(str::trim).filter(|k| !k.is_empty() && !k.eq_ignore_ascii_case("all")) {
-        Some(k) => Some(kind_word(k).ok_or_else(|| bad("--kind is question, answered, key, note or all."))?),
+    let want = match kind
+        .map(str::trim)
+        .filter(|k| !k.is_empty() && !k.eq_ignore_ascii_case("all"))
+    {
+        Some(k) => Some(
+            kind_word(k).ok_or_else(|| bad("--kind is question, answered, key, note or all."))?,
+        ),
         None => None,
     };
     let page = match page {
         Some(p) => Some(pages::text_of(store, p)?.0),
         None => None,
     };
-    let mut all: Vec<Found> = found_callouts(store).into_iter().filter(|f| page.as_ref().is_none_or(|p| *p == f.page)).collect();
-    all.sort_by(|x, y| y.updated.cmp(&x.updated).then_with(|| x.page.cmp(&y.page)).then(x.n.cmp(&y.n)));
+    let mut all: Vec<Found> = found_callouts(store)
+        .into_iter()
+        .filter(|f| page.as_ref().is_none_or(|p| *p == f.page))
+        .collect();
+    all.sort_by(|x, y| {
+        y.updated
+            .cmp(&x.updated)
+            .then_with(|| x.page.cmp(&y.page))
+            .then(x.n.cmp(&y.n))
+    });
     let mut counts = serde_json::Map::new();
     for (w, _) in CALLOUT_KINDS {
-        counts.insert(w.into(), json!(all.iter().filter(|f| f.q.kind == w).count()));
+        counts.insert(
+            w.into(),
+            json!(all.iter().filter(|f| f.q.kind == w).count()),
+        );
     }
-    let rows: Vec<Value> = all.iter().filter(|f| want.is_none_or(|w| f.q.kind == w)).map(callout_entry).collect();
+    let rows: Vec<Value> = all
+        .iter()
+        .filter(|f| want.is_none_or(|w| f.q.kind == w))
+        .map(callout_entry)
+        .collect();
     Ok(json!({"callouts": rows, "counts": counts}))
 }
 
@@ -347,7 +532,15 @@ pub fn at(bible: &Bible, store: &Store, anchor: &str, status: &str) -> Result<Va
             continue;
         }
         let here = f.places.iter().any(|p| *p == a);
-        let near = !lemma && f.places.iter().any(|p| !p.is_empty() && !p.starts_with('H') && !p.starts_with('G') && crate::anchors::py_parse(p).map(|q| crate::studyapi::overlaps(&res, &q)).unwrap_or(false));
+        let near = !lemma
+            && f.places.iter().any(|p| {
+                !p.is_empty()
+                    && !p.starts_with('H')
+                    && !p.starts_with('G')
+                    && crate::anchors::py_parse(p)
+                        .map(|q| crate::studyapi::overlaps(&res, &q))
+                        .unwrap_or(false)
+            });
         if here || near {
             let mut e = entry(bible, &f);
             e["here"] = json!(here);
@@ -362,15 +555,28 @@ pub fn at(bible: &Bible, store: &Store, anchor: &str, status: &str) -> Result<Va
 /// Every question, trails and question blocks, newest first (`status`: open, done or all).
 pub fn list(bible: &Bible, store: &Store, status: &str) -> Result<Value> {
     let mut v = nb::questions(bible, store, status)?;
-    v["questions"].as_array_mut().map(|a| a.sort_by(|x, y| y["created"].as_str().cmp(&x["created"].as_str())));
+    v["questions"]
+        .as_array_mut()
+        .map(|a| a.sort_by(|x, y| y["created"].as_str().cmp(&x["created"].as_str())));
     Ok(v)
 }
 
 /// A trail folded into a page: it becomes a question block at the page's end, and the trail goes to .trash. The page must
 /// be at the trail's place (or hold it as another place); `also` gives the page that place instead. Nothing is lost: the
 /// block takes the page's places. → the question and what was done (so it can be undone with `unfold`).
-pub fn fold(bible: &Bible, store: &mut Store, trail: &str, page: &str, also: bool) -> Result<Value> {
-    let t = store.trails().into_iter().find(|t| s(t, "id") == trail).cloned().ok_or_else(|| missing("No such question at a place (a trail)."))?;
+pub fn fold(
+    bible: &Bible,
+    store: &mut Store,
+    trail: &str,
+    page: &str,
+    also: bool,
+) -> Result<Value> {
+    let t = store
+        .trails()
+        .into_iter()
+        .find(|t| s(t, "id") == trail)
+        .cloned()
+        .ok_or_else(|| missing("No such question at a place (a trail)."))?;
     let anchor = s(&t, "anchor");
     let (pid, _, _) = pages::text_of(store, page)?;
     if pid.starts_with("thread:") || crate::store::is_day(&pid) || pid.starts_with("d_") {
@@ -401,26 +607,44 @@ pub fn fold(bible: &Bible, store: &mut Store, trail: &str, page: &str, also: boo
 
 /// A question block given its own place again: a trail at one of the page's places (first by default), and the block taken out.
 pub fn unfold(bible: &Bible, store: &mut Store, id: &str, at: Option<&str>) -> Result<Value> {
-    let (page, n) = split_id(id).ok_or_else(|| bad("A question written in a page is named <page id>#<block number>."))?;
+    let (page, n) = split_id(id)
+        .ok_or_else(|| bad("A question written in a page is named <page id>#<block number>."))?;
     let (md, _) = block_md(store, page, n)?;
     let q = read_callout(&md, true).expect("block_md validated the callout");
     let (pid, _, _) = pages::text_of(store, page)?;
     if pid.starts_with("thread:") || pid.starts_with("d_") {
-        return Err(bad("Only a question in a note or a page at a place can become a trail."));
+        return Err(bad(
+            "Only a question in a note or a page at a place can become a trail.",
+        ));
     }
     let rec = store.find_note(&pid)?;
     let places = places_of(&rec);
-    let first = places.first().ok_or_else(|| bad("The page has no place; a question at a verse needs one."))?;
+    let first = places
+        .first()
+        .ok_or_else(|| bad("The page has no place; a question at a verse needs one."))?;
     let anchor = at.unwrap_or(first);
     if !places.iter().any(|p| p == anchor) {
         return Err(bad("Choose one of the page's places."));
     }
-    let quote = if anchor == first { s(&rec, "quote") } else { s(&crate::anchors::resolve(bible, anchor)?, "quote") };
+    let quote = if anchor == first {
+        s(&rec, "quote")
+    } else {
+        s(&crate::anchors::resolve(bible, anchor)?, "quote")
+    };
     let trail = store.add_trail(anchor, &q.text, &quote)?;
     if q.done {
         store.set_trail_status(&s(&trail, "id"), "done")?;
     }
-    pages::edit(bible, store, &pid, Edit::Set { n: n - 1, count: 1, text: "" })?;
+    pages::edit(
+        bible,
+        store,
+        &pid,
+        Edit::Set {
+            n: n - 1,
+            count: 1,
+            text: "",
+        },
+    )?;
     Ok(json!({"trail": trail["id"], "page": pid, "text": q.text}))
 }
 
@@ -430,13 +654,44 @@ mod tests {
 
     #[test]
     fn a_callout_is_a_question_open_or_answered() {
-        assert_eq!(question_of("> [!question] How do the two numbers relate?"), Some(Question { text: "How do the two numbers relate?".into(), done: false, kind: "question", first: "How do the two numbers relate?".into(), more: 0, list: false }));
-        assert_eq!(question_of("> [!done] Answered one\n> over two lines"), Some(Question { text: "Answered one over two lines".into(), done: true, kind: "done", first: "Answered one".into(), more: 1, list: false }));
-        assert_eq!(question_of("> [!QUESTION]- Folded in Obsidian").unwrap().text, "Folded in Obsidian");
+        assert_eq!(
+            question_of("> [!question] How do the two numbers relate?"),
+            Some(Question {
+                text: "How do the two numbers relate?".into(),
+                done: false,
+                kind: "question",
+                first: "How do the two numbers relate?".into(),
+                more: 0,
+                list: false
+            })
+        );
+        assert_eq!(
+            question_of("> [!done] Answered one\n> over two lines"),
+            Some(Question {
+                text: "Answered one over two lines".into(),
+                done: true,
+                kind: "done",
+                first: "Answered one".into(),
+                more: 1,
+                list: false
+            })
+        );
+        assert_eq!(
+            question_of("> [!QUESTION]- Folded in Obsidian")
+                .unwrap()
+                .text,
+            "Folded in Obsidian"
+        );
         assert_eq!(question_of("> [!note] Not one"), None);
         let k = callout_of("> [!key] A point\n> second line\n> - item\n>   - nested").unwrap();
-        assert_eq!((k.kind, k.first.as_str(), k.more, k.list), ("key", "A point", 3, true));
-        assert_eq!(with_kind("> [!question]- Folded\n> more", "done"), "> [!done]- Folded\n> more");
+        assert_eq!(
+            (k.kind, k.first.as_str(), k.more, k.list),
+            ("key", "A point", 3, true)
+        );
+        assert_eq!(
+            with_kind("> [!question]- Folded\n> more", "done"),
+            "> [!done]- Folded\n> more"
+        );
         assert_eq!(kind_word("Key point"), Some("key"));
         assert_eq!(kind_word("Answered"), Some("done"));
         assert_eq!(question_of("> a plain quote"), None);
@@ -445,9 +700,15 @@ mod tests {
 
     #[test]
     fn a_question_is_written_as_the_callout_it_was_read_from() {
-        for (md, done) in [("> [!question] A question", false), ("> [!done] A question\n> on two lines", true)] {
+        for (md, done) in [
+            ("> [!question] A question", false),
+            ("> [!done] A question\n> on two lines", true),
+        ] {
             let q = question_of(md).unwrap();
-            assert_eq!(question_md(q.done, &q.text.replace(" on two lines", "\non two lines")), md);
+            assert_eq!(
+                question_md(q.done, &q.text.replace(" on two lines", "\non two lines")),
+                md
+            );
             assert_eq!(q.done, done);
         }
     }

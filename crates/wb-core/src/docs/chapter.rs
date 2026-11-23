@@ -76,12 +76,23 @@ fn color(value: &str) -> &str {
         "blue" => "#5694d6",
         "pink" => "#dc64a0",
         "orange" => "#e88c3c",
-        c if c.len() == 7 && c.starts_with('#') && c[1..].bytes().all(|x| x.is_ascii_hexdigit()) => c,
+        c if c.len() == 7
+            && c.starts_with('#')
+            && c[1..].bytes().all(|x| x.is_ascii_hexdigit()) =>
+        {
+            c
+        }
         _ => "",
     }
 }
 
-fn paint(margin: &mut Margin<'_>, verse: &Value, styles: &mut [Style], marks: &[Mark], underline: bool) {
+fn paint(
+    margin: &mut Margin<'_>,
+    verse: &Value,
+    styles: &mut [Style],
+    marks: &[Mark],
+    underline: bool,
+) {
     for mark in marks {
         let color = color(&mark.color);
         if color.is_empty() {
@@ -89,7 +100,9 @@ fn paint(margin: &mut Margin<'_>, verse: &Value, styles: &mut [Style], marks: &[
         }
         let at = json!(&mark.at);
         for (start, end) in margin.anchor_spans(verse, at.as_object().unwrap()) {
-            let Some(span) = styles.get_mut(start..end) else { continue };
+            let Some(span) = styles.get_mut(start..end) else {
+                continue;
+            };
             for style in span {
                 if underline {
                     if !style.underlines.iter().any(|c| c == color) {
@@ -103,7 +116,15 @@ fn paint(margin: &mut Margin<'_>, verse: &Value, styles: &mut [Style], marks: &[
     }
 }
 
-fn chapter_verse(margin: &mut Margin<'_>, book: i64, chapter: i64, verse: &Value, words: Option<&Verse>, highlights: &[Mark], threads: &[Mark]) -> Value {
+fn chapter_verse(
+    margin: &mut Margin<'_>,
+    book: i64,
+    chapter: i64,
+    verse: &Value,
+    words: Option<&Verse>,
+    highlights: &[Mark],
+    threads: &[Mark],
+) -> Value {
     let text = verse["text"].as_str().unwrap();
     let chars: Vec<char> = text.chars().collect();
     let mut styles = vec![Style::default(); chars.len()];
@@ -111,7 +132,9 @@ fn chapter_verse(margin: &mut Margin<'_>, book: i64, chapter: i64, verse: &Value
     if let Some(words) = words {
         if let Some(offsets) = margin.word_offsets(book, chapter, number, text) {
             for (word, (start, end)) in words.words.iter().zip(offsets) {
-                let Some(span) = styles.get_mut(start..end) else { continue };
+                let Some(span) = styles.get_mut(start..end) else {
+                    continue;
+                };
                 for style in span {
                     style.red = word.wj;
                     style.italic = word.italic;
@@ -131,13 +154,27 @@ fn chapter_verse(margin: &mut Margin<'_>, book: i64, chapter: i64, verse: &Value
             "smallcaps": style.smallcaps, "highlight": style.highlight, "underlines": style.underlines}));
         start = end;
     }
-    let para = words.and_then(|v| v.words.first()).map(|w| w.para.as_str()).unwrap_or("");
-    let indent = match para { "q1" => 1, "q2" => 2, _ => 0 };
+    let para = words
+        .and_then(|v| v.words.first())
+        .map(|w| w.para.as_str())
+        .unwrap_or("");
+    let indent = match para {
+        "q1" => 1,
+        "q2" => 2,
+        _ => 0,
+    };
     json!({"number": number.to_string(), "paragraph": !para.is_empty(), "indent": indent, "runs": runs})
 }
 
 /// Save the first KJV chapter named by `reference`, like the legacy `wb pdf` command.
-pub fn save(bible: &Bible, store: &Store, folders: &ExportFolders, reference: &str, mine: bool, threads: &[String]) -> Result<Value> {
+pub fn save(
+    bible: &Bible,
+    store: &Store,
+    folders: &ExportFolders,
+    reference: &str,
+    mine: bool,
+    threads: &[String],
+) -> Result<Value> {
     guard(&store.root)?;
     let span = parse_span(reference, bible.books())?;
     let chapter = bible.chapter(&span.book.code, span.c1)?;
@@ -145,31 +182,67 @@ pub fn save(bible: &Bible, store: &Store, folders: &ExportFolders, reference: &s
     let passage = scripture::passage(bible, &title, "KJV")?;
     let rows = passage["verses"].as_array().unwrap();
     let mut margin = Margin::new(bible, store)?;
-    let marks = if mine || !threads.is_empty() { chapter_marks(store, &chapter.code, chapter.chapter)? } else { Default::default() };
-    let highlights = if mine { marks.highlights.as_slice() } else { &[] };
-    let underlines: Vec<_> = marks.threads.into_iter().filter(|m| threads.contains(&m.id)).collect();
-    let verses: Vec<_> = rows.iter().map(|verse| {
-        let n = verse["v"].as_u64().unwrap() as u32;
-        let words = chapter.verses.iter().find(|v| v.v == n);
-        chapter_verse(&mut margin, span.book.id as i64, span.c1 as i64, verse, words, highlights, &underlines)
-    }).collect();
-    let notes: Vec<_> = studyapi::chapter_notes(bible, store, &chapter.code, chapter.chapter as i64)?.into_iter().map(|n| {
-        let quote = n["quote"].as_str().unwrap_or("");
-        let excerpt = if quote.is_empty() || matches!(n["kind"].as_str(), Some("verse" | "verses")) {
-            String::new()
-        } else {
-            let truncated = quote.chars().count() > 90;
-            let short: String = quote.chars().take(if truncated { 89 } else { 90 }).collect();
-            format!("“{short}{}”", if truncated { "…" } else { "" })
-        };
-        json!({"label": n["label"], "excerpt": excerpt, "text": n["text"]})
-    }).collect();
+    let marks = if mine || !threads.is_empty() {
+        chapter_marks(store, &chapter.code, chapter.chapter)?
+    } else {
+        Default::default()
+    };
+    let highlights = if mine {
+        marks.highlights.as_slice()
+    } else {
+        &[]
+    };
+    let underlines: Vec<_> = marks
+        .threads
+        .into_iter()
+        .filter(|m| threads.contains(&m.id))
+        .collect();
+    let verses: Vec<_> = rows
+        .iter()
+        .map(|verse| {
+            let n = verse["v"].as_u64().unwrap() as u32;
+            let words = chapter.verses.iter().find(|v| v.v == n);
+            chapter_verse(
+                &mut margin,
+                span.book.id as i64,
+                span.c1 as i64,
+                verse,
+                words,
+                highlights,
+                &underlines,
+            )
+        })
+        .collect();
+    let notes: Vec<_> =
+        studyapi::chapter_notes(bible, store, &chapter.code, chapter.chapter as i64)?
+            .into_iter()
+            .map(|n| {
+                let quote = n["quote"].as_str().unwrap_or("");
+                let excerpt =
+                    if quote.is_empty() || matches!(n["kind"].as_str(), Some("verse" | "verses")) {
+                        String::new()
+                    } else {
+                        let truncated = quote.chars().count() > 90;
+                        let short: String = quote
+                            .chars()
+                            .take(if truncated { 89 } else { 90 })
+                            .collect();
+                        format!("“{short}{}”", if truncated { "…" } else { "" })
+                    };
+                json!({"label": n["label"], "excerpt": excerpt, "text": n["text"]})
+            })
+            .collect();
     let now = chrono::Local::now();
     let data = json!({"title": title, "subtitle": chapter.title, "date": now.format("%B %e, %Y").to_string().replace("  ", " "), "verses": verses, "notes": notes});
     let (bytes, text, pages) = deck::render_template(TEMPLATE, &data, "chapter")?;
-    let expected: Vec<_> = rows.iter().map(|v| v["text"].as_str().unwrap().to_string()).collect();
+    let expected: Vec<_> = rows
+        .iter()
+        .map(|v| v["text"].as_str().unwrap().to_string())
+        .collect();
     if !missing_verses(&text, &expected).is_empty() {
-        return Err(bad("The finished PDF was missing scripture, so it was not kept."));
+        return Err(bad(
+            "The finished PDF was missing scripture, so it was not kept.",
+        ));
     }
     let out = folders.preferred();
     fs::create_dir_all(out)?;
@@ -189,7 +262,12 @@ pub fn save(bible: &Bible, store: &Store, folders: &ExportFolders, reference: &s
             Err(e) => return Err(e.into()),
         }
     };
-    let refs: Vec<_> = rows.iter().map(|v| format!("{} (KJV)", v["ref"].as_str().unwrap())).collect();
-    Ok(json!({"name": path.file_name().unwrap().to_string_lossy(), "path": path, "size": bytes.len(),
-        "checked": {"verses": rows.len(), "refs": refs, "pages": pages}, "notes": notes.len()}))
+    let refs: Vec<_> = rows
+        .iter()
+        .map(|v| format!("{} (KJV)", v["ref"].as_str().unwrap()))
+        .collect();
+    Ok(
+        json!({"name": path.file_name().unwrap().to_string_lossy(), "path": path, "size": bytes.len(),
+        "checked": {"verses": rows.len(), "refs": refs, "pages": pages}, "notes": notes.len()}),
+    )
 }

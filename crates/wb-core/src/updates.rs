@@ -12,14 +12,16 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// The release file. It is the address in `app/src-tauri/tauri.release.conf.json` (a test holds the two together).
-pub const FEED: &str = "https://github.com/bradyg7/wordbench-releases/releases/latest/download/latest.json";
+pub const FEED: &str =
+    "https://github.com/bradyg7/wordbench-releases/releases/latest/download/latest.json";
 /// The version running now.
 pub const INSTALLED: &str = env!("CARGO_PKG_VERSION");
 /// The commit this copy was built from.
 pub const COMMIT: &str = env!("WB_BUILD_COMMIT");
 
 /// Said when a look could not be made (U-11); it changes nothing and says what still works.
-pub const COULD_NOT_REACH: &str = "Could not reach the update site. Bible Workbench works as it is.";
+pub const COULD_NOT_REACH: &str =
+    "Could not reach the update site. Bible Workbench works as it is.";
 
 /// Whether this build has the update code switched on (the Cargo feature `updater`).
 pub fn updates_itself() -> bool {
@@ -81,12 +83,20 @@ pub struct Found {
 
 impl Found {
     fn to_json(&self) -> Value {
-        let history: Vec<Value> = self.history.iter().map(|r| json!({ "version": r.version, "date": r.date, "notes": r.notes })).collect();
+        let history: Vec<Value> = self
+            .history
+            .iter()
+            .map(|r| json!({ "version": r.version, "date": r.date, "notes": r.notes }))
+            .collect();
         json!({ "version": self.version, "date": self.date, "size": self.size, "moved": self.moved, "study": self.study, "notes": self.notes, "history": history })
     }
     /// This release's notes as a release.
     pub fn release(&self) -> Release {
-        Release { version: self.version.clone(), date: self.date.clone(), notes: self.notes.clone() }
+        Release {
+            version: self.version.clone(),
+            date: self.date.clone(),
+            notes: self.notes.clone(),
+        }
     }
 }
 
@@ -114,7 +124,10 @@ pub fn notes_lines(notes: &str) -> (Option<String>, Option<String>) {
             study = Some(text.to_string());
         }
     }
-    (Some(moved.unwrap_or_else(|| "Nothing was moved or removed.".to_string())), study)
+    (
+        Some(moved.unwrap_or_else(|| "Nothing was moved or removed.".to_string())),
+        study,
+    )
 }
 
 /// What a look answered.
@@ -158,13 +171,26 @@ pub fn size_text(bytes: u64) -> String {
 /// Reads the release file's text: the version it names, its date and its size. What it says about this computer's own
 /// platform (the signature and address of the installer) is the installer's business, not the look's.
 pub fn parse_feed(text: &str) -> Result<Found, String> {
-    let bad = || "The update site answered, but not with a release file. Bible Workbench works as it is.".to_string();
+    let bad = || {
+        "The update site answered, but not with a release file. Bible Workbench works as it is."
+            .to_string()
+    };
     let v: Value = serde_json::from_str(text).map_err(|_| bad())?;
-    let version = v.get("version").and_then(Value::as_str).ok_or_else(bad)?.trim().trim_start_matches('v').to_string();
+    let version = v
+        .get("version")
+        .and_then(Value::as_str)
+        .ok_or_else(bad)?
+        .trim()
+        .trim_start_matches('v')
+        .to_string();
     if version_parts(&version).is_none() {
         return Err(bad());
     }
-    let date = v.get("pub_date").and_then(Value::as_str).map(|d| d.chars().take(10).collect()).unwrap_or_default();
+    let date = v
+        .get("pub_date")
+        .and_then(Value::as_str)
+        .map(|d| d.chars().take(10).collect())
+        .unwrap_or_default();
     let size = v.get("size").and_then(Value::as_u64).unwrap_or(0);
     let text = v.get("notes").and_then(Value::as_str).unwrap_or("");
     let (moved, study) = notes_lines(text);
@@ -175,22 +201,52 @@ pub fn parse_feed(text: &str) -> Result<Found, String> {
         .map(|a| {
             a.iter()
                 .filter_map(|r| {
-                    let version = r.get("version")?.as_str()?.trim().trim_start_matches('v').to_string();
+                    let version = r
+                        .get("version")?
+                        .as_str()?
+                        .trim()
+                        .trim_start_matches('v')
+                        .to_string();
                     version_parts(&version)?;
-                    let date = r.get("pub_date").and_then(Value::as_str).map(|d| d.chars().take(10).collect()).unwrap_or_default();
-                    Some(Release { version, date, notes: r.get("notes").and_then(Value::as_str).unwrap_or("").to_string() })
+                    let date = r
+                        .get("pub_date")
+                        .and_then(Value::as_str)
+                        .map(|d| d.chars().take(10).collect())
+                        .unwrap_or_default();
+                    Some(Release {
+                        version,
+                        date,
+                        notes: r
+                            .get("notes")
+                            .and_then(Value::as_str)
+                            .unwrap_or("")
+                            .to_string(),
+                    })
                 })
                 .collect()
         })
         .unwrap_or_default();
-    Ok(Found { version, date, size, moved, study, notes: text.to_string(), history })
+    Ok(Found {
+        version,
+        date,
+        size,
+        moved,
+        study,
+        notes: text.to_string(),
+        history,
+    })
 }
 
 /// Where the feed is read from: `WB_UPDATE_FEED` (a test release: a file, or an address) or the release address.
 /// Anything that is not HTTPS is refused (U-12), except a file and this computer's own loopback address for a test feed.
 pub fn feed_address() -> Result<String, String> {
-    let want = std::env::var("WB_UPDATE_FEED").ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
-    let Some(url) = want else { return Ok(FEED.to_string()) };
+    let want = std::env::var("WB_UPDATE_FEED")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    let Some(url) = want else {
+        return Ok(FEED.to_string());
+    };
     check_address(&url)?;
     Ok(url)
 }
@@ -206,12 +262,19 @@ fn check_address(url: &str) -> Result<(), String> {
         return Ok(());
     }
     if let Some(rest) = lower.strip_prefix("http://") {
-        let host = if rest.starts_with('[') { "[::1]" } else { rest.split(['/', ':']).next().unwrap_or("") };
+        let host = if rest.starts_with('[') {
+            "[::1]"
+        } else {
+            rest.split(['/', ':']).next().unwrap_or("")
+        };
         if matches!(host, "127.0.0.1" | "localhost" | "[::1]") {
             return Ok(());
         }
     }
-    Err("The update address is not HTTPS, so it was not used. Bible Workbench works as it is.".into())
+    Err(
+        "The update address is not HTTPS, so it was not used. Bible Workbench works as it is."
+            .into(),
+    )
 }
 
 /// The release file's text, from the one address. This is the only network call the app makes by itself.
@@ -221,7 +284,10 @@ pub fn fetch_feed() -> Result<String, String> {
     }
     let url = feed_address()?;
     if !url.contains("://") || url.to_lowercase().starts_with("file://") {
-        let path = url.strip_prefix("file:///").or_else(|| url.strip_prefix("file://")).unwrap_or(&url);
+        let path = url
+            .strip_prefix("file:///")
+            .or_else(|| url.strip_prefix("file://"))
+            .unwrap_or(&url);
         return fs::read_to_string(path).map_err(|_| COULD_NOT_REACH.to_string());
     }
     get(&url)
@@ -230,9 +296,19 @@ pub fn fetch_feed() -> Result<String, String> {
 #[cfg(feature = "updater")]
 fn get(url: &str) -> Result<String, String> {
     // One GET of the release file: no query, no cookie, nothing about the person, the licence or the study folder.
-    let agent: ureq::Agent = ureq::Agent::config_builder().timeout_global(Some(std::time::Duration::from_secs(15))).build().into();
-    let mut r = agent.get(url).call().map_err(|_| COULD_NOT_REACH.to_string())?;
-    r.body_mut().with_config().limit(1_000_000).read_to_string().map_err(|_| COULD_NOT_REACH.to_string())
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .timeout_global(Some(std::time::Duration::from_secs(15)))
+        .build()
+        .into();
+    let mut r = agent
+        .get(url)
+        .call()
+        .map_err(|_| COULD_NOT_REACH.to_string())?;
+    r.body_mut()
+        .with_config()
+        .limit(1_000_000)
+        .read_to_string()
+        .map_err(|_| COULD_NOT_REACH.to_string())
 }
 
 #[cfg(not(feature = "updater"))]
@@ -275,19 +351,31 @@ impl Updates {
     }
 
     fn read(&self) -> Map<String, Value> {
-        fs::read_to_string(self.file()).ok().and_then(|t| serde_json::from_str::<Value>(&t).ok()).and_then(|v| v.as_object().cloned()).unwrap_or_default()
+        fs::read_to_string(self.file())
+            .ok()
+            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default()
     }
 
     fn write(&self, state: &Map<String, Value>) -> Result<(), String> {
         fs::create_dir_all(&self.dir).map_err(|e| e.to_string())?;
         let tmp = self.dir.join("state.json.tmp");
-        fs::write(&tmp, serde_json::to_string_pretty(&Value::Object(state.clone())).unwrap()).map_err(|e| e.to_string())?;
+        fs::write(
+            &tmp,
+            serde_json::to_string_pretty(&Value::Object(state.clone())).unwrap(),
+        )
+        .map_err(|e| e.to_string())?;
         fs::rename(&tmp, self.file()).map_err(|e| e.to_string())
     }
 
     /// "Look for updates".
     pub fn look(&self) -> Look {
-        self.read().get("look").and_then(Value::as_str).and_then(Look::parse).unwrap_or(Look::Open)
+        self.read()
+            .get("look")
+            .and_then(Value::as_str)
+            .and_then(Look::parse)
+            .unwrap_or(Look::Open)
     }
 
     pub fn set_look(&self, look: Look) -> Result<(), String> {
@@ -302,7 +390,11 @@ impl Updates {
 
     /// When the last look was made, if one was.
     pub fn last_look(&self) -> Option<DateTime<Utc>> {
-        self.read().get("last_look").and_then(Value::as_str).and_then(|t| DateTime::parse_from_rfc3339(t).ok()).map(|t| t.with_timezone(&Utc))
+        self.read()
+            .get("last_look")
+            .and_then(Value::as_str)
+            .and_then(|t| DateTime::parse_from_rfc3339(t).ok())
+            .map(|t| t.with_timezone(&Utc))
     }
 
     /// A newer release known from an earlier look; None once that version (or a later one) is the one running.
@@ -319,7 +411,13 @@ impl Updates {
             .and_then(Value::as_array)
             .map(|a| {
                 a.iter()
-                    .filter_map(|r| Some(Release { version: r.get("version")?.as_str()?.to_string(), date: r.get("date").and_then(Value::as_str).unwrap_or("").into(), notes: r.get("notes").and_then(Value::as_str).unwrap_or("").into() }))
+                    .filter_map(|r| {
+                        Some(Release {
+                            version: r.get("version")?.as_str()?.to_string(),
+                            date: r.get("date").and_then(Value::as_str).unwrap_or("").into(),
+                            notes: r.get("notes").and_then(Value::as_str).unwrap_or("").into(),
+                        })
+                    })
                     .collect()
             })
             .unwrap_or_default();
@@ -353,7 +451,11 @@ impl Updates {
     pub fn release(&self, version: &str) -> Result<Release, String> {
         let want = version.trim().trim_start_matches('v');
         if version_parts(want) == version_parts(INSTALLED) {
-            return Ok(Release { version: INSTALLED.to_string(), date: String::new(), notes: notes::installed_notes().to_string() });
+            return Ok(Release {
+                version: INSTALLED.to_string(),
+                date: String::new(),
+                notes: notes::installed_notes().to_string(),
+            });
         }
         self.releases()
             .into_iter()
@@ -384,9 +486,13 @@ impl Updates {
             None => {
                 let all = self.releases();
                 if all.is_empty() {
-                    return Ok(json!({ "releases": [notes::to_json(&self.release(INSTALLED)?, true)] }));
+                    return Ok(
+                        json!({ "releases": [notes::to_json(&self.release(INSTALLED)?, true)] }),
+                    );
                 }
-                Ok(json!({ "releases": all.iter().enumerate().map(|(i, r)| notes::to_json(r, i == 0)).collect::<Vec<_>>() }))
+                Ok(
+                    json!({ "releases": all.iter().enumerate().map(|(i, r)| notes::to_json(r, i == 0)).collect::<Vec<_>>() }),
+                )
             }
         }
     }
@@ -395,7 +501,10 @@ impl Updates {
     pub fn skip(&self, version: Option<&str>) -> Result<String, String> {
         let v = match version.filter(|v| !v.trim().is_empty()) {
             Some(v) => v.trim().trim_start_matches('v').to_string(),
-            None => self.newer().map(|f| f.version).ok_or("There is no newer version to set aside.")?,
+            None => self
+                .newer()
+                .map(|f| f.version)
+                .ok_or("There is no newer version to set aside.")?,
         };
         if version_parts(&v).is_none() {
             return Err(format!("“{v}” is not a version."));
@@ -403,7 +512,9 @@ impl Updates {
         let mut s = self.read();
         s.insert("skipped".into(), json!(v));
         self.write(&s)?;
-        Ok(format!("Bible Workbench {v} is set aside. The dot comes back for a newer version."))
+        Ok(format!(
+            "Bible Workbench {v} is set aside. The dot comes back for a newer version."
+        ))
     }
 
     /// `wb update skip --clear`: puts the set-aside version back.
@@ -411,28 +522,43 @@ impl Updates {
         let mut s = self.read();
         let had = s.remove("skipped").is_some();
         self.write(&s)?;
-        Ok(if had { "The set-aside version is no longer set aside.".into() } else { "No version was set aside.".into() })
+        Ok(if had {
+            "The set-aside version is no longer set aside.".into()
+        } else {
+            "No version was set aside.".into()
+        })
     }
 
     /// The version set aside, if any.
     pub fn skipped(&self) -> Option<String> {
-        self.read().get("skipped").and_then(Value::as_str).map(str::to_string)
+        self.read()
+            .get("skipped")
+            .and_then(Value::as_str)
+            .map(str::to_string)
     }
 
     /// Whether the newer version is set aside (no dot).
     fn is_skipped(&self, f: &Found) -> bool {
-        self.skipped().is_some_and(|v| version_parts(&v) == version_parts(&f.version))
+        self.skipped()
+            .is_some_and(|v| version_parts(&v) == version_parts(&f.version))
     }
 
     /// A look, made now by hand (Check now, `wb update check`): the answer is kept, with the time. A look that fails
     /// changes nothing.
-    pub fn check(&self, now: DateTime<Utc>, fetch: &dyn Fn() -> Result<String, String>) -> Result<Answer, String> {
+    pub fn check(
+        &self,
+        now: DateTime<Utc>,
+        fetch: &dyn Fn() -> Result<String, String>,
+    ) -> Result<Answer, String> {
         if !updates_itself() {
             return Err(source_line());
         }
         let found = parse_feed(&fetch()?)?;
         let mut s = self.read();
-        s.insert("last_look".into(), json!(now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)));
+        s.insert(
+            "last_look".into(),
+            json!(now.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)),
+        );
         let answer = if newer_than(&found.version, INSTALLED) {
             s.insert("newer".into(), found.to_json());
             Answer::Newer(found)
@@ -447,12 +573,22 @@ impl Updates {
     /// Whether the app should look by itself now: the setting says *When the app opens*, `no_check` (WB_NO_UPDATE_CHECK)
     /// is not set, and it has not looked in 24 hours (U-3).
     pub fn due(&self, now: DateTime<Utc>, no_check: bool) -> bool {
-        updates_itself() && !no_check && self.look() == Look::Open && self.last_look().map_or(true, |t| now - t >= Duration::hours(24))
+        updates_itself()
+            && !no_check
+            && self.look() == Look::Open
+            && self
+                .last_look()
+                .map_or(true, |t| now - t >= Duration::hours(24))
     }
 
     /// The look the app makes by itself, ten seconds after the reader has drawn. None when it is not due, or when it
     /// failed (nothing is shown and nothing changes); Some(found) only when a newer release is known.
-    pub fn look_by_itself(&self, now: DateTime<Utc>, no_check: bool, fetch: &dyn Fn() -> Result<String, String>) -> Option<Found> {
+    pub fn look_by_itself(
+        &self,
+        now: DateTime<Utc>,
+        no_check: bool,
+        fetch: &dyn Fn() -> Result<String, String>,
+    ) -> Option<Found> {
         if !self.due(now, no_check) {
             return None;
         }
@@ -469,7 +605,11 @@ impl Updates {
 
     /// The app's own look, made ten seconds after the reader has drawn: `WB_NO_UPDATE_CHECK` is read here.
     pub fn look_by_itself_now(&self) -> Option<Found> {
-        self.look_by_itself(Utc::now(), std::env::var("WB_NO_UPDATE_CHECK").is_ok(), &fetch_feed)
+        self.look_by_itself(
+            Utc::now(),
+            std::env::var("WB_NO_UPDATE_CHECK").is_ok(),
+            &fetch_feed,
+        )
     }
 
     /// Kept before the installer runs, so the next opening can say what happened (U-9, U-11).
@@ -487,7 +627,15 @@ impl Updates {
         if version_parts(i.get("to")?.as_str()?) != version_parts(INSTALLED) {
             return None;
         }
-        Some((i.get("from")?.as_str()?.to_string(), i.get("at").and_then(Value::as_str).unwrap_or("").chars().take(10).collect()))
+        Some((
+            i.get("from")?.as_str()?.to_string(),
+            i.get("at")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .chars()
+                .take(10)
+                .collect(),
+        ))
     }
 
     /// Run when the app opens: leftovers of an update that has happened are taken away, and an installer that was started
@@ -504,7 +652,10 @@ impl Updates {
         if newer_than(to, INSTALLED) {
             // the installer did not finish: nothing was changed
             self.clear_download();
-            self.put_failure(to, &crate::updates_install::refused_line("the installer did not finish."));
+            self.put_failure(
+                to,
+                &crate::updates_install::refused_line("the installer did not finish."),
+            );
         }
         let mut s = s;
         s.remove("installing");
@@ -519,7 +670,11 @@ impl Updates {
 
     /// The version an installer was last started for, if one was.
     pub(crate) fn installing_version(&self) -> Option<String> {
-        self.read().get("installing").and_then(|i| i.get("to")).and_then(Value::as_str).map(str::to_string)
+        self.read()
+            .get("installing")
+            .and_then(|i| i.get("to"))
+            .and_then(Value::as_str)
+            .map(str::to_string)
     }
 
     /// The Updates section has been opened: a failure's dot goes (U-11). A version still ready keeps its dot.
@@ -531,12 +686,31 @@ impl Updates {
     pub fn status(&self) -> Value {
         let newer = self.newer();
         let download = self.download();
-        let failure = download.as_ref().filter(|d| matches!(d.state.as_str(), "stopped" | "refused")).map(|d| d.message.clone());
-        let ring = download.as_ref().filter(|d| d.state == "downloading").map(|d| if d.total > 0 { (d.got as f64 / d.total as f64).min(1.0) } else { 0.0 });
-        let ready = newer.as_ref().filter(|f| !self.is_skipped(f)).map(|f| ready_line(&f.version));
+        let failure = download
+            .as_ref()
+            .filter(|d| matches!(d.state.as_str(), "stopped" | "refused"))
+            .map(|d| d.message.clone());
+        let ring = download
+            .as_ref()
+            .filter(|d| d.state == "downloading")
+            .map(|d| {
+                if d.total > 0 {
+                    (d.got as f64 / d.total as f64).min(1.0)
+                } else {
+                    0.0
+                }
+            });
+        let ready = newer
+            .as_ref()
+            .filter(|f| !self.is_skipped(f))
+            .map(|f| ready_line(&f.version));
         // the gear's dot: a version that is ready; or, after a download the person asked for failed, that failure until the
         // section has been opened (U-11)
-        let dot = ready.clone().or_else(|| failure.clone().filter(|_| download.as_ref().is_some_and(|d| !d.seen)));
+        let dot = ready.clone().or_else(|| {
+            failure
+                .clone()
+                .filter(|_| download.as_ref().is_some_and(|d| !d.seen))
+        });
         let env_off = std::env::var("WB_NO_UPDATE_CHECK").is_ok();
         json!({
             "installed": INSTALLED,
@@ -566,7 +740,10 @@ pub fn answer_line(a: &Answer) -> String {
         Answer::Newest => format!("Bible Workbench {INSTALLED} is the newest"),
         Answer::Newer(f) => {
             let mut line = ready_line(&f.version);
-            let more: Vec<String> = [size_text(f.size), f.date.clone()].into_iter().filter(|s| !s.is_empty()).collect();
+            let more: Vec<String> = [size_text(f.size), f.date.clone()]
+                .into_iter()
+                .filter(|s| !s.is_empty())
+                .collect();
             if !more.is_empty() {
                 line.push_str(&format!(" ({})", more.join(", ")));
             }
@@ -591,7 +768,9 @@ mod tests {
         json!({ "version": version, "pub_date": "2026-11-19T07:00:00Z", "size": 84000000, "notes": notes, "platforms": {} }).to_string()
     }
     fn scratch(name: &str) -> Updates {
-        let d = std::env::temp_dir().join("bible-workbench-rs").join(format!("updates-{name}-{}", std::process::id()));
+        let d = std::env::temp_dir()
+            .join("bible-workbench-rs")
+            .join(format!("updates-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         Updates::new(d)
     }
@@ -608,7 +787,11 @@ mod tests {
 
     #[test]
     fn the_feed_address_is_the_one_in_the_release_configuration() {
-        let conf = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../app/src-tauri/tauri.release.conf.json")).unwrap();
+        let conf = fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../app/src-tauri/tauri.release.conf.json"),
+        )
+        .unwrap();
         assert!(conf.contains(FEED));
     }
 
@@ -618,15 +801,26 @@ mod tests {
         assert!(check_address("C:\\temp\\latest.json").is_ok());
         assert!(check_address("http://127.0.0.1:8000/latest.json").is_ok());
         assert!(check_address("http://localhost/latest.json").is_ok());
-        assert!(check_address("http://example.org/latest.json").unwrap_err().contains("not HTTPS"));
+        assert!(check_address("http://example.org/latest.json")
+            .unwrap_err()
+            .contains("not HTTPS"));
     }
 
     #[test]
     fn the_system_dialog_is_gone() {
         // row 1: the shell no longer builds a system message; the window is told instead
-        let main = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../app/src-tauri/src/main.rs")).unwrap();
-        assert!(!main.contains("MessageDialogButtons"), "the system dialog's buttons are still in the shell");
-        assert!(!main.contains(".message("), "a system message is still built in the shell");
+        let main = fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../app/src-tauri/src/main.rs"),
+        )
+        .unwrap();
+        assert!(
+            !main.contains("MessageDialogButtons"),
+            "the system dialog's buttons are still in the shell"
+        );
+        assert!(
+            !main.contains(".message("),
+            "a system message is still built in the shell"
+        );
     }
 
     #[cfg(feature = "updater")]
@@ -634,7 +828,9 @@ mod tests {
     fn a_look_by_hand_keeps_the_answer_and_the_time() {
         let u = scratch("hand");
         let r = u.check(at(0), &|| Ok(feed("99.0.0"))).unwrap();
-        assert!(matches!(r, Answer::Newer(ref f) if f.version == "99.0.0" && f.date == "2026-11-19" && f.size == 84_000_000 && f.moved.as_deref() == Some("The Trail moved.")));
+        assert!(
+            matches!(r, Answer::Newer(ref f) if f.version == "99.0.0" && f.date == "2026-11-19" && f.size == 84_000_000 && f.moved.as_deref() == Some("The Trail moved."))
+        );
         assert_eq!(u.newer().unwrap().version, "99.0.0");
         assert_eq!(u.last_look(), Some(at(0)));
         let s = u.status();
@@ -642,9 +838,15 @@ mod tests {
         assert_eq!(s["newer"]["size_text"], "84 MB");
         assert_eq!(s["newer"]["study"], "Nothing in it changes.");
         // the newest: the dot goes
-        assert_eq!(u.check(at(1), &|| Ok(feed(INSTALLED))).unwrap(), Answer::Newest);
+        assert_eq!(
+            u.check(at(1), &|| Ok(feed(INSTALLED))).unwrap(),
+            Answer::Newest
+        );
         assert!(u.newer().is_none());
-        assert_eq!(answer_line(&Answer::Newest), format!("Bible Workbench {INSTALLED} is the newest"));
+        assert_eq!(
+            answer_line(&Answer::Newest),
+            format!("Bible Workbench {INSTALLED} is the newest")
+        );
         let _ = fs::remove_dir_all(u.dir());
     }
 
@@ -654,12 +856,25 @@ mod tests {
         let u = scratch("dead");
         u.check(at(0), &|| Ok(feed("99.0.0"))).unwrap();
         let before = fs::read_to_string(u.dir().join("state.json")).unwrap();
-        let e = u.check(at(30), &|| Err(COULD_NOT_REACH.into())).unwrap_err();
-        assert_eq!(e, "Could not reach the update site. Bible Workbench works as it is.");
-        assert_eq!(fs::read_to_string(u.dir().join("state.json")).unwrap(), before);
+        let e = u
+            .check(at(30), &|| Err(COULD_NOT_REACH.into()))
+            .unwrap_err();
+        assert_eq!(
+            e,
+            "Could not reach the update site. Bible Workbench works as it is."
+        );
+        assert_eq!(
+            fs::read_to_string(u.dir().join("state.json")).unwrap(),
+            before
+        );
         // by itself, a failed look returns nothing at all (row 2)
-        assert!(u.look_by_itself(at(48), false, &|| Err(COULD_NOT_REACH.into())).is_none());
-        assert_eq!(fs::read_to_string(u.dir().join("state.json")).unwrap(), before);
+        assert!(u
+            .look_by_itself(at(48), false, &|| Err(COULD_NOT_REACH.into()))
+            .is_none());
+        assert_eq!(
+            fs::read_to_string(u.dir().join("state.json")).unwrap(),
+            before
+        );
         let _ = fs::remove_dir_all(u.dir());
     }
 
@@ -721,7 +936,11 @@ mod tests {
             })
             .unwrap_err();
         assert!(!called.get());
-        assert!(e.starts_with("This copy was built from source (") && e.ends_with("). It does not update itself."), "{e}");
+        assert!(
+            e.starts_with("This copy was built from source (")
+                && e.ends_with("). It does not update itself."),
+            "{e}"
+        );
         assert_eq!(u.status()["self_updating"], false);
         assert!(u
             .look_by_itself(at(0), false, &|| {
@@ -734,20 +953,24 @@ mod tests {
 
     #[test]
     fn the_card_takes_two_lines_from_the_notes_as_plain_text() {
-        let (m, s) = notes_lines("## Moved or removed
+        let (m, s) = notes_lines(
+            "## Moved or removed
 - <b>Old</b> [link](http://x) gone
 - another
 ## New
 - n
 ## Your study folder
-Nothing changes.");
+Nothing changes.",
+        );
         assert_eq!(m.as_deref(), Some("<b>Old</b> [link](http://x) gone"));
         assert_eq!(s.as_deref(), Some("Nothing changes."));
-        let (m, s) = notes_lines("## Moved or removed
+        let (m, s) = notes_lines(
+            "## Moved or removed
 
 ## New
 - n
-");
+",
+        );
         assert_eq!(m.as_deref(), Some("Nothing was moved or removed."));
         assert!(s.is_none());
         assert_eq!(notes_lines("  "), (None, None));
@@ -757,7 +980,10 @@ Nothing changes.");
     fn a_release_that_is_not_newer_is_not_offered() {
         let u = scratch("notnewer");
         let mut s = Map::new();
-        s.insert("newer".into(), json!({"version": INSTALLED, "date": "", "size": 0}));
+        s.insert(
+            "newer".into(),
+            json!({"version": INSTALLED, "date": "", "size": 0}),
+        );
         u.write(&s).unwrap();
         assert!(u.newer().is_none());
         assert!(parse_feed("{}").is_err());

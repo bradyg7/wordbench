@@ -25,12 +25,20 @@ pub struct Options {
 
 impl Default for Options {
     fn default() -> Self {
-        Options { tier: "all".into(), min_words: 6, version: "KJV".into(), skipped: vec![] }
+        Options {
+            tier: "all".into(),
+            min_words: 6,
+            version: "KJV".into(),
+            skipped: vec![],
+        }
     }
 }
 
 pub fn digest(text: &str) -> String {
-    Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
+    Sha256::digest(text.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 fn chars_in(text: &str, a: usize, b: usize) -> String {
@@ -39,13 +47,20 @@ fn chars_in(text: &str, a: usize, b: usize) -> String {
 
 /// Kinds of block the words are read from.
 pub fn searched(kind: &str) -> bool {
-    matches!(kind, "paragraph" | "heading" | "item" | "numbered" | "todo" | "quote")
+    matches!(
+        kind,
+        "paragraph" | "heading" | "item" | "numbered" | "todo" | "quote"
+    )
 }
 
 /// The verses a span covers, as a range of (chapter, verse) with 0 and the end of the chapter made explicit.
 fn bounds(bible: &Bible, s: &Span) -> Result<((u32, u32), (u32, u32))> {
     let v1 = if s.v1 == 0 { 1 } else { s.v1 };
-    let v2 = if s.v2 == 0 { bible.last_verse(&s.book.code, s.c2)? } else { s.v2 };
+    let v2 = if s.v2 == 0 {
+        bible.last_verse(&s.book.code, s.c2)?
+    } else {
+        s.v2
+    };
     Ok(((s.c1, v1), (s.c2, v2)))
 }
 
@@ -62,7 +77,9 @@ fn real(bible: &Bible, place: &str) -> Option<(Span, usize)> {
 
 /// A span's text, verbatim, in a version (empty for more than 30 verses).
 pub fn span_text(bible: &Bible, s: &Span, version: &str) -> String {
-    let Ok(((c1, v1), (c2, v2))) = bounds(bible, s) else { return String::new() };
+    let Ok(((c1, v1), (c2, v2))) = bounds(bible, s) else {
+        return String::new();
+    };
     let id = s.book.id;
     let version = version.to_uppercase();
     let (sql, kjv) = if version == "KJV" {
@@ -70,11 +87,17 @@ pub fn span_text(bible: &Bible, s: &Span, version: &str) -> String {
     } else {
         ("SELECT text FROM verse_texts WHERE book = ?1 AND (chapter, verse) >= (?2, ?3) AND (chapter, verse) <= (?4, ?5) AND version = ?6 ORDER BY chapter, verse", false)
     };
-    let Ok(mut stmt) = bible.conn().prepare(sql) else { return String::new() };
+    let Ok(mut stmt) = bible.conn().prepare(sql) else {
+        return String::new();
+    };
     let rows: Vec<String> = if kjv {
-        stmt.query_map(rusqlite::params![id, c1, v1, c2, v2], |r| r.get(0)).map(|r| r.flatten().collect()).unwrap_or_default()
+        stmt.query_map(rusqlite::params![id, c1, v1, c2, v2], |r| r.get(0))
+            .map(|r| r.flatten().collect())
+            .unwrap_or_default()
     } else {
-        stmt.query_map(rusqlite::params![id, c1, v1, c2, v2, version], |r| r.get(0)).map(|r| r.flatten().collect()).unwrap_or_default()
+        stmt.query_map(rusqlite::params![id, c1, v1, c2, v2, version], |r| r.get(0))
+            .map(|r| r.flatten().collect())
+            .unwrap_or_default()
     };
     if rows.len() > 30 {
         return String::new();
@@ -104,9 +127,16 @@ pub fn split_for(kind: &str, block: &str, end: usize) -> Option<usize> {
                 break;
             }
         }
-        if matches!(c, '.' | '?' | '!') && cs.get(k + 1).is_none_or(|n| n.is_whitespace() || matches!(n, '"' | '\'' | ')' | ']' | '”' | '’')) {
+        if matches!(c, '.' | '?' | '!')
+            && cs.get(k + 1).is_none_or(|n| {
+                n.is_whitespace() || matches!(n, '"' | '\'' | ')' | ']' | '”' | '’')
+            })
+        {
             let mut p = k + 1;
-            while cs.get(p).is_some_and(|n| matches!(n, '"' | '\'' | ')' | ']' | '”' | '’')) {
+            while cs
+                .get(p)
+                .is_some_and(|n| matches!(n, '"' | '\'' | ')' | ']' | '”' | '’'))
+            {
                 p += 1;
             }
             return if rest_blank(p) { None } else { Some(p) };
@@ -121,7 +151,11 @@ pub fn split_for(kind: &str, block: &str, end: usize) -> Option<usize> {
 }
 
 fn norm_words(text: &str) -> String {
-    quote::words_of(text).into_iter().map(|w| w.w).collect::<Vec<_>>().join(" ")
+    quote::words_of(text)
+        .into_iter()
+        .map(|w| w.w)
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 struct Raw {
@@ -146,7 +180,17 @@ pub fn read(store: &Store, page: &str) -> Result<Read> {
     let v = pages::blocks(store, &id)?;
     let blocks = v["blocks"]
         .as_array()
-        .map(|a| a.iter().map(|b| (b["n"].as_u64().unwrap_or(0) as usize, b["kind"].as_str().unwrap_or("").to_string(), b["text"].as_str().unwrap_or("").to_string())).collect())
+        .map(|a| {
+            a.iter()
+                .map(|b| {
+                    (
+                        b["n"].as_u64().unwrap_or(0) as usize,
+                        b["kind"].as_str().unwrap_or("").to_string(),
+                        b["text"].as_str().unwrap_or("").to_string(),
+                    )
+                })
+                .collect()
+        })
         .unwrap_or_default();
     Ok(Read { id, text, blocks })
 }
@@ -158,7 +202,9 @@ fn fenced(bible: &Bible, r: &Read) -> Vec<(String, (u32, u32), (u32, u32))> {
         if kind != "fence" {
             continue;
         }
-        let Some(f) = scripture_fence(text) else { continue };
+        let Some(f) = scripture_fence(text) else {
+            continue;
+        };
         if let Ok(s) = parse_span(&f.reference, bible.books()) {
             if let Ok((a, b)) = bounds(bible, &s) {
                 out.push((s.book.code.clone(), a, b));
@@ -178,15 +224,25 @@ pub fn run(bible: &Bible, store: &Store, page: &str, opt: &Options) -> Result<Re
     let mut group = 0usize;
     let mut many: Vec<Many> = vec![];
     let mut word_count = 0;
-    let note_blocks: Vec<(usize, &String)> = r.blocks.iter().filter(|(_, k, _)| searched(k)).map(|(n, _, t)| (*n, t)).collect();
-    let words: Vec<Vec<NoteWord>> = note_blocks.iter().map(|(_, t)| quote::words_of(t)).collect();
+    let note_blocks: Vec<(usize, &String)> = r
+        .blocks
+        .iter()
+        .filter(|(_, k, _)| searched(k))
+        .map(|(n, _, t)| (*n, t))
+        .collect();
+    let words: Vec<Vec<NoteWord>> = note_blocks
+        .iter()
+        .map(|(_, t)| quote::words_of(t))
+        .collect();
     word_count += words.iter().map(Vec::len).sum::<usize>();
 
     if opt.tier != "quoted" {
         for (n, t) in &note_blocks {
             let mut by_range: Vec<((usize, usize), usize)> = vec![];
             for s in find_said(t, bible.books(), true) {
-                let Some((span, count)) = real(bible, &s.place) else { continue };
+                let Some((span, count)) = real(bible, &s.place) else {
+                    continue;
+                };
                 let grp = match by_range.iter().find(|(r, _)| *r == (s.start, s.end)) {
                     Some((_, g)) => *g,
                     None => {
@@ -200,8 +256,16 @@ pub fn run(bible: &Bible, store: &Store, page: &str, opt: &Options) -> Result<Re
                     span,
                     verses: count,
                     block: *n,
-                    range: Range { start: s.start, end: s.end },
-                    evidence: Evidence { kind: if s.spoken { "spoken" } else { "written" }.into(), matched: None, of: None, words: vec![] },
+                    range: Range {
+                        start: s.start,
+                        end: s.end,
+                    },
+                    evidence: Evidence {
+                        kind: if s.spoken { "spoken" } else { "written" }.into(),
+                        matched: None,
+                        of: None,
+                        words: vec![],
+                    },
                     group: grp,
                 });
             }
@@ -220,30 +284,67 @@ pub fn run(bible: &Bible, store: &Store, page: &str, opt: &Options) -> Result<Re
                 };
                 let first = chs.iter().map(|c| c.first).min().unwrap();
                 let last = chs.iter().map(|c| c.last).max().unwrap();
-                let range = Range { start: ws[first].s, end: ws[last].e };
+                let range = Range {
+                    start: ws[first].s,
+                    end: ws[last].e,
+                };
                 if kind == 2 {
-                    many.push(Many { words: chars_in(t, range.start, range.end), verses: chs.len(), block: *n, range });
+                    many.push(Many {
+                        words: chars_in(t, range.start, range.end),
+                        verses: chs.len(),
+                        block: *n,
+                        range,
+                    });
                     continue;
                 }
                 if kind == 1 {
                     group += 1;
                 }
-                let sets: Vec<&[quote::Chain]> = if kind == 1 { chs.iter().map(std::slice::from_ref).collect() } else { vec![&chs[..]] };
+                let sets: Vec<&[quote::Chain]> = if kind == 1 {
+                    chs.iter().map(std::slice::from_ref).collect()
+                } else {
+                    vec![&chs[..]]
+                };
                 for set in sets {
                     let (a, b) = (&verses[set[0].verse], &verses[set.last().unwrap().verse]);
-                    let book = bible.books().iter().find(|x| x.id == a.book).cloned().ok_or_else(|| Error("a verse of no book".into()))?;
-                    let span = Span { book, c1: a.chapter, v1: a.verse, c2: b.chapter, v2: b.verse };
+                    let book = bible
+                        .books()
+                        .iter()
+                        .find(|x| x.id == a.book)
+                        .cloned()
+                        .ok_or_else(|| Error("a verse of no book".into()))?;
+                    let span = Span {
+                        book,
+                        c1: a.chapter,
+                        v1: a.verse,
+                        c2: b.chapter,
+                        v2: b.verse,
+                    };
                     let matched: usize = set.iter().map(|c| c.matched).sum();
                     let of: usize = set.iter().map(|c| verses[c.verse].words.len()).sum();
-                    let note_words: Vec<String> = set.iter().flat_map(|c| c.note_words.iter().map(|i| ws[*i].w.clone())).collect();
-                    let (f, l) = (set.iter().map(|c| c.first).min().unwrap(), set.iter().map(|c| c.last).max().unwrap());
+                    let note_words: Vec<String> = set
+                        .iter()
+                        .flat_map(|c| c.note_words.iter().map(|i| ws[*i].w.clone()))
+                        .collect();
+                    let (f, l) = (
+                        set.iter().map(|c| c.first).min().unwrap(),
+                        set.iter().map(|c| c.last).max().unwrap(),
+                    );
                     raws.push(Raw {
                         tier: "quoted",
                         span,
                         verses: set.len(),
                         block: *n,
-                        range: Range { start: ws[f].s, end: ws[l].e },
-                        evidence: Evidence { kind: "quote".into(), matched: Some(matched), of: Some(of), words: note_words },
+                        range: Range {
+                            start: ws[f].s,
+                            end: ws[l].e,
+                        },
+                        evidence: Evidence {
+                            kind: "quote".into(),
+                            matched: Some(matched),
+                            of: Some(of),
+                            words: note_words,
+                        },
                         group: if kind == 1 { group } else { 0 },
                     });
                 }
@@ -253,7 +354,13 @@ pub fn run(bible: &Bible, store: &Store, page: &str, opt: &Options) -> Result<Re
     raws.sort_by_key(|x| (x.block, x.range.start, x.tier == "quoted", x.range.end));
     // ids: tier, reference, the normalized words, and which occurrence of those words it is
     let fences = fenced(bible, &r);
-    let text_of_block = |n: usize| r.blocks.iter().find(|b| b.0 == n).map(|b| (b.1.clone(), b.2.clone())).unwrap_or_default();
+    let text_of_block = |n: usize| {
+        r.blocks
+            .iter()
+            .find(|b| b.0 == n)
+            .map(|b| (b.1.clone(), b.2.clone()))
+            .unwrap_or_default()
+    };
     let mut seen: std::collections::HashMap<String, usize> = Default::default();
     let mut cands: Vec<Candidate> = vec![];
     let mut group_ids: std::collections::HashMap<usize, Vec<String>> = Default::default();
@@ -271,7 +378,9 @@ pub fn run(bible: &Bible, store: &Store, page: &str, opt: &Options) -> Result<Re
             let ((c1, v1), (c2, v2)) = bounds(bible, &x.span)?;
             (c1, v1, c2, v2)
         };
-        let inside = fences.iter().any(|(code, a, b)| *code == x.span.book.code && *a <= (c1, v1) && (c2, v2) <= *b);
+        let inside = fences
+            .iter()
+            .any(|(code, a, b)| *code == x.span.book.code && *a <= (c1, v1) && (c2, v2) <= *b);
         let status = if inside {
             "in_page"
         } else if opt.skipped.contains(&id) {
@@ -290,14 +399,21 @@ pub fn run(bible: &Bible, store: &Store, page: &str, opt: &Options) -> Result<Re
             words,
             evidence: x.evidence.clone(),
             text: span_text(bible, &x.span, &version),
-            place: Place { after_block: x.block, split_at: split_for(&kind, &btext, x.range.end) },
+            place: Place {
+                after_block: x.block,
+                split_at: split_for(&kind, &btext, x.range.end),
+            },
             also: vec![],
             status: status.into(),
         });
     }
     for (c, x) in cands.iter_mut().zip(&raws) {
         if x.group != 0 {
-            c.also = group_ids[&x.group].iter().filter(|i| **i != c.id).cloned().collect();
+            c.also = group_ids[&x.group]
+                .iter()
+                .filter(|i| **i != c.id)
+                .cloned()
+                .collect();
         }
     }
     let count = |s: &str| cands.iter().filter(|c| c.status == s).count();
@@ -312,7 +428,11 @@ pub fn run(bible: &Bible, store: &Store, page: &str, opt: &Options) -> Result<Re
         many,
         page_hash: digest(&r.text),
     };
-    Ok(Report { page: r.id, summary, candidates: cands })
+    Ok(Report {
+        page: r.id,
+        summary,
+        candidates: cands,
+    })
 }
 
 /// A report as JSON.
@@ -331,14 +451,25 @@ pub fn resolve(store: &Store, name: &str) -> Result<String> {
         .inbox()
         .into_iter()
         .chain(store.notes())
-        .map(|n| (n["id"].as_str().unwrap_or("").to_string(), crate::notebook::title_of(n["text"].as_str().unwrap_or("")).to_lowercase()))
+        .map(|n| {
+            (
+                n["id"].as_str().unwrap_or("").to_string(),
+                crate::notebook::title_of(n["text"].as_str().unwrap_or("")).to_lowercase(),
+            )
+        })
         .collect();
-    for fits in [&|t: &str| t == want, &|t: &str| t.starts_with(&want)] as [&dyn Fn(&str) -> bool; 2] {
+    for fits in
+        [&|t: &str| t == want, &|t: &str| t.starts_with(&want)] as [&dyn Fn(&str) -> bool; 2]
+    {
         let hit: Vec<&(String, String)> = all.iter().filter(|(_, t)| fits(t)).collect();
         match hit.len() {
             0 => continue,
             1 => return Ok(hit[0].0.clone()),
-            n => return Err(Error(format!("Which page? {n} pages fit “{name}”; give more of its title, or its id."))),
+            n => {
+                return Err(Error(format!(
+                    "Which page? {n} pages fit “{name}”; give more of its title, or its id."
+                )))
+            }
         }
     }
     Err(Error(format!("No page fits “{name}”.")))

@@ -16,13 +16,24 @@ struct Home {
 
 impl Home {
     fn new(name: &str) -> Home {
-        let dir = std::env::temp_dir().join("bible-workbench-rs").join("update-tests").join(format!("{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir()
+            .join("bible-workbench-rs")
+            .join("update-tests")
+            .join(format!("{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("app")).unwrap();
         // the program files beside the app (the Bible database is a folder of its own, and is not part of what is kept)
-        std::fs::write(dir.join("app").join("bible-workbench.exe"), "the version running").unwrap();
+        std::fs::write(
+            dir.join("app").join("bible-workbench.exe"),
+            "the version running",
+        )
+        .unwrap();
         std::fs::create_dir_all(dir.join("app").join("datasets")).unwrap();
-        std::fs::write(dir.join("app").join("datasets").join("workbench.db"), "database").unwrap();
+        std::fs::write(
+            dir.join("app").join("datasets").join("workbench.db"),
+            "database",
+        )
+        .unwrap();
         Home { dir }
     }
     /// Where the test installer writes that it ran.
@@ -34,7 +45,11 @@ impl Home {
     }
     fn run(&self, args: &[&str], feed: Option<&str>) -> (i32, String, String) {
         let mut c = Command::new(env!("CARGO_BIN_EXE_wb"));
-        c.args(args).env("WB_UPDATES_DIR", self.updates()).env("WB_STUDY_DIR", self.dir.join("study")).env_remove("WB_NO_UPDATE_CHECK").env_remove("WB_UPDATE_FEED")
+        c.args(args)
+            .env("WB_UPDATES_DIR", self.updates())
+            .env("WB_STUDY_DIR", self.dir.join("study"))
+            .env_remove("WB_NO_UPDATE_CHECK")
+            .env_remove("WB_UPDATE_FEED")
             .env("WB_CACHE_DIR", self.dir.join("cache"))
             .env("WB_APP_DIR", self.dir.join("app"))
             .env("WB_UPDATE_PUBKEY", TEST_KEY.trim())
@@ -43,12 +58,19 @@ impl Home {
             c.env("WB_UPDATE_FEED", f);
         }
         let out = c.output().unwrap();
-        (out.status.code().unwrap_or(-1), String::from_utf8_lossy(&out.stdout).into(), String::from_utf8_lossy(&out.stderr).into())
+        (
+            out.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&out.stdout).into(),
+            String::from_utf8_lossy(&out.stderr).into(),
+        )
     }
     /// A release file with the given notes and earlier releases `[(version, date, notes)]`.
     fn feed_notes(&self, version: &str, notes: &str, earlier: &[(&str, &str, &str)]) -> String {
         let p = self.dir.join("latest.json");
-        let releases: Vec<Value> = earlier.iter().map(|(v, d, n)| serde_json::json!({"version": v, "pub_date": d, "notes": n})).collect();
+        let releases: Vec<Value> = earlier
+            .iter()
+            .map(|(v, d, n)| serde_json::json!({"version": v, "pub_date": d, "notes": n}))
+            .collect();
         let body = serde_json::json!({"version": version, "pub_date": "2026-11-19T07:00:00Z", "size": 84000000, "notes": notes, "releases": releases, "platforms": {}});
         std::fs::write(&p, body.to_string()).unwrap();
         p.display().to_string()
@@ -76,10 +98,19 @@ fn status_reads_only_and_settings_updates_prints_and_sets() {
     // status makes no state of its own
     assert!(!h.updates().join("state.json").exists());
 
-    assert_eq!(json(&h.run(&["settings", "updates"], None).1)["look"], "open");
-    assert_eq!(json(&h.run(&["settings", "updates", "ask"], None).1)["look"], "ask");
+    assert_eq!(
+        json(&h.run(&["settings", "updates"], None).1)["look"],
+        "open"
+    );
+    assert_eq!(
+        json(&h.run(&["settings", "updates", "ask"], None).1)["look"],
+        "ask"
+    );
     assert_eq!(json(&h.run(&["update", "status"], None).1)["look"], "ask");
-    assert_eq!(json(&h.run(&["settings", "updates", "open"], None).1)["look"], "open");
+    assert_eq!(
+        json(&h.run(&["settings", "updates", "open"], None).1)["look"],
+        "open"
+    );
     let (code, _, err) = h.run(&["settings", "updates", "sometimes"], None);
     assert_eq!(code, 1);
     assert!(err.contains("open") && err.contains("ask"), "{err}");
@@ -94,7 +125,11 @@ fn a_copy_built_from_source_says_so_and_makes_no_request() {
     let feed = h.feed("99.0.0");
     let (code, out, err) = h.run(&["update", "check"], Some(&feed));
     assert_eq!(code, 1, "{out}");
-    assert!(err.contains("This copy was built from source (") && err.contains("). It does not update itself."), "{err}");
+    assert!(
+        err.contains("This copy was built from source (")
+            && err.contains("). It does not update itself."),
+        "{err}"
+    );
     let s = json(&h.run(&["update", "status"], None).1);
     assert_eq!(s["self_updating"], false);
     assert_eq!(s["message"], wb_core::updates::source_line());
@@ -103,7 +138,11 @@ fn a_copy_built_from_source_says_so_and_makes_no_request() {
     for args in [&["update", "install"][..], &["update", "back"][..]] {
         let (code, _, err) = h.run(args, Some(&feed));
         assert_eq!(code, 1, "{args:?}");
-        assert!(err.contains("This copy was built from source (") && err.contains("). It does not update itself."), "{args:?}: {err}");
+        assert!(
+            err.contains("This copy was built from source (")
+                && err.contains("). It does not update itself."),
+            "{args:?}: {err}"
+        );
     }
     assert!(!h.updates().join("download").exists() && !h.updates().join("state.json").exists());
 }
@@ -121,7 +160,10 @@ mod with_the_update_code {
         let feed = h.feed("99.0.0");
         let (code, out, _) = h.run(&["update", "check"], Some(&feed));
         assert_eq!(code, 0);
-        assert!(out.trim().starts_with("Bible Workbench 99.0.0 is ready"), "{out}");
+        assert!(
+            out.trim().starts_with("Bible Workbench 99.0.0 is ready"),
+            "{out}"
+        );
         assert!(out.contains("84 MB") && out.contains("2026-11-19"), "{out}");
         let s = json(&h.run(&["update", "status"], None).1);
         assert_eq!(s["ready"], "Bible Workbench 99.0.0 is ready");
@@ -139,13 +181,33 @@ mod with_the_update_code {
         assert_eq!(h.run(&["update", "check"], Some(&feed)).0, 0);
         let (code, out, _) = h.run(&["update", "notes"], None);
         assert_eq!(code, 0);
-        let at = |w: &str| out.find(&format!("\n{w}\n")).unwrap_or_else(|| panic!("{w} in {out}"));
-        let order = ["Moved or removed", "New", "Changed", "Fixed", "Your study folder"].map(at);
+        let at = |w: &str| {
+            out.find(&format!("\n{w}\n"))
+                .unwrap_or_else(|| panic!("{w} in {out}"))
+        };
+        let order = [
+            "Moved or removed",
+            "New",
+            "Changed",
+            "Fixed",
+            "Your study folder",
+        ]
+        .map(at);
         assert!(order.windows(2).all(|w| w[0] < w[1]), "{out}");
-        for line in ["- The Trail moved into the rail.", "- The old pane is gone.", "- Updates in Settings.", "- A line changed.", "- A thing was fixed.", "Nothing changes in your study folder."] {
+        for line in [
+            "- The Trail moved into the rail.",
+            "- The old pane is gone.",
+            "- Updates in Settings.",
+            "- A line changed.",
+            "- A thing was fixed.",
+            "Nothing changes in your study folder.",
+        ] {
             assert!(out.contains(line), "{line} in {out}");
         }
-        assert!(out.starts_with("Bible Workbench 99.0.0 (2026-11-19)"), "{out}");
+        assert!(
+            out.starts_with("Bible Workbench 99.0.0 (2026-11-19)"),
+            "{out}"
+        );
         // one version by name
         assert_eq!(h.run(&["update", "notes", "99.0.0"], None).1, out);
     }
@@ -153,14 +215,24 @@ mod with_the_update_code {
     #[test]
     fn a_release_that_moved_nothing_says_so() {
         let h = Home::new("notes-nothing");
-        let feed = h.feed_notes("99.0.0", "## New\n- A thing.\n\n## Your study folder\nNothing changes.", &[]);
+        let feed = h.feed_notes(
+            "99.0.0",
+            "## New\n- A thing.\n\n## Your study folder\nNothing changes.",
+            &[],
+        );
         h.run(&["update", "check"], Some(&feed));
         let out = h.run(&["update", "notes"], None).1;
-        assert!(out.contains("Moved or removed\n- Nothing was moved or removed.\n"), "{out}");
+        assert!(
+            out.contains("Moved or removed\n- Nothing was moved or removed.\n"),
+            "{out}"
+        );
         // an empty heading too
         let feed = h.feed_notes("99.0.0", "## Moved or removed\n\n## New\n- x", &[]);
         h.run(&["update", "check"], Some(&feed));
-        assert!(h.run(&["update", "notes"], None).1.contains("Nothing was moved or removed."));
+        assert!(h
+            .run(&["update", "notes"], None)
+            .1
+            .contains("Nothing was moved or removed."));
     }
 
     /// Notes holding a link or markup are shown as their plain text, and nothing is fetched.
@@ -168,7 +240,11 @@ mod with_the_update_code {
     fn markup_in_the_notes_is_text_and_nothing_is_fetched() {
         let h = Home::new("notes-markup");
         let line = "<img src=\"http://127.0.0.1:9/x.png\"> and [a link](http://127.0.0.1:9/y) and **bold**";
-        let feed = h.feed_notes("99.0.0", &format!("## Moved or removed\n- {line}\n\n## Your study folder\nNothing changes."), &[]);
+        let feed = h.feed_notes(
+            "99.0.0",
+            &format!("## Moved or removed\n- {line}\n\n## Your study folder\nNothing changes."),
+            &[],
+        );
         h.run(&["update", "check"], Some(&feed));
         let out = h.run(&["update", "notes"], None).1;
         assert!(out.contains(line), "{out}");
@@ -183,23 +259,49 @@ mod with_the_update_code {
         let h = Home::new("notes-fold");
         let mut earlier: Vec<(String, String, String)> = vec![];
         for i in 1..=13 {
-            let moved = if i % 4 == 0 { format!("## Moved or removed\n- Moved thing {i}\n- second line {i}\n\n") } else { String::new() };
-            earlier.push((format!("98.{i}.0"), format!("2026-10-{i:02}T00:00:00Z"), format!("{moved}## New\n- new {i}\n")));
+            let moved = if i % 4 == 0 {
+                format!("## Moved or removed\n- Moved thing {i}\n- second line {i}\n\n")
+            } else {
+                String::new()
+            };
+            earlier.push((
+                format!("98.{i}.0"),
+                format!("2026-10-{i:02}T00:00:00Z"),
+                format!("{moved}## New\n- new {i}\n"),
+            ));
         }
         // an older release than the one running is never listed
-        earlier.push(("0.0.1".into(), "2020-01-01T00:00:00Z".into(), "## New\n- ancient\n".into()));
-        let refs: Vec<(&str, &str, &str)> = earlier.iter().map(|(a, b, c)| (a.as_str(), b.as_str(), c.as_str())).collect();
+        earlier.push((
+            "0.0.1".into(),
+            "2020-01-01T00:00:00Z".into(),
+            "## New\n- ancient\n".into(),
+        ));
+        let refs: Vec<(&str, &str, &str)> = earlier
+            .iter()
+            .map(|(a, b, c)| (a.as_str(), b.as_str(), c.as_str()))
+            .collect();
         let feed = h.feed_notes("99.0.0", FULL, &refs);
         h.run(&["update", "check"], Some(&feed));
         let out = h.run(&["update", "notes"], None).1;
-        assert!(out.starts_with("Bible Workbench 99.0.0 (2026-11-19)\n"), "{out}");
+        assert!(
+            out.starts_with("Bible Workbench 99.0.0 (2026-11-19)\n"),
+            "{out}"
+        );
         assert!(!out.contains("ancient") && !out.contains("0.0.1"), "{out}");
         // newest first: 98.13.0 before 98.1.0
         assert!(out.find("98.13.0").unwrap() < out.find("98.1.0").unwrap());
         // folded: the version and date; a release that moved something keeps its first line, one that moved nothing shows only version and date
-        assert!(out.contains("Bible Workbench 98.4.0 (2026-10-04)\n  Moved or removed: Moved thing 4\n"), "{out}");
+        assert!(
+            out.contains(
+                "Bible Workbench 98.4.0 (2026-10-04)\n  Moved or removed: Moved thing 4\n"
+            ),
+            "{out}"
+        );
         assert!(!out.contains("second line"), "{out}");
-        assert!(out.contains("Bible Workbench 98.3.0 (2026-10-03)\n\nBible"), "{out}");
+        assert!(
+            out.contains("Bible Workbench 98.3.0 (2026-10-03)\n\nBible"),
+            "{out}"
+        );
         assert!(!out.contains("new 3"), "folded notes are not open: {out}");
         let j = json(&h.run(&["update", "notes", "--json"], None).1);
         let rel = j["releases"].as_array().unwrap();
@@ -207,16 +309,26 @@ mod with_the_update_code {
         assert_eq!(rel[0]["open"], true);
         assert!(rel[1..].iter().all(|r| r["open"] == false));
         // a folded one can be read in full by name
-        assert!(h.run(&["update", "notes", "98.3.0"], None).1.contains("- new 3"));
+        assert!(h
+            .run(&["update", "notes", "98.3.0"], None)
+            .1
+            .contains("- new 3"));
     }
 
     /// The version running reads offline: its notes come with the program.
     #[test]
     fn the_installed_versions_notes_read_offline() {
         let h = Home::new("notes-installed");
-        let (code, out, _) = h.run(&["update", "notes", wb_core::updates::INSTALLED], Some("http://127.0.0.1:9/latest.json"));
+        let (code, out, _) = h.run(
+            &["update", "notes", wb_core::updates::INSTALLED],
+            Some("http://127.0.0.1:9/latest.json"),
+        );
         assert_eq!(code, 0, "{out}");
-        assert!(out.contains(&format!("Bible Workbench {}", wb_core::updates::INSTALLED)) && out.contains("Your study folder"), "{out}");
+        assert!(
+            out.contains(&format!("Bible Workbench {}", wb_core::updates::INSTALLED))
+                && out.contains("Your study folder"),
+            "{out}"
+        );
         // with nothing newer known, the bare command prints them too
         assert_eq!(h.run(&["update", "notes"], None).1, out);
         let (code, _, err) = h.run(&["update", "notes", "98.0.0"], None);
@@ -253,7 +365,10 @@ mod with_the_update_code {
         h.run(&["update", "skip", "99.0.1"], None);
         assert!(json(&h.run(&["update", "status"], None).1)["ready"].is_null());
         h.run(&["update", "skip", "--clear"], None);
-        assert_eq!(json(&h.run(&["update", "status"], None).1)["ready"], "Bible Workbench 99.0.1 is ready");
+        assert_eq!(
+            json(&h.run(&["update", "status"], None).1)["ready"],
+            "Bible Workbench 99.0.1 is ready"
+        );
         // nothing to set aside
         let h2 = Home::new("skip-none");
         let (code, _, err) = h2.run(&["update", "skip"], None);
@@ -267,7 +382,13 @@ mod with_the_update_code {
         let feed = h.feed(wb_core::updates::INSTALLED);
         let (code, out, _) = h.run(&["update", "check"], Some(&feed));
         assert_eq!(code, 0);
-        assert_eq!(out.trim(), format!("Bible Workbench {} is the newest", wb_core::updates::INSTALLED));
+        assert_eq!(
+            out.trim(),
+            format!(
+                "Bible Workbench {} is the newest",
+                wb_core::updates::INSTALLED
+            )
+        );
         assert!(json(&h.run(&["update", "status"], None).1)["newer"].is_null());
     }
 
@@ -279,7 +400,10 @@ mod with_the_update_code {
         for feed in [missing.as_str(), "http://127.0.0.1:9/latest.json"] {
             let (code, out, err) = h.run(&["update", "check"], Some(feed));
             assert_eq!(code, 1, "{out}");
-            assert_eq!(err.trim(), "error: Could not reach the update site. Bible Workbench works as it is.");
+            assert_eq!(
+                err.trim(),
+                "error: Could not reach the update site. Bible Workbench works as it is."
+            );
         }
         // it changed nothing
         assert!(!h.updates().join("state.json").exists());
@@ -306,12 +430,18 @@ mod with_the_update_code {
                 let mut s = conn.unwrap();
                 let mut buf = [0u8; 4096];
                 let n = s.read(&mut buf).unwrap();
-                log.lock().unwrap().push(String::from_utf8_lossy(&buf[..n]).into());
-                let body = r#"{"version":"99.0.0","pub_date":"2026-11-19T07:00:00Z","size":84000000}"#;
+                log.lock()
+                    .unwrap()
+                    .push(String::from_utf8_lossy(&buf[..n]).into());
+                let body =
+                    r#"{"version":"99.0.0","pub_date":"2026-11-19T07:00:00Z","size":84000000}"#;
                 let _ = write!(s, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
             }
         });
-        let (code, out, err) = h.run(&["update", "check"], Some(&format!("http://127.0.0.1:{port}/latest.json")));
+        let (code, out, err) = h.run(
+            &["update", "check"],
+            Some(&format!("http://127.0.0.1:{port}/latest.json")),
+        );
         assert_eq!(code, 0, "{out} {err}");
         let requests = seen.lock().unwrap().clone();
         assert_eq!(requests.len(), 1);
@@ -401,7 +531,13 @@ mod with_the_update_code {
                                     return;
                                 };
                                 // the release file names its installer by this server's own port
-                                let body = if r.path == "/latest.json" { String::from_utf8_lossy(&r.body).replace("@PORT@", &port.to_string()).into_bytes() } else { r.body.clone() };
+                                let body = if r.path == "/latest.json" {
+                                    String::from_utf8_lossy(&r.body)
+                                        .replace("@PORT@", &port.to_string())
+                                        .into_bytes()
+                                } else {
+                                    r.body.clone()
+                                };
                                 let claims = r.claims.unwrap_or(body.len());
                                 let _ = write!(conn, "HTTP/1.1 200 OK\r\nContent-Length: {claims}\r\nConnection: close\r\n\r\n");
                                 match r.slow {
@@ -429,12 +565,22 @@ mod with_the_update_code {
             format!("http://127.0.0.1:{}/{path}", self.port)
         }
         fn count(&self, path: &str) -> usize {
-            self.hits.lock().unwrap().iter().filter(|p| p.trim_start_matches('/') == path).count()
+            self.hits
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|p| p.trim_start_matches('/') == path)
+                .count()
         }
     }
 
     fn route(path: &str, body: &[u8]) -> Route {
-        Route { path: format!("/{path}"), body: body.to_vec(), claims: None, slow: None }
+        Route {
+            path: format!("/{path}"),
+            body: body.to_vec(),
+            claims: None,
+            slow: None,
+        }
     }
 
     /// A release file whose installer is `installer` on the same server (`@PORT@` is filled in as it is served), signed
@@ -461,23 +607,36 @@ mod with_the_update_code {
     }
 
     fn files_in(dir: &std::path::Path) -> Vec<String> {
-        std::fs::read_dir(dir).map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect()).unwrap_or_default()
+        std::fs::read_dir(dir)
+            .map(|d| {
+                d.flatten()
+                    .map(|e| e.file_name().to_string_lossy().to_string())
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
-    const NOT_SIGNED: &str = "This update was not installed: it was not signed by Bible Workbench. Nothing was changed.";
+    const NOT_SIGNED: &str =
+        "This update was not installed: it was not signed by Bible Workbench. Nothing was changed.";
 
     /// Rows 11, 14 and 15: a release is downloaded, its signature checked, the whole file kept, and the installer the
     /// release names is run.
     #[test]
     fn install_downloads_checks_the_signature_and_runs_the_installer() {
         let h = Home::new("install");
-        let srv = Server::start(vec![release("99.0.0", NAME, SIG, INSTALLER.len()), route(NAME, INSTALLER)]);
+        let srv = Server::start(vec![
+            release("99.0.0", NAME, SIG, INSTALLER.len()),
+            route(NAME, INSTALLER),
+        ]);
         let feed = srv.url("latest.json");
         assert_eq!(h.run(&["update", "check"], Some(&feed)).0, 0);
         assert_eq!(srv.count(NAME), 0, "a look downloads nothing (U-5)");
         let (code, out, err) = h.run(&["update", "install"], Some(&feed));
         assert_eq!(code, 0, "{out} {err}");
-        assert!(out.contains("Bible Workbench 99.0.0 is being installed."), "{out}");
+        assert!(
+            out.contains("Bible Workbench 99.0.0 is being installed."),
+            "{out}"
+        );
         wait_until("the installer to run", || h.installed_marker().exists());
         assert_eq!(srv.count(NAME), 1);
         // whole and signed: kept beside the app, never in the study folder
@@ -495,15 +654,28 @@ mod with_the_update_code {
         let mut changed = INSTALLER.to_vec();
         let last = changed.len() - 3;
         changed[last] ^= 1;
-        for (name, sig, body) in [("other-key", OTHER_SIG, INSTALLER.to_vec()), ("changed-byte", SIG, changed)] {
+        for (name, sig, body) in [
+            ("other-key", OTHER_SIG, INSTALLER.to_vec()),
+            ("changed-byte", SIG, changed),
+        ] {
             let h = Home::new(&format!("refused-{name}"));
-            let srv = Server::start(vec![release("99.0.0", NAME, sig, body.len()), route(NAME, &body)]);
+            let srv = Server::start(vec![
+                release("99.0.0", NAME, sig, body.len()),
+                route(NAME, &body),
+            ]);
             let (code, out, err) = h.run(&["update", "install"], Some(&srv.url("latest.json")));
             assert_eq!(code, 1, "{name}: {out} {err}");
             assert_eq!(err.trim(), format!("error: {NOT_SIGNED}"), "{name}");
-            assert_eq!(srv.count(NAME), 1, "{name}: it was downloaded, then checked");
+            assert_eq!(
+                srv.count(NAME),
+                1,
+                "{name}: it was downloaded, then checked"
+            );
             assert!(!h.installed_marker().exists(), "{name}: the installer ran");
-            assert!(files_in(&h.updates().join("download")).is_empty(), "{name}: the file was not removed");
+            assert!(
+                files_in(&h.updates().join("download")).is_empty(),
+                "{name}: the file was not removed"
+            );
             let s = json(&h.run(&["update", "status"], None).1);
             assert_eq!(s["download"]["state"], "refused", "{name}");
             assert_eq!(s["failure"], NOT_SIGNED, "{name}");
@@ -521,13 +693,19 @@ mod with_the_update_code {
         let older = ["0.0.1", wb_core::updates::INSTALLED];
         for version in older {
             let h = Home::new(&format!("notnewer-{version}"));
-            let srv = Server::start(vec![release(version, NAME, SIG, INSTALLER.len()), route(NAME, INSTALLER)]);
+            let srv = Server::start(vec![
+                release(version, NAME, SIG, INSTALLER.len()),
+                route(NAME, INSTALLER),
+            ]);
             let (code, _, err) = h.run(&["update", "install"], Some(&srv.url("latest.json")));
             assert_eq!(code, 1, "{version}");
             assert_eq!(err.trim(), "error: This update was not installed: it is not newer than the version running. Nothing was changed.", "{version}");
             assert_eq!(srv.count(NAME), 0, "{version}: nothing was downloaded");
             assert!(!h.installed_marker().exists());
-            assert_eq!(json(&h.run(&["update", "status"], None).1)["download"]["state"], "refused");
+            assert_eq!(
+                json(&h.run(&["update", "status"], None).1)["download"]["state"],
+                "refused"
+            );
         }
         // an installer address that is not HTTPS (and not this computer's own)
         let h = Home::new("not-https");
@@ -537,7 +715,10 @@ mod with_the_update_code {
         let srv = Server::start(vec![route("latest.json", body.to_string().as_bytes())]);
         let (code, _, err) = h.run(&["update", "install"], Some(&srv.url("latest.json")));
         assert_eq!(code, 1);
-        assert_eq!(err.trim(), "error: This update was not installed: its address is not HTTPS. Nothing was changed.");
+        assert_eq!(
+            err.trim(),
+            "error: This update was not installed: its address is not HTTPS. Nothing was changed."
+        );
         assert!(!h.installed_marker().exists());
         assert!(files_in(&h.updates().join("download")).is_empty());
     }
@@ -547,15 +728,24 @@ mod with_the_update_code {
     #[test]
     fn a_download_that_stops_partway_says_where_and_try_again_works() {
         let h = Home::new("cutoff");
-        let cut = Route { claims: Some(84_000_000), ..route(NAME, &vec![0u8; 31_000_000]) };
+        let cut = Route {
+            claims: Some(84_000_000),
+            ..route(NAME, &vec![0u8; 31_000_000])
+        };
         let srv = Server::start(vec![release("99.0.0", NAME, SIG, 84_000_000), cut]);
         let feed = srv.url("latest.json");
         h.run(&["update", "check"], Some(&feed));
         let (code, _, err) = h.run(&["update", "install"], Some(&feed));
         assert_eq!(code, 1);
-        let words = format!("The download of 99.0.0 stopped at 31 of 84 MB. Bible Workbench {} works as it is.", wb_core::updates::INSTALLED);
+        let words = format!(
+            "The download of 99.0.0 stopped at 31 of 84 MB. Bible Workbench {} works as it is.",
+            wb_core::updates::INSTALLED
+        );
         assert_eq!(err.trim(), format!("error: {words}"));
-        assert!(files_in(&h.updates().join("download")).is_empty(), "the partial file is removed");
+        assert!(
+            files_in(&h.updates().join("download")).is_empty(),
+            "the partial file is removed"
+        );
         let s = json(&h.run(&["update", "status"], None).1);
         assert_eq!(s["download"]["state"], "stopped");
         assert_eq!(s["failure"], words.as_str());
@@ -568,7 +758,10 @@ mod with_the_update_code {
         let s = json(&h.run(&["update", "status", "--seen"], None).1);
         assert!(s["dot"].is_null(), "{s}");
         // Try again: the same command, now with the whole file
-        let srv = Server::start(vec![release("99.0.0", NAME, SIG, INSTALLER.len()), route(NAME, INSTALLER)]);
+        let srv = Server::start(vec![
+            release("99.0.0", NAME, SIG, INSTALLER.len()),
+            route(NAME, INSTALLER),
+        ]);
         let (code, out, err) = h.run(&["update", "install"], Some(&srv.url("latest.json")));
         assert_eq!(code, 0, "{out} {err}");
         wait_until("the installer to run", || h.installed_marker().exists());
@@ -578,7 +771,10 @@ mod with_the_update_code {
     #[test]
     fn stop_gives_a_running_download_up_and_removes_the_partial_file() {
         let h = Home::new("stop");
-        let slow = Route { slow: Some((4096, 25)), ..route(NAME, &vec![7u8; 400_000]) };
+        let slow = Route {
+            slow: Some((4096, 25)),
+            ..route(NAME, &vec![7u8; 400_000])
+        };
         let srv = Server::start(vec![release("99.0.0", NAME, SIG, 400_000), slow]);
         let feed = srv.url("latest.json");
         let mut child = Command::new(env!("CARGO_BIN_EXE_wb"))
@@ -593,19 +789,37 @@ mod with_the_update_code {
             .unwrap();
         wait_until("the download to start", || {
             let s = json(&h.run(&["update", "status"], None).1);
-            s["download"]["state"] == "downloading" && s["download"]["got"].as_u64().unwrap_or(0) > 0 && s["ring"].is_number()
+            s["download"]["state"] == "downloading"
+                && s["download"]["got"].as_u64().unwrap_or(0) > 0
+                && s["ring"].is_number()
         });
-        assert!(!h.updates().join("download").read_dir().map(|d| d.count() == 0).unwrap_or(true), "a partial file exists while it runs");
+        assert!(
+            !h.updates()
+                .join("download")
+                .read_dir()
+                .map(|d| d.count() == 0)
+                .unwrap_or(true),
+            "a partial file exists while it runs"
+        );
         let (code, out, _) = h.run(&["update", "stop"], None);
         assert_eq!(code, 0);
         assert_eq!(out.trim(), "The download was stopped.");
         let done = child.wait().unwrap();
         assert_eq!(done.code(), Some(1));
-        assert!(files_in(&h.updates().join("download")).is_empty(), "the partial file is removed");
+        assert!(
+            files_in(&h.updates().join("download")).is_empty(),
+            "the partial file is removed"
+        );
         let s = json(&h.run(&["update", "status"], None).1);
-        assert!(s["download"].is_null() && s["ring"].is_null(), "the dot returns: {s}");
+        assert!(
+            s["download"].is_null() && s["ring"].is_null(),
+            "the dot returns: {s}"
+        );
         assert!(!h.installed_marker().exists());
-        assert_eq!(h.run(&["update", "stop"], None).1.trim(), "There is no download to stop.");
+        assert_eq!(
+            h.run(&["update", "stop"], None).1.trim(),
+            "There is no download to stop."
+        );
     }
 
     /// Row 11: Install returns at once while the download runs; the progress is there to read. Row 18: closing the window
@@ -614,7 +828,10 @@ mod with_the_update_code {
     fn install_returns_at_once_and_closing_the_window_installs() {
         let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
         let h = Home::new("at-once");
-        let slow = Route { slow: Some((8192, 20)), ..route(NAME, &vec![0u8; 200_000]) };
+        let slow = Route {
+            slow: Some((8192, 20)),
+            ..route(NAME, &vec![0u8; 200_000])
+        };
         let srv = Server::start(vec![release("99.0.0", NAME, SIG, 200_000), slow]);
         std::env::set_var("WB_UPDATE_FEED", srv.url("latest.json"));
         std::env::set_var("WB_UPDATE_PUBKEY", TEST_KEY.trim());
@@ -624,18 +841,29 @@ mod with_the_update_code {
         // a download of 200 KB at 8 KB / 20 ms takes half a second or more: starting it must not wait for it
         let t = Instant::now();
         u.start_download().unwrap();
-        assert!(t.elapsed() < Duration::from_millis(250), "Install waited for the download: {:?}", t.elapsed());
+        assert!(
+            t.elapsed() < Duration::from_millis(250),
+            "Install waited for the download: {:?}",
+            t.elapsed()
+        );
         assert_eq!(u.download().unwrap().state, "downloading");
         assert!(u.start_download().unwrap_err().contains("already running"));
         // this signature is for the small script, not 200 KB of zeros: it is refused when it is whole, which is also a
         // download that ran to the end
-        wait_until("the download to end", || u.download().is_some_and(|d| d.state != "downloading"));
+        wait_until("the download to end", || {
+            u.download().is_some_and(|d| d.state != "downloading")
+        });
         assert_eq!(u.download().unwrap().state, "refused");
         // now a whole, signed one
-        let srv = Server::start(vec![release("99.0.0", NAME, SIG, INSTALLER.len()), route(NAME, INSTALLER)]);
+        let srv = Server::start(vec![
+            release("99.0.0", NAME, SIG, INSTALLER.len()),
+            route(NAME, INSTALLER),
+        ]);
         std::env::set_var("WB_UPDATE_FEED", srv.url("latest.json"));
         u.start_download().unwrap();
-        wait_until("the download to be ready", || u.download().is_some_and(|d| d.state == "ready"));
+        wait_until("the download to be ready", || {
+            u.download().is_some_and(|d| d.state == "ready")
+        });
         // Install does not install: nothing ran
         assert!(!h.installed_marker().exists());
         assert!(u.ready_installer().is_some());
@@ -646,7 +874,12 @@ mod with_the_update_code {
         // with nothing downloaded, closing the window installs nothing
         let none = wb_core::updates::Updates::new(h.dir.join("elsewhere"));
         assert!(none.install_on_close().is_none());
-        for k in ["WB_UPDATE_FEED", "WB_UPDATE_PUBKEY", "WB_TEST_INSTALLED", "WB_APP_DIR"] {
+        for k in [
+            "WB_UPDATE_FEED",
+            "WB_UPDATE_PUBKEY",
+            "WB_TEST_INSTALLED",
+            "WB_APP_DIR",
+        ] {
             std::env::remove_var(k);
         }
     }
@@ -666,18 +899,35 @@ mod with_the_update_code {
                 let stream = stream.unwrap();
                 let (line, _) = wb_core::relay::read_request(&stream, &token).unwrap();
                 seen.lock().unwrap().push(line);
-                let reply = if n < 2 { serde_json::json!({"ok": true, "said": "Restarting into 99.0.0"}) } else { serde_json::json!({"ok": false, "error": "Phinehas could not be saved, so Bible Workbench was not restarted"}) };
+                let reply = if n < 2 {
+                    serde_json::json!({"ok": true, "said": "Restarting into 99.0.0"})
+                } else {
+                    serde_json::json!({"ok": false, "error": "Phinehas could not be saved, so Bible Workbench was not restarted"})
+                };
                 wb_core::relay::answer(&stream, &reply);
             }
         });
         let (code, out, err) = h.run(&["update", "install"], None);
-        assert_eq!((code, out.trim(), err.trim()), (0, "Restarting into 99.0.0", ""));
+        assert_eq!(
+            (code, out.trim(), err.trim()),
+            (0, "Restarting into 99.0.0", "")
+        );
         let (code, out, _) = h.run(&["update", "install", "--when-closed"], None);
         assert_eq!((code, out.trim()), (0, "Restarting into 99.0.0"));
         let (code, _, err) = h.run(&["update", "install"], None);
         assert_eq!(code, 1);
-        assert!(err.contains("Phinehas could not be saved, so Bible Workbench was not restarted"), "{err}");
-        assert_eq!(*lines.lock().unwrap(), ["update install", "update install --when-closed", "update install"]);
+        assert!(
+            err.contains("Phinehas could not be saved, so Bible Workbench was not restarted"),
+            "{err}"
+        );
+        assert_eq!(
+            *lines.lock().unwrap(),
+            [
+                "update install",
+                "update install --when-closed",
+                "update install"
+            ]
+        );
         std::env::remove_var("WB_CACHE_DIR");
     }
 
@@ -686,15 +936,24 @@ mod with_the_update_code {
     #[test]
     fn an_install_that_does_not_finish_is_said_and_one_that_does_is_remembered() {
         let h = Home::new("settle");
-        let srv = Server::start(vec![release("99.0.0", NAME, SIG, INSTALLER.len()), route(NAME, INSTALLER)]);
-        let (code, out, err) = h.run(&["update", "install", "--when-closed"], Some(&srv.url("latest.json")));
+        let srv = Server::start(vec![
+            release("99.0.0", NAME, SIG, INSTALLER.len()),
+            route(NAME, INSTALLER),
+        ]);
+        let (code, out, err) = h.run(
+            &["update", "install", "--when-closed"],
+            Some(&srv.url("latest.json")),
+        );
         assert_eq!(code, 0, "{out} {err}");
         wait_until("the installer to run", || h.installed_marker().exists());
         // the test installer changes nothing: this opening is still the old version
         let u = wb_core::updates::Updates::new(h.updates());
         u.settle();
         let s = json(&h.run(&["update", "status"], None).1);
-        assert_eq!(s["failure"], "This update was not installed: the installer did not finish. Nothing was changed.");
+        assert_eq!(
+            s["failure"],
+            "This update was not installed: the installer did not finish. Nothing was changed."
+        );
         assert_eq!(s["download"]["state"], "stopped");
         assert_eq!(s["dot"], s["failure"]);
         assert!(s["updated"].is_null());
@@ -709,7 +968,10 @@ mod with_the_update_code {
         assert_eq!(s["updated"]["on"], "2026-11-19");
         assert!(s["failure"].is_null() && s["dot"].is_null());
         // its notes read offline
-        let (code, out, _) = h.run(&["update", "notes", me], Some("http://127.0.0.1:9/latest.json"));
+        let (code, out, _) = h.run(
+            &["update", "notes", me],
+            Some("http://127.0.0.1:9/latest.json"),
+        );
         assert_eq!(code, 0);
         assert!(out.contains("Your study folder"), "{out}");
     }
@@ -719,24 +981,40 @@ mod with_the_update_code {
     #[test]
     fn the_version_before_is_kept_once_and_go_back_puts_it_back() {
         let h = Home::new("back");
-        let srv = Server::start(vec![release("99.0.0", NAME, SIG, INSTALLER.len()), route(NAME, INSTALLER)]);
+        let srv = Server::start(vec![
+            release("99.0.0", NAME, SIG, INSTALLER.len()),
+            route(NAME, INSTALLER),
+        ]);
         let (code, out, err) = h.run(&["update", "install"], Some(&srv.url("latest.json")));
         assert_eq!(code, 0, "{out} {err}");
         wait_until("the installer to run", || h.installed_marker().exists());
         let kept = h.updates().join("before").join(wb_core::updates::INSTALLED);
-        assert_eq!(std::fs::read_to_string(kept.join("bible-workbench.exe")).unwrap(), "the version running");
-        assert!(!kept.join("datasets").exists() && !kept.join("workbench.db").exists(), "the database is not part of it");
+        assert_eq!(
+            std::fs::read_to_string(kept.join("bible-workbench.exe")).unwrap(),
+            "the version running"
+        );
+        assert!(
+            !kept.join("datasets").exists() && !kept.join("workbench.db").exists(),
+            "the database is not part of it"
+        );
         // not offered before an update has happened
         let (code, _, err) = h.run(&["update", "back"], None);
         assert_eq!(code, 1);
-        assert!(err.contains("not offered") || err.contains("no earlier version"), "{err}");
+        assert!(
+            err.contains("not offered") || err.contains("no earlier version"),
+            "{err}"
+        );
 
         // now it is the new version that runs: the record names it, and what was kept is the version before
         let me = wb_core::updates::INSTALLED;
         let before = h.updates().join("before");
         std::fs::remove_dir_all(&before).unwrap();
         std::fs::create_dir_all(before.join("0.0.9")).unwrap();
-        std::fs::write(before.join("0.0.9").join("bible-workbench.exe"), "the version before").unwrap();
+        std::fs::write(
+            before.join("0.0.9").join("bible-workbench.exe"),
+            "the version before",
+        )
+        .unwrap();
         std::fs::write(before.join("before.json"), r#"{"version":"0.0.9"}"#).unwrap();
         std::fs::write(h.updates().join("state.json"), serde_json::json!({ "installing": { "from": "0.0.9", "to": me, "at": "2026-11-19T09:00:00Z" } }).to_string()).unwrap();
         let s = json(&h.run(&["update", "status"], None).1);
@@ -745,8 +1023,15 @@ mod with_the_update_code {
         let (code, out, err) = h.run(&["update", "back"], None);
         assert_eq!(code, 0, "{out} {err}");
         assert!(out.contains("Bible Workbench 0.0.9 is back"), "{out}");
-        assert_eq!(std::fs::read_to_string(h.dir.join("app").join("bible-workbench.exe")).unwrap(), "the version before");
-        assert_eq!(std::fs::read_to_string(h.dir.join("app").join("datasets").join("workbench.db")).unwrap(), "database");
+        assert_eq!(
+            std::fs::read_to_string(h.dir.join("app").join("bible-workbench.exe")).unwrap(),
+            "the version before"
+        );
+        assert_eq!(
+            std::fs::read_to_string(h.dir.join("app").join("datasets").join("workbench.db"))
+                .unwrap(),
+            "database"
+        );
         let s = json(&h.run(&["update", "status"], None).1);
         assert!(s["back"].is_null() && s["updated"].is_null(), "{s}");
         assert!(!before.exists(), "the version kept is used up");
@@ -762,10 +1047,17 @@ mod with_the_update_code {
         // nothing kept: refused before the window is asked
         let (code, _, err) = h.run(&["update", "back"], None);
         assert_eq!(code, 1);
-        assert!(err.contains("no earlier version is kept") || err.contains("no earlier version kept"), "{err}");
+        assert!(
+            err.contains("no earlier version is kept") || err.contains("no earlier version kept"),
+            "{err}"
+        );
         let before = h.updates().join("before");
         std::fs::create_dir_all(before.join("0.0.9")).unwrap();
-        std::fs::write(before.join("0.0.9").join("bible-workbench.exe"), "the version before").unwrap();
+        std::fs::write(
+            before.join("0.0.9").join("bible-workbench.exe"),
+            "the version before",
+        )
+        .unwrap();
         std::fs::write(before.join("before.json"), r#"{"version":"0.0.9"}"#).unwrap();
         std::fs::write(h.updates().join("state.json"), serde_json::json!({ "installing": { "from": "0.0.9", "to": wb_core::updates::INSTALLED, "at": "2026-11-19T09:00:00Z" } }).to_string()).unwrap();
         let (listener, token) = wb_core::relay::listen(&h.dir.join("study")).unwrap();
@@ -774,13 +1066,19 @@ mod with_the_update_code {
         std::thread::spawn(move || {
             let (stream, _) = listener.accept().unwrap();
             *seen.lock().unwrap() = wb_core::relay::read_request(&stream, &token).unwrap().0;
-            wb_core::relay::answer(&stream, &serde_json::json!({"ok": true, "said": "Going back"}));
+            wb_core::relay::answer(
+                &stream,
+                &serde_json::json!({"ok": true, "said": "Going back"}),
+            );
         });
         let (code, out, err) = h.run(&["update", "back"], None);
         assert_eq!((code, out.trim(), err.trim()), (0, "Going back", ""));
         assert_eq!(*line.lock().unwrap(), "update back");
         // the window did the work: the files here are as they were
-        assert_eq!(std::fs::read_to_string(h.dir.join("app").join("bible-workbench.exe")).unwrap(), "the version running");
+        assert_eq!(
+            std::fs::read_to_string(h.dir.join("app").join("bible-workbench.exe")).unwrap(),
+            "the version running"
+        );
         std::env::remove_var("WB_CACHE_DIR");
     }
 }

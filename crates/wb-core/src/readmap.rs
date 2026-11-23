@@ -15,11 +15,19 @@ use std::path::Path;
 
 /// The chapters a place (as anchor text or a reference) touches.
 fn chapters_touched(bible: &Bible, place: &str) -> Vec<String> {
-    let span = crate::anchors::parse(place).ok().filter(|a| a.kind != crate::anchors::Kind::Lemma).map(|a| (a.code.clone(), a.c1, a.last_chapter())).or_else(|| {
-        parse_span(place, bible.books()).ok().map(|sp| (sp.book.code.clone(), sp.c1, sp.c2))
-    });
+    let span = crate::anchors::parse(place)
+        .ok()
+        .filter(|a| a.kind != crate::anchors::Kind::Lemma)
+        .map(|a| (a.code.clone(), a.c1, a.last_chapter()))
+        .or_else(|| {
+            parse_span(place, bible.books())
+                .ok()
+                .map(|sp| (sp.book.code.clone(), sp.c1, sp.c2))
+        });
     match span {
-        Some((code, a, b)) if a <= b && b - a < 200 => (a..=b).map(|c| format!("{code}.{c}")).collect(),
+        Some((code, a, b)) if a <= b && b - a < 200 => {
+            (a..=b).map(|c| format!("{code}.{c}")).collect()
+        }
         _ => vec![],
     }
 }
@@ -29,23 +37,40 @@ pub fn written_about(bible: &Bible, store: &Store) -> BTreeMap<String, Vec<Value
     let mut out: BTreeMap<String, Vec<Value>> = BTreeMap::new();
     let mut add = |ch: String, item: Value| {
         let list = out.entry(ch).or_default();
-        if !list.iter().any(|x| x["id"] == item["id"] && x["kind"] == item["kind"]) {
+        if !list
+            .iter()
+            .any(|x| x["id"] == item["id"] && x["kind"] == item["kind"])
+        {
             list.push(item);
         }
     };
-    let pages = store.notes().into_iter().chain(store.inbox()).chain(store.on_thread());
+    let pages = store
+        .notes()
+        .into_iter()
+        .chain(store.inbox())
+        .chain(store.on_thread());
     for r in pages {
         let text = s(r, "text");
-        let kind = if s(r, "kind") == "question" { "question" } else { "page" };
+        let kind = if s(r, "kind") == "question" {
+            "question"
+        } else {
+            "page"
+        };
         let (id, title) = (s(r, "id"), nb::title_of(&text));
         for p in places_of(r) {
             for ch in chapters_touched(bible, &p) {
-                add(ch, json!({"kind": kind, "id": id, "title": title, "anchor": p}));
+                add(
+                    ch,
+                    json!({"kind": kind, "id": id, "title": title, "anchor": p}),
+                );
             }
         }
         for f in find_refs(&text, bible.books()) {
             for ch in chapters_touched(bible, &f.place) {
-                add(ch, json!({"kind": if kind == "question" { "question" } else { "place in a page" }, "id": id, "title": title, "anchor": f.place}));
+                add(
+                    ch,
+                    json!({"kind": if kind == "question" { "question" } else { "place in a page" }, "id": id, "title": title, "anchor": f.place}),
+                );
             }
         }
     }
@@ -53,21 +78,30 @@ pub fn written_about(bible: &Bible, store: &Store) -> BTreeMap<String, Vec<Value
         let (id, title) = (s(r, "id"), s(r, "day"));
         for f in find_refs(&s(r, "text"), bible.books()) {
             for ch in chapters_touched(bible, &f.place) {
-                add(ch, json!({"kind": "place in a page", "id": id, "title": title, "anchor": f.place}));
+                add(
+                    ch,
+                    json!({"kind": "place in a page", "id": id, "title": title, "anchor": f.place}),
+                );
             }
         }
     }
     for h in store.all_highlights() {
         let a = s(&h, "anchor");
         for ch in chapters_touched(bible, &a) {
-            add(ch, json!({"kind": "highlight", "id": s(&h, "id"), "title": a, "anchor": a}));
+            add(
+                ch,
+                json!({"kind": "highlight", "id": s(&h, "id"), "title": a, "anchor": a}),
+            );
         }
     }
     for t in store.threads() {
         for m in t["members"].as_array().cloned().unwrap_or_default() {
             let at = m["anchor"].as_str().unwrap_or("").to_string();
             for ch in chapters_touched(bible, &at) {
-                add(ch, json!({"kind": "folder", "id": s(t, "id"), "title": s(t, "name"), "anchor": at}));
+                add(
+                    ch,
+                    json!({"kind": "folder", "id": s(t, "id"), "title": s(t, "name"), "anchor": at}),
+                );
             }
         }
     }
@@ -78,7 +112,10 @@ pub fn written_about(bible: &Bible, store: &Store) -> BTreeMap<String, Vec<Value
             }
             let at = i["ref"].as_str().unwrap_or("").to_string();
             for ch in chapters_touched(bible, &at) {
-                add(ch, json!({"kind": "folder", "id": s(&t, "id"), "title": s(&t, "name"), "anchor": at}));
+                add(
+                    ch,
+                    json!({"kind": "folder", "id": s(&t, "id"), "title": s(&t, "name"), "anchor": at}),
+                );
             }
         }
     }
@@ -93,9 +130,18 @@ pub fn map(bible: &Bible, root: &Path, store: &Store) -> Result<Value> {
     let mut books = vec![];
     for b in bible.books() {
         let read: Vec<Value> = (1..=b.chapters)
-            .filter_map(|c| cov.get(&format!("{}.{c}", b.code)).map(|x| json!([c, x.times, (x.fraction() * 100.0).round() / 100.0])))
+            .filter_map(|c| {
+                cov.get(&format!("{}.{c}", b.code))
+                    .map(|x| json!([c, x.times, (x.fraction() * 100.0).round() / 100.0]))
+            })
             .collect();
-        let written: Vec<Value> = (1..=b.chapters).filter_map(|c| about.get(&format!("{}.{c}", b.code)).map(|l| json!([c, l.len()]))).collect();
+        let written: Vec<Value> = (1..=b.chapters)
+            .filter_map(|c| {
+                about
+                    .get(&format!("{}.{c}", b.code))
+                    .map(|l| json!([c, l.len()]))
+            })
+            .collect();
         books.push(json!({"code": b.code, "name": b.name, "chapters": b.chapters, "read": read, "written": written}));
     }
     Ok(json!({"books": books}))
@@ -103,5 +149,7 @@ pub fn map(bible: &Bible, root: &Path, store: &Store) -> Result<Value> {
 
 /// What refers to one chapter: the list a click on the map shows (and the plan pane's "what refers to it").
 pub fn about(bible: &Bible, store: &Store, chapter: &str) -> Vec<Value> {
-    written_about(bible, store).remove(chapter).unwrap_or_default()
+    written_about(bible, store)
+        .remove(chapter)
+        .unwrap_or_default()
 }

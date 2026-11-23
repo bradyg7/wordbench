@@ -47,15 +47,33 @@ pub struct VerseView {
 }
 
 pub fn reader(bible: &Bible, store: &Store, code: &str, chapter: u32) -> Result<ReaderView> {
-    Ok(ReaderView { chapter: bible.chapter(code, chapter)?, marks: marks::chapter_marks(store, code, chapter)?, questions: crate::notebook::chapter_questions(store, code, chapter) })
+    Ok(ReaderView {
+        chapter: bible.chapter(code, chapter)?,
+        marks: marks::chapter_marks(store, code, chapter)?,
+        questions: crate::notebook::chapter_questions(store, code, chapter),
+    })
 }
 
 /// The reader in a version: the KJV as `reader`; another version with the marks it can show (`marks::verse_level`).
-pub fn reader_in(bible: &Bible, store: &Store, code: &str, chapter: u32, version: &str) -> Result<ReaderView> {
+pub fn reader_in(
+    bible: &Bible,
+    store: &Store,
+    code: &str,
+    chapter: u32,
+    version: &str,
+) -> Result<ReaderView> {
     let ch = bible.chapter_in(code, chapter, version)?;
     let m = marks::chapter_marks(store, code, chapter)?;
-    let marks = if ch.version.is_some() { marks::verse_level(m) } else { m };
-    Ok(ReaderView { chapter: ch, marks, questions: crate::notebook::chapter_questions(store, code, chapter) })
+    let marks = if ch.version.is_some() {
+        marks::verse_level(m)
+    } else {
+        m
+    };
+    Ok(ReaderView {
+        chapter: ch,
+        marks,
+        questions: crate::notebook::chapter_questions(store, code, chapter),
+    })
 }
 
 fn touches_verse(anchor: &str, code: &str, c: u32, v: u32) -> bool {
@@ -71,8 +89,14 @@ pub fn word(bible: &Bible, store: &Store, code: &str, c: u32, v: u32, i: u32) ->
     let (name, w) = bible.word(code, c, v, i)?;
     let strong = w.strong.clone();
     let anchor = format!("{code}.{c}:{v}.{i}");
-    let here = store.notes().into_iter().filter(|n| places_of(n).contains(&anchor));
-    let everywhere = store.notes().into_iter().filter(|n| strong.as_deref().is_some_and(|x| s(n, "anchor") == x));
+    let here = store
+        .notes()
+        .into_iter()
+        .filter(|n| places_of(n).contains(&anchor));
+    let everywhere = store
+        .notes()
+        .into_iter()
+        .filter(|n| strong.as_deref().is_some_and(|x| s(n, "anchor") == x));
     let notes = here.chain(everywhere).cloned().collect();
     Ok(WordView {
         reference: format!("{name} {c}:{v}"),
@@ -100,13 +124,40 @@ pub fn verse(bible: &Bible, store: &Store, code: &str, c: u32, v: u32) -> Result
         .map(|x| x.2)
         .ok_or_else(|| Error(format!("No verse {} {c}:{v}", book.name)))?;
     let anchor = format!("{code}.{c}:{v}");
-    let color = store.highlights(code).into_iter().rev().find(|h| s(h, "anchor") == anchor).map(|h| s(&h, "color"));
-    let notes = store.notes().into_iter().filter(|n| places_of(n).iter().any(|p| touches_verse(p, code, c, v))).cloned().collect();
+    let color = store
+        .highlights(code)
+        .into_iter()
+        .rev()
+        .find(|h| s(h, "anchor") == anchor)
+        .map(|h| s(&h, "color"));
+    let notes = store
+        .notes()
+        .into_iter()
+        .filter(|n| places_of(n).iter().any(|p| touches_verse(p, code, c, v)))
+        .cloned()
+        .collect();
     let threads = store
         .threads()
         .into_iter()
-        .filter(|t| t["members"].as_array().unwrap().iter().any(|m| touches_verse(m["anchor"].as_str().unwrap_or(""), code, c, v)))
-        .map(|t| ThreadRef { id: s(t, "id"), name: s(t, "name"), color: s(t, "color") })
+        .filter(|t| {
+            t["members"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|m| touches_verse(m["anchor"].as_str().unwrap_or(""), code, c, v))
+        })
+        .map(|t| ThreadRef {
+            id: s(t, "id"),
+            name: s(t, "name"),
+            color: s(t, "color"),
+        })
         .collect();
-    Ok(VerseView { reference: format!("{} {c}:{v}", book.name), anchor, text, color, notes, threads })
+    Ok(VerseView {
+        reference: format!("{} {c}:{v}", book.name),
+        anchor,
+        text,
+        color,
+        notes,
+        threads,
+    })
 }

@@ -100,9 +100,10 @@ pub fn settings(_: &Ctx<'_>, a: &Args) -> Res {
     let u = Updates::here();
     let word = a.s("key");
     if !word.is_empty() {
-        let look = Look::parse(&word).ok_or("Say open (when the app opens) or ask (only when I ask): wb settings updates open|ask")?;
+        let look = Look::parse(&word).ok_or(
+            "Say open (when the app opens) or ask (only when I ask): wb settings updates open|ask",
+        )?;
         u.set_look(look)?;
     }
     Ok(Out::Json(serde_json::json!({ "look": u.look().word() })))
 }
-

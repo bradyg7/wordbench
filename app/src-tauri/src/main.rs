@@ -3,17 +3,18 @@
 
 use serde::Serialize;
 use serde_json::{json, Value};
-use std::sync::Mutex;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
+use std::sync::Mutex;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, LogicalSize, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::{DialogExt, FilePath};
 use wb_core::{bible::Bible, store::Store, studyapi, views};
 
 /// Said when the setup screen has not finished: the window still draws, and says what is missing rather than closing.
-const NOT_SET_UP: &str = "Bible Workbench is not set up yet. Choose the Bible database and the folder for your notes.";
+const NOT_SET_UP: &str =
+    "Bible Workbench is not set up yet. Choose the Bible database and the folder for your notes.";
 
 struct App {
     /// The Bible, opened once the setup screen has found a database.
@@ -31,14 +32,19 @@ static NEXT_DO: AtomicU64 = AtomicU64::new(1);
 
 /// `wb do`: lines from a terminal, handed to the window as a "wb-do" event; the window answers with `do_done`.
 fn serve_do(handle: tauri::AppHandle, study: std::path::PathBuf) {
-    let Ok((listener, token)) = wb_core::relay::listen(&study) else { return };
+    let Ok((listener, token)) = wb_core::relay::listen(&study) else {
+        return;
+    };
     std::thread::spawn(move || {
         for stream in listener.incoming().flatten() {
             let handle = handle.clone();
             let token = token.clone();
             std::thread::spawn(move || {
                 let Some((line, wait_ms)) = wb_core::relay::read_request(&stream, &token) else {
-                    wb_core::relay::answer(&stream, &json!({"ok": false, "error": "refused: not from wb on this computer"}));
+                    wb_core::relay::answer(
+                        &stream,
+                        &json!({"ok": false, "error": "refused: not from wb on this computer"}),
+                    );
                     return;
                 };
                 let id = NEXT_DO.fetch_add(1, Ordering::SeqCst);
@@ -74,7 +80,10 @@ const PRESETS: &[(&str, f64, f64)] = &[
 ];
 
 fn wall_ms() -> u128 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0)
 }
 
 /// Runs a wb-core call and adds how long it took inside Rust (`rust_ms`), for the budgets.
@@ -89,7 +98,10 @@ fn fresh<'a>(app: &'a App) -> Result<std::sync::MutexGuard<'a, Option<Store>>, S
     #[cfg(feature = "distribution")]
     wb_core::runtime::require_license().map_err(|e| e.to_string())?;
     let mut st = app.store.lock().unwrap();
-    st.as_mut().ok_or(NOT_SET_UP)?.refresh().map_err(|e| e.to_string())?;
+    st.as_mut()
+        .ok_or(NOT_SET_UP)?
+        .refresh()
+        .map_err(|e| e.to_string())?;
     Ok(st)
 }
 
@@ -102,16 +114,35 @@ fn bible_of<'a>(app: &'a App) -> Result<std::sync::MutexGuard<'a, Option<Bible>>
 }
 
 #[tauri::command]
-fn reader(app: State<App>, code: String, chapter: u32, version: Option<String>) -> Result<Value, String> {
+fn reader(
+    app: State<App>,
+    code: String,
+    chapter: u32,
+    version: Option<String>,
+) -> Result<Value, String> {
     let st = fresh(&app)?;
     let st = st.as_ref().unwrap();
     let bible = bible_of(&app)?;
     let bible = bible.as_ref().unwrap();
-    timed(|| views::reader_in(bible, st, &code, chapter, version.as_deref().unwrap_or("KJV")))
+    timed(|| {
+        views::reader_in(
+            bible,
+            st,
+            &code,
+            chapter,
+            version.as_deref().unwrap_or("KJV"),
+        )
+    })
 }
 
 #[tauri::command]
-fn word(app: State<App>, code: String, chapter: u32, verse: u32, word: u32) -> Result<Value, String> {
+fn word(
+    app: State<App>,
+    code: String,
+    chapter: u32,
+    verse: u32,
+    word: u32,
+) -> Result<Value, String> {
     let st = fresh(&app)?;
     let st = st.as_ref().unwrap();
     let bible = bible_of(&app)?;
@@ -180,7 +211,10 @@ fn unpercent(s: &str) -> String {
     let mut i = 0;
     while i < b.len() {
         if b[i] == b'%' && i + 2 < b.len() {
-            if let Some(v) = std::str::from_utf8(&b[i + 1..i + 3]).ok().and_then(|h| u8::from_str_radix(h, 16).ok()) {
+            if let Some(v) = std::str::from_utf8(&b[i + 1..i + 3])
+                .ok()
+                .and_then(|h| u8::from_str_radix(h, 16).ok())
+            {
                 out.push(v);
                 i += 3;
                 continue;
@@ -196,10 +230,21 @@ fn unpercent(s: &str) -> String {
 /// path; the page has the file's bytes and no path). The body is the bytes; the headers say which finding and the name.
 #[tauri::command]
 fn finding_attach(app: State<App>, request: tauri::ipc::Request<'_>) -> Result<Value, String> {
-    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("The file's bytes did not arrive.".into()) };
-    let header = |k: &str| request.headers().get(k).and_then(|v| v.to_str().ok()).map(unpercent).unwrap_or_default();
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("The file's bytes did not arrive.".into());
+    };
+    let header = |k: &str| {
+        request
+            .headers()
+            .get(k)
+            .and_then(|v| v.to_str().ok())
+            .map(unpercent)
+            .unwrap_or_default()
+    };
     let root = fresh(&app)?.as_ref().ok_or(NOT_SET_UP)?.root.clone();
-    timed(|| wb_core::findings::attach_bytes(&root, &header("wb-finding"), &header("wb-name"), bytes))
+    timed(|| {
+        wb_core::findings::attach_bytes(&root, &header("wb-finding"), &header("wb-name"), bytes)
+    })
 }
 
 #[tauri::command]
@@ -217,13 +262,23 @@ fn setup_value() -> Value {
     let db_ok = Bible::open(&db).is_ok();
     let configured = wb_core::setup::study_configured();
     // Before the person chooses, show the folder the screen offers, not the development scratch copy.
-    let study = if configured { wb_core::default_study_dir() } else { wb_core::setup::suggested_study_dir() };
+    let study = if configured {
+        wb_core::default_study_dir()
+    } else {
+        wb_core::setup::suggested_study_dir()
+    };
     let store = if configured {
         Store::open(&study)
     } else {
-        Err(wb_core::Error("No folder for your notes has been chosen yet.".into()))
+        Err(wb_core::Error(
+            "No folder for your notes has been chosen yet.".into(),
+        ))
     };
-    let db_detail = if db_ok { "Ready".to_string() } else { format!("No readable Bible database at {}", db.display()) };
+    let db_detail = if db_ok {
+        "Ready".to_string()
+    } else {
+        format!("No readable Bible database at {}", db.display())
+    };
     let study_detail = match &store {
         Ok(_) => "Ready".to_string(),
         Err(e) => e.0.clone(),
@@ -244,11 +299,16 @@ fn setup_status() -> Value {
 
 /// Opens a study folder the way boot does, making the folder if the person chose a new one.
 fn open_study(path: &std::path::Path) -> Result<Store, String> {
-    std::fs::create_dir_all(path).map_err(|e| format!("The folder could not be made ({}): {e}", path.display()))?;
+    std::fs::create_dir_all(path)
+        .map_err(|e| format!("The folder could not be made ({}): {e}", path.display()))?;
     let mut store = Store::open(path).map_err(|e| e.to_string())?;
     store.recheck = std::time::Duration::from_secs(1);
     match wb_core::deletion::sweep(&mut store, wb_core::deletion::now_ms()) {
-        Ok(result) if result["errors"].as_array().is_some_and(|errors| !errors.is_empty()) => {
+        Ok(result)
+            if result["errors"]
+                .as_array()
+                .is_some_and(|errors| !errors.is_empty()) =>
+        {
             eprintln!("Deletion recovery needs attention: {}", result["errors"]);
         }
         Err(e) => eprintln!("Deletion recovery needs attention: {e}"),
@@ -277,7 +337,11 @@ fn set_study_dir(app: tauri::AppHandle, path: String) -> Result<Value, String> {
 async fn choose_study_dir(app: tauri::AppHandle) -> Result<Value, String> {
     let handle = app.clone();
     let picked = tauri::async_runtime::spawn_blocking(move || {
-        handle.dialog().file().set_title("Choose the folder for your notes").blocking_pick_folder()
+        handle
+            .dialog()
+            .file()
+            .set_title("Choose the folder for your notes")
+            .blocking_pick_folder()
     })
     .await
     .map_err(|e| e.to_string())?;
@@ -328,12 +392,19 @@ async fn choose_bible_db(app: tauri::AppHandle) -> Result<Value, String> {
 
 #[tauri::command]
 fn set_window(window: tauri::WebviewWindow, preset: String) -> Result<Value, String> {
-    let &(name, w, h) = PRESETS.iter().find(|p| p.0 == preset).ok_or(format!("No window size {preset:?}"))?;
+    let &(name, w, h) = PRESETS
+        .iter()
+        .find(|p| p.0 == preset)
+        .ok_or(format!("No window size {preset:?}"))?;
     window.unmaximize().ok();
-    window.set_size(LogicalSize::new(w, h)).map_err(|e| e.to_string())?;
+    window
+        .set_size(LogicalSize::new(w, h))
+        .map_err(|e| e.to_string())?;
     let got = window.inner_size().map_err(|e| e.to_string())?;
     let scale = window.scale_factor().unwrap_or(1.0);
-    Ok(json!({ "preset": name, "asked": [w, h], "got": [got.width as f64 / scale, got.height as f64 / scale] }))
+    Ok(
+        json!({ "preset": name, "asked": [w, h], "got": [got.width as f64 / scale, got.height as f64 / scale] }),
+    )
 }
 
 /// The UI calls this once the first chapter is on screen. With `WB_MEASURE_OUT` set, the report is written there for
@@ -356,7 +427,8 @@ fn ui_ready(app: State<App>, handle: tauri::AppHandle, report: Value) -> Result<
         "ui": report,
     });
     if let Ok(path) = std::env::var("WB_MEASURE_OUT") {
-        std::fs::write(&path, serde_json::to_string_pretty(&out).unwrap()).map_err(|e| e.to_string())?;
+        std::fs::write(&path, serde_json::to_string_pretty(&out).unwrap())
+            .map_err(|e| e.to_string())?;
     }
     Ok(out)
 }
@@ -386,9 +458,18 @@ fn fail(msg: &str) -> ! {
     {
         #[link(name = "user32")]
         extern "system" {
-            fn MessageBoxW(hwnd: *mut std::ffi::c_void, text: *const u16, caption: *const u16, kind: u32) -> i32;
+            fn MessageBoxW(
+                hwnd: *mut std::ffi::c_void,
+                text: *const u16,
+                caption: *const u16,
+                kind: u32,
+            ) -> i32;
         }
-        let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
+        let wide = |s: &str| {
+            s.encode_utf16()
+                .chain(std::iter::once(0))
+                .collect::<Vec<u16>>()
+        };
         let (text, caption) = (wide(msg), wide("Bible Workbench"));
         // MB_OK | MB_ICONWARNING
         unsafe { MessageBoxW(std::ptr::null_mut(), text.as_ptr(), caption.as_ptr(), 0x30) };
@@ -400,27 +481,53 @@ fn fail(msg: &str) -> ! {
 #[tauri::command]
 fn installation_status() -> Result<wb_core::runtime::Status, String> {
     #[cfg(feature = "distribution")]
-    { Ok(wb_core::runtime::roots().status()) }
+    {
+        Ok(wb_core::runtime::roots().status())
+    }
     #[cfg(not(feature = "distribution"))]
-    { Err("Installation setup is available in distribution builds only.".into()) }
+    {
+        Err("Installation setup is available in distribution builds only.".into())
+    }
 }
 
 #[tauri::command]
 fn installation_configure(app: tauri::AppHandle, path: String, create: bool) -> Result<(), String> {
-    if app.try_state::<App>().is_some_and(|a| a.store.lock().unwrap().is_some()) { return Err("Close the study workspace before changing installation settings.".into()); }
+    if app
+        .try_state::<App>()
+        .is_some_and(|a| a.store.lock().unwrap().is_some())
+    {
+        return Err("Close the study workspace before changing installation settings.".into());
+    }
     #[cfg(feature = "distribution")]
-    { wb_core::runtime::roots().configure(std::path::Path::new(&path), create).map_err(|e| e.to_string()) }
+    {
+        wb_core::runtime::roots()
+            .configure(std::path::Path::new(&path), create)
+            .map_err(|e| e.to_string())
+    }
     #[cfg(not(feature = "distribution"))]
-    { let _ = (path, create); Err("Installation setup is available in distribution builds only.".into()) }
+    {
+        let _ = (path, create);
+        Err("Installation setup is available in distribution builds only.".into())
+    }
 }
 
 #[tauri::command]
 fn installation_restart(app: tauri::AppHandle) -> Result<(), String> {
-    if app.try_state::<App>().is_some_and(|a| a.store.lock().unwrap().is_some()) { return Err("Restart from setup only; preserve your open workspace.".into()); }
+    if app
+        .try_state::<App>()
+        .is_some_and(|a| a.store.lock().unwrap().is_some())
+    {
+        return Err("Restart from setup only; preserve your open workspace.".into());
+    }
     #[cfg(feature = "distribution")]
-    { app.restart(); }
+    {
+        app.restart();
+    }
     #[cfg(not(feature = "distribution"))]
-    { let _ = app; Err("Installation setup is available in distribution builds only.".into()) }
+    {
+        let _ = app;
+        Err("Installation setup is available in distribution builds only.".into())
+    }
 }
 
 #[tauri::command]
@@ -431,12 +538,22 @@ fn pilot_license(action: String, certificate: Option<String>) -> Result<Value, S
         match action.as_str() {
             "status" => serde_json::to_value(license.status()).map_err(|e| e.to_string()),
             "request" => Ok(json!({"request": license.request()?})),
-            "import" => { license.import(certificate.as_deref().ok_or("Choose a license file first.")?)?; Ok(json!({"active":true})) },
+            "import" => {
+                license.import(
+                    certificate
+                        .as_deref()
+                        .ok_or("Choose a license file first.")?,
+                )?;
+                Ok(json!({"active":true}))
+            }
             _ => Err("Unknown license action.".into()),
         }
     }
     #[cfg(not(feature = "distribution"))]
-    { let _ = (action, certificate); Err("Pilot licensing is available in distribution builds only.".into()) }
+    {
+        let _ = (action, certificate);
+        Err("Pilot licensing is available in distribution builds only.".into())
+    }
 }
 
 /// The look the app makes by itself (design/features/updates U-1, U-3): once, ten seconds after the reader has drawn,
@@ -446,13 +563,18 @@ fn pilot_license(action: String, certificate: Option<String>) -> Result<Value, S
 #[cfg(feature = "updater")]
 fn look_for_update(app: tauri::AppHandle) {
     // Without the updater's configuration its plugin is not registered (see main), and there is nothing to look for.
-    if std::env::var("WB_NO_UPDATE_CHECK").is_ok() || !app.config().plugins.0.contains_key("updater") {
+    if std::env::var("WB_NO_UPDATE_CHECK").is_ok()
+        || !app.config().plugins.0.contains_key("updater")
+    {
         return;
     }
     std::thread::spawn(move || {
         // The reader comes first: the first chapter is on screen before this asks anything of the network.
         std::thread::sleep(std::time::Duration::from_secs(10));
-        if wb_core::updates::Updates::here().look_by_itself_now().is_some() {
+        if wb_core::updates::Updates::here()
+            .look_by_itself_now()
+            .is_some()
+        {
             let _ = app.emit("wb-update", ());
         }
     });
@@ -481,7 +603,9 @@ async fn update_install() -> Result<(), String> {
 /// Stop: a download is given up (and its partial file removed), or a download waiting for a restart is.
 #[tauri::command]
 async fn update_stop() -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(|| wb_core::updates::Updates::here().stop()).await.map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(|| wb_core::updates::Updates::here().stop())
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Restart now (U-8): the window has saved every open page first (and does not call this when a save failed). The installer
@@ -489,7 +613,9 @@ async fn update_stop() -> Result<String, String> {
 /// part of it.
 #[tauri::command]
 async fn update_restart(app: tauri::AppHandle) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(|| wb_core::updates::Updates::here().run_installer(true)).await.map_err(|e| e.to_string())??;
+    tauri::async_runtime::spawn_blocking(|| wb_core::updates::Updates::here().run_installer(true))
+        .await
+        .map_err(|e| e.to_string())??;
     app.exit(0);
     Ok(())
 }
@@ -498,14 +624,28 @@ async fn update_restart(app: tauri::AppHandle) -> Result<(), String> {
 /// version is opened again.
 #[tauri::command]
 async fn update_back(app: tauri::AppHandle) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(|| wb_core::updates::Updates::here().go_back()).await.map_err(|e| e.to_string())??;
+    tauri::async_runtime::spawn_blocking(|| wb_core::updates::Updates::here().go_back())
+        .await
+        .map_err(|e| e.to_string())??;
     if let Some(dir) = wb_core::updates_install::app_dir() {
-        let exe = dir.join(if cfg!(windows) { "bible-workbench.exe" } else { "bible-workbench" });
+        let exe = dir.join(if cfg!(windows) {
+            "bible-workbench.exe"
+        } else {
+            "bible-workbench"
+        });
         // started a moment after this one has left, so the two do not hold the window's storage at once
         #[cfg(windows)]
-        let _ = std::process::Command::new("cmd").arg("/C").arg(format!("ping -n 3 127.0.0.1 >nul & start \"\" \"{}\"", exe.display())).spawn();
+        let _ = std::process::Command::new("cmd")
+            .arg("/C")
+            .arg(format!(
+                "ping -n 3 127.0.0.1 >nul & start \"\" \"{}\"",
+                exe.display()
+            ))
+            .spawn();
         #[cfg(not(windows))]
-        match wb_core::updates_install::app_bundle().filter(|_| wb_core::updates_install::use_bundle()) {
+        match wb_core::updates_install::app_bundle()
+            .filter(|_| wb_core::updates_install::use_bundle())
+        {
             Some(bundle) => wb_core::updates_install::relaunch(&bundle),
             None => {
                 let _ = std::process::Command::new(exe).spawn();
@@ -528,7 +668,9 @@ fn open_configured_study() -> Option<Store> {
     if !wb_core::setup::study_configured() {
         return None;
     }
-    open_study(&wb_core::default_study_dir()).map_err(|e| eprintln!("{e}")).ok()
+    open_study(&wb_core::default_study_dir())
+        .map_err(|e| eprintln!("{e}"))
+        .ok()
 }
 
 fn main() {
@@ -542,7 +684,10 @@ fn main() {
     // package puts the Bible at `datasets/workbench.db` beside the program (wb_core::setup). A distribution build opens
     // them in `setup`, once its installation roots are known and its license is checked.
     #[cfg(not(feature = "distribution"))]
-    let (bible, store) = (Bible::open(&wb_core::default_db_path()).ok(), open_configured_study());
+    let (bible, store) = (
+        Bible::open(&wb_core::default_db_path()).ok(),
+        open_configured_study(),
+    );
     #[cfg(feature = "distribution")]
     let (bible, store): (Option<Bible>, Option<Store>) = (None, None);
     let context = tauri::generate_context!();

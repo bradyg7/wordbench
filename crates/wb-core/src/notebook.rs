@@ -26,7 +26,9 @@ use serde_json::{json, Value};
 
 /// When a note was written, on this computer's clock: (day, "14:02").
 fn local(created: &str) -> Option<(NaiveDate, String)> {
-    let t = DateTime::parse_from_rfc3339(created).ok()?.with_timezone(&Local);
+    let t = DateTime::parse_from_rfc3339(created)
+        .ok()?
+        .with_timezone(&Local);
     Some((t.date_naive(), t.format("%H:%M").to_string()))
 }
 
@@ -34,14 +36,20 @@ pub(crate) fn label(bible: &Bible, anchor: &str) -> String {
     if let Some((name, _)) = whole_place(bible, anchor) {
         return name;
     }
-    resolve(bible, anchor).map(|r| s(&r, "label")).unwrap_or_else(|_| anchor.to_string())
+    resolve(bible, anchor)
+        .map(|r| s(&r, "label"))
+        .unwrap_or_else(|_| anchor.to_string())
 }
 
 /// A run of verses that is a whole chapter (or chapters) or a whole book, as the Notebook names it: ("Numbers 25",
 /// "chapter"), ("Numbers 25–26", "chapter"), ("Numbers", "book"); None for any other place.
 pub fn whole_place(bible: &Bible, anchor: &str) -> Option<(String, &'static str)> {
     let a = crate::anchors::parse(anchor).ok()?;
-    if !matches!(a.kind, crate::anchors::Kind::Verses | crate::anchors::Kind::Verse) || a.v1 != 1 {
+    if !matches!(
+        a.kind,
+        crate::anchors::Kind::Verses | crate::anchors::Kind::Verse
+    ) || a.v1 != 1
+    {
         return None;
     }
     let (c2, v2) = (a.c2.unwrap_or(a.c1), a.v2.unwrap_or(a.v1));
@@ -52,7 +60,14 @@ pub fn whole_place(bible: &Bible, anchor: &str) -> Option<(String, &'static str)
     if a.c1 == 1 && c2 == b.chapters {
         return Some((b.name.clone(), "book"));
     }
-    Some((if a.c1 == c2 { format!("{} {}", b.name, a.c1) } else { format!("{} {}–{c2}", b.name, a.c1) }, "chapter"))
+    Some((
+        if a.c1 == c2 {
+            format!("{} {}", b.name, a.c1)
+        } else {
+            format!("{} {}–{c2}", b.name, a.c1)
+        },
+        "chapter",
+    ))
 }
 
 /// A place as typed for a note, chapters and books included: "Num 25:11", "Num 25:7-13", "NUM.25:11.24", "H7065",
@@ -60,7 +75,11 @@ pub fn whole_place(bible: &Bible, anchor: &str) -> Option<(String, &'static str)
 pub fn place_anchor(bible: &Bible, text: &str) -> Result<String> {
     let t = text.trim();
     let up = t.to_uppercase();
-    if (up.starts_with('H') || up.starts_with('G')) && up.len() <= 6 && up.len() > 1 && up[1..].bytes().all(|b| b.is_ascii_digit()) {
+    if (up.starts_with('H') || up.starts_with('G'))
+        && up.len() <= 6
+        && up.len() > 1
+        && up[1..].bytes().all(|b| b.is_ascii_digit())
+    {
         return Ok(up);
     }
     if let Ok(a) = crate::anchors::parse(t) {
@@ -71,13 +90,21 @@ pub fn place_anchor(bible: &Bible, text: &str) -> Result<String> {
         return Ok(a);
     }
     let v1 = if sp.v1 == 0 { 1 } else { sp.v1 };
-    let v2 = if sp.v2 == 0 { bible.last_verse(&sp.book.code, sp.c2)? } else { sp.v2 };
+    let v2 = if sp.v2 == 0 {
+        bible.last_verse(&sp.book.code, sp.c2)?
+    } else {
+        sp.v2
+    };
     Ok(format!("{}.{}:{v1}-{}:{v2}", sp.book.code, sp.c1, sp.c2))
 }
 
 /// A note's title: its first line, without a heading's #s.
 pub fn title_of(text: &str) -> String {
-    let first = text.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("");
+    let first = text
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or("");
     let t = first.trim_start_matches('#').trim();
     if t.chars().count() > 90 {
         let cut: String = t.chars().take(88).collect();
@@ -90,7 +117,11 @@ pub fn title_of(text: &str) -> String {
 pub fn page_title(r: &Rec) -> String {
     let t = s(r, "title");
     let t = t.trim();
-    if t.is_empty() { title_of(&s(r, "text")) } else { t.to_string() }
+    if t.is_empty() {
+        title_of(&s(r, "text"))
+    } else {
+        t.to_string()
+    }
 }
 
 /// What follows a note's title, as one short line with the Markdown marks left out.
@@ -101,14 +132,21 @@ fn preview_of(text: &str, skip_title: bool) -> String {
     }
     let joined = lines
         .map(|l| l.trim_start_matches(['#', '>']).trim_start())
-        .map(|l| l.strip_prefix("- ").or_else(|| l.strip_prefix("* ")).unwrap_or(l))
+        .map(|l| {
+            l.strip_prefix("- ")
+                .or_else(|| l.strip_prefix("* "))
+                .unwrap_or(l)
+        })
         .collect::<Vec<_>>()
         .join(" ")
         .replace("**", "")
         .replace("[[", "")
         .replace("]]", "");
     if joined.chars().count() > 140 {
-        return format!("{}…", joined.chars().take(138).collect::<String>().trim_end());
+        return format!(
+            "{}…",
+            joined.chars().take(138).collect::<String>().trim_end()
+        );
     }
     joined
 }
@@ -117,7 +155,11 @@ fn preview_of(text: &str, skip_title: bool) -> String {
 /// (the thread is its place); `also` and `threads` list the note's other places and its threads.
 fn entry_in(bible: &Bible, store: &Store, r: &Rec, kind: &str, placed: bool) -> Value {
     let mut e = entry(bible, r, kind, placed);
-    let also: Vec<Value> = places_of(r).into_iter().skip(1).map(|a| json!({"anchor": a, "label": label(bible, &a)})).collect();
+    let also: Vec<Value> = places_of(r)
+        .into_iter()
+        .skip(1)
+        .map(|a| json!({"anchor": a, "label": label(bible, &a)}))
+        .collect();
     let threads: Vec<Value> = threads_of(r)
         .into_iter()
         .map(|t| {
@@ -127,7 +169,14 @@ fn entry_in(bible: &Bible, store: &Store, r: &Rec, kind: &str, placed: bool) -> 
         })
         .collect();
     if s(r, "anchor").is_empty() && !threads.is_empty() {
-        e["label"] = json!(format!("On {}", threads.iter().map(|t| t["name"].as_str().unwrap_or("")).collect::<Vec<_>>().join(", ")));
+        e["label"] = json!(format!(
+            "On {}",
+            threads
+                .iter()
+                .map(|t| t["name"].as_str().unwrap_or(""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
     }
     e["also"] = json!(also);
     e["threads"] = json!(threads);
@@ -151,7 +200,11 @@ fn entry(bible: &Bible, r: &Rec, kind: &str, placed: bool) -> Value {
         "day": local(&s(r, "created")).map(|x| x.0.to_string()).unwrap_or_default(),
     });
     if kind == "question" {
-        e["status"] = json!(if s(r, "status") == "done" { "done" } else { "open" });
+        e["status"] = json!(if s(r, "status") == "done" {
+            "done"
+        } else {
+            "open"
+        });
     }
     // its place in the tree of pages (W3): the page it is inside, its order there, its place in Pinned
     // (W5: a template's settings and from_template only where a note has them)
@@ -166,7 +219,23 @@ fn entry(bible: &Bible, r: &Rec, kind: &str, placed: bool) -> Value {
 }
 
 fn inbox_entries(bible: &Bible, store: &Store) -> Vec<Value> {
-    store.inbox().into_iter().map(|n| entry_in(bible, store, n, if s(n, "kind") == "question" { "question" } else { "note" }, false)).collect()
+    store
+        .inbox()
+        .into_iter()
+        .map(|n| {
+            entry_in(
+                bible,
+                store,
+                n,
+                if s(n, "kind") == "question" {
+                    "question"
+                } else {
+                    "note"
+                },
+                false,
+            )
+        })
+        .collect()
 }
 
 /// A template (W5: a note with `template: true`): the Notebook leaves it out of its lists, the tree and search; it is
@@ -177,10 +246,24 @@ pub(crate) fn is_template(e: &Value) -> bool {
 
 /// Every entry: placed notes, notes on threads, the Inbox, and questions (trails).
 pub(crate) fn every(bible: &Bible, store: &Store) -> Vec<Value> {
-    let mut all: Vec<Value> = store.notes().into_iter().map(|n| entry_in(bible, store, n, "note", true)).collect();
-    all.extend(store.on_thread().into_iter().map(|n| entry_in(bible, store, n, "note", true)));
+    let mut all: Vec<Value> = store
+        .notes()
+        .into_iter()
+        .map(|n| entry_in(bible, store, n, "note", true))
+        .collect();
+    all.extend(
+        store
+            .on_thread()
+            .into_iter()
+            .map(|n| entry_in(bible, store, n, "note", true)),
+    );
     all.extend(inbox_entries(bible, store));
-    all.extend(store.trails().into_iter().map(|t| entry_in(bible, store, t, "question", true)));
+    all.extend(
+        store
+            .trails()
+            .into_iter()
+            .map(|t| entry_in(bible, store, t, "question", true)),
+    );
     all
 }
 
@@ -206,7 +289,11 @@ fn old_day_label(d: NaiveDate) -> String {
 /// The Journal: days newest first, each with its entries newest first. `day` limits it to one day.
 pub fn journal(bible: &Bible, store: &Store, day: Option<NaiveDate>) -> Result<Value> {
     let today = Local::now().date_naive();
-    let mut all: Vec<(NaiveDate, Value)> = every(bible, store).into_iter().filter(|e| !is_template(e)).filter_map(|e| Some((local(e["created"].as_str()?)?.0, e))).collect();
+    let mut all: Vec<(NaiveDate, Value)> = every(bible, store)
+        .into_iter()
+        .filter(|e| !is_template(e))
+        .filter_map(|e| Some((local(e["created"].as_str()?)?.0, e)))
+        .collect();
     if let Some(d) = day {
         all.retain(|(x, _)| *x == d);
     }
@@ -215,16 +302,24 @@ pub fn journal(bible: &Bible, store: &Store, day: Option<NaiveDate>) -> Result<V
     for (d, e) in all {
         let key = d.to_string();
         if days.last().is_none_or(|x| x["day"] != key.as_str()) {
-            days.push(json!({"day": key, "label": day_label(d), "today": d == today, "entries": []}));
+            days.push(
+                json!({"day": key, "label": day_label(d), "today": d == today, "entries": []}),
+            );
         }
-        days.last_mut().unwrap()["entries"].as_array_mut().unwrap().push(e);
+        days.last_mut().unwrap()["entries"]
+            .as_array_mut()
+            .unwrap()
+            .push(e);
     }
     Ok(json!({"days": days, "inbox": store.inbox().len()}))
 }
 
 /// The Inbox: notes with no place yet, newest first, each with the place its text names (`offer`), if any.
 pub fn inbox(bible: &Bible, store: &Store) -> Result<Value> {
-    let mut notes: Vec<Value> = inbox_entries(bible, store).into_iter().filter(|e| !is_template(e)).collect();
+    let mut notes: Vec<Value> = inbox_entries(bible, store)
+        .into_iter()
+        .filter(|e| !is_template(e))
+        .collect();
     notes.reverse();
     for n in &mut notes {
         n["offer"] = named_place(bible, n["text"].as_str().unwrap_or("")).unwrap_or(Value::Null);
@@ -235,11 +330,21 @@ pub fn inbox(bible: &Bible, store: &Store) -> Result<Value> {
 /// Placed notes in Bible order, by book; notes on an original word everywhere come last. `filter`: every word must be
 /// in the note or its place.
 pub fn all_notes(bible: &Bible, store: &Store, filter: &str) -> Result<Value> {
-    let words: Vec<String> = filter.to_lowercase().split_whitespace().map(String::from).collect();
+    let words: Vec<String> = filter
+        .to_lowercase()
+        .split_whitespace()
+        .map(String::from)
+        .collect();
     let mut rows: Vec<((u32, i64, i64, i64), String, String, Value)> = vec![];
     for n in store.notes() {
         let e = entry_in(bible, store, n, "note", true);
-        let blob = format!("{} {} {}", s(n, "text"), e["label"].as_str().unwrap_or(""), s(n, "quote")).to_lowercase();
+        let blob = format!(
+            "{} {} {}",
+            s(n, "text"),
+            e["label"].as_str().unwrap_or(""),
+            s(n, "quote")
+        )
+        .to_lowercase();
         if !words.iter().all(|w| blob.contains(w.as_str())) {
             continue;
         }
@@ -253,19 +358,29 @@ pub fn all_notes(bible: &Bible, store: &Store, filter: &str) -> Result<Value> {
         };
         rows.push(((id, num("c1"), num("v1"), num("i1")), code, name, e));
     }
-    rows.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.3["created"].as_str().cmp(&b.3["created"].as_str())));
+    rows.sort_by(|a, b| {
+        a.0.cmp(&b.0)
+            .then_with(|| a.3["created"].as_str().cmp(&b.3["created"].as_str()))
+    });
     let mut books: Vec<Value> = vec![];
     for (_, code, name, e) in rows {
         if books.last().is_none_or(|b| b["code"] != code.as_str()) {
             books.push(json!({"code": code, "name": name, "notes": []}));
         }
-        books.last_mut().unwrap()["notes"].as_array_mut().unwrap().push(e);
+        books.last_mut().unwrap()["notes"]
+            .as_array_mut()
+            .unwrap()
+            .push(e);
     }
     // notes on a thread with no place in the text come last, together
     let loose: Vec<Value> = store
         .on_thread()
         .into_iter()
-        .filter(|n| words.iter().all(|w| s(n, "text").to_lowercase().contains(w.as_str())))
+        .filter(|n| {
+            words
+                .iter()
+                .all(|w| s(n, "text").to_lowercase().contains(w.as_str()))
+        })
         .map(|n| entry_in(bible, store, n, "note", true))
         .collect();
     if !loose.is_empty() {
@@ -279,8 +394,16 @@ pub fn questions(bible: &Bible, store: &Store, status: &str) -> Result<Value> {
     if !["open", "done", "all"].contains(&status) {
         return Err(bad("Status must be open, done or all."));
     }
-    let mut out: Vec<Value> = inbox_entries(bible, store).into_iter().filter(|e| e["kind"] == "question" && !is_template(e)).collect();
-    out.extend(store.trails().into_iter().map(|t| entry_in(bible, store, t, "question", true)));
+    let mut out: Vec<Value> = inbox_entries(bible, store)
+        .into_iter()
+        .filter(|e| e["kind"] == "question" && !is_template(e))
+        .collect();
+    out.extend(
+        store
+            .trails()
+            .into_iter()
+            .map(|t| entry_in(bible, store, t, "question", true)),
+    );
     // a question written in a page (R1: `/?`) is a question too
     out.extend(crate::questions::entries(bible, store));
     out.retain(|e| status == "all" || e["status"] == status);
@@ -295,55 +418,131 @@ pub fn find_jot(store: &Store, part: &str) -> Result<String> {
         return Ok(s(n, "id"));
     }
     let q = part.trim().to_lowercase();
-    let tiers: [&dyn Fn(&str) -> bool; 3] = [&|t| t == q, &|t| t.starts_with(&q), &|t| t.contains(&q)];
+    let tiers: [&dyn Fn(&str) -> bool; 3] =
+        [&|t| t == q, &|t| t.starts_with(&q), &|t| t.contains(&q)];
     for fits in tiers {
-        let hit: Vec<&&Rec> = all.iter().filter(|n| fits(s(n, "text").trim().to_lowercase().as_str())).collect();
+        let hit: Vec<&&Rec> = all
+            .iter()
+            .filter(|n| fits(s(n, "text").trim().to_lowercase().as_str()))
+            .collect();
         match hit.len() {
             0 => continue,
             1 => return Ok(s(hit[0], "id")),
-            _ => return Err(bad(format!("Which note? {} in the Inbox fit “{}”; give more of its words.", hit.len(), part.trim()))),
+            _ => {
+                return Err(bad(format!(
+                    "Which note? {} in the Inbox fit “{}”; give more of its words.",
+                    hit.len(),
+                    part.trim()
+                )))
+            }
         }
     }
-    Err(missing(format!("No note in the Inbox fits “{}”.", part.trim())))
+    Err(missing(format!(
+        "No note in the Inbox fits “{}”.",
+        part.trim()
+    )))
 }
 
 /// Give an Inbox note its place (a verse, a run of verses, words, or H7065). → the placed note or question.
 pub fn place(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -> Result<Value> {
     let (a, kind, quote, strong) = resolved(bible, anchor)?;
-    let question = store.inbox().iter().any(|n| s(n, "id") == id && s(n, "kind") == "question");
+    let question = store
+        .inbox()
+        .iter()
+        .any(|n| s(n, "id") == id && s(n, "kind") == "question");
     let r = store.place_jot(id, &a, &kind, &quote, &strong)?;
-    Ok(entry(bible, &r, if question { "question" } else { "note" }, true))
+    Ok(entry(
+        bible,
+        &r,
+        if question { "question" } else { "note" },
+        true,
+    ))
 }
 
 /// The notes on a thread, oldest first: those written on it with no place, and placed notes and questions put on it.
 pub fn thread_notes(bible: &Bible, store: &Store, thread_id: &str) -> Result<Value> {
     let t = store.thread(thread_id)?;
     let on = |n: &&Rec| threads_of(n).iter().any(|x| x == thread_id);
-    let mut out: Vec<Value> = store.notes().into_iter().filter(on).map(|n| entry_in(bible, store, n, "note", true)).collect();
-    out.extend(store.on_thread().into_iter().filter(on).map(|n| entry_in(bible, store, n, "note", true)));
-    out.extend(store.trails().into_iter().filter(on).map(|n| entry_in(bible, store, n, "question", true)));
-    out.extend(store.inbox().into_iter().filter(on).map(|n| entry_in(bible, store, n, "question", false)));
+    let mut out: Vec<Value> = store
+        .notes()
+        .into_iter()
+        .filter(on)
+        .map(|n| entry_in(bible, store, n, "note", true))
+        .collect();
+    out.extend(
+        store
+            .on_thread()
+            .into_iter()
+            .filter(on)
+            .map(|n| entry_in(bible, store, n, "note", true)),
+    );
+    out.extend(
+        store
+            .trails()
+            .into_iter()
+            .filter(on)
+            .map(|n| entry_in(bible, store, n, "question", true)),
+    );
+    out.extend(
+        store
+            .inbox()
+            .into_iter()
+            .filter(on)
+            .map(|n| entry_in(bible, store, n, "question", false)),
+    );
     out.sort_by(|a, b| a["created"].as_str().cmp(&b["created"].as_str()));
     Ok(json!({"id": t["id"], "name": t["name"], "notes": out}))
 }
 
 /// Write a note on a thread, with no place in the text. → the entry.
-pub fn write_on_thread(bible: &Bible, store: &mut Store, thread_id: &str, text: &str) -> Result<Value> {
+pub fn write_on_thread(
+    bible: &Bible,
+    store: &mut Store,
+    thread_id: &str,
+    text: &str,
+) -> Result<Value> {
     let r = store.add_thread_note(thread_id, text)?;
     Ok(entry_in(bible, store, &r, "note", true))
 }
 
 /// Put any note or question on a thread, or take it off. → the entry.
-pub fn on_thread(bible: &Bible, store: &mut Store, id: &str, thread_id: &str, on: bool) -> Result<Value> {
+pub fn on_thread(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    thread_id: &str,
+    on: bool,
+) -> Result<Value> {
     let r = store.set_note_thread(id, thread_id, on)?;
     let question = s(&r, "kind") == "question" || r.contains_key("status");
     let placed = !s(&r, "anchor").is_empty() || !threads_of(&r).is_empty();
-    Ok(entry_in(bible, store, &r, if question { "question" } else { "note" }, placed))
+    Ok(entry_in(
+        bible,
+        store,
+        &r,
+        if question { "question" } else { "note" },
+        placed,
+    ))
 }
 
 /// Give a placed note one more place, or take one away (`on`). → the entry.
-pub fn also_at(bible: &Bible, store: &mut Store, id: &str, anchor: &str, on: bool) -> Result<Value> {
-    let (a, _, _, _) = if on { resolved(bible, anchor)? } else { (crate::anchors::canonical(anchor)?, String::new(), String::new(), String::new()) };
+pub fn also_at(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    anchor: &str,
+    on: bool,
+) -> Result<Value> {
+    let (a, _, _, _) = if on {
+        resolved(bible, anchor)?
+    } else {
+        (
+            crate::anchors::canonical(anchor)?,
+            String::new(),
+            String::new(),
+            String::new(),
+        )
+    };
     let r = store.set_note_also(id, &a, on)?;
     Ok(entry_in(bible, store, &r, "note", true))
 }
@@ -353,12 +552,37 @@ pub fn also_at(bible: &Bible, store: &mut Store, id: &str, anchor: &str, on: boo
 pub fn unplace(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -> Result<Value> {
     let (q, _) = placed(store, id)?;
     let want = crate::anchors::canonical(anchor)?;
-    let places: Vec<String> = store.notes().into_iter().chain(store.trails()).find(|n| s(n, "id") == id).map(places_of).unwrap_or_default();
-    let at = places.iter().find(|p| crate::anchors::canonical(p).is_ok_and(|c| c == want)).cloned().ok_or_else(|| missing("The note is not on that place."))?;
-    let next = if places.first() == Some(&at) && places.len() > 1 { Some(resolved(bible, &places[1])?) } else { None };
-    let r = store.unplace(id, &at, next.as_ref().map(|(a, k, qu, st)| (a.as_str(), k.as_str(), qu.as_str(), st.as_str())))?;
+    let places: Vec<String> = store
+        .notes()
+        .into_iter()
+        .chain(store.trails())
+        .find(|n| s(n, "id") == id)
+        .map(places_of)
+        .unwrap_or_default();
+    let at = places
+        .iter()
+        .find(|p| crate::anchors::canonical(p).is_ok_and(|c| c == want))
+        .cloned()
+        .ok_or_else(|| missing("The note is not on that place."))?;
+    let next = if places.first() == Some(&at) && places.len() > 1 {
+        Some(resolved(bible, &places[1])?)
+    } else {
+        None
+    };
+    let r = store.unplace(
+        id,
+        &at,
+        next.as_ref()
+            .map(|(a, k, qu, st)| (a.as_str(), k.as_str(), qu.as_str(), st.as_str())),
+    )?;
     let placed = !s(&r, "anchor").is_empty() || !threads_of(&r).is_empty();
-    Ok(entry_in(bible, store, &r, if q { "question" } else { "note" }, placed))
+    Ok(entry_in(
+        bible,
+        store,
+        &r,
+        if q { "question" } else { "note" },
+        placed,
+    ))
 }
 
 /// Change the text of any note or question, wherever it is. → the entry.
@@ -369,7 +593,13 @@ pub fn edit_text(bible: &Bible, store: &mut Store, id: &str, text: &str) -> Resu
     if store.inbox().iter().any(|n| s(n, "id") == id) {
         let r = store.update_jot(id, Some(text), None)?;
         let q = s(&r, "kind") == "question";
-        return Ok(entry_in(bible, store, &r, if q { "question" } else { "note" }, false));
+        return Ok(entry_in(
+            bible,
+            store,
+            &r,
+            if q { "question" } else { "note" },
+            false,
+        ));
     }
     if store.on_thread().iter().any(|n| s(n, "id") == id) {
         let r = store.update_thread_note(id, text)?;
@@ -379,11 +609,20 @@ pub fn edit_text(bible: &Bible, store: &mut Store, id: &str, text: &str) -> Resu
         let r = store.update_trail(id, text)?;
         return Ok(entry_in(bible, store, &r, "question", true));
     }
-    if let Some(day) = store.days().into_iter().find(|n| s(n, "id") == id).map(|n| s(n, "day")) {
+    if let Some(day) = store
+        .days()
+        .into_iter()
+        .find(|n| s(n, "id") == id)
+        .map(|n| s(n, "day"))
+    {
         if text.trim().is_empty() {
-            return Err(bad("A page needs some text. To remove it, delete the page."));
+            return Err(bad(
+                "A page needs some text. To remove it, delete the page.",
+            ));
         }
-        let r = store.write_day(&day, text, false)?.ok_or_else(|| bad("The page is empty."))?;
+        let r = store
+            .write_day(&day, text, false)?
+            .ok_or_else(|| bad("The page is empty."))?;
         return Ok(day_entry(bible, &r));
     }
     let r = store.update_note(id, text)?;
@@ -400,7 +639,12 @@ fn placed(store: &Store, id: &str) -> Result<(bool, String)> {
     if let Some(n) = store.notes().into_iter().find(|n| s(n, "id") == id) {
         return Ok((false, s(n, "anchor")));
     }
-    store.trails().into_iter().find(|t| s(t, "id") == id).map(|t| (true, s(t, "anchor"))).ok_or_else(|| missing("No note or question with that id."))
+    store
+        .trails()
+        .into_iter()
+        .find(|t| s(t, "id") == id)
+        .map(|t| (true, s(t, "anchor")))
+        .ok_or_else(|| missing("No note or question with that id."))
 }
 
 fn resolved(bible: &Bible, anchor: &str) -> Result<(String, String, String, String)> {
@@ -409,9 +653,22 @@ fn resolved(bible: &Bible, anchor: &str) -> Result<(String, String, String, Stri
         return Err(bad("That place is not in the text."));
     }
     let kind = s(&res, "kind");
-    let strong = if kind == "word" || kind == "lemma" { res["strongs"].as_array().and_then(|a| a.first()).and_then(|x| x.as_str()).unwrap_or("").to_string() } else { String::new() };
+    let strong = if kind == "word" || kind == "lemma" {
+        res["strongs"]
+            .as_array()
+            .and_then(|a| a.first())
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string()
+    } else {
+        String::new()
+    };
     // a whole chapter or book keeps no copy of its text in the note's header
-    let quote = if whole_place(bible, &s(&res, "id")).is_some() { String::new() } else { s(&res, "quote") };
+    let quote = if whole_place(bible, &s(&res, "id")).is_some() {
+        String::new()
+    } else {
+        s(&res, "quote")
+    };
     Ok((s(&res, "id"), kind, quote, strong))
 }
 
@@ -420,7 +677,13 @@ pub fn move_to(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -> Resu
     let (q, _) = placed(store, id)?;
     let (a, kind, quote, strong) = resolved(bible, anchor)?;
     let r = store.replace_placed(id, &a, &kind, &quote, &strong, None)?;
-    Ok(entry_in(bible, store, &r, if q { "question" } else { "note" }, true))
+    Ok(entry_in(
+        bible,
+        store,
+        &r,
+        if q { "question" } else { "note" },
+        true,
+    ))
 }
 
 /// Make a note a question or a question a plain note, wherever it is: in the Inbox, or at its place (a placed question
@@ -428,12 +691,22 @@ pub fn move_to(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -> Resu
 pub fn set_question(bible: &Bible, store: &mut Store, id: &str, question: bool) -> Result<Value> {
     if store.inbox().iter().any(|n| s(n, "id") == id) {
         let r = store.update_jot(id, None, Some(question))?;
-        return Ok(entry(bible, &r, if question { "question" } else { "note" }, false));
+        return Ok(entry(
+            bible,
+            &r,
+            if question { "question" } else { "note" },
+            false,
+        ));
     }
     let (_, anchor) = placed(store, id)?;
     let (a, kind, quote, strong) = resolved(bible, &anchor)?;
     let r = store.replace_placed(id, &a, &kind, &quote, &strong, Some(question))?;
-    Ok(entry(bible, &r, if question { "question" } else { "note" }, true))
+    Ok(entry(
+        bible,
+        &r,
+        if question { "question" } else { "note" },
+        true,
+    ))
 }
 
 /// A question answered (`done`) or open again, in the Inbox or at its place. → the entry.
@@ -474,7 +747,8 @@ fn trail_questions(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
         .filter_map(|t| {
             let p = py_parse(&s(t, "anchor")).ok()?;
             let c = p.get("c1")?.as_u64()? as u32;
-            (s(&p, "code") == code && c == chapter).then(|| json!({"id": t["id"], "v": p["v1"], "text": s(t, "text")}))
+            (s(&p, "code") == code && c == chapter)
+                .then(|| json!({"id": t["id"], "v": p["v1"], "text": s(t, "text")}))
         })
         .collect()
 }
@@ -503,23 +777,36 @@ fn day_blank(d: NaiveDate) -> Value {
 }
 
 fn parse_day(day: Option<&str>) -> Result<NaiveDate> {
-    match day.map(str::trim).filter(|d| !d.is_empty() && *d != "today") {
+    match day
+        .map(str::trim)
+        .filter(|d| !d.is_empty() && *d != "today")
+    {
         None => Ok(Local::now().date_naive()),
-        Some(d) => NaiveDate::parse_from_str(d, "%Y-%m-%d").map_err(|_| bad("A day looks like 2026-11-04.")),
+        Some(d) => NaiveDate::parse_from_str(d, "%Y-%m-%d")
+            .map_err(|_| bad("A day looks like 2026-11-04.")),
     }
 }
 
 /// A day's page (today when no day is given), or the blank page it would be.
 pub fn day_page(bible: &Bible, store: &Store, day: Option<&str>) -> Result<Value> {
     let d = parse_day(day)?;
-    let mut e = store.day(&d.to_string()).map(|r| day_entry(bible, r)).unwrap_or_else(|| day_blank(d));
+    let mut e = store
+        .day(&d.to_string())
+        .map(|r| day_entry(bible, r))
+        .unwrap_or_else(|| day_blank(d));
     add_links(bible, store, &mut e);
     Ok(e)
 }
 
 /// Write on a day's page (today when no day is given): `append` adds a paragraph after what is there, else the text
 /// replaces the page. The page is made the first time; emptied, it goes to .trash.
-pub fn write_day(bible: &Bible, store: &mut Store, day: Option<&str>, text: &str, append: bool) -> Result<Value> {
+pub fn write_day(
+    bible: &Bible,
+    store: &mut Store,
+    day: Option<&str>,
+    text: &str,
+    append: bool,
+) -> Result<Value> {
     let d = parse_day(day)?;
     Ok(match store.write_day(&d.to_string(), text, append)? {
         Some(r) => day_entry(bible, &r),
@@ -536,7 +823,10 @@ pub fn delete_day(store: &mut Store, day: Option<&str>) -> Result<Value> {
 
 pub fn delete_day_with_undo(bible: &Bible, store: &mut Store, day: Option<&str>) -> Result<Value> {
     let day = parse_day(day)?.to_string();
-    let id = store.day(&day).map(|entry| s(entry, "id")).ok_or_else(|| missing("That day has no page."))?;
+    let id = store
+        .day(&day)
+        .map(|entry| s(entry, "id"))
+        .ok_or_else(|| missing("That day has no page."))?;
     let mut result = crate::deletion::remove(bible, store, &id)?;
     result["day"] = json!(day);
     Ok(result)
@@ -578,7 +868,12 @@ pub(crate) fn all_lines(bible: &Bible, store: &Store, days: bool) -> Vec<Value> 
 /// pages stays quick (marks M40). Questions are the questions' own group.
 /// → the lines that have all of `words` (every page's, when there are none) and how many pages there were.
 pub(crate) fn find_lines(bible: &Bible, store: &Store, words: &[String]) -> (Vec<Value>, usize) {
-    let mut all: Vec<Value> = store.notes().into_iter().chain(store.on_thread()).map(|n| entry_in(bible, store, n, "note", true)).collect();
+    let mut all: Vec<Value> = store
+        .notes()
+        .into_iter()
+        .chain(store.on_thread())
+        .map(|n| entry_in(bible, store, n, "note", true))
+        .collect();
     let mut total = all.len();
     for r in store.inbox() {
         if s(r, "kind") == "question" {
@@ -608,7 +903,12 @@ pub(crate) fn words_in(e: &Value, words: &[String]) -> bool {
     if words.is_empty() {
         return true;
     }
-    let mut blob = format!("{} {} {}", e["title"].as_str().unwrap_or(""), e["text"].as_str().unwrap_or(""), e["label"].as_str().unwrap_or(""));
+    let mut blob = format!(
+        "{} {} {}",
+        e["title"].as_str().unwrap_or(""),
+        e["text"].as_str().unwrap_or(""),
+        e["label"].as_str().unwrap_or("")
+    );
     for a in e["also"].as_array().into_iter().flatten() {
         blob += &format!(" {}", a["label"].as_str().unwrap_or(""));
     }
@@ -642,7 +942,14 @@ fn places_in(e: &Value) -> Vec<String> {
     if !e["anchor"].as_str().unwrap_or("").is_empty() {
         v.push(e["anchor"].as_str().unwrap().to_string());
     }
-    v.extend(e["also"].as_array().into_iter().flatten().filter_map(|a| a["anchor"].as_str()).map(String::from));
+    v.extend(
+        e["also"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|a| a["anchor"].as_str())
+            .map(String::from),
+    );
     v
 }
 
@@ -652,24 +959,49 @@ fn places_in(e: &Value) -> Vec<String> {
 /// top; with no chapter given, every chapter in Bible order, then the notes on original words. By thread: each
 /// thread's notes, oldest first, then those on no thread. None: everything, the most recently changed first.
 pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
-    let words: Vec<String> = o.search.to_lowercase().split_whitespace().map(String::from).collect();
-    let mut all: Vec<Value> = all_lines(bible, store, o.days).into_iter().filter(|e| !is_template(e) && words_in(e, &words)).collect();
+    let words: Vec<String> = o
+        .search
+        .to_lowercase()
+        .split_whitespace()
+        .map(String::from)
+        .collect();
+    let mut all: Vec<Value> = all_lines(bible, store, o.days)
+        .into_iter()
+        .filter(|e| !is_template(e) && words_in(e, &words))
+        .collect();
     // the sections Pages and Questions are filters over the list by None (the most recently changed first)
-    let (pages, questions) = (o.pages || o.group == "pages", o.questions || o.group == "questions");
-    let grouped = if pages || o.group == "questions" { "none" } else { o.group.as_str() };
+    let (pages, questions) = (
+        o.pages || o.group == "pages",
+        o.questions || o.group == "questions",
+    );
+    let grouped = if pages || o.group == "questions" {
+        "none"
+    } else {
+        o.group.as_str()
+    };
     if !words.is_empty() && grouped == "none" && !pages && !questions {
-        all.extend(crate::threadpage::lines(bible, store).into_iter().filter(|e| words_in(e, &words)));
+        all.extend(
+            crate::threadpage::lines(bible, store)
+                .into_iter()
+                .filter(|e| words_in(e, &words)),
+        );
     }
     if questions {
         all.retain(|e| e["kind"] == "question");
-        all.extend(crate::questions::entries(bible, store).into_iter().filter(|e| words_in(e, &words)));
+        all.extend(
+            crate::questions::entries(bible, store)
+                .into_iter()
+                .filter(|e| words_in(e, &words)),
+        );
     }
     if pages {
         all.retain(|e| e["placed"] == false && e["kind"] != "day");
     }
     let mut groups: Vec<Value> = vec![];
     if o.inbox_apart {
-        let (mut inbox, rest): (Vec<Value>, Vec<Value>) = all.into_iter().partition(|e| e["placed"] == false && e["kind"] != "day");
+        let (mut inbox, rest): (Vec<Value>, Vec<Value>) = all
+            .into_iter()
+            .partition(|e| e["placed"] == false && e["kind"] != "day");
         all = rest;
         newest_first(&mut inbox, "created");
         if !inbox.is_empty() {
@@ -682,17 +1014,26 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
             let mut by: Vec<(NaiveDate, Value)> = all
                 .into_iter()
                 .filter_map(|e| {
-                    let d = if e["kind"] == "day" { NaiveDate::parse_from_str(e["day"].as_str()?, "%Y-%m-%d").ok()? } else { local(e["created"].as_str()?)?.0 };
+                    let d = if e["kind"] == "day" {
+                        NaiveDate::parse_from_str(e["day"].as_str()?, "%Y-%m-%d").ok()?
+                    } else {
+                        local(e["created"].as_str()?)?.0
+                    };
                     Some((d, e))
                 })
                 .collect();
-            let blank = o.days && words.is_empty() && !questions && !by.iter().any(|(d, e)| *d == today && e["kind"] == "day");
+            let blank = o.days
+                && words.is_empty()
+                && !questions
+                && !by.iter().any(|(d, e)| *d == today && e["kind"] == "day");
             if blank {
                 by.push((today, day_blank(today)));
             }
             // newest day first; in a day its page first, then newest first
             by.sort_by(|a, b| {
-                b.0.cmp(&a.0).then_with(|| (b.1["kind"] == "day").cmp(&(a.1["kind"] == "day"))).then_with(|| b.1["created"].as_str().cmp(&a.1["created"].as_str()))
+                b.0.cmp(&a.0)
+                    .then_with(|| (b.1["kind"] == "day").cmp(&(a.1["kind"] == "day")))
+                    .then_with(|| b.1["created"].as_str().cmp(&a.1["created"].as_str()))
             });
             for (d, e) in by {
                 let key = d.to_string();
@@ -709,14 +1050,20 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
                 let mut seen: Vec<(u32, u32)> = vec![];
                 let mut lemma = false;
                 for p in places_in(&e) {
-                    let Ok(a) = crate::anchors::parse(&p) else { continue };
+                    let Ok(a) = crate::anchors::parse(&p) else {
+                        continue;
+                    };
                     if a.kind == crate::anchors::Kind::Lemma {
                         lemma = true;
                         continue;
                     }
                     let Ok(b) = bible.book(&a.code) else { continue };
                     let whole = whole_place(bible, &p).map(|w| w.1);
-                    let chapters: Vec<u32> = if whole == Some("book") { vec![0] } else { (a.c1..=a.last_chapter()).collect() };
+                    let chapters: Vec<u32> = if whole == Some("book") {
+                        vec![0]
+                    } else {
+                        (a.c1..=a.last_chapter()).collect()
+                    };
                     for c in chapters {
                         if let Some((code, ch)) = &o.at {
                             if *code != b.code || (c != 0 && c != *ch) {
@@ -727,7 +1074,11 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
                             continue;
                         }
                         seen.push((b.id, c));
-                        let label = if c == 0 { b.name.clone() } else { format!("{} {c}", b.name) };
+                        let label = if c == 0 {
+                            b.name.clone()
+                        } else {
+                            format!("{} {c}", b.name)
+                        };
                         let order = match whole {
                             Some("book") => (0, 0, 0),
                             Some(_) => (1, 0, 0),
@@ -743,11 +1094,18 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
             }
             if let Some((code, ch)) = &o.at {
                 let b = bible.book(code)?;
-                rows.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.3["created"].as_str().cmp(&b.3["created"].as_str())));
+                rows.sort_by(|a, b| {
+                    a.1.cmp(&b.1)
+                        .then_with(|| a.3["created"].as_str().cmp(&b.3["created"].as_str()))
+                });
                 let entries: Vec<Value> = rows.into_iter().map(|r| r.3).collect();
                 groups.push(json!({"key": format!("{code}.{ch}"), "label": format!("{} {ch}", b.name), "following": true, "count": entries.len(), "entries": entries}));
             } else {
-                rows.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)).then_with(|| a.3["created"].as_str().cmp(&b.3["created"].as_str())));
+                rows.sort_by(|a, b| {
+                    a.0.cmp(&b.0)
+                        .then_with(|| a.1.cmp(&b.1))
+                        .then_with(|| a.3["created"].as_str().cmp(&b.3["created"].as_str()))
+                });
                 for (k, _, label, e) in rows {
                     let key = format!("{}.{}", k.0, k.1);
                     let head = json!({"key": key, "label": label, "count": 0, "entries": []});
@@ -762,7 +1120,17 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
             let mut rest: Vec<Value> = all.into_iter().filter(|e| e["kind"] != "day").collect();
             for t in store.threads() {
                 let id = s(t, "id");
-                let mut on: Vec<Value> = rest.iter().filter(|e| e["threads"].as_array().into_iter().flatten().any(|x| x["id"] == id.as_str())).cloned().collect();
+                let mut on: Vec<Value> = rest
+                    .iter()
+                    .filter(|e| {
+                        e["threads"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .any(|x| x["id"] == id.as_str())
+                    })
+                    .cloned()
+                    .collect();
                 if on.is_empty() {
                     continue;
                 }
@@ -779,9 +1147,15 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
             newest_first(&mut all, "updated");
             groups.push(group("_all", "All notes", all));
         }
-        other => return Err(bad(format!("Group by day, chapter, thread or none (not “{other}”)."))),
+        other => {
+            return Err(bad(format!(
+                "Group by day, chapter, thread or none (not “{other}”)."
+            )))
+        }
     }
-    Ok(json!({"group": if o.group.is_empty() { "day" } else { o.group.as_str() }, "groups": groups, "inbox": store.inbox().len()}))
+    Ok(
+        json!({"group": if o.group.is_empty() { "day" } else { o.group.as_str() }, "groups": groups, "inbox": store.inbox().len()}),
+    )
 }
 
 // ---- links: [[title]] and [[title#heading]] in a note's text ------------------------------------------------------
@@ -813,7 +1187,13 @@ fn links_in(text: &str) -> Vec<Link> {
                         Some((a, b)) => (a.trim().to_string(), b.trim().to_string()),
                         None => (target.trim().to_string(), String::new()),
                     };
-                    out.push(Link { start: i, end: i + 4 + len, title, heading, shown });
+                    out.push(Link {
+                        start: i,
+                        end: i + 4 + len,
+                        title,
+                        heading,
+                        shown,
+                    });
                     i += 4 + len;
                     continue;
                 }
@@ -826,18 +1206,39 @@ fn links_in(text: &str) -> Vec<Link> {
 
 /// The first words of the block that carries link id `bid` in a page's text, without its Markdown marks (None: no such block).
 fn block_words(text: &str, bid: &str) -> Option<String> {
-    let para = text.split("
+    let para = text
+        .split(
+            "
 
-").find(|p| crate::pages::block_id_of(p).is_some_and(|(_, id)| id == bid))?;
+",
+        )
+        .find(|p| crate::pages::block_id_of(p).is_some_and(|(_, id)| id == bid))?;
     let plain = crate::pages::without_block_id(para);
     // a fenced block (scripture, view, thread, word): its first line inside the fence, the reference or the value
-    let plain = if plain.trim_start().starts_with("```") || plain.trim_start().starts_with("~~~") { plain.lines().skip(1).find(|l| !l.trim().is_empty() && !l.trim_start().starts_with("```") && !l.trim_start().starts_with("~~~")).unwrap_or("").to_string() } else { plain };
+    let plain = if plain.trim_start().starts_with("```") || plain.trim_start().starts_with("~~~") {
+        plain
+            .lines()
+            .skip(1)
+            .find(|l| {
+                !l.trim().is_empty()
+                    && !l.trim_start().starts_with("```")
+                    && !l.trim_start().starts_with("~~~")
+            })
+            .unwrap_or("")
+            .to_string()
+    } else {
+        plain
+    };
     let mut line = plain.lines().next().unwrap_or("").trim_start().to_string();
-    line = line.trim_start_matches(|c: char| "#>-*+ ".contains(c)).to_string();
+    line = line
+        .trim_start_matches(|c: char| "#>-*+ ".contains(c))
+        .to_string();
     // a callout's marker (`[!key]`) is not words
     if line.starts_with("[!") {
         if let Some(i) = line.find(']') {
-            line = line[i + 1..].trim_start_matches(['+', '-', ' ']).to_string();
+            line = line[i + 1..]
+                .trim_start_matches(['+', '-', ' '])
+                .to_string();
         }
     }
     for mark in ["[ ] ", "[x] ", "[X] "] {
@@ -852,7 +1253,10 @@ fn block_words(text: &str, bid: &str) -> Option<String> {
         out.push_str(&rest[..i]);
         match rest[i..].find('>') {
             Some(j) => rest = &rest[i + j + 1..],
-            None => { out.push_str(&rest[i..]); rest = ""; }
+            None => {
+                out.push_str(&rest[i..]);
+                rest = "";
+            }
         }
     }
     out.push_str(rest);
@@ -863,7 +1267,11 @@ fn block_words(text: &str, bid: &str) -> Option<String> {
 
 /// The headings in a note's text (`# …`, `## …`), in order.
 fn headings_of(text: &str) -> Vec<String> {
-    text.lines().filter(|l| l.starts_with('#')).map(|l| l.trim_start_matches('#').trim().to_string()).filter(|h| !h.is_empty()).collect()
+    text.lines()
+        .filter(|l| l.starts_with('#'))
+        .map(|l| l.trim_start_matches('#').trim().to_string())
+        .filter(|h| !h.is_empty())
+        .collect()
 }
 
 /// Every title a link can name → the line it names: a note by its title; a day's page by its day (2026-11-04) and its
@@ -934,7 +1342,11 @@ fn add_links(bible: &Bible, store: &Store, e: &mut Value) {
     e["links"] = json!(link_values(&text, &index));
     e["headings"] = json!(headings_of(&text));
     let id = e["id"].as_str().unwrap_or("").to_string();
-    e["linked_from"] = json!(if id.is_empty() { vec![] } else { linked_from(&index, &all, &id) });
+    e["linked_from"] = json!(if id.is_empty() {
+        vec![]
+    } else {
+        linked_from(&index, &all, &id)
+    });
 }
 
 /// Any note, question or day's page by its id (a day's page also by its day, 2026-11-04), whole: its text, places,
@@ -945,7 +1357,10 @@ pub fn show(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
     }
     let mut e = match crate::threadpage::slug_of(id) {
         Some(slug) => crate::threadpage::entry(bible, store, &store.thread(slug)?),
-        None => all_lines(bible, store, true).into_iter().find(|e| e["id"] == id).ok_or_else(|| missing("No note, question or page with that id."))?,
+        None => all_lines(bible, store, true)
+            .into_iter()
+            .find(|e| e["id"] == id)
+            .ok_or_else(|| missing("No note, question or page with that id."))?,
     };
     if e["placed"] == false && e["kind"] != "day" && e["kind"] != "thread" {
         // a note with no place yet: the place its text names, to offer first
@@ -975,7 +1390,11 @@ pub fn backlinks(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
 /// its #heading and |shown). → the new title and the notes changed.
 pub fn relink(bible: &Bible, store: &mut Store, id: &str, old_title: &str) -> Result<Value> {
     let e = show(bible, store, id)?;
-    let new = if e["kind"] == "day" { e["day"].as_str().unwrap_or("").to_string() } else { e["title"].as_str().unwrap_or("").to_string() };
+    let new = if e["kind"] == "day" {
+        e["day"].as_str().unwrap_or("").to_string()
+    } else {
+        e["title"].as_str().unwrap_or("").to_string()
+    };
     let old = old_title.trim().to_lowercase();
     if old.is_empty() || new.is_empty() {
         return Err(bad("Give the note's old title."));
@@ -989,7 +1408,10 @@ pub fn relink(bible: &Bible, store: &mut Store, id: &str, old_title: &str) -> Re
             continue;
         }
         let text = other["text"].as_str().unwrap_or("").to_string();
-        let ls: Vec<Link> = links_in(&text).into_iter().filter(|l| l.title.to_lowercase() == old).collect();
+        let ls: Vec<Link> = links_in(&text)
+            .into_iter()
+            .filter(|l| l.title.to_lowercase() == old)
+            .collect();
         if ls.is_empty() {
             continue;
         }
@@ -998,8 +1420,16 @@ pub fn relink(bible: &Bible, store: &mut Store, id: &str, old_title: &str) -> Re
         let mut at = 0;
         for l in ls {
             out.extend(&c[at..l.start]);
-            let heading = if l.heading.is_empty() { String::new() } else { format!("#{}", l.heading) };
-            let shown = if l.shown.is_empty() { String::new() } else { format!("|{}", l.shown) };
+            let heading = if l.heading.is_empty() {
+                String::new()
+            } else {
+                format!("#{}", l.heading)
+            };
+            let shown = if l.shown.is_empty() {
+                String::new()
+            } else {
+                format!("|{}", l.shown)
+            };
             out += &format!("[[{new}{heading}{shown}]]");
             at = l.end;
         }
@@ -1015,8 +1445,16 @@ pub fn relink(bible: &Bible, store: &mut Store, id: &str, old_title: &str) -> Re
 
 /// Write a new note: on a place (a verse, words, a run, a chapter, a book, H7065) or, with none, into the Inbox; a
 /// question (`question`) on a place is a trail. → the Notebook's entry.
-pub fn new_note(bible: &Bible, store: &mut Store, place: Option<&str>, text: &str, question: bool) -> Result<Value> {
-    let Some(place) = place.map(str::trim).filter(|p| !p.is_empty()) else { return jot(bible, store, text, question) };
+pub fn new_note(
+    bible: &Bible,
+    store: &mut Store,
+    place: Option<&str>,
+    text: &str,
+    question: bool,
+) -> Result<Value> {
+    let Some(place) = place.map(str::trim).filter(|p| !p.is_empty()) else {
+        return jot(bible, store, text, question);
+    };
     let (a, kind, quote, strong) = resolved(bible, &place_anchor(bible, place)?)?;
     if question {
         if kind == "lemma" {
@@ -1048,7 +1486,13 @@ pub fn settings(store: &Store) -> Value {
     let saved = store.settings("notebook");
     let mut out = serde_json::Map::new();
     for (k, d, _) in SETTINGS {
-        out.insert(k.to_string(), saved.get(*k).cloned().unwrap_or_else(|| serde_json::from_str(d).unwrap()));
+        out.insert(
+            k.to_string(),
+            saved
+                .get(*k)
+                .cloned()
+                .unwrap_or_else(|| serde_json::from_str(d).unwrap()),
+        );
     }
     // Always on since the settings design (2026-11-13, e09e): links between pages, and pages on chapters and books.
     for k in ALWAYS_ON {
@@ -1070,10 +1514,15 @@ pub fn settings_about(store: &Store) -> Value {
 /// Ctrl+J for capture; "default" puts it back. → every setting.
 pub fn set_setting(store: &mut Store, key: &str, value: &str) -> Result<Value> {
     if ALWAYS_ON.contains(&key) {
-        return Err(bad(format!("{key} is always on now (it is no longer a setting).")));
+        return Err(bad(format!(
+            "{key} is always on now (it is no longer a setting)."
+        )));
     }
     let names = SETTINGS.iter().map(|s| s.0).collect::<Vec<_>>().join(", ");
-    let (_, d, _) = SETTINGS.iter().find(|(k, _, _)| *k == key).ok_or_else(|| bad(format!("The Notebook's settings are {names}.")))?;
+    let (_, d, _) = SETTINGS
+        .iter()
+        .find(|(k, _, _)| *k == key)
+        .ok_or_else(|| bad(format!("The Notebook's settings are {names}.")))?;
     let v = value.trim();
     let new = if v == "default" {
         None
@@ -1085,21 +1534,32 @@ pub fn set_setting(store: &mut Store, key: &str, value: &str) -> Result<Value> {
         }))
     } else if key == "group" {
         if !["day", "chapter", "thread", "none", "pages", "questions"].contains(&v) {
-            return Err(bad("Group by day, chapter, thread or none; or open with pages or questions."));
+            return Err(bad(
+                "Group by day, chapter, thread or none; or open with pages or questions.",
+            ));
         }
         Some(json!(v))
     } else if key == "places" {
         let w = match v.to_lowercase().as_str() {
             "reader" | "the reader" => "reader",
             "new" | "new reader" | "a new reader" => "new",
-            _ => return Err(bad("Places open in the reader (reader) or in a new reader (new).")),
+            _ => {
+                return Err(bad(
+                    "Places open in the reader (reader) or in a new reader (new).",
+                ))
+            }
         };
         Some(json!(w))
     } else {
         Some(json!(capture_key(v)?))
     };
     if key == "capture" {
-        crate::mycommands::check_key(store, new.as_ref().and_then(Value::as_str).unwrap_or("Ctrl+J"), None, true)?;
+        crate::mycommands::check_key(
+            store,
+            new.as_ref().and_then(Value::as_str).unwrap_or("Ctrl+J"),
+            None,
+            true,
+        )?;
     }
     store.set_setting("notebook", key, new)?;
     Ok(settings(store))
@@ -1108,7 +1568,9 @@ pub fn set_setting(store: &mut Store, key: &str, value: &str) -> Result<Value> {
 /// A key as the window reads it: Ctrl or Alt (and Shift) with one letter or digit: "Ctrl+J", "Ctrl+Shift+K", "Alt+N".
 fn capture_key(v: &str) -> Result<String> {
     let normalized = crate::mycommands::normalize_key(v)?;
-    if normalized.is_empty() { return Err(bad("Give a key like Ctrl+J.")); }
+    if normalized.is_empty() {
+        return Err(bad("Give a key like Ctrl+J."));
+    }
     Ok(normalized)
 }
 
@@ -1120,8 +1582,14 @@ mod tests {
     fn links_are_found() {
         let l = links_in("see [[Word study: H7065#Renderings]] and [[24,000 or 23,000?|the numbers]], not [[]] or [x]");
         assert_eq!(l.len(), 2);
-        assert_eq!((l[0].title.as_str(), l[0].heading.as_str()), ("Word study: H7065", "Renderings"));
-        assert_eq!((l[1].title.as_str(), l[1].shown.as_str()), ("24,000 or 23,000?", "the numbers"));
+        assert_eq!(
+            (l[0].title.as_str(), l[0].heading.as_str()),
+            ("Word study: H7065", "Renderings")
+        );
+        assert_eq!(
+            (l[1].title.as_str(), l[1].shown.as_str()),
+            ("24,000 or 23,000?", "the numbers")
+        );
         let c: Vec<char> = "see [[A]]".chars().collect();
         let a = &links_in("see [[A]]")[0];
         assert_eq!(c[a.start..a.end].iter().collect::<String>(), "[[A]]");
@@ -1129,8 +1597,14 @@ mod tests {
 
     #[test]
     fn titles_and_keys() {
-        assert_eq!(title_of("\n# Numbers 25, read again\nRead the chapter"), "Numbers 25, read again");
-        assert_eq!(preview_of("Title\n- one **two**\n> [[three]]", true), "one two three");
+        assert_eq!(
+            title_of("\n# Numbers 25, read again\nRead the chapter"),
+            "Numbers 25, read again"
+        );
+        assert_eq!(
+            preview_of("Title\n- one **two**\n> [[three]]", true),
+            "one two three"
+        );
         assert_eq!(capture_key("ctrl+j").unwrap(), "Ctrl+J");
         assert_eq!(capture_key("shift+ctrl+k").unwrap(), "Ctrl+Shift+K");
         assert!(capture_key("Shift+K").is_err());

@@ -17,7 +17,11 @@ const FILLS: [&str; 3] = ["{word}", "{place}", "{chapter}"];
 
 /// The kept commands, in the order kept.
 pub fn list(store: &Store) -> Vec<Value> {
-    store.settings(PART).get("items").and_then(|v| v.as_array().cloned()).unwrap_or_default()
+    store
+        .settings(PART)
+        .get("items")
+        .and_then(|v| v.as_array().cloned())
+        .unwrap_or_default()
 }
 
 fn id_of(name: &str) -> String {
@@ -34,36 +38,75 @@ fn id_of(name: &str) -> String {
 
 /// Shared by saved commands (including layout shortcuts) and Notebook capture.
 pub fn normalize_key(value: &str) -> Result<String> {
-    if value.trim().is_empty() { return Ok(String::new()); }
+    if value.trim().is_empty() {
+        return Ok(String::new());
+    }
     let parts: Vec<_> = value.split('+').map(str::trim).collect();
-    let (last, mods) = parts.split_last().ok_or_else(|| bad("Give a key like Ctrl+U."))?;
+    let (last, mods) = parts
+        .split_last()
+        .ok_or_else(|| bad("Give a key like Ctrl+U."))?;
     let mut have = Vec::new();
     for m in mods {
         let m = match m.to_lowercase().as_str() {
-            "ctrl" | "control" => "Ctrl", "alt" => "Alt", "shift" => "Shift",
+            "ctrl" | "control" => "Ctrl",
+            "alt" => "Alt",
+            "shift" => "Shift",
             _ => return Err(bad("A key's modifiers are Ctrl, Alt and Shift.")),
         };
-        if have.contains(&m) { return Err(bad("A key cannot repeat a modifier.")); }
+        if have.contains(&m) {
+            return Err(bad("A key cannot repeat a modifier."));
+        }
         have.push(m);
     }
-    if last.chars().count() != 1 || !last.chars().all(|c| c.is_ascii_alphanumeric() || ",=\\-".contains(c)) || !have.iter().any(|m| *m == "Ctrl" || *m == "Alt") {
-        return Err(bad("Give a key with Ctrl or Alt and one letter or digit, like Ctrl+U."));
+    if last.chars().count() != 1
+        || !last
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || ",=\\-".contains(c))
+        || !have.iter().any(|m| *m == "Ctrl" || *m == "Alt")
+    {
+        return Err(bad(
+            "Give a key with Ctrl or Alt and one letter or digit, like Ctrl+U.",
+        ));
     }
-    let mut out: Vec<String> = ["Ctrl", "Alt", "Shift"].iter().filter(|m| have.contains(m)).map(|m| m.to_string()).collect();
+    let mut out: Vec<String> = ["Ctrl", "Alt", "Shift"]
+        .iter()
+        .filter(|m| have.contains(m))
+        .map(|m| m.to_string())
+        .collect();
     out.push(last.to_uppercase());
     Ok(out.join("+"))
 }
 
 pub fn check_key(store: &Store, key: &str, command_id: Option<&str>, capture: bool) -> Result<()> {
-    if key.is_empty() { return Ok(()); }
-    let reserved = [("Ctrl+F", "Find"), ("Ctrl+=", "Text size"), ("Ctrl+-", "Text size"), ("Ctrl+0", "Text size"), ("Ctrl+,", "Settings"), ("Ctrl+\\", "Notebook sidebar"), ("Ctrl+Shift+J", "Report a finding")];
-    if let Some((_, name)) = reserved.iter().find(|(k, _)| *k == key) { return Err(bad(format!("{key} is already {name}'s key."))); }
+    if key.is_empty() {
+        return Ok(());
+    }
+    let reserved = [
+        ("Ctrl+F", "Find"),
+        ("Ctrl+=", "Text size"),
+        ("Ctrl+-", "Text size"),
+        ("Ctrl+0", "Text size"),
+        ("Ctrl+,", "Settings"),
+        ("Ctrl+\\", "Notebook sidebar"),
+        ("Ctrl+Shift+J", "Report a finding"),
+    ];
+    if let Some((_, name)) = reserved.iter().find(|(k, _)| *k == key) {
+        return Err(bad(format!("{key} is already {name}'s key.")));
+    }
     if !capture {
         let settings = store.settings("notebook");
-        let current = settings.get("capture").and_then(Value::as_str).unwrap_or("Ctrl+J");
-        if normalize_key(current).ok().as_deref() == Some(key) { return Err(bad(format!("{key} is already Quick capture's key."))); }
+        let current = settings
+            .get("capture")
+            .and_then(Value::as_str)
+            .unwrap_or("Ctrl+J");
+        if normalize_key(current).ok().as_deref() == Some(key) {
+            return Err(bad(format!("{key} is already Quick capture's key.")));
+        }
     }
-    if let Some(other) = list(store).iter().find(|i| Some(g(i, "id").as_str()) != command_id && normalize_key(&g(i, "key")).ok().as_deref() == Some(key)) {
+    if let Some(other) = list(store).iter().find(|i| {
+        Some(g(i, "id").as_str()) != command_id
+            && normalize_key(&g(i, "key")).ok().as_deref() == Some(key)
+    }) {
         return Err(bad(format!("{key} is already {}'s key.", g(other, "name"))));
     }
     Ok(())
@@ -77,13 +120,17 @@ pub fn add(store: &mut Store, name: &str, line: &str, key: &str, icon: &str) -> 
         return Err(bad("A command needs a name."));
     }
     if line.is_empty() {
-        return Err(bad("A command needs a line, written as you would type it in the command field."));
+        return Err(bad(
+            "A command needs a line, written as you would type it in the command field.",
+        ));
     }
     let key = normalize_key(key)?;
     let key = key.as_str();
     let id = id_of(name);
     if id.is_empty() {
-        return Err(bad("Give the command a name with a letter or a number in it."));
+        return Err(bad(
+            "Give the command a name with a letter or a number in it.",
+        ));
     }
     let mut items = list(store);
     check_key(store, key, Some(&id), false)?;
@@ -99,9 +146,20 @@ pub fn add(store: &mut Store, name: &str, line: &str, key: &str, icon: &str) -> 
 pub fn remove(store: &mut Store, name: &str) -> Result<Value> {
     let id = id_of(name);
     let mut items = list(store);
-    let p = items.iter().position(|i| g(i, "id") == id || g(i, "name").eq_ignore_ascii_case(name.trim())).ok_or_else(|| missing("No kept command by that name."))?;
+    let p = items
+        .iter()
+        .position(|i| g(i, "id") == id || g(i, "name").eq_ignore_ascii_case(name.trim()))
+        .ok_or_else(|| missing("No kept command by that name."))?;
     let gone = items.remove(p);
-    store.set_setting(PART, "items", if items.is_empty() { None } else { Some(Value::Array(items)) })?;
+    store.set_setting(
+        PART,
+        "items",
+        if items.is_empty() {
+            None
+        } else {
+            Some(Value::Array(items))
+        },
+    )?;
     Ok(gone)
 }
 
@@ -113,7 +171,11 @@ pub fn fills(line: &str) -> Vec<&'static str> {
 /// A line with its fill-ins given: `{word}` → "zealous". An error names the fill-in nothing was given for.
 pub fn fill(line: &str, word: &str, place: &str, chapter: &str) -> Result<String> {
     let mut out = line.to_string();
-    for (f, v, what) in [("{word}", word, "a selected word"), ("{place}", place, "a place"), ("{chapter}", chapter, "a chapter")] {
+    for (f, v, what) in [
+        ("{word}", word, "a selected word"),
+        ("{place}", place, "a place"),
+        ("{chapter}", chapter, "a chapter"),
+    ] {
         if out.contains(f) {
             if v.trim().is_empty() {
                 return Err(bad(format!("This command needs {what} for {f}.")));
@@ -127,12 +189,21 @@ pub fn fill(line: &str, word: &str, place: &str, chapter: &str) -> Result<String
 /// The lines run most often, from the logs of every day: `{line, times}`, most first. A line a kept command already holds
 /// is left out when `skip_kept` (the window shows those above).
 pub fn top(store: &Store, n: usize, skip_kept: bool) -> Vec<Value> {
-    let kept: Vec<String> = list(store).iter().map(|i| g(i, "line").to_lowercase()).collect();
+    let kept: Vec<String> = list(store)
+        .iter()
+        .map(|i| g(i, "line").to_lowercase())
+        .collect();
     let mut count: HashMap<String, (usize, String)> = HashMap::new();
-    let days = store.log_day(None).ok().and_then(|d| d["days"].as_array().cloned()).unwrap_or_default();
+    let days = store
+        .log_day(None)
+        .ok()
+        .and_then(|d| d["days"].as_array().cloned())
+        .unwrap_or_default();
     for d in days {
         let Some(day) = d.as_str() else { continue };
-        let Ok(log) = store.log_day(Some(day)) else { continue };
+        let Ok(log) = store.log_day(Some(day)) else {
+            continue;
+        };
         for e in log["entries"].as_array().cloned().unwrap_or_default() {
             let t = g(&e, "text");
             if t.trim().is_empty() {
@@ -142,7 +213,14 @@ pub fn top(store: &Store, n: usize, skip_kept: bool) -> Vec<Value> {
             c.0 += 1;
         }
     }
-    let mut v: Vec<(usize, String)> = count.into_iter().filter(|(k, _)| !(skip_kept && kept.contains(k))).map(|(_, c)| c).collect();
+    let mut v: Vec<(usize, String)> = count
+        .into_iter()
+        .filter(|(k, _)| !(skip_kept && kept.contains(k)))
+        .map(|(_, c)| c)
+        .collect();
     v.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
-    v.into_iter().take(n).map(|(times, line)| json!({"line": line, "times": times})).collect()
+    v.into_iter()
+        .take(n)
+        .map(|(times, line)| json!({"line": line, "times": times}))
+        .collect()
 }

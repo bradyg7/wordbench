@@ -29,7 +29,13 @@ fn folder_dot(e: &Value) -> Value {
     if e["kind"] == "thread" {
         return Value::Null;
     }
-    e["threads"].as_array().into_iter().flatten().find_map(|x| x["color"].as_str().filter(|c| !c.is_empty())).map(|c| json!(c)).unwrap_or(Value::Null)
+    e["threads"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find_map(|x| x["color"].as_str().filter(|c| !c.is_empty()))
+        .map(|c| json!(c))
+        .unwrap_or(Value::Null)
 }
 
 fn id_of(e: &Value) -> &str {
@@ -43,7 +49,10 @@ fn by_order(a: &Value, b: &Value) -> Ordering {
         (None, None) => b["created"].as_str().cmp(&a["created"].as_str()),
         (None, Some(_)) => Ordering::Less,
         (Some(_), None) => Ordering::Greater,
-        (Some(x), Some(y)) => x.partial_cmp(&y).unwrap_or(Ordering::Equal).then_with(|| a["created"].as_str().cmp(&b["created"].as_str())),
+        (Some(x), Some(y)) => x
+            .partial_cmp(&y)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| a["created"].as_str().cmp(&b["created"].as_str())),
     }
 }
 
@@ -57,7 +66,10 @@ struct Tree {
 impl Tree {
     fn read(bible: &Bible, store: &Store) -> Tree {
         // templates (W5) are listed under Templates, not in the tree
-        let mut all: Vec<Value> = nb::every(bible, store).into_iter().filter(|e| !nb::is_template(e)).collect();
+        let mut all: Vec<Value> = nb::every(bible, store)
+            .into_iter()
+            .filter(|e| !nb::is_template(e))
+            .collect();
         // a thread is a page in the tree (R1); the pages written on it are its children, kept in each note's `threads`
         all.extend(crate::threadpage::lines(bible, store));
         let ids: HashSet<String> = all.iter().map(|e| id_of(e).to_string()).collect();
@@ -103,11 +115,26 @@ impl Tree {
     /// The pages inside `parent` (None: the top of the tree), in order.
     fn children(&self, parent: Option<&str>) -> Vec<&Value> {
         if let Some(slug) = parent.and_then(crate::threadpage::slug_of) {
-            let mut v: Vec<&Value> = self.all.iter().filter(|e| e["kind"] != "thread" && e["threads"].as_array().into_iter().flatten().any(|x| x["id"] == slug)).collect();
+            let mut v: Vec<&Value> = self
+                .all
+                .iter()
+                .filter(|e| {
+                    e["kind"] != "thread"
+                        && e["threads"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .any(|x| x["id"] == slug)
+                })
+                .collect();
             v.sort_by(|a, b| a["created"].as_str().cmp(&b["created"].as_str()));
             return v;
         }
-        let mut v: Vec<&Value> = self.all.iter().filter(|e| self.in_tree(e) && self.parent_of(id_of(e)) == parent).collect();
+        let mut v: Vec<&Value> = self
+            .all
+            .iter()
+            .filter(|e| self.in_tree(e) && self.parent_of(id_of(e)) == parent)
+            .collect();
         v.sort_by(|a, b| by_order(a, b));
         v
     }
@@ -146,13 +173,27 @@ impl Tree {
 
     fn node(&self, e: &Value) -> Value {
         let mut r = self.row(e);
-        r["children"] = json!(self.children(Some(id_of(e))).into_iter().map(|c| self.node(c)).collect::<Vec<_>>());
+        r["children"] = json!(self
+            .children(Some(id_of(e)))
+            .into_iter()
+            .map(|c| self.node(c))
+            .collect::<Vec<_>>());
         r
     }
 
     fn pinned(&self) -> Vec<&Value> {
-        let mut v: Vec<&Value> = self.all.iter().filter(|e| e["pinned"].as_f64().is_some()).collect();
-        v.sort_by(|a, b| a["pinned"].as_f64().partial_cmp(&b["pinned"].as_f64()).unwrap_or(Ordering::Equal).then_with(|| a["created"].as_str().cmp(&b["created"].as_str())));
+        let mut v: Vec<&Value> = self
+            .all
+            .iter()
+            .filter(|e| e["pinned"].as_f64().is_some())
+            .collect();
+        v.sort_by(|a, b| {
+            a["pinned"]
+                .as_f64()
+                .partial_cmp(&b["pinned"].as_f64())
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| a["created"].as_str().cmp(&b["created"].as_str()))
+        });
         v
     }
 }
@@ -172,12 +213,22 @@ pub fn tree(bible: &Bible, store: &Store) -> Result<Value> {
 ///
 /// W4 (sheet W1.2), a row per open reader: `at` holds the reader's chapter first, then each second reader's.
 /// `at_reader` is the first (the reader), `at_readers` all of them, each with how many notes are on its chapter.
-pub fn sidebar_at(bible: &Bible, store: &Store, root: &std::path::Path, at: Vec<(String, u32)>, today: bool) -> Result<Value> {
+pub fn sidebar_at(
+    bible: &Bible,
+    store: &Store,
+    root: &std::path::Path,
+    at: Vec<(String, u32)>,
+    today: bool,
+) -> Result<Value> {
     let mut v = sidebar_one(bible, store, at.first().cloned(), today)?;
     v["recents"] = recents(bible, store, root, RECENTS)?["recents"].clone();
     let mut rows = vec![];
     for (k, (code, ch)) in at.into_iter().enumerate() {
-        let o = nb::Listing { group: "chapter".into(), at: Some((code.clone(), ch)), ..Default::default() };
+        let o = nb::Listing {
+            group: "chapter".into(),
+            at: Some((code.clone(), ch)),
+            ..Default::default()
+        };
         let l = nb::list(bible, store, &o)?;
         let g = &l["groups"][0];
         rows.push(json!({"code": code, "chapter": ch, "label": g["label"], "count": g["count"], "reader": if k == 0 { "the reader" } else { "new reader" }}));
@@ -207,12 +258,27 @@ pub fn recents(bible: &Bible, store: &Store, root: &std::path::Path, n: usize) -
     Ok(json!({"recents": rows}))
 }
 
-fn sidebar_one(bible: &Bible, store: &Store, at: Option<(String, u32)>, today: bool) -> Result<Value> {
+fn sidebar_one(
+    bible: &Bible,
+    store: &Store,
+    at: Option<(String, u32)>,
+    today: bool,
+) -> Result<Value> {
     let t = Tree::read(bible, store);
     let days = if today {
-        let o = nb::Listing { group: "day".into(), days: true, ..Default::default() };
+        let o = nb::Listing {
+            group: "day".into(),
+            days: true,
+            ..Default::default()
+        };
         let l = nb::list(bible, store, &o)?;
-        let mut v: Vec<Value> = l["groups"].as_array().into_iter().flatten().flat_map(|g| g["entries"].as_array().cloned().unwrap_or_default()).filter(|e| e["kind"] == "day").collect();
+        let mut v: Vec<Value> = l["groups"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .flat_map(|g| g["entries"].as_array().cloned().unwrap_or_default())
+            .filter(|e| e["kind"] == "day")
+            .collect();
         v.truncate(5);
         v.into_iter().map(|e| json!({"id": e["id"], "day": e["day"], "title": e["title"], "today": e["today"], "exists": e["exists"]})).collect()
     } else {
@@ -220,7 +286,11 @@ fn sidebar_one(bible: &Bible, store: &Store, at: Option<(String, u32)>, today: b
     };
     let at_reader = match at {
         Some((code, ch)) => {
-            let o = nb::Listing { group: "chapter".into(), at: Some((code.clone(), ch)), ..Default::default() };
+            let o = nb::Listing {
+                group: "chapter".into(),
+                at: Some((code.clone(), ch)),
+                ..Default::default()
+            };
             let l = nb::list(bible, store, &o)?;
             let g = &l["groups"][0];
             json!({"code": code, "chapter": ch, "label": g["label"], "count": g["count"]})
@@ -237,13 +307,33 @@ fn sidebar_one(bible: &Bible, store: &Store, at: Option<(String, u32)>, today: b
         })
         .collect();
     let blocks = crate::questions::entries(bible, store);
-    let mut qs: Vec<&Value> = t.all.iter().filter(|e| e["kind"] == "question").chain(blocks.iter()).collect();
-    qs.sort_by(|a, b| (a["status"] == "done").cmp(&(b["status"] == "done")).then_with(|| b["created"].as_str().cmp(&a["created"].as_str())));
-    let questions: Vec<Value> = qs.into_iter().map(|e| if e["block"].is_null() { t.row(e) } else { e.clone() }).collect();
+    let mut qs: Vec<&Value> = t
+        .all
+        .iter()
+        .filter(|e| e["kind"] == "question")
+        .chain(blocks.iter())
+        .collect();
+    qs.sort_by(|a, b| {
+        (a["status"] == "done")
+            .cmp(&(b["status"] == "done"))
+            .then_with(|| b["created"].as_str().cmp(&a["created"].as_str()))
+    });
+    let questions: Vec<Value> = qs
+        .into_iter()
+        .map(|e| {
+            if e["block"].is_null() {
+                t.row(e)
+            } else {
+                e.clone()
+            }
+        })
+        .collect();
     let pages: Vec<Value> = t.children(None).into_iter().map(|e| t.node(e)).collect();
     let pinned: Vec<Value> = t.pinned().into_iter().map(|e| t.row(e)).collect();
     let templates = crate::templates::rows(bible, store);
-    Ok(json!({"today": days, "pinned": pinned, "pages": pages, "at_reader": at_reader, "threads": threads, "questions": questions, "templates": templates}))
+    Ok(
+        json!({"today": days, "pinned": pinned, "pages": pages, "at_reader": at_reader, "threads": threads, "questions": questions, "templates": templates}),
+    )
 }
 
 /// Add to a note's entry where it is in the tree: the pages above it (`path`) and the pages inside it (`inside`).
@@ -251,22 +341,32 @@ pub(crate) fn add_place_in_tree(bible: &Bible, store: &Store, e: &mut Value) {
     let t = Tree::read(bible, store);
     let id = id_of(e).to_string();
     e["path"] = json!(t.path(&id));
-    e["inside"] = json!(t.children(Some(&id)).into_iter().map(|c| t.row(c)).collect::<Vec<_>>());
+    e["inside"] = json!(t
+        .children(Some(&id))
+        .into_iter()
+        .map(|c| t.row(c))
+        .collect::<Vec<_>>());
 }
 
 /// The pages inside a page, in the Notebook's order, each with the pages inside it (`children`), at any depth (W6: a
 /// document from a page reads them after it).
 pub(crate) fn inside_tree(bible: &Bible, store: &Store, id: &str) -> Vec<Value> {
     let t = Tree::read(bible, store);
-    t.children(Some(id)).into_iter().map(|c| t.node(c)).collect()
+    t.children(Some(id))
+        .into_iter()
+        .map(|c| t.node(c))
+        .collect()
 }
 
 /// A note that can be a page (not a day's page), by its id.
 fn page_entry<'a>(t: &'a Tree, id: &str) -> Result<&'a Value> {
     if crate::store::is_day(id) || id.starts_with("d_") {
-        return Err(bad("A day's page stays under Today; it is not put inside another page."));
+        return Err(bad(
+            "A day's page stays under Today; it is not put inside another page.",
+        ));
     }
-    t.get(id).ok_or_else(|| missing("No note, question or page with that id."))
+    t.get(id)
+        .ok_or_else(|| missing("No note, question or page with that id."))
 }
 
 /// Write `order` 1, 2, 3 … on the pages of a list, each only where it differs.
@@ -276,7 +376,9 @@ fn renumber(store: &mut Store, list: &[String], field: &str) -> Result<Vec<Strin
         let want = json!(i + 1);
         if let Some(slug) = crate::threadpage::slug_of(id) {
             // a thread page has a place in Pinned only (settings/pages.json); among the pages it is not ordered
-            if field == "pinned" && crate::threadpage::pinned_of(store, slug) != Some((i + 1) as f64) {
+            if field == "pinned"
+                && crate::threadpage::pinned_of(store, slug) != Some((i + 1) as f64)
+            {
                 crate::threadpage::set_pinned(store, slug, Some((i + 1) as i64))?;
                 written.push(id.clone());
             }
@@ -299,7 +401,11 @@ pub struct Place<'a> {
 fn put_in(list: &mut Vec<String>, id: &str, at: &Place<'_>) -> Result<()> {
     list.retain(|x| x != id);
     let i = match (at.after, at.first) {
-        (Some(a), _) => list.iter().position(|x| x == a).map(|i| i + 1).ok_or_else(|| bad("The page to put it after is not beside it."))?,
+        (Some(a), _) => list
+            .iter()
+            .position(|x| x == a)
+            .map(|i| i + 1)
+            .ok_or_else(|| bad("The page to put it after is not beside it."))?,
         (None, true) => 0,
         (None, false) => list.len(),
     };
@@ -316,7 +422,13 @@ pub enum Under<'a> {
 
 /// Move a page: inside another (`Under::In`), to the top, or among the pages beside it; `at` says where among them.
 /// The page's `parent` and the `order` of the pages beside it are written (only those that change). → where it is now.
-pub fn move_page(bible: &Bible, store: &mut Store, id: &str, under: Under<'_>, at: Place<'_>) -> Result<Value> {
+pub fn move_page(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    under: Under<'_>,
+    at: Place<'_>,
+) -> Result<Value> {
     let t = Tree::read(bible, store);
     page_entry(&t, id)?;
     if crate::threadpage::slug_of(id).is_some() {
@@ -324,14 +436,17 @@ pub fn move_page(bible: &Bible, store: &mut Store, id: &str, under: Under<'_>, a
     }
     if let Under::In(p) = &under {
         if crate::threadpage::slug_of(p).is_some() {
-            return Err(bad("A page is put on a thread with wb note thread, not inside it."));
+            return Err(bad(
+                "A page is put on a thread with wb note thread, not inside it.",
+            ));
         }
     }
     let parent: Option<String> = match under {
         Under::Keep => t.parent_of(id).map(String::from),
         Under::Top => None,
         Under::In(p) => {
-            let p = page_entry(&t, p).map_err(|_| missing("No page with that id to put it inside."))?;
+            let p =
+                page_entry(&t, p).map_err(|_| missing("No page with that id to put it inside."))?;
             let p = id_of(p);
             if p == id || t.is_inside(p, id) {
                 return Err(bad("A page cannot go inside itself or a page inside it."));
@@ -339,7 +454,11 @@ pub fn move_page(bible: &Bible, store: &mut Store, id: &str, under: Under<'_>, a
             Some(p.to_string())
         }
     };
-    let mut list: Vec<String> = t.children(parent.as_deref()).into_iter().map(|e| id_of(e).to_string()).collect();
+    let mut list: Vec<String> = t
+        .children(parent.as_deref())
+        .into_iter()
+        .map(|e| id_of(e).to_string())
+        .collect();
     put_in(&mut list, id, &at)?;
     let was = store.find_note(id)?.get("parent").cloned();
     let want = parent.as_ref().map(|p| json!(p));
@@ -353,14 +472,20 @@ pub fn move_page(bible: &Bible, store: &mut Store, id: &str, under: Under<'_>, a
             written.push(w);
         }
     }
-    Ok(json!({"id": id, "parent": parent, "order": list.iter().position(|x| x == id).map(|i| i + 1), "written": written}))
+    Ok(
+        json!({"id": id, "parent": parent, "order": list.iter().position(|x| x == id).map(|i| i + 1), "written": written}),
+    )
 }
 
 /// Pin a page (`at`: where in Pinned; last by default) or move it there; `pinned` holds each page's place, 1, 2, 3 ….
 pub fn pin(bible: &Bible, store: &mut Store, id: &str, at: Place<'_>) -> Result<Value> {
     let t = Tree::read(bible, store);
     page_entry(&t, id)?;
-    let mut list: Vec<String> = t.pinned().into_iter().map(|e| id_of(e).to_string()).collect();
+    let mut list: Vec<String> = t
+        .pinned()
+        .into_iter()
+        .map(|e| id_of(e).to_string())
+        .collect();
     put_in(&mut list, id, &at)?;
     let written = renumber(store, &list, "pinned")?;
     Ok(json!({"id": id, "pinned": list, "written": written}))
@@ -375,7 +500,12 @@ pub fn unpin(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
     } else {
         store.set_fields(id, &[("pinned", None)])?;
     }
-    let list: Vec<String> = t.pinned().into_iter().map(|e| id_of(e).to_string()).filter(|x| x != id).collect();
+    let list: Vec<String> = t
+        .pinned()
+        .into_iter()
+        .map(|e| id_of(e).to_string())
+        .filter(|x| x != id)
+        .collect();
     Ok(json!({"id": id, "pinned": list}))
 }
 
@@ -383,7 +513,11 @@ pub fn unpin(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
 /// person's choice, 2026-11-07). → the pages moved.
 pub fn release(bible: &Bible, store: &mut Store, id: &str) -> Result<Vec<String>> {
     let t = Tree::read(bible, store);
-    let inside: Vec<String> = t.children(Some(id)).into_iter().map(|e| id_of(e).to_string()).collect();
+    let inside: Vec<String> = t
+        .children(Some(id))
+        .into_iter()
+        .map(|e| id_of(e).to_string())
+        .collect();
     if inside.is_empty() {
         return Ok(vec![]);
     }
@@ -409,17 +543,35 @@ pub fn release(bible: &Bible, store: &mut Store, id: &str) -> Result<Vec<String>
 /// A new page (a note with no place yet), at the top of the tree or inside a page (last among the pages there); with
 /// `link`, a `[[link]]` to it is written in the page it is inside: `Some(None)` first (right under its title),
 /// `Some(Some(n))` after block n (from 0), else at its end. → its entry.
-pub fn new_page(bible: &Bible, store: &mut Store, parent: Option<&str>, text: &str, link: bool, after: Option<Option<usize>>) -> Result<Value> {
+pub fn new_page(
+    bible: &Bible,
+    store: &mut Store,
+    parent: Option<&str>,
+    text: &str,
+    link: bool,
+    after: Option<Option<usize>>,
+) -> Result<Value> {
     let t = Tree::read(bible, store);
     let parent = match parent.map(str::trim).filter(|p| !p.is_empty()) {
-        Some(p) => Some(id_of(page_entry(&t, p).map_err(|_| missing("No page with that id to put it inside."))?).to_string()),
+        Some(p) => Some(
+            id_of(
+                page_entry(&t, p).map_err(|_| missing("No page with that id to put it inside."))?,
+            )
+            .to_string(),
+        ),
         None => None,
     };
     if link && parent.is_none() {
-        return Err(bad("A link is written in the page it goes inside: give --parent."));
+        return Err(bad(
+            "A link is written in the page it goes inside: give --parent.",
+        ));
     }
     // a page "inside" a thread is a page written on it (R1): a note on the thread, listed under its page
-    if let Some(slug) = parent.as_deref().and_then(crate::threadpage::slug_of).map(String::from) {
+    if let Some(slug) = parent
+        .as_deref()
+        .and_then(crate::threadpage::slug_of)
+        .map(String::from)
+    {
         let r = store.add_thread_note(&slug, text)?;
         let id = s(&r, "id");
         if link {
@@ -438,8 +590,15 @@ pub fn new_page(bible: &Bible, store: &mut Store, parent: Option<&str>, text: &s
     let r = store.jot(text, false)?;
     let id = s(&r, "id");
     if let Some(p) = &parent {
-        let last = t.children(Some(p)).iter().filter_map(|e| e["order"].as_f64()).fold(0.0, f64::max) as i64;
-        store.set_fields(&id, &[("parent", Some(json!(p))), ("order", Some(json!(last + 1)))])?;
+        let last = t
+            .children(Some(p))
+            .iter()
+            .filter_map(|e| e["order"].as_f64())
+            .fold(0.0, f64::max) as i64;
+        store.set_fields(
+            &id,
+            &[("parent", Some(json!(p))), ("order", Some(json!(last + 1)))],
+        )?;
         if link {
             let title = nb::title_of(text);
             let pt = s(&store.find_note(p)?, "text");
@@ -475,7 +634,10 @@ pub struct Block {
 const LISTISH: [&str; 3] = ["item", "numbered", "todo"];
 
 fn indent_of(l: &str) -> usize {
-    l.chars().take_while(|c| *c == ' ' || *c == '\t').map(|c| if c == '\t' { 4 } else { 1 }).sum()
+    l.chars()
+        .take_while(|c| *c == ' ' || *c == '\t')
+        .map(|c| if c == '\t' { 4 } else { 1 })
+        .sum()
 }
 
 /// A list item's mark: (spaces before it, its length with the space after it, numbered?).
@@ -502,15 +664,22 @@ pub(crate) fn list_mark(l: &str) -> Option<(usize, usize, bool)> {
 
 fn is_divider(l: &str) -> bool {
     let t: String = l.chars().filter(|c| !c.is_whitespace()).collect();
-    t.len() >= 3 && ["-", "*", "_"].iter().any(|m| t.chars().all(|c| c.to_string() == *m)) && indent_of(l) < 4
+    t.len() >= 3
+        && ["-", "*", "_"]
+            .iter()
+            .any(|m| t.chars().all(|c| c.to_string() == *m))
+        && indent_of(l) < 4
 }
 
 fn heading_level(l: &str) -> Option<u8> {
     let n = l.chars().take_while(|c| *c == '#').count();
-    (1..=6).contains(&n).then_some(()).and_then(|_| match l.chars().nth(n) {
-        None | Some(' ') | Some('\t') => Some(n as u8),
-        _ => None,
-    })
+    (1..=6)
+        .contains(&n)
+        .then_some(())
+        .and_then(|_| match l.chars().nth(n) {
+            None | Some(' ') | Some('\t') => Some(n as u8),
+            _ => None,
+        })
 }
 
 fn fence_of(l: &str) -> Option<&str> {
@@ -576,7 +745,15 @@ pub fn split(text: &str, titled: bool) -> (Option<(usize, usize)>, Vec<Block>) {
             i += 1;
             continue;
         }
-        let mut b = Block { kind: "paragraph", start: s0, end: e0, level: 0, checked: None, lang: String::new(), indent: 0 };
+        let mut b = Block {
+            kind: "paragraph",
+            start: s0,
+            end: e0,
+            level: 0,
+            checked: None,
+            lang: String::new(),
+            indent: 0,
+        };
         let mut j = i;
         match starts(l) {
             Some("fence") => {
@@ -584,7 +761,14 @@ pub fn split(text: &str, titled: bool) -> (Option<(usize, usize)>, Vec<Block>) {
                 b.kind = "fence";
                 b.lang = l.trim_start()[3..].trim().to_string();
                 j += 1;
-                while j < ls.len() && !(ls[j].2.trim_start().starts_with(mark) && ls[j].2.trim().trim_start_matches(mark.chars().next().unwrap()).is_empty()) {
+                while j < ls.len()
+                    && !(ls[j].2.trim_start().starts_with(mark)
+                        && ls[j]
+                            .2
+                            .trim()
+                            .trim_start_matches(mark.chars().next().unwrap())
+                            .is_empty())
+                {
                     j += 1;
                 }
                 if j >= ls.len() {
@@ -608,19 +792,28 @@ pub fn split(text: &str, titled: bool) -> (Option<(usize, usize)>, Vec<Block>) {
                 b.indent = ind;
                 b.kind = if num { "numbered" } else { "item" };
                 let after: String = l.chars().skip(len).collect();
-                if let Some(c) = ["[ ] ", "[x] ", "[X] ", "[ ]", "[x]", "[X]"].iter().find(|c| after.starts_with(**c) && (c.len() == 4 || after.len() == 3)) {
+                if let Some(c) = ["[ ] ", "[x] ", "[X] ", "[ ]", "[x]", "[X]"]
+                    .iter()
+                    .find(|c| after.starts_with(**c) && (c.len() == 4 || after.len() == 3))
+                {
                     if !num {
                         b.kind = "todo";
                         b.checked = Some(!c.starts_with("[ ]"));
                     }
                 }
                 // what follows on the next lines, up to a blank line or a block of its own, is part of the item
-                while j + 1 < ls.len() && !ls[j + 1].2.trim().is_empty() && starts(ls[j + 1].2).is_none() {
+                while j + 1 < ls.len()
+                    && !ls[j + 1].2.trim().is_empty()
+                    && starts(ls[j + 1].2).is_none()
+                {
                     j += 1;
                 }
             }
             None => {
-                while j + 1 < ls.len() && !ls[j + 1].2.trim().is_empty() && starts(ls[j + 1].2).is_none() {
+                while j + 1 < ls.len()
+                    && !ls[j + 1].2.trim().is_empty()
+                    && starts(ls[j + 1].2).is_none()
+                {
                     j += 1;
                 }
             }
@@ -646,11 +839,19 @@ fn listish(k: &str) -> bool {
 
 /// The kind of block a piece of text begins with.
 fn first_kind(t: &str) -> &'static str {
-    split(t, false).1.first().map(|b| if listish(b.kind) { "item" } else { b.kind }).unwrap_or("paragraph")
+    split(t, false)
+        .1
+        .first()
+        .map(|b| if listish(b.kind) { "item" } else { b.kind })
+        .unwrap_or("paragraph")
 }
 
 fn last_kind(t: &str) -> &'static str {
-    split(t, false).1.last().map(|b| if listish(b.kind) { "item" } else { b.kind }).unwrap_or("paragraph")
+    split(t, false)
+        .1
+        .last()
+        .map(|b| if listish(b.kind) { "item" } else { b.kind })
+        .unwrap_or("paragraph")
 }
 
 /// The gap between two pieces of a text: list items one after another keep a single line break; anything else is apart
@@ -672,7 +873,13 @@ fn fix_gap(prev: Option<&'static str>, next: &'static str, gap: &str) -> String 
         Some(p) if listish(p) && listish(next) && breaks >= 1 => gap.to_string(),
         // a heading, a fence or a divider is a block of its own on its line, whatever touches it (a divider only
         // after something: under a paragraph it would make the paragraph a heading)
-        Some(p) if (["heading", "fence", "divider"].contains(&p) || ["heading", "fence"].contains(&next)) && breaks >= 1 => gap.to_string(),
+        Some(p)
+            if (["heading", "fence", "divider"].contains(&p)
+                || ["heading", "fence"].contains(&next))
+                && breaks >= 1 =>
+        {
+            gap.to_string()
+        }
         Some(_) if breaks >= 2 => gap.to_string(),
         Some(_) => "\n\n".into(),
     }
@@ -680,41 +887,85 @@ fn fix_gap(prev: Option<&'static str>, next: &'static str, gap: &str) -> String 
 
 /// The text with `chars a..b` replaced by `new`, the gaps on both sides set right. → the text, where `new` now starts
 /// and ends (in characters).
-fn splice(text: &str, titled: bool, a: usize, b: usize, new: &str, fresh: bool) -> (String, usize, usize) {
+fn splice(
+    text: &str,
+    titled: bool,
+    a: usize,
+    b: usize,
+    new: &str,
+    fresh: bool,
+) -> (String, usize, usize) {
     let c = chars(text);
     let (title, blocks) = split(text, titled);
     // what ends before a and starts after b
-    let prev_end = blocks.iter().filter(|x| x.end <= a).map(|x| x.end).max().into_iter().chain(title.map(|t| t.1).filter(|e| *e <= a)).max();
+    let prev_end = blocks
+        .iter()
+        .filter(|x| x.end <= a)
+        .map(|x| x.end)
+        .max()
+        .into_iter()
+        .chain(title.map(|t| t.1).filter(|e| *e <= a))
+        .max();
     let prev_kind: Option<&'static str> = match prev_end {
         None => None,
-        Some(e) if title.is_some_and(|t| t.1 == e) && !blocks.iter().any(|x| x.end == e) => Some("title"),
-        Some(e) => blocks.iter().find(|x| x.end == e).map(|x| if listish(x.kind) { "item" } else { x.kind }),
+        Some(e) if title.is_some_and(|t| t.1 == e) && !blocks.iter().any(|x| x.end == e) => {
+            Some("title")
+        }
+        Some(e) => {
+            blocks
+                .iter()
+                .find(|x| x.end == e)
+                .map(|x| if listish(x.kind) { "item" } else { x.kind })
+        }
     };
-    let next_start = blocks.iter().filter(|x| x.start >= b).map(|x| x.start).min();
+    let next_start = blocks
+        .iter()
+        .filter(|x| x.start >= b)
+        .map(|x| x.start)
+        .min();
     let before = sub(&c, 0, prev_end.unwrap_or(0));
     let after = next_start.map(|n| sub(&c, n, c.len())).unwrap_or_default();
-    let new = new.trim_matches(|ch: char| ch == '\n' || ch == '\r').trim_end().to_string();
+    let new = new
+        .trim_matches(|ch: char| ch == '\n' || ch == '\r')
+        .trim_end()
+        .to_string();
     let gap_before = sub(&c, prev_end.unwrap_or(0), a);
     let gap_after = next_start.map(|n| sub(&c, b, n)).unwrap_or_default();
     let mut out = before;
     if new.is_empty() {
         // the block is gone: its neighbours meet, with the gap that was after it (or before it, at the end)
         if !after.is_empty() {
-            let g = if prev_end.is_some() { fix_gap(prev_kind, first_kind(&after), &gap_before) } else { String::new() };
+            let g = if prev_end.is_some() {
+                fix_gap(prev_kind, first_kind(&after), &gap_before)
+            } else {
+                String::new()
+            };
             out.push_str(&g);
             out.push_str(&after);
         }
         let at = chars(&out).len();
         return (out, at, at);
     }
-    let gb = if prev_end.is_none() { String::new() } else { fix_gap(prev_kind, first_kind(&new), if fresh { "" } else { &gap_before }) };
+    let gb = if prev_end.is_none() {
+        String::new()
+    } else {
+        fix_gap(
+            prev_kind,
+            first_kind(&new),
+            if fresh { "" } else { &gap_before },
+        )
+    };
     out.push_str(&gb);
     let start = chars(&out).len();
     out.push_str(&new);
     let end = chars(&out).len();
     if !after.is_empty() {
         let lk = last_kind(&new);
-        let ga = fix_gap(Some(lk), first_kind(&after), if fresh { "" } else { &gap_after });
+        let ga = fix_gap(
+            Some(lk),
+            first_kind(&after),
+            if fresh { "" } else { &gap_after },
+        );
         out.push_str(&ga);
         out.push_str(&after);
     }
@@ -725,29 +976,52 @@ fn splice(text: &str, titled: bool, a: usize, b: usize, new: &str, fresh: bool) 
 fn blocks_within(text: &str, titled: bool, a: usize, b: usize) -> (usize, usize) {
     let bs = split(text, titled).1;
     let first = bs.iter().position(|x| x.start >= a).unwrap_or(bs.len());
-    let n = bs.iter().filter(|x| x.start >= a && x.start < b.max(a + 1)).count();
+    let n = bs
+        .iter()
+        .filter(|x| x.start >= a && x.start < b.max(a + 1))
+        .count();
     (first, n)
 }
 
 pub(crate) fn check_n(blocks: &[Block], n: usize, count: usize) -> Result<()> {
     if count == 0 || n.saturating_add(count) > blocks.len() {
-        return Err(missing(format!("The page has {} block{}; there is no block {}.", blocks.len(), if blocks.len() == 1 { "" } else { "s" }, n.saturating_add(count.max(1)))));
+        return Err(missing(format!(
+            "The page has {} block{}; there is no block {}.",
+            blocks.len(),
+            if blocks.len() == 1 { "" } else { "s" },
+            n.saturating_add(count.max(1))
+        )));
     }
     Ok(())
 }
 
 /// Replace `count` blocks from block `n` with `new` (empty: remove them). → the text, and the blocks `new` became
 /// (the first one's number, how many: a blank line typed in a block makes two).
-pub fn set(text: &str, titled: bool, n: usize, count: usize, new: &str) -> Result<(String, usize, usize)> {
+pub fn set(
+    text: &str,
+    titled: bool,
+    n: usize,
+    count: usize,
+    new: &str,
+) -> Result<(String, usize, usize)> {
     let bs = split(text, titled).1;
     check_n(&bs, n, count)?;
     let (out, a, b) = splice(text, titled, bs[n].start, bs[n + count - 1].end, new, false);
-    let (first, k) = if a == b { (n, 0) } else { blocks_within(&out, titled, a, b) };
+    let (first, k) = if a == b {
+        (n, 0)
+    } else {
+        blocks_within(&out, titled, a, b)
+    };
     Ok((out, first, k))
 }
 
 /// Add a block after block `after` (None: first, right after the title). → the text, the new blocks (first, how many).
-pub fn insert(text: &str, titled: bool, after: Option<usize>, new: &str) -> Result<(String, usize, usize)> {
+pub fn insert(
+    text: &str,
+    titled: bool,
+    after: Option<usize>,
+    new: &str,
+) -> Result<(String, usize, usize)> {
     if new.trim().is_empty() {
         return Err(bad("Write the block's text first."));
     }
@@ -770,7 +1044,12 @@ pub fn move_block(text: &str, titled: bool, n: usize, to: usize) -> Result<(Stri
     let bs = split(text, titled).1;
     check_n(&bs, n, 1)?;
     if to > bs.len() {
-        return Err(missing(format!("The page has {} blocks; it can go before block 1 to {}, or last ({}).", bs.len(), bs.len(), bs.len() + 1)));
+        return Err(missing(format!(
+            "The page has {} blocks; it can go before block 1 to {}, or last ({}).",
+            bs.len(),
+            bs.len(),
+            bs.len() + 1
+        )));
     }
     if to == n || to == n + 1 {
         return Ok((text.to_string(), n));
@@ -808,11 +1087,26 @@ pub fn retitle(text: &str, title: &str) -> Result<String> {
         return Err(bad("A title is one line with something on it."));
     }
     let c = chars(text);
-    let Some((a, b)) = split(text, true).0 else { return Ok(title.to_string()) };
+    let Some((a, b)) = split(text, true).0 else {
+        return Ok(title.to_string());
+    };
     let old = sub(&c, a, b);
-    let marks: String = old.chars().take_while(|ch| *ch == '#' || *ch == ' ').collect();
-    let marks = if marks.trim().is_empty() { String::new() } else { marks };
-    Ok(format!("{}{}{}{}", sub(&c, 0, a), marks, title, sub(&c, b, c.len())))
+    let marks: String = old
+        .chars()
+        .take_while(|ch| *ch == '#' || *ch == ' ')
+        .collect();
+    let marks = if marks.trim().is_empty() {
+        String::new()
+    } else {
+        marks
+    };
+    Ok(format!(
+        "{}{}{}{}",
+        sub(&c, 0, a),
+        marks,
+        title,
+        sub(&c, b, c.len())
+    ))
 }
 
 // ---- blocks of a note in the study folder ------------------------------------------------------------------------------
@@ -822,9 +1116,17 @@ pub fn retitle(text: &str, title: &str) -> Result<String> {
 pub(crate) fn text_of(store: &Store, id: &str) -> Result<(String, String, bool)> {
     if crate::threadpage::slug_of(id).is_some() {
         // a thread's page: its note is the text, and its title is its name, not a first line
-        return Ok((id.trim().to_string(), crate::threadpage::note_text(store, id)?, false));
+        return Ok((
+            id.trim().to_string(),
+            crate::threadpage::note_text(store, id)?,
+            false,
+        ));
     }
-    let id = if crate::store::is_day(id.trim()) { format!("d_{}", id.trim()) } else { id.trim().to_string() };
+    let id = if crate::store::is_day(id.trim()) {
+        format!("d_{}", id.trim())
+    } else {
+        id.trim().to_string()
+    };
     let r = store.find_note(&id).map_err(|_| missing("No note, question or page with that id (a day's page not written in yet has no blocks)."))?;
     Ok((id.clone(), s(&r, "text"), !id.starts_with("d_")))
 }
@@ -888,8 +1190,17 @@ fn is_toggle_head(text: &str) -> bool {
 /// The toggles of a page that are folded, each named by its head's text. Which toggles are folded is the window's, kept in
 /// `settings/pages.json` under `folds`, never in the page (notebook row 9).
 pub fn folded(store: &Store, id: &str) -> Vec<String> {
-    store.settings("pages").get("folds").and_then(|f| f.get(id.trim())).and_then(|l| l.as_array())
-        .map(|l| l.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default()
+    store
+        .settings("pages")
+        .get("folds")
+        .and_then(|f| f.get(id.trim()))
+        .and_then(|l| l.as_array())
+        .map(|l| {
+            l.iter()
+                .filter_map(|x| x.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Fold or unfold the toggle whose head is block `n` (from 0). Other pages' folds and everything else in the file are kept.
@@ -897,12 +1208,20 @@ pub fn set_fold(store: &mut Store, id: &str, n: usize, fold: bool) -> Result<Val
     let (id, text, titled) = text_of(store, id)?;
     let c = chars(&text);
     let (_, bs) = split(&text, titled);
-    let b = bs.get(n).ok_or_else(|| bad("No such block (wb page blocks lists them)."))?;
+    let b = bs
+        .get(n)
+        .ok_or_else(|| bad("No such block (wb page blocks lists them)."))?;
     let head = sub(&c, b.start, b.end);
     if !is_toggle_head(&head) {
-        return Err(bad("That block is not a toggle (its text begins <details><summary>)."));
+        return Err(bad(
+            "That block is not a toggle (its text begins <details><summary>).",
+        ));
     }
-    let mut all = store.settings("pages").get("folds").and_then(|l| l.as_object().cloned()).unwrap_or_default();
+    let mut all = store
+        .settings("pages")
+        .get("folds")
+        .and_then(|l| l.as_object().cloned())
+        .unwrap_or_default();
     let mut mine = folded(store, &id);
     mine.retain(|h| h != &head);
     if fold {
@@ -913,12 +1232,27 @@ pub fn set_fold(store: &mut Store, id: &str, n: usize, fold: bool) -> Result<Val
     } else {
         all.insert(id.clone(), json!(mine));
     }
-    store.set_setting("pages", "folds", if all.is_empty() { None } else { Some(Value::Object(all)) })?;
+    store.set_setting(
+        "pages",
+        "folds",
+        if all.is_empty() {
+            None
+        } else {
+            Some(Value::Object(all))
+        },
+    )?;
     Ok(json!({"id": id, "n": n + 1, "folded": fold, "folds": folded(store, &id)}))
 }
 
 /// Write a page's whole text back (Tether's Accept and its Undo), as every block change is written.
-pub(crate) fn write_text(bible: &Bible, store: &mut Store, id: &str, text: &str, titled: bool, expected: Option<&str>) -> Result<Value> {
+pub(crate) fn write_text(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    text: &str,
+    titled: bool,
+    expected: Option<&str>,
+) -> Result<Value> {
     // guarded as edit_guarded is: a page that is not what was read is not written
     if let Some(e) = expected {
         if text_of(store, id)?.1 != e {
@@ -929,17 +1263,34 @@ pub(crate) fn write_text(bible: &Bible, store: &mut Store, id: &str, text: &str,
 }
 
 /// Write the changed text of a note and answer with its blocks, and which of them were just written (`n`, `count`).
-fn written(bible: &Bible, store: &mut Store, id: &str, text: &str, titled: bool, n: usize, count: usize) -> Result<Value> {
+fn written(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    text: &str,
+    titled: bool,
+    n: usize,
+    count: usize,
+) -> Result<Value> {
     let thread = crate::threadpage::slug_of(id).is_some();
-    if let Some(day) = id.strip_prefix("d_").filter(|day| crate::store::is_day(day)) {
+    if let Some(day) = id
+        .strip_prefix("d_")
+        .filter(|day| crate::store::is_day(day))
+    {
         store.edit_day_blocks(day, text)?;
     } else {
         if text.trim().is_empty() && !thread {
-            return Err(bad("A page needs some text. To remove it, delete the page."));
+            return Err(bad(
+                "A page needs some text. To remove it, delete the page.",
+            ));
         }
         nb::edit_text(bible, store, id, text)?;
     }
-    let now = if thread { crate::threadpage::note_text(store, id)? } else { s(&store.find_note(id)?, "text") };
+    let now = if thread {
+        crate::threadpage::note_text(store, id)?
+    } else {
+        s(&store.find_note(id)?, "text")
+    };
     let mut v = block_values(&now, titled);
     v["id"] = json!(id);
     v["n"] = json!(n + 1);
@@ -950,14 +1301,35 @@ fn written(bible: &Bible, store: &mut Store, id: &str, text: &str, titled: bool,
 /// What a change to a block does to a note: change `count` blocks from `n` to new text (empty removes them), add one
 /// after a block (or first), move one, tick a to-do.
 pub enum Edit<'a> {
-    Set { n: usize, count: usize, text: &'a str },
-    Add { after: Option<usize>, text: &'a str },
-    Move { n: usize, to: usize },
+    Set {
+        n: usize,
+        count: usize,
+        text: &'a str,
+    },
+    Add {
+        after: Option<usize>,
+        text: &'a str,
+    },
+    Move {
+        n: usize,
+        to: usize,
+    },
     /// Block `n` beside block `m` as a column (right of it; `left`: left of it): see `blockops`.
-    Beside { n: usize, m: usize, left: bool },
+    Beside {
+        n: usize,
+        m: usize,
+        left: bool,
+    },
     /// A background colour (None: Default) on `count` blocks from `n`: see `blockops`.
-    Color { n: usize, count: usize, name: Option<&'a str> },
-    Check { n: usize, done: Option<bool> },
+    Color {
+        n: usize,
+        count: usize,
+        name: Option<&'a str>,
+    },
+    Check {
+        n: usize,
+        done: Option<bool>,
+    },
     Title(&'a str),
 }
 
@@ -967,21 +1339,39 @@ pub fn edit(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>) -> Resul
 }
 
 /// Change a block only if the page still contains the text the editor displayed.
-pub fn edit_guarded(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>, expected: Option<&str>) -> Result<Value> {
+pub fn edit_guarded(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    what: Edit<'_>,
+    expected: Option<&str>,
+) -> Result<Value> {
     let (id, text, titled) = text_of(store, id)?;
     if expected.is_some_and(|value| value != text) {
         return Err(bad("The page changed. Reopen it and try again."));
     }
     let (out, n, count) = match what {
-        Edit::Set { n, count, text: new } => {
+        Edit::Set {
+            n,
+            count,
+            text: new,
+        } => {
             // a block's link id stays when its words are changed (the window never shows it, so it never sends it back)
             let keep = if count == 1 && !new.trim().is_empty() && block_id_of(new).is_none() {
                 let bs = split(&text, titled).1;
-                bs.get(n).and_then(|b| block_id_of(&sub(&chars(&text), b.start, b.end))).map(|(_, bid)| with_block_id(new, &bid))
-            } else { None };
+                bs.get(n)
+                    .and_then(|b| block_id_of(&sub(&chars(&text), b.start, b.end)))
+                    .map(|(_, bid)| with_block_id(new, &bid))
+            } else {
+                None
+            };
             let (out, at, k) = set(&text, titled, n, count, keep.as_deref().unwrap_or(new))?;
             // taking blocks out may leave a column empty: its marker goes with it
-            if new.trim().is_empty() { (crate::blockops::tidy(&out, titled)?, at, k) } else { (out, at, k) }
+            if new.trim().is_empty() {
+                (crate::blockops::tidy(&out, titled)?, at, k)
+            } else {
+                (out, at, k)
+            }
         }
         Edit::Add { after, text: new } => insert(&text, titled, after, new)?,
         Edit::Move { n, to } => {
@@ -992,7 +1382,11 @@ pub fn edit_guarded(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>, 
             let (out, at) = crate::blockops::move_beside(&text, titled, n, m, left)?;
             (out, at, 1)
         }
-        Edit::Color { n, count, name } => (crate::blockops::color_blocks(&text, titled, n, count, name)?, n, count),
+        Edit::Color { n, count, name } => (
+            crate::blockops::color_blocks(&text, titled, n, count, name)?,
+            n,
+            count,
+        ),
         Edit::Check { n, done } => (check(&text, titled, n, done)?, n, 1),
         Edit::Title(t) => {
             if !titled {
@@ -1025,10 +1419,20 @@ fn is_removal() -> bool {
 
 fn body_digest(text: &str) -> String {
     use sha2::{Digest, Sha256};
-    Sha256::digest(text.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
+    Sha256::digest(text.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
-pub fn remove_block(bible: &Bible, store: &mut Store, id: &str, n: usize, count: usize, expected: Option<&str>) -> Result<Value> {
+pub fn remove_block(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    n: usize,
+    count: usize,
+    expected: Option<&str>,
+) -> Result<Value> {
     let (id, before, titled) = text_of(store, id)?;
     if expected.is_some_and(|value| value != before) {
         return Err(bad("The page changed. Reopen it and try again."));
@@ -1037,30 +1441,67 @@ pub fn remove_block(bible: &Bible, store: &mut Store, id: &str, n: usize, count:
     let out = crate::blockops::tidy(&out, titled)?;
     let mut result = written(bible, store, &id, &out, titled, at, remaining)?;
     let (_, after, _) = text_of(store, &id)?;
-    result["undo"] = json!(BlockUndo { page: id, before, after: body_digest(&after), n, count, removal: true });
+    result["undo"] = json!(BlockUndo {
+        page: id,
+        before,
+        after: body_digest(&after),
+        n,
+        count,
+        removal: true
+    });
     Ok(result)
 }
 
 /// Any block change with a token for `wb block undo` (the page's Undo): a join (`block set --undo`), a copy (
 /// `block dup --undo`). The token holds the page as it was and a digest of the page as the change left it; it restores
 /// only while the page is still as the change left it.
-pub fn edit_undoable(bible: &Bible, store: &mut Store, id: &str, what: Edit<'_>, expected: Option<&str>) -> Result<Value> {
+pub fn edit_undoable(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    what: Edit<'_>,
+    expected: Option<&str>,
+) -> Result<Value> {
     let (id, before, _) = text_of(store, id)?;
     let mut result = edit_guarded(bible, store, &id, what, expected)?;
     let (_, after, _) = text_of(store, &id)?;
     let n = result["n"].as_u64().unwrap_or(1).saturating_sub(1) as usize;
     let count = result["count"].as_u64().unwrap_or(1) as usize;
-    result["undo"] = json!(BlockUndo { page: id, before, after: body_digest(&after), n, count, removal: false });
+    result["undo"] = json!(BlockUndo {
+        page: id,
+        before,
+        after: body_digest(&after),
+        n,
+        count,
+        removal: false
+    });
     Ok(result)
 }
 
 /// Copy block `n` right below itself (`wb block dup`; Duplicate in the block menu). → the blocks after, `n` the copy's number.
-pub fn duplicate_block(bible: &Bible, store: &mut Store, id: &str, n: usize, undo: bool, expected: Option<&str>) -> Result<Value> {
+pub fn duplicate_block(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    n: usize,
+    undo: bool,
+    expected: Option<&str>,
+) -> Result<Value> {
     let (id, text, titled) = text_of(store, id)?;
     let (_, bs) = split(&text, titled);
-    let b = bs.get(n).ok_or_else(|| missing(format!("The page has {} block{}; there is no block {}.", bs.len(), if bs.len() == 1 { "" } else { "s" }, n + 1)))?;
+    let b = bs.get(n).ok_or_else(|| {
+        missing(format!(
+            "The page has {} block{}; there is no block {}.",
+            bs.len(),
+            if bs.len() == 1 { "" } else { "s" },
+            n + 1
+        ))
+    })?;
     let copy = without_block_id(&sub(&chars(&text), b.start, b.end));
-    let what = Edit::Add { after: Some(n), text: &copy };
+    let what = Edit::Add {
+        after: Some(n),
+        text: &copy,
+    };
     if undo {
         edit_undoable(bible, store, &id, what, expected)
     } else {
@@ -1093,7 +1534,10 @@ fn tail_id(text: &str) -> Option<(usize, String)> {
         return None;
     }
     let id: String = tail[..6].iter().rev().collect();
-    if !id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()) {
+    if !id
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+    {
         return None;
     }
     Some((t.chars().count() - 8, id))
@@ -1101,9 +1545,14 @@ fn tail_id(text: &str) -> Option<(usize, String)> {
 
 /// The block's words without its link id.
 pub(crate) fn without_block_id(text: &str) -> String {
-    let Some((at, _)) = block_id_of(text) else { return text.to_string() };
+    let Some((at, _)) = block_id_of(text) else {
+        return text.to_string();
+    };
     if is_fenced(text) {
-        let (first, rest) = text.split_once('\n').map(|(a, b)| (a, Some(b))).unwrap_or((text, None));
+        let (first, rest) = text
+            .split_once('\n')
+            .map(|(a, b)| (a, Some(b)))
+            .unwrap_or((text, None));
         let kept: String = first.chars().take(at).collect();
         return match rest {
             Some(r) => format!("{kept}\n{r}"),
@@ -1116,7 +1565,10 @@ pub(crate) fn without_block_id(text: &str) -> String {
 /// The block's text with link id `bid` put in: at its end, or on a fence's opening line.
 fn with_block_id(text: &str, bid: &str) -> String {
     if is_fenced(text) {
-        let (first, rest) = text.split_once('\n').map(|(a, b)| (a, Some(b))).unwrap_or((text, None));
+        let (first, rest) = text
+            .split_once('\n')
+            .map(|(a, b)| (a, Some(b)))
+            .unwrap_or((text, None));
         let first = format!("{} ^{bid}", first.trim_end());
         return match rest {
             Some(r) => format!("{first}\n{r}"),
@@ -1128,10 +1580,16 @@ fn with_block_id(text: &str, bid: &str) -> String {
 
 fn new_block_id(page: &str) -> String {
     use sha2::{Digest, Sha256};
-    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
     let h = Sha256::digest(format!("{now}{}", page.len()).as_bytes());
     let alphabet = b"abcdefghijklmnopqrstuvwxyz0123456789";
-    h.iter().take(6).map(|b| alphabet[*b as usize % alphabet.len()] as char).collect()
+    h.iter()
+        .take(6)
+        .map(|b| alphabet[*b as usize % alphabet.len()] as char)
+        .collect()
 }
 
 /// The link to block `n` of a page (`wb block link ID N`; Copy link to block): `[[Title#^abc123]]`. The block gets its id at the end of
@@ -1161,24 +1619,43 @@ pub fn block_link(bible: &Bible, store: &mut Store, id: &str, n: usize) -> Resul
             (bid, true)
         }
     };
-    Ok(json!({"id": id, "n": n + 1, "block": bid, "title": title, "link": format!("[[{title}#^{bid}]]"), "wrote": wrote}))
+    Ok(
+        json!({"id": id, "n": n + 1, "block": bid, "title": title, "link": format!("[[{title}#^{bid}]]"), "wrote": wrote}),
+    )
 }
 
 /// Move `count` blocks from block `n` of a page to the end of another page (`wb block move ID N --page OTHER`; Move to in the block
 /// menu). The blocks are written into the other page first, then taken out of this one, so a failure loses nothing. → this page's
 /// blocks after (as `wb block rm` gives them), with `to` the other page's id and `at` the number of the first moved block there.
-pub fn move_to_page(bible: &Bible, store: &mut Store, id: &str, n: usize, count: usize, other: &str) -> Result<Value> {
+pub fn move_to_page(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    n: usize,
+    count: usize,
+    other: &str,
+) -> Result<Value> {
     let (id, text, titled) = text_of(store, id)?;
     let (oid, otext, otitled) = text_of(store, other)?;
     if oid == id {
-        return Err(bad("Choose another page: the block is already in this one."));
+        return Err(bad(
+            "Choose another page: the block is already in this one.",
+        ));
     }
     let (_, bs) = split(&text, titled);
     check_n(&bs, n, count.max(1))?;
     let c = chars(&text);
     let moved = sub(&c, bs[n].start, bs[n + count - 1].end);
     let after = split(&otext, otitled).1.len().checked_sub(1);
-    let put = edit(bible, store, &oid, Edit::Add { after, text: &moved })?;
+    let put = edit(
+        bible,
+        store,
+        &oid,
+        Edit::Add {
+            after,
+            text: &moved,
+        },
+    )?;
     let mut out = remove_block(bible, store, &id, n, count, None)?;
     out["to"] = json!(oid);
     out["at"] = put["n"].clone();
@@ -1219,13 +1696,30 @@ pub fn scripture_fence(block: &str) -> Option<ScriptureFence> {
     let mut ls = block.lines();
     let first = ls.next()?.trim_start();
     let mark = ["```", "~~~"].into_iter().find(|m| first.starts_with(m))?;
-    if !first[3..].trim().split_whitespace().next().is_some_and(|w| w.eq_ignore_ascii_case("scripture")) {
+    if !first[3..]
+        .trim()
+        .split_whitespace()
+        .next()
+        .is_some_and(|w| w.eq_ignore_ascii_case("scripture"))
+    {
         return None;
     }
-    let inner: Vec<&str> = ls.take_while(|l| !l.trim_start().starts_with(mark)).map(str::trim).filter(|l| !l.is_empty()).collect();
-    let (reference, opts) = inner.split_first().map(|(r, o)| (r.to_string(), o)).unwrap_or_default();
+    let inner: Vec<&str> = ls
+        .take_while(|l| !l.trim_start().starts_with(mark))
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    let (reference, opts) = inner
+        .split_first()
+        .map(|(r, o)| (r.to_string(), o))
+        .unwrap_or_default();
     let has = |w: &str| opts.iter().any(|o| o.eq_ignore_ascii_case(w));
-    Some(ScriptureFence { reference, lines: has("lines"), ylt: has("ylt"), marks: has("marks") })
+    Some(ScriptureFence {
+        reference,
+        lines: has("lines"),
+        ylt: has("ylt"),
+        marks: has("marks"),
+    })
 }
 
 /// The fence written back: the reference, then `lines` and `ylt` on their own lines when chosen.
@@ -1254,7 +1748,9 @@ pub fn scripture(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
         if b.kind != "fence" {
             continue;
         }
-        let Some(f) = scripture_fence(&sub(&c, b.start, b.end)) else { continue };
+        let Some(f) = scripture_fence(&sub(&c, b.start, b.end)) else {
+            continue;
+        };
         let version = if f.ylt { "YLT" } else { "KJV" };
         let mut v = json!({"n": i + 1, "reference": f.reference, "lines": f.lines, "version": version, "marks": f.marks});
         if f.reference.is_empty() {
@@ -1275,12 +1771,23 @@ pub fn scripture(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
 
 /// Change a scripture block's choices (Paragraph or Lines, KJV or YLT): its fence is written anew, the reference kept.
 /// None leaves a choice as it is. → the page's blocks, as `edit`.
-pub fn set_scripture(bible: &Bible, store: &mut Store, id: &str, n: usize, lines: Option<bool>, ylt: Option<bool>, marks: Option<bool>) -> Result<Value> {
+pub fn set_scripture(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    n: usize,
+    lines: Option<bool>,
+    ylt: Option<bool>,
+    marks: Option<bool>,
+) -> Result<Value> {
     let (_, text, titled) = text_of(store, id)?;
     let c = chars(&text);
     let bs = split(&text, titled).1;
-    let b = bs.get(n).ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
-    let mut f = scripture_fence(&sub(&c, b.start, b.end)).ok_or_else(|| bad(format!("Block {} is not a scripture block.", n + 1)))?;
+    let b = bs
+        .get(n)
+        .ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
+    let mut f = scripture_fence(&sub(&c, b.start, b.end))
+        .ok_or_else(|| bad(format!("Block {} is not a scripture block.", n + 1)))?;
     if let Some(x) = lines {
         f.lines = x;
     }
@@ -1290,7 +1797,16 @@ pub fn set_scripture(bible: &Bible, store: &mut Store, id: &str, n: usize, lines
     if let Some(x) = marks {
         f.marks = x;
     }
-    edit(bible, store, id, Edit::Set { n, count: 1, text: &scripture_fence_text(&f) })
+    edit(
+        bible,
+        store,
+        id,
+        Edit::Set {
+            n,
+            count: 1,
+            text: &scripture_fence_text(&f),
+        },
+    )
 }
 
 // ---- thread and word blocks (R1) ----------------------------------------------------------------------------------------
@@ -1301,10 +1817,21 @@ pub(crate) fn value_fence(block: &str, lang: &str) -> Option<String> {
     let mut ls = block.lines();
     let first = ls.next()?.trim_start();
     let mark = ["```", "~~~"].into_iter().find(|m| first.starts_with(m))?;
-    if !first[3..].trim().split_whitespace().next().is_some_and(|w| w.eq_ignore_ascii_case(lang)) {
+    if !first[3..]
+        .trim()
+        .split_whitespace()
+        .next()
+        .is_some_and(|w| w.eq_ignore_ascii_case(lang))
+    {
         return None;
     }
-    Some(ls.take_while(|l| !l.trim_start().starts_with(mark)).map(str::trim).find(|l| !l.is_empty()).unwrap_or("").to_string())
+    Some(
+        ls.take_while(|l| !l.trim_start().starts_with(mark))
+            .map(str::trim)
+            .find(|l| !l.is_empty())
+            .unwrap_or("")
+            .to_string(),
+    )
 }
 
 /// A block's Markdown → the thread it holds, when it is a thread block (```` ```thread ````, a thread's id or name).
@@ -1329,7 +1856,9 @@ fn thread_by(store: &Store, held: &str) -> Option<crate::store::Rec> {
         return None;
     }
     let all = store.threads();
-    all.iter().find(|t| s(t, "id").to_lowercase() == w || s(t, "name").to_lowercase() == w).map(|t| (*t).clone())
+    all.iter()
+        .find(|t| s(t, "id").to_lowercase() == w || s(t, "name").to_lowercase() == w)
+        .map(|t| (*t).clone())
 }
 
 /// The thread a thread block holds (a thread's id, or its name).
@@ -1347,22 +1876,40 @@ pub fn threads(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
         if b.kind != "fence" {
             continue;
         }
-        let Some(held) = thread_fence(&sub(&c, b.start, b.end)) else { continue };
+        let Some(held) = thread_fence(&sub(&c, b.start, b.end)) else {
+            continue;
+        };
         let mut v = json!({"n": i + 1, "held": held});
         // a ```thread fence names a folder (TH-3): a thread file read as one, or a set folder; it shows the folder's saves
-        let folder = if thread_by(store, &held).is_none() && !held.is_empty() { store.find_set(&held).ok() } else { None };
+        let folder = if thread_by(store, &held).is_none() && !held.is_empty() {
+            store.find_set(&held).ok()
+        } else {
+            None
+        };
         if let Some(set) = folder {
-            let places: Vec<Value> = set["items"].as_array().cloned().unwrap_or_default().into_iter().filter(|i| i["kind"] == "place").collect();
+            let places: Vec<Value> = set["items"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|i| i["kind"] == "place")
+                .collect();
             v["thread"] = set["id"].clone();
             v["name"] = set["name"].clone();
             v["color"] = json!(s(&set, "color"));
             v["count"] = json!(places.len());
-            v["refs"] = json!(places.iter().take(4).map(|m| nb::label(bible, m["ref"].as_str().unwrap_or(""))).collect::<Vec<_>>());
+            v["refs"] = json!(places
+                .iter()
+                .take(4)
+                .map(|m| nb::label(bible, m["ref"].as_str().unwrap_or("")))
+                .collect::<Vec<_>>());
             out.push(v);
             continue;
         }
         match thread_by(store, &held) {
-            None if held.is_empty() => v["error"] = json!("No thread yet: write its name under ```thread."),
+            None if held.is_empty() => {
+                v["error"] = json!("No thread yet: write its name under ```thread.")
+            }
             None => v["error"] = json!(format!("No thread called “{held}”.")),
             Some(t) => {
                 let members: Vec<Value> = t["members"].as_array().cloned().unwrap_or_default();
@@ -1370,7 +1917,11 @@ pub fn threads(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
                 v["name"] = t["name"].clone();
                 v["color"] = json!(s(&t, "color"));
                 v["count"] = json!(members.len());
-                v["refs"] = json!(members.iter().take(4).map(|m| nb::label(bible, m["anchor"].as_str().unwrap_or(""))).collect::<Vec<_>>());
+                v["refs"] = json!(members
+                    .iter()
+                    .take(4)
+                    .map(|m| nb::label(bible, m["anchor"].as_str().unwrap_or("")))
+                    .collect::<Vec<_>>());
             }
         }
         out.push(v);
@@ -1388,7 +1939,9 @@ pub fn words(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
         if b.kind != "fence" {
             continue;
         }
-        let Some(held) = word_fence(&sub(&c, b.start, b.end)) else { continue };
+        let Some(held) = word_fence(&sub(&c, b.start, b.end)) else {
+            continue;
+        };
         let strong = held.trim().to_uppercase();
         let mut v = json!({"n": i + 1, "held": held});
         if strong.is_empty() {
@@ -1400,10 +1953,21 @@ pub fn words(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
                 None => v["error"] = json!(format!("The lexicon has no {strong}.")),
                 Some(e) => {
                     v["strong"] = json!(strong);
-                    for k in ["lemma", "translit", "pron", "pos", "definition", "usage", "occurrences"] {
+                    for k in [
+                        "lemma",
+                        "translit",
+                        "pron",
+                        "pos",
+                        "definition",
+                        "usage",
+                        "occurrences",
+                    ] {
                         v[k] = e.get(k).cloned().unwrap_or(Value::Null);
                     }
-                    v["renderings"] = json!(e["renderings"].as_array().map(|a| a.iter().take(6).cloned().collect::<Vec<_>>()).unwrap_or_default());
+                    v["renderings"] = json!(e["renderings"]
+                        .as_array()
+                        .map(|a| a.iter().take(6).cloned().collect::<Vec<_>>())
+                        .unwrap_or_default());
                 }
             }
         }
@@ -1414,11 +1978,20 @@ pub fn words(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
 
 /// Write a thread or word block's value anew (checked first: a thread that exists, a Strong's number the lexicon has).
 /// → the page's blocks, as `edit`.
-pub fn set_value_block(bible: &Bible, store: &mut Store, id: &str, n: usize, lang: &str, value: &str) -> Result<Value> {
+pub fn set_value_block(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    n: usize,
+    lang: &str,
+    value: &str,
+) -> Result<Value> {
     let (_, text, titled) = text_of(store, id)?;
     let c = chars(&text);
     let bs = split(&text, titled).1;
-    let b = bs.get(n).ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
+    let b = bs
+        .get(n)
+        .ok_or_else(|| bad(format!("The page has {} blocks.", bs.len())))?;
     let md = sub(&c, b.start, b.end);
     if value_fence(&md, lang).is_none() {
         return Err(bad(format!("Block {} is not a {lang} block.", n + 1)));
@@ -1427,16 +2000,32 @@ pub fn set_value_block(bible: &Bible, store: &mut Store, id: &str, n: usize, lan
     let held = if lang == "thread" {
         match thread_by(store, value) {
             Some(t) => s(&t, "id"),
-            None => s(&store.find_set(value).map_err(|_| missing(format!("No thread called “{value}”.")))?, "id"),
+            None => s(
+                &store
+                    .find_set(value)
+                    .map_err(|_| missing(format!("No thread called “{value}”.")))?,
+                "id",
+            ),
         }
     } else {
         let st = value.to_uppercase();
         if !crate::lookup::is_strong(&st) || crate::lookup::strong(bible, &st)?.is_none() {
-            return Err(bad(format!("“{value}” is not a Strong's number the lexicon has (H7065, G25).")));
+            return Err(bad(format!(
+                "“{value}” is not a Strong's number the lexicon has (H7065, G25)."
+            )));
         }
         st
     };
-    edit(bible, store, id, Edit::Set { n, count: 1, text: &value_fence_text(lang, &held) })
+    edit(
+        bible,
+        store,
+        id,
+        Edit::Set {
+            n,
+            count: 1,
+            text: &value_fence_text(lang, &held),
+        },
+    )
 }
 
 #[cfg(test)]
@@ -1445,8 +2034,14 @@ mod tests {
 
     #[test]
     fn thread_and_word_blocks_hold_one_value() {
-        assert_eq!(thread_fence("```thread\nphinehas\n```").as_deref(), Some("phinehas"));
-        assert_eq!(word_fence("```word\n  H7065 \n```").as_deref(), Some("H7065"));
+        assert_eq!(
+            thread_fence("```thread\nphinehas\n```").as_deref(),
+            Some("phinehas")
+        );
+        assert_eq!(
+            word_fence("```word\n  H7065 \n```").as_deref(),
+            Some("H7065")
+        );
         assert_eq!(word_fence("```word\n```").as_deref(), Some(""));
         assert_eq!(thread_fence("```scripture\nNum 25:11\n```"), None);
         assert_eq!(word_fence("H7065"), None);
@@ -1456,10 +2051,24 @@ mod tests {
     #[test]
     fn a_scripture_fence_holds_a_reference_and_its_choices() {
         let f = scripture_fence("```scripture\nNum 25:10-13\n```").unwrap();
-        assert_eq!(f, ScriptureFence { reference: "Num 25:10-13".into(), lines: false, ylt: false, marks: false });
+        assert_eq!(
+            f,
+            ScriptureFence {
+                reference: "Num 25:10-13".into(),
+                lines: false,
+                ylt: false,
+                marks: false
+            }
+        );
         let g = scripture_fence("```scripture\n  Ps 106:28-31 \nylt\nLines\n```").unwrap();
-        assert_eq!((g.reference.as_str(), g.lines, g.ylt), ("Ps 106:28-31", true, true));
-        assert_eq!(scripture_fence_text(&g), "```scripture\nPs 106:28-31\nlines\nylt\n```");
+        assert_eq!(
+            (g.reference.as_str(), g.lines, g.ylt),
+            ("Ps 106:28-31", true, true)
+        );
+        assert_eq!(
+            scripture_fence_text(&g),
+            "```scripture\nPs 106:28-31\nlines\nylt\n```"
+        );
         assert_eq!(scripture_fence(&scripture_fence_text(&g)).unwrap(), g);
         assert_eq!(scripture_fence("```scripture\n```").unwrap().reference, "");
         assert!(scripture_fence("```view\nnotebook\n```").is_none());
@@ -1472,22 +2081,47 @@ mod tests {
 
     fn texts(t: &str) -> Vec<String> {
         let c = chars(t);
-        split(t, true).1.iter().map(|b| sub(&c, b.start, b.end)).collect()
+        split(t, true)
+            .1
+            .iter()
+            .map(|b| sub(&c, b.start, b.end))
+            .collect()
     }
 
     const PAGE: &str = "Lesson: Phinehas\n\n# Aim\nRead the chapter with the group.\nThen the psalm.\n\n- [x] Read it twice\n- [ ] List every use\n  of the word\n- [ ] Print the deck\n\n> a quote\n> two lines\n\n---\n\n| a | b |\n| --- | --- |\n\n```scripture\nNum 25:10-13\n```\n\n1. one\n2. two";
 
     #[test]
     fn a_page_reads_as_blocks() {
-        assert_eq!(kinds(PAGE, true), ["heading", "paragraph", "todo", "todo", "todo", "quote", "divider", "table", "fence", "numbered", "numbered"]);
+        assert_eq!(
+            kinds(PAGE, true),
+            [
+                "heading",
+                "paragraph",
+                "todo",
+                "todo",
+                "todo",
+                "quote",
+                "divider",
+                "table",
+                "fence",
+                "numbered",
+                "numbered"
+            ]
+        );
         let (title, bs) = split(PAGE, true);
-        assert_eq!(sub(&chars(PAGE), title.unwrap().0, title.unwrap().1), "Lesson: Phinehas");
+        assert_eq!(
+            sub(&chars(PAGE), title.unwrap().0, title.unwrap().1),
+            "Lesson: Phinehas"
+        );
         assert_eq!(bs[2].checked, Some(true));
         assert_eq!(bs[3].checked, Some(false));
         assert_eq!(texts(PAGE)[3], "- [ ] List every use\n  of the word");
         assert_eq!(bs[8].lang, "scripture");
         assert_eq!(kinds("Title\nsecond line", true), ["paragraph"]);
-        assert_eq!(kinds("just a day's words\n\n- one", false), ["paragraph", "item"]);
+        assert_eq!(
+            kinds("just a day's words\n\n- one", false),
+            ["paragraph", "item"]
+        );
         assert!(split("", true).1.is_empty());
     }
 
@@ -1537,7 +2171,10 @@ mod tests {
         let n = split(PAGE, true).1.len();
         let (t2, at) = move_block(PAGE, true, 0, n).unwrap();
         assert_eq!(at, n - 1);
-        assert!(t2.ends_with("2. two\n\n# Aim") && t2.starts_with("Lesson: Phinehas\n\nRead the chapter"));
+        assert!(
+            t2.ends_with("2. two\n\n# Aim")
+                && t2.starts_with("Lesson: Phinehas\n\nRead the chapter")
+        );
         assert_eq!(kinds(&t2, true).len(), n);
         let t3 = check(PAGE, true, 3, None).unwrap();
         assert!(t3.contains("- [x] List every use"));
@@ -1550,31 +2187,84 @@ mod tests {
 }
 
 /// Ordinary physical Pages scope only; thread associations are never descendants.
-pub(crate) fn deletion_layout(bible: &Bible, store: &Store, selected: &HashSet<String>, all: bool, pinned: bool, templates: bool, days: bool) -> Result<(Vec<String>, Vec<(String, Option<String>, usize)>)> {
+pub(crate) fn deletion_layout(
+    bible: &Bible,
+    store: &Store,
+    selected: &HashSet<String>,
+    all: bool,
+    pinned: bool,
+    templates: bool,
+    days: bool,
+) -> Result<(Vec<String>, Vec<(String, Option<String>, usize)>)> {
     let t = Tree::read(bible, store);
     let mut ids: HashSet<String> = selected.clone();
     if all {
-        ids.extend(t.all.iter().filter(|e| e["kind"] != "thread" && e["kind"] != "day" && t.in_tree(e) && (pinned || e["pinned"].is_null())).map(|e| id_of(e).to_string()));
-        if templates { ids.extend(nb::every(bible, store).iter().filter(|e| nb::is_template(e) && (pinned || e["pinned"].is_null())).map(|e| id_of(e).to_string())); }
-        if days { ids.extend(store.days().iter().map(|e| s(e, "id"))); }
-    }
-    for id in &ids { if crate::threadpage::slug_of(id).is_some() { return Err(bad("Thread records are excluded from page deletion.")); } store.find_note(id)?; }
-    fn walk(t: &Tree, parent: Option<&str>, surviving_parent: Option<&str>, ids: &HashSet<String>, out: &mut HashMap<Option<String>, Vec<String>>) {
-        for e in t.children(parent) {
-            let id = id_of(e);
-            if e["kind"] == "thread" { continue; }
-            if ids.contains(id) { walk(t, Some(id), surviving_parent, ids, out); }
-            else { out.entry(surviving_parent.map(String::from)).or_default().push(id.to_string()); walk(t, Some(id), Some(id), ids, out); }
+        ids.extend(
+            t.all
+                .iter()
+                .filter(|e| {
+                    e["kind"] != "thread"
+                        && e["kind"] != "day"
+                        && t.in_tree(e)
+                        && (pinned || e["pinned"].is_null())
+                })
+                .map(|e| id_of(e).to_string()),
+        );
+        if templates {
+            ids.extend(
+                nb::every(bible, store)
+                    .iter()
+                    .filter(|e| nb::is_template(e) && (pinned || e["pinned"].is_null()))
+                    .map(|e| id_of(e).to_string()),
+            );
+        }
+        if days {
+            ids.extend(store.days().iter().map(|e| s(e, "id")));
         }
     }
-    let mut lists = HashMap::new(); walk(&t, None, None, &ids, &mut lists);
+    for id in &ids {
+        if crate::threadpage::slug_of(id).is_some() {
+            return Err(bad("Thread records are excluded from page deletion."));
+        }
+        store.find_note(id)?;
+    }
+    fn walk(
+        t: &Tree,
+        parent: Option<&str>,
+        surviving_parent: Option<&str>,
+        ids: &HashSet<String>,
+        out: &mut HashMap<Option<String>, Vec<String>>,
+    ) {
+        for e in t.children(parent) {
+            let id = id_of(e);
+            if e["kind"] == "thread" {
+                continue;
+            }
+            if ids.contains(id) {
+                walk(t, Some(id), surviving_parent, ids, out);
+            } else {
+                out.entry(surviving_parent.map(String::from))
+                    .or_default()
+                    .push(id.to_string());
+                walk(t, Some(id), Some(id), ids, out);
+            }
+        }
+    }
+    let mut lists = HashMap::new();
+    walk(&t, None, None, &ids, &mut lists);
     let mut changes = vec![];
     for (parent, list) in lists {
         let affected = list.iter().any(|id| t.parent_of(id) != parent.as_deref());
-        if !affected { continue; }
-        for (i, id) in list.into_iter().enumerate() { changes.push((id, parent.clone(), i + 1)); }
+        if !affected {
+            continue;
+        }
+        for (i, id) in list.into_iter().enumerate() {
+            changes.push((id, parent.clone(), i + 1));
+        }
     }
-    let mut ids: Vec<_> = ids.into_iter().collect(); ids.sort(); changes.sort_by(|a,b| a.0.cmp(&b.0));
+    let mut ids: Vec<_> = ids.into_iter().collect();
+    ids.sort();
+    changes.sort_by(|a, b| a.0.cmp(&b.0));
     Ok((ids, changes))
 }
 
@@ -1583,7 +2273,10 @@ pub(crate) fn deletion_layout(bible: &Bible, store: &Store, selected: &HashSet<S
 /// Duplicate a page: a new page beside it (same parent) with the same text and the title "<title> (copy)". Its pages
 /// inside it are not copied, and it is not pinned. → the new page, as `new_page` gives it.
 pub fn duplicate(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
-    if crate::threadpage::slug_of(id).is_some() || crate::store::is_day(id.trim()) || id.trim().starts_with("d_") {
+    if crate::threadpage::slug_of(id).is_some()
+        || crate::store::is_day(id.trim())
+        || id.trim().starts_with("d_")
+    {
         return Err(bad("A day's page or a thread's page is not duplicated."));
     }
     let rec = store.find_note(id.trim())?;
@@ -1607,14 +2300,23 @@ pub fn link_of(store: &Store, id: &str) -> Result<String> {
         return Ok(format!("[[{}]]", s(&store.thread(slug)?, "name")));
     }
     let rec = store.find_note(id.trim())?;
-    let title = if s(&rec, "id").starts_with("d_") { s(&rec, "day") } else { nb::page_title(&rec) };
+    let title = if s(&rec, "id").starts_with("d_") {
+        s(&rec, "day")
+    } else {
+        nb::page_title(&rec)
+    };
     Ok(format!("[[{title}]]"))
 }
 
 /// A page's view choices (notebook rows 31, 32, 45), kept in `settings/pages.json` under `look`, not in the page: Full width, Small text,
 /// the Font (`default` or `serif`), the Table of contents bar, and Lock page. A page with none of them set has no entry.
 pub fn look(store: &Store, id: &str) -> Value {
-    let all = store.settings("pages").get("look").and_then(|l| l.get(id.trim())).cloned().unwrap_or(json!({}));
+    let all = store
+        .settings("pages")
+        .get("look")
+        .and_then(|l| l.get(id.trim()))
+        .cloned()
+        .unwrap_or(json!({}));
     json!({"id": id.trim(), "full_width": all["full_width"] == true, "small_text": all["small_text"] == true,
         "font": if all["font"] == "serif" { "serif" } else { "default" }, "toc": all["toc"] == true, "locked": all["locked"] == true})
 }
@@ -1644,9 +2346,17 @@ pub fn set_look(store: &mut Store, id: &str, ch: LookChange<'_>) -> Result<Value
     }
     let now = look(store, id);
     let on = |v: Option<bool>, k: &str| v.unwrap_or(now[k] == true);
-    let font = ch.font.map(|f| f.to_lowercase()).unwrap_or_else(|| now["font"].as_str().unwrap_or("default").to_string());
+    let font = ch
+        .font
+        .map(|f| f.to_lowercase())
+        .unwrap_or_else(|| now["font"].as_str().unwrap_or("default").to_string());
     let mut entry = serde_json::Map::new();
-    for (k, v) in [("full_width", on(ch.full_width, "full_width")), ("small_text", on(ch.small_text, "small_text")), ("toc", on(ch.toc, "toc")), ("locked", on(ch.locked, "locked"))] {
+    for (k, v) in [
+        ("full_width", on(ch.full_width, "full_width")),
+        ("small_text", on(ch.small_text, "small_text")),
+        ("toc", on(ch.toc, "toc")),
+        ("locked", on(ch.locked, "locked")),
+    ] {
         if v {
             entry.insert(k.into(), json!(true));
         }
@@ -1654,26 +2364,47 @@ pub fn set_look(store: &mut Store, id: &str, ch: LookChange<'_>) -> Result<Value
     if font == "serif" {
         entry.insert("font".into(), json!("serif"));
     }
-    let mut all = store.settings("pages").get("look").and_then(|l| l.as_object().cloned()).unwrap_or_default();
+    let mut all = store
+        .settings("pages")
+        .get("look")
+        .and_then(|l| l.as_object().cloned())
+        .unwrap_or_default();
     if entry.is_empty() {
         all.shift_remove(id);
     } else {
         all.insert(id.to_string(), Value::Object(entry));
     }
-    store.set_setting("pages", "look", if all.is_empty() { None } else { Some(Value::Object(all)) })?;
+    store.set_setting(
+        "pages",
+        "look",
+        if all.is_empty() {
+            None
+        } else {
+            Some(Value::Object(all))
+        },
+    )?;
     Ok(look(store, id))
 }
 
 /// Lock a page or unlock it (notebook row 32): kept with the page's view choices. The window then takes no typing in it; the file is
 /// the person's, and `wb` commands still write it.
 pub fn set_lock(store: &mut Store, id: &str, locked: bool) -> Result<Value> {
-    set_look(store, id, LookChange { locked: Some(locked), ..Default::default() })
+    set_look(
+        store,
+        id,
+        LookChange {
+            locked: Some(locked),
+            ..Default::default()
+        },
+    )
 }
 
 /// One block as Copy contents writes it: a scripture block becomes its reference in bold and its verses verbatim from the Bible, each
 /// `> N words` (`> C:N words` when the passage runs over chapters); the version's name follows the reference; a link id is not copied.
 fn expanded(bible: &Bible, block: &str) -> String {
-    let Some(f) = scripture_fence(block) else { return without_block_id(block) };
+    let Some(f) = scripture_fence(block) else {
+        return without_block_id(block);
+    };
     if f.reference.is_empty() {
         return String::new();
     }
@@ -1682,9 +2413,17 @@ fn expanded(bible: &Bible, block: &str) -> String {
         Ok(p) => {
             let verses = p["verses"].as_array().cloned().unwrap_or_default();
             let one_chapter = verses.windows(2).all(|w| w[0]["c"] == w[1]["c"]);
-            let mut out = format!("**{}** ({})", p["label"].as_str().unwrap_or(&f.reference), p["version"].as_str().unwrap_or(version));
+            let mut out = format!(
+                "**{}** ({})",
+                p["label"].as_str().unwrap_or(&f.reference),
+                p["version"].as_str().unwrap_or(version)
+            );
             for v in &verses {
-                let n = if one_chapter { format!("{}", v["v"]) } else { format!("{}:{}", v["c"], v["v"]) };
+                let n = if one_chapter {
+                    format!("{}", v["v"])
+                } else {
+                    format!("{}:{}", v["c"], v["v"])
+                };
                 out += &format!("\n> {} {}", n, v["text"].as_str().unwrap_or("").trim());
             }
             out
@@ -1704,7 +2443,11 @@ pub fn contents(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
     if let Some((a, b)) = title {
         let t = sub(&c, a, b);
         out += &sub(&c, 0, a);
-        out += &if t.trim_start().starts_with('#') { t } else { format!("# {}", t.trim()) };
+        out += &if t.trim_start().starts_with('#') {
+            t
+        } else {
+            format!("# {}", t.trim())
+        };
         at = b;
     }
     for b in &bs {

@@ -71,17 +71,41 @@ const FILLER: &[&str] = &[
 ];
 
 const UNITS: [&str; 20] = [
-    "", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
-    "seventeen", "eighteen", "nineteen",
+    "",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "eleven",
+    "twelve",
+    "thirteen",
+    "fourteen",
+    "fifteen",
+    "sixteen",
+    "seventeen",
+    "eighteen",
+    "nineteen",
 ];
-const TENS: [&str; 10] = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+const TENS: [&str; 10] = [
+    "", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+];
 
 fn number_words(n: u32) -> String {
     if n < 20 {
         UNITS[n as usize].to_string()
     } else {
         let t = TENS[(n / 10) as usize];
-        if n % 10 == 0 { t.to_string() } else { format!("{t} {}", UNITS[(n % 10) as usize]) }
+        if n % 10 == 0 {
+            t.to_string()
+        } else {
+            format!("{t} {}", UNITS[(n % 10) as usize])
+        }
     }
 }
 
@@ -107,7 +131,9 @@ struct Item {
 
 fn label(bible: &Bible, v: &VerseRec) -> String {
     let code = &bible.books().iter().find(|b| b.id == v.book).unwrap().code;
-    parse_span(&format!("{code} {}:{}", v.chapter, v.verse), bible.books()).map(|s| span_label(&s)).unwrap_or_default()
+    parse_span(&format!("{code} {}:{}", v.chapter, v.verse), bible.books())
+        .map(|s| span_label(&s))
+        .unwrap_or_default()
 }
 
 pub struct Made {
@@ -116,8 +142,15 @@ pub struct Made {
 
 /// Make the scratch study in `dir` (empty, not the real folder). `seed` picks the verses; the same seed gives the same study.
 pub fn make(bible: &Bible, dir: &Path, seed: u64) -> Result<Made> {
-    if dir.exists() && std::fs::read_dir(dir).map(|mut d| d.next().is_some()).unwrap_or(false) {
-        return Err(Error(format!("{} is not empty; the corpus is made in a new folder.", dir.display())));
+    if dir.exists()
+        && std::fs::read_dir(dir)
+            .map(|mut d| d.next().is_some())
+            .unwrap_or(false)
+    {
+        return Err(Error(format!(
+            "{} is not empty; the corpus is made in a new folder.",
+            dir.display()
+        )));
     }
     std::fs::create_dir_all(dir).map_err(|e| Error(e.to_string()))?;
     let mut store = Store::open(dir)?;
@@ -133,8 +166,13 @@ pub fn make(bible: &Bible, dir: &Path, seed: u64) -> Result<Made> {
             }
         }
     }
-    let unique = |ws: &[String]| ws.windows(6).all(|g| six.get(&hash6(g)).is_some_and(|v| v.len() == 1));
-    let long: Vec<usize> = (0..verses.len()).filter(|i| verses[*i].words.len() >= 14).collect();
+    let unique = |ws: &[String]| {
+        ws.windows(6)
+            .all(|g| six.get(&hash6(g)).is_some_and(|v| v.len() == 1))
+    };
+    let long: Vec<usize> = (0..verses.len())
+        .filter(|i| verses[*i].words.len() >= 14)
+        .collect();
     let mut items: Vec<Item> = vec![];
 
     // 40 written
@@ -146,17 +184,29 @@ pub fn make(bible: &Bible, dir: &Path, seed: u64) -> Result<Made> {
         let word = book.name.rsplit(' ').next().unwrap_or("").to_string();
         let lead = book.name.strip_suffix(&word).unwrap_or("").to_string();
         let short = format!("{lead}{}", word.chars().take(3).collect::<String>());
-        let name = if rng.below(2) == 0 { book.name.clone() } else { short };
+        let name = if rng.below(2) == 0 {
+            book.name.clone()
+        } else {
+            short
+        };
         let mut place = format!("{name} {}:{}", v.chapter, v.verse);
         if rng.below(4) == 0 {
             place.push_str(&format!("-{}", v.verse + 1));
         }
-        let Ok(s) = parse_span(&place, bible.books()) else { continue };
-        let ok = s.book.id == book.id && bible.last_verse(&book.code, s.c1).unwrap_or(0) >= s.v2.max(s.v1);
+        let Ok(s) = parse_span(&place, bible.books()) else {
+            continue;
+        };
+        let ok = s.book.id == book.id
+            && bible.last_verse(&book.code, s.c1).unwrap_or(0) >= s.v2.max(s.v1);
         if ok && name.chars().filter(|c| c.is_alphabetic()).count() >= 3 {
             let r = span_label(&s);
             if !items.iter().any(|i| i.reference == r) {
-                items.push(Item { kind: "written", text: place, reference: r, refs: vec![] });
+                items.push(Item {
+                    kind: "written",
+                    text: place,
+                    reference: r,
+                    refs: vec![],
+                });
             }
         }
     }
@@ -170,29 +220,50 @@ pub fn make(bible: &Bible, dir: &Path, seed: u64) -> Result<Made> {
         }
         let book = bible.books().iter().find(|b| b.id == v.book).unwrap();
         let numbered = book.name.chars().next().is_some_and(|c| c.is_ascii_digit());
-        let plain = if numbered { book.name[2..].to_string() } else { book.name.clone() };
+        let plain = if numbered {
+            book.name[2..].to_string()
+        } else {
+            book.name.clone()
+        };
         let (c, vv) = (number_words(v.chapter), number_words(v.verse));
         let form = items.iter().filter(|i| i.kind == "spoken").count() % 3;
         let nm = if numbered {
-            let ord = ["", "first", "second", "third"][book.name[..1].parse::<usize>().unwrap_or(1)];
+            let ord =
+                ["", "first", "second", "third"][book.name[..1].parse::<usize>().unwrap_or(1)];
             format!("{ord} {plain}")
         } else {
             plain.clone()
         };
         let text = match form {
-            0 if format!("{}{}", v.chapter, v.verse).parse::<u32>().unwrap_or(0) > book.chapters => format!("{nm} {c} {vv}"),
+            0 if format!("{}{}", v.chapter, v.verse)
+                .parse::<u32>()
+                .unwrap_or(0)
+                > book.chapters =>
+            {
+                format!("{nm} {c} {vv}")
+            }
             0 => continue,
             1 => format!("{nm} {c} verse {vv}"),
             _ => format!("{nm} chapter {c} verse {vv}"),
         };
         let r = label(bible, v);
         if !items.iter().any(|i| i.reference == r) {
-            items.push(Item { kind: "spoken", text, reference: r, refs: vec![] });
+            items.push(Item {
+                kind: "spoken",
+                text,
+                reference: r,
+                refs: vec![],
+            });
         }
     }
     // 60 exact and 30 with words dropped
     let mut used: Vec<usize> = vec![];
-    let mut take = |rng: &mut Rng, items: &mut Vec<Item>, kind: &'static str, want: usize, len: (usize, usize), drop: bool| {
+    let mut take = |rng: &mut Rng,
+                    items: &mut Vec<Item>,
+                    kind: &'static str,
+                    want: usize,
+                    len: (usize, usize),
+                    drop: bool| {
         let mut tries = 0;
         while items.iter().filter(|i| i.kind == kind).count() < want && tries < 20000 {
             tries += 1;
@@ -235,36 +306,62 @@ pub fn make(bible: &Bible, dir: &Path, seed: u64) -> Result<Made> {
                 out = run.to_vec();
             }
             used.push(vi);
-            items.push(Item { kind, text: out.join(" "), reference: label(bible, v), refs: vec![] });
+            items.push(Item {
+                kind,
+                text: out.join(" "),
+                reference: label(bible, v),
+                refs: vec![],
+            });
         }
     };
     take(&mut rng, &mut items, "exact", 60, (6, 25), false);
     take(&mut rng, &mut items, "dropout", 30, (14, 25), true);
     // phrases in more than 3 verses; 2 or 3 verses (parallels)
-    let mut many_keys: Vec<&u64> = six.iter().filter(|(_, v)| v.len() >= 6).map(|(k, _)| k).collect();
+    let mut many_keys: Vec<&u64> = six
+        .iter()
+        .filter(|(_, v)| v.len() >= 6)
+        .map(|(k, _)| k)
+        .collect();
     many_keys.sort();
-    let mut alike_keys: Vec<&u64> = six.iter().filter(|(_, v)| (2..=3).contains(&v.len())).map(|(k, _)| k).collect();
+    let mut alike_keys: Vec<&u64> = six
+        .iter()
+        .filter(|(_, v)| (2..=3).contains(&v.len()))
+        .map(|(k, _)| k)
+        .collect();
     alike_keys.sort();
     let text_of_hash = |h: &u64| -> (Vec<String>, Vec<usize>) {
         let vs = &six[h];
         let v = &verses[vs[0]];
-        let g = v.words.windows(6).find(|g| hash6(g) == *h).unwrap().to_vec();
+        let g = v
+            .words
+            .windows(6)
+            .find(|g| hash6(g) == *h)
+            .unwrap()
+            .to_vec();
         (g, vs.clone())
     };
     // phrases: pick more than needed, keep those the matcher itself puts where the design says (2 or 3 verses; more than 3)
     let mut picked_phrases: Vec<Vec<String>> = vec![];
-    for (keys, kind, want) in [(&many_keys, "many", 15usize), (&alike_keys, "parallel", 10usize)] {
+    for (keys, kind, want) in [
+        (&many_keys, "many", 15usize),
+        (&alike_keys, "parallel", 10usize),
+    ] {
         let mut pool: Vec<(Vec<String>, Vec<usize>)> = vec![];
         let mut t = 0;
         while pool.len() < want * 6 && t < 5000 && !keys.is_empty() {
             t += 1;
             let (g, vs) = text_of_hash(keys[rng.below(keys.len())]);
-            if picked_phrases.iter().chain(pool.iter().map(|p| &p.0)).any(|p| p.windows(3).any(|a| g.windows(3).any(|b| a == b))) {
+            if picked_phrases
+                .iter()
+                .chain(pool.iter().map(|p| &p.0))
+                .any(|p| p.windows(3).any(|a| g.windows(3).any(|b| a == b)))
+            {
                 continue;
             }
             pool.push((g, vs));
         }
-        let blocks: Vec<Vec<quote::NoteWord>> = pool.iter().map(|p| words_of(&p.0.join(" "))).collect();
+        let blocks: Vec<Vec<quote::NoteWord>> =
+            pool.iter().map(|p| words_of(&p.0.join(" "))).collect();
         let m = quote::Matcher::new(&verses, &blocks, 6);
         let mut n = 0;
         for ((g, vs), b) in pool.iter().zip(&blocks) {
@@ -281,7 +378,12 @@ pub fn make(bible: &Bible, dir: &Path, seed: u64) -> Result<Made> {
                 n += 1;
                 picked_phrases.push(g.clone());
                 let refs: Vec<String> = vs.iter().map(|i| label(bible, &verses[*i])).collect();
-                items.push(Item { kind, text: g.join(" "), reference: String::new(), refs });
+                items.push(Item {
+                    kind,
+                    text: g.join(" "),
+                    reference: String::new(),
+                    refs,
+                });
             }
         }
     }
@@ -295,7 +397,15 @@ pub fn make(bible: &Bible, dir: &Path, seed: u64) -> Result<Made> {
         if used.contains(&vi) || v.words.len() < 18 || cand.iter().any(|c| c.0 == vi) {
             continue;
         }
-        cand.push((vi, v.words.iter().enumerate().filter(|(k, _)| (k / 3) % 2 == 0).map(|(_, w)| w.clone()).collect()));
+        cand.push((
+            vi,
+            v.words
+                .iter()
+                .enumerate()
+                .filter(|(k, _)| (k / 3) % 2 == 0)
+                .map(|(_, w)| w.clone())
+                .collect(),
+        ));
     }
     let blocks: Vec<Vec<quote::NoteWord>> = cand.iter().map(|c| words_of(&c.1.join(" "))).collect();
     let m = quote::Matcher::new(&verses, &blocks, 6);
@@ -304,12 +414,28 @@ pub fn make(bible: &Bible, dir: &Path, seed: u64) -> Result<Made> {
             break;
         }
         if m.chains(b).is_empty() {
-            items.push(Item { kind: "paraphrase", text: c.1.join(" "), reference: label(bible, &verses[c.0]), refs: vec![] });
+            items.push(Item {
+                kind: "paraphrase",
+                text: c.1.join(" "),
+                reference: label(bible, &verses[c.0]),
+                refs: vec![],
+            });
         }
     }
     // 5 that are not verses
-    for t in ["Romans 40:2", "Psalm 151:1", "Genesis 51:3", "John 22:4", "Acts 30:1"] {
-        items.push(Item { kind: "decoy", text: t.into(), reference: String::new(), refs: vec![] });
+    for t in [
+        "Romans 40:2",
+        "Psalm 151:1",
+        "Genesis 51:3",
+        "John 22:4",
+        "Acts 30:1",
+    ] {
+        items.push(Item {
+            kind: "decoy",
+            text: t.into(),
+            reference: String::new(),
+            refs: vec![],
+        });
     }
     // an order that is not the order they were made in
     for i in (1..items.len()).rev() {
@@ -356,7 +482,11 @@ pub fn make(bible: &Bible, dir: &Path, seed: u64) -> Result<Made> {
             let mut s = t.clone();
             if item.is_none() {
                 let mut cs = s.chars();
-                s = cs.next().map(|c| c.to_uppercase().collect::<String>()).unwrap_or_default() + cs.as_str();
+                s = cs
+                    .next()
+                    .map(|c| c.to_uppercase().collect::<String>())
+                    .unwrap_or_default()
+                    + cs.as_str();
             }
             p.push_str(&s);
             if let Some(i) = item {
@@ -373,10 +503,24 @@ pub fn make(bible: &Bible, dir: &Path, seed: u64) -> Result<Made> {
     }
     let id_of = |v: Value| v["id"].as_str().unwrap_or_default().to_string();
     let page_a = id_of(store.jot(&format!("Word dump\n\n{a}"), false)?.into());
-    let page_b = id_of(store.jot(&format!("Word dump paragraphs\n\n{}", b_blocks.join("\n\n")), false)?.into());
-    let page_f = id_of(store.jot(&format!("Filler only\n\n{}", filler_page.trim_end()), false)?.into());
+    let page_b = id_of(
+        store
+            .jot(
+                &format!("Word dump paragraphs\n\n{}", b_blocks.join("\n\n")),
+                false,
+            )?
+            .into(),
+    );
+    let page_f = id_of(
+        store
+            .jot(&format!("Filler only\n\n{}", filler_page.trim_end()), false)?
+            .into(),
+    );
     for n in 0..417 {
-        store.jot(&format!("Study note {n:03}\n\nA line about nothing in particular, number {n}."), false)?;
+        store.jot(
+            &format!("Study note {n:03}\n\nA line about nothing in particular, number {n}."),
+            false,
+        )?;
     }
     // ids are made from the clock and a few random letters: two pages can share one, so make up the number
     while store.inbox().len() < 420 {

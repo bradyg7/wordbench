@@ -10,11 +10,19 @@ fn e(x: wb_core::Error) -> String {
 }
 
 fn strong_term(term: &str) -> String {
-    if lookup::is_strong(&term.to_uppercase()) { term.to_uppercase() } else { String::new() }
+    if lookup::is_strong(&term.to_uppercase()) {
+        term.to_uppercase()
+    } else {
+        String::new()
+    }
 }
 
 /// The scope a list's `--scope` and `--filter` (Book, Testament, Version) leave, and the filters (filters-v2 rows 31-33).
-fn list_scope(c: &Ctx<'_>, a: &Args, has: &[&str]) -> Result<(String, Vec<wb_core::filters::Filter>), String> {
+fn list_scope(
+    c: &Ctx<'_>,
+    a: &Args,
+    has: &[&str],
+) -> Result<(String, Vec<wb_core::filters::Filter>), String> {
     let filters = wb_core::filters::parse_all(&a.list("filter")).map_err(e)?;
     wb_core::filters::check(&filters, has).map_err(e)?;
     let base = c.scope(&a.opt_or("scope", "all"))?;
@@ -23,7 +31,13 @@ fn list_scope(c: &Ctx<'_>, a: &Args, has: &[&str]) -> Result<(String, Vec<wb_cor
 }
 
 /// Put the Filter menu and the filters applied on a list's answer (its `by_book` counts are the menu's counts).
-fn list_menu(c: &Ctx<'_>, d: &mut Value, filters: &[wb_core::filters::Filter], version: bool, extra: Vec<Value>) -> Result<(), String> {
+fn list_menu(
+    c: &Ctx<'_>,
+    d: &mut Value,
+    filters: &[wb_core::filters::Filter],
+    version: bool,
+    extra: Vec<Value>,
+) -> Result<(), String> {
     let by_book = d["by_book"].as_object().cloned().unwrap_or_default();
     let mut menu = wb_core::filters::book_menu(c.bible()?.books(), &by_book, version);
     menu.extend(extra);
@@ -33,7 +47,11 @@ fn list_menu(c: &Ctx<'_>, d: &mut Value, filters: &[wb_core::filters::Filter], v
 }
 
 fn some(s: &str) -> Option<&str> {
-    if s.is_empty() { None } else { Some(s) }
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
 }
 
 pub fn commands() -> Vec<Command> {
@@ -178,23 +196,47 @@ pub fn commands() -> Vec<Command> {
 }
 
 fn book_ch(a: &Args) -> Result<(String, u32), String> {
-    Ok((a.s("book").to_uppercase(), a.s("ch").parse().map_err(|_| "the chapter must be a number")?))
+    Ok((
+        a.s("book").to_uppercase(),
+        a.s("ch")
+            .parse()
+            .map_err(|_| "the chapter must be a number")?,
+    ))
 }
 
 fn text(c: &Ctx<'_>, a: &Args) -> Res {
-    let psg = scripture::passage(c.bible()?, &a.s("ref"), &a.opt_or("version", "KJV")).map_err(e)?;
+    let psg =
+        scripture::passage(c.bible()?, &a.s("ref"), &a.opt_or("version", "KJV")).map_err(e)?;
     if a.flag("json") {
         return Ok(Out::Json(psg));
     }
     if a.flag("lines") {
         let vs = psg["verses"].as_array().unwrap();
-        return Ok(Out::Text(vs.iter().map(|v| format!("{} {}", v["ref"].as_str().unwrap(), v["text"].as_str().unwrap())).collect::<Vec<_>>().join("\n")));
+        return Ok(Out::Text(
+            vs.iter()
+                .map(|v| {
+                    format!(
+                        "{} {}",
+                        v["ref"].as_str().unwrap(),
+                        v["text"].as_str().unwrap()
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ));
     }
     Ok(Out::Text(scripture::block(&psg)))
 }
 
 fn copy(c: &Ctx<'_>, a: &Args) -> Res {
-    let mut out = scripture::copy(c.bible()?, &a.s("ref"), &a.opt_or("version", "KJV"), &a.opt_or("format", "lines"), a.flag("short")).map_err(e)?;
+    let mut out = scripture::copy(
+        c.bible()?,
+        &a.s("ref"),
+        &a.opt_or("version", "KJV"),
+        &a.opt_or("format", "lines"),
+        a.flag("short"),
+    )
+    .map_err(e)?;
     if !a.flag("no_clip") {
         let clipped = clip(out["text"].as_str().unwrap());
         out["clipped"] = json!(clipped);
@@ -225,14 +267,25 @@ fn clip(text: &str) -> bool {
         Command::new("wl-copy").stdin(Stdio::piped()).spawn()
     };
     let Ok(mut child) = child else { return false };
-    if child.stdin.take().map(|mut s| s.write_all(text.as_bytes())).is_none() {
+    if child
+        .stdin
+        .take()
+        .map(|mut s| s.write_all(text.as_bytes()))
+        .is_none()
+    {
         return false;
     }
     child.wait().map(|s| s.success()).unwrap_or(false)
 }
 
 fn preview(c: &Ctx<'_>, a: &Args) -> Res {
-    let d = scripture::preview(c.bible()?, &a.s("place"), &a.opt_or("version", "KJV"), scripture::PREVIEW_VERSES).map_err(e)?;
+    let d = scripture::preview(
+        c.bible()?,
+        &a.s("place"),
+        &a.opt_or("version", "KJV"),
+        scripture::PREVIEW_VERSES,
+    )
+    .map_err(e)?;
     if a.flag("json") {
         return Ok(Out::Json(d));
     }
@@ -242,13 +295,51 @@ fn preview(c: &Ctx<'_>, a: &Args) -> Res {
         other => other.to_string(),
     };
     if d["kind"] == "strong" {
-        let usage = if d["usage"].as_str().is_some_and(|u| !u.is_empty()) { format!("KJV: {}", s(&d["usage"])) } else { String::new() };
-        let parts = [format!("{} {} {}", s(&d["strong"]), s(&d["lemma"]), s(&d["translit"])), if d["definition"].is_null() { String::new() } else { s(&d["definition"]) }, usage];
-        return Ok(Out::Text(parts.into_iter().filter(|x| !x.is_empty()).collect::<Vec<_>>().join("\n")));
+        let usage = if d["usage"].as_str().is_some_and(|u| !u.is_empty()) {
+            format!("KJV: {}", s(&d["usage"]))
+        } else {
+            String::new()
+        };
+        let parts = [
+            format!(
+                "{} {} {}",
+                s(&d["strong"]),
+                s(&d["lemma"]),
+                s(&d["translit"])
+            ),
+            if d["definition"].is_null() {
+                String::new()
+            } else {
+                s(&d["definition"])
+            },
+            usage,
+        ];
+        return Ok(Out::Text(
+            parts
+                .into_iter()
+                .filter(|x| !x.is_empty())
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ));
     }
     let more = d["more"].as_u64().unwrap_or(0);
-    let lines: Vec<String> = d["verses"].as_array().unwrap().iter().map(|v| format!("{} {}", s(&v["ref"]), s(&v["text"]))).collect();
-    Ok(Out::Text(format!("{} ({})\n{}{}", s(&d["label"]), s(&d["version"]), lines.join("\n"), if more > 0 { format!("\n... and {more} more") } else { String::new() })))
+    let lines: Vec<String> = d["verses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| format!("{} {}", s(&v["ref"]), s(&v["text"])))
+        .collect();
+    Ok(Out::Text(format!(
+        "{} ({})\n{}{}",
+        s(&d["label"]),
+        s(&d["version"]),
+        lines.join("\n"),
+        if more > 0 {
+            format!("\n... and {more} more")
+        } else {
+            String::new()
+        }
+    )))
 }
 
 fn uses(c: &Ctx<'_>, a: &Args) -> Res {
@@ -259,20 +350,47 @@ fn uses(c: &Ctx<'_>, a: &Args) -> Res {
             return Err("--by groups an original word's places: give a Strong's number like H7068 (an English word's page is wb concordance).".into());
         }
         let around = match a.opt("around") {
-            Some(n) => n.parse::<usize>().map_err(|_| "--around is a number of words")?,
+            Some(n) => n
+                .parse::<usize>()
+                .map_err(|_| "--around is a number of words")?,
             None => concordance::AROUND,
         };
-        return Ok(Out::Json(concordance::entry_places(c.bible()?, &strong, &by.to_lowercase(), a.opt("group").as_deref(), around).map_err(e)?));
+        return Ok(Out::Json(
+            concordance::entry_places(
+                c.bible()?,
+                &strong,
+                &by.to_lowercase(),
+                a.opt("group").as_deref(),
+                around,
+            )
+            .map_err(e)?,
+        ));
     }
-    let word = a.opt("word").unwrap_or_else(|| if strong.is_empty() { term.to_lowercase() } else { String::new() });
+    let word = a.opt("word").unwrap_or_else(|| {
+        if strong.is_empty() {
+            term.to_lowercase()
+        } else {
+            String::new()
+        }
+    });
     let (scope, filters) = list_scope(c, a, &["Book", "Testament", "Strong's number"])?;
     let sn = filters.iter().find(|f| f.key() == "strong's number");
     let rendering = a.opt("rendering").unwrap_or_default();
-    let q = lookup::UsesQuery { strong: some(&strong), word: some(&word), cat: &a.opt_or("cat", "all"), scope: &scope,
-        offset: a.int("offset")?.max(0) as usize, limit: lookup::PAGE, rendering: some(&rendering), strong_filter: sn };
+    let q = lookup::UsesQuery {
+        strong: some(&strong),
+        word: some(&word),
+        cat: &a.opt_or("cat", "all"),
+        scope: &scope,
+        offset: a.int("offset")?.max(0) as usize,
+        limit: lookup::PAGE,
+        rendering: some(&rendering),
+        strong_filter: sn,
+    };
     let mut d = lookup::uses(c.bible()?, &q).map_err(e)?;
     let numbers = d["strong_numbers"].clone();
-    let extra = vec![json!({"name": "Strong's number", "group": "page", "hint": "The original word behind the English, by its number", "type": "choice", "values": numbers})];
+    let extra = vec![
+        json!({"name": "Strong's number", "group": "page", "hint": "The original word behind the English, by its number", "type": "choice", "values": numbers}),
+    ];
     list_menu(c, &mut d, &filters, false, extra)?;
     Ok(Out::Json(d))
 }
@@ -280,13 +398,45 @@ fn uses(c: &Ctx<'_>, a: &Args) -> Res {
 fn count(c: &Ctx<'_>, a: &Args) -> Res {
     let term = a.s("term");
     let strong = strong_term(&term);
-    let word = if strong.is_empty() { term.to_lowercase() } else { String::new() };
-    let d = lookup::uses(c.bible()?, &lookup::UsesQuery { strong: some(&strong), word: some(&word), cat: "all", scope: "all", offset: 1_000_000, limit: lookup::PAGE, rendering: None, strong_filter: None }).map_err(e)?;
+    let word = if strong.is_empty() {
+        term.to_lowercase()
+    } else {
+        String::new()
+    };
+    let d = lookup::uses(
+        c.bible()?,
+        &lookup::UsesQuery {
+            strong: some(&strong),
+            word: some(&word),
+            cat: "all",
+            scope: "all",
+            offset: 1_000_000,
+            limit: lookup::PAGE,
+            rendering: None,
+            strong_filter: None,
+        },
+    )
+    .map_err(e)?;
     let books = c.bible()?.books();
-    let mut by: Vec<(u32, i64)> = d["by_book"].as_object().unwrap().iter().map(|(k, n)| (k.parse().unwrap(), n.as_i64().unwrap())).collect();
+    let mut by: Vec<(u32, i64)> = d["by_book"]
+        .as_object()
+        .unwrap()
+        .iter()
+        .map(|(k, n)| (k.parse().unwrap(), n.as_i64().unwrap()))
+        .collect();
     by.sort_by_key(|x| x.0);
-    let by_book: Map<String, Value> = by.into_iter().map(|(id, n)| (books.iter().find(|b| b.id == id).unwrap().name.clone(), json!(n))).collect();
-    Ok(Out::Json(json!({"term": term, "occurrences": d["occurrences"], "verses": d["verses"], "by_book": by_book})))
+    let by_book: Map<String, Value> = by
+        .into_iter()
+        .map(|(id, n)| {
+            (
+                books.iter().find(|b| b.id == id).unwrap().name.clone(),
+                json!(n),
+            )
+        })
+        .collect();
+    Ok(Out::Json(
+        json!({"term": term, "occurrences": d["occurrences"], "verses": d["verses"], "by_book": by_book}),
+    ))
 }
 
 fn fixture(c: &Ctx<'_>, a: &Args) -> Res {
@@ -297,17 +447,26 @@ fn fixture(c: &Ctx<'_>, a: &Args) -> Res {
     let mut words = Map::new();
     let mut verses = Map::new();
     for v in &reader.chapter.verses {
-        verses.insert(v.v.to_string(), json!(views::verse(bible, study, &b, ch, v.v).map_err(e)?));
+        verses.insert(
+            v.v.to_string(),
+            json!(views::verse(bible, study, &b, ch, v.v).map_err(e)?),
+        );
         for w in &v.words {
-            words.insert(format!("{}.{}", v.v, w.i), json!(views::word(bible, study, &b, ch, v.v, w.i).map_err(e)?));
+            words.insert(
+                format!("{}.{}", v.v, w.i),
+                json!(views::word(bible, study, &b, ch, v.v, w.i).map_err(e)?),
+            );
         }
     }
-    Ok(Out::Text(json!({"reader": reader, "words": words, "verses": verses}).to_string()))
+    Ok(Out::Text(
+        json!({"reader": reader, "words": words, "verses": verses}).to_string(),
+    ))
 }
 
 /// `wb word-define`: the dictionary's entries (never a pick of one sense for a verse).
 fn word_define(c: &Ctx<'_>, a: &Args) -> Res {
-    let d = wb_core::dictionary::Dictionary::open(&wb_core::dictionary::default_path()).map_err(e)?;
+    let d =
+        wb_core::dictionary::Dictionary::open(&wb_core::dictionary::default_path()).map_err(e)?;
     let source = d.source().map_err(e)?;
     if a.flag("source") {
         return Ok(Out::Json(json!({ "source": source })));
@@ -323,14 +482,18 @@ fn word_define(c: &Ctx<'_>, a: &Args) -> Res {
                 None => json!({"word": w}),
             })
             .collect();
-        return Ok(Out::Json(json!({ "place": place, "source": source, "words": words })));
+        return Ok(Out::Json(
+            json!({ "place": place, "source": source, "words": words }),
+        ));
     }
     let word = a.s("word");
     if word.is_empty() {
         return Err("Give a word, like: wb word-define envious".into());
     }
     Ok(Out::Json(match d.entry(&word).map_err(e)? {
-        Some(en) => json!({"word": en.word, "found": true, "headword": en.headword, "text": en.text, "source": source}),
+        Some(en) => {
+            json!({"word": en.word, "found": true, "headword": en.headword, "text": en.text, "source": source})
+        }
         None => json!({"word": word, "found": false, "source": source}),
     }))
 }

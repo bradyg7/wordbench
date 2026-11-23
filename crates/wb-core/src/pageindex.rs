@@ -49,7 +49,10 @@ pub(crate) fn numbers_in(text: &str) -> Vec<String> {
     let mut out: Vec<String> = vec![];
     for tok in text.split(|c: char| !c.is_alphanumeric()) {
         let b = tok.as_bytes();
-        if (2..=5).contains(&b.len()) && matches!(b[0], b'H' | b'G' | b'h' | b'g') && b[1..].iter().all(u8::is_ascii_digit) {
+        if (2..=5).contains(&b.len())
+            && matches!(b[0], b'H' | b'G' | b'h' | b'g')
+            && b[1..].iter().all(u8::is_ascii_digit)
+        {
             let up = tok.to_uppercase();
             if !out.contains(&up) {
                 out.push(up);
@@ -63,15 +66,32 @@ fn compute(bible: &Bible, r: &Rec, kind: &str) -> Entry {
     let text = s(r, "text");
     let mut spans: Vec<SpanRef> = vec![];
     let mut add = |code: &str, lo: (u32, u32), hi: (u32, u32), block: bool| {
-        if let Some(x) = spans.iter_mut().find(|x| x.code == code && x.lo == lo && x.hi == hi && x.block == block) {
+        if let Some(x) = spans
+            .iter_mut()
+            .find(|x| x.code == code && x.lo == lo && x.hi == hi && x.block == block)
+        {
             x.times += 1;
         } else {
-            spans.push(SpanRef { code: code.into(), lo, hi, times: 1, block });
+            spans.push(SpanRef {
+                code: code.into(),
+                lo,
+                hi,
+                times: 1,
+                block,
+            });
         }
     };
-    let bounds = |c1: u32, v1: u32, c2: u32, v2: u32| ((c1, v1), (c2, if v2 == 0 { u32::MAX } else { v2 }));
+    let bounds =
+        |c1: u32, v1: u32, c2: u32, v2: u32| ((c1, v1), (c2, if v2 == 0 { u32::MAX } else { v2 }));
     // a list's `filter: Book is Numbers 25` line names a book to choose by, not a verse the page is about
-    let prose: String = if text.contains("filter:") { text.lines().filter(|l| !l.trim_start().to_lowercase().starts_with("filter:")).collect::<Vec<_>>().join("\n") } else { text.clone() };
+    let prose: String = if text.contains("filter:") {
+        text.lines()
+            .filter(|l| !l.trim_start().to_lowercase().starts_with("filter:"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    } else {
+        text.clone()
+    };
     for f in find_refs(&prose, bible.books()) {
         if let Ok(sp) = crate::places::parse_span(&f.place, bible.books()) {
             let (lo, hi) = bounds(sp.c1, sp.v1, sp.c2, sp.v2);
@@ -99,7 +119,13 @@ fn compute(bible: &Bible, r: &Rec, kind: &str) -> Entry {
             }
         }
     }
-    Entry { title: crate::notebook::title_of(&text), created: s(r, "created"), kind: kind.into(), spans, numbers }
+    Entry {
+        title: crate::notebook::title_of(&text),
+        created: s(r, "created"),
+        kind: kind.into(),
+        spans,
+        numbers,
+    }
 }
 
 /// Every page's entry, working out only those the store forgot. → (id, entry) for each page, in no set order.
@@ -110,7 +136,16 @@ pub fn all(bible: &Bible, store: &Store) -> Vec<(String, Entry)> {
         .into_iter()
         .map(|r| (r, "note"))
         .chain(store.on_thread().into_iter().map(|r| (r, "note")))
-        .chain(store.inbox().into_iter().map(|r| (r, if s(r, "kind") == "question" { "question" } else { "note" })))
+        .chain(store.inbox().into_iter().map(|r| {
+            (
+                r,
+                if s(r, "kind") == "question" {
+                    "question"
+                } else {
+                    "note"
+                },
+            )
+        }))
         .chain(store.trails().into_iter().map(|r| (r, "question")))
         .collect();
     let mut out = Vec::with_capacity(pages.len());
@@ -128,11 +163,21 @@ pub fn all(bible: &Bible, store: &Store) -> Vec<(String, Entry)> {
 
 /// The pages whose references overlap a span of one book, ordered by MK-13: a scripture block holding it first, then by
 /// how many times the page names it, then newest. → (id, entry, times, in a block).
-pub fn naming(bible: &Bible, store: &Store, code: &str, lo: (u32, u32), hi: (u32, u32)) -> Vec<(String, Entry, u32, bool)> {
+pub fn naming(
+    bible: &Bible,
+    store: &Store,
+    code: &str,
+    lo: (u32, u32),
+    hi: (u32, u32),
+) -> Vec<(String, Entry, u32, bool)> {
     let mut hits: Vec<(String, Entry, u32, bool)> = all(bible, store)
         .into_iter()
         .filter_map(|(id, e)| {
-            let mine: Vec<&SpanRef> = e.spans.iter().filter(|x| x.code == code && x.lo <= hi && lo <= x.hi).collect();
+            let mine: Vec<&SpanRef> = e
+                .spans
+                .iter()
+                .filter(|x| x.code == code && x.lo <= hi && lo <= x.hi)
+                .collect();
             if mine.is_empty() {
                 return None;
             }
@@ -141,6 +186,10 @@ pub fn naming(bible: &Bible, store: &Store, code: &str, lo: (u32, u32), hi: (u32
             Some((id, e.clone(), times, block))
         })
         .collect();
-    hits.sort_by(|a, b| b.3.cmp(&a.3).then(b.2.cmp(&a.2)).then(b.1.created.cmp(&a.1.created)));
+    hits.sort_by(|a, b| {
+        b.3.cmp(&a.3)
+            .then(b.2.cmp(&a.2))
+            .then(b.1.created.cmp(&a.1.created))
+    });
     hits
 }

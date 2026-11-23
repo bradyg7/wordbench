@@ -509,8 +509,14 @@ fn erase(root: &Path, j: &mut Journal, now_ms: i64) -> Result<()> {
         .unwrap_or_else(chrono::Utc::now)
         .format("%Y%m%d-%H%M%S");
     for c in j.changes.iter().filter(|c| c.after.is_none()) {
-        let Some(file) = Path::new(&c.path).file_name() else { continue };
-        let dest = checked(root, &format!(".trash/{stamp}-{}", file.to_string_lossy()), false)?;
+        let Some(file) = Path::new(&c.path).file_name() else {
+            continue;
+        };
+        let dest = checked(
+            root,
+            &format!(".trash/{stamp}-{}", file.to_string_lossy()),
+            false,
+        )?;
         durable(&dest, &c.before)?;
     }
     discard_snapshot(root, &j.id)?;
@@ -815,7 +821,11 @@ mod tests {
         // a missed Undo leaves the page in the Trash for its 7 days (trash decision, 2026-11-13)
         let kept = s.0.join(".trash/19700101-000010-n_a.md");
         assert_eq!(fs::read_to_string(&kept).unwrap(), "private bytes");
-        assert!(s.store().trashed().iter().any(|t| t["name"] == "19700101-000010-n_a.md"));
+        assert!(s
+            .store()
+            .trashed()
+            .iter()
+            .any(|t| t["name"] == "19700101-000010-n_a.md"));
     }
     #[test]
     fn restore_collision_and_changed_survivor_never_overwrite_or_erase() {

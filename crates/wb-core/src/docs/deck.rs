@@ -74,11 +74,21 @@ const TEMPLATE: &str = r##"
 
 /// The largest whole point size at which these paragraphs should fit a box: an estimate from character counts
 /// (craft_plan.fit_size).
-pub fn fit_size(paras: &[String], width: f64, height: f64, width_factor: f64, lo: i64, hi: i64) -> i64 {
+pub fn fit_size(
+    paras: &[String],
+    width: f64,
+    height: f64,
+    width_factor: f64,
+    lo: i64,
+    hi: i64,
+) -> i64 {
     for size in (lo..=hi).rev() {
         let size_f = size as f64;
         let per_line = width / (size_f * width_factor);
-        let lines: f64 = paras.iter().map(|p| (p.chars().count() as f64 / per_line).ceil()).sum();
+        let lines: f64 = paras
+            .iter()
+            .map(|p| (p.chars().count() as f64 / per_line).ceil())
+            .sum();
         if lines * size_f * 1.26 + (paras.len() as f64 - 1.0) * size_f * 0.45 <= height {
             return size;
         }
@@ -108,13 +118,29 @@ fn verse_data(v: &Value, marks: &[(usize, usize)]) -> Value {
 }
 
 fn marks_of(s: &Value) -> Vec<(usize, usize)> {
-    s["marks"].as_array().map(|a| a.iter().map(|m| (m[0].as_u64().unwrap_or(0) as usize, m[1].as_u64().unwrap_or(0) as usize)).collect()).unwrap_or_default()
+    s["marks"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .map(|m| {
+                    (
+                        m[0].as_u64().unwrap_or(0) as usize,
+                        m[1].as_u64().unwrap_or(0) as usize,
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// The plan's slides as the template's data, with each box's size fitted as DeckCraft fitted it.
 pub(super) fn slides_data(plan: &[Value], t: &Theme, look: &Look) -> Vec<Value> {
     // the estimate is held a little under the box (360 pt when the neighbours are hidden), so a long verse never spills off the page
-    let (box_h, hi) = if look.neighbours == "hidden" { (330.0, 46) } else { (240.0, 40) };
+    let (box_h, hi) = if look.neighbours == "hidden" {
+        (330.0, 46)
+    } else {
+        (240.0, 40)
+    };
     let w = 960.0 - 64.0 - 64.0;
     plan.iter()
         .filter_map(|s| match s["kind"].as_str()? {
@@ -163,10 +189,16 @@ impl World for Deck {
     }
     fn source(&self, id: FileId) -> FileResult<Source> {
         let bytes = self.file(id)?;
-        Ok(Source::new(id, String::from_utf8(bytes.to_vec()).map_err(|_| FileError::InvalidUtf8)?))
+        Ok(Source::new(
+            id,
+            String::from_utf8(bytes.to_vec()).map_err(|_| FileError::InvalidUtf8)?,
+        ))
     }
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        self.files.get(&id).cloned().ok_or_else(|| FileError::NotFound(PathBuf::from(format!("{id:?}"))))
+        self.files
+            .get(&id)
+            .cloned()
+            .ok_or_else(|| FileError::NotFound(PathBuf::from(format!("{id:?}"))))
     }
     fn font(&self, index: usize) -> Option<Font> {
         self.fonts.get(index).cloned()
@@ -188,11 +220,19 @@ pub(super) fn woff_to_otf(woff: &[u8]) -> Vec<u8> {
     let mut tables = vec![];
     for t in 0..n {
         let e = 44 + t * 20;
-        let (tag, off, clen, olen, sum) = (u32_at(e), u32_at(e + 4) as usize, u32_at(e + 8) as usize, u32_at(e + 12) as usize, u32_at(e + 16));
+        let (tag, off, clen, olen, sum) = (
+            u32_at(e),
+            u32_at(e + 4) as usize,
+            u32_at(e + 8) as usize,
+            u32_at(e + 12) as usize,
+            u32_at(e + 16),
+        );
         let raw = &woff[off..off + clen];
         let data = if clen < olen {
             let mut out = Vec::with_capacity(olen);
-            flate2::read::ZlibDecoder::new(raw).read_to_end(&mut out).unwrap();
+            flate2::read::ZlibDecoder::new(raw)
+                .read_to_end(&mut out)
+                .unwrap();
             out
         } else {
             raw.to_vec()
@@ -238,7 +278,10 @@ fn fonts() -> &'static Vec<Font> {
             include_bytes!("../../fonts/inter-latin-ext-400-normal.woff"),
             include_bytes!("../../fonts/inter-latin-ext-600-normal.woff"),
         ];
-        files.iter().flat_map(|w| Font::iter(Bytes::new(woff_to_otf(w))).collect::<Vec<_>>()).collect()
+        files
+            .iter()
+            .flat_map(|w| Font::iter(Bytes::new(woff_to_otf(w))).collect::<Vec<_>>())
+            .collect()
     })
 }
 
@@ -271,19 +314,34 @@ fn page_text(doc: &PagedDocument) -> String {
 }
 
 /// A deck's plan as PDF pages. → (the PDF's bytes, the text on its pages, the number of pages)
-pub fn render(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<(Vec<u8>, String, usize)> {
+pub fn render(
+    plan: &[Value],
+    t: &Theme,
+    look: &Look,
+    title: &str,
+) -> Result<(Vec<u8>, String, usize)> {
     let doc = lay_out(plan, t, look, title)?;
     export_pdf(&doc)
 }
 
-pub(super) fn render_template(template: &str, data: &Value, subject: &str) -> Result<(Vec<u8>, String, usize)> {
+pub(super) fn render_template(
+    template: &str,
+    data: &Value,
+    subject: &str,
+) -> Result<(Vec<u8>, String, usize)> {
     let doc = compile(template, data, subject)?;
     export_pdf(&doc)
 }
 
 fn export_pdf(doc: &PagedDocument) -> Result<(Vec<u8>, String, usize)> {
-    let msgs = |e: &[typst::diag::SourceDiagnostic]| e.iter().map(|d| d.message.to_string()).collect::<Vec<_>>().join("; ");
-    let pdf = typst_pdf::pdf(doc, &typst_pdf::PdfOptions::default()).map_err(|e| Error(format!("The PDF could not be written ({}).", msgs(&e))))?;
+    let msgs = |e: &[typst::diag::SourceDiagnostic]| {
+        e.iter()
+            .map(|d| d.message.to_string())
+            .collect::<Vec<_>>()
+            .join("; ")
+    };
+    let pdf = typst_pdf::pdf(doc, &typst_pdf::PdfOptions::default())
+        .map_err(|e| Error(format!("The PDF could not be written ({}).", msgs(&e))))?;
     Ok((pdf, page_text(doc), doc.pages().len()))
 }
 
@@ -300,7 +358,14 @@ pub fn pages_svg(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<
 }
 
 fn lay_out(plan: &[Value], t: &Theme, look: &Look, title: &str) -> Result<PagedDocument> {
-    let accent = super::look::readable(if look.accent.is_empty() { t.accent } else { &look.accent }, t.paper);
+    let accent = super::look::readable(
+        if look.accent.is_empty() {
+            t.accent
+        } else {
+            &look.accent
+        },
+        t.paper,
+    );
     let (ui, serif) = look.fonts();
     let theme = json!({"paper": t.paper, "ink": t.ink, "muted": t.muted, "accent": accent, "accent2": t.accent2, "mark": t.mark,
         "mark_ink": t.mark_ink, "divider_bg": t.divider_bg, "divider_fg": t.divider_fg, "left": t.left,
@@ -315,8 +380,27 @@ fn compile(template: &str, data: &Value, subject: &str) -> Result<PagedDocument>
     let main = id("/main.typ");
     let mut files = HashMap::new();
     files.insert(main, Bytes::from_string(template.to_string()));
-    files.insert(id("/data.json"), Bytes::new(serde_json::to_vec(data).map_err(|e| Error(e.to_string()))?));
-    let world = Deck { library: LazyHash::new(Library::default()), book: LazyHash::new(FontBook::from_fonts(&fonts)), fonts, files, main };
-    let msgs = |e: &[typst::diag::SourceDiagnostic]| e.iter().map(|d| d.message.to_string()).collect::<Vec<_>>().join("; ");
-    typst::compile::<PagedDocument>(&world).output.map_err(|e| Error(format!("The {subject} could not be laid out ({}).", msgs(&e))))
+    files.insert(
+        id("/data.json"),
+        Bytes::new(serde_json::to_vec(data).map_err(|e| Error(e.to_string()))?),
+    );
+    let world = Deck {
+        library: LazyHash::new(Library::default()),
+        book: LazyHash::new(FontBook::from_fonts(&fonts)),
+        fonts,
+        files,
+        main,
+    };
+    let msgs = |e: &[typst::diag::SourceDiagnostic]| {
+        e.iter()
+            .map(|d| d.message.to_string())
+            .collect::<Vec<_>>()
+            .join("; ")
+    };
+    typst::compile::<PagedDocument>(&world).output.map_err(|e| {
+        Error(format!(
+            "The {subject} could not be laid out ({}).",
+            msgs(&e)
+        ))
+    })
 }

@@ -17,9 +17,18 @@ fn options(a: &crate::args::Args, page: &str) -> Result<anchor::Options, String>
     }
     let min_words = match a.opt("min_words") {
         None => 6,
-        Some(v) => v.parse::<usize>().ok().filter(|n| *n >= 2).ok_or("--min-words takes a number, 2 or more.")?,
+        Some(v) => v
+            .parse::<usize>()
+            .ok()
+            .filter(|n| *n >= 2)
+            .ok_or("--min-words takes a number, 2 or more.")?,
     };
-    Ok(anchor::Options { tier, min_words, version: a.opt_or("version", "kjv").to_uppercase(), skipped: skips::list(page) })
+    Ok(anchor::Options {
+        tier,
+        min_words,
+        version: a.opt_or("version", "kjv").to_uppercase(),
+        skipped: skips::list(page),
+    })
 }
 
 fn run_page(c: &Ctx<'_>, a: &crate::args::Args) -> Result<Report, String> {
@@ -29,12 +38,26 @@ fn run_page(c: &Ctx<'_>, a: &crate::args::Args) -> Result<Report, String> {
 }
 
 fn line(c: &wb_core::tether::Candidate) -> String {
-    let also = if c.also.is_empty() { String::new() } else { format!("  also in {}", c.also.len()) };
+    let also = if c.also.is_empty() {
+        String::new()
+    } else {
+        format!("  also in {}", c.also.len())
+    };
     let ev = match (c.evidence.matched, c.evidence.of) {
         (Some(m), Some(o)) => format!("{m} of {o} words, in order"),
-        _ => format!("you {} it", if c.evidence.kind == "spoken" { "said" } else { "wrote" }),
+        _ => format!(
+            "you {} it",
+            if c.evidence.kind == "spoken" {
+                "said"
+            } else {
+                "wrote"
+            }
+        ),
     };
-    format!("{}  {:<6} {:<22} block {} [{}-{}]  “{}”  ({ev}){also}  {}", c.id, c.tier, c.reference, c.block, c.range.start, c.range.end, c.words, c.status)
+    format!(
+        "{}  {:<6} {:<22} block {} [{}-{}]  “{}”  ({ev}){also}  {}",
+        c.id, c.tier, c.reference, c.block, c.range.start, c.range.end, c.words, c.status
+    )
 }
 
 fn text(r: &Report) -> String {
@@ -48,22 +71,37 @@ fn text(r: &Report) -> String {
 }
 
 fn undo_file(page: &str) -> std::path::PathBuf {
-    wb_core::setup::app_dir().join("tether-undo").join(format!("{page}.json"))
+    wb_core::setup::app_dir()
+        .join("tether-undo")
+        .join(format!("{page}.json"))
 }
 
 /// The ids of the page's candidates that exist (so skip never keeps an id that can mean nothing).
 fn known(c: &Ctx<'_>, a: &crate::args::Args, id: &str) -> Result<Vec<String>, String> {
     let want = ids(a);
-    let opt = anchor::Options { skipped: vec![], ..options(a, id)? };
+    let opt = anchor::Options {
+        skipped: vec![],
+        ..options(a, id)?
+    };
     let r = anchor::run(c.bible()?, &*c.study()?, id, &opt).map_err(e)?;
-    if let Some(bad) = want.iter().find(|w| !r.candidates.iter().any(|x| &x.id == *w)) {
-        return Err(format!("No candidate {bad} on this page (wb tether lists them)."));
+    if let Some(bad) = want
+        .iter()
+        .find(|w| !r.candidates.iter().any(|x| &x.id == *w))
+    {
+        return Err(format!(
+            "No candidate {bad} on this page (wb tether lists them)."
+        ));
     }
     Ok(want)
 }
 
 fn ids(a: &crate::args::Args) -> Vec<String> {
-    a.list("ids").iter().flat_map(|s| s.split([',', ' '])).filter(|s| !s.is_empty()).map(String::from).collect()
+    a.list("ids")
+        .iter()
+        .flat_map(|s| s.split([',', ' ']))
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect()
 }
 
 fn with_common(mut v: Vec<Spec>) -> Vec<Spec> {
@@ -72,7 +110,11 @@ fn with_common(mut v: Vec<Spec>) -> Vec<Spec> {
 }
 
 fn common() -> Vec<Spec> {
-    vec![Opt("tier", None), Opt("min_words", None), Opt("version", None)]
+    vec![
+        Opt("tier", None),
+        Opt("min_words", None),
+        Opt("version", None),
+    ]
 }
 
 pub fn commands() -> Vec<Command> {

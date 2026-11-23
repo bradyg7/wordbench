@@ -11,13 +11,16 @@ pub fn local_data_dir() -> Option<PathBuf> {
     }
     #[cfg(target_os = "macos")]
     {
-        std::env::var_os("HOME").map(|h| PathBuf::from(h).join("Library").join("Application Support"))
+        std::env::var_os("HOME")
+            .map(|h| PathBuf::from(h).join("Library").join("Application Support"))
     }
     #[cfg(not(any(windows, target_os = "macos")))]
     {
         std::env::var_os("XDG_DATA_HOME")
             .map(PathBuf::from)
-            .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local").join("share")))
+            .or_else(|| {
+                std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local").join("share"))
+            })
     }
 }
 
@@ -25,7 +28,11 @@ pub fn local_data_dir() -> Option<PathBuf> {
 /// `os` is `std::env::consts::OS`; a parameter so every platform's line is testable anywhere.
 pub fn show_command_for(os: &str, path: &Path, select: bool) -> (String, Vec<String>) {
     let p = path.display().to_string();
-    let dir = || path.parent().map(|d| d.display().to_string()).unwrap_or_else(|| p.clone());
+    let dir = || {
+        path.parent()
+            .map(|d| d.display().to_string())
+            .unwrap_or_else(|| p.clone())
+    };
     match (os, select) {
         ("windows", true) => ("explorer.exe".into(), vec![format!("/select,{p}")]),
         ("windows", false) => ("explorer.exe".into(), vec![p]),
@@ -50,12 +57,36 @@ mod tests {
     fn show_commands_per_platform() {
         let f = Path::new("/a/b/c.docx");
         assert_eq!(show_command_for("windows", f, true).0, "explorer.exe");
-        assert_eq!(show_command_for("windows", f, true).1, vec![format!("/select,{}", f.display())]);
-        assert_eq!(show_command_for("windows", f, false).1, vec![f.display().to_string()]);
-        assert_eq!(show_command_for("macos", f, true), ("open".to_string(), vec!["-R".to_string(), f.display().to_string()]));
-        assert_eq!(show_command_for("macos", f, false), ("open".to_string(), vec![f.display().to_string()]));
-        assert_eq!(show_command_for("linux", f, true), ("xdg-open".to_string(), vec![Path::new("/a/b").display().to_string()]));
-        assert_eq!(show_command_for("linux", f, false).1, vec![f.display().to_string()]);
+        assert_eq!(
+            show_command_for("windows", f, true).1,
+            vec![format!("/select,{}", f.display())]
+        );
+        assert_eq!(
+            show_command_for("windows", f, false).1,
+            vec![f.display().to_string()]
+        );
+        assert_eq!(
+            show_command_for("macos", f, true),
+            (
+                "open".to_string(),
+                vec!["-R".to_string(), f.display().to_string()]
+            )
+        );
+        assert_eq!(
+            show_command_for("macos", f, false),
+            ("open".to_string(), vec![f.display().to_string()])
+        );
+        assert_eq!(
+            show_command_for("linux", f, true),
+            (
+                "xdg-open".to_string(),
+                vec![Path::new("/a/b").display().to_string()]
+            )
+        );
+        assert_eq!(
+            show_command_for("linux", f, false).1,
+            vec![f.display().to_string()]
+        );
     }
 
     #[test]

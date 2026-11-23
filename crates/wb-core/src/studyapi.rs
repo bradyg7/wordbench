@@ -18,18 +18,26 @@ fn n(p: &Rec, k: &str) -> Option<i64> {
 
 pub fn public(note: &Rec, current_quote: Option<&str>) -> Rec {
     let mut out = Map::new();
-    for k in ["id", "anchor", "kind", "quote", "strong", "created", "updated", "text", "also", "threads"] {
+    for k in [
+        "id", "anchor", "kind", "quote", "strong", "created", "updated", "text", "also", "threads",
+    ] {
         if let Some(v) = note.get(k) {
             out.insert(k.into(), v.clone());
         }
     }
     let q = s(note, "quote");
-    out.insert("drifted".into(), json!(current_quote.is_some_and(|c| !q.is_empty() && q != c)));
+    out.insert(
+        "drifted".into(),
+        json!(current_quote.is_some_and(|c| !q.is_empty() && q != c)),
+    );
     out
 }
 
 fn coords(p: &Rec) -> Rec {
-    ["kind", "code", "c1", "v1", "i1", "c2", "v2", "i2"].iter().map(|k| (k.to_string(), p.get(*k).cloned().unwrap_or(Value::Null))).collect()
+    ["kind", "code", "c1", "v1", "i1", "c2", "v2", "i2"]
+        .iter()
+        .map(|k| (k.to_string(), p.get(*k).cloned().unwrap_or(Value::Null)))
+        .collect()
 }
 
 fn inside(p: &Rec, code: &str, chapter: i64) -> bool {
@@ -93,7 +101,11 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: i64) -> Result<Value> {
             }
         }
     }
-    let hidden: Vec<String> = crate::folders::colored(store).iter().filter(|f| !crate::folders::eye_on(store, f)).map(crate::folders::mark_id).collect();
+    let hidden: Vec<String> = crate::folders::colored(store)
+        .iter()
+        .filter(|f| !crate::folders::eye_on(store, f))
+        .map(crate::folders::mark_id)
+        .collect();
     let drawn = crate::marks::chapter_drawn(store, code, chapter.max(0) as u32);
     let out = json!({"highlights": hls, "notes": notes, "threads": threads, "hidden": hidden, "marks": drawn});
     Ok(out)
@@ -101,7 +113,16 @@ pub fn chapter_marks(store: &Store, code: &str, chapter: i64) -> Result<Value> {
 
 /// Do two places share a verse? (Word and phrase anchors count by their verses.)
 pub(crate) fn overlaps(a: &Rec, b: &Rec) -> bool {
-    let span = |p: &Rec| ((n(p, "c1"), n(p, "v1")), if p["c2"].is_null() { (n(p, "c1"), n(p, "v1")) } else { (n(p, "c2"), n(p, "v2")) });
+    let span = |p: &Rec| {
+        (
+            (n(p, "c1"), n(p, "v1")),
+            if p["c2"].is_null() {
+                (n(p, "c1"), n(p, "v1"))
+            } else {
+                (n(p, "c2"), n(p, "v2"))
+            },
+        )
+    };
     let ((s1, e1), (s2, e2)) = (span(a), span(b));
     a["code"] == b["code"] && s1 <= e2 && s2 <= e1
 }
@@ -115,7 +136,12 @@ fn label(bible: &Bible, anchor: &str) -> Result<String> {
 fn word_at(bible: &Bible, book: i64, pos: Pos, asc: bool, op: &str) -> Result<Option<Pos>> {
     let order = if asc { "ASC" } else { "DESC" };
     let sql = format!("SELECT chapter, verse, idx FROM words WHERE book = ? AND (chapter, verse, idx) {op} (?, ?, ?) ORDER BY chapter {order}, verse {order}, idx {order} LIMIT 1");
-    Ok(bible.conn().query_row(&sql, rusqlite::params![book, pos.0, pos.1, pos.2], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))).optional()?)
+    Ok(bible
+        .conn()
+        .query_row(&sql, rusqlite::params![book, pos.0, pos.1, pos.2], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })
+        .optional()?)
 }
 
 /// First and last word a parsed anchor covers, or None if the text has no such place.
@@ -124,10 +150,22 @@ fn word_span(bible: &Bible, book: i64, p: &Rec) -> Result<Option<(Pos, Pos)>> {
     let (c1, v1) = (n(p, "c1").unwrap_or(0), n(p, "v1").unwrap_or(0));
     if kind == "word" || kind == "phrase" {
         let start = (c1, v1, n(p, "i1").unwrap_or(0));
-        let end = if p["c2"].is_null() { start } else { (n(p, "c2").unwrap(), n(p, "v2").unwrap(), n(p, "i2").unwrap_or(0)) };
+        let end = if p["c2"].is_null() {
+            start
+        } else {
+            (
+                n(p, "c2").unwrap(),
+                n(p, "v2").unwrap(),
+                n(p, "i2").unwrap_or(0),
+            )
+        };
         return Ok(Some((start, end)));
     }
-    let (c2, v2) = if p["c2"].is_null() { (c1, v1) } else { (n(p, "c2").unwrap(), n(p, "v2").unwrap()) };
+    let (c2, v2) = if p["c2"].is_null() {
+        (c1, v1)
+    } else {
+        (n(p, "c2").unwrap(), n(p, "v2").unwrap())
+    };
     let start = word_at(bible, book, (c1, v1, 0), true, ">=")?;
     let end = word_at(bible, book, (c2, v2, END), false, "<=")?;
     Ok(match (start, end) {
@@ -136,7 +174,14 @@ fn word_span(bible: &Bible, book: i64, p: &Rec) -> Result<Option<(Pos, Pos)>> {
     })
 }
 
-fn piece_anchor(bible: &Bible, code: &str, book: i64, start: Pos, end: Pos, whole_verses: bool) -> Result<String> {
+fn piece_anchor(
+    bible: &Bible,
+    code: &str,
+    book: i64,
+    start: Pos,
+    end: Pos,
+    whole_verses: bool,
+) -> Result<String> {
     if whole_verses
         && Some(start) == word_at(bible, book, (start.0, start.1, 0), true, ">=")?
         && Some(end) == word_at(bible, book, (end.0, end.1, END), false, "<=")?
@@ -148,7 +193,10 @@ fn piece_anchor(bible: &Bible, code: &str, book: i64, start: Pos, end: Pos, whol
         });
     }
     Ok(if start != end {
-        format!("{code}.{}:{}.{}-{}:{}.{}", start.0, start.1, start.2, end.0, end.1, end.2)
+        format!(
+            "{code}.{}:{}.{}-{}:{}.{}",
+            start.0, start.1, start.2, end.0, end.1, end.2
+        )
     } else {
         format!("{code}.{}:{}.{}", start.0, start.1, start.2)
     })
@@ -161,7 +209,9 @@ fn book_of(res: &Rec) -> i64 {
 /// The highlight color of each word of a resolved place (None where there is none), in text order.
 fn place_colors(bible: &Bible, store: &Store, res: &Rec) -> Result<Vec<Option<String>>> {
     let book = book_of(res);
-    let Some(span) = word_span(bible, book, res)? else { return Ok(vec![]) };
+    let Some(span) = word_span(bible, book, res)? else {
+        return Ok(vec![]);
+    };
     let mut spans = vec![];
     for h in store.highlights(&s(res, "code")) {
         if let Some(hs) = word_span(bible, book, &py_parse(&s(&h, "anchor"))?)? {
@@ -173,9 +223,23 @@ fn place_colors(bible: &Bible, store: &Store, res: &Rec) -> Result<Vec<Option<St
         "SELECT chapter, verse, idx FROM words WHERE book = ? AND (chapter, verse, idx) >= (?, ?, ?) AND (chapter, verse, idx) <= (?, ?, ?) ORDER BY chapter, verse, idx",
     )?;
     let rows: Vec<Pos> = stmt
-        .query_map(rusqlite::params![book, span.0 .0, span.0 .1, span.0 .2, span.1 .0, span.1 .1, span.1 .2], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+        .query_map(
+            rusqlite::params![
+                book, span.0 .0, span.0 .1, span.0 .2, span.1 .0, span.1 .1, span.1 .2
+            ],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )?
         .collect::<rusqlite::Result<_>>()?;
-    Ok(rows.into_iter().map(|pos| spans.iter().filter(|(_, hs, _)| hs.0 <= pos && pos <= hs.1).map(|x| x.2.clone()).last()).collect())
+    Ok(rows
+        .into_iter()
+        .map(|pos| {
+            spans
+                .iter()
+                .filter(|(_, hs, _)| hs.0 <= pos && pos <= hs.1)
+                .map(|x| x.2.clone())
+                .last()
+        })
+        .collect())
 }
 
 // ---- notes ----------------------------------------------------------------------------------------------------------
@@ -187,11 +251,30 @@ pub fn anchor_view(bible: &Bible, store: &Store, anchor: &str) -> Result<Value> 
     let ok = res["ok"] == true;
     let quote = s(&res, "quote");
     let notes = store.notes();
-    let here: Vec<Rec> = notes.iter().filter(|n| places_of(n).contains(&a)).map(|n| public(n, if ok && s(n, "anchor") == a { Some(&quote) } else { None })).collect();
+    let here: Vec<Rec> = notes
+        .iter()
+        .filter(|n| places_of(n).contains(&a))
+        .map(|n| {
+            public(
+                n,
+                if ok && s(n, "anchor") == a {
+                    Some(&quote)
+                } else {
+                    None
+                },
+            )
+        })
+        .collect();
     let threads: Vec<Value> = store
         .threads()
         .into_iter()
-        .filter(|t| t["members"].as_array().unwrap().iter().any(|m| m["anchor"] == a.as_str()))
+        .filter(|t| {
+            t["members"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|m| m["anchor"] == a.as_str())
+        })
         .map(|t| json!({"id": t["id"], "name": t["name"], "color": s(t, "color")}))
         .collect();
     let mut out = json!({"anchor": a, "kind": res["kind"], "label": res["label"], "quote": res["quote"], "ok": res["ok"],
@@ -199,26 +282,58 @@ pub fn anchor_view(bible: &Bible, store: &Store, anchor: &str) -> Result<Value> 
         "highlight": null, "highlighted": false, "threads": threads});
     let kind = s(&res, "kind");
     if kind != "lemma" {
-        let shown = if ok { place_colors(bible, store, &res)? } else { vec![] };
-        let one = shown.first().cloned().flatten().filter(|c| shown.iter().all(|x| x.as_ref() == Some(c)));
+        let shown = if ok {
+            place_colors(bible, store, &res)?
+        } else {
+            vec![]
+        };
+        let one = shown
+            .first()
+            .cloned()
+            .flatten()
+            .filter(|c| shown.iter().all(|x| x.as_ref() == Some(c)));
         out["highlight"] = json!(one);
         out["highlighted"] = json!(shown.iter().any(|c| c.is_some()));
         let mut nearby = vec![];
         for nt in &notes {
-            if s(nt, "anchor") != a && s(nt, "kind") != "lemma" && overlaps(&res, &py_parse(&s(nt, "anchor"))?) {
+            if s(nt, "anchor") != a
+                && s(nt, "kind") != "lemma"
+                && overlaps(&res, &py_parse(&s(nt, "anchor"))?)
+            {
                 nearby.push(public(nt, None));
             }
         }
         out["nearby"] = json!(nearby);
     }
     let strongs = res["strongs"].as_array().cloned().unwrap_or_default();
-    let strong = if kind == "lemma" || (kind == "word" && !strongs.is_empty()) { strongs.first().and_then(|x| x.as_str()).unwrap_or("").to_string() } else { String::new() };
+    let strong = if kind == "lemma" || (kind == "word" && !strongs.is_empty()) {
+        strongs
+            .first()
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string()
+    } else {
+        String::new()
+    };
     if !strong.is_empty() {
-        let lex: Option<(String, Option<String>)> =
-            bible.conn().query_row("SELECT lemma, translit FROM lexicon WHERE strong = ?", [&strong], |r| Ok((r.get(0)?, r.get(1)?))).optional()?;
-        let word_notes: Vec<Rec> = notes.iter().filter(|n| s(n, "kind") == "lemma" && s(n, "anchor") == strong).map(|n| public(n, None)).collect();
+        let lex: Option<(String, Option<String>)> = bible
+            .conn()
+            .query_row(
+                "SELECT lemma, translit FROM lexicon WHERE strong = ?",
+                [&strong],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?;
+        let word_notes: Vec<Rec> = notes
+            .iter()
+            .filter(|n| s(n, "kind") == "lemma" && s(n, "anchor") == strong)
+            .map(|n| public(n, None))
+            .collect();
         let mut occ = vec![];
-        for nt in notes.iter().filter(|n| s(n, "kind") == "word" && s(n, "strong") == strong && s(n, "anchor") != a) {
+        for nt in notes
+            .iter()
+            .filter(|n| s(n, "kind") == "word" && s(n, "strong") == strong && s(n, "anchor") != a)
+        {
             let mut p = public(nt, None);
             p.insert("label".into(), json!(label(bible, &s(nt, "anchor"))?));
             occ.push(p);
@@ -229,7 +344,13 @@ pub fn anchor_view(bible: &Bible, store: &Store, anchor: &str) -> Result<Value> 
     Ok(out)
 }
 
-pub fn save_note(bible: &Bible, store: &mut Store, anchor: &str, text: &str, note_id: Option<&str>) -> Result<Rec> {
+pub fn save_note(
+    bible: &Bible,
+    store: &mut Store,
+    anchor: &str,
+    text: &str,
+    note_id: Option<&str>,
+) -> Result<Rec> {
     if let Some(id) = note_id.filter(|i| !i.is_empty()) {
         return Ok(public(&store.update_note(id, text)?, None));
     }
@@ -238,8 +359,20 @@ pub fn save_note(bible: &Bible, store: &mut Store, anchor: &str, text: &str, not
         return Err(bad("That place is not in the text."));
     }
     let kind = s(&res, "kind");
-    let strong = if kind == "word" || kind == "lemma" { res["strongs"].as_array().and_then(|a| a.first()).and_then(|x| x.as_str()).unwrap_or("").to_string() } else { String::new() };
-    Ok(public(&store.add_note(&s(&res, "id"), text, &s(&res, "quote"), &strong)?, None))
+    let strong = if kind == "word" || kind == "lemma" {
+        res["strongs"]
+            .as_array()
+            .and_then(|a| a.first())
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string()
+    } else {
+        String::new()
+    };
+    Ok(public(
+        &store.add_note(&s(&res, "id"), text, &s(&res, "quote"), &strong)?,
+        None,
+    ))
 }
 
 /// The person's notes on one chapter, in reading order, with their text.
@@ -260,9 +393,16 @@ pub fn chapter_notes(bible: &Bible, store: &Store, code: &str, chapter: i64) -> 
         }
         let Some((place, p)) = at else { continue };
         let res = resolve(bible, &place)?;
-        let quote = if res["ok"] == true { res["quote"].clone() } else { json!(s(nt, "quote")) };
-        out.push(((n(&p, "c1"), n(&p, "v1"), n(&p, "i1").unwrap_or(-1)), json!({"id": nt["id"], "anchor": nt["anchor"], "kind": nt["kind"],
-            "label": res["label"], "quote": quote, "text": nt["text"]})));
+        let quote = if res["ok"] == true {
+            res["quote"].clone()
+        } else {
+            json!(s(nt, "quote"))
+        };
+        out.push((
+            (n(&p, "c1"), n(&p, "v1"), n(&p, "i1").unwrap_or(-1)),
+            json!({"id": nt["id"], "anchor": nt["anchor"], "kind": nt["kind"],
+            "label": res["label"], "quote": quote, "text": nt["text"]}),
+        ));
     }
     out.sort_by(|a, b| a.0.cmp(&b.0));
     Ok(out.into_iter().map(|x| x.1).collect())
@@ -272,7 +412,12 @@ pub fn chapter_notes(bible: &Bible, store: &Store, code: &str, chapter: i64) -> 
 
 /// Color a place, or clear it (None). A highlight reaching past the place is cut back to the part outside it, so stored
 /// highlights never overlap. → {anchor, color, undo}.
-pub fn save_highlight(bible: &Bible, store: &mut Store, anchor: &str, color: Option<&str>) -> Result<Value> {
+pub fn save_highlight(
+    bible: &Bible,
+    store: &mut Store,
+    anchor: &str,
+    color: Option<&str>,
+) -> Result<Value> {
     let res = resolve(bible, anchor)?;
     if res["kind"] == "lemma" {
         return Err(bad("Highlights go on words, phrases or verses."));
@@ -282,17 +427,28 @@ pub fn save_highlight(bible: &Bible, store: &mut Store, anchor: &str, color: Opt
     }
     let color = check_color(color)?;
     let (code, book) = (s(&res, "code"), book_of(&res));
-    let span = word_span(bible, book, &res)?.ok_or_else(|| bad("That place is not in the text."))?;
+    let span =
+        word_span(bible, book, &res)?.ok_or_else(|| bad("That place is not in the text."))?;
     let (mut drop, mut add, mut before) = (vec![], vec![], vec![]);
     for h in store.highlights(&code) {
         let hp = py_parse(&s(&h, "anchor"))?;
-        let Some(hs) = word_span(bible, book, &hp)? else { continue };
+        let Some(hs) = word_span(bible, book, &hp)? else {
+            continue;
+        };
         if hs.1 < span.0 || hs.0 > span.1 {
             continue;
         }
         drop.push(s(&h, "id"));
-        let left = if hs.0 < span.0 { word_at(bible, book, span.0, false, "<")?.map(|e| (hs.0, e)) } else { None };
-        let right = if hs.1 > span.1 { word_at(bible, book, span.1, true, ">")?.map(|b| (b, hs.1)) } else { None };
+        let left = if hs.0 < span.0 {
+            word_at(bible, book, span.0, false, "<")?.map(|e| (hs.0, e))
+        } else {
+            None
+        };
+        let right = if hs.1 > span.1 {
+            word_at(bible, book, span.1, true, ">")?.map(|b| (b, hs.1))
+        } else {
+            None
+        };
         let verses = matches!(s(&hp, "kind").as_str(), "verse" | "verses");
         for (k, piece) in [left, right].into_iter().flatten().enumerate() {
             let a = piece_anchor(bible, &code, book, piece.0, piece.1, verses)?;
@@ -311,39 +467,68 @@ pub fn save_highlight(bible: &Bible, store: &mut Store, anchor: &str, color: Opt
             store.use_palette_color(c)?;
         }
     }
-    Ok(json!({"anchor": res["id"], "color": color, "undo": {"code": code, "drop": drop_ids, "add": before}}))
+    Ok(
+        json!({"anchor": res["id"], "color": color, "undo": {"code": code, "drop": drop_ids, "add": before}}),
+    )
 }
 
 /// Put back what a save_highlight cut.
 pub fn undo_highlight(store: &mut Store, undo: &Value) -> Result<Value> {
     let nothing = || bad("Nothing to undo.");
-    let code = undo.get("code").and_then(|c| c.as_str()).filter(|c| c.chars().count() == 3).ok_or_else(nothing)?;
-    let (Some(drop), Some(add)) = (undo.get("drop").and_then(|d| d.as_array()), undo.get("add").and_then(|a| a.as_array())) else { return Err(nothing()) };
-    if drop.len() > 500 || add.len() > 500 || !drop.iter().all(|i| i.as_str().is_some_and(|s| !s.is_empty() && s.chars().count() <= 80)) {
+    let code = undo
+        .get("code")
+        .and_then(|c| c.as_str())
+        .filter(|c| c.chars().count() == 3)
+        .ok_or_else(nothing)?;
+    let (Some(drop), Some(add)) = (
+        undo.get("drop").and_then(|d| d.as_array()),
+        undo.get("add").and_then(|a| a.as_array()),
+    ) else {
+        return Err(nothing());
+    };
+    if drop.len() > 500
+        || add.len() > 500
+        || !drop.iter().all(|i| {
+            i.as_str()
+                .is_some_and(|s| !s.is_empty() && s.chars().count() <= 80)
+        })
+    {
         return Err(nothing());
     }
     let mut restored = vec![];
     for h in add {
-        let ok = ["id", "anchor", "created"].iter().all(|k| h.get(*k).is_some_and(|v| v.is_string()));
+        let ok = ["id", "anchor", "created"]
+            .iter()
+            .all(|k| h.get(*k).is_some_and(|v| v.is_string()));
         if !ok {
             return Err(nothing());
         }
         let p = py_parse(h["anchor"].as_str().unwrap())?;
         let id = h["id"].as_str().unwrap();
-        if p["kind"] == "lemma" || s(&p, "code") != code || id.is_empty() || id.chars().count() > 80 {
+        if p["kind"] == "lemma" || s(&p, "code") != code || id.is_empty() || id.chars().count() > 80
+        {
             return Err(nothing());
         }
-        let color = check_color(h.get("color").and_then(|c| c.as_str()))?.unwrap_or("yellow".into());
+        let color =
+            check_color(h.get("color").and_then(|c| c.as_str()))?.unwrap_or("yellow".into());
         restored.push(json!({"id": id, "anchor": p["id"], "color": color, "quote": h.get("quote").and_then(|q| q.as_str()).unwrap_or(""), "created": h["created"]}).as_object().unwrap().clone());
     }
-    let mut ids: Vec<String> = drop.iter().map(|d| d.as_str().unwrap().to_string()).collect();
+    let mut ids: Vec<String> = drop
+        .iter()
+        .map(|d| d.as_str().unwrap().to_string())
+        .collect();
     ids.extend(restored.iter().map(|h| s(h, "id")));
     store.edit_highlights(code, &ids, restored)?;
     Ok(json!({"ok": true}))
 }
 
 /// The person's highlights in Bible order; color: one exact color; thread: only those sharing a word with its places.
-pub fn highlight_list(bible: &Bible, store: &Store, color: Option<&str>, thread: Option<&str>) -> Result<Value> {
+pub fn highlight_list(
+    bible: &Bible,
+    store: &Store,
+    color: Option<&str>,
+    thread: Option<&str>,
+) -> Result<Value> {
     let mut spans = vec![];
     if let Some(t) = thread {
         for m in store.thread(t)?["members"].as_array().unwrap() {
@@ -367,14 +552,33 @@ pub fn highlight_list(bible: &Bible, store: &Store, color: Option<&str>, thread:
         let res = resolve(bible, &s(&h, "anchor"))?;
         let r = &res["ref"];
         if thread.is_some() {
-            let hs = if r.is_null() { None } else { word_span(bible, book_of(&res), &res)? };
+            let hs = if r.is_null() {
+                None
+            } else {
+                word_span(bible, book_of(&res), &res)?
+            };
             let Some(hs) = hs else { continue };
-            if !spans.iter().any(|(c, sp)| *c == s(&res, "code") && hs.0 <= sp.1 && sp.0 <= hs.1) {
+            if !spans
+                .iter()
+                .any(|(c, sp)| *c == s(&res, "code") && hs.0 <= sp.1 && sp.0 <= hs.1)
+            {
                 continue;
             }
         }
-        let key = if r.is_null() { (999, 0, 0) } else { (r["b"].as_i64().unwrap(), r["c"].as_i64().unwrap(), r["v"].as_i64().unwrap()) };
-        let quote = if s(&res, "quote").is_empty() { h["quote"].clone() } else { res["quote"].clone() };
+        let key = if r.is_null() {
+            (999, 0, 0)
+        } else {
+            (
+                r["b"].as_i64().unwrap(),
+                r["c"].as_i64().unwrap(),
+                r["v"].as_i64().unwrap(),
+            )
+        };
+        let quote = if s(&res, "quote").is_empty() {
+            h["quote"].clone()
+        } else {
+            res["quote"].clone()
+        };
         out.push((key, json!({"anchor": h["anchor"], "color": h["color"], "label": res["label"], "quote": quote, "book": if r.is_null() { Value::Null } else { r["b"].clone() }})));
     }
     out.sort_by(|a, b| a.0.cmp(&b.0));
@@ -390,7 +594,12 @@ fn thread_row(t: &Rec) -> Value {
 
 /// The threads, newest-touched first; with q, only those whose name or note has every word typed.
 pub fn thread_list(store: &Store, q: Option<&str>) -> Result<Value> {
-    let words: Vec<String> = q.unwrap_or("").to_lowercase().split_whitespace().map(String::from).collect();
+    let words: Vec<String> = q
+        .unwrap_or("")
+        .to_lowercase()
+        .split_whitespace()
+        .map(String::from)
+        .collect();
     if words.len() > 12 {
         return Err(bad("That is a lot of words (12 at most)."));
     }
@@ -424,21 +633,41 @@ pub fn thread_view(bible: &Bible, store: &Store, id: &str) -> Result<Value> {
     }
     let mut brief: Map<String, Value> = Map::new();
     if !strongs.is_empty() {
-        let sql = format!("SELECT strong, lemma, translit, definition FROM lexicon WHERE strong IN ({})", vec!["?"; strongs.len()].join(","));
+        let sql = format!(
+            "SELECT strong, lemma, translit, definition FROM lexicon WHERE strong IN ({})",
+            vec!["?"; strongs.len()].join(",")
+        );
         let mut stmt = bible.conn().prepare(&sql)?;
         let rows = stmt.query_map(rusqlite::params_from_iter(&strongs), |r| {
-            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<String>>(2)?, r.get::<_, Option<String>>(3)?))
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, Option<String>>(2)?,
+                r.get::<_, Option<String>>(3)?,
+            ))
         })?;
         for r in rows {
             let (sid, lemma, tr, def) = r?;
-            brief.insert(sid.clone(), json!({"strong": sid, "lemma": lemma, "translit": tr, "definition": def}));
+            brief.insert(
+                sid.clone(),
+                json!({"strong": sid, "lemma": lemma, "translit": tr, "definition": def}),
+            );
         }
     }
-    Ok(json!({"id": t["id"], "name": t["name"], "color": s(&t, "color"), "note": t["note"], "created": t["created"], "updated": t["updated"],
-        "members": members, "strongs": strongs.iter().filter_map(|x| brief.get(x).cloned()).collect::<Vec<_>>()}))
+    Ok(
+        json!({"id": t["id"], "name": t["name"], "color": s(&t, "color"), "note": t["note"], "created": t["created"], "updated": t["updated"],
+        "members": members, "strongs": strongs.iter().filter_map(|x| brief.get(x).cloned()).collect::<Vec<_>>()}),
+    )
 }
 
-pub fn create_thread(bible: &Bible, store: &mut Store, name: &str, note: &str, color: Option<&str>, anchor: Option<&str>) -> Result<Value> {
+pub fn create_thread(
+    bible: &Bible,
+    store: &mut Store,
+    name: &str,
+    note: &str,
+    color: Option<&str>,
+    anchor: Option<&str>,
+) -> Result<Value> {
     if let Some(a) = anchor.filter(|a| !a.is_empty()) {
         if resolve(bible, a)?["ok"] != true {
             return Err(bad("That place is not in the text."));
@@ -463,7 +692,12 @@ pub fn add_to_thread(bible: &Bible, store: &mut Store, id: &str, anchor: &str) -
 pub const MAX_ADD: usize = 1000;
 
 /// Several places into a thread in one write. Nothing is added unless every place is in the text.
-pub fn add_many_to_thread(bible: &Bible, store: &mut Store, id: &str, list: &[String]) -> Result<Value> {
+pub fn add_many_to_thread(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    list: &[String],
+) -> Result<Value> {
     if list.is_empty() {
         return Err(bad("Name at least one place to add."));
     }
@@ -483,20 +717,33 @@ pub fn add_many_to_thread(bible: &Bible, store: &mut Store, id: &str, list: &[St
     let mut distinct: Vec<&String> = items.iter().map(|i| &i.0).collect();
     distinct.sort();
     distinct.dedup();
-    Ok(json!({"id": t["id"], "name": t["name"], "added": added, "already": distinct.len() - added.len(), "count": t["members"].as_array().unwrap().len()}))
+    Ok(
+        json!({"id": t["id"], "name": t["name"], "added": added, "already": distinct.len() - added.len(), "count": t["members"].as_array().unwrap().len()}),
+    )
 }
 
 /// The one anchor of a thread a place means: its number in the list, the exact anchor, or the one in those verses.
 fn member_at(bible: &Bible, store: &Store, id: &str, place: &Value) -> Result<String> {
-    let members: Vec<String> = store.thread(id)?["members"].as_array().unwrap().iter().map(|m| m["anchor"].as_str().unwrap().to_string()).collect();
+    let members: Vec<String> = store.thread(id)?["members"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["anchor"].as_str().unwrap().to_string())
+        .collect();
     let as_num = match place {
         Value::Number(x) => x.as_i64(),
-        Value::String(t) if !t.is_empty() && t.chars().all(|c| c.is_ascii_digit()) => t.parse().ok(),
+        Value::String(t) if !t.is_empty() && t.chars().all(|c| c.is_ascii_digit()) => {
+            t.parse().ok()
+        }
         _ => None,
     };
     if let Some(k) = as_num {
         if k < 1 || k as usize > members.len() {
-            return Err(bad(format!("The thread has {} place{}; there is no number {k}.", members.len(), if members.len() == 1 { "" } else { "s" })));
+            return Err(bad(format!(
+                "The thread has {} place{}; there is no number {k}.",
+                members.len(),
+                if members.len() == 1 { "" } else { "s" }
+            )));
         }
         return Ok(members[k as usize - 1].clone());
     }
@@ -515,31 +762,57 @@ fn member_at(bible: &Bible, store: &Store, id: &str, place: &Value) -> Result<St
         }
     }
     if hits.is_empty() {
-        return Err(bad(format!("The thread has nothing at {}.", label(bible, &tid)?)));
+        return Err(bad(format!(
+            "The thread has nothing at {}.",
+            label(bible, &tid)?
+        )));
     }
     if hits.len() > 1 {
         let mut parts = vec![];
         for a in &hits {
             let r = resolve(bible, a)?;
             let k = s(&r, "kind");
-            let l = if k == "word" || k == "phrase" { format!("{} “{}”", s(&r, "label"), cut(&s(&r, "quote"), 30)) } else { s(&r, "label") };
-            parts.push(format!("{} {l}", members.iter().position(|m| m == a).unwrap() + 1));
+            let l = if k == "word" || k == "phrase" {
+                format!("{} “{}”", s(&r, "label"), cut(&s(&r, "quote"), 30))
+            } else {
+                s(&r, "label")
+            };
+            parts.push(format!(
+                "{} {l}",
+                members.iter().position(|m| m == a).unwrap() + 1
+            ));
         }
-        return Err(bad(format!("Which one? Give its number: {}", parts.join(" · "))));
+        return Err(bad(format!(
+            "Which one? Give its number: {}",
+            parts.join(" · ")
+        )));
     }
     Ok(hits.remove(0))
 }
 
-pub fn move_in_thread(bible: &Bible, store: &mut Store, id: &str, place: &Value, to: &str) -> Result<Value> {
+pub fn move_in_thread(
+    bible: &Bible,
+    store: &mut Store,
+    id: &str,
+    place: &Value,
+    to: &str,
+) -> Result<Value> {
     let anchor = member_at(bible, store, id, place)?;
-    let before: Vec<String> = store.thread(id)?["members"].as_array().unwrap().iter().map(|m| m["anchor"].as_str().unwrap().to_string()).collect();
+    let before: Vec<String> = store.thread(id)?["members"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["anchor"].as_str().unwrap().to_string())
+        .collect();
     let at = before.iter().position(|a| *a == anchor).unwrap() as i64;
     let new = match to {
         "up" => at - 1,
         "down" => at + 1,
         "first" => 0,
         "last" => before.len() as i64 - 1,
-        t if !t.is_empty() && t.chars().all(|c| c.is_ascii_digit()) => t.parse::<i64>().unwrap_or(0) - 1,
+        t if !t.is_empty() && t.chars().all(|c| c.is_ascii_digit()) => {
+            t.parse::<i64>().unwrap_or(0) - 1
+        }
         _ => return Err(bad("Move it up, down, first, last or to a number.")),
     };
     let new = new.min(before.len() as i64 - 1).max(0) as usize;
@@ -557,17 +830,40 @@ pub fn move_in_thread(bible: &Bible, store: &mut Store, id: &str, place: &Value,
 
 /// Bible order: by book, chapter, verse and word, a whole verse before a word in it; original words go last.
 pub fn sort_thread(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
-    let before: Vec<String> = store.thread(id)?["members"].as_array().unwrap().iter().map(|m| m["anchor"].as_str().unwrap().to_string()).collect();
+    let before: Vec<String> = store.thread(id)?["members"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["anchor"].as_str().unwrap().to_string())
+        .collect();
     let key = |a: &String| -> (i64, i64, i64, i64, i64, i64, i64, i64) {
         let p = py_parse(a).unwrap();
         if p["kind"] == "lemma" {
             return (1, 0, 0, 0, 0, 0, 0, 0);
         }
         let i1 = n(&p, "i1").unwrap_or(-1);
-        let (c2, v2) = if p["c2"].is_null() { (n(&p, "c1").unwrap(), n(&p, "v1").unwrap()) } else { (n(&p, "c2").unwrap(), n(&p, "v2").unwrap()) };
+        let (c2, v2) = if p["c2"].is_null() {
+            (n(&p, "c1").unwrap(), n(&p, "v1").unwrap())
+        } else {
+            (n(&p, "c2").unwrap(), n(&p, "v2").unwrap())
+        };
         let i2 = n(&p, "i2").unwrap_or(i1);
-        let b = bible.books().iter().find(|b| b.code == s(&p, "code")).map(|b| b.id as i64).unwrap_or(1_000_000);
-        (0, b, n(&p, "c1").unwrap(), n(&p, "v1").unwrap(), i1, c2, v2, i2)
+        let b = bible
+            .books()
+            .iter()
+            .find(|b| b.code == s(&p, "code"))
+            .map(|b| b.id as i64)
+            .unwrap_or(1_000_000);
+        (
+            0,
+            b,
+            n(&p, "c1").unwrap(),
+            n(&p, "v1").unwrap(),
+            i1,
+            c2,
+            v2,
+            i2,
+        )
     };
     let mut sorted = before.clone();
     sorted.sort_by_key(key);
@@ -586,13 +882,21 @@ pub fn remove_place(bible: &Bible, store: &mut Store, id: &str, anchor: &str) ->
     let mut gone = vec![];
     for m in thread["members"].as_array().unwrap() {
         let p = py_parse(m["anchor"].as_str().unwrap())?;
-        let hit = if target["kind"] == "lemma" { p["kind"] == "lemma" && p["id"] == target["id"] } else { p["kind"] != "lemma" && overlaps(&p, &target) };
+        let hit = if target["kind"] == "lemma" {
+            p["kind"] == "lemma" && p["id"] == target["id"]
+        } else {
+            p["kind"] != "lemma" && overlaps(&p, &target)
+        };
         if hit {
             gone.push(s(m.as_object().unwrap(), "anchor"));
         }
     }
     if gone.is_empty() {
-        return Err(bad(format!("“{}” has no anchor at {}.", s(&thread, "name"), label(bible, &s(&target, "id"))?)));
+        return Err(bad(format!(
+            "“{}” has no anchor at {}.",
+            s(&thread, "name"),
+            label(bible, &s(&target, "id"))?
+        )));
     }
     let mut removed = vec![];
     for a in &gone {
@@ -615,7 +919,11 @@ pub fn set_view(bible: &Bible, store: &Store, t: &Rec) -> Result<Value> {
     let mut items = vec![];
     for i in t["items"].as_array().unwrap() {
         let kind = i["kind"].as_str().unwrap_or("");
-        let r = i.get("ref").and_then(|x| x.as_str()).unwrap_or("").to_string();
+        let r = i
+            .get("ref")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string();
         let mut view = i.as_object().unwrap().clone();
         match kind {
             "pane" => {
@@ -623,8 +931,14 @@ pub fn set_view(bible: &Bible, store: &Store, t: &Rec) -> Result<Value> {
             }
             "thread" => {
                 let th = threads.iter().find(|x| s(x, "id") == r);
-                view.insert("label".into(), th.map(|x| x["name"].clone()).unwrap_or(json!(r)));
-                view.insert("color".into(), th.map(|x| x["color"].clone()).unwrap_or(json!("")));
+                view.insert(
+                    "label".into(),
+                    th.map(|x| x["name"].clone()).unwrap_or(json!(r)),
+                );
+                view.insert(
+                    "color".into(),
+                    th.map(|x| x["color"].clone()).unwrap_or(json!("")),
+                );
                 view.insert("gone".into(), json!(th.is_none()));
             }
             "place" => {
@@ -642,28 +956,51 @@ pub fn set_view(bible: &Bible, store: &Store, t: &Rec) -> Result<Value> {
                     None => r.clone(),
                 };
                 view.insert("label".into(), json!(label_text));
-                view.insert("snippet".into(), json!(nt.as_ref().map(|x| cut(&s(x, "text"), 90)).unwrap_or_default()));
+                view.insert(
+                    "snippet".into(),
+                    json!(nt
+                        .as_ref()
+                        .map(|x| cut(&s(x, "text"), 90))
+                        .unwrap_or_default()),
+                );
                 view.insert("anchor".into(), json!(anchor));
                 view.insert("gone".into(), json!(nt.is_none()));
             }
             "sitting" => {
                 let found = crate::history::sitting(&store.root, &r).ok();
-                view.insert("label".into(), json!(found.as_ref().map(|x| format!("Sitting: {}", s_val(&x["title"]))).unwrap_or_else(|| r.clone())));
+                view.insert(
+                    "label".into(),
+                    json!(found
+                        .as_ref()
+                        .map(|x| format!("Sitting: {}", s_val(&x["title"])))
+                        .unwrap_or_else(|| r.clone())),
+                );
                 view.insert("gone".into(), json!(found.is_none()));
             }
             "lesson" => {
                 let l = lessons.iter().find(|x| x["id"] == r.as_str());
-                view.insert("label".into(), l.map(|x| x["title"].clone()).unwrap_or(json!(r)));
+                view.insert(
+                    "label".into(),
+                    l.map(|x| x["title"].clone()).unwrap_or(json!(r)),
+                );
                 view.insert("gone".into(), json!(l.is_none()));
             }
             _ => {
                 let lower = r.to_lowercase();
-                view.insert("label".into(), json!(if lower.ends_with(".pdf") { r[..r.len() - 4].to_string() } else { r.clone() }));
+                view.insert(
+                    "label".into(),
+                    json!(if lower.ends_with(".pdf") {
+                        r[..r.len() - 4].to_string()
+                    } else {
+                        r.clone()
+                    }),
+                );
             }
         }
         items.push(Value::Object(view));
     }
-    let mut out = json!({"id": t["id"], "name": t["name"], "updated": t["updated"], "items": items});
+    let mut out =
+        json!({"id": t["id"], "name": t["name"], "updated": t["updated"], "items": items});
     if let Some(k) = t.get("keys") {
         out["keys"] = k.clone();
     }
@@ -671,7 +1008,11 @@ pub fn set_view(bible: &Bible, store: &Store, t: &Rec) -> Result<Value> {
 }
 
 pub fn set_list(bible: &Bible, store: &Store) -> Result<Value> {
-    Ok(json!(store.sets().iter().map(|t| set_view(bible, store, t)).collect::<Result<Vec<_>>>()?))
+    Ok(json!(store
+        .sets()
+        .iter()
+        .map(|t| set_view(bible, store, t))
+        .collect::<Result<Vec<_>>>()?))
 }
 
 // ---- trails, find ---------------------------------------------------------------------------------------------------
@@ -716,7 +1057,12 @@ pub fn trail_at(bible: &Bible, store: &Store, anchor: &str, status: &str) -> Res
         let places = places_of(t);
         let here = places.iter().any(|p| *p == a);
         let near = !lemma
-            && places.iter().any(|p| !p.is_empty() && !p.starts_with('H') && !p.starts_with('G') && py_parse(p).map(|q| overlaps(&res, &q)).unwrap_or(false));
+            && places.iter().any(|p| {
+                !p.is_empty()
+                    && !p.starts_with('H')
+                    && !p.starts_with('G')
+                    && py_parse(p).map(|q| overlaps(&res, &q)).unwrap_or(false)
+            });
         if here || near {
             let mut v = trail_public(t, &label(bible, &s(t, "anchor"))?);
             v["here"] = json!(here);
@@ -746,13 +1092,26 @@ fn snippet(text: &str, words: &[String]) -> String {
         .unwrap_or(0);
     let start = at.saturating_sub(140 / 3);
     let chars: Vec<char> = text.chars().collect();
-    let body: String = chars.iter().skip(start).take(140).collect::<String>().replace('\n', " ");
-    format!("{}{body}{}", if start > 0 { "…" } else { "" }, if start + 140 < chars.len() { "…" } else { "" })
+    let body: String = chars
+        .iter()
+        .skip(start)
+        .take(140)
+        .collect::<String>()
+        .replace('\n', " ");
+    format!(
+        "{}{body}{}",
+        if start > 0 { "…" } else { "" },
+        if start + 140 < chars.len() { "…" } else { "" }
+    )
 }
 
 /// Search the person's own words: notes, thread names and notes, and trails. Every word typed must appear.
 pub fn find_mine(bible: &Bible, store: &Store, q: &str) -> Result<Value> {
-    let words: Vec<String> = q.to_lowercase().split_whitespace().map(String::from).collect();
+    let words: Vec<String> = q
+        .to_lowercase()
+        .split_whitespace()
+        .map(String::from)
+        .collect();
     if words.is_empty() {
         return Err(bad("Type a word or two to look for in your notes."));
     }
@@ -760,7 +1119,13 @@ pub fn find_mine(bible: &Bible, store: &Store, q: &str) -> Result<Value> {
         return Err(bad("That is a lot of words (12 at most)."));
     }
     let hit = |parts: &[String]| {
-        let blob = parts.iter().filter(|p| !p.is_empty()).cloned().collect::<Vec<_>>().join(" ").to_lowercase();
+        let blob = parts
+            .iter()
+            .filter(|p| !p.is_empty())
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_lowercase();
         words.iter().all(|w| blob.contains(w.as_str()))
     };
     let (mut notes, mut threads, mut trails) = (vec![], vec![], vec![]);
@@ -783,7 +1148,9 @@ pub fn find_mine(bible: &Bible, store: &Store, q: &str) -> Result<Value> {
         }
     }
     let margin = crate::margin::matching(bible, store, &words, |t| snippet(t, &words));
-    Ok(json!({"q": q.trim(), "notes": notes, "threads": threads, "trails": trails, "margin": margin}))
+    Ok(
+        json!({"q": q.trim(), "notes": notes, "threads": threads, "trails": trails, "margin": margin}),
+    )
 }
 
 // ---- lessons (the files; building documents from them is phase 5) -------------------------------------------------
@@ -804,19 +1171,32 @@ pub fn lesson_slug(name: &str) -> String {
 }
 
 fn title_of(text: &str) -> String {
-    text.lines().find_map(|l| l.strip_prefix("# ")).map(|t| t.trim().to_string()).unwrap_or_default()
+    text.lines()
+        .find_map(|l| l.strip_prefix("# "))
+        .map(|t| t.trim().to_string())
+        .unwrap_or_default()
 }
 
 pub fn lesson_listing(store: &Store) -> Result<Vec<Value>> {
     let dir = store.root.join("lessons");
-    let Ok(rd) = fs::read_dir(&dir) else { return Ok(vec![]) };
-    let mut ps: Vec<_> = rd.flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "md")).collect();
+    let Ok(rd) = fs::read_dir(&dir) else {
+        return Ok(vec![]);
+    };
+    let mut ps: Vec<_> = rd
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|x| x == "md"))
+        .collect();
     ps.sort();
     let mut out = vec![];
     for p in ps {
         let text = fs::read_to_string(&p)?;
         let id = p.file_stem().unwrap().to_string_lossy().to_string();
-        let modified = fs::metadata(&p)?.modified()?.duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0);
+        let modified = fs::metadata(&p)?
+            .modified()?
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs_f64())
+            .unwrap_or(0.0);
         let t = title_of(&text);
         out.push(json!({"id": id, "title": if t.is_empty() { id.clone() } else { t }, "words": text.split_whitespace().count(),
             "places": text.lines().filter(|l| l.starts_with('@')).count(), "modified": modified}));
@@ -826,21 +1206,42 @@ pub fn lesson_listing(store: &Store) -> Result<Vec<Value>> {
 
 pub fn lesson_find(store: &Store, name: &str) -> Result<String> {
     let want = lesson_slug(name);
-    let ids: Vec<String> = lesson_listing(store)?.iter().map(|x| x["id"].as_str().unwrap().to_string()).collect();
-    let pools: [Vec<&String>; 3] = [ids.iter().filter(|i| **i == want).collect(), ids.iter().filter(|i| i.starts_with(&want)).collect(), ids.iter().filter(|i| i.contains(&want)).collect()];
-    let hit = pools.into_iter().find(|p| !p.is_empty()).unwrap_or_default();
+    let ids: Vec<String> = lesson_listing(store)?
+        .iter()
+        .map(|x| x["id"].as_str().unwrap().to_string())
+        .collect();
+    let pools: [Vec<&String>; 3] = [
+        ids.iter().filter(|i| **i == want).collect(),
+        ids.iter().filter(|i| i.starts_with(&want)).collect(),
+        ids.iter().filter(|i| i.contains(&want)).collect(),
+    ];
+    let hit = pools
+        .into_iter()
+        .find(|p| !p.is_empty())
+        .unwrap_or_default();
     if hit.is_empty() {
-        return Err(missing(format!("No lesson called “{}”.", cut(name.trim(), 60))));
+        return Err(missing(format!(
+            "No lesson called “{}”.",
+            cut(name.trim(), 60)
+        )));
     }
     if hit.len() > 1 {
-        return Err(bad(format!("Which lesson? {}", hit.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", "))));
+        return Err(bad(format!(
+            "Which lesson? {}",
+            hit.iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )));
     }
     Ok(hit[0].clone())
 }
 
 pub fn lesson_read(store: &Store, name: &str) -> Result<Value> {
     let id = lesson_find(store, name)?;
-    Ok(json!({"id": id, "text": fs::read_to_string(store.root.join("lessons").join(format!("{id}.md")))?}))
+    Ok(
+        json!({"id": id, "text": fs::read_to_string(store.root.join("lessons").join(format!("{id}.md")))?}),
+    )
 }
 
 pub fn lesson_save(store: &Store, name: &str, text: &str, append: bool) -> Result<Value> {
@@ -855,9 +1256,20 @@ pub fn lesson_save(store: &Store, name: &str, text: &str, append: bool) -> Resul
     let mut text = text.to_string();
     if append && path.exists() {
         let old = fs::read_to_string(&path)?;
-        text = format!("{}\n\n{}", old.trim_end_matches('\n'), text.trim_matches('\n'));
+        text = format!(
+            "{}\n\n{}",
+            old.trim_end_matches('\n'),
+            text.trim_matches('\n')
+        );
     }
-    crate::store::write_atomic(&path, &(text.replace("\r\n", "\n").trim_end_matches('\n').to_string() + "\n"))?;
+    crate::store::write_atomic(
+        &path,
+        &(text
+            .replace("\r\n", "\n")
+            .trim_end_matches('\n')
+            .to_string()
+            + "\n"),
+    )?;
     let t = title_of(&text);
     Ok(json!({"id": slug, "title": if t.is_empty() { slug.clone() } else { t }}))
 }
@@ -865,12 +1277,14 @@ pub fn lesson_save(store: &Store, name: &str, text: &str, append: bool) -> Resul
 pub fn lesson_delete(store: &Store, name: &str) -> Result<Value> {
     let id = lesson_find(store, name)?;
     let path = store.root.join("lessons").join(format!("{id}.md"));
-    let dest = store.root.join(".trash").join(format!("{}-{id}.md", chrono::Utc::now().format("%Y%m%d-%H%M%S")));
+    let dest = store.root.join(".trash").join(format!(
+        "{}-{id}.md",
+        chrono::Utc::now().format("%Y%m%d-%H%M%S")
+    ));
     fs::create_dir_all(dest.parent().unwrap())?;
     fs::rename(path, dest)?;
     Ok(json!({"ok": true, "id": id}))
 }
-
 
 /// A lesson read the way a build reads it: (kind, value) blocks of title, section, speech, note, scripture (a passage),
 /// parallel (two passages, KJV and YLT side by side) and word (a Strong's number). An error names the first line that
@@ -906,19 +1320,28 @@ pub fn lesson_parse(bible: &Bible, text: &str) -> Result<Vec<(&'static str, Valu
                 place = m[1].to_string();
                 version = m[2].to_uppercase();
             }
-            let psg = crate::scripture::passage(bible, &place, &version).map_err(|e| bad(format!("Line {n} ({}): {}", cut(line, 40), e.0)))?;
+            let psg = crate::scripture::passage(bible, &place, &version)
+                .map_err(|e| bad(format!("Line {n} ({}): {}", cut(line, 40), e.0)))?;
             match blocks.last() {
-                Some(("scripture", prev)) if prev["label"] == psg["label"] && prev["version"] != json!(version) => {
+                Some(("scripture", prev))
+                    if prev["label"] == psg["label"] && prev["version"] != json!(version) =>
+                {
                     let prev = prev.clone();
                     *blocks.last_mut().unwrap() = ("parallel", json!([prev, psg]));
                 }
                 _ => blocks.push(("scripture", psg)),
             }
-        } else if line.len() >= 3 && line.starts_with('&') && crate::lookup::is_strong(&line[1..].to_uppercase()) {
+        } else if line.len() >= 3
+            && line.starts_with('&')
+            && crate::lookup::is_strong(&line[1..].to_uppercase())
+        {
             flush(&mut blocks, &mut para);
             let sid = line[1..].to_uppercase();
             if crate::lookup::strong(bible, &sid)?.is_none() {
-                return Err(bad(format!("Line {n} ({}): no such Strong's number.", cut(line, 40))));
+                return Err(bad(format!(
+                    "Line {n} ({}): no such Strong's number.",
+                    cut(line, 40)
+                )));
             }
             blocks.push(("word", json!(sid)));
         } else {
@@ -938,7 +1361,11 @@ fn slides_for(verses: &[Value]) -> usize {
     let mut last_span: Option<Value> = None;
     for v in verses {
         let len = v["text"].as_str().unwrap_or("").chars().count();
-        if rows > 0 && (rows >= SLIDE_VERSES || size + len > SLIDE_CHARS || v.get("span") != last_span.as_ref()) {
+        if rows > 0
+            && (rows >= SLIDE_VERSES
+                || size + len > SLIDE_CHARS
+                || v.get("span") != last_span.as_ref())
+        {
             out += 1;
             rows = 0;
             size = 0;
@@ -973,8 +1400,10 @@ pub fn lesson_check(bible: &Bible, store: &Store, name: &str) -> Result<Value> {
         }
     }
     let title = title_of(text);
-    Ok(json!({"id": lesson["id"], "title": if title.is_empty() { lesson["id"].clone() } else { json!(title) },
+    Ok(
+        json!({"id": lesson["id"], "title": if title.is_empty() { lesson["id"].clone() } else { json!(title) },
         "sections": blocks.iter().filter(|b| b.0 == "section").count(), "words": text.split_whitespace().count(),
         "places": passages.iter().map(|p| json!({"label": p["label"], "version": p["version"], "verses": p["verses"].as_array().unwrap().len()})).collect::<Vec<_>>(),
-        "slides": slides}))
+        "slides": slides}),
+    )
 }

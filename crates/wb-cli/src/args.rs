@@ -36,7 +36,11 @@ impl Args {
         self.pos.get(name).map(|v| v.join(" ")).unwrap_or_default()
     }
     pub fn list(&self, name: &str) -> Vec<String> {
-        self.pos.get(name).cloned().or_else(|| self.lists.get(name).cloned()).unwrap_or_default()
+        self.pos
+            .get(name)
+            .cloned()
+            .or_else(|| self.lists.get(name).cloned())
+            .unwrap_or_default()
     }
     pub fn has(&self, name: &str) -> bool {
         self.pos.get(name).is_some_and(|v| !v.is_empty())
@@ -50,7 +54,12 @@ impl Args {
     pub fn int(&self, name: &str) -> Result<i64, String> {
         match self.opt(name) {
             None => Ok(0),
-            Some(v) => v.parse().map_err(|_| format!("argument --{}: invalid int value: '{v}'", name.replace('_', "-"))),
+            Some(v) => v.parse().map_err(|_| {
+                format!(
+                    "argument --{}: invalid int value: '{v}'",
+                    name.replace('_', "-")
+                )
+            }),
         }
     }
     pub fn flag(&self, name: &str) -> bool {
@@ -90,7 +99,9 @@ pub fn parse(specs: &[Spec], argv: &[String]) -> Result<Args, String> {
                 Some((n, v)) => (key(n), Some(v.to_string())),
                 None => (key(t), None),
             };
-            let spec = specs.iter().find(|s| matches!(s, Opt(n, _) | Append(n) | Flag(n) if **n == name));
+            let spec = specs
+                .iter()
+                .find(|s| matches!(s, Opt(n, _) | Append(n) | Flag(n) if **n == name));
             match spec {
                 Some(Flag(n)) => {
                     a.flags.insert(n, true);
@@ -100,7 +111,10 @@ pub fn parse(specs: &[Spec], argv: &[String]) -> Result<Args, String> {
                         Some(v) => v,
                         None => {
                             i += 1;
-                            argv.get(i).cloned().ok_or(format!("argument --{}: expected one argument", n.replace('_', "-")))?
+                            argv.get(i).cloned().ok_or(format!(
+                                "argument --{}: expected one argument",
+                                n.replace('_', "-")
+                            ))?
                         }
                     };
                     if let Some(Append(_)) = spec {
@@ -120,13 +134,27 @@ pub fn parse(specs: &[Spec], argv: &[String]) -> Result<Args, String> {
         i += 1;
     }
     // Fill positionals in order, leaving enough for those still required after each.
-    let pos: Vec<(&'static str, N)> = specs.iter().filter_map(|s| if let Pos(n, k) = s { Some((*n, *k)) } else { None }).collect();
+    let pos: Vec<(&'static str, N)> = specs
+        .iter()
+        .filter_map(|s| {
+            if let Pos(n, k) = s {
+                Some((*n, *k))
+            } else {
+                None
+            }
+        })
+        .collect();
     let mut rest = &positionals[..];
     for (k, (name, n)) in pos.iter().enumerate() {
-        let need_after: usize = pos[k + 1..].iter().map(|(_, m)| matches!(m, N::One | N::Many) as usize).sum();
+        let need_after: usize = pos[k + 1..]
+            .iter()
+            .map(|(_, m)| matches!(m, N::One | N::Many) as usize)
+            .sum();
         let avail = rest.len().saturating_sub(need_after);
         let take = match n {
-            N::One | N::Many if avail == 0 => return Err(format!("the following arguments are required: {name}")),
+            N::One | N::Many if avail == 0 => {
+                return Err(format!("the following arguments are required: {name}"))
+            }
             N::One => 1,
             N::Opt => avail.min(1),
             N::Any | N::Many => avail,

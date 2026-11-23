@@ -85,18 +85,61 @@ const CHOICES: &[(&str, &[&str])] = &[
 ];
 
 /// The six curated accents (D10).
-pub const SWATCHES: &[(&str, &str)] =
-    &[("red", "8E1B14"), ("brown", "5A3E1B"), ("blue", "1F4E79"), ("green", "2F5D3A"), ("plum", "5B3A6B"), ("graphite", "444444")];
+pub const SWATCHES: &[(&str, &str)] = &[
+    ("red", "8E1B14"),
+    ("brown", "5A3E1B"),
+    ("blue", "1F4E79"),
+    ("green", "2F5D3A"),
+    ("plum", "5B3A6B"),
+    ("graphite", "444444"),
+];
 
 /// The five shipped Looks (D9), in order.
 pub fn shipped() -> Vec<(&'static str, Look)> {
     let d = Look::default();
     vec![
         ("preview", d.clone()),
-        ("classic", Look { name: "Classic".into(), typeface: "literata".into(), accent: "5A3E1B".into(), title: "center".into(), under_title: "rule".into(), ..d.clone() }),
-        ("ink-saver", Look { name: "Ink saver".into(), accent: "444444".into(), size: "small".into(), spacing: "compact".into(), numbers: "plain".into(), ink: "saver".into(), ..d.clone() }),
-        ("large-print", Look { name: "Large print".into(), size: "largest".into(), spacing: "airy".into(), ..d.clone() }),
-        ("modern", Look { name: "Modern".into(), typeface: "inter".into(), accent: "1F4E79".into(), ..d }),
+        (
+            "classic",
+            Look {
+                name: "Classic".into(),
+                typeface: "literata".into(),
+                accent: "5A3E1B".into(),
+                title: "center".into(),
+                under_title: "rule".into(),
+                ..d.clone()
+            },
+        ),
+        (
+            "ink-saver",
+            Look {
+                name: "Ink saver".into(),
+                accent: "444444".into(),
+                size: "small".into(),
+                spacing: "compact".into(),
+                numbers: "plain".into(),
+                ink: "saver".into(),
+                ..d.clone()
+            },
+        ),
+        (
+            "large-print",
+            Look {
+                name: "Large print".into(),
+                size: "largest".into(),
+                spacing: "airy".into(),
+                ..d.clone()
+            },
+        ),
+        (
+            "modern",
+            Look {
+                name: "Modern".into(),
+                typeface: "inter".into(),
+                accent: "1F4E79".into(),
+                ..d
+            },
+        ),
     ]
 }
 
@@ -106,8 +149,16 @@ fn folder(store: &Store) -> PathBuf {
 
 /// A Look's key from a name: lower case, words joined by hyphens.
 pub fn key_of(name: &str) -> String {
-    let k: String = name.trim().to_lowercase().chars().map(|c| if c.is_alphanumeric() { c } else { '-' }).collect();
-    k.split('-').filter(|p| !p.is_empty()).collect::<Vec<_>>().join("-")
+    let k: String = name
+        .trim()
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+        .collect();
+    k.split('-')
+        .filter(|p| !p.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
 }
 
 /// Refuses a value that is not one of a dial's choices, and an accent that is not six hex digits.
@@ -119,7 +170,9 @@ pub fn check(l: &Look) -> Result<()> {
             return Err(bad(format!("{k}: one of {} (not “{got}”).", ok.join(", "))));
         }
     }
-    if !l.accent.is_empty() && !(l.accent.len() == 6 && l.accent.chars().all(|c| c.is_ascii_hexdigit())) {
+    if !l.accent.is_empty()
+        && !(l.accent.len() == 6 && l.accent.chars().all(|c| c.is_ascii_hexdigit()))
+    {
         return Err(bad("accent: six hex digits, such as 8E1B14, or a swatch: red, brown, blue, green, plum, graphite."));
     }
     if !matches!(l.columns, 1 | 2) {
@@ -135,8 +188,14 @@ pub fn get(store: &Store, name: &str) -> Result<Look> {
         return Ok(l);
     }
     let path = folder(store).join(format!("{key}.json"));
-    let text = fs::read_to_string(&path).map_err(|_| bad(format!("No Look called “{name}”. The Looks: {}.", keys(store).join(", "))))?;
-    let l: Look = serde_json::from_str(&text).map_err(|e| bad(format!("{} cannot be read ({e}).", path.display())))?;
+    let text = fs::read_to_string(&path).map_err(|_| {
+        bad(format!(
+            "No Look called “{name}”. The Looks: {}.",
+            keys(store).join(", ")
+        ))
+    })?;
+    let l: Look = serde_json::from_str(&text)
+        .map_err(|e| bad(format!("{} cannot be read ({e}).", path.display())))?;
     check(&l)?;
     Ok(l)
 }
@@ -144,7 +203,15 @@ pub fn get(store: &Store, name: &str) -> Result<Look> {
 fn keys(store: &Store) -> Vec<String> {
     let mut out: Vec<String> = shipped().iter().map(|(k, _)| k.to_string()).collect();
     if let Ok(rd) = fs::read_dir(folder(store)) {
-        let mut own: Vec<String> = rd.flatten().filter_map(|e| e.file_name().to_string_lossy().strip_suffix(".json").map(String::from)).collect();
+        let mut own: Vec<String> = rd
+            .flatten()
+            .filter_map(|e| {
+                e.file_name()
+                    .to_string_lossy()
+                    .strip_suffix(".json")
+                    .map(String::from)
+            })
+            .collect();
         own.sort();
         out.extend(own);
     }
@@ -163,7 +230,11 @@ pub fn list(store: &Store) -> Value {
 /// The Look new documents use (settings/export.json's "look"), preview when none is set.
 pub fn saved(store: &Store) -> String {
     let k = crate::store::s(&store.settings("export"), "look");
-    if k.is_empty() { "preview".into() } else { k }
+    if k.is_empty() {
+        "preview".into()
+    } else {
+        k
+    }
 }
 
 pub fn set_saved(store: &mut Store, name: &str) -> Result<Value> {
@@ -183,7 +254,15 @@ pub fn apply(l: Look, dials: &[(String, String)]) -> Result<Look> {
     let mut v = serde_json::to_value(l).unwrap();
     for (k, val) in dials {
         let k = k.replace('-', "_");
-        let val = if k == "accent" { SWATCHES.iter().find(|(n, _)| *n == val.as_str()).map(|(_, h)| h.to_string()).unwrap_or_else(|| val.trim_start_matches('#').to_uppercase()) } else { val.clone() };
+        let val = if k == "accent" {
+            SWATCHES
+                .iter()
+                .find(|(n, _)| *n == val.as_str())
+                .map(|(_, h)| h.to_string())
+                .unwrap_or_else(|| val.trim_start_matches('#').to_uppercase())
+        } else {
+            val.clone()
+        };
         match k.as_str() {
             "cover" | "running_head" => v[&k] = json!(matches!(val.as_str(), "on" | "true" | "yes")),
             "columns" => v[&k] = json!(val.parse::<u8>().map_err(|_| bad("columns: 1 or 2."))?),
@@ -204,13 +283,18 @@ pub fn save(store: &Store, name: &str, l: &Look) -> Result<Value> {
         return Err(bad("A Look needs a name."));
     }
     if shipped().iter().any(|(k, _)| *k == key) {
-        return Err(bad(format!("“{name}” ships with the app and is kept as it is; save under another name.")));
+        return Err(bad(format!(
+            "“{name}” ships with the app and is kept as it is; save under another name."
+        )));
     }
     let mut l = l.clone();
     l.name = name.trim().to_string();
     check(&l)?;
     fs::create_dir_all(folder(store))?;
-    fs::write(folder(store).join(format!("{key}.json")), serde_json::to_string_pretty(&l).unwrap())?;
+    fs::write(
+        folder(store).join(format!("{key}.json")),
+        serde_json::to_string_pretty(&l).unwrap(),
+    )?;
     Ok(json!({"key": key, "name": l.name, "values": l}))
 }
 
@@ -219,7 +303,9 @@ pub fn delete(store: &Store, name: &str) -> Result<Value> {
     crate::store::guard(&store.root)?;
     let key = key_of(name);
     if shipped().iter().any(|(k, _)| *k == key) {
-        return Err(bad(format!("“{name}” ships with the app and cannot be deleted.")));
+        return Err(bad(format!(
+            "“{name}” ships with the app and cannot be deleted."
+        )));
     }
     let path = folder(store).join(format!("{key}.json"));
     if !path.is_file() {
@@ -267,14 +353,25 @@ impl Look {
         match self.ink.as_str() {
             "black" => "000000".into(),
             "saver" => "444444".into(),
-            _ => readable(if self.accent.is_empty() { theme_accent } else { &self.accent }, "FFFFFF"),
+            _ => readable(
+                if self.accent.is_empty() {
+                    theme_accent
+                } else {
+                    &self.accent
+                },
+                "FFFFFF",
+            ),
         }
     }
 
     /// The accent for rules and fills: the person's own color, unless ink says otherwise.
     pub fn rule_accent(&self, theme_accent: &str) -> Option<String> {
         match self.ink.as_str() {
-            "full" => Some(if self.accent.is_empty() { theme_accent.to_string() } else { self.accent.clone() }),
+            "full" => Some(if self.accent.is_empty() {
+                theme_accent.to_string()
+            } else {
+                self.accent.clone()
+            }),
             _ => None,
         }
     }
@@ -282,7 +379,11 @@ impl Look {
 
 fn channel(c: u8) -> f64 {
     let c = c as f64 / 255.0;
-    if c <= 0.03928 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+    if c <= 0.03928 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
 }
 
 fn rgb(hex: &str) -> (u8, u8, u8) {
@@ -309,7 +410,13 @@ pub fn readable(hex: &str, paper: &str) -> String {
     let mut out = hex.to_uppercase();
     while contrast(&out, paper) < 4.5 && f > 0.0 {
         f -= 0.05;
-        let m = |c: u8| -> u8 { if dark_paper { (c as f64 + (255.0 - c as f64) * (1.0 - f)).round() as u8 } else { (c as f64 * f).round() as u8 } };
+        let m = |c: u8| -> u8 {
+            if dark_paper {
+                (c as f64 + (255.0 - c as f64) * (1.0 - f)).round() as u8
+            } else {
+                (c as f64 * f).round() as u8
+            }
+        };
         out = format!("{:02X}{:02X}{:02X}", m(r), m(g), m(b));
     }
     out
@@ -324,11 +431,17 @@ mod tests {
         for (_, l) in shipped() {
             check(&l).unwrap();
         }
-        let gold = Look { accent: "F2C14E".into(), ..Look::default() };
+        let gold = Look {
+            accent: "F2C14E".into(),
+            ..Look::default()
+        };
         let t = gold.text_accent("8E1B14");
         assert!(contrast(&t, "FFFFFF") >= 4.5, "{t}");
         assert_eq!(gold.rule_accent("8E1B14").as_deref(), Some("F2C14E"));
-        let saver = Look { ink: "saver".into(), ..gold };
+        let saver = Look {
+            ink: "saver".into(),
+            ..gold
+        };
         assert_eq!(saver.text_accent("8E1B14"), "444444");
         assert_eq!(saver.rule_accent("8E1B14"), None);
     }

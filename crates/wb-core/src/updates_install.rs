@@ -21,10 +21,22 @@ pub const NOT_SIGNED: &str = "it was not signed by Bible Workbench.";
 
 /// The line for a download that stopped partway (U-11): "stopped at 31 of 84 MB".
 pub fn stopped_line(version: &str, got: u64, total: u64) -> String {
-    let unit = |n: u64| if total >= 1_000_000 { format!("{}", (n as f64 / 1_000_000.0).floor() as u64) } else { format!("{}", n / 1_000) };
+    let unit = |n: u64| {
+        if total >= 1_000_000 {
+            format!("{}", (n as f64 / 1_000_000.0).floor() as u64)
+        } else {
+            format!("{}", n / 1_000)
+        }
+    };
     let name = if total >= 1_000_000 { "MB" } else { "KB" };
-    let of = if total > 0 { format!("{} of {} {name}", unit(got), unit(total)) } else { format!("{} {name}", unit(got)) };
-    format!("The download of {version} stopped at {of}. Bible Workbench {INSTALLED} works as it is.")
+    let of = if total > 0 {
+        format!("{} of {} {name}", unit(got), unit(total))
+    } else {
+        format!("{} {name}", unit(got))
+    };
+    format!(
+        "The download of {version} stopped at {of}. Bible Workbench {INSTALLED} works as it is."
+    )
 }
 
 /// A download state that has not moved for this long is taken to be a download that died with its program.
@@ -46,7 +58,10 @@ fn platform_key() -> &'static str {
 pub fn parse_platform(text: &str) -> Option<(String, String)> {
     let v: Value = serde_json::from_str(text).ok()?;
     let p = v.get("platforms")?.get(platform_key())?;
-    Some((p.get("url")?.as_str()?.to_string(), p.get("signature")?.as_str()?.trim().to_string()))
+    Some((
+        p.get("url")?.as_str()?.to_string(),
+        p.get("signature")?.as_str()?.trim().to_string(),
+    ))
 }
 
 /// The key updates are signed with: the public half compiled into the program from the release configuration (U-17). A
@@ -56,7 +71,9 @@ fn public_key() -> String {
     let test_release = std::env::var("WB_UPDATE_FEED").is_ok_and(|s| !s.trim().is_empty());
     match std::env::var("WB_UPDATE_PUBKEY") {
         Ok(k) if test_release && !k.trim().is_empty() => k.trim().to_string(),
-        _ => include_str!(concat!(env!("OUT_DIR"), "/update-pubkey.txt")).trim().to_string(),
+        _ => include_str!(concat!(env!("OUT_DIR"), "/update-pubkey.txt"))
+            .trim()
+            .to_string(),
     }
 }
 
@@ -70,9 +87,21 @@ pub fn verify(_: &[u8], _: &str, _: &str) -> bool {
 #[cfg(feature = "updater")]
 pub fn verify(data: &[u8], signature: &str, pubkey: &str) -> bool {
     use base64::Engine;
-    let text = |s: &str| base64::engine::general_purpose::STANDARD.decode(s.trim()).ok().and_then(|b| String::from_utf8(b).ok());
-    let (Some(k), Some(s)) = (text(pubkey), text(signature)) else { return false };
-    let (Ok(key), Ok(sig)) = (minisign_verify::PublicKey::decode(&k), minisign_verify::Signature::decode(&s)) else { return false };
+    let text = |s: &str| {
+        base64::engine::general_purpose::STANDARD
+            .decode(s.trim())
+            .ok()
+            .and_then(|b| String::from_utf8(b).ok())
+    };
+    let (Some(k), Some(s)) = (text(pubkey), text(signature)) else {
+        return false;
+    };
+    let (Ok(key), Ok(sig)) = (
+        minisign_verify::PublicKey::decode(&k),
+        minisign_verify::Signature::decode(&s),
+    ) else {
+        return false;
+    };
     key.verify(data, &sig, true).is_ok()
 }
 
@@ -139,16 +168,33 @@ impl Updates {
     /// The download as it stands: None when there is none. A download that says it is running but has not moved in a
     /// minute died with its program, and is said to have stopped.
     pub fn download(&self) -> Option<Download> {
-        let v: Value = serde_json::from_str(&fs::read_to_string(self.download_file()).ok()?).ok()?;
+        let v: Value =
+            serde_json::from_str(&fs::read_to_string(self.download_file()).ok()?).ok()?;
         let s = |k: &str| v.get(k).and_then(Value::as_str).unwrap_or("").to_string();
         let n = |k: &str| v.get(k).and_then(Value::as_u64).unwrap_or(0);
         // a download of a version that is now the one running (or older) is over
-        if matches!(s("state").as_str(), "ready" | "downloading") && !s("version").is_empty() && !newer_than(&s("version"), INSTALLED) {
+        if matches!(s("state").as_str(), "ready" | "downloading")
+            && !s("version").is_empty()
+            && !newer_than(&s("version"), INSTALLED)
+        {
             return None;
         }
-        let mut d = Download { version: s("version"), state: s("state"), got: n("got"), total: n("total"), message: s("message"), file: s("file"), sig: s("sig"), seen: v.get("seen").and_then(Value::as_bool).unwrap_or(false) };
+        let mut d = Download {
+            version: s("version"),
+            state: s("state"),
+            got: n("got"),
+            total: n("total"),
+            message: s("message"),
+            file: s("file"),
+            sig: s("sig"),
+            seen: v.get("seen").and_then(Value::as_bool).unwrap_or(false),
+        };
         if d.state == "downloading" {
-            let at = v.get("at").and_then(Value::as_str).and_then(|t| DateTime::parse_from_rfc3339(t).ok()).map(|t| t.with_timezone(&Utc));
+            let at = v
+                .get("at")
+                .and_then(Value::as_str)
+                .and_then(|t| DateTime::parse_from_rfc3339(t).ok())
+                .map(|t| t.with_timezone(&Utc));
             if at.is_none_or(|t| (Utc::now() - t).num_seconds() > STALE_SECONDS) {
                 d.state = "stopped".into();
                 d.message = stopped_line(&d.version, d.got, d.total);
@@ -169,7 +215,16 @@ impl Updates {
 
     /// A failure the person had asked for (an install that did not finish): said in the section, with Try again.
     pub(crate) fn put_failure(&self, version: &str, message: &str) {
-        self.put_download(&Download { version: version.into(), state: "stopped".into(), got: 0, total: 0, message: message.into(), file: String::new(), sig: String::new(), seen: false });
+        self.put_download(&Download {
+            version: version.into(),
+            state: "stopped".into(),
+            got: 0,
+            total: 0,
+            message: message.into(),
+            file: String::new(),
+            sig: String::new(),
+            seen: false,
+        });
     }
 
     /// The section was opened: a failure's dot goes.
@@ -200,7 +255,16 @@ impl Updates {
         }
         let version = self.newer().map(|f| f.version).unwrap_or_default();
         let _ = fs::remove_file(self.stop_file());
-        self.put_download(&Download { version, state: "downloading".into(), got: 0, total: 0, message: String::new(), file: String::new(), sig: String::new(), seen: false });
+        self.put_download(&Download {
+            version,
+            state: "downloading".into(),
+            got: 0,
+            total: 0,
+            message: String::new(),
+            file: String::new(),
+            sig: String::new(),
+            seen: false,
+        });
         let me = Updates::new(self.dir());
         std::thread::spawn(move || {
             let _ = me.download_now();
@@ -220,7 +284,16 @@ impl Updates {
 
     fn fetch_installer(&self) -> Result<PathBuf, Fail> {
         let current = self.download().filter(|d| d.state == "downloading");
-        let mut d = current.unwrap_or(Download { version: String::new(), state: "downloading".into(), got: 0, total: 0, message: String::new(), file: String::new(), sig: String::new(), seen: false });
+        let mut d = current.unwrap_or(Download {
+            version: String::new(),
+            state: "downloading".into(),
+            got: 0,
+            total: 0,
+            message: String::new(),
+            file: String::new(),
+            sig: String::new(),
+            seen: false,
+        });
         let _ = fs::remove_file(self.stop_file());
         d.state = "downloading".into();
         d.got = 0;
@@ -246,10 +319,18 @@ impl Updates {
         let found = parse_feed(&text).map_err(Fail::Words)?;
         d.version = found.version.clone();
         if !newer_than(&found.version, INSTALLED) {
-            return Err(refuse(self, &mut d, "it is not newer than the version running."));
+            return Err(refuse(
+                self,
+                &mut d,
+                "it is not newer than the version running.",
+            ));
         }
         let Some((url, signature)) = parse_platform(&text) else {
-            return Err(refuse(self, &mut d, "the release has no installer for this computer."));
+            return Err(refuse(
+                self,
+                &mut d,
+                "the release has no installer for this computer.",
+            ));
         };
         if updates::check_installer_address(&url).is_err() {
             return Err(refuse(self, &mut d, "its address is not HTTPS."));
@@ -305,8 +386,12 @@ impl Updates {
         let mut reader: Box<dyn Read> = if lower.contains("://") && !lower.starts_with("file://") {
             http_reader(url, d)?
         } else {
-            let path = url.strip_prefix("file:///").or_else(|| url.strip_prefix("file://")).unwrap_or(url);
-            let f = fs::File::open(path).map_err(|_| words(stopped_line(&d.version, 0, d.total)))?;
+            let path = url
+                .strip_prefix("file:///")
+                .or_else(|| url.strip_prefix("file://"))
+                .unwrap_or(url);
+            let f =
+                fs::File::open(path).map_err(|_| words(stopped_line(&d.version, 0, d.total)))?;
             d.total = f.metadata().map(|m| m.len()).unwrap_or(d.total);
             Box::new(f)
         };
@@ -339,7 +424,9 @@ impl Updates {
     /// Stop (U-7): a download is given up and its partial file removed; a whole download that is waiting for a restart is
     /// given up too, and its file removed.
     pub fn stop(&self) -> Result<String, String> {
-        let Some(d) = self.download() else { return Ok("There is no download to stop.".into()) };
+        let Some(d) = self.download() else {
+            return Ok("There is no download to stop.".into());
+        };
         if d.state == "downloading" {
             fs::write(self.stop_file(), "stop").map_err(|e| e.to_string())?;
             // the downloader takes the request at its next piece; wait for it to say so
@@ -363,7 +450,9 @@ impl Updates {
     /// installer opens the app again when it is done (Restart now); without it the new version waits for the next opening
     /// (When I close the app). What is run is checked once more: the file must still carry its signature.
     pub fn run_installer(&self, restart: bool) -> Result<String, String> {
-        let (d, path) = self.ready_installer().ok_or("There is no update downloaded yet. Install it first.")?;
+        let (d, path) = self
+            .ready_installer()
+            .ok_or("There is no update downloaded yet. Install it first.")?;
         let bytes = fs::read(&path).map_err(|e| e.to_string())?;
         if !verify(&bytes, &d.sig, &public_key()) {
             self.clear_download();
@@ -406,12 +495,21 @@ impl Updates {
 
 #[cfg(feature = "updater")]
 fn http_reader(url: &str, d: &mut Download) -> Result<Box<dyn std::io::Read>, Fail> {
-    let agent: ureq::Agent = ureq::Agent::config_builder().timeout_global(None).timeout_connect(Some(std::time::Duration::from_secs(15))).build().into();
-    let resp = agent.get(url).call().map_err(|_| words(stopped_line(&d.version, 0, d.total)))?;
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .timeout_global(None)
+        .timeout_connect(Some(std::time::Duration::from_secs(15)))
+        .build()
+        .into();
+    let resp = agent
+        .get(url)
+        .call()
+        .map_err(|_| words(stopped_line(&d.version, 0, d.total)))?;
     if let Some(n) = resp.body().content_length() {
         d.total = n;
     }
-    Ok(Box::new(resp.into_body().into_with_config().limit(u64::MAX).reader()))
+    Ok(Box::new(
+        resp.into_body().into_with_config().limit(u64::MAX).reader(),
+    ))
 }
 
 #[cfg(not(feature = "updater"))]
@@ -423,7 +521,9 @@ fn http_reader(_: &str, _: &mut Download) -> Result<Box<dyn std::io::Read>, Fail
 pub fn app_dir() -> Option<PathBuf> {
     match std::env::var("WB_APP_DIR") {
         Ok(p) if !p.trim().is_empty() => Some(PathBuf::from(p)),
-        _ => std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())),
+        _ => std::env::current_exe()
+            .ok()
+            .and_then(|e| e.parent().map(|p| p.to_path_buf())),
     }
 }
 
@@ -433,7 +533,11 @@ pub fn back_refusal(installed_notes: &str, before: &str) -> Option<String> {
     if p.study_unchanged() {
         return None;
     }
-    let line = if p.study.is_empty() { "says nothing about it".to_string() } else { format!("say “{}”", p.study.join(" ")) };
+    let line = if p.study.is_empty() {
+        "says nothing about it".to_string()
+    } else {
+        format!("say “{}”", p.study.join(" "))
+    };
     Some(format!("Going back to {before} is not offered: the notes of Bible Workbench {INSTALLED} {line}, so your study folder may have been moved forward."))
 }
 
@@ -453,7 +557,9 @@ impl Updates {
         if use_bundle() && bundle.is_none() {
             return;
         }
-        let Some(app) = bundle.clone().or_else(app_dir) else { return };
+        let Some(app) = bundle.clone().or_else(app_dir) else {
+            return;
+        };
         let kept = (|| -> std::io::Result<()> {
             fs::create_dir_all(&files)?;
             if let Some(b) = &bundle {
@@ -475,9 +581,14 @@ impl Updates {
 
     /// The version kept before, if one is.
     pub fn before(&self) -> Option<String> {
-        let v: Value = serde_json::from_str(&fs::read_to_string(self.before_dir().join("before.json")).ok()?).ok()?;
+        let v: Value =
+            serde_json::from_str(&fs::read_to_string(self.before_dir().join("before.json")).ok()?)
+                .ok()?;
         let version = v.get("version")?.as_str()?.to_string();
-        (self.before_dir().join(&version).is_dir() && !updates::version_parts(&version).is_none() && version != INSTALLED).then_some(version)
+        (self.before_dir().join(&version).is_dir()
+            && !updates::version_parts(&version).is_none()
+            && version != INSTALLED)
+            .then_some(version)
     }
 
     /// Whether Go back is offered, and if not, why (U-13). Ok(version) when it is.
@@ -485,7 +596,11 @@ impl Updates {
         if !updates::updates_itself() {
             return Err(updates::source_line());
         }
-        let Some(v) = self.before() else { return Err("There is no earlier version kept. Going back is offered after an update.".into()) };
+        let Some(v) = self.before() else {
+            return Err(
+                "There is no earlier version kept. Going back is offered after an update.".into(),
+            );
+        };
         match back_refusal(crate::updates_notes::installed_notes(), &v) {
             Some(why) => Err(why),
             None => Ok(v),
@@ -500,7 +615,10 @@ impl Updates {
         if use_bundle() {
             let bundle = app_bundle().ok_or("The app the program runs from is not known.")?;
             let kept = find_app(&from).ok_or_else(|| format!("Bible Workbench {v} could not be put back (the kept app is missing). Nothing was changed."))?;
-            let stage = bundle.parent().unwrap_or(&bundle).join(format!(".wb-back-{}", std::process::id()));
+            let stage = bundle
+                .parent()
+                .unwrap_or(&bundle)
+                .join(format!(".wb-back-{}", std::process::id()));
             let _ = fs::remove_dir_all(&stage);
             let put = (|| -> Result<(), String> {
                 fs::create_dir_all(&stage).map_err(|e| e.to_string())?;
@@ -509,9 +627,13 @@ impl Updates {
                 swap_bundle(&bundle, &copy)
             })();
             let _ = fs::remove_dir_all(&stage);
-            put.map_err(|e| format!("Bible Workbench {v} could not be put back ({e}). Nothing was changed."))?;
+            put.map_err(|e| {
+                format!("Bible Workbench {v} could not be put back ({e}). Nothing was changed.")
+            })?;
             self.forget_update();
-            return Ok(format!("Bible Workbench {v} is back. It opens when the app is started again."));
+            return Ok(format!(
+                "Bible Workbench {v} is back. It opens when the app is started again."
+            ));
         }
         let app = app_dir().ok_or("The folder the program runs from is not known.")?;
         for e in fs::read_dir(&from).map_err(|e| e.to_string())? {
@@ -521,12 +643,17 @@ impl Updates {
                 // a program that is running cannot be written over, but it can be renamed out of the way
                 let aside = app.join(format!("{}.old", e.file_name().to_string_lossy()));
                 let _ = fs::remove_file(&aside);
-                fs::rename(&to, &aside).map_err(|e| format!("Bible Workbench {v} could not be put back ({e}). Nothing was changed."))?;
-                fs::copy(e.path(), &to).map_err(|e| format!("Bible Workbench {v} could not be put back ({e})."))?;
+                fs::rename(&to, &aside).map_err(|e| {
+                    format!("Bible Workbench {v} could not be put back ({e}). Nothing was changed.")
+                })?;
+                fs::copy(e.path(), &to)
+                    .map_err(|e| format!("Bible Workbench {v} could not be put back ({e})."))?;
             }
         }
         self.forget_update();
-        Ok(format!("Bible Workbench {v} is back. It opens when the app is started again."))
+        Ok(format!(
+            "Bible Workbench {v} is back. It opens when the app is started again."
+        ))
     }
 
     /// After going back the update is not the one running, and the version kept is used up.
@@ -551,8 +678,17 @@ impl Updates {
 
 /// The file name the installer is kept under: the last piece of its address.
 fn installer_name(url: &str, version: &str) -> String {
-    let last = url.split(['?', '#']).next().unwrap_or("").rsplit(['/', '\\']).next().unwrap_or("");
-    let clean: String = last.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_')).collect();
+    let last = url
+        .split(['?', '#'])
+        .next()
+        .unwrap_or("")
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or("");
+    let clean: String = last
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+        .collect();
     if clean.is_empty() || clean.starts_with('.') {
         format!("update-{version}")
     } else {
@@ -567,29 +703,46 @@ fn spawn_installer(path: &std::path::Path, restart: bool) -> Result<(), String> 
     if restart {
         args.push("/R");
     }
-    std::process::Command::new(path).args(args).spawn().map(|_| ()).map_err(|e| refused_line(&format!("the installer could not be started ({e}).")))
+    std::process::Command::new(path)
+        .args(args)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| refused_line(&format!("the installer could not be started ({e}).")))
 }
 
 #[cfg(not(windows))]
 fn spawn_installer(path: &std::path::Path, restart: bool) -> Result<(), String> {
     if cfg!(test) || std::env::var("WB_UPDATE_FEED").is_ok() {
         // a test release carries a script
-        std::process::Command::new("sh").arg(path).arg(if restart { "/R" } else { "/P" }).spawn().map(|_| ()).map_err(|e| refused_line(&format!("the installer could not be started ({e}).")))
+        std::process::Command::new("sh")
+            .arg(path)
+            .arg(if restart { "/R" } else { "/P" })
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| refused_line(&format!("the installer could not be started ({e}).")))
     } else if cfg!(target_os = "macos") {
-        let bundle = app_bundle().ok_or_else(|| refused_line("the app it would replace could not be found."))?;
-        install_bundle(path, &bundle).map_err(|e| refused_line(&format!("{e} Nothing was changed.")))?;
+        let bundle = app_bundle()
+            .ok_or_else(|| refused_line("the app it would replace could not be found."))?;
+        install_bundle(path, &bundle)
+            .map_err(|e| refused_line(&format!("{e} Nothing was changed.")))?;
         if restart {
             relaunch(&bundle);
         }
         Ok(())
     } else {
-        Err(refused_line("installing from the window is built for Windows and Mac only."))
+        Err(refused_line(
+            "installing from the window is built for Windows and Mac only.",
+        ))
     }
 }
 
 /// Opens the app at `bundle` again, a moment after this one has left (`open -n` starts a new instance).
 pub fn relaunch(bundle: &std::path::Path) {
-    let _ = std::process::Command::new("sh").arg("-c").arg("sleep 2; exec open -n \"$0\"").arg(bundle).spawn();
+    let _ = std::process::Command::new("sh")
+        .arg("-c")
+        .arg("sleep 2; exec open -n \"$0\"")
+        .arg(bundle)
+        .spawn();
 }
 
 /// Whether the program is replaced as a whole `.app` bundle (a Mac) rather than as files in a folder.
@@ -602,7 +755,9 @@ pub fn bundle_of(exe: &std::path::Path) -> Option<PathBuf> {
     let macos = exe.parent()?;
     let contents = macos.parent()?;
     let app = contents.parent()?;
-    let is = macos.file_name()? == "MacOS" && contents.file_name()? == "Contents" && app.extension().is_some_and(|e| e == "app");
+    let is = macos.file_name()? == "MacOS"
+        && contents.file_name()? == "Contents"
+        && app.extension().is_some_and(|e| e == "app");
     is.then(|| app.to_path_buf())
 }
 
@@ -616,7 +771,11 @@ pub fn app_bundle() -> Option<PathBuf> {
 
 /// The one `.app` folder directly inside `dir`.
 fn find_app(dir: &std::path::Path) -> Option<PathBuf> {
-    fs::read_dir(dir).ok()?.flatten().map(|e| e.path()).find(|p| p.is_dir() && p.extension().is_some_and(|e| e == "app"))
+    fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .map(|e| e.path())
+        .find(|p| p.is_dir() && p.extension().is_some_and(|e| e == "app"))
 }
 
 /// A folder copied whole, links kept as links and file modes kept.
@@ -641,12 +800,17 @@ fn copy_tree(from: &std::path::Path, to: &std::path::Path) -> std::io::Result<()
 }
 
 /// The signed `.app.tar.gz` unpacked into `dest` (new or empty); the `.app` folder it holds.
-pub fn extract_bundle(archive: &std::path::Path, dest: &std::path::Path) -> Result<PathBuf, String> {
-    let file = fs::File::open(archive).map_err(|e| format!("The download could not be read ({e})."))?;
+pub fn extract_bundle(
+    archive: &std::path::Path,
+    dest: &std::path::Path,
+) -> Result<PathBuf, String> {
+    let file =
+        fs::File::open(archive).map_err(|e| format!("The download could not be read ({e})."))?;
     fs::create_dir_all(dest).map_err(|e| e.to_string())?;
     let mut tar = tar::Archive::new(flate2::read::GzDecoder::new(file));
     tar.set_preserve_permissions(true);
-    tar.unpack(dest).map_err(|e| format!("The download could not be unpacked ({e})."))?;
+    tar.unpack(dest)
+        .map_err(|e| format!("The download could not be unpacked ({e})."))?;
     find_app(dest).ok_or_else(|| "The download holds no app.".to_string())
 }
 
@@ -675,7 +839,9 @@ pub fn install_bundle(archive: &std::path::Path, bundle: &std::path::Path) -> Re
     let _ = fs::remove_dir_all(&stage);
     let r = extract_bundle(archive, &stage).and_then(|new| {
         // under the bundle's own name, so the app is found where it was
-        let named = stage.join("next").join(bundle.file_name().unwrap_or_default());
+        let named = stage
+            .join("next")
+            .join(bundle.file_name().unwrap_or_default());
         fs::create_dir_all(named.parent().unwrap()).map_err(|e| e.to_string())?;
         fs::rename(&new, &named).map_err(|e| e.to_string())?;
         swap_bundle(bundle, &named)
@@ -691,9 +857,21 @@ mod tests {
     /// U-13: going back is offered only when the release's own words say nothing in the study folder changed.
     #[test]
     fn going_back_is_not_offered_when_the_notes_say_the_study_folder_changed() {
-        assert!(back_refusal("## Your study folder\nNothing changes in your study folder.", "0.2.4").is_none());
-        let why = back_refusal("## Your study folder\nYour pages are moved into a new form.", "0.2.4").unwrap();
-        assert!(why.starts_with("Going back to 0.2.4 is not offered") && why.contains("moved into a new form"), "{why}");
+        assert!(back_refusal(
+            "## Your study folder\nNothing changes in your study folder.",
+            "0.2.4"
+        )
+        .is_none());
+        let why = back_refusal(
+            "## Your study folder\nYour pages are moved into a new form.",
+            "0.2.4",
+        )
+        .unwrap();
+        assert!(
+            why.starts_with("Going back to 0.2.4 is not offered")
+                && why.contains("moved into a new form"),
+            "{why}"
+        );
         // no line at all is not a promise that nothing changed
         assert!(back_refusal("## New\n- x", "0.2.4").is_some());
         assert!(back_refusal("## Your study folder\nNothing is moved forward, nothing changes... but moved forward later", "0.2.4").is_some());
@@ -708,7 +886,10 @@ mod tests {
     }
 
     fn make_archive(path: &std::path::Path, app: &std::path::Path) {
-        let enc = flate2::write::GzEncoder::new(fs::File::create(path).unwrap(), flate2::Compression::default());
+        let enc = flate2::write::GzEncoder::new(
+            fs::File::create(path).unwrap(),
+            flate2::Compression::default(),
+        );
         let mut b = tar::Builder::new(enc);
         b.append_dir_all(app.file_name().unwrap(), app).unwrap();
         b.into_inner().unwrap().finish().unwrap();
@@ -716,10 +897,17 @@ mod tests {
 
     #[test]
     fn the_bundle_is_found_from_the_running_program() {
-        let exe = std::path::Path::new("/Applications/Wordbench.app/Contents/MacOS/bible-workbench");
-        assert_eq!(bundle_of(exe).unwrap(), std::path::Path::new("/Applications/Wordbench.app"));
+        let exe =
+            std::path::Path::new("/Applications/Wordbench.app/Contents/MacOS/bible-workbench");
+        assert_eq!(
+            bundle_of(exe).unwrap(),
+            std::path::Path::new("/Applications/Wordbench.app")
+        );
         assert!(bundle_of(std::path::Path::new("/usr/local/bin/bible-workbench")).is_none());
-        assert!(bundle_of(std::path::Path::new("/x/Wordbench/Contents/MacOS/bible-workbench")).is_none());
+        assert!(bundle_of(std::path::Path::new(
+            "/x/Wordbench/Contents/MacOS/bible-workbench"
+        ))
+        .is_none());
         assert!(bundle_of(std::path::Path::new("C:/prog/bible-workbench.exe")).is_none());
     }
 
@@ -732,11 +920,28 @@ mod tests {
         make_archive(&archive, &new);
         let old = make_app(t.path(), "Wordbench.app", "old");
         install_bundle(&archive, &old).unwrap();
-        assert_eq!(fs::read_to_string(old.join("Contents/MacOS/bible-workbench")).unwrap(), "new");
-        let left: Vec<_> = fs::read_dir(t.path()).unwrap().flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect();
-        assert!(left.iter().all(|n| n == "Wordbench.app" || n == "update.app.tar.gz"), "{left:?}");
+        assert_eq!(
+            fs::read_to_string(old.join("Contents/MacOS/bible-workbench")).unwrap(),
+            "new"
+        );
+        let left: Vec<_> = fs::read_dir(t.path())
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        assert!(
+            left.iter()
+                .all(|n| n == "Wordbench.app" || n == "update.app.tar.gz"),
+            "{left:?}"
+        );
         let out = tempfile::tempdir().unwrap();
-        assert_eq!(extract_bundle(&archive, out.path()).unwrap().file_name().unwrap(), "Wordbench.app");
+        assert_eq!(
+            extract_bundle(&archive, out.path())
+                .unwrap()
+                .file_name()
+                .unwrap(),
+            "Wordbench.app"
+        );
     }
 
     #[test]
@@ -746,13 +951,22 @@ mod tests {
         let missing = t.path().join("next/Wordbench.app");
         let why = swap_bundle(&old, &missing).unwrap_err();
         assert!(why.contains("put back"), "{why}");
-        assert_eq!(fs::read_to_string(old.join("Contents/MacOS/bible-workbench")).unwrap(), "old");
+        assert_eq!(
+            fs::read_to_string(old.join("Contents/MacOS/bible-workbench")).unwrap(),
+            "old"
+        );
         // a download that is not an archive changes nothing
         let bad = t.path().join("bad.app.tar.gz");
         fs::write(&bad, "not an archive").unwrap();
         assert!(install_bundle(&bad, &old).is_err());
-        assert_eq!(fs::read_to_string(old.join("Contents/MacOS/bible-workbench")).unwrap(), "old");
-        assert!(fs::read_dir(t.path()).unwrap().flatten().all(|e| !e.file_name().to_string_lossy().starts_with(".wb-update")));
+        assert_eq!(
+            fs::read_to_string(old.join("Contents/MacOS/bible-workbench")).unwrap(),
+            "old"
+        );
+        assert!(fs::read_dir(t.path())
+            .unwrap()
+            .flatten()
+            .all(|e| !e.file_name().to_string_lossy().starts_with(".wb-update")));
     }
 
     #[test]
@@ -766,12 +980,18 @@ mod tests {
         let copy = t.path().join("stage/Wordbench.app");
         copy_tree(&kept, &copy).unwrap();
         swap_bundle(&old, &copy).unwrap();
-        assert_eq!(fs::read_to_string(old.join("Contents/Info.plist")).unwrap(), "old");
+        assert_eq!(
+            fs::read_to_string(old.join("Contents/Info.plist")).unwrap(),
+            "old"
+        );
     }
 
     #[test]
     fn a_stopped_download_is_said_in_megabytes() {
         let s = stopped_line("0.3.0", 31_000_000, 84_000_000);
-        assert!(s.starts_with("The download of 0.3.0 stopped at 31 of 84 MB. Bible Workbench "), "{s}");
+        assert!(
+            s.starts_with("The download of 0.3.0 stopped at 31 of 84 MB. Bible Workbench "),
+            "{s}"
+        );
     }
 }

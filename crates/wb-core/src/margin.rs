@@ -58,7 +58,11 @@ impl At {
 
     fn parse(t: &str) -> Option<At> {
         let (code, rest) = t.trim().split_once('.')?;
-        if code.len() != 3 || !code.bytes().all(|b| b.is_ascii_uppercase() || b.is_ascii_digit()) {
+        if code.len() != 3
+            || !code
+                .bytes()
+                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
+        {
             return None;
         }
         let (c, vs) = match rest.split_once(':') {
@@ -79,7 +83,12 @@ impl At {
         if c == 0 || (v1 != 0 && v1 > v2) || (vs.is_some() && v1 == 0) {
             return None;
         }
-        Some(At { code: code.into(), c, v1, v2 })
+        Some(At {
+            code: code.into(),
+            c,
+            v1,
+            v2,
+        })
     }
 
     pub fn kind(&self) -> &'static str {
@@ -94,7 +103,13 @@ impl At {
 
     pub fn label(&self, bible: &Bible) -> String {
         match bible.books().iter().find(|b| b.code == self.code) {
-            Some(b) => span_label(&Span { book: b.clone(), c1: self.c, v1: self.v1, c2: self.c, v2: self.v2 }),
+            Some(b) => span_label(&Span {
+                book: b.clone(),
+                c1: self.c,
+                v1: self.v1,
+                c2: self.c,
+                v2: self.v2,
+            }),
             None => self.id(),
         }
     }
@@ -117,13 +132,31 @@ impl At {
                 if sp.c1 != sp.c2 {
                     return Err(bad("A margin note is on a verse, a span of verses in one chapter, or a chapter (Num 25:11, Num 25:10-13, Num 25). A span across chapters is not kept."));
                 }
-                let (v1, v2) = if sp.v1 == 0 { (0, 0) } else { (sp.v1, if sp.v2 == 0 { sp.v1 } else { sp.v2 }) };
-                At { code: sp.book.code.clone(), c: sp.c1, v1, v2 }
+                let (v1, v2) = if sp.v1 == 0 {
+                    (0, 0)
+                } else {
+                    (sp.v1, if sp.v2 == 0 { sp.v1 } else { sp.v2 })
+                };
+                At {
+                    code: sp.book.code.clone(),
+                    c: sp.c1,
+                    v1,
+                    v2,
+                }
             }
         };
-        let book = bible.books().iter().find(|b| b.code == a.code).ok_or_else(|| bad(format!("No book {}.", a.code)))?;
+        let book = bible
+            .books()
+            .iter()
+            .find(|b| b.code == a.code)
+            .ok_or_else(|| bad(format!("No book {}.", a.code)))?;
         if a.c > book.chapters {
-            return Err(bad(format!("{} has {} chapter{}.", book.name, book.chapters, if book.chapters == 1 { "" } else { "s" })));
+            return Err(bad(format!(
+                "{} has {} chapter{}.",
+                book.name,
+                book.chapters,
+                if book.chapters == 1 { "" } else { "s" }
+            )));
         }
         if a.v1 != 0 {
             let last = bible.last_verse(&a.code, a.c)?;
@@ -151,7 +184,12 @@ pub struct Note {
 
 impl Note {
     fn render(&self, bible: &Bible) -> String {
-        let mut marker = format!("{MARKER}id={} at={} created={}", self.id, self.at.id(), self.created);
+        let mut marker = format!(
+            "{MARKER}id={} at={} created={}",
+            self.id,
+            self.at.id(),
+            self.created
+        );
         if !self.changed.is_empty() {
             marker += &format!(" changed={}", self.changed);
         }
@@ -161,7 +199,11 @@ impl Note {
         if !self.words.is_empty() {
             marker += &format!(" words={}", json!(self.words));
         }
-        format!("## {}\n{marker} -->\n{}\n", self.at.label(bible), self.text.trim_matches('\n'))
+        format!(
+            "## {}\n{marker} -->\n{}\n",
+            self.at.label(bible),
+            self.text.trim_matches('\n')
+        )
     }
 }
 
@@ -170,26 +212,48 @@ fn file(root: &Path, code: &str, chapter: u32) -> PathBuf {
 }
 
 fn parse_marker(line: &str) -> Option<Note> {
-    let inner = line.trim().strip_prefix(MARKER)?.strip_suffix("-->")?.trim();
+    let inner = line
+        .trim()
+        .strip_prefix(MARKER)?
+        .strip_suffix("-->")?
+        .trim();
     let (head, words) = match inner.split_once(" words=") {
-        Some((h, w)) => (h, serde_json::from_str::<String>(w.trim()).unwrap_or_default()),
+        Some((h, w)) => (
+            h,
+            serde_json::from_str::<String>(w.trim()).unwrap_or_default(),
+        ),
         None => (inner, String::new()),
     };
-    let (mut id, mut at, mut created, mut changed, mut grew) = (String::new(), None, String::new(), String::new(), vec![]);
+    let (mut id, mut at, mut created, mut changed, mut grew) =
+        (String::new(), None, String::new(), String::new(), vec![]);
     for t in head.split_whitespace() {
         match t.split_once('=') {
             Some(("id", v)) => id = v.into(),
             Some(("at", v)) => at = At::parse(v),
             Some(("created" | "written", v)) => created = v.into(),
             Some(("changed", v)) => changed = v.into(),
-            Some(("grew", v)) => grew = v.split(',').filter(|x| !x.is_empty()).map(String::from).collect(),
+            Some(("grew", v)) => {
+                grew = v
+                    .split(',')
+                    .filter(|x| !x.is_empty())
+                    .map(String::from)
+                    .collect()
+            }
             _ => {}
         }
     }
     if id.is_empty() {
         return None;
     }
-    Some(Note { id, at: at?, text: String::new(), created, changed, grew, words })
+    Some(Note {
+        id,
+        at: at?,
+        text: String::new(),
+        created,
+        changed,
+        grew,
+        words,
+    })
 }
 
 /// A chapter file as a person may have left it: the text above the first note (after the front matter and the title) is the
@@ -198,16 +262,28 @@ fn parse_marker(line: &str) -> Option<Note> {
 fn parse_full(text: &str) -> (String, Vec<Note>) {
     let text = text.replace("\r\n", "\n");
     let lines: Vec<&str> = text.lines().collect();
-    let marks: Vec<usize> = (0..lines.len()).filter(|&i| lines[i].trim_start().starts_with(MARKER) && parse_marker(lines[i]).is_some()).collect();
+    let marks: Vec<usize> = (0..lines.len())
+        .filter(|&i| lines[i].trim_start().starts_with(MARKER) && parse_marker(lines[i]).is_some())
+        .collect();
     let heading_of = |i: usize| i > 0 && lines[i - 1].starts_with("## ");
     let mut out = vec![];
     for (k, &i) in marks.iter().enumerate() {
         let mut n = parse_marker(lines[i]).unwrap();
-        let end = marks.get(k + 1).map(|&m| if heading_of(m) { m - 1 } else { m }).unwrap_or(lines.len());
-        n.text = lines[i + 1..end.max(i + 1)].join("\n").trim_matches('\n').trim_end().to_string();
+        let end = marks
+            .get(k + 1)
+            .map(|&m| if heading_of(m) { m - 1 } else { m })
+            .unwrap_or(lines.len());
+        n.text = lines[i + 1..end.max(i + 1)]
+            .join("\n")
+            .trim_matches('\n')
+            .trim_end()
+            .to_string();
         out.push(n);
     }
-    let top = marks.first().map(|&i| if heading_of(i) { i - 1 } else { i }).unwrap_or(lines.len());
+    let top = marks
+        .first()
+        .map(|&i| if heading_of(i) { i - 1 } else { i })
+        .unwrap_or(lines.len());
     let mut head: Vec<&str> = lines[..top].to_vec();
     if head.first().is_some_and(|l| l.trim() == "---") {
         if let Some(close) = head.iter().skip(1).position(|l| l.trim() == "---") {
@@ -219,7 +295,10 @@ fn parse_full(text: &str) -> (String, Vec<Note>) {
             head.remove(t);
         }
     }
-    (head.join("\n").trim_matches('\n').trim_end().to_string(), out)
+    (
+        head.join("\n").trim_matches('\n').trim_end().to_string(),
+        out,
+    )
 }
 
 /// A chapter file's text. Only a file that is not there is empty: one that cannot be read is an error and nothing is written over it.
@@ -232,7 +311,13 @@ fn read_text(p: &Path) -> Result<String> {
 }
 
 /// Change one chapter's file: read its text, let `f` change the notes, write the result whole and atomically.
-fn update_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, f: &mut dyn FnMut(&mut Vec<Note>) -> Result<()>) -> Result<()> {
+fn update_chapter(
+    bible: &Bible,
+    root: &Path,
+    code: &str,
+    chapter: u32,
+    f: &mut dyn FnMut(&mut Vec<Note>) -> Result<()>,
+) -> Result<()> {
     guard(root)?;
     let p = file(root, code, chapter);
     let (preface, mut notes) = parse_full(&read_text(&p)?);
@@ -243,9 +328,17 @@ fn update_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, f: &mut 
         }
         return Ok(());
     }
-    notes.sort_by(|a, b| (a.at.v1, a.at.v2, &a.created, &a.id).cmp(&(b.at.v1, b.at.v2, &b.created, &b.id)));
-    let name = bible.books().iter().find(|b| b.code == code).map(|b| b.name.clone()).unwrap_or_else(|| code.into());
-    let mut out = format!("---\nbook: \"{code}\"\nchapter: {chapter}\n---\n\n# {name} {chapter}\n\n");
+    notes.sort_by(|a, b| {
+        (a.at.v1, a.at.v2, &a.created, &a.id).cmp(&(b.at.v1, b.at.v2, &b.created, &b.id))
+    });
+    let name = bible
+        .books()
+        .iter()
+        .find(|b| b.code == code)
+        .map(|b| b.name.clone())
+        .unwrap_or_else(|| code.into());
+    let mut out =
+        format!("---\nbook: \"{code}\"\nchapter: {chapter}\n---\n\n# {name} {chapter}\n\n");
     if !preface.is_empty() {
         out += &format!("{preface}\n\n");
     }
@@ -259,12 +352,21 @@ fn update_chapter(bible: &Bible, root: &Path, code: &str, chapter: u32, f: &mut 
 /// Every chapter file: (book code, chapter, path).
 fn chapter_files(root: &Path) -> Vec<(String, u32, PathBuf)> {
     let mut out = vec![];
-    let Ok(rd) = std::fs::read_dir(root.join("margin")) else { return out };
+    let Ok(rd) = std::fs::read_dir(root.join("margin")) else {
+        return out;
+    };
     for b in rd.flatten() {
         let code = b.file_name().to_string_lossy().into_owned();
-        let Ok(files) = std::fs::read_dir(b.path()) else { continue };
+        let Ok(files) = std::fs::read_dir(b.path()) else {
+            continue;
+        };
         for f in files.flatten() {
-            if let Some(ch) = f.file_name().to_string_lossy().strip_suffix(".md").and_then(|n| n.parse::<u32>().ok()) {
+            if let Some(ch) = f
+                .file_name()
+                .to_string_lossy()
+                .strip_suffix(".md")
+                .and_then(|n| n.parse::<u32>().ok())
+            {
                 out.push((code.clone(), ch, f.path()));
             }
         }
@@ -273,19 +375,31 @@ fn chapter_files(root: &Path) -> Vec<(String, u32, PathBuf)> {
 }
 
 fn book_order(bible: &Bible, code: &str) -> u32 {
-    bible.books().iter().find(|b| b.code == code).map(|b| b.id).unwrap_or(999)
+    bible
+        .books()
+        .iter()
+        .find(|b| b.code == code)
+        .map(|b| b.id)
+        .unwrap_or(999)
 }
 
 /// Every margin note, in the Bible's order (a file that cannot be read is left out here and never written).
 pub fn all(bible: &Bible, store: &Store) -> Vec<Note> {
     let mut files = chapter_files(&store.root);
     files.sort_by_key(|(c, ch, _)| (book_order(bible, c), *ch));
-    files.into_iter().filter_map(|(_, _, p)| std::fs::read_to_string(p).ok()).flat_map(|t| parse_full(&t).1).collect()
+    files
+        .into_iter()
+        .filter_map(|(_, _, p)| std::fs::read_to_string(p).ok())
+        .flat_map(|t| parse_full(&t).1)
+        .collect()
 }
 
 fn find(bible: &Bible, store: &Store, id: &str) -> Result<Note> {
     let id = id.trim();
-    all(bible, store).into_iter().find(|n| n.id == id).ok_or_else(|| missing(format!("No margin note {id}.")))
+    all(bible, store)
+        .into_iter()
+        .find(|n| n.id == id)
+        .ok_or_else(|| missing(format!("No margin note {id}.")))
 }
 
 /// Whether a margin note has this id.
@@ -296,7 +410,12 @@ pub fn has(bible: &Bible, store: &Store, id: &str) -> bool {
 /// `m_`, the second, its millisecond (so notes of one second keep the order they were written), two random bytes.
 fn stamped_id() -> String {
     let base = new_id("m");
-    format!("{}{:03}{}", &base[..16], chrono::Utc::now().timestamp_subsec_millis(), &base[16..])
+    format!(
+        "{}{:03}{}",
+        &base[..16],
+        chrono::Utc::now().timestamp_subsec_millis(),
+        &base[16..]
+    )
 }
 
 fn today() -> String {
@@ -311,7 +430,9 @@ fn check_text(text: &str) -> Result<()> {
     for l in text.lines() {
         let t = l.trim_start();
         if t.starts_with(MARKER) {
-            return Err(bad("A margin note cannot hold a line that starts with <!-- margin."));
+            return Err(bad(
+                "A margin note cannot hold a line that starts with <!-- margin.",
+            ));
         }
         let hashes = t.bytes().take_while(|b| *b == b'#').count();
         if ((1..=6).contains(&hashes) && t[hashes..].starts_with([' ', '\t'])) || t == "#" {
@@ -345,7 +466,15 @@ fn note_json(bible: &Bible, store: &Store, n: &Note) -> Value {
 pub fn add(bible: &Bible, store: &Store, place: &str, text: &str) -> Result<Value> {
     check_text(text)?;
     let at = At::from_place(bible, place)?;
-    let note = Note { id: stamped_id(), at: at.clone(), text: text.trim_matches('\n').to_string(), created: today(), changed: String::new(), grew: vec![], words: String::new() };
+    let note = Note {
+        id: stamped_id(),
+        at: at.clone(),
+        text: text.trim_matches('\n').to_string(),
+        created: today(),
+        changed: String::new(),
+        grew: vec![],
+        words: String::new(),
+    };
     update_chapter(bible, &store.root, &at.code, at.c, &mut |notes| {
         notes.push(note.clone());
         Ok(())
@@ -353,15 +482,29 @@ pub fn add(bible: &Bible, store: &Store, place: &str, text: &str) -> Result<Valu
     Ok(note_json(bible, store, &note))
 }
 
-fn change(bible: &Bible, store: &Store, id: &str, f: impl Fn(&mut Note) -> Result<()>) -> Result<Value> {
+fn change(
+    bible: &Bible,
+    store: &Store,
+    id: &str,
+    f: impl Fn(&mut Note) -> Result<()>,
+) -> Result<Value> {
     let found = find(bible, store, id)?;
     let mut after: Option<Note> = None;
-    update_chapter(bible, &store.root, &found.at.code, found.at.c, &mut |notes| {
-        let n = notes.iter_mut().find(|n| n.id == found.id).ok_or_else(|| missing("That note is gone."))?;
-        f(n)?;
-        after = Some(n.clone());
-        Ok(())
-    })?;
+    update_chapter(
+        bible,
+        &store.root,
+        &found.at.code,
+        found.at.c,
+        &mut |notes| {
+            let n = notes
+                .iter_mut()
+                .find(|n| n.id == found.id)
+                .ok_or_else(|| missing("That note is gone."))?;
+            f(n)?;
+            after = Some(n.clone());
+            Ok(())
+        },
+    )?;
     let after = after.ok_or_else(|| missing("That note is gone."))?;
     Ok(note_json(bible, store, &after))
 }
@@ -380,8 +523,19 @@ pub fn edit(bible: &Bible, store: &Store, id: &str, text: &str) -> Result<Value>
 /// stays in the margin and gains `grew=<page id>`, which shows as its "grew into" link.
 pub fn grow(bible: &Bible, store: &mut Store, id: &str, title: Option<&str>) -> Result<Value> {
     let n = find(bible, store, id)?;
-    let t = title.map(str::trim).filter(|t| !t.is_empty()).map(String::from).unwrap_or_else(|| n.at.label(bible));
-    let page = crate::pages::new_page(bible, store, None, &format!("{t}\n\n{}", n.text), false, None)?;
+    let t = title
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+        .map(String::from)
+        .unwrap_or_else(|| n.at.label(bible));
+    let page = crate::pages::new_page(
+        bible,
+        store,
+        None,
+        &format!("{t}\n\n{}", n.text),
+        false,
+        None,
+    )?;
     let pid = page["id"].as_str().unwrap_or("").to_string();
     let note = change(bible, store, &n.id, |x| {
         if !x.grew.contains(&pid) {
@@ -398,35 +552,58 @@ pub fn grow(bible: &Bible, store: &mut Store, id: &str, title: Option<&str>) -> 
 pub fn is_trash_file(name: &str) -> bool {
     chrono::NaiveDateTime::parse_from_str(name.get(..15).unwrap_or(""), "%Y%m%d-%H%M%S").is_ok()
         && name.get(15..16) == Some("-")
-        && name.get(16..).is_some_and(|r| r.starts_with("m_") && r.ends_with(".md"))
+        && name
+            .get(16..)
+            .is_some_and(|r| r.starts_with("m_") && r.ends_with(".md"))
 }
 
 /// Delete a note (MK-21). It is copied to `.trash/` first (kept 7 days, like a mark); `restore` puts it back.
 pub fn rm(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
     let found = find(bible, store, id)?;
     guard(&store.root)?;
-    let name = format!("{}-{}.md", chrono::Utc::now().format("%Y%m%d-%H%M%S"), found.id);
+    let name = format!(
+        "{}-{}.md",
+        chrono::Utc::now().format("%Y%m%d-%H%M%S"),
+        found.id
+    );
     let trash = store.root.join(".trash").join(&name);
-    let done = update_chapter(bible, &store.root, &found.at.code, found.at.c, &mut |notes| {
-        let at = notes.iter().position(|n| n.id == found.id).ok_or_else(|| missing("That note is gone."))?;
-        write_atomic(&trash, &notes[at].render(bible))?;
-        notes.remove(at);
-        Ok(())
-    });
+    let done = update_chapter(
+        bible,
+        &store.root,
+        &found.at.code,
+        found.at.c,
+        &mut |notes| {
+            let at = notes
+                .iter()
+                .position(|n| n.id == found.id)
+                .ok_or_else(|| missing("That note is gone."))?;
+            write_atomic(&trash, &notes[at].render(bible))?;
+            notes.remove(at);
+            Ok(())
+        },
+    );
     if let Err(e) = done {
         let _ = std::fs::remove_file(&trash);
         return Err(e);
     }
-    Ok(json!({"deleted": found.id, "trash": name, "days": crate::store::TRASH_DAYS, "at": found.at.id()}))
+    Ok(
+        json!({"deleted": found.id, "trash": name, "days": crate::store::TRASH_DAYS, "at": found.at.id()}),
+    )
 }
 
 fn trash_copies(store: &Store, id: &str) -> Vec<PathBuf> {
     let tail = format!("-{}.md", id.trim());
-    let Ok(rd) = std::fs::read_dir(store.root.join(".trash")) else { return vec![] };
+    let Ok(rd) = std::fs::read_dir(store.root.join(".trash")) else {
+        return vec![];
+    };
     let mut hits: Vec<PathBuf> = rd
         .flatten()
         .map(|e| e.path())
-        .filter(|p| p.file_name().is_some_and(|n| is_trash_file(&n.to_string_lossy()) && n.to_string_lossy().ends_with(&tail)))
+        .filter(|p| {
+            p.file_name().is_some_and(|n| {
+                is_trash_file(&n.to_string_lossy()) && n.to_string_lossy().ends_with(&tail)
+            })
+        })
         .collect();
     hits.sort();
     hits
@@ -439,8 +616,14 @@ pub fn trashed_has(store: &Store, id: &str) -> bool {
 
 /// Put back a deleted note (the newest copy of that id), as it was.
 pub fn restore(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
-    let p = trash_copies(store, id).pop().ok_or_else(|| missing(format!("No deleted margin note {}.", id.trim())))?;
-    let n = parse_full(&std::fs::read_to_string(&p)?).1.into_iter().next().ok_or_else(|| bad("That file holds no margin note."))?;
+    let p = trash_copies(store, id)
+        .pop()
+        .ok_or_else(|| missing(format!("No deleted margin note {}.", id.trim())))?;
+    let n = parse_full(&std::fs::read_to_string(&p)?)
+        .1
+        .into_iter()
+        .next()
+        .ok_or_else(|| bad("That file holds no margin note."))?;
     if find(bible, store, &n.id).is_ok() {
         return Err(bad("That note is already in the margin."));
     }
@@ -455,7 +638,9 @@ pub fn restore(bible: &Bible, store: &mut Store, id: &str) -> Result<Value> {
 /// The deleted notes in the trash, newest first: {name, id, at, text, deleted, days_left}.
 pub fn trashed(store: &Store) -> Vec<Value> {
     let now = chrono::Utc::now().naive_utc();
-    let Ok(rd) = std::fs::read_dir(store.root.join(".trash")) else { return vec![] };
+    let Ok(rd) = std::fs::read_dir(store.root.join(".trash")) else {
+        return vec![];
+    };
     let mut out: Vec<Value> = rd
         .flatten()
         .filter_map(|e| {
@@ -482,17 +667,31 @@ pub fn chapter(bible: &Bible, store: &Store, place: &str) -> Result<Value> {
         return Err(bad("Name one chapter: wb mark notes Num 25."));
     }
     let text = read_text(&file(&store.root, &sp.book.code, sp.c1))?;
-    let notes: Vec<Value> = parse_full(&text).1.iter().map(|n| note_json(bible, store, n)).collect();
-    Ok(json!({"place": format!("{} {}", sp.book.name, sp.c1), "book": sp.book.code, "chapter": sp.c1, "count": notes.len(), "notes": notes}))
+    let notes: Vec<Value> = parse_full(&text)
+        .1
+        .iter()
+        .map(|n| note_json(bible, store, n))
+        .collect();
+    Ok(
+        json!({"place": format!("{} {}", sp.book.name, sp.c1), "book": sp.book.code, "chapter": sp.c1, "count": notes.len(), "notes": notes}),
+    )
 }
 
 /// The margin notes covering a place (row 53): verse and span notes of the chapters it touches whose verses overlap
 /// its verses, in the order of their verses (a chapter's own note covers no verse in particular and is not listed).
 /// Each as `wb mark notes` gives it. Reads one file per chapter and no page unless a note grew.
-pub fn covering(bible: &Bible, store: &Store, code: &str, from: (u32, u32), to: (u32, u32)) -> Vec<Value> {
+pub fn covering(
+    bible: &Bible,
+    store: &Store,
+    code: &str,
+    from: (u32, u32),
+    to: (u32, u32),
+) -> Vec<Value> {
     let mut out: Vec<(u32, u32, Value)> = vec![];
     for c in from.0..=to.0 {
-        let Ok(text) = read_text(&file(&store.root, code, c)) else { continue };
+        let Ok(text) = read_text(&file(&store.root, code, c)) else {
+            continue;
+        };
         for n in parse_full(&text).1 {
             if n.at.v1 == 0 {
                 continue;
@@ -509,7 +708,9 @@ pub fn covering(bible: &Bible, store: &Store, code: &str, from: (u32, u32), to: 
 /// The open questions written in a chapter's margin notes, by verse (a span's first; the chapter's own note, none): `{id, v, text}`.
 /// Reads the chapter's one file, so the reader's ? marker can include them (MK-11).
 pub fn chapter_questions(store: &Store, code: &str, chapter: u32) -> Vec<Value> {
-    let Ok(text) = read_text(&file(&store.root, code, chapter)) else { return vec![] };
+    let Ok(text) = read_text(&file(&store.root, code, chapter)) else {
+        return vec![];
+    };
     let mut out = vec![];
     for n in parse_full(&text).1 {
         if n.at.v1 == 0 || !n.text.contains("[!") {
@@ -528,12 +729,20 @@ pub fn chapter_questions(store: &Store, code: &str, chapter: u32) -> Vec<Value> 
 }
 
 /// The notes as the one search lists them (`wb find`): `{kind, id, title, snippet, updated, at, question}`; also how many there are.
-pub fn rows(bible: &Bible, store: &Store, mut keep: impl FnMut(&str, &str, &str) -> bool) -> (Vec<Value>, usize) {
+pub fn rows(
+    bible: &Bible,
+    store: &Store,
+    mut keep: impl FnMut(&str, &str, &str) -> bool,
+) -> (Vec<Value>, usize) {
     let all = all(bible, store);
     let mut out = vec![];
     for n in all.iter() {
         let label = n.at.label(bible);
-        let updated = if n.changed.is_empty() { &n.created } else { &n.changed };
+        let updated = if n.changed.is_empty() {
+            &n.created
+        } else {
+            &n.changed
+        };
         if keep(&label, &n.text, updated) {
             out.push(json!({"kind": "margin", "id": n.id, "title": label, "snippet": n.text, "updated": updated, "at": n.at.id(), "question": question_of(&n.text).is_some(),
             "created": n.created, "grew": n.grew, "code": n.at.code, "chapter": n.at.c}));
@@ -555,9 +764,15 @@ pub fn question_entries(bible: &Bible, store: &Store) -> Vec<Value> {
             if b.kind != "quote" {
                 continue;
             }
-            let Some(q) = question_of(&sub(&c, b.start, b.end)) else { continue };
+            let Some(q) = question_of(&sub(&c, b.start, b.end)) else {
+                continue;
+            };
             let label = n.at.label(bible);
-            let updated = if n.changed.is_empty() { n.created.clone() } else { n.changed.clone() };
+            let updated = if n.changed.is_empty() {
+                n.created.clone()
+            } else {
+                n.changed.clone()
+            };
             out.push(json!({
                 "id": format!("{}#{}", n.id, i + 1), "kind": "question", "block": i + 1, "page": n.id, "page_title": label, "page_kind": "margin",
                 "status": if q.done { "done" } else { "open" }, "placed": !n.at.anchor().is_empty(), "anchor": n.at.anchor(), "label": label,
@@ -571,16 +786,30 @@ pub fn question_entries(bible: &Bible, store: &Store) -> Vec<Value> {
 
 /// The notes whose own words name a span of one book (a reference found in the text, as in a page), or a Strong's number:
 /// → (note, how many times it names it), most times first, then newest.
-pub fn naming(bible: &Bible, store: &Store, code: &str, lo: (u32, u32), hi: (u32, u32), number: Option<&str>) -> Vec<(Note, u32)> {
+pub fn naming(
+    bible: &Bible,
+    store: &Store,
+    code: &str,
+    lo: (u32, u32),
+    hi: (u32, u32),
+    number: Option<&str>,
+) -> Vec<(Note, u32)> {
     let mut hits: Vec<(Note, u32)> = vec![];
     for n in all(bible, store) {
         let times = match number {
-            Some(num) => u32::from(crate::pageindex::numbers_in(&n.text).iter().any(|x| x == num)),
+            Some(num) => u32::from(
+                crate::pageindex::numbers_in(&n.text)
+                    .iter()
+                    .any(|x| x == num),
+            ),
             None => find_refs(&n.text, bible.books())
                 .iter()
                 .filter_map(|f| parse_span(&f.place, bible.books()).ok())
                 .filter(|sp| {
-                    let (l, h) = ((sp.c1, sp.v1), (sp.c2, if sp.v2 == 0 { u32::MAX } else { sp.v2 }));
+                    let (l, h) = (
+                        (sp.c1, sp.v1),
+                        (sp.c2, if sp.v2 == 0 { u32::MAX } else { sp.v2 }),
+                    );
                     sp.book.code == code && l <= hi && lo <= h
                 })
                 .count() as u32,
@@ -599,7 +828,12 @@ pub fn naming_row(bible: &Bible, n: &Note, times: u32) -> Value {
 }
 
 /// The notes whose words (or place) hold every one of `words` (lower case), for the plain `wb find`.
-pub fn matching(bible: &Bible, store: &Store, words: &[String], snippet: impl Fn(&str) -> String) -> Vec<Value> {
+pub fn matching(
+    bible: &Bible,
+    store: &Store,
+    words: &[String],
+    snippet: impl Fn(&str) -> String,
+) -> Vec<Value> {
     all(bible, store)
         .into_iter()
         .filter(|n| {

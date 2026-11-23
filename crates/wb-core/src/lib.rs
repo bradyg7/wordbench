@@ -5,50 +5,50 @@
 
 pub mod anchors;
 pub mod bible;
+pub mod blockops;
 pub mod cache;
 pub mod check;
-pub mod findings;
-pub mod guide;
-pub mod history;
 pub mod commands;
 pub mod concordance;
-pub mod dictionary;
 pub mod deletion;
+pub mod dictionary;
 pub mod docs;
 pub mod filters;
+pub mod findings;
 pub mod folders;
+pub mod guide;
+pub mod history;
 pub mod library;
 pub mod lookup;
 pub mod margin;
 pub mod marks;
 pub mod mycommands;
 pub mod notebook;
-pub mod pageindex;
-pub mod blockops;
-pub mod pages;
 pub mod overview;
+pub mod pageindex;
+pub mod pages;
 pub mod pageviews;
 pub mod places;
-pub mod platform;
 pub mod plans;
+pub mod platform;
 pub mod published;
 pub mod questions;
-pub mod readmap;
 pub mod reading;
+pub mod readmap;
 pub mod relay;
 pub mod runtime;
 pub mod scripture;
-pub mod shelf;
 pub mod setup;
+pub mod shelf;
 pub mod store;
 pub mod studyapi;
 pub mod studyblocks;
+pub mod templates;
 pub mod tether;
+pub mod threadpage;
 pub mod updates;
 pub mod updates_install;
 pub mod updates_notes;
-pub mod templates;
-pub mod threadpage;
 pub mod views;
 pub mod wordpages;
 
@@ -58,10 +58,17 @@ use std::path::{Path, PathBuf};
 /// program (the package), or the application-data folder. `setup::db_candidates` gives every place looked in.
 pub fn default_db_path() -> PathBuf {
     #[cfg(feature = "distribution")]
-    { return runtime::resource_path("workbench.db"); }
+    {
+        return runtime::resource_path("workbench.db");
+    }
     #[cfg(not(feature = "distribution"))]
     {
-    setup::existing_db().unwrap_or_else(|| setup::db_candidates().into_iter().next().unwrap_or_default())
+        setup::existing_db().unwrap_or_else(|| {
+            setup::db_candidates()
+                .into_iter()
+                .next()
+                .unwrap_or_default()
+        })
     }
 }
 
@@ -74,7 +81,10 @@ pub fn bible_database_missing_in_test() {
         "SKIPPED: no Bible database at {} (set WB_BIBLE_DB to a workbench.db; WB_REQUIRE_DB=1 makes this a failure)",
         looked.display()
     );
-    if std::env::var("WB_REQUIRE_DB").map(|v| v == "1").unwrap_or(false) {
+    if std::env::var("WB_REQUIRE_DB")
+        .map(|v| v == "1")
+        .unwrap_or(false)
+    {
         panic!("{msg}");
     }
     eprintln!("{msg}");
@@ -84,18 +94,22 @@ pub fn bible_database_missing_in_test() {
 /// `scripts/scratch-study.ps1` (a development checkout; the window asks the person to choose on first run).
 pub fn default_study_dir() -> PathBuf {
     #[cfg(feature = "distribution")]
-    { return runtime::study_path(); }
+    {
+        return runtime::study_path();
+    }
     #[cfg(not(feature = "distribution"))]
     {
-    if let Ok(p) = std::env::var("WB_STUDY_DIR") {
-        if !p.trim().is_empty() {
+        if let Ok(p) = std::env::var("WB_STUDY_DIR") {
+            if !p.trim().is_empty() {
+                return PathBuf::from(p);
+            }
+        }
+        if let Some(p) = setup::setting("study_dir") {
             return PathBuf::from(p);
         }
-    }
-    if let Some(p) = setup::setting("study_dir") {
-        return PathBuf::from(p);
-    }
-    std::env::temp_dir().join("bible-workbench-rs").join("study-scratch")
+        std::env::temp_dir()
+            .join("bible-workbench-rs")
+            .join("study-scratch")
     }
 }
 
@@ -107,7 +121,10 @@ pub fn real_study_dir() -> PathBuf {
 /// Every folder wb-core refuses to open without `WB_ALLOW_REAL_STUDY=1`: the old checkout's, the Documents folder the
 /// installed app suggests, and the folder the installed app's saved settings name.
 pub fn guarded_study_dirs(home: &Path, installed_settings: Option<&Path>) -> Vec<PathBuf> {
-    let mut dirs = vec![real_study_dir_in(home), home.join("Documents").join("wordbench-study-data")];
+    let mut dirs = vec![
+        real_study_dir_in(home),
+        home.join("Documents").join("wordbench-study-data"),
+    ];
     if let Some(chosen) = installed_settings.and_then(setup::study_dir_in_settings_file) {
         dirs.push(chosen);
     }
@@ -119,7 +136,10 @@ fn real_study_dir_in(home: &Path) -> PathBuf {
 }
 
 pub(crate) fn home() -> PathBuf {
-    std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from).unwrap_or_default()
+    std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(PathBuf::from)
+        .unwrap_or_default()
 }
 
 #[derive(Debug)]

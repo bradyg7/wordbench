@@ -20,15 +20,30 @@ fn out_dir(c: &Ctx<'_>) -> Result<docs::ExportFolders, String> {
 
 fn thread_id(c: &Ctx<'_>, name: &str) -> Result<String, String> {
     let st = c.study()?;
-    Ok(crate::study::thread(&st, name)?["id"].as_str().unwrap_or("").to_string())
+    Ok(crate::study::thread(&st, name)?["id"]
+        .as_str()
+        .unwrap_or("")
+        .to_string())
 }
 
 fn source_args() -> Vec<crate::args::Spec> {
-    vec![Opt("thread", None), Opt("folder", None), Opt("page", None), Opt("passage", None), Opt("lesson", None), Opt("version", None)]
+    vec![
+        Opt("thread", None),
+        Opt("folder", None),
+        Opt("page", None),
+        Opt("passage", None),
+        Opt("lesson", None),
+        Opt("version", None),
+    ]
 }
 
 fn require_one_source(a: &crate::args::Args) -> Result<(), String> {
-    if ["thread", "folder", "page", "passage", "lesson"].iter().filter(|key| a.opt(key).is_some()).count() != 1 {
+    if ["thread", "folder", "page", "passage", "lesson"]
+        .iter()
+        .filter(|key| a.opt(key).is_some())
+        .count()
+        != 1
+    {
         return Err("Give exactly one source: --folder NAME (or --thread NAME), --page ID, --passage REF or --lesson NAME.".into());
     }
     Ok(())
@@ -36,12 +51,18 @@ fn require_one_source(a: &crate::args::Args) -> Result<(), String> {
 
 fn source(c: &Ctx<'_>, a: &crate::args::Args) -> Result<docs::Source, String> {
     if let Some(reference) = a.opt("passage") {
-        return Ok(docs::Source::Passage { reference, version: a.opt_or("version", "KJV") });
+        return Ok(docs::Source::Passage {
+            reference,
+            version: a.opt_or("version", "KJV"),
+        });
     }
     if let Some(name) = a.opt("lesson") {
         return Ok(docs::Source::Lesson(name));
     }
-    let name = a.opt("folder").or_else(|| a.opt("thread")).ok_or("Give a folder, passage or lesson.")?;
+    let name = a
+        .opt("folder")
+        .or_else(|| a.opt("thread"))
+        .ok_or("Give a folder, passage or lesson.")?;
     Ok(docs::Source::Thread(thread_id(c, &name)?))
 }
 
@@ -49,7 +70,11 @@ fn source(c: &Ctx<'_>, a: &crate::args::Args) -> Result<docs::Source, String> {
 fn dials(a: &crate::args::Args) -> Result<Vec<(String, String)>, String> {
     a.list("set")
         .iter()
-        .map(|d| d.split_once('=').map(|(k, v)| (k.trim().to_string(), v.trim().to_string())).ok_or_else(|| format!("--set DIAL=VALUE, such as --set ink=saver (not “{d}”).")))
+        .map(|d| {
+            d.split_once('=')
+                .map(|(k, v)| (k.trim().to_string(), v.trim().to_string()))
+                .ok_or_else(|| format!("--set DIAL=VALUE, such as --set ink=saver (not “{d}”)."))
+        })
         .collect()
 }
 
@@ -59,14 +84,39 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
     let out = out_dir(c)?;
     let r = if let Some(page) = a.opt("page") {
         let st = c.study()?;
-        docs::make_page(c.bible()?, &st, &out, &page, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(),
-            a.opt("version").as_deref(), &a.list("on"), &a.list("off"), a.opt("look").as_deref(), &set, a.flag("force"))
+        docs::make_page(
+            c.bible()?,
+            &st,
+            &out,
+            &page,
+            to,
+            a.opt("structure").as_deref(),
+            a.opt("theme").as_deref(),
+            a.opt("version").as_deref(),
+            &a.list("on"),
+            &a.list("off"),
+            a.opt("look").as_deref(),
+            &set,
+            a.flag("force"),
+        )
     } else {
         let input = source(c, a)?;
         let st = c.study()?;
-        docs::make(c.bible()?, &st, &out, input, to, a.opt("structure").as_deref(), a.opt("theme").as_deref(),
-            a.opt("look").as_deref(), &set, a.flag("new"), a.flag("force"))
-    }.map_err(e)?;
+        docs::make(
+            c.bible()?,
+            &st,
+            &out,
+            input,
+            to,
+            a.opt("structure").as_deref(),
+            a.opt("theme").as_deref(),
+            a.opt("look").as_deref(),
+            &set,
+            a.flag("new"),
+            a.flag("force"),
+        )
+    }
+    .map_err(e)?;
     if a.flag("open") {
         docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
     }
@@ -74,8 +124,23 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
 }
 
 fn make_args() -> Vec<crate::args::Spec> {
-    [source_args(), vec![Opt("structure", None), Opt("theme", None), Append("on"), Append("off"), Opt("look", None),
-        Append("set"), Flag("open"), Flag("new"), Flag("force")]].into_iter().flatten().collect()
+    [
+        source_args(),
+        vec![
+            Opt("structure", None),
+            Opt("theme", None),
+            Append("on"),
+            Append("off"),
+            Opt("look", None),
+            Append("set"),
+            Flag("open"),
+            Flag("new"),
+            Flag("force"),
+        ],
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 fn build_lesson(c: &Ctx<'_>, a: &crate::args::Args) -> Res {
@@ -84,7 +149,11 @@ fn build_lesson(c: &Ctx<'_>, a: &crate::args::Args) -> Res {
     }
     let requested = a.opt_or("make", "script,share");
     let mut formats = Vec::new();
-    for structure in requested.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+    for structure in requested
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         let to = match structure {
             "script" | "share" | "study" | "reading" => "word",
             "reader" | "verse" => "pdf",
@@ -103,8 +172,20 @@ fn build_lesson(c: &Ctx<'_>, a: &crate::args::Args) -> Res {
     let mut files = Vec::new();
     let mut title = id.clone();
     for (to, structure) in formats {
-        let mut result = docs::make(c.bible()?, &st, &out, docs::Source::Lesson(id.clone()), to, Some(structure), a.opt("theme").as_deref(),
-            None, &[], a.flag("new"), false).map_err(e)?;
+        let mut result = docs::make(
+            c.bible()?,
+            &st,
+            &out,
+            docs::Source::Lesson(id.clone()),
+            to,
+            Some(structure),
+            a.opt("theme").as_deref(),
+            None,
+            &[],
+            a.flag("new"),
+            false,
+        )
+        .map_err(e)?;
         if let Some(s) = result["title"].as_str() {
             title = s.to_string();
         }

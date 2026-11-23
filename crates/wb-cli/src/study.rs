@@ -17,16 +17,25 @@ pub(crate) fn anchor(c: &Ctx<'_>, text: &str) -> Result<String, String> {
     if lookup::is_strong(&t.to_uppercase()) {
         return Ok(t.to_uppercase());
     }
-    let raw = t.len() > 4 && t.as_bytes()[3] == b'.' && t[..3].bytes().all(|b| b.is_ascii_uppercase() || b.is_ascii_digit()) && {
-        let rest = &t[4..];
-        let (cs, vs) = rest.split_once(':').unwrap_or(("", ""));
-        !cs.is_empty() && cs.bytes().all(|b| b.is_ascii_digit()) && vs.bytes().next().is_some_and(|b| b.is_ascii_digit())
-    };
+    let raw = t.len() > 4
+        && t.as_bytes()[3] == b'.'
+        && t[..3]
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
+        && {
+            let rest = &t[4..];
+            let (cs, vs) = rest.split_once(':').unwrap_or(("", ""));
+            !cs.is_empty()
+                && cs.bytes().all(|b| b.is_ascii_digit())
+                && vs.bytes().next().is_some_and(|b| b.is_ascii_digit())
+        };
     if raw {
         return Ok(t.to_string());
     }
     let sp = c.span(t)?;
-    places::span_anchor(&sp).ok_or_else(|| format!("Name a verse or a run of verses, like John 3:16 or Num 25:11-13 (got “{t}”)."))
+    places::span_anchor(&sp).ok_or_else(|| {
+        format!("Name a verse or a run of verses, like John 3:16 or Num 25:11-13 (got “{t}”).")
+    })
 }
 
 /// A thread by exact name, else a unique start of it, else a unique part of it.
@@ -36,16 +45,28 @@ pub(crate) fn thread(st: &Store, name: &str) -> Result<Value, String> {
     let n = name.trim().to_lowercase();
     let low = |t: &Value| t["name"].as_str().unwrap_or("").to_lowercase();
     let pools: [Vec<&Value>; 3] = [
-        every.iter().filter(|t| t["id"] == n.as_str() || low(t) == n).collect(),
+        every
+            .iter()
+            .filter(|t| t["id"] == n.as_str() || low(t) == n)
+            .collect(),
         every.iter().filter(|t| low(t).starts_with(&n)).collect(),
         every.iter().filter(|t| low(t).contains(&n)).collect(),
     ];
-    let hit = pools.into_iter().find(|p| !p.is_empty()).unwrap_or_default();
+    let hit = pools
+        .into_iter()
+        .find(|p| !p.is_empty())
+        .unwrap_or_default();
     if hit.is_empty() {
         return Err(format!("No thread called “{name}”."));
     }
     if hit.len() > 1 {
-        return Err(format!("Which thread? {}", hit.iter().map(|t| t["name"].as_str().unwrap_or("")).collect::<Vec<_>>().join(", ")));
+        return Err(format!(
+            "Which thread? {}",
+            hit.iter()
+                .map(|t| t["name"].as_str().unwrap_or(""))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
     }
     Ok(hit[0].clone())
 }
@@ -70,9 +91,23 @@ fn j(v: Value) -> Res {
 }
 
 pub fn commands() -> Vec<Command> {
-    let set_items = || vec![Append("thread"), Append("place"), Append("note"), Append("lesson"), Append("pdf"), Append("document"), Append("tab")];
+    let set_items = || {
+        vec![
+            Append("thread"),
+            Append("place"),
+            Append("note"),
+            Append("lesson"),
+            Append("pdf"),
+            Append("document"),
+            Append("tab"),
+        ]
+    };
     let result_args = |mut v: Vec<crate::args::Spec>| {
-        v.extend([Opt("scope", Some("all")), Opt("only", None), Flag("dry_run")]);
+        v.extend([
+            Opt("scope", Some("all")),
+            Opt("only", None),
+            Flag("dry_run"),
+        ]);
         v
     };
     vec![
@@ -660,13 +695,23 @@ fn colors(c: &Ctx<'_>, a: &Args) -> Res {
     let filters = fl::parse_all(&a.list("filter")).map_err(e)?;
     fl::check(&filters, &["Legend entry", "Book"]).map_err(e)?;
     let (bible, st) = (c.bible()?, c.study()?);
-    let base = marks::marks_map(bible, &st, a.opt("style").as_deref(), a.opt("folder").as_deref()).map_err(e)?;
+    let base = marks::marks_map(
+        bible,
+        &st,
+        a.opt("style").as_deref(),
+        a.opt("folder").as_deref(),
+    )
+    .map_err(e)?;
     let every = marks::marks_map(bible, &st, None, None).map_err(e)?;
     let mut d = base;
     // the Filter menu: the legend's entries and the books with marks, counted from the unfiltered map
     let mut by_style: Vec<(String, String, u64)> = vec![];
     for sty in every["styles"].as_array().cloned().unwrap_or_default() {
-        by_style.push((sty["style"].as_str().unwrap_or("").to_string(), sty["label"].as_str().unwrap_or("").to_string(), 0));
+        by_style.push((
+            sty["style"].as_str().unwrap_or("").to_string(),
+            sty["label"].as_str().unwrap_or("").to_string(),
+            0,
+        ));
     }
     let mut by_book: Vec<(String, u64)> = vec![];
     for b in every["books"].as_array().cloned().unwrap_or_default() {
@@ -675,7 +720,10 @@ fn colors(c: &Ctx<'_>, a: &Args) -> Res {
             for sty in cell["styles"].as_array().into_iter().flatten() {
                 let k = sty["count"].as_u64().unwrap_or(0);
                 n += k;
-                if let Some(x) = by_style.iter_mut().find(|x| x.0 == sty["style"].as_str().unwrap_or("")) {
+                if let Some(x) = by_style
+                    .iter_mut()
+                    .find(|x| x.0 == sty["style"].as_str().unwrap_or(""))
+                {
                     x.2 += k;
                 }
             }
@@ -691,14 +739,19 @@ fn colors(c: &Ctx<'_>, a: &Args) -> Res {
     // Legend entry: the styles it leaves, counted together (each value is run on its own and the counts are added)
     if let Some(f) = filters.iter().find(|f| f.key() == "legend entry") {
         let hit = |label: &str| f.values.iter().any(|v| v.eq_ignore_ascii_case(label));
-        let styles: Vec<&(String, String, u64)> = by_style.iter().filter(|x| match f.way {
-            fl::Way::Is => hit(&x.1),
-            fl::Way::IsNot => !hit(&x.1),
-            fl::Way::Set => true,
-            fl::Way::NotSet => false,
-        }).collect();
+        let styles: Vec<&(String, String, u64)> = by_style
+            .iter()
+            .filter(|x| match f.way {
+                fl::Way::Is => hit(&x.1),
+                fl::Way::IsNot => !hit(&x.1),
+                fl::Way::Set => true,
+                fl::Way::NotSet => false,
+            })
+            .collect();
         if a.opt("style").is_some() || a.opt("folder").is_some() {
-            return Err("Give a Legend entry as a filter, or --style or --folder, not both.".into());
+            return Err(
+                "Give a Legend entry as a filter, or --style or --folder, not both.".into(),
+            );
         }
         let mut sum: Option<Value> = None;
         for sty in &styles {
@@ -708,7 +761,8 @@ fn colors(c: &Ctx<'_>, a: &Args) -> Res {
                 Some(t) => {
                     for (bi, b) in one["books"].as_array().into_iter().flatten().enumerate() {
                         for (ci, cell) in b["cells"].as_array().into_iter().flatten().enumerate() {
-                            let n = t["books"][bi]["cells"][ci]["count"].as_u64().unwrap_or(0) + cell["count"].as_u64().unwrap_or(0);
+                            let n = t["books"][bi]["cells"][ci]["count"].as_u64().unwrap_or(0)
+                                + cell["count"].as_u64().unwrap_or(0);
                             t["books"][bi]["cells"][ci]["count"] = json!(n);
                         }
                     }
@@ -733,7 +787,10 @@ fn colors(c: &Ctx<'_>, a: &Args) -> Res {
                 t
             }
             None => {
-                let mut t = match by_style.first() { Some(x) => marks::marks_map(bible, &st, Some(&x.0), None).map_err(e)?, None => d.clone() };
+                let mut t = match by_style.first() {
+                    Some(x) => marks::marks_map(bible, &st, Some(&x.0), None).map_err(e)?,
+                    None => d.clone(),
+                };
                 if let Some(bs) = t["books"].as_array_mut() {
                     for b in bs {
                         for cell in b["cells"].as_array_mut().into_iter().flatten() {
@@ -756,7 +813,12 @@ fn colors(c: &Ctx<'_>, a: &Args) -> Res {
         let (mut total, mut with) = (0u64, 0u64);
         for b in d["books"].as_array().into_iter().flatten() {
             for cell in b["cells"].as_array().into_iter().flatten() {
-                let n = cell["count"].as_u64().unwrap_or_else(|| cell["styles"].as_array().map(|v| v.iter().map(|x| x["count"].as_u64().unwrap_or(0)).sum()).unwrap_or(0));
+                let n = cell["count"].as_u64().unwrap_or_else(|| {
+                    cell["styles"]
+                        .as_array()
+                        .map(|v| v.iter().map(|x| x["count"].as_u64().unwrap_or(0)).sum())
+                        .unwrap_or(0)
+                });
                 total += n;
                 with += (n > 0) as u64;
             }
@@ -770,7 +832,12 @@ fn colors(c: &Ctx<'_>, a: &Args) -> Res {
 }
 
 fn labels(t: &Value) -> Vec<Value> {
-    t["members"].as_array().unwrap().iter().map(|m| m["label"].clone()).collect()
+    t["members"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["label"].clone())
+        .collect()
 }
 
 /// Places into the thread with this name, in one write (a new name starts the thread).
@@ -778,7 +845,12 @@ fn add_places(c: &Ctx<'_>, name: &str, list: Vec<String>) -> Res {
     let mut st = c.study()?;
     let id = match thread(&st, name) {
         Ok(t) => t["id"].as_str().unwrap().to_string(),
-        Err(m) if m.starts_with("No thread") => sa::create_thread(c.bible()?, &mut st, name, "", None, None).map_err(e)?["id"].as_str().unwrap().to_string(),
+        Err(m) if m.starts_with("No thread") => {
+            sa::create_thread(c.bible()?, &mut st, name, "", None, None).map_err(e)?["id"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        }
         Err(m) => return Err(m),
     };
     j(sa::add_many_to_thread(c.bible()?, &mut st, &id, &list).map_err(e)?)
@@ -808,7 +880,8 @@ fn items_of(c: &Ctx<'_>, st: &Store, a: &Args) -> Result<Vec<Value>, String> {
         if item["kind"] == "thread" {
             item["ref"] = json!(tid(st, item["ref"].as_str().unwrap_or(""))?);
         } else if item["kind"] == "lesson" {
-            item["ref"] = json!(sa::lesson_find(st, item["ref"].as_str().unwrap_or("")).map_err(e)?);
+            item["ref"] =
+                json!(sa::lesson_find(st, item["ref"].as_str().unwrap_or("")).map_err(e)?);
         }
         items.push(item);
     }
@@ -837,15 +910,22 @@ fn every_row(page: &dyn Fn(usize) -> Result<Value, String>) -> Result<Vec<Value>
 
 /// The rows inside the places named (--only), and an error for a place that holds none of them.
 fn picked(c: &Ctx<'_>, rows: Vec<Value>, only: Option<String>) -> Result<Vec<Value>, String> {
-    let Some(only) = only.filter(|o| !o.is_empty()) else { return Ok(rows) };
+    let Some(only) = only.filter(|o| !o.is_empty()) else {
+        return Ok(rows);
+    };
     let mut keep: Vec<Value> = vec![];
     for part in only.split(';') {
         let sp = c.span(part)?;
         let hits: Vec<&Value> = rows
             .iter()
             .filter(|r| {
-                let (rc, rv) = (r["ref"]["c"].as_u64().unwrap() as u32, r["ref"]["v"].as_u64().unwrap() as u32);
-                r["ref"]["code"] == sp.book.code.as_str() && (sp.c1, sp.v1) <= (rc, rv) && (rc, rv) <= (sp.c2, if sp.v2 == 0 { 1_000_000 } else { sp.v2 })
+                let (rc, rv) = (
+                    r["ref"]["c"].as_u64().unwrap() as u32,
+                    r["ref"]["v"].as_u64().unwrap() as u32,
+                );
+                r["ref"]["code"] == sp.book.code.as_str()
+                    && (sp.c1, sp.v1) <= (rc, rv)
+                    && (rc, rv) <= (sp.c2, if sp.v2 == 0 { 1_000_000 } else { sp.v2 })
             })
             .collect();
         if hits.is_empty() {
@@ -861,7 +941,12 @@ fn picked(c: &Ctx<'_>, rows: Vec<Value>, only: Option<String>) -> Result<Vec<Val
 }
 
 fn verse_anchor(r: &Value) -> String {
-    format!("{}.{}:{}", r["ref"]["code"].as_str().unwrap(), r["ref"]["c"], r["ref"]["v"])
+    format!(
+        "{}.{}:{}",
+        r["ref"]["code"].as_str().unwrap(),
+        r["ref"]["c"],
+        r["ref"]["v"]
+    )
 }
 
 fn results_out(c: &Ctx<'_>, a: &Args, places: Vec<String>) -> Res {
@@ -876,33 +961,85 @@ fn from_search(c: &Ctx<'_>, a: &Args) -> Res {
     let q = a.s("query");
     let b = c.bible()?;
     let rows = every_row(&|offset| {
-        lookup::search(b, &lookup::SearchQuery { q: &q, case: a.flag("case"), scope: &scope, offset, limit: lookup::PAGE, regex: a.flag("regex") }).map_err(e)
+        lookup::search(
+            b,
+            &lookup::SearchQuery {
+                q: &q,
+                case: a.flag("case"),
+                scope: &scope,
+                offset,
+                limit: lookup::PAGE,
+                regex: a.flag("regex"),
+            },
+        )
+        .map_err(e)
     })?;
-    let places = picked(c, rows, a.opt("only"))?.iter().map(verse_anchor).collect();
+    let places = picked(c, rows, a.opt("only"))?
+        .iter()
+        .map(verse_anchor)
+        .collect();
     results_out(c, a, places)
 }
 
 fn from_uses(c: &Ctx<'_>, a: &Args) -> Res {
     let term = a.s("term");
-    let strong = if lookup::is_strong(&term.to_uppercase()) { term.to_uppercase() } else { String::new() };
-    let word = a.opt("word").unwrap_or_else(|| if strong.is_empty() { term.to_lowercase() } else { String::new() });
+    let strong = if lookup::is_strong(&term.to_uppercase()) {
+        term.to_uppercase()
+    } else {
+        String::new()
+    };
+    let word = a.opt("word").unwrap_or_else(|| {
+        if strong.is_empty() {
+            term.to_lowercase()
+        } else {
+            String::new()
+        }
+    });
     let scope = c.scope(&a.opt_or("scope", "all"))?;
     let cat = a.opt_or("cat", "all");
     if !["all", "both", "s", "e"].contains(&cat.as_str()) {
         return Err(format!("wb thread from-uses: argument --cat: invalid choice: '{cat}' (choose from 'all', 'both', 's', 'e')"));
     }
     let rendering = a.opt("rendering").unwrap_or_default();
-    let some = |x: &str| if x.is_empty() { None } else { Some(x.to_string()) };
+    let some = |x: &str| {
+        if x.is_empty() {
+            None
+        } else {
+            Some(x.to_string())
+        }
+    };
     let (st, wd, rd) = (some(&strong), some(&word), some(&rendering));
     let b = c.bible()?;
     let rows = every_row(&|offset| {
-        lookup::uses(b, &lookup::UsesQuery { strong: st.as_deref(), word: wd.as_deref(), cat: &cat, scope: &scope, offset, limit: lookup::PAGE, rendering: rd.as_deref(), strong_filter: None }).map_err(e)
+        lookup::uses(
+            b,
+            &lookup::UsesQuery {
+                strong: st.as_deref(),
+                word: wd.as_deref(),
+                cat: &cat,
+                scope: &scope,
+                offset,
+                limit: lookup::PAGE,
+                rendering: rd.as_deref(),
+                strong_filter: None,
+            },
+        )
+        .map_err(e)
     })?;
     let rows = picked(c, rows, a.opt("only"))?;
     let places = if a.flag("verses") {
         rows.iter().map(verse_anchor).collect()
     } else {
-        rows.iter().flat_map(|r| r["runs"].as_array().unwrap().iter().map(|x| x["anchor"].as_str().unwrap().to_string()).collect::<Vec<_>>()).collect()
+        rows.iter()
+            .flat_map(|r| {
+                r["runs"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|x| x["anchor"].as_str().unwrap().to_string())
+                    .collect::<Vec<_>>()
+            })
+            .collect()
     };
     results_out(c, a, places)
 }

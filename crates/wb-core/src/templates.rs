@@ -35,7 +35,10 @@ fn id_of(e: &Value) -> String {
 
 /// Every template's entry, oldest first.
 fn all(bible: &Bible, store: &Store) -> Vec<Value> {
-    let mut v: Vec<Value> = nb::every(bible, store).into_iter().filter(nb::is_template).collect();
+    let mut v: Vec<Value> = nb::every(bible, store)
+        .into_iter()
+        .filter(nb::is_template)
+        .collect();
     v.sort_by(|a, b| a["created"].as_str().cmp(&b["created"].as_str()));
     v
 }
@@ -64,11 +67,24 @@ fn holds(text: &str) -> (String, Vec<String>) {
         1 => Some(one.to_string()),
         k => Some(format!("{k} {many}")),
     };
-    let parts: Vec<String> = [n(h, "a heading", "headings"), n(sc, "a scripture block", "scripture blocks"), n(vw, "a view", "views"), n(td, "a to-do", "to-dos"), n(other, "a block of writing", "blocks of writing")]
-        .into_iter()
-        .flatten()
-        .collect();
-    (if parts.is_empty() { "Empty".into() } else { parts.join(", ") }, headings)
+    let parts: Vec<String> = [
+        n(h, "a heading", "headings"),
+        n(sc, "a scripture block", "scripture blocks"),
+        n(vw, "a view", "views"),
+        n(td, "a to-do", "to-dos"),
+        n(other, "a block of writing", "blocks of writing"),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    (
+        if parts.is_empty() {
+            "Empty".into()
+        } else {
+            parts.join(", ")
+        },
+        headings,
+    )
 }
 
 /// A template as Templates lists it: its name, what it holds, its settings, and how many pages were made from it.
@@ -76,9 +92,14 @@ fn row(e: &Value, every: &[Value]) -> Value {
     let id = id_of(e);
     let text = e["text"].as_str().unwrap_or("");
     let (summary, headings) = holds(text);
-    let used = every.iter().filter(|x| x["from_template"] == id.as_str()).count();
+    let used = every
+        .iter()
+        .filter(|x| x["from_template"] == id.as_str())
+        .count();
     let goes = e["goes_in"].as_str().filter(|g| !g.is_empty());
-    let goes_title = goes.and_then(|g| every.iter().find(|x| x["id"] == g)).map(|x| x["title"].clone());
+    let goes_title = goes
+        .and_then(|g| every.iter().find(|x| x["id"] == g))
+        .map(|x| x["title"].clone());
     json!({
         "id": id, "title": e["title"], "summary": summary, "headings": headings,
         "asks": if e["asks"] == "place" { "place" } else { "" },
@@ -91,7 +112,11 @@ fn row(e: &Value, every: &[Value]) -> Value {
 }
 
 fn default_name(name: &str, place: bool) -> String {
-    format!("{}: {}", name.trim(), if place { "{place}" } else { "{date}" })
+    format!(
+        "{}: {}",
+        name.trim(),
+        if place { "{place}" } else { "{date}" }
+    )
 }
 
 /// The Notebook's Templates (W6.2, W6.3), each as a row.
@@ -112,14 +137,29 @@ fn find(bible: &Bible, store: &Store, key: &str) -> Result<Value> {
         return Err(bad("Name the template: wb template list names them."));
     }
     let ts = all(bible, store);
-    if let Some(t) = ts.iter().find(|t| id_of(t) == key.trim() || t["title"].as_str().is_some_and(|x| x.to_lowercase() == k)) {
+    if let Some(t) = ts.iter().find(|t| {
+        id_of(t) == key.trim() || t["title"].as_str().is_some_and(|x| x.to_lowercase() == k)
+    }) {
         return Ok(t.clone());
     }
-    let hits: Vec<&Value> = ts.iter().filter(|t| t["title"].as_str().is_some_and(|x| x.to_lowercase().starts_with(&k))).collect();
+    let hits: Vec<&Value> = ts
+        .iter()
+        .filter(|t| {
+            t["title"]
+                .as_str()
+                .is_some_and(|x| x.to_lowercase().starts_with(&k))
+        })
+        .collect();
     match hits.len() {
         1 => Ok(hits[0].clone()),
-        0 => Err(missing(format!("No template called “{}” (wb template list names them).", key.trim()))),
-        n => Err(bad(format!("{n} templates start with “{}”: give more of the name.", key.trim()))),
+        0 => Err(missing(format!(
+            "No template called “{}” (wb template list names them).",
+            key.trim()
+        ))),
+        n => Err(bad(format!(
+            "{n} templates start with “{}”: give more of the name.",
+            key.trim()
+        ))),
     }
 }
 
@@ -133,25 +173,40 @@ pub struct Fill {
 
 /// A text with its blanks filled; a blank a template does not know stays as it is written.
 pub fn fill(text: &str, f: &Fill) -> String {
-    text.replace("{place}", &f.place).replace("{date}", &f.date).replace("{title}", &f.title).replace("{reader}", &f.reader)
+    text.replace("{place}", &f.place)
+        .replace("{date}", &f.date)
+        .replace("{title}", &f.title)
+        .replace("{reader}", &f.reader)
 }
 
 /// A place as typed, as a reference that reads again ("Num 25" → "Numbers 25"; "h7065" → "H7065").
 fn reference(bible: &Bible, text: &str) -> Result<String> {
     let t = text.trim();
     let up = t.to_uppercase();
-    if (up.starts_with('H') || up.starts_with('G')) && up.len() > 1 && up.len() <= 6 && up[1..].bytes().all(|b| b.is_ascii_digit()) {
+    if (up.starts_with('H') || up.starts_with('G'))
+        && up.len() > 1
+        && up.len() <= 6
+        && up[1..].bytes().all(|b| b.is_ascii_digit())
+    {
         return Ok(up);
     }
     Ok(span_ref(&crate::places::parse_span(t, bible.books())?))
 }
 
 /// What a page made from a template now would be: its name, and its text (blanks filled).
-fn made(bible: &Bible, t: &Value, place: Option<&str>, title: Option<&str>, reader: Option<&str>) -> Result<(String, String)> {
+fn made(
+    bible: &Bible,
+    t: &Value,
+    place: Option<&str>,
+    title: Option<&str>,
+    reader: Option<&str>,
+) -> Result<(String, String)> {
     let name = t["title"].as_str().unwrap_or("").to_string();
     let place = place.map(str::trim).filter(|p| !p.is_empty());
     if t["asks"] == "place" && place.is_none() {
-        return Err(bad(format!("“{name}” asks for a place: give one, like --place \"Num 25\".")));
+        return Err(bad(format!(
+            "“{name}” asks for a place: give one, like --place \"Num 25\"."
+        )));
     }
     let place = match place {
         Some(p) => reference(bible, p)?,
@@ -162,11 +217,24 @@ fn made(bible: &Bible, t: &Value, place: Option<&str>, title: Option<&str>, read
         None => place.clone(),
     };
     let date = nb::day_label(Local::now().date_naive());
-    let new_name = t["new_name"].as_str().filter(|n| !n.trim().is_empty()).map(String::from).unwrap_or_else(|| default_name(&name, false));
-    let mut f = Fill { place, date, title: name.clone(), reader };
+    let new_name = t["new_name"]
+        .as_str()
+        .filter(|n| !n.trim().is_empty())
+        .map(String::from)
+        .unwrap_or_else(|| default_name(&name, false));
+    let mut f = Fill {
+        place,
+        date,
+        title: name.clone(),
+        reader,
+    };
     let title = match title.map(str::trim).filter(|t| !t.is_empty()) {
         Some(t) => t.to_string(),
-        None => fill(&new_name, &f).trim().trim_end_matches(':').trim().to_string(),
+        None => fill(&new_name, &f)
+            .trim()
+            .trim_end_matches(':')
+            .trim()
+            .to_string(),
     };
     if title.contains('\n') {
         return Err(bad("A page's name is one line."));
@@ -183,11 +251,24 @@ fn made(bible: &Bible, t: &Value, place: Option<&str>, title: Option<&str>, read
 
 /// `wb template show`: a template whole (its text, blocks, settings, how often used); with a place (and the reader's
 /// chapter), what a page made from it now would be named and hold (`made`), as the window previews it.
-pub fn show(bible: &Bible, store: &Store, key: &str, place: Option<&str>, reader: Option<&str>) -> Result<Value> {
+pub fn show(
+    bible: &Bible,
+    store: &Store,
+    key: &str,
+    place: Option<&str>,
+    reader: Option<&str>,
+) -> Result<Value> {
     show_with_title(bible, store, key, place, reader, None)
 }
 
-pub fn show_with_title(bible: &Bible, store: &Store, key: &str, place: Option<&str>, reader: Option<&str>, title: Option<&str>) -> Result<Value> {
+pub fn show_with_title(
+    bible: &Bible,
+    store: &Store,
+    key: &str,
+    place: Option<&str>,
+    reader: Option<&str>,
+    title: Option<&str>,
+) -> Result<Value> {
     let t = find(bible, store, key)?;
     let every = nb::every(bible, store);
     let mut v = row(&t, &every);
@@ -215,7 +296,11 @@ pub struct Make<'a> {
 pub fn make_page(bible: &Bible, store: &mut Store, key: &str, m: Make<'_>) -> Result<Value> {
     let t = find(bible, store, key)?;
     let (_, text) = made(bible, &t, m.place, m.title, m.reader)?;
-    let goes = t["goes_in"].as_str().filter(|g| !g.is_empty()).filter(|g| nb::every(bible, store).iter().any(|e| e["id"] == *g && !nb::is_template(e)));
+    let goes = t["goes_in"].as_str().filter(|g| !g.is_empty()).filter(|g| {
+        nb::every(bible, store)
+            .iter()
+            .any(|e| e["id"] == *g && !nb::is_template(e))
+    });
     let parent = m.parent.map(str::trim).filter(|p| !p.is_empty()).or(goes);
     let e = pages::new_page(bible, store, parent, &text, false, None)?;
     let id = id_of(&e);
@@ -234,18 +319,28 @@ pub fn new_template(bible: &Bible, store: &mut Store, name: &str) -> Result<Valu
 }
 
 fn make(bible: &Bible, store: &mut Store, name: &str, text: &str, asks: bool) -> Result<Value> {
-    if all(bible, store).iter().any(|t| t["title"].as_str().is_some_and(|x| x.eq_ignore_ascii_case(name))) {
+    if all(bible, store).iter().any(|t| {
+        t["title"]
+            .as_str()
+            .is_some_and(|x| x.eq_ignore_ascii_case(name))
+    }) {
         return Err(bad(format!("There is a template called “{name}” already.")));
     }
     let r = store.jot(text, false)?;
     let id = s(&r, "id");
-    let mut fields = vec![("template", Some(json!(true))), ("new_name", Some(json!(default_name(name, asks))))];
+    let mut fields = vec![
+        ("template", Some(json!(true))),
+        ("new_name", Some(json!(default_name(name, asks)))),
+    ];
     if asks {
         fields.push(("asks", Some(json!("place"))));
     }
     store.set_fields(&id, &fields)?;
     let every = nb::every(bible, store);
-    let e = every.iter().find(|e| e["id"] == id.as_str()).ok_or_else(|| missing("The template was not written."))?;
+    let e = every
+        .iter()
+        .find(|e| e["id"] == id.as_str())
+        .ok_or_else(|| missing("The template was not written."))?;
     Ok(row(e, &every))
 }
 
@@ -261,7 +356,11 @@ fn view_without_place(q: &ViewQuery) -> String {
         out.push("pages".into());
     }
     if let Some(t) = &q.thread {
-        out.push(if t.contains(' ') { format!("thread \"{t}\"") } else { format!("thread {t}") });
+        out.push(if t.contains(' ') {
+            format!("thread \"{t}\"")
+        } else {
+            format!("thread {t}")
+        });
     }
     if let Some(d) = q.days {
         out.push(format!("days {d}"));
@@ -276,13 +375,19 @@ fn view_without_place(q: &ViewQuery) -> String {
 pub fn save_as(bible: &Bible, store: &mut Store, page: &str, name: Option<&str>) -> Result<Value> {
     let (id, text, titled) = pages::text_of(store, page)?;
     if !titled {
-        return Err(bad("A day's page is not made a template: copy what you want into a new page first."));
+        return Err(bad(
+            "A day's page is not made a template: copy what you want into a new page first.",
+        ));
     }
     let e = nb::show(bible, store, &id)?;
     if nb::is_template(&e) {
         return Err(bad("That is a template already."));
     }
-    let name = name.map(str::trim).filter(|n| !n.is_empty()).map(String::from).unwrap_or_else(|| e["title"].as_str().unwrap_or("").to_string());
+    let name = name
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+        .map(String::from)
+        .unwrap_or_else(|| e["title"].as_str().unwrap_or("").to_string());
     if name.is_empty() || name.contains('\n') {
         return Err(bad("A template's name is one line with something on it."));
     }
@@ -318,7 +423,14 @@ pub fn save_as(bible: &Bible, store: &mut Store, page: &str, name: Option<&str>)
 
 /// Change a template's settings (W6.2): the name new pages get (`new_name`, blanks allowed), whether it asks for a place,
 /// and the page new pages go inside (`Some(None)`: Pages). None leaves a setting as it is. → its row.
-pub fn set_template(bible: &Bible, store: &mut Store, key: &str, new_name: Option<&str>, asks: Option<bool>, goes_in: Option<Option<&str>>) -> Result<Value> {
+pub fn set_template(
+    bible: &Bible,
+    store: &mut Store,
+    key: &str,
+    new_name: Option<&str>,
+    asks: Option<bool>,
+    goes_in: Option<Option<&str>>,
+) -> Result<Value> {
     let t = find(bible, store, key)?;
     let id = id_of(&t);
     let mut fields: Vec<(&str, Option<Value>)> = vec![];
@@ -333,21 +445,31 @@ pub fn set_template(bible: &Bible, store: &mut Store, key: &str, new_name: Optio
         fields.push(("asks", a.then(|| json!("place"))));
     }
     if let Some(g) = goes_in {
-        let g = g.map(str::trim).filter(|g| !g.is_empty() && !g.eq_ignore_ascii_case("pages"));
+        let g = g
+            .map(str::trim)
+            .filter(|g| !g.is_empty() && !g.eq_ignore_ascii_case("pages"));
         if let Some(p) = g {
-            let e = nb::show(bible, store, p).map_err(|_| missing("No page with that id for its pages to go inside."))?;
+            let e = nb::show(bible, store, p)
+                .map_err(|_| missing("No page with that id for its pages to go inside."))?;
             if nb::is_template(&e) || e["kind"] == "day" {
-                return Err(bad("New pages go inside a page: not a template or a day's page."));
+                return Err(bad(
+                    "New pages go inside a page: not a template or a day's page.",
+                ));
             }
         }
         fields.push(("goes_in", g.map(|p| json!(p))));
     }
     if fields.is_empty() {
-        return Err(bad("Say what to change: --names, --asks place|nothing, --goes-in ID|pages."));
+        return Err(bad(
+            "Say what to change: --names, --asks place|nothing, --goes-in ID|pages.",
+        ));
     }
     store.set_fields(&id, &fields)?;
     let every = nb::every(bible, store);
-    let e = every.iter().find(|e| e["id"] == id.as_str()).ok_or_else(|| missing("The template is gone."))?;
+    let e = every
+        .iter()
+        .find(|e| e["id"] == id.as_str())
+        .ok_or_else(|| missing("The template is gone."))?;
     Ok(row(e, &every))
 }
 
@@ -367,11 +489,24 @@ mod tests {
 
     #[test]
     fn blanks_are_filled_and_others_kept() {
-        let f = Fill { place: "Numbers 25".into(), date: "Saturday, November 7".into(), title: "Chapter study: Numbers 25".into(), reader: "Psalms 106".into() };
+        let f = Fill {
+            place: "Numbers 25".into(),
+            date: "Saturday, November 7".into(),
+            title: "Chapter study: Numbers 25".into(),
+            reader: "Psalms 106".into(),
+        };
         assert_eq!(fill("# {title}\n```scripture\n{place}\n```\n{date} · {reader} · {other}", &f), "# Chapter study: Numbers 25\n```scripture\nNumbers 25\n```\nSaturday, November 7 · Psalms 106 · {other}");
         assert_eq!(holds("Chapter study\n\n# Read\n\n```scripture\n{place}\n```\n\n# What I noticed\n\n- …\n\n# Questions\n\n- [ ] …").0, "3 headings, a scripture block, a to-do, a block of writing");
         assert_eq!(holds("Empty one").0, "Empty");
-        let q = ViewQuery { place: Some("Numbers 25".into()), questions: Some("open".into()), thread: Some("the zeal".into()), ..Default::default() };
-        assert_eq!(view_without_place(&q), "notebook @{place} open thread \"the zeal\"");
+        let q = ViewQuery {
+            place: Some("Numbers 25".into()),
+            questions: Some("open".into()),
+            thread: Some("the zeal".into()),
+            ..Default::default()
+        };
+        assert_eq!(
+            view_without_place(&q),
+            "notebook @{place} open thread \"the zeal\""
+        );
     }
 }

@@ -24,7 +24,8 @@ fn document_plans_match_the_repository_owned_baseline() {
     let view = studyapi::thread_view(&bible, &store, "baseline").unwrap();
     let mut margin = plan::Margin::new(&bible, &store).unwrap();
     let source = plan::thread_source(&bible, &view, &mut margin).unwrap();
-    let expected: Value = serde_json::from_str(include_str!("../../../tests/doc-plans/fingerprints.json")).unwrap();
+    let expected: Value =
+        serde_json::from_str(include_str!("../../../tests/doc-plans/fingerprints.json")).unwrap();
 
     for case in expected["plans"].as_array().unwrap() {
         margin.reset();

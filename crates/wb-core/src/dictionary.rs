@@ -34,15 +34,21 @@ pub struct Entry {
 /// Where the dictionary database is: `WB_DICT_DB`, or `bible-workbench-rs\dictionary.db` in the local app data.
 pub fn default_path() -> std::path::PathBuf {
     #[cfg(feature = "distribution")]
-    { return crate::runtime::resource_path("dictionary.db"); }
+    {
+        return crate::runtime::resource_path("dictionary.db");
+    }
     #[cfg(not(feature = "distribution"))]
     {
-    if let Ok(p) = std::env::var("WB_DICT_DB") {
-        return p.into();
-    }
-    let base = crate::platform::local_data_dir()
-        .unwrap_or_else(|| crate::default_study_dir().parent().map(|p| p.to_path_buf()).unwrap_or_default());
-    base.join("bible-workbench-rs").join("dictionary.db")
+        if let Ok(p) = std::env::var("WB_DICT_DB") {
+            return p.into();
+        }
+        let base = crate::platform::local_data_dir().unwrap_or_else(|| {
+            crate::default_study_dir()
+                .parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_default()
+        });
+        base.join("bible-workbench-rs").join("dictionary.db")
     }
 }
 
@@ -50,24 +56,54 @@ pub fn default_path() -> std::path::PathBuf {
 fn clean(word: &str) -> String {
     let w = word.trim().to_lowercase().replace('’', "'");
     let w = w.strip_suffix("'s").unwrap_or(&w);
-    w.chars().filter(|c| c.is_alphabetic() || *c == '-').collect()
+    w.chars()
+        .filter(|c| c.is_alphabetic() || *c == '-')
+        .collect()
 }
 
 /// The headwords to try for a word, the word itself first, then without its ending.
 fn candidates(w: &str) -> Vec<String> {
     let mut v = vec![w.to_string()];
     if w.chars().count() > 3 {
-        let mut add = |s: String| if !v.contains(&s) { v.push(s) };
-        if let Some(s) = w.strip_suffix("ies") { add(format!("{s}y")); }
-        if let Some(s) = w.strip_suffix("ied") { add(format!("{s}y")); }
-        if let Some(s) = w.strip_suffix("ing") { add(s.to_string()); add(format!("{s}e")); }
-        if let Some(s) = w.strip_suffix("eth") { add(s.to_string()); add(format!("{s}e")); }
-        if let Some(s) = w.strip_suffix("est") { add(s.to_string()); add(format!("{s}e")); }
-        if let Some(s) = w.strip_suffix("es") { add(s.to_string()); }
-        if let Some(s) = w.strip_suffix("ed") { add(s.to_string()); add(format!("{s}e")); }
-        if let Some(s) = w.strip_suffix('d') { add(s.to_string()); }
-        if let Some(s) = w.strip_suffix('s') { add(s.to_string()); }
-        if let Some(s) = w.strip_suffix("ly") { add(s.to_string()); }
+        let mut add = |s: String| {
+            if !v.contains(&s) {
+                v.push(s)
+            }
+        };
+        if let Some(s) = w.strip_suffix("ies") {
+            add(format!("{s}y"));
+        }
+        if let Some(s) = w.strip_suffix("ied") {
+            add(format!("{s}y"));
+        }
+        if let Some(s) = w.strip_suffix("ing") {
+            add(s.to_string());
+            add(format!("{s}e"));
+        }
+        if let Some(s) = w.strip_suffix("eth") {
+            add(s.to_string());
+            add(format!("{s}e"));
+        }
+        if let Some(s) = w.strip_suffix("est") {
+            add(s.to_string());
+            add(format!("{s}e"));
+        }
+        if let Some(s) = w.strip_suffix("es") {
+            add(s.to_string());
+        }
+        if let Some(s) = w.strip_suffix("ed") {
+            add(s.to_string());
+            add(format!("{s}e"));
+        }
+        if let Some(s) = w.strip_suffix('d') {
+            add(s.to_string());
+        }
+        if let Some(s) = w.strip_suffix('s') {
+            add(s.to_string());
+        }
+        if let Some(s) = w.strip_suffix("ly") {
+            add(s.to_string());
+        }
     }
     v
 }
@@ -88,10 +124,23 @@ impl Dictionary {
 
     pub fn source(&self) -> Result<Source> {
         let m = |k: &str| -> Result<String> {
-            Ok(self.conn.query_row("SELECT value FROM meta WHERE key = ?1", [k], |r| r.get(0)).optional()?.unwrap_or_default())
+            Ok(self
+                .conn
+                .query_row("SELECT value FROM meta WHERE key = ?1", [k], |r| r.get(0))
+                .optional()?
+                .unwrap_or_default())
         };
-        let entries: i64 = self.conn.query_row("SELECT count(*) FROM entries", [], |r| r.get(0))?;
-        Ok(Source { name: m("name")?, edition: m("edition")?, licence: m("licence")?, url: m("url")?, via: m("via")?, entries: entries as u64 })
+        let entries: i64 = self
+            .conn
+            .query_row("SELECT count(*) FROM entries", [], |r| r.get(0))?;
+        Ok(Source {
+            name: m("name")?,
+            edition: m("edition")?,
+            licence: m("licence")?,
+            url: m("url")?,
+            via: m("via")?,
+            entries: entries as u64,
+        })
     }
 
     /// The entry for a word, if the source has one.
@@ -101,10 +150,20 @@ impl Dictionary {
             return Ok(None);
         }
         for head in candidates(&w) {
-            let text: Option<String> =
-                self.conn.query_row("SELECT text FROM entries WHERE headword = ?1", [&head], |r| r.get(0)).optional()?;
+            let text: Option<String> = self
+                .conn
+                .query_row(
+                    "SELECT text FROM entries WHERE headword = ?1",
+                    [&head],
+                    |r| r.get(0),
+                )
+                .optional()?;
             if let Some(text) = text {
-                return Ok(Some(Entry { word: word.trim().to_string(), headword: head, text }));
+                return Ok(Some(Entry {
+                    word: word.trim().to_string(),
+                    headword: head,
+                    text,
+                }));
             }
         }
         Ok(None)
@@ -118,7 +177,10 @@ impl Dictionary {
                AND (chapter < ?4 OR (chapter = ?4 AND (?5 = 0 OR verse <= ?5))) \
              ORDER BY chapter, verse, idx",
         )?;
-        let rows = stmt.query_map(rusqlite::params![span.book.id, span.c1, span.v1.max(1), span.c2, span.v2], |r| r.get::<_, String>(0))?;
+        let rows = stmt.query_map(
+            rusqlite::params![span.book.id, span.c1, span.v1.max(1), span.c2, span.v2],
+            |r| r.get::<_, String>(0),
+        )?;
         let mut seen = std::collections::HashSet::new();
         let mut out = Vec::new();
         for row in rows {

@@ -96,7 +96,10 @@ pub struct Passage {
 impl Bible {
     pub fn open(path: &Path) -> Result<Bible> {
         if !path.exists() {
-            return Err(Error(format!("No Bible database at {} (set WB_BIBLE_DB)", path.display())));
+            return Err(Error(format!(
+                "No Bible database at {} (set WB_BIBLE_DB)",
+                path.display()
+            )));
         }
         let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
         let conn = Connection::open_with_flags(path, flags)?;
@@ -104,13 +107,28 @@ impl Bible {
         let books = conn
             .prepare("SELECT id, code, name, testament, chapters FROM books ORDER BY id")?
             .query_map([], |r| {
-                Ok(Book { id: r.get(0)?, code: r.get(1)?, name: r.get(2)?, testament: r.get(3)?, chapters: r.get(4)? })
+                Ok(Book {
+                    id: r.get(0)?,
+                    code: r.get(1)?,
+                    name: r.get(2)?,
+                    testament: r.get(3)?,
+                    chapters: r.get(4)?,
+                })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         let meta = std::fs::metadata(path)?;
-        let modified = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_nanos()).unwrap_or(0);
+        let modified = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
         let signature = format!("{}-{modified}", meta.len());
-        Ok(Bible { conn, books, signature })
+        Ok(Bible {
+            conn,
+            books,
+            signature,
+        })
     }
 
     pub fn signature(&self) -> &str {
@@ -127,26 +145,45 @@ impl Bible {
     }
 
     pub fn book(&self, code: &str) -> Result<&Book> {
-        self.books.iter().find(|b| b.code == code).ok_or_else(|| Error(format!("No book {code}")))
+        self.books
+            .iter()
+            .find(|b| b.code == code)
+            .ok_or_else(|| Error(format!("No book {code}")))
     }
 
     /// A book by its code ("NUM"), its name ("Numbers") or the start of its name ("Num", "1 Sam").
     pub fn find_book(&self, name: &str) -> Option<&Book> {
-        let key: String = name.chars().filter(|c| !c.is_whitespace()).collect::<String>().to_lowercase();
+        let key: String = name
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>()
+            .to_lowercase();
         if key.is_empty() {
             return None;
         }
-        let squash = |s: &str| s.chars().filter(|c| !c.is_whitespace()).collect::<String>().to_lowercase();
+        let squash = |s: &str| {
+            s.chars()
+                .filter(|c| !c.is_whitespace())
+                .collect::<String>()
+                .to_lowercase()
+        };
         self.books
             .iter()
             .find(|b| b.code.to_lowercase() == key || squash(&b.name) == key)
-            .or_else(|| self.books.iter().find(|b| squash(&b.name).starts_with(&key)))
+            .or_else(|| {
+                self.books
+                    .iter()
+                    .find(|b| squash(&b.name).starts_with(&key))
+            })
     }
 
     pub fn chapter(&self, code: &str, chapter: u32) -> Result<Chapter> {
         let book = self.book(code)?.clone();
         if chapter == 0 || chapter > book.chapters {
-            return Err(Error(format!("{} has {} chapters", book.name, book.chapters)));
+            return Err(Error(format!(
+                "{} has {} chapters",
+                book.name, book.chapters
+            )));
         }
         let mut stmt = self.conn.prepare_cached(
             "SELECT verse, idx, lead, text, trail, strong, italic, nd, wj, para FROM words \
@@ -178,9 +215,21 @@ impl Bible {
         }
         let title = self
             .conn
-            .query_row("SELECT title FROM chapter_titles WHERE book = ?1 AND chapter = ?2", params![book.id, chapter], |r| r.get(0))
+            .query_row(
+                "SELECT title FROM chapter_titles WHERE book = ?1 AND chapter = ?2",
+                params![book.id, chapter],
+                |r| r.get(0),
+            )
             .optional()?;
-        Ok(Chapter { code: book.code, name: book.name, chapter, chapters: book.chapters, title, verses, version: None })
+        Ok(Chapter {
+            code: book.code,
+            name: book.name,
+            chapter,
+            chapters: book.chapters,
+            title,
+            verses,
+            version: None,
+        })
     }
 
     /// A chapter in a version (`KJV`, `YLT`, any in the versions table). Another version's verse is its text verbatim,
@@ -192,19 +241,31 @@ impl Bible {
         if version.is_empty() || version == "KJV" {
             return Ok(kjv);
         }
-        let known: Option<String> =
-            self.conn.query_row("SELECT id FROM versions WHERE id = ?1", [&version], |r| r.get(0)).optional()?;
+        let known: Option<String> = self
+            .conn
+            .query_row("SELECT id FROM versions WHERE id = ?1", [&version], |r| {
+                r.get(0)
+            })
+            .optional()?;
         if known.is_none() {
             return Err(Error(format!("No such version: {version}")));
         }
         let id = self.book(code)?.id;
         let mut stmt =
             self.conn.prepare_cached("SELECT verse, text FROM verse_texts WHERE version = ?1 AND book = ?2 AND chapter = ?3 ORDER BY verse")?;
-        let rows = stmt.query_map(params![version, id, chapter], |r| Ok((r.get::<_, u32>(0)?, r.get::<_, String>(1)?)))?;
+        let rows = stmt.query_map(params![version, id, chapter], |r| {
+            Ok((r.get::<_, u32>(0)?, r.get::<_, String>(1)?))
+        })?;
         let mut verses = Vec::new();
         for row in rows {
             let (v, text) = row?;
-            let para = kjv.verses.iter().find(|x| x.v == v).and_then(|x| x.words.first()).map(|w| w.para.clone()).unwrap_or_default();
+            let para = kjv
+                .verses
+                .iter()
+                .find(|x| x.v == v)
+                .and_then(|x| x.words.first())
+                .map(|w| w.para.clone())
+                .unwrap_or_default();
             let words = text
                 .split(' ')
                 .filter(|t| !t.is_empty())
@@ -223,7 +284,11 @@ impl Bible {
                 .collect();
             verses.push(Verse { v, words });
         }
-        Ok(Chapter { verses, version: Some(version), ..kjv })
+        Ok(Chapter {
+            verses,
+            version: Some(version),
+            ..kjv
+        })
     }
 
     /// One word of a verse (`i` is its 0-based position), with the book's name.
@@ -283,18 +348,32 @@ impl Bible {
             [strong],
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )?;
-        Ok(Count { strong: strong.into(), times, verses, books })
+        Ok(Count {
+            strong: strong.into(),
+            times,
+            verses,
+            books,
+        })
     }
 
     /// Verse text, verbatim, for a range of verses in one book (`v2` may be in a later chapter).
-    pub fn verses(&self, code: &str, c1: u32, v1: u32, c2: u32, v2: u32) -> Result<Vec<(u32, u32, String)>> {
+    pub fn verses(
+        &self,
+        code: &str,
+        c1: u32,
+        v1: u32,
+        c2: u32,
+        v2: u32,
+    ) -> Result<Vec<(u32, u32, String)>> {
         let book = self.book(code)?;
         let mut stmt = self.conn.prepare_cached(
             "SELECT chapter, verse, text FROM verses WHERE book = ?1 \
              AND (chapter, verse) >= (?2, ?3) AND (chapter, verse) <= (?4, ?5) ORDER BY chapter, verse",
         )?;
         let rows = stmt
-            .query_map(params![book.id, c1, v1, c2, v2], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+            .query_map(params![book.id, c1, v1, c2, v2], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+            })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
     }
@@ -302,7 +381,9 @@ impl Bible {
     /// The number of a chapter's last verse (0 for a chapter the book does not have).
     pub fn last_verse(&self, code: &str, chapter: u32) -> Result<u32> {
         let book = self.book(code)?;
-        let mut stmt = self.conn.prepare_cached("SELECT COALESCE(MAX(verse), 0) FROM verses WHERE book = ?1 AND chapter = ?2")?;
+        let mut stmt = self.conn.prepare_cached(
+            "SELECT COALESCE(MAX(verse), 0) FROM verses WHERE book = ?1 AND chapter = ?2",
+        )?;
         Ok(stmt.query_row(params![book.id, chapter], |r| r.get(0))?)
     }
 
@@ -320,7 +401,10 @@ impl Bible {
         let book = self.find_book(&place[..split]).ok_or_else(bad)?.clone();
         let spec = place[split..].replace(' ', "");
         let num = |s: &str| s.parse::<u32>().map_err(|_| bad());
-        let (start, end) = spec.split_once(['-', '–']).map(|(a, b)| (a.to_string(), Some(b.to_string()))).unwrap_or((spec.clone(), None));
+        let (start, end) = spec
+            .split_once(['-', '–'])
+            .map(|(a, b)| (a.to_string(), Some(b.to_string())))
+            .unwrap_or((spec.clone(), None));
         let (c1, v1) = match start.split_once(':') {
             Some((c, v)) => (num(c)?, Some(num(v)?)),
             None => (num(&start)?, None),
@@ -343,7 +427,10 @@ impl Bible {
         } else if first.0 == last.0 {
             format!("{} {}:{}–{}", book.name, first.0, first.1, last.1)
         } else {
-            format!("{} {}:{}–{}:{}", book.name, first.0, first.1, last.0, last.1)
+            format!(
+                "{} {}:{}–{}:{}",
+                book.name, first.0, first.1, last.0, last.1
+            )
         };
         Ok(Passage { reference, verses })
     }

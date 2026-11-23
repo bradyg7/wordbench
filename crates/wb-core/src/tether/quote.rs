@@ -34,13 +34,21 @@ pub fn words_of(text: &str) -> Vec<NoteWord> {
         } else if in_word {
             in_word = false;
             if !cur.is_empty() {
-                out.push(NoteWord { w: std::mem::take(&mut cur), s: start, e: i });
+                out.push(NoteWord {
+                    w: std::mem::take(&mut cur),
+                    s: start,
+                    e: i,
+                });
             }
             cur.clear();
         }
     }
     if in_word && !cur.is_empty() {
-        out.push(NoteWord { w: cur, s: start, e: n });
+        out.push(NoteWord {
+            w: cur,
+            s: start,
+            e: n,
+        });
     }
     out
 }
@@ -64,9 +72,20 @@ pub fn load_verses(bible: &Bible, version: &str) -> Result<Vec<VerseRec>> {
     let mut stmt = bible.conn().prepare(&sql)?;
     let map = |r: &rusqlite::Row| -> rusqlite::Result<VerseRec> {
         let t: String = r.get(3)?;
-        Ok(VerseRec { book: r.get(0)?, chapter: r.get(1)?, verse: r.get(2)?, words: words_of(&t).into_iter().map(|w| w.w).collect() })
+        Ok(VerseRec {
+            book: r.get(0)?,
+            chapter: r.get(1)?,
+            verse: r.get(2)?,
+            words: words_of(&t).into_iter().map(|w| w.w).collect(),
+        })
     };
-    let rows = if version == "KJV" { stmt.query_map([], map)? .collect::<rusqlite::Result<Vec<_>>>()? } else { stmt.query_map([&version], map)?.collect::<rusqlite::Result<Vec<_>>>()? };
+    let rows = if version == "KJV" {
+        stmt.query_map([], map)?
+            .collect::<rusqlite::Result<Vec<_>>>()?
+    } else {
+        stmt.query_map([&version], map)?
+            .collect::<rusqlite::Result<Vec<_>>>()?
+    };
     Ok(rows)
 }
 
@@ -128,7 +147,12 @@ impl<'a> Matcher<'a> {
             }
         }
         postings.retain(|_, v| v.len() <= COMMON);
-        Matcher { verses, seed, min_words, postings }
+        Matcher {
+            verses,
+            seed,
+            min_words,
+            postings,
+        }
     }
 
     /// Every run of at least `min_words` words of a verse in this block (one per place it is found).
@@ -197,7 +221,8 @@ impl<'a> Matcher<'a> {
                 if ip - iq > 3 {
                     break;
                 }
-                if iq < ip && jq < jp && ip - iq - 1 <= 2 && jp - jq - 1 <= 2 && best[q].0 + 1 > b.0 {
+                if iq < ip && jq < jp && ip - iq - 1 <= 2 && jp - jq - 1 <= 2 && best[q].0 + 1 > b.0
+                {
                     b = (best[q].0 + 1, Some(q));
                 }
             }
@@ -220,20 +245,33 @@ impl<'a> Matcher<'a> {
         chain.reverse();
         vjs.reverse();
         // at most a third of the stretch, in the note or in the verse, is other words
-        let (note_span, verse_span) = (chain[chain.len() - 1] - chain[0] + 1, vjs[vjs.len() - 1] - vjs[0] + 1);
+        let (note_span, verse_span) = (
+            chain[chain.len() - 1] - chain[0] + 1,
+            vjs[vjs.len() - 1] - vjs[0] + 1,
+        );
         if chain.len() * 3 < note_span * 2 || chain.len() * 3 < verse_span * 2 {
             return None;
         }
         // and some words side by side in both: a run of 3 (the seed), never only words spread through the verse
         let (mut run, mut longest) = (1, 1);
         for k in 1..chain.len() {
-            run = if chain[k] == chain[k - 1] + 1 && vjs[k] == vjs[k - 1] + 1 { run + 1 } else { 1 };
+            run = if chain[k] == chain[k - 1] + 1 && vjs[k] == vjs[k - 1] + 1 {
+                run + 1
+            } else {
+                1
+            };
             longest = longest.max(run);
         }
         if longest < self.seed {
             return None;
         }
-        Some(Chain { verse: vi, first: chain[0], last: *chain.last().unwrap(), matched: chain.len(), note_words: chain })
+        Some(Chain {
+            verse: vi,
+            first: chain[0],
+            last: *chain.last().unwrap(),
+            matched: chain.len(),
+            note_words: chain,
+        })
     }
 }
 
@@ -257,7 +295,10 @@ pub fn group(verses: &[VerseRec], mut chains: Vec<Chain>) -> Vec<Outcome> {
     chains.sort_by_key(|c| (std::cmp::Reverse(c.last - c.first), c.first, c.verse));
     let mut groups: Vec<(usize, usize, Vec<Chain>)> = vec![];
     for c in chains {
-        if let Some(g) = groups.iter_mut().find(|g| c.first.abs_diff(g.0) <= 2 && c.last.abs_diff(g.1) <= 2) {
+        if let Some(g) = groups
+            .iter_mut()
+            .find(|g| c.first.abs_diff(g.0) <= 2 && c.last.abs_diff(g.1) <= 2)
+        {
             if !g.2.iter().any(|k| k.verse == c.verse) {
                 g.2.push(c);
             }
@@ -283,10 +324,14 @@ pub fn group(verses: &[VerseRec], mut chains: Vec<Chain>) -> Vec<Outcome> {
     let mut passages: Vec<Vec<Chain>> = vec![];
     for c in ones {
         match passages.last_mut() {
-            Some(p) if {
-                let l = p.last().unwrap();
-                c.verse == l.verse + 1 && verses[c.verse].book == verses[l.verse].book && c.first > l.last && c.first - l.last <= 30
-            } =>
+            Some(p)
+                if {
+                    let l = p.last().unwrap();
+                    c.verse == l.verse + 1
+                        && verses[c.verse].book == verses[l.verse].book
+                        && c.first > l.last
+                        && c.first - l.last <= 30
+                } =>
             {
                 p.push(c)
             }

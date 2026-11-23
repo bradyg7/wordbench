@@ -33,7 +33,11 @@ pub fn pinned_of(store: &Store, slug: &str) -> Option<f64> {
 /// Put a thread at a place in Pinned, or (None) take it out. Other threads' places are kept as they are.
 pub fn set_pinned(store: &mut Store, slug: &str, at: Option<i64>) -> Result<()> {
     store.thread(slug)?;
-    let mut all = store.settings("pages").get("pinned").and_then(|p| p.as_object().cloned()).unwrap_or_default();
+    let mut all = store
+        .settings("pages")
+        .get("pinned")
+        .and_then(|p| p.as_object().cloned())
+        .unwrap_or_default();
     match at {
         Some(n) => {
             all.insert(slug.into(), json!(n));
@@ -42,7 +46,15 @@ pub fn set_pinned(store: &mut Store, slug: &str, at: Option<i64>) -> Result<()> 
             all.shift_remove(slug);
         }
     }
-    store.set_setting("pages", "pinned", if all.is_empty() { None } else { Some(Value::Object(all)) })?;
+    store.set_setting(
+        "pages",
+        "pinned",
+        if all.is_empty() {
+            None
+        } else {
+            Some(Value::Object(all))
+        },
+    )?;
     Ok(())
 }
 
@@ -61,10 +73,18 @@ pub fn entry(bible: &Bible, store: &Store, t: &Rec) -> Value {
     let slug = s(t, "id");
     let mut e = nb::entry_of(bible, &as_note(t), "thread", false);
     e["title"] = t["name"].clone();
-    e["preview"] = json!(crate::store::cut(&s(t, "note").split_whitespace().collect::<Vec<_>>().join(" "), 140));
+    e["preview"] = json!(crate::store::cut(
+        &s(t, "note")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" "),
+        140
+    ));
     e["slug"] = json!(slug);
     e["color"] = json!(s(t, "color"));
-    e["pinned"] = pinned_of(store, &slug).map(|n| json!(n)).unwrap_or(Value::Null);
+    e["pinned"] = pinned_of(store, &slug)
+        .map(|n| json!(n))
+        .unwrap_or(Value::Null);
     e["places"] = json!(t["members"].as_array().map(|a| a.len()).unwrap_or(0));
     e["threads"] = json!([]);
     e["also"] = json!([]);
@@ -73,7 +93,11 @@ pub fn entry(bible: &Bible, store: &Store, t: &Rec) -> Value {
 
 /// Every thread as an entry (the tree's rows, and the titles a `[[link]]` can name).
 pub fn lines(bible: &Bible, store: &Store) -> Vec<Value> {
-    store.threads().into_iter().map(|t| entry(bible, store, t)).collect()
+    store
+        .threads()
+        .into_iter()
+        .map(|t| entry(bible, store, t))
+        .collect()
 }
 
 /// The page of a thread by its slug (or its page id): the entry as `nb::show` gives any page, with the thread's places as

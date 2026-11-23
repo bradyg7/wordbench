@@ -78,10 +78,16 @@ impl World for Spike {
     }
     fn source(&self, id: FileId) -> FileResult<Source> {
         let bytes = self.file(id)?;
-        Ok(Source::new(id, String::from_utf8(bytes.to_vec()).map_err(|_| FileError::InvalidUtf8)?))
+        Ok(Source::new(
+            id,
+            String::from_utf8(bytes.to_vec()).map_err(|_| FileError::InvalidUtf8)?,
+        ))
     }
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        self.files.get(&id).cloned().ok_or_else(|| FileError::NotFound(PathBuf::from(format!("{id:?}"))))
+        self.files
+            .get(&id)
+            .cloned()
+            .ok_or_else(|| FileError::NotFound(PathBuf::from(format!("{id:?}"))))
     }
     fn font(&self, index: usize) -> Option<Font> {
         self.fonts.get(index).cloned()
@@ -103,11 +109,19 @@ fn woff_to_otf(woff: &[u8]) -> Vec<u8> {
     let mut tables = vec![];
     for t in 0..n {
         let e = 44 + t * 20;
-        let (tag, off, clen, olen, sum) = (u32_at(e), u32_at(e + 4) as usize, u32_at(e + 8) as usize, u32_at(e + 12) as usize, u32_at(e + 16));
+        let (tag, off, clen, olen, sum) = (
+            u32_at(e),
+            u32_at(e + 4) as usize,
+            u32_at(e + 8) as usize,
+            u32_at(e + 12) as usize,
+            u32_at(e + 16),
+        );
         let raw = &woff[off..off + clen];
         let data = if clen < olen {
             let mut out = Vec::with_capacity(olen);
-            flate2::read::ZlibDecoder::new(raw).read_to_end(&mut out).unwrap();
+            flate2::read::ZlibDecoder::new(raw)
+                .read_to_end(&mut out)
+                .unwrap();
             out
         } else {
             raw.to_vec()
@@ -175,14 +189,19 @@ fn squash(s: &str) -> String {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let code = args.first().map(|s| s.to_uppercase()).unwrap_or("NUM".into());
+    let code = args
+        .first()
+        .map(|s| s.to_uppercase())
+        .unwrap_or("NUM".into());
     let chapter: u32 = args.get(1).map(|s| s.parse()).transpose()?.unwrap_or(25);
     let t_all = Instant::now();
 
     // The chapter, with the person's highlights from the scratch study folder.
     let bible = Bible::open(&wb_core::default_db_path())?;
     let ch = bible.chapter(&code, chapter)?;
-    let m = Store::open(&wb_core::default_study_dir()).and_then(|s| marks::chapter_marks(&s, &code, chapter)).unwrap_or_default();
+    let m = Store::open(&wb_core::default_study_dir())
+        .and_then(|s| marks::chapter_marks(&s, &code, chapter))
+        .unwrap_or_default();
     let color_of = |v: u32, i: u32| -> Option<&'static str> {
         let mut c = None;
         for h in &m.highlights {
@@ -198,7 +217,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let mut paragraphs: Vec<Vec<serde_json::Value>> = vec![vec![]];
     for v in &ch.verses {
-        if v.words.first().is_some_and(|w| w.para == "p") && !paragraphs.last().unwrap().is_empty() {
+        if v.words.first().is_some_and(|w| w.para == "p") && !paragraphs.last().unwrap().is_empty()
+        {
             paragraphs.push(vec![]);
         }
         let words: Vec<_> = v
@@ -206,11 +226,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .iter()
             .enumerate()
             .map(|(n, w)| {
-                let trail = if n + 1 == v.words.len() { w.trail.trim_end().to_string() } else { w.trail.clone() };
+                let trail = if n + 1 == v.words.len() {
+                    w.trail.trim_end().to_string()
+                } else {
+                    w.trail.clone()
+                };
                 json!({ "t": format!("{}{}{}", w.lead, w.text, trail), "hl": color_of(v.v, w.i) })
             })
             .collect();
-        paragraphs.last_mut().unwrap().push(json!({ "n": v.v.to_string(), "words": words }));
+        paragraphs
+            .last_mut()
+            .unwrap()
+            .push(json!({ "n": v.v.to_string(), "words": words }));
     }
     let reference = format!("{} {}", ch.name, chapter);
     let data = json!({ "reference": reference, "paragraphs": paragraphs });
@@ -220,7 +247,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut fonts = vec![];
     for f in ["400-normal", "400-italic", "700-normal", "700-italic"] {
-        let woff = std::fs::read(root.join(format!("node_modules/@fontsource/literata/files/literata-latin-{f}.woff")))?;
+        let woff = std::fs::read(root.join(format!(
+            "node_modules/@fontsource/literata/files/literata-latin-{f}.woff"
+        )))?;
         fonts.extend(Font::iter(Bytes::new(woff_to_otf(&woff))));
     }
     fonts.extend(typst_assets::fonts().flat_map(|d| Font::iter(Bytes::new(d))));
@@ -230,7 +259,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut files = HashMap::new();
     files.insert(main, Bytes::from_string(TEMPLATE.to_string()));
     files.insert(id("/data.json"), Bytes::new(serde_json::to_vec(&data)?));
-    let world = Spike { library: LazyHash::new(Library::default()), book: LazyHash::new(FontBook::from_fonts(&fonts)), fonts, files, main };
+    let world = Spike {
+        library: LazyHash::new(Library::default()),
+        book: LazyHash::new(FontBook::from_fonts(&fonts)),
+        fonts,
+        files,
+        main,
+    };
 
     let mut times = vec![];
     let mut doc = None;
@@ -241,32 +276,65 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for w in &out.warnings {
             eprintln!("warning: {}", w.message);
         }
-        doc = Some(out.output.map_err(|e| format!("{:?}", e.iter().map(|d| d.message.clone()).collect::<Vec<_>>()))?);
+        doc = Some(out.output.map_err(|e| {
+            format!(
+                "{:?}",
+                e.iter().map(|d| d.message.clone()).collect::<Vec<_>>()
+            )
+        })?);
         times.push(t.elapsed().as_secs_f64() * 1000.0);
     }
     let doc = doc.unwrap();
     let t_pdf = Instant::now();
-    let pdf = typst_pdf::pdf(&doc, &typst_pdf::PdfOptions::default()).map_err(|e| format!("{:?}", e.iter().map(|d| d.message.clone()).collect::<Vec<_>>()))?;
+    let pdf = typst_pdf::pdf(&doc, &typst_pdf::PdfOptions::default()).map_err(|e| {
+        format!(
+            "{:?}",
+            e.iter().map(|d| d.message.clone()).collect::<Vec<_>>()
+        )
+    })?;
     let pdf_ms = t_pdf.elapsed().as_secs_f64() * 1000.0;
 
     // Every verse, verbatim, in the pages.
     let text = squash(&page_text(&doc).replace('\u{ad}', ""));
     let verses = bible.verses(&code, chapter, 1, chapter, u32::MAX)?;
-    let missing: Vec<u32> = verses.iter().filter(|(_, _, t)| !text.contains(&squash(&t.replace('¶', "¶ ")))).map(|v| v.1).collect();
+    let missing: Vec<u32> = verses
+        .iter()
+        .filter(|(_, _, t)| !text.contains(&squash(&t.replace('¶', "¶ "))))
+        .map(|v| v.1)
+        .collect();
 
     let out_dir = root.join("spikes/pdf/out");
     std::fs::create_dir_all(&out_dir)?;
     let path = out_dir.join(format!("{code}-{chapter}.pdf"));
     std::fs::write(&path, &pdf)?;
     // Page 1 as an image too, to look at without a PDF viewer.
-    let png = typst_render::render(&doc.pages()[0], &typst_render::RenderOptions { pixel_per_pt: 1.5.into(), render_bleed: false }).encode_png()?;
+    let png = typst_render::render(
+        &doc.pages()[0],
+        &typst_render::RenderOptions {
+            pixel_per_pt: 1.5.into(),
+            render_bleed: false,
+        },
+    )
+    .encode_png()?;
     std::fs::write(out_dir.join(format!("{code}-{chapter}-page1.png")), png)?;
     let used = doc.pages().len();
-    println!("{reference}: {used} page(s), {} KB → {}", pdf.len() / 1024, path.canonicalize()?.display());
+    println!(
+        "{reference}: {used} page(s), {} KB → {}",
+        pdf.len() / 1024,
+        path.canonicalize()?.display()
+    );
     println!("fonts loaded in {fonts_ms:.0} ms; compile {} ms; PDF written in {pdf_ms:.0} ms; total {:.0} ms",
         times.iter().map(|t| format!("{t:.0}")).collect::<Vec<_>>().join(" / "), t_all.elapsed().as_secs_f64() * 1000.0);
-    println!("verses checked against the database: {} of {} found verbatim{}", verses.len() - missing.len(), verses.len(),
-        if missing.is_empty() { String::new() } else { format!(" (missing: {missing:?})") });
+    println!(
+        "verses checked against the database: {} of {} found verbatim{}",
+        verses.len() - missing.len(),
+        verses.len(),
+        if missing.is_empty() {
+            String::new()
+        } else {
+            format!(" (missing: {missing:?})")
+        }
+    );
     if !missing.is_empty() {
         std::process::exit(2);
     }

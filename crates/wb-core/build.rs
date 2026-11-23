@@ -22,11 +22,19 @@ fn main() {
     let version = std::env::var("CARGO_PKG_VERSION").unwrap();
     let notes = Path::new("../../docs/releases").join(format!("{version}.md"));
     println!("cargo:rerun-if-changed={}", notes.display());
-    std::fs::write(Path::new(&out).join("installed-notes.md"), std::fs::read_to_string(&notes).unwrap_or_default()).unwrap();
+    std::fs::write(
+        Path::new(&out).join("installed-notes.md"),
+        std::fs::read_to_string(&notes).unwrap_or_default(),
+    )
+    .unwrap();
 
     let conf = Path::new("../../app/src-tauri/tauri.release.conf.json");
     println!("cargo:rerun-if-changed={}", conf.display());
     let text = std::fs::read_to_string(conf).unwrap_or_default();
-    let key = text.split("\"pubkey\"").nth(1).and_then(|r| r.split('"').nth(1)).unwrap_or("");
+    let key = text
+        .split("\"pubkey\"")
+        .nth(1)
+        .and_then(|r| r.split('"').nth(1))
+        .unwrap_or("");
     std::fs::write(Path::new(&out).join("update-pubkey.txt"), key).unwrap();
 }

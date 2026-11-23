@@ -3,8 +3,8 @@
 //! Python tests quote scripture, these compare with what `wb text` gives from the database.
 
 use serde_json::{json, Value};
-use std::path::PathBuf;
 use std::io::Write;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 struct Wb {
@@ -21,7 +21,11 @@ impl Wb {
         let dir = std::env::temp_dir()
             .join("bible-workbench-rs")
             .join("cli-tests")
-            .join(format!("{}-{}", std::process::id(), N.fetch_add(1, std::sync::atomic::Ordering::SeqCst)));
+            .join(format!(
+                "{}-{}",
+                std::process::id(),
+                N.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+            ));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         Some(Wb { dir })
@@ -30,15 +34,30 @@ impl Wb {
     /// Runs wb; → (exit code, stdout, stderr).
     fn run(&self, args: &[&str], stdin: Option<&str>) -> (i32, String, String) {
         let mut c = Command::new(env!("CARGO_BIN_EXE_wb"));
-        c.args(args).env("WB_STUDY_DIR", &self.dir).env_remove("WB_DOCS_DIR").env("WB_NO_OPEN", "1").stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        c.args(args)
+            .env("WB_STUDY_DIR", &self.dir)
+            .env_remove("WB_DOCS_DIR")
+            .env("WB_NO_OPEN", "1")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
         let mut child = c.spawn().unwrap();
         if let Some(text) = stdin {
             use std::io::Write;
-            child.stdin.take().unwrap().write_all(text.as_bytes()).unwrap();
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(text.as_bytes())
+                .unwrap();
         }
         drop(child.stdin.take());
         let out = child.wait_with_output().unwrap();
-        (out.status.code().unwrap_or(-1), String::from_utf8_lossy(&out.stdout).into(), String::from_utf8_lossy(&out.stderr).into())
+        (
+            out.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&out.stdout).into(),
+            String::from_utf8_lossy(&out.stderr).into(),
+        )
     }
 
     fn ok(&self, args: &[&str]) -> String {
@@ -72,7 +91,12 @@ impl Wb {
 }
 
 fn verse_texts(wb: &Wb, place: &str) -> Vec<String> {
-    wb.js(&["text", place, "--json"])["verses"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap().to_string()).collect()
+    wb.js(&["text", place, "--json"])["verses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["text"].as_str().unwrap().to_string())
+        .collect()
 }
 
 // ---- reading ----
@@ -83,15 +107,29 @@ fn scripture_is_verbatim_with_its_reference() {
     let text = wb.ok(&["text", "John 3:16"]);
     assert!(text.starts_with("John 3:16 (KJV)\n"));
     assert!(text.contains(&verse_texts(&wb, "John 3:16")[0]));
-    assert_eq!(wb.js(&["text", "Jude", "--json"])["verses"].as_array().unwrap().len(), 25);
+    assert_eq!(
+        wb.js(&["text", "Jude", "--json"])["verses"]
+            .as_array()
+            .unwrap()
+            .len(),
+        25
+    );
 }
 
 #[test]
 fn the_ylt_and_lists_of_places() {
     let Some(wb) = Wb::new() else { return };
     let d = wb.js(&["text", "John 3:16; Rom 5:8", "--version", "ylt", "--json"]);
-    assert_eq!((d["version"].clone(), d["verses"].as_array().unwrap().len()), (json!("YLT"), 2));
-    let spans: Vec<Value> = d["verses"].as_array().unwrap().iter().map(|v| v["span"].clone()).collect();
+    assert_eq!(
+        (d["version"].clone(), d["verses"].as_array().unwrap().len()),
+        (json!("YLT"), 2)
+    );
+    let spans: Vec<Value> = d["verses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["span"].clone())
+        .collect();
     assert_eq!(spans, vec![json!(0), json!(1)]);
 }
 
@@ -99,38 +137,98 @@ fn the_ylt_and_lists_of_places() {
 fn copy_lays_out_the_same_words_with_their_references() {
     let Some(wb) = Wb::new() else { return };
     let john = verse_texts(&wb, "John 3:16")[0].clone();
-    assert_eq!(wb.ok(&["copy", "John 3:16", "--no-clip"]).trim(), format!("John 3:16 {john}"));
-    assert_eq!(wb.ok(&["copy", "John 3:16", "--format", "quote", "--no-clip"]).trim(), format!("“{john}” (John 3:16 KJV)"));
-    assert!(wb.ok(&["copy", "Rom 5:8", "--short", "--no-clip"]).starts_with("Rom 5:8 "));
+    assert_eq!(
+        wb.ok(&["copy", "John 3:16", "--no-clip"]).trim(),
+        format!("John 3:16 {john}")
+    );
+    assert_eq!(
+        wb.ok(&["copy", "John 3:16", "--format", "quote", "--no-clip"])
+            .trim(),
+        format!("“{john}” (John 3:16 KJV)")
+    );
+    assert!(wb
+        .ok(&["copy", "Rom 5:8", "--short", "--no-clip"])
+        .starts_with("Rom 5:8 "));
     let vs = verse_texts(&wb, "John 3:16-17");
-    assert_eq!(wb.ok(&["copy", "John 3:16-17", "--no-clip"]).trim(), format!("John 3:16 {}\nJohn 3:17 {}", vs[0], vs[1]));
-    assert_eq!(wb.ok(&["copy", "John 3:16-17", "--format", "block", "--no-clip"]).trim(), format!("John 3:16–17 (KJV)\n16 {}\n17 {}", vs[0], vs[1]));
-    assert_eq!(wb.ok(&["copy", "John 3:16-17", "--format", "para", "--no-clip"]).trim(), format!("John 3:16–17 (KJV)\n16 {} 17 {}", vs[0], vs[1]));
-    assert_eq!(wb.ok(&["copy", "John 3:16; Rom 5:8", "--format", "quote", "--no-clip"]).trim().matches('\n').count(), 1); // places stay apart
-    assert!(wb.ok(&["copy", "John 3:36-4:1", "--format", "block", "--no-clip"]).lines().nth(1).unwrap().starts_with("3:36 "));
-    assert!(wb.ok(&["copy", "John 3:16", "--version", "ylt", "--no-clip"]).contains("John 3:16 (YLT) "));
-    assert!(wb.fails(&["copy", "Zzz 1:1", "--no-clip"]).contains("No book called"));
+    assert_eq!(
+        wb.ok(&["copy", "John 3:16-17", "--no-clip"]).trim(),
+        format!("John 3:16 {}\nJohn 3:17 {}", vs[0], vs[1])
+    );
+    assert_eq!(
+        wb.ok(&["copy", "John 3:16-17", "--format", "block", "--no-clip"])
+            .trim(),
+        format!("John 3:16–17 (KJV)\n16 {}\n17 {}", vs[0], vs[1])
+    );
+    assert_eq!(
+        wb.ok(&["copy", "John 3:16-17", "--format", "para", "--no-clip"])
+            .trim(),
+        format!("John 3:16–17 (KJV)\n16 {} 17 {}", vs[0], vs[1])
+    );
+    assert_eq!(
+        wb.ok(&[
+            "copy",
+            "John 3:16; Rom 5:8",
+            "--format",
+            "quote",
+            "--no-clip"
+        ])
+        .trim()
+        .matches('\n')
+        .count(),
+        1
+    ); // places stay apart
+    assert!(wb
+        .ok(&["copy", "John 3:36-4:1", "--format", "block", "--no-clip"])
+        .lines()
+        .nth(1)
+        .unwrap()
+        .starts_with("3:36 "));
+    assert!(wb
+        .ok(&["copy", "John 3:16", "--version", "ylt", "--no-clip"])
+        .contains("John 3:16 (YLT) "));
+    assert!(wb
+        .fails(&["copy", "Zzz 1:1", "--no-clip"])
+        .contains("No book called"));
 }
 
 #[test]
 fn a_preview_is_the_same_words_as_the_text() {
     let Some(wb) = Wb::new() else { return };
     let d = wb.js(&["preview", "John 3:16", "--json"]);
-    assert_eq!((d["kind"].clone(), d["label"].clone(), d["version"].clone(), d["more"].clone()), (json!("verses"), json!("John 3:16"), json!("KJV"), json!(0)));
-    assert_eq!(d["verses"][0]["text"], json!(verse_texts(&wb, "John 3:16")[0]));
+    assert_eq!(
+        (
+            d["kind"].clone(),
+            d["label"].clone(),
+            d["version"].clone(),
+            d["more"].clone()
+        ),
+        (json!("verses"), json!("John 3:16"), json!("KJV"), json!(0))
+    );
+    assert_eq!(
+        d["verses"][0]["text"],
+        json!(verse_texts(&wb, "John 3:16")[0])
+    );
     let n = |p: &str| {
         let d = wb.js(&["preview", p, "--json"]);
-        (d["verses"].as_array().unwrap().len(), d["more"].as_u64().unwrap())
+        (
+            d["verses"].as_array().unwrap().len(),
+            d["more"].as_u64().unwrap(),
+        )
     };
     assert_eq!(n("Psalm 23"), (6, 0));
     assert_eq!(n("Psalm 117"), (2, 0));
     assert_eq!(n("John 3"), (6, 30));
     assert!(wb.ok(&["preview", "John 3"]).contains("... and 30 more"));
     let g = wb.js(&["preview", "g26", "--json"]);
-    assert_eq!((g["kind"].clone(), g["strong"].clone()), (json!("strong"), json!("G26")));
+    assert_eq!(
+        (g["kind"].clone(), g["strong"].clone()),
+        (json!("strong"), json!("G26"))
+    );
     assert_eq!(g["definition"], wb.js(&["strong", "G26"])["definition"]);
     assert!(wb.ok(&["preview", "G26"]).contains("G26 "));
-    assert!(wb.fails(&["preview", "H9999"]).contains("no entry numbered"));
+    assert!(wb
+        .fails(&["preview", "H9999"])
+        .contains("no entry numbered"));
     assert!(wb.fails(&["preview", "Zzz 1:1"]).contains("No book called"));
 }
 
@@ -145,10 +243,20 @@ fn a_bad_reference_is_an_error_not_a_trace() {
 fn lookups() {
     let Some(wb) = Wb::new() else { return };
     assert_eq!(wb.js(&["count", "zeal"])["occurrences"], 16);
-    assert!(wb.js(&["count", "H7065"])["by_book"].get("Numbers").is_some());
-    assert_eq!(wb.js(&["uses", "zeal", "--scope", "gospels"])["scope"], "40,41,42,43");
+    assert!(wb.js(&["count", "H7065"])["by_book"]
+        .get("Numbers")
+        .is_some());
+    assert_eq!(
+        wb.js(&["uses", "zeal", "--scope", "gospels"])["scope"],
+        "40,41,42,43"
+    );
     assert_eq!(wb.js(&["strong", "H7065"])["strong"], "H7065");
-    assert!(!wb.js(&["search", "so", "loved", "--scope", "john"])["rows"].as_array().unwrap().is_empty());
+    assert!(
+        !wb.js(&["search", "so", "loved", "--scope", "john"])["rows"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
 
 // ---- your study work ----
@@ -156,73 +264,265 @@ fn lookups() {
 #[test]
 fn places_from_a_list_go_into_a_thread_in_one_write() {
     let Some(wb) = Wb::new() else { return };
-    let t = wb.js(&["thread", "add-many", "Many", "Num 25:11", "Rom 10:2", "H7065", "Rom 10:2"]);
-    assert_eq!((t["added"].clone(), t["already"].clone(), t["count"].clone()), (json!(["NUM.25:11", "ROM.10:2", "H7065"]), json!(0), json!(3)));
+    let t = wb.js(&[
+        "thread",
+        "add-many",
+        "Many",
+        "Num 25:11",
+        "Rom 10:2",
+        "H7065",
+        "Rom 10:2",
+    ]);
+    assert_eq!(
+        (t["added"].clone(), t["already"].clone(), t["count"].clone()),
+        (
+            json!(["NUM.25:11", "ROM.10:2", "H7065"]),
+            json!(0),
+            json!(3)
+        )
+    );
     let t = wb.js(&["thread", "add-many", "Many", "Rom 10:2", "John 2:17"]);
-    assert_eq!((t["added"].clone(), t["already"].clone(), t["count"].clone()), (json!(["JHN.2:17"]), json!(1), json!(4)));
-    assert!(wb.fails(&["thread", "add-many", "Many", "NUM.25:99", "John 3:16"]).contains("not in the text")); // none go in
-    assert_eq!(wb.js(&["thread", "show", "Many"])["members"][3]["anchor"], "JHN.2:17");
+    assert_eq!(
+        (t["added"].clone(), t["already"].clone(), t["count"].clone()),
+        (json!(["JHN.2:17"]), json!(1), json!(4))
+    );
+    assert!(wb
+        .fails(&["thread", "add-many", "Many", "NUM.25:99", "John 3:16"])
+        .contains("not in the text")); // none go in
+    assert_eq!(
+        wb.js(&["thread", "show", "Many"])["members"][3]["anchor"],
+        "JHN.2:17"
+    );
 }
 
 #[test]
 fn a_search_goes_into_a_thread() {
     let Some(wb) = Wb::new() else { return };
     let d = wb.js(&["search", "zeal", "--scope", "gospels"]);
-    let t = wb.js(&["thread", "from-search", "Found", "zeal", "--scope", "gospels"]);
-    assert_eq!((t["added"].as_array().unwrap().len() as u64, t["id"].clone()), (d["verses"].as_u64().unwrap(), json!("found")));
+    let t = wb.js(&[
+        "thread",
+        "from-search",
+        "Found",
+        "zeal",
+        "--scope",
+        "gospels",
+    ]);
+    assert_eq!(
+        (t["added"].as_array().unwrap().len() as u64, t["id"].clone()),
+        (d["verses"].as_u64().unwrap(), json!("found"))
+    );
     let r = &d["rows"][0]["ref"];
-    assert_eq!(t["added"][0], json!(format!("{}.{}:{}", r["code"].as_str().unwrap(), r["c"], r["v"])));
-    assert_eq!(wb.js(&["thread", "from-search", "Found", "zeal", "--scope", "gospels"])["already"], d["verses"]);
-    let got = wb.js(&["thread", "from-search", "Some", "zeal*", "--only", "Rom 10:2; Num 25", "--dry-run"]);
-    assert_eq!(got["would_add"], json!(["ROM.10:2", "NUM.25:11", "NUM.25:13"])); // in the order named
-    assert!(wb.fails(&["thread", "from-search", "Some", "zeal", "--only", "John 3:16", "--dry-run"]).contains("is not in these results"));
-    assert!(wb.fails(&["thread", "from-search", "Too many", "the"]).contains("is the most at once"));
-    assert!(wb.js(&["thread", "list", "too"]).as_array().unwrap().is_empty()); // refused before anything was started
+    assert_eq!(
+        t["added"][0],
+        json!(format!(
+            "{}.{}:{}",
+            r["code"].as_str().unwrap(),
+            r["c"],
+            r["v"]
+        ))
+    );
+    assert_eq!(
+        wb.js(&[
+            "thread",
+            "from-search",
+            "Found",
+            "zeal",
+            "--scope",
+            "gospels"
+        ])["already"],
+        d["verses"]
+    );
+    let got = wb.js(&[
+        "thread",
+        "from-search",
+        "Some",
+        "zeal*",
+        "--only",
+        "Rom 10:2; Num 25",
+        "--dry-run",
+    ]);
+    assert_eq!(
+        got["would_add"],
+        json!(["ROM.10:2", "NUM.25:11", "NUM.25:13"])
+    ); // in the order named
+    assert!(wb
+        .fails(&[
+            "thread",
+            "from-search",
+            "Some",
+            "zeal",
+            "--only",
+            "John 3:16",
+            "--dry-run"
+        ])
+        .contains("is not in these results"));
+    assert!(wb
+        .fails(&["thread", "from-search", "Too many", "the"])
+        .contains("is the most at once"));
+    assert!(wb
+        .js(&["thread", "list", "too"])
+        .as_array()
+        .unwrap()
+        .is_empty()); // refused before anything was started
 }
 
 #[test]
 fn occurrences_go_into_a_thread_as_the_marked_words_or_whole_verses() {
     let Some(wb) = Wb::new() else { return };
-    let t = wb.js(&["thread", "from-uses", "Occ", "H7065", "--word", "zealous", "--cat", "both", "--scope", "Num"]);
-    let added: Vec<String> = t["added"].as_array().unwrap().iter().map(|a| a.as_str().unwrap().to_string()).collect();
+    let t = wb.js(&[
+        "thread",
+        "from-uses",
+        "Occ",
+        "H7065",
+        "--word",
+        "zealous",
+        "--cat",
+        "both",
+        "--scope",
+        "Num",
+    ]);
+    let added: Vec<String> = t["added"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a.as_str().unwrap().to_string())
+        .collect();
     assert_eq!(added.len(), 2);
-    assert!(added.iter().all(|a| a.starts_with("NUM.25:1") && a.matches('.').count() >= 2), "{added:?}"); // the words, not the verses
+    assert!(
+        added
+            .iter()
+            .all(|a| a.starts_with("NUM.25:1") && a.matches('.').count() >= 2),
+        "{added:?}"
+    ); // the words, not the verses
     let w = wb.js(&["anchor", &added[0]]);
     assert!(w["quote"].as_str().unwrap().contains("zealous"));
     assert!(w["strongs"].as_array().unwrap().contains(&json!("H7065")));
-    let v = wb.js(&["thread", "from-uses", "Occ verses", "H7065", "--word", "zealous", "--cat", "both", "--scope", "Num", "--verses"]);
+    let v = wb.js(&[
+        "thread",
+        "from-uses",
+        "Occ verses",
+        "H7065",
+        "--word",
+        "zealous",
+        "--cat",
+        "both",
+        "--scope",
+        "Num",
+        "--verses",
+    ]);
     assert_eq!(v["added"], json!(["NUM.25:11", "NUM.25:13"]));
-    let e = wb.js(&["thread", "from-uses", "Eng", "zeal", "--scope", "Rom", "--dry-run"]);
+    let e = wb.js(&[
+        "thread",
+        "from-uses",
+        "Eng",
+        "zeal",
+        "--scope",
+        "Rom",
+        "--dry-run",
+    ]);
     assert_eq!(e["would_add"].as_array().unwrap().len(), 1);
-    assert!(wb.js(&["anchor", e["would_add"][0].as_str().unwrap()])["quote"].as_str().unwrap().contains("zeal"));
+    assert!(
+        wb.js(&["anchor", e["would_add"][0].as_str().unwrap()])["quote"]
+            .as_str()
+            .unwrap()
+            .contains("zeal")
+    );
 }
 
 #[test]
 fn a_thread_can_be_reordered_and_the_order_stays() {
     let Some(wb) = Wb::new() else { return };
-    wb.js(&["thread", "add-many", "Order", "Rom 10:2", "H7065", "Num 25:13", "Num 25:11", "Gen 1:1", "NUM.25:11.24"]);
-    let labels = || -> Vec<String> { wb.js(&["thread", "show", "Order"])["members"].as_array().unwrap().iter().map(|m| m["anchor"].as_str().unwrap().to_string()).collect() };
-    assert_eq!(labels(), vec!["ROM.10:2", "H7065", "NUM.25:13", "NUM.25:11", "GEN.1:1", "NUM.25:11.24"]);
+    wb.js(&[
+        "thread",
+        "add-many",
+        "Order",
+        "Rom 10:2",
+        "H7065",
+        "Num 25:13",
+        "Num 25:11",
+        "Gen 1:1",
+        "NUM.25:11.24",
+    ]);
+    let labels = || -> Vec<String> {
+        wb.js(&["thread", "show", "Order"])["members"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| m["anchor"].as_str().unwrap().to_string())
+            .collect()
+    };
+    assert_eq!(
+        labels(),
+        vec![
+            "ROM.10:2",
+            "H7065",
+            "NUM.25:13",
+            "NUM.25:11",
+            "GEN.1:1",
+            "NUM.25:11.24"
+        ]
+    );
     let m = wb.js(&["thread", "move", "Order", "Num 25:13", "up"]);
-    assert_eq!((m["moved"].clone(), m["position"].clone(), m["anchor"].clone()), (json!(true), json!(2), json!("NUM.25:13")));
-    assert_eq!(labels(), vec!["ROM.10:2", "NUM.25:13", "H7065", "NUM.25:11", "GEN.1:1", "NUM.25:11.24"]);
+    assert_eq!(
+        (
+            m["moved"].clone(),
+            m["position"].clone(),
+            m["anchor"].clone()
+        ),
+        (json!(true), json!(2), json!("NUM.25:13"))
+    );
+    assert_eq!(
+        labels(),
+        vec![
+            "ROM.10:2",
+            "NUM.25:13",
+            "H7065",
+            "NUM.25:11",
+            "GEN.1:1",
+            "NUM.25:11.24"
+        ]
+    );
     wb.js(&["thread", "move", "Order", "1", "last"]);
     assert_eq!(labels().last().unwrap(), "ROM.10:2");
     wb.js(&["thread", "move", "Order", "H7065", "first"]);
     assert_eq!(labels()[0], "H7065");
     wb.js(&["thread", "move", "Order", "Gen 1:1", "2"]);
     assert_eq!(labels()[1], "GEN.1:1");
-    assert_eq!(wb.js(&["thread", "move", "Order", "H7065", "up"])["moved"], false);
+    assert_eq!(
+        wb.js(&["thread", "move", "Order", "H7065", "up"])["moved"],
+        false
+    );
     wb.js(&["thread", "move", "Order", "H7065", "99"]);
     assert_eq!(labels().last().unwrap(), "H7065");
-    assert!(wb.fails(&["thread", "move", "Order", "Num 25:11-13", "up"]).contains("Which one?"));
-    assert!(wb.fails(&["thread", "move", "Order", "John 3:16", "up"]).contains("nothing at"));
-    assert!(wb.fails(&["thread", "move", "Order", "9", "up"]).contains("no number 9"));
-    assert!(wb.fails(&["thread", "move", "Order", "1", "sideways"]).contains("Move it up"));
+    assert!(wb
+        .fails(&["thread", "move", "Order", "Num 25:11-13", "up"])
+        .contains("Which one?"));
+    assert!(wb
+        .fails(&["thread", "move", "Order", "John 3:16", "up"])
+        .contains("nothing at"));
+    assert!(wb
+        .fails(&["thread", "move", "Order", "9", "up"])
+        .contains("no number 9"));
+    assert!(wb
+        .fails(&["thread", "move", "Order", "1", "sideways"])
+        .contains("Move it up"));
     let before = labels();
     let s = wb.js(&["thread", "sort", "Order"]);
-    assert_eq!((s["changed"].clone(), s["before"].clone()), (json!(true), json!(before)));
-    assert_eq!(labels(), vec!["GEN.1:1", "NUM.25:11", "NUM.25:11.24", "NUM.25:13", "ROM.10:2", "H7065"]);
+    assert_eq!(
+        (s["changed"].clone(), s["before"].clone()),
+        (json!(true), json!(before))
+    );
+    assert_eq!(
+        labels(),
+        vec![
+            "GEN.1:1",
+            "NUM.25:11",
+            "NUM.25:11.24",
+            "NUM.25:13",
+            "ROM.10:2",
+            "H7065"
+        ]
+    );
     assert_eq!(wb.js(&["thread", "sort", "Order"])["changed"], false);
     let mut args = vec!["thread", "order", "Order"];
     args.extend(before.iter().map(String::as_str));
@@ -231,11 +531,19 @@ fn a_thread_can_be_reordered_and_the_order_stays() {
     wb.js(&["thread", "order", "Order", "6", "5", "4", "3", "2", "1"]);
     let reversed: Vec<String> = before.iter().rev().cloned().collect();
     assert_eq!(labels(), reversed);
-    assert!(wb.fails(&["thread", "order", "Order", "1", "2"]).contains("once each"));
-    assert!(wb.fails(&["thread", "order", "Order", "1", "1", "2", "3", "4", "5"]).contains("once each"));
+    assert!(wb
+        .fails(&["thread", "order", "Order", "1", "2"])
+        .contains("once each"));
+    assert!(wb
+        .fails(&["thread", "order", "Order", "1", "1", "2", "3", "4", "5"])
+        .contains("once each"));
     assert_eq!(labels(), reversed); // a refused order changes nothing
     let text = std::fs::read_to_string(wb.dir.join("threads").join("order.md")).unwrap();
-    let order: Vec<String> = text.lines().filter(|l| l.starts_with("- ")).map(|l| l[2..].split(" | ").next().unwrap().to_string()).collect();
+    let order: Vec<String> = text
+        .lines()
+        .filter(|l| l.starts_with("- "))
+        .map(|l| l[2..].split(" | ").next().unwrap().to_string())
+        .collect();
     assert_eq!(order, reversed);
     assert!(text.contains("NUM.25:11.24 | \"zealous\""));
 }
@@ -245,19 +553,45 @@ fn notes_highlights_and_threads_round_trip() {
     let Some(wb) = Wb::new() else { return };
     let n = wb.js(&["note", "add", "Num 25:11", "He turned away wrath"]);
     assert_eq!(n["anchor"], "NUM.25:11");
-    assert_eq!(wb.js(&["note", "list", "Num 25"])[0]["text"], "He turned away wrath");
+    assert_eq!(
+        wb.js(&["note", "list", "Num 25"])[0]["text"],
+        "He turned away wrath"
+    );
     let h = wb.ok(&["hl", "set", "Num 25:11", "yellow"]);
-    assert_eq!(wb.js(&["hl", "list", "--color", "yellow"])[0]["anchor"], "NUM.25:11");
+    assert_eq!(
+        wb.js(&["hl", "list", "--color", "yellow"])[0]["anchor"],
+        "NUM.25:11"
+    );
     wb.js(&["hl", "undo", &h]);
     assert_eq!(wb.js(&["hl", "list"]), json!([]));
-    let t = wb.js(&["thread", "new", "Phinehas zeal", "--note", "Zeal for God", "--at", "Num 25:11"]);
+    let t = wb.js(&[
+        "thread",
+        "new",
+        "Phinehas zeal",
+        "--note",
+        "Zeal for God",
+        "--at",
+        "Num 25:11",
+    ]);
     wb.js(&["thread", "add", "phin", "Num 25:13"]); // a part of the name finds it
-    let anchors = |name: &str| wb.js(&["thread", "show", name])["members"].as_array().unwrap().iter().map(|m| m["anchor"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+    let anchors = |name: &str| {
+        wb.js(&["thread", "show", name])["members"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| m["anchor"].as_str().unwrap().to_string())
+            .collect::<Vec<_>>()
+    };
     assert_eq!(anchors("phin"), vec!["NUM.25:11", "NUM.25:13"]);
     wb.js(&["thread", "rm", "phin", "Num 25:11"]);
     assert_eq!(anchors("Phinehas zeal").len(), 1);
-    wb.js(&["thread", "edit", "phin", "--color", "blue", "--note", "Changed"]);
-    assert_eq!(wb.js(&["thread", "show", t["name"].as_str().unwrap()])["color"], "blue");
+    wb.js(&[
+        "thread", "edit", "phin", "--color", "blue", "--note", "Changed",
+    ]);
+    assert_eq!(
+        wb.js(&["thread", "show", t["name"].as_str().unwrap()])["color"],
+        "blue"
+    );
     wb.js(&["thread", "add", "A brand new thread", "John 3:16"]); // an unknown name starts a thread
     assert_eq!(wb.js(&["thread", "list"]).as_array().unwrap().len(), 2);
     wb.js(&["thread", "delete", "A brand new"]);
@@ -265,7 +599,9 @@ fn notes_highlights_and_threads_round_trip() {
     let deleted = wb.js(&["note", "rm", n["id"].as_str().unwrap()]);
     assert_eq!(deleted["state"], "pending");
     assert_eq!(deleted["deleted"], json!([n["id"]]));
-    assert!(wb.fails(&["thread", "show", "zzz-none"]).contains("No thread called"));
+    assert!(wb
+        .fails(&["thread", "show", "zzz-none"])
+        .contains("No thread called"));
 }
 
 #[test]
@@ -273,7 +609,9 @@ fn two_threads_that_both_match_ask_which() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Faith one"]);
     wb.js(&["thread", "new", "Faith two"]);
-    assert!(wb.fails(&["thread", "show", "faith"]).contains("Which thread?"));
+    assert!(wb
+        .fails(&["thread", "show", "faith"])
+        .contains("Which thread?"));
 }
 
 #[test]
@@ -285,16 +623,25 @@ fn trails_find_and_the_log() {
     wb.js(&["trail", "done", id]);
     assert_eq!(wb.js(&["trail", "list"])["counts"]["open"], 0);
     wb.js(&["trail", "reopen", id]);
-    assert!(!wb.js(&["find", "phinehas"])["trails"].as_array().unwrap().is_empty());
+    assert!(!wb.js(&["find", "phinehas"])["trails"]
+        .as_array()
+        .unwrap()
+        .is_empty());
     wb.js(&["log", "add", "a line from the terminal", "--result", "ok"]);
-    assert!(wb.js(&["log"])["entries"].as_array().unwrap().iter().any(|e| e["text"].as_str().unwrap().contains("terminal")));
+    assert!(wb.js(&["log"])["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["text"].as_str().unwrap().contains("terminal")));
     wb.js(&["trail", "rm", id]);
 }
 
 #[test]
 fn a_place_must_be_a_verse_to_attach_to() {
     let Some(wb) = Wb::new() else { return };
-    assert!(wb.fails(&["note", "add", "John 3", "x"]).contains("Name a verse"));
+    assert!(wb
+        .fails(&["note", "add", "John 3", "x"])
+        .contains("Name a verse"));
 }
 
 // ---- lessons ----
@@ -304,15 +651,41 @@ const LESSON: &str = "# Prayer\nWhy we pray.\n\n## In secret\nSpeech here.\n// p
 #[test]
 fn a_lesson_is_a_plain_file_that_is_checked_and_found_by_part_of_its_name() {
     let Some(wb) = Wb::new() else { return };
-    assert_eq!(wb.run(&["lesson", "save", "Prayer and Fasting"], Some(LESSON)).0, 0);
-    assert!(wb.dir.join("lessons").join("prayer-and-fasting.md").is_file());
+    assert_eq!(
+        wb.run(&["lesson", "save", "Prayer and Fasting"], Some(LESSON))
+            .0,
+        0
+    );
+    assert!(wb
+        .dir
+        .join("lessons")
+        .join("prayer-and-fasting.md")
+        .is_file());
     assert_eq!(wb.js(&["lesson", "list"])[0]["places"], 3);
     let c = wb.js(&["lesson", "check", "prayer"]);
-    assert_eq!((c["title"].clone(), c["sections"].clone()), (json!("Prayer"), json!(1)));
-    assert_eq!(c["places"].as_array().unwrap().iter().map(|p| p["verses"].clone()).collect::<Vec<_>>(), vec![json!(4), json!(3), json!(6)]);
+    assert_eq!(
+        (c["title"].clone(), c["sections"].clone()),
+        (json!("Prayer"), json!(1))
+    );
+    assert_eq!(
+        c["places"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["verses"].clone())
+            .collect::<Vec<_>>(),
+        vec![json!(4), json!(3), json!(6)]
+    );
     assert_eq!(c["places"][2]["version"], "YLT");
     assert_eq!(c["slides"], 12); // title, section, Matthew (three), Isaiah (two), Joel (one: a separate place), Luke (four)
-    assert_eq!(wb.run(&["lesson", "save", "Prayer and Fasting", "--append"], Some("## More\n@John 17:1\n")).0, 0);
+    assert_eq!(
+        wb.run(
+            &["lesson", "save", "Prayer and Fasting", "--append"],
+            Some("## More\n@John 17:1\n")
+        )
+        .0,
+        0
+    );
     assert!(wb.ok(&["lesson", "show", "prayer"]).contains("@John 17:1"));
     wb.js(&["lesson", "rm", "prayer"]);
     assert_eq!(wb.js(&["lesson", "list"]), json!([]));
@@ -321,19 +694,38 @@ fn a_lesson_is_a_plain_file_that_is_checked_and_found_by_part_of_its_name() {
 #[test]
 fn a_lesson_with_a_bad_reference_names_the_line() {
     let Some(wb) = Wb::new() else { return };
-    assert_eq!(wb.run(&["lesson", "save", "Broken"], Some("# T\nfine\n@John 99:1\n")).0, 0);
+    assert_eq!(
+        wb.run(
+            &["lesson", "save", "Broken"],
+            Some("# T\nfine\n@John 99:1\n")
+        )
+        .0,
+        0
+    );
     let msg = wb.fails(&["lesson", "check", "broken"]);
-    assert!(msg.contains("Line 3") && msg.contains("21 chapters"), "{msg}");
+    assert!(
+        msg.contains("Line 3") && msg.contains("21 chapters"),
+        "{msg}"
+    );
 }
 
 #[test]
 fn help_lists_every_command_and_explains_one() {
     let Some(wb) = Wb::new() else { return };
     let all = wb.ok(&["help"]);
-    for c in ["text", "uses", "note add", "thread move", "lesson check", "plan today"] {
+    for c in [
+        "text",
+        "uses",
+        "note add",
+        "thread move",
+        "lesson check",
+        "plan today",
+    ] {
         assert!(all.contains(&format!("  {c} ")), "{c} missing from wb help");
     }
-    assert!(wb.ok(&["help", "thread", "move"]).contains("wb thread move"));
+    assert!(wb
+        .ok(&["help", "thread", "move"])
+        .contains("wb thread move"));
     assert!(wb.ok(&["thread"]).contains("thread add-many")); // a group name alone shows the group
 }
 
@@ -342,40 +734,141 @@ fn help_lists_every_command_and_explains_one() {
 #[test]
 fn a_plan_covers_every_chapter_once_in_order_as_whole_chapters() {
     let Some(wb) = Wb::new() else { return };
-    for (kind, days, chapters) in [("canonical", "365", 1189), ("nt", "90", 260), ("psalms-proverbs", "31", 181), ("ot-nt", "365", 1189)] {
-        wb.js(&["plan", "start", kind, "--kind", kind, "--days", days, "--start", "2026-01-01"]);
+    for (kind, days, chapters) in [
+        ("canonical", "365", 1189),
+        ("nt", "90", 260),
+        ("psalms-proverbs", "31", 181),
+        ("ot-nt", "365", 1189),
+    ] {
+        wb.js(&[
+            "plan",
+            "start",
+            kind,
+            "--kind",
+            kind,
+            "--days",
+            days,
+            "--start",
+            "2026-01-01",
+        ]);
         let p = wb.js(&["plan", "show", kind, "--on", "2026-01-01"]);
         let sched = p["schedule"].as_array().unwrap();
         assert_eq!(sched.len(), days.parse::<usize>().unwrap(), "{kind}");
-        let all: Vec<String> = sched.iter().flat_map(|d| d["entries"].as_array().unwrap().iter().map(|e| e.as_str().unwrap().to_string())).collect();
+        let all: Vec<String> = sched
+            .iter()
+            .flat_map(|d| {
+                d["entries"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|e| e.as_str().unwrap().to_string())
+            })
+            .collect();
         let mut once = all.clone();
         once.sort();
         once.dedup();
-        assert_eq!((all.len(), once.len()), (chapters, chapters), "{kind}: every chapter once");
-        assert!(all.iter().all(|e| !e.contains(':')), "{kind}: whole chapters");
-        assert!(sched.iter().all(|d| !d["entries"].as_array().unwrap().is_empty()), "{kind}: something every day");
+        assert_eq!(
+            (all.len(), once.len()),
+            (chapters, chapters),
+            "{kind}: every chapter once"
+        );
+        assert!(
+            all.iter().all(|e| !e.contains(':')),
+            "{kind}: whole chapters"
+        );
+        assert!(
+            sched
+                .iter()
+                .all(|d| !d["entries"].as_array().unwrap().is_empty()),
+            "{kind}: something every day"
+        );
     }
-    let books = wb.js(&["plan", "start", "Gospels", "--kind", "books", "--books", "gospels", "--days", "30"]);
+    let books = wb.js(&[
+        "plan", "start", "Gospels", "--kind", "books", "--books", "gospels", "--days", "30",
+    ]);
     assert_eq!(books["days"], 30);
-    assert!(wb.fails(&["plan", "start", "Too short", "--kind", "books", "--books", "jude", "--days", "5"]).contains("at least one a day"));
-    assert!(wb.fails(&["plan", "start", "Gospels"]).contains("already a plan"));
-    assert!(wb.fails(&["plan", "start", "Odd", "--kind", "chronological"]).contains("No plan kind"));
+    assert!(wb
+        .fails(&[
+            "plan",
+            "start",
+            "Too short",
+            "--kind",
+            "books",
+            "--books",
+            "jude",
+            "--days",
+            "5"
+        ])
+        .contains("at least one a day"));
+    assert!(wb
+        .fails(&["plan", "start", "Gospels"])
+        .contains("already a plan"));
+    assert!(wb
+        .fails(&["plan", "start", "Odd", "--kind", "chronological"])
+        .contains("No plan kind"));
 }
 
 #[test]
 fn a_plan_of_several_books_reads_them_in_the_bibles_order() {
     let Some(wb) = Wb::new() else { return };
     // the window's words: no terminal flags in what the kinds say
-    assert!(wb.js(&["plan", "kinds"]).as_array().unwrap().iter().all(|k| !k["reads"].as_str().unwrap().contains("--")));
+    assert!(wb
+        .js(&["plan", "kinds"])
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|k| !k["reads"].as_str().unwrap().contains("--")));
     for named in ["gospels, rom", "rom; gospels", "Matt-John, Rom"] {
-        wb.js(&["plan", "start", named, "--kind", "books", "--books", named, "--days", "30", "--start", "2026-01-01"]);
+        wb.js(&[
+            "plan",
+            "start",
+            named,
+            "--kind",
+            "books",
+            "--books",
+            named,
+            "--days",
+            "30",
+            "--start",
+            "2026-01-01",
+        ]);
         let sched = wb.js(&["plan", "show", named, "--on", "2026-01-01"])["schedule"].clone();
-        let all: Vec<String> = sched.as_array().unwrap().iter().flat_map(|d| d["entries"].as_array().unwrap().iter().map(|e| e.as_str().unwrap().to_string())).collect();
-        let books: Vec<&str> = all.iter().map(|e| &e[..3]).fold(vec![], |mut v, b| { if v.last() != Some(&b) { v.push(b); } v });
+        let all: Vec<String> = sched
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|d| {
+                d["entries"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|e| e.as_str().unwrap().to_string())
+            })
+            .collect();
+        let books: Vec<&str> = all.iter().map(|e| &e[..3]).fold(vec![], |mut v, b| {
+            if v.last() != Some(&b) {
+                v.push(b);
+            }
+            v
+        });
         assert_eq!(books, ["MAT", "MRK", "LUK", "JHN", "ROM"], "{named}");
-        assert_eq!((all.first().unwrap().as_str(), all.last().unwrap().as_str()), ("MAT.1", "ROM.16"), "{named}");
+        assert_eq!(
+            (all.first().unwrap().as_str(), all.last().unwrap().as_str()),
+            ("MAT.1", "ROM.16"),
+            "{named}"
+        );
     }
-    assert!(wb.fails(&["plan", "start", "Odd", "--kind", "books", "--books", "gospels, nobook"]).contains("No book called “nobook”"));
+    assert!(wb
+        .fails(&[
+            "plan",
+            "start",
+            "Odd",
+            "--kind",
+            "books",
+            "--books",
+            "gospels, nobook"
+        ])
+        .contains("No book called “nobook”"));
 }
 
 #[test]
@@ -384,22 +877,46 @@ fn a_plan_knows_today_what_is_behind_and_what_is_done() {
     wb.js(&["plan", "start", "Year", "--start", "2026-01-01"]);
     let t = wb.js(&["plan", "today", "--on", "2026-01-03"]);
     let p = &t["plans"][0];
-    assert_eq!((p["day"].clone(), p["behind"].clone()), (json!(3), json!(3)));
+    assert_eq!(
+        (p["day"].clone(), p["behind"].clone()),
+        (json!(3), json!(3))
+    );
     assert_eq!(p["to_read"].as_array().unwrap().len(), 3);
     let d = wb.js(&["plan", "done", "year"]); // the first day not yet done
     assert_eq!((d["day"].clone(), d["done"].clone()), (json!(1), json!(1)));
-    let second: Vec<String> = wb.js(&["plan", "show", "year"])["schedule"][1]["entries"].as_array().unwrap().iter().map(|e| e.as_str().unwrap().to_string()).collect();
+    let second: Vec<String> = wb.js(&["plan", "show", "year"])["schedule"][1]["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e.as_str().unwrap().to_string())
+        .collect();
     let (code, ch) = second[0].split_once('.').unwrap();
-    let first_book = wb.js(&["books"])["books"].as_array().unwrap().iter().find(|b| b["code"] == code).unwrap()["name"].as_str().unwrap().to_string();
+    let first_book = wb.js(&["books"])["books"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|b| b["code"] == code)
+        .unwrap()["name"]
+        .as_str()
+        .unwrap()
+        .to_string();
     for e in &second {
         let c = e.split_once('.').unwrap().1;
         wb.js(&["read", "mark", &format!("{first_book} {c}")]); // read from the reader, with no plan named: still counts
     }
     let _ = ch;
-    assert_eq!(wb.js(&["plan", "today", "year", "--on", "2026-01-03"])["plans"][0]["behind"], 1);
+    assert_eq!(
+        wb.js(&["plan", "today", "year", "--on", "2026-01-03"])["plans"][0]["behind"],
+        1
+    );
     assert_eq!(wb.js(&["plan", "done", "year", "--day", "3"])["done"], 3);
-    assert_eq!(wb.js(&["plan", "today", "--on", "2026-01-03"])["plans"][0]["behind"], 0);
-    assert!(wb.fails(&["plan", "done", "year", "--day", "400"]).contains("no day 400"));
+    assert_eq!(
+        wb.js(&["plan", "today", "--on", "2026-01-03"])["plans"][0]["behind"],
+        0
+    );
+    assert!(wb
+        .fails(&["plan", "done", "year", "--day", "400"])
+        .contains("no day 400"));
     let pr = wb.js(&["read", "progress"]);
     assert!(pr["chapters"].as_u64().unwrap() >= 3);
     wb.js(&["plan", "rm", "year"]);
@@ -411,10 +928,25 @@ fn a_plan_knows_today_what_is_behind_and_what_is_done() {
 fn a_plan_of_your_own_is_imported_from_a_text_file() {
     let Some(wb) = Wb::new() else { return };
     let text = "# my own order\nGen 1-3\nJob 1-5; Ps 1\nPs 119:1-88  # half of it\n";
-    assert_eq!(wb.run(&["plan", "import", "Mine", "--start", "2026-01-01"], Some(text)).0, 0);
+    assert_eq!(
+        wb.run(
+            &["plan", "import", "Mine", "--start", "2026-01-01"],
+            Some(text)
+        )
+        .0,
+        0
+    );
     let p = wb.js(&["plan", "show", "mine", "--on", "2026-01-01"]);
-    let labels: Vec<&str> = p["schedule"].as_array().unwrap().iter().map(|d| d["label"].as_str().unwrap()).collect();
-    assert_eq!(labels, vec!["Genesis 1–3", "Job 1–5; Psalms 1", "Psalms 119:1–88"]);
+    let labels: Vec<&str> = p["schedule"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| d["label"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        labels,
+        vec!["Genesis 1–3", "Job 1–5; Psalms 1", "Psalms 119:1–88"]
+    );
     assert_eq!(p["kind"], "imported");
     let (code, _, err) = wb.run(&["plan", "import", "Bad"], Some("Gen 1\nNum 99\n"));
     assert_eq!(code, 1);
@@ -424,160 +956,500 @@ fn a_plan_of_your_own_is_imported_from_a_text_file() {
 #[test]
 fn a_plan_as_text_reads_back_as_the_same_days() {
     let Some(wb) = Wb::new() else { return };
-    wb.js(&["plan", "start", "Gospels", "--kind", "books", "--books", "gospels", "--days", "30", "--start", "2026-01-01"]);
-    assert_eq!(wb.run(&["plan", "import", "Mine", "--start", "2026-01-01"], Some("Gen 1-3
+    wb.js(&[
+        "plan",
+        "start",
+        "Gospels",
+        "--kind",
+        "books",
+        "--books",
+        "gospels",
+        "--days",
+        "30",
+        "--start",
+        "2026-01-01",
+    ]);
+    assert_eq!(
+        wb.run(
+            &["plan", "import", "Mine", "--start", "2026-01-01"],
+            Some(
+                "Gen 1-3
 Job 1-5; Ps 1
 Ps 119:1-88
 Ps 119:89-120:3
-")).0, 0);
+"
+            )
+        )
+        .0,
+        0
+    );
     for name in ["gospels", "mine"] {
         let text = wb.run(&["plan", "text", name], None).1;
-        let days = |p: &Value| p["schedule"].as_array().unwrap().iter().map(|d| d["entries"].clone()).collect::<Vec<_>>();
+        let days = |p: &Value| {
+            p["schedule"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|d| d["entries"].clone())
+                .collect::<Vec<_>>()
+        };
         let before = days(&wb.js(&["plan", "show", name]));
-        assert_eq!(wb.run(&["plan", "edit", name, "--text", "-"], Some(&text)).0, 0);
+        assert_eq!(
+            wb.run(&["plan", "edit", name, "--text", "-"], Some(&text))
+                .0,
+            0
+        );
         assert_eq!(days(&wb.js(&["plan", "show", name])), before, "{text}");
     }
-    assert!(wb.run(&["plan", "text", "mine"], None).1.lines().nth(3).unwrap().starts_with("Psalms 119:89-120:3"));
+    assert!(wb
+        .run(&["plan", "text", "mine"], None)
+        .1
+        .lines()
+        .nth(3)
+        .unwrap()
+        .starts_with("Psalms 119:89-120:3"));
 }
 
 #[test]
 fn a_plan_is_changed_without_losing_what_was_read() {
     let Some(wb) = Wb::new() else { return };
-    wb.js(&["plan", "start", "Gospels", "--kind", "books", "--books", "gospels", "--days", "30", "--start", "2026-01-01"]);
+    wb.js(&[
+        "plan",
+        "start",
+        "Gospels",
+        "--kind",
+        "books",
+        "--books",
+        "gospels",
+        "--days",
+        "30",
+        "--start",
+        "2026-01-01",
+    ]);
     wb.js(&["plan", "done", "gospels"]);
     wb.js(&["plan", "done", "gospels"]);
-    let chapters = |p: &Value| p["schedule"].as_array().unwrap().iter().flat_map(|d| d["entries"].as_array().unwrap().clone()).collect::<Vec<_>>();
+    let chapters = |p: &Value| {
+        p["schedule"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|d| d["entries"].as_array().unwrap().clone())
+            .collect::<Vec<_>>()
+    };
     let all = chapters(&wb.js(&["plan", "show", "gospels"]));
     // the rest spread over 10 days from today: two days done, ten to go, the same chapters in the same order; only
     // today's day is due (behind counts today's day until it is read)
     let p = wb.js(&["plan", "edit", "gospels", "--days", "10"]);
-    assert_eq!((p["days"].clone(), p["done"].clone(), p["behind"].clone(), p["today"].clone()), (json!(12), json!(2), json!(1), json!(3)));
+    assert_eq!(
+        (
+            p["days"].clone(),
+            p["done"].clone(),
+            p["behind"].clone(),
+            p["today"].clone()
+        ),
+        (json!(12), json!(2), json!(1), json!(3))
+    );
     assert_eq!(chapters(&wb.js(&["plan", "show", "gospels"])), all);
     // renamed, moved, caught up; each change keeps the file as it was in .trash
-    assert_eq!(wb.js(&["plan", "edit", "gospels", "--rename", "The four gospels"])["name"], "The four gospels");
-    assert_eq!(wb.js(&["plan", "edit", "four gospels", "--start", "2026-01-01"])["behind"], 10);
-    assert_eq!(wb.js(&["plan", "edit", "four gospels", "--catch-up"])["behind"], 1);
-    let trashed = std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().contains("-plan-gospels")).count();
+    assert_eq!(
+        wb.js(&["plan", "edit", "gospels", "--rename", "The four gospels"])["name"],
+        "The four gospels"
+    );
+    assert_eq!(
+        wb.js(&["plan", "edit", "four gospels", "--start", "2026-01-01"])["behind"],
+        10
+    );
+    assert_eq!(
+        wb.js(&["plan", "edit", "four gospels", "--catch-up"])["behind"],
+        1
+    );
+    let trashed = std::fs::read_dir(wb.dir.join(".trash"))
+        .unwrap()
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().contains("-plan-gospels"))
+        .count();
     assert_eq!(trashed, 4);
-    assert!(wb.fails(&["plan", "edit", "four gospels"]).contains("Say what to change"));
-    assert!(wb.fails(&["plan", "edit", "four gospels", "--days", "400"]).contains("at least one a day"));
+    assert!(wb
+        .fails(&["plan", "edit", "four gospels"])
+        .contains("Say what to change"));
+    assert!(wb
+        .fails(&["plan", "edit", "four gospels", "--days", "400"])
+        .contains("at least one a day"));
     wb.js(&["plan", "start", "Other", "--kind", "nt", "--days", "90"]);
-    assert!(wb.fails(&["plan", "edit", "other", "--rename", "The four gospels"]).contains("already a plan"));
+    assert!(wb
+        .fails(&["plan", "edit", "other", "--rename", "The four gospels"])
+        .contains("already a plan"));
 }
 
 // ---- reading plans, tier 3: the form, the plan, past plans ----
 
 fn day_entries(p: &Value) -> Vec<Vec<String>> {
-    p["schedule"].as_array().unwrap().iter().map(|d| d["entries"].as_array().unwrap().iter().map(|e| e.as_str().unwrap().to_string()).collect()).collect()
+    p["schedule"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| {
+            d["entries"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|e| e.as_str().unwrap().to_string())
+                .collect()
+        })
+        .collect()
 }
 
 fn dates(p: &Value) -> Vec<String> {
-    p["schedule"].as_array().unwrap().iter().map(|d| d["date"].as_str().unwrap_or("").to_string()).collect()
+    p["schedule"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| d["date"].as_str().unwrap_or("").to_string())
+        .collect()
 }
 
 #[test]
 fn a_plan_has_an_order_a_pace_and_days_off() {
     let Some(wb) = Wb::new() else { return };
     // days off: 10 days from a Friday, Sundays off: no date is a Sunday and the last is the Tuesday after next
-    let p = wb.js(&["plan", "start", "Gospels", "--books", "gospels", "--days", "10", "--days-off", "sun", "--start", "2026-11-06"]);
-    assert_eq!((p["kind"].clone(), p["days"].clone(), p["finish"].clone()), (json!("custom"), json!(10), json!("2026-11-17")));
+    let p = wb.js(&[
+        "plan",
+        "start",
+        "Gospels",
+        "--books",
+        "gospels",
+        "--days",
+        "10",
+        "--days-off",
+        "sun",
+        "--start",
+        "2026-11-06",
+    ]);
+    assert_eq!(
+        (p["kind"].clone(), p["days"].clone(), p["finish"].clone()),
+        (json!("custom"), json!(10), json!("2026-11-17"))
+    );
     let shown = wb.js(&["plan", "show", "gospels", "--on", "2026-11-06"]);
-    assert!(!dates(&shown).contains(&"2026-11-08".to_string()) && !dates(&shown).contains(&"2026-11-15".to_string()));
-    assert_eq!(dates(&shown)[..3], ["2026-11-06", "2026-11-07", "2026-11-09"]);
+    assert!(
+        !dates(&shown).contains(&"2026-11-08".to_string())
+            && !dates(&shown).contains(&"2026-11-15".to_string())
+    );
+    assert_eq!(
+        dates(&shown)[..3],
+        ["2026-11-06", "2026-11-07", "2026-11-09"]
+    );
     // a day off has no reading; what came before it is still to read
     let t = wb.js(&["plan", "today", "gospels", "--on", "2026-11-08"]);
-    assert_eq!((t["plans"][0]["day"].clone(), t["plans"][0]["to_read"].as_array().unwrap().len()), (json!(null), 2));
+    assert_eq!(
+        (
+            t["plans"][0]["day"].clone(),
+            t["plans"][0]["to_read"].as_array().unwrap().len()
+        ),
+        (json!(null), 2)
+    );
     // the books as listed, the Bible's own order, and codes (what the window's chips send)
-    let dry = |extra: &[&str]| -> Value { wb.js(&[&["plan", "start", "X", "--dry-run"][..], extra].concat()) };
-    assert_eq!(dry(&["--books", "rom, gospels", "--order", "listed", "--pace", "chapters:4"])["first"][0], "Romans 1–4");
-    assert!(dry(&["--books", "rom, gospels", "--days", "5"])["first"][0].as_str().unwrap().starts_with("Matthew"));
+    let dry = |extra: &[&str]| -> Value {
+        wb.js(&[&["plan", "start", "X", "--dry-run"][..], extra].concat())
+    };
+    assert_eq!(
+        dry(&[
+            "--books",
+            "rom, gospels",
+            "--order",
+            "listed",
+            "--pace",
+            "chapters:4"
+        ])["first"][0],
+        "Romans 1–4"
+    );
+    assert!(dry(&["--books", "rom, gospels", "--days", "5"])["first"][0]
+        .as_str()
+        .unwrap()
+        .starts_with("Matthew"));
     assert_eq!(dry(&["--books", "MAT,MRK", "--days", "5"])["readings"], 44);
     // the Old and the New side by side: a chapter of each kind every day
-    wb.js(&["plan", "start", "Both", "--books", "gen, mat", "--order", "side-by-side", "--days", "20", "--start", "2026-01-01"]);
-    for day in day_entries(&wb.js(&["plan", "show", "both"])).iter().take(5) {
-        assert!(day.iter().any(|e| e.starts_with("GEN")) && day.iter().any(|e| e.starts_with("MAT")), "{day:?}");
+    wb.js(&[
+        "plan",
+        "start",
+        "Both",
+        "--books",
+        "gen, mat",
+        "--order",
+        "side-by-side",
+        "--days",
+        "20",
+        "--start",
+        "2026-01-01",
+    ]);
+    for day in day_entries(&wb.js(&["plan", "show", "both"]))
+        .iter()
+        .take(5)
+    {
+        assert!(
+            day.iter().any(|e| e.starts_with("GEN")) && day.iter().any(|e| e.starts_with("MAT")),
+            "{day:?}"
+        );
     }
     // a pace: N chapters a day; until a day (days off not counted); my own pace has no dates
-    let c = wb.js(&["plan", "start", "Three", "--books", "gospels", "--pace", "chapters:3", "--start", "2026-01-01"]);
+    let c = wb.js(&[
+        "plan",
+        "start",
+        "Three",
+        "--books",
+        "gospels",
+        "--pace",
+        "chapters:3",
+        "--start",
+        "2026-01-01",
+    ]);
     assert_eq!(c["days"], 30); // 89 chapters, 3 a day
-    assert!(day_entries(&wb.js(&["plan", "show", "three"])).iter().all(|d| d.len() <= 3));
-    let b = wb.js(&["plan", "start", "Until", "--books", "gospels", "--pace", "by:2026-11-20", "--days-off", "sat,sun", "--start", "2026-11-06"]);
+    assert!(day_entries(&wb.js(&["plan", "show", "three"]))
+        .iter()
+        .all(|d| d.len() <= 3));
+    let b = wb.js(&[
+        "plan",
+        "start",
+        "Until",
+        "--books",
+        "gospels",
+        "--pace",
+        "by:2026-11-20",
+        "--days-off",
+        "sat,sun",
+        "--start",
+        "2026-11-06",
+    ]);
     assert_eq!(b["days"], 11); // Friday the 6th, then two weeks of weekdays up to Friday the 20th
-    let o = wb.js(&["plan", "start", "Mine", "--books", "MAT,MRK", "--pace", "own", "--start", "2026-11-06"]);
-    assert_eq!((o["days"].clone(), o["dated"].clone(), o["today"].clone(), o["behind"].clone(), o["finish"].clone()), (json!(44), json!(false), json!(null), json!(0), json!(null)));
+    let o = wb.js(&[
+        "plan",
+        "start",
+        "Mine",
+        "--books",
+        "MAT,MRK",
+        "--pace",
+        "own",
+        "--start",
+        "2026-11-06",
+    ]);
+    assert_eq!(
+        (
+            o["days"].clone(),
+            o["dated"].clone(),
+            o["today"].clone(),
+            o["behind"].clone(),
+            o["finish"].clone()
+        ),
+        (json!(44), json!(false), json!(null), json!(0), json!(null))
+    );
     let t = wb.js(&["plan", "today", "mine", "--on", "2026-12-25"]);
     assert_eq!(t["plans"][0]["to_read"].as_array().unwrap().len(), 1); // its next day, whatever the date
     assert_eq!(wb.js(&["plan", "done", "mine"])["day"], 1);
     // passages after the books
-    wb.js(&["plan", "start", "Some", "--passages", "Ps 23; Isa 53:1-12", "--days", "2", "--start", "2026-01-01"]);
-    let labels: Vec<String> = wb.js(&["plan", "show", "some"])["schedule"].as_array().unwrap().iter().map(|d| d["label"].as_str().unwrap().to_string()).collect();
+    wb.js(&[
+        "plan",
+        "start",
+        "Some",
+        "--passages",
+        "Ps 23; Isa 53:1-12",
+        "--days",
+        "2",
+        "--start",
+        "2026-01-01",
+    ]);
+    let labels: Vec<String> = wb.js(&["plan", "show", "some"])["schedule"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| d["label"].as_str().unwrap().to_string())
+        .collect();
     assert_eq!(labels, ["Psalms 23", "Isaiah 53:1–12"]);
     // what is wrong says so
-    assert!(wb.fails(&["plan", "start", "A", "--books", "gospels", "--pace", "fast"]).contains("A pace looks like"));
-    assert!(wb.fails(&["plan", "start", "A", "--books", "gospels", "--pace", "own", "--days", "9"]).contains("not both"));
-    assert!(wb.fails(&["plan", "start", "A", "--books", "gospels", "--order", "backwards"]).contains("No order"));
-    assert!(wb.fails(&["plan", "start", "A", "--books", "gospels", "--days-off", "mon,tue,wed,thu,fri,sat,sun"]).contains("Not every day"));
-    assert!(wb.fails(&["plan", "start", "A", "--kind", "books"]).contains("Name what to read"));
-    assert!(wb.fails(&["plan", "start", "A", "--books", "gospels", "--pace", "by:2020-01-01", "--start", "2026-01-01"]).contains("before the plan"));
+    assert!(wb
+        .fails(&["plan", "start", "A", "--books", "gospels", "--pace", "fast"])
+        .contains("A pace looks like"));
+    assert!(wb
+        .fails(&["plan", "start", "A", "--books", "gospels", "--pace", "own", "--days", "9"])
+        .contains("not both"));
+    assert!(wb
+        .fails(&[
+            "plan",
+            "start",
+            "A",
+            "--books",
+            "gospels",
+            "--order",
+            "backwards"
+        ])
+        .contains("No order"));
+    assert!(wb
+        .fails(&[
+            "plan",
+            "start",
+            "A",
+            "--books",
+            "gospels",
+            "--days-off",
+            "mon,tue,wed,thu,fri,sat,sun"
+        ])
+        .contains("Not every day"));
+    assert!(wb
+        .fails(&["plan", "start", "A", "--kind", "books"])
+        .contains("Name what to read"));
+    assert!(wb
+        .fails(&[
+            "plan",
+            "start",
+            "A",
+            "--books",
+            "gospels",
+            "--pace",
+            "by:2020-01-01",
+            "--start",
+            "2026-01-01"
+        ])
+        .contains("before the plan"));
 }
 
 #[test]
 fn days_missed_have_four_choices_that_each_say_what_they_do_to_the_dates() {
     let Some(wb) = Wb::new() else { return };
     for n in ["Skip", "Shift", "Fit", "Later", "Choices"] {
-        wb.js(&["plan", "start", n, "--books", "gospels", "--days", "10", "--start", "2026-11-01"]);
+        wb.js(&[
+            "plan",
+            "start",
+            n,
+            "--books",
+            "gospels",
+            "--days",
+            "10",
+            "--start",
+            "2026-11-01",
+        ]);
     }
     let on = "2026-11-04"; // day 4 is today; days 1 to 3 came and were not read
     let o = wb.js(&["plan", "missed", "choices", "--on", on]);
-    assert_eq!((o["missed"].clone(), o["days"].clone(), o["finish"].clone()), (json!(3), json!([1, 2, 3]), json!("2026-11-10")));
+    assert_eq!(
+        (o["missed"].clone(), o["days"].clone(), o["finish"].clone()),
+        (json!(3), json!([1, 2, 3]), json!("2026-11-10"))
+    );
     let opts = o["options"].as_array().unwrap();
-    assert_eq!(opts.iter().map(|x| x["choice"].as_str().unwrap()).collect::<Vec<_>>(), ["shift", "fit", "later", "skip"]);
+    assert_eq!(
+        opts.iter()
+            .map(|x| x["choice"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["shift", "fit", "later", "skip"]
+    );
     // each says its dates before anything is done
     let text = |k: usize| opts[k]["text"].as_str().unwrap().to_string();
-    assert!(text(0).contains("Fri Nov 13, 2026") && text(0).contains("not Tue Nov 10, 2026"), "{}", text(0));
+    assert!(
+        text(0).contains("Fri Nov 13, 2026") && text(0).contains("not Tue Nov 10, 2026"),
+        "{}",
+        text(0)
+    );
     assert!(text(1).contains("ends Tue Nov 10, 2026"), "{}", text(1));
-    assert!(text(2).contains("keep their dates") && text(2).contains("Fri Nov 13, 2026"), "{}", text(2));
+    assert!(
+        text(2).contains("keep their dates") && text(2).contains("Fri Nov 13, 2026"),
+        "{}",
+        text(2)
+    );
     assert!(text(3).contains("No date moves"), "{}", text(3));
     assert_eq!(wb.js(&["plan", "show", "choices", "--on", on])["days"], 10); // asking changed nothing
     let all = |p: &Value| day_entries(p).concat();
     let before = all(&wb.js(&["plan", "show", "skip"]));
     // skip: marked skipped, not read; no date moves; only today is behind
     let s = wb.js(&["plan", "missed", "skip", "--skip", "--on", on]);
-    assert_eq!((s["skipped"].clone(), s["behind"].clone(), s["done"].clone(), s["finish"].clone()), (json!(3), json!(1), json!(0), json!("2026-11-10")));
+    assert_eq!(
+        (
+            s["skipped"].clone(),
+            s["behind"].clone(),
+            s["done"].clone(),
+            s["finish"].clone()
+        ),
+        (json!(3), json!(1), json!(0), json!("2026-11-10"))
+    );
     let sh = wb.js(&["plan", "show", "skip", "--on", on]);
-    assert_eq!((sh["schedule"][0]["skipped"].clone(), sh["schedule"][0]["done"].clone(), sh["next"]["day"].clone()), (json!(true), json!(false), json!(4)));
-    assert!(wb.fails(&["plan", "missed", "skip", "--skip", "--on", on]).contains("No day is missed"));
+    assert_eq!(
+        (
+            sh["schedule"][0]["skipped"].clone(),
+            sh["schedule"][0]["done"].clone(),
+            sh["next"]["day"].clone()
+        ),
+        (json!(true), json!(false), json!(4))
+    );
+    assert!(wb
+        .fails(&["plan", "missed", "skip", "--skip", "--on", on])
+        .contains("No day is missed"));
     // shift: today reads the first day not read; the rest move with it
     let s = wb.js(&["plan", "missed", "shift", "--shift", "--on", on]);
-    assert_eq!((s["start"].clone(), s["finish"].clone(), s["behind"].clone()), (json!("2026-11-04"), json!("2026-11-13"), json!(1)));
+    assert_eq!(
+        (s["start"].clone(), s["finish"].clone(), s["behind"].clone()),
+        (json!("2026-11-04"), json!("2026-11-13"), json!(1))
+    );
     assert_eq!(all(&wb.js(&["plan", "show", "shift"])), before);
     // fit: the same chapters in the days left, ending on the same day
     let s = wb.js(&["plan", "missed", "fit", "--fit", "--on", on]);
-    assert_eq!((s["start"].clone(), s["days"].clone(), s["finish"].clone()), (json!("2026-11-04"), json!(7), json!("2026-11-10")));
+    assert_eq!(
+        (s["start"].clone(), s["days"].clone(), s["finish"].clone()),
+        (json!("2026-11-04"), json!(7), json!("2026-11-10"))
+    );
     assert_eq!(all(&wb.js(&["plan", "show", "fit"])), before);
     // later: the days from today keep their dates; the missed ones are read after the last
     let old = day_entries(&wb.js(&["plan", "show", "later"]));
     let s = wb.js(&["plan", "missed", "later", "--later", "--on", on]);
-    assert_eq!((s["days"].clone(), s["finish"].clone(), s["behind"].clone()), (json!(10), json!("2026-11-13"), json!(1)));
+    assert_eq!(
+        (s["days"].clone(), s["finish"].clone(), s["behind"].clone()),
+        (json!(10), json!("2026-11-13"), json!(1))
+    );
     let new = wb.js(&["plan", "show", "later", "--on", on]);
     assert_eq!(day_entries(&new)[0], old[3]); // what was read on the 4th is still read on the 4th
     assert_eq!(dates(&new)[0], "2026-11-04");
     assert_eq!(day_entries(&new)[7..], old[..3]);
     // a day already read is not missed
-    wb.js(&["plan", "start", "Two", "--books", "gospels", "--days", "10", "--start", "2026-11-01"]);
+    wb.js(&[
+        "plan",
+        "start",
+        "Two",
+        "--books",
+        "gospels",
+        "--days",
+        "10",
+        "--start",
+        "2026-11-01",
+    ]);
     wb.js(&["plan", "done", "two", "--day", "2"]);
-    assert_eq!(wb.js(&["plan", "missed", "two", "--on", on])["days"], json!([1, 3]));
+    assert_eq!(
+        wb.js(&["plan", "missed", "two", "--on", on])["days"],
+        json!([1, 3])
+    );
     // each change keeps the file as it was
-    let trashed = std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().contains("-plan-")).count();
+    let trashed = std::fs::read_dir(wb.dir.join(".trash"))
+        .unwrap()
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().contains("-plan-"))
+        .count();
     assert_eq!(trashed, 4);
-    assert!(wb.fails(&["plan", "missed", "two", "--shift", "--fit"]).contains("Choose one"));
-    assert!(wb.fails(&["plan", "missed", "mine"]).contains("No reading plan"));
+    assert!(wb
+        .fails(&["plan", "missed", "two", "--shift", "--fit"])
+        .contains("Choose one"));
+    assert!(wb
+        .fails(&["plan", "missed", "mine"])
+        .contains("No reading plan"));
 }
 
 #[test]
 fn a_day_is_moved_and_its_readings_go_with_it() {
     let Some(wb) = Wb::new() else { return };
-    wb.js(&["plan", "start", "Gospels", "--books", "gospels", "--days", "10", "--start", "2026-11-01"]);
+    wb.js(&[
+        "plan",
+        "start",
+        "Gospels",
+        "--books",
+        "gospels",
+        "--days",
+        "10",
+        "--start",
+        "2026-11-01",
+    ]);
     let before = wb.js(&["plan", "show", "gospels"]);
     let (e, d) = (day_entries(&before), dates(&before));
     let after = wb.js(&["plan", "move-day", "gospels", "--day", "1", "--to", "3"]);
@@ -585,72 +1457,192 @@ fn a_day_is_moved_and_its_readings_go_with_it() {
     let moved = wb.js(&["plan", "show", "gospels"]);
     assert_eq!(dates(&moved), d); // the dates stay where they were
     let m = day_entries(&moved);
-    assert_eq!((m[0].clone(), m[1].clone(), m[2].clone()), (e[1].clone(), e[2].clone(), e[0].clone()));
-    assert!(wb.fails(&["plan", "move-day", "gospels", "--day", "11", "--to", "3"]).contains("no day 11"));
-    assert!(wb.fails(&["plan", "move-day", "gospels", "--day", "1"]).contains("Say --day and --to"));
+    assert_eq!(
+        (m[0].clone(), m[1].clone(), m[2].clone()),
+        (e[1].clone(), e[2].clone(), e[0].clone())
+    );
+    assert!(wb
+        .fails(&["plan", "move-day", "gospels", "--day", "11", "--to", "3"])
+        .contains("no day 11"));
+    assert!(wb
+        .fails(&["plan", "move-day", "gospels", "--day", "1"])
+        .contains("Say --day and --to"));
     // a skipped mark goes with its day
     wb.js(&["plan", "missed", "gospels", "--skip", "--on", "2026-11-03"]); // days 1 and 2 skipped
     wb.js(&["plan", "move-day", "gospels", "--day", "1", "--to", "5"]);
     let s = wb.js(&["plan", "show", "gospels", "--on", "2026-11-03"]);
-    let skipped: Vec<u64> = s["schedule"].as_array().unwrap().iter().filter(|d| d["skipped"] == true).map(|d| d["day"].as_u64().unwrap()).collect();
+    let skipped: Vec<u64> = s["schedule"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|d| d["skipped"] == true)
+        .map(|d| d["day"].as_u64().unwrap())
+        .collect();
     assert_eq!(skipped, [1, 5]);
 }
 
 #[test]
 fn a_stopped_plan_waits_in_past_plans_to_be_used_again_or_deleted() {
     let Some(wb) = Wb::new() else { return };
-    wb.js(&["plan", "start", "Gospels", "--books", "gospels", "--days", "10", "--days-off", "sun", "--start", "2026-11-01"]);
-    wb.js(&["plan", "start", "Other", "--kind", "nt", "--days", "90", "--start", "2026-11-01"]);
+    wb.js(&[
+        "plan",
+        "start",
+        "Gospels",
+        "--books",
+        "gospels",
+        "--days",
+        "10",
+        "--days-off",
+        "sun",
+        "--start",
+        "2026-11-01",
+    ]);
+    wb.js(&[
+        "plan",
+        "start",
+        "Other",
+        "--kind",
+        "nt",
+        "--days",
+        "90",
+        "--start",
+        "2026-11-01",
+    ]);
     wb.js(&["plan", "done", "gospels"]);
     let s = wb.js(&["plan", "stop", "gospels"]);
     assert_eq!(s["ok"], true);
     assert_eq!(s["stopped"].as_str().unwrap().len(), 10);
     // it leaves the list and Today; the file stays where it was, with the day it was stopped
     let list = wb.js(&["plan", "list"]);
-    assert_eq!(list.as_array().unwrap().iter().map(|p| p["id"].as_str().unwrap()).collect::<Vec<_>>(), ["other"]);
-    assert_eq!(wb.js(&["plan", "today"])["plans"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        list.as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["id"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["other"]
+    );
+    assert_eq!(
+        wb.js(&["plan", "today"])["plans"].as_array().unwrap().len(),
+        1
+    );
     assert!(wb.dir.join("reading/plans/gospels.json").exists());
     let past = wb.js(&["plan", "past"]);
-    assert_eq!((past.as_array().unwrap().len(), past[0]["id"].clone(), past[0]["done"].clone()), (1, json!("gospels"), json!(1)));
-    assert!(wb.fails(&["plan", "stop", "gospels"]).contains("already stopped"));
+    assert_eq!(
+        (
+            past.as_array().unwrap().len(),
+            past[0]["id"].clone(),
+            past[0]["done"].clone()
+        ),
+        (1, json!("gospels"), json!(1))
+    );
+    assert!(wb
+        .fails(&["plan", "stop", "gospels"])
+        .contains("already stopped"));
     // use again: the same days and settings, nothing read, on a day chosen
     let n = wb.js(&["plan", "reuse", "gospels", "--start", "2026-12-01"]);
-    assert_eq!((n["name"].clone(), n["start"].clone(), n["days"].clone(), n["done"].clone(), n["days_off"].clone()), (json!("Gospels again"), json!("2026-12-01"), json!(10), json!(0), json!(["sun"])));
-    assert_eq!(wb.js(&["plan", "reuse", "gospels", "--start", "2026-12-01"])["name"], "Gospels again (2)");
-    assert_eq!(wb.js(&["plan", "reuse", "gospels", "--as", "Winter gospels"])["id"], "winter-gospels");
-    assert!(wb.fails(&["plan", "reuse", "gospels", "--as", "Winter gospels"]).contains("already a plan"));
+    assert_eq!(
+        (
+            n["name"].clone(),
+            n["start"].clone(),
+            n["days"].clone(),
+            n["done"].clone(),
+            n["days_off"].clone()
+        ),
+        (
+            json!("Gospels again"),
+            json!("2026-12-01"),
+            json!(10),
+            json!(0),
+            json!(["sun"])
+        )
+    );
+    assert_eq!(
+        wb.js(&["plan", "reuse", "gospels", "--start", "2026-12-01"])["name"],
+        "Gospels again (2)"
+    );
+    assert_eq!(
+        wb.js(&["plan", "reuse", "gospels", "--as", "Winter gospels"])["id"],
+        "winter-gospels"
+    );
+    assert!(wb
+        .fails(&["plan", "reuse", "gospels", "--as", "Winter gospels"])
+        .contains("already a plan"));
     assert_eq!(wb.js(&["plan", "list"]).as_array().unwrap().len(), 4);
     // delete: to .trash; what was read stays in the log
     let chapters = wb.js(&["read", "progress"])["chapters"].clone();
     wb.js(&["plan", "rm", "gospels"]);
     assert_eq!(wb.js(&["plan", "past"]), json!([]));
     assert_eq!(wb.js(&["read", "progress"])["chapters"], chapters);
-    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().ends_with("-plan-gospels.json")));
+    assert!(std::fs::read_dir(wb.dir.join(".trash"))
+        .unwrap()
+        .flatten()
+        .any(|e| e
+            .file_name()
+            .to_string_lossy()
+            .ends_with("-plan-gospels.json")));
     // a plan that is finished is a past plan too
-    wb.js(&["plan", "start", "Short", "--passages", "Ps 23", "--days", "1", "--start", "2026-11-01"]);
+    wb.js(&[
+        "plan",
+        "start",
+        "Short",
+        "--passages",
+        "Ps 23",
+        "--days",
+        "1",
+        "--start",
+        "2026-11-01",
+    ]);
     wb.js(&["plan", "done", "short"]);
     assert_eq!(wb.js(&["plan", "past"])[0]["id"], "short");
 }
 
 /// A plan's file as JSON.
 fn plan_file(wb: &Wb, id: &str) -> Value {
-    serde_json::from_str(&std::fs::read_to_string(wb.dir.join("reading/plans").join(format!("{id}.json"))).unwrap()).unwrap()
+    serde_json::from_str(
+        &std::fs::read_to_string(wb.dir.join("reading/plans").join(format!("{id}.json"))).unwrap(),
+    )
+    .unwrap()
 }
 
 #[test]
 fn the_builder_keeps_the_days_set_by_hand_when_the_pace_changes() {
     let Some(wb) = Wb::new() else { return };
     let laid = |extra: &[&str], held: Option<&str>| -> Value {
-        let books: &[&str] = if extra.contains(&"--books") { &[] } else { &["--books", "gospels"] };
-        let args = [&["plan", "layout", "--start", "2026-11-06"][..], books, extra, if held.is_some() { &["--arranged", "-"][..] } else { &[][..] }].concat();
+        let books: &[&str] = if extra.contains(&"--books") {
+            &[]
+        } else {
+            &["--books", "gospels"]
+        };
+        let args = [
+            &["plan", "layout", "--start", "2026-11-06"][..],
+            books,
+            extra,
+            if held.is_some() {
+                &["--arranged", "-"][..]
+            } else {
+                &[][..]
+            },
+        ]
+        .concat();
         let (code, out, err) = wb.run(&args, held);
         assert_eq!(code, 0, "{err}");
         serde_json::from_str(&out).unwrap()
     };
-    let chips = |l: &Value, day: usize| -> Vec<String> { l["rows"][day - 1]["chips"].as_array().unwrap().iter().map(|c| c["entry"].as_str().unwrap().to_string()).collect() };
+    let chips = |l: &Value, day: usize| -> Vec<String> {
+        l["rows"][day - 1]["chips"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["entry"].as_str().unwrap().to_string())
+            .collect()
+    };
     // laid out by the pace: 89 chapters, 3 a day, each chapter a chip with its label
     let l = laid(&["--pace", "chapters:3"], None);
-    assert_eq!((l["days"].clone(), l["readings"].clone(), l["kept"].clone()), (json!(30), json!(89), json!([])));
+    assert_eq!(
+        (l["days"].clone(), l["readings"].clone(), l["kept"].clone()),
+        (json!(30), json!(89), json!([]))
+    );
     assert_eq!(chips(&l, 1), ["MAT.1", "MAT.2", "MAT.3"]);
     assert_eq!(l["rows"][0]["chips"][0]["label"], "Matthew 1");
     // the person sets day 2 by hand: a chapter of Mark moved in, Matthew 5 moved out to the first day
@@ -660,139 +1652,370 @@ fn the_builder_keeps_the_days_set_by_hand_when_the_pace_changes() {
     assert_eq!(again["kept"], json!([2]));
     assert_eq!(chips(&again, 2), ["MRK.1", "MAT.4"]);
     assert_eq!(again["rows"][1]["kept"], true);
-    assert_eq!(chips(&again, 1), ["MAT.1", "MAT.2", "MAT.3", "MAT.5", "MAT.6"]);
+    assert_eq!(
+        chips(&again, 1),
+        ["MAT.1", "MAT.2", "MAT.3", "MAT.5", "MAT.6"]
+    );
     assert_eq!(again["days"], json!(19)); // 87 chapters left, 5 a day, and the day set by hand
     let all: Vec<String> = (1..=19).flat_map(|d| chips(&again, d)).collect();
     assert_eq!(all.len(), 89);
-    assert_eq!(all.iter().collect::<std::collections::HashSet<_>>().len(), 89);
+    assert_eq!(
+        all.iter().collect::<std::collections::HashSet<_>>().len(),
+        89
+    );
     // a number of days: the held day counts as one of them
     let by_days = laid(&["--days", "10"], Some(&by_hand));
-    assert_eq!((by_days["days"].clone(), chips(&by_days, 2)), (json!(10), vec!["MRK.1".to_string(), "MAT.4".to_string()]));
+    assert_eq!(
+        (by_days["days"].clone(), chips(&by_days, 2)),
+        (json!(10), vec!["MRK.1".to_string(), "MAT.4".to_string()])
+    );
     // my own pace: a chapter a day, the held day still where it was
     let own = laid(&["--pace", "own"], Some(&by_hand));
-    assert_eq!((own["days"].clone(), own["dated"].clone(), own["finish"].clone()), (json!(88), json!(false), json!(null)));
+    assert_eq!(
+        (
+            own["days"].clone(),
+            own["dated"].clone(),
+            own["finish"].clone()
+        ),
+        (json!(88), json!(false), json!(null))
+    );
     // a kept day is as the person set it, even with a chapter the plan no longer reads (a book taken out)
     let m = laid(&["--books", "mark", "--pace", "chapters:8"], Some(&by_hand));
-    assert_eq!((m["kept"].clone(), chips(&m, 2)), (json!([2]), vec!["MRK.1".to_string(), "MAT.4".to_string()]));
+    assert_eq!(
+        (m["kept"].clone(), chips(&m, 2)),
+        (json!([2]), vec!["MRK.1".to_string(), "MAT.4".to_string()])
+    );
 
     // starting with exactly those days: the plan file keeps them, and which were set by hand
-    let all_days = json!({"days": [["MAT.1", "MAT.2"], ["MRK.1", "MAT.3"], [], ["LUK.1"]], "kept": [2, 4]}).to_string();
-    let (code, out, err) = wb.run(&["plan", "start", "Mine", "--books", "gospels", "--pace", "chapters:2", "--start", "2026-11-06", "--arranged", "-"], Some(&all_days));
+    let all_days =
+        json!({"days": [["MAT.1", "MAT.2"], ["MRK.1", "MAT.3"], [], ["LUK.1"]], "kept": [2, 4]})
+            .to_string();
+    let (code, out, err) = wb.run(
+        &[
+            "plan",
+            "start",
+            "Mine",
+            "--books",
+            "gospels",
+            "--pace",
+            "chapters:2",
+            "--start",
+            "2026-11-06",
+            "--arranged",
+            "-",
+        ],
+        Some(&all_days),
+    );
     assert_eq!(code, 0, "{err}");
     let p: Value = serde_json::from_str(&out).unwrap();
     assert_eq!(p["days"], 3); // the empty day is dropped, and the kept day after it moves up
     let file = plan_file(&wb, "mine");
-    assert_eq!((file["days"].clone(), file["kept"].clone()), (json!([["MAT.1", "MAT.2"], ["MRK.1", "MAT.3"], ["LUK.1"]]), json!([2, 3])));
+    assert_eq!(
+        (file["days"].clone(), file["kept"].clone()),
+        (
+            json!([["MAT.1", "MAT.2"], ["MRK.1", "MAT.3"], ["LUK.1"]]),
+            json!([2, 3])
+        )
+    );
     assert_eq!(file["pace"], "chapters:2");
     let shown = wb.js(&["plan", "show", "mine"]);
-    assert_eq!(shown["schedule"].as_array().unwrap().iter().map(|d| d["kept"].clone()).collect::<Vec<_>>(), [json!(false), json!(true), json!(true)]);
+    assert_eq!(
+        shown["schedule"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|d| d["kept"].clone())
+            .collect::<Vec<_>>(),
+        [json!(false), json!(true), json!(true)]
+    );
     // a day moved takes its mark with it
     wb.js(&["plan", "move-day", "mine", "--day", "2", "--to", "1"]);
     assert_eq!(plan_file(&wb, "mine")["kept"], json!([1, 3]));
     // the plan as it was is in .trash when the days are arranged again; what was read stays by reading
     wb.js(&["read", "mark", "Matt 1", "--plan", "mine"]);
-    let (code, out, err) = wb.run(&["plan", "arrange", "mine", "--arranged", "-"], Some(&json!({"days": [["MAT.2"], ["MAT.1", "MRK.1"]], "kept": [1]}).to_string()));
+    let (code, out, err) = wb.run(
+        &["plan", "arrange", "mine", "--arranged", "-"],
+        Some(&json!({"days": [["MAT.2"], ["MAT.1", "MRK.1"]], "kept": [1]}).to_string()),
+    );
     assert_eq!(code, 0, "{err}");
     let p: Value = serde_json::from_str(&out).unwrap();
     assert_eq!((p["days"].clone(), p["done"].clone()), (json!(2), json!(0))); // Matthew 1 is read, but day 2 has Mark 1 as well
     assert_eq!(wb.js(&["read", "progress"])["chapters"], 1); // what was read stays in the log
     assert_eq!(plan_file(&wb, "mine")["kept"], json!([1]));
-    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().contains("-plan-mine")));
+    assert!(std::fs::read_dir(wb.dir.join(".trash"))
+        .unwrap()
+        .flatten()
+        .any(|e| e.file_name().to_string_lossy().contains("-plan-mine")));
     // a place typed becomes the entries a day holds
     let e = wb.js(&["plan", "entries", "Ps 23; Isa 53:1-12"]);
-    assert_eq!(e, json!([{"entry": "PSA.23", "label": "Psalms 23"}, {"entry": "ISA.53:1-53:12", "label": "Isaiah 53:1–12"}]));
+    assert_eq!(
+        e,
+        json!([{"entry": "PSA.23", "label": "Psalms 23"}, {"entry": "ISA.53:1-53:12", "label": "Isaiah 53:1–12"}])
+    );
     // what is wrong says so
-    let (code, _, err) = wb.run(&["plan", "arrange", "mine", "--arranged", "-"], Some(&json!({"days": [["XYZ.1"]]}).to_string()));
+    let (code, _, err) = wb.run(
+        &["plan", "arrange", "mine", "--arranged", "-"],
+        Some(&json!({"days": [["XYZ.1"]]}).to_string()),
+    );
     assert_eq!(code, 1);
     assert!(err.contains("is not a place"), "{err}");
-    let (code, _, err) = wb.run(&["plan", "arrange", "mine", "--arranged", "-"], Some(&json!({"days": [[], []]}).to_string()));
+    let (code, _, err) = wb.run(
+        &["plan", "arrange", "mine", "--arranged", "-"],
+        Some(&json!({"days": [[], []]}).to_string()),
+    );
     assert_eq!(code, 1);
     assert!(err.contains("no days"), "{err}");
-    assert!(wb.fails(&["plan", "arrange", "mine"]).contains("Say the days"));
+    assert!(wb
+        .fails(&["plan", "arrange", "mine"])
+        .contains("Say the days"));
 }
 
 #[test]
 fn a_published_plan_is_read_from_the_copy_the_person_has() {
     let Some(wb) = Wb::new() else { return };
     let run = |name: &str, text: &str, extra: &[&str]| -> Value {
-        let (code, out, err) = wb.run(&[&["plan", "import", name, "--start", "2026-11-06"][..], extra].concat(), Some(text));
+        let (code, out, err) = wb.run(
+            &[
+                &["plan", "import", name, "--start", "2026-11-06"][..],
+                extra,
+            ]
+            .concat(),
+            Some(text),
+        );
         assert_eq!(code, 0, "{err}");
         serde_json::from_str(&out).unwrap()
     };
-    let labels = |p: &Value| -> Vec<String> { wb.js(&["plan", "show", p["id"].as_str().unwrap()])["schedule"].as_array().unwrap().iter().map(|d| d["label"].as_str().unwrap().to_string()).collect() };
+    let labels = |p: &Value| -> Vec<String> {
+        wb.js(&["plan", "show", p["id"].as_str().unwrap()])["schedule"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|d| d["label"].as_str().unwrap().to_string())
+            .collect()
+    };
 
     // one day to a line, with the name of where it came from kept in the file
-    let plain = run("Chronological", "Gen 1-3\nJob 1-5; Ps 1 # a comment\n", &["--source", "Tyndale One Year Chronological"]);
-    assert_eq!((plain["kind"].clone(), plain["days"].clone(), plain["source"].clone()), (json!("imported"), json!(2), json!("Tyndale One Year Chronological")));
-    assert_eq!(plan_file(&wb, "chronological")["source"], "Tyndale One Year Chronological");
+    let plain = run(
+        "Chronological",
+        "Gen 1-3\nJob 1-5; Ps 1 # a comment\n",
+        &["--source", "Tyndale One Year Chronological"],
+    );
+    assert_eq!(
+        (
+            plain["kind"].clone(),
+            plain["days"].clone(),
+            plain["source"].clone()
+        ),
+        (
+            json!("imported"),
+            json!(2),
+            json!("Tyndale One Year Chronological")
+        )
+    );
+    assert_eq!(
+        plan_file(&wb, "chronological")["source"],
+        "Tyndale One Year Chronological"
+    );
     assert_eq!(labels(&plain), ["Genesis 1–3", "Job 1–5; Psalms 1"]);
 
     // Guthrie's: Week N / Day N; six days a week, the seventh a day off, whatever it says
     let guthrie = "Week 1\nDay 1: Genesis 1-2; Matthew 1\nDay 2: Genesis 3\nDay 3\nExodus 1\nDay 4: Ps 1\nDay 5: Ps 2\nDay 6: Ps 3\nDay 7: Rest\n\nWeek 2\nDay 1: Gen 4\nDay 2: Gen 5\n";
     let dry = run("G", guthrie, &["--dry-run"]);
-    assert_eq!((dry["format"].clone(), dry["weeks"].clone(), dry["days"].clone(), dry["days_off"].clone(), dry["source"].clone()), (json!("guthrie"), json!(2), json!(8), json!(["sun"]), json!("Guthrie")));
-    assert_eq!(wb.js(&["plan", "list"]).as_array().unwrap().len(), 1, "a dry run starts nothing"); // only the plain one above
+    assert_eq!(
+        (
+            dry["format"].clone(),
+            dry["weeks"].clone(),
+            dry["days"].clone(),
+            dry["days_off"].clone(),
+            dry["source"].clone()
+        ),
+        (
+            json!("guthrie"),
+            json!(2),
+            json!(8),
+            json!(["sun"]),
+            json!("Guthrie")
+        )
+    );
+    assert_eq!(
+        wb.js(&["plan", "list"]).as_array().unwrap().len(),
+        1,
+        "a dry run starts nothing"
+    ); // only the plain one above
     let g = run("Guthrie", guthrie, &[]);
-    assert_eq!(labels(&g)[..4], ["Genesis 1–2; Matthew 1", "Genesis 3", "Exodus 1", "Psalms 1"]);
+    assert_eq!(
+        labels(&g)[..4],
+        [
+            "Genesis 1–2; Matthew 1",
+            "Genesis 3",
+            "Exodus 1",
+            "Psalms 1"
+        ]
+    );
     // Friday the 6th, Saturday the 7th, then no Sunday: the 9th is the third day
-    assert_eq!(dates(&wb.js(&["plan", "show", "guthrie"]))[..3], ["2026-11-06", "2026-11-07", "2026-11-09"]);
+    assert_eq!(
+        dates(&wb.js(&["plan", "show", "guthrie"]))[..3],
+        ["2026-11-06", "2026-11-07", "2026-11-09"]
+    );
     assert_eq!(plan_file(&wb, "guthrie")["source"], "Guthrie");
     // the day off is the person's to move
-    assert_eq!(run("G2", guthrie, &["--days-off", "sat"])["days_off"], json!(["sat"]));
+    assert_eq!(
+        run("G2", guthrie, &["--days-off", "sat"])["days_off"],
+        json!(["sat"])
+    );
     // a day that cannot be read says which line
-    let (code, _, err) = wb.run(&["plan", "import", "Bad", "--format", "guthrie"], Some("Week 1\nDay 1: Genesis 1\nDay 2: Nowhere 4\n"));
+    let (code, _, err) = wb.run(
+        &["plan", "import", "Bad", "--format", "guthrie"],
+        Some("Week 1\nDay 1: Genesis 1\nDay 2: Nowhere 4\n"),
+    );
     assert_eq!(code, 1);
     assert!(err.contains("Line 3") && err.contains("Day 2"), "{err}");
 
     // Blue Letter Bible's: places joined by "/", its short names, a label in front or not
-    let blb = run("Blb", "Day 1: Gen 1 / Mat 1 / Phl 2\n2. Jhn 3 / 1Co 13 / Jde 1\nPsa 119:1-32 / Rev 22\n", &["--dry-run"]);
-    assert_eq!((blb["format"].clone(), blb["days"].clone(), blb["source"].clone()), (json!("blue-letter"), json!(3), json!("Blue Letter Bible")));
-    assert_eq!(blb["first"], json!(["Genesis 1; Matthew 1; Philippians 2", "John 3; 1 Corinthians 13; Jude 1", "Psalms 119:1–32; Revelation 22"]));
+    let blb = run(
+        "Blb",
+        "Day 1: Gen 1 / Mat 1 / Phl 2\n2. Jhn 3 / 1Co 13 / Jde 1\nPsa 119:1-32 / Rev 22\n",
+        &["--dry-run"],
+    );
+    assert_eq!(
+        (
+            blb["format"].clone(),
+            blb["days"].clone(),
+            blb["source"].clone()
+        ),
+        (json!("blue-letter"), json!(3), json!("Blue Letter Bible"))
+    );
+    assert_eq!(
+        blb["first"],
+        json!([
+            "Genesis 1; Matthew 1; Philippians 2",
+            "John 3; 1 Corinthians 13; Jude 1",
+            "Psalms 119:1–32; Revelation 22"
+        ])
+    );
     // every short name is the book it says, in the Bible's order
-    let short = ["gen", "exo", "lev", "num", "deu", "jos", "jdg", "rth", "1sa", "2sa", "1ki", "2ki", "1ch", "2ch", "ezr", "neh", "est", "job", "psa", "pro", "ecc", "sol", "isa", "jer", "lam", "eze", "dan",
-        "hos", "joe", "amo", "oba", "jon", "mic", "nah", "hab", "zep", "hag", "zec", "mal", "mat", "mar", "luk", "jhn", "act", "rom", "1co", "2co", "gal", "eph", "phl", "col", "1th", "2th", "1ti", "2ti", "tit",
-        "phm", "heb", "jas", "1pe", "2pe", "1jo", "2jo", "3jo", "jde", "rev"];
+    let short = [
+        "gen", "exo", "lev", "num", "deu", "jos", "jdg", "rth", "1sa", "2sa", "1ki", "2ki", "1ch",
+        "2ch", "ezr", "neh", "est", "job", "psa", "pro", "ecc", "sol", "isa", "jer", "lam", "eze",
+        "dan", "hos", "joe", "amo", "oba", "jon", "mic", "nah", "hab", "zep", "hag", "zec", "mal",
+        "mat", "mar", "luk", "jhn", "act", "rom", "1co", "2co", "gal", "eph", "phl", "col", "1th",
+        "2th", "1ti", "2ti", "tit", "phm", "heb", "jas", "1pe", "2pe", "1jo", "2jo", "3jo", "jde",
+        "rev",
+    ];
     let books = wb.js(&["books"])["books"].as_array().unwrap().clone();
     assert_eq!((short.len(), books.len()), (66, 66));
-    let text: String = short.iter().map(|s| format!("{s} 1")).collect::<Vec<_>>().join("\n");
+    let text: String = short
+        .iter()
+        .map(|s| format!("{s} 1"))
+        .collect::<Vec<_>>()
+        .join("\n");
     let all = run("Names", &text, &["--format", "blue-letter"]);
     let file = plan_file(&wb, all["id"].as_str().unwrap());
     for (k, b) in books.iter().enumerate() {
-        assert_eq!(file["days"][k][0], format!("{}.1", b["code"].as_str().unwrap()), "{}", short[k]);
+        assert_eq!(
+            file["days"][k][0],
+            format!("{}.1", b["code"].as_str().unwrap()),
+            "{}",
+            short[k]
+        );
     }
 
     // Horner's lists: one chapter from each list a day, each starting again when it is done, no end date
     let horner = "Horner's lists\nList 1: Matthew, Mark\nList 2 (Law): Genesis to Exodus\nList 3: Jude, 3 John\n";
     let h = run("Horner", horner, &["--dry-run"]);
-    assert_eq!((h["format"].clone(), h["lists"].clone(), h["days"].clone(), h["finish"].clone(), h["cycle"].clone()), (json!("horner"), json!(3), json!(90), json!(null), json!(true)));
+    assert_eq!(
+        (
+            h["format"].clone(),
+            h["lists"].clone(),
+            h["days"].clone(),
+            h["finish"].clone(),
+            h["cycle"].clone()
+        ),
+        (
+            json!("horner"),
+            json!(3),
+            json!(90),
+            json!(null),
+            json!(true)
+        )
+    );
     let h = run("Horner", horner, &[]);
-    assert_eq!((h["kind"].clone(), h["finish"].clone(), h["finished"].clone()), (json!("horner"), json!(null), json!(false)));
+    assert_eq!(
+        (
+            h["kind"].clone(),
+            h["finish"].clone(),
+            h["finished"].clone()
+        ),
+        (json!("horner"), json!(null), json!(false))
+    );
     let file = plan_file(&wb, "horner");
-    assert_eq!((file["cycle"].clone(), file["source"].clone(), file["days"].as_array().unwrap().len()), (json!(true), json!("Horner"), 90)); // one pass of the longest list
+    assert_eq!(
+        (
+            file["cycle"].clone(),
+            file["source"].clone(),
+            file["days"].as_array().unwrap().len()
+        ),
+        (json!(true), json!("Horner"), 90)
+    ); // one pass of the longest list
     assert_eq!(file["days"][0], json!(["MAT.1", "GEN.1", "JUD.1"]));
     assert_eq!(file["days"][1], json!(["MAT.2", "GEN.2", "3JN.1"]));
     assert_eq!(file["days"][2], json!(["MAT.3", "GEN.3", "JUD.1"])); // the short list starts again
-    // a day a long way on is there to read: the lists keep going
+                                                                     // a day a long way on is there to read: the lists keep going
     let far = wb.js(&["plan", "show", "horner", "--on", "2027-05-01"]);
-    assert!(far["days"].as_u64().unwrap() > 90 && far["today"].as_u64().unwrap() > 90 && far["finish"].is_null() && far["finished"] == false);
+    assert!(
+        far["days"].as_u64().unwrap() > 90
+            && far["today"].as_u64().unwrap() > 90
+            && far["finish"].is_null()
+            && far["finished"] == false
+    );
     // reading all of the first pass does not finish it
-    let every: Vec<String> = file["days"].as_array().unwrap().iter().flat_map(|d| d.as_array().unwrap().iter().map(|e| e.as_str().unwrap().replace('.', " "))).collect();
-    wb.run(&["read", "mark", &every.join("; "), "--plan", "horner"], None);
-    assert_eq!(wb.js(&["plan", "show", "horner", "--on", "2026-11-06"])["finished"], false);
+    let every: Vec<String> = file["days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|d| {
+            d.as_array()
+                .unwrap()
+                .iter()
+                .map(|e| e.as_str().unwrap().replace('.', " "))
+        })
+        .collect();
+    wb.run(
+        &["read", "mark", &every.join("; "), "--plan", "horner"],
+        None,
+    );
+    assert_eq!(
+        wb.js(&["plan", "show", "horner", "--on", "2026-11-06"])["finished"],
+        false
+    );
     // with no end there is no last day to fit the missed days into
     run("Horner two", horner, &[]);
     let o = wb.js(&["plan", "missed", "horner-two", "--on", "2026-12-01"]);
-    let avail: Vec<bool> = o["options"].as_array().unwrap().iter().map(|x| x["available"].as_bool().unwrap()).collect();
+    let avail: Vec<bool> = o["options"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x["available"].as_bool().unwrap())
+        .collect();
     assert_eq!(avail, [true, false, false, true]);
     // used again, it is still a plan with no end
     let again = wb.js(&["plan", "reuse", "horner", "--start", "2027-01-01"]);
-    assert_eq!((again["cycle"].clone(), again["source"].clone()), (json!(true), json!("Horner")));
+    assert_eq!(
+        (again["cycle"].clone(), again["source"].clone()),
+        (json!(true), json!("Horner"))
+    );
     assert!(plan_file(&wb, "horner-again")["lists"].is_array());
     // what is wrong says so
-    let (code, _, err) = wb.run(&["plan", "import", "Bad", "--format", "horner"], Some("List 1: Matthew\n"));
+    let (code, _, err) = wb.run(
+        &["plan", "import", "Bad", "--format", "horner"],
+        Some("List 1: Matthew\n"),
+    );
     assert_eq!(code, 1);
     assert!(err.contains("No lists found"), "{err}");
-    let (code, _, err) = wb.run(&["plan", "import", "Bad", "--format", "sunday"], Some("Gen 1"));
+    let (code, _, err) = wb.run(
+        &["plan", "import", "Bad", "--format", "sunday"],
+        Some("Gen 1"),
+    );
     assert_eq!(code, 1);
     assert!(err.contains("No format"), "{err}");
 }
@@ -802,28 +2025,65 @@ fn a_published_plan_is_read_from_the_copy_the_person_has() {
 #[test]
 fn a_jot_waits_in_the_inbox_apart_from_placed_notes_then_is_placed() {
     let Some(wb) = Wb::new() else { return };
-    let n = wb.js(&["note", "jot", "check where else this phrase is used; see Rom 10:2"]);
+    let n = wb.js(&[
+        "note",
+        "jot",
+        "check where else this phrase is used; see Rom 10:2",
+    ]);
     let id = n["id"].as_str().unwrap().to_string();
-    assert_eq!((n["placed"].clone(), n["kind"].clone(), n["offer"]["anchor"].clone()), (json!(false), json!("note"), json!("ROM.10:2")));
+    assert_eq!(
+        (
+            n["placed"].clone(),
+            n["kind"].clone(),
+            n["offer"]["anchor"].clone()
+        ),
+        (json!(false), json!("note"), json!("ROM.10:2"))
+    );
     // its own file in notes/_inbox, in the notes' format, with no anchor at all (a page has no place)
     let file = wb.dir.join("notes").join("_inbox").join(format!("{id}.md"));
     let text = std::fs::read_to_string(&file).unwrap();
-    assert!(text.starts_with("---\nid: \"") && !text.contains("anchor") && text.contains("kind: \"jot\""), "{text}");
+    assert!(
+        text.starts_with("---\nid: \"")
+            && !text.contains("anchor")
+            && text.contains("kind: \"jot\""),
+        "{text}"
+    );
     // not a placed note: the margins, note list, anchor views and find do not see it
     assert_eq!(wb.js(&["note", "list", "Romans 10"]), json!([]));
     assert_eq!(wb.js(&["find", "phrase"])["notes"], json!([]));
     assert_eq!(wb.js(&["inbox"])["notes"].as_array().unwrap().len(), 1);
-    assert_eq!(wb.js(&["journal"])["days"][0]["entries"][0]["id"], json!(id));
+    assert_eq!(
+        wb.js(&["journal"])["days"][0]["entries"][0]["id"],
+        json!(id)
+    );
     // placed by part of its text, on the place its text names
     let placed = wb.js(&["note", "place", "where else"]);
-    assert_eq!((placed["placed"].clone(), placed["anchor"].clone(), placed["label"].clone()), (json!(true), json!("ROM.10:2"), json!("Romans 10:2")));
+    assert_eq!(
+        (
+            placed["placed"].clone(),
+            placed["anchor"].clone(),
+            placed["label"].clone()
+        ),
+        (json!(true), json!("ROM.10:2"), json!("Romans 10:2"))
+    );
     assert!(!file.exists());
-    assert!(wb.dir.join("notes").join("ROM").join(format!("{id}.md")).exists());
+    assert!(wb
+        .dir
+        .join("notes")
+        .join("ROM")
+        .join(format!("{id}.md"))
+        .exists());
     let listed = wb.js(&["note", "list", "Romans 10"]);
-    assert_eq!((listed[0]["id"].clone(), listed[0]["quote"].clone()), (json!(id), json!(verse_texts(&wb, "Rom 10:2")[0])));
+    assert_eq!(
+        (listed[0]["id"].clone(), listed[0]["quote"].clone()),
+        (json!(id), json!(verse_texts(&wb, "Rom 10:2")[0]))
+    );
     assert_eq!(wb.js(&["inbox"])["notes"], json!([]));
     // the day it was written is kept
-    assert_eq!(wb.js(&["journal"])["days"][0]["entries"][0]["created"], n["created"]);
+    assert_eq!(
+        wb.js(&["journal"])["days"][0]["entries"][0]["created"],
+        n["created"]
+    );
     assert_eq!(wb.js(&["note", "all"])["books"][0]["code"], json!("ROM"));
 }
 
@@ -833,28 +2093,56 @@ fn a_question_with_no_place_becomes_a_trail_when_placed() {
     let q = wb.js(&["note", "jot", "how do the two numbers relate", "--question"]);
     let id = q["id"].as_str().unwrap().to_string();
     assert_eq!(wb.js(&["questions"])["questions"][0]["id"], json!(id));
-    assert!(wb.fails(&["note", "place", "two numbers"]).contains("names no place"));
-    assert!(wb.fails(&["note", "place", "two numbers", "H7065"]).contains("question is placed on words or verses"));
+    assert!(wb
+        .fails(&["note", "place", "two numbers"])
+        .contains("names no place"));
+    assert!(wb
+        .fails(&["note", "place", "two numbers", "H7065"])
+        .contains("question is placed on words or verses"));
     wb.js(&["note", "place", &id, "Num 25:9"]);
     let trails = wb.js(&["trail", "list"])["trails"].clone();
-    assert_eq!((trails[0]["id"].clone(), trails[0]["anchor"].clone(), trails[0]["status"].clone()), (json!(id), json!("NUM.25:9"), json!("open")));
-    assert_eq!(wb.js(&["reader", "NUM", "25"])["questions"][0]["v"], json!(9));
+    assert_eq!(
+        (
+            trails[0]["id"].clone(),
+            trails[0]["anchor"].clone(),
+            trails[0]["status"].clone()
+        ),
+        (json!(id), json!("NUM.25:9"), json!("open"))
+    );
+    assert_eq!(
+        wb.js(&["reader", "NUM", "25"])["questions"][0]["v"],
+        json!(9)
+    );
     wb.js(&["trail", "done", &id]);
     assert_eq!(wb.js(&["questions"])["questions"], json!([]));
-    assert_eq!(wb.js(&["questions", "--status", "done"])["questions"][0]["id"], json!(id));
+    assert_eq!(
+        wb.js(&["questions", "--status", "done"])["questions"][0]["id"],
+        json!(id)
+    );
 }
 
 #[test]
 fn an_inbox_note_is_changed_made_a_question_or_deleted_with_undo() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["note", "jot", "first thought"]);
-    assert_eq!(wb.js(&["inbox", "edit", "first", "a better thought"])["text"], json!("a better thought"));
-    assert_eq!(wb.js(&["inbox", "edit", "better", "--question"])["kind"], json!("question"));
-    assert!(wb.fails(&["inbox", "edit", "nothing like it", "x"]).contains("No note in the Inbox"));
+    assert_eq!(
+        wb.js(&["inbox", "edit", "first", "a better thought"])["text"],
+        json!("a better thought")
+    );
+    assert_eq!(
+        wb.js(&["inbox", "edit", "better", "--question"])["kind"],
+        json!("question")
+    );
+    assert!(wb
+        .fails(&["inbox", "edit", "nothing like it", "x"])
+        .contains("No note in the Inbox"));
     let deletion = wb.js(&["inbox", "rm", "better"]);
     assert_eq!(wb.js(&["inbox"])["notes"], json!([]));
     assert_eq!(deletion["deleted"][0], deletion["id"]);
-    assert_eq!(wb.js(&["page", "deletions"])["operations"][0]["operation"], deletion["operation"]);
+    assert_eq!(
+        wb.js(&["page", "deletions"])["operations"][0]["operation"],
+        deletion["operation"]
+    );
     wb.js(&["page", "undo", deletion["operation"].as_str().unwrap()]);
     assert_eq!(wb.js(&["inbox"])["notes"][0]["text"], "a better thought");
 }
@@ -866,25 +2154,71 @@ fn a_placed_note_moves_and_a_question_is_untagged_or_answered_anywhere() {
     let n = wb.js(&["note", "add", "Num 25:11", "the same zeal"]);
     let id = n["id"].as_str().unwrap().to_string();
     let moved = wb.js(&["note", "move", &id, "Ps 106:30-31"]);
-    assert_eq!((moved["anchor"].clone(), moved["label"].clone(), moved["created"].clone()), (json!("PSA.106:30-106:31"), json!("Psalms 106:30–31"), n["created"].clone()));
-    assert!(!wb.dir.join("notes").join("NUM").join(format!("{id}.md")).exists());
-    let text = std::fs::read_to_string(wb.dir.join("notes").join("PSA").join(format!("{id}.md"))).unwrap();
-    assert!(text.contains(&format!("quote: \"{}", verse_texts(&wb, "Ps 106:30")[0])) && text.ends_with("the same zeal\n"), "{text}");
+    assert_eq!(
+        (
+            moved["anchor"].clone(),
+            moved["label"].clone(),
+            moved["created"].clone()
+        ),
+        (
+            json!("PSA.106:30-106:31"),
+            json!("Psalms 106:30–31"),
+            n["created"].clone()
+        )
+    );
+    assert!(!wb
+        .dir
+        .join("notes")
+        .join("NUM")
+        .join(format!("{id}.md"))
+        .exists());
+    let text =
+        std::fs::read_to_string(wb.dir.join("notes").join("PSA").join(format!("{id}.md"))).unwrap();
+    assert!(
+        text.contains(&format!("quote: \"{}", verse_texts(&wb, "Ps 106:30")[0]))
+            && text.ends_with("the same zeal\n"),
+        "{text}"
+    );
     assert_eq!(wb.js(&["note", "list", "Numbers 25"]), json!([]));
     // the note becomes a question (a trail) at its place, then a plain note again
     let q = wb.js(&["note", "question", &id]);
-    assert_eq!((q["kind"].clone(), q["status"].clone()), (json!("question"), json!("open")));
-    assert!(wb.dir.join("trails").join(format!("{id}.md")).exists() && !wb.dir.join("notes").join("PSA").join(format!("{id}.md")).exists());
+    assert_eq!(
+        (q["kind"].clone(), q["status"].clone()),
+        (json!("question"), json!("open"))
+    );
+    assert!(
+        wb.dir.join("trails").join(format!("{id}.md")).exists()
+            && !wb
+                .dir
+                .join("notes")
+                .join("PSA")
+                .join(format!("{id}.md"))
+                .exists()
+    );
     assert_eq!(wb.js(&["note", "answered", &id])["status"], json!("done"));
-    assert_eq!(wb.js(&["note", "answered", &id, "--open"])["status"], json!("open"));
-    assert_eq!(wb.js(&["note", "question", &id, "--plain"])["kind"], json!("note"));
+    assert_eq!(
+        wb.js(&["note", "answered", &id, "--open"])["status"],
+        json!("open")
+    );
+    assert_eq!(
+        wb.js(&["note", "question", &id, "--plain"])["kind"],
+        json!("note")
+    );
     assert!(!wb.dir.join("trails").join(format!("{id}.md")).exists());
     assert_eq!(wb.js(&["note", "list", "Psalms 106"])[0]["id"], json!(id));
     // an Inbox question is answered before it has a place, and stays answered when placed
     wb.js(&["note", "jot", "who else stood up", "--question"]);
-    assert_eq!(wb.js(&["note", "answered", "who else"])["status"], json!("done"));
-    assert_eq!(wb.js(&["note", "place", "who else", "Ps 106:30"])["status"], json!("done"));
-    assert!(wb.fails(&["note", "move", "n_nothing", "Ps 1:1"]).contains("No note or question"));
+    assert_eq!(
+        wb.js(&["note", "answered", "who else"])["status"],
+        json!("done")
+    );
+    assert_eq!(
+        wb.js(&["note", "place", "who else", "Ps 106:30"])["status"],
+        json!("done")
+    );
+    assert!(wb
+        .fails(&["note", "move", "n_nothing", "Ps 1:1"])
+        .contains("No note or question"));
 }
 
 #[test]
@@ -893,64 +2227,138 @@ fn a_note_sits_on_places_apart_from_each_other() {
     let n = wb.js(&["note", "add", "Num 25:11", "the same zeal"]);
     let id = n["id"].as_str().unwrap().to_string();
     let e = wb.js(&["note", "also", &id, "Ps 106:30"]);
-    assert_eq!(e["also"], json!([{"anchor": "PSA.106:30", "label": "Psalms 106:30"}]));
+    assert_eq!(
+        e["also"],
+        json!([{"anchor": "PSA.106:30", "label": "Psalms 106:30"}])
+    );
     wb.js(&["note", "also", &id, "1 Cor 10:8"]);
     // its file stays at its first place, with the others in its front matter (the Python app keeps the field)
-    let text = std::fs::read_to_string(wb.dir.join("notes").join("NUM").join(format!("{id}.md"))).unwrap();
-    assert!(text.contains("also: [\"PSA.106:30\", \"1CO.10:8\"]"), "{text}");
+    let text =
+        std::fs::read_to_string(wb.dir.join("notes").join("NUM").join(format!("{id}.md"))).unwrap();
+    assert!(
+        text.contains("also: [\"PSA.106:30\", \"1CO.10:8\"]"),
+        "{text}"
+    );
     // it shows at each place: the note list, the place pane, the reader's marks
     assert_eq!(wb.js(&["note", "list", "Psalms 106"])[0]["id"], json!(id));
-    assert_eq!(wb.js(&["anchor", "1 Cor 10:8"])["notes"][0]["id"], json!(id));
+    assert_eq!(
+        wb.js(&["anchor", "1 Cor 10:8"])["notes"][0]["id"],
+        json!(id)
+    );
     assert_eq!(wb.js(&["note", "list", "Numbers 25"])[0]["id"], json!(id));
     // moving it keeps its other places; a place comes off, but not its first
     let moved = wb.js(&["note", "move", &id, "Num 25:13"]);
     assert_eq!(moved["also"].as_array().unwrap().len(), 2);
-    assert!(wb.fails(&["note", "also", &id, "Num 25:13", "--remove"]).contains("first place"));
-    assert_eq!(wb.js(&["note", "also", &id, "Ps 106:30", "--remove"])["also"], json!([{"anchor": "1CO.10:8", "label": "1 Corinthians 10:8"}]));
+    assert!(wb
+        .fails(&["note", "also", &id, "Num 25:13", "--remove"])
+        .contains("first place"));
+    assert_eq!(
+        wb.js(&["note", "also", &id, "Ps 106:30", "--remove"])["also"],
+        json!([{"anchor": "1CO.10:8", "label": "1 Corinthians 10:8"}])
+    );
     assert_eq!(wb.js(&["note", "list", "Psalms 106"]), json!([]));
 }
 
 #[test]
 fn a_place_is_taken_off_a_note_its_first_too_and_the_last_sends_it_to_the_inbox() {
     let Some(wb) = Wb::new() else { return };
-    let id = wb.js(&["note", "add", "Num 25:11", "on three places"])["id"].as_str().unwrap().to_string();
+    let id = wb.js(&["note", "add", "Num 25:11", "on three places"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["note", "also", &id, "Ps 106:30"]);
     wb.js(&["note", "also", &id, "1 Cor 10:8"]);
     // another place comes off as note also --remove takes it
     let e = wb.js(&["note", "unplace", &id, "1 Cor 10:8"]);
-    assert_eq!((e["anchor"].clone(), e["also"].clone()), (json!("NUM.25:11"), json!([{"anchor": "PSA.106:30", "label": "Psalms 106:30"}])));
+    assert_eq!(
+        (e["anchor"].clone(), e["also"].clone()),
+        (
+            json!("NUM.25:11"),
+            json!([{"anchor": "PSA.106:30", "label": "Psalms 106:30"}])
+        )
+    );
     wb.js(&["note", "also", &id, "1 Cor 10:8"]);
     // its first place: the next becomes its place, and its file moves to that book's folder in the Python app's format
     let e = wb.js(&["note", "unplace", &id, "Num 25:11"]);
-    assert_eq!((e["anchor"].clone(), e["label"].clone(), e["placed"].clone()), (json!("PSA.106:30"), json!("Psalms 106:30"), json!(true)));
-    assert_eq!(e["also"], json!([{"anchor": "1CO.10:8", "label": "1 Corinthians 10:8"}]));
-    assert!(!wb.dir.join("notes").join("NUM").join(format!("{id}.md")).exists());
-    let text = std::fs::read_to_string(wb.dir.join("notes").join("PSA").join(format!("{id}.md"))).unwrap();
-    assert!(text.contains("anchor: \"PSA.106:30\"") && text.contains("kind: \"verse\"") && text.contains("also: [\"1CO.10:8\"]"), "{text}");
+    assert_eq!(
+        (e["anchor"].clone(), e["label"].clone(), e["placed"].clone()),
+        (json!("PSA.106:30"), json!("Psalms 106:30"), json!(true))
+    );
+    assert_eq!(
+        e["also"],
+        json!([{"anchor": "1CO.10:8", "label": "1 Corinthians 10:8"}])
+    );
+    assert!(!wb
+        .dir
+        .join("notes")
+        .join("NUM")
+        .join(format!("{id}.md"))
+        .exists());
+    let text =
+        std::fs::read_to_string(wb.dir.join("notes").join("PSA").join(format!("{id}.md"))).unwrap();
+    assert!(
+        text.contains("anchor: \"PSA.106:30\"")
+            && text.contains("kind: \"verse\"")
+            && text.contains("also: [\"1CO.10:8\"]"),
+        "{text}"
+    );
     assert_eq!(wb.js(&["note", "list", "Psalms 106"])[0]["id"], json!(id));
     assert_eq!(wb.js(&["note", "list", "Numbers 25"]), json!([]));
-    assert!(wb.fails(&["note", "unplace", &id, "Num 25:11"]).contains("not on that place"));
+    assert!(wb
+        .fails(&["note", "unplace", &id, "Num 25:11"])
+        .contains("not on that place"));
     // its last place: into the Inbox, no longer in the note lists
     wb.js(&["note", "unplace", &id, "Ps 106:30"]);
     let e = wb.js(&["note", "unplace", &id, "1 Cor 10:8"]);
-    assert_eq!((e["placed"].clone(), e["anchor"].clone()), (json!(false), json!("")));
+    assert_eq!(
+        (e["placed"].clone(), e["anchor"].clone()),
+        (json!(false), json!(""))
+    );
     assert_eq!(wb.js(&["inbox"])["notes"][0]["id"], json!(id));
-    assert!(wb.dir.join("notes").join("_inbox").join(format!("{id}.md")).exists());
+    assert!(wb
+        .dir
+        .join("notes")
+        .join("_inbox")
+        .join(format!("{id}.md"))
+        .exists());
     assert_eq!(wb.js(&["note", "all"])["books"], json!([]));
     // a question at its place waits in the Inbox as a question, still answered
-    let q = wb.js(&["trail", "add", "Num 25:11", "who else was zealous"])["id"].as_str().unwrap().to_string();
+    let q = wb.js(&["trail", "add", "Num 25:11", "who else was zealous"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["note", "answered", &q]);
     wb.js(&["note", "unplace", &q, "Num 25:11"]);
-    let back = wb.js(&["inbox"])["notes"].as_array().unwrap().iter().find(|n| n["id"] == q.as_str()).cloned().unwrap();
-    assert_eq!((back["kind"].clone(), back["status"].clone()), (json!("question"), json!("done")));
+    let back = wb.js(&["inbox"])["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|n| n["id"] == q.as_str())
+        .cloned()
+        .unwrap();
+    assert_eq!(
+        (back["kind"].clone(), back["status"].clone()),
+        (json!("question"), json!("done"))
+    );
     assert!(!wb.dir.join("trails").join(format!("{q}.md")).exists());
     // a note still on a thread keeps the thread as its place
     wb.js(&["thread", "new", "Zeal"]);
-    let t = wb.js(&["note", "add", "Num 25:11", "on a thread too"])["id"].as_str().unwrap().to_string();
+    let t = wb.js(&["note", "add", "Num 25:11", "on a thread too"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["note", "thread", &t, "Zeal"]);
     let e = wb.js(&["note", "unplace", &t, "Num 25:11"]);
-    assert_eq!((e["label"].clone(), e["placed"].clone()), (json!("On Zeal"), json!(true)));
-    assert!(wb.dir.join("notes").join("_threads").join(format!("{t}.md")).exists());
+    assert_eq!(
+        (e["label"].clone(), e["placed"].clone()),
+        (json!("On Zeal"), json!(true))
+    );
+    assert!(wb
+        .dir
+        .join("notes")
+        .join("_threads")
+        .join(format!("{t}.md"))
+        .exists());
 }
 
 #[test]
@@ -959,31 +2367,77 @@ fn a_thread_holds_notes_of_its_own_and_notes_put_on_it() {
     wb.js(&["thread", "new", "Zeal"]);
     let w = wb.js(&["thread", "write", "Zeal", "what the thread is following"]);
     let id = w["id"].as_str().unwrap().to_string();
-    assert_eq!((w["label"].clone(), w["placed"].clone()), (json!("On Zeal"), json!(true)));
-    assert!(wb.dir.join("notes").join("_threads").join(format!("{id}.md")).exists());
+    assert_eq!(
+        (w["label"].clone(), w["placed"].clone()),
+        (json!("On Zeal"), json!(true))
+    );
+    assert!(wb
+        .dir
+        .join("notes")
+        .join("_threads")
+        .join(format!("{id}.md"))
+        .exists());
     // a placed note is put on the thread too
     let n = wb.js(&["note", "add", "Num 25:11", "his zeal"]);
     let nid = n["id"].as_str().unwrap().to_string();
-    assert_eq!(wb.js(&["note", "thread", &nid, "zeal"])["threads"][0]["name"], json!("Zeal"));
+    assert_eq!(
+        wb.js(&["note", "thread", &nid, "zeal"])["threads"][0]["name"],
+        json!("Zeal")
+    );
     let on = wb.js(&["thread", "notes", "Zeal"])["notes"].clone();
-    let mut got: Vec<&str> = on.as_array().unwrap().iter().map(|x| x["id"].as_str().unwrap()).collect();
+    let mut got: Vec<&str> = on
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x["id"].as_str().unwrap())
+        .collect();
     got.sort();
     let mut want = vec![id.as_str(), nid.as_str()];
     want.sort();
     assert_eq!(got, want);
     // not in the margins or the note lists (it has no place), but in the Journal, All notes and find by its id
-    assert_eq!(wb.js(&["journal"])["days"][0]["entries"].as_array().unwrap().iter().filter(|e| e["id"] == id.as_str()).count(), 1);
-    assert_eq!(wb.js(&["note", "all"])["books"].as_array().unwrap().last().unwrap()["code"], json!("_threads"));
-    assert_eq!(wb.js(&["note", "text", &id, "what this thread follows"])["text"], json!("what this thread follows"));
+    assert_eq!(
+        wb.js(&["journal"])["days"][0]["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|e| e["id"] == id.as_str())
+            .count(),
+        1
+    );
+    assert_eq!(
+        wb.js(&["note", "all"])["books"]
+            .as_array()
+            .unwrap()
+            .last()
+            .unwrap()["code"],
+        json!("_threads")
+    );
+    assert_eq!(
+        wb.js(&["note", "text", &id, "what this thread follows"])["text"],
+        json!("what this thread follows")
+    );
     // taken off its last thread, a note with no place waits in the Inbox
     wb.js(&["note", "thread", &id, "Zeal", "--remove"]);
     assert_eq!(wb.js(&["inbox"])["notes"][0]["id"], json!(id));
-    assert_eq!(wb.js(&["thread", "notes", "Zeal"])["notes"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        wb.js(&["thread", "notes", "Zeal"])["notes"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
     // and put on a thread from the Inbox, it leaves the Inbox
     wb.js(&["note", "thread", &id, "Zeal"]);
     assert_eq!(wb.js(&["inbox"])["notes"], json!([]));
     wb.js(&["note", "rm", &id]);
-    assert_eq!(wb.js(&["thread", "notes", "Zeal"])["notes"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        wb.js(&["thread", "notes", "Zeal"])["notes"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
 }
 
 #[test]
@@ -991,19 +2445,39 @@ fn deleted_notes_wait_a_week_in_the_trash_and_can_be_put_back() {
     let Some(wb) = Wb::new() else { return };
     let n = wb.js(&["note", "add", "Num 25:11", "to delete"]);
     let id = n["id"].as_str().unwrap().to_string();
-    wb_core::store::Store::open(&wb.dir).unwrap().delete_note(&id).unwrap();
+    wb_core::store::Store::open(&wb.dir)
+        .unwrap()
+        .delete_note(&id)
+        .unwrap();
     let t = wb.js(&["trash"]);
-    assert_eq!((t["days"].clone(), t["notes"][0]["id"].clone(), t["notes"][0]["days_left"].clone()), (json!(7), json!(id), json!(7)));
+    assert_eq!(
+        (
+            t["days"].clone(),
+            t["notes"][0]["id"].clone(),
+            t["notes"][0]["days_left"].clone()
+        ),
+        (json!(7), json!(id), json!(7))
+    );
     let name = t["notes"][0]["name"].as_str().unwrap().to_string();
     wb.js(&["trash", "restore", &name]);
     assert_eq!(wb.js(&["note", "list", "Numbers 25"])[0]["id"], json!(id));
     assert_eq!(wb.js(&["trash"])["notes"], json!([]));
     // a week on, a deleted note is erased; other files in .trash (a thread, highlights) stay
     let trash = wb.dir.join(".trash");
-    std::fs::write(trash.join("20200101-000000-n_20200101000000_aaaa.md"), "---\nid: \"n_20200101000000_aaaa\"\nanchor: \"\"\nkind: \"jot\"\n---\n\nold\n").unwrap();
+    std::fs::write(
+        trash.join("20200101-000000-n_20200101000000_aaaa.md"),
+        "---\nid: \"n_20200101000000_aaaa\"\nanchor: \"\"\nkind: \"jot\"\n---\n\nold\n",
+    )
+    .unwrap();
     std::fs::write(trash.join("20200101-000000-love.md"), "a thread").unwrap();
-    wb_core::store::Store::open(&wb.dir).unwrap().delete_note(&id).unwrap();
-    assert_eq!(wb.js(&["trash", "empty"])["erased"], json!(["20200101-000000-n_20200101000000_aaaa.md"]));
+    wb_core::store::Store::open(&wb.dir)
+        .unwrap()
+        .delete_note(&id)
+        .unwrap();
+    assert_eq!(
+        wb.js(&["trash", "empty"])["erased"],
+        json!(["20200101-000000-n_20200101000000_aaaa.md"])
+    );
     assert!(trash.join("20200101-000000-love.md").exists());
     assert_eq!(wb.js(&["trash"])["notes"].as_array().unwrap().len(), 1); // deleted today: it waits
 }
@@ -1011,89 +2485,256 @@ fn deleted_notes_wait_a_week_in_the_trash_and_can_be_put_back() {
 #[test]
 fn erase_now_erases_one_deleted_note_and_nothing_else() {
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["note", "add", "Num 25:11", "to erase now"])["id"].as_str().unwrap().to_string();
-    let b = wb.js(&["note", "jot", "to keep in the trash"])["id"].as_str().unwrap().to_string();
+    let a = wb.js(&["note", "add", "Num 25:11", "to erase now"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = wb.js(&["note", "jot", "to keep in the trash"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let mut legacy = wb_core::store::Store::open(&wb.dir).unwrap();
     legacy.delete_note(&a).unwrap();
     legacy.delete_jot(&b).unwrap();
     let t = wb.js(&["trash"]);
-    let name = |id: &str| t["notes"].as_array().unwrap().iter().find(|n| n["id"] == id).unwrap()["name"].as_str().unwrap().to_string();
+    let name = |id: &str| {
+        t["notes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|n| n["id"] == id)
+            .unwrap()["name"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
     let (na, nb) = (name(&a), name(&b));
     assert_eq!(wb.js(&["trash", "erase", &na]), json!({"erased": [na]}));
     assert!(!wb.dir.join(".trash").join(&na).exists());
-    let left: Vec<Value> = wb.js(&["trash"])["notes"].as_array().unwrap().iter().map(|n| n["id"].clone()).collect();
+    let left: Vec<Value> = wb.js(&["trash"])["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|n| n["id"].clone())
+        .collect();
     assert_eq!(left, vec![json!(b)]);
-    assert!(wb.fails(&["trash", "restore", &na]).contains("No such file"));
+    assert!(wb
+        .fails(&["trash", "restore", &na])
+        .contains("No such file"));
     assert!(wb.fails(&["trash", "erase", &na]).contains("No such file"));
     // only notes and questions: a thread, a highlight file or a plan in .trash is never erased
-    std::fs::write(wb.dir.join(".trash").join("20200101-000000-love.md"), "a thread").unwrap();
-    assert!(wb.fails(&["trash", "erase", "20200101-000000-love.md"]).contains("Name a note or question"));
-    assert!(wb.fails(&["trash", "erase", &format!("../notes/{nb}")]).contains("Name a note or question"));
-    assert!(wb.dir.join(".trash").join("20200101-000000-love.md").exists());
+    std::fs::write(
+        wb.dir.join(".trash").join("20200101-000000-love.md"),
+        "a thread",
+    )
+    .unwrap();
+    assert!(wb
+        .fails(&["trash", "erase", "20200101-000000-love.md"])
+        .contains("Name a note or question"));
+    assert!(wb
+        .fails(&["trash", "erase", &format!("../notes/{nb}")])
+        .contains("Name a note or question"));
+    assert!(wb
+        .dir
+        .join(".trash")
+        .join("20200101-000000-love.md")
+        .exists());
     assert!(wb.dir.join(".trash").join(&nb).exists());
 }
 
 #[test]
 fn a_note_is_placed_on_a_chapter_or_a_book_as_the_run_of_its_verses() {
     let Some(wb) = Wb::new() else { return };
-    let c = wb.js(&["note", "new", "Numbers 25, read again\nonce in each version", "--at", "Numbers 25"]);
-    assert_eq!((c["anchor"].clone(), c["label"].clone(), c["whole"].clone(), c["title"].clone()), (json!("NUM.25:1-25:18"), json!("Numbers 25"), json!("chapter"), json!("Numbers 25, read again")));
+    let c = wb.js(&[
+        "note",
+        "new",
+        "Numbers 25, read again\nonce in each version",
+        "--at",
+        "Numbers 25",
+    ]);
+    assert_eq!(
+        (
+            c["anchor"].clone(),
+            c["label"].clone(),
+            c["whole"].clone(),
+            c["title"].clone()
+        ),
+        (
+            json!("NUM.25:1-25:18"),
+            json!("Numbers 25"),
+            json!("chapter"),
+            json!("Numbers 25, read again")
+        )
+    );
     let b = wb.js(&["note", "new", "Numbers: an outline", "--at", "Numbers"]);
-    assert_eq!((b["anchor"].clone(), b["label"].clone(), b["whole"].clone()), (json!("NUM.1:1-36:13"), json!("Numbers"), json!("book")));
+    assert_eq!(
+        (b["anchor"].clone(), b["label"].clone(), b["whole"].clone()),
+        (json!("NUM.1:1-36:13"), json!("Numbers"), json!("book"))
+    );
     // the file keeps no copy of the chapter's text, in the Python app's format, so its note lists show it
-    let text = std::fs::read_to_string(wb.dir.join("notes").join("NUM").join(format!("{}.md", c["id"].as_str().unwrap()))).unwrap();
-    assert!(text.contains("anchor: \"NUM.25:1-25:18\"") && text.contains("kind: \"verses\"") && text.contains("quote: \"\""), "{text}");
-    assert_eq!(wb.js(&["note", "list", "Numbers 25"]).as_array().unwrap().len(), 2);
+    let text = std::fs::read_to_string(
+        wb.dir
+            .join("notes")
+            .join("NUM")
+            .join(format!("{}.md", c["id"].as_str().unwrap())),
+    )
+    .unwrap();
+    assert!(
+        text.contains("anchor: \"NUM.25:1-25:18\"")
+            && text.contains("kind: \"verses\"")
+            && text.contains("quote: \"\""),
+        "{text}"
+    );
+    assert_eq!(
+        wb.js(&["note", "list", "Numbers 25"])
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
     // a note on a verse is put on its chapter too, and taken off it again
-    let v = wb.js(&["note", "new", "the plague stayed", "--at", "Num 25:8"])["id"].as_str().unwrap().to_string();
-    assert_eq!(wb.js(&["note", "also", &v, "Numbers 25"])["also"], json!([{"anchor": "NUM.25:1-25:18", "label": "Numbers 25"}]));
-    assert_eq!(wb.js(&["note", "unplace", &v, "Numbers 25"])["also"], json!([]));
+    let v = wb.js(&["note", "new", "the plague stayed", "--at", "Num 25:8"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(
+        wb.js(&["note", "also", &v, "Numbers 25"])["also"],
+        json!([{"anchor": "NUM.25:1-25:18", "label": "Numbers 25"}])
+    );
+    assert_eq!(
+        wb.js(&["note", "unplace", &v, "Numbers 25"])["also"],
+        json!([])
+    );
     // an Inbox note placed on a book; a question on a chapter
-    let j = wb.js(&["note", "jot", "about the whole book"])["id"].as_str().unwrap().to_string();
-    assert_eq!(wb.js(&["note", "place", &j, "Jude"])["label"], json!("Jude"));
-    assert_eq!(wb.js(&["note", "new", "why here?", "--at", "Num 25", "--question"])["kind"], json!("question"));
+    let j = wb.js(&["note", "jot", "about the whole book"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(
+        wb.js(&["note", "place", &j, "Jude"])["label"],
+        json!("Jude")
+    );
+    assert_eq!(
+        wb.js(&["note", "new", "why here?", "--at", "Num 25", "--question"])["kind"],
+        json!("question")
+    );
     // with no place, a new note waits in the Inbox; note add keeps the Python app's verses-only rule
     assert_eq!(wb.js(&["note", "new", "a thought"])["placed"], json!(false));
-    assert!(wb.fails(&["note", "add", "John 3", "x"]).contains("Name a verse"));
+    assert!(wb
+        .fails(&["note", "add", "John 3", "x"])
+        .contains("Name a verse"));
 }
 
 #[test]
 fn the_notebook_lists_by_day_chapter_thread_or_none() {
     let Some(wb) = Wb::new() else { return };
-    let book = wb.js(&["note", "new", "Numbers: an outline", "--at", "Numbers"])["id"].as_str().unwrap().to_string();
-    let v9 = wb.js(&["note", "new", "24,000 or 23,000?", "--at", "Num 25:9", "--question"])["id"].as_str().unwrap().to_string();
-    let v8 = wb.js(&["note", "new", "tent and belly", "--at", "Num 25:8"])["id"].as_str().unwrap().to_string();
-    let ch = wb.js(&["note", "new", "Numbers 25, read again", "--at", "Numbers 25"])["id"].as_str().unwrap().to_string();
-    let other = wb.js(&["note", "new", "not this chapter", "--at", "Num 26:1"])["id"].as_str().unwrap().to_string();
-    let jot = wb.js(&["note", "jot", "no place yet"])["id"].as_str().unwrap().to_string();
-    let ids = |g: &Value| g["entries"].as_array().unwrap().iter().map(|e| e["id"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+    let book = wb.js(&["note", "new", "Numbers: an outline", "--at", "Numbers"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let v9 = wb.js(&[
+        "note",
+        "new",
+        "24,000 or 23,000?",
+        "--at",
+        "Num 25:9",
+        "--question",
+    ])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let v8 = wb.js(&["note", "new", "tent and belly", "--at", "Num 25:8"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let ch = wb.js(&[
+        "note",
+        "new",
+        "Numbers 25, read again",
+        "--at",
+        "Numbers 25",
+    ])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let other = wb.js(&["note", "new", "not this chapter", "--at", "Num 26:1"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let jot = wb.js(&["note", "jot", "no place yet"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let ids = |g: &Value| {
+        g["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e["id"].as_str().unwrap().to_string())
+            .collect::<Vec<_>>()
+    };
     // following the reader: the book's note, the chapter's, then by verse
     let l = wb.js(&["notebook", "--group", "chapter", "--at", "Num 25"]);
     assert_eq!(l["groups"].as_array().unwrap().len(), 1);
-    assert_eq!((l["groups"][0]["label"].clone(), l["groups"][0]["following"].clone()), (json!("Numbers 25"), json!(true)));
-    assert_eq!(ids(&l["groups"][0]), vec![book.clone(), ch.clone(), v8.clone(), v9.clone()]);
+    assert_eq!(
+        (
+            l["groups"][0]["label"].clone(),
+            l["groups"][0]["following"].clone()
+        ),
+        (json!("Numbers 25"), json!(true))
+    );
+    assert_eq!(
+        ids(&l["groups"][0]),
+        vec![book.clone(), ch.clone(), v8.clone(), v9.clone()]
+    );
     // every chapter: the book first, then chapter by chapter
     let all = wb.js(&["notebook", "--group", "chapter"]);
-    let labels: Vec<&str> = all["groups"].as_array().unwrap().iter().map(|g| g["label"].as_str().unwrap()).collect();
+    let labels: Vec<&str> = all["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| g["label"].as_str().unwrap())
+        .collect();
     assert_eq!(labels, vec!["Numbers", "Numbers 25", "Numbers 26"]);
     assert_eq!(ids(&all["groups"][2]), vec![other.clone()]);
     // by day: today, with today's page first (blank until written in), the Inbox note among the rest
     let d = wb.js(&["notebook", "--group", "day"]);
     let first = &d["groups"][0];
-    assert_eq!((first["today"].clone(), first["entries"][0]["kind"].clone(), first["entries"][0]["exists"].clone()), (json!(true), json!("day"), json!(false)));
+    assert_eq!(
+        (
+            first["today"].clone(),
+            first["entries"][0]["kind"].clone(),
+            first["entries"][0]["exists"].clone()
+        ),
+        (json!(true), json!("day"), json!(false))
+    );
     assert!(ids(first).contains(&jot));
     // the pages (once the Inbox) apart, then by thread
     let a = wb.js(&["notebook", "--group", "day", "--inbox-apart"]);
-    assert_eq!((a["groups"][0]["label"].clone(), ids(&a["groups"][0])), (json!("Pages"), vec![jot.clone()]));
+    assert_eq!(
+        (a["groups"][0]["label"].clone(), ids(&a["groups"][0])),
+        (json!("Pages"), vec![jot.clone()])
+    );
     wb.js(&["thread", "new", "Phinehas"]);
     wb.js(&["note", "thread", &v8, "Phinehas"]);
     let t = wb.js(&["notebook", "--group", "thread"]);
-    assert_eq!((t["groups"][0]["label"].clone(), ids(&t["groups"][0])), (json!("Phinehas"), vec![v8.clone()]));
+    assert_eq!(
+        (t["groups"][0]["label"].clone(), ids(&t["groups"][0])),
+        (json!("Phinehas"), vec![v8.clone()])
+    );
     assert_eq!(t["groups"][1]["label"], json!("On no thread"));
     // a search and the questions, across every group; none: newest changed first
-    assert_eq!(ids(&wb.js(&["notebook", "--group", "none", "--search", "belly"])["groups"][0]), vec![v8.clone()]);
-    assert_eq!(ids(&wb.js(&["notebook", "--group", "none", "--questions"])["groups"][0]), vec![v9.clone()]);
-    assert!(wb.fails(&["notebook", "--group", "verse"]).contains("Group by day, chapter, thread or none"));
+    assert_eq!(
+        ids(&wb.js(&["notebook", "--group", "none", "--search", "belly"])["groups"][0]),
+        vec![v8.clone()]
+    );
+    assert_eq!(
+        ids(&wb.js(&["notebook", "--group", "none", "--questions"])["groups"][0]),
+        vec![v9.clone()]
+    );
+    assert!(wb
+        .fails(&["notebook", "--group", "verse"])
+        .contains("Group by day, chapter, thread or none"));
     // the group it opens with is a setting
     wb.js(&["settings", "notebook", "group", "thread"]);
     assert_eq!(wb.js(&["notebook"])["group"], json!("thread"));
@@ -1103,22 +2744,46 @@ fn the_notebook_lists_by_day_chapter_thread_or_none() {
 fn today_s_page_is_one_note_a_day_made_when_first_written_in() {
     let Some(wb) = Wb::new() else { return };
     let blank = wb.js(&["day"]);
-    assert_eq!((blank["exists"].clone(), blank["kind"].clone(), blank["today"].clone()), (json!(false), json!("day"), json!(true)));
+    assert_eq!(
+        (
+            blank["exists"].clone(),
+            blank["kind"].clone(),
+            blank["today"].clone()
+        ),
+        (json!(false), json!("day"), json!(true))
+    );
     let day = blank["day"].as_str().unwrap().to_string();
     let file = wb.dir.join("notes").join("_days").join(format!("{day}.md"));
     assert!(!file.exists());
     wb.js(&["day", "add", "Read Numbers 25 twice."]);
     let p = wb.js(&["day", "add", "Then the YLT."]);
-    assert_eq!((p["text"].clone(), p["id"].clone()), (json!("Read Numbers 25 twice.\n\nThen the YLT."), json!(format!("d_{day}"))));
+    assert_eq!(
+        (p["text"].clone(), p["id"].clone()),
+        (
+            json!("Read Numbers 25 twice.\n\nThen the YLT."),
+            json!(format!("d_{day}"))
+        )
+    );
     let text = std::fs::read_to_string(&file).unwrap();
-    assert!(text.starts_with("---\nid: ") && !text.contains("anchor"), "{text}");
+    assert!(
+        text.starts_with("---\nid: ") && !text.contains("anchor"),
+        "{text}"
+    );
     // the Python app skips a file with no anchor: no note lists, no Inbox
     assert_eq!(wb.js(&["note", "list", "Numbers 25"]), json!([]));
     assert_eq!(wb.js(&["inbox"])["notes"], json!([]));
     // written over by its id, as any note is; a page for another day
-    assert_eq!(wb.js(&["note", "text", &format!("d_{day}"), "only this"])["text"], json!("only this"));
-    assert_eq!(wb.js(&["day", "add", "earlier", "--day", "2026-11-02"])["title"], json!("Monday, November 2"));
-    assert!(wb.fails(&["day", "add", "x", "--day", "tomorrow"]).contains("A day looks like"));
+    assert_eq!(
+        wb.js(&["note", "text", &format!("d_{day}"), "only this"])["text"],
+        json!("only this")
+    );
+    assert_eq!(
+        wb.js(&["day", "add", "earlier", "--day", "2026-11-02"])["title"],
+        json!("Monday, November 2")
+    );
+    assert!(wb
+        .fails(&["day", "add", "x", "--day", "tomorrow"])
+        .contains("A day looks like"));
     // Explicit deletion has timed Undo. Emptying a day through day text retains legacy behavior.
     wb.js(&["day", "text", "", "--day", "2026-11-02"]);
     let deletion = wb.js(&["day", "rm", "today"]);
@@ -1127,33 +2792,84 @@ fn today_s_page_is_one_note_a_day_made_when_first_written_in() {
     assert_eq!(t["notes"].as_array().unwrap().len(), 1);
     assert_eq!(deletion["deleted"], json!([format!("d_{day}")]));
     assert_eq!(deletion["day"], day);
-    assert!(wb.fails(&["day", "rm", "tomorrow"]).contains("A day looks like"));
+    assert!(wb
+        .fails(&["day", "rm", "tomorrow"])
+        .contains("A day looks like"));
     wb.js(&["page", "undo", deletion["operation"].as_str().unwrap()]);
     assert_eq!(wb.js(&["day"])["text"], json!("only this"));
     // the name days had before (finding 7bc8) still links to the page, as do the new name and the day
     let d = chrono::NaiveDate::parse_from_str(&day, "%Y-%m-%d").unwrap();
-    let names = [d.format("%A %-d %B").to_string(), d.format("%A, %B %-d").to_string(), day.clone()];
-    let linker = wb.js(&["note", "new", &format!("See [[{}]], [[{}]] and [[{}]].", names[0], names[1], names[2])]);
-    let to: Vec<Value> = wb.js(&["note", "links", linker["id"].as_str().unwrap()])["links"].as_array().unwrap().iter().map(|l| l["to"].clone()).collect();
+    let names = [
+        d.format("%A %-d %B").to_string(),
+        d.format("%A, %B %-d").to_string(),
+        day.clone(),
+    ];
+    let linker = wb.js(&[
+        "note",
+        "new",
+        &format!(
+            "See [[{}]], [[{}]] and [[{}]].",
+            names[0], names[1], names[2]
+        ),
+    ]);
+    let to: Vec<Value> = wb.js(&["note", "links", linker["id"].as_str().unwrap()])["links"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["to"].clone())
+        .collect();
     assert_eq!(to, vec![json!(format!("d_{day}")); 3]);
 }
 
 #[test]
 fn links_between_notes_with_linked_from_and_a_new_title() {
     let Some(wb) = Wb::new() else { return };
-    let q = wb.js(&["note", "new", "24,000 or 23,000?\n# Sources\nNum 25:9", "--at", "Num 25:9", "--question"])["id"].as_str().unwrap().to_string();
+    let q = wb.js(&[
+        "note",
+        "new",
+        "24,000 or 23,000?\n# Sources\nNum 25:9",
+        "--at",
+        "Num 25:9",
+        "--question",
+    ])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let n = wb.js(&["note", "new", "Numbers 25, read again\nsee [[24,000 or 23,000?#Sources]] and [[24,000 or 23,000?|the numbers]] and [[Nothing yet]]", "--at", "Numbers 25"])["id"].as_str().unwrap().to_string();
     wb.js(&["day", "add", "Wrote up [[Numbers 25, read again]]."]);
     let l = wb.js(&["note", "links", &n])["links"].clone();
-    let got: Vec<(Value, Value, Value)> = l.as_array().unwrap().iter().map(|x| (x["title"].clone(), x["to"].clone(), x["heading_ok"].clone())).collect();
-    assert_eq!(got, vec![(json!("24,000 or 23,000?"), json!(q), json!(true)), (json!("24,000 or 23,000?"), json!(q), json!(true)), (json!("Nothing yet"), Value::Null, json!(true))]);
+    let got: Vec<(Value, Value, Value)> = l
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| (x["title"].clone(), x["to"].clone(), x["heading_ok"].clone()))
+        .collect();
+    assert_eq!(
+        got,
+        vec![
+            (json!("24,000 or 23,000?"), json!(q), json!(true)),
+            (json!("24,000 or 23,000?"), json!(q), json!(true)),
+            (json!("Nothing yet"), Value::Null, json!(true))
+        ]
+    );
     let from = wb.js(&["note", "backlinks", &q])["linked_from"].clone();
-    assert_eq!((from.as_array().unwrap().len(), from[0]["id"].clone()), (1, json!(n)));
+    assert_eq!(
+        (from.as_array().unwrap().len(), from[0]["id"].clone()),
+        (1, json!(n))
+    );
     let day_from = wb.js(&["note", "backlinks", &n])["linked_from"].clone();
     assert_eq!(day_from[0]["kind"], json!("day"));
     // a new title: the links to the old one follow it, keeping their heading and what they show
-    wb.js(&["note", "text", &q, "Twenty-four thousand?\n# Sources\nNum 25:9"]);
-    assert_eq!(wb.js(&["note", "relink", &q, "24,000 or 23,000?"])["changed"], json!([n]));
+    wb.js(&[
+        "note",
+        "text",
+        &q,
+        "Twenty-four thousand?\n# Sources\nNum 25:9",
+    ]);
+    assert_eq!(
+        wb.js(&["note", "relink", &q, "24,000 or 23,000?"])["changed"],
+        json!([n])
+    );
     let t = wb.js(&["note", "show", &n])["text"].clone();
     assert_eq!(t, json!("Numbers 25, read again\nsee [[Twenty-four thousand?#Sources]] and [[Twenty-four thousand?|the numbers]] and [[Nothing yet]]"));
     assert_eq!(wb.js(&["note", "show", &q])["headings"], json!(["Sources"]));
@@ -1165,18 +2881,43 @@ fn the_notebook_s_settings_are_kept_per_key() {
     assert_eq!(wb.js(&["settings", "notebook"])["group"], json!("day"));
     wb.js(&["settings", "notebook", "follow", "off"]);
     let s = wb.js(&["settings", "notebook", "capture", "alt+n"]);
-    assert_eq!((s["follow"].clone(), s["capture"].clone(), s["today"].clone()), (json!(false), json!("Alt+N"), json!(true)));
+    assert_eq!(
+        (
+            s["follow"].clone(),
+            s["capture"].clone(),
+            s["today"].clone()
+        ),
+        (json!(false), json!("Alt+N"), json!(true))
+    );
     let file = std::fs::read_to_string(wb.dir.join("settings").join("notebook.json")).unwrap();
     let saved: Value = serde_json::from_str(&file).unwrap();
     assert_eq!(saved, json!({"follow": false, "capture": "Alt+N"}));
-    assert_eq!(wb.js(&["settings", "notebook", "follow", "default"])["follow"], json!(true));
-    assert!(wb.fails(&["settings", "notebook", "group", "verse"]).contains("Group by"));
-    assert!(wb.fails(&["settings", "notebook", "capture", "J"]).contains("Ctrl or Alt"));
+    assert_eq!(
+        wb.js(&["settings", "notebook", "follow", "default"])["follow"],
+        json!(true)
+    );
+    assert!(wb
+        .fails(&["settings", "notebook", "group", "verse"])
+        .contains("Group by"));
+    assert!(wb
+        .fails(&["settings", "notebook", "capture", "J"])
+        .contains("Ctrl or Alt"));
     assert!(wb.fails(&["settings", "reader"]).contains("notebook"));
-    assert_eq!(wb.js(&["settings", "notebook", "--about"]).as_array().unwrap().len(), 5); // the settings build: five Notebook settings now
-    // W1: the Inbox is gone from the settings; the Notebook can open with Pages or Questions
-    assert!(wb.fails(&["settings", "notebook", "inbox", "on"]).contains("settings are"));
-    assert_eq!(wb.js(&["settings", "notebook", "group", "pages"])["group"], json!("pages"));
+    assert_eq!(
+        wb.js(&["settings", "notebook", "--about"])
+            .as_array()
+            .unwrap()
+            .len(),
+        5
+    ); // the settings build: five Notebook settings now
+       // W1: the Inbox is gone from the settings; the Notebook can open with Pages or Questions
+    assert!(wb
+        .fails(&["settings", "notebook", "inbox", "on"])
+        .contains("settings are"));
+    assert_eq!(
+        wb.js(&["settings", "notebook", "group", "pages"])["group"],
+        json!("pages")
+    );
 }
 
 #[test]
@@ -1184,13 +2925,39 @@ fn notes_with_no_place_are_pages_and_questions_a_section() {
     let Some(wb) = Wb::new() else { return };
     let page = wb.js(&["note", "new", "A page of my own"]);
     let placed = wb.js(&["note", "new", "on a verse", "--at", "Num 25:11"]);
-    let asked = wb.js(&["note", "new", "asked here", "--at", "Num 25:12", "--question"]);
-    let ids = |v: Value| -> Vec<Value> { v["groups"].as_array().unwrap().iter().flat_map(|g| g["entries"].as_array().unwrap().clone()).map(|e| e["id"].clone()).collect() };
+    let asked = wb.js(&[
+        "note",
+        "new",
+        "asked here",
+        "--at",
+        "Num 25:12",
+        "--question",
+    ]);
+    let ids = |v: Value| -> Vec<Value> {
+        v["groups"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|g| g["entries"].as_array().unwrap().clone())
+            .map(|e| e["id"].clone())
+            .collect()
+    };
     let pages = ids(wb.js(&["notebook", "--group", "pages"]));
-    assert!(pages.contains(&page["id"]) && !pages.contains(&placed["id"]) && !pages.iter().any(|i| i.as_str().unwrap().starts_with("d_")), "{pages:?}");
-    assert_eq!(ids(wb.js(&["notebook", "--group", "none", "--pages"])), pages);
+    assert!(
+        pages.contains(&page["id"])
+            && !pages.contains(&placed["id"])
+            && !pages.iter().any(|i| i.as_str().unwrap().starts_with("d_")),
+        "{pages:?}"
+    );
+    assert_eq!(
+        ids(wb.js(&["notebook", "--group", "none", "--pages"])),
+        pages
+    );
     let qs = ids(wb.js(&["notebook", "--group", "questions"]));
-    assert!(qs.contains(&asked["id"]) && !qs.contains(&page["id"]), "{qs:?}");
+    assert!(
+        qs.contains(&asked["id"]) && !qs.contains(&page["id"]),
+        "{qs:?}"
+    );
 }
 
 #[test]
@@ -1205,22 +2972,56 @@ fn reading_a_chapter_is_remembered_and_asked_for_by_place() {
 #[test]
 fn the_capture_box_language_and_its_manual() {
     let Some(wb) = Wb::new() else { return };
-    assert_eq!(wb.js(&["parse", "uses", "zeal", "gospels"])["action"], json!({"cmd": "uses", "strong": "", "word": "zeal", "scope": "40,41,42,43"}));
-    assert!(wb.js(&["parse", "hl", "red"])["error"].as_str().unwrap().starts_with("Colors are"));
-    assert!(wb.ok(&["manual", "uses"]).starts_with("uses <word> [scope]"));
-    assert_eq!(wb.js(&["refs", "see 1 Cor 10:8 and Num 25:9"]).as_array().unwrap().len(), 2);
+    assert_eq!(
+        wb.js(&["parse", "uses", "zeal", "gospels"])["action"],
+        json!({"cmd": "uses", "strong": "", "word": "zeal", "scope": "40,41,42,43"})
+    );
+    assert!(wb.js(&["parse", "hl", "red"])["error"]
+        .as_str()
+        .unwrap()
+        .starts_with("Colors are"));
+    assert!(wb
+        .ok(&["manual", "uses"])
+        .starts_with("uses <word> [scope]"));
+    assert_eq!(
+        wb.js(&["refs", "see 1 Cor 10:8 and Num 25:9"])
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
 }
 
 #[test]
 fn a_question_on_words_of_a_verse_is_listed_at_the_verse_and_around_it() {
     // note c39a: Notes & lookup asks `trail list --at`; a question on part of a verse shows at the verse
     let Some(wb) = Wb::new() else { return };
-    let part = wb.js(&["trail", "add", "NUM.25:13.3-25:13.6", "Why these words here?"])["id"].as_str().unwrap().to_string();
-    let whole = wb.js(&["trail", "add", "Num 25:13", "And the whole verse?"])["id"].as_str().unwrap().to_string();
+    let part = wb.js(&[
+        "trail",
+        "add",
+        "NUM.25:13.3-25:13.6",
+        "Why these words here?",
+    ])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let whole = wb.js(&["trail", "add", "Num 25:13", "And the whole verse?"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let at = |place: &str| -> Vec<(String, bool)> {
-        wb.js(&["trail", "list", "--status", "all", "--at", place])["trails"].as_array().unwrap().iter()
+        wb.js(&["trail", "list", "--status", "all", "--at", place])["trails"]
+            .as_array()
+            .unwrap()
+            .iter()
             .filter(|t| t["id"] == part.as_str() || t["id"] == whole.as_str())
-            .map(|t| (t["id"].as_str().unwrap().to_string(), t["here"].as_bool().unwrap())).collect()
+            .map(|t| {
+                (
+                    t["id"].as_str().unwrap().to_string(),
+                    t["here"].as_bool().unwrap(),
+                )
+            })
+            .collect()
     };
     let mut verse = at("Num 25:13");
     verse.sort();
@@ -1232,7 +3033,12 @@ fn a_question_on_words_of_a_verse_is_listed_at_the_verse_and_around_it() {
     assert!(at("Num 25:14").is_empty());
     wb.js(&["trail", "done", &part]);
     assert_eq!(at("Num 25:13").len(), 2, "--status all keeps answered ones");
-    let open = wb.js(&["trail", "list", "--at", "Num 25:13"])["trails"].as_array().unwrap().iter().filter(|t| t["id"] == part.as_str()).count();
+    let open = wb.js(&["trail", "list", "--at", "Num 25:13"])["trails"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|t| t["id"] == part.as_str())
+        .count();
     assert_eq!(open, 0, "the open ones only by default");
 }
 
@@ -1244,40 +3050,93 @@ fn a_chapter_counts_its_readings_and_mark_unread_takes_the_latest_off() {
     wb.js(&["read", "mark", "Num 25"]);
     wb.js(&["read", "mark", "Num 24-25"]);
     let t = wb.js(&["read", "times", "Num 24-25"]);
-    assert_eq!((t["NUM.25"]["times"].clone(), t["NUM.24"]["times"].clone()), (json!(2), json!(1)));
+    assert_eq!(
+        (t["NUM.25"]["times"].clone(), t["NUM.24"]["times"].clone()),
+        (json!(2), json!(1))
+    );
     let off = wb.js(&["read", "unmark", "Num 25"]);
     assert_eq!(off["unmarked"].as_array().unwrap().len(), 1);
     assert_eq!(off["now"]["NUM.25"]["times"], json!(1));
-    let kept = std::fs::read_to_string(wb.dir.join(".trash").join("reading-unmarked.jsonl")).unwrap();
+    let kept =
+        std::fs::read_to_string(wb.dir.join(".trash").join("reading-unmarked.jsonl")).unwrap();
     assert!(kept.contains("\"ch\": \"NUM.25\""));
-    assert_eq!(wb.js(&["read", "times", "Num 24"])["NUM.24"]["times"], json!(1), "another chapter is untouched");
+    assert_eq!(
+        wb.js(&["read", "times", "Num 24"])["NUM.24"]["times"],
+        json!(1),
+        "another chapter is untouched"
+    );
     wb.js(&["read", "unmark", "Num 25"]);
     assert_eq!(wb.js(&["read", "times", "Num 25"]), json!({}));
-    assert_eq!(wb.js(&["read", "unmark", "Num 25"])["unmarked"], json!([]), "a chapter not in the log is passed over");
-    assert_eq!(std::fs::read_to_string(wb.dir.join(".trash").join("reading-unmarked.jsonl")).unwrap().lines().count(), 2);
+    assert_eq!(
+        wb.js(&["read", "unmark", "Num 25"])["unmarked"],
+        json!([]),
+        "a chapter not in the log is passed over"
+    );
+    assert_eq!(
+        std::fs::read_to_string(wb.dir.join(".trash").join("reading-unmarked.jsonl"))
+            .unwrap()
+            .lines()
+            .count(),
+        2
+    );
 }
 
 #[test]
 fn findings_are_kept_apart_from_the_study() {
     // note 50c1: findings/<id>.md, not in the Notebook; handled, edited, deleted to .trash
     let Some(wb) = Wb::new() else { return };
-    let f = wb.js(&["finding", "add", "Ctrl+F finds only in the reader", "--context", "{\"size\": \"large\", \"panes\": [\"Notebook (right)\"]}"]);
+    let f = wb.js(&[
+        "finding",
+        "add",
+        "Ctrl+F finds only in the reader",
+        "--context",
+        "{\"size\": \"large\", \"panes\": [\"Notebook (right)\"]}",
+    ]);
     let id = f["id"].as_str().unwrap().to_string();
     assert!(id.starts_with("f_"));
     let text = std::fs::read_to_string(wb.dir.join("findings").join(format!("{id}.md"))).unwrap();
-    assert!(text.contains("kind: \"finding\"") && text.contains("status: \"open\"") && text.contains("\"size\": \"large\""));
-    assert!(!wb.js(&["notebook", "--group", "none"]).to_string().contains("Ctrl+F finds only"), "not in the Notebook");
-    assert!(wb.fails(&["finding", "add", "x", "--context", "[1]"]).contains("JSON object"));
+    assert!(
+        text.contains("kind: \"finding\"")
+            && text.contains("status: \"open\"")
+            && text.contains("\"size\": \"large\"")
+    );
+    assert!(
+        !wb.js(&["notebook", "--group", "none"])
+            .to_string()
+            .contains("Ctrl+F finds only"),
+        "not in the Notebook"
+    );
+    assert!(wb
+        .fails(&["finding", "add", "x", "--context", "[1]"])
+        .contains("JSON object"));
     let short = &id[id.len() - 4..];
-    assert_eq!(wb.js(&["finding", "handled", short])["status"], json!("handled"));
+    assert_eq!(
+        wb.js(&["finding", "handled", short])["status"],
+        json!("handled")
+    );
     assert_eq!(wb.js(&["findings"])["findings"], json!([]));
-    assert_eq!(wb.js(&["findings", "--all"])["counts"], json!({"open": 0, "handled": 1}));
-    assert_eq!(wb.js(&["finding", "handled", &id, "--open"])["status"], json!("open"));
-    assert_eq!(wb.js(&["finding", "edit", &id, "Ctrl+F should find in the pane"])["title"], json!("Ctrl+F should find in the pane"));
+    assert_eq!(
+        wb.js(&["findings", "--all"])["counts"],
+        json!({"open": 0, "handled": 1})
+    );
+    assert_eq!(
+        wb.js(&["finding", "handled", &id, "--open"])["status"],
+        json!("open")
+    );
+    assert_eq!(
+        wb.js(&["finding", "edit", &id, "Ctrl+F should find in the pane"])["title"],
+        json!("Ctrl+F should find in the pane")
+    );
     wb.js(&["finding", "rm", &id]);
     assert!(!wb.dir.join("findings").join(format!("{id}.md")).exists());
-    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().any(|e| e.unwrap().file_name().to_string_lossy().ends_with(&format!("finding-{id}.md"))));
-    assert!(wb.fails(&["finding", "handled", &id]).contains("No such finding"));
+    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().any(|e| e
+        .unwrap()
+        .file_name()
+        .to_string_lossy()
+        .ends_with(&format!("finding-{id}.md"))));
+    assert!(wb
+        .fails(&["finding", "handled", &id])
+        .contains("No such finding"));
 }
 
 /// Every file under a folder, with its bytes, by its path from the folder (to see what a command wrote).
@@ -1290,7 +3149,13 @@ fn tree_of(dir: &std::path::Path) -> std::collections::BTreeMap<String, Vec<u8>>
             if p.is_dir() {
                 stack.push(p);
             } else {
-                out.insert(p.strip_prefix(dir).unwrap().to_string_lossy().replace('\\', "/"), std::fs::read(&p).unwrap());
+                out.insert(
+                    p.strip_prefix(dir)
+                        .unwrap()
+                        .to_string_lossy()
+                        .replace('\\', "/"),
+                    std::fs::read(&p).unwrap(),
+                );
             }
         }
     }
@@ -1317,59 +3182,139 @@ fn files_attach_to_a_finding_in_its_own_folder() {
     std::fs::write(src.join("big.bin"), vec![0u8; 10 * 1024 * 1024 + 1]).unwrap();
     std::fs::write(src.join("tool.exe"), b"MZ").unwrap();
     let before = tree_of(&wb.dir);
-    let a = wb.js(&["finding", "attach", short, src.join("shot.png").to_str().unwrap(), src.join("example.pdf").to_str().unwrap()]);
+    let a = wb.js(&[
+        "finding",
+        "attach",
+        short,
+        src.join("shot.png").to_str().unwrap(),
+        src.join("example.pdf").to_str().unwrap(),
+    ]);
     assert_eq!(a["attached"], json!(["shot.png", "example.pdf"]));
     // only findings/<id>/ was written: everything else in the study folder is as it was, the finding's .md too
     let after = tree_of(&wb.dir);
-    let changed: Vec<&String> = after.keys().filter(|k| before.get(*k) != after.get(*k)).collect();
-    assert_eq!(changed, vec![&format!("findings/{id}/example.pdf"), &format!("findings/{id}/shot.png")]);
+    let changed: Vec<&String> = after
+        .keys()
+        .filter(|k| before.get(*k) != after.get(*k))
+        .collect();
+    assert_eq!(
+        changed,
+        vec![
+            &format!("findings/{id}/example.pdf"),
+            &format!("findings/{id}/shot.png")
+        ]
+    );
     assert!(before.keys().all(|k| after.contains_key(k)));
-    assert_eq!(std::fs::read(&md).unwrap(), md_before, "the .md is the same with files attached");
+    assert_eq!(
+        std::fs::read(&md).unwrap(),
+        md_before,
+        "the .md is the same with files attached"
+    );
     // copied, never moved, byte for byte
     assert_eq!(std::fs::read(src.join("shot.png")).unwrap(), png);
     assert_eq!(after[&format!("findings/{id}/shot.png")], png);
     assert_eq!(after[&format!("findings/{id}/example.pdf")], pdf);
     // listed in wb finding show (with paths) and in wb findings
     let shown = wb.js(&["finding", "show", short]);
-    let names: Vec<&str> = shown["files"].as_array().unwrap().iter().map(|f| f["name"].as_str().unwrap()).collect();
+    let names: Vec<&str> = shown["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["name"].as_str().unwrap())
+        .collect();
     assert_eq!(names, ["example.pdf", "shot.png"]);
     assert_eq!(shown["files"][1]["size"], json!(png.len()));
     assert!(std::path::Path::new(shown["files"][1]["path"].as_str().unwrap()).is_file());
-    assert_eq!(wb.js(&["findings"])["findings"][0]["files"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        wb.js(&["findings"])["findings"][0]["files"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
     // the same name again is kept beside it, not over it
-    assert_eq!(wb.js(&["finding", "attach", short, src.join("shot.png").to_str().unwrap()])["attached"], json!(["shot (2).png"]));
+    assert_eq!(
+        wb.js(&[
+            "finding",
+            "attach",
+            short,
+            src.join("shot.png").to_str().unwrap()
+        ])["attached"],
+        json!(["shot (2).png"])
+    );
     // the cap, said; a folder; a file that is not there
-    assert!(wb.fails(&["finding", "attach", short, src.join("big.bin").to_str().unwrap()]).contains("10 MB at most"));
-    assert!(wb.fails(&["finding", "attach", short, src.to_str().unwrap()]).contains("is a folder"));
-    assert!(wb.fails(&["finding", "attach", short, src.join("nothing.png").to_str().unwrap()]).contains("No file at"));
+    assert!(wb
+        .fails(&[
+            "finding",
+            "attach",
+            short,
+            src.join("big.bin").to_str().unwrap()
+        ])
+        .contains("10 MB at most"));
+    assert!(wb
+        .fails(&["finding", "attach", short, src.to_str().unwrap()])
+        .contains("is a folder"));
+    assert!(wb
+        .fails(&[
+            "finding",
+            "attach",
+            short,
+            src.join("nothing.png").to_str().unwrap()
+        ])
+        .contains("No file at"));
     assert!(!wb.dir.join("findings").join(&id).join("big.bin").exists());
     // the short id still finds the finding with its folder beside it
-    assert_eq!(wb.js(&["finding", "handled", short])["status"], json!("handled"));
+    assert_eq!(
+        wb.js(&["finding", "handled", short])["status"],
+        json!("handled")
+    );
     // opened (WB_NO_OPEN: the test opens nothing on the screen); a program is shown in its folder, never run
     let (code, out, err) = {
         let mut c = std::process::Command::new(env!("CARGO_BIN_EXE_wb"));
-        c.args(["finding", "open", short, "example"]).env("WB_STUDY_DIR", &wb.dir).env("WB_NO_OPEN", "1");
+        c.args(["finding", "open", short, "example"])
+            .env("WB_STUDY_DIR", &wb.dir)
+            .env("WB_NO_OPEN", "1");
         let o = c.output().unwrap();
-        (o.status.code().unwrap_or(-1), String::from_utf8_lossy(&o.stdout).to_string(), String::from_utf8_lossy(&o.stderr).to_string())
+        (
+            o.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&o.stdout).to_string(),
+            String::from_utf8_lossy(&o.stderr).to_string(),
+        )
     };
     assert_eq!(code, 0, "{err}");
     let opened: Value = serde_json::from_str(&out).unwrap();
-    assert_eq!((opened["name"].clone(), opened["shown_in_folder"].clone()), (json!("example.pdf"), json!(false)));
-    assert!(wb.fails(&["finding", "open", short, "nothing"]).contains("No file called"));
-    assert!(wb.fails(&["finding", "open", short, "shot"]).contains("More than one"));
+    assert_eq!(
+        (opened["name"].clone(), opened["shown_in_folder"].clone()),
+        (json!("example.pdf"), json!(false))
+    );
+    assert!(wb
+        .fails(&["finding", "open", short, "nothing"])
+        .contains("No file called"));
+    assert!(wb
+        .fails(&["finding", "open", short, "shot"])
+        .contains("More than one"));
     // taken off: to .trash, nothing erased
     let d = wb.js(&["finding", "detach", short, "shot (2).png"]);
     assert_eq!(d["removed"], json!("shot (2).png"));
     assert_eq!(d["finding"]["files"].as_array().unwrap().len(), 2);
-    let trashed = |end: &str| std::fs::read_dir(wb.dir.join(".trash")).unwrap().any(|e| e.unwrap().file_name().to_string_lossy().ends_with(end));
+    let trashed = |end: &str| {
+        std::fs::read_dir(wb.dir.join(".trash"))
+            .unwrap()
+            .any(|e| e.unwrap().file_name().to_string_lossy().ends_with(end))
+    };
     assert!(trashed(&format!("finding-{id}-shot (2).png")));
     // a finding deleted takes its files to .trash with it, and its folder goes
     wb.js(&["finding", "rm", short]);
     assert!(!wb.dir.join("findings").join(&id).exists());
-    assert!(trashed(&format!("finding-{id}-example.pdf")) && trashed(&format!("finding-{id}-shot.png")));
+    assert!(
+        trashed(&format!("finding-{id}-example.pdf")) && trashed(&format!("finding-{id}-shot.png"))
+    );
     // a finding with no files writes no folder at all
     let g = wb.js(&["finding", "add", "No files with this one"]);
-    assert!(!wb.dir.join("findings").join(g["id"].as_str().unwrap()).exists());
+    assert!(!wb
+        .dir
+        .join("findings")
+        .join(g["id"].as_str().unwrap())
+        .exists());
     let _ = std::fs::remove_dir_all(&src);
 }
 
@@ -1380,9 +3325,19 @@ fn docx_text(path: &std::path::Path) -> String {
     use std::io::Read;
     let mut z = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
     let mut xml = String::new();
-    z.by_name("word/document.xml").unwrap().read_to_string(&mut xml).unwrap();
+    z.by_name("word/document.xml")
+        .unwrap()
+        .read_to_string(&mut xml)
+        .unwrap();
     let t = regex::Regex::new(r"<w:t(?:\s[^>]*)?>([^<]*)</w:t>").unwrap();
-    xml.split("</w:p>").map(|p| t.captures_iter(p).map(|c| c[1].to_string()).collect::<String>()).collect::<Vec<_>>().join("\n")
+    xml.split("</w:p>")
+        .map(|p| {
+            t.captures_iter(p)
+                .map(|c| c[1].to_string())
+                .collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[test]
@@ -1393,26 +3348,64 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
         let (code, _, err) = wb.run(&["block", "add", id, "-"], Some(b));
         assert_eq!(code, 0, "{err}");
     };
-    let top = wb.js(&["page", "new", "Lesson: a page"])["id"].as_str().unwrap().to_string();
-    for b in ["# Aim", "Read it with the group.", "- [ ] print it\n- [x] read it twice", "```scripture\nNum 25:10-11\n```"] {
+    let top = wb.js(&["page", "new", "Lesson: a page"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    for b in [
+        "# Aim",
+        "Read it with the group.",
+        "- [ ] print it\n- [x] read it twice",
+        "```scripture\nNum 25:10-11\n```",
+    ] {
         add(&top, b);
     }
-    let inside = wb.js(&["page", "new", "The psalm", "--parent", &top])["id"].as_str().unwrap().to_string();
+    let inside = wb.js(&["page", "new", "The psalm", "--parent", &top])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     add(&inside, "```scripture\nPsalms 106:30\nylt\n```");
     add(&inside, "- [ ] a to-do inside");
     let parts = wb.js(&["craft", "parts", "--page", &top]);
-    let kinds: Vec<&str> = parts["rows"].as_array().unwrap().iter().map(|r| r["kind"].as_str().unwrap()).collect();
+    let kinds: Vec<&str> = parts["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["kind"].as_str().unwrap())
+        .collect();
     assert_eq!(kinds, ["heading", "paragraph", "todo", "scripture", "page"]);
     let todo = parts["rows"][2].clone();
-    assert_eq!((todo["on"].as_bool(), todo["becomes"].as_str()), (Some(false), Some("Left out: to-dos are for you")));
+    assert_eq!(
+        (todo["on"].as_bool(), todo["becomes"].as_str()),
+        (Some(false), Some("Left out: to-dos are for you"))
+    );
     assert_eq!(parts["inside"], 1);
 
     // both made; each verse word for word, in the version its block shows (the psalm in the YLT)
     let verses: Vec<String> = verse_texts(&wb, "Num 25:10-11");
-    let ylt: Vec<String> = wb.js(&["text", "Psalms 106:30", "--version", "YLT", "--json"])["verses"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap().to_string()).collect();
+    let ylt: Vec<String> = wb.js(&["text", "Psalms 106:30", "--version", "YLT", "--json"])
+        ["verses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["text"].as_str().unwrap().to_string())
+        .collect();
     let word = wb.js(&["craft", "word", "--page", &top, "--theme", "print"]);
-    assert_eq!((word["id"].as_str().unwrap(), word["checked"]["verses"].as_i64()), (format!("page-{top}-script").as_str(), Some(3)));
-    assert_eq!(word["checked"]["refs"], json!(["Numbers 25:10 (KJV)", "Numbers 25:11 (KJV)", "Psalms 106:30 (YLT)"]));
+    assert_eq!(
+        (
+            word["id"].as_str().unwrap(),
+            word["checked"]["verses"].as_i64()
+        ),
+        (format!("page-{top}-script").as_str(), Some(3))
+    );
+    assert_eq!(
+        word["checked"]["refs"],
+        json!([
+            "Numbers 25:10 (KJV)",
+            "Numbers 25:11 (KJV)",
+            "Psalms 106:30 (YLT)"
+        ])
+    );
     let deck = wb.js(&["craft", "deck", "--page", &top]);
     assert_eq!(deck["id"].as_str().unwrap(), format!("page-{top}-verse"));
     assert!(deck["pages"].as_i64().unwrap() >= 5);
@@ -1423,42 +3416,115 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     for v in verses.iter().chain(&ylt) {
         assert!(text.contains(v.as_str()), "the script lacks {v}");
     }
-    assert!(text.contains("\nThe psalm\n") && !text.contains("print it") && !text.contains("a to-do inside"));
-    let rec: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("documents").join(format!("page-{top}-script.json"))).unwrap()).unwrap();
+    assert!(
+        text.contains("\nThe psalm\n")
+            && !text.contains("print it")
+            && !text.contains("a to-do inside")
+    );
+    let rec: Value = serde_json::from_str(
+        &std::fs::read_to_string(
+            wb.dir
+                .join("documents")
+                .join(format!("page-{top}-script.json")),
+        )
+        .unwrap(),
+    )
+    .unwrap();
     assert_eq!(rec["source"], json!({"kind": "page", "id": top}));
-    assert_eq!(rec["plan"], wb.js(&["docs", "plan", "--page", &top, "--to", "word"])["fingerprint"]);
+    assert_eq!(
+        rec["plan"],
+        wb.js(&["docs", "plan", "--page", &top, "--to", "word"])["fingerprint"]
+    );
 
     // switched on, the to-dos are your words (the page inside keeps its own left out), and the switch is kept
     let key = todo["key"].as_str().unwrap();
     wb.js(&["craft", "word", "--page", &top, "--on", key]);
     let text = docx_text(&file);
-    assert!(text.contains("To do: print it") && text.contains("Done: read it twice") && !text.contains("a to-do inside"));
-    assert_eq!(wb.js(&["craft", "parts", "--page", &top])["rows"][2]["on"], true);
-    assert!(wb.fails(&["craft", "word", "--page", &top, "--on", "b:nothing"]).contains("no row"));
+    assert!(
+        text.contains("To do: print it")
+            && text.contains("Done: read it twice")
+            && !text.contains("a to-do inside")
+    );
+    assert_eq!(
+        wb.js(&["craft", "parts", "--page", &top])["rows"][2]["on"],
+        true
+    );
+    assert!(wb
+        .fails(&["craft", "word", "--page", &top, "--on", "b:nothing"])
+        .contains("no row"));
 
     // Pending switches and version are used by the preview without saving choices.
     let scripture = parts["rows"][3]["key"].as_str().unwrap();
-    let pending = wb.js(&["docs", "plan", "--page", &top, "--to", "pdf", "--off", scripture, "--version", "kjv", "--pages", "--theme", "print"]);
+    let pending = wb.js(&[
+        "docs",
+        "plan",
+        "--page",
+        &top,
+        "--to",
+        "pdf",
+        "--off",
+        scripture,
+        "--version",
+        "kjv",
+        "--pages",
+        "--theme",
+        "print",
+    ]);
     assert_eq!(pending["verses"], json!(["Psalms 106:30 (KJV)"]));
-    assert_eq!(wb.js(&["docs", "plan", "--page", &top, "--to", "pdf"])["fingerprint"], planned["fingerprint"]);
-    let applied = wb.js(&["craft", "deck", "--page", &top, "--off", scripture, "--version", "kjv", "--theme", "print"]);
+    assert_eq!(
+        wb.js(&["docs", "plan", "--page", &top, "--to", "pdf"])["fingerprint"],
+        planned["fingerprint"]
+    );
+    let applied = wb.js(&[
+        "craft",
+        "deck",
+        "--page",
+        &top,
+        "--off",
+        scripture,
+        "--version",
+        "kjv",
+        "--theme",
+        "print",
+    ]);
     assert_eq!(applied["pages"], pending["pages"]);
     assert_eq!(applied["checked"]["refs"], pending["verses"]);
 
     // one version for every block, in the documents only: the page keeps its own
     let all_kjv = wb.js(&["craft", "word", "--page", &top, "--version", "kjv"]);
     assert_eq!(all_kjv["checked"]["refs"][2], "Psalms 106:30 (KJV)");
-    assert_eq!(wb.js(&["page", "scripture", &inside])["blocks"][0]["version"], "YLT");
+    assert_eq!(
+        wb.js(&["page", "scripture", &inside])["blocks"][0]["version"],
+        "YLT"
+    );
 
     // the page changed: behind; docs update makes it again in the same file; the page deleted: gone
     add(&top, "More of my words.");
-    let state = |id: String| wb.js(&["docs", "show", &id])["state"].as_str().unwrap().to_string();
+    let state = |id: String| {
+        wb.js(&["docs", "show", &id])["state"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
     assert_eq!(state(format!("page-{top}-script")), "behind");
-    assert_eq!(wb.js(&["docs", "update", &format!("page-{top}-script")])["name"], word["name"]);
+    assert_eq!(
+        wb.js(&["docs", "update", &format!("page-{top}-script")])["name"],
+        word["name"]
+    );
     assert_eq!(state(format!("page-{top}-script")), "current");
-    assert_eq!(wb.js(&["docs", "list", "--page", &top]).as_array().unwrap().len(), 2);
+    assert_eq!(
+        wb.js(&["docs", "list", "--page", &top])
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
     let pv = wb.js(&["docs", "preview", &format!("page-{top}-script")]);
-    assert!(pv["paras"].as_array().unwrap().iter().any(|p| p["style"] == "SlideCue"));
+    assert!(pv["paras"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|p| p["style"] == "SlideCue"));
     // the slides are drawn only while the deck is up to date (then they are the file's pages); words of yours do not
     // change a deck of verses, a scripture block does
     assert!(wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].is_array());
@@ -1468,11 +3534,21 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
     assert_eq!(stale["last_built_pages"], applied["pages"]);
     let deck_now = wb.js(&["docs", "update", &format!("page-{top}-verse")]);
     let slides = wb.js(&["docs", "preview", &format!("page-{top}-verse")])["slides"].clone();
-    assert_eq!(slides.as_array().unwrap().len() as i64, deck_now["pages"].as_i64().unwrap());
+    assert_eq!(
+        slides.as_array().unwrap().len() as i64,
+        deck_now["pages"].as_i64().unwrap()
+    );
     assert!(slides[0].as_str().unwrap().starts_with("<svg"));
     // R3: the shipped templates are made from a page too; what the Python app still makes says so
-    assert!(wb.js(&["craft", "word", "--page", &top, "--structure", "share"])["name"].as_str().unwrap().starts_with("Share Copy"));
-    assert!(wb.fails(&["craft", "deck", "--page", &top, "--structure", "pulpit"]).contains("phase 5"));
+    assert!(
+        wb.js(&["craft", "word", "--page", &top, "--structure", "share"])["name"]
+            .as_str()
+            .unwrap()
+            .starts_with("Share Copy")
+    );
+    assert!(wb
+        .fails(&["craft", "deck", "--page", &top, "--structure", "pulpit"])
+        .contains("phase 5"));
     wb.ok(&["inbox", "rm", &top]);
     assert_eq!(state(format!("page-{top}-verse")), "gone");
 }
@@ -1481,19 +3557,32 @@ fn a_page_becomes_a_speaker_script_and_a_verse_deck_its_to_dos_left_out() {
 fn a_legacy_export_is_resolved_safely_for_open_preview_update_and_delete() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Export location", "--at", "Num 25:10"]);
-    let made = wb.js(&["craft", "word", "--thread", "Export location", "--structure", "script"]);
+    let made = wb.js(&[
+        "craft",
+        "word",
+        "--thread",
+        "Export location",
+        "--structure",
+        "script",
+    ]);
     let id = made["id"].as_str().unwrap();
     let name = made["name"].as_str().unwrap();
     let record_file = wb.dir.join("documents").join(format!("{id}.json"));
     let mut record: Value = serde_json::from_slice(&std::fs::read(&record_file).unwrap()).unwrap();
     assert_eq!(record["export_location"], "study");
-    record.as_object_mut().unwrap().shift_remove("export_location");
+    record
+        .as_object_mut()
+        .unwrap()
+        .shift_remove("export_location");
     record["pdf"] = json!("associated.pdf");
     record["kept"] = json!(["kept.docx"]);
     std::fs::write(&record_file, serde_json::to_vec(&record).unwrap()).unwrap();
 
     let local_file = wb.docs().join(name);
-    let legacy = wb.dir.with_file_name(format!("{}-documents", wb.dir.file_name().unwrap().to_string_lossy()));
+    let legacy = wb.dir.with_file_name(format!(
+        "{}-documents",
+        wb.dir.file_name().unwrap().to_string_lossy()
+    ));
     std::fs::create_dir_all(&legacy).unwrap();
     let legacy_file = legacy.join(name);
     std::fs::rename(&local_file, &legacy_file).unwrap();
@@ -1506,7 +3595,10 @@ fn a_legacy_export_is_resolved_safely_for_open_preview_update_and_delete() {
 
     std::fs::write(&local_file, "a different file with the same name").unwrap();
     for op in ["show", "open", "preview", "reveal", "update"] {
-        assert_eq!(wb.js(&["docs", op, id])["path"], legacy_file.to_string_lossy().as_ref());
+        assert_eq!(
+            wb.js(&["docs", op, id])["path"],
+            legacy_file.to_string_lossy().as_ref()
+        );
     }
     for dir in [&legacy, &wb.docs()] {
         std::fs::write(dir.join("associated.pdf"), "test companion").unwrap();
@@ -1514,22 +3606,33 @@ fn a_legacy_export_is_resolved_safely_for_open_preview_update_and_delete() {
     }
     let deleted = wb.js(&["docs", "delete", id]);
     assert_eq!(deleted["deleted"].as_array().unwrap().len(), 3);
-    assert!(local_file.is_file() && wb.docs().join("kept.docx").is_file() && wb.docs().join("associated.pdf").is_file());
+    assert!(
+        local_file.is_file()
+            && wb.docs().join("kept.docx").is_file()
+            && wb.docs().join("associated.pdf").is_file()
+    );
     assert!(!record_file.is_file());
     std::fs::remove_dir(&legacy).unwrap();
 
     std::fs::remove_file(local_file).unwrap();
     std::fs::write(&record_file, serde_json::to_vec(&record).unwrap()).unwrap();
     assert_eq!(wb.js(&["docs", "show", id])["state"], "missing");
-    assert!(wb.fails(&["docs", "update", id]).contains("set WB_DOCS_DIR"));
-    assert!(wb.fails(&["docs", "delete", id]).contains("Restore the main export"));
+    assert!(wb
+        .fails(&["docs", "update", id])
+        .contains("set WB_DOCS_DIR"));
+    assert!(wb
+        .fails(&["docs", "delete", id])
+        .contains("Restore the main export"));
     assert!(record_file.is_file() && wb.docs().join("associated.pdf").is_file());
 }
 
 #[test]
 fn standalone_legacy_pdfs_open_from_shelf_and_refuse_ambiguous_names() {
     let Some(wb) = Wb::new() else { return };
-    let legacy = wb.dir.with_file_name(format!("{}-documents", wb.dir.file_name().unwrap().to_string_lossy()));
+    let legacy = wb.dir.with_file_name(format!(
+        "{}-documents",
+        wb.dir.file_name().unwrap().to_string_lossy()
+    ));
     std::fs::create_dir(&legacy).unwrap();
     let name = "Older study (1).PDF";
     let original = wb.js(&["craft", "deck", "--passage", "John 3:16"]);
@@ -1545,18 +3648,38 @@ fn standalone_legacy_pdfs_open_from_shelf_and_refuse_ambiguous_names() {
     let opened = wb.js(&["pdfs", "older study"]);
     assert_eq!(opened["path"], path.to_str().unwrap());
 
-    wb.js(&["set", "new", "Saved", "--pdf", name, "--pdf", "Older study.PDF"]);
+    wb.js(&[
+        "set",
+        "new",
+        "Saved",
+        "--pdf",
+        name,
+        "--pdf",
+        "Older study.PDF",
+    ]);
     let plan = wb.js(&["set", "open", "saved"]);
     assert_eq!(plan["items"][0]["open"], format!("pdf|{name}"));
-    assert!(plan["items"][1]["why"].as_str().unwrap().contains("No saved PDF"));
+    assert!(plan["items"][1]["why"]
+        .as_str()
+        .unwrap()
+        .contains("No saved PDF"));
     assert_eq!(wb.js(&["pdfs", name, "--exact"])["ok"], true);
-    assert!(wb.fails(&["pdfs", "Older study.PDF", "--exact"]).contains("No saved PDF"));
-    assert!(wb.fails(&["pdfs", "../Older study (1).PDF"]).contains("without a path"));
+    assert!(wb
+        .fails(&["pdfs", "Older study.PDF", "--exact"])
+        .contains("No saved PDF"));
+    assert!(wb
+        .fails(&["pdfs", "../Older study (1).PDF"])
+        .contains("without a path"));
 
     std::fs::write(wb.docs().join(name), b"another file").unwrap();
-    assert!(wb.fails(&["pdfs", name, "--exact"]).contains("More than one saved PDF"));
+    assert!(wb
+        .fails(&["pdfs", name, "--exact"])
+        .contains("More than one saved PDF"));
     let plan = wb.js(&["set", "open", "saved"]);
-    assert!(plan["items"][0]["why"].as_str().unwrap().contains("More than one saved PDF"));
+    assert!(plan["items"][0]["why"]
+        .as_str()
+        .unwrap()
+        .contains("More than one saved PDF"));
     assert_eq!(std::fs::read(path).unwrap(), bytes);
     std::fs::remove_file(legacy.join(name)).unwrap();
     std::fs::remove_file(legacy.join("another format.docx")).unwrap();
@@ -1570,13 +3693,30 @@ fn chapter_pdf_preserves_kjv_references_and_creates_a_new_file() {
     wb.js(&["note", "add", "John 3:16", "Existing note in this chapter."]);
     wb.js(&["note", "add", "John 4:1", "Note in the next chapter."]);
     wb.ok(&["hl", "set", "John 3:16", "green"]);
-    let thread = wb.js(&["thread", "new", "Review", "--at", "John 3:17", "--color", "#654321"]);
-    let marked = wb.js(&["pdf", "John 3:16", "--thread", thread["id"].as_str().unwrap(), "--open"]);
+    let thread = wb.js(&[
+        "thread",
+        "new",
+        "Review",
+        "--at",
+        "John 3:17",
+        "--color",
+        "#654321",
+    ]);
+    let marked = wb.js(&[
+        "pdf",
+        "John 3:16",
+        "--thread",
+        thread["id"].as_str().unwrap(),
+        "--open",
+    ]);
     let plain = wb.js(&["pdf", "John 3-4", "--no-highlights"]);
     let refs = marked["checked"]["refs"].as_array().unwrap();
     assert_eq!(refs.first().unwrap(), "John 3:1 (KJV)");
     assert_eq!(refs.last().unwrap(), "John 3:36 (KJV)");
-    assert_eq!(marked["checked"]["verses"], verse_texts(&wb, "John 3").len());
+    assert_eq!(
+        marked["checked"]["verses"],
+        verse_texts(&wb, "John 3").len()
+    );
     assert_eq!(plain["checked"]["refs"], marked["checked"]["refs"]);
     assert_eq!(marked["notes"], 1);
     assert_eq!(plain["notes"], 1);
@@ -1616,11 +3756,23 @@ fn editable_powerpoint_keeps_its_pdf_preview_and_pdf_export_separate() {
     assert_ne!(separate["path"], preview["path"]);
     assert_eq!(create("pptx")["changed"], false);
     let office = format!("document:{id}");
-    let inputs = ["packet", separate["name"].as_str().unwrap(), &office, "--out", "Mixed packet.pdf", "--open"];
+    let inputs = [
+        "packet",
+        separate["name"].as_str().unwrap(),
+        &office,
+        "--out",
+        "Mixed packet.pdf",
+        "--open",
+    ];
     let packet = wb.js(&inputs);
     assert_eq!(packet["name"], "Mixed packet.pdf");
-    assert_eq!(packet["pages"], separate["pages"].as_u64().unwrap() + deck["pages"].as_u64().unwrap());
-    assert!(std::fs::read(packet["path"].as_str().unwrap()).unwrap().starts_with(b"%PDF-"));
+    assert_eq!(
+        packet["pages"],
+        separate["pages"].as_u64().unwrap() + deck["pages"].as_u64().unwrap()
+    );
+    assert!(std::fs::read(packet["path"].as_str().unwrap())
+        .unwrap()
+        .starts_with(b"%PDF-"));
     assert!(wb.fails(&inputs).contains("already has that name"));
     assert_eq!(std::fs::read(&preview_path).unwrap(), companion);
     assert_eq!(std::fs::read(&pptx_path).unwrap(), pptx);
@@ -1630,7 +3782,9 @@ fn editable_powerpoint_keeps_its_pdf_preview_and_pdf_export_separate() {
     let saved = std::fs::read(&record).unwrap();
     let blocker = record.with_file_name(format!("{id}.json.tmp"));
     std::fs::create_dir(&blocker).unwrap();
-    assert!(!wb.fails(&["docs", "update", id, "--theme", "vigil", "--force"]).is_empty());
+    assert!(!wb
+        .fails(&["docs", "update", id, "--theme", "vigil", "--force"])
+        .is_empty());
     std::fs::remove_dir(blocker).unwrap();
     assert_eq!(std::fs::read(&record).unwrap(), saved);
     assert_eq!(std::fs::read(&pptx_path).unwrap(), pptx);
@@ -1649,7 +3803,10 @@ fn editable_powerpoint_keeps_its_pdf_preview_and_pdf_export_separate() {
     // A page's existing PDF record and the editable deck can also coexist.
     let page = wb.js(&["page", "new", "Export source"]);
     let page = page["id"].as_str().unwrap();
-    let (code, _, error) = wb.run(&["block", "add", page, "-"], Some("```scripture\nJohn 3:16\n```"));
+    let (code, _, error) = wb.run(
+        &["block", "add", page, "-"],
+        Some("```scripture\nJohn 3:16\n```"),
+    );
     assert_eq!(code, 0, "{error}");
     let pdf = wb.js(&["craft", "deck", "--page", page]);
     let pptx = wb.js(&["craft", "deck", "--page", page, "--format", "pptx"]);
@@ -1661,60 +3818,199 @@ fn editable_powerpoint_keeps_its_pdf_preview_and_pdf_export_separate() {
 #[test]
 fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
     let Some(wb) = Wb::new() else { return };
-    wb.js(&["thread", "new", "Phinehas", "--note", "Where he is named.", "--at", "Num 25:10-13"]);
+    wb.js(&[
+        "thread",
+        "new",
+        "Phinehas",
+        "--note",
+        "Where he is named.",
+        "--at",
+        "Num 25:10-13",
+    ]);
     wb.js(&["thread", "add", "Phinehas", "Psalms 106:30"]);
     wb.js(&["note", "add", "Num 25:11", "the same zeal"]);
     wb.ok(&["hl", "set", "Num 25:11", "green"]);
-    let verses: Vec<String> = [verse_texts(&wb, "Num 25:10-13"), verse_texts(&wb, "Psalms 106:30")].concat();
+    let verses: Vec<String> = [
+        verse_texts(&wb, "Num 25:10-13"),
+        verse_texts(&wb, "Psalms 106:30"),
+    ]
+    .concat();
 
     // the Speaker Script: made once, every verse in it word for word, its record in the Python app's format
-    let made = wb.js(&["craft", "word", "--thread", "phinehas", "--structure", "script", "--theme", "olivet"]);
-    assert_eq!((made["id"].as_str(), made["name"].as_str(), made["changed"].as_bool()), (Some("thread-phinehas-script"), Some("Speaker Script - Phinehas.docx"), Some(true)));
+    let made = wb.js(&[
+        "craft",
+        "word",
+        "--thread",
+        "phinehas",
+        "--structure",
+        "script",
+        "--theme",
+        "olivet",
+    ]);
+    assert_eq!(
+        (
+            made["id"].as_str(),
+            made["name"].as_str(),
+            made["changed"].as_bool()
+        ),
+        (
+            Some("thread-phinehas-script"),
+            Some("Speaker Script - Phinehas.docx"),
+            Some(true)
+        )
+    );
     assert_eq!(made["checked"]["verses"], 5);
     let file = wb.docs().join("Speaker Script - Phinehas.docx");
     let text = docx_text(&file);
     for v in &verses {
         assert!(text.contains(v.as_str()), "the script lacks {v}");
     }
-    assert!(text.contains("Speaker's script") && text.contains("Study: the same zeal") && text.contains("Where he is named."));
-    let rec: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("documents").join("thread-phinehas-script.json")).unwrap()).unwrap();
-    let plan = wb.js(&["docs", "plan", "--thread", "phinehas", "--to", "word", "--structure", "script"]);
+    assert!(
+        text.contains("Speaker's script")
+            && text.contains("Study: the same zeal")
+            && text.contains("Where he is named.")
+    );
+    let rec: Value = serde_json::from_str(
+        &std::fs::read_to_string(wb.dir.join("documents").join("thread-phinehas-script.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    let plan = wb.js(&[
+        "docs",
+        "plan",
+        "--thread",
+        "phinehas",
+        "--to",
+        "word",
+        "--structure",
+        "script",
+    ]);
     assert_eq!(rec["plan"], plan["fingerprint"]);
-    assert_eq!((rec["source"].clone(), rec["to"].clone(), rec["theme"].clone()), (json!({"kind": "thread", "id": "phinehas"}), json!("word"), json!("olivet")));
+    assert_eq!(
+        (
+            rec["source"].clone(),
+            rec["to"].clone(),
+            rec["theme"].clone()
+        ),
+        (
+            json!({"kind": "thread", "id": "phinehas"}),
+            json!("word"),
+            json!("olivet")
+        )
+    );
     assert!(rec["file"].as_str().unwrap().len() == 64 && rec["sig"].as_array().unwrap().len() == 2);
 
     // asked again (in the same theme: without --theme it is the saved one, as in the Python app): the same file, nothing to do
-    let again = wb.js(&["craft", "word", "--thread", "phinehas", "--structure", "script", "--theme", "olivet"]);
-    assert_eq!((again["changed"].as_bool(), again["name"].as_str()), (Some(false), Some("Speaker Script - Phinehas.docx")));
+    let again = wb.js(&[
+        "craft",
+        "word",
+        "--thread",
+        "phinehas",
+        "--structure",
+        "script",
+        "--theme",
+        "olivet",
+    ]);
+    assert_eq!(
+        (again["changed"].as_bool(), again["name"].as_str()),
+        (Some(false), Some("Speaker Script - Phinehas.docx"))
+    );
 
     // a new note puts it behind; docs update brings it up to date in the same file
     wb.js(&["note", "add", "Psalms 106:30", "stood up"]);
-    let row = |id: &str| wb.js(&["docs", "list"]).as_array().unwrap().iter().find(|d| d["id"] == id).cloned().unwrap();
-    assert_eq!((row("thread-phinehas-script")["state"].as_str(), row("thread-phinehas-script")["behind"].as_bool()), (Some("behind"), Some(true)));
-    assert_eq!(wb.js(&["docs", "update"])["updated"].as_array().unwrap().len(), 1);
+    let row = |id: &str| {
+        wb.js(&["docs", "list"])
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|d| d["id"] == id)
+            .cloned()
+            .unwrap()
+    };
+    assert_eq!(
+        (
+            row("thread-phinehas-script")["state"].as_str(),
+            row("thread-phinehas-script")["behind"].as_bool()
+        ),
+        (Some("behind"), Some(true))
+    );
+    assert_eq!(
+        wb.js(&["docs", "update"])["updated"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
     assert_eq!(row("thread-phinehas-script")["state"], "current");
     assert!(docx_text(&file).contains("Study: stood up"));
 
     // a file changed by hand is noticed, and kept as a copy before a rebuild replaces it
-    std::fs::OpenOptions::new().append(true).open(&file).unwrap().write_all(b" ").unwrap();
+    std::fs::OpenOptions::new()
+        .append(true)
+        .open(&file)
+        .unwrap()
+        .write_all(b" ")
+        .unwrap();
     assert_eq!(row("thread-phinehas-script")["state"], "edited");
     let forced = wb.js(&["docs", "update", "speaker script", "--force"]);
     let kept = forced["kept_now"].as_str().unwrap();
-    assert!(kept.starts_with("Speaker Script - Phinehas (your edits ") && wb.docs().join(kept).is_file());
+    assert!(
+        kept.starts_with("Speaker Script - Phinehas (your edits ")
+            && wb.docs().join(kept).is_file()
+    );
     assert_eq!(row("thread-phinehas-script")["state"], "current");
 
     // Verse by Verse as PDF pages: a title slide and one slide a verse, every verse on them; a record of its own
-    let deck = wb.js(&["craft", "deck", "--thread", "phinehas", "--structure", "verse"]);
-    assert_eq!((deck["id"].as_str(), deck["name"].as_str(), deck["to"].as_str()), (Some("thread-phinehas-verse-pdf"), Some("Verse by Verse - Phinehas.pdf"), Some("pdf")));
-    assert_eq!((deck["checked"]["verses"].as_i64(), deck["checked"]["pages"].as_i64()), (Some(5), Some(6)));
-    assert!(std::fs::read(wb.docs().join("Verse by Verse - Phinehas.pdf")).unwrap().starts_with(b"%PDF-"));
+    let deck = wb.js(&[
+        "craft",
+        "deck",
+        "--thread",
+        "phinehas",
+        "--structure",
+        "verse",
+    ]);
+    assert_eq!(
+        (
+            deck["id"].as_str(),
+            deck["name"].as_str(),
+            deck["to"].as_str()
+        ),
+        (
+            Some("thread-phinehas-verse-pdf"),
+            Some("Verse by Verse - Phinehas.pdf"),
+            Some("pdf")
+        )
+    );
+    assert_eq!(
+        (
+            deck["checked"]["verses"].as_i64(),
+            deck["checked"]["pages"].as_i64()
+        ),
+        (Some(5), Some(6))
+    );
+    assert!(
+        std::fs::read(wb.docs().join("Verse by Verse - Phinehas.pdf"))
+            .unwrap()
+            .starts_with(b"%PDF-")
+    );
     assert_eq!(deck["theme"], "vellum"); // the saved theme, as none is saved: Vellum
     wb.js(&["craft", "theme", "vigil"]);
     assert_eq!(wb.js(&["craft", "theme"])["theme"], "vigil");
 
     // Legacy structures still report which formats Rust supports.
-    assert!(wb.fails(&["craft", "word", "--thread", "phinehas"]).contains("Thread Dossier is still made by the Python app"));
-    assert!(wb.fails(&["craft", "deck", "--thread", "phinehas", "--structure", "pulpit"]).contains("--structure reader or verse"));
+    assert!(wb
+        .fails(&["craft", "word", "--thread", "phinehas"])
+        .contains("Thread Dossier is still made by the Python app"));
+    assert!(wb
+        .fails(&[
+            "craft",
+            "deck",
+            "--thread",
+            "phinehas",
+            "--structure",
+            "pulpit"
+        ])
+        .contains("--structure reader or verse"));
 
     // A passage can also be exported directly as a Reading Sheet.
     let passage = wb.js(&["craft", "word", "--passage", "John 3:16"]);
@@ -1727,47 +4023,116 @@ fn a_thread_becomes_a_speaker_script_and_a_verse_deck_each_kept_as_one_file() {
     // forget, remember, delete (the files erased, the record to .trash)
     assert_eq!(wb.js(&["docs", "forget", "verse by verse"])["ok"], true);
     assert_eq!(row("thread-phinehas-verse-pdf")["state"], "forgotten");
-    assert_eq!(wb.js(&["docs", "remember", "verse by verse"])["state"], "current");
+    assert_eq!(
+        wb.js(&["docs", "remember", "verse by verse"])["state"],
+        "current"
+    );
     let gone = wb.js(&["docs", "delete", "speaker script"]);
     assert_eq!(gone["deleted"].as_array().unwrap().len(), 2); // the file and the kept copy
-    assert!(!file.exists() && !wb.dir.join("documents").join("thread-phinehas-script.json").exists());
-    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().ends_with("thread-phinehas-script.json")));
-    assert!(wb.fails(&["docs", "show", "speaker script"]).contains("No document called"));
+    assert!(
+        !file.exists()
+            && !wb
+                .dir
+                .join("documents")
+                .join("thread-phinehas-script.json")
+                .exists()
+    );
+    assert!(std::fs::read_dir(wb.dir.join(".trash"))
+        .unwrap()
+        .flatten()
+        .any(|e| e
+            .file_name()
+            .to_string_lossy()
+            .ends_with("thread-phinehas-script.json")));
+    assert!(wb
+        .fails(&["docs", "show", "speaker script"])
+        .contains("No document called"));
 }
 
 #[test]
 fn a_page_inside_a_page_and_a_moved_block_read_correctly_in_the_files() {
     // W3: parent, order and pinned in the front matter; blocks are lines of the file
     let Some(wb) = Wb::new() else { return };
-    let lesson = wb.js(&["page", "new", "Lesson: Phinehas"])["id"].as_str().unwrap().to_string();
+    let lesson = wb.js(&["page", "new", "Lesson: Phinehas"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let file = |id: &str| -> String {
-        ["notes/_inbox", "notes/NUM", "trails"].iter().map(|d| wb.dir.join(d).join(format!("{id}.md"))).find(|p| p.exists()).map(|p| std::fs::read_to_string(p).unwrap()).unwrap_or_default()
+        ["notes/_inbox", "notes/NUM", "trails"]
+            .iter()
+            .map(|d| wb.dir.join(d).join(format!("{id}.md")))
+            .find(|p| p.exists())
+            .map(|p| std::fs::read_to_string(p).unwrap())
+            .unwrap_or_default()
     };
     let outline = wb.js(&["page", "new", "Outline", "--parent", &lesson, "--link"]);
     let outline = outline["id"].as_str().unwrap().to_string();
-    let group = wb.js(&["page", "new", "Questions for the group", "--parent", &lesson])["id"].as_str().unwrap().to_string();
-    assert!(file(&outline).contains(&format!("parent: \"{lesson}\"\norder: 1\n")), "{}", file(&outline));
+    let group = wb.js(&[
+        "page",
+        "new",
+        "Questions for the group",
+        "--parent",
+        &lesson,
+    ])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        file(&outline).contains(&format!("parent: \"{lesson}\"\norder: 1\n")),
+        "{}",
+        file(&outline)
+    );
     assert!(file(&group).contains("order: 2\n"));
-    assert!(file(&lesson).ends_with("Lesson: Phinehas\n\n[[Outline]]\n"), "{}", file(&lesson));
+    assert!(
+        file(&lesson).ends_with("Lesson: Phinehas\n\n[[Outline]]\n"),
+        "{}",
+        file(&lesson)
+    );
     let tree = wb.js(&["page", "tree"]);
-    let top = tree["pages"].as_array().unwrap().iter().find(|p| p["id"] == lesson.as_str()).unwrap().clone();
-    let kids: Vec<&str> = top["children"].as_array().unwrap().iter().map(|c| c["title"].as_str().unwrap()).collect();
+    let top = tree["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["id"] == lesson.as_str())
+        .unwrap()
+        .clone();
+    let kids: Vec<&str> = top["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["title"].as_str().unwrap())
+        .collect();
     assert_eq!(kids, ["Outline", "Questions for the group"]);
     // moved first, then put at the top and back inside
     wb.js(&["page", "move", &group, "--first"]);
     let show = wb.js(&["note", "show", &group]);
     assert_eq!(show["path"][0]["title"], "Lesson: Phinehas");
-    assert_eq!(wb.js(&["note", "show", &lesson])["inside"][0]["title"], "Questions for the group");
-    assert!(wb.fails(&["page", "move", &lesson, "--parent", &group]).contains("inside itself"));
+    assert_eq!(
+        wb.js(&["note", "show", &lesson])["inside"][0]["title"],
+        "Questions for the group"
+    );
+    assert!(wb
+        .fails(&["page", "move", &lesson, "--parent", &group])
+        .contains("inside itself"));
     wb.js(&["page", "move", &outline, "--top"]);
     assert!(!file(&outline).contains("parent:"));
-    wb.js(&["page", "move", &outline, "--parent", &lesson, "--after", &group]);
-    assert!(file(&outline).contains(&format!("parent: \"{lesson}\"")) && file(&outline).contains("order: 2\n"));
+    wb.js(&[
+        "page", "move", &outline, "--parent", &lesson, "--after", &group,
+    ]);
+    assert!(
+        file(&outline).contains(&format!("parent: \"{lesson}\""))
+            && file(&outline).contains("order: 2\n")
+    );
     // pinned: its place in Pinned, in the page itself
     wb.js(&["page", "pin", &group]);
     wb.js(&["page", "pin", &lesson, "--first"]);
     assert!(file(&lesson).contains("pinned: 1\n") && file(&group).contains("pinned: 2\n"));
-    let pinned: Vec<Value> = wb.js(&["page", "tree"])["pinned"].as_array().unwrap().iter().map(|p| p["id"].clone()).collect();
+    let pinned: Vec<Value> = wb.js(&["page", "tree"])["pinned"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["id"].clone())
+        .collect();
     assert_eq!(pinned, [json!(lesson), json!(group)]);
     wb.js(&["page", "unpin", &lesson]);
     assert!(!file(&lesson).contains("pinned"));
@@ -1777,27 +4142,68 @@ fn a_page_inside_a_page_and_a_moved_block_read_correctly_in_the_files() {
     wb.js(&["block", "add", o, "- [ ] Read it twice"]);
     wb.js(&["block", "add", o, "- [ ] List every use of the word"]);
     let r = wb.js(&["block", "add", o, "- [ ] Print the deck"]);
-    assert_eq!((r["n"].as_i64(), r["blocks"].as_array().unwrap().len()), (Some(4), 4));
+    assert_eq!(
+        (r["n"].as_i64(), r["blocks"].as_array().unwrap().len()),
+        (Some(4), 4)
+    );
     wb.js(&["block", "move", o, "4", "--to", "2"]);
     wb.js(&["block", "check", o, "3"]);
     let body = file(o);
     assert!(body.ends_with("Outline\n\n# Aim\n\n- [ ] Print the deck\n- [x] Read it twice\n- [ ] List every use of the word\n"), "{body}");
-    let r = wb.js(&["block", "set", o, "1", "# Aim\n\nRead the chapter with the group."]);
+    let r = wb.js(&[
+        "block",
+        "set",
+        o,
+        "1",
+        "# Aim\n\nRead the chapter with the group.",
+    ]);
     assert_eq!((r["n"].as_i64(), r["count"].as_i64()), (Some(1), Some(2)));
     wb.js(&["block", "rm", o, "3"]);
-    let kinds: Vec<Value> = wb.js(&["page", "blocks", o])["blocks"].as_array().unwrap().iter().map(|b| b["kind"].clone()).collect();
-    assert_eq!(kinds, [json!("heading"), json!("paragraph"), json!("todo"), json!("todo")]);
+    let kinds: Vec<Value> = wb.js(&["page", "blocks", o])["blocks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|b| b["kind"].clone())
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            json!("heading"),
+            json!("paragraph"),
+            json!("todo"),
+            json!("todo")
+        ]
+    );
     wb.js(&["page", "title", o, "An outline"]);
     assert!(file(o).contains("---\n\nAn outline\n\n# Aim"));
     // a page placed on a verse keeps its place in the tree
     wb.js(&["note", "place", &group, "Num 25:11"]);
-    assert!(file(&group).contains(&format!("parent: \"{lesson}\"")) && file(&group).contains("anchor: \"NUM.25:11\""), "{}", file(&group));
-    assert_eq!(wb.js(&["note", "show", &lesson])["inside"].as_array().unwrap().len(), 2);
+    assert!(
+        file(&group).contains(&format!("parent: \"{lesson}\""))
+            && file(&group).contains("anchor: \"NUM.25:11\""),
+        "{}",
+        file(&group)
+    );
+    assert_eq!(
+        wb.js(&["note", "show", &lesson])["inside"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
     // deleting a page: the pages inside it move up a level, into its place
-    let before = wb.js(&["page", "new", "Before"])["id"].as_str().unwrap().to_string();
+    let before = wb.js(&["page", "new", "Before"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["page", "move", &lesson, "--top", "--after", &before]);
     wb.ok(&["inbox", "rm", &lesson]);
-    let tops: Vec<String> = wb.js(&["page", "tree"])["pages"].as_array().unwrap().iter().map(|p| p["title"].as_str().unwrap().to_string()).collect();
+    let tops: Vec<String> = wb.js(&["page", "tree"])["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["title"].as_str().unwrap().to_string())
+        .collect();
     // (the page placed on a verse, at the top with nothing inside it, is a note at its place: Places lists it)
     assert_eq!(tops, ["Before", "An outline"]);
     assert!(!file(o).contains("parent:") && !file(&group).contains("parent:"));
@@ -1808,26 +4214,64 @@ fn a_scripture_block_holds_only_its_reference_and_its_verses_come_from_the_bible
     // W4: the file keeps ```scripture, the reference, and lines / ylt when chosen; wb page scripture gives the verses
     // as wb text does, with the highlights on them as runs
     let Some(wb) = Wb::new() else { return };
-    let id = wb.js(&["page", "new", "The passage"])["id"].as_str().unwrap().to_string();
-    let (code, _, err) = wb.run(&["block", "add", &id, "-"], Some("```scripture\nNum 25:10-13\n```"));
+    let id = wb.js(&["page", "new", "The passage"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let (code, _, err) = wb.run(
+        &["block", "add", &id, "-"],
+        Some("```scripture\nNum 25:10-13\n```"),
+    );
     assert_eq!(code, 0, "{err}");
     wb.js(&["block", "add", &id, "Then the psalm."]);
-    let (code, _, err) = wb.run(&["block", "add", &id, "-"], Some("```scripture\nPs 106:28-31\nlines\n```"));
+    let (code, _, err) = wb.run(
+        &["block", "add", &id, "-"],
+        Some("```scripture\nPs 106:28-31\nlines\n```"),
+    );
     assert_eq!(code, 0, "{err}");
     wb.ok(&["hl", "set", "Num 25:11", "green"]);
-    let file = || std::fs::read_to_string(wb.dir.join("notes/_inbox").join(format!("{id}.md"))).unwrap().replace("\r\n", "\n");
+    let file = || {
+        std::fs::read_to_string(wb.dir.join("notes/_inbox").join(format!("{id}.md")))
+            .unwrap()
+            .replace("\r\n", "\n")
+    };
     let s = wb.js(&["page", "scripture", &id]);
     let blocks = s["blocks"].as_array().unwrap();
     assert_eq!(blocks.len(), 2);
-    assert_eq!((blocks[0]["n"].as_u64(), blocks[0]["lines"].as_bool(), blocks[0]["version"].as_str()), (Some(1), Some(false), Some("KJV")));
-    assert_eq!((blocks[1]["n"].as_u64(), blocks[1]["lines"].as_bool()), (Some(3), Some(true)));
+    assert_eq!(
+        (
+            blocks[0]["n"].as_u64(),
+            blocks[0]["lines"].as_bool(),
+            blocks[0]["version"].as_str()
+        ),
+        (Some(1), Some(false), Some("KJV"))
+    );
+    assert_eq!(
+        (blocks[1]["n"].as_u64(), blocks[1]["lines"].as_bool()),
+        (Some(3), Some(true))
+    );
     for (b, r) in [(&blocks[0], "Num 25:10-13"), (&blocks[1], "Ps 106:28-31")] {
-        let want: Vec<String> = wb.js(&["text", r, "--json"])["verses"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap().to_string()).collect();
-        let got: Vec<String> = b["verses"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap().to_string()).collect();
+        let want: Vec<String> = wb.js(&["text", r, "--json"])["verses"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v["text"].as_str().unwrap().to_string())
+            .collect();
+        let got: Vec<String> = b["verses"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v["text"].as_str().unwrap().to_string())
+            .collect();
         assert_eq!(got, want);
         // the runs joined are each verse's text, as it is
         for v in b["verses"].as_array().unwrap() {
-            let joined: String = v["runs"].as_array().unwrap().iter().map(|r| r["t"].as_str().unwrap()).collect();
+            let joined: String = v["runs"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|r| r["t"].as_str().unwrap())
+                .collect();
             assert_eq!(joined, v["text"].as_str().unwrap());
         }
         // and no verse is in the file
@@ -1835,20 +4279,51 @@ fn a_scripture_block_holds_only_its_reference_and_its_verses_come_from_the_bible
     }
     // the highlight on Num 25:11 is on every word of the verse, and on no other
     let runs = |v: usize| blocks[0]["verses"][v]["runs"].as_array().unwrap().clone();
-    assert!(runs(1).len() == 1 && runs(1)[0]["hl"] == "green", "{:?}", runs(1));
+    assert!(
+        runs(1).len() == 1 && runs(1)[0]["hl"] == "green",
+        "{:?}",
+        runs(1)
+    );
     assert!(runs(0).iter().all(|r| r.get("hl").is_none()));
     // the choices, kept in the fence
     wb.js(&["block", "scripture", &id, "1", "--lines", "--ylt"]);
-    assert!(file().contains("```scripture\nNum 25:10-13\nlines\nylt\n```"), "{}", file());
+    assert!(
+        file().contains("```scripture\nNum 25:10-13\nlines\nylt\n```"),
+        "{}",
+        file()
+    );
     let y = wb.js(&["page", "scripture", &id]);
     assert_eq!(y["blocks"][0]["version"], "YLT");
-    let ylt: Vec<Value> = wb.js(&["text", "Num 25:10-13", "--version", "ylt", "--json"])["verses"].as_array().unwrap().iter().map(|v| v["text"].clone()).collect();
-    assert_eq!(y["blocks"][0]["verses"].as_array().unwrap().iter().map(|v| v["text"].clone()).collect::<Vec<_>>(), ylt);
+    let ylt: Vec<Value> = wb.js(&["text", "Num 25:10-13", "--version", "ylt", "--json"])["verses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["text"].clone())
+        .collect();
+    assert_eq!(
+        y["blocks"][0]["verses"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v["text"].clone())
+            .collect::<Vec<_>>(),
+        ylt
+    );
     wb.js(&["block", "scripture", &id, "1", "--paragraph", "--kjv"]);
-    assert!(file().contains("```scripture\nNum 25:10-13\n```\n\nThen the psalm."), "{}", file());
-    assert!(wb.fails(&["block", "scripture", &id, "2", "--lines"]).contains("not a scripture block"));
-    assert!(wb.fails(&["block", "scripture", &id, "1"]).contains("Say what to change"));
-    assert!(wb.fails(&["block", "scripture", &id, "1", "--ylt", "--kjv"]).contains("not both"));
+    assert!(
+        file().contains("```scripture\nNum 25:10-13\n```\n\nThen the psalm."),
+        "{}",
+        file()
+    );
+    assert!(wb
+        .fails(&["block", "scripture", &id, "2", "--lines"])
+        .contains("not a scripture block"));
+    assert!(wb
+        .fails(&["block", "scripture", &id, "1"])
+        .contains("Say what to change"));
+    assert!(wb
+        .fails(&["block", "scripture", &id, "1", "--ylt", "--kjv"])
+        .contains("not both"));
     // wb scripture: one reference, the same verses and runs
     let one = wb.js(&["scripture", "Num 25:11"]);
     assert_eq!(one["verses"][0]["runs"][0]["hl"], "green");
@@ -1859,17 +4334,35 @@ fn a_scripture_block_holds_only_its_reference_and_its_verses_come_from_the_bible
 fn places_open_in_the_reader_or_a_new_reader_and_the_sidebar_has_a_row_per_reader() {
     let Some(wb) = Wb::new() else { return };
     assert_eq!(wb.js(&["settings", "notebook"])["places"], "reader");
-    assert_eq!(wb.js(&["settings", "notebook", "places", "new"])["places"], "new");
+    assert_eq!(
+        wb.js(&["settings", "notebook", "places", "new"])["places"],
+        "new"
+    );
     let file = std::fs::read_to_string(wb.dir.join("settings").join("notebook.json")).unwrap();
     assert!(file.contains("\"places\": \"new\""), "{file}");
-    assert!(wb.fails(&["settings", "notebook", "places", "elsewhere"]).contains("new reader"));
-    assert_eq!(wb.js(&["settings", "notebook", "places", "default"])["places"], "reader");
+    assert!(wb
+        .fails(&["settings", "notebook", "places", "elsewhere"])
+        .contains("new reader"));
+    assert_eq!(
+        wb.js(&["settings", "notebook", "places", "default"])["places"],
+        "reader"
+    );
     wb.js(&["note", "new", "On the psalm", "--at", "Ps 106:30"]);
     let s = wb.js(&["notebook", "sidebar", "--at", "Num 25; Ps 106"]);
     let rows = s["at_readers"].as_array().unwrap();
     assert_eq!(rows.len(), 2);
-    assert_eq!((rows[0]["label"].as_str(), rows[0]["reader"].as_str()), (Some("Numbers 25"), Some("the reader")));
-    assert_eq!((rows[1]["label"].as_str(), rows[1]["reader"].as_str(), rows[1]["count"].as_u64()), (Some("Psalms 106"), Some("new reader"), Some(1)));
+    assert_eq!(
+        (rows[0]["label"].as_str(), rows[0]["reader"].as_str()),
+        (Some("Numbers 25"), Some("the reader"))
+    );
+    assert_eq!(
+        (
+            rows[1]["label"].as_str(),
+            rows[1]["reader"].as_str(),
+            rows[1]["count"].as_u64()
+        ),
+        (Some("Psalms 106"), Some("new reader"), Some(1))
+    );
     assert_eq!(s["at_reader"]["label"], "Numbers 25");
 }
 
@@ -1879,32 +4372,85 @@ fn a_view_lists_what_its_line_finds_and_writes_nothing() {
     let Some(wb) = Wb::new() else { return };
     let id_of = |v: Value| v["id"].as_str().unwrap().to_string();
     let tent = id_of(wb.js(&["note", "new", "zeal at the tent", "--at", "Num 25:8"]));
-    let q = id_of(wb.js(&["note", "new", "How do the numbers relate?", "--at", "Num 25:9", "--question"]));
+    let q = id_of(wb.js(&[
+        "note",
+        "new",
+        "How do the numbers relate?",
+        "--at",
+        "Num 25:9",
+        "--question",
+    ]));
     let ps = id_of(wb.js(&["note", "new", "the psalm remembers it", "--at", "Ps 106:30"]));
     let whole = id_of(wb.js(&["note", "new", "on the whole chapter", "--at", "Numbers 25"]));
-    let ids = |v: &Value| v["rows"].as_array().unwrap().iter().map(|r| r["id"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+    let ids = |v: &Value| {
+        v["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["id"].as_str().unwrap().to_string())
+            .collect::<Vec<_>>()
+    };
     // @place: every note on a verse of it, in Bible order (the whole chapter's from its first verse)
-    assert_eq!(ids(&wb.js(&["view", "run", "notebook @Num 25"])), [whole.clone(), tent.clone(), q.clone()]);
-    assert_eq!(ids(&wb.js(&["view", "run", "notebook @Num 25 questions"])), [q.clone()]);
-    assert_eq!(ids(&wb.js(&["view", "run", "notebook @Num 25:8-9 open"])), [q.clone()]);
-    assert_eq!(ids(&wb.js(&["view", "run", "notebook zeal"])), [tent.clone()]);
-    assert_eq!(ids(&wb.js(&["view", "run", "notebook @Psalms days 1"])), [ps.clone()]);
-    assert!(wb.fails(&["view", "run", "notebook thread nowhere"]).contains("No thread"));
-    assert!(wb.fails(&["view", "run", "notebook @Num 99"]).contains("chapters"));
+    assert_eq!(
+        ids(&wb.js(&["view", "run", "notebook @Num 25"])),
+        [whole.clone(), tent.clone(), q.clone()]
+    );
+    assert_eq!(
+        ids(&wb.js(&["view", "run", "notebook @Num 25 questions"])),
+        [q.clone()]
+    );
+    assert_eq!(
+        ids(&wb.js(&["view", "run", "notebook @Num 25:8-9 open"])),
+        [q.clone()]
+    );
+    assert_eq!(
+        ids(&wb.js(&["view", "run", "notebook zeal"])),
+        [tent.clone()]
+    );
+    assert_eq!(
+        ids(&wb.js(&["view", "run", "notebook @Psalms days 1"])),
+        [ps.clone()]
+    );
+    assert!(wb
+        .fails(&["view", "run", "notebook thread nowhere"])
+        .contains("No thread"));
+    assert!(wb
+        .fails(&["view", "run", "notebook @Num 99"])
+        .contains("chapters"));
     // the command field reads the same line
-    assert_eq!(wb.js(&["parse", "notebook @Num 25 questions"]), serde_json::json!({"action": {"cmd": "notebook", "line": "@Num 25 questions"}}));
+    assert_eq!(
+        wb.js(&["parse", "notebook @Num 25 questions"]),
+        serde_json::json!({"action": {"cmd": "notebook", "line": "@Num 25 questions"}})
+    );
     // in a page: its views with their rows; the line changed in place; a line that cannot be read is not written
     let page = id_of(wb.js(&["page", "new", "Questions for the group"]));
-    let (code, _, err) = wb.run(&["block", "add", &page, "-"], Some("```view\nnotebook @Num 25 questions\n```"));
+    let (code, _, err) = wb.run(
+        &["block", "add", &page, "-"],
+        Some("```view\nnotebook @Num 25 questions\n```"),
+    );
     assert_eq!(code, 0, "{err}");
-    let file = || std::fs::read_to_string(wb.dir.join("notes/_inbox").join(format!("{page}.md"))).unwrap().replace("\r\n", "\n");
+    let file = || {
+        std::fs::read_to_string(wb.dir.join("notes/_inbox").join(format!("{page}.md")))
+            .unwrap()
+            .replace("\r\n", "\n")
+    };
     let before = file();
     let v = wb.js(&["page", "views", &page]);
-    assert_eq!((v["blocks"][0]["n"].as_u64(), v["blocks"][0]["line"].as_str()), (Some(1), Some("notebook @Num 25 questions")));
+    assert_eq!(
+        (
+            v["blocks"][0]["n"].as_u64(),
+            v["blocks"][0]["line"].as_str()
+        ),
+        (Some(1), Some("notebook @Num 25 questions"))
+    );
     assert_eq!(ids(&v["blocks"][0]), [q.clone()]);
     assert_eq!(file(), before, "a view writes nothing");
     wb.js(&["block", "view", &page, "1", "notebook @Ps 106"]);
-    assert!(file().contains("```view\nnotebook @Ps 106\n```"), "{}", file());
+    assert!(
+        file().contains("```view\nnotebook @Ps 106\n```"),
+        "{}",
+        file()
+    );
     assert_eq!(ids(&wb.js(&["page", "views", &page])["blocks"][0]), [ps]);
     wb.fails(&["block", "view", &page, "1", "notebook @Nowhere 9"]);
     assert!(file().contains("```view\nnotebook @Ps 106\n```"));
@@ -1915,47 +4461,134 @@ fn a_page_made_from_a_template_has_its_blanks_filled() {
     // W5: a template is a note with template: true, left out of Pages and search; a page made from it gets its blocks,
     // the blanks filled, and from_template; Save as a template takes the places out
     let Some(wb) = Wb::new() else { return };
-    assert_eq!(wb.js(&["template", "list"])["templates"], serde_json::json!([]));
-    let tpl = wb.js(&["template", "new", "Chapter study"])["id"].as_str().unwrap().to_string();
-    wb.js(&["template", "set", "chapter study", "--asks", "place", "--names", "Chapter study: {place}"]);
-    for b in ["# Read", "```scripture\n{place}\n```", "On {date} at {reader}: {title}"] {
+    assert_eq!(
+        wb.js(&["template", "list"])["templates"],
+        serde_json::json!([])
+    );
+    let tpl = wb.js(&["template", "new", "Chapter study"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    wb.js(&[
+        "template",
+        "set",
+        "chapter study",
+        "--asks",
+        "place",
+        "--names",
+        "Chapter study: {place}",
+    ]);
+    for b in [
+        "# Read",
+        "```scripture\n{place}\n```",
+        "On {date} at {reader}: {title}",
+    ] {
         let (code, _, err) = wb.run(&["block", "add", &tpl, "-"], Some(b));
         assert_eq!(code, 0, "{err}");
     }
-    let tfile = std::fs::read_to_string(wb.dir.join("notes/_inbox").join(format!("{tpl}.md"))).unwrap().replace("\r\n", "\n");
-    assert!(tfile.contains("\ntemplate: true\n") && tfile.contains("\nasks: \"place\"\n"), "{tfile}");
-    assert!(wb.fails(&["page", "new", "--template", "Chapter study"]).contains("asks for a place"));
-    let made = wb.js(&["page", "new", "--template", "chapter", "--place", "Num 25", "--reader", "Ps 106"]);
+    let tfile = std::fs::read_to_string(wb.dir.join("notes/_inbox").join(format!("{tpl}.md")))
+        .unwrap()
+        .replace("\r\n", "\n");
+    assert!(
+        tfile.contains("\ntemplate: true\n") && tfile.contains("\nasks: \"place\"\n"),
+        "{tfile}"
+    );
+    assert!(wb
+        .fails(&["page", "new", "--template", "Chapter study"])
+        .contains("asks for a place"));
+    let made = wb.js(&[
+        "page",
+        "new",
+        "--template",
+        "chapter",
+        "--place",
+        "Num 25",
+        "--reader",
+        "Ps 106",
+    ]);
     let text = made["text"].as_str().unwrap();
     assert_eq!(made["title"], "Chapter study: Numbers 25");
     assert_eq!(made["from_template"].as_str(), Some(tpl.as_str()));
-    assert!(text.starts_with("Chapter study: Numbers 25\n\n# Read\n\n```scripture\nNumbers 25\n```\n\nOn "), "{text}");
-    assert!(text.ends_with(" at Psalms 106: Chapter study: Numbers 25") && !text.contains('{'), "{text}");
+    assert!(
+        text.starts_with(
+            "Chapter study: Numbers 25\n\n# Read\n\n```scripture\nNumbers 25\n```\n\nOn "
+        ),
+        "{text}"
+    );
+    assert!(
+        text.ends_with(" at Psalms 106: Chapter study: Numbers 25") && !text.contains('{'),
+        "{text}"
+    );
     let id = made["id"].as_str().unwrap().to_string();
     // its scripture block reads Numbers 25 from the Bible
     let s = wb.js(&["page", "scripture", &id]);
-    let got: Vec<String> = s["blocks"][0]["verses"].as_array().unwrap().iter().map(|v| v["text"].as_str().unwrap().to_string()).collect();
+    let got: Vec<String> = s["blocks"][0]["verses"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["text"].as_str().unwrap().to_string())
+        .collect();
     assert_eq!(got, verse_texts(&wb, "Num 25"));
     // the template is left out of the tree and search; listed with how often used
     let tree = wb.ok(&["page", "tree"]);
     assert!(tree.contains(&id) && !tree.contains(&tpl));
     let found = wb.js(&["notebook", "--group", "none", "--search", "chapter study"]);
-    let found: Vec<&str> = found["groups"].as_array().unwrap().iter().flat_map(|g| g["entries"].as_array().unwrap().iter().map(|e| e["id"].as_str().unwrap())).collect();
-    assert!(found.contains(&id.as_str()) && !found.contains(&tpl.as_str()), "{found:?}");
+    let found: Vec<&str> = found["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|g| {
+            g["entries"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|e| e["id"].as_str().unwrap())
+        })
+        .collect();
+    assert!(
+        found.contains(&id.as_str()) && !found.contains(&tpl.as_str()),
+        "{found:?}"
+    );
     let l = wb.js(&["template", "list"]);
-    assert_eq!((l["templates"][0]["used"].as_u64(), l["templates"][0]["summary"].as_str()), (Some(1), Some("a heading, a scripture block, a block of writing")));
+    assert_eq!(
+        (
+            l["templates"][0]["used"].as_u64(),
+            l["templates"][0]["summary"].as_str()
+        ),
+        (
+            Some(1),
+            Some("a heading, a scripture block, a block of writing")
+        )
+    );
     // Save as a template: a copy with its places taken out
     let again = wb.js(&["template", "save", &id, "--name", "Study again"]);
     assert_eq!(again["asks"], "place");
     let shown = wb.js(&["template", "show", "Study again"]);
-    assert!(shown["text"].as_str().unwrap().contains("```scripture\n{place}\n```"), "{}", shown["text"]);
-    assert!(wb.fails(&["template", "new", "chapter study"]).contains("already"));
+    assert!(
+        shown["text"]
+            .as_str()
+            .unwrap()
+            .contains("```scripture\n{place}\n```"),
+        "{}",
+        shown["text"]
+    );
+    assert!(wb
+        .fails(&["template", "new", "chapter study"])
+        .contains("already"));
     let deletion = wb.js(&["template", "rm", "Study again"]);
     assert_eq!(deletion["state"], "pending");
     assert_eq!(deletion["id"], shown["id"]);
     assert_eq!(deletion["title"], shown["title"]);
-    assert_eq!(wb.js(&["template", "list"])["templates"].as_array().unwrap().len(), 1);
-    assert!(wb.ok(&["guide", "templates"]).contains("{place} the place picked"));
+    assert_eq!(
+        wb.js(&["template", "list"])["templates"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(wb
+        .ok(&["guide", "templates"])
+        .contains("{place} the place picked"));
 }
 
 // ---- R1: a thread as a page ---------------------------------------------------------------------------------------
@@ -1973,35 +4606,87 @@ fn a_thread_is_a_page_written_in_blocks_while_its_file_stays_the_python_apps() {
     // its note is written block by block, as any page is
     wb.js(&["block", "add", "thread:zeal", "# Where I start"]);
     wb.js(&["block", "add", "thread:zeal", "The places I read first."]);
-    let text = std::fs::read_to_string(&file).unwrap().replace("\r\n", "\n");
-    assert!(text.contains("# Where I start\n\nThe places I read first.\n\n<!-- anchors -->\n- NUM.25:11 |"), "{text}");
+    let text = std::fs::read_to_string(&file)
+        .unwrap()
+        .replace("\r\n", "\n");
+    assert!(
+        text.contains(
+            "# Where I start\n\nThe places I read first.\n\n<!-- anchors -->\n- NUM.25:11 |"
+        ),
+        "{text}"
+    );
     assert!(text.contains("- ROM.10:2 |"));
-    assert_eq!(wb.js(&["thread", "show", "Zeal"])["note"], "# Where I start\n\nThe places I read first.");
+    assert_eq!(
+        wb.js(&["thread", "show", "Zeal"])["note"],
+        "# Where I start\n\nThe places I read first."
+    );
     // the thread's header holds only what both apps keep
-    let head: Vec<&str> = text.split("---").nth(1).unwrap().lines().filter(|l| !l.is_empty()).map(|l| l.split(':').next().unwrap()).collect();
+    let head: Vec<&str> = text
+        .split("---")
+        .nth(1)
+        .unwrap()
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| l.split(':').next().unwrap())
+        .collect();
     assert_eq!(head, ["name", "created", "updated"]);
     // pinned, which is kept in settings/pages.json and not in the thread's file
     let before = std::fs::read_to_string(&file).unwrap();
     wb.js(&["thread", "pin", "Zeal"]);
     assert_eq!(std::fs::read_to_string(&file).unwrap(), before);
-    let pages: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("settings").join("pages.json")).unwrap()).unwrap();
+    let pages: Value = serde_json::from_str(
+        &std::fs::read_to_string(wb.dir.join("settings").join("pages.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(pages["pinned"]["zeal"], 1);
     let tree = wb.js(&["page", "tree"]);
     assert_eq!(tree["pinned"][0]["id"], "thread:zeal");
-    assert!(tree["pages"].as_array().unwrap().iter().any(|r| r["id"] == "thread:zeal" && r["kind"] == "thread"));
+    assert!(tree["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"] == "thread:zeal" && r["kind"] == "thread"));
     // a thread's page is not moved among the pages
-    assert!(wb.fails(&["page", "move", "thread:zeal", "--top"]).contains("stays where it is"));
+    assert!(wb
+        .fails(&["page", "move", "thread:zeal", "--top"])
+        .contains("stays where it is"));
     // a page written on it is under it in the tree
     let n = wb.js(&["thread", "write", "Zeal", "A thought on it"]);
     let tree = wb.js(&["page", "tree"]);
-    let me = tree["pages"].as_array().unwrap().iter().find(|r| r["id"] == "thread:zeal").unwrap();
+    let me = tree["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["id"] == "thread:zeal")
+        .unwrap();
     assert_eq!(me["children"][0]["id"], n["id"]);
     // a page made "inside" a thread is a page written on it, with its link in the thread's note
-    let inside = wb.js(&["page", "new", "Inside the thread", "--parent", "thread:zeal", "--link"]);
-    assert_eq!(wb.js(&["thread", "notes", "Zeal"])["notes"].as_array().unwrap().iter().filter(|x| x["id"] == inside["id"]).count(), 1);
-    assert!(wb.js(&["thread", "show", "Zeal"])["note"].as_str().unwrap().contains("[[Inside the thread]]"));
+    let inside = wb.js(&[
+        "page",
+        "new",
+        "Inside the thread",
+        "--parent",
+        "thread:zeal",
+        "--link",
+    ]);
+    assert_eq!(
+        wb.js(&["thread", "notes", "Zeal"])["notes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|x| x["id"] == inside["id"])
+            .count(),
+        1
+    );
+    assert!(wb.js(&["thread", "show", "Zeal"])["note"]
+        .as_str()
+        .unwrap()
+        .contains("[[Inside the thread]]"));
     wb.js(&["thread", "unpin", "Zeal"]);
-    assert!(wb.js(&["page", "tree"])["pinned"].as_array().unwrap().is_empty());
+    assert!(wb.js(&["page", "tree"])["pinned"]
+        .as_array()
+        .unwrap()
+        .is_empty());
     // an empty note is a thread with no note, and the page can be written in again
     wb.js(&["block", "rm", "thread:zeal", "1", "--count", "3"]);
     assert_eq!(wb.js(&["thread", "show", "Zeal"])["note"], "");
@@ -2014,7 +4699,10 @@ fn a_link_can_name_a_thread() {
     let n = wb.js(&["note", "new", "See [[Phinehas]] for the places."]);
     let shown = wb.js(&["note", "show", n["id"].as_str().unwrap()]);
     assert_eq!(shown["links"][0]["to"], "thread:phinehas");
-    assert_eq!(wb.js(&["note", "show", "thread:phinehas"])["linked_from"][0]["id"], n["id"]);
+    assert_eq!(
+        wb.js(&["note", "show", "thread:phinehas"])["linked_from"][0]["id"],
+        n["id"]
+    );
 }
 
 // ---- R1: thread and word blocks, and questions written in a page ------------------------------------------------------
@@ -2029,29 +4717,67 @@ fn a_page_holds_a_thread_and_a_word_as_blocks_that_hold_only_an_id_and_a_number(
     wb.js(&["block", "add", id, "```word\nh7065\n```"]);
     let t = wb.js(&["page", "threads", id]);
     let b = &t["blocks"][0];
-    assert_eq!((b["thread"].as_str(), b["name"].as_str(), b["count"].as_u64()), (Some("zeal"), Some("Zeal"), Some(2)));
+    assert_eq!(
+        (
+            b["thread"].as_str(),
+            b["name"].as_str(),
+            b["count"].as_u64()
+        ),
+        (Some("zeal"), Some("Zeal"), Some(2))
+    );
     assert_eq!(b["refs"].as_array().unwrap().len(), 2);
     // the word's entry is the lexicon's, and none of it is in the file
     let w = wb.js(&["page", "words", id]);
     assert_eq!(w["blocks"][0]["strong"], "H7065");
     assert!(w["blocks"][0]["occurrences"].as_i64().unwrap() > 0);
-    assert!(!w["blocks"][0]["definition"].as_str().unwrap_or("").is_empty());
-    let file: String = std::fs::read_dir(wb.dir.join("notes").join("_inbox")).unwrap().flatten().map(|e| std::fs::read_to_string(e.path()).unwrap()).collect();
+    assert!(!w["blocks"][0]["definition"]
+        .as_str()
+        .unwrap_or("")
+        .is_empty());
+    let file: String = std::fs::read_dir(wb.dir.join("notes").join("_inbox"))
+        .unwrap()
+        .flatten()
+        .map(|e| std::fs::read_to_string(e.path()).unwrap())
+        .collect();
     assert!(file.contains("```word\nh7065\n```") || file.contains("```word\r\nh7065\r\n```"));
     assert!(!file.contains(w["blocks"][0]["definition"].as_str().unwrap()));
     // the blocks are changed only to what exists
     wb.js(&["block", "word", id, "2", "H7068"]);
-    assert_eq!(wb.js(&["page", "words", id])["blocks"][0]["strong"], "H7068");
-    assert!(wb.fails(&["block", "word", id, "2", "H9999999"]).contains("not a Strong's number the lexicon has"));
-    assert!(wb.fails(&["block", "thread", id, "1", "No such thread"]).contains("No thread called"));
+    assert_eq!(
+        wb.js(&["page", "words", id])["blocks"][0]["strong"],
+        "H7068"
+    );
+    assert!(wb
+        .fails(&["block", "word", id, "2", "H9999999"])
+        .contains("not a Strong's number the lexicon has"));
+    assert!(wb
+        .fails(&["block", "thread", id, "1", "No such thread"])
+        .contains("No thread called"));
     wb.js(&["block", "thread", id, "1", "zeal"]);
     // in a document: the thread's places go in as the thread's do; the word is left out unless switched on
     let parts = wb.js(&["craft", "parts", "--page", id]);
     let rows = parts["rows"].as_array().unwrap();
     let th = rows.iter().find(|r| r["kind"] == "thread").unwrap();
-    assert_eq!((th["on"].as_bool(), th["text"].as_str()), (Some(true), Some("Zeal · 2 places")));
-    assert_eq!(rows.iter().find(|r| r["kind"] == "word").unwrap()["on"], false);
-    let plan = wb.js(&["docs", "plan", "--page", id, "--to", "word", "--structure", "script"]).to_string();
+    assert_eq!(
+        (th["on"].as_bool(), th["text"].as_str()),
+        (Some(true), Some("Zeal · 2 places"))
+    );
+    assert_eq!(
+        rows.iter().find(|r| r["kind"] == "word").unwrap()["on"],
+        false
+    );
+    let plan = wb
+        .js(&[
+            "docs",
+            "plan",
+            "--page",
+            id,
+            "--to",
+            "word",
+            "--structure",
+            "script",
+        ])
+        .to_string();
     for place in ["Num 25:11", "Rom 10:2"] {
         for v in verse_texts(&wb, place) {
             assert!(plan.contains(&v), "{place} is in the page's plan");
@@ -2064,80 +4790,196 @@ fn a_page_holds_a_thread_and_a_word_as_blocks_that_hold_only_an_id_and_a_number(
 #[test]
 fn study_blocks_hold_only_a_reference_or_a_word_and_read_the_rest() {
     let Some(wb) = Wb::new() else { return };
-    wb.js(&["mark", "add", "NUM.25:11.2-25:11.5", "--kind", "circle", "--color", "orange"]);
-    wb.js(&["mark", "add", "NUM.24:1", "--kind", "highlight", "--color", "yellow"]);
-    wb.js(&["mark", "note", "Num 25:11", "A margin note written for the test."]);
-    wb.js(&["mark", "note", "Num 25", "A chapter note written for the test."]);
-    let id = wb.js(&["page", "new", "Studies"])["id"].as_str().unwrap().to_string();
+    wb.js(&[
+        "mark",
+        "add",
+        "NUM.25:11.2-25:11.5",
+        "--kind",
+        "circle",
+        "--color",
+        "orange",
+    ]);
+    wb.js(&[
+        "mark",
+        "add",
+        "NUM.24:1",
+        "--kind",
+        "highlight",
+        "--color",
+        "yellow",
+    ]);
+    wb.js(&[
+        "mark",
+        "note",
+        "Num 25:11",
+        "A margin note written for the test.",
+    ]);
+    wb.js(&[
+        "mark",
+        "note",
+        "Num 25",
+        "A chapter note written for the test.",
+    ]);
+    let id = wb.js(&["page", "new", "Studies"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let id = id.as_str();
-    for (lang, value) in [("interlinear", "Num 25:11"), ("xrefs", "Num 25:11"), ("concordance", "Zealous"), ("margin", "Num 25"), ("marks", "Num 25"), ("word", "h7065")] {
+    for (lang, value) in [
+        ("interlinear", "Num 25:11"),
+        ("xrefs", "Num 25:11"),
+        ("concordance", "Zealous"),
+        ("margin", "Num 25"),
+        ("marks", "Num 25"),
+        ("word", "h7065"),
+    ] {
         wb.js(&["block", "add", id, value, "--as", lang]);
     }
     // the file holds one value each, and no text of the Bible or of the lexicon
-    let file: String = std::fs::read_dir(wb.dir.join("notes").join("_inbox")).unwrap().flatten().map(|e| std::fs::read_to_string(e.path()).unwrap()).collect::<String>().replace("
+    let file: String = std::fs::read_dir(wb.dir.join("notes").join("_inbox"))
+        .unwrap()
+        .flatten()
+        .map(|e| std::fs::read_to_string(e.path()).unwrap())
+        .collect::<String>()
+        .replace(
+            "
 
 ", "
-");
-    for held in ["```interlinear
+",
+        );
+    for held in [
+        "```interlinear
 Num 25:11
-```", "```xrefs
+```",
+        "```xrefs
 Num 25:11
-```", "```concordance
+```",
+        "```concordance
 zealous
-```", "```margin
+```",
+        "```margin
 Num 25
-```", "```marks
+```",
+        "```marks
 Num 25
-```", "```word
+```",
+        "```word
 H7065
-```"] {
+```",
+    ] {
         assert!(file.contains(held), "{held}");
     }
     let s = wb.js(&["page", "study", id]);
     let blocks = s["blocks"].as_array().unwrap();
-    assert_eq!(blocks.iter().map(|b| b["lang"].as_str().unwrap()).collect::<Vec<_>>(), ["interlinear", "xrefs", "concordance", "margin", "marks"]);
+    assert_eq!(
+        blocks
+            .iter()
+            .map(|b| b["lang"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["interlinear", "xrefs", "concordance", "margin", "marks"]
+    );
     // Interlinear: the original words of the verse with sound, gloss and number, from the database
     let il = wb.js(&["interlinear", "Num 25:11"]);
     let want = &il["verses"][0]["words"];
     let got = &blocks[0]["data"]["verses"][0]["words"];
-    assert_eq!(got.as_array().unwrap().len(), want.as_array().unwrap().len());
-    assert_eq!((got[0]["original"].clone(), got[0]["translit"].clone(), got[0]["gloss"].clone(), got[0]["strong"].clone()), (want[0]["original"].clone(), want[0]["translit"].clone(), want[0]["gloss"].clone(), want[0]["strong"].clone()));
+    assert_eq!(
+        got.as_array().unwrap().len(),
+        want.as_array().unwrap().len()
+    );
+    assert_eq!(
+        (
+            got[0]["original"].clone(),
+            got[0]["translit"].clone(),
+            got[0]["gloss"].clone(),
+            got[0]["strong"].clone()
+        ),
+        (
+            want[0]["original"].clone(),
+            want[0]["translit"].clone(),
+            want[0]["gloss"].clone(),
+            want[0]["strong"].clone()
+        )
+    );
     // Cross references: the app has no source, so the block says so
     assert_eq!(blocks[1]["data"]["count"], 0);
-    assert!(blocks[1]["data"]["message"].as_str().unwrap().contains("no cross-reference source"));
-    assert_eq!(wb.js(&["xrefs", "Num 25:11"])["message"], blocks[1]["data"]["message"]);
+    assert!(blocks[1]["data"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("no cross-reference source"));
+    assert_eq!(
+        wb.js(&["xrefs", "Num 25:11"])["message"],
+        blocks[1]["data"]["message"]
+    );
     // Concordance: the words of `wb concordance`, in Bible order, with the number
     let cc = wb.js(&["concordance", "zealous"]);
     assert_eq!(blocks[2]["data"]["lines"], cc["lines"]);
     assert_eq!(blocks[2]["data"]["lines"][0]["ref"], "Numbers 25:11");
     // Margin notes: the chapter's own first, then by verse; a verse passage lists the notes covering it
     assert_eq!(blocks[3]["data"]["count"], 2);
-    assert_eq!(wb.js(&["mark", "notes", "Num 25"])["notes"], blocks[3]["data"]["notes"]);
-    assert_eq!(wb.js(&["mark", "notes", "Num 25"])["notes"][1]["at"], "NUM.25:11");
+    assert_eq!(
+        wb.js(&["mark", "notes", "Num 25"])["notes"],
+        blocks[3]["data"]["notes"]
+    );
+    assert_eq!(
+        wb.js(&["mark", "notes", "Num 25"])["notes"][1]["at"],
+        "NUM.25:11"
+    );
     // Marks in a passage: this chapter's mark with its Legend style and the marked words from the Bible; not another chapter's
     let m = &blocks[4]["data"];
-    assert_eq!((m["count"].as_u64(), m["marks"][0]["legend"].as_str(), m["marks"][0]["style"].as_str()), (Some(1), Some("Unnamed orange circle"), Some("circle:orange")));
+    assert_eq!(
+        (
+            m["count"].as_u64(),
+            m["marks"][0]["legend"].as_str(),
+            m["marks"][0]["style"].as_str()
+        ),
+        (
+            Some(1),
+            Some("Unnamed orange circle"),
+            Some("circle:orange")
+        )
+    );
     assert_eq!(wb.js(&["mark", "in", "Num 25"]), *m);
     let words = m["marks"][0]["words"].as_str().unwrap();
     assert!(verse_texts(&wb, "Num 25:11")[0].contains(words), "{words}");
     assert_eq!(wb.js(&["mark", "in", "Num 24:1"])["count"], 1);
     assert_eq!(wb.js(&["mark", "in", "Num 25:12"])["count"], 0);
     // a value is checked, and changed in place
-    assert!(wb.fails(&["block", "add", id, "Nowhere 3:1", "--as", "marks"]).contains("Nowhere"));
-    assert!(wb.fails(&["block", "add", id, "two words", "--as", "concordance"]).contains("one English word"));
+    assert!(wb
+        .fails(&["block", "add", id, "Nowhere 3:1", "--as", "marks"])
+        .contains("Nowhere"));
+    assert!(wb
+        .fails(&["block", "add", id, "two words", "--as", "concordance"])
+        .contains("one English word"));
     wb.js(&["block", "study", id, "2", "Num 25:12"]);
-    assert_eq!(wb.js(&["page", "study", id])["blocks"][1]["held"], "Num 25:12");
+    assert_eq!(
+        wb.js(&["page", "study", id])["blocks"][1]["held"],
+        "Num 25:12"
+    );
     // a block with nothing in it says what to write
-    wb.js(&["block", "add", id, "```margin
-```"]);
-    assert!(wb.js(&["page", "study", id])["blocks"][5]["error"].as_str().unwrap().contains("No reference yet"));
+    wb.js(&[
+        "block",
+        "add",
+        id,
+        "```margin
+```",
+    ]);
+    assert!(wb.js(&["page", "study", id])["blocks"][5]["error"]
+        .as_str()
+        .unwrap()
+        .contains("No reference yet"));
 }
 
 #[test]
 fn search_every_page_finds_thread_names_and_notes() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "add", "Orchard Trial", "Num 25:11"]);
-    wb.js(&["thread", "edit", "Orchard Trial", "--note", "A note about mulberries."]);
+    wb.js(&[
+        "thread",
+        "edit",
+        "Orchard Trial",
+        "--note",
+        "A note about mulberries.",
+    ]);
     let search = |term: &str| wb.js(&["notebook", "--group", "none", "--search", term]);
     for term in ["ORCHARD", "mulberries", "orchard mulberries"] {
         let result = search(term);
@@ -2146,8 +4988,16 @@ fn search_every_page_finds_thread_names_and_notes() {
         assert_eq!(hit["kind"], "thread");
         assert_eq!(hit["preview"], "A note about mulberries.");
     }
-    assert!(search("orchard walnuts")["groups"][0]["entries"].as_array().unwrap().is_empty());
-    assert!(wb.js(&["notebook", "--group", "none"])["groups"][0]["entries"].as_array().unwrap().is_empty());
+    assert!(search("orchard walnuts")["groups"][0]["entries"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert!(
+        wb.js(&["notebook", "--group", "none"])["groups"][0]["entries"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[test]
@@ -2158,43 +5008,102 @@ fn a_question_written_in_a_page_is_one_with_the_questions_at_a_verse() {
     // written as a callout, in the page's own text, and answered by turning its mark
     let q = wb.js(&["question", "add", &id, "How do the two numbers relate?"]);
     assert_eq!(q["id"], format!("{id}#1"));
-    assert_eq!((q["status"].as_str(), q["page"].as_str()), (Some("open"), Some(id.as_str())));
-    let text = |wb: &Wb| wb.js(&["note", "show", &id])["text"].as_str().unwrap().to_string();
-    assert!(text(&wb).ends_with("> [!question] How do the two numbers relate?"), "{}", text(&wb));
+    assert_eq!(
+        (q["status"].as_str(), q["page"].as_str()),
+        (Some("open"), Some(id.as_str()))
+    );
+    let text = |wb: &Wb| {
+        wb.js(&["note", "show", &id])["text"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    assert!(
+        text(&wb).ends_with("> [!question] How do the two numbers relate?"),
+        "{}",
+        text(&wb)
+    );
     // one list: it is with the trails; the reader's ? and the verse card find it by its page's place
-    wb.js(&["note", "new", "A question at a verse", "--at", "Num 25:15", "--question"]);
+    wb.js(&[
+        "note",
+        "new",
+        "A question at a verse",
+        "--at",
+        "Num 25:15",
+        "--question",
+    ]);
     let all = wb.js(&["questions"]);
     assert_eq!(all["questions"].as_array().unwrap().len(), 2);
     // a view that lists questions lists it too
-    assert!(wb.js(&["view", "run", "notebook questions open"])["rows"].as_array().unwrap().iter().any(|r| r["id"] == format!("{id}#1")));
+    assert!(wb.js(&["view", "run", "notebook questions open"])["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"] == format!("{id}#1")));
     let here = wb.js(&["question", "list", "--at", "Num 25:9"]);
     let qs = here["questions"].as_array().unwrap();
     assert_eq!(qs.len(), 1);
-    assert_eq!((qs[0]["form"].as_str(), qs[0]["here"].as_bool()), (Some("block"), Some(true)));
+    assert_eq!(
+        (qs[0]["form"].as_str(), qs[0]["here"].as_bool()),
+        (Some("block"), Some(true))
+    );
     let near = wb.js(&["question", "list", "--at", "NUM.25:9.3"]);
     assert_eq!(near["questions"].as_array().unwrap().len(), 1); // a word of the verse: the verse's question shows
-    assert!(wb.js(&["question", "list", "--at", "Num 25:15"])["questions"].as_array().unwrap().iter().all(|q| q["form"] == "trail"));
+    assert!(
+        wb.js(&["question", "list", "--at", "Num 25:15"])["questions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|q| q["form"] == "trail")
+    );
     let marks = wb.js(&["reader", "NUM", "25"]);
-    assert!(marks["questions"].as_array().unwrap().iter().any(|q| q["v"] == 9), "{marks}");
+    assert!(
+        marks["questions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|q| q["v"] == 9),
+        "{marks}"
+    );
     // answered: its mark turns over, nothing else of the page changes
     let before = text(&wb);
     let a = wb.js(&["question", "answer", &format!("{id}#1")]);
     assert_eq!(a["status"], "done");
     assert_eq!(text(&wb), before.replace("[!question]", "[!done]"));
-    assert!(wb.js(&["questions"])["questions"].as_array().unwrap().iter().all(|q| q["id"] != format!("{id}#1")));
-    assert_eq!(wb.js(&["questions", "--status", "done"])["questions"].as_array().unwrap().len(), 1);
+    assert!(wb.js(&["questions"])["questions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|q| q["id"] != format!("{id}#1")));
+    assert_eq!(
+        wb.js(&["questions", "--status", "done"])["questions"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
     wb.js(&["question", "answer", &format!("{id}#1"), "--open"]);
     // folded in and out: the trail becomes a block of a page at its place, and back
-    let t = wb.js(&["trail", "list"])["trails"][0]["id"].as_str().unwrap().to_string();
+    let t = wb.js(&["trail", "list"])["trails"][0]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let multiline = "A question at a verse\n  with a second line\n\nand a new paragraph";
     wb.js(&["trail", "edit", &t, multiline]);
     wb.js(&["note", "answered", &t]);
-    assert!(wb.fails(&["question", "fold", &t, &id]).contains("not at that question's place"));
+    assert!(wb
+        .fails(&["question", "fold", &t, &id])
+        .contains("not at that question's place"));
     let f = wb.js(&["question", "fold", &t, &id, "--also"]);
     assert_eq!(f["page"], id);
-    assert!(wb.js(&["trail", "list"])["trails"].as_array().unwrap().is_empty());
+    assert!(wb.js(&["trail", "list"])["trails"]
+        .as_array()
+        .unwrap()
+        .is_empty());
     let q3 = f["question"].as_str().unwrap().to_string();
-    assert!(wb.fails(&["question", "unfold", &q3, "--at", "Num 25:11"]).contains("one of the page's places"));
+    assert!(wb
+        .fails(&["question", "unfold", &q3, "--at", "Num 25:11"])
+        .contains("one of the page's places"));
     let u = wb.js(&["question", "unfold", &q3, "--at", "Num 25:15"]);
     assert_eq!(u["page"], id);
     let all = wb.js(&["trail", "list", "--status", "all"]);
@@ -2213,7 +5122,10 @@ fn wb_page_is_wb_note_under_its_new_name() {
     let id = n["id"].as_str().unwrap();
     assert_eq!(wb.js(&["page", "show", id]), wb.js(&["note", "show", id]));
     wb.js(&["page", "text", id, "A page, written again"]);
-    assert_eq!(wb.js(&["note", "show", id])["title"], "A page, written again");
+    assert_eq!(
+        wb.js(&["note", "show", id])["title"],
+        "A page, written again"
+    );
     // a command of wb page's own is not a note's
     assert!(wb.js(&["page", "tree"])["pages"].is_array());
 }
@@ -2238,29 +5150,75 @@ updated: \"2026-11-02T20:29:10Z\"
 - {\"key\": \"i7\", \"kind\": \"place\", \"ref\": \"NUM.25:1-25:18\"}
 ").unwrap();
     let plan = wb.js(&["set", "open", "ruth"]);
-    let opens: Vec<Value> = plan["items"].as_array().unwrap().iter().map(|i| i.get("open").cloned().unwrap_or(Value::Null)).collect();
-    assert_eq!(opens, vec![json!("strong|H6653"), json!("interlinear|Numbers 25:7-13"), json!("uses|H5234||all|know"), json!("reader2|Romans 14|KJV"),
-        json!("search|laying on of hands|all"), Value::Null, json!("reader2|NUM.25:1-25:18|KJV")]);
-    assert!(plan["items"][5]["why"].as_str().unwrap().contains("mystery"));
+    let opens: Vec<Value> = plan["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i.get("open").cloned().unwrap_or(Value::Null))
+        .collect();
+    assert_eq!(
+        opens,
+        vec![
+            json!("strong|H6653"),
+            json!("interlinear|Numbers 25:7-13"),
+            json!("uses|H5234||all|know"),
+            json!("reader2|Romans 14|KJV"),
+            json!("search|laying on of hands|all"),
+            Value::Null,
+            json!("reader2|NUM.25:1-25:18|KJV")
+        ]
+    );
+    assert!(plan["items"][5]["why"]
+        .as_str()
+        .unwrap()
+        .contains("mystery"));
 
     // folders: each a set; where it sits is in settings/shelf.json, and the set files keep the Python app's format
     wb.ok(&["shelf", "new", "Phinehas study"]);
     wb.ok(&["shelf", "new", "Word study", "--in", "Phinehas study"]);
     wb.ok(&["shelf", "new", "Covenant", "--in", "Phinehas study"]);
-    wb.ok(&["shelf", "move", "Covenant", "--in", "Phinehas study", "--before", "Word study"]);
+    wb.ok(&[
+        "shelf",
+        "move",
+        "Covenant",
+        "--in",
+        "Phinehas study",
+        "--before",
+        "Word study",
+    ]);
     wb.ok(&["shelf", "move", "Ruth", "--in", "Word study"]);
-    assert!(wb.fails(&["shelf", "move", "Phinehas study", "--in", "Ruth"]).contains("cannot go inside itself"));
+    assert!(wb
+        .fails(&["shelf", "move", "Phinehas study", "--in", "Ruth"])
+        .contains("cannot go inside itself"));
     let t = wb.js(&["shelf"]);
-    let top: Vec<&str> = t["folders"].as_array().unwrap().iter().map(|f| f["name"].as_str().unwrap()).collect();
+    let top: Vec<&str> = t["folders"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["name"].as_str().unwrap())
+        .collect();
     assert_eq!(top, vec!["Phinehas study"]);
-    let inside: Vec<&str> = t["folders"][0]["folders"].as_array().unwrap().iter().map(|f| f["name"].as_str().unwrap()).collect();
+    let inside: Vec<&str> = t["folders"][0]["folders"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["name"].as_str().unwrap())
+        .collect();
     assert_eq!(inside, vec!["Covenant", "Word study"]);
     assert_eq!(t["folders"][0]["folders"][1]["folders"][0]["name"], "Ruth");
     let file = std::fs::read_to_string(wb.dir.join("sets").join("word-study.md")).unwrap();
-    assert!(file.starts_with("---
+    assert!(
+        file.starts_with(
+            "---
 name: \"Word study\"
-created:") && file.contains("parent: \"phinehas-study\""), "{file}"); // library L-22: the folder's own file says where it sits
-    let placing: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("settings").join("shelf.json")).unwrap()).unwrap();
+created:"
+        ) && file.contains("parent: \"phinehas-study\""),
+        "{file}"
+    ); // library L-22: the folder's own file says where it sits
+    let placing: Value = serde_json::from_str(
+        &std::fs::read_to_string(wb.dir.join("settings").join("shelf.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(placing["folders"]["ruth"]["parent"], "word-study");
 
     // an item moved into another folder, then copied; a reorder inside a folder
@@ -2275,19 +5233,41 @@ created:") && file.contains("parent: \"phinehas-study\""), "{file}"); // library
     // a folder removed: to .trash, the folders inside it move up into its place
     wb.ok(&["shelf", "rm", "Word study"]);
     let t = wb.js(&["shelf"]);
-    let inside: Vec<&str> = t["folders"][0]["folders"].as_array().unwrap().iter().map(|f| f["name"].as_str().unwrap()).collect();
+    let inside: Vec<&str> = t["folders"][0]["folders"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["name"].as_str().unwrap())
+        .collect();
     assert_eq!(inside, vec!["Covenant", "Ruth"]);
-    assert!(std::fs::read_dir(wb.dir.join(".trash")).unwrap().flatten().any(|e| e.file_name().to_string_lossy().contains("word-study")));
+    assert!(std::fs::read_dir(wb.dir.join(".trash"))
+        .unwrap()
+        .flatten()
+        .any(|e| e.file_name().to_string_lossy().contains("word-study")));
 
     // a set whose placing is written by hand into a loop is read as the top, not lost
     // (the older form: the sets carry no parent field of their own, L-22)
     for e in std::fs::read_dir(wb.dir.join("sets")).unwrap().flatten() {
         let text = std::fs::read_to_string(e.path()).unwrap();
-        std::fs::write(e.path(), text.lines().filter(|l| !l.starts_with("parent:")).collect::<Vec<_>>().join("
-") + "
-").unwrap();
+        std::fs::write(
+            e.path(),
+            text.lines()
+                .filter(|l| !l.starts_with("parent:"))
+                .collect::<Vec<_>>()
+                .join(
+                    "
+",
+                )
+                + "
+",
+        )
+        .unwrap();
     }
-    std::fs::write(wb.dir.join("settings").join("shelf.json"), r#"{"folders": {"covenant": {"parent": "ruth"}, "ruth": {"parent": "covenant"}}}"#).unwrap();
+    std::fs::write(
+        wb.dir.join("settings").join("shelf.json"),
+        r#"{"folders": {"covenant": {"parent": "ruth"}, "ruth": {"parent": "covenant"}}}"#,
+    )
+    .unwrap();
     let t = wb.js(&["shelf"]);
     assert_eq!(t["folders"].as_array().unwrap().len(), 3);
 }
@@ -2296,14 +5276,28 @@ created:") && file.contains("parent: \"phinehas-study\""), "{file}"); // library
 fn the_windows_other_settings_are_kept_per_key() {
     let Some(wb) = Wb::new() else { return };
     assert_eq!(wb.js(&["settings", "reading"]), json!({}));
-    assert_eq!(wb.js(&["settings", "reading", "size", "120"])["size"], json!(120));
+    assert_eq!(
+        wb.js(&["settings", "reading", "size", "120"])["size"],
+        json!(120)
+    );
     let s = wb.js(&["settings", "theme", "active", "Evening"]);
     assert_eq!(s["active"], json!("Evening"));
-    let s = wb.js(&["settings", "theme", "themes", r##"[{"name":"Evening","base":"dark","colors":{"bg":"#14110D"}}]"##]);
+    let s = wb.js(&[
+        "settings",
+        "theme",
+        "themes",
+        r##"[{"name":"Evening","base":"dark","colors":{"bg":"#14110D"}}]"##,
+    ]);
     assert_eq!(s["themes"][0]["colors"]["bg"], json!("#14110D"));
     let file = std::fs::read_to_string(wb.dir.join("settings").join("reading.json")).unwrap();
-    assert_eq!(serde_json::from_str::<Value>(&file).unwrap(), json!({"size": 120}));
-    assert_eq!(wb.js(&["settings", "reading", "size", "default"]), json!({}));
+    assert_eq!(
+        serde_json::from_str::<Value>(&file).unwrap(),
+        json!({"size": 120})
+    );
+    assert_eq!(
+        wb.js(&["settings", "reading", "size", "default"]),
+        json!({})
+    );
     assert!(wb.fails(&["settings", "reader"]).contains("theme"));
 }
 
@@ -2311,51 +5305,110 @@ fn the_windows_other_settings_are_kept_per_key() {
 fn kept_commands_have_fill_ins_keys_and_a_most_used_list() {
     let Some(wb) = Wb::new() else { return };
     assert_eq!(wb.js(&["commands"]), json!([]));
-    let r = wb.js(&["commands", "add", "Uses of a word", "uses {word}", "--key", "Ctrl+U", "--icon", "search"]);
-    assert_eq!((r["id"].clone(), r["key"].clone()), (json!("uses-of-a-word"), json!("Ctrl+U")));
+    let r = wb.js(&[
+        "commands",
+        "add",
+        "Uses of a word",
+        "uses {word}",
+        "--key",
+        "Ctrl+U",
+        "--icon",
+        "search",
+    ]);
+    assert_eq!(
+        (r["id"].clone(), r["key"].clone()),
+        (json!("uses-of-a-word"), json!("Ctrl+U"))
+    );
     wb.js(&["commands", "add", "Compare", "compare {place} ylt"]);
-    assert!(wb.fails(&["commands", "add", "Other", "go {place}", "--key", "ctrl+u"]).contains("already"));
-    assert!(wb.fails(&["commands", "add", "Bad", "go", "--key", "U"]).contains("Ctrl+"));
+    assert!(wb
+        .fails(&["commands", "add", "Other", "go {place}", "--key", "ctrl+u"])
+        .contains("already"));
+    assert!(wb
+        .fails(&["commands", "add", "Bad", "go", "--key", "U"])
+        .contains("Ctrl+"));
     assert_eq!(wb.js(&["commands"]).as_array().unwrap().len(), 2);
-    assert_eq!(wb.js(&["commands", "fill", "Uses of a word", "--word", "zealous"])["line"], json!("uses zealous"));
-    assert!(wb.fails(&["commands", "fill", "Compare"]).contains("{place}"));
+    assert_eq!(
+        wb.js(&["commands", "fill", "Uses of a word", "--word", "zealous"])["line"],
+        json!("uses zealous")
+    );
+    assert!(wb
+        .fails(&["commands", "fill", "Compare"])
+        .contains("{place}"));
     // the saved file is the kept list, in settings/commands.json
     let file = std::fs::read_to_string(wb.dir.join("settings").join("commands.json")).unwrap();
-    assert_eq!(serde_json::from_str::<Value>(&file).unwrap()["items"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        serde_json::from_str::<Value>(&file).unwrap()["items"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
     // most used: from the day's log
-    for _ in 0..3 { wb.js(&["log", "add", "def H7065"]); }
+    for _ in 0..3 {
+        wb.js(&["log", "add", "def H7065"]);
+    }
     wb.js(&["log", "add", "thread Phinehas"]);
     wb.js(&["log", "add", "uses zealous"]);
     let top = wb.js(&["commands", "--top"]);
-    assert_eq!((top[0]["line"].clone(), top[0]["times"].clone()), (json!("def H7065"), json!(3)));
+    assert_eq!(
+        (top[0]["line"].clone(), top[0]["times"].clone()),
+        (json!("def H7065"), json!(3))
+    );
     wb.js(&["commands", "rm", "Compare"]);
     assert_eq!(wb.js(&["commands"]).as_array().unwrap().len(), 1);
-    assert!(wb.fails(&["commands", "rm", "Compare"]).contains("No kept command"));
+    assert!(wb
+        .fails(&["commands", "rm", "Compare"])
+        .contains("No kept command"));
 }
 
 #[test]
 fn a_layout_can_be_deleted_into_the_trash() {
     let Some(wb) = Wb::new() else { return };
-    let (code, _, err) = wb.run(&["layout", "save", "Word study"], Some(r#"{"app":"bible-workbench-rs","panes":[]}"#));
+    let (code, _, err) = wb.run(
+        &["layout", "save", "Word study"],
+        Some(r#"{"app":"bible-workbench-rs","panes":[]}"#),
+    );
     assert_eq!(code, 0, "{err}");
     assert_eq!(wb.js(&["layout", "list"]).as_array().unwrap().len(), 1);
     assert_eq!(wb.js(&["layout", "rm", "word"])["deleted"], json!(true));
     assert_eq!(wb.js(&["layout", "list"]), json!([]));
-    assert!(wb.fails(&["layout", "rm", "word study"]).contains("No saved layout"));
+    assert!(wb
+        .fails(&["layout", "rm", "word study"])
+        .contains("No saved layout"));
 }
 
 #[test]
 fn page_deletion_cli_preview_undo_and_aliases() {
-    let Some(wb)=Wb::new() else {return};
-    let page=wb.js(&["page","new","Scratch parent","--json"]);let id=page["id"].as_str().unwrap();
-    let child=wb.js(&["page","new","Scratch child","--parent",id,"--json"]);let cid=child["id"].as_str().unwrap();
-    wb.ok(&["page","pin",cid]);
-    let preview=wb.js(&["page","rm","--all","--json"]);assert_eq!(preview["state"],"preview");assert_eq!(preview["count"],1);assert_eq!(preview["moved"],1);
-    assert!(wb.fails(&["page","rm","--all","--yes","--expect","wrong"]).contains("preview changed"));
-    let removed=wb.js(&["page","rm","--all","--yes","--expect",preview["token"].as_str().unwrap(),"--json"]);let op=removed["operation"].as_str().unwrap();assert_eq!(removed["state"],"pending");
-    assert_eq!(wb.js(&["page","undo",op,"--json"])["state"],"restored");
-    let alias=wb.js(&["inbox","rm",cid,"--json"]);assert_eq!(alias["state"],"pending");wb.ok(&["page","undo",alias["operation"].as_str().unwrap()]);
-    let immediate=wb.js(&["page","rm",cid,"--now","--json"]);assert_eq!(immediate["state"],"erased");
+    let Some(wb) = Wb::new() else { return };
+    let page = wb.js(&["page", "new", "Scratch parent", "--json"]);
+    let id = page["id"].as_str().unwrap();
+    let child = wb.js(&["page", "new", "Scratch child", "--parent", id, "--json"]);
+    let cid = child["id"].as_str().unwrap();
+    wb.ok(&["page", "pin", cid]);
+    let preview = wb.js(&["page", "rm", "--all", "--json"]);
+    assert_eq!(preview["state"], "preview");
+    assert_eq!(preview["count"], 1);
+    assert_eq!(preview["moved"], 1);
+    assert!(wb
+        .fails(&["page", "rm", "--all", "--yes", "--expect", "wrong"])
+        .contains("preview changed"));
+    let removed = wb.js(&[
+        "page",
+        "rm",
+        "--all",
+        "--yes",
+        "--expect",
+        preview["token"].as_str().unwrap(),
+        "--json",
+    ]);
+    let op = removed["operation"].as_str().unwrap();
+    assert_eq!(removed["state"], "pending");
+    assert_eq!(wb.js(&["page", "undo", op, "--json"])["state"], "restored");
+    let alias = wb.js(&["inbox", "rm", cid, "--json"]);
+    assert_eq!(alias["state"], "pending");
+    wb.ok(&["page", "undo", alias["operation"].as_str().unwrap()]);
+    let immediate = wb.js(&["page", "rm", cid, "--now", "--json"]);
+    assert_eq!(immediate["state"], "erased");
 }
 
 /// words (W-5): `wb anchor <place|number> --pages` finds the pages whose text names the place or number, with their count;
@@ -2363,17 +5416,42 @@ fn page_deletion_cli_preview_undo_and_aliases() {
 #[test]
 fn anchor_pages_finds_pages_that_name_a_verse_or_a_number() {
     let Some(wb) = Wb::new() else { return };
-    assert_eq!(wb.js(&["anchor", "Num 25:11", "--pages"])["count"], json!(0));
-    let a = wb.js(&["page", "new", "Phinehas\nRead Numbers 25:10-13 again, and H7065.", "--json"])["id"].as_str().unwrap().to_string();
-    let b = wb.js(&["page", "new", "Elsewhere\nNum 25:14 and H70651 and Ps 106:30.", "--json"])["id"].as_str().unwrap().to_string();
+    assert_eq!(
+        wb.js(&["anchor", "Num 25:11", "--pages"])["count"],
+        json!(0)
+    );
+    let a = wb.js(&[
+        "page",
+        "new",
+        "Phinehas\nRead Numbers 25:10-13 again, and H7065.",
+        "--json",
+    ])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = wb.js(&[
+        "page",
+        "new",
+        "Elsewhere\nNum 25:14 and H70651 and Ps 106:30.",
+        "--json",
+    ])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let verse = wb.js(&["anchor", "Num 25:11", "--pages"]);
     assert_eq!(verse["count"], json!(1));
     assert_eq!(verse["pages"][0]["id"], json!(a));
     let number = wb.js(&["anchor", "H7065", "--pages"]);
     assert_eq!(number["count"], json!(1));
     assert_eq!(number["pages"][0]["id"], json!(a));
-    assert_eq!(wb.js(&["anchor", "Num 25:14", "--pages"])["pages"][0]["id"], json!(b));
-    assert_eq!(wb.js(&["anchor", "Ps 106:30-31", "--pages"])["count"], json!(1));
+    assert_eq!(
+        wb.js(&["anchor", "Num 25:14", "--pages"])["pages"][0]["id"],
+        json!(b)
+    );
+    assert_eq!(
+        wb.js(&["anchor", "Ps 106:30-31", "--pages"])["count"],
+        json!(1)
+    );
     // the count line never carries a page's text
     assert!(verse["pages"][0].get("text").is_none());
 }
@@ -2385,8 +5463,13 @@ fn anchor_pages_counts_scripture_and_word_blocks() {
     let Some(wb) = Wb::new() else { return };
     let v = wb.js(&["scripture", "Num 25:11"]);
     let first = &v["verses"][0];
-    let chapter = format!("{} {}", first["code"].as_str().unwrap(), first["c"]);   // like NUM 25: a chapter alone, no verse
-    let page = wb.js(&["page", "new", &format!("Blocks only\n\n```scripture\n{chapter}\n```\n\n```word\nH7065\n```"), "--json"]);
+    let chapter = format!("{} {}", first["code"].as_str().unwrap(), first["c"]); // like NUM 25: a chapter alone, no verse
+    let page = wb.js(&[
+        "page",
+        "new",
+        &format!("Blocks only\n\n```scripture\n{chapter}\n```\n\n```word\nH7065\n```"),
+        "--json",
+    ]);
     let id = page["id"].as_str().unwrap();
     let verse = wb.js(&["anchor", "Num 25:11", "--pages"]);
     assert_eq!(verse["count"], json!(1), "{verse}");
@@ -2402,11 +5485,23 @@ fn anchor_pages_counts_scripture_and_word_blocks() {
 fn reading_word_setting_is_kept() {
     let Some(wb) = Wb::new() else { return };
     assert!(wb.js(&["settings", "reading"]).get("word").is_none());
-    assert_eq!(wb.js(&["settings", "reading", "word", "concordance"])["word"], json!("concordance"));
-    assert_eq!(wb.js(&["settings", "reading"])["word"], json!("concordance"));
+    assert_eq!(
+        wb.js(&["settings", "reading", "word", "concordance"])["word"],
+        json!("concordance")
+    );
+    assert_eq!(
+        wb.js(&["settings", "reading"])["word"],
+        json!("concordance")
+    );
     let file = std::fs::read_to_string(wb.dir.join("settings").join("reading.json")).unwrap();
-    assert_eq!(serde_json::from_str::<Value>(&file).unwrap()["word"], json!("concordance"));
-    assert!(wb.js(&["settings", "reading", "word", "default"]).get("word").is_none());
+    assert_eq!(
+        serde_json::from_str::<Value>(&file).unwrap()["word"],
+        json!("concordance")
+    );
+    assert!(wb
+        .js(&["settings", "reading", "word", "default"])
+        .get("word")
+        .is_none());
 }
 
 // ---- trash round 3 (T10, TR-1): several pages at once ----
@@ -2414,16 +5509,32 @@ fn reading_word_setting_is_kept() {
 #[test]
 fn several_pages_go_to_the_trash_in_one_operation_with_one_undo() {
     let Some(wb) = Wb::new() else { return };
-    let ids: Vec<String> = (0..4).map(|i| wb.js(&["page", "new", &format!("Page {i}")])["id"].as_str().unwrap().to_string()).collect();
+    let ids: Vec<String> = (0..4)
+        .map(|i| {
+            wb.js(&["page", "new", &format!("Page {i}")])["id"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        })
+        .collect();
     let mut argv = vec!["page", "rm"];
     argv.extend(ids.iter().map(|s| s.as_str()));
     let r = wb.js(&argv);
-    assert_eq!((r["count"].clone(), r["state"].clone()), (json!(4), json!("pending")));
+    assert_eq!(
+        (r["count"].clone(), r["state"].clone()),
+        (json!(4), json!("pending"))
+    );
     let op = r["operation"].as_str().unwrap().to_string();
     // the batch window is 30 seconds, not the single page's 10
     let ms = r["deadline_ms"].as_i64().unwrap() - wb_core::deletion::now_ms();
     assert!(ms > 10_000 && ms <= 30_000, "{ms}");
-    assert_eq!(wb.js(&["page", "deletions"])["operations"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        wb.js(&["page", "deletions"])["operations"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
     assert_eq!(wb.js(&["page", "undo", &op])["state"], json!("restored"));
     let tree = wb.js(&["page", "tree"]).to_string();
     for id in &ids {
@@ -2432,16 +5543,27 @@ fn several_pages_go_to_the_trash_in_one_operation_with_one_undo() {
     // a page that is not there stops the whole delete: nothing is moved
     let (code, ..) = wb.run(&["page", "rm", &ids[0], "no-such-page"], None);
     assert_eq!(code, 1);
-    assert!(wb.js(&["page", "tree"]).to_string().contains(ids[0].as_str()));
+    assert!(wb
+        .js(&["page", "tree"])
+        .to_string()
+        .contains(ids[0].as_str()));
     // an id with --all is refused
-    assert!(wb.fails(&["page", "rm", &ids[0], "--all"]).contains("Give a page ID or --all"));
+    assert!(wb
+        .fails(&["page", "rm", &ids[0], "--all"])
+        .contains("Give a page ID or --all"));
 }
 
 #[test]
 fn several_trashed_notes_are_put_back_by_one_command_and_empty_trash_leaves_the_rest() {
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["note", "jot", "first"])["id"].as_str().unwrap().to_string();
-    let b = wb.js(&["note", "jot", "second"])["id"].as_str().unwrap().to_string();
+    let a = wb.js(&["note", "jot", "first"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = wb.js(&["note", "jot", "second"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let mut legacy = wb_core::store::Store::open(&wb.dir).unwrap();
     legacy.delete_jot(&a).unwrap();
     legacy.delete_jot(&b).unwrap();
@@ -2450,7 +5572,12 @@ fn several_trashed_notes_are_put_back_by_one_command_and_empty_trash_leaves_the_
     std::fs::write(trash.join("20200101-000000-finding-abcd.md"), "a finding").unwrap();
     std::fs::write(trash.join("20200101-000000-layout-main.json"), "{}").unwrap();
     let t = wb.js(&["trash"]);
-    let names: Vec<String> = t["notes"].as_array().unwrap().iter().map(|n| n["name"].as_str().unwrap().to_string()).collect();
+    let names: Vec<String> = t["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|n| n["name"].as_str().unwrap().to_string())
+        .collect();
     assert_eq!(names.len(), 2);
     let r = wb.js(&["trash", "restore", &names[0], &names[1]]);
     assert_eq!(r["restored"].as_array().unwrap().len(), 2);
@@ -2472,42 +5599,105 @@ fn make_another_like_this_keeps_look_and_choice_per_kind_and_leaves_the_first_al
         let (code, _, err) = wb.run(&["block", "add", id, "-"], Some(b));
         assert_eq!(code, 0, "{err}");
     };
-    let first = wb.js(&["page", "new", "Like: first"])["id"].as_str().unwrap().to_string();
-    let second = wb.js(&["page", "new", "Like: second"])["id"].as_str().unwrap().to_string();
+    let first = wb.js(&["page", "new", "Like: first"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let second = wb.js(&["page", "new", "Like: second"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     for p in [&first, &second] {
-        for b in ["# Aim", "Read it with the group.", "```scripture\nNum 25:10-11\n```"] {
+        for b in [
+            "# Aim",
+            "Read it with the group.",
+            "```scripture\nNum 25:10-11\n```",
+        ] {
             add(p, b);
         }
     }
     let parts = wb.js(&["craft", "parts", "--page", &first]);
     let para = parts["rows"][1]["key"].as_str().unwrap().to_string();
-    let made = wb.js(&["craft", "deck", "--page", &first, "--off", &para, "--look", "large-print"]);
+    let made = wb.js(&[
+        "craft",
+        "deck",
+        "--page",
+        &first,
+        "--off",
+        &para,
+        "--look",
+        "large-print",
+    ]);
     let before = std::fs::read(wb.docs().join(made["name"].as_str().unwrap())).unwrap();
-    let like = wb.js(&["docs", "like", made["id"].as_str().unwrap(), "--page", &second]);
+    let like = wb.js(&[
+        "docs",
+        "like",
+        made["id"].as_str().unwrap(),
+        "--page",
+        &second,
+    ]);
     assert_eq!(like["id"].as_str().unwrap(), format!("page-{second}-verse"));
     assert_eq!(like["look"], made["look"]);
     assert_eq!(like["checked"]["verses"], 2);
     let rows = wb.js(&["craft", "parts", "--page", &second])["rows"].clone();
-    let on: Vec<(&str, bool)> = rows.as_array().unwrap().iter().map(|r| (r["kind"].as_str().unwrap(), r["on"].as_bool().unwrap())).collect();
-    assert_eq!(on, [("heading", true), ("paragraph", false), ("scripture", true)]);
-    assert_eq!(std::fs::read(wb.docs().join(made["name"].as_str().unwrap())).unwrap(), before);
-    assert!(wb.fails(&["docs", "like", made["id"].as_str().unwrap()]).contains("--page"));
+    let on: Vec<(&str, bool)> = rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| (r["kind"].as_str().unwrap(), r["on"].as_bool().unwrap()))
+        .collect();
+    assert_eq!(
+        on,
+        [("heading", true), ("paragraph", false), ("scripture", true)]
+    );
+    assert_eq!(
+        std::fs::read(wb.docs().join(made["name"].as_str().unwrap())).unwrap(),
+        before
+    );
+    assert!(wb
+        .fails(&["docs", "like", made["id"].as_str().unwrap()])
+        .contains("--page"));
 
     // a folder is what a thread was
     wb.js(&["thread", "new", "Phinehas folder", "--at", "Num 25:10"]);
-    let by_thread = wb.js(&["docs", "plan", "--thread", "Phinehas folder", "--to", "word", "--structure", "script"]);
-    let by_folder = wb.js(&["docs", "plan", "--folder", "Phinehas folder", "--to", "word", "--structure", "script"]);
+    let by_thread = wb.js(&[
+        "docs",
+        "plan",
+        "--thread",
+        "Phinehas folder",
+        "--to",
+        "word",
+        "--structure",
+        "script",
+    ]);
+    let by_folder = wb.js(&[
+        "docs",
+        "plan",
+        "--folder",
+        "Phinehas folder",
+        "--to",
+        "word",
+        "--structure",
+        "script",
+    ]);
     assert_eq!(by_thread["fingerprint"], by_folder["fingerprint"]);
 }
 
 // ---- reading plans: parts of chapters, Horner's lists, the counter (reading-plans RP-5 to RP-11) ----
 
 fn verses_in(wb: &Wb, place: &str) -> u32 {
-    wb.js(&["text", place, "--json"])["verses"].as_array().unwrap().len() as u32
+    wb.js(&["text", place, "--json"])["verses"]
+        .as_array()
+        .unwrap()
+        .len() as u32
 }
 
 fn log_lines(wb: &Wb) -> Vec<Value> {
-    std::fs::read_to_string(wb.dir.join("reading").join("log.jsonl")).unwrap_or_default().lines().map(|l| serde_json::from_str(l).unwrap()).collect()
+    std::fs::read_to_string(wb.dir.join("reading").join("log.jsonl"))
+        .unwrap_or_default()
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect()
 }
 
 #[test]
@@ -2515,17 +5705,37 @@ fn a_part_of_a_chapter_is_a_log_line_with_verses_and_a_whole_chapter_stays_whole
     // RP-5
     let Some(wb) = Wb::new() else { return };
     let m = wb.js(&["read", "mark", "Num 25:1-5"]);
-    assert_eq!((m[0]["ch"].clone(), m[0]["v"].clone()), (json!("NUM.25"), json!("1-5")));
+    assert_eq!(
+        (m[0]["ch"].clone(), m[0]["v"].clone()),
+        (json!("NUM.25"), json!("1-5"))
+    );
     wb.js(&["read", "mark", "Num 24"]);
     wb.js(&["read", "mark", "Num 25:7"]);
     let lines = log_lines(&wb);
     assert_eq!(lines.len(), 3);
-    assert_eq!(lines[1].get("v"), None, "a place without verses writes a whole chapter, no v");
+    assert_eq!(
+        lines[1].get("v"),
+        None,
+        "a place without verses writes a whole chapter, no v"
+    );
     assert_eq!(lines[2]["v"], json!("7"));
     // a place across chapters: each chapter's own verses
     let last = verses_in(&wb, "Num 24");
     let m = wb.js(&["read", "mark", &format!("Num 24:{last}-25:2")]);
-    assert_eq!((m[0]["ch"].clone(), m[0]["v"].clone(), m[1]["ch"].clone(), m[1]["v"].clone()), (json!("NUM.24"), json!(last.to_string()), json!("NUM.25"), json!("1-2")));
+    assert_eq!(
+        (
+            m[0]["ch"].clone(),
+            m[0]["v"].clone(),
+            m[1]["ch"].clone(),
+            m[1]["v"].clone()
+        ),
+        (
+            json!("NUM.24"),
+            json!(last.to_string()),
+            json!("NUM.25"),
+            json!("1-2")
+        )
+    );
     // old lines are never rewritten
     assert_eq!(log_lines(&wb)[..3], lines[..]);
 }
@@ -2539,15 +5749,38 @@ fn what_is_read_of_a_chapter_is_the_union_of_its_parts() {
     let times = |wb: &Wb| wb.js(&["read", "times", "Num 25"])["NUM.25"].clone();
     wb.js(&["read", "mark", "Num 25:1-5"]);
     let t = times(&wb);
-    assert_eq!((t["times"].clone(), t["verses"].clone(), t["read_to"].clone(), t["whole"].clone()), (json!(0), json!("1-5"), json!(5), json!(false)));
+    assert_eq!(
+        (
+            t["times"].clone(),
+            t["verses"].clone(),
+            t["read_to"].clone(),
+            t["whole"].clone()
+        ),
+        (json!(0), json!("1-5"), json!(5), json!(false))
+    );
     wb.js(&["read", "mark", "Num 25:1-5"]); // repeated: the same verses, still not a chapter read
     assert_eq!(times(&wb)["times"], json!(0));
     wb.js(&["read", "mark", &format!("Num 25:{}-{l}", l - 4)]); // out of order: the end before the middle
     let t = times(&wb);
-    assert_eq!((t["verses"].clone(), t["read_to"].clone(), t["times"].clone()), (json!(format!("1-5, {}-{l}", l - 4)), json!(5), json!(0)));
+    assert_eq!(
+        (
+            t["verses"].clone(),
+            t["read_to"].clone(),
+            t["times"].clone()
+        ),
+        (json!(format!("1-5, {}-{l}", l - 4)), json!(5), json!(0))
+    );
     wb.js(&["read", "mark", &format!("Num 25:6-{}", l - 5)]); // the gap closes: one time read
     let t = times(&wb);
-    assert_eq!((t["times"].clone(), t["verses"].clone(), t["whole"].clone(), t["read_to"].clone()), (json!(1), json!(format!("1-{l}")), json!(true), json!(l)));
+    assert_eq!(
+        (
+            t["times"].clone(),
+            t["verses"].clone(),
+            t["whole"].clone(),
+            t["read_to"].clone()
+        ),
+        (json!(1), json!(format!("1-{l}")), json!(true), json!(l))
+    );
     wb.js(&["read", "mark", "Num 25"]); // a whole-chapter line after parts: a second time
     assert_eq!(times(&wb)["times"], json!(2));
     // the whole Bible's count: a chapter read through counts once, however it was read
@@ -2558,29 +5791,79 @@ fn what_is_read_of_a_chapter_is_the_union_of_its_parts() {
     wb.js(&["read", "mark", "Num 26:1-3"]);
     let p = wb.js(&["read", "progress"]);
     assert_eq!(p["chapters"], json!(1));
-    assert_eq!((p["partial"][0]["ch"].clone(), p["partial"][0]["read_to"].clone()), (json!("NUM.26"), json!(3)));
-    assert!(wb.js(&["read", "when", "Num 26"])["NUM.26"].as_str().is_some());
+    assert_eq!(
+        (
+            p["partial"][0]["ch"].clone(),
+            p["partial"][0]["read_to"].clone()
+        ),
+        (json!("NUM.26"), json!(3))
+    );
+    assert!(wb.js(&["read", "when", "Num 26"])["NUM.26"]
+        .as_str()
+        .is_some());
 }
 
 #[test]
 fn a_plan_day_with_a_chapter_read_in_part_is_not_done_and_says_where_it_stopped() {
     let Some(wb) = Wb::new() else { return };
     let l = verses_in(&wb, "Num 25");
-    let (code, _, err) = wb.run(&["plan", "import", "Mine", "--start", "2026-01-01", "--format", "plain"], Some("Num 25; Num 26\nNum 27\n"));
+    let (code, _, err) = wb.run(
+        &[
+            "plan",
+            "import",
+            "Mine",
+            "--start",
+            "2026-01-01",
+            "--format",
+            "plain",
+        ],
+        Some("Num 25; Num 26\nNum 27\n"),
+    );
     assert_eq!(code, 0, "{err}");
     wb.js(&["read", "mark", "Num 25:1-9", "--plan", "mine"]);
     wb.js(&["read", "mark", "Num 26", "--plan", "mine"]);
     let day = &wb.js(&["plan", "show", "mine", "--on", "2026-01-01"])["schedule"][0];
-    assert_eq!(day["done"], json!(false), "a chapter read in part is not read");
+    assert_eq!(
+        day["done"],
+        json!(false),
+        "a chapter read in part is not read"
+    );
     assert_eq!(day["read"], json!([false, true]));
-    assert_eq!((day["parts"][0]["read_to"].clone(), day["parts"][0]["parts"].clone()), (json!(9), json!("")));
+    assert_eq!(
+        (
+            day["parts"][0]["read_to"].clone(),
+            day["parts"][0]["parts"].clone()
+        ),
+        (json!(9), json!(""))
+    );
     // out of order: the end is read, the start is not
-    wb.js(&["read", "mark", &format!("Num 25:{}-{l}", l - 3), "--plan", "mine"]);
+    wb.js(&[
+        "read",
+        "mark",
+        &format!("Num 25:{}-{l}", l - 3),
+        "--plan",
+        "mine",
+    ]);
     let day = &wb.js(&["plan", "show", "mine", "--on", "2026-01-01"])["schedule"][0];
-    assert_eq!((day["parts"][0]["read_to"].clone(), day["parts"][0]["parts"].clone()), (json!(9), json!(format!("{}-{l}", l - 3))));
+    assert_eq!(
+        (
+            day["parts"][0]["read_to"].clone(),
+            day["parts"][0]["parts"].clone()
+        ),
+        (json!(9), json!(format!("{}-{l}", l - 3)))
+    );
     assert_eq!(day["done"], json!(false));
-    wb.js(&["read", "mark", &format!("Num 25:10-{}", l - 4), "--plan", "mine"]);
-    assert_eq!(wb.js(&["plan", "show", "mine", "--on", "2026-01-01"])["schedule"][0]["done"], json!(true));
+    wb.js(&[
+        "read",
+        "mark",
+        &format!("Num 25:10-{}", l - 4),
+        "--plan",
+        "mine",
+    ]);
+    assert_eq!(
+        wb.js(&["plan", "show", "mine", "--on", "2026-01-01"])["schedule"][0]["done"],
+        json!(true)
+    );
 }
 
 #[test]
@@ -2588,19 +5871,36 @@ fn mark_read_to_here_marks_the_gap_and_a_verse_already_read_changes_nothing() {
     // RP-8
     let Some(wb) = Wb::new() else { return };
     let m = wb.js(&["read", "mark", "Num 25:9", "--to-here"]);
-    assert_eq!((m[0]["v"].clone(), m.as_array().unwrap().len()), (json!("1-9"), 1));
+    assert_eq!(
+        (m[0]["v"].clone(), m.as_array().unwrap().len()),
+        (json!("1-9"), 1)
+    );
     assert_eq!(wb.js(&["read", "mark", "Num 25:9", "--to-here"]), json!([]));
     assert_eq!(wb.js(&["read", "mark", "Num 25:4", "--to-here"]), json!([]));
     let m = wb.js(&["read", "mark", "Num 25:12", "--to-here"]);
     assert_eq!(m[0]["v"], json!("10-12"));
-    assert_eq!(wb.js(&["read", "times", "Num 25"])["NUM.25"]["read_to"], json!(12));
+    assert_eq!(
+        wb.js(&["read", "times", "Num 25"])["NUM.25"]["read_to"],
+        json!(12)
+    );
     assert_eq!(log_lines(&wb).len(), 2);
     // taking a part off: exactly that line, kept in the trash
     let off = wb.js(&["read", "unmark", "Num 25:10-12"]);
     assert_eq!(off["unmarked"].as_array().unwrap().len(), 1);
-    assert_eq!(wb.js(&["read", "times", "Num 25"])["NUM.25"]["read_to"], json!(9));
-    assert!(std::fs::read_to_string(wb.dir.join(".trash").join("reading-unmarked.jsonl")).unwrap().contains("\"v\": \"10-12\""));
-    assert_eq!(wb.js(&["read", "unmark", "Num 25:10-12"])["unmarked"], json!([]), "a part not in the log is passed over");
+    assert_eq!(
+        wb.js(&["read", "times", "Num 25"])["NUM.25"]["read_to"],
+        json!(9)
+    );
+    assert!(
+        std::fs::read_to_string(wb.dir.join(".trash").join("reading-unmarked.jsonl"))
+            .unwrap()
+            .contains("\"v\": \"10-12\"")
+    );
+    assert_eq!(
+        wb.js(&["read", "unmark", "Num 25:10-12"])["unmarked"],
+        json!([]),
+        "a part not in the log is passed over"
+    );
 }
 
 #[test]
@@ -2608,19 +5908,83 @@ fn horners_ten_lists_ship_as_a_kind_a_chapter_of_each_list_a_day() {
     // RP-9, RP-10
     let Some(wb) = Wb::new() else { return };
     let kinds = wb.js(&["plan", "kinds"]);
-    assert!(kinds.as_array().unwrap().iter().any(|k| k["kind"] == "horner"));
-    assert!(!kinds.as_array().unwrap().iter().any(|k| k["kind"].as_str().unwrap().contains("chronolog")), "no chronological kind (RP-4, RP-10)");
-    let dry = wb.js(&["plan", "start", "Horner", "--kind", "horner", "--start", "2026-11-02", "--dry-run"]);
-    assert_eq!((dry["cycle"].clone(), dry["lists"].clone(), dry["finish"].clone()), (json!(true), json!(10), json!(null)));
-    let p = wb.js(&["plan", "start", "Horner", "--kind", "horner", "--start", "2026-11-02"]);
-    assert_eq!((p["kind"].clone(), p["cycle"].clone(), p["finish"].clone()), (json!("horner"), json!(true), json!(null)));
+    assert!(kinds
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|k| k["kind"] == "horner"));
+    assert!(
+        !kinds
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|k| k["kind"].as_str().unwrap().contains("chronolog")),
+        "no chronological kind (RP-4, RP-10)"
+    );
+    let dry = wb.js(&[
+        "plan",
+        "start",
+        "Horner",
+        "--kind",
+        "horner",
+        "--start",
+        "2026-11-02",
+        "--dry-run",
+    ]);
+    assert_eq!(
+        (
+            dry["cycle"].clone(),
+            dry["lists"].clone(),
+            dry["finish"].clone()
+        ),
+        (json!(true), json!(10), json!(null))
+    );
+    let p = wb.js(&[
+        "plan",
+        "start",
+        "Horner",
+        "--kind",
+        "horner",
+        "--start",
+        "2026-11-02",
+    ]);
+    assert_eq!(
+        (p["kind"].clone(), p["cycle"].clone(), p["finish"].clone()),
+        (json!("horner"), json!(true), json!(null))
+    );
     let show = wb.js(&["plan", "show", "horner", "--on", "2026-11-03"]);
-    let day2: Vec<&str> = show["schedule"][1]["entries"].as_array().unwrap().iter().map(|e| e.as_str().unwrap()).collect();
-    assert_eq!(day2, vec!["MAT.2", "GEN.2", "ROM.2", "1TH.2", "JOB.2", "PSA.2", "PRO.2", "JOS.2", "ISA.2", "ACT.2"]);
+    let day2: Vec<&str> = show["schedule"][1]["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e.as_str().unwrap())
+        .collect();
+    assert_eq!(
+        day2,
+        vec![
+            "MAT.2", "GEN.2", "ROM.2", "1TH.2", "JOB.2", "PSA.2", "PRO.2", "JOS.2", "ISA.2",
+            "ACT.2"
+        ]
+    );
     // the lists are the plan's own, and between them they hold every chapter once
     let file = plan_file(&wb, "horner");
-    let all: Vec<String> = file["lists"].as_array().unwrap().iter().flat_map(|l| l.as_array().unwrap().iter().map(|e| e.as_str().unwrap().to_string())).collect();
-    let chapters: u32 = wb.js(&["books"])["books"].as_array().unwrap().iter().map(|b| b["chapters"].as_u64().unwrap() as u32).sum();
+    let all: Vec<String> = file["lists"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|l| {
+            l.as_array()
+                .unwrap()
+                .iter()
+                .map(|e| e.as_str().unwrap().to_string())
+        })
+        .collect();
+    let chapters: u32 = wb.js(&["books"])["books"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|b| b["chapters"].as_u64().unwrap() as u32)
+        .sum();
     assert_eq!(all.len() as u32, chapters);
     let mut sorted = all.clone();
     sorted.sort();
@@ -2635,19 +5999,38 @@ fn horners_ten_lists_ship_as_a_kind_a_chapter_of_each_list_a_day() {
 fn the_counter_is_the_days_come_and_not_read_and_a_day_off_is_not_a_day() {
     // RP-11 (and RP-1)
     let Some(wb) = Wb::new() else { return };
-    wb.js(&["plan", "start", "Year", "--start", "2026-11-02", "--days-off", "wed"]);
+    wb.js(&[
+        "plan",
+        "start",
+        "Year",
+        "--start",
+        "2026-11-02",
+        "--days-off",
+        "wed",
+    ]);
     let behind = |on: &str| wb.js(&["plan", "today", "--on", on])["plans"][0].clone();
     assert_eq!(behind("2026-11-01")["behind"], json!(0));
     assert_eq!(behind("2026-11-03")["behind"], json!(2)); // Monday and Tuesday
-    assert_eq!(behind("2026-11-04")["behind"], json!(2), "Wednesday is a day off, not a day of the plan");
+    assert_eq!(
+        behind("2026-11-04")["behind"],
+        json!(2),
+        "Wednesday is a day off, not a day of the plan"
+    );
     wb.js(&["plan", "done", "year", "--day", "1"]);
     assert_eq!(behind("2026-11-03")["behind"], json!(1));
     wb.js(&["plan", "done", "year", "--day", "4"]); // Thursday, read ahead: it is not behind, and it does not settle Tuesday
     let t = behind("2026-11-03");
-    assert_eq!((t["behind"].clone(), t["ahead"].clone()), (json!(1), json!(0)));
+    assert_eq!(
+        (t["behind"].clone(), t["ahead"].clone()),
+        (json!(1), json!(0))
+    );
     wb.js(&["plan", "done", "year", "--day", "2"]);
     let t = behind("2026-11-03");
-    assert_eq!((t["behind"].clone(), t["ahead"].clone()), (json!(0), json!(1)), "two days come, three are read: one ahead");
+    assert_eq!(
+        (t["behind"].clone(), t["ahead"].clone()),
+        (json!(0), json!(1)),
+        "two days come, three are read: one ahead"
+    );
 }
 
 #[test]
@@ -2658,14 +6041,33 @@ fn the_map_has_what_was_read_and_what_was_written_about() {
     wb.js(&["note", "add", "Num 26:5", "A note of mine"]);
     wb.js(&["hl", "set", "Num 26:1", "yellow"]);
     let map = wb.js(&["read", "map"]);
-    let num = map["books"].as_array().unwrap().iter().find(|b| b["code"] == "NUM").unwrap();
+    let num = map["books"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|b| b["code"] == "NUM")
+        .unwrap();
     let read = num["read"].as_array().unwrap();
     assert_eq!(read[0][0], json!(25));
-    assert!(read[0][2].as_f64().unwrap() > 0.0 && read[0][2].as_f64().unwrap() < 1.0, "a chapter read in part is part filled");
-    assert_eq!((read[1][0].clone(), read[1][1].clone(), read[1][2].clone()), (json!(26), json!(1), json!(1.0)));
+    assert!(
+        read[0][2].as_f64().unwrap() > 0.0 && read[0][2].as_f64().unwrap() < 1.0,
+        "a chapter read in part is part filled"
+    );
+    assert_eq!(
+        (read[1][0].clone(), read[1][1].clone(), read[1][2].clone()),
+        (json!(26), json!(1), json!(1.0))
+    );
     let about = wb.js(&["read", "about", "Num 26"]);
-    let kinds: Vec<&str> = about.as_array().unwrap().iter().map(|x| x["kind"].as_str().unwrap()).collect();
-    assert!(kinds.contains(&"page") && kinds.contains(&"highlight"), "{kinds:?}");
+    let kinds: Vec<&str> = about
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x["kind"].as_str().unwrap())
+        .collect();
+    assert!(
+        kinds.contains(&"page") && kinds.contains(&"highlight"),
+        "{kinds:?}"
+    );
     assert_eq!(num["written"][0][0], json!(26));
 }
 
@@ -2673,10 +6075,22 @@ fn the_map_has_what_was_read_and_what_was_written_about() {
 fn what_refers_to_a_chapter_counts_pages_places_in_pages_questions_folders_days_and_highlights() {
     // RP-19: Written about counts every reference to a chapter
     let Some(wb) = Wb::new() else { return };
-    let kinds = |wb: &Wb| -> Vec<String> { wb.js(&["read", "about", "Num 26"]).as_array().unwrap().iter().map(|x| x["kind"].as_str().unwrap().to_string()).collect() };
+    let kinds = |wb: &Wb| -> Vec<String> {
+        wb.js(&["read", "about", "Num 26"])
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x["kind"].as_str().unwrap().to_string())
+            .collect()
+    };
     assert!(kinds(&wb).is_empty());
     wb.js(&["note", "jot", "check where else this is used; see Num 26:3"]); // a place written in a page
-    wb.js(&["note", "jot", "how do the two numbers relate; Num 26:5", "--question"]);
+    wb.js(&[
+        "note",
+        "jot",
+        "how do the two numbers relate; Num 26:5",
+        "--question",
+    ]);
     wb.js(&["note", "add", "Num 26:9", "A note at a verse"]);
     wb.js(&["hl", "set", "Num 26:1", "yellow"]);
     wb.js(&["thread", "new", "Census", "--at", "Num 26:2"]);
@@ -2685,26 +6099,75 @@ fn what_refers_to_a_chapter_counts_pages_places_in_pages_questions_folders_days_
     for want in ["place in a page", "question", "page", "highlight", "folder"] {
         assert!(k.iter().any(|x| x == want), "{want} missing: {k:?}");
     }
-    let places = wb.js(&["read", "about", "Num 26"]).as_array().unwrap().iter().filter(|x| x["kind"] == "place in a page").count();
-    assert_eq!(places, 2, "a place in the inbox page and one in today's page");
-    assert_eq!(wb.js(&["read", "about", "Num 25"]), json!([]), "another chapter has none");
+    let places = wb
+        .js(&["read", "about", "Num 26"])
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|x| x["kind"] == "place in a page")
+        .count();
+    assert_eq!(
+        places, 2,
+        "a place in the inbox page and one in today's page"
+    );
+    assert_eq!(
+        wb.js(&["read", "about", "Num 25"]),
+        json!([]),
+        "another chapter has none"
+    );
 }
 
 #[test]
 fn the_builders_old_abilities_and_pasting_a_published_plan_still_work() {
     // RP-18: move days, set the start, days off, a pasted published plan, and Horner with days off
     let Some(wb) = Wb::new() else { return };
-    wb.js(&["plan", "start", "Gospels", "--books", "gospels", "--days", "10", "--start", "2026-11-02", "--days-off", "sun,sat"]);
+    wb.js(&[
+        "plan",
+        "start",
+        "Gospels",
+        "--books",
+        "gospels",
+        "--days",
+        "10",
+        "--start",
+        "2026-11-02",
+        "--days-off",
+        "sun,sat",
+    ]);
     let shown = wb.js(&["plan", "show", "gospels"]);
     assert_eq!(shown["days_off"], json!(["sat", "sun"]));
     let first: Vec<String> = day_entries(&shown)[0].clone();
     wb.js(&["plan", "move-day", "gospels", "--day", "1", "--to", "3"]);
     assert_eq!(day_entries(&wb.js(&["plan", "show", "gospels"]))[2], first);
-    assert_eq!(wb.js(&["plan", "edit", "gospels", "--start", "2026-12-01"])["start"], json!("2026-12-01"));
-    let (code, _, err) = wb.run(&["plan", "import", "Guth", "--format", "guthrie", "--start", "2026-11-02"], Some("Week 1\nDay 1: Genesis 1; Matthew 1\nDay 2: Genesis 2; Matthew 2\n"));
+    assert_eq!(
+        wb.js(&["plan", "edit", "gospels", "--start", "2026-12-01"])["start"],
+        json!("2026-12-01")
+    );
+    let (code, _, err) = wb.run(
+        &[
+            "plan",
+            "import",
+            "Guth",
+            "--format",
+            "guthrie",
+            "--start",
+            "2026-11-02",
+        ],
+        Some("Week 1\nDay 1: Genesis 1; Matthew 1\nDay 2: Genesis 2; Matthew 2\n"),
+    );
     assert_eq!(code, 0, "{err}");
     assert_eq!(wb.js(&["plan", "show", "guth"])["source"], json!("Guthrie"));
-    let h = wb.js(&["plan", "start", "Horner", "--kind", "horner", "--start", "2026-11-02", "--days-off", "sun"]);
+    let h = wb.js(&[
+        "plan",
+        "start",
+        "Horner",
+        "--kind",
+        "horner",
+        "--start",
+        "2026-11-02",
+        "--days-off",
+        "sun",
+    ]);
     assert_eq!(h["days_off"], json!(["sun"]));
     assert_eq!(h["cycle"], json!(true));
     // 2026-11-08 is a Sunday: day 7 falls on the Monday after
@@ -2716,26 +6179,70 @@ fn the_builders_old_abilities_and_pasting_a_published_plan_still_work() {
 fn block_add_scripture_writes_the_fenced_reference_block() {
     // notebook row 7 (NB3): --scripture checks the reference and writes the block holding only it; a bare reference stays a paragraph
     let Some(wb) = Wb::new() else { return };
-    let id = wb.js(&["page", "new", "A passage page"])["id"].as_str().unwrap().to_string();
+    let id = wb.js(&["page", "new", "A passage page"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["block", "add", &id, "First line"]);
-    let r = wb.js(&["block", "add", &id, "Num 25:18-26:1", "--scripture", "--after", "1"]);
+    let r = wb.js(&[
+        "block",
+        "add",
+        &id,
+        "Num 25:18-26:1",
+        "--scripture",
+        "--after",
+        "1",
+    ]);
     assert_eq!(r["n"], 2);
     wb.js(&["block", "add", &id, "Num 25:11"]);
     let blocks = wb.js(&["page", "blocks", &id]);
-    let texts: Vec<(String, String)> = blocks["blocks"].as_array().unwrap().iter().map(|b| (b["kind"].as_str().unwrap().to_string(), b["text"].as_str().unwrap().to_string())).collect();
-    assert_eq!(texts[1], ("fence".to_string(), "```scripture\nNum 25:18-26:1\n```".to_string()));
+    let texts: Vec<(String, String)> = blocks["blocks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|b| {
+            (
+                b["kind"].as_str().unwrap().to_string(),
+                b["text"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        texts[1],
+        (
+            "fence".to_string(),
+            "```scripture\nNum 25:18-26:1\n```".to_string()
+        )
+    );
     assert_eq!(texts[2], ("paragraph".to_string(), "Num 25:11".to_string()));
-    let (code, _, err) = wb.run(&["block", "add", &id, "Not a book 3:4", "--scripture"], None);
+    let (code, _, err) = wb.run(
+        &["block", "add", &id, "Not a book 3:4", "--scripture"],
+        None,
+    );
     assert_ne!(code, 0, "{err}");
-    assert_eq!(wb.js(&["page", "blocks", &id])["blocks"].as_array().unwrap().len(), 3);
+    assert_eq!(
+        wb.js(&["page", "blocks", &id])["blocks"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
 }
 
 #[test]
 fn a_toggle_folds_in_the_settings_and_the_page_keeps_its_details() {
     // notebook row 9 (NB4): the toggle is <details><summary> in the page; folded or not is in settings/pages.json
     let Some(wb) = Wb::new() else { return };
-    let id = wb.js(&["page", "new", "A toggle page"])["id"].as_str().unwrap().to_string();
-    wb.js(&["block", "add", &id, "<details><summary>Numbers 25</summary>"]);
+    let id = wb.js(&["page", "new", "A toggle page"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    wb.js(&[
+        "block",
+        "add",
+        &id,
+        "<details><summary>Numbers 25</summary>",
+    ]);
     wb.js(&["block", "add", &id, "Read it twice."]);
     wb.js(&["block", "add", &id, "</details>"]);
     let before = wb.js(&["page", "blocks", &id]);
@@ -2748,7 +6255,13 @@ fn a_toggle_folds_in_the_settings_and_the_page_keeps_its_details() {
     assert_eq!(before["blocks"], after["blocks"]);
     assert!(wb.dir.join("settings/pages.json").exists());
     wb.js(&["page", "fold", &id, "1", "--off"]);
-    assert_eq!(wb.js(&["page", "blocks", &id])["folds"].as_array().unwrap().len(), 0);
+    assert_eq!(
+        wb.js(&["page", "blocks", &id])["folds"]
+            .as_array()
+            .unwrap()
+            .len(),
+        0
+    );
     let (code, _, _) = wb.run(&["page", "fold", &id, "2", "--on"], None);
     assert_ne!(code, 0, "a paragraph is not a toggle");
 }
@@ -2758,23 +6271,51 @@ fn a_block_is_copied_below_itself_and_a_join_or_a_copy_can_be_undone() {
     // notebook rows 42 and 20 (NB6): `wb block dup` copies a block right below it; `--undo` on block set and block dup gives
     // a token that `wb block undo` takes back, only while the page is as the change left it
     let Some(wb) = Wb::new() else { return };
-    let id = wb.js(&["page", "new", "A copy page"])["id"].as_str().unwrap().to_string();
+    let id = wb.js(&["page", "new", "A copy page"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["block", "add", &id, "First line"]);
     wb.js(&["block", "add", &id, "- an item"]);
     wb.js(&["block", "add", &id, "Last line"]);
-    let texts = |wb: &Wb| -> Vec<String> { wb.js(&["page", "blocks", &id])["blocks"].as_array().unwrap().iter().map(|b| b["text"].as_str().unwrap().to_string()).collect() };
+    let texts = |wb: &Wb| -> Vec<String> {
+        wb.js(&["page", "blocks", &id])["blocks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|b| b["text"].as_str().unwrap().to_string())
+            .collect()
+    };
     let r = wb.js(&["block", "dup", &id, "2"]);
     assert_eq!(r["n"], 3, "the copy is block 3");
-    assert_eq!(texts(&wb), ["First line", "- an item", "- an item", "Last line"]);
+    assert_eq!(
+        texts(&wb),
+        ["First line", "- an item", "- an item", "Last line"]
+    );
     // a duplicate that is taken back
     let r = wb.js(&["block", "dup", &id, "1", "--undo"]);
     assert_eq!(texts(&wb).len(), 5);
     let token = r["undo"].to_string();
     wb.js(&["block", "undo", &id, &token]);
-    assert_eq!(texts(&wb), ["First line", "- an item", "- an item", "Last line"]);
+    assert_eq!(
+        texts(&wb),
+        ["First line", "- an item", "- an item", "Last line"]
+    );
     // a join of two blocks, written as one: taken back, the two blocks are as they were
-    let r = wb.js(&["block", "set", &id, "3", "--count", "2", "--undo", "- an itemLast line"]);
-    assert_eq!(texts(&wb), ["First line", "- an item", "- an itemLast line"]);
+    let r = wb.js(&[
+        "block",
+        "set",
+        &id,
+        "3",
+        "--count",
+        "2",
+        "--undo",
+        "- an itemLast line",
+    ]);
+    assert_eq!(
+        texts(&wb),
+        ["First line", "- an item", "- an itemLast line"]
+    );
     let token = r["undo"].to_string();
     // the page changed after the join: the token is refused and nothing is written
     wb.js(&["block", "add", &id, "Another"]);
@@ -2783,7 +6324,10 @@ fn a_block_is_copied_below_itself_and_a_join_or_a_copy_can_be_undone() {
     assert_eq!(texts(&wb).len(), 4);
     wb.js(&["block", "rm", &id, "4"]);
     wb.js(&["block", "undo", &id, &token]);
-    assert_eq!(texts(&wb), ["First line", "- an item", "- an item", "Last line"]);
+    assert_eq!(
+        texts(&wb),
+        ["First line", "- an item", "- an item", "Last line"]
+    );
     // a block that is not there cannot be copied
     let (code, _, _) = wb.run(&["block", "dup", &id, "9"], None);
     assert_ne!(code, 0);
@@ -2794,13 +6338,36 @@ fn a_block_gets_a_background_and_goes_beside_another_as_a_column() {
     // notebook rows 25b, 44, 15 and 21 (NB6, NB7): `wb block color` wraps a text block's whole text in a data-bg span (several
     // blocks with --count; scripture is left alone); `wb block move --beside` puts blocks in columns held by comment markers
     let Some(wb) = Wb::new() else { return };
-    let id = wb.js(&["page", "new", "A column page"])["id"].as_str().unwrap().to_string();
-    for t in ["First line", "## A heading", "```scripture\nNum 25:11\n```", "Last line"] {
+    let id = wb.js(&["page", "new", "A column page"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    for t in [
+        "First line",
+        "## A heading",
+        "```scripture\nNum 25:11\n```",
+        "Last line",
+    ] {
         wb.js(&["block", "add", &id, t]);
     }
-    let texts = |wb: &Wb| -> Vec<String> { wb.js(&["page", "blocks", &id])["blocks"].as_array().unwrap().iter().map(|b| b["text"].as_str().unwrap().to_string()).collect() };
+    let texts = |wb: &Wb| -> Vec<String> {
+        wb.js(&["page", "blocks", &id])["blocks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|b| b["text"].as_str().unwrap().to_string())
+            .collect()
+    };
     wb.js(&["block", "color", &id, "1", "yellow", "--count", "4"]);
-    assert_eq!(texts(&wb), ["<span data-bg=\"yellow\">First line</span>", "## <span data-bg=\"yellow\">A heading</span>", "```scripture\nNum 25:11\n```", "<span data-bg=\"yellow\">Last line</span>"]);
+    assert_eq!(
+        texts(&wb),
+        [
+            "<span data-bg=\"yellow\">First line</span>",
+            "## <span data-bg=\"yellow\">A heading</span>",
+            "```scripture\nNum 25:11\n```",
+            "<span data-bg=\"yellow\">Last line</span>"
+        ]
+    );
     let r = wb.js(&["block", "color", &id, "4", "default", "--undo"]);
     assert_eq!(texts(&wb)[3], "Last line");
     wb.js(&["block", "undo", &id, &r["undo"].to_string()]);
@@ -2812,22 +6379,53 @@ fn a_block_gets_a_background_and_goes_beside_another_as_a_column() {
     wb.js(&["block", "color", &id, "1", "default", "--count", "4"]);
     // columns
     wb.js(&["block", "move", &id, "3", "--beside", "1"]);
-    assert_eq!(texts(&wb), ["<!-- columns -->", "First line", "<!-- column -->", "```scripture\nNum 25:11\n```", "<!-- /columns -->", "## A heading", "Last line"]);
+    assert_eq!(
+        texts(&wb),
+        [
+            "<!-- columns -->",
+            "First line",
+            "<!-- column -->",
+            "```scripture\nNum 25:11\n```",
+            "<!-- /columns -->",
+            "## A heading",
+            "Last line"
+        ]
+    );
     wb.js(&["block", "move", &id, "7", "--beside", "2", "--left"]);
     let t = texts(&wb);
-    assert_eq!(t.iter().filter(|x| x.as_str() == "<!-- column -->").count(), 2);
+    assert_eq!(
+        t.iter().filter(|x| x.as_str() == "<!-- column -->").count(),
+        2
+    );
     assert_eq!(t[1], "Last line");
     // blocks taken out of their columns: a column left empty loses its marker, a group left with one column is unwrapped
     let (code, _, _) = wb.run(&["block", "move", &id, "2", "--beside", "2"], None);
     assert_ne!(code, 0, "a block is not beside itself");
     let at = |wb: &Wb, w: &str| (texts(wb).iter().position(|x| x == w).unwrap() + 1).to_string();
     wb.js(&["block", "move", &id, &at(&wb, "First line"), "--last"]);
-    assert_eq!(texts(&wb).iter().filter(|x| x.as_str() == "<!-- column -->").count(), 1);
+    assert_eq!(
+        texts(&wb)
+            .iter()
+            .filter(|x| x.as_str() == "<!-- column -->")
+            .count(),
+        1
+    );
     wb.js(&["block", "move", &id, &at(&wb, "Last line"), "--last"]);
-    assert!(texts(&wb).iter().all(|x| !x.starts_with("<!--")), "no markers left over: {:?}", texts(&wb));
+    assert!(
+        texts(&wb).iter().all(|x| !x.starts_with("<!--")),
+        "no markers left over: {:?}",
+        texts(&wb)
+    );
     assert_eq!(texts(&wb).len(), 4);
     // a block of the group removed on its own (wb block rm) tidies the same way
-    wb.js(&["block", "move", &id, &at(&wb, "First line"), "--beside", &at(&wb, "Last line")]);
+    wb.js(&[
+        "block",
+        "move",
+        &id,
+        &at(&wb, "First line"),
+        "--beside",
+        &at(&wb, "Last line"),
+    ]);
     assert!(texts(&wb).contains(&"<!-- columns -->".to_string()));
     wb.js(&["block", "rm", &id, &at(&wb, "First line")]);
     assert!(texts(&wb).iter().all(|x| !x.starts_with("<!--")));
@@ -2837,13 +6435,26 @@ fn a_block_gets_a_background_and_goes_beside_another_as_a_column() {
 fn a_block_moves_to_the_end_of_another_page() {
     // notebook row 19 (NB9): `wb block move ID N --page OTHER [--count K]` writes the blocks last in the other page, then takes them out
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["page", "new", "Page A"])["id"].as_str().unwrap().to_string();
-    let b = wb.js(&["page", "new", "Page B"])["id"].as_str().unwrap().to_string();
+    let a = wb.js(&["page", "new", "Page A"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = wb.js(&["page", "new", "Page B"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     for t in ["One", "Two", "Three", "Four"] {
         wb.js(&["block", "add", &a, t]);
     }
     wb.js(&["block", "add", &b, "Already here"]);
-    let texts = |id: &str| -> Vec<String> { wb.js(&["page", "blocks", id])["blocks"].as_array().unwrap().iter().map(|x| x["text"].as_str().unwrap().to_string()).collect() };
+    let texts = |id: &str| -> Vec<String> {
+        wb.js(&["page", "blocks", id])["blocks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|x| x["text"].as_str().unwrap().to_string())
+            .collect()
+    };
     wb.js(&["block", "move", &a, "2", "--page", &b]);
     assert_eq!(texts(&a), ["One", "Three", "Four"]);
     assert_eq!(texts(&b), ["Already here", "Two"]);
@@ -2862,8 +6473,14 @@ fn a_block_link_writes_a_short_id_the_window_never_shows_and_the_link_finds_the_
     // notebook row 18 (NB9): `wb block link ID N` writes ` ^abc123` at the end of the block (reused when it has one) and gives
     // `[[Title#^abc123]]`; the block's text in `wb page blocks` has no id, a change of its words keeps it, a copy has none
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["page", "new", "Haste study"])["id"].as_str().unwrap().to_string();
-    let b = wb.js(&["page", "new", "Tuesday study"])["id"].as_str().unwrap().to_string();
+    let a = wb.js(&["page", "new", "Haste study"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = wb.js(&["page", "new", "Tuesday study"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     for t in ["Read the chapter twice before the verses", "Second thought"] {
         wb.js(&["block", "add", &a, t]);
     }
@@ -2871,15 +6488,26 @@ fn a_block_link_writes_a_short_id_the_window_never_shows_and_the_link_finds_the_
     let link = r["link"].as_str().unwrap().to_string();
     let bid = r["block"].as_str().unwrap().to_string();
     assert_eq!(bid.len(), 6);
-    assert!(bid.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()));
+    assert!(bid
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()));
     assert_eq!(link, format!("[[Haste study#^{bid}]]"));
-    assert!(wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains(&format!("Read the chapter twice before the verses ^{bid}")));
+    assert!(wb.js(&["note", "show", &a])["text"]
+        .as_str()
+        .unwrap()
+        .contains(&format!("Read the chapter twice before the verses ^{bid}")));
     let blocks = wb.js(&["page", "blocks", &a]);
-    assert_eq!(blocks["blocks"][0]["text"], "Read the chapter twice before the verses");
+    assert_eq!(
+        blocks["blocks"][0]["text"],
+        "Read the chapter twice before the verses"
+    );
     assert_eq!(blocks["blocks"][0]["bid"], bid.as_str());
     // asked again, the same id; a change of the words keeps it; a copy does not carry it
     assert_eq!(wb.js(&["block", "link", &a, "1"])["block"], bid.as_str());
-    let (_, _, _) = wb.run(&["block", "set", &a, "1", "-"], Some("Read the chapter again"));
+    let (_, _, _) = wb.run(
+        &["block", "set", &a, "1", "-"],
+        Some("Read the chapter again"),
+    );
     assert_eq!(wb.js(&["block", "link", &a, "1"])["block"], bid.as_str());
     wb.js(&["block", "dup", &a, "1"]);
     assert_eq!(wb.js(&["page", "blocks", &a])["blocks"][1].get("bid"), None);
@@ -2887,13 +6515,22 @@ fn a_block_link_writes_a_short_id_the_window_never_shows_and_the_link_finds_the_
     wb.js(&["block", "add", &a, "```scripture\nNum 25:11\n```"]);
     let f = wb.js(&["block", "link", &a, "4"]);
     let fid = f["block"].as_str().unwrap().to_string();
-    assert!(wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains(&format!("```scripture ^{fid}\nNum 25:11\n```")));
+    assert!(wb.js(&["note", "show", &a])["text"]
+        .as_str()
+        .unwrap()
+        .contains(&format!("```scripture ^{fid}\nNum 25:11\n```")));
     let fb = wb.js(&["page", "blocks", &a])["blocks"][3].clone();
     assert_eq!(fb["text"], "```scripture\nNum 25:11\n```");
     assert_eq!(fb["bid"], fid.as_str());
     assert_eq!(fb["lang"], "scripture");
-    let (_, _, _) = wb.run(&["block", "set", &a, "4", "-"], Some("```scripture\nNum 25:12\n```"));
-    assert!(wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains(&format!("```scripture ^{fid}\nNum 25:12\n```")));
+    let (_, _, _) = wb.run(
+        &["block", "set", &a, "4", "-"],
+        Some("```scripture\nNum 25:12\n```"),
+    );
+    assert!(wb.js(&["note", "show", &a])["text"]
+        .as_str()
+        .unwrap()
+        .contains(&format!("```scripture ^{fid}\nNum 25:12\n```")));
     assert_eq!(wb.js(&["block", "link", &a, "4"])["block"], fid.as_str());
     wb.js(&["block", "rm", &a, "4"]);
     // page B holds the link; the page's links name the block and its first words
@@ -2915,44 +6552,107 @@ fn a_block_link_writes_a_short_id_the_window_never_shows_and_the_link_finds_the_
 fn callout_kinds_write_their_marker() {
     // notebook row 22 (NB10): a callout has a kind, written as its marker; `wb block add` writes it, `wb page blocks` reads it
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
-    for (marker, kind) in [("question", "question"), ("done", "done"), ("key", "key"), ("note", "note")] {
-        wb.js(&["block", "add", &a, &format!("> [!{marker}] A {kind} callout")]);
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    for (marker, kind) in [
+        ("question", "question"),
+        ("done", "done"),
+        ("key", "key"),
+        ("note", "note"),
+    ] {
+        wb.js(&[
+            "block",
+            "add",
+            &a,
+            &format!("> [!{marker}] A {kind} callout"),
+        ]);
     }
     let shown = wb.js(&["note", "show", &a]);
     let text = shown["text"].as_str().unwrap();
-    for marker in ["> [!question] A question callout", "> [!done] A done callout", "> [!key] A key callout", "> [!note] A note callout"] {
+    for marker in [
+        "> [!question] A question callout",
+        "> [!done] A done callout",
+        "> [!key] A key callout",
+        "> [!note] A note callout",
+    ] {
         assert!(text.contains(marker), "{marker} in {text}");
     }
     let blocks = wb.js(&["page", "blocks", &a]);
-    let kinds: Vec<(&str, &str)> = blocks["blocks"].as_array().unwrap().iter().map(|b| (b["callout"]["kind"].as_str().unwrap(), b["callout"]["label"].as_str().unwrap())).collect();
-    assert_eq!(kinds, [("question", "Question"), ("done", "Answered"), ("key", "Key point"), ("note", "Note")]);
+    let kinds: Vec<(&str, &str)> = blocks["blocks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|b| {
+            (
+                b["callout"]["kind"].as_str().unwrap(),
+                b["callout"]["label"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            ("question", "Question"),
+            ("done", "Answered"),
+            ("key", "Key point"),
+            ("note", "Note")
+        ]
+    );
     // several lines and a nested list stay in the one block, with the first line and what follows named
-    wb.js(&["block", "add", &a, "> [!key] First line\n> second line\n> - an item\n>   - nested"]);
+    wb.js(&[
+        "block",
+        "add",
+        &a,
+        "> [!key] First line\n> second line\n> - an item\n>   - nested",
+    ]);
     let b = wb.js(&["page", "blocks", &a])["blocks"][4].clone();
     assert_eq!(b["kind"], "quote");
-    assert_eq!((b["callout"]["first"].as_str().unwrap(), b["callout"]["more"].as_u64().unwrap(), b["callout"]["list"].as_bool().unwrap()), ("First line", 3, true));
+    assert_eq!(
+        (
+            b["callout"]["first"].as_str().unwrap(),
+            b["callout"]["more"].as_u64().unwrap(),
+            b["callout"]["list"].as_bool().unwrap()
+        ),
+        ("First line", 3, true)
+    );
 }
 
 #[test]
 fn callout_kind_changes() {
     // notebook row 23 (NB10): `wb callout kind PAGE#N KIND` writes only the marker's word; the lines, the nested list and a link id stay
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["block", "add", &a, "> [!question] Why an everlasting priesthood?\n> read it beside the next\n> - who receives it?\n>   - the seed"]);
     let id = format!("{a}#1");
     let r = wb.js(&["callout", "kind", &id, "answered"]);
-    assert_eq!((r["kind"].as_str().unwrap(), r["label"].as_str().unwrap()), ("done", "Answered"));
-    let text = wb.js(&["note", "show", &a])["text"].as_str().unwrap().to_string();
+    assert_eq!(
+        (r["kind"].as_str().unwrap(), r["label"].as_str().unwrap()),
+        ("done", "Answered")
+    );
+    let text = wb.js(&["note", "show", &a])["text"]
+        .as_str()
+        .unwrap()
+        .to_string();
     assert!(text.contains("> [!done] Why an everlasting priesthood?\n> read it beside the next\n> - who receives it?\n>   - the seed"), "{text}");
     // and back, through a block that has a link id
     let link = wb.js(&["block", "link", &a, "1"]);
     let bid = link["block"].as_str().unwrap().to_string();
     wb.js(&["callout", "kind", &id, "Question"]);
-    let text = wb.js(&["note", "show", &a])["text"].as_str().unwrap().to_string();
+    let text = wb.js(&["note", "show", &a])["text"]
+        .as_str()
+        .unwrap()
+        .to_string();
     assert!(text.contains(&format!("> [!question] Why an everlasting priesthood?\n> read it beside the next\n> - who receives it?\n>   - the seed ^{bid}")), "{text}");
     wb.js(&["callout", "kind", &id, "key point"]);
-    assert_eq!(wb.js(&["page", "blocks", &a])["blocks"][0]["callout"]["kind"], "key");
+    assert_eq!(
+        wb.js(&["page", "blocks", &a])["blocks"][0]["callout"]["kind"],
+        "key"
+    );
     // not a callout, not a kind
     wb.js(&["block", "add", &a, "A plain paragraph"]);
     let (code, _, _) = wb.run(&["callout", "kind", &format!("{a}#2"), "note"], None);
@@ -2966,8 +6666,16 @@ fn old_question_callouts_still_read() {
     // notebook row 24 (NB10): a page that holds `> [!question]` and `> [!done]` shows them as the Question and Answered callouts, and the
     // Questions list still finds them, as before
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["page", "new", "Haste study"])["id"].as_str().unwrap().to_string();
-    wb.js(&["block", "add", &a, "> [!question] Who acts first, and who waits?"]);
+    let a = wb.js(&["page", "new", "Haste study"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    wb.js(&[
+        "block",
+        "add",
+        &a,
+        "> [!question] Who acts first, and who waits?",
+    ]);
     wb.js(&["block", "add", &a, "> [!done] What is promised afterwards?"]);
     let blocks = wb.js(&["page", "blocks", &a]);
     assert_eq!(blocks["blocks"][0]["callout"]["label"], "Question");
@@ -2975,11 +6683,22 @@ fn old_question_callouts_still_read() {
     assert_eq!(blocks["blocks"][0]["question"]["done"], false);
     assert_eq!(blocks["blocks"][1]["question"]["done"], true);
     let open = wb.js(&["question", "list"]);
-    assert!(open["questions"].as_array().unwrap().iter().any(|q| q["text"] == "Who acts first, and who waits?"));
+    assert!(open["questions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|q| q["text"] == "Who acts first, and who waits?"));
     let all = wb.js(&["question", "list", "--status", "all"]);
-    assert!(all["questions"].as_array().unwrap().iter().any(|q| q["text"] == "What is promised afterwards?" && q["status"] == "done"));
+    assert!(all["questions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|q| q["text"] == "What is promised afterwards?" && q["status"] == "done"));
     // the file is untouched by reading it
-    assert!(wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains("> [!done] What is promised afterwards?"));
+    assert!(wb.js(&["note", "show", &a])["text"]
+        .as_str()
+        .unwrap()
+        .contains("> [!done] What is promised afterwards?"));
 }
 
 #[test]
@@ -2987,34 +6706,109 @@ fn callout_kinds_found() {
     // notebook row 46 (NB10): the Questions list filters by kind (question, answered); Key points and Notes are found by the search and by
     // `wb callout list`, each with its page and first line, a callout of several lines named as such
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
-    let b = wb.js(&["page", "new", "Haste study"])["id"].as_str().unwrap().to_string();
-    wb.js(&["block", "add", &a, "> [!question] Why an everlasting priesthood?\n> read it twice\n> - who receives it?"]);
-    wb.js(&["block", "add", &a, "> [!key] The covenant is given to him and to his seed after him."]);
-    wb.js(&["block", "add", &a, "> [!note] Read the YLT of verse 13 next."]);
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = wb.js(&["page", "new", "Haste study"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    wb.js(&[
+        "block",
+        "add",
+        &a,
+        "> [!question] Why an everlasting priesthood?\n> read it twice\n> - who receives it?",
+    ]);
+    wb.js(&[
+        "block",
+        "add",
+        &a,
+        "> [!key] The covenant is given to him and to his seed after him.",
+    ]);
+    wb.js(&[
+        "block",
+        "add",
+        &a,
+        "> [!note] Read the YLT of verse 13 next.",
+    ]);
     wb.js(&["block", "add", &b, "> [!done] What is promised afterwards?"]);
-    wb.js(&["block", "add", &b, "> [!key] Wait for the word before acting."]);
+    wb.js(&[
+        "block",
+        "add",
+        &b,
+        "> [!key] Wait for the word before acting.",
+    ]);
     let qs = wb.js(&["question", "list", "--kind", "question"]);
-    let q = qs["questions"].as_array().unwrap().iter().find(|q| q["first"] == "Why an everlasting priesthood?").unwrap().clone();
-    assert_eq!((q["more_lines"].as_u64().unwrap(), q["has_list"].as_bool().unwrap(), q["page_title"].as_str().unwrap()), (2, true, "Zeal in Numbers 25"));
-    assert!(qs["questions"].as_array().unwrap().iter().all(|q| q["status"] == "open"));
+    let q = qs["questions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|q| q["first"] == "Why an everlasting priesthood?")
+        .unwrap()
+        .clone();
+    assert_eq!(
+        (
+            q["more_lines"].as_u64().unwrap(),
+            q["has_list"].as_bool().unwrap(),
+            q["page_title"].as_str().unwrap()
+        ),
+        (2, true, "Zeal in Numbers 25")
+    );
+    assert!(qs["questions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|q| q["status"] == "open"));
     let done = wb.js(&["question", "list", "--kind", "answered"]);
-    assert!(done["questions"].as_array().unwrap().iter().any(|q| q["text"] == "What is promised afterwards?"));
-    assert!(done["questions"].as_array().unwrap().iter().all(|q| q["status"] == "done"));
+    assert!(done["questions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|q| q["text"] == "What is promised afterwards?"));
+    assert!(done["questions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|q| q["status"] == "done"));
     let keys = wb.js(&["callout", "list", "--kind", "key"]);
     let rows = keys["callouts"].as_array().unwrap();
     assert_eq!(rows.len(), 2);
-    assert!(rows.iter().all(|r| r["kind"] == "key" && r["label"] == "Key point"));
-    assert!(rows.iter().any(|r| r["first"] == "Wait for the word before acting." && r["page_title"] == "Haste study"));
+    assert!(rows
+        .iter()
+        .all(|r| r["kind"] == "key" && r["label"] == "Key point"));
+    assert!(rows
+        .iter()
+        .any(|r| r["first"] == "Wait for the word before acting."
+            && r["page_title"] == "Haste study"));
     assert_eq!(keys["counts"]["note"], 1);
-    assert_eq!(wb.js(&["callout", "list", "--page", &a])["callouts"].as_array().unwrap().len(), 3);
+    assert_eq!(
+        wb.js(&["callout", "list", "--page", &a])["callouts"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
     // the one search groups them as Key points and Notes
     let found = wb.js(&["find", "key point", "--sort", "edited"]);
-    let g = found["groups"].as_array().unwrap().iter().find(|g| g["kind"] == "key").unwrap().clone();
+    let g = found["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["kind"] == "key")
+        .unwrap()
+        .clone();
     assert_eq!(g["count"], 2);
-    assert!(g["results"].as_array().unwrap().iter().all(|r| r["snippet"].is_string()));
+    assert!(g["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["snippet"].is_string()));
     let notes = wb.js(&["find", "ylt", "--kind", "note"]);
-    assert_eq!(notes["groups"][0]["results"][0]["title"], "Read the YLT of verse 13 next.");
+    assert_eq!(
+        notes["groups"][0]["results"][0]["title"],
+        "Read the YLT of verse 13 next."
+    );
 }
 
 #[test]
@@ -3022,46 +6816,112 @@ fn appearance_changes_at_once() {
     // notebook rows 31 and 45 (NB11): `wb page look` keeps Font, Small text, Full width and Table of contents in settings/pages.json, not in
     // the page; a choice at its default is not written; another page's choices stay
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
-    let b = wb.js(&["page", "new", "Tuesday study"])["id"].as_str().unwrap().to_string();
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = wb.js(&["page", "new", "Tuesday study"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     let start = wb.js(&["page", "look", &a]);
-    assert_eq!((start["font"].as_str().unwrap(), start["toc"].as_bool().unwrap(), start["locked"].as_bool().unwrap()), ("default", false, false));
-    let r = wb.js(&["page", "look", &a, "--font", "serif", "--toc", "on", "--small-text", "on"]);
-    assert_eq!((r["font"].as_str().unwrap(), r["toc"].as_bool().unwrap(), r["small_text"].as_bool().unwrap(), r["full_width"].as_bool().unwrap()), ("serif", true, true, false));
+    assert_eq!(
+        (
+            start["font"].as_str().unwrap(),
+            start["toc"].as_bool().unwrap(),
+            start["locked"].as_bool().unwrap()
+        ),
+        ("default", false, false)
+    );
+    let r = wb.js(&[
+        "page",
+        "look",
+        &a,
+        "--font",
+        "serif",
+        "--toc",
+        "on",
+        "--small-text",
+        "on",
+    ]);
+    assert_eq!(
+        (
+            r["font"].as_str().unwrap(),
+            r["toc"].as_bool().unwrap(),
+            r["small_text"].as_bool().unwrap(),
+            r["full_width"].as_bool().unwrap()
+        ),
+        ("serif", true, true, false)
+    );
     wb.js(&["page", "look", &b, "--full-width", "on"]);
     // one choice changes alone; the others are kept
     let r = wb.js(&["page", "look", &a, "--font", "default"]);
-    assert_eq!((r["font"].as_str().unwrap(), r["toc"].as_bool().unwrap(), r["small_text"].as_bool().unwrap()), ("default", true, true));
-    let file = || -> Value { serde_json::from_str(&std::fs::read_to_string(wb.dir.join("settings").join("pages.json")).unwrap()).unwrap() };
+    assert_eq!(
+        (
+            r["font"].as_str().unwrap(),
+            r["toc"].as_bool().unwrap(),
+            r["small_text"].as_bool().unwrap()
+        ),
+        ("default", true, true)
+    );
+    let file = || -> Value {
+        serde_json::from_str(
+            &std::fs::read_to_string(wb.dir.join("settings").join("pages.json")).unwrap(),
+        )
+        .unwrap()
+    };
     assert_eq!(file()["look"][&a], json!({"small_text": true, "toc": true}));
     assert_eq!(file()["look"][&b], json!({"full_width": true}));
-    assert!(!wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains("serif"));
+    assert!(!wb.js(&["note", "show", &a])["text"]
+        .as_str()
+        .unwrap()
+        .contains("serif"));
     // back to the defaults: the page has no entry
     wb.js(&["page", "look", &a, "--small-text", "off", "--toc", "off"]);
     assert!(file()["look"].get(&a).is_none());
-    assert!(wb.fails(&["page", "look", &a, "--font", "mono"]).contains("serif"));
-    assert!(wb.fails(&["page", "look", &a, "--toc", "maybe"]).contains("on or off"));
+    assert!(wb
+        .fails(&["page", "look", &a, "--font", "mono"])
+        .contains("serif"));
+    assert!(wb
+        .fails(&["page", "look", &a, "--toc", "maybe"])
+        .contains("on or off"));
 }
 
 #[test]
 fn locked_page_does_not_edit() {
     // notebook row 32 (NB11): `wb page lock ID on|off` is kept with the page's view choices; the page's other choices survive it
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["page", "look", &a, "--font", "serif"]);
     assert_eq!(wb.js(&["page", "lock", &a])["locked"], false);
     let r = wb.js(&["page", "lock", &a, "on"]);
-    assert_eq!((r["locked"].as_bool().unwrap(), r["font"].as_str().unwrap()), (true, "serif"));
-    let file: Value = serde_json::from_str(&std::fs::read_to_string(wb.dir.join("settings").join("pages.json")).unwrap()).unwrap();
+    assert_eq!(
+        (r["locked"].as_bool().unwrap(), r["font"].as_str().unwrap()),
+        (true, "serif")
+    );
+    let file: Value = serde_json::from_str(
+        &std::fs::read_to_string(wb.dir.join("settings").join("pages.json")).unwrap(),
+    )
+    .unwrap();
     assert_eq!(file["look"][&a], json!({"locked": true, "font": "serif"}));
     assert_eq!(wb.js(&["page", "look", &a])["locked"], true);
     // locking is the window's: wb still writes the file
     wb.js(&["block", "add", &a, "Written from a terminal"]);
-    assert!(wb.js(&["note", "show", &a])["text"].as_str().unwrap().contains("Written from a terminal"));
+    assert!(wb.js(&["note", "show", &a])["text"]
+        .as_str()
+        .unwrap()
+        .contains("Written from a terminal"));
     assert_eq!(wb.js(&["page", "lock", &a, "off"])["locked"], false);
     assert_eq!(wb.js(&["page", "look", &a])["font"], "serif");
-    assert!(wb.fails(&["page", "lock", &a, "maybe"]).contains("on or off"));
-    assert!(wb.fails(&["page", "lock", "nope-nope", "on"]).contains("No note"));
+    assert!(wb
+        .fails(&["page", "lock", &a, "maybe"])
+        .contains("on or off"));
+    assert!(wb
+        .fails(&["page", "lock", "nope-nope", "on"])
+        .contains("No note"));
 }
 
 #[test]
@@ -3069,8 +6929,16 @@ fn copy_contents_expands_scripture() {
     // notebook row 33 (NB11): `wb page text` is the page's Markdown with each scripture block written out from the Bible verbatim, with its
     // reference; the file holds only the reference, and a link id is not copied
     let Some(wb) = Wb::new() else { return };
-    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
-    wb.js(&["block", "add", &a, "Where the word first appears in this story:"]);
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    wb.js(&[
+        "block",
+        "add",
+        &a,
+        "Where the word first appears in this story:",
+    ]);
     wb.js(&["block", "add", &a, "Num 25:11-13", "--scripture"]);
     wb.js(&["block", "add", &a, "After the passage"]);
     wb.js(&["block", "link", &a, "3"]);
@@ -3078,8 +6946,16 @@ fn copy_contents_expands_scripture() {
     let verses = r["verses"].as_array().unwrap();
     assert_eq!(verses.len(), 3);
     let out = wb.ok(&["page", "text", &a]);
-    assert!(out.starts_with("# Zeal in Numbers 25\n\nWhere the word first appears in this story:\n\n**"), "{out}");
-    assert!(out.contains(&format!("**{}** (KJV)", r["label"].as_str().unwrap())), "{out}");
+    assert!(
+        out.starts_with(
+            "# Zeal in Numbers 25\n\nWhere the word first appears in this story:\n\n**"
+        ),
+        "{out}"
+    );
+    assert!(
+        out.contains(&format!("**{}** (KJV)", r["label"].as_str().unwrap())),
+        "{out}"
+    );
     for v in verses {
         let line = format!("> {} {}", v["v"], v["text"].as_str().unwrap().trim());
         assert!(out.contains(&line), "{line} not in {out}");
@@ -3087,9 +6963,18 @@ fn copy_contents_expands_scripture() {
     assert!(out.trim_end().ends_with("After the passage"), "{out}");
     assert!(!out.contains('^') && !out.contains("```"), "{out}");
     // the file itself still holds only the reference
-    let file = wb.js(&["note", "show", &a])["text"].as_str().unwrap().to_string();
-    assert!(file.contains("```scripture") && !file.contains(verses[0]["text"].as_str().unwrap().trim()), "{file}");
-    assert_eq!(wb.js(&["page", "text", &a, "--json"])["text"], out.trim_end_matches('\n'));
+    let file = wb.js(&["note", "show", &a])["text"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        file.contains("```scripture") && !file.contains(verses[0]["text"].as_str().unwrap().trim()),
+        "{file}"
+    );
+    assert_eq!(
+        wb.js(&["page", "text", &a, "--json"])["text"],
+        out.trim_end_matches('\n')
+    );
 }
 
 #[test]
@@ -3097,38 +6982,156 @@ fn quick_search_preview_and_recents() {
     // notebook rows 34 and 35 (NB13): Ctrl+K's one search gives folders with their color and page count, pages with the folder they are in and
     // what they hold (a list, callouts, a table), and Key points; Recents are the last pages opened, newest first, read from the trail
     let Some(wb) = Wb::new() else { return };
-    wb.js(&["thread", "new", "Phinehas", "--at", "Num 25:11", "--color", "orange"]);
+    wb.js(&[
+        "thread",
+        "new",
+        "Phinehas",
+        "--at",
+        "Num 25:11",
+        "--color",
+        "orange",
+    ]);
     wb.js(&["thread", "new", "Phinehas echoes", "--color", "blue"]);
-    let a = wb.js(&["page", "new", "Tuesday study\n\n- first item\n- second item"])["id"].as_str().unwrap().to_string();
-    let b = wb.js(&["page", "new", "Questions for Tuesday\n\n> [!question] Who acts first?"])["id"].as_str().unwrap().to_string();
-    let c = wb.js(&["page", "new", "Word studies index\n\n| Title | Folder |\n| --- | --- |\n| Zeal | Word studies |"])["id"].as_str().unwrap().to_string();
+    let a = wb.js(&[
+        "page",
+        "new",
+        "Tuesday study\n\n- first item\n- second item",
+    ])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = wb.js(&[
+        "page",
+        "new",
+        "Questions for Tuesday\n\n> [!question] Who acts first?",
+    ])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let c = wb.js(&[
+        "page",
+        "new",
+        "Word studies index\n\n| Title | Folder |\n| --- | --- |\n| Zeal | Word studies |",
+    ])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["note", "thread", &a, "Phinehas"]);
     let found = wb.js(&["find", "tuesday", "--sort", "edited"]);
-    let pages = found["groups"].as_array().unwrap().iter().find(|g| g["kind"] == "page").unwrap()["results"].as_array().unwrap().clone();
+    let pages = found["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["kind"] == "page")
+        .unwrap()["results"]
+        .as_array()
+        .unwrap()
+        .clone();
     let of = |title: &str| pages.iter().find(|p| p["title"] == title).unwrap().clone();
-    assert_eq!((of("Tuesday study")["has"].as_str().unwrap(), of("Tuesday study")["folder"].as_str().unwrap()), ("a list", "Phinehas"));
+    assert_eq!(
+        (
+            of("Tuesday study")["has"].as_str().unwrap(),
+            of("Tuesday study")["folder"].as_str().unwrap()
+        ),
+        ("a list", "Phinehas")
+    );
     assert_eq!(of("Questions for Tuesday")["has"], "callouts");
     let t = wb.js(&["find", "index", "--sort", "edited"]);
-    let idx = t["groups"].as_array().unwrap().iter().find(|g| g["kind"] == "page").unwrap()["results"][0].clone();
+    let idx = t["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["kind"] == "page")
+        .unwrap()["results"][0]
+        .clone();
     assert_eq!(idx["has"], "a table");
     // folders: color and how many pages and saves
     let f = wb.js(&["find", "phin", "--kind", "folder"]);
     let rows = f["groups"][0]["results"].as_array().unwrap().clone();
     let ph = rows.iter().find(|r| r["title"] == "Phinehas").unwrap();
-    assert_eq!((ph["color"].as_str().unwrap(), ph["pages"].as_u64().unwrap(), ph["saves"].as_u64().unwrap(), ph["count"].as_u64().unwrap()), ("orange", 1, 1, 2));
-    assert_eq!(rows.iter().find(|r| r["title"] == "Phinehas echoes").unwrap()["color"], "blue");
+    assert_eq!(
+        (
+            ph["color"].as_str().unwrap(),
+            ph["pages"].as_u64().unwrap(),
+            ph["saves"].as_u64().unwrap(),
+            ph["count"].as_u64().unwrap()
+        ),
+        ("orange", 1, 1, 2)
+    );
+    assert_eq!(
+        rows.iter()
+            .find(|r| r["title"] == "Phinehas echoes")
+            .unwrap()["color"],
+        "blue"
+    );
     // Recents: only pages opened, newest first, each once, at most the limit; a gone page is left out
-    for (id, title) in [(&a, "Tuesday study"), (&b, "Questions for Tuesday"), (&c, "Word studies index"), (&a, "Tuesday study")] {
-        wb.js(&["history", "add", "page", title, "--line", &format!("page {id}")]);
+    for (id, title) in [
+        (&a, "Tuesday study"),
+        (&b, "Questions for Tuesday"),
+        (&c, "Word studies index"),
+        (&a, "Tuesday study"),
+    ] {
+        wb.js(&[
+            "history",
+            "add",
+            "page",
+            title,
+            "--line",
+            &format!("page {id}"),
+        ]);
     }
-    wb.js(&["history", "add", "verse", "Numbers 25", "--line", "Numbers 25"]);
+    wb.js(&[
+        "history",
+        "add",
+        "verse",
+        "Numbers 25",
+        "--line",
+        "Numbers 25",
+    ]);
     let r = wb.js(&["page", "recents"]);
-    let titles: Vec<&str> = r["recents"].as_array().unwrap().iter().map(|x| x["title"].as_str().unwrap()).collect();
-    assert_eq!(titles, ["Tuesday study", "Word studies index", "Questions for Tuesday"]);
-    assert_eq!(wb.js(&["page", "recents", "--limit", "2"])["recents"].as_array().unwrap().len(), 2);
-    assert_eq!(wb.js(&["notebook", "sidebar"])["recents"].as_array().unwrap().len(), 3);
-    wb.js(&["history", "add", "page", "Gone", "--line", "page n_nosuchpage"]);
-    assert_eq!(wb.js(&["page", "recents"])["recents"].as_array().unwrap().len(), 3);
+    let titles: Vec<&str> = r["recents"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x["title"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        titles,
+        [
+            "Tuesday study",
+            "Word studies index",
+            "Questions for Tuesday"
+        ]
+    );
+    assert_eq!(
+        wb.js(&["page", "recents", "--limit", "2"])["recents"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        wb.js(&["notebook", "sidebar"])["recents"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
+    wb.js(&[
+        "history",
+        "add",
+        "page",
+        "Gone",
+        "--line",
+        "page n_nosuchpage",
+    ]);
+    assert_eq!(
+        wb.js(&["page", "recents"])["recents"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
 }
 
 #[test]
@@ -3136,11 +7139,20 @@ fn folder_color_dots_its_pages() {
     // notebook row 26 (NB13): a folder's color is the one organizing color; its pages carry it as `dot` in the tree and in `note show`'s threads
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Phinehas"]);
-    let p = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
+    let p = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["note", "thread", &p, "Phinehas"]);
     let dot = |wb: &Wb| -> Value {
         let tree = wb.js(&["page", "tree"]);
-        let folder = tree["pages"].as_array().unwrap().iter().find(|r| r["title"] == "Phinehas").unwrap().clone();
+        let folder = tree["pages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["title"] == "Phinehas")
+            .unwrap()
+            .clone();
         assert!(folder["dot"].is_null());
         folder["children"][0]["dot"].clone()
     };
@@ -3148,7 +7160,10 @@ fn folder_color_dots_its_pages() {
     let r = wb.js(&["folder", "color", "Phinehas", "orange"]);
     assert_eq!(r["color"], "orange");
     assert_eq!(dot(&wb), "orange");
-    assert_eq!(wb.js(&["note", "show", &p])["threads"][0]["color"], "orange");
+    assert_eq!(
+        wb.js(&["note", "show", &p])["threads"][0]["color"],
+        "orange"
+    );
     // none takes it off again; nothing is added to any list of colors
     wb.js(&["folder", "color", "Phinehas", "none"]);
     assert!(dot(&wb).is_null());
@@ -3162,54 +7177,139 @@ fn list_in_a_page_folder_as_database() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Word studies"]);
     wb.js(&["folder", "color", "Word studies", "pink"]);
-    let index = wb.js(&["page", "new", "Word studies index"])["id"].as_str().unwrap().to_string();
-    let zeal = wb.js(&["page", "new", "Zeal"])["id"].as_str().unwrap().to_string();
-    let haste = wb.js(&["page", "new", "Haste"])["id"].as_str().unwrap().to_string();
+    let index = wb.js(&["page", "new", "Word studies index"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let zeal = wb.js(&["page", "new", "Zeal"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let haste = wb.js(&["page", "new", "Haste"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["page", "new", "Not in the folder"]);
     for id in [&zeal, &haste] {
         wb.js(&["note", "thread", id, "Word studies"]);
     }
-    wb.js(&["block", "add", &index, "```view\nnotebook thread word-studies\n```"]);
+    wb.js(&[
+        "block",
+        "add",
+        &index,
+        "```view\nnotebook thread word-studies\n```",
+    ]);
     let views = |wb: &Wb| wb.js(&["page", "views", &index])["blocks"][0].clone();
     let v = views(&wb);
-    assert_eq!((v["view"].as_str().unwrap(), v["count"].as_u64().unwrap()), ("table", 2));
+    assert_eq!(
+        (v["view"].as_str().unwrap(), v["count"].as_u64().unwrap()),
+        ("table", 2)
+    );
     assert_eq!(v["folder"]["name"], "Word studies");
-    assert!(v["rows"].as_array().unwrap().iter().all(|r| r["props"].as_object().unwrap().is_empty()));
+    assert!(v["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["props"].as_object().unwrap().is_empty()));
     // a property is a column: set on a page, kept in its front matter, read by the list
     let r = wb.js(&["page", "prop", &zeal, "Status", "Open"]);
     assert_eq!(r["props"]["Status"], "Open");
     wb.js(&["page", "prop", &zeal, "Book", "Numbers"]);
     wb.js(&["page", "prop", &haste, "Book", "Proverbs"]);
-    let mut files = vec![]; let mut dirs = vec![wb.dir.join("notes")]; while let Some(d) = dirs.pop() { for e in std::fs::read_dir(d).unwrap().flatten() { if e.path().is_dir() { dirs.push(e.path()) } else { files.push(e.path()) } } }
-    let file = files.iter().map(|f| std::fs::read_to_string(f).unwrap()).find(|t| t.contains("Numbers")).unwrap();
-    assert!(file.contains("props: {\"Status\": \"Open\", \"Book\": \"Numbers\"}"), "{file}");
+    let mut files = vec![];
+    let mut dirs = vec![wb.dir.join("notes")];
+    while let Some(d) = dirs.pop() {
+        for e in std::fs::read_dir(d).unwrap().flatten() {
+            if e.path().is_dir() {
+                dirs.push(e.path())
+            } else {
+                files.push(e.path())
+            }
+        }
+    }
+    let file = files
+        .iter()
+        .map(|f| std::fs::read_to_string(f).unwrap())
+        .find(|t| t.contains("Numbers"))
+        .unwrap();
+    assert!(
+        file.contains("props: {\"Status\": \"Open\", \"Book\": \"Numbers\"}"),
+        "{file}"
+    );
     assert!(file.contains("Zeal"));
     let v = views(&wb);
     assert_eq!(v["properties"], json!(["Book", "Status"]));
-    let row = v["rows"].as_array().unwrap().iter().find(|r| r["title"] == "Zeal").unwrap().clone();
-    assert_eq!((row["props"]["Status"].as_str().unwrap(), row["props"]["Book"].as_str().unwrap()), ("Open", "Numbers"));
-    let other = v["rows"].as_array().unwrap().iter().find(|r| r["title"] == "Haste").unwrap().clone();
+    let row = v["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["title"] == "Zeal")
+        .unwrap()
+        .clone();
+    assert_eq!(
+        (
+            row["props"]["Status"].as_str().unwrap(),
+            row["props"]["Book"].as_str().unwrap()
+        ),
+        ("Open", "Numbers")
+    );
+    let other = v["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["title"] == "Haste")
+        .unwrap()
+        .clone();
     assert!(other["props"].get("Status").is_none());
     // + Property: a column with no values yet is a name in the fence; the page's own text is not touched
-    wb.js(&["block", "view", &index, "1", "--columns", "Status, Book, Reviewed"]);
+    wb.js(&[
+        "block",
+        "view",
+        &index,
+        "1",
+        "--columns",
+        "Status, Book, Reviewed",
+    ]);
     let v = views(&wb);
     assert_eq!(v["columns"], json!(["Status", "Book", "Reviewed"]));
-    assert!(v["properties"].as_array().unwrap().iter().any(|p| p == "Reviewed"));
-    let text = wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
-    assert!(text.contains("```view\nnotebook thread word-studies\ncolumns: Status, Book, Reviewed\n```"), "{text}");
+    assert!(v["properties"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|p| p == "Reviewed"));
+    let text = wb.js(&["note", "show", &index])["text"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        text.contains(
+            "```view\nnotebook thread word-studies\ncolumns: Status, Book, Reviewed\n```"
+        ),
+        "{text}"
+    );
     // + New page: a page written on the folder is a row at once; a change of the line keeps the options
-    let new = wb.js(&["page", "new", "Courage", "--parent", "thread:word-studies"])["id"].as_str().unwrap().to_string();
+    let new = wb.js(&["page", "new", "Courage", "--parent", "thread:word-studies"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     assert_eq!(views(&wb)["count"], 3);
     wb.js(&["block", "view", &index, "1", "notebook thread word-studies"]);
     assert_eq!(views(&wb)["columns"], json!(["Status", "Book", "Reviewed"]));
     // a value taken away; moving a page keeps its properties
     wb.js(&["page", "prop", &new, "Status", "Done"]);
     wb.js(&["page", "prop", &new, "Status", "--remove"]);
-    assert!(wb.js(&["page", "prop", &new])["props"].as_object().unwrap().is_empty());
+    assert!(wb.js(&["page", "prop", &new])["props"]
+        .as_object()
+        .unwrap()
+        .is_empty());
     wb.js(&["page", "move", &zeal, "--parent", &haste]);
     assert_eq!(wb.js(&["page", "prop", &zeal])["props"]["Book"], "Numbers");
-    assert!(wb.fails(&["page", "prop", &zeal, "Edited", "x"]).contains("already a column"));
-    assert!(wb.fails(&["page", "prop", &zeal, "a:b", "x"]).contains("plain words"));
+    assert!(wb
+        .fails(&["page", "prop", &zeal, "Edited", "x"])
+        .contains("already a column"));
+    assert!(wb
+        .fails(&["page", "prop", &zeal, "a:b", "x"])
+        .contains("plain words"));
 }
 
 #[test]
@@ -3221,22 +7321,56 @@ fn list_views_and_group_by() {
     wb.js(&["folder", "color", "Phinehas", "orange"]);
     wb.js(&["thread", "new", "Salt"]);
     wb.js(&["folder", "color", "Salt", "green"]);
-    let index = wb.js(&["page", "new", "Word studies index"])["id"].as_str().unwrap().to_string();
-    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"].as_str().unwrap().to_string();
-    let b = wb.js(&["page", "new", "Haste study"])["id"].as_str().unwrap().to_string();
-    let c = wb.js(&["page", "new", "Prayer list"])["id"].as_str().unwrap().to_string();
+    let index = wb.js(&["page", "new", "Word studies index"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let a = wb.js(&["page", "new", "Zeal in Numbers 25"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = wb.js(&["page", "new", "Haste study"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let c = wb.js(&["page", "new", "Prayer list"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["note", "thread", &a, "Phinehas"]);
     wb.js(&["note", "thread", &b, "Salt"]);
-    wb.js(&["block", "add", &a, "> [!key] The covenant is given to him and to his seed after him."]);
-    wb.js(&["block", "add", &a, "> [!note] Read the YLT of verse 13 next."]);
-    wb.js(&["block", "add", &b, "> [!key] Wait for the word before acting."]);
+    wb.js(&[
+        "block",
+        "add",
+        &a,
+        "> [!key] The covenant is given to him and to his seed after him.",
+    ]);
+    wb.js(&[
+        "block",
+        "add",
+        &a,
+        "> [!note] Read the YLT of verse 13 next.",
+    ]);
+    wb.js(&[
+        "block",
+        "add",
+        &b,
+        "> [!key] Wait for the word before acting.",
+    ]);
     wb.js(&["block", "add", &b, "> [!question] Who waits?"]);
     wb.js(&["page", "prop", &a, "Status", "Open"]);
     wb.js(&["page", "prop", &b, "Status", "Done"]);
     wb.js(&["page", "prop", &c, "Status", "Open"]);
     wb.js(&["block", "add", &index, "```view\nnotebook kind note\n```"]);
     let views = |wb: &Wb| wb.js(&["page", "views", &index])["blocks"][0].clone();
-    let titles = |v: &Value| -> Vec<String> { v["rows"].as_array().unwrap().iter().map(|r| r["title"].as_str().unwrap().to_string()).collect() };
+    let titles = |v: &Value| -> Vec<String> {
+        v["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["title"].as_str().unwrap().to_string())
+            .collect()
+    };
     assert_eq!(views(&wb)["view"], "table");
     assert!(views(&wb)["groups"].is_null());
     for view in ["list", "gallery", "board", "table"] {
@@ -3244,9 +7378,15 @@ fn list_views_and_group_by() {
         assert!(r.is_object());
         assert_eq!(views(&wb)["view"], view);
     }
-    assert!(wb.fails(&["block", "view", &index, "1", "--view", "calendar"]).contains("later"));
-    assert!(wb.fails(&["block", "view", &index, "1", "--view", "cards"]).contains("table, list, gallery or board"));
-    assert!(wb.fails(&["block", "view", &index, "1"]).contains("Give the view's line"));
+    assert!(wb
+        .fails(&["block", "view", &index, "1", "--view", "calendar"])
+        .contains("later"));
+    assert!(wb
+        .fails(&["block", "view", &index, "1", "--view", "cards"])
+        .contains("table, list, gallery or board"));
+    assert!(wb
+        .fails(&["block", "view", &index, "1"])
+        .contains("Give the view's line"));
     // sort
     wb.js(&["block", "view", &index, "1", "--sort", "title"]);
     let t = titles(&views(&wb));
@@ -3257,28 +7397,73 @@ fn list_views_and_group_by() {
     wb.js(&["block", "view", &index, "1", "--group", "folder"]);
     let v = views(&wb);
     let groups = v["groups"].as_array().unwrap();
-    let names: Vec<(&str, u64)> = groups.iter().map(|g| (g["label"].as_str().unwrap(), g["count"].as_u64().unwrap())).collect();
-    assert!(names.contains(&("Phinehas", 1)) && names.contains(&("Salt", 1)), "{names:?} {v}");
+    let names: Vec<(&str, u64)> = groups
+        .iter()
+        .map(|g| (g["label"].as_str().unwrap(), g["count"].as_u64().unwrap()))
+        .collect();
+    assert!(
+        names.contains(&("Phinehas", 1)) && names.contains(&("Salt", 1)),
+        "{names:?} {v}"
+    );
     assert_eq!(groups.last().unwrap()["label"], "Pages");
-    assert_eq!(groups.iter().find(|g| g["label"] == "Phinehas").unwrap()["color"], "orange");
+    assert_eq!(
+        groups.iter().find(|g| g["label"] == "Phinehas").unwrap()["color"],
+        "orange"
+    );
     // group by a property
     wb.js(&["block", "view", &index, "1", "--group", "Status"]);
     let v = views(&wb);
-    let g = |label: &str| v["groups"].as_array().unwrap().iter().find(|g| g["label"] == label).map(|g| g["count"].as_u64().unwrap());
+    let g = |label: &str| {
+        v["groups"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|g| g["label"] == label)
+            .map(|g| g["count"].as_u64().unwrap())
+    };
     assert_eq!((g("Open"), g("Done")), (Some(2), Some(1)));
     // group by callout kind (row 46d): Key point and Note as headings, each callout a row with its page
-    wb.js(&["block", "view", &index, "1", "--group", "callout", "--view", "list"]);
+    wb.js(&[
+        "block", "view", &index, "1", "--group", "callout", "--view", "list",
+    ]);
     let v = views(&wb);
     assert_eq!(v["rows_are"], "callouts");
-    let kinds: Vec<(&str, u64)> = v["groups"].as_array().unwrap().iter().map(|g| (g["label"].as_str().unwrap(), g["count"].as_u64().unwrap())).collect();
+    let kinds: Vec<(&str, u64)> = v["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| (g["label"].as_str().unwrap(), g["count"].as_u64().unwrap()))
+        .collect();
     assert_eq!(kinds, vec![("Question", 1), ("Key point", 2), ("Note", 1)]);
-    let key = v["groups"].as_array().unwrap().iter().find(|g| g["key"] == "key").unwrap().clone();
-    assert!(key["rows"].as_array().unwrap().iter().any(|r| r["first"] == "Wait for the word before acting." && r["page_title"] == "Haste study"));
+    let key = v["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["key"] == "key")
+        .unwrap()
+        .clone();
+    assert!(key["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["first"] == "Wait for the word before acting."
+            && r["page_title"] == "Haste study"));
     // the fence holds the line first, then one option a line; none takes them away
-    let text = wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
-    assert!(text.contains("```view\nnotebook kind note\nview: list\ngroup: callout\nsort: title\n```"), "{text}");
-    wb.js(&["block", "view", &index, "1", "--group", "none", "--view", "", "--sort", ""]);
-    let text = wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
+    let text = wb.js(&["note", "show", &index])["text"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        text.contains("```view\nnotebook kind note\nview: list\ngroup: callout\nsort: title\n```"),
+        "{text}"
+    );
+    wb.js(&[
+        "block", "view", &index, "1", "--group", "none", "--view", "", "--sort", "",
+    ]);
+    let text = wb.js(&["note", "show", &index])["text"]
+        .as_str()
+        .unwrap()
+        .to_string();
     assert!(text.contains("```view\nnotebook kind note\n```"), "{text}");
 }
 
@@ -3287,11 +7472,28 @@ fn plain_table_add_row_column() {
     // notebook row 48 (NB14): a Table is a plain Markdown table written with `wb block add`; a row at the foot or a column at the right is the
     // same block written again (`wb block set`); nothing in it is linked, and the page text stays a Markdown table
     let Some(wb) = Wb::new() else { return };
-    let p = wb.js(&["page", "new", "Tuesday study"])["id"].as_str().unwrap().to_string();
-    wb.js(&["block", "add", &p, "| Who | Acts |\n| --- | --- |\n| Phinehas | rose up |"]);
+    let p = wb.js(&["page", "new", "Tuesday study"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    wb.js(&[
+        "block",
+        "add",
+        &p,
+        "| Who | Acts |\n| --- | --- |\n| Phinehas | rose up |",
+    ]);
     assert_eq!(wb.js(&["page", "blocks", &p])["blocks"][0]["kind"], "table");
-    wb.js(&["block", "set", &p, "1", "| Who | Acts | Promise |\n| --- | --- | --- |\n| Phinehas | rose up |  |\n| Moses |  |  |"]);
-    let text = wb.js(&["note", "show", &p])["text"].as_str().unwrap().to_string();
+    wb.js(&[
+        "block",
+        "set",
+        &p,
+        "1",
+        "| Who | Acts | Promise |\n| --- | --- | --- |\n| Phinehas | rose up |  |\n| Moses |  |  |",
+    ]);
+    let text = wb.js(&["note", "show", &p])["text"]
+        .as_str()
+        .unwrap()
+        .to_string();
     assert!(text.contains("| Who | Acts | Promise |\n| --- | --- | --- |\n| Phinehas | rose up |  |\n| Moses |  |  |"), "{text}");
     assert_eq!(wb.js(&["page", "blocks", &p])["blocks"][0]["kind"], "table");
 }
@@ -3306,7 +7508,19 @@ fn age_page(wb: &Wb, id: &str, day: &str) {
                 dirs.push(p);
             } else if let Ok(t) = std::fs::read_to_string(&p) {
                 if t.contains(&format!("id: \"{id}\"")) {
-                    let t = t.lines().map(|l| if l.starts_with("created:") { format!("created: \"{day}T10:00:00Z\"") } else if l.starts_with("updated:") { format!("updated: \"{day}T10:00:00Z\"") } else { l.to_string() }).collect::<Vec<_>>().join("\n");
+                    let t = t
+                        .lines()
+                        .map(|l| {
+                            if l.starts_with("created:") {
+                                format!("created: \"{day}T10:00:00Z\"")
+                            } else if l.starts_with("updated:") {
+                                format!("updated: \"{day}T10:00:00Z\"")
+                            } else {
+                                l.to_string()
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
                     std::fs::write(&p, t + "\n").unwrap();
                     return;
                 }
@@ -3324,8 +7538,16 @@ fn filters_on_a_list_in_a_page() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Phinehas"]);
     wb.js(&["thread", "new", "Salt"]);
-    let index = wb.js(&["page", "new", "Word studies index"])["id"].as_str().unwrap().to_string();
-    let id = |t: &str| wb.js(&["page", "new", t])["id"].as_str().unwrap().to_string();
+    let index = wb.js(&["page", "new", "Word studies index"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let id = |t: &str| {
+        wb.js(&["page", "new", t])["id"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
     let (a, b, c) = (id("Zeal in Numbers"), id("Haste study"), id("Prayer list"));
     wb.js(&["note", "thread", &a, "Phinehas"]);
     wb.js(&["note", "thread", &b, "Salt"]);
@@ -3340,26 +7562,86 @@ fn filters_on_a_list_in_a_page() {
     age_page(&wb, &c, "2024-01-05");
     wb.js(&["block", "add", &index, "```view\nnotebook kind note\n```"]);
     let views = |wb: &Wb| wb.js(&["page", "views", &index])["blocks"][0].clone();
-    let titles = |v: &Value| -> Vec<String> { let mut t: Vec<String> = v["rows"].as_array().unwrap().iter().map(|r| r["title"].as_str().unwrap().to_string()).collect(); t.sort(); t };
-    let fence = |wb: &Wb| wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
+    let titles = |v: &Value| -> Vec<String> {
+        let mut t: Vec<String> = v["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["title"].as_str().unwrap().to_string())
+            .collect();
+        t.sort();
+        t
+    };
+    let fence = |wb: &Wb| {
+        wb.js(&["note", "show", &index])["text"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
     assert_eq!(views(&wb)["total"].as_u64().unwrap(), 4);
     assert_eq!(views(&wb)["filters"], json!([]));
     // the Filter menu: Folder (the list spans folders), Edited, Written, Callout kind, Book, then its own properties
-    let menu: Vec<String> = views(&wb)["filter_menu"].as_array().unwrap().iter().map(|m| m["name"].as_str().unwrap().to_string()).collect();
-    assert_eq!(menu, ["Folder", "Edited", "Written", "Callout kind", "Book", "Speaker", "Status"]);
-    let status = views(&wb)["filter_menu"].as_array().unwrap().iter().find(|m| m["name"] == "Status").unwrap().clone();
-    assert_eq!(status["values"], json!([{"value": "Done", "label": "Done", "count": 1}, {"value": "Open", "label": "Open", "count": 2}]));
+    let menu: Vec<String> = views(&wb)["filter_menu"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["name"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        menu,
+        [
+            "Folder",
+            "Edited",
+            "Written",
+            "Callout kind",
+            "Book",
+            "Speaker",
+            "Status"
+        ]
+    );
+    let status = views(&wb)["filter_menu"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|m| m["name"] == "Status")
+        .unwrap()
+        .clone();
+    assert_eq!(
+        status["values"],
+        json!([{"value": "Done", "label": "Done", "count": 1}, {"value": "Open", "label": "Open", "count": 2}])
+    );
     // row 2: one value; the fence has its line and nothing else changes
     wb.js(&["block", "view", &index, "1", "--filter", "Status is Open"]);
-    assert!(fence(&wb).contains("```view\nnotebook kind note\nfilter: Status is Open\n```"), "{}", fence(&wb));
+    assert!(
+        fence(&wb).contains("```view\nnotebook kind note\nfilter: Status is Open\n```"),
+        "{}",
+        fence(&wb)
+    );
     let v = views(&wb);
-    assert_eq!((v["count"].as_u64().unwrap(), v["total"].as_u64().unwrap()), (2, 4));
+    assert_eq!(
+        (v["count"].as_u64().unwrap(), v["total"].as_u64().unwrap()),
+        (2, 4)
+    );
     assert_eq!(titles(&v), ["Prayer list", "Zeal in Numbers"]);
     assert_eq!(v["filters"][0]["text"], "Status is Open");
     // row 6: a second filter must match too; several values in one match any
-    wb.js(&["block", "view", &index, "1", "--filter", "Folder is Phinehas, Salt"]);
+    wb.js(&[
+        "block",
+        "view",
+        &index,
+        "1",
+        "--filter",
+        "Folder is Phinehas, Salt",
+    ]);
     assert_eq!(titles(&views(&wb)), ["Zeal in Numbers"]);
-    wb.js(&["block", "view", &index, "1", "--filter", "Status is Open, Done"]);
+    wb.js(&[
+        "block",
+        "view",
+        &index,
+        "1",
+        "--filter",
+        "Status is Open, Done",
+    ]);
     assert_eq!(titles(&views(&wb)), ["Haste study", "Zeal in Numbers"]);
     // the same property again replaces its line
     wb.js(&["block", "view", &index, "1", "--filter", "Status is Done"]);
@@ -3373,7 +7655,16 @@ fn filters_on_a_list_in_a_page() {
     assert!(fence(&wb).contains("```view\nnotebook kind note\n```"));
     // the four ways
     let count = |f: &str| {
-        wb.js(&["block", "view", &index, "1", "--unfilter", "all", "--filter", f]);
+        wb.js(&[
+            "block",
+            "view",
+            &index,
+            "1",
+            "--unfilter",
+            "all",
+            "--filter",
+            f,
+        ]);
         views(&wb)["count"].as_u64().unwrap()
     };
     assert_eq!(count("Status is not Open"), 2);
@@ -3383,7 +7674,16 @@ fn filters_on_a_list_in_a_page() {
     assert_eq!(count("Edited today"), 3);
     assert_eq!(count("Written last year"), 3);
     assert_eq!(count("Written last 30 days"), 3);
-    assert!(wb.fails(&["block", "view", &index, "1", "--filter", "Edited 2026-11-01"]).contains("last 7 days"));
+    assert!(wb
+        .fails(&[
+            "block",
+            "view",
+            &index,
+            "1",
+            "--filter",
+            "Edited 2026-11-01"
+        ])
+        .contains("last 7 days"));
     // row 20: Book, and the chapter inside it
     assert_eq!(count("Book is Numbers"), 2);
     assert_eq!(count("Book is Numbers 25"), 1);
@@ -3396,9 +7696,21 @@ fn filters_on_a_list_in_a_page() {
     assert!(fence(&wb).contains("filter: Speaker is Moore\\, J."));
     // a property the list does not have is refused with the ones it has
     let err = wb.fails(&["block", "view", &index, "1", "--filter", "Mood is Glad"]);
-    assert!(err.contains("no property called “Mood”") && err.contains("Status"), "{err}");
+    assert!(
+        err.contains("no property called “Mood”") && err.contains("Status"),
+        "{err}"
+    );
     // row 12: a folder that is gone is a chip with the value gone, and the list ignores it
-    wb.js(&["block", "view", &index, "1", "--unfilter", "all", "--filter", "Folder is Salt"]);
+    wb.js(&[
+        "block",
+        "view",
+        &index,
+        "1",
+        "--unfilter",
+        "all",
+        "--filter",
+        "Folder is Salt",
+    ]);
     wb.js(&["thread", "delete", "Salt"]);
     let v = views(&wb);
     assert_eq!(v["filters"][0]["gone"], true);
@@ -3406,15 +7718,56 @@ fn filters_on_a_list_in_a_page() {
     assert_eq!(v["count"], 4);
     assert!(fence(&wb).contains("filter: Folder is Salt"));
     // row 11 and a filter laid over one answer (`wb page views --filter`) writes nothing
-    wb.js(&["block", "view", &index, "1", "--unfilter", "all", "--filter", "Status is Open"]);
+    wb.js(&[
+        "block",
+        "view",
+        &index,
+        "1",
+        "--unfilter",
+        "all",
+        "--filter",
+        "Status is Open",
+    ]);
     let before = fence(&wb);
-    let v = wb.js(&["page", "views", &index, "--filter", "Callout kind is Key point"])["blocks"][0].clone();
-    assert_eq!((v["filters"].as_array().unwrap().len(), v["count"].as_u64().unwrap()), (2, 1));
+    let v = wb.js(&[
+        "page",
+        "views",
+        &index,
+        "--filter",
+        "Callout kind is Key point",
+    ])["blocks"][0]
+        .clone();
+    assert_eq!(
+        (
+            v["filters"].as_array().unwrap().len(),
+            v["count"].as_u64().unwrap()
+        ),
+        (2, 1)
+    );
     assert_eq!(fence(&wb), before);
     // the board keeps an empty column, with 0
-    wb.js(&["block", "view", &index, "1", "--view", "board", "--group", "Status", "--unfilter", "all", "--filter", "Status is Open"]);
+    wb.js(&[
+        "block",
+        "view",
+        &index,
+        "1",
+        "--view",
+        "board",
+        "--group",
+        "Status",
+        "--unfilter",
+        "all",
+        "--filter",
+        "Status is Open",
+    ]);
     let v = views(&wb);
-    let done = v["groups"].as_array().unwrap().iter().find(|g| g["label"] == "Done").unwrap().clone();
+    let done = v["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["label"] == "Done")
+        .unwrap()
+        .clone();
     assert_eq!(done["count"], 0);
 }
 
@@ -3423,32 +7776,83 @@ fn own_property_add_and_type() {
     // filters-v2 rows 24 and 25 (NB16): a property has a kind (Text, Choice, Date YYYY-MM-DD, Yes/no true/false), kept as `type:` on the
     // list's fence; a value is checked as its kind writes it
     let Some(wb) = Wb::new() else { return };
-    let index = wb.js(&["page", "new", "Index"])["id"].as_str().unwrap().to_string();
-    let p = wb.js(&["page", "new", "Zeal"])["id"].as_str().unwrap().to_string();
+    let index = wb.js(&["page", "new", "Index"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let p = wb.js(&["page", "new", "Zeal"])["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     wb.js(&["block", "add", &index, "```view\nnotebook kind note\n```"]);
-    wb.js(&["block", "view", &index, "1", "--columns", "Due, Done, Speaker", "--type", "Due date", "--type", "Done yesno", "--type", "Speaker choice"]);
-    let text = wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
+    wb.js(&[
+        "block",
+        "view",
+        &index,
+        "1",
+        "--columns",
+        "Due, Done, Speaker",
+        "--type",
+        "Due date",
+        "--type",
+        "Done yesno",
+        "--type",
+        "Speaker choice",
+    ]);
+    let text = wb.js(&["note", "show", &index])["text"]
+        .as_str()
+        .unwrap()
+        .to_string();
     assert!(text.contains("```view\nnotebook kind note\ncolumns: Due, Done, Speaker\ntype: Due date\ntype: Done yesno\ntype: Speaker choice\n```"), "{text}");
     let v = wb.js(&["page", "views", &index])["blocks"][0].clone();
-    assert_eq!(v["types"], json!([{"name": "Due", "type": "date"}, {"name": "Done", "type": "yesno"}, {"name": "Speaker", "type": "choice"}]));
+    assert_eq!(
+        v["types"],
+        json!([{"name": "Due", "type": "date"}, {"name": "Done", "type": "yesno"}, {"name": "Speaker", "type": "choice"}])
+    );
     // typed values
-    assert_eq!(wb.js(&["page", "prop", &p, "Due", "2026-11-22", "--type", "date"])["props"]["Due"], "2026-11-22");
-    assert!(wb.fails(&["page", "prop", &p, "Due", "next week", "--type", "date"]).contains("YYYY-MM-DD"));
-    assert!(wb.fails(&["page", "prop", &p, "Due", "2026-13-40", "--type", "date"]).contains("YYYY-MM-DD"));
-    assert_eq!(wb.js(&["page", "prop", &p, "Done", "yes", "--type", "yesno"])["props"]["Done"], "true");
-    assert!(wb.fails(&["page", "prop", &p, "Done", "maybe", "--type", "yesno"]).contains("true or false"));
+    assert_eq!(
+        wb.js(&["page", "prop", &p, "Due", "2026-11-22", "--type", "date"])["props"]["Due"],
+        "2026-11-22"
+    );
+    assert!(wb
+        .fails(&["page", "prop", &p, "Due", "next week", "--type", "date"])
+        .contains("YYYY-MM-DD"));
+    assert!(wb
+        .fails(&["page", "prop", &p, "Due", "2026-13-40", "--type", "date"])
+        .contains("YYYY-MM-DD"));
+    assert_eq!(
+        wb.js(&["page", "prop", &p, "Done", "yes", "--type", "yesno"])["props"]["Done"],
+        "true"
+    );
+    assert!(wb
+        .fails(&["page", "prop", &p, "Done", "maybe", "--type", "yesno"])
+        .contains("true or false"));
     // the Filter menu offers Yes and No for a Yes/no property, and the typed property filters
     let menu = wb.js(&["page", "views", &index])["blocks"][0]["filter_menu"].clone();
-    let done = menu.as_array().unwrap().iter().find(|m| m["name"] == "Done").unwrap().clone();
+    let done = menu
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|m| m["name"] == "Done")
+        .unwrap()
+        .clone();
     assert_eq!(done["type"], "yesno");
-    assert_eq!(done["values"], json!([{"value": "true", "label": "Yes", "count": 1}, {"value": "false", "label": "No", "count": 0}]));
+    assert_eq!(
+        done["values"],
+        json!([{"value": "true", "label": "Yes", "count": 1}, {"value": "false", "label": "No", "count": 0}])
+    );
     wb.js(&["block", "view", &index, "1", "--filter", "Done is true"]);
     assert_eq!(wb.js(&["page", "views", &index])["blocks"][0]["pages"], 1);
     // a kind of text is the default and takes the line away; a bad kind is refused
     wb.js(&["block", "view", &index, "1", "--type", "Done text"]);
-    let text = wb.js(&["note", "show", &index])["text"].as_str().unwrap().to_string();
+    let text = wb.js(&["note", "show", &index])["text"]
+        .as_str()
+        .unwrap()
+        .to_string();
     assert!(!text.contains("type: Done"), "{text}");
-    assert!(wb.fails(&["block", "view", &index, "1", "--type", "Done number"]).contains("Text, Choice, Date or Yes/no"));
+    assert!(wb
+        .fails(&["block", "view", &index, "1", "--type", "Done number"])
+        .contains("Text, Choice, Date or Yes/no"));
 }
 
 #[test]
@@ -3457,7 +7861,12 @@ fn filters_on_the_librarys_lists() {
     let Some(wb) = Wb::new() else { return };
     wb.js(&["thread", "new", "Phinehas"]);
     wb.js(&["thread", "new", "Salt"]);
-    let id = |t: &str| wb.js(&["page", "new", t])["id"].as_str().unwrap().to_string();
+    let id = |t: &str| {
+        wb.js(&["page", "new", t])["id"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
     let (a, b) = (id("Zeal in Numbers"), id("Haste study"));
     wb.js(&["note", "thread", &a, "Phinehas"]);
     wb.js(&["note", "thread", &b, "Salt"]);
@@ -3466,42 +7875,134 @@ fn filters_on_the_librarys_lists() {
     wb.js(&["block", "add", &b, "See Prov 1:1."]);
     wb.js(&["block", "add", &b, "> [!question] Who waits?"]);
     wb.js(&["block", "add", &b, "> [!done] Who hurries?"]);
-    let texts = |v: &Value| -> Vec<String> { let mut t: Vec<String> = v["questions"].as_array().unwrap().iter().map(|q| q["first"].as_str().unwrap().to_string()).collect(); t.sort(); t };
+    let texts = |v: &Value| -> Vec<String> {
+        let mut t: Vec<String> = v["questions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|q| q["first"].as_str().unwrap().to_string())
+            .collect();
+        t.sort();
+        t
+    };
     // row 13: --folder, --book and --filter narrow the Questions list, and say how many there were
     let all = wb.js(&["question", "list", "--kind", "all"]);
     assert_eq!(texts(&all), ["What is zeal?", "Who hurries?", "Who waits?"]);
     let v = wb.js(&["question", "list", "--kind", "all", "--folder", "Salt"]);
-    assert_eq!((texts(&v), v["total"].as_u64().unwrap()), (vec!["Who hurries?".to_string(), "Who waits?".to_string()], 3));
-    assert_eq!(texts(&wb.js(&["question", "list", "--kind", "all", "--book", "Numbers"])), ["What is zeal?"]);
-    assert_eq!(texts(&wb.js(&["question", "list", "--kind", "all", "--filter", "Book is Proverbs", "--filter", "Kind is Answered"])), ["Who hurries?"]);
-    assert_eq!(texts(&wb.js(&["question", "list", "--kind", "all", "--filter", "Folder is not Salt"])), ["What is zeal?"]);
-    assert!(wb.fails(&["question", "list", "--filter", "Mood is Glad"]).contains("Kind, Folder, Book, Edited, Written"));
+    assert_eq!(
+        (texts(&v), v["total"].as_u64().unwrap()),
+        (
+            vec!["Who hurries?".to_string(), "Who waits?".to_string()],
+            3
+        )
+    );
+    assert_eq!(
+        texts(&wb.js(&["question", "list", "--kind", "all", "--book", "Numbers"])),
+        ["What is zeal?"]
+    );
+    assert_eq!(
+        texts(&wb.js(&[
+            "question",
+            "list",
+            "--kind",
+            "all",
+            "--filter",
+            "Book is Proverbs",
+            "--filter",
+            "Kind is Answered"
+        ])),
+        ["Who hurries?"]
+    );
+    assert_eq!(
+        texts(&wb.js(&[
+            "question",
+            "list",
+            "--kind",
+            "all",
+            "--filter",
+            "Folder is not Salt"
+        ])),
+        ["What is zeal?"]
+    );
+    assert!(wb
+        .fails(&["question", "list", "--filter", "Mood is Glad"])
+        .contains("Kind, Folder, Book, Edited, Written"));
     // row 14: wb find takes the same words as its flags
     let find = |args: &[&str]| -> Vec<String> {
         let mut a = vec!["find", "--sort", "edited"];
         a.extend(args);
         let v = wb.js(&a);
-        let mut t: Vec<String> = v["groups"].as_array().unwrap().iter().flat_map(|g| g["results"].as_array().unwrap().iter().map(|r| format!("{}:{}", g["kind"].as_str().unwrap(), r["title"].as_str().unwrap_or(""))).collect::<Vec<_>>()).collect();
+        let mut t: Vec<String> = v["groups"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|g| {
+                g["results"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|r| {
+                        format!(
+                            "{}:{}",
+                            g["kind"].as_str().unwrap(),
+                            r["title"].as_str().unwrap_or("")
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
         t.sort();
         t
     };
-    assert_eq!(find(&["--filter", "Kind is Pages", "--filter", "Folder is Salt"]), ["page:Haste study"]);
-    assert_eq!(find(&["--filter", "Kind is Pages", "--filter", "Edited today"]).len(), 2);
-    assert_eq!(find(&["--kind", "page", "--folder", "Salt"]), ["page:Haste study"]);
-    assert!(wb.fails(&["find", "--filter", "Book is Numbers"]).contains("Kind, Folder and Edited"));
-    assert!(wb.fails(&["find", "--filter", "Kind is not Pages"]).contains("with “is”"));
+    assert_eq!(
+        find(&["--filter", "Kind is Pages", "--filter", "Folder is Salt"]),
+        ["page:Haste study"]
+    );
+    assert_eq!(
+        find(&["--filter", "Kind is Pages", "--filter", "Edited today"]).len(),
+        2
+    );
+    assert_eq!(
+        find(&["--kind", "page", "--folder", "Salt"]),
+        ["page:Haste study"]
+    );
+    assert!(wb
+        .fails(&["find", "--filter", "Book is Numbers"])
+        .contains("Kind, Folder and Edited"));
+    assert!(wb
+        .fails(&["find", "--filter", "Kind is not Pages"])
+        .contains("with “is”"));
     // row 15: an opened folder's saves by kind of save and book
     for r in ["Num 25:11", "Num 25:12", "Prov 1:1", "H7065"] {
         wb.js(&["thread", "add", "Salt", r]);
     }
     let v = wb.js(&["folder", "show", "Salt"]);
-    assert_eq!((v["count"].as_u64().unwrap(), v["total"].as_u64().unwrap()), (4, 4));
-    assert_eq!(v["kinds"], json!([{"value": "Verse", "count": 3}, {"value": "Word", "count": 1}]));
-    assert_eq!(v["books"], json!([{"value": "Numbers", "count": 2}, {"value": "Proverbs", "count": 1}]));
-    let v = wb.js(&["folder", "show", "Salt", "--kind", "Verse", "--book", "Numbers"]);
-    assert_eq!((v["count"].as_u64().unwrap(), v["total"].as_u64().unwrap()), (2, 4));
-    assert_eq!(wb.js(&["folder", "show", "Salt", "--filter", "Save is Word"])["count"], 1);
-    assert!(wb.fails(&["folder", "show", "Salt", "--filter", "Mood is Glad"]).contains("Save, Book"));
+    assert_eq!(
+        (v["count"].as_u64().unwrap(), v["total"].as_u64().unwrap()),
+        (4, 4)
+    );
+    assert_eq!(
+        v["kinds"],
+        json!([{"value": "Verse", "count": 3}, {"value": "Word", "count": 1}])
+    );
+    assert_eq!(
+        v["books"],
+        json!([{"value": "Numbers", "count": 2}, {"value": "Proverbs", "count": 1}])
+    );
+    let v = wb.js(&[
+        "folder", "show", "Salt", "--kind", "Verse", "--book", "Numbers",
+    ]);
+    assert_eq!(
+        (v["count"].as_u64().unwrap(), v["total"].as_u64().unwrap()),
+        (2, 4)
+    );
+    assert_eq!(
+        wb.js(&["folder", "show", "Salt", "--filter", "Save is Word"])["count"],
+        1
+    );
+    assert!(wb
+        .fails(&["folder", "show", "Salt", "--filter", "Mood is Glad"])
+        .contains("Save, Book"));
 }
 
 #[test]
@@ -3509,82 +8010,317 @@ fn filters_on_the_other_lists() {
     // filters-v2 rows 26-33 (NB17): margin notes, highlights and marks, findings, the Legend's where used, Colors across the Bible,
     // Bible Search and Near, Every use and the Concordance take the one `--filter` form, and refuse a property they lack with the ones they have
     let Some(wb) = Wb::new() else { return };
-    let group = |v: &Value, kind: &str| -> Vec<Value> { v["groups"].as_array().unwrap().iter().find(|g| g["kind"] == kind).map(|g| g["results"].as_array().unwrap().clone()).unwrap_or_default() };
+    let group = |v: &Value, kind: &str| -> Vec<Value> {
+        v["groups"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|g| g["kind"] == kind)
+            .map(|g| g["results"].as_array().unwrap().clone())
+            .unwrap_or_default()
+    };
     // rows 26 and 27: margin notes and marks
     wb.js(&["mark", "note", "Num 25:11", "Zeal in Numbers"]);
     wb.js(&["mark", "note", "Prov 1:1", "A proverb"]);
-    wb.js(&["legend", "add", "--kind", "underline", "--color", "blue", "--name", "Warning"]);
-    wb.js(&["legend", "add", "--kind", "highlight", "--color", "yellow", "--name", "Promise"]);
+    wb.js(&[
+        "legend",
+        "add",
+        "--kind",
+        "underline",
+        "--color",
+        "blue",
+        "--name",
+        "Warning",
+    ]);
+    wb.js(&[
+        "legend",
+        "add",
+        "--kind",
+        "highlight",
+        "--color",
+        "yellow",
+        "--name",
+        "Promise",
+    ]);
     wb.js(&["mark", "add", "Num 25:11", "--style", "Warning"]);
     wb.js(&["mark", "add", "Num 25:12", "--style", "Promise"]);
     wb.js(&["mark", "add", "Prov 1:1", "--style", "Promise"]);
     let margin = wb.js(&["find", "--kind", "margin", "--filter", "Book is Numbers"]);
     assert_eq!(group(&margin, "margin").len(), 1);
     assert_eq!(margin["unfiltered"], 2);
-    let names: Vec<String> = margin["properties"].as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap().to_string()).collect();
+    let names: Vec<String> = margin["properties"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["name"].as_str().unwrap().to_string())
+        .collect();
     assert_eq!(names, ["Book", "Written", "Edited", "Folder"]);
-    assert_eq!(group(&wb.js(&["find", "--kind", "margin", "--filter", "Book is Numbers 25"]), "margin").len(), 1);
-    assert_eq!(group(&wb.js(&["find", "--kind", "margin", "--filter", "Book is not Numbers"]), "margin").len(), 1);
-    assert_eq!(group(&wb.js(&["find", "--kind", "margin", "--filter", "Written today"]), "margin").len(), 2);
-    assert_eq!(group(&wb.js(&["find", "--kind", "margin", "--filter", "Folder is set"]), "margin").len(), 0);
-    assert!(wb.fails(&["find", "--kind", "margin", "--filter", "Legend entry is Promise"]).contains("Book, Written, Edited, Folder"));
-    let marks = wb.js(&["find", "--kind", "mark", "--filter", "Legend entry is Promise"]);
+    assert_eq!(
+        group(
+            &wb.js(&["find", "--kind", "margin", "--filter", "Book is Numbers 25"]),
+            "margin"
+        )
+        .len(),
+        1
+    );
+    assert_eq!(
+        group(
+            &wb.js(&[
+                "find",
+                "--kind",
+                "margin",
+                "--filter",
+                "Book is not Numbers"
+            ]),
+            "margin"
+        )
+        .len(),
+        1
+    );
+    assert_eq!(
+        group(
+            &wb.js(&["find", "--kind", "margin", "--filter", "Written today"]),
+            "margin"
+        )
+        .len(),
+        2
+    );
+    assert_eq!(
+        group(
+            &wb.js(&["find", "--kind", "margin", "--filter", "Folder is set"]),
+            "margin"
+        )
+        .len(),
+        0
+    );
+    assert!(wb
+        .fails(&[
+            "find",
+            "--kind",
+            "margin",
+            "--filter",
+            "Legend entry is Promise"
+        ])
+        .contains("Book, Written, Edited, Folder"));
+    let marks = wb.js(&[
+        "find",
+        "--kind",
+        "mark",
+        "--filter",
+        "Legend entry is Promise",
+    ]);
     assert_eq!(group(&marks, "mark").len(), 2);
-    assert_eq!(group(&wb.js(&["find", "--kind", "mark", "--filter", "Kind is Underline"]), "mark").len(), 1);
-    assert_eq!(group(&wb.js(&["find", "--filter", "Kind is Marks", "--filter", "Book is Proverbs"]), "mark").len(), 1);
-    assert_eq!(group(&wb.js(&["find", "--kind", "mark", "--filter", "Legend entry is Promise", "--filter", "Book is Numbers"]), "mark").len(), 1);
+    assert_eq!(
+        group(
+            &wb.js(&["find", "--kind", "mark", "--filter", "Kind is Underline"]),
+            "mark"
+        )
+        .len(),
+        1
+    );
+    assert_eq!(
+        group(
+            &wb.js(&[
+                "find",
+                "--filter",
+                "Kind is Marks",
+                "--filter",
+                "Book is Proverbs"
+            ]),
+            "mark"
+        )
+        .len(),
+        1
+    );
+    assert_eq!(
+        group(
+            &wb.js(&[
+                "find",
+                "--kind",
+                "mark",
+                "--filter",
+                "Legend entry is Promise",
+                "--filter",
+                "Book is Numbers"
+            ]),
+            "mark"
+        )
+        .len(),
+        1
+    );
     // row 29: the Legend's where used
     let uses = wb.js(&["legend", "uses", "Promise", "--filter", "Book is Proverbs"]);
-    assert_eq!((uses["count"].as_u64().unwrap(), uses["unfiltered"].as_u64().unwrap()), (1, 2));
-    assert!(wb.fails(&["legend", "uses", "Promise", "--filter", "Status is Open"]).contains("Book, Kind"));
+    assert_eq!(
+        (
+            uses["count"].as_u64().unwrap(),
+            uses["unfiltered"].as_u64().unwrap()
+        ),
+        (1, 2)
+    );
+    assert!(wb
+        .fails(&["legend", "uses", "Promise", "--filter", "Status is Open"])
+        .contains("Book, Kind"));
     // row 30: Colors across the Bible
-    let map = wb.js(&["marks", "map", "--filter", "Legend entry is Promise", "--filter", "Book is Numbers"]);
+    let map = wb.js(&[
+        "marks",
+        "map",
+        "--filter",
+        "Legend entry is Promise",
+        "--filter",
+        "Book is Numbers",
+    ]);
     assert_eq!(map["books"].as_array().unwrap().len(), 1);
     assert_eq!(map["total"], 1);
-    assert_eq!(wb.js(&["marks", "map", "--filter", "Legend entry is Promise, Warning"])["total"], 3);
-    assert_eq!(wb.js(&["marks", "map", "--filter", "Legend entry is not Promise"])["total"], 1);
-    assert!(wb.fails(&["marks", "map", "--filter", "Kind is Underline"]).contains("Legend entry, Book"));
+    assert_eq!(
+        wb.js(&[
+            "marks",
+            "map",
+            "--filter",
+            "Legend entry is Promise, Warning"
+        ])["total"],
+        3
+    );
+    assert_eq!(
+        wb.js(&["marks", "map", "--filter", "Legend entry is not Promise"])["total"],
+        1
+    );
+    assert!(wb
+        .fails(&["marks", "map", "--filter", "Kind is Underline"])
+        .contains("Legend entry, Book"));
     // row 28: findings
     let one = wb.js(&["finding", "add", "The first finding"]);
     wb.js(&["finding", "add", "The second finding"]);
     wb.js(&["finding", "handled", one["id"].as_str().unwrap()]);
-    assert_eq!(wb.js(&["findings"])["findings"].as_array().unwrap().len(), 1);
-    assert_eq!(wb.js(&["findings", "--filter", "Status is Handled"])["findings"].as_array().unwrap().len(), 1);
-    assert_eq!(wb.js(&["findings", "--filter", "Status is Open, Handled"])["findings"].as_array().unwrap().len(), 2);
-    assert_eq!(wb.js(&["findings", "--filter", "Written today"])["findings"].as_array().unwrap().len(), 1);
-    assert!(wb.fails(&["findings", "--filter", "Book is Numbers"]).contains("Status, Kind, Written"));
+    assert_eq!(
+        wb.js(&["findings"])["findings"].as_array().unwrap().len(),
+        1
+    );
+    assert_eq!(
+        wb.js(&["findings", "--filter", "Status is Handled"])["findings"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(
+        wb.js(&["findings", "--filter", "Status is Open, Handled"])["findings"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        wb.js(&["findings", "--filter", "Written today"])["findings"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(wb
+        .fails(&["findings", "--filter", "Book is Numbers"])
+        .contains("Status, Kind, Written"));
     // rows 31-33: search, near, every use and the Concordance by book and testament
     let all = wb.js(&["search", "zeal"]);
     let nt = wb.js(&["search", "zeal", "--filter", "Testament is New Testament"]);
     let ot = wb.js(&["search", "zeal", "--filter", "Testament is Old Testament"]);
-    assert_eq!(all["verses"].as_u64().unwrap(), nt["verses"].as_u64().unwrap() + ot["verses"].as_u64().unwrap());
+    assert_eq!(
+        all["verses"].as_u64().unwrap(),
+        nt["verses"].as_u64().unwrap() + ot["verses"].as_u64().unwrap()
+    );
     assert!(nt["verses"].as_u64().unwrap() > 0 && ot["verses"].as_u64().unwrap() > 0);
     let ph = wb.js(&["search", "Phinehas"]);
     let num = wb.js(&["search", "Phinehas", "--filter", "Book is Numbers"]);
-    assert!(num["verses"].as_u64().unwrap() > 0 && num["verses"].as_u64().unwrap() < ph["verses"].as_u64().unwrap());
-    assert_eq!(wb.js(&["search", "Phinehas", "--filter", "Book is not Numbers"])["verses"].as_u64().unwrap(), ph["verses"].as_u64().unwrap() - num["verses"].as_u64().unwrap());
-    assert_eq!(wb.js(&["search", "zeal", "--filter", "Version is KJV"])["verses"], all["verses"]);
-    assert_eq!(wb.js(&["search", "zeal", "--filter", "Version is YLT"])["verses"], 0);
-    let props: Vec<String> = all["properties"].as_array().unwrap().iter().map(|p| p["name"].as_str().unwrap().to_string()).collect();
+    assert!(
+        num["verses"].as_u64().unwrap() > 0
+            && num["verses"].as_u64().unwrap() < ph["verses"].as_u64().unwrap()
+    );
+    assert_eq!(
+        wb.js(&["search", "Phinehas", "--filter", "Book is not Numbers"])["verses"]
+            .as_u64()
+            .unwrap(),
+        ph["verses"].as_u64().unwrap() - num["verses"].as_u64().unwrap()
+    );
+    assert_eq!(
+        wb.js(&["search", "zeal", "--filter", "Version is KJV"])["verses"],
+        all["verses"]
+    );
+    assert_eq!(
+        wb.js(&["search", "zeal", "--filter", "Version is YLT"])["verses"],
+        0
+    );
+    let props: Vec<String> = all["properties"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["name"].as_str().unwrap().to_string())
+        .collect();
     assert_eq!(props, ["Book", "Testament", "Version"]);
-    assert!(wb.fails(&["search", "zeal", "--filter", "Status is Open"]).contains("Book, Testament, Version"));
+    assert!(wb
+        .fails(&["search", "zeal", "--filter", "Status is Open"])
+        .contains("Book, Testament, Version"));
     let near_all = wb.js(&["near", "zeal", "jealousy"]);
-    let near_ot = wb.js(&["near", "zeal", "jealousy", "--filter", "Testament is Old Testament"]);
+    let near_ot = wb.js(&[
+        "near",
+        "zeal",
+        "jealousy",
+        "--filter",
+        "Testament is Old Testament",
+    ]);
     assert!(near_ot["verses"].as_u64().unwrap() <= near_all["verses"].as_u64().unwrap());
     let u = wb.js(&["uses", "zeal"]);
-    let part = |t: &str| wb.js(&["uses", "zeal", "--filter", t])["verses"].as_u64().unwrap();
-    assert_eq!(part("Testament is New Testament") + part("Testament is Old Testament"), u["verses"].as_u64().unwrap());
-    let numbers = u["properties"].as_array().unwrap().iter().find(|p| p["name"] == "Strong's number").unwrap()["values"].as_array().unwrap().clone();
+    let part = |t: &str| {
+        wb.js(&["uses", "zeal", "--filter", t])["verses"]
+            .as_u64()
+            .unwrap()
+    };
+    assert_eq!(
+        part("Testament is New Testament") + part("Testament is Old Testament"),
+        u["verses"].as_u64().unwrap()
+    );
+    let numbers = u["properties"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["name"] == "Strong's number")
+        .unwrap()["values"]
+        .as_array()
+        .unwrap()
+        .clone();
     assert!(!numbers.is_empty());
     let first = numbers[0]["value"].as_str().unwrap().to_string();
-    let by_number = wb.js(&["uses", "zeal", "--filter", &format!("Strong's number is {first}")]);
-    assert!(by_number["occurrences"].as_u64().unwrap() > 0 && by_number["occurrences"].as_u64().unwrap() <= u["occurrences"].as_u64().unwrap());
-    assert!(wb.fails(&["uses", "zeal", "--filter", "Version is KJV"]).contains("Book, Testament, Strong's number"));
+    let by_number = wb.js(&[
+        "uses",
+        "zeal",
+        "--filter",
+        &format!("Strong's number is {first}"),
+    ]);
+    assert!(
+        by_number["occurrences"].as_u64().unwrap() > 0
+            && by_number["occurrences"].as_u64().unwrap() <= u["occurrences"].as_u64().unwrap()
+    );
+    assert!(wb
+        .fails(&["uses", "zeal", "--filter", "Version is KJV"])
+        .contains("Book, Testament, Strong's number"));
     let c = wb.js(&["concordance", "zeal"]);
-    let cn = wb.js(&["concordance", "zeal", "--filter", "Testament is New Testament"]);
-    let co = wb.js(&["concordance", "zeal", "--filter", "Testament is Old Testament"]);
-    assert_eq!(c["places"].as_u64().unwrap(), cn["places"].as_u64().unwrap() + co["places"].as_u64().unwrap());
-    assert!(wb.fails(&["concordance", "zeal", "--filter", "Version is KJV"]).contains("Book, Testament"));
+    let cn = wb.js(&[
+        "concordance",
+        "zeal",
+        "--filter",
+        "Testament is New Testament",
+    ]);
+    let co = wb.js(&[
+        "concordance",
+        "zeal",
+        "--filter",
+        "Testament is Old Testament",
+    ]);
+    assert_eq!(
+        c["places"].as_u64().unwrap(),
+        cn["places"].as_u64().unwrap() + co["places"].as_u64().unwrap()
+    );
+    assert!(wb
+        .fails(&["concordance", "zeal", "--filter", "Version is KJV"])
+        .contains("Book, Testament"));
 }
 
 #[test]
@@ -3596,16 +8332,29 @@ fn a_days_page_reads_and_writes_as_before() {
     let day = "2026-11-03";
     let file = |wb: &Wb| -> String {
         let dir = wb.dir.join("notes").join("_days");
-        let mut files: Vec<_> = std::fs::read_dir(&dir).unwrap().filter_map(|e| e.ok()).map(|e| e.path()).collect();
+        let mut files: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .collect();
         files.sort();
         assert_eq!(files.len(), 1, "one file for the day");
         // the time of the last change is the one thing a write moves
-        std::fs::read_to_string(&files[0]).unwrap().replace("\r\n", "\n").lines().filter(|l| !l.starts_with("updated")).collect::<Vec<_>>().join("\n")
+        std::fs::read_to_string(&files[0])
+            .unwrap()
+            .replace("\r\n", "\n")
+            .lines()
+            .filter(|l| !l.starts_with("updated"))
+            .collect::<Vec<_>>()
+            .join("\n")
     };
     // written whole, as it always was
     let made = wb.js(&["day", "text", "-", "--day", day]);
     assert_eq!(made["exists"], false);
-    let (code, _, err) = wb.run(&["day", "text", "-", "--day", day], Some("First line\n\nSecond line\n"));
+    let (code, _, err) = wb.run(
+        &["day", "text", "-", "--day", day],
+        Some("First line\n\nSecond line\n"),
+    );
     assert_eq!(code, 0, "{err}");
     let whole = file(&wb);
     let page = wb.js(&["day", day]);
@@ -3613,17 +8362,45 @@ fn a_days_page_reads_and_writes_as_before() {
     let id = page["id"].as_str().unwrap().to_string();
     // the blocks of the same file, as the block editor reads them
     let blocks = wb.js(&["page", "blocks", &id]);
-    let texts: Vec<String> = blocks["blocks"].as_array().unwrap().iter().map(|b| b["text"].as_str().unwrap().to_string()).collect();
-    assert!(texts.contains(&"First line".to_string()) && texts.contains(&"Second line".to_string()), "{texts:?}");
+    let texts: Vec<String> = blocks["blocks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|b| b["text"].as_str().unwrap().to_string())
+        .collect();
+    assert!(
+        texts.contains(&"First line".to_string()) && texts.contains(&"Second line".to_string()),
+        "{texts:?}"
+    );
     // a block written in place (what a keystroke saves) and put back leaves the file exactly as it was
-    let n = blocks["blocks"].as_array().unwrap().iter().position(|b| b["text"] == "Second line").unwrap() + 1;
+    let n = blocks["blocks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|b| b["text"] == "Second line")
+        .unwrap()
+        + 1;
     wb.js(&["block", "set", &id, &n.to_string(), "Second line changed"]);
     assert_ne!(file(&wb), whole);
     wb.js(&["block", "set", &id, &n.to_string(), "Second line"]);
-    assert_eq!(file(&wb), whole, "the day's file is the same bytes after a block was changed and put back");
+    assert_eq!(
+        file(&wb),
+        whole,
+        "the day's file is the same bytes after a block was changed and put back"
+    );
     // the same words written whole into another day give the same file shape (front matter and body)
     let other = Wb::new().unwrap();
-    other.run(&["day", "text", "-", "--day", day], Some("First line\n\nSecond line\n"));
-    let shape = |t: &str| t.lines().filter(|l| !l.starts_with("created") && !l.starts_with("updated") && !l.starts_with("id")).collect::<Vec<_>>().join("\n");
+    other.run(
+        &["day", "text", "-", "--day", day],
+        Some("First line\n\nSecond line\n"),
+    );
+    let shape = |t: &str| {
+        t.lines()
+            .filter(|l| {
+                !l.starts_with("created") && !l.starts_with("updated") && !l.starts_with("id")
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
     assert_eq!(shape(&file(&other)), shape(&whole));
 }

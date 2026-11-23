@@ -76,7 +76,9 @@ impl<'a> In<'a> {
     }
     pub fn str(&mut self) -> Option<String> {
         let n = self.u32()? as usize;
-        let s = std::str::from_utf8(self.b.get(self.at..self.at + n)?).ok()?.to_string();
+        let s = std::str::from_utf8(self.b.get(self.at..self.at + n)?)
+            .ok()?
+            .to_string();
         self.at += n;
         Some(s)
     }
