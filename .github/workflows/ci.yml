@@ -1,0 +1,156 @@
+# The checks that fail (docs/turnaround.md step 2, ticket 4). Quick checks run on every branch push, about 3 minutes;
+# the full Windows suite runs on pull requests to main and on main, and a merge waits for it, so nobody watches it.
+# Builders never run the full suite on their own PC: this is where it runs.
+#
+# Minutes (the repository is private: 2,000 a month on the free plan, Windows counts x2, Mac x10): the light checks
+# run on Linux (x1), only clippy needs Windows (it must see the cfg(windows) code), a newer push cancels the older run,
+# and a change that touches only docs, design, Markdown or the site runs nothing.
+#
+# Study folder: nothing here sets WB_ALLOW_REAL_STUDY or builds a test with the `installed` feature (the folder guard,
+# ticket 1). Clippy's --all-features only compiles (it turns `installed` on to check that code); cargo test never
+# gets --all-features.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    paths-ignore: ['docs/**', 'design/**', '**/*.md', 'site/**']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['docs/**', 'design/**', '**/*.md', 'site/**']
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # fmt, tsc and the TODO search: no Rust build, so Linux is enough
+  quick-light:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - run: cargo fmt --all --check
+
+      - run: npm ci
+
+      # the type check of `npm run build`, without the bundle
+      - run: npx tsc -p ui
+
+      # CODING_STANDARDS.md: no TODO, FIXME or XXX in merged code (open thoughts go to docs/turnaround-parked.md).
+      # Whole words, upper case only, so "todo" in a UI string is not a hit; data, docs, design and fonts are not searched.
+      - name: No TODO, FIXME or XXX in merged code
+        run: |
+          if grep -rnIE '\b(TODO|FIXME|XXX)\b' crates app/src-tauri/src ui/src scripts; then
+            echo "A TODO, FIXME or XXX is in merged code: move the thought to docs/turnaround-parked.md"; exit 1
+          fi
+
+  # clippy on Windows: the code behind cfg(windows) is only seen there
+  quick-clippy:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # the app embeds the built UI when it compiles, as `tauri build` does
+      - run: npm ci
+      - run: npm run build
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          shared-key: windows-ci-clippy
+
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # the code the features gate (updater, installed, distribution): compile only
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  full:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      WB_BIBLE_DB: ${{ github.workspace }}/datasets/workbench.db
+      WB_REQUIRE_DB: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+          shared-key: windows-ci-full
+
+      # keyed on the fingerprint: a new database is a new key, so a stale one is never reused
+      - name: The Bible database, cached
+        id: db-cache
+        uses: actions/cache@v4
+        with:
+          path: datasets/workbench.db
+          key: bible-db-fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c
+
+      - name: The Bible database (data-v1 of the public releases repository)
+        if: steps.db-cache.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          mkdir -p datasets
+          gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
+
+      # checked every run, cached or not
+      - name: The database matches its fingerprint
+        shell: bash
+        run: echo "fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c  datasets/workbench.db" | sha256sum -c
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: cargo test
+        run: cargo test -j 8 --workspace --no-fail-fast
+
+      - run: npm run test:unit
+
+      # the reader fixtures the UI tests read, made from the database
+      - run: npm run fixtures
+
+      - run: npx playwright install webkit
+
+      - name: UI in WebKit (phone and desktop)
+        run: npx playwright test --project webkit-phone --project webkit-desktop --grep-invert the_reader_has_no_wcag
+
+      # WebView2 is Edge's Chromium: the installed Edge runs the writing specs
+      - name: chromium-editor
+        run: npx playwright test --project chromium-editor
+
+      - name: axe (WCAG 2.2 AA)
+        run: npx playwright test --project webkit-phone --project webkit-desktop --grep the_reader_has_no_wcag
