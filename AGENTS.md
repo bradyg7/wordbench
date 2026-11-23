@@ -96,8 +96,10 @@ credits spent too fast.
 
 Matt Pocock's skills are installed for this repo (`mattpocock-skills`, in `.claude/settings.json`).
 
-- **Domain docs**: the glossary is `design/LIBRARY.md`; decisions are dated in `AGENTS.md` and the design folders.
-  See `docs/agents/domain.md`.
+- **Domain docs**: the glossary is `design/LIBRARY.md` (app words) and `GLOSSARY.md` (development words); decisions
+  are dated in `AGENTS.md` and the design folders. See `docs/agents/domain.md`.
+- **Standards**: builders and reviewers both read [CODING_STANDARDS.md](CODING_STANDARDS.md) and
+  [DESIGN_STANDARDS.md](DESIGN_STANDARDS.md) (the person, 2026-11-23).
 - **Issue tracker**: design folders and their interaction tables, not GitHub Issues. See `docs/agents/issue-tracker.md`.
 - **Process words**: the [AI Coding Dictionary](https://github.com/mattpocock/dictionary-of-ai-coding).
 - **The turnaround** (2026-11-23): [docs/turnaround.md](docs/turnaround.md) is followed in order; new ideas go to

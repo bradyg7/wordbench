@@ -186,7 +186,10 @@ own:
    - Design sources: WCAG 2.2 AA, Nielsen's 10 heuristics, the Windows design guidelines and Apple's HIG. Machine-checked
      where possible (axe for contrast and labels, speed budgets); the rest is checked when the person plays a prototype.
 3. **Zero warnings.** One session fixes the ~60 clippy warnings, then `-D warnings` refuses any new one ("above
-   reproach").
+   reproach"). The same ticket installs typescript-eslint with `strict-type-checked` (the person, 2026-11-23), clears
+   its warnings and from then refuses new ones. The `any` rules (`no-explicit-any` and the `no-unsafe-*` family) are the
+   one exception: about 240 `any` cannot be retyped safely in one session, so those rules are counted by ticket 7's
+   ratchet instead, and the count only goes down.
 4. **CI on GitHub, and nobody waits on it.**
    - Quick checks on every branch push (fmt, clippy, `tsc`, about 3 minutes). The full Windows suite (`cargo test` with
      `WB_REQUIRE_DB=1`, `test:unit`, `test:webkit`, `chromium-editor`, axe) on pull requests to `main` and on `main`. A
@@ -234,7 +237,11 @@ the gate.
   guarded.
 - Found for ticket 3: the Rust code has never been through rustfmt (no `rustfmt.toml`; about 1,970 differences). Ticket
   3 starts with one commit that only reformats.
-- Next: ticket 2 (words and standards). `main` is pushed with the person's go-ahead, once CI (ticket 4) can run on it.
+- Ticket 2 drafted on `docs/words-and-standards`: the development words in `GLOSSARY.md`, `CODING_STANDARDS.md`
+  (with the nine checker switches reviewed: one kept, eight removed in ticket 3) and `DESIGN_STANDARDS.md` (the seven
+  feel qualities). The builder and reviewer agents read both. Found: axe is not installed yet (ticket 4 adds it); typescript-eslint joins ticket 3.
+- Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
+  (ticket 4) can run on it.
 
 ### Step 3: lean steering
 
