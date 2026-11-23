@@ -13,13 +13,17 @@ async function slashPage(page: Page, bodies: B[] = [{ kind: 'paragraph', text: '
     return { id: 'w1', title: { text: TITLE, start: 0, end: TITLE.length },
       blocks: bodies.map((b, i) => { const start = at; at += b.text.length + 2; return { n: i + 1, ...b, start, end: start + b.text.length }; }) };
   };
+  const saved: string[] = [];
   const detail = () => ({ id: 'w1', title: TITLE, kind: 'note', placed: false, text: [TITLE, ...bodies.map(b => b.text)].join('\n\n'), linked_from: [], also: [], threads: [] });
   await page.route('**/fixtures/wb/*.json', async route => {
     const name = new URL(route.request().url()).pathname.split('/').at(-1)!;
     const send = (json: unknown) => route.fulfill({ json });
     if (name === 'note-show-w1.json') return send(detail());
     if (name === 'page-blocks-w1.json') return send(blocks());
-    if (name.startsWith('block-set-w1-') || name.startsWith('block-add-w1-')) return send({ ...blocks(), n: 1, count: 1 });
+    if (name.startsWith('block-set-w1-') || name.startsWith('block-add-w1-')) {
+      saved.push(decodeURIComponent(route.request().headers()['x-wb-input'] ?? ''));
+      return send({ ...blocks(), n: 1, count: 1 });
+    }
     if (name === 'page-scripture-w1.json') return send(scripture);
     if (name === 'settings-notebook.json') return send({});
     if (name === 'page-sweep.json') return send({ operations: [], errors: [] });
@@ -35,6 +39,7 @@ async function slashPage(page: Page, bodies: B[] = [{ kind: 'paragraph', text: '
   await page.getByRole('button', { name: 'Notebook', exact: true }).first().click({ force: true });
   await page.waitForSelector('.pane-notebook');
   await page.evaluate(() => (window as any).__wb.note('w1'));
+  return saved;
 }
 
 /** An emptied first line with `/` typed in it: the list is open. */
@@ -118,6 +123,51 @@ test('slash_after_a_space_inserts_a_block_below', async ({ page }) => {
   await expect(page.locator('.nb-block[data-n="1"]')).toContainText('Where it first appears');
   await expect(page.locator('.nb-block[data-n="1"]')).not.toContainText('/');
   void box;
+});
+
+// B14 (play-test 0.3.0): "/" on an empty list line, a pick: the command takes the line, and no "- /" is ever saved
+async function emptyItemSlash(page: Page, mark: string) {
+  const saved = await slashPage(page, [{ kind: 'paragraph', text: 'First line' }]);
+  await page.locator('.nb-block-body').first().click();
+  await expect(page.locator('.nb-block-input')).toBeFocused();
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type(mark);                            // the line holds only a list's mark
+  const box = page.locator('.nb-block-input');
+  expect(await md(box)).toBe(mark);
+  await page.keyboard.type('/');
+  await expect(page.locator('.wbm')).toBeVisible();
+  await page.waitForTimeout(1500);                           // longer than the save's wait: nothing is saved while the list is open
+  expect(saved.filter(t => t.includes('/'))).toEqual([]);
+  return { saved, box };
+}
+
+test('slash_on_an_empty_list_line_writes_the_pick_in_the_line', async ({ page }) => {
+  const { saved, box } = await emptyItemSlash(page, '- ');
+  await page.keyboard.type('callout');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.wbm')).toHaveCount(0);
+  await expect(box).toBeFocused();
+  const v = await md(box);
+  expect(v.startsWith('> [!')).toBe(true);                   // the callout's form, in the line, without the list's mark
+  expect(v).not.toContain('/');
+  await page.keyboard.type('Kept');
+  await box.blur();
+  await expect.poll(() => saved.at(-1) ?? '').toContain('Kept');
+  expect(saved.filter(t => t.includes('/'))).toEqual([]);
+  await expect(page.locator('.nb-new-block')).toHaveCount(0);  // nothing went below
+});
+
+test('slash_on_an_empty_list_line_closed_keeps_the_mark', async ({ page }) => {
+  const { saved, box } = await emptyItemSlash(page, '1. ');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.wbm')).toHaveCount(0);
+  await expect(box).toBeFocused();
+  expect(await md(box)).toBe('1. ');                         // the slash goes, the mark and its space stay
+  await page.keyboard.type('Then');
+  await box.blur();
+  await expect.poll(() => saved.at(-1) ?? '').toBe('1. Then');
+  expect(saved.filter(t => t.includes('/'))).toEqual([]);
 });
 
 test('editing_a_scripture_block_uses_the_reference_field', async ({ page }) => {

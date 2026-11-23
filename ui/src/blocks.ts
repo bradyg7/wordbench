@@ -1524,7 +1524,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     saving = saving.then(async () => {
       const text = wrapped().replace(/\n+$/, '');
       // not while the / menu is open or a new page's name is asked for in the box
-      if (!dirty || text === last || blank(text) || text.startsWith('/') || ta.classList.contains('asking')) return;
+      if (!dirty || text === last || blank(text) || text.startsWith('/') || ta.classList.contains('asking') || ta.classList.contains('slashing')) return;
       try {
         await findAgain();
         const r = cur.n
@@ -1992,16 +1992,18 @@ function makeChoose(ta: Writer, data: Blocks, host: Host, cur: { n: number; coun
  *  typed is taken out of the line when a command is picked or the list is closed without one. */
 function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>, typedSlash = false, fromPlus = false) {
   const v = ta.value;
-  const afterSpace = typedSlash && v.length > 1 && /\s\/$/.test(v) && !v.includes('\n');
+  // a line with only its mark ("- ", "1. ", "> ") is an empty line: the command is written in the line, mark and all (B14)
+  const emptyItem = typedSlash && /\s\/$/.test(v) && !v.includes('\n') && blank(v.slice(0, -1));
+  const afterSpace = typedSlash && !emptyItem && v.length > 1 && /\s\/$/.test(v) && !v.includes('\n');
   const wholeLine = v.startsWith('/') && !v.includes('\n') && v.length <= 30;
-  if (!fromPlus && (typedSlash ? !(v === '/' || afterSpace) : !wholeLine)) return;
+  if (!fromPlus && (typedSlash ? !(v === '/' || afterSpace || emptyItem) : !wholeLine)) return;
   const query = typedSlash ? '' : v.slice(1).trim();
   host.state.menuClose?.();
   const choose = makeChoose(ta, data, host, cur, finish);
   let picked = false;
   const takeSlashOut = () => {
     if (!ta.isConnected || !ta.value.endsWith('/')) return;
-    ta.value = ta.value.slice(0, -1).trimEnd();
+    ta.value = emptyItem ? ta.value.slice(0, -1) : ta.value.slice(0, -1).trimEnd();
     ta.setSelectionRange(ta.value.length, ta.value.length);
     ta.dispatchEvent(new Event('input'));
   };
@@ -2031,6 +2033,7 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
       void choose(m);
     },
     onClose: () => {
+      ta.classList.remove('slashing');
       if (host.state.menuClose === handle.close) { host.state.menuClose = null; host.state.menuKey = null; }
       // closed with nothing picked (Esc, a click outside, Backspace in the empty filter): the slash typed goes out of the line.
       // A pick runs just after the close, so this waits for it.
@@ -2038,6 +2041,8 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
     },
   });
   host.state.menuClose = handle.close;
+  // nothing typed with the "/" is saved while the list is open: a pick or a close settles the line first (B14)
+  ta.classList.add('slashing');
   // Backspace in the empty filter takes the slash back out and closes the list
   handle.el.addEventListener('keydown', ev => {
     if (ev.key !== 'Backspace' || (handle.el.querySelector('.wbm-input') as HTMLInputElement).value) return;
