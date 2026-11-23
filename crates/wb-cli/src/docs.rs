@@ -94,10 +94,12 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
             to,
             &docs::Choices {
                 structure: structure.as_deref(),
-                theme: theme.as_deref(),
-                look_name: look.as_deref(),
-                dials: &set,
-                force: a.flag("force"),
+                styling: docs::Styling {
+                    theme: theme.as_deref(),
+                    look_name: look.as_deref(),
+                    dials: &set,
+                    force: a.flag("force"),
+                },
             },
             &docs::PageParts {
                 version: version.as_deref(),
@@ -117,10 +119,12 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
             to,
             &docs::Choices {
                 structure: structure.as_deref(),
-                theme: theme.as_deref(),
-                look_name: look.as_deref(),
-                dials: &set,
-                force: a.flag("force"),
+                styling: docs::Styling {
+                    theme: theme.as_deref(),
+                    look_name: look.as_deref(),
+                    dials: &set,
+                    force: a.flag("force"),
+                },
             },
             a.flag("new"),
         )
@@ -190,8 +194,10 @@ fn build_lesson(c: &Ctx<'_>, a: &crate::args::Args) -> Res {
             to,
             &docs::Choices {
                 structure: Some(structure),
-                theme: theme.as_deref(),
-                ..Default::default()
+                styling: docs::Styling {
+                    theme: theme.as_deref(),
+                    ..Default::default()
+                },
             },
             a.flag("new"),
         )
@@ -273,7 +279,7 @@ pub fn commands() -> Vec<Command> {
             if name.is_empty() {
                 return j(docs::update_behind(c.bible()?, &st, &out));
             }
-            let r = docs::update(c.bible()?, &st, &out, &name, &docs::Choices { theme: a.opt("theme").as_deref(), look_name: a.opt("look").as_deref(), dials: &set, force: a.flag("force"), ..Default::default() }).map_err(e)?;
+            let r = docs::update(c.bible()?, &st, &out, &name, &docs::Styling { theme: a.opt("theme").as_deref(), look_name: a.opt("look").as_deref(), dials: &set, force: a.flag("force") }).map_err(e)?;
             if a.flag("open") {
                 docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
             }

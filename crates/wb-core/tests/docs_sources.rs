@@ -179,7 +179,7 @@ fn existing_lesson_export_keeps_its_legacy_identity_and_exact_source() {
     )
     .unwrap();
     assert_eq!(
-        docs::update(&bible, &store, &folders, id, &docs::Choices::default()).unwrap()["id"],
+        docs::update(&bible, &store, &folders, id, &docs::Styling::default()).unwrap()["id"],
         id
     );
     assert_eq!(
@@ -201,7 +201,7 @@ fn existing_lesson_export_keeps_its_legacy_identity_and_exact_source() {
         "gone"
     );
     assert!(
-        docs::update(&bible, &store, &folders, id, &docs::Choices::default())
+        docs::update(&bible, &store, &folders, id, &docs::Styling::default())
             .unwrap_err()
             .0
             .contains("existing-file")

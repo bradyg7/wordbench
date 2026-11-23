@@ -1124,6 +1124,12 @@ fn source_structure(
 #[derive(Clone, Copy, Default)]
 pub struct Choices<'a> {
     pub structure: Option<&'a str>,
+    pub styling: Styling<'a>,
+}
+
+/// The part of the choices an update uses: the theme, the Look's name and dials, and whether to rebuild anyway.
+#[derive(Clone, Copy, Default)]
+pub struct Styling<'a> {
     pub theme: Option<&'a str>,
     pub look_name: Option<&'a str>,
     pub dials: &'a [(String, String)],
@@ -1152,10 +1158,13 @@ pub fn make(
 ) -> Result<Value> {
     let Choices {
         structure,
-        theme,
-        look_name,
-        dials,
-        force,
+        styling:
+            Styling {
+                theme,
+                look_name,
+                dials,
+                force,
+            },
     } = *choices;
     if !matches!(to, "word" | "pdf" | "deck") {
         return Err(bad(
@@ -1201,15 +1210,14 @@ pub fn update(
     store: &Store,
     folders: &ExportFolders,
     name: &str,
-    choices: &Choices<'_>,
+    styling: &Styling<'_>,
 ) -> Result<Value> {
-    let Choices {
+    let Styling {
         theme,
         look_name,
         dials,
         force,
-        ..
-    } = *choices;
+    } = *styling;
     let rec = find(store, name)?;
     if rec.get("forgotten") == Some(&json!(true)) {
         return Err(bad(format!(
@@ -1238,7 +1246,7 @@ pub fn update_behind(bible: &Bible, store: &Store, folders: &ExportFolders) -> V
         {
             continue;
         }
-        match update(bible, store, folders, s_(d, "id"), &Choices::default()) {
+        match update(bible, store, folders, s_(d, "id"), &Styling::default()) {
             Ok(v) => done.push(v),
             Err(e) => failed.push(json!({"name": d["name"], "error": e.0})),
         }
@@ -1525,10 +1533,13 @@ pub fn make_page(
 ) -> Result<Value> {
     let Choices {
         structure,
-        theme,
-        look_name,
-        dials,
-        force,
+        styling:
+            Styling {
+                theme,
+                look_name,
+                dials,
+                force,
+            },
     } = *choices;
     let PageParts { version, on, off } = *parts;
     let key = page_structure(to, structure)?;

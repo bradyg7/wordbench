@@ -188,7 +188,7 @@ impl Found {
 }
 
 /// One page to scan: its id, text, whether the text's first line is a title, the title shown, and the kind.
-struct Scanned<'a> {
+struct PageText<'a> {
     id: String,
     text: &'a str,
     titled: bool,
@@ -196,8 +196,8 @@ struct Scanned<'a> {
     kind: &'static str,
 }
 
-fn scan(out: &mut Vec<Found>, r: &Rec, page: Scanned<'_>, every_kind: bool) {
-    let Scanned {
+fn scan(out: &mut Vec<Found>, r: &Rec, page: PageText<'_>, every_kind: bool) {
+    let PageText {
         id,
         text,
         titled,
@@ -259,7 +259,7 @@ fn found_of(store: &Store, every_kind: bool) -> Vec<Found> {
         scan(
             &mut out,
             r,
-            Scanned {
+            PageText {
                 id: s(r, "id"),
                 text: &s(r, "text"),
                 titled: true,
@@ -273,7 +273,7 @@ fn found_of(store: &Store, every_kind: bool) -> Vec<Found> {
         scan(
             &mut out,
             r,
-            Scanned {
+            PageText {
                 id: s(r, "id"),
                 text: &s(r, "text"),
                 titled: false,
@@ -290,7 +290,7 @@ fn found_of(store: &Store, every_kind: bool) -> Vec<Found> {
         scan(
             &mut out,
             &r,
-            Scanned {
+            PageText {
                 id: crate::threadpage::page_id(&s(t, "id")),
                 text: &s(t, "note"),
                 titled: false,
