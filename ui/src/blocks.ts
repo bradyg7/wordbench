@@ -2041,8 +2041,9 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
     },
   });
   host.state.menuClose = handle.close;
-  // nothing typed with the "/" is saved while the list is open: a pick or a close settles the line first (B14)
-  ta.classList.add('slashing');
+  // on an empty list line the "- /" is never saved while the list is open: a pick or a close settles the line first (B14).
+  // A line with words keeps saving as before, so no words wait on the list.
+  if (emptyItem) ta.classList.add('slashing');
   // Backspace in the empty filter takes the slash back out and closes the list
   handle.el.addEventListener('keydown', ev => {
     if (ev.key !== 'Backspace' || (handle.el.querySelector('.wbm-input') as HTMLInputElement).value) return;

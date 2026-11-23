@@ -170,6 +170,15 @@ test('slash_on_an_empty_list_line_closed_keeps_the_mark', async ({ page }) => {
   expect(saved.filter(t => t.includes('/'))).toEqual([]);
 });
 
+test('slash_on_an_empty_todo_line_writes_the_pick_in_the_line', async ({ page }) => {
+  const { saved, box } = await emptyItemSlash(page, '- [ ] ');
+  await page.keyboard.type('heading 2');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.wbm')).toHaveCount(0);
+  expect(await md(box)).toBe('## ');
+  expect(saved.filter(t => t.includes('/'))).toEqual([]);
+});
+
 test('editing_a_scripture_block_uses_the_reference_field', async ({ page }) => {
   const d = fx('scripture-numbers-25-11-13');
   const text = ['```scripture', 'Numbers 25:11-13', '```'].join('\n');
