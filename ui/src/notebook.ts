@@ -19,7 +19,7 @@ import { wb } from './api';
 import './notebook.css';
 import { registerPageWriter, flushPageWriters, removedPages } from './pagewriters';
 import { app, book, here, type At } from './app';
-import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, startWritingAtEnd, viewRow, wordsIn, type Blocks, type Host } from './blocks';
+import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, holdForNewPage, startWritingAtEnd, viewRow, wordsIn, type Blocks, type Host } from './blocks';
 import { applyLook, defaultLook, editedStatus, lockMark, openPageMenu, readLook, type PageLook, type PageMenu } from './pagemenu';
 import { pageToc } from './pagetoc';
 import { createEditor, inlineShortcut, insertBreak, insertPlain, lineStartShortcut, tidy, toggleMark, type Writer } from './blockedit';
@@ -1283,7 +1283,17 @@ ${l}` : ''}`;
       if (mod && !ev.shiftKey && !ev.altKey && (k === 'b' || k === 'i' || k === 'u')) { ev.preventDefault(); toggleMark(line, k); return; }
       if (ev.key === 'Enter' && !mod && !ev.shiftKey) {
         ev.preventDefault();
-        void make().then(ok => { if (ok) { focusEditor = 'end'; void pane?.refresh?.(); } });
+        // B8: the page goes on in the block editor. The caret leaves the form at once (so the page is drawn again, not kept as
+        // "being written"), what is typed meanwhile is held, and it opens in a new block after the page's last block.
+        if (made && !draft) return;
+        const hold = holdForNewPage(blockState);
+        line.blur();
+        void make().then(ok => {
+          if (ok && openId) { hold.ready(openId, () => blocksData?.blocks.at(-1)?.n ?? 0); void pane?.refresh?.(); return; }
+          const typed = hold.fail();
+          line.focus();
+          if (typed) insertPlain(line, typed);
+        });
       } else if (ev.key === 'Enter' && ev.shiftKey && !mod) { ev.preventDefault(); insertBreak(line); }
     };
     line.onpaste = ev => { ev.preventDefault(); const t = ev.clipboardData?.getData('text/plain') || ''; if (t) insertPlain(line, t); };

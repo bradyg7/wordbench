@@ -85,7 +85,9 @@ function holdKeys(alive: () => boolean, keep = false) {
     if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.isComposing) return;
     if (ev.key.length === 1) typeAhead.text += ev.key;
     else if (ev.key === 'Backspace') typeAhead.text = [...typeAhead.text].slice(0, -1).join('');
-    else if (ev.key !== 'Enter') return;
+    // B11: an Enter is kept too (Shift+Enter, a line break in the block, as \r), and done in the block that opens
+    else if (ev.key === 'Enter') typeAhead.text += ev.shiftKey ? '\r' : '\n';
+    else return;
     ev.preventDefault();
     ev.stopPropagation();
   };
@@ -103,6 +105,20 @@ function setFocus(host: Host, f: NonNullable<BlockFocus>) {
   host.state.focus = f;
   holdKeys(() => host.state.focus === f, true);
 }
+/** A page that was just made from the new-page form goes on being written in the block editor: a new block after block `after`
+ *  opens once the page is drawn, and what is typed until then is held and put in it (B8: the form used to keep the caret, so
+ *  the page was never drawn again and nothing typed after the first line was saved). */
+export function holdForNewPage(state: BlockEditorState) {
+  const p: NonNullable<BlockEditorState['pending']> = { id: '', after: () => 0, text: '', at: 'end' };
+  state.pending = p;
+  holdKeys(() => state.pending === p);
+  return {
+    /** The page is made: its id, and the block the new one goes after (read once the page is drawn). */
+    ready(id: string, after: () => number) { p.id = id; p.after = after; },
+    /** It was not made: the hold ends, and what was typed meanwhile is given back. */
+    fail(): string { if (state.pending === p) state.pending = null; return takeTypeAhead(); },
+  };
+}
 /** What was typed while the block was on its way, taken once. */
 function takeTypeAhead(): string {
   typeAhead.off?.();
@@ -114,9 +130,24 @@ function takeTypeAhead(): string {
 function putTypedAhead(el: HTMLElement, typed: string) {
   const box = typed ? el.querySelector<Writer>('.nb-block-input') : null;
   if (!box) return;
-  const c = box.selectionStart;
-  box.setRangeText(typed, c, c, 'end');
-  box.dispatchEvent(new Event('input'));
+  // the words up to the first Enter kept on the way go in here; that Enter is then pressed in this block, as if typed, and
+  // what followed it is held for the block it opens (B11: an Enter pressed while a block was saving used to be lost)
+  const at = typed.search(/[\r\n]/);
+  const words = at < 0 ? typed : typed.slice(0, at);
+  if (words) {
+    const c = box.selectionStart;
+    box.setRangeText(words, c, c, 'end');
+    box.dispatchEvent(new Event('input'));
+  }
+  if (at < 0) return;
+  const rest = typed.slice(at + 1);
+  const holding = () => typeAhead.off;
+  const before = holding();
+  box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: typed[at] === '\r', bubbles: true, cancelable: true }));
+  if (!rest) return;
+  // the Enter began a hold of its own (a block on its way): the rest waits for that block; else it goes on here
+  if (holding() && holding() !== before) typeAhead.text += rest;
+  else putTypedAhead(el, rest);
 }
 
 export const createBlockEditorState = (): BlockEditorState => ({

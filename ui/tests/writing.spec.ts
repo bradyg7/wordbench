@@ -47,6 +47,8 @@ test('new_page_caret_in_title', async ({ page }) => {
     const name = new URL(route.request().url()).pathname.split('/').at(-1)!;
     if (name === 'template-list.json') return route.fulfill({ json: { templates: [] } });
     if (name === 'settings-notebook.json') return route.fulfill({ json: {} });
+    // the narrow Notebook's list (no fixture of its own): an empty one, so the pen is there
+    if (name.startsWith('notebook-group-')) return route.fulfill({ json: { group: 'day', groups: [] } });
     return route.fallback();
   });
   await page.goto('/?at=NUM.25');
@@ -70,6 +72,76 @@ test('new_page_caret_in_title', async ({ page }) => {
   await page.keyboard.type('Big **word** now');
   await expect(line.locator('strong')).toHaveText('word');
   expect(await line.evaluate(e => (e as any).value)).toBe('# Big **word** now');
+});
+
+// B8 (play-test of 0.3.0, 2026-11-23): after the first Enter in a new page, the page goes on in the block editor; nothing typed
+// after it, even straight after Enter, is lost, and every line is saved as its own block.
+test('new_page_keeps_every_line_after_enter', async ({ page }) => {
+  let title = '';
+  const bodies: string[] = [];
+  const blocks = () => {
+    let at = title.length + 2;
+    return { id: 'np1', title: { text: title, start: 0, end: title.length },
+      blocks: bodies.map((b, i) => { const start = at; at += b.length + 2; return { n: i + 1, kind: 'paragraph', text: b, start, end: start + b.length }; }) };
+  };
+  const detail = () => ({ id: 'np1', title, kind: 'note', placed: false, text: [title, ...bodies].join('\n\n'), linked_from: [], also: [], threads: [], created: '2026-11-23T00:00:00Z', updated: '2026-11-23T00:00:00Z' });
+  await page.route('**/fixtures/wb/*.json', async route => {
+    const name = new URL(route.request().url()).pathname.split('/').at(-1)!;
+    const input = decodeURIComponent(route.request().headers()['x-wb-input'] ?? '');
+    const send = (json: unknown) => route.fulfill({ json });
+    if (name === 'note-new.json') { const [t, ...rest] = input.split('\n\n'); title = t; bodies.splice(0, bodies.length, ...rest); return send(detail()); }
+    if (name === 'note-show-np1.json') return send(detail());
+    if (name === 'page-blocks-np1.json') return send(blocks());
+    if (name.startsWith('block-add-np1-')) {
+      // after N (--after N) or first; the block's words ride in the input
+      const after = /after-(\d+)/.exec(name)?.[1];
+      bodies.splice(after ? Number(after) : 0, 0, input);
+      return send({ ...blocks(), n: (after ? Number(after) : 0) + 1, count: 1 });
+    }
+    if (name.startsWith('block-set-np1-')) { const n = Number(/block-set-np1-(\d+)/.exec(name)![1]); bodies[n - 1] = input; return send({ ...blocks(), n, count: 1 }); }
+    if (name === 'template-list.json') return send({ templates: [] });
+    if (name === 'settings-notebook.json') return send({});
+    if (name === 'page-sweep.json') return send({ operations: [], errors: [] });
+    if (name.startsWith('docs-list-')) return send([]);
+    if (name.startsWith('page-overview-') || name.startsWith('page-scripture-') || name.startsWith('page-look-')) return send({});
+    if (name.startsWith('history-add')) return send({});
+    if (name.startsWith('notebook-group-')) return send({ group: 'day', groups: [] });
+    return route.fallback();
+  });
+  await page.goto('/?at=NUM.25');
+  await page.waitForFunction(() => (window as any).__wbReady);
+  await page.getByRole('button', { name: 'Notebook', exact: true }).first().click({ force: true });
+  await page.waitForSelector('.pane-notebook');
+  await page.getByRole('button', { name: 'A new page' }).first().click();
+  await expect(page.locator('.nb-new-title')).toBeFocused();
+  await page.keyboard.type('Fresh page');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('First words');
+  // straight on, with no wait for the save: Enter, the next line, Enter, the third
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Second words');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Third words');
+  await expect(page.locator('.pane-notebook .nb-block-input')).toHaveText('Third words');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => bodies).toEqual(['First words', 'Second words', 'Third words']);
+  expect(title).toBe('Fresh page');
+  await expect(page.locator('.pane-notebook .nb-newpage')).toHaveCount(0);
+  await expect(page.locator('.pane-notebook .nb-block')).toHaveCount(3);
+});
+
+// B11 (play-test of 0.3.0): Enter pressed while the block before is still being saved is kept, not lost: three lines typed
+// straight on with Enter between them are three blocks, never two run together.
+test('enter_while_saving_is_kept', async ({ page }) => {
+  const { saved } = await writingPage(page);
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Second');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Third');
+  await expect(page.locator('.pane-notebook .nb-block-input')).toHaveText('Third');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => saved.filter(s => s.startsWith('block-add-w1-')).length).toBe(2);
 });
 
 test('markdown_shortcuts_turn_the_line', async ({ page }) => {
