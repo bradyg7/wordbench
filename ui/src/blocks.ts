@@ -394,7 +394,7 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
     else if (mod && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'd') { ev.preventDefault(); void duplicateBlock(data, host, el, b); }
   };
   grip.draggable = true;
-  grip.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-block', `${data.id} ${b.n}`); ev.dataTransfer!.effectAllowed = 'move'; el.classList.add('dragging'); };
+  grip.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-block', `${data.id} ${b.n}`); ev.dataTransfer!.setData('text/wb-block-words', JSON.stringify({ text: b.text, page: data.blocks.map(x => x.text) })); ev.dataTransfer!.effectAllowed = 'move'; el.classList.add('dragging'); };
   grip.ondragend = () => { el.classList.remove('dragging'); document.querySelectorAll('.drop-before, .drop-after, .drop-left, .drop-right').forEach(x => x.classList.remove('drop-before', 'drop-after', 'drop-left', 'drop-right')); };
   const body = h('div', 'nb-block-body');
   body.append(drawn(b, host, data.id));
@@ -443,15 +443,34 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
     ev.stopPropagation();
     const [id, n] = got.split(' ');
     if (id !== data.id || Number(n) === b.n) return;
-    try {
-      if (w === 'left' || w === 'right') {
-        await wb(['block', 'move', data.id, n, '--beside', String(b.n), ...(w === 'left' ? ['--left'] : [])]);
-      } else {
-        const to = w === 'before' ? b.n : b.n + 1;
-        await wb(['block', 'move', data.id, n, ...(to > data.blocks.length ? ['--last'] : ['--to', String(to)])]);
-      }
-      host.changed();
-    } catch (x) { toast(String(x)); }
+    let source: { text: string; page: string[] } = { text: '', page: [] };
+    try { source = JSON.parse(ev.dataTransfer?.getData('text/wb-block-words') || '{}'); } catch { /* an older drag: found by nothing, asked again */ }
+    const target = { text: b.text, page: data.blocks.map(x => x.text) };
+    // drops wait for each other: one read and one move at a time, so a drop never reads the page before the one before it lands
+    dropping = dropping.then(async () => {
+      try {
+        // the drawing may be older than the page (a drop just before, its page still being drawn again): a number is taken only
+        // from a drawing of the page as it is now, else the block is found by its words when no other block has them, so an old
+        // number never names another block or a column's marker (B21)
+        const now: Blocks = await wb(['page', 'blocks', data.id]);
+        const texts = now.blocks.map(x => x.text);
+        const find = (k: number, from: { text: string; page: string[] }) => {
+          if (from.page.length === texts.length && from.page.every((t, i) => t === texts[i])) return now.blocks[k - 1]?.text === from.text ? k : 0;
+          const same = now.blocks.filter(x => x.text === from.text);
+          return same.length === 1 ? same[0].n : 0;
+        };
+        const from = find(Number(n), source), by = find(b.n, target);
+        if (!from || !by || from === by) { toast('The page changed while you dragged; drag the block again'); host.changed(); return; }
+        if (w === 'left' || w === 'right') {
+          await wb(['block', 'move', data.id, String(from), '--beside', String(by), ...(w === 'left' ? ['--left'] : [])]);
+        } else {
+          const to = w === 'before' ? by : by + 1;
+          await wb(['block', 'move', data.id, String(from), ...(to > now.blocks.length ? ['--last'] : ['--to', String(to)])]);
+        }
+        host.changed();
+      } catch (x) { toast(String(x)); }
+    });
+    await dropping;
   };
   return el;
 }
@@ -461,6 +480,8 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
 /** The block being written now (one at a time): the handle saves it first and finds its place from it. */
 interface Live { el: HTMLElement; cur: { n: number; count: number; after: number }; save: () => Promise<void>; finish: (then?: BlockFocus) => Promise<void>; text: () => string }
 let liveEdit: Live | null = null;
+/** The block drops in flight, one after another (B21). */
+let dropping: Promise<void> = Promise.resolve();
 
 /** Where block `b` is right now, and the page text to guard the change with (none when the page may have been written since it was
  *  drawn: the block being written was saved). The block being written is saved and let go first. null: nothing there to act on. */

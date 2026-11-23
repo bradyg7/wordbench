@@ -17,6 +17,7 @@ async function openPage(page: Page, start: string[] = WORDS) {
   const other: string[] = [];                       // the other page ("Other page", w2): what was moved into it
   const moves: string[][] = [];                     // this page before each move (what its undo token gives back)
   const calls: Call[] = [];
+  let slow = 0;                                     // ms the page's blocks take to read (a window still drawing the page again)
   const kindOf = (t: string) => (t.startsWith('```') ? 'fence' : /^#{1,3} /.test(t) ? 'heading' : /^- \[[ xX]\] /.test(t) ? 'todo' : /^- /.test(t) ? 'item' : /^> /.test(t) ? 'quote' : 'paragraph');
   const blocks = () => {
     let pos = TITLE.length + 2;
@@ -59,7 +60,7 @@ async function openPage(page: Page, start: string[] = WORDS) {
       calls.push({ name, input });
       return send({ id: 'w1', n: Number(m[1]), block: 'abc123', title: TITLE, link: `[[${TITLE}#^abc123]]`, wrote: true });
     }
-    if (name === 'page-blocks-w1') return send(blocks());
+    if (name === 'page-blocks-w1') { const now = blocks(); if (slow) await new Promise(r => setTimeout(r, slow)); return send(now); }
     // columns are drawn "at Full width" (row 44): the page in these tests has Appearance › Full width on
     if (name === 'page-look-w1') return send({ id: 'w1', full_width: true, small_text: false, font: 'default', toc: false, locked: false });
     if (name === 'page-scripture-w1') return send({ blocks: [] });
@@ -105,6 +106,8 @@ async function openPage(page: Page, start: string[] = WORDS) {
       const moving = texts[n];
       if (m[4]) {
         const by = texts[Number(m[4]) - 1];
+        // wb-core refuses a marker on either side (blockops.rs move_beside)
+        if ([OPEN, SEP, CLOSE].includes(moving) || [OPEN, SEP, CLOSE].includes(by)) return route.fulfill({ status: 400, body: 'A column marker is not a block; move the blocks, not the markers.' });
         const left = !!m[5];
         texts.splice(n, 1);
         const at = texts.indexOf(by);
@@ -147,7 +150,7 @@ async function openPage(page: Page, start: string[] = WORDS) {
   await page.waitForSelector('.pane-notebook');
   await page.evaluate(() => (window as any).__wb.note('w1'));
   await page.waitForSelector('.nb-block[data-n="1"]');
-  return { texts: () => [...texts], other: () => [...other], calls };
+  return { texts: () => [...texts], other: () => [...other], calls, slow: (ms: number) => { slow = ms; } };
 }
 
 const block = (page: Page, n: number) => page.locator(`.nb-block[data-n="${n}"]`);
@@ -252,6 +255,50 @@ test('scripture_side_by_side_up_to_four', async ({ page, browserName }) => {
   await page.setViewportSize({ width: 2800, height: 900 });
   await expect(page.locator('.nb-columns')).toHaveCount(1);
   s.calls.length = 0;
+});
+
+test('drag_right_after_a_drag_moves_the_blocks_it_shows', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', "HTML5 drag and drop is the real app runs in WebView2 (Chromium) and Playwright's WebKit does not run it");
+  // B21 (finding 2766): a drop is followed by the page being drawn again; a second drag begun before that drawing lands carries the
+  // old numbers, which name other blocks once columns have added their markers ("A column marker is not a block")
+  await page.setViewportSize({ width: 2800, height: 900 });
+  const s = await openPage(page, ['- one', '- two', '- three', '- four', '- five']);
+  s.slow(2500);
+  await dragTo(page, 3, 1, 0.02, 0.5);                     // at the left edge: three beside one, in columns
+  await expect.poll(() => s.texts()).toEqual([OPEN, '- three', SEP, '- one', CLOSE, '- two', '- four', '- five']);
+  await expect(page.locator('.nb-columns')).toHaveCount(0); // still the page as it was drawn
+  await dragTo(page, 5, 4, 0.02, 0.5);                     // five beside four, by what the page shows
+  await expect.poll(() => s.calls.length, { timeout: 8000 }).toBe(2);
+  expect(s.calls.at(-1)!.name).toBe('block-move-w1-8-beside-7-left');
+  await expect.poll(() => s.texts()).toEqual([OPEN, '- three', SEP, '- one', CLOSE, '- two', OPEN, '- five', SEP, '- four', CLOSE]);
+  await expect(page.locator('.toast', { hasText: /marker|Not in the app/ })).toHaveCount(0);
+});
+
+test('drag_right_after_a_drag_reorders_by_what_is_shown', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', "HTML5 drag and drop is the real app runs in WebView2 (Chromium) and Playwright's WebKit does not run it");
+  // B21: the same for bullets dragged up and down, with no columns: the second drop lands where the page shows it
+  const s = await openPage(page, ['- one', '- two', '- three', '- four', '- five']);
+  s.slow(2500);
+  await dragTo(page, 1, 3, 0.5, 0.8);                      // one after three
+  await expect.poll(() => s.texts()).toEqual(['- two', '- three', '- one', '- four', '- five']);
+  await expect(block(page, 1)).toContainText('one');       // still the page as it was drawn
+  await dragTo(page, 5, 2, 0.5, 0.2);                      // five before two, as drawn: two is block 1 now
+  await expect.poll(() => s.calls.length, { timeout: 8000 }).toBe(2);
+  expect(s.calls.at(-1)!.name).toBe('block-move-w1-5-to-1');
+  await expect.poll(() => s.texts()).toEqual(['- five', '- two', '- three', '- one', '- four']);
+});
+
+test('drag_on_an_old_drawing_of_twin_lines_asks_again', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', "HTML5 drag and drop is the real app runs in WebView2 (Chromium) and Playwright's WebKit does not run it");
+  // B21: two lines alike cannot be told apart by their words: on an old drawing nothing is moved, and the person is asked again
+  const s = await openPage(page, ['- same', '- one', '- same', '- two']);
+  s.slow(2500);
+  await dragTo(page, 2, 4, 0.5, 0.8);                      // one to the end
+  await expect.poll(() => s.texts()).toEqual(['- same', '- same', '- two', '- one']);
+  await dragTo(page, 3, 1, 0.5, 0.2);                      // the second "same" to the top, as drawn
+  await expect(page.locator('.toast', { hasText: 'The page changed while you dragged' })).toBeVisible({ timeout: 8000 });
+  expect(s.calls.length).toBe(1);
+  expect(s.texts()).toEqual(['- same', '- same', '- two', '- one']);
 });
 
 /** The page is drawn again after a change, a moment after the server has it: mark what is on screen, then wait until none of it is left.
