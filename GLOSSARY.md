@@ -12,7 +12,7 @@ The words used about how the app is built and checked, in plain English. [CODING
 | Word | What it means here |
 |---|---|
 | **CI** | Continuous integration: GitHub's own computers run the checks and tests on every push, so nobody waits for them on this PC. A change reaches `main` only when they pass ("green"). |
-| **Quick checks** | The CI checks that take about 3 minutes: formatting, clippy and the TypeScript compiler. They run on every branch push. |
+| **Quick checks** | The CI checks that take about 3 minutes: formatting, clippy, the TypeScript compiler and the search for TODO notes. They run on every branch push. |
 | **Full suite** | Every test: `cargo test`, the UI unit tests, the WebKit and Chromium tests and axe. It runs in CI on pull requests and on `main`, and never on this PC. |
 | **clippy** | Rust's own code checker. It reads the code without running it and warns about mistakes and clumsy ways of writing things. |
 | **Lint, linter** | A rule a code checker applies, and the checker itself (clippy for Rust, typescript-eslint for TypeScript). |

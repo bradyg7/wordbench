@@ -5,8 +5,8 @@ Builders read this before building anything the person sees, and reviewers check
 judged when the person plays the prototype. Words: [GLOSSARY.md](GLOSSARY.md#development-words).
 
 **Sources:** WCAG 2.2 at level AA; Jakob Nielsen's 10 usability heuristics and his response-time limits; Microsoft's
-Windows app design guidelines; Apple's Human Interface Guidelines. Checked by machine where possible (axe, which ticket 4
-adds to the full suite; the speed
+Windows app design guidelines; Apple's Human Interface Guidelines. Checked by machine where possible (axe, in the full suite as
+`ui/tests/axe.spec.ts`; the speed
 budgets in `measure/measure.mjs`); the rest when the person plays.
 
 ## The feel qualities

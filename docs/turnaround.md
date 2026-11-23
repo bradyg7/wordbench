@@ -241,6 +241,9 @@ the gate.
   (with the nine checker switches reviewed: one kept, eight removed in ticket 3) and `DESIGN_STANDARDS.md` (the seven
   feel qualities). The builder and reviewer agents read both. Found: axe is not installed yet (ticket 4 adds it); typescript-eslint joins ticket 3.
 - Ticket 3 built on `fix/zero-warnings`, not merged: rustfmt commit (about 1,970 differences), then 68 clippy warnings fixed (`cargo clippy --workspace --all-targets -- -D warnings` passes); the eight old switches are removed; nine `expect(dead_code)` on `mod common;` remain, one row in the Checker switches table. typescript-eslint is NOT installed: it supports TypeScript below 6.1 only (typescript-eslint 8.74.0), and the repo uses 7.0.2; the person decides.
+- Ticket 4 built on `fix/ci` (stacked on `fix/zero-warnings`), not pushed, so GitHub has not run it yet: `ci.yml` (quick
+  checks on every branch push, the full Windows suite on pull requests to `main` and on `main`), the Mac tests only
+  for tags, `warm-cache.yml` without its weekly run, and `ui/tests/axe.spec.ts` (WCAG 2.2 AA, with 3 known violations named in it).
 - Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
   (ticket 4) can run on it.
 
