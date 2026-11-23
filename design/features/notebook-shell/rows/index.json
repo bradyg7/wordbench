@@ -1,0 +1,104 @@
+[
+  {
+    "id": "0a",
+    "row": 1,
+    "file": "rows/0a.png",
+    "caption": "Before · the old Notebook pane that 0.3.0 still draws around the new editor"
+  },
+  {
+    "id": "1",
+    "row": 1,
+    "file": "rows/1.png",
+    "caption": "1 · The Notebook: one side list (Recents, Pinned, Folders, Pages as a tree; Templates and Trash at the foot) and the page to its right. No tabs, no cards"
+  },
+  {
+    "id": "dirs",
+    "row": 1,
+    "file": "rows/dirs.png",
+    "caption": "Directions for where a page opens"
+  },
+  {
+    "id": "3",
+    "row": 3,
+    "file": "rows/3.png",
+    "caption": "3 · Hover a row: ▸ at the left, ⋯ and + at the right, only under the pointer"
+  },
+  {
+    "id": "4",
+    "row": 4,
+    "file": "rows/4.png",
+    "caption": "4 · ▸ opens the pages inside, 12 px in; a page can hold pages to any depth"
+  },
+  {
+    "id": "10",
+    "row": 10,
+    "file": "rows/10.png",
+    "caption": "10–12 · The page list is a table, one line a page: Name, Folder, Edited, Created; a header sorts; \"Open\" on hover; filters above (filters-v2)"
+  },
+  {
+    "id": "13",
+    "row": 13,
+    "file": "rows/13.png",
+    "caption": "13 · A click anywhere opens the page in place: it replaces what was shown; its row lights; ← → walk back"
+  },
+  {
+    "id": "14",
+    "row": 14,
+    "file": "rows/14.png",
+    "caption": "14 · From a list in a page, a row opens as a side peek; ⤢ opens it full, Esc closes"
+  },
+  {
+    "id": "15",
+    "row": 15,
+    "file": "rows/15.png",
+    "caption": "15 · Ctrl+click opens beside: two pages at most; a third replaces the right one"
+  },
+  {
+    "id": "17",
+    "row": 17,
+    "file": "rows/17.png",
+    "caption": "17 · New page opens in place, title focused; it is at the top of Pages at once; left with no words, it is not kept"
+  },
+  {
+    "id": "18",
+    "row": 18,
+    "file": "rows/18.png",
+    "caption": "18–19 · Move to Trash: the row leaves, the previous page opens, one toast with Undo for 30 seconds"
+  },
+  {
+    "id": "20",
+    "row": 20,
+    "file": "rows/20.png",
+    "caption": "20–21 · Trash is a popover beside the side list, not a view: search, restore ↺, erase 🗑; Esc or a click outside leaves it, nothing else changes"
+  },
+  {
+    "id": "22",
+    "row": 22,
+    "file": "rows/22.png",
+    "caption": "22–24 · A trashed page opens read-only under a band: Restore, or Erase now (asks first)"
+  },
+  {
+    "id": "25",
+    "row": 25,
+    "file": "rows/25.png",
+    "caption": "25–29 · Right-click or ⋯ on a row: the one menu, searchable, shortcuts at the right"
+  },
+  {
+    "id": "30",
+    "row": 30,
+    "file": "rows/30.png",
+    "caption": "30 · The Notebook as one pane beside the reader: the side list and the page inside it; no hidden tab is ever made"
+  },
+  {
+    "id": "32",
+    "row": 32,
+    "file": "rows/32.png",
+    "caption": "32 · Narrow: the side list fills the pane; a page opens over it with ‹ back to the list"
+  },
+  {
+    "id": "36",
+    "row": 36,
+    "file": "rows/36.png",
+    "caption": "36 · Only the focused empty line hints; the other empty lines and the space under the page say nothing"
+  }
+]

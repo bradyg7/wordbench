@@ -27,13 +27,14 @@ A new button or command gets a row here, and its folder, before it is built.
 | Notebook: pages, Pinned, blocks | the side list, the page, / and the selection bar, many pages at once, folders | [library](library/README.md) | accepted (2026-11-17); building |
 | Notebook: Find scripture in a page | Find scripture… in a page's ⋯, the Tether pane, Accept and Skip, the verses in order for a deck or script | [tether](tether/README.md) | exploring (seeded 2026-11-17) |
 | Notebook: Notion's quality (the feel, writing, the page) | the inventory of Notion lines marked adopt, adapt or skip; Turn into, the block handle, markdown shortcuts, toggles, drag to reorder, focus rules | [notebook](notebook/README.md) | exploring (round 1, 2026-11-20) |
+| Notebook: the shell (side list and page tree, where a page opens, the page list, Trash, row menus) | Notion's sidebar, open in place, the Trash popover, the list as a table; the old Notebook pane removed | [notebook-shell](notebook-shell/README.md) | accepted (round 1, 2026-11-22) |
 | Shelf and sets, bookmarks (Keep) | Keep on anything, the folder picker, a folder opened | [library](library/README.md) | accepted (2026-11-17); building |
 | Threads | a thread is a folder with a color (TH-1; the person's word 2026-11-17, TH-11); its line on the text and its eye | [threads](threads/README.md) | accepted (2026-11-17); building |
 | Marks: what the text shows of yours | on the words, in the margin, margin notes, Scripture in this page, a passage with its marks | [marks](marks/README.md) | accepted (2026-11-17); building |
 | Questions | asking, the list, answering | [questions](questions/README.md) | accepted (2026-11-17); building |
 | Day page, journal, inbox | Today optional; Inbox removed (minimize round 5) | [library](library/README.md) | accepted (2026-11-17); building |
 | Search, uses, count, near, forms | asking and narrowing a search; the [Concordance](concordance/README.md) hosts uses, count, forms and near for an entry and reuses search's controls | [search](search/README.md) | exploring |
-| Shared filtering | Filter chips on a list in a page and the Library's lists, pickers only, kept as `filter:` lines in the view fence | [filters-v2](filters-v2/README.md) (replaces [filters](filters/README.md), superseded 2026-11-22) | exploring (round 1, 2026-11-22) |
+| Shared filtering | Filter chips on a list in a page and the Library's lists, pickers only, kept as `filter:` lines in the view fence | [filters-v2](filters-v2/README.md) (replaces [filters](filters/README.md), superseded 2026-11-22) | accepted (round 1, 2026-11-22) |
 | Reading plans and the reading log | a plan's day, starting a plan, what was read | [reading-plans](reading-plans/README.md) | exploring |
 | Lessons and documents (Word, PDF, Present) | the builder, the viewer, Looks, where a file went | [documents](documents/README.md) | accepted (2026-11-17); building |
 | Trash | Undo, the 7 days, Empty trash, the way in, deleting a block; several pages at once (T10) | [trash](trash/README.md) | accepted (2026-11-17, round 3; rounds 1-2 built); building |
