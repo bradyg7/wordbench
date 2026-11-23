@@ -246,6 +246,12 @@ function makeRoom(desk, cols, keep) {
     const ids = allIds(cols).filter(i => !keep.includes(i)); if (!ids.length) break;
     const old = ids.sort((a, b) => S.bubs[a].used - S.bubs[b].used)[0];
     cols = without(cols, old); desk.tray.push(old);
+    // one goes to the tray, not a whole column: a lone new bubble in a column too many moves into the room just made
+    const L = limits(), k = keep[0], at = k && findCell(cols, k);
+    if (at && cols.length > L.c && cols[at[0]].cells.length === 1) {
+      const room = cols.map((c, i) => [i, c.cells.length]).filter(([i, n]) => i !== at[0] && n < L.r).sort((a, b) => Math.abs(a[0] - at[0]) - Math.abs(b[0] - at[0]))[0];
+      if (room) { const anchor = cols[room[0]].cells[cols[room[0]].cells.length - 1].id; cols = without(cols, k); const [ri] = findCell(cols, anchor); cols = insert(cols, k, { kind: 'row', col: ri, at: cols[ri].cells.length }); }
+    }
   }
   return cols;
 }
