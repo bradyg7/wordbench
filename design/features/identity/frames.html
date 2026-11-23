@@ -1,0 +1,192 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Identity frames</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Sans:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Newsreader:opsz,wght@6..72,400;6..72,600&family=EB+Garamond:wght@400;600&family=Crimson+Pro:wght@400;600&display=block" rel="stylesheet">
+<style>
+/* design/features/identity round 1. Scripture is filled in by frames.mjs from data/*.json (wb text), never typed here. */
+* { box-sizing: border-box; }
+body { margin: 0; background: #ccc; font: 14px/1.5 Inter, system-ui, sans-serif; }
+.frame { width: 1600px; height: 1000px; position: relative; overflow: hidden; margin-bottom: 20px; padding-bottom: 44px; background: #fff; }
+.cap { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; padding: 11px 24px; background: #1d1d1f; color: #fff; font: 15px Inter, sans-serif; z-index: 50; }
+.v { font-feature-settings: "onum"; }
+.vn { font-size: .62em; vertical-align: super; opacity: .55; margin-right: 3px; font-family: Inter, sans-serif; }
+
+/* three directions: tokens per class */
+.d-vellum { --paper:#FBFAF7; --panel:#F3F1EC; --ink:#1E2125; --muted:#6E727A; --line:#E4E1DA; --accent:#1F6F6B; --accent-soft:#DDECEA; --ui:"Inter"; --serif:"Source Serif 4"; }
+.d-ink    { --paper:#F7F8FA; --panel:#EEF0F4; --ink:#161A22; --muted:#667085; --line:#DEE2EA; --accent:#3346B8; --accent-soft:#E2E6F8; --ui:"IBM Plex Sans"; --serif:"Newsreader"; }
+.d-olive  { --paper:#F7F5EF; --panel:#EEEBE2; --ink:#24231F; --muted:#77736A; --line:#E2DED2; --accent:#5D6B2E; --accent-soft:#E6EAD6; --ui:"Instrument Sans"; --serif:"Literata"; }
+.d-vellum.dark { --paper:#17191C; --panel:#1F2226; --ink:#E9E6DF; --muted:#9298A0; --line:#2C3035; --accent:#5DB3AD; --accent-soft:#1E3533; }
+.d-ink.dark    { --paper:#12141A; --panel:#1A1D25; --ink:#E6E8EE; --muted:#8A93A6; --line:#2A2F3B; --accent:#8C9BFF; --accent-soft:#232A4A; }
+.d-olive.dark  { --paper:#1A1A16; --panel:#22221D; --ink:#ECEADF; --muted:#9A968A; --line:#33322B; --accent:#A9B86A; --accent-soft:#2D3220; }
+.sw { display:flex; gap:6px; margin: 10px 0; } .sw i { width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); display:block; }
+.dir { flex: 1; background: var(--paper); color: var(--ink); font-family: var(--ui), sans-serif; padding: 26px 28px; border-right: 1px solid #0001; display:flex; flex-direction:column; gap: 10px; }
+.dir h2 { margin: 0; font-size: 22px; font-weight: 600; }
+.dir .tag { color: var(--muted); font-size: 13px; }
+.dir .read { font-family: var(--serif), serif; font-size: 21px; line-height: 1.6; background: var(--paper); }
+.chip { display:inline-block; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 500; }
+.btn { display:inline-block; padding: 7px 14px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 500; }
+.btn.q { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.mini { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+.mini .row { display:flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--line); } .mini .row:last-child { border:0 }
+.mk { display:flex; gap:5px; } .mk i { width: 18px; height: 18px; border-radius: 5px; display:block; }
+
+/* typeface specimen */
+.spec { display:grid; grid-template-columns: 1fr 1fr; gap: 0; height: 100%; }
+.spec > div { padding: 26px 34px; border-bottom: 1px solid #eee; border-right: 1px solid #eee; background: #FBFAF7; color:#1E2125; }
+.spec .nm { font: 600 13px Inter, sans-serif; color: #6E727A; letter-spacing: .02em; text-transform: uppercase; }
+.spec .read { font-size: 20px; line-height: 1.62; margin-top: 8px; }
+
+/* app chrome (vellum by default) */
+.app { position:absolute; inset:0 0 44px 0; background: var(--paper); color: var(--ink); font-family: var(--ui), sans-serif; }
+.topbar { height: 46px; display:flex; align-items:center; gap: 12px; padding: 0 18px; color: var(--muted); font-size: 13px; }
+.topbar b { color: var(--ink); font-weight: 500; }
+.reader { max-width: 680px; margin: 30px auto; font-family: var(--serif), serif; font-size: 21px; line-height: 1.65; }
+.reader .h { font: 600 30px var(--serif), serif; margin-bottom: 18px; }
+.dock { position:absolute; left:50%; transform: translateX(-50%); bottom: 18px; display:flex; gap: 6px; padding: 8px 10px; border-radius: 20px; background: color-mix(in srgb, var(--panel) 82%, transparent); backdrop-filter: blur(14px); box-shadow: 0 10px 30px rgba(0,0,0,.14), 0 0 0 1px var(--line); align-items: flex-end; }
+.app-i { width: 52px; height: 52px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size: 22px; position: relative; color: var(--accent); }
+.app-i.big { width: 66px; height: 66px; font-size: 28px; }
+.app-i.mid { width: 58px; height: 58px; }
+.app-i .run { position:absolute; bottom: -7px; left: 50%; width: 5px; height: 5px; border-radius: 3px; background: var(--muted); transform: translateX(-50%); }
+.app-i .lbl { position:absolute; top: -38px; left:50%; transform: translateX(-50%); background: var(--ink); color: var(--paper); font-size: 12px; padding: 3px 9px; border-radius: 6px; white-space: nowrap; }
+.dsep { width:1px; align-self: stretch; background: var(--line); margin: 4px 4px; }
+.hotline { position:absolute; left: 30%; right: 30%; bottom: 0; height: 4px; border-radius: 2px; background: var(--accent); opacity: .35; }
+.taskbar { position:absolute; left:0; right:0; bottom:0; height: 52px; background: var(--panel); border-top: 1px solid var(--line); display:flex; align-items:center; justify-content:center; gap: 6px; }
+.taskbar .app-i { width: 40px; height: 40px; border-radius: 10px; font-size: 18px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+.tile h3 { margin: 0 0 8px; font-size: 13px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+.win { position:absolute; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.08); overflow:hidden; }
+.win .wt { height: 34px; border-bottom: 1px solid var(--line); display:flex; align-items:center; padding: 0 12px; font-size: 13px; gap: 8px; color: var(--muted); }
+.win .wt b { color: var(--ink); font-weight: 500; }
+.win .wb { padding: 14px 18px; font-family: var(--serif), serif; font-size: 16px; line-height: 1.6; }
+.ln { height: 10px; border-radius: 3px; background: var(--line); margin: 10px 0; }
+.zones { position:absolute; top: 14px; left: 50%; transform: translateX(-50%); background: var(--panel); border-radius: 14px; padding: 12px; display:flex; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.18); z-index: 9; }
+.z { width: 96px; height: 60px; border-radius: 8px; display:grid; gap: 3px; padding: 3px; background: var(--paper); border: 1px solid var(--line); }
+.z i { background: var(--accent-soft); border-radius: 4px; display:block; } .z i.on { background: var(--accent); }
+.note { position:absolute; background:#FFF8D6; border:1px solid #EDDC8C; color:#5C4E10; padding: 10px 14px; border-radius: 8px; font-size: 13px; width: 340px; z-index: 20; }
+</style></head><body>
+
+<!-- 1: three directions -->
+<div class="frame" data-id="1" data-row="1" style="display:flex">
+  <div class="dir d-vellum"><h2>A · Vellum</h2><div class="tag">Quiet warm-white paper, deep teal ink-accent · Inter + Source Serif 4</div>
+    <div class="sw"><i style="background:#FBFAF7"></i><i style="background:#F3F1EC"></i><i style="background:#1E2125"></i><i style="background:#1F6F6B"></i><i style="background:#DDECEA"></i></div>
+    <div class="read" data-verses="john"></div>
+    <div><span class="btn">Open</span> <span class="btn q">Cancel</span> <span class="chip">Covenant</span></div>
+    <div class="mini"><div class="row"><span>Salt lessons 2025</span><span style="color:var(--muted)">2m ago</span></div><div class="row"><span>Word studies</span><span style="color:var(--muted)">Yesterday</span></div></div>
+    <div class="mk"><i style="background:#F6D96B"></i><i style="background:#9FD3A8"></i><i style="background:#9CC3F0"></i><i style="background:#F3A6A6"></i><i style="background:#C9B3EC"></i><span style="font-size:12px;color:var(--muted);margin-left:6px">your marks palette, unchanged</span></div>
+  </div>
+  <div class="dir d-ink"><h2>B · Ink</h2><div class="tag">Cool paper, indigo accent, a scholarly tool · IBM Plex Sans + Newsreader</div>
+    <div class="sw"><i style="background:#F7F8FA"></i><i style="background:#EEF0F4"></i><i style="background:#161A22"></i><i style="background:#3346B8"></i><i style="background:#E2E6F8"></i></div>
+    <div class="read" data-verses="john"></div>
+    <div><span class="btn">Open</span> <span class="btn q">Cancel</span> <span class="chip">Covenant</span></div>
+    <div class="mini"><div class="row"><span>Salt lessons 2025</span><span style="color:var(--muted)">2m ago</span></div><div class="row"><span>Word studies</span><span style="color:var(--muted)">Yesterday</span></div></div>
+    <div class="mk"><i style="background:#F6D96B"></i><i style="background:#9FD3A8"></i><i style="background:#9CC3F0"></i><i style="background:#F3A6A6"></i><i style="background:#C9B3EC"></i></div>
+  </div>
+  <div class="dir d-olive"><h2>C · Olive press</h2><div class="tag">Stone paper, olive accent, calm and old-world · Instrument Sans + Literata</div>
+    <div class="sw"><i style="background:#F7F5EF"></i><i style="background:#EEEBE2"></i><i style="background:#24231F"></i><i style="background:#5D6B2E"></i><i style="background:#E6EAD6"></i></div>
+    <div class="read" data-verses="john"></div>
+    <div><span class="btn">Open</span> <span class="btn q">Cancel</span> <span class="chip">Covenant</span></div>
+    <div class="mini"><div class="row"><span>Salt lessons 2025</span><span style="color:var(--muted)">2m ago</span></div><div class="row"><span>Word studies</span><span style="color:var(--muted)">Yesterday</span></div></div>
+    <div class="mk"><i style="background:#F6D96B"></i><i style="background:#9FD3A8"></i><i style="background:#9CC3F0"></i><i style="background:#F3A6A6"></i><i style="background:#C9B3EC"></i></div>
+  </div>
+  <div class="cap">1 · Three identities, each a palette, a UI face and a scripture face; the marks palette is the same in all three</div>
+</div>
+
+<!-- 2: dark -->
+<div class="frame" data-id="2" data-row="2" style="display:flex">
+  <div class="dir d-vellum dark"><h2>A · Vellum, dark</h2><div class="read" data-verses="john"></div><div><span class="btn">Open</span> <span class="chip">Covenant</span></div></div>
+  <div class="dir d-ink dark"><h2>B · Ink, dark</h2><div class="read" data-verses="john"></div><div><span class="btn">Open</span> <span class="chip">Covenant</span></div></div>
+  <div class="dir d-olive dark"><h2>C · Olive press, dark</h2><div class="read" data-verses="john"></div><div><span class="btn">Open</span> <span class="chip">Covenant</span></div></div>
+  <div class="cap">2 · Each identity in dark; the page surface's colors are a theme the person can change (row 3)</div>
+</div>
+
+<!-- 3: scripture faces -->
+<div class="frame" data-id="3" data-row="4"><div class="spec">
+  <div style="font-family:Literata"><div class="nm">Literata (today)</div><div class="read" data-verses="ps"></div><div class="read" data-verses="john"></div></div>
+  <div style="font-family:'Source Serif 4'"><div class="nm">Source Serif 4</div><div class="read" data-verses="ps"></div><div class="read" data-verses="john"></div></div>
+  <div style="font-family:Newsreader"><div class="nm">Newsreader</div><div class="read" data-verses="ps"></div><div class="read" data-verses="john"></div></div>
+  <div style="font-family:'EB Garamond';font-size:1.08em"><div class="nm">EB Garamond</div><div class="read" data-verses="ps"></div><div class="read" data-verses="john"></div></div>
+</div><div class="cap">4 · Scripture faces side by side at reading size (all free and open licensed); Crimson Pro is the fifth, drawn on request</div></div>
+
+<!-- 4: dock hidden -->
+<div class="frame d-vellum" data-id="5" data-row="5"><div class="app">
+  <div class="topbar"><b>John 1</b><span>KJV</span></div>
+  <div class="reader"><div class="h">John 1</div><div data-verses="john"></div></div>
+  <div class="hotline"></div>
+  <div class="note" style="left:60px;bottom:60px">The dock is hidden while reading. Moving the pointer to the bottom edge (a 4 px band, drawn here) brings it up after 120 ms. Nothing covers the text otherwise.</div>
+</div><div class="cap">5 · Reading: no rail, no chrome but a quiet top line; the dock waits at the bottom edge</div></div>
+
+<!-- 5: dock shown -->
+<div class="frame d-vellum" data-id="6" data-row="6"><div class="app">
+  <div class="topbar"><b>John 1</b><span>KJV</span></div>
+  <div class="reader"><div class="h">John 1</div><div data-verses="john"></div></div>
+  <div class="dock">
+    <div class="app-i mid">⌂</div>
+    <div class="dsep"></div>
+    <div class="app-i">▥<span class="run"></span></div>
+    <div class="app-i big">✎<span class="lbl">Notebook</span><span class="run"></span></div>
+    <div class="app-i mid">⌕</div>
+    <div class="app-i">א</div>
+    <div class="app-i">✦</div>
+    <div class="app-i">☷</div>
+    <div class="dsep"></div>
+    <div class="app-i">⚙&#xFE0E;</div>
+  </div>
+  <div class="note" style="right:60px;bottom:120px">Workbench (home) · Bible, Notebook, Search, Words (concordance and lexicons), Marks, Reading plans · Settings. A dot under an app that is open. Icons grow gently under the pointer and its name shows above.</div>
+</div><div class="cap">6 · The dock up: home, the apps, Settings; open apps carry a dot; the name shows on hover</div></div>
+
+<!-- 6: taskbar -->
+<div class="frame d-vellum" data-id="7" data-row="9"><div class="app">
+  <div class="topbar"><b>John 1</b><span>KJV</span></div>
+  <div class="reader"><div class="h">John 1</div><div data-verses="john"></div></div>
+  <div class="taskbar"><div class="app-i">⌂</div><div class="dsep"></div><div class="app-i">▥</div><div class="app-i" style="background:var(--accent-soft)">✎</div><div class="app-i">⌕</div><div class="app-i">א</div><div class="app-i">✦</div><div class="app-i">☷</div><div class="dsep"></div><div class="app-i">⚙&#xFE0E;</div></div>
+</div><div class="cap">9 · Static taskbar (Settings › Dock › Always shown): the same apps, always visible, the reader stops above it</div></div>
+
+<!-- 7: home -->
+<div class="frame d-vellum" data-id="8" data-row="11"><div class="app">
+  <div style="max-width:1100px;margin:60px auto 0;display:grid;grid-template-columns:2fr 1fr;gap:18px">
+    <div class="tile" style="grid-row:span 2"><h3>Where you left off</h3><div style="font:600 26px var(--serif),serif">John 1:1</div><div style="font-family:var(--serif),serif;font-size:18px;line-height:1.6" data-verses="john1"></div><div style="margin-top:14px"><span class="btn">Continue reading</span></div></div>
+    <div class="tile"><h3>Today's reading</h3><div>Plan: Gospels in 90 days</div><div style="color:var(--muted)">Day 12 · 2 chapters</div></div>
+    <div class="tile"><h3>Open questions</h3><div>3 open</div><div style="color:var(--muted)">from Salt lessons 2025</div></div>
+    <div class="tile" style="grid-column:span 2"><h3>Recent pages</h3><div style="display:flex;gap:12px"><div class="mini" style="flex:1">Salt lessons 2025<div style="color:var(--muted)">2m ago</div></div><div class="mini" style="flex:1">Sunday class: the covenant<div style="color:var(--muted)">Yesterday</div></div><div class="mini" style="flex:1">Word studies<div style="color:var(--muted)">Nov 18</div></div></div></div>
+  </div>
+  <div class="dock"><div class="app-i mid" style="background:var(--accent-soft)">⌂<span class="run"></span></div><div class="dsep"></div><div class="app-i">▥</div><div class="app-i">✎</div><div class="app-i">⌕</div><div class="app-i">א</div><div class="app-i">✦</div><div class="app-i">☷</div><div class="dsep"></div><div class="app-i">⚙&#xFE0E;</div></div>
+</div><div class="cap">11 · The Workbench home: where you left off, today's reading, open questions, recent pages; one click resumes each</div></div>
+
+<!-- 8: together A snap -->
+<div class="frame d-vellum" data-id="9" data-row="13"><div class="app">
+  <div class="zones"><div class="z" style="grid-template-columns:1fr 1fr"><i class="on"></i><i></i></div><div class="z" style="grid-template-columns:2fr 1fr"><i></i><i></i></div><div class="z" style="grid-template-columns:1fr 1fr 1fr"><i></i><i></i><i></i></div><div class="z" style="grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr"><i></i><i></i><i></i><i></i></div></div>
+  <div class="win" style="left:20px;top:30px;width:770px;bottom:20px"><div class="wt"><b>Bible · John 1</b></div><div class="wb" data-verses="john"></div></div>
+  <div class="win" style="left:810px;top:30px;right:20px;bottom:20px;outline:3px solid var(--accent)"><div class="wt"><b>Notebook · Salt lessons 2025</b></div><div class="wb" style="font-family:var(--ui)"><div style="font-size:24px;font-weight:600">Salt lessons 2025</div><div class="ln"></div><div class="ln" style="width:70%"></div><div class="ln"></div></div></div>
+</div><div class="cap">13 · Together A, Snap: drag an app's title to the top edge for layouts (halves, two-thirds, thirds, quarters); like Windows snap layouts</div></div>
+
+<!-- 9: together B stage -->
+<div class="frame d-vellum" data-id="10" data-row="14"><div class="app">
+  <div style="position:absolute;left:18px;top:60px;width:150px;display:flex;flex-direction:column;gap:18px">
+    <div class="win" style="position:relative;height:110px;transform:perspective(500px) rotateY(18deg)"><div class="wt" style="font-size:11px"><b>Search + Bible</b></div><div class="wb"><div class="ln"></div><div class="ln"></div></div></div>
+    <div class="win" style="position:relative;height:110px;transform:perspective(500px) rotateY(18deg)"><div class="wt" style="font-size:11px"><b>Words · H7065</b></div><div class="wb"><div class="ln"></div></div></div>
+    <div class="win" style="position:relative;height:110px;transform:perspective(500px) rotateY(18deg)"><div class="wt" style="font-size:11px"><b>Reading plan</b></div><div class="wb"><div class="ln"></div></div></div>
+  </div>
+  <div class="win" style="left:200px;top:40px;width:760px;bottom:30px"><div class="wt"><b>Bible · John 1</b></div><div class="wb" data-verses="john"></div></div>
+  <div class="win" style="left:980px;top:40px;right:30px;bottom:30px"><div class="wt"><b>Notebook · Salt lessons 2025</b></div><div class="wb" style="font-family:var(--ui)"><div style="font-size:22px;font-weight:600">Salt lessons 2025</div><div class="ln"></div><div class="ln"></div></div></div>
+</div><div class="cap">14 · Together B, Stage: the working set in the middle; other sets wait at the left as small cards, one click swaps them in (like Stage Manager)</div></div>
+
+<!-- 10: together C desks -->
+<div class="frame d-vellum" data-id="11" data-row="15"><div class="app">
+  <div class="topbar" style="gap:6px"><span class="chip" style="background:var(--accent);color:#fff">Sunday lesson</span><span class="chip">Word study: zeal</span><span class="chip">Daily reading</span><span style="color:var(--muted)">+ New desk</span></div>
+  <div class="win" style="left:20px;top:58px;width:640px;bottom:20px"><div class="wt"><b>Bible · John 1</b></div><div class="wb" data-verses="john"></div></div>
+  <div class="win" style="left:680px;top:58px;width:470px;height:520px"><div class="wt"><b>Notebook · Sunday class</b></div><div class="wb" style="font-family:var(--ui)"><div class="ln"></div><div class="ln"></div><div class="ln" style="width:60%"></div></div></div>
+  <div class="win" style="left:680px;top:600px;width:470px;bottom:20px"><div class="wt"><b>Search · "the Word"</b></div><div class="wb"><div class="ln"></div><div class="ln"></div></div></div>
+  <div class="win" style="left:1170px;top:58px;right:20px;bottom:20px"><div class="wt"><b>Words · G3056</b></div><div class="wb"><div class="ln"></div><div class="ln"></div></div></div>
+</div><div class="cap">15 · Together C, Desks: a named, saved arrangement of apps per task; switching desks swaps the whole screen; nothing stays open unseen</div></div>
+
+<script>
+window.fill = (data) => {
+  for (const el of document.querySelectorAll('[data-verses]')) {
+    const key = el.dataset.verses;
+    const vs = key === 'john1' ? data.john.verses.slice(0, 1) : data[key].verses;
+    el.innerHTML = '';
+    for (const v of vs) { const s = document.createElement('span'); s.className = 'v'; const n = document.createElement('span'); n.className = 'vn'; n.textContent = v.v; s.append(n, document.createTextNode(v.text + ' ')); el.append(s); }
+  }
+};
+</script>
+</body></html>

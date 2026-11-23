@@ -1,0 +1,62 @@
+[
+  {
+    "id": "1",
+    "row": 1,
+    "file": "rows/1.png",
+    "caption": "1 · Three identities, each a palette, a UI face and a scripture face; the marks palette is the same in all three"
+  },
+  {
+    "id": "2",
+    "row": 2,
+    "file": "rows/2.png",
+    "caption": "2 · Each identity in dark; the page surface's colors are a theme the person can change (row 3)"
+  },
+  {
+    "id": "3",
+    "row": 4,
+    "file": "rows/3.png",
+    "caption": "4 · Scripture faces side by side at reading size (all free and open licensed); Crimson Pro is the fifth, drawn on request"
+  },
+  {
+    "id": "5",
+    "row": 5,
+    "file": "rows/5.png",
+    "caption": "5 · Reading: no rail, no chrome but a quiet top line; the dock waits at the bottom edge"
+  },
+  {
+    "id": "6",
+    "row": 6,
+    "file": "rows/6.png",
+    "caption": "6 · The dock up: home, the apps, Settings; open apps carry a dot; the name shows on hover"
+  },
+  {
+    "id": "7",
+    "row": 9,
+    "file": "rows/7.png",
+    "caption": "9 · Static taskbar (Settings › Dock › Always shown): the same apps, always visible, the reader stops above it"
+  },
+  {
+    "id": "8",
+    "row": 11,
+    "file": "rows/8.png",
+    "caption": "11 · The Workbench home: where you left off, today's reading, open questions, recent pages; one click resumes each"
+  },
+  {
+    "id": "9",
+    "row": 13,
+    "file": "rows/9.png",
+    "caption": "13 · Together A, Snap: drag an app's title to the top edge for layouts (halves, two-thirds, thirds, quarters); like Windows snap layouts"
+  },
+  {
+    "id": "10",
+    "row": 14,
+    "file": "rows/10.png",
+    "caption": "14 · Together B, Stage: the working set in the middle; other sets wait at the left as small cards, one click swaps them in (like Stage Manager)"
+  },
+  {
+    "id": "11",
+    "row": 15,
+    "file": "rows/11.png",
+    "caption": "15 · Together C, Desks: a named, saved arrangement of apps per task; switching desks swaps the whole screen; nothing stays open unseen"
+  }
+]
