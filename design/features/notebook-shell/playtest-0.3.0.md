@@ -1,0 +1,80 @@
+# Play-test of 0.3.0's Notebook (2026-11-23)
+
+Played in the real window (release build of `main` at 4180312, a scratch copy of the study folder, 1440×900), then each
+bug traced to its source. Open findings from the study folders were pulled in. No fix is made from this page until the
+person has answered the questions at the end.
+
+## The goal
+
+A person, new believer or seasoned student, opens the Notebook and it behaves like Notion: one side list (Recents,
+Pinned, folders, pages as a tree), a click opens the page in place, a new page is written at once with Enter making
+blocks, **nothing typed is ever lost**, Ctrl+Z / Ctrl+Y work, and nothing of the old model (Days/Places/Questions tabs,
+cards, "No place yet", + Place, + Thread) is on screen. Each fix is checked in the real window, not only in tests, and
+a review scores it; nothing ships under 90/100.
+
+## Why 0.3.0 felt broken (the short answer)
+
+1. **The new side list never draws in the app.** `notebook sidebar` (and `page recents`) asks for the study folder twice;
+   in the window that is refused ("the study folder is busy"), in a terminal it is not. The Notebook draws the side list
+   and the page together, so one failure blanks both: a wide Notebook shows the old list and opens nothing. The tests
+   run the terminal path, so they passed.
+2. **The new shell (this folder, accepted 2026-11-22) is not built.** The page editor is new; everything around it is
+   the old pane (`ui/src/notebook.ts`, 2,850 lines).
+3. **Typing is dropped in two places** (a new page, and Enter pressed while the last block is still saving).
+4. **Tests check code, not use.** Window tests read fixtures; no check drives the real app through writing a page.
+
+## Directions
+
+- **Tier 0 first** (the person, 2026-11-23): the five Tier 0 bugs are fixed first, as a 0.3.1, each on
+  `fix/notebook-tier0` with its own test and a review scored 90 or more; then the shell (Tier 1). Questions 1–5 (bubble
+  or panes now, undo scope, places and threads, a separate title, the study folder) stay open for Tier 1.
+
+## Bugs, by priority
+
+Tier 0: breaks the Notebook; small, separate fixes (a 0.3.1).
+
+| # | Bug | Source | Size |
+|---|---|---|---|
+| B1 | Wide Notebook dead: side list never draws, a click on a page does nothing; "the study folder is busy" | `Ctx::root()` borrows the lent store again (`crates/wb-cli/src/lib.rs:93`); `notebook sidebar` and `page recents` hold `study()` then call `root()`; `draw()` awaits list and page together (`ui/src/notebook.ts:307`). Fix and a failing-then-passing test are ready (stashed) | S |
+| B8 | **New page loses words.** Title + first line save on Enter; after that Enter does nothing, words run together on screen and are never saved | `newPageForm` (`notebook.ts:1241`): after the file is made the redraw is skipped because the caret is still "writing" (`writingIn`), so the draft never becomes the block editor; `made` is true so later Enters do nothing | S |
+| B11 | Enter pressed while the previous block saves is lost ("bullet bAfter list." saved) | `holdKeys` (`ui/src/blocks.ts:88`) swallows Enter instead of queueing it | S–M |
+| B14 | "/" on an empty list line: the picked block goes below and a stray `- /` is saved | the in-line "/" path does not take the "/" out when the pick inserts below | S |
+| B21 | Dragging bullet points says "A column marker is not a block" (finding 2766) | a vertical drag read as "beside" (`wb block move --beside`) or the window's block numbers differ from the file's once columns exist; to reproduce | M |
+
+Tier 1: the accepted shell (tickets SH1–SH6 of this folder); most open Notebook findings close here.
+
+| # | Bug | Source |
+|---|---|---|
+| B2 | Narrow Notebook shows the old list: Days/Pages/Places/Questions/All, cards, Filters form, "Everything ▾" | old pane's `drawList`, `notebookFilters` (SH1, row 37) |
+| B10, B13 | "No place yet", "+ Place", "+ Thread", place chips on every page (finding e7ab) | `chipsRow` (`notebook.ts:1179`) (SH1, rows 37–38) |
+| B9 | New page opens a dialog first (Blank / templates / Make the page) | `newPage` picker (SH2, row 17) |
+| B16 | Ctrl+Z only undoes a deleted block, never typing, a new block or Turn into; no Ctrl+Y (finding 09b7) | `blocks.ts:1771` (SH6, row 35) |
+| B18 | Lock: the mark does not unlock on click; place/thread chips and "Give it its own page" stay live when locked (finding 021e) | `lockMark` has no handler (`pagemenu.ts:70`); `chipsRow` ignores the lock (SH6, row 34) |
+| B12 | The title is the whole first line (a sentence becomes a 4-line title) (finding 9b88) | title = first line of the file; a separate title is a format change (needs a design) |
+| — | Trash cannot be left; New page opens in a hidden tab; Delete All form | old pane (SH2, SH3) |
+
+Tier 2: polish.
+
+| # | Bug | Source |
+|---|---|---|
+| B3 | Raw Markdown in list previews ("```scripture Matthew 1 ```") | `preview_of` (`crates/wb-core/src/notebook.rs:97`) strips `#`, `>`, `-`, `**`, `[[ ]]` only, not fences, `[!kind]`, `^id`, `<details>` |
+| B4 | "Trail: … · 3 John 1" pages full of step lines (finding bc07) | clicking an old trail keeps it as a page (`history keep`) instead of showing it |
+| B6 | Opening a page puts "page n_2026…" in the command bar | the trail step's line (`trail.ts:93`) is shown in the command field |
+| B15 | / › Callout makes a **Question**; every question carries "Give it its own page" | the callout pick's default kind; the fold button always shown |
+| B17 | Esc after writing leaves the whole block "picked" (a box), reading like an error | picking on Escape |
+| B19 | "Page locked" and other toasts appear mid-window over the reader | the one toast spot |
+| B20 | Ctrl+K preview shows a list as "- item" text | `ctrlk.ts` preview |
+| B22 | A Scripture block opens with three rows of controls (Paragraph/Lines, Just the text/With my marks, YLT, Open ▾) before the text | the block's head |
+| B23 | Breadcrumb ends in "/" and the title repeats under it | `pathOf` (`notebook.ts:1378`) |
+| B7 | `wb page docs` → "Unknown command “page”. Did you mean page?" | the suggestion repeats the first word |
+
+Outside the Notebook, still significant.
+
+| # | Bug | Source |
+|---|---|---|
+| X1 | The installed app keeps its study folder at `Documents\wordbench-study-data`; `bible-study-data` holds the older work. The findings since 11-19 are only in the first | the setup screen's choice (notebook-shell, out of scope: "the person points Settings › Study folder back") |
+| X2 | An empty 280 px margin column beside the reader when the chapter has no margin notes, with only "›" | `margin-col` stays open when empty |
+| X3 | The window's in-process path has no tests of its own; a whole class of "works in `wb`, fails in the window" bugs can hide | add a test that runs every read command through `Ctx::lent` (B1's test is the start) and a real-window smoke check of writing a page |
+
+Open findings that belong here: e7ab, 021e, 09b7, 2766 (11-22/23); c301, 929e, 4c02, 23f1, 4463, b737, 6e30, 2c9c, fc71,
+9b88, c7ab, 38c2, 7d00, d84d, e09e, 64c7, bd7b, 65b1, 0960, c940, 2306, f126 (older, many answered by the shell).
