@@ -25,11 +25,13 @@ a review scores it; nothing ships under 90/100.
 
 ## Directions
 
-- **Tier 0 first** (the person, 2026-11-23; B1, B8, B11, B14, B21 done; next the check in the real window): the five Tier 0 bugs are fixed first, as a 0.3.1, each on
+- **Tier 0 first** (the person, 2026-11-23; B1, B8, B11, B14, B21 done and checked in the real window; next the person plays the release build): the five Tier 0 bugs are fixed first, as a 0.3.1, each on
   `fix/notebook-tier0` with its own test and a review scored 90 or more; then the shell (Tier 1). Questions 1–5 (bubble
   or panes now, undo scope, places and threads, a separate title, the study folder) stay open for Tier 1.
 
 ## Tier 0: the spec and where it stands (kept so work survives a compacted conversation)
+
+**Checked in the real window** (2026-11-23, release build of fix/notebook-tier0 at 05e6104, on a scratch copy, drags with the operating system's own mouse; a one-off script, not committed): 14 of 14. B1: the wide Notebook's side list draws, a click opens the page, no "busy". B8/B11: a new page typed straight on, Enter between lines and a list, keeps every line as its own block. B14: / on an empty list line, Callout: nothing with "/" saved while the list is open, the callout written in the line. B21: bullets dragged up and down land where dropped, with columns too, and quick drags after columns never show "A column marker is not a block" and lose nothing.
 
 **How each fix is done** (the person, 2026-11-23): simplest first; each fix gets its own test, then a review agent
 (`reviewer`) scores it 1–100 against the goal, and it is reworked until it scores 90 or more. Nothing ships under 90.
