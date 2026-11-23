@@ -96,7 +96,7 @@ if (existsSync(idx)) { try { frames = JSON.parse(readFileSync(idx, 'utf8')); } c
 const framesFor = n => (frames || []).filter(f => String(f.row) === String(n));
 const framesHtml = n => {
   const fs = framesFor(n);
-  if (fs.length) return fs.map(f => `<figure><img src="${esc(f.file)}" alt="${esc(f.caption || f.id)}" loading="lazy"><figcaption><b>${esc(f.id)}</b>${f.caption ? ' ' + esc(f.caption) : ''}</figcaption></figure>`).join('');
+  if (fs.length) return fs.map(f => `<figure><img src="${frameSrc(f.file)}" alt="${esc(f.caption || f.id)}" loading="lazy"><figcaption><b>${esc(f.id)}</b>${f.caption ? ' ' + esc(f.caption) : ''}</figcaption></figure>`).join('');
   return `<figure class="none"><figcaption>No frame drawn for this row yet</figcaption></figure>`;
 };
 
@@ -118,6 +118,14 @@ for (const g of groups) for (const r of g.rows) {
 const noFrames = !frames || !frames.length;
 const directions = sec('Directions').some(l => l.trim()) ? `<details><summary>Directions</summary>${prose(sec('Directions'))}</details>` : '';
 const data = JSON.stringify({ folder, round, title }).replace(/</g, '\\u003c');
+// the frames are written into the page itself, so review.html works opened anywhere (a copy, an attachment, a browser tab)
+function frameSrc(file) {
+  const p = join(dir, file);
+  if (!existsSync(p)) return esc(file);
+  const ext = file.split('.').pop().toLowerCase();
+  const type = ext === 'svg' ? 'image/svg+xml' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+  return `data:${type};base64,${readFileSync(p).toString('base64')}`;
+}
 const css = readFileSync(join(here, 'review.css'), 'utf8');
 const js = readFileSync(join(here, 'review-client.js'), 'utf8').replace(/<\/script/gi, '<\\/script');
 
