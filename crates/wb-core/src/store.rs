@@ -350,6 +350,10 @@ pub(crate) fn guard_against(root: &Path, guarded: &[PathBuf], open_allowed: bool
     let here = comparable(root);
     // A folder inside a guarded one is the same real work, so it is refused too.
     match guarded.iter().find(|g| here.starts_with(comparable(g))) {
+        Some(g) if here == comparable(g) => Err(bad(format!(
+            "{} is the person's real study folder; use a scratch copy (scripts/scratch-study.ps1)",
+            root.display()
+        ))),
         Some(g) => Err(bad(format!(
             "{} is inside the person's real study folder {}; use a scratch copy (scripts/scratch-study.ps1)",
             root.display(),
