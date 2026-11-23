@@ -14,3 +14,4 @@ decides.
 | 2026-11-23 | The 23 principles conflicts (settled in step 4) | principles round 1 | question for the person |
 | 2026-11-23 | Save `docs/drafts/` (3 drafts) and the `site` server in `.claude/launch.json` from `bible-workbench-rs` before that checkout is retired | step 1 grilling | finding (step 3) |
 | 2026-11-23 | B14 leftovers: a chooser (Thread, Word, Scripture, Concordance) cancelled from an empty list line drops the mark; a line of only " /" keeps a space after a close | B14 review (93/100) | finding |
+| 2026-11-23 | B21 side findings: a drop near a bullet's start (the body's left 72 px, at 700 px wide and up) puts the bullets in columns instead of reordering them; with a mouse, a grip drag does not start while a line is being written (the grip's pointerdown keeps the writing open) | B21 reproduction | question for the person (the edge zone is design rows 15, 44) |
