@@ -99,204 +99,246 @@
     "id": "17",
     "row": 17,
     "file": "rows/17.jpg",
-    "caption": "17 · Drag a bubble by its title: it lifts and follows the pointer, a little larger, with a deeper shadow"
+    "caption": "17 · Dragging a title: it lifts and eases to a handy size under the pointer; the others hold"
   },
   {
     "id": "18",
     "row": 18,
     "file": "rows/18.jpg",
-    "caption": "18 · Magnetic: near another bubble's edge a soft outline shows where it will sit beside; let go and it pulls in"
+    "caption": "18 · Over John 1's right side: the others make room live; the outline names the new column"
   },
   {
     "id": "19",
     "row": 19,
     "file": "rows/19.jpg",
-    "caption": "19 · Dropped onto another bubble (not its edge) the outline wraps it: let go and the two stack"
+    "caption": "19 · Over John 1's top: its column splits live; the outline says Above John 1"
   },
   {
     "id": "20",
     "row": 20,
     "file": "rows/20.jpg",
-    "caption": "20 · Always tiled: bubbles never overlap; every drop reflows the desk into columns"
+    "caption": "20 · Over John 1's middle: the outline says Swap with John 1"
   },
   {
     "id": "21",
     "row": 21,
     "file": "rows/21.jpg",
-    "caption": "21 · Free canvas: bubbles float and may overlap; only a drop on a title stacks, only the top edge snaps"
+    "caption": "21 · At the desk's left edge: a new column there"
   },
   {
     "id": "22",
     "row": 22,
     "file": "rows/22.jpg",
-    "caption": "22 · Dragged to the top edge: the layouts appear (halves, two-thirds, thirds, quarters); the cell under the pointer lights"
+    "caption": "22 · Let go: it lands exactly where the outline was, on the spring"
   },
   {
     "id": "23",
     "row": 23,
     "file": "rows/23.jpg",
-    "caption": "23 · Dropped on a layout cell: the bubble takes it, the desk's other bubbles fill the other cells, any extra stack on the last"
+    "caption": "23 · Dragging the gap between two: both resize live and stop at the smallest size"
   },
   {
     "id": "24",
     "row": 24,
     "file": "rows/24.jpg",
-    "caption": "24 · Dragged onto a desk's name: the name is outlined; let go and the bubble moves to that desk"
+    "caption": "24 · At the window's top edge: four layouts drop down in glass; the one under the pointer lights"
   },
   {
     "id": "25",
     "row": 25,
     "file": "rows/25.jpg",
-    "caption": "25 · A stack rests as fanned cards: the edges of the ones behind show up and to the right; its title says how many"
+    "caption": "25 · Let go on Thirds: the desk arranges itself in three"
   },
   {
     "id": "26",
     "row": 26,
     "file": "rows/26.jpg",
-    "caption": "26 · Click a card behind: it comes to the front of its stack"
+    "caption": "26 · Onto another desk's name: it rings; let go and the bubble moves there"
   },
   {
     "id": "27",
     "row": 27,
     "file": "rows/27.jpg",
-    "caption": "27 · ⤫ takes a bubble out of its stack; it finds room beside"
+    "caption": "27 · A drop that would overfill: the oldest bubble dims and the outline says it goes to the tray"
   },
   {
     "id": "28",
     "row": 28,
     "file": "rows/28.jpg",
-    "caption": "28 · Phone: a stack is one card with dots under it; swipe sideways through the desk's cards"
+    "caption": "28 · Ctrl+Shift+→ trades the focused bubble with its neighbour (Ctrl+arrows only move the focus)"
   },
   {
     "id": "29",
     "row": 29,
     "file": "rows/29.jpg",
-    "caption": "29 · Each its own bubble: three passages open as three bubbles, tinted alike; a word opened from each sits beside it"
+    "caption": "29 · Opening more than fits: the bubble used longest ago flies into a pill at the dock's end"
   },
   {
     "id": "30",
     "row": 30,
     "file": "rows/30.jpg",
-    "caption": "30 · One app, many inside: a second and third passage open as columns inside the Bible bubble already there"
+    "caption": "30 · Clicking a pill: it grows back out of the pill beside the focused bubble"
   },
   {
     "id": "31",
     "row": 31,
     "file": "rows/31.jpg",
-    "caption": "31 · Both: each opens as a bubble; ⇲ on one gathers the app's bubbles into it as columns"
+    "caption": "31 · Bubble ⋯ › Put in the tray"
   },
   {
     "id": "32",
     "row": 32,
     "file": "rows/32.jpg",
-    "caption": "32 · ⇱ pop out: a column leaves the bubble and becomes its own, beside it"
+    "caption": "32 · Three passages, each its own bubble with its own ← →"
   },
   {
     "id": "33",
     "row": 33,
     "file": "rows/33.jpg",
-    "caption": "33 · Following a word, linked: it opens beside the passage with a thread showing what led where"
+    "caption": "33 · Bubble ⋯ › Gather: the other Bible bubbles fold in as columns"
   },
   {
     "id": "34",
     "row": 34,
     "file": "rows/34.jpg",
-    "caption": "34 · Replace in place: the same bubble becomes the word; ← goes back to the passage (Alt+click does this in any mode)"
+    "caption": "34 · ⇱ pop out: a gathered column becomes its own bubble again"
   },
   {
     "id": "35",
     "row": 35,
     "file": "rows/35.jpg",
-    "caption": "35 · Ask each time: a small choice where the word goes: here, beside, or on a new desk"
+    "caption": "35 · Clicking a word: its entry grows out of the word into a place beside; ↖ John 1 in its title"
   },
   {
     "id": "36",
     "row": 36,
     "file": "rows/36.jpg",
-    "caption": "36 · A rabbit hole: passage → word → another verse that uses it, opened lit at that verse; the threads trace the path"
+    "caption": "36 · Clicking ↖ John 1: the bubble it came from rings and takes focus"
   },
   {
     "id": "37",
     "row": 37,
     "file": "rows/37.jpg",
-    "caption": "37 · History of this desk, as a scrubber: every step on a line from earlier to now, with what it was and when"
+    "caption": "37 · Alt+click: the same bubble becomes the entry; ← returns to the passage"
   },
   {
     "id": "38",
     "row": 38,
     "file": "rows/38.jpg",
-    "caption": "38 · Dragging the scrubber back replays the desk live, tinted slightly to show it is the past"
+    "caption": "38 · Options › Ask: a glass menu at the pointer: Beside, Here, On a new desk"
   },
   {
     "id": "39",
     "row": 39,
     "file": "rows/39.jpg",
-    "caption": "39 · Let go and act in the past: a new branch begins; the later steps are kept, not lost"
+    "caption": "39 · Opening something already open: that bubble rings instead of a copy (R11)"
   },
   {
     "id": "40",
     "row": 40,
     "file": "rows/40.jpg",
-    "caption": "40 · The map: each step a dot; a second lane is the branch where you went back and took another way; click a dot to go there"
+    "caption": "40 · ◷ History: a glass bar with the scope, the view and the steps from earlier to now"
   },
   {
     "id": "41",
     "row": 41,
     "file": "rows/41.jpg",
-    "caption": "41 · ◷ on a bubble: the history of that bubble only (the passages and words it showed)"
+    "caption": "41 · Scrubbing back: the desk replays on the springs, tinted warm as the past"
   },
   {
     "id": "42",
     "row": 42,
     "file": "rows/42.jpg",
-    "caption": "42 · The whole app: every desk's steps on one line, switching desks included"
+    "caption": "42 · Let go and act: a branch begins; the later steps are kept"
   },
   {
     "id": "43",
     "row": 43,
     "file": "rows/43.jpg",
-    "caption": "43 · Your writing goes back with the desk: scrubbing before an edit shows the page as it was then"
+    "caption": "43 · The map: dots, a second lane where the branch began; click a dot to go there"
   },
   {
     "id": "44",
     "row": 44,
     "file": "rows/44.jpg",
-    "caption": "44 · Ctrl+Z outside a page steps the desk back one step (inside a page it undoes typing)"
+    "caption": "44 · Bubble ⋯ › This bubble's history"
   },
   {
     "id": "45",
     "row": 45,
     "file": "rows/45.jpg",
-    "caption": "45 · Phone: each bubble is a full card; desks along the top; swipe between cards"
+    "caption": "45 · Scrubbing back past an edit: the page shows its words as they were"
   },
   {
     "id": "46",
     "row": 46,
     "file": "rows/46.jpg",
-    "caption": "46 · Phone: the dock is always shown at the bottom; a word opens as the next card"
+    "caption": "46 · Ctrl+Z on the desk: one step back, replayed on the springs"
   },
   {
     "id": "47",
     "row": 47,
     "file": "rows/47.jpg",
-    "caption": "47 · + New desk: an empty desk named for now, renamed by double-click; open apps from the dock onto it"
+    "caption": "47 · The pointer at the bottom edge: the glass dock rises"
   },
   {
     "id": "48",
     "row": 48,
     "file": "rows/48.jpg",
-    "caption": "48 · Click a desk: the whole screen becomes that desk, its bubbles where they were"
+    "caption": "48 · Along the dock: the icons swell like a lens under the pointer; the name floats above"
   },
   {
     "id": "49",
     "row": 49,
     "file": "rows/49.jpg",
-    "caption": "49 · The Workbench (home) from the dock: where you left off, today's reading, an open question, every desk"
+    "caption": "49 · Clicking Notebook in the dock: the icon bounces and the bubble grows out of it"
   },
   {
     "id": "50",
     "row": 50,
     "file": "rows/50.jpg",
-    "caption": "50 · The dock rises when the pointer reaches the bottom edge; a dot under each app open on this desk"
+    "caption": "50 · Clicking a desk: the green pill slides to it; its bubbles slide in from that side"
+  },
+  {
+    "id": "51",
+    "row": 51,
+    "file": "rows/51.jpg",
+    "caption": "51 · + makes a new empty desk; double-click a name to rename it"
+  },
+  {
+    "id": "52",
+    "row": 52,
+    "file": "rows/52.jpg",
+    "caption": "52 · Workbench in the dock: where you left off, today's reading, an open question, every desk"
+  },
+  {
+    "id": "53",
+    "row": 53,
+    "file": "rows/53.jpg",
+    "caption": "53 · Phone: each bubble a full card to swipe; the dock always shown"
+  },
+  {
+    "id": "55",
+    "row": 55,
+    "file": "rows/55.jpg",
+    "caption": "55 · Double-click a title (or ⤢, or Ctrl+Enter): it grows over the desk on the spring; the desk waits underneath, dimmed"
+  },
+  {
+    "id": "56",
+    "row": 56,
+    "file": "rows/56.jpg",
+    "caption": "56 · Settled in full view: ⤡, Esc or another double-click springs it back to exactly where it was"
+  },
+  {
+    "id": "57",
+    "row": 57,
+    "file": "rows/57.jpg",
+    "caption": "57 · Back on the desk: the same place, the same size, nothing else moved"
+  },
+  {
+    "id": "54",
+    "row": 54,
+    "file": "rows/54.jpg",
+    "caption": "54 · Glass: a soft highlight follows the pointer; what lies behind bends through it"
   }
 ]

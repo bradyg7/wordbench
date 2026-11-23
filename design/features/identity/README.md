@@ -53,6 +53,8 @@ is built in its tokens, then the rest of the app is reskinned pane by pane.
   - **Desk limit:** by screen size, never more than 4 columns × 3 high (R2).
   - **When full:** the oldest bubble goes to the tray (R3), not into a pile.
   - **Glass:** controls are liquid glass, reading and writing sit on paper (R7).
+  - **Full view, asked (the person, 2026-11-22):** "what does it look like to make one page full screen and then quickly
+    minimize it." Drawn in the demo as rows 55–57; whether it may cover the desk (an exception to R1) is the person's to decide.
   - **Decisions are written down as they are made**, in this folder, and committed each time.
 - **Panes are open to replacement.** The one need: several things working together and on screen at once. If a better
   idea than panes wins, panes are scrapped. Opening an app from the dock (full screen and snap, panes, attachments,
@@ -91,6 +93,7 @@ excused.**
 | R7 | **Controls are glass, reading is paper.** The dock, the desks line, menus, the history bar and each bubble's title bar are liquid glass (light bends through them, a highlight follows the pointer). The text you read and write sits on solid paper and is never behind glass. | G3, G4 | Text contrast on paper meets WCAG AA in every theme. |
 | R8 | **Never broken.** Titles end with an ellipsis, never mid-glyph; a bubble never renders smaller than its smallest size; a resize stops at the neighbour's smallest size; the layout is valid after every action, undo and history jump. | G4 | The layout check runs after every action in the tests. |
 | R9 | **Everything can be turned back.** Every action is one step in history (G2), including layouts, resizes, moves to the tray and desk switches. | G2 | Each row's action adds exactly one step. |
+| R11 | **One thing, one bubble per desk.** Opening something already open on the desk brings that bubble forward and lights it, instead of a copy. | G1, G3 | A desk never holds two bubbles with the same app and reference. |
 | R10 | **Every action has a key and a `wb` command.** The pointer is never the only way. | G1, AGENTS.md | Each table row names both. |
 
 ### The style that follows
@@ -179,6 +182,9 @@ apps; the desks are named on the top line. The scripture face is the person's ey
 
 ## Open questions
 
+- **Full view and R1.** Full view covers the desk for a moment (rows 55–57). Keep it as the one named exception to
+  "nothing hides" (the desk is only dimmed underneath and comes back untouched), or make full view a desk of its own?
+
 - Which scripture face (row 4).
 - How apps share the screen: Snap, Stage, Desks, or Desks with Snap inside (rows 13–15). This replaces
   [notebook-shell](../notebook-shell/README.md) direction C.
@@ -189,7 +195,8 @@ apps; the desks are named on the top line. The scripture face is the person's ey
 |---|---|---|---|
 | 0 | 2026-11-22 | Questions: base look, what stays, order, references | Answers above |
 | 1 | 2026-11-22 | Three identities (light and dark), four scripture faces, the dock hidden and shown, the static taskbar, the home screen, three ways to share the screen | Twelve themes, Sage default; Desks with Snap inside |
-| 2 | 2026-11-22 | A working demo: bubbles (magnetic, tiled, free), stacks, several of one app (three ways), following a word (three ways), history by bubble, desk and app (scrubber and map, branches kept), phone; 34 frames taken from it | pending |
+| 2 | 2026-11-22 | A working demo: bubbles (magnetic, tiled, free), stacks, several of one app (three ways), following a word (three ways), history by bubble, desk and app (scrubber and map, branches kept), phone; 34 frames taken from it | The person: fanned cards clunky, not fluid enough, needs above/below, glass lost, dock not fluid; led to round 3 |
+| 3 | 2026-11-22 | Goals G1–G5 and rules R1–R11; the demo rebuilt to them: columns with above and below, live make-room dragging, one spring, the tray, glass controls over paper, a lens dock; rows 17–54 rewritten with frames from the demo | pending |
 
 ## The codebase (the person asked, 2026-11-22: does this need a new one?)
 
@@ -226,76 +233,83 @@ home screen), **desk** (if Together C wins), **theme**.
 | 15 | Top line | Desks (if C): click a desk | The whole screen becomes that desk's apps where they were; + New desk names a new one | `settings/desks.json` | *proposed:* `wb desk list`, `wb desk new NAME` | `desks_switch_whole_screen` | [ ] |
 | 16 | Keys | Ctrl+1…9, Ctrl+Space | Ctrl+1…9 opens the dock's apps in order; Ctrl+Space shows the dock | Nothing | — | `dock_keys` | [ ] |
 
-### Round 2: bubbles on a desk (frames from the demo)
+### Round 3: the desk (rows 17–54, frames taken from the demo in Edge, the engine the Windows app uses)
 
-A **bubble** is one opened thing on a desk (a passage, a word, a page, a folder, the Legend): glass over the desk, a
-3 px tint of its app along the top, ← → for its own history, ◷ for its history, ✕ to close. Proposed words: **bubble**,
-**stack**, **thread** is not used (it is retired); the line between a bubble and the one it came from is a **link line**.
+Round 2's rows 17–50 are replaced: the fanned stacks, free canvas and always-tiled options are retired by R1, R3 and
+R4. A **bubble** is one opened thing on a desk: paper for its content, a glass title bar floating over it (R7) with
+← → (its own history), a dot in its app's color, its title, ↖ where it came from, ⋯ and ✕. Proposed words for the
+Library map, with the person's go-ahead: **bubble**, **tray**, **pill** (a bubble in the tray).
 
-| # | Where | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
-|---|---|---|---|---|---|---|---|
-| 17 | A bubble's title | Press and drag | It lifts (1.5% larger, deeper shadow) and follows the pointer without lag; the others stay | Nothing until let go | — | `bubble_lifts_on_drag` | [ ] |
-| 18 | Dragging, magnetic | Near another bubble's edge (60 px) | A soft outline shows where it will sit: beside it (left or right, same top and height) or under it (same left and width), 12 px apart; let go and it springs there (0.28 s, a slight overshoot) | `settings/desks.json` the bubble's place; a step | *proposed:* `wb desk place BUBBLE --beside OTHER` | `magnetic_pulls_beside` | [ ] |
-| 19 | Dragging, any mode | Over the middle of another bubble (its title, in free canvas) | The outline wraps that bubble; let go and they stack, the dragged one in front | A step; the stack in `desks.json` | *proposed:* `wb desk stack BUBBLE OTHER` | `drop_on_bubble_stacks` | [ ] |
-| 20 | Options ▸ Always tiled | Open or drop anything | The desk reflows into columns, never overlapping; a stack is one column | `desks.json` | — | `tiled_never_overlaps` | [ ] |
-| 21 | Options ▸ Free canvas | Drop anywhere | It stays exactly there, overlapping if dropped so; no magnet | `desks.json` | — | `free_canvas_stays` | [ ] |
-| 22 | Dragging | To the top edge (30 px) | The layouts appear under the desks line: halves, two-thirds, thirds, quarters; the cell under the pointer lights | Nothing | — | `top_edge_shows_layouts` | [ ] |
-| 23 | Layouts | Let go on a cell | The bubble takes that cell; the desk's other bubbles fill the other cells left to right; any beyond the cells stack on the last one | `desks.json`; a step | *proposed:* `wb desk layout thirds` | `layout_fills_cells` | [ ] |
-| 24 | Dragging | Onto another desk's name | The name is outlined; let go and the bubble moves to that desk (with its own history) | `desks.json`; a step on both desks | *proposed:* `wb desk move BUBBLE --to DESK` | `drag_to_desk_moves` | [ ] |
-
-### Stacks
+#### Moving and sizing (R1, R4, R5, R6, R8)
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 25 | A stack | At rest | Fanned cards: each one behind shows 10 px up and right, a little fainter; the front's title says "3 stacked" | Nothing | — | `stack_fans` | [ ] |
-| 26 | A stack | Click a card behind | It comes to the front | A step | — | `stack_brings_forward` | [ ] |
-| 27 | Front of a stack | ⤫ | It leaves the stack and finds room beside (or the desk reflows when there is none) | A step | *proposed:* `wb desk unstack BUBBLE` | `unstack_finds_room` | [ ] |
-| 28 | Phone | A stack | One card with dots under it, one dot a card; swipe sideways through the desk | Nothing | — | `phone_stack_dots` | [ ] |
+| 17 | A bubble's glass title | Press and drag | It lifts 2% with a deep shadow and eases to a handy size (at most 520 × 380) under the pointer, keeping the point grabbed; the others hold still | Nothing until let go | — | `drag_lifts_and_eases` | [ ] |
+| 18 | Dragging | Over a bubble's left or right fifth | The others make room live on the spring; a green outline shows the new column and says "A column left of John 1" | Nothing until let go | — | `drop_side_makes_column` | [ ] |
+| 19 | Dragging | Over a bubble's top or bottom third | That column splits live; the outline says "Above John 1" or "Below John 1" | Nothing until let go | — | `drop_top_bottom_splits` | [ ] |
+| 20 | Dragging | Over a bubble's middle | The outline covers it and says "Swap with John 1" | Nothing until let go | — | `drop_middle_swaps` | [ ] |
+| 21 | Dragging | Within 30 px of the desk's left or right edge | A new column at that edge, outlined | Nothing until let go | — | `drop_edge_new_column` | [ ] |
+| 22 | Dragging | Let go | It lands exactly where the outline was, on the spring (about 0.3 s); one step in history | `settings/desks.json`; a step | *proposed:* `wb desk place BUBBLE --above OTHER` (`--below`, `--left`, `--right`, `--swap`) | `lands_where_shown` | [ ] |
+| 23 | The gap between two bubbles | Drag it | Both resize live, the grip darkening; it stops at the smaller one's smallest size (360 × 220) | `desks.json`; a step | *proposed:* `wb desk size BUBBLE --width 0.4` | `gap_resizes_both` | [ ] |
+| 24 | Dragging | To the window's top edge | Four layouts drop down in glass (halves, two-thirds, thirds, quarters); the one under the pointer lights | Nothing | — | `top_edge_layouts` | [ ] |
+| 25 | Layouts | Let go on one | The dragged bubble takes the first place, the others fill the rest in order; any beyond go below in the last column; what will not fit goes to the tray | `desks.json`; a step | *proposed:* `wb desk layout thirds` | `layout_arranges` | [ ] |
+| 26 | Dragging | Onto another desk's name | The name rings; let go and the bubble moves to that desk; "Moved to Word study: zeal" | `desks.json`; a step on both desks | *proposed:* `wb desk move BUBBLE --to DESK` | `drag_to_desk` | [ ] |
+| 27 | Dragging | A place that would overfill the desk | The bubble used longest ago dims while dragging, and the outline says it goes to the tray | Nothing until let go | — | `overfill_preview` | [ ] |
+| 28 | Keys | Ctrl+←↑→↓; Ctrl+Shift+←↑→↓ | Focus moves to the nearest bubble that way (it lights); with Shift the focused bubble trades places with it | A step (Shift) | — | `keys_focus_and_move` | [ ] |
 
-### Several of one app
-
-| # | Where | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
-|---|---|---|---|---|---|---|---|
-| 29 | Options ▸ Each its own bubble | Open three passages | Three Bible bubbles, tinted alike, each with its own ← → and history | A step each | *proposed:* `wb desk open bible "Romans 5"` | `each_its_own_bubble` | [ ] |
-| 30 | Options ▸ One app, many inside | Open a second passage | It becomes a column inside the Bible bubble already open, which widens; each column has its heading | A step | — | `many_inside_columns` | [ ] |
-| 31 | Options ▸ Both | ⇲ on a bubble | The app's other bubbles on the desk gather into it as columns | A step | *proposed:* `wb desk gather BUBBLE` | `gather_into_columns` | [ ] |
-| 32 | A column | ⇱ pop out | The column leaves and becomes its own bubble beside, linked | A step | — | `pop_out_column` | [ ] |
-
-### Following a word (the rabbit hole)
-
-| # | Where | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
-|---|---|---|---|---|---|---|---|
-| 33 | A passage | Click a word (Options ▸ New bubble, linked) | The word's entry opens beside, with a dashed link line from the passage; the desk makes room if needed | A step | `wb strong G3056` | `word_opens_beside_linked` | [ ] |
-| 34 | A passage | Click a word (Options ▸ Replace), or Alt+click in any mode | The same bubble becomes the word; ← returns to the passage at the same place | A step on the bubble | — | `word_replaces_in_place` | [ ] |
-| 35 | A passage | Click a word (Options ▸ Ask) | A small menu at the pointer: Here, Beside, On a new desk | A step after the choice | — | `word_asks_where` | [ ] |
-| 36 | A word's entry | Click a verse that uses it | That passage opens lit at the verse (the verse shaded briefly); the link lines trace passage → word → passage | A step | `wb uses G3056` | `rabbit_hole_chain` | [ ] |
-
-### History (the trail, turned back in time)
-
-The **trail** becomes the app's history (the Library map's "trail = back and forward" grows to this; the map changes
-with the person's go-ahead). Three scopes: **this bubble**, **this desk**, **the whole app**.
+#### The tray (R3)
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 37 | ◷ History (bottom right) | Open | A glass bar over the desk: the scope (This bubble, This desk, The whole app), Scrubber or Map, and a line from Earlier to Now with the step's words and time | Nothing | `wb history list --desk DESK` | `history_bar_opens` | [ ] |
-| 38 | Scrubber | Drag back | The desk replays live to that moment (bubbles move, open, close), tinted faintly to say it is the past | Nothing | — | `scrub_replays_desk` | [ ] |
-| 39 | Scrubber | Let go, then do anything | The desk stays there; what you do starts a new branch; the later steps are kept | A step whose parent is the moment chosen | `wb history at STEP` | `acting_in_past_branches` | [ ] |
-| 40 | Map | Open | Each step a dot on a line; a second lane where a branch began; the current step filled; hover names a step; click goes there | Nothing | `wb history tree --desk DESK` | `history_map_branches` | [ ] |
-| 41 | A bubble's ◷ | Open | The same bar, scope This bubble: only what that bubble showed (passages, words, pages) | Nothing | `wb history list --bubble BUBBLE` | `bubble_history_scope` | [ ] |
-| 42 | History | The whole app | Every desk's steps on one line, switching desks among them | Nothing | `wb history list` | `app_history_scope` | [ ] |
-| 43 | Scrubber | Back past an edit | The page shows its words as they were then; letting go and typing keeps the later words as a version (nothing lost) | A page version on the next edit | *proposed:* `wb page versions ID`, `wb page at ID VERSION` | `writing_returns_with_time` | [ ] |
-| 44 | Desk (not in a page) | Ctrl+Z / Ctrl+Shift+Z | The desk steps back or forward one step; inside a page the keys undo typing as before | A step | — | `ctrl_z_steps_desk` | [ ] |
+| 29 | Anywhere | Open one more than fits | The bubble used longest ago flies into a pill at the dock's end (its app's dot and title); the rest re-flow | `desks.json` tray; a step | — | `full_goes_to_tray` | [ ] |
+| 30 | Dock | Click a pill | It grows out of the pill into a place beside the focused bubble; if that overfills, the next-oldest takes its pill | `desks.json`; a step | *proposed:* `wb desk tray --back BUBBLE` | `pill_comes_back` | [ ] |
+| 31 | Bubble ⋯ | Put in the tray | It flies to its pill; the others fill the room | `desks.json`; a step | *proposed:* `wb desk tray BUBBLE` | `put_in_tray` | [ ] |
 
-### Desks, the phone, home and the dock in the demo
+#### Several of one app
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 45 | Phone | Open the app | Each bubble a full card; desks along the top; swipe between cards; the dock always shown | Nothing | — | `phone_cards` | [ ] |
-| 46 | Phone | Follow a word | It opens as the next card, beside the passage card | A step | — | `phone_word_next_card` | [ ] |
-| 47 | Desks line | + New desk | An empty desk, named "Desk 4" until renamed (double-click the name) | `desks.json` | *proposed:* `wb desk new NAME` | `new_desk` | [ ] |
-| 48 | Desks line | Click a desk | The screen becomes that desk, its bubbles where they were | A step | *proposed:* `wb desk open DESK` | `switch_desk` | [ ] |
-| 49 | Dock | Workbench | Home over the desk: where you left off (the desk and its bubbles), today's reading, an open question, every desk with its count | Nothing | — | `home_over_desk` | [ ] |
-| 50 | Desk | Pointer to the bottom edge | The dock rises after 120 ms; a dot under each app open on this desk; it sinks 0.4 s after the pointer leaves | Nothing | — | `dock_rises` | [ ] |
+| 32 | Anywhere | Open three passages | Three Bible bubbles, each with its app's green dot and its own ← → | A step each | *proposed:* `wb desk open bible "Romans 5"` | `each_its_own_bubble` | [ ] |
+| 33 | Bubble ⋯ | Gather the other Bible bubbles here | They fold into this one as columns side by side, each headed; the desk re-flows | A step | *proposed:* `wb desk gather BUBBLE` | `gather_columns` | [ ] |
+| 34 | A gathered column | ⇱ pop out | It becomes its own bubble beside, linked ↖ | A step | — | `pop_out` | [ ] |
+
+#### Following a word (G1)
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
+|---|---|---|---|---|---|---|---|
+| 35 | A passage | Click a word (Options › Beside) | The entry grows out of the word itself into a new place beside the passage; its title carries ↖ John 1 | A step | `wb strong G3056` | `word_grows_beside` | [ ] |
+| 36 | A bubble's title | Click ↖ John 1 | The bubble it came from rings and takes focus; from the tray, a note says to click its pill | Nothing | — | `from_lights_source` | [ ] |
+| 37 | A passage | Alt+click a word, or Options › Replace | The same bubble becomes the entry; ← (or Alt+←) returns to the passage where it was | A step | — | `replace_and_back` | [ ] |
+| 38 | A passage | Click a word (Options › Ask) | A glass menu at the pointer: Beside, Here, On a new desk | A step after the choice | — | `ask_where` | [ ] |
+| 39 | Anywhere | Open something already open on this desk | That bubble rings and takes focus; a verse asked for is lit and scrolled to (R11) | A step | — | `no_duplicate_bubbles` | [ ] |
+
+#### History (G2, R9)
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
+|---|---|---|---|---|---|---|---|
+| 40 | ◷ History | Open | A glass bar rises: This bubble, This desk, The whole app; Scrubber or Map; Earlier ─ Now with the step's words and time | Nothing | `wb history list --desk DESK` | `history_bar` | [ ] |
+| 41 | Scrubber | Drag back | The desk replays on the springs, every bubble moving to where it was, tinted warm to say it is the past | Nothing | — | `scrub_replays` | [ ] |
+| 42 | Scrubber | Let go, then act | The desk stays at that moment; acting starts a branch; the later steps are kept | A step whose parent is the moment | `wb history at STEP` | `act_in_past_branches` | [ ] |
+| 43 | Map | Open | Dots on a line, a new lane where a branch began, the current one filled; click a dot to go there | Nothing | `wb history tree --desk DESK` | `map_lanes` | [ ] |
+| 44 | Bubble ⋯ | This bubble's history | The bar opens scoped to that bubble's own steps | Nothing | `wb history list --bubble BUBBLE` | `bubble_scope` | [ ] |
+| 45 | Scrubber | Back past an edit | The page shows its words as they were; typing there keeps the later words as a version | A version on the next edit | *proposed:* `wb page versions ID` | `writing_returns` | [ ] |
+| 46 | Desk (not typing) | Ctrl+Z, Ctrl+Y | One step back or forward on the current branch, replayed on the springs; in a page they undo typing as before | Nothing new (moves along the steps) | — | `ctrl_z_steps` | [ ] |
+
+#### The dock, desks, home and the phone (R5, R7)
+
+| # | Where | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
+|---|---|---|---|---|---|---|---|
+| 47 | Desk | Pointer to the bottom edge | After 110 ms the glass dock rises on the spring; it sinks 0.45 s after the pointer leaves | Nothing | — | `dock_rises` | [ ] |
+| 48 | Dock | Move along it | The icons swell like a lens under the pointer (up to 1.6×), neighbours easing off smoothly; the name floats above in glass | Nothing | — | `dock_magnifies` | [ ] |
+| 49 | Dock | Click an app | The icon bounces once; the bubble grows out of the icon into its place beside the focused bubble | A step | *proposed:* `wb desk open APP` | `dock_opens_from_icon` | [ ] |
+| 50 | Desks line | Click a desk | The green pill slides to it on a spring; the desk's bubbles slide in from that side | A step | *proposed:* `wb desk open DESK` | `desk_switch_slides` | [ ] |
+| 51 | Desks line | + ; double-click a name | A new empty desk; double-click renames | `desks.json`; a step | *proposed:* `wb desk new NAME` | `new_and_rename_desk` | [ ] |
+| 52 | Dock | Workbench | Home: where you left off and the last steps, today's reading, an open question, every desk with its count | Nothing | — | `home` | [ ] |
+| 53 | Phone | Open the app | Each bubble a full card, swipe between them; the dock always shown; the desks line at the top | Nothing | — | `phone_cards` | [ ] |
+| 55 | A bubble's title | Double-click, ⤢, or Ctrl+Enter | It grows over the whole desk on the spring (about 0.3 s); the desk keeps its layout underneath, dimmed and softly blurred | Nothing (a view, not a step) | — | `full_view_grows` | [ ] |
+| 56 | Full view | Double-click, ⤡, or Esc | It springs back to exactly the place and size it had; nothing else moved | Nothing | — | `full_view_returns` | [ ] |
+| 57 | Full view | Switch desk, or open from the dock | Full view ends first, then the action happens | Nothing | — | `full_view_ends_on_switch` | [ ] |
+| 54 | Any glass | Move the pointer over it | A soft highlight follows the pointer across the glass; what lies behind bends gently through it (Edge, Chrome; Safari shows frosted glass) | Nothing | — | `glass_highlight` | [ ] |
 
 ### On disk (proposed, for the person's go-ahead before any build)
 

@@ -3,467 +3,613 @@
 <title>Workbench demo</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
 <style>
-/* design/features/identity, the working demo (round 2). Scripture and lexicon come from data.json (wb chapter, wb strong);
-   the page texts are the demo's own invented study words. Nothing here is the app; it is for feeling the design. */
-:root { --paper:#F4F6F1; --panel:#EAEEE6; --ink:#20261F; --muted:#6A7368; --line:#DDE3D8; --accent:#5E7D63; --accent-soft:#E0E9DF;
-  --glass: rgba(248,250,246,.9); --glass-edge: rgba(255,255,255,.85); --shadow: 0 12px 36px rgba(30,40,30,.14), 0 2px 6px rgba(30,40,30,.06);
-  --ui: Inter, system-ui, sans-serif; --serif: 'Source Serif 4', Georgia, serif; }
-* { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--ui); }
-button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
-#stage { position: fixed; inset: 0; }
-.bg { position: absolute; inset: 0; background:
-  radial-gradient(600px 400px at 15% 20%, #dfe9dc 0, transparent 70%), radial-gradient(700px 500px at 85% 75%, #e8eadf 0, transparent 70%),
-  radial-gradient(500px 360px at 70% 10%, #e3ece6 0, transparent 70%), var(--paper); }
-/* the top line: desks and the options */
-#top { position: absolute; top: 0; left: 0; right: 0; height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 14px; z-index: 5000; }
-.desk { white-space: nowrap; flex: none; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,.5); border: 1px solid var(--line); font-size: 13px; color: var(--muted); }
-.desk.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-.desk.drop { outline: 2px dashed var(--accent); }
-#opts-btn { margin-left: auto; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,255,255,.6); font-size: 13px; }
-#opts { position: absolute; top: 44px; right: 12px; width: 330px; background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border: 1px solid var(--glass-edge); border-radius: 16px; box-shadow: var(--shadow); padding: 14px 16px; z-index: 6000; display: none; }
+/* design/features/identity, the working demo, round 3. It keeps the ten rules in the README (R1-R10).
+   Scripture and lexicon come from data.json (wb chapter, wb strong); page words are the demo's own invented study notes. */
+:root { --paper:#FBFCFA; --paper2:#F4F6F1; --ink:#20261F; --muted:#6A7368; --line:#E2E7DE; --accent:#5E7D63; --accent-soft:#E3ECE2;
+  --ui: Inter, system-ui, sans-serif; --serif: 'Source Serif 4', Georgia, serif; --r: 18px;
+  --lift: 0 1px 2px rgba(25,35,25,.06), 0 8px 24px rgba(25,35,25,.08); }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; color: var(--ink); font: 14px/1.5 var(--ui); background: #dfe6da; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; padding: 0; }
+#stage { position: fixed; inset: 0; overflow: hidden; }
+/* the wallpaper: soft color for the glass to bend */
+.wall { position: absolute; inset: -10%; background:
+  radial-gradient(40% 50% at 12% 18%, #cfe0c9 0, transparent 70%), radial-gradient(45% 55% at 88% 82%, #d9dcc6 0, transparent 70%),
+  radial-gradient(35% 40% at 72% 12%, #c8ddd3 0, transparent 70%), radial-gradient(30% 35% at 30% 90%, #e6dccb 0, transparent 70%), #e4eadf;
+  animation: drift 40s ease-in-out infinite alternate; }
+@keyframes drift { to { transform: translate(3%, -2%) scale(1.04); } }
+
+/* ---- liquid glass (R7): light bends through it, a highlight follows the pointer ---------------------------------------- */
+.glass { position: relative; isolation: isolate; background: rgba(255,255,255,.16);
+  -webkit-backdrop-filter: blur(14px) saturate(1.8); backdrop-filter: blur(14px) saturate(1.8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 1px rgba(255,255,255,.35), inset 1px 0 0 rgba(255,255,255,.45), inset -1px 0 0 rgba(255,255,255,.25), 0 10px 30px rgba(20,30,20,.14), 0 1px 3px rgba(20,30,20,.08); }
+html.lens .glass { backdrop-filter: url(#lens) blur(2.5px) saturate(1.9) brightness(1.04); }
+.glass::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background: linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,.08) 45%, rgba(255,255,255,.18)); }
+.glass::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(140px 90px at var(--mx, 30%) var(--my, 0%), rgba(255,255,255,.65), transparent 70%); mix-blend-mode: soft-light; opacity: .9; }
+
+/* ---- the desks line ----------------------------------------------------------------------------------------------------- */
+#top { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; padding: 4px; border-radius: 999px; z-index: 50; }
+.dk { padding: 5px 14px; border-radius: 999px; font-size: 13px; color: #3d463c; white-space: nowrap; position: relative; transition: color .2s; }
+.dk.on { color: #fff; }
+#dkpill { position: absolute; top: 4px; height: calc(100% - 8px); border-radius: 999px; background: var(--accent); box-shadow: 0 2px 8px rgba(60,90,60,.35); z-index: -1; }
+.dk.drop { color: var(--accent); } .dk.drop::after { content: ''; position: absolute; inset: 0; border-radius: 999px; outline: 2px solid var(--accent); }
+#optsbtn { position: absolute; top: 10px; right: 12px; z-index: 50; padding: 7px 14px; border-radius: 999px; font-size: 13px; }
+#opts { position: absolute; top: 52px; right: 12px; width: 340px; border-radius: 20px; padding: 14px 16px; z-index: 60; display: none; }
 #opts.open { display: block; }
-#opts h4 { margin: 10px 0 4px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-.seg { display: flex; flex-wrap: wrap; gap: 4px; } .seg button { padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,255,255,.6); font-size: 12.5px; }
-.seg button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-#opts p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
-/* the desk area */
-#desk { position: absolute; top: 44px; left: 0; right: 0; bottom: 0; }
-svg#threads { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: visible; }
-svg#threads path { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 4; opacity: .55; }
-/* a bubble: liquid glass */
-.win { position: absolute; display: flex; flex-direction: column; background: var(--glass); backdrop-filter: blur(22px) saturate(1.5); -webkit-backdrop-filter: blur(22px) saturate(1.5);
-  border-radius: 18px; box-shadow: var(--shadow), inset 0 1px 0 var(--glass-edge); border: 1px solid rgba(255,255,255,.6);
-  transition: left .28s cubic-bezier(.2,.9,.3,1.15), top .28s cubic-bezier(.2,.9,.3,1.15), width .28s cubic-bezier(.2,.9,.3,1.15), height .28s cubic-bezier(.2,.9,.3,1.15), transform .25s, opacity .2s; overflow: hidden; }
-.win.dragging { transition: none; box-shadow: 0 24px 60px rgba(30,40,30,.24); transform: scale(1.015); }
-.win.front { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); }
-.win.t-bible { --tint: #5E7D63; } .win.t-word { --tint: #6A5AA3; } .win.t-page { --tint: #B5562F; } .win.t-folder { --tint: #2A7D99; }
-.win::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tint); opacity: .7; }
-.wt { height: 38px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; cursor: grab; user-select: none; }
-.wt .ttl { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-.wt .app { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-.wt button { width: 24px; height: 24px; border-radius: 6px; color: var(--muted); } .wt button:hover { background: rgba(0,0,0,.05); color: var(--ink); }
-.wt button:disabled { opacity: .3; cursor: default; }
-.wb { flex: 1; overflow: auto; padding: 4px 18px 16px; }
-.cols { display: flex; gap: 14px; height: 100%; } .cols > .col { flex: 1; min-width: 0; overflow: auto; border-right: 1px solid var(--line); padding-right: 12px; } .cols > .col:last-child { border: 0; }
-.col h5 { margin: 6px 0; font-size: 12px; color: var(--muted); display: flex; gap: 6px; } .col h5 button { color: var(--accent); font-size: 11px; }
-.scr { font-family: var(--serif); font-size: 16.5px; line-height: 1.65; }
+#opts h4 { margin: 12px 0 5px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #4f584e; font-weight: 600; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 3px; padding: 3px; border-radius: 12px; background: rgba(255,255,255,.35); }
+.seg button { padding: 4px 11px; border-radius: 9px; font-size: 12.5px; } .seg button.on { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+#opts p { margin: 5px 0 0; color: #4f584e; font-size: 12px; }
+
+/* ---- the desk and its bubbles (R1, R8) -------------------------------------------------------------------------------- */
+#desk { position: absolute; left: 0; right: 0; top: 52px; bottom: 0; }
+.bub { position: absolute; border-radius: var(--r); background: var(--paper); box-shadow: var(--lift); overflow: hidden; contain: layout paint; will-change: left, top, width, height; }
+.bub.focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent), var(--lift); }
+.bub.lifted { box-shadow: 0 30px 70px rgba(20,30,20,.28), 0 6px 18px rgba(20,30,20,.14); z-index: 40 !important; cursor: grabbing; }
+.bub.leaving { opacity: .35; filter: saturate(.4); }
+.bub { transition: filter .3s, opacity .3s, transform .3s; }
+.bub.under { filter: blur(3px) saturate(.7); opacity: .55; transform: scale(.985); pointer-events: none; }
+.bub.full { z-index: 30; box-shadow: 0 30px 80px rgba(20,30,20,.25), 0 0 0 1px rgba(255,255,255,.7); }
+.bub .bar { position: absolute; left: 6px; right: 6px; top: 6px; height: 36px; border-radius: 13px; display: flex; align-items: center; gap: 2px; padding: 0 6px 0 4px; z-index: 3; cursor: grab; user-select: none; }
+.bub .bar .ttl { flex: 1; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
+.bub .bar .app { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 0 2px 0 6px; white-space: nowrap; }
+.bub .bar .tint { width: 8px; height: 8px; border-radius: 4px; background: var(--tint); flex: none; margin-left: 6px; }
+.ib { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; color: #4f584e; flex: none; transition: background .15s, transform .15s; }
+.ib:hover { background: rgba(255,255,255,.6); color: var(--ink); } .ib:active { transform: scale(.9); } .ib:disabled { opacity: .3; pointer-events: none; }
+.from { font-size: 11px; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; white-space: nowrap; max-width: 34%; overflow: hidden; text-overflow: ellipsis; flex: none; }
+.bub .body { position: absolute; inset: 0; overflow: auto; padding: 52px 22px 22px; scrollbar-width: thin; }
+.bub.t-bible { --tint: #5E7D63; } .bub.t-word { --tint: #6A5AA3; } .bub.t-page { --tint: #C0633A; } .bub.t-folder { --tint: #2A7D99; } .bub.t-legend { --tint: #A9740F; } .bub.t-plans { --tint: #3B5B7A; }
+.scr { font-family: var(--serif); font-size: 17px; line-height: 1.7; max-width: 66ch; }
 .scr .vn { font: 600 10px var(--ui); color: var(--muted); vertical-align: super; margin: 0 3px 0 2px; }
-.scr .w[data-s] { cursor: pointer; border-radius: 3px; } .scr .w[data-s]:hover { background: var(--accent-soft); color: var(--accent); }
-.scr .lit { background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 3px; }
-.lex .lem { font: 600 28px var(--serif); } .lex .tr { color: var(--muted); } .lex p { margin: 8px 0; }
-.lex .use { display: block; padding: 5px 0; border-bottom: 1px solid var(--line); cursor: pointer; font-family: var(--serif); } .lex .use:hover { color: var(--accent); }
-.pg h2 { margin: 6px 0 8px; font-size: 22px; } .pg [contenteditable] { outline: 0; min-height: 60px; }
-.pg .ref { color: var(--accent); cursor: pointer; text-decoration: underline dotted; }
-.fl .it { display: flex; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--line); cursor: pointer; } .fl .it:hover { color: var(--accent); }
-/* stacks: fanned cards */
-.win.behind { cursor: pointer; } .win.behind .wb { opacity: .25; }
-.stackbadge { font-size: 11px; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 0 7px; }
-/* snap zones and magnet guides */
-#zones { position: absolute; top: 52px; left: 50%; transform: translateX(-50%) translateY(-20px); opacity: 0; pointer-events: none; display: flex; gap: 10px; padding: 10px;
-  background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 16px; box-shadow: var(--shadow); z-index: 4500; transition: .2s; }
-#zones.show { opacity: 1; transform: translateX(-50%); pointer-events: auto; }
-.zone { width: 104px; height: 64px; display: grid; gap: 3px; padding: 3px; border-radius: 9px; background: rgba(255,255,255,.7); }
-.zone i { display: block; background: var(--accent-soft); border-radius: 5px; } .zone i.hot { background: var(--accent); }
-#ghost { position: absolute; border-radius: 18px; border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); pointer-events: none; z-index: 4400; display: none; transition: all .12s; }
-/* the dock */
-#dockzone { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; z-index: 5500; }
-#dock { position: absolute; left: 50%; bottom: 14px; transform: translate(-50%, 110px); display: flex; gap: 6px; padding: 8px 10px; border-radius: 22px; z-index: 5600;
-  background: var(--glass); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6); box-shadow: var(--shadow), inset 0 1px 0 var(--glass-edge); transition: transform .25s cubic-bezier(.2,.9,.3,1.1); align-items: flex-end; }
-#dock.up { transform: translate(-50%, 0); }
-#dock .ai { width: 48px; height: 48px; border-radius: 14px; background: rgba(255,255,255,.75); display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--accent); position: relative; transition: width .15s, height .15s; }
-#dock .ai:hover { width: 60px; height: 60px; }
-#dock .ai .nm { position: absolute; top: -30px; background: var(--ink); color: var(--paper); font-size: 11.5px; padding: 2px 8px; border-radius: 6px; white-space: nowrap; display: none; }
-#dock .ai:hover .nm { display: block; }
-#dock .ai .run { position: absolute; bottom: -6px; width: 4px; height: 4px; border-radius: 2px; background: var(--muted); }
-#dock .sep { width: 1px; background: var(--line); margin: 4px 3px; align-self: stretch; }
-/* history */
-#hist { position: absolute; left: 16px; right: 16px; bottom: 76px; z-index: 5200; background: var(--glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-radius: 18px;
-  box-shadow: var(--shadow); padding: 12px 16px; display: none; } #hist.open { display: block; }
-#hist .hrow { display: flex; align-items: center; gap: 10px; }
+.scr .w[data-s] { cursor: pointer; border-radius: 4px; transition: background .12s, color .12s; } .scr .w[data-s]:hover { background: var(--accent-soft); color: var(--accent); }
+.scr .lit { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 4px; animation: glow 2.4s ease-out 1; }
+@keyframes glow { from { background: color-mix(in srgb, var(--accent) 38%, transparent); } }
+.lex .lem { font: 600 30px var(--serif); } .lex .tr { color: var(--muted); } .lex p { margin: 8px 0; max-width: 60ch; }
+.lex h4 { margin: 18px 0 4px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.use { display: block; padding: 7px 8px; margin: 0 -8px; border-radius: 9px; cursor: pointer; font-family: var(--serif); } .use:hover { background: var(--accent-soft); }
+.pg h2 { margin: 2px 0 10px; font-size: 24px; letter-spacing: -.01em; } .pg [contenteditable] { outline: 0; min-height: 80px; font-size: 15px; line-height: 1.65; }
+.ref { color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+.it { display: flex; gap: 10px; padding: 8px 10px; margin: 0 -10px; border-radius: 10px; cursor: pointer; } .it:hover { background: var(--accent-soft); }
+.cols { display: flex; gap: 18px; } .cols > div { flex: 1; min-width: 0; } .cols h5 { margin: 0 0 6px; font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.cols h5 button { color: var(--accent); font-size: 11.5px; }
+/* gutters between bubbles: drag to resize both (R6) */
+.gut { position: absolute; z-index: 20; display: grid; place-items: center; }
+.gut.v { width: 14px; cursor: col-resize; } .gut.h { height: 14px; cursor: row-resize; }
+.gut i { display: block; border-radius: 3px; background: rgba(60,80,60,.0); transition: background .15s, transform .15s; }
+.gut.v i { width: 4px; height: 38px; } .gut.h i { height: 4px; width: 38px; }
+.gut:hover i, .gut.on i { background: rgba(60,80,60,.35); transform: scale(1.15); }
+/* the landing outline (R4) */
+#slot { position: absolute; border-radius: var(--r); border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); background: color-mix(in srgb, var(--accent) 9%, transparent); pointer-events: none; z-index: 35; opacity: 0; transition: opacity .15s; }
+#slot.on { opacity: 1; }
+#slot span { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); font-size: 12px; color: var(--accent); background: rgba(255,255,255,.85); padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+/* layouts at the window's top edge */
+#layouts { position: absolute; top: 56px; left: 50%; display: flex; gap: 10px; padding: 10px; border-radius: 20px; z-index: 70; transform: translate(-50%, -14px) scale(.96); opacity: 0; pointer-events: none; transition: transform .25s cubic-bezier(.2,.9,.25,1.1), opacity .18s; }
+#layouts.show { transform: translate(-50%, 0) scale(1); opacity: 1; }
+.lay { width: 96px; height: 60px; display: grid; gap: 3px; padding: 4px; border-radius: 11px; background: rgba(255,255,255,.45); }
+.lay i { border-radius: 6px; background: rgba(255,255,255,.75); } .lay.hot i { background: var(--accent); opacity: .85; }
+
+/* ---- the dock, with the tray at its end (R3) --------------------------------------------------------------------------- */
+#dockzone { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; z-index: 80; }
+#dock { position: absolute; left: 50%; bottom: 10px; display: flex; align-items: flex-end; gap: 6px; padding: 7px 9px; border-radius: 26px; z-index: 90; transform: translate(-50%, 120px); }
+.ai { width: 46px; height: 46px; border-radius: 13px; position: relative; flex: none; display: grid; place-items: center; font-size: 19px; color: var(--accent);
+  background: linear-gradient(180deg, #fff, #f1f4ee); box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 2px 6px rgba(20,30,20,.12); transform-origin: 50% 100%; }
+.ai .nm { position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%); font-size: 12px; padding: 3px 10px; border-radius: 8px; color: var(--ink); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .12s; }
+.ai:hover .nm { opacity: 1; }
+.ai .run { position: absolute; bottom: -6px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 2px; background: #4f584e; }
+.dsep { width: 1px; align-self: stretch; margin: 6px 3px; background: rgba(60,80,60,.22); flex: none; }
+.pill { height: 46px; max-width: 150px; padding: 0 12px 0 10px; border-radius: 13px; display: flex; align-items: center; gap: 7px; font-size: 12px; background: rgba(255,255,255,.7); box-shadow: 0 2px 6px rgba(20,30,20,.1); flex: none; transform-origin: 50% 100%; }
+.pill b { width: 7px; height: 7px; border-radius: 4px; background: var(--tint); flex: none; } .pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pill.t-bible { --tint: #5E7D63; } .pill.t-word { --tint: #6A5AA3; } .pill.t-page { --tint: #C0633A; } .pill.t-folder { --tint: #2A7D99; } .pill.t-legend { --tint: #A9740F; } .pill.t-plans { --tint: #3B5B7A; }
+
+/* ---- history and home -------------------------------------------------------------------------------------------------- */
+#hist { position: absolute; left: 50%; bottom: 84px; width: min(920px, calc(100% - 32px)); transform: translateX(-50%); border-radius: 22px; padding: 12px 16px 14px; z-index: 85; display: none; }
+#hist.open { display: block; animation: rise .28s cubic-bezier(.2,.9,.25,1.1); }
+@keyframes rise { from { transform: translate(-50%, 16px) scale(.98); opacity: 0; } }
+#hist .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 #hist input[type=range] { flex: 1; accent-color: var(--accent); }
-#hist .lbl { font-size: 12.5px; color: var(--muted); min-width: 260px; }
-#hist svg { width: 100%; height: 150px; } #hist svg circle { cursor: pointer; } #hist svg text { font: 10.5px var(--ui); fill: var(--muted); }
-.hbtn { position: absolute; right: 16px; bottom: 16px; z-index: 5300; padding: 8px 14px; border-radius: 12px; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: var(--shadow); font-size: 13px; }
-.past #desk { filter: sepia(.12); }
-/* ask popover, home */
-.pop { position: absolute; z-index: 7000; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; min-width: 180px; }
-.pop button { text-align: left; padding: 6px 10px; border-radius: 6px; } .pop button:hover { background: var(--accent-soft); }
-#home { position: absolute; inset: 44px 0 0 0; z-index: 4000; display: none; padding: 40px 10%; overflow: auto; }
-#home.open { display: block; } #home .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; max-width: 1100px; margin: 0 auto; }
-.tile { background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 20px; box-shadow: var(--shadow); padding: 18px 20px; }
-.tile h3 { margin: 0 0 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
-.tile button.go { margin-top: 10px; background: var(--accent); color: #fff; border-radius: 10px; padding: 7px 14px; }
+#hist .lbl { font-size: 12.5px; color: #3d463c; }
+#hist svg { width: 100%; } #hist svg circle { cursor: pointer; transition: r .15s; } #hist svg circle:hover { r: 8; }
+.past .bub { filter: sepia(.18) saturate(.85); }
+#histbtn { position: absolute; right: 12px; bottom: 12px; z-index: 75; padding: 9px 15px; border-radius: 999px; font-size: 13px; }
+#home { position: absolute; inset: 52px 0 0; z-index: 30; display: none; padding: 30px 6% 110px; overflow: auto; }
+#home.open { display: block; animation: rise2 .3s cubic-bezier(.2,.9,.25,1.1); } @keyframes rise2 { from { opacity: 0; transform: translateY(12px); } }
+#home .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; max-width: 1080px; margin: 0 auto; }
+.tile { background: var(--paper); border-radius: 22px; box-shadow: var(--lift); padding: 20px 22px; }
+.tile h3 { margin: 0 0 8px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.go { margin-top: 12px; background: var(--accent); color: #fff; border-radius: 11px; padding: 8px 16px; box-shadow: 0 2px 8px rgba(60,90,60,.3); }
+.pop { position: absolute; z-index: 100; border-radius: 16px; padding: 6px; display: flex; flex-direction: column; min-width: 200px; animation: popin .2s cubic-bezier(.2,.9,.25,1.2); }
+@keyframes popin { from { transform: scale(.92); opacity: 0; } }
+.pop button { text-align: left; padding: 7px 12px; border-radius: 10px; } .pop button:hover { background: rgba(255,255,255,.65); }
+.toast { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px; z-index: 95; font-size: 13px; animation: popin .25s; }
 /* phone */
-body.phone { background: #cfd5cb; }
-body.phone #stage { inset: auto; width: 390px; height: 844px; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 44px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.25); border: 10px solid #111; }
-body.phone #desk { overflow-x: auto; scroll-snap-type: x mandatory; display: flex; gap: 0; bottom: 70px; }
-body.phone .win { position: relative !important; left: auto !important; top: auto !important; width: 360px !important; height: calc(100% - 20px) !important; margin: 10px 7px 10px 15px; flex: none; scroll-snap-align: center; transform: none !important; }
-body.phone .win.behind { display: none; }
-body.phone #dock { transform: translate(-50%, 0); bottom: 8px; gap: 2px; padding: 6px; } body.phone #dock .ai { width: 34px; height: 34px; font-size: 15px; } body.phone #dock .ai:hover { width: 34px; height: 34px; }
-body.phone #top { overflow-x: auto; } body.phone #opts { right: 8px; width: 300px; }
-body.phone .stackdots { display: flex; }
-.stackdots { display: none; gap: 4px; justify-content: center; padding: 4px; } .stackdots i { width: 6px; height: 6px; border-radius: 3px; background: var(--line); } .stackdots i.on { background: var(--accent); }
-.hint { position: absolute; left: 16px; bottom: 16px; z-index: 5100; font-size: 12px; color: var(--muted); max-width: 520px; }
-body.phone .hint, body.phone .hbtn { display: none; }
+body.phone { background: #cbd3c6; }
+body.phone #stage { inset: auto; left: 50%; top: 50%; width: 390px; height: 844px; transform: translate(-50%, -50%); border-radius: 46px; box-shadow: 0 30px 80px rgba(0,0,0,.25), 0 0 0 10px #111; }
+body.phone #top { top: 12px; max-width: 360px; overflow-x: auto; } body.phone #optsbtn { top: auto; bottom: 92px; }
+body.phone #desk { top: 54px; bottom: 82px; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding: 0 15px; }
+body.phone .bub { position: relative !important; left: auto !important; top: auto !important; width: 360px !important; height: 100% !important; flex: none; scroll-snap-align: center; }
+body.phone .gut, body.phone #histbtn { display: none; }
+body.phone #dock { transform: translate(-50%, 0) !important; bottom: 12px; gap: 3px; padding: 6px; } body.phone .ai { width: 36px; height: 36px; font-size: 15px; } body.phone .pill { height: 36px; max-width: 70px; }
+.hint { transition: opacity .6s; } .hint.gone { opacity: 0; pointer-events: none; }
+.hint { position: absolute; left: 14px; bottom: 14px; z-index: 74; font-size: 12px; color: #4f584e; max-width: 430px; padding: 8px 12px; border-radius: 14px; }
+body.phone .hint { display: none; }
 </style></head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- the lens: a gentle displacement of what lies behind the glass, strongest at the edges -->
+  <filter id="lens" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="7" result="n"/>
+    <feGaussianBlur in="n" stdDeviation="3" result="nb"/>
+    <feDisplacementMap in="SourceGraphic" in2="nb" scale="26" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
 <div id="stage">
-  <div class="bg"></div>
-  <div id="top"></div>
-  <div id="desk"><svg id="threads"></svg></div>
-  <div id="zones"></div>
-  <div id="ghost"></div>
+  <div class="wall"></div>
+  <div id="desk"><div id="slot"><span></span></div></div>
   <div id="home"></div>
-  <div id="hist"></div>
-  <button class="hbtn" id="histbtn">◷ History</button>
-  <div class="hint">Drag a bubble by its title. Drop near another to sit beside it, on it to stack, at the top edge for layouts. Click a word to follow it. Move to the bottom edge for the dock. Options top right.</div>
+  <div id="top" class="glass"><div id="dkpill"></div></div>
+  <button id="optsbtn" class="glass">Options</button>
+  <div id="opts" class="glass"></div>
+  <div id="layouts" class="glass"></div>
+  <div id="hist" class="glass"></div>
+  <button id="histbtn" class="glass">◷ History</button>
+  <div class="hint glass">Drag a title: drop on a side for a column, on the top or bottom for above or below, in the middle to swap. Drag the gap between two to resize. Click a word to follow it. Bottom edge: the dock.</div>
   <div id="dockzone"></div>
-  <div id="dock"></div>
-  <div id="opts"></div>
+  <div id="dock" class="glass"></div>
 </div>
 <script>
 const DATA = /*DATA*/null;
 const $ = (s, el = document) => el.querySelector(s);
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const clone = o => JSON.parse(JSON.stringify(o));
-const GAP = 12;
+const GAP = 10, PAD = 10, MINW = 360, MINH = 220, MAXC = 4, MAXR = 3; // R2
+if (/Chrome|Edg/.test(navigator.userAgent) && !/Safari\/6/.test('')) document.documentElement.classList.add('lens');
 
-// ---- options: every choice the person asked to see, switchable --------------------------------------------------------
-const OPT = { arrange: 'magnetic', many: 'bubbles', rabbit: 'beside', hview: 'scrubber', hscope: 'desk', device: 'desktop' };
-const OPTDEF = [
-  ['arrange', 'Bubbles on a desk', [['magnetic', 'Magnetic'], ['tiled', 'Always tiled'], ['free', 'Free canvas']],
-    { magnetic: 'Free to drag; near an edge or another bubble it pulls in beside it; dropped on one, it stacks.', tiled: 'Bubbles never overlap: every drop reflows the desk into neat columns; dropped on one, it stacks.', free: 'Bubbles float anywhere and may overlap; Snap only from the top edge; dropped on a title, it stacks.' }],
-  ['many', 'Several of one app', [['bubbles', 'Each its own bubble'], ['inside', 'One app, many inside'], ['both', 'Both, by choice']],
-    { bubbles: 'Every passage, word or page is its own bubble; same-app bubbles share a tint.', inside: 'A second passage opens as a column inside the Bible bubble already open (the same for words and pages).', both: 'Each opens as a bubble; ⇲ Gather pulls the app\'s bubbles into one as columns, ⇱ pops a column out.' }],
-  ['rabbit', 'Following a word', [['beside', 'New bubble, linked'], ['replace', 'Replace in place'], ['ask', 'Ask each time']],
-    { beside: 'It opens beside the passage with a thread to show what led where. Alt+click replaces instead.', replace: 'The same bubble becomes the word; ← goes back.', ask: 'A small choice: here, beside, or on a new desk.' }],
-  ['hview', 'History looks like', [['scrubber', 'Timeline scrubber'], ['map', 'Branching map']],
-    { scrubber: 'Drag back and the desk replays itself; let go to stay. Doing something then starts a branch; nothing is lost.', map: 'Every step as a node; branches where you went back and took another way. Click a node to go there.' }],
-  ['hscope', 'History of', [['window', 'This bubble'], ['desk', 'This desk'], ['app', 'The whole app']], {}],
-  ['device', 'Seen on', [['desktop', 'Desktop'], ['phone', 'Phone']], { phone: 'Bubbles become full cards you swipe between; a stack is one card with dots.' }],
-];
+// ---- one spring for everything (R5) ----------------------------------------------------------------------------------
+const K = 420, C = 34; let SLOW = 1;
+const springs = new Map(); // id -> {el, cur:{x,y,w,h}, v:{...}, to:{...}, free}
+let running = false;
+function animate() {
+  if (running) return; running = true; let last = performance.now();
+  const tick = now => {
+    const dt = Math.min(1 / 30, (now - last) / 1000) * SLOW; last = now; let moving = false;
+    for (const s of springs.values()) {
+      if (s.free) continue;
+      for (const k of ['x', 'y', 'w', 'h']) {
+        const d = s.to[k] - s.cur[k], a = K * d - C * s.v[k]; s.v[k] += a * dt; s.cur[k] += s.v[k] * dt;
+        if (Math.abs(d) < .3 && Math.abs(s.v[k]) < .3) { s.cur[k] = s.to[k]; s.v[k] = 0; } else moving = true;
+      }
+      paint(s);
+    }
+    tickDock(dt); if (moving || dockMoving) requestAnimationFrame(tick); else running = false;
+  };
+  requestAnimationFrame(tick);
+}
+const paint = s => { const st = s.el.style; st.left = s.cur.x + 'px'; st.top = s.cur.y + 'px'; st.width = Math.max(40, s.cur.w) + 'px'; st.height = Math.max(40, s.cur.h) + 'px'; };
 
-// ---- the model: desks of windows; history is a tree of small steps ------------------------------------------------------
-let seq = 1;
+// ---- the model: desks of columns of bubbles; a tray; history as a tree of steps ----------------------------------------
+let seq = 1, clock = 1;
 const pages = {
   p1: { title: 'Salt lessons 2025', text: 'Start from <span class="ref" data-ref="Numbers 25">Numbers 25</span>, then <span class="ref" data-ref="John 1">John 1</span>. Questions to bring: what is zeal for?' },
   p2: { title: 'Word study: Word', text: 'Collect every use of the word for Word in <span class="ref" data-ref="John 1">John 1</span>.' },
   p3: { title: 'Sunday class: the covenant', text: 'Outline for the class. Read <span class="ref" data-ref="Genesis 1">Genesis 1</span> aloud first.' },
-  p4: { title: 'Prayer list', text: 'Names and dates.' },
 };
-const folders = { f1: { title: 'Covenant', items: [['page', 'p3'], ['page', 'p1'], ['bible', 'Genesis 1'], ['bible', 'Romans 5']] } };
-const win = (app, ref, x, y, w, ht, extra = {}) => ({ id: 'w' + seq++, app, ref, x, y, w, h: ht, z: seq, cols: [], stack: null, parent: null, back: [], fwd: [], ...extra });
-let S = {
-  desk: 'd1',
-  desks: {
-    d1: { name: 'Sunday lesson', wins: [win('bible', 'John 1', 24, 20, 560, 640), win('page', 'p1', 600, 20, 420, 380), win('folder', 'f1', 600, 412, 420, 248)] },
-    d2: { name: 'Word study: zeal', wins: [win('bible', 'Numbers 25', 24, 20, 620, 640), win('word', 'H7065', 660, 20, 440, 520)] },
-    d3: { name: 'Daily reading', wins: [win('bible', 'Psalms 23', 200, 20, 640, 600)] },
-  },
-  pages,
-};
-const H = { nodes: [], cur: null, viewing: null }; // the history tree: {id, parent, label, desk, win, snap}
-function record(label, winId) {
-  const node = { id: H.nodes.length, parent: H.cur, label, desk: S.desk, win: winId || null, t: Date.now(), snap: clone(S) };
-  H.nodes.push(node); H.cur = node.id; H.viewing = null;
+const folders = { f1: { title: 'Covenant', items: [['page', 'p3'], ['page', 'p1'], ['bible', 'Genesis 1'], ['bible', 'Romans 5'], ['bible', 'Psalms 23']] } };
+const B = (app, ref, extra = {}) => { const id = 'b' + seq++; S.bubs[id] = { app, ref, lit: null, back: [], fwd: [], used: clock++, from: null, cols: [], ...extra }; return id; };
+let S = { desk: 'd1', bubs: {}, desks: {}, pages };
+const OPT = { rabbit: 'beside', hview: 'scrubber', hscope: 'desk', device: 'desktop' };
+function seed() {
+  const a = B('bible', 'John 1'), b = B('page', 'p1'), c = B('folder', 'f1'), d = B('bible', 'Numbers 25'), e = B('word', 'H7065'), f = B('bible', 'Psalms 23');
+  S.desks = {
+    d1: { name: 'Sunday lesson', cols: [{ f: .55, cells: [{ id: a, f: 1 }] }, { f: .45, cells: [{ id: b, f: .58 }, { id: c, f: .42 }] }], tray: [] },
+    d2: { name: 'Word study: zeal', cols: [{ f: .6, cells: [{ id: d, f: 1 }] }, { f: .4, cells: [{ id: e, f: 1 }] }], tray: [] },
+    d3: { name: 'Daily reading', cols: [{ f: 1, cells: [{ id: f, f: 1 }] }], tray: [] },
+  };
 }
+seed();
 const D = () => S.desks[S.desk];
-const W = id => D().wins.find(w => w.id === id);
-const titleOf = w => w.app === 'bible' ? w.ref : w.app === 'word' ? `${w.ref} ${DATA.lex[w.ref]?.lemma || ''}` : w.app === 'page' ? S.pages[w.ref].title : w.app === 'folder' ? folders[w.ref].title : w.app === 'legend' ? 'Legend' : w.app === 'plans' ? 'Reading plans' : w.ref;
-const APPNAME = { bible: 'Bible', word: 'Words', page: 'Notebook', folder: 'Folder', legend: 'Legend', plans: 'Reading plans' };
+const titleOf = (b, ref = b.ref) => b.app === 'bible' ? ref : b.app === 'word' ? `${ref} ${DATA.lex[ref]?.lemma || ''}` : b.app === 'page' ? S.pages[ref].title : b.app === 'folder' ? folders[ref].title : b.app === 'legend' ? 'Legend' : 'Reading plans';
+const APP = { bible: 'Bible', word: 'Words', page: 'Notebook', folder: 'Folder', legend: 'Legend', plans: 'Reading plans' };
 
-// ---- drawing -----------------------------------------------------------------------------------------------------------
-function drawTop() {
-  const t = $('#top'); t.replaceChildren();
-  for (const [id, d] of Object.entries(S.desks)) {
-    const b = h('button', 'desk' + (id === S.desk ? ' on' : ''), d.name); b.dataset.desk = id;
-    b.onclick = () => { S.desk = id; record(`Switched to ${d.name}`); draw(); };
-    t.append(b);
-  }
-  const nb = h('button', 'desk', '+ New desk'); nb.onclick = () => { const id = 'd' + seq++; S.desks[id] = { name: 'Desk ' + Object.keys(S.desks).length, wins: [] }; S.desk = id; record('New desk'); draw(); };
-  const ob = h('button', '', 'Options'); ob.id = 'opts-btn'; ob.onclick = () => $('#opts').classList.toggle('open');
-  t.append(nb, ob);
+const H = { nodes: [], cur: null, viewing: null, focusBub: null };
+function record(label, bub) { const n = { id: H.nodes.length, parent: H.cur, label, desk: S.desk, bub: bub || null, t: Date.now(), snap: clone(S) }; H.nodes.push(n); H.cur = n.id; H.viewing = null; } // R9
+
+// ---- layout: columns and cells to rectangles; limits by screen (R1, R2) ---------------------------------------------------
+const area = () => { const r = $('#desk').getBoundingClientRect(); return { w: r.width, h: r.height }; };
+const limits = () => { const a = area(); return { c: Math.max(1, Math.min(MAXC, Math.floor((a.w - PAD * 2 + GAP) / (MINW + GAP)))), r: Math.max(1, Math.min(MAXR, Math.floor((a.h - PAD * 2 + GAP) / (MINH + GAP)))) }; };
+function rects(cols) {
+  const a = area(), out = {}, W = a.w - PAD * 2 - GAP * (cols.length - 1); let x = PAD;
+  for (const c of cols) { const cw = W * c.f, H_ = a.h - PAD * 2 - GAP * (c.cells.length - 1); let y = PAD;
+    for (const cell of c.cells) { const ch = H_ * cell.f; out[cell.id] = { x, y, w: cw, h: ch }; y += ch + GAP; } x += cw + GAP; }
+  return out;
 }
-function drawOpts() {
-  const o = $('#opts'); o.replaceChildren(h('b', '', 'Try each design'));
-  for (const [key, label, choices, notes] of OPTDEF) {
-    o.append(h('h4', '', label)); const seg = h('div', 'seg');
-    for (const [v, l] of choices) { const b = h('button', OPT[key] === v ? 'on' : '', l); b.onclick = () => { OPT[key] = v; if (key === 'device') document.body.classList.toggle('phone', v === 'phone'); if (key === 'arrange' && v === 'tiled') tile(); drawOpts(); draw(); }; seg.append(b); }
-    o.append(seg); if (notes[OPT[key]]) o.append(h('p', '', notes[OPT[key]]));
-  }
+const norm = arr => { const t = arr.reduce((s, o) => s + o.f, 0) || 1; arr.forEach(o => o.f /= t); };
+function without(cols, id) {
+  const c2 = clone(cols); for (const c of c2) c.cells = c.cells.filter(x => x.id !== id);
+  const kept = c2.filter(c => c.cells.length); kept.forEach(c => norm(c.cells)); norm(kept); return kept;
 }
+const allIds = cols => cols.flatMap(c => c.cells.map(x => x.id));
+const findCell = (cols, id) => { for (let ci = 0; ci < cols.length; ci++) { const ri = cols[ci].cells.findIndex(x => x.id === id); if (ri >= 0) return [ci, ri]; } return null; };
+// place id at a target: {kind:'col', at} | {kind:'row', col, at} | {kind:'swap', with}
+function insert(cols, id, t) {
+  const c2 = clone(cols);
+  if (t.kind === 'col') { const f = 1 / (c2.length + 1); c2.forEach(c => c.f *= (1 - f)); c2.splice(t.at, 0, { f, cells: [{ id, f: 1 }] }); }
+  else if (t.kind === 'row') { const col = c2[t.col], f = 1 / (col.cells.length + 1); col.cells.forEach(c => c.f *= (1 - f)); col.cells.splice(t.at, 0, { id, f }); }
+  else if (t.kind === 'swap') { const p = findCell(c2, t.with); c2[p[0]].cells[p[1]].id = id; c2[p[0]].cells.push({ id: t.with, f: 0, ghost: true }); }
+  return c2.map(c => ({ ...c, cells: c.cells.filter(x => !x.ghost) }));
+}
+function fits(cols) { const L = limits(); return cols.length <= L.c && cols.every(c => c.cells.length <= L.r); }
+// R3: when it will not fit, the bubble used longest ago (never the one being placed or its source) goes to the tray
+function makeRoom(desk, cols, keep) {
+  while (!fits(cols)) {
+    const ids = allIds(cols).filter(i => !keep.includes(i)); if (!ids.length) break;
+    const old = ids.sort((a, b) => S.bubs[a].used - S.bubs[b].used)[0];
+    cols = without(cols, old); desk.tray.push(old);
+  }
+  return cols;
+}
+
+// ---- drawing: persistent bubbles that move on springs ----------------------------------------------------------------------
+let focus = null, fullId = null;
+// Full view (the person, 2026-11-22: 'make one page full screen and then quickly minimize it'): a moment, not a place.
+// The bubble grows over the desk on the spring; the desk keeps its layout underneath, dimmed; Esc or a double-click springs it back.
+function toggleFull(id) { fullId = fullId === id ? null : id; if (fullId) setFocus(id); for (const k of springs.keys()) if (S.bubs[k]) fill(k); draw(); }
+function draw(opts = {}) {
+  drawTop(); drawDock();
+  const desk = D(), R = rects(desk.cols), ids = new Set(allIds(desk.cols));
+  const gone = [...springs].filter(([id, s]) => !ids.has(id) && !s.leaving);
+  for (const [id, s] of gone) { // leaving: into the tray pill, or shrinking away
+    springs.delete(id); const el = s.el; const pill = document.querySelector(`.pill[data-id="${id}"]`);
+    const r = pill ? pill.getBoundingClientRect() : null, d = $('#desk').getBoundingClientRect();
+    const to = r ? { x: r.left - d.left, y: r.top - d.top, w: r.width, h: r.height } : { x: s.cur.x + s.cur.w / 2 - 20, y: s.cur.y + s.cur.h / 2 - 20, w: 40, h: 40 };
+    const ghost = { el, cur: { ...s.cur }, v: { x: 0, y: 0, w: 0, h: 0 }, to, leaving: true }; springs.set('leave' + id + seq++, ghost);
+    el.style.transition = 'opacity .32s, border-radius .3s'; el.style.opacity = '0'; el.style.pointerEvents = 'none';
+    setTimeout(() => { el.remove(); for (const [k, g] of springs) if (g === ghost) springs.delete(k); }, 380);
+  }
+  for (const id of ids) {
+    let s = springs.get(id);
+    if (!s) { const el = h('div', 'bub'); el.dataset.id = id; $('#desk').append(el); const from = opts.from?.[id] || { x: R[id].x + R[id].w / 2 - 60, y: R[id].y + R[id].h / 2 - 40, w: 120, h: 80 };
+      s = { el, cur: { ...from }, v: { x: 0, y: 0, w: 0, h: 0 }, to: R[id] }; springs.set(id, s); paint(s); fill(id); }
+    if (!s.free) s.to = id === fullId ? { x: PAD, y: PAD, w: area().w - PAD * 2, h: area().h - PAD * 2 } : R[id];
+    s.el.classList.toggle('full', id === fullId); s.el.classList.toggle('under', !!fullId && id !== fullId);
+    s.el.classList.toggle('focus', id === focus);
+  }
+  drawGutters(R); animate(); document.body.classList.toggle('past', H.viewing != null);
+}
+function fill(id) {
+  const s = springs.get(id); if (!s) return; const b = S.bubs[id], el = s.el; el.className = `bub t-${b.app}` + (id === focus ? ' focus' : '');
+  el.replaceChildren();
+  const bar = h('div', 'bar glass');
+  const back = h('button', 'ib', '←'); back.title = 'Back (this bubble) · Alt+←'; back.disabled = !b.back.length; back.onclick = () => step(id, -1);
+  const fwd = h('button', 'ib', '→'); fwd.title = 'Forward · Alt+→'; fwd.disabled = !b.fwd.length; fwd.onclick = () => step(id, 1);
+  bar.append(back, fwd, h('span', 'tint'), h('span', 'app', APP[b.app]), h('span', 'ttl', titleOf(b)));
+  if (b.from && S.bubs[b.from]) { const f = h('button', 'from', '↖ ' + titleOf(S.bubs[b.from])); f.title = 'What led here: click to show it'; f.onclick = () => flash(b.from); bar.append(f); }
+  const fullb = h('button', 'ib', fullId === id ? '⤡' : '⤢'); fullb.title = fullId === id ? 'Back to the desk · Esc' : 'Full view · Ctrl+Enter'; fullb.onclick = () => toggleFull(id); bar.append(fullb);
+  const more = h('button', 'ib', '⋯'); more.title = 'More'; more.onclick = e => bubMenu(e, id); bar.append(more);
+  const x = h('button', 'ib', '✕'); x.title = 'Close · Ctrl+W'; x.onclick = () => close(id); bar.append(x);
+  const body = h('div', 'body'); body.append(content(b)); el.append(body, bar);
+  bar.onpointerdown = e => { if (e.target.closest('button') || e.detail > 1 || fullId) return; startDrag(e, id); };
+  bar.ondblclick = e => { if (!e.target.closest('button')) toggleFull(id); };
+  el.onpointerdown = () => setFocus(id);
+  body.onclick = e => clickIn(e, id);
+  bar.onpointermove = e => { const r = bar.getBoundingClientRect(); bar.style.setProperty('--mx', e.clientX - r.left + 'px'); bar.style.setProperty('--my', e.clientY - r.top + 'px'); };
+}
+function setFocus(id) { if (focus === id) return; focus = id; S.bubs[id].used = clock++; for (const [k, s] of springs) s.el.classList.toggle('focus', k === id); }
+function flash(id) { const s = springs.get(id); if (!s) { toast('It is in the tray: click its pill'); return; } s.el.animate([{ boxShadow: '0 0 0 4px var(--accent), var(--lift)' }, { boxShadow: 'var(--lift)' }], { duration: 1200, easing: 'ease-out' }); setFocus(id); }
 function scripture(ref, lit) {
-  const box = h('div', 'scr'); const vs = DATA.chapters[ref];
-  if (!vs) { box.textContent = 'Not in the demo.'; return box; }
-  for (const v of vs) {
-    const span = h('span', lit && v.v === lit ? 'lit' : ''); span.dataset.v = v.v; span.append(h('span', 'vn', String(v.v)));
-    for (const [t, s] of v.w) { const w = h('span', 'w', t); if (s) w.dataset.s = s; span.append(w); }
-    box.append(span);
-  }
+  const box = h('div', 'scr'), vs = DATA.chapters[ref]; if (!vs) { box.textContent = 'Not in the demo.'; return box; }
+  for (const v of vs) { const sp = h('span', lit && v.v === lit ? 'lit' : ''); sp.dataset.v = v.v; sp.append(h('span', 'vn', String(v.v))); for (const [t, s] of v.w) { const w = h('span', 'w', t); if (s) w.dataset.s = s; sp.append(w); } box.append(sp); }
+  if (lit) requestAnimationFrame(() => box.querySelector('.lit')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
   return box;
 }
-function body(w, ref = w.ref) {
-  if (w.app === 'bible') return scripture(ref, w.lit);
-  if (w.app === 'word') {
-    const e = DATA.lex[ref] || {}; const box = h('div', 'lex');
-    box.append(h('div', 'lem', e.lemma || ref), h('div', 'tr', `${e.translit || ''} · ${ref}`), h('p', '', e.def || ''), h('p', 'tr', 'KJV: ' + (e.usage || '')), h('h4', '', 'In the demo\'s chapters'));
-    for (const [cref, vs] of Object.entries(DATA.chapters)) for (const v of vs) if (v.w.some(x => x[1] === ref)) {
-      const u = h('span', 'use', `${cref}:${v.v}  ` + v.w.map(x => x[0]).join('').slice(0, 80) + '…'); u.dataset.go = `${cref}|${v.v}`; box.append(u);
-    }
+function content(b, ref = b.ref) {
+  if (b.cols.length && ref === b.ref) { const row = h('div', 'cols'); for (const [i, r] of [b.ref, ...b.cols].entries()) { const c = h('div'); const hd = h('h5', '', titleOf(b, r)); if (i) { const p = h('button', '', '⇱ pop out'); p.onclick = () => popOut(b, r); hd.append(p); } c.append(hd, content({ ...b, cols: [] }, r)); row.append(c); } return row; }
+  if (b.app === 'bible') return scripture(ref, b.lit);
+  if (b.app === 'word') {
+    const e = DATA.lex[ref] || {}, box = h('div', 'lex');
+    box.append(h('div', 'lem', e.lemma || ref), h('div', 'tr', `${e.translit || ''} · ${ref}`), h('p', '', e.def || ''), h('p', 'tr', 'KJV: ' + (e.usage || '')), h('h4', '', 'Where it is used (the demo\'s chapters)'));
+    for (const [cr, vs] of Object.entries(DATA.chapters)) for (const v of vs) if (v.w.some(x => x[1] === ref)) { const u = h('span', 'use', `${cr}:${v.v}  ` + v.w.map(x => x[0]).join('').slice(0, 90) + '…'); u.dataset.go = `${cr}|${v.v}`; box.append(u); }
     return box;
   }
-  if (w.app === 'page') {
-    const p = S.pages[ref]; const box = h('div', 'pg'); box.append(h('h2', '', p.title));
-    const ed = h('div'); ed.contentEditable = 'true'; ed.innerHTML = p.text;
-    ed.oninput = () => { p.text = ed.innerHTML; clearTimeout(ed._t); ed._t = setTimeout(() => record(`Wrote in ${p.title}`, w.id), 700); };
-    box.append(ed); return box;
-  }
-  if (w.app === 'folder') {
-    const f = folders[ref]; const box = h('div', 'fl');
-    for (const [k, r] of f.items) { const it = h('div', 'it'); it.append(h('span', '', k === 'page' ? '▤' : '▥'), h('span', '', k === 'page' ? S.pages[r].title : r)); it.dataset.open = `${k === 'page' ? 'page' : 'bible'}|${r}`; box.append(it); }
-    return box;
-  }
-  if (w.app === 'legend') { const box = h('div'); for (const [c, n] of [['#F6D96B', 'Promise'], ['#9FD3A8', 'Command'], ['#9CC3F0', 'Christ'], ['#F3A6A6', 'Warning']]) { const r = h('div', 'it'); r.innerHTML = `<i style="display:inline-block;width:14px;height:14px;border-radius:4px;background:${c};margin-right:8px"></i>${n}`; box.append(r); } return box; }
-  return h('div', '', 'Today: Psalms 23 (open it from Home).');
+  if (b.app === 'page') { const p = S.pages[ref], box = h('div', 'pg'); box.append(h('h2', '', p.title)); const ed = h('div'); ed.contentEditable = 'true'; ed.innerHTML = p.text;
+    ed.oninput = () => { p.text = ed.innerHTML; clearTimeout(ed._t); ed._t = setTimeout(() => record(`Wrote in ${p.title}`), 800); }; box.append(ed); return box; }
+  if (b.app === 'folder') { const f = folders[ref], box = h('div'); for (const [k, r] of f.items) { const it = h('div', 'it'); it.append(h('span', '', k === 'page' ? '▤' : '▥'), h('span', '', k === 'page' ? S.pages[r].title : r)); it.dataset.open = `${k === 'page' ? 'page' : 'bible'}|${r}`; box.append(it); } return box; }
+  if (b.app === 'legend') { const box = h('div'); for (const [c, n] of [['#F6D96B', 'Promise'], ['#9FD3A8', 'Command'], ['#9CC3F0', 'Christ'], ['#F3A6A6', 'Warning']]) { const r = h('div', 'it'); r.innerHTML = `<i style="width:14px;height:14px;border-radius:4px;background:${c}"></i>${n}`; box.append(r); } return box; }
+  const box = h('div'); box.append(h('p', '', 'Today: Psalms 23.')); const b2 = h('div', 'it', '▥ Psalms 23'); b2.dataset.open = 'bible|Psalms 23'; box.append(b2); return box;
 }
-function draw() {
-  drawTop();
-  const desk = $('#desk'); for (const el of [...desk.querySelectorAll('.win')]) el.remove();
-  const wins = D().wins;
-  // stacks: the front of each stack is the highest z; the ones behind fan out up and right
-  const stacks = {}; for (const w of wins) if (w.stack) (stacks[w.stack] ||= []).push(w);
-  for (const s of Object.values(stacks)) s.sort((a, b) => a.z - b.z);
-  const front = wins.reduce((a, b) => (b.z > (a?.z ?? -1) ? b : a), null);
-  for (const w of wins) {
-    const el = h('div', `win t-${w.app}` + (w === front ? ' front' : '')); el.dataset.id = w.id;
-    let x = w.x, y = w.y; const st = w.stack ? stacks[w.stack] : null;
-    if (st) { const i = st.indexOf(w), n = st.length; const off = (n - 1 - i) * 10; x += off; y -= off; if (i < n - 1) { el.classList.add('behind'); el.style.opacity = String(1 - (n - 1 - i) * .18); } }
-    Object.assign(el.style, { left: x + 'px', top: y + 'px', width: w.w + 'px', height: w.h + 'px', zIndex: w.z });
-    const wt = h('div', 'wt');
-    const back = h('button', '', '←'); back.title = 'Back (this bubble)'; back.disabled = !w.back.length; back.onclick = e => { e.stopPropagation(); step(w, -1); };
-    const fwd = h('button', '', '→'); fwd.title = 'Forward'; fwd.disabled = !w.fwd.length; fwd.onclick = e => { e.stopPropagation(); step(w, 1); };
-    wt.append(back, fwd, h('span', 'app', APPNAME[w.app] || w.app), h('span', 'ttl', titleOf(w)));
-    if (st && w === st[st.length - 1]) wt.append(h('span', 'stackbadge', `${st.length} stacked`));
-    if (OPT.many === 'both' && wins.filter(o => o.app === w.app && o !== w && !o.stack).length && !w.stack) { const g = h('button', '', '⇲'); g.title = 'Gather this app\'s bubbles here as columns'; g.onclick = e => { e.stopPropagation(); gather(w); }; wt.append(g); }
-    if (st) { const u = h('button', '', '⤫'); u.title = 'Take out of the stack'; u.onclick = e => { e.stopPropagation(); unstack(w); }; wt.append(u); }
-    const hb = h('button', '', '◷'); hb.title = 'This bubble\'s history'; hb.onclick = e => { e.stopPropagation(); OPT.hscope = 'window'; H.focus = w.id; openHist(); }; wt.append(hb);
-    const x_ = h('button', '', '✕'); x_.title = 'Close'; x_.onclick = e => { e.stopPropagation(); D().wins = D().wins.filter(o => o !== w); if (w.stack) fixStack(w.stack); record(`Closed ${titleOf(w)}`); draw(); }; wt.append(x_);
-    const wb = h('div', 'wb');
-    if (w.cols.length) {
-      const cols = h('div', 'cols');
-      for (const [i, r] of [w.ref, ...w.cols].entries()) { const c = h('div', 'col'); const hd = h('h5', '', r === w.ref ? titleOf(w) : (w.app === 'page' ? S.pages[r].title : r)); if (i) { const pop = h('button', '', '⇱ pop out'); pop.onclick = () => popOut(w, r); hd.append(pop); } c.append(hd, body(w, r)); cols.append(c); }
-      wb.append(cols);
-    } else wb.append(body(w));
-    if (st) { const dots = h('div', 'stackdots'); for (const s of st) dots.append(h('i', s === w ? 'on' : '')); el.append(dots); }
-    el.append(wt, wb); desk.append(el);
-    wt.onpointerdown = e => { if (e.target.closest('button')) return; startDrag(e, w, el); };
-    el.onpointerdown = e => { if (el.classList.contains('behind')) { w.z = ++seq; record(`Brought ${titleOf(w)} forward`); draw(); } else if (w !== front && !e.target.closest('.wt')) { w.z = ++seq; el.style.zIndex = w.z; document.querySelector('.win.front')?.classList.remove('front'); el.classList.add('front'); } };
-    wb.onclick = e => clickIn(e, w);
-  }
-  drawThreads(); drawDock();
-  document.body.classList.toggle('past', H.viewing != null);
+function drawGutters(R) {
+  for (const g of document.querySelectorAll('.gut')) g.remove();
+  const cols = D().cols, desk = $('#desk');
+  cols.forEach((c, ci) => {
+    const r0 = R[c.cells[0].id];
+    if (ci < cols.length - 1) { const g = h('div', 'gut v'); g.append(h('i')); Object.assign(g.style, { left: r0.x + r0.w - 2 + 'px', top: PAD + 'px', height: area().h - PAD * 2 + 'px' }); g.onpointerdown = e => resize(e, 'v', ci); desk.append(g); }
+    c.cells.forEach((cell, ri) => { if (ri === c.cells.length - 1) return; const r = R[cell.id]; const g = h('div', 'gut h'); g.append(h('i')); Object.assign(g.style, { left: r.x + 'px', width: r.w + 'px', top: r.y + r.h - 2 + 'px' }); g.onpointerdown = e => resize(e, 'h', ci, ri); desk.append(g); });
+  });
 }
-function drawThreads() {
-  const svg = $('#threads'); svg.replaceChildren();
-  if (OPT.rabbit === 'replace') return;
-  for (const w of D().wins) if (w.parent) { const p = W(w.parent); if (!p || (p.stack && p.stack === w.stack)) continue;
-    const a = [p.x + p.w, p.y + 60], b = [w.x, w.y + 60]; const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M${a[0]},${a[1]} C${a[0] + 60},${a[1]} ${b[0] - 60},${b[1]} ${b[0]},${b[1]}`); svg.append(path); }
+let deskOrder = [];
+function drawTop() {
+  const t = $('#top'); const pill = $('#dkpill'); t.replaceChildren(pill);
+  for (const [id, d] of Object.entries(S.desks)) { const b = h('button', 'dk' + (id === S.desk ? ' on' : ''), d.name); b.dataset.desk = id; b.onclick = () => switchDesk(id); b.ondblclick = () => { const n = prompt('Name this desk', d.name); if (n) { d.name = n; record('Renamed a desk'); drawTop(); } }; t.append(b); }
+  const nb = h('button', 'dk', '+'); nb.title = 'New desk'; nb.onclick = () => { const id = 'd' + seq++; S.desks[id] = { name: 'Desk ' + Object.keys(S.desks).length, cols: [], tray: [] }; switchDesk(id, 'New desk'); }; t.append(nb);
+  requestAnimationFrame(() => { const on = t.querySelector('.dk.on'); if (!on) return; const tr = t.getBoundingClientRect(), r = on.getBoundingClientRect();
+    pill.animate([{ left: pill.style.left || r.left - tr.left + 'px', width: pill.style.width || r.width + 'px' }, { left: r.left - tr.left + 'px', width: r.width + 'px' }], { duration: 380, easing: 'cubic-bezier(.2,.9,.25,1.12)' });
+    pill.style.left = r.left - tr.left + 'px'; pill.style.width = r.width + 'px'; });
 }
-function drawDock() {
-  const d = $('#dock'); d.replaceChildren();
-  const open = new Set(D().wins.map(w => w.app));
-  const item = (ico, name, fn, app) => { const b = h('button', 'ai', ico); b.append(h('span', 'nm', name)); if (app && open.has(app)) b.append(h('span', 'run')); b.onclick = fn; return b; };
-  d.append(item('⌂', 'Workbench', () => toggleHome()), h('div', 'sep'),
-    item('▥', 'Bible', () => openApp('bible', 'Romans 5'), 'bible'), item('✎', 'Notebook', () => openApp('page', 'p2'), 'page'),
-    item('⌕', 'Search', () => searchPop()), item('א', 'Words', () => openApp('word', 'G3056'), 'word'),
-    item('✦', 'Legend', () => openApp('legend', 'legend'), 'legend'), item('☷', 'Reading plans', () => openApp('plans', 'plans'), 'plans'),
-    h('div', 'sep'), item('⚙︎', 'Settings', () => $('#opts').classList.toggle('open')));
+function switchDesk(id, label) {
+  fullId = null;
+  if (id === S.desk && !label) return; const keys = Object.keys(S.desks); const dir = keys.indexOf(id) > keys.indexOf(S.desk) ? 1 : -1;
+  for (const [, s] of springs) s.el.remove(); springs.clear();
+  S.desk = id; focus = null; record(label || `Switched to ${S.desks[id].name}`);
+  const a = area(), R = rects(D().cols), from = {}; for (const k in R) from[k] = { ...R[k], x: R[k].x + dir * a.w * .35 };
+  draw({ from });
 }
 
-// ---- opening, following, many of one ----------------------------------------------------------------------------------
-function freeSpot(wd, ht, near) {
-  const area = $('#desk').getBoundingClientRect(); const wins = D().wins;
-  const tryAt = (x, y) => x >= 10 && y >= 10 && x + wd <= area.width - 10 && y + ht <= area.height - 10 && !wins.some(o => !o.stack && x < o.x + o.w && x + wd > o.x && y < o.y + o.h && y + ht > o.y);
-  if (near) for (const [x, y] of [[near.x + near.w + GAP, near.y], [near.x, near.y + near.h + GAP], [near.x - wd - GAP, near.y]]) if (tryAt(x, y)) return [x, y];
-  for (let y = 20; y < area.height - ht; y += 40) for (let x = 20; x < area.width - wd; x += 40) if (tryAt(x, y)) return [x, y];
-  return null;
+// ---- opening, following, closing, the tray -------------------------------------------------------------------------------
+function place(id, near) {
+  const desk = D(); let cols = desk.cols; const L = limits();
+  if (near && findCell(cols, near)) { const [ci, ri] = findCell(cols, near);
+    if (cols.length < L.c) cols = insert(cols, id, { kind: 'col', at: ci + 1 });
+    else if (cols[ci].cells.length < L.r) cols = insert(cols, id, { kind: 'row', col: ci, at: ri + 1 });
+    else { // the near column is full: the nearest column with room, before anything goes to the tray (R3)
+      const room = cols.map((c, i) => [i, c.cells.length]).filter(([, n]) => n < L.r).sort((a, b) => Math.abs(a[0] - ci) - Math.abs(b[0] - ci))[0];
+      cols = room ? insert(cols, id, { kind: 'row', col: room[0], at: cols[room[0]].cells.length }) : insert(cols, id, { kind: 'col', at: ci + 1 });
+    }
+  } else cols = cols.length < L.c ? insert(cols, id, { kind: 'col', at: cols.length }) : insert(cols, id, { kind: 'row', col: cols.length - 1, at: cols[cols.length - 1].cells.length });
+  desk.cols = makeRoom(desk, cols, [id, near].filter(Boolean));
 }
 function openApp(app, ref, near, opts = {}) {
-  const same = D().wins.find(o => o.app === app && !o.stack);
-  if (OPT.many === 'inside' && same && app !== 'legend' && app !== 'plans') { if (same.ref !== ref && !same.cols.includes(ref)) same.cols.push(ref); same.z = ++seq; same.w = Math.min(same.w + 320, $('#desk').clientWidth - same.x - 10); record(`Opened ${ref} inside ${APPNAME[app]}`, same.id); draw(); return same; }
-  const [wd, ht] = app === 'bible' ? [520, 560] : app === 'word' ? [420, 500] : [400, 420];
-  const spot = freeSpot(wd, ht, near);
-  const w = win(app, ref, spot ? spot[0] : (near ? near.x + near.w : 60), spot ? spot[1] : (near ? near.y : 40), wd, ht, { parent: near?.id || null, lit: opts.lit }); D().wins.push(w);
-  if (OPT.arrange === 'tiled' || (!spot && OPT.arrange === 'magnetic')) tile();
-  else if (!spot) { w.x += 30; w.y += 30; }
-  record(`Opened ${titleOf(w)}`, w.id); draw(); return w;
+  const same = allIds(D().cols).find(k => S.bubs[k].app === app && S.bubs[k].ref === ref && !S.bubs[k].cols.length); // R11: one thing, one bubble per desk
+  if (same) { if (opts.lit) { S.bubs[same].lit = opts.lit; fill(same); } flash(same); return same; }
+  const id = B(app, ref, { lit: opts.lit || null, from: near || null }); place(id, near); focus = id;
+  record(`Opened ${titleOf(S.bubs[id])}`, id);
+  const from = {}; if (opts.origin) { const d = $('#desk').getBoundingClientRect(); from[id] = { x: opts.origin.left - d.left, y: opts.origin.top - d.top, w: Math.max(60, opts.origin.width), h: Math.max(30, opts.origin.height) }; }
+  draw({ from }); return id;
 }
-function replaceIn(w, app, ref, lit) { w.back.push({ app: w.app, ref: w.ref, lit: w.lit }); w.fwd = []; w.app = app; w.ref = ref; w.lit = lit; record(`${titleOf(w)} in place`, w.id); draw(); }
-function step(w, dir) {
-  const from = dir < 0 ? w.back : w.fwd, to = dir < 0 ? w.fwd : w.back; if (!from.length) return;
-  to.push({ app: w.app, ref: w.ref, lit: w.lit }); Object.assign(w, from.pop()); record(`${dir < 0 ? 'Back' : 'Forward'} to ${titleOf(w)}`, w.id); draw();
+function replaceIn(id, app, ref, lit) { const b = S.bubs[id]; b.back.push({ app: b.app, ref: b.ref, lit: b.lit }); b.fwd = []; Object.assign(b, { app, ref, lit }); record(`${titleOf(b)} in place`, id); fill(id); draw(); }
+function step(id, dir) { const b = S.bubs[id], from = dir < 0 ? b.back : b.fwd, to = dir < 0 ? b.fwd : b.back; if (!from.length) return; to.push({ app: b.app, ref: b.ref, lit: b.lit }); Object.assign(b, from.pop()); record(`${dir < 0 ? 'Back' : 'Forward'} to ${titleOf(b)}`, id); fill(id); }
+function close(id) { const desk = D(); desk.cols = without(desk.cols, id); record(`Closed ${titleOf(S.bubs[id])}`, id); if (focus === id) focus = null; draw(); }
+function fromTray(id) {
+  const desk = D(); desk.tray = desk.tray.filter(x => x !== id); S.bubs[id].used = clock++;
+  const pill = document.querySelector(`.pill[data-id="${id}"]`), d = $('#desk').getBoundingClientRect(), r = pill?.getBoundingClientRect();
+  place(id, focus && findCell(desk.cols, focus) ? focus : null); focus = id; record(`Brought ${titleOf(S.bubs[id])} back from the tray`, id);
+  draw({ from: r ? { [id]: { x: r.left - d.left, y: r.top - d.top, w: r.width, h: r.height } } : {} });
 }
-function follow(e, w, app, ref, lit) {
-  const mode = e.altKey ? 'replace' : OPT.rabbit;
-  if (mode === 'replace') return replaceIn(w, app, ref, lit);
-  if (mode === 'beside') return openApp(app, ref, w, { lit });
-  document.querySelector('.pop')?.remove();
-  const p = h('div', 'pop'); Object.assign(p.style, { left: e.clientX + 'px', top: e.clientY + 'px' });
+function toTray(id) { const desk = D(); desk.cols = without(desk.cols, id); desk.tray.push(id); record(`Put ${titleOf(S.bubs[id])} in the tray`, id); drawDock(); draw(); }
+function follow(e, id, app, ref, lit) {
+  const origin = e.target.getBoundingClientRect(); const mode = e.altKey ? 'replace' : OPT.rabbit;
+  if (mode === 'replace') return replaceIn(id, app, ref, lit);
+  if (mode === 'beside') return openApp(app, ref, id, { lit, origin });
+  const p = h('div', 'pop glass'); Object.assign(p.style, { left: e.clientX + 6 + 'px', top: e.clientY + 6 + 'px' });
   const opt = (l, fn) => { const b = h('button', '', l); b.onclick = () => { p.remove(); fn(); }; p.append(b); };
-  opt('Here (replace)', () => replaceIn(w, app, ref, lit)); opt('Beside (new bubble)', () => openApp(app, ref, w, { lit }));
-  opt('On a new desk', () => { const id = 'd' + seq++; S.desks[id] = { name: titleOf({ app, ref }), wins: [] }; S.desk = id; openApp(app, ref, null, { lit }); });
+  opt('Beside   (new bubble)', () => openApp(app, ref, id, { lit, origin })); opt('Here   (replace)', () => replaceIn(id, app, ref, lit));
+  opt('On a new desk', () => { const nid = 'd' + seq++; S.desks[nid] = { name: titleOf({ app, ref }), cols: [], tray: [] }; switchDesk(nid, 'New desk'); openApp(app, ref, null, { lit }); });
   $('#stage').append(p); setTimeout(() => document.addEventListener('pointerdown', ev => { if (!p.contains(ev.target)) p.remove(); }, { once: true }));
 }
-function clickIn(e, w) {
-  const word = e.target.closest('.w[data-s]'); if (word) return follow(e, w, 'word', word.dataset.s);
-  const use = e.target.closest('[data-go]'); if (use) { const [r, v] = use.dataset.go.split('|'); return follow(e, w, 'bible', r, +v); }
-  const ref = e.target.closest('.ref'); if (ref) return follow(e, w, 'bible', ref.dataset.ref);
-  const it = e.target.closest('[data-open]'); if (it) { const [a, r] = it.dataset.open.split('|'); return follow(e, w, a, r); }
+function clickIn(e, id) {
+  const w = e.target.closest('.w[data-s]'); if (w) return follow(e, id, 'word', w.dataset.s);
+  const u = e.target.closest('[data-go]'); if (u) { const [r, v] = u.dataset.go.split('|'); return follow(e, id, 'bible', r, +v); }
+  const rf = e.target.closest('.ref'); if (rf) return follow(e, id, 'bible', rf.dataset.ref);
+  const it = e.target.closest('[data-open]'); if (it) { const [a, r] = it.dataset.open.split('|'); return follow(e, id, a, r); }
 }
-function gather(w) {
-  for (const o of D().wins.filter(o => o.app === w.app && o !== w && !o.stack)) { w.cols.push(o.ref, ...o.cols); D().wins = D().wins.filter(x => x !== o); }
-  w.w = Math.min(Math.max(w.w, 300 * (1 + w.cols.length)), $('#desk').clientWidth - w.x - 10); record(`Gathered ${APPNAME[w.app]} into one`, w.id); draw();
+function bubMenu(e, id) {
+  const b = S.bubs[id], p = h('div', 'pop glass'), r = e.currentTarget.getBoundingClientRect(); Object.assign(p.style, { left: r.right - 210 + 'px', top: r.bottom + 6 + 'px' });
+  const opt = (l, fn) => { const x = h('button', '', l); x.onclick = () => { p.remove(); fn(); }; p.append(x); };
+  opt('Put in the tray', () => toTray(id));
+  const same = allIds(D().cols).filter(x => x !== id && S.bubs[x].app === b.app);
+  if (same.length) opt(`Gather the other ${APP[b.app]} bubbles here`, () => gather(id));
+  opt('◷ This bubble\'s history', () => { H.focusBub = id; OPT.hscope = 'bubble'; openHist(); });
+  $('#stage').append(p); setTimeout(() => document.addEventListener('pointerdown', ev => { if (!p.contains(ev.target)) p.remove(); }, { once: true }));
 }
-function popOut(w, r) { w.cols = w.cols.filter(c => c !== r); w.w = Math.max(400, w.w - 300); const sp = freeSpot(420, 480, w) || [w.x + 40, w.y + 40]; D().wins.push(win(w.app, r, sp[0], sp[1], 420, 480, { parent: w.id })); if (!freeSpot(1, 1)) tile(); record(`Popped ${r} out`); draw(); }
-function searchPop() {
-  const q = prompt('Search the demo\'s chapters for a word:'); if (!q) return;
-  const hits = []; for (const [r, vs] of Object.entries(DATA.chapters)) for (const v of vs) if (v.w.map(x => x[0]).join('').toLowerCase().includes(q.toLowerCase())) hits.push([r, v.v]);
-  if (!hits.length) return alert('Not found in the demo\'s chapters.');
-  openApp('bible', hits[0][0], null, { lit: hits[0][1] });
-}
+function gather(id) { const b = S.bubs[id], desk = D(); for (const o of allIds(desk.cols).filter(x => x !== id && S.bubs[x].app === b.app)) { b.cols.push(S.bubs[o].ref); desk.cols = without(desk.cols, o); } record(`Gathered ${APP[b.app]} into one`, id); fill(id); draw(); }
+function popOut(b, r) { const id = Object.keys(S.bubs).find(k => S.bubs[k] === b); b.cols = b.cols.filter(c => c !== r); fill(id); openApp(b.app, r, id); }
+const toast = t => { const x = h('div', 'toast glass', t); $('#stage').append(x); setTimeout(() => x.remove(), 1800); };
 
-// ---- dragging: magnetic, tiled, free; the top edge offers layouts; dropping on a desk chip moves it there ------------------
-const LAYOUTS = [['1fr 1fr', '1fr', [[0, 0, .5, 1], [.5, 0, .5, 1]]], ['2fr 1fr', '1fr', [[0, 0, .667, 1], [.667, 0, .333, 1]]], ['1fr 1fr 1fr', '1fr', [[0, 0, 1 / 3, 1], [1 / 3, 0, 1 / 3, 1], [2 / 3, 0, 1 / 3, 1]]], ['1fr 1fr', '1fr 1fr', [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, .5, .5], [.5, .5, .5, .5]]]];
-function drawZones() {
-  const z = $('#zones'); z.replaceChildren();
-  LAYOUTS.forEach(([c, r, cells], li) => { const g = h('div', 'zone'); g.style.gridTemplateColumns = c; g.style.gridTemplateRows = r; cells.forEach((cell, ci) => { const i = h('i'); i.dataset.l = li; i.dataset.c = ci; g.append(i); }); z.append(g); });
+// ---- dragging with a live preview (R4, R6) and the top-edge layouts --------------------------------------------------------
+const LAYOUTS = [['Halves', '1fr 1fr', '1fr', [[1], [1]]], ['Two-thirds', '2fr 1fr', '1fr', [[1], [1]], [.66, .34]], ['Thirds', '1fr 1fr 1fr', '1fr', [[1], [1], [1]]], ['Quarters', '1fr 1fr', '1fr 1fr', [[.5, .5], [.5, .5]]]];
+(function drawLayouts() { const z = $('#layouts'); LAYOUTS.forEach(([n, c, r, cells], i) => { const g = h('div', 'lay'); g.title = n; g.dataset.l = i; g.style.gridTemplateColumns = c; g.style.gridTemplateRows = r; const k = cells.flat().length; for (let j = 0; j < k; j++) g.append(h('i')); z.append(g); }); })();
+function applyLayout(li, first) {
+  const [, , , shape, widths] = LAYOUTS[li]; const ids = [first, ...allIds(D().cols).filter(x => x !== first)]; const cols = [];
+  shape.forEach((rows, ci) => { const cells = rows.map(f => ({ id: ids.shift(), f })).filter(c => c.id); if (cells.length) { norm(cells); cols.push({ f: widths ? widths[ci] : 1 / shape.length, cells }); } });
+  for (const rest of ids) cols[cols.length - 1].cells.push({ id: rest, f: 1 }); cols.forEach(c => norm(c.cells)); norm(cols);
+  D().cols = makeRoom(D(), cols, [first]);
 }
-function startDrag(e, w, el) {
+function target(cols, px, py, dragId) {
+  const a = $('#desk').getBoundingClientRect(), x = px - a.left, y = py - a.top, R = rects(cols);
+  if (y < -6) return { kind: 'layouts' };
+  if (x < PAD + 30) return { kind: 'col', at: 0, say: 'A new column at the left' };
+  if (x > a.width - PAD - 30) return { kind: 'col', at: cols.length, say: 'A new column at the right' };
+  for (let ci = 0; ci < cols.length; ci++) for (let ri = 0; ri < cols[ci].cells.length; ri++) {
+    const id = cols[ci].cells[ri].id, r = R[id]; if (x < r.x - GAP / 2 || x > r.x + r.w + GAP / 2 || y < r.y - GAP / 2 || y > r.y + r.h + GAP / 2) continue;
+    const rx = (x - r.x) / r.w, ry = (y - r.y) / r.h, t = titleOf(S.bubs[id]);
+    if (rx < .22) return { kind: 'col', at: ci, say: `A column left of ${t}` };
+    if (rx > .78) return { kind: 'col', at: ci + 1, say: `A column right of ${t}` };
+    if (ry < .32) return { kind: 'row', col: ci, at: ri, say: `Above ${t}` };
+    if (ry > .68) return { kind: 'row', col: ci, at: ri + 1, say: `Below ${t}` };
+    return { kind: 'swap', with: id, say: `Swap with ${t}` };
+  }
+  return null;
+}
+function startDrag(e, id) {
   if (document.body.classList.contains('phone')) return;
-  e.preventDefault(); w.z = ++seq; el.style.zIndex = w.z; el.classList.add('dragging');
-  const ox = e.clientX - w.x, oy = e.clientY - w.y; const ghost = $('#ghost'); let target = null, zoneCell = null, deskChip = null;
-  const area = $('#desk').getBoundingClientRect();
+  e.preventDefault(); setFocus(id); const s = springs.get(id); const desk = D(); const start = clone(desk.cols); const pos = findCell(start, id);
+  const base = without(start, id); const d0 = $('#desk').getBoundingClientRect();
+  const lw = Math.min(s.cur.w, 520), lh = Math.min(s.cur.h, 380); const gx = (e.clientX - d0.left - s.cur.x) / s.cur.w, gy = (e.clientY - d0.top - s.cur.y) / s.cur.h;
+  s.free = true; s.el.classList.add('lifted'); s.el.style.zIndex = 40;
+  let t = null, layoutHot = null, deskHot = null, cand = start; const slot = $('#slot');
+  // the lifted bubble eases to a handy size under the pointer
+  const lift = { w: s.cur.w, h: s.cur.h }; const grow = s.el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.02)' }], { duration: 180, fill: 'forwards', easing: 'cubic-bezier(.2,.9,.25,1.2)' });
   const move = ev => {
-    const x = ev.clientX - ox, y = ev.clientY - oy; el.style.left = x + 'px'; el.style.top = y + 'px';
-    const zones = $('#zones'); const nearTop = ev.clientY - area.top < 30;
-    zones.classList.toggle('show', nearTop || zones.matches(':hover'));
-    zoneCell = null; for (const i of zones.querySelectorAll('i')) { const r = i.getBoundingClientRect(); const on = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom; i.classList.toggle('hot', on); if (on) zoneCell = i; }
-    deskChip = null; for (const c of document.querySelectorAll('.desk[data-desk]')) { const r = c.getBoundingClientRect(); const on = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom && c.dataset.desk !== S.desk; c.classList.toggle('drop', on); if (on) deskChip = c.dataset.desk; }
-    target = null; ghost.style.display = 'none';
-    if (zoneCell || deskChip) return;
-    const others = D().wins.filter(o => o !== w && (!o.stack || isFront(o)));
-    const cx = ev.clientX - area.left, cy = ev.clientY - area.top;
-    const onTop = others.find(o => cx > o.x + 30 && cx < o.x + o.w - 30 && cy > o.y && cy < o.y + (OPT.arrange === 'free' ? 38 : o.h - 30));
-    if (onTop) { target = { kind: 'stack', o: onTop }; show(ghost, onTop.x - 4, onTop.y - 4, onTop.w + 8, onTop.h + 8); return; }
-    if (OPT.arrange === 'magnetic') for (const o of others) {
-      const R = 60;
-      if (Math.abs(x - (o.x + o.w)) < R && y < o.y + o.h && y + w.h > o.y) { target = { kind: 'right', o }; show(ghost, o.x + o.w + GAP, o.y, w.w, o.h); return; }
-      if (Math.abs(x + w.w - o.x) < R && y < o.y + o.h && y + w.h > o.y) { target = { kind: 'left', o }; show(ghost, o.x - w.w - GAP, o.y, w.w, o.h); return; }
-      if (Math.abs(y - (o.y + o.h)) < R && x < o.x + o.w && x + w.w > o.x) { target = { kind: 'below', o }; show(ghost, o.x, o.y + o.h + GAP, o.w, w.h); return; }
-    }
+    lift.w += (lw - lift.w) * .25; lift.h += (lh - lift.h) * .25;
+    s.cur = { x: ev.clientX - d0.left - gx * lift.w, y: ev.clientY - d0.top - gy * lift.h, w: lift.w, h: lift.h }; paint(s);
+    // over a desk's name: move it there
+    deskHot = null; for (const c of document.querySelectorAll('.dk[data-desk]')) { const r = c.getBoundingClientRect(); const on = c.dataset.desk !== S.desk && ev.clientX > r.left && ev.clientX < r.right && ev.clientY > r.top - 6 && ev.clientY < r.bottom + 6; c.classList.toggle('drop', on); if (on) deskHot = c.dataset.desk; }
+    t = deskHot ? null : target(base, ev.clientX, ev.clientY, id);
+    const lay = $('#layouts'); lay.classList.toggle('show', t?.kind === 'layouts' || (layoutHot != null && ev.clientY < d0.top + 70));
+    layoutHot = null; for (const g of lay.querySelectorAll('.lay')) { const r = g.getBoundingClientRect(); const on = ev.clientX > r.left && ev.clientX < r.right && ev.clientY > r.top && ev.clientY < r.bottom; g.classList.toggle('hot', on); if (on) layoutHot = +g.dataset.l; }
+    if (t && t.kind !== 'layouts') {
+      cand = insert(base, id, t); const leaving = []; let c2 = cand; while (!fits(c2)) { const ids = allIds(c2).filter(i => i !== id); const old = ids.sort((a, b) => S.bubs[a].used - S.bubs[b].used)[0]; leaving.push(old); c2 = without(c2, old); }
+      cand = c2; const R = rects(cand);
+      for (const [k, sp] of springs) if (k !== id && R[k]) sp.to = R[k];
+      for (const [k, sp] of springs) sp.el.classList.toggle('leaving', leaving.includes(k));
+      Object.assign(slot.style, { left: R[id].x + 'px', top: R[id].y + 'px', width: R[id].w + 'px', height: R[id].h + 'px' }); slot.classList.add('on');
+      slot.querySelector('span').textContent = t.say + (leaving.length ? ` · ${titleOf(S.bubs[leaving[0]])} goes to the tray` : ''); animate();
+    } else { slot.classList.remove('on'); cand = start; const R = rects(start); for (const [k, sp] of springs) { if (k !== id && R[k]) sp.to = R[k]; sp.el.classList.remove('leaving'); } animate(); }
   };
   const up = () => {
-    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); el.classList.remove('dragging'); ghost.style.display = 'none';
-    $('#zones').classList.remove('show'); document.querySelectorAll('.desk.drop').forEach(c => c.classList.remove('drop'));
-    const r = el.getBoundingClientRect(); w.x = r.left - area.left; w.y = r.top - area.top;
-    if (w.stack) { const s = w.stack; w.stack = null; fixStack(s); }
-    if (deskChip) { D().wins = D().wins.filter(o => o !== w); S.desks[deskChip].wins.push(w); record(`Moved ${titleOf(w)} to ${S.desks[deskChip].name}`); draw(); return; }
-    if (zoneCell) { const [, , cells] = LAYOUTS[+zoneCell.dataset.l]; const [fx, fy, fw, fh] = cells[+zoneCell.dataset.c]; const W_ = area.width - 20, H_ = area.height - 20;
-      Object.assign(w, { x: 10 + fx * W_, y: 10 + fy * H_, w: fw * W_ - GAP, h: fh * H_ - GAP });
-      // the layout's other cells take the desk's other bubbles, in their order across the desk
-      const rest = D().wins.filter(o => o !== w && (!o.stack || isFront(o))).sort((a, b) => a.x - b.x); let k = 0;
-      let lastCell = null;
-      cells.forEach(([gx, gy, gw, gh], i) => { if (i === +zoneCell.dataset.c || !rest[k]) return; const o = rest[k++]; Object.assign(o, { x: 10 + gx * W_, y: 10 + gy * H_, w: gw * W_ - GAP, h: gh * H_ - GAP }); moveStack(o); lastCell = o; });
-      for (const o of rest.slice(k)) { const t = lastCell || w; const sid = t.stack || 's' + seq++; t.stack = sid; for (const x of D().wins) if (x === o || (o.stack && x.stack === o.stack)) { x.stack = sid; Object.assign(x, { x: t.x, y: t.y, w: t.w, h: t.h }); } }
-      record(`Snapped ${titleOf(w)} into a layout`, w.id); draw(); return; }
-    if (target?.kind === 'stack') { const o = target.o; const sid = o.stack || 's' + seq++; o.stack = sid; w.stack = sid; Object.assign(w, { x: o.x, y: o.y, w: o.w, h: o.h }); w.z = ++seq; record(`Stacked ${titleOf(w)} on ${titleOf(o)}`, w.id); }
-    else if (target) { const o = target.o; if (target.kind === 'right') Object.assign(w, { x: o.x + o.w + GAP, y: o.y, h: o.h }); if (target.kind === 'left') Object.assign(w, { x: o.x - w.w - GAP, y: o.y, h: o.h }); if (target.kind === 'below') Object.assign(w, { x: o.x, y: o.y + o.h + GAP, w: o.w }); record(`Put ${titleOf(w)} beside ${titleOf(o)}`, w.id); }
-    else record(`Moved ${titleOf(w)}`, w.id);
-    if (OPT.arrange === 'tiled') tile();
+    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+    grow.cancel(); s.el.classList.remove('lifted'); slot.classList.remove('on'); $('#layouts').classList.remove('show');
+    document.querySelectorAll('.dk.drop').forEach(c => c.classList.remove('drop')); document.querySelectorAll('.bub.leaving').forEach(b => b.classList.remove('leaving'));
+    s.free = false; s.el.style.zIndex = '';
+    if (deskHot) { desk.cols = base; S.desks[deskHot].cols = makeRoom(S.desks[deskHot], insert(S.desks[deskHot].cols, id, { kind: 'col', at: S.desks[deskHot].cols.length }), [id]); record(`Moved ${titleOf(S.bubs[id])} to ${S.desks[deskHot].name}`, id); draw(); toast(`Moved to ${S.desks[deskHot].name}`); return; }
+    if (layoutHot != null) { applyLayout(layoutHot, id); record(`Laid out the desk: ${LAYOUTS[layoutHot][0]}`, id); draw(); return; }
+    if (t && t.kind !== 'layouts') { desk.cols = makeRoom(desk, insert(base, id, t), [id]); record(`${t.say}: ${titleOf(S.bubs[id])}`, id); }
     draw();
   };
   document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
 }
-const show = (g, x, y, wd, ht) => { const a = $('#desk').getBoundingClientRect(); Object.assign(g.style, { display: 'block', left: a.left + x + 'px', top: a.top + y + 'px', width: wd + 'px', height: ht + 'px' }); };
-const isFront = o => { const s = D().wins.filter(x => x.stack === o.stack); return o.z === Math.max(...s.map(x => x.z)); };
-function moveStack(o) { if (!o.stack) return; for (const x of D().wins) if (x.stack === o.stack) Object.assign(x, { x: o.x, y: o.y, w: o.w, h: o.h }); }
-function fixStack(sid) { const s = D().wins.filter(x => x.stack === sid); if (s.length === 1) s[0].stack = null; }
-function unstack(w) { const s = w.stack; w.stack = null; fixStack(s); const sp = freeSpot(w.w, w.h, w); if (sp) Object.assign(w, { x: sp[0], y: sp[1] }); else { w.x += 40; w.y += 40; if (OPT.arrange !== 'free') tile(); } record(`Took ${titleOf(w)} out of the stack`, w.id); if (OPT.arrange === 'tiled') tile(); draw(); }
-function tile() {
-  const area = $('#desk'); const groups = D().wins.filter(o => !o.stack || isFront(o)).sort((a, b) => a.x - b.x);
-  if (!groups.length) return; const n = groups.length, W_ = area.clientWidth - 20, H_ = area.clientHeight - 20; const cw = W_ / n;
-  groups.forEach((o, i) => { Object.assign(o, { x: 10 + i * cw, y: 10, w: cw - GAP, h: H_ - GAP }); moveStack(o); });
+function resize(e, dir, ci, ri) {
+  e.preventDefault(); const g = e.currentTarget; g.classList.add('on'); const cols = D().cols, a = area();
+  const W = a.w - PAD * 2 - GAP * (cols.length - 1); const x0 = e.clientX, y0 = e.clientY;
+  const f0 = dir === 'v' ? [cols[ci].f, cols[ci + 1].f] : [cols[ci].cells[ri].f, cols[ci].cells[ri + 1].f];
+  const Ht = a.h - PAD * 2 - GAP * (cols[ci].cells.length - 1);
+  const move = ev => {
+    const total = dir === 'v' ? W : Ht, min = (dir === 'v' ? MINW : MINH) / total, d = (dir === 'v' ? ev.clientX - x0 : ev.clientY - y0) / total;
+    const a1 = Math.max(min, Math.min(f0[0] + f0[1] - min, f0[0] + d)); const pair = dir === 'v' ? [cols[ci], cols[ci + 1]] : [cols[ci].cells[ri], cols[ci].cells[ri + 1]];
+    pair[0].f = a1; pair[1].f = f0[0] + f0[1] - a1; const R = rects(cols); for (const [k, s] of springs) if (R[k]) { s.to = R[k]; s.cur = { ...R[k] }; paint(s); } drawGutters(R);
+  };
+  const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); g.classList.remove('on'); record('Resized'); draw(); };
+  document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
 }
 
-// ---- the dock and the home ----------------------------------------------------------------------------------------------
-let dockTimer;
-$('#dockzone').onpointerenter = () => { clearTimeout(dockTimer); dockTimer = setTimeout(() => $('#dock').classList.add('up'), 120); };
-$('#dock').onpointerleave = () => { clearTimeout(dockTimer); dockTimer = setTimeout(() => $('#dock').classList.remove('up'), 400); };
-$('#dock').onpointerenter = () => clearTimeout(dockTimer);
-function toggleHome() {
-  const hm = $('#home'); if (hm.classList.toggle('open')) {
-    const last = H.nodes.filter(n => n.label.startsWith('Opened')).slice(-4).reverse();
-    hm.innerHTML = '<div class="grid"><div class="tile" style="grid-row:span 2"><h3>Where you left off</h3></div><div class="tile"><h3>Today\'s reading</h3><div>Psalms 23</div><button class="go" data-a="plan">Read</button></div><div class="tile"><h3>Open questions</h3><div>1 open, in Salt lessons 2025</div><button class="go" data-a="q">Open the page</button></div><div class="tile" style="grid-column:span 2"><h3>Desks</h3></div></div>';
-    const first = hm.querySelector('.tile'); const d = D(); first.append(h('div', '', `${d.name}: ` + d.wins.map(titleOf).join(', ')));
-    const go = h('button', 'go', 'Continue'); go.onclick = () => hm.classList.remove('open'); first.append(go);
-    for (const n of last) first.append(h('div', 'tr', n.label));
-    const dk = hm.querySelectorAll('.tile')[3]; for (const [id, x] of Object.entries(S.desks)) { const b = h('button', 'desk' + (id === S.desk ? ' on' : ''), `${x.name} · ${x.wins.length}`); b.style.marginRight = '6px'; b.onclick = () => { S.desk = id; hm.classList.remove('open'); record(`Switched to ${x.name}`); draw(); }; dk.append(b); }
-    hm.querySelector('[data-a=plan]').onclick = () => { hm.classList.remove('open'); openApp('bible', 'Psalms 23'); };
-    hm.querySelector('[data-a=q]').onclick = () => { hm.classList.remove('open'); openApp('page', 'p1'); };
+// ---- the dock: magnifies under the pointer like a lens, bounces when an app opens -------------------------------------------
+const dockItems = []; let dockMoving = false, dockMouse = null, dockUp = 0, dockUpV = 0, dockUpTo = 0;
+function drawDock() {
+  const d = $('#dock'); d.replaceChildren(); dockItems.length = 0; const open = new Set(allIds(D().cols).map(i => S.bubs[i].app));
+  const item = (ico, name, fn, app) => { const b = h('button', 'ai', ico); const nm = h('span', 'nm glass', name); b.append(nm); if (app && open.has(app)) b.append(h('span', 'run')); b.onclick = ev => { bounce(b); fn(ev, b); }; dockItems.push({ el: b, s: 1, v: 0, y: 0, vy: 0, base: 46 }); return b; };
+  d.append(item('⌂', 'Workbench', () => toggleHome()), h('div', 'dsep'),
+    item('▥', 'Bible', (ev, b) => openApp('bible', 'Romans 5', focus, { origin: b.getBoundingClientRect() }), 'bible'),
+    item('✎', 'Notebook', (ev, b) => openApp('page', 'p2', focus, { origin: b.getBoundingClientRect() }), 'page'),
+    item('⌕', 'Search', () => searchPop()), item('א', 'Words', (ev, b) => openApp('word', 'G3056', focus, { origin: b.getBoundingClientRect() }), 'word'),
+    item('✦', 'Legend', (ev, b) => openApp('legend', 'legend', focus, { origin: b.getBoundingClientRect() }), 'legend'),
+    item('☷', 'Reading plans', (ev, b) => openApp('plans', 'plans', focus, { origin: b.getBoundingClientRect() }), 'plans'));
+  const tray = D().tray;
+  if (tray.length) { d.append(h('div', 'dsep')); for (const id of tray) { const b = S.bubs[id]; const p = h('button', `pill t-${b.app}`); p.dataset.id = id; p.title = `${APP[b.app]}: ${titleOf(b)} (in the tray)`; p.append(h('b'), h('span', '', titleOf(b))); p.onclick = () => fromTray(id); d.append(p); dockItems.push({ el: p, s: 1, v: 0, y: 0, vy: 0, base: 46 }); } }
+  d.append(h('div', 'dsep'), item('⚙︎', 'Settings', () => $('#opts').classList.toggle('open')));
+}
+function bounce(el) { const it = dockItems.find(i => i.el === el); if (it) { it.vy = -520; dockMoving = true; animate(); } }
+function tickDock(dt) {
+  dockMoving = false;
+  // the dock rises and sinks on the same spring
+  const a = K * (dockUpTo - dockUp) - C * dockUpV; dockUpV += a * dt; dockUp += dockUpV * dt; if (Math.abs(dockUpTo - dockUp) > .002 || Math.abs(dockUpV) > .002) dockMoving = true; else dockUp = dockUpTo;
+  if (!document.body.classList.contains('phone')) $('#dock').style.transform = `translate(-50%, ${(1 - dockUp) * 120}px)`;
+  for (const it of dockItems) {
+    let to = 1; if (dockMouse != null) { const r = it.el.getBoundingClientRect(), c = r.left + r.width / 2, d = Math.abs(dockMouse - c); to = 1 + .62 * Math.exp(-(d * d) / (2 * 62 * 62)); }
+    const f = K * 1.1 * (to - it.s) - C * it.v; it.v += f * dt; it.s += it.v * dt;
+    const fy = K * (0 - it.y) - C * .8 * it.vy; it.vy += fy * dt; it.y += it.vy * dt;
+    if (Math.abs(to - it.s) > .002 || Math.abs(it.v) > .01 || Math.abs(it.y) > .3 || Math.abs(it.vy) > .3) dockMoving = true;
+    const size = it.base * it.s; if (it.el.classList.contains('ai')) { it.el.style.width = size + 'px'; it.el.style.height = size + 'px'; it.el.style.fontSize = 19 * it.s + 'px'; } else it.el.style.height = size + 'px';
+    it.el.style.transform = `translateY(${it.y}px)`;
   }
 }
+const dockEl = $('#dock');
+dockEl.addEventListener('pointermove', e => { dockMouse = e.clientX; dockMoving = true; animate(); const r = dockEl.getBoundingClientRect(); dockEl.style.setProperty('--mx', e.clientX - r.left + 'px'); dockEl.style.setProperty('--my', e.clientY - r.top + 'px'); });
+let sinkT; const rise = () => { clearTimeout(sinkT); dockUpTo = 1; dockMoving = true; animate(); }; const sink = () => { clearTimeout(sinkT); sinkT = setTimeout(() => { dockUpTo = 0; dockMouse = null; dockMoving = true; animate(); }, 450); };
+$('#dockzone').onpointerenter = () => { clearTimeout(sinkT); sinkT = setTimeout(rise, 110); };
+dockEl.onpointerenter = () => { clearTimeout(sinkT); rise(); }; dockEl.onpointerleave = () => { dockMouse = null; sink(); };
+document.addEventListener('pointermove', e => { for (const g of document.querySelectorAll('#top, #optsbtn, #histbtn, #hist, #opts, .hint')) { const r = g.getBoundingClientRect(); g.style.setProperty('--mx', e.clientX - r.left + 'px'); g.style.setProperty('--my', e.clientY - r.top + 'px'); } }, { passive: true });
 
-// ---- history: a tree of steps; scrub or walk the map; acting in the past starts a branch ------------------------------------
-$('#histbtn').onclick = () => { $('#hist').classList.contains('open') ? closeHist() : openHist(); };
-function scopeNodes() {
-  const path = []; for (let n = H.nodes[H.cur]; n; n = n.parent != null ? H.nodes[n.parent] : null) path.unshift(n);
-  if (OPT.hscope === 'desk') return path.filter(n => n.desk === S.desk || n.id === path[0].id);
-  if (OPT.hscope === 'window') return path.filter(n => n.win === H.focus);
-  return path;
+// ---- options, search, home ---------------------------------------------------------------------------------------------------
+const OPTDEF = [
+  ['rabbit', 'Following a word', [['beside', 'Beside, linked'], ['replace', 'Replace in place'], ['ask', 'Ask each time']], { beside: 'It opens beside the passage, growing out of the word you clicked; ↖ in its title shows what led there. Alt+click replaces instead.', replace: 'The same bubble becomes the word; ← goes back.', ask: 'A small choice at the pointer: beside, here, or a new desk.' }],
+  ['hview', 'History looks like', [['scrubber', 'Scrubber'], ['map', 'Map']], { scrubber: 'Drag back and the desk replays itself, every bubble moving on its spring.', map: 'Each step a dot; a branch is a new lane. Click a dot to go there.' }],
+  ['device', 'Seen on', [['desktop', 'Desktop'], ['phone', 'Phone']], { phone: 'Each bubble a full card; swipe between them. The dock stays.' }],
+  ['slow', 'Motion', [['1', 'Normal'], ['.25', 'Slow, to see the springs']], {}],
+];
+function drawOpts() {
+  const o = $('#opts'); o.replaceChildren(h('b', '', 'Try each choice'));
+  for (const [key, label, choices, notes] of OPTDEF) { o.append(h('h4', '', label)); const seg = h('div', 'seg'); const cur = key === 'slow' ? String(SLOW) : OPT[key];
+    for (const [v, l] of choices) { const b = h('button', cur === v ? 'on' : '', l); b.onclick = () => { if (key === 'slow') SLOW = +v; else OPT[key] = v; if (key === 'device') { document.body.classList.toggle('phone', v === 'phone'); setTimeout(() => draw(), 50); } drawOpts(); }; seg.append(b); }
+    o.append(seg); if (notes[cur]) o.append(h('p', '', notes[cur])); }
+  o.append(h('h4', '', 'The rules this demo keeps'), h('p', '', 'Nothing hides behind anything (R1). At most 4 × 3, by screen (R2). Full means the tray (R3). What you see while dragging is what you get (R4). One spring (R5). One gesture, one meaning (R6). Controls glass, reading paper (R7). Never broken (R8). Everything can be turned back (R9).'));
 }
-function restore(n, preview) { S = clone(n.snap); for (const k in pages) delete pages[k]; Object.assign(pages, S.pages); S.pages = pages; H.viewing = preview ? n.id : null; if (!preview) H.cur = n.id; draw(); }
+$('#optsbtn').onclick = () => $('#opts').classList.toggle('open');
+function searchPop() {
+  const q = prompt('Search the demo\'s chapters for a word:'); if (!q) return;
+  for (const [r, vs] of Object.entries(DATA.chapters)) for (const v of vs) if (v.w.map(x => x[0]).join('').toLowerCase().includes(q.toLowerCase())) return openApp('bible', r, focus, { lit: v.v });
+  toast('Not in the demo\'s chapters');
+}
+function toggleHome() {
+  const hm = $('#home'); if (!hm.classList.toggle('open')) return;
+  hm.innerHTML = '<div class="grid"><div class="tile" style="grid-row:span 2"><h3>Where you left off</h3></div><div class="tile"><h3>Today\'s reading</h3><div>Psalms 23</div><button class="go" data-a="plan">Read</button></div><div class="tile"><h3>Open questions</h3><div>1 open, in Salt lessons 2025</div><button class="go" data-a="q">Open the page</button></div><div class="tile" style="grid-column:span 2"><h3>Desks</h3></div></div>';
+  const t0 = hm.querySelector('.tile'); t0.append(h('div', '', `${D().name}: ${allIds(D().cols).map(i => titleOf(S.bubs[i])).join(' · ')}`));
+  for (const n of H.nodes.slice(-5).reverse()) t0.append(h('div', 'tr', n.label));
+  const go = h('button', 'go', 'Continue'); go.onclick = () => hm.classList.remove('open'); t0.append(go);
+  const dk = hm.querySelectorAll('.tile')[3]; for (const [id, x] of Object.entries(S.desks)) { const b = h('button', 'go', `${x.name} · ${allIds(x.cols).length}`); b.style.marginRight = '8px'; b.onclick = () => { hm.classList.remove('open'); switchDesk(id); }; dk.append(b); }
+  hm.querySelector('[data-a=plan]').onclick = () => { hm.classList.remove('open'); openApp('bible', 'Psalms 23', focus); };
+  hm.querySelector('[data-a=q]').onclick = () => { hm.classList.remove('open'); openApp('page', 'p1', focus); };
+}
+
+// ---- history: a tree of steps; going back replays on the springs; acting there branches (R9) -------------------------------
+$('#histbtn').onclick = () => $('#hist').classList.contains('open') ? closeHist() : openHist();
+function path() { const p = []; for (let n = H.nodes[H.cur]; n; n = n.parent != null ? H.nodes[n.parent] : null) p.unshift(n); return p; }
+function scoped(list) { return OPT.hscope === 'desk' ? list.filter(n => n.desk === S.desk) : OPT.hscope === 'bubble' ? list.filter(n => n.bub === H.focusBub) : list; }
+function restore(n, preview) {
+  const keepFocus = focus; S = clone(n.snap); for (const k in pages) delete pages[k]; Object.assign(pages, S.pages); S.pages = pages;
+  for (const [id, s] of springs) if (S.bubs[id]) fill(id);
+  if (!preview) H.cur = n.id; H.viewing = preview ? n.id : null; focus = keepFocus; draw();
+}
 function openHist() {
   const box = $('#hist'); box.classList.add('open'); box.replaceChildren();
-  const seg = h('div', 'seg');
-  for (const [v, l] of [['window', 'This bubble'], ['desk', 'This desk'], ['app', 'The whole app']]) { const b = h('button', OPT.hscope === v ? 'on' : '', l); b.onclick = () => { OPT.hscope = v; if (v === 'window' && !H.focus) H.focus = D().wins.at(-1)?.id; openHist(); }; seg.append(b); }
-  for (const [v, l] of [['scrubber', 'Scrubber'], ['map', 'Map']]) { const b = h('button', OPT.hview === v ? 'on' : '', l); b.onclick = () => { OPT.hview = v; openHist(); drawOpts(); }; seg.append(b); }
-  const close = h('button', '', 'Done'); close.style.marginLeft = 'auto'; close.onclick = closeHist;
-  const row0 = h('div', 'hrow'); row0.append(seg, close); box.append(row0);
-  const nodes = scopeNodes();
-  if (!nodes.length) { box.append(h('p', 'lbl', 'Nothing yet in this scope.')); return; }
+  const row0 = h('div', 'row'); const seg = h('div', 'seg');
+  for (const [v, l] of [['bubble', 'This bubble'], ['desk', 'This desk'], ['app', 'The whole app']]) { const b = h('button', OPT.hscope === v ? 'on' : '', l); b.onclick = () => { OPT.hscope = v; if (v === 'bubble' && !H.focusBub) H.focusBub = focus; openHist(); }; seg.append(b); }
+  const seg2 = h('div', 'seg'); for (const [v, l] of [['scrubber', 'Scrubber'], ['map', 'Map']]) { const b = h('button', OPT.hview === v ? 'on' : '', l); b.onclick = () => { OPT.hview = v; openHist(); drawOpts(); }; seg2.append(b); }
+  const done = h('button', 'ib', '✕'); done.style.marginLeft = 'auto'; done.title = 'Done'; done.onclick = closeHist; row0.append(seg, seg2, done); box.append(row0);
+  const nodes = scoped(path()); if (!nodes.length) { box.append(h('p', 'lbl', 'Nothing yet here.')); return; }
   if (OPT.hview === 'scrubber') {
-    const row = h('div', 'hrow'); const r = h('input'); r.type = 'range'; r.min = 0; r.max = nodes.length - 1; r.value = nodes.length - 1;
-    const lbl = h('span', 'lbl'); const say = i => { const n = nodes[i]; lbl.textContent = `${i + 1} of ${nodes.length} · ${n.label} · ${new Date(n.t).toLocaleTimeString()}`; };
-    r.oninput = () => { restore(nodes[+r.value], true); say(+r.value); };
-    r.onchange = () => { restore(nodes[+r.value], false); say(+r.value); };
-    say(nodes.length - 1); row.append(h('span', 'lbl', 'Earlier'), r, h('span', '', 'Now')); box.append(row, lbl);
-    box.append(h('p', 'lbl', 'Let go to stay at that moment. Do anything there and a new branch begins; the later steps are kept (see Map).'));
+    const row = h('div', 'row'); row.style.marginTop = '10px'; const r = h('input'); r.type = 'range'; r.min = 0; r.max = nodes.length - 1; r.value = nodes.length - 1; r.step = 'any';
+    const lbl = h('div', 'lbl'); const at = () => Math.round(+r.value); let shown = nodes.length - 1;
+    const say = i => { const n = nodes[i]; lbl.textContent = `${i + 1} of ${nodes.length} · ${n.label} · ${new Date(n.t).toLocaleTimeString()}`; };
+    r.oninput = () => { const i = at(); if (i !== shown) { shown = i; restore(nodes[i], true); } say(i); };
+    r.onchange = () => { r.value = at(); restore(nodes[at()], false); say(at()); };
+    say(nodes.length - 1); row.append(h('span', 'lbl', 'Earlier'), r, h('span', 'lbl', 'Now')); box.append(row, lbl);
   } else drawMap(box);
 }
 function closeHist() { $('#hist').classList.remove('open'); if (H.viewing != null) restore(H.nodes[H.viewing], false); }
 function drawMap(box) {
-  const ns = 'http://www.w3.org/2000/svg'; const svg = document.createElementNS(ns, 'svg');
-  const show = OPT.hscope === 'app' ? H.nodes : H.nodes.filter(n => OPT.hscope === 'desk' ? n.desk === S.desk : n.win === H.focus);
-  // lanes: a node takes its parent's lane unless a sibling took it first (a branch)
-  const lane = {}; let lanes = 0; const used = {};
-  for (const n of H.nodes) { if (n.parent == null) { lane[n.id] = 0; continue; } const pl = lane[n.parent]; if (!used[n.parent]) { lane[n.id] = pl; used[n.parent] = true; } else lane[n.id] = ++lanes; }
-  const xs = {}; show.forEach((n, i) => xs[n.id] = 20 + i * Math.max(14, Math.min(60, (box.clientWidth - 60) / Math.max(1, show.length))));
-  for (const n of show) { const p = n.parent != null && xs[n.parent] != null ? n.parent : null; if (p != null) { const l = document.createElementNS(ns, 'path'); l.setAttribute('d', `M${xs[p]},${20 + lane[p] * 28} C${xs[p] + 20},${20 + lane[p] * 28} ${xs[n.id] - 20},${20 + lane[n.id] * 28} ${xs[n.id]},${20 + lane[n.id] * 28}`); l.setAttribute('stroke', '#9aa89a'); l.setAttribute('fill', 'none'); svg.append(l); } }
-  for (const n of show) { const c = document.createElementNS(ns, 'circle'); c.setAttribute('cx', xs[n.id]); c.setAttribute('cy', 20 + lane[n.id] * 28); c.setAttribute('r', n.id === H.cur ? 7 : 5); c.setAttribute('fill', n.id === H.cur ? 'var(--accent)' : '#fff'); c.setAttribute('stroke', 'var(--accent)');
-    const t = document.createElementNS(ns, 'title'); t.textContent = n.label; c.append(t); c.onclick = () => { restore(n, false); openHist(); }; svg.append(c); }
-  svg.setAttribute('height', String(40 + lanes * 28)); box.append(svg, h('p', 'lbl', 'Each dot is a step (hover for what it was). A new lane is a branch: you went back and took another way. Click a dot to go there.'));
+  const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'); const show = scoped(H.nodes);
+  const lane = {}; let lanes = 0; const used = {}; for (const n of H.nodes) { if (n.parent == null) { lane[n.id] = 0; continue; } if (!used[n.parent]) { lane[n.id] = lane[n.parent]; used[n.parent] = true; } else lane[n.id] = ++lanes; }
+  const W = box.clientWidth - 40, step_ = Math.max(12, Math.min(56, W / Math.max(1, show.length))); const xs = {}; show.forEach((n, i) => xs[n.id] = 16 + i * step_);
+  const Y = n => 18 + lane[n.id] * 26;
+  for (const n of show) if (n.parent != null && xs[n.parent] != null) { const p = H.nodes[n.parent], l = document.createElementNS(ns, 'path'); l.setAttribute('d', `M${xs[p.id]},${Y(p)} C${xs[p.id] + 18},${Y(p)} ${xs[n.id] - 18},${Y(n)} ${xs[n.id]},${Y(n)}`); l.setAttribute('stroke', '#8a9a88'); l.setAttribute('fill', 'none'); l.setAttribute('stroke-width', '1.5'); svg.append(l); }
+  for (const n of show) { const c = document.createElementNS(ns, 'circle'); c.setAttribute('cx', xs[n.id]); c.setAttribute('cy', Y(n)); c.setAttribute('r', n.id === H.cur ? 7 : 5); c.setAttribute('fill', n.id === H.cur ? 'var(--accent)' : '#fff'); c.setAttribute('stroke', 'var(--accent)'); c.setAttribute('stroke-width', '2');
+    const tt = document.createElementNS(ns, 'title'); tt.textContent = n.label; c.append(tt); c.onclick = () => { restore(n, false); openHist(); }; svg.append(c); }
+  svg.setAttribute('height', String(40 + lanes * 26)); box.append(svg, h('div', 'lbl', 'A dot is a step (hover for it). A new lane is a branch: you went back and took another way. Nothing is lost.'));
 }
 
-// hooks for frames2.mjs, which puts the demo into each interaction row's state
-window.__demo = { OPT, get S() { return S; }, H, D, W, openApp, follow, replaceIn, record, draw, drawOpts, tile, openHist, toggleHome, restore, gather, unstack, step };
-// ---- start ------------------------------------------------------------------------------------------------------------
-drawZones(); drawOpts(); record('Opened the Workbench'); draw();
+// ---- keys (R10) ---------------------------------------------------------------------------------------------------------------
 window.addEventListener('keydown', e => {
-  if (e.ctrlKey && e.key === ' ') { e.preventDefault(); $('#dock').classList.toggle('up'); }
-  if (e.ctrlKey && e.key === 'z' && !e.target.isContentEditable) { e.preventDefault(); const n = H.nodes[H.cur]; if (n?.parent != null) restore(H.nodes[n.parent], false); }
+  const typing = e.target.isContentEditable || /INPUT|TEXTAREA/.test(e.target.tagName);
+  if (e.key === 'Escape' && fullId) { e.preventDefault(); toggleFull(fullId); return; }
+  if (e.ctrlKey && e.key === 'Enter' && focus && !typing) { e.preventDefault(); toggleFull(focus); return; }
+  if (e.ctrlKey && e.key === ' ') { e.preventDefault(); dockUpTo = dockUpTo ? 0 : 1; dockMoving = true; animate(); }
+  if (typing) return;
+  if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); const n = H.nodes[H.cur]; if (n?.parent != null) restore(H.nodes[n.parent], false); }
+  if (e.ctrlKey && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); const kid = [...H.nodes].reverse().find(n => n.parent === H.cur); if (kid) restore(kid, false); }
+  if (e.ctrlKey && e.key.toLowerCase() === 'w' && focus) { e.preventDefault(); close(focus); }
+  if (e.altKey && focus && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); step(focus, e.key === 'ArrowLeft' ? -1 : 1); }
+  if (e.ctrlKey && focus && e.key.startsWith('Arrow')) { e.preventDefault(); const R = rects(D().cols), f = R[focus]; const cx = f.x + f.w / 2, cy = f.y + f.h / 2;
+    const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]; let best = null, bd = 1e9;
+    for (const [k, r] of Object.entries(R)) { if (k === focus) continue; const dx = r.x + r.w / 2 - cx, dy = r.y + r.h / 2 - cy; if (dx * dir[0] + dy * dir[1] <= 0) continue; const dd = Math.hypot(dx, dy); if (dd < bd) { bd = dd; best = k; } }
+    if (best) { if (e.shiftKey) { const a = findCell(D().cols, focus), b = findCell(D().cols, best); const cols = D().cols; [cols[a[0]].cells[a[1]].id, cols[b[0]].cells[b[1]].id] = [best, focus]; record('Moved a bubble with keys', focus); draw(); } else { setFocus(best); flash(best); } } }
+  if (e.ctrlKey && /^[1-6]$/.test(e.key)) { e.preventDefault(); dockItems.filter(i => i.el.classList.contains('ai'))[+e.key]?.el.click(); }
 });
+window.addEventListener('resize', () => { const desk = D(); desk.cols = makeRoom(desk, desk.cols, focus ? [focus] : []); draw(); });
+
+// hooks for frames3.mjs, which puts the demo into each interaction row's state
+window.__demo = { toggleFull, OPT, get S() { return S; }, H, D, openApp, close, toTray, fromTray, switchDesk, record, draw, drawOpts, openHist, toggleHome, restore, gather, rects, allIds, setSlow: v => SLOW = v, rise };
+
+setTimeout(() => $('.hint').classList.add('gone'), 9000); document.addEventListener('pointerdown', () => setTimeout(() => $('.hint').classList.add('gone'), 2500), { once: true });
+drawOpts(); record('Opened the Workbench'); draw(); focus = allIds(D().cols)[0];
 </script>
 </body></html>
