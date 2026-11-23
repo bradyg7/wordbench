@@ -34,6 +34,9 @@ is built in its tokens, then the rest of the app is reskinned pane by pane.
   its own app; marks are not an app, they are made anywhere in the app (the Bible, a page, a scripture block).
 - **Twenty palettes, not three** (the person, 2026-11-22): Settings › Look offers about twenty to choose from.
 - **Every interaction row has its frame** (the person, 2026-11-22): a review page with placeholders is not handed over.
+- **Twelve base themes, Sage the default** (the person, 2026-11-22, from the twenty of round 1): Sage, Plum, Clay rose,
+  Heather, Harbor, Lapis, Juniper, Terracotta, Slate, Graphite, Cedar, Linen. Vellum, Ink, Olive press, Parchment, Moss,
+  Saffron, Glacier and Sandstone are not kept. A palette is now called a **theme** in the window.
 - **Panes are open to replacement.** The one need: several things working together and on screen at once. If a better
   idea than panes wins, panes are scrapped. Opening an app from the dock (full screen and snap, panes, attachments,
   or something else) is sketched together in round 1, not decided now.
@@ -53,11 +56,11 @@ is built in its tokens, then the rest of the app is reskinned pane by pane.
 
 ## Directions
 
-### Twenty palettes (frames 1 and 2)
+### Twenty palettes (round 1; twelve kept, see Decisions; frames 1 and 2 now show the twelve)
 Each palette is paper, ink and one accent, in light and dark: Vellum, Ink, Olive press, Parchment, Slate, Sage, Plum,
 Harbor, Terracotta, Graphite, Moss, Clay rose, Lapis, Saffron, Cedar, Glacier, Heather, Juniper, Sandstone, Linen. The
 person chooses one; marks and folder colors are the person's own in all of them. The faces (interface and scripture)
-are chosen apart from the palette (row 4), so any palette goes with any face. Three are shown up close below (1b, 2b).
+are chosen apart from the palette (row 4), so any palette goes with any face. 
 
 ### Identity A · Vellum
 Warm-white paper (#FBFAF7), near-black ink, a deep teal accent (#1F6F6B). Inter for the interface, Source Serif 4 for
@@ -81,13 +84,12 @@ today's warmth without its brown.
   f_…180004); Snap's layouts work inside a desk.
 
 ### Recommendation
-**Vellum as the default of the twenty** with **Together C (Desks), Snap's layouts inside each desk**. Vellum is the cleanest and most
+**Sage, the person's default,** with **Together C (Desks), Snap's layouts inside each desk**. Vellum is the cleanest and most
 distinct; desks keep several things on screen at once without tabs, and each remembers itself. The dock holds the
 apps; the desks are named on the top line. The scripture face is the person's eye: row 4 sets four side by side.
 
 ## Open questions
 
-- Which palette is the default, and whether any of the twenty should go or be added.
 - Which scripture face (row 4).
 - How apps share the screen: Snap, Stage, Desks, or Desks with Snap inside (rows 13–15). This replaces
   [notebook-shell](../notebook-shell/README.md) direction C.
@@ -117,9 +119,9 @@ home screen), **desk** (if Together C wins), **theme**.
 
 | # | Where | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
 |---|---|---|---|---|---|---|---|
-| 1 | Settings › Look | Choose one of twenty palettes | The whole app takes its paper, ink and accent at once | `settings/look.json` `palette` | *proposed:* `wb settings look --palette vellum` | `identity_applies_everywhere` | [ ] |
+| 1 | Settings › Look | Choose one of twelve themes (Sage by default) | The whole app takes its paper, ink and accent at once | `settings/look.json` `theme` | *proposed:* `wb settings look --theme sage` | `identity_applies_everywhere` | [ ] |
 | 2 | Settings › Look | Light, Dark, or As the system | The palette's light or dark form | `settings/look.json` `mode` | *proposed:* `wb settings look --mode dark` | `identity_dark_mode` | [ ] |
-| 3 | Settings › Look | Page theme: Paper, Sepia, Night, or custom | Only the page-like surface (reader and pages) changes; the chrome keeps the identity | `settings/look.json` `page_theme` | *proposed:* `wb settings look --page sepia` | `page_theme_only_the_surface` | [ ] |
+| 3 | Settings › Look | Page surface: Paper, Sepia, Night, or custom | Only the page-like surface (reader and pages) changes; the chrome keeps the identity | `settings/look.json` `page_surface` | *proposed:* `wb settings look --page sepia` | `page_surface_only` | [ ] |
 | 4 | Settings › Look | Scripture face | Every verse in that face; the interface face is unchanged | `settings/look.json` `scripture_face` | *proposed:* `wb settings look --scripture source-serif` | `scripture_face_applies` | [ ] |
 | 5 | Anywhere | Pointer to the dock's edge | After 120 ms the dock rises; nothing covers the text before | Nothing | — | `dock_appears_on_edge` | [ ] |
 | 6 | Dock | Hover an app | It grows gently; its name shows above; a dot marks an app that is open | Nothing | — | `dock_hover_names_app` | [ ] |

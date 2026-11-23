@@ -1,33 +1,21 @@
 [
   {
-    "id": "1b",
-    "row": 1,
-    "file": "rows/1b.png",
-    "caption": "1 (detail) · Three of the palettes up close with their faces; the marks palette is the same in all of them"
-  },
-  {
     "id": "1",
     "row": 1,
     "file": "rows/1.png",
-    "caption": "1 · Twenty palettes to choose from in Settings › Look; each is paper, ink and one accent; marks and folder colors stay yours in all of them"
-  },
-  {
-    "id": "2b",
-    "row": 2,
-    "file": "rows/2b.png",
-    "caption": "2 (detail) · Three palettes in dark, up close"
+    "caption": "1 · The twelve base themes (the person, 2026-11-22), Sage the default; each is paper, ink and one accent; marks and folder colors stay yours"
   },
   {
     "id": "2",
     "row": 2,
     "file": "rows/2.png",
-    "caption": "2 · The same twenty in dark: each keeps its accent, lifted for a dark page"
+    "caption": "2 · The twelve in dark: each keeps its accent, lifted for a dark page"
   },
   {
     "id": "3",
     "row": 3,
     "file": "rows/3.png",
-    "caption": "3 · Page themes: Paper, Sepia, Night or your own colors, for the reader and pages only"
+    "caption": "3 · Page surface: Paper, Sepia, Night or your own colors, for the reader and pages only; the theme stays"
   },
   {
     "id": "3",
