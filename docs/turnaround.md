@@ -267,7 +267,15 @@ the gate.
   list in `GLOSSARY.md`, grouped by area, one line each. A new state is added there first. A reviewer or a check searches
   for the bracketed name across all features to find every item that meets it, and a combination no item covers is a
   blind spot found before building. Watch the list's size; merge names that mean the same state.
-- **Open (Q32):** how "You feel" is structured from the design standards.
+- **"You feel" (Q32, the person, 2026-11-23):** `DESIGN_STANDARDS.md` defines a small fixed set of feel qualities,
+  each with its standard and a bar where one exists: **Instant** (under 0.1 s, Nielsen's response-time limits),
+  **Quick** (under 1 s; over 1 s shows progress), **Steady** (nothing flashes, jumps or moves unasked), **Clear** (a
+  visible result for every action, Nielsen #1), **Forgiving** (Undo or a confirm, Nielsen #3), **Familiar** (Enter, Esc
+  and drag behave like Windows and Mac, Nielsen #4 and the platform guidelines), **Readable** (WCAG 2.2 AA, contrast of
+  4.5:1 or more). Every item gets all of them by default; its "You feel" line names only the one or two most at risk,
+  plus what the person's play revealed. At the prototype the person judges the named ones; at build each quality with a
+  bar gets a machine check (speed budgets, a no-shift check, axe); the release feel check covers only lines marked
+  "checked at play". The set grows only through retros.
 - Make `docs/agent-workflow.md` and `.claude/agents/*.md` agree with the checkout model. Archive `docs/SPEC.md`. Prune
   superseded memory.
 - The hard-to-reverse decisions (study-folder formats, the read-only database, the Library map's retired words, the
