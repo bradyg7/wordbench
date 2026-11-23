@@ -79,14 +79,14 @@ export interface BlockEditorState {
  *  holding them (nothing has the caret to take them meanwhile), until the person puts the caret somewhere after 4 seconds, or 30
  *  seconds have gone by; what was held is still put in the block when it opens. `keep` keeps what an earlier hold took. */
 const typeAhead: { text: string; off: (() => void) | null } = { text: '', off: null };
-function holdKeys(alive: () => boolean, keep = false) {
+function holdKeys(alive: () => boolean, keep = false, lapse?: () => void) {
   typeAhead.off?.();
   if (!keep) typeAhead.text = '';
   let late = false;
   const onKey = (ev: KeyboardEvent) => {
     if (!alive()) return off();
     // after 4 seconds a key typed in a box the person clicked into is theirs again
-    if (late && (ev.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable="true"], [contenteditable=""]')) return off();
+    if (late && (ev.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable="true"], [contenteditable=""]')) return lapsed();
     if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.isComposing) return;
     if (ev.key.length === 1) typeAhead.text += ev.key;
     else if (ev.key === 'Backspace') typeAhead.text = [...typeAhead.text].slice(0, -1).join('');
@@ -97,20 +97,31 @@ function holdKeys(alive: () => boolean, keep = false) {
     ev.stopPropagation();
   };
   const soft = window.setTimeout(() => { late = true; }, 4000);
-  const stop = window.setTimeout(() => off(), 30000);
+  const stop = window.setTimeout(() => lapsed(), 30000);
   const off = () => { document.removeEventListener('keydown', onKey, true); clearTimeout(soft); clearTimeout(stop); if (typeAhead.off === off) typeAhead.off = null; };
+  // the hold ran out before its block opened: the block will not open late with old words in it, and what was held is shown
+  const lapsed = () => {
+    if (typeAhead.off !== off) return off();
+    off();
+    lapse?.();
+    giveBack(takeTypeAhead());
+  };
   typeAhead.off = off;
   document.addEventListener('keydown', onKey, true);
+}
+/** Held words with no block to go in: shown, never dropped unseen. */
+function giveBack(held: string, why = 'the page was still saving') {
+  if (held.trim()) toast(`Not put in the page (${why}), what you typed: ${held.replace(/[\r\n]+/g, ' / ')}`, 10000);
 }
 /** `keep`: an Enter that opens its block only after a save began holding keys at once; what that hold took is kept. */
 function setPending(host: Host, p: NonNullable<BlockEditorState['pending']>, keep = false) {
   host.state.pending = p;
   if (p.menu || p.pick) { typeAhead.off?.(); return; }
-  holdKeys(() => host.state.pending === p, keep);
+  holdKeys(() => host.state.pending === p, keep, () => { if (host.state.pending === p) host.state.pending = null; });
 }
 function setFocus(host: Host, f: NonNullable<BlockFocus>) {
   host.state.focus = f;
-  holdKeys(() => host.state.focus === f, true);
+  holdKeys(() => host.state.focus === f, true, () => { if (host.state.focus === f) host.state.focus = null; });
 }
 /** A page that was just made from the new-page form goes on being written in the block editor: a new block after block `after`
  *  opens once the page is drawn, and what is typed until then is held and put in it (B8: the form used to keep the caret, so
@@ -118,7 +129,7 @@ function setFocus(host: Host, f: NonNullable<BlockFocus>) {
 export function holdForNewPage(state: BlockEditorState) {
   const p: NonNullable<BlockEditorState['pending']> = { id: '', after: () => 0, text: '', at: 'end' };
   state.pending = p;
-  holdKeys(() => state.pending === p);
+  holdKeys(() => state.pending === p, false, () => { if (state.pending === p) state.pending = null; });
   return {
     /** The page is made: its id, and the block the new one goes after (read once the page is drawn). */
     ready(id: string, after: () => number) { p.id = id; p.after = after; },
@@ -1731,12 +1742,24 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
         const wasClosed = tgh.closed;
         const wrap = el.closest<HTMLElement>('.nb-blocks');
         // the block inside opens only after the saves below: keys typed meanwhile are held from now, not written in the head
-        holdKeys(() => true);
+        let waiting = true;
+        holdKeys(() => waiting);
         void (async () => {
-          if (cur.n && (data.folds ?? []).includes(last)) await setFold(data, host, wrap, cur.n, last, false);
-          tgh.closed = false;
-          await save();
-          await findAgain();
+          try {
+            if (cur.n && (data.folds ?? []).includes(last)) await setFold(data, host, wrap, cur.n, last, false);
+            tgh.closed = false;
+            await save();
+            await findAgain();
+          } catch (x) {
+            // the block inside cannot open: the line is as it was, and what was typed meanwhile goes back where the caret is
+            waiting = false;
+            toast(String(x));
+            const held = takeTypeAhead();
+            if (!ta.isConnected) { giveBack(held, 'the toggle could not be saved'); return; }
+            if (sp0.rest) ta.value = sp0.first + sp0.rest;
+            putTypedAhead(el, held);
+            return;
+          }
           try { if (wasClosed && cur.n) await wb(['block', 'add', data.id, '--after', String(cur.n + cur.count - 1), '</details>']); } catch (x) { toast(String(x)); }
           host.state.focus = null;
           setPending(host, { id: data.id, after: () => cur.n + cur.count - 1, text: sp0.rest, at: sp0.rest ? 'start' : 'end' }, true);
@@ -1796,10 +1819,12 @@ const undoKeysInstalled = new WeakSet<HTMLElement>();
 /** After the page is drawn: start writing where Enter, Backspace or an arrow key asked. */
 export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Host | null, data: Blocks | null) {
   if (!data || !host) {
+    // a new page still being made (its hold has no id yet) is drawn without blocks meanwhile: its hold goes on (B8)
+    if (state.pending && !state.pending.id) { state.focus = null; blockHistory.delete(root); return; }
     // the blocks could not be read: what was typed on the way has no block to go in, so it is shown, never dropped unseen
     const held = state.pending ? takeTypeAhead() : '';
     state.pending = null; state.focus = null; blockHistory.delete(root);
-    if (held.trim()) toast(`Not saved (the page could not be read), what you typed: ${held.replace(/[\r\n]+/g, ' / ')}`);
+    giveBack(held, 'the page could not be read');
     return;
   }
   const wrap = root.querySelector<HTMLElement>('.nb-blocks');

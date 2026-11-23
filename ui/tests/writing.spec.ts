@@ -77,7 +77,7 @@ test('new_page_caret_in_title', async ({ page }) => {
 // B8 (play-test of 0.3.0, 2026-11-23): after the first Enter in a new page, the page goes on in the block editor; nothing typed
 // after it, even straight after Enter, is lost, and every line is saved as its own block.
 /** A new page written from the pen: `slow` makes the page's making and every save slow; `failFirst` refuses the first making. */
-async function newPageRun(page: Page, slow = 0, failFirst = false) {
+async function newPageRun(page: Page, slow = 0, failFirst = false, redrawMid = false) {
   let refused = false;
   const wait = () => new Promise(r => setTimeout(r, slow));
   let title = '';
@@ -93,7 +93,10 @@ async function newPageRun(page: Page, slow = 0, failFirst = false) {
     const input = decodeURIComponent(route.request().headers()['x-wb-input'] ?? '');
     const send = (json: unknown) => route.fulfill({ json });
     if (name === 'note-new.json' && failFirst && !refused) { refused = true; return route.fulfill({ status: 500, body: 'disk full' }); }
-    if (name === 'note-new.json') { await wait(); const [t, ...rest] = input.split('\n\n'); title = t; bodies.splice(0, bodies.length, ...rest); return send(detail()); }
+    if (name === 'note-new.json') {
+      // something else redraws the Notebook while the page is being made (a list refresh, another window's change)
+      if (redrawMid) { await page.evaluate(() => (window as any).__wb.changed()); await new Promise(r => setTimeout(r, 300)); }
+      await wait(); const [t, ...rest] = input.split('\n\n'); title = t; bodies.splice(0, bodies.length, ...rest); return send(detail()); }
     if (name === 'note-show-np1.json') return send(detail());
     if (name === 'page-blocks-np1.json') return send(blocks());
     if (name.startsWith('block-add-np1-')) {
@@ -148,6 +151,8 @@ test('new_page_keeps_every_line_after_enter', ({ page }) => newPageRun(page));
 // B8 review: the page's making and every save slow (the held keys carry the typing), and a making that is refused once
 test('new_page_keeps_every_line_with_slow_saves', ({ page }) => newPageRun(page, 500));
 test('new_page_refused_once_keeps_the_words_and_goes_on', ({ page }) => newPageRun(page, 0, true));
+// B8 re-review: a redraw while the page is being made does not take the held keys
+test('new_page_redrawn_while_made_keeps_every_line', ({ page }) => newPageRun(page, 500, false, true));
 
 
 // B11 (play-test of 0.3.0): Enter pressed while the block before is still being saved is kept, not lost: three lines typed
@@ -259,6 +264,25 @@ test('held_enter_after_a_backspace_with_no_join', async ({ page }) => {
   await expect.poll(() => md(page.locator('.pane-notebook .nb-block-input')), { timeout: 10000 }).toBe('yOne');
   await page.keyboard.press('Escape');
   await expect.poll(() => bodies, { timeout: 10000 }).toEqual(['x', 'yOne']);
+});
+
+// B11 re-review: a save so slow that the person puts the caret elsewhere (after 4 s) ends the hold; what was held is shown,
+// and the block does not open late with it
+test('a_hold_that_runs_out_shows_what_was_held', async ({ page }) => {
+  test.setTimeout(60000);
+  const bodies = await slowPage(page, ['First'], 1, 9000);
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('held');
+  await page.waitForTimeout(4500);
+  const other = page.locator('input:visible').first();
+  await other.click();
+  await page.keyboard.type('z');
+  await expect(page.locator('.toast')).toContainText('what you typed: held');
+  await expect(other).toHaveValue(/z$/);
+  await expect.poll(() => bodies, { timeout: 20000 }).toEqual(['First']);
+  await page.waitForTimeout(1500);
+  await expect(page.locator('.pane-notebook .nb-new-block')).toHaveCount(0);
 });
 
 // B11 review, finding 2: Enter in a toggle's line opens its first block only after the saves; what is typed meanwhile goes in

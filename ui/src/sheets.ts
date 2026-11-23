@@ -116,14 +116,15 @@ export function cardShown() {
 }
 
 // ---- toast ----------------------------------------------------------------------------------------------------------
-export function toast(text: string) {
+/** `ms`: how long it stays (words the person typed that found no place stay long enough to be read and copied). */
+export function toast(text: string, ms = 2200) {
   // a new one replaces the one showing, so two never sit on top of each other
   overlay().querySelectorAll('.toast').forEach(x => x.remove());
   const t = document.createElement('div');
   t.className = 'toast';
   t.textContent = text;
   overlay().append(t);
-  setTimeout(() => t.remove(), 2200);
+  setTimeout(() => t.remove(), ms);
 }
 
 /** A toast with one Undo (Hide all of the eyes, TH-5); it stays 10 seconds. */
