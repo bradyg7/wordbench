@@ -1,3 +1,6 @@
 {
-  "enabledMcpjsonServers": ["codegraph"]
+  "enabledMcpjsonServers": ["codegraph"],
+  "enabledPlugins": {
+    "mattpocock-skills@mattpocock": true
+  }
 }

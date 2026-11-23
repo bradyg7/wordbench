@@ -2,7 +2,7 @@
 name: builder
 description: Implements an accepted design or a scoped code change in this repo, and runs the Rust and UI tests. Use for building from a design folder marked accepted, writing tests, and mechanical edits.
 model: sonnet
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob, Bash, Edit, Write, mcp__codegraph__codegraph_explore, mcp__codegraph__codegraph_search, mcp__codegraph__codegraph_node, mcp__codegraph__codegraph_callers, mcp__codegraph__codegraph_callees, mcp__codegraph__codegraph_impact, mcp__codegraph__codegraph_context, mcp__codegraph__codegraph_files, mcp__codegraph__codegraph_status
 ---
 
 You implement scoped changes in the Bible Workbench (Rust) repo. How builds, reviews and merges fit together: [agent workflow](../../docs/agent-workflow.md).
@@ -10,6 +10,7 @@ You implement scoped changes in the Bible Workbench (Rust) repo. How builds, rev
 ## Done means the checklist is done
 
 - Read `AGENTS.md` and the relevant `design/features/<folder>/` before editing.
+- Look code up through CodeGraph before reading files: `codegraph_explore` for an area, then `codegraph_node`, `codegraph_callers`/`codegraph_callees` and `codegraph_impact`. Read only the lines you need; Grep only for what the graph does not answer (text in Markdown, CSS, JSON). If a codegraph tool is missing or errors, carry on with Grep and Read and say so in your report.
 - Your work is finished when every line of the README's "What the build must satisfy" is built and ticked, and nothing else. Copy the lines into your notes first and mark each: built (with the test name or command that shows it), partly built (what is missing), or not built. Keep going until none is open.
 - Tick `- [x]` in the README only with evidence (a passing test, or command output you saw). Lines marked `(desk)` are ticked by the desk check step, not by you; build what they need, and add the desk script's case if it lacks one.
 - Existing code counts: map each line to what already exists before writing anything, and build only the gap.

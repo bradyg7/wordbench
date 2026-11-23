@@ -92,6 +92,17 @@ credits spent too fast.
 4. **Cohesion.** No feature invents an object or a word that is not in [the Library map](design/LIBRARY.md). Features
    are designed one at a time, in the map's priority order, so designs do not drift apart.
 
+## Agent skills
+
+Matt Pocock's skills are installed for this repo (`mattpocock-skills`, in `.claude/settings.json`).
+
+- **Domain docs**: the glossary is `design/LIBRARY.md`; decisions are dated in `AGENTS.md` and the design folders.
+  See `docs/agents/domain.md`.
+- **Issue tracker**: design folders and their interaction tables, not GitHub Issues. See `docs/agents/issue-tracker.md`.
+- **Process words**: the [AI Coding Dictionary](https://github.com/mattpocock/dictionary-of-ai-coding).
+- **The turnaround** (2026-11-23): [docs/turnaround.md](docs/turnaround.md) is followed in order; new ideas go to
+  [its parking lot](docs/turnaround-parked.md).
+
 ## Layout
 
 | Path | What |
