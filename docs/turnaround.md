@@ -167,30 +167,63 @@ is committed in Main.
 
 ### ▶ Step 2: guardrails that fail (deterministic)
 
-In this order, because the first item protects the person's work:
+**Grilled 2026-11-23** (the person's answers, Q1–Q30). The tickets, in this order, each small, built and tested on its
+own:
 
-1. **Guard the real study folder wherever it is.** wb-core refuses the folder the installed app uses
-   (`Documents\wordbench-study-data`, or whatever the person chose) as well as `github\bible-study-data`, unless
-   `WB_ALLOW_REAL_STUDY=1` is set or the `installed` feature is on. A test proves the refusal for both.
-2. **CI on Windows, on every push and pull request**, with `WB_REQUIRE_DB=1` and the `data-v1` database: `cargo fmt
-   --check`, `cargo clippy -- -D warnings` (after one session of fixes), `cargo test`, `tsc -p ui`, `npm run test:unit`,
-   `npm run test:webkit` and the `chromium-editor` project. Flaky specs are fixed or quarantined by name, not retried
-   blindly. Keep the Mac job.
-3. **Release gate.** `release.yml` runs only when the Windows test job is green on that commit. Before a tag:
-   - the `Ctx::lent` sweep (`crates/wb-cli/tests/lent.rs`) covers every read command, from a hard list rather than an 80%
-     threshold;
-   - a smoke run in the real window writes a page in the release build (scratch study folder, driven over CDP);
-   - the person plays the release before tagging.
-4. **Ratchets, not big-bang cleanups.** A small script counts `any` in `ui/src` and `unwrap()` in non-test Rust and
-   fails if the count rises. Lower the ceiling as modules are cleaned.
-5. **Tests write only to ignored folders** (`test-results/`, temp). Committed screenshots are refreshed on purpose, by a
-   named command.
-6. **Each AGENTS.md rule that a machine can check becomes a check.** "Scripture is generated, not typed": the fixtures
-   match the database. "The database is read-only": already in code. "Every core action has a `wb` command": a test
-   compares the Tauri command list with the `wb` table.
+1. **The folder guard.** wb-core refuses `github\bible-study-data`, `Documents\wordbench-study-data`, and whatever
+   folder the installed app's settings name as its study folder (so a moved folder stays guarded), unless
+   `WB_ALLOW_REAL_STUDY=1` is set or the `installed` feature is on. Tests prove each refusal, and that both exceptions
+   still open the folder.
+2. **Words and standards.** The development words (CI, clippy, ratchet, flaky, smoke run, `any`, `unwrap`, spec,
+   prototype), each in plain English, go into `GLOSSARY.md`. `CODING_STANDARDS.md` and `DESIGN_STANDARDS.md` are
+   written, and **both builders and reviewers read them** (replacing step 3's "the reviewer reads, not the builder").
+   Each rule is one line naming its check if a machine checks it; judgment rules get one short real example at most.
+   - Coding sources: clippy's defaults plus a chosen set of its stricter lints; strict TypeScript and typescript-eslint
+     strict-type-checked; Pocock (deep modules, small interfaces, tests through the public surface, no `any`).
+   - Coding rules from the grilling: a comment says *why*, never *what*; a checker is switched off (`#[allow]`,
+     `@ts-ignore`, `eslint-disable`) only with a reason recorded in the standards, and the 9 `#[allow]` today are
+     reviewed; no TODO notes in merged code (open thoughts go to the parking lot).
+   - Design sources: WCAG 2.2 AA, Nielsen's 10 heuristics, the Windows design guidelines and Apple's HIG. Machine-checked
+     where possible (axe for contrast and labels, speed budgets); the rest is checked when the person plays a prototype.
+3. **Zero warnings.** One session fixes the ~60 clippy warnings, then `-D warnings` refuses any new one ("above
+   reproach").
+4. **CI on GitHub, and nobody waits on it.**
+   - Quick checks on every branch push (fmt, clippy, `tsc`, about 3 minutes). The full Windows suite (`cargo test` with
+     `WB_REQUIRE_DB=1`, `test:unit`, `test:webkit`, `chromium-editor`, axe) on pull requests to `main` and on `main`. A
+     merge waits for green; the person never watches it.
+   - Builders never run a full suite locally. They run only the test they are writing or fixing, and quick checks for
+     the area they touched.
+   - The database: `data-v1` downloaded and checked by its fingerprint, as the Mac and release jobs do, and cached
+     between runs.
+   - Minutes (the repo stays private, 2,000 a month on the free plan, Windows ×2, Mac ×10): the Mac job runs only for
+     releases; `warm-cache.yml` loses its weekly run and runs only when the Rust libraries change; path filters (a
+     docs-only change runs nothing); a newer push cancels the older run; a $0 spending limit, which **the person sets**
+     on GitHub. If a month passes 75%, a self-hosted runner on the person's PC is the fallback.
+5. **Flakes are fixed, not quarantined.** The three named specs (`writing_at_every_width`,
+   `mark_from_a_page_is_the_reader_s_mark`, `own_property_add_and_type`) are each run 90 times under load and fixed at
+   the cause, in the test or in the app. Every fixed-time wait becomes a wait for the thing itself. From then on, a flake
+   found is fixed in that feature's review, before it merges. Nothing is held back.
+6. **The release gate.**
+   - `release.yml` refuses a tag unless the full Windows suite passed on that commit.
+   - Every command in the `wb` table is either run the window's way in `crates/wb-cli/tests/lent.rs` or listed as
+     excluded with a reason; a new command with neither fails.
+   - A smoke run on GitHub's Windows machine starts the release build on a scratch study folder, writes a page, presses
+     Enter, reopens it and checks the file on disk; nothing is published if it fails (about 5 counted minutes). If
+     GitHub's machines cannot open the window reliably, the person's PC runs it unattended at release time.
+   - The person's play before a release is a short feel check, not a functional checklist: functional bugs are caught
+     at the prototype stage (step 3's process).
+7. **Ratchets.** A script counts `any` in `ui/src`, `unwrap()` in non-test Rust, and checker switches, against a
+   committed baseline. CI fails if a count rises; lowering the baseline is a normal edit.
+8. **Tests never change committed files.** Tests save their pictures to ignored scratch folders. Committed screenshots
+   change only through `npm run shots`, run on purpose. CI fails if a test run leaves any committed file changed.
+9. **Two AGENTS.md rules become checks.** "Scripture is generated, not typed": CI rebuilds every scripture fixture from
+   the database and fails on a difference. "Every action has a `wb` command": CI compares the window's command list with
+   the `wb` table. These never replace real-window tests of drags, clicks and feel, or the person's play.
 
-**Decisions for the person:** CI on Windows for every push (yes or no); whether a release needs the person's play-test
-or the smoke run alone.
+**Estimated time per feature, once this lands** (to be measured): the person is active 1–2½ hours (grilling, playing
+the prototype, the feel check) and waits about 2 minutes (the install). Agent and GitHub time runs in the background.
+About 200 counted CI minutes per feature, plus about 110 per release.
+
 **Done when:** each item above is a check that fails when broken, and the next release (0.3.2 or later) has gone through
 the gate.
 
@@ -201,9 +234,24 @@ the gate.
 - **Decide the checkout model:** write the Main / Design / Build / Fix clones into AGENTS.md as the way work is done, or
   go back to fewer. Then retire the old worktrees (`wb-install`, `wb-b-reading-plans`) and the stale `bible-workbench-rs`
   checkout, after saving anything that exists only there.
-- Cut `AGENTS.md` to the rules that never change and pointers for finding things. Move process to `docs/agents/`, and
-  move judgment calls made at review time to a `CODING_STANDARDS.md` the reviewer reads (not the builder). Fold in the
-  11-22 and 11-23 process: CodeGraph, the 90/100 review bar, context under 200k, the spec in the folder.
+- Cut `AGENTS.md` to the rules that never change and pointers for finding things. Move process to `docs/agents/`.
+  Judgment calls live in step 2's `CODING_STANDARDS.md` and `DESIGN_STANDARDS.md`, which builders and reviewers both
+  read. Fold in the 11-22 and 11-23 process: CodeGraph, the 90/100 review bar, context under 200k.
+- **`design/LIBRARY.md` becomes `GLOSSARY.md`** (decided 2026-11-23): moved over as it is, every link updated, since
+  "Library" may be retired as a word. Its contents are reworked in later grillings, not here.
+- **Rewrite the design process** (decided 2026-11-23). It becomes: grilling with the docs, then a throwaway prototype
+  (`/prototype`), then the person plays it, then tickets cut from the prototype. Design boards (FigCraft), sheets,
+  `review.html` and full interaction tables are retired; AGENTS.md's "Designed before it is built" rule is rewritten as a
+  dated decision of the person's. What stays is a short list of **what must be true**, one item per thing a person does,
+  in two halves:
+
+  > **You do:** type a title and press Enter
+  > **You see:** the new page opens and stays open
+  > **You feel:** instant, with no flash of an older view *(something noticeable; otherwise "checked at play")*
+  > — *for the builder:* **on disk** one page file with that title · **proven by** `new-page.spec`
+
+  The person writes and checks the top three lines; the builder fills the bottom line and the reviewer checks it. The
+  format is a draft, revised when something proves missing.
 - Make `docs/agent-workflow.md` and `.claude/agents/*.md` agree with the checkout model. Archive `docs/SPEC.md`. Prune
   superseded memory.
 - The hard-to-reverse decisions (study-folder formats, the read-only database, the Library map's retired words, the
@@ -220,8 +268,10 @@ the gate.
 - **Settle where identity and principles stand.** Either they count as one design, or the 23 conflicts are settled first
   because they change what the accepted folders mean. The person decides in this step's grilling, and that decision
   sets the build order.
-- For each accepted folder, in the Library map's priority order, starting with the notebook-shell (SH1–SH6, the Tier 1
-  bugs): `/to-tickets` over its interaction table, then `/implement` one ticket per session (a few rows, about 150k
+- **The Notebook redesign is the first feature through step 3's new process** (decided 2026-11-23): grilling, a
+  prototype the person plays, then tickets. This replaces building the accepted notebook-shell folder as it stands.
+  Which other accepted folders still get built from their tables, or go back through the new process, is decided here.
+- For each accepted folder kept, in the glossary's priority order: `/to-tickets` over its interaction table, then `/implement` one ticket per session (a few rows, about 150k
   tokens at most), then `/code-review` (spec review and standards review), then `/pr`, which states the **merge danger**.
   Each release goes through step 2's gate.
 
@@ -242,13 +292,16 @@ only.
 ### Step 6: open the parking lot
 
 Only now: go through [the parking lot](turnaround-parked.md) with the person, line by line, using the loop below.
+First item: the language conversation (stay with Rust, or rebuild in another language), with the compile and CI times
+step 2 measured.
 
 ## The loop from then on
 
 `/grilling` (with the docs; the Library map grows only with the person's go-ahead), then:
 
 - a small change: `/implement`;
-- a large one: a design folder (`/to-spec`), then `/to-tickets`, then one ticket per session.
+- a large one: a prototype the person plays, its "what must be true" list, then `/to-tickets`, then one ticket per
+  session.
 
 Then `/code-review`, `/pr` with its merge danger, merge, the release gate, `/retro`, and the lesson becomes a check where
 it can.
