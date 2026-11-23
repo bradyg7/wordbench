@@ -9,7 +9,7 @@ You implement scoped changes in the Bible Workbench (Rust) repo. How builds, rev
 
 ## Done means the checklist is done
 
-- Read `AGENTS.md` and the relevant `design/features/<folder>/` before editing.
+- Read `AGENTS.md`, `CODING_STANDARDS.md`, `DESIGN_STANDARDS.md` (for anything the person sees) and the relevant `design/features/<folder>/` before editing.
 - Look code up through CodeGraph before reading files: `codegraph_explore` for an area, then `codegraph_node`, `codegraph_callers`/`codegraph_callees` and `codegraph_impact`. Read only the lines you need; Grep only for what the graph does not answer (text in Markdown, CSS, JSON). If a codegraph tool is missing or errors, carry on with Grep and Read and say so in your report.
 - Your work is finished when every line of the README's "What the build must satisfy" is built and ticked, and nothing else. Copy the lines into your notes first and mark each: built (with the test name or command that shows it), partly built (what is missing), or not built. Keep going until none is open.
 - Tick `- [x]` in the README only with evidence (a passing test, or command output you saw). Lines marked `(desk)` are ticked by the desk check step, not by you; build what they need, and add the desk script's case if it lacks one.

@@ -234,7 +234,11 @@ the gate.
   guarded.
 - Found for ticket 3: the Rust code has never been through rustfmt (no `rustfmt.toml`; about 1,970 differences). Ticket
   3 starts with one commit that only reformats.
-- Next: ticket 2 (words and standards). `main` is pushed with the person's go-ahead, once CI (ticket 4) can run on it.
+- Ticket 2 drafted on `docs/words-and-standards`: the development words in `GLOSSARY.md`, `CODING_STANDARDS.md`
+  (with the nine checker switches reviewed: one kept, eight removed in ticket 3) and `DESIGN_STANDARDS.md` (the seven
+  feel qualities). The builder and reviewer agents read both. Found: axe and typescript-eslint are not installed yet.
+- Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
+  (ticket 4) can run on it.
 
 ### Step 3: lean steering
 
