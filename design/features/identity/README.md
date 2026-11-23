@@ -25,9 +25,19 @@ is built in its tokens, then the rest of the app is reskinned pane by pane.
   researches other apps' designs (any kind, especially for the non-note features) to make the result both
   innovative and fitting.
 
-## Open questions (round 0, being asked)
+- **The dock (round 0 answers).** The edge is the person's choice in Settings; **bottom, centred** is the default, and the
+  static taskbar follows the same edge. Inspiration is the Mac's Dock (the person's sketch is hand-drawn and not to be
+  used). The **home screen is "where you left off"**: the reading place, recent pages, open questions, today's
+  reading plan, each one click to resume.
+- **Panes are open to replacement.** The one need: several things working together and on screen at once. If a better
+  idea than panes wins, panes are scrapped. Opening an app from the dock (full screen and snap, panes, attachments,
+  or something else) is sketched together in round 1, not decided now.
 
-- The dock: what it holds, where it sits, what the home screen shows (below, in the conversation of 2026-11-22).
+## Open questions
+
+- How opened apps share the screen (round 1, sketched with the person; replaces [notebook-shell](../notebook-shell/README.md) direction C).
+- The scripture typeface: Literata against new contenders (round 1).
+- The new palette, type pairing and themes for the page-like surface (round 1).
 
 ## Rounds
 
