@@ -1,15 +1,33 @@
 [
   {
+    "id": "1b",
+    "row": 1,
+    "file": "rows/1b.png",
+    "caption": "1 (detail) · Three of the palettes up close with their faces; the marks palette is the same in all of them"
+  },
+  {
     "id": "1",
     "row": 1,
     "file": "rows/1.png",
-    "caption": "1 · Three identities, each a palette, a UI face and a scripture face; the marks palette is the same in all three"
+    "caption": "1 · Twenty palettes to choose from in Settings › Look; each is paper, ink and one accent; marks and folder colors stay yours in all of them"
+  },
+  {
+    "id": "2b",
+    "row": 2,
+    "file": "rows/2b.png",
+    "caption": "2 (detail) · Three palettes in dark, up close"
   },
   {
     "id": "2",
     "row": 2,
     "file": "rows/2.png",
-    "caption": "2 · Each identity in dark; the page surface's colors are a theme the person can change (row 3)"
+    "caption": "2 · The same twenty in dark: each keeps its accent, lifted for a dark page"
+  },
+  {
+    "id": "3",
+    "row": 3,
+    "file": "rows/3.png",
+    "caption": "3 · Page themes: Paper, Sepia, Night or your own colors, for the reader and pages only"
   },
   {
     "id": "3",
@@ -31,15 +49,39 @@
   },
   {
     "id": "7",
+    "row": 7,
+    "file": "rows/7.png",
+    "caption": "7 · A click on Notebook opens it on this desk beside what is there (or brings it forward); the dock sinks as the pointer leaves"
+  },
+  {
+    "id": "8",
+    "row": 8,
+    "file": "rows/8.png",
+    "caption": "8 · Right-click an app in the dock: its recent items, New window, Keep in dock or Remove"
+  },
+  {
+    "id": "7",
     "row": 9,
     "file": "rows/7.png",
     "caption": "9 · Static taskbar (Settings › Dock › Always shown): the same apps, always visible, the reader stops above it"
+  },
+  {
+    "id": "10",
+    "row": 10,
+    "file": "rows/10.png",
+    "caption": "10 · Settings › Dock: on hover or always shown, the edge (bottom by default; here left, as it would look), growing on hover, the apps' order"
   },
   {
     "id": "8",
     "row": 11,
     "file": "rows/8.png",
     "caption": "11 · The Workbench home: where you left off, today's reading, open questions, recent pages; one click resumes each"
+  },
+  {
+    "id": "12",
+    "row": 12,
+    "file": "rows/12.png",
+    "caption": "12 · Continue reading: the Bible at the verse you left, lit briefly; back returns to the Workbench"
   },
   {
     "id": "9",
@@ -58,5 +100,11 @@
     "row": 15,
     "file": "rows/11.png",
     "caption": "15 · Together C, Desks: a named, saved arrangement of apps per task; switching desks swaps the whole screen; nothing stays open unseen"
+  },
+  {
+    "id": "16",
+    "row": 16,
+    "file": "rows/16.png",
+    "caption": "16 · Keys: holding Ctrl shows each app's number on the dock"
   }
 ]
