@@ -114,7 +114,7 @@ not before.
   design folders; `AGENTS.md` has an "Agent skills" block; the AI Coding Dictionary is the process vocabulary.
 - CodeGraph in every session (2026-11-22; `.mcp.json`, `scripts\setup-codegraph.ps1`).
 
-### ▶ Step 1: land what is in flight, then freeze
+### ✅ Step 1: land what is in flight, then freeze (done 2026-11-23)
 
 Finish the work already under way so the plan starts from one known state. Start nothing new.
 
@@ -157,7 +157,15 @@ Finish the work already under way so the plan starts from one known state. Start
 **Done when:** 0.3.1 is installed through the updater; `origin/main` holds every commit from Main and Fix; this document
 is committed in Main.
 
-### Step 2: guardrails that fail (deterministic)
+**Progress 2026-11-23:**
+- Tier 0 is done: B1, B8, B11, B14 and B21 were each reviewed at 90 or more, and all 14 checks passed in the real window.
+- The person played the release build and wrote four findings (parked). The person asked whether to revert the Notebook.
+  We decided not to: ship 0.3.1 and keep this order. Whether the Notebook is redesigned from scratch is settled in
+  step 4's grilling.
+- `fix/notebook-tier0` was merged into `main` (68fbe6f), the version bumped (63b47a5), `main` pushed and `v0.3.1` tagged.
+- The release workflow published 0.3.1, and the person installed it through the updater.
+
+### ▶ Step 2: guardrails that fail (deterministic)
 
 In this order, because the first item protects the person's work:
 
@@ -254,3 +262,4 @@ can be sampled instead.
 - 2026-11-23: the plan is followed in order, no matter what; new ideas and findings go to the parking lot until step 6.
 - 2026-11-23: every step begins with grilling.
 - 2026-11-23: in-flight Tier 0 work finishes and ships as 0.3.1 before step 2 (step 1).
+- 2026-11-23: no revert of the Notebook. 0.3.1 shipped, and whether the Notebook is redesigned is settled in step 4 (after the person played 0.3.1).
