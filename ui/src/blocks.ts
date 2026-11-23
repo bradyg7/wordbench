@@ -246,7 +246,9 @@ export function drawBlocks(data: Blocks, host: Host): HTMLElement {
     (column ?? wrap).append(el);
   }
   applyFolds(wrap, data);
-  const add = h('button', 'link-btn nb-block-add muted', data.blocks.length ? 'Write here, or type / for a block' : 'Write the page here, or type / for a block');
+  // the empty space under the last block: clicking it writes a new line there (no words of its own; the line shows its hint once focused)
+  const add = h('button', 'nb-block-add', '');
+  add.setAttribute('aria-label', 'Write a new line');
   add.onclick = () => startNew(data, host, add, data.blocks.length ? data.blocks[data.blocks.length - 1].n : 0, '');
   wrap.append(add);
   return wrap;
