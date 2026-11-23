@@ -1257,7 +1257,8 @@ function createNotebookSession(fixed?: PageTab) {
     line.setAttribute('aria-label', 'The first line');
     wrapEl.append(...(isDay ? [line] : [title, line]));
     let made = false;
-    const make = async (): Promise<boolean> => {
+    /** `onMade` hears the new page's id before the page is drawn again (B8: the held keys need it by then). */
+    const make = async (onMade?: (id: string) => void): Promise<boolean> => {
       if (made) return true;
       const t = title.value.trim(), l = line.value.trim();
       if (isDay ? !l : !t && !l) return false;
@@ -1271,6 +1272,7 @@ ${l}` : ''}`;
         const r: Entry = isDay && d?.day ? await wb(['day', 'text', '-', '--day', d.day], text) : d?.parent ? await wb(['page', 'new', '-', '--parent', d.parent], text)
           : await wb(['note', 'new', '-', ...(d?.at ? ['--at', d.at.anchor] : []), ...(d?.question ? ['--question'] : [])], text);
         openId = r.id; draft = null; e.id = r.id;
+        if (r.id) onMade?.(r.id);
         changed();
         return true;
       } catch (x) { made = false; toast(String(x)); return false; }
@@ -1286,11 +1288,21 @@ ${l}` : ''}`;
         // B8: the page goes on in the block editor. The caret leaves the form at once (so the page is drawn again, not kept as
         // "being written"), what is typed meanwhile is held, and it opens in a new block after the page's last block.
         if (made && !draft) return;
+        // nothing written yet: there is no page to make, and the caret stays where it is
+        if (isDay ? !line.value.trim() : !title.value.trim() && !line.value.trim()) return;
         const hold = holdForNewPage(blockState);
+        let ready = false;
         line.blur();
-        void make().then(ok => {
-          if (ok && openId) { hold.ready(openId, () => blocksData?.blocks.at(-1)?.n ?? 0); void pane?.refresh?.(); return; }
-          const typed = hold.fail();
+        void make(id => { ready = true; hold.ready(id, () => blocksData?.blocks.at(-1)?.n ?? 0); }).then(ok => {
+          if (ok && ready) { void pane?.refresh?.(); return; }
+          const typed = hold.fail().replace(/\r/g, '\n');
+          if (ok) {
+            // made, but with no id to open it by: the page is drawn again from the list, and what was typed meanwhile is shown
+            void pane?.refresh?.();
+            if (typed.trim()) toast(`Not saved, what you typed: ${typed.replace(/\n+/g, ' / ')}`);
+            return;
+          }
+          // not made (the message is shown): the form stays, with what was typed meanwhile back in its line
           line.focus();
           if (typed) insertPlain(line, typed);
         });
