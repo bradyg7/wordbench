@@ -16,7 +16,7 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
   Example: `// a saved choice under the temp folder is a test's scratch copy, so it is not guarded` (good), not
   `// loop over the folders` (says what).
 - **No TODO, FIXME or XXX in merged code.** An open thought goes to [the parking lot](docs/turnaround-parked.md).
-  *Check: grep in the quick checks (ticket 4).*
+  *Check: grep in the quick checks.*
 - **A checker is switched off only with a reason, written where it is switched off.** In Rust, `#[expect(lint, reason =
   "...")]`, which also fails once the switch is no longer needed; in TypeScript, `// @ts-expect-error <reason>` or
   `// eslint-disable-next-line <rule> -- <reason>`. Never `@ts-ignore`, `@ts-nocheck` or a whole-file switch. Each one is
@@ -63,7 +63,7 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
 
 ## TypeScript
 
-- **`strict` is on** in `ui/tsconfig.json` and stays on. *Check: `tsc -p ui` in the quick checks (ticket 4).*
+- **`strict` is on** in `ui/tsconfig.json` and stays on. *Check: `tsc -p ui` in the quick checks.*
 - **No `any`.** A value whose shape is not known yet is `unknown` and is checked before use; a value from the app's
   commands gets a type that matches what wb-core returns. There are about 240 today, mostly in `panes.ts`, `actions.ts`,
   `notebook.ts` and `listview.ts`; the count only goes down. Example: `perform(a: any, line: string)` in

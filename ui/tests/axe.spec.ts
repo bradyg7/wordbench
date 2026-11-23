@@ -1,27 +1,31 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-// DESIGN_STANDARDS.md: WCAG 2.2 AA, checked by axe on the reader at desktop and at phone size. The two projects
-// (webkit-desktop, webkit-phone) give the two sizes. Any violation fails, except the ones named in KNOWN: each entry
-// is "<project> <rule id> <target>", exists only until the UI is fixed, and the list may only shrink (a new entry
-// needs the person's go-ahead). A fixed one must be removed here too, so the list cannot go stale. A margin note's id
-// is replaced by "ID" in a target because it is made when the fixture is read.
-// Found 2026-11-23 when axe was added (the UI is not fixed in that ticket): the place box's visible text is not at
-// the start of its accessible name, and the same for the margin note's edit button.
+// DESIGN_STANDARDS.md: WCAG 2.2 AA, checked by axe on the reader at desktop and at phone size (the two projects).
+// Any violation fails, except the ones named in KNOWN: they exist only until the UI is fixed, the list may only
+// shrink (a new entry needs the person's go-ahead), and a fixed one must be removed so the list cannot go stale.
+// A margin note's id is made when the fixture is read, so a target shows it as "ID".
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
-const KNOWN: string[] = [
-  'webkit-phone label-content-name-mismatch #place',
-  'webkit-desktop label-content-name-mismatch #place',
-  'webkit-desktop label-content-name-mismatch div[data-note="ID"] > .mg-body[role="button"][aria-label="Edit the margin note"]',
+type Known = { project: string; rule: string; target: string };
+const NOTE_EDIT = 'div[data-note="ID"] > .mg-body[role="button"][aria-label="Edit the margin note"]';
+const KNOWN: Known[] = [
+  { project: 'webkit-phone', rule: 'label-content-name-mismatch', target: '#place' },
+  { project: 'webkit-desktop', rule: 'label-content-name-mismatch', target: '#place' },
+  { project: 'webkit-desktop', rule: 'label-content-name-mismatch', target: NOTE_EDIT },
 ];
+const same = (a: Known, b: Known) => a.project === b.project && a.rule === b.rule && a.target === b.target;
 
 test('the_reader_has_no_wcag_22_aa_violations', async ({ page }, info) => {
   await page.goto('/?at=NUM.25');
-  await page.waitForFunction(() => (window as any).__wbReady);
+  await page.waitForFunction(() => (window as unknown as { __wbReady?: unknown }).__wbReady);
   const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-  const found = violations.flatMap((v) => v.nodes.map((n) => `${info.project.name} ${v.id} ${n.target.join(' ').replace(/data-note="[^"]*"/, 'data-note="ID"')}`));
-  const fresh = found.filter((f) => !KNOWN.includes(f));
+  const found: Known[] = violations.flatMap((v) => v.nodes.map((n) => ({
+    project: info.project.name,
+    rule: v.id,
+    target: n.target.join(' ').replace(/data-note="[^"]*"/g, 'data-note="ID"'),
+  })));
+  const fresh = found.filter((f) => !KNOWN.some((k) => same(k, f)));
   expect(fresh, 'new accessibility violations').toEqual([]);
-  const gone = KNOWN.filter((k) => k.startsWith(info.project.name + ' ') && !found.includes(k));
+  const gone = KNOWN.filter((k) => k.project === info.project.name && !found.some((f) => same(k, f)));
   expect(gone, 'fixed: remove these from KNOWN').toEqual([]);
 });

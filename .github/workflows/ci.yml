@@ -3,8 +3,8 @@
 # Builders never run the full suite on their own PC: this is where it runs.
 #
 # Minutes (the repository is private: 2,000 a month on the free plan, Windows counts x2, Mac x10): the light checks
-# run on Linux (x1), only clippy needs Windows (it must see the cfg(windows) code), a newer push cancels the older run,
-# and a change that touches only docs, design, Markdown or the site runs nothing.
+# run on Linux (x1), only clippy needs Windows (it must see the cfg(windows) code), a newer run on the same branch
+# cancels the older one, and a change that touches only docs, design, Markdown or the site runs nothing.
 #
 # Study folder: nothing here sets WB_ALLOW_REAL_STUDY or builds a test with the `installed` feature (the folder guard,
 # ticket 1). Clippy's --all-features only compiles (it turns `installed` on to check that code); cargo test never
@@ -14,21 +14,29 @@ name: CI
 on:
   push:
     branches: ['**']
-    paths-ignore: ['docs/**', 'design/**', '**/*.md', 'site/**']
+    # paths-ignore cannot undo one folder, and crates/wb-core/build.rs reads docs/releases/<version>.md when it
+    # compiles, so the filter is an allow-list: GitHub reads the patterns in order and a later one wins.
+    paths: ['**', '!docs/**', '!design/**', '!**/*.md', '!site/**', 'docs/releases/**']
   pull_request:
     branches: [main]
-    paths-ignore: ['docs/**', 'design/**', '**/*.md', 'site/**']
+    paths: ['**', '!docs/**', '!design/**', '!**/*.md', '!site/**', 'docs/releases/**']
 
+# One group per branch, so the push run and the PR run of one commit share it. Only a pull request run cancels: a
+# push run that cancelled the PR run (they start together, in either order) would leave the branch without its full suite.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  BIBLE_DB_SHA256: fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c
 
 permissions:
   contents: read
 
 jobs:
-  # fmt, tsc and the TODO search: no Rust build, so Linux is enough
+  # none of these compile Rust, so Linux (cheaper minutes than Windows) is enough
   quick-light:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -47,19 +55,30 @@ jobs:
 
       - run: npm ci
 
-      # the type check of `npm run build`, without the bundle
+      # the type check `npm run build` does, without paying for the bundle
       - run: npx tsc -p ui
 
       # CODING_STANDARDS.md: no TODO, FIXME or XXX in merged code (open thoughts go to docs/turnaround-parked.md).
-      # Whole words, upper case only, so "todo" in a UI string is not a hit; data, docs, design and fonts are not searched.
+      # Upper case whole words, so "todo" in a UI string is not a hit. Docs, design and *.md state the rule in those
+      # words; datasets is data.
       - name: No TODO, FIXME or XXX in merged code
         run: |
-          if grep -rnIE '\b(TODO|FIXME|XXX)\b' crates app/src-tauri/src ui/src scripts; then
+          if git grep -nIE '\b(TODO|FIXME|XXX)\b' -- . ':!docs' ':!design' ':!datasets' ':!*.md' ':!.github/workflows/ci.yml'; then
             echo "A TODO, FIXME or XXX is in merged code: move the thought to docs/turnaround-parked.md"; exit 1
           fi
 
-  # clippy on Windows: the code behind cfg(windows) is only seen there
+      # the tokens test runs scripts/tokens.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Neither needs Windows or the database. test:commands-cases stays out: AGENTS.md calls those comparisons history.
+      - run: npm run test:tokens
+      - run: npm run test:distribution
+
+  # Windows because the code behind cfg(windows) is only seen there
   quick-clippy:
+    if: github.event_name == 'push'
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -70,7 +89,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      # the app embeds the built UI when it compiles, as `tauri build` does
+      # the app embeds the built UI at compile time, so clippy needs it
       - run: npm ci
       - run: npm run build
 
@@ -85,7 +104,7 @@ jobs:
 
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
-      # the code the features gate (updater, installed, distribution): compile only
+      # features switch on code the default build skips; compile only, so `installed` never runs
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   full:
@@ -116,7 +135,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: datasets/workbench.db
-          key: bible-db-fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c
+          key: bible-db-${{ env.BIBLE_DB_SHA256 }}
 
       - name: The Bible database (data-v1 of the public releases repository)
         if: steps.db-cache.outputs.cache-hit != 'true'
@@ -127,10 +146,10 @@ jobs:
           mkdir -p datasets
           gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
 
-      # checked every run, cached or not
+      # a cache hit is not trusted either
       - name: The database matches its fingerprint
         shell: bash
-        run: echo "fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c  datasets/workbench.db" | sha256sum -c
+        run: echo "$BIBLE_DB_SHA256  datasets/workbench.db" | sha256sum -c
 
       - run: npm ci
       - run: npm run build
@@ -140,7 +159,7 @@ jobs:
 
       - run: npm run test:unit
 
-      # the reader fixtures the UI tests read, made from the database
+      # scripture fixtures are generated from the database, never typed
       - run: npm run fixtures
 
       - run: npx playwright install webkit
@@ -148,9 +167,12 @@ jobs:
       - name: UI in WebKit (phone and desktop)
         run: npx playwright test --project webkit-phone --project webkit-desktop --grep-invert the_reader_has_no_wcag
 
-      # WebView2 is Edge's Chromium: the installed Edge runs the writing specs
+      # the app's WebView2 is Chromium, so the writing specs run there
       - name: chromium-editor
         run: npx playwright test --project chromium-editor
+
+      - name: setup screen
+        run: npm run test:setup
 
       - name: axe (WCAG 2.2 AA)
         run: npx playwright test --project webkit-phone --project webkit-desktop --grep the_reader_has_no_wcag
