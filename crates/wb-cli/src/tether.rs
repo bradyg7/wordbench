@@ -2,7 +2,7 @@
 //! Reads only, but `accept`, which adds scripture blocks to the page (one Undo token).
 
 use crate::args::{Flag, Opt, Pos, Spec, N};
-use crate::{cmd, Command, Ctx, Out, Res};
+use crate::{cmd, Command, Ctx, Out};
 use serde_json::{json, Value};
 use wb_core::tether::{accept as ac, anchor, skips, Report};
 
@@ -149,7 +149,7 @@ pub fn commands() -> Vec<Command> {
                 }
                 let opt = options(a, &id)?;
                 let already = skips::list(&id);
-                let done = ac::accept(c.bible()?, &mut *c.study()?, &id, &ids(a), a.flag("all_named"), a.opt("expect").as_deref(), a.flag("dry_run"), &opt).map_err(e)?;
+                let done = ac::accept(c.bible()?, &mut *c.study()?, &id, &ac::Pick { ids: &ids(a), all_named: a.flag("all_named"), expect: a.opt("expect").as_deref(), dry: a.flag("dry_run") }, &opt).map_err(e)?;
                 let mut v = done.json;
                 if a.flag("dry_run") {
                     return Ok(Out::Json(v));
@@ -209,6 +209,3 @@ pub fn commands() -> Vec<Command> {
             }),
     ]
 }
-
-#[allow(dead_code)]
-type _Unused = Res;

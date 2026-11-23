@@ -96,7 +96,8 @@ fn unit_occs(bible: &Bible, strong: &str) -> Result<Vec<Occ>> {
         ))
     })?;
     let mut order: Vec<(u32, u32, u32, i64)> = vec![];
-    let mut units: BTreeMap<(u32, u32, u32, i64), (i64, i64, Vec<String>)> = BTreeMap::new();
+    type Unit = (i64, i64, Vec<String>);
+    let mut units: BTreeMap<(u32, u32, u32, i64), Unit> = BTreeMap::new();
     for x in it {
         let (k, idx, text) = x?;
         let u = units.entry(k).or_insert_with(|| {
@@ -314,7 +315,7 @@ pub fn page_in(
         .map(|(id, n)| (id.to_string(), json!(n)))
         .collect();
     if scope != "all" {
-        occs.retain(|o| book_of(bible, o.b).is_ok_and(|b| crate::places::in_scope(&b, scope)));
+        occs.retain(|o| book_of(bible, o.b).is_ok_and(|b| crate::places::in_scope(b, scope)));
     }
     let by_book = count_by_book(bible, &occs);
     let verses = occs

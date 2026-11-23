@@ -167,7 +167,7 @@ pub fn commands() -> Vec<Command> {
             vec![Pos("ref", N::Many), Opt("offset", Some("0"))], |c, a| {
                 let s = c.span(&a.s("ref"))?;
                 let c2 = if s.c2 != s.c1 { Some(s.c2) } else { None };
-                Ok(Out::Json(lookup::interlinear(c.bible()?, s.book.id, s.c1, s.v1 as i64, c2, s.v2 as i64, a.int("offset")?, lookup::INTERLINEAR_VERSES).map_err(e)?))
+                Ok(Out::Json(lookup::interlinear(c.bible()?, lookup::Stretch { book: s.book.id, c1: s.c1, v1: s.v1 as i64, c2, v2: s.v2 as i64 }, a.int("offset")?, lookup::INTERLINEAR_VERSES).map_err(e)?))
             }),
         // The app's own (not in the Python wb): an English word's definition, Webster's 1913, verbatim (docs/archive/2026-11-10/docs/redesign-R5.md).
         cmd("word-define", "A word's English definition from Webster's 1913 (public domain), verbatim with its source: wb word-define envious.

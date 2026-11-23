@@ -1,6 +1,10 @@
 //! The Python app's tests/test_study_cache.py, carried over: the store reads again only what changed, a write takes
 //! itself in, and files changed from outside are noticed.
 
+#[expect(
+    dead_code,
+    reason = "shared test helpers: each test binary uses only some of them"
+)]
 mod common;
 
 use common::Scratch;

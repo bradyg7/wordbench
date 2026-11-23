@@ -38,11 +38,13 @@ fn interlinear(bible: &Bible, sp: &Span) -> Result<Value> {
     let c2 = (sp.c2 != sp.c1).then_some(sp.c2);
     let d = crate::lookup::interlinear(
         bible,
-        sp.book.id,
-        sp.c1,
-        sp.v1 as i64,
-        c2,
-        sp.v2 as i64,
+        crate::lookup::Stretch {
+            book: sp.book.id,
+            c1: sp.c1,
+            v1: sp.v1 as i64,
+            c2,
+            v2: sp.v2 as i64,
+        },
         0,
         crate::lookup::INTERLINEAR_VERSES,
     )?;

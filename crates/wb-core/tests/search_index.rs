@@ -1,6 +1,10 @@
 //! The Python app's tests/test_search_index.py, carried over: the search index gives exactly what testing every verse
 //! gives, in the same order, for every kind of query (these are search queries, not scripture).
 
+#[expect(
+    dead_code,
+    reason = "shared test helpers: each test binary uses only some of them"
+)]
 mod common;
 
 use wb_core::lookup::{search, search_every_verse, SearchQuery};
@@ -90,7 +94,8 @@ fn every_kind_of_query_gives_the_same_verses_spans_and_counts() {
                     );
                     continue;
                 };
-                let rows: Vec<(u32, u32, u32, Vec<(usize, usize)>)> = got["rows"]
+                type Row = (u32, u32, u32, Vec<(usize, usize)>);
+                let rows: Vec<Row> = got["rows"]
                     .as_array()
                     .unwrap()
                     .iter()

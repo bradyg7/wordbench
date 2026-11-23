@@ -395,7 +395,7 @@ fn notebook_commands() -> Vec<Command> {
                     Some(k) if k.eq_ignore_ascii_case("question") => "open".to_string(),
                     Some(k) if k.eq_ignore_ascii_case("answered") || k.eq_ignore_ascii_case("done") => "done".to_string(),
                     Some(k) if k.eq_ignore_ascii_case("all") => "all".to_string(),
-                    Some(k) => return Err(format!("--kind is question, answered or all, not “{k}”. Key points and notes: wb callout list --kind key.").into()),
+                    Some(k) => return Err(format!("--kind is question, answered or all, not “{k}”. Key points and notes: wb callout list --kind key.")),
                     None => a.opt_or("status", "open"),
                 };
                 if let Some(at) = a.opt("at") {

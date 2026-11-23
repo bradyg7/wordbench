@@ -52,11 +52,7 @@ fn row_value(r: &rusqlite::Row, i: usize) -> rusqlite::Result<Value> {
 /// Every row of a query as a JSON object with the query's column names, in order.
 fn rows(bible: &Bible, sql: &str, p: impl rusqlite::Params) -> Result<Vec<Map<String, Value>>> {
     let mut stmt = bible.conn().prepare_cached(sql)?;
-    let names: Vec<String> = stmt
-        .column_names()
-        .into_iter()
-        .map(|s| s.to_string())
-        .collect();
+    let names: Vec<String> = stmt.column_names().map(|s| s.to_string()).collect();
     let out = stmt
         .query_map(p, |r| {
             let mut m = Map::new();
@@ -292,11 +288,11 @@ pub fn uses(bible: &Bible, q: &UsesQuery) -> Result<Value> {
         .map(|s| s.trim().to_lowercase())
         .filter(|s| !s.is_empty());
     let rendering = q.rendering.map(lower_ws).filter(|s| !s.is_empty());
-    if rendering.is_some() {
+    if let Some(rendering) = &rendering {
         if strong.is_none() {
             return Err(bad("A rendering belongs to a Strong's number."));
         }
-        if rendering.as_ref().unwrap().chars().count() > 80 {
+        if rendering.chars().count() > 80 {
             return Err(bad("That rendering is too long."));
         }
         word = None;
@@ -314,7 +310,8 @@ pub fn uses(bible: &Bible, q: &UsesQuery) -> Result<Value> {
         return Err(bad("Unknown category."));
     }
     // units: (b,c,v,grp) → idx list, in the order the database gives them
-    let mut units: Vec<((u32, u32, u32, i64), Vec<i64>, Vec<String>)> = vec![];
+    type Unit = ((u32, u32, u32, i64), Vec<i64>, Vec<String>);
+    let mut units: Vec<Unit> = vec![];
     let mut unit_at: HashMap<(u32, u32, u32, i64), usize> = HashMap::new();
     if let Some(s) = &strong {
         let mut stmt = bible.conn().prepare_cached(
@@ -354,7 +351,8 @@ pub fn uses(bible: &Bible, q: &UsesQuery) -> Result<Value> {
         }
     }
     // (b,c,v, cat, s idx, e idx)
-    let mut occ: Vec<(u32, u32, u32, &'static str, Vec<i64>, Vec<i64>)> = vec![];
+    type Occurrence = (u32, u32, u32, &'static str, Vec<i64>, Vec<i64>);
+    let mut occ: Vec<Occurrence> = vec![];
     for ((b, c, v, _), idxs, _) in &units {
         let hits: Vec<i64> = idxs
             .iter()
@@ -1053,7 +1051,8 @@ pub fn near(
         return Err(bad("Within must be between 1 and 50 words."));
     }
     let offs = word_offsets(bible)?;
-    let positions = |term: &str| -> Result<BTreeMap<(u32, i64), (u32, u32, u32, i64)>> {
+    type Words = BTreeMap<(u32, i64), (u32, u32, u32, i64)>;
+    let positions = |term: &str| -> Result<Words> {
         Ok(term_words(bible, term)?
             .into_iter()
             .map(|w| ((w.0, offs[&(w.0, w.1, w.2)] + w.3), w))
@@ -1345,17 +1344,26 @@ fn morph_codes(lang: &str, morph: &str) -> Vec<String> {
         .collect()
 }
 
+/// A stretch of verses: a book's id, from chapter `c1` verse `v1` to chapter `c2` (None: the same chapter) verse `v2`
+/// (0: to the end of the chapter).
+#[derive(Clone, Copy)]
+pub struct Stretch {
+    pub book: u32,
+    pub c1: u32,
+    pub v1: i64,
+    pub c2: Option<u32>,
+    pub v2: i64,
+}
+
 /// The original-language words of a stretch of verses, each with its KJV text, in batches of `limit` verses.
-pub fn interlinear(
-    bible: &Bible,
-    book: u32,
-    c1: u32,
-    v1: i64,
-    c2: Option<u32>,
-    v2: i64,
-    offset: i64,
-    limit: usize,
-) -> Result<Value> {
+pub fn interlinear(bible: &Bible, stretch: Stretch, offset: i64, limit: usize) -> Result<Value> {
+    let Stretch {
+        book,
+        c1,
+        v1,
+        c2,
+        v2,
+    } = stretch;
     let Some(b) = book_by_id(bible, book) else {
         return Err(bad("No such book."));
     };
@@ -1453,6 +1461,8 @@ pub fn interlinear(
     Ok(out)
 }
 
+type Spanned = Vec<(u32, u32, u32, Vec<(usize, usize)>)>;
+
 /// What search did before the index: every verse through the patterns, in Bible order, with the spans. Kept as the
 /// reference the index is tested against.
 #[doc(hidden)]
@@ -1461,10 +1471,7 @@ pub fn search_every_verse(
     q: &str,
     case: bool,
     scope: &str,
-) -> Result<(
-    Vec<(u32, u32, u32, Vec<(usize, usize)>)>,
-    Map<String, Value>,
-)> {
+) -> Result<(Spanned, Map<String, Value>)> {
     let rxs = plain_regexes(&plain_terms(q.trim())?, case);
     let mut stmt = bible
         .conn()

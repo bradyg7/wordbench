@@ -363,7 +363,7 @@ pub fn narrow(
 ) -> Result<(Vec<Value>, Vec<Value>)> {
     let names: Vec<&str> = props.iter().map(|p| p.name).collect();
     check(filters, &names)?;
-    let facts: Vec<Facts> = rows.iter().map(|r| facts_of(r)).collect();
+    let facts: Vec<Facts> = rows.iter().map(facts_of).collect();
     let menu = menu(props, &facts, books);
     let none: Vec<String> = vec![];
     let kept = rows

@@ -58,7 +58,7 @@ fn files_of(root: &Path, id: &str) -> Vec<Value> {
                 .collect()
         })
         .unwrap_or_default();
-    v.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+    v.sort_by_key(|a| a.0.to_lowercase());
     v.into_iter().map(|(name, size, path)| json!({"name": name, "size": size, "path": path.to_string_lossy()})).collect()
 }
 

@@ -717,6 +717,12 @@ fn missing_verses(have: &str, verses: &[String]) -> Vec<String> {
         .collect()
 }
 
+/// The theme and the Look a file is drawn with.
+struct Style<'a> {
+    theme: &'a plan::Theme,
+    look: &'a look::Look,
+}
+
 /// A plan as a checked file at `at`. → what the check found
 fn write_file(
     to: &str,
@@ -724,10 +730,10 @@ fn write_file(
     p: &[Value],
     blocks: &[plan::Block],
     title: &str,
-    theme: &plan::Theme,
-    lk: &look::Look,
+    style: &Style<'_>,
     at: &Path,
 ) -> Result<Value> {
+    let Style { theme, look: lk } = *style;
     let verses = plan::source_verses(blocks);
     let (text, pages) = match to {
         "word" => {
@@ -861,7 +867,6 @@ fn matching_preview(out: &Path, rec: &Rec) -> Option<PathBuf> {
     (sha_file(&path).ok().as_deref() == Some(hash)).then_some(path)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn build(
     bible: &Bible,
     store: &Store,
@@ -918,7 +923,15 @@ fn build(
     let tmp_dir = out.join(format!(".building-{}-{run}", std::process::id()));
     fs::create_dir_all(&tmp_dir)?;
     let built = tmp_dir.join(format!("doc{ext}"));
-    let checked = write_file(&to, &structure, &p, &blocks, &title, theme, &lk, &built);
+    let checked = write_file(
+        &to,
+        &structure,
+        &p,
+        &blocks,
+        &title,
+        &Style { theme, look: &lk },
+        &built,
+    );
     let result = (|| -> Result<Value> {
         let checked = checked?;
         // a first build, or a thread renamed, takes a new name, and never that of a file that is not this document's
@@ -936,7 +949,15 @@ fn build(
         };
         let preview = if powerpoint {
             let staged = tmp_dir.join("preview.pdf");
-            let pdf = write_file("pdf", &structure, &p, &blocks, &title, theme, &lk, &staged)?;
+            let pdf = write_file(
+                "pdf",
+                &structure,
+                &p,
+                &blocks,
+                &title,
+                &Style { theme, look: &lk },
+                &staged,
+            )?;
             if pdf["pages"] != checked["pages"] {
                 return Err(bad(
                     "The PowerPoint deck and its preview have different slide counts.",
@@ -1098,22 +1119,44 @@ fn source_structure(
     plan::structure_of(if to == "deck" { "pdf" } else { to }, structure, kind)
 }
 
+/// What the person chose for a document's design, shared by making one, making one from a page and updating one. The
+/// default is no choice: the document's own (or the saved) theme and Look, the usual structure, no forcing.
+#[derive(Clone, Copy, Default)]
+pub struct Choices<'a> {
+    pub structure: Option<&'a str>,
+    pub theme: Option<&'a str>,
+    pub look_name: Option<&'a str>,
+    pub dials: &'a [(String, String)],
+    /// Rebuild even if nothing changed.
+    pub force: bool,
+}
+
+/// The parts of a page's plan the person switched in the Make choices: a version, and part keys put on and off.
+#[derive(Clone, Copy, Default)]
+pub struct PageParts<'a> {
+    pub version: Option<&'a str>,
+    pub on: &'a [String],
+    pub off: &'a [String],
+}
+
 /// The document for a source and structure: made the first time, brought up to date after. `to`: word, or pdf (slides as
 /// PDF pages). new makes another alongside; force rebuilds even if nothing changed.
-#[allow(clippy::too_many_arguments)]
 pub fn make(
     bible: &Bible,
     store: &Store,
     folders: &ExportFolders,
     source: Source,
     to: &str,
-    structure: Option<&str>,
-    theme: Option<&str>,
-    look_name: Option<&str>,
-    dials: &[(String, String)],
+    choices: &Choices<'_>,
     new: bool,
-    force: bool,
 ) -> Result<Value> {
+    let Choices {
+        structure,
+        theme,
+        look_name,
+        dials,
+        force,
+    } = *choices;
     if !matches!(to, "word" | "pdf" | "deck") {
         return Err(bad(
             "to: word, pdf (slides as PDF pages), or deck (PowerPoint).",
@@ -1158,11 +1201,15 @@ pub fn update(
     store: &Store,
     folders: &ExportFolders,
     name: &str,
-    theme: Option<&str>,
-    look_name: Option<&str>,
-    dials: &[(String, String)],
-    force: bool,
+    choices: &Choices<'_>,
 ) -> Result<Value> {
+    let Choices {
+        theme,
+        look_name,
+        dials,
+        force,
+        ..
+    } = *choices;
     let rec = find(store, name)?;
     if rec.get("forgotten") == Some(&json!(true)) {
         return Err(bad(format!(
@@ -1191,7 +1238,7 @@ pub fn update_behind(bible: &Bible, store: &Store, folders: &ExportFolders) -> V
         {
             continue;
         }
-        match update(bible, store, folders, s_(d, "id"), None, None, &[], false) {
+        match update(bible, store, folders, s_(d, "id"), &Choices::default()) {
             Ok(v) => done.push(v),
             Err(e) => failed.push(json!({"name": d["name"], "error": e.0})),
         }
@@ -1467,22 +1514,23 @@ fn choose_page_parts(
 /// time, brought up to date after, in the same file. `on`/`off` (rows' keys) set the switches anew (a row not named
 /// takes its default); with neither, the switches it was last made with stay. `version`: kjv or ylt for every
 /// scripture block, page for each block's own; none keeps the last.
-#[allow(clippy::too_many_arguments)]
 pub fn make_page(
     bible: &Bible,
     store: &Store,
     folders: &ExportFolders,
     page: &str,
     to: &str,
-    structure: Option<&str>,
-    theme: Option<&str>,
-    version: Option<&str>,
-    on: &[String],
-    off: &[String],
-    look_name: Option<&str>,
-    dials: &[(String, String)],
-    force: bool,
+    choices: &Choices<'_>,
+    parts: &PageParts<'_>,
 ) -> Result<Value> {
+    let Choices {
+        structure,
+        theme,
+        look_name,
+        dials,
+        force,
+    } = *choices;
+    let PageParts { version, on, off } = *parts;
     let key = page_structure(to, structure)?;
     let id = page_id(store, page)?;
     let mut rec = page_record(store, &id, to, key);
@@ -1576,18 +1624,16 @@ pub fn make_like(
 }
 
 /// The plan a page's document would be made from now, optionally with pending Make choices.
-#[allow(clippy::too_many_arguments)]
 pub fn plan_for_page(
     bible: &Bible,
     store: &Store,
     page: &str,
     to: &str,
     structure: Option<&str>,
-    version: Option<&str>,
-    on: &[String],
-    off: &[String],
+    parts: &PageParts<'_>,
     layout: Option<PdfLayout<'_>>,
 ) -> Result<Value> {
+    let PageParts { version, on, off } = *parts;
     let to = if to == "deck" { "pdf" } else { to };
     let key = page_structure(to, structure)?;
     let id = page_id(store, page)?;
@@ -1757,8 +1803,10 @@ mod tests {
             &word,
             &plan::thread_blocks(&thread),
             "T",
-            theme,
-            &look::Look::default(),
+            &Style {
+                theme,
+                look: &look::Look::default(),
+            },
             &at,
         )
         .unwrap_err();
@@ -1776,8 +1824,10 @@ mod tests {
             &slides,
             &plan::thread_blocks(&thread),
             "T",
-            theme,
-            &look::Look::default(),
+            &Style {
+                theme,
+                look: &look::Look::default(),
+            },
             &at
         )
         .unwrap_err()
@@ -1797,8 +1847,10 @@ mod tests {
                 &slides,
                 &plan::thread_blocks(&thread),
                 "T",
-                theme,
-                &look::Look::default(),
+                &Style {
+                    theme,
+                    look: &look::Look::default(),
+                },
                 &at
             )
             .unwrap()["pages"],

@@ -41,8 +41,8 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
 ## Shape (judgment, after Pocock)
 
 - **Deep modules, small interfaces.** A module does a lot behind a few functions with few arguments. More than about five
-  arguments means they belong together in one struct. Example: `accept_read` in `crates/wb-core/src/tether/accept.rs`
-  takes eight.
+  arguments means they belong together in one struct. Example: `accept_read` in
+  `crates/wb-core/src/tether/accept.rs` takes one `Pick` (ids, all_named, expect, dry), not four loose arguments.
 - **Tests go through the public surface**: the `wb` command, a wb-core function the app calls, or what the person sees
   in the window; not private helpers. A test that breaks when the inside is rearranged, with the behavior unchanged, is
   testing the wrong thing.
@@ -74,14 +74,8 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
 
 ## Checker switches
 
-Every checker switch in the code, with its reason. A new one adds a row; a removed one deletes its row. Reviewed
-2026-11-23 (step 2, ticket 2): nine, of which one is kept and eight are removed in ticket 3.
+Every checker switch in the code, with its reason. A new one adds a row; a removed one deletes its row. Last updated 2026-11-23 (step 2, ticket 3): nine, all of one kind. The other eight found on 2026-11-23 were removed in ticket 3.
 
-| Where | Switch | Decision |
+| Where | Switch | Reason |
 |---|---|---|
-| `crates/wb-core/tests/common/mod.rs:3` | `dead_code`, whole file | **Kept**: shared test helpers; each test binary uses only some of them. Becomes `#![expect(dead_code, reason = "...")]`. |
-| `crates/wb-cli/src/tether.rs:171` | `dead_code` on `type _Unused = Res` | **Remove** (ticket 3): an alias nothing uses; delete it. |
-| `crates/wb-core/src/updates.rs:582` | `unused_imports` on `std::cell::Cell` in tests | **Remove** (ticket 3): delete the import. |
-| `crates/wb-core/src/updates.rs:588` | `dead_code` in tests | **Remove** (ticket 3): delete the unused helper or use it. |
-| `crates/wb-core/src/docs/mod.rs:616, 790, 1040, 1117` | `too_many_arguments` | **Remove** (ticket 3): the shared arguments go into one struct. |
-| `crates/wb-core/src/tether/accept.rs:111` | `too_many_arguments` | **Remove** (ticket 3): the same. |
+| `crates/wb-core/tests/*.rs`, the line before `mod common;` (9 files: `deletion`, `docs_sources`, `doc_plan_baseline`, `layout_shortcuts`, `marks_index`, `search_index`, `store_cache`, `study_projection`, `tether`) | `#[expect(dead_code, reason = "...")]` | Shared test helpers in `tests/common/mod.rs`: each test binary uses only some of them. `tests/study.rs` uses all of them, so it has no switch (an `expect` there would fail as unfulfilled). |

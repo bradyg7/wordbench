@@ -281,6 +281,7 @@ fn protect(bytes: &[u8], decrypt: bool) -> Result<Vec<u8>> {
         pbData: std::ptr::null_mut(),
     };
     // Current-user scope; never CRYPTPROTECT_LOCAL_MACHINE. UI is forbidden in unattended CLI calls.
+    // SAFETY: `input` and `output` are live blobs on this stack; the buffer in `output` is freed with LocalFree below.
     unsafe {
         let ok = if decrypt {
             CryptUnprotectData(

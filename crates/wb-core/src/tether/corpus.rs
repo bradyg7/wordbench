@@ -101,7 +101,7 @@ fn number_words(n: u32) -> String {
         UNITS[n as usize].to_string()
     } else {
         let t = TENS[(n / 10) as usize];
-        if n % 10 == 0 {
+        if n.is_multiple_of(10) {
             t.to_string()
         } else {
             format!("{t} {}", UNITS[(n % 10) as usize])

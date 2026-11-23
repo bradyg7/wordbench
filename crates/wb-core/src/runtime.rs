@@ -180,7 +180,7 @@ impl Roots {
 
     fn validate_location(&self, path: &Path) -> Result<()> {
         let resources = fs::canonicalize(&self.resources)?;
-        if path.starts_with(&resources) || resources.starts_with(&path) {
+        if path.starts_with(&resources) || resources.starts_with(path) {
             return Err(bad(
                 "Keep your study folder separate from the installed app resources.",
             ));

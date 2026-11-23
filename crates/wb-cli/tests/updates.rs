@@ -65,6 +65,7 @@ impl Home {
         )
     }
     /// A release file with the given notes and earlier releases `[(version, date, notes)]`.
+    #[cfg(feature = "updater")]
     fn feed_notes(&self, version: &str, notes: &str, earlier: &[(&str, &str, &str)]) -> String {
         let p = self.dir.join("latest.json");
         let releases: Vec<Value> = earlier

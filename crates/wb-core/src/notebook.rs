@@ -335,7 +335,8 @@ pub fn all_notes(bible: &Bible, store: &Store, filter: &str) -> Result<Value> {
         .split_whitespace()
         .map(String::from)
         .collect();
-    let mut rows: Vec<((u32, i64, i64, i64), String, String, Value)> = vec![];
+    type Row = ((u32, i64, i64, i64), String, String, Value);
+    let mut rows: Vec<Row> = vec![];
     for n in store.notes() {
         let e = entry_in(bible, store, n, "note", true);
         let blob = format!(
@@ -1044,7 +1045,8 @@ pub fn list(bible: &Bible, store: &Store, o: &Listing) -> Result<Value> {
         "chapter" => {
             // each place's chapter (0: the whole book) → the entry, with its order in the chapter: the book's notes, the
             // chapter's, then by verse and word. A note on several chapters shows in each.
-            let mut rows: Vec<((u32, u32), (u8, u32, u32), String, Value)> = vec![];
+            type Row = ((u32, u32), (u8, u32, u32), String, Value);
+            let mut rows: Vec<Row> = vec![];
             let mut on_words: Vec<Value> = vec![];
             for e in all.into_iter().filter(|e| e["kind"] != "day") {
                 let mut seen: Vec<(u32, u32)> = vec![];

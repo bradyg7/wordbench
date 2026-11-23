@@ -2,6 +2,10 @@
 //! dump" as one block, one of 90 paragraphs, and what was planted in them. The corpus knows what it planted, so each line
 //! has an exact expected result. Scripture comes from the database; nothing here types a verse.
 
+#[expect(
+    dead_code,
+    reason = "shared test helpers: each test binary uses only some of them"
+)]
 mod common;
 
 use common::*;
@@ -393,10 +397,12 @@ fn accept_adds_a_scripture_block_after_the_sentence_and_undo_restores_it() {
         &w.bible,
         &mut w.store,
         &id,
-        &[c.id.clone()],
-        false,
-        None,
-        true,
+        &accept::Pick {
+            ids: std::slice::from_ref(&c.id),
+            all_named: false,
+            expect: None,
+            dry: true,
+        },
         &opt,
     )
     .unwrap();
@@ -406,10 +412,12 @@ fn accept_adds_a_scripture_block_after_the_sentence_and_undo_restores_it() {
         &w.bible,
         &mut w.store,
         &id,
-        &[c.id.clone()],
-        false,
-        Some(&r.summary.page_hash),
-        false,
+        &accept::Pick {
+            ids: std::slice::from_ref(&c.id),
+            all_named: false,
+            expect: Some(&r.summary.page_hash),
+            dry: false,
+        },
         &opt,
     )
     .unwrap();
@@ -473,10 +481,12 @@ fn without_punctuation_the_split_is_at_the_words_end() {
         &w.bible,
         &mut w.store,
         &id,
-        &[c.id.clone()],
-        false,
-        None,
-        false,
+        &accept::Pick {
+            ids: std::slice::from_ref(&c.id),
+            all_named: false,
+            expect: None,
+            dry: false,
+        },
         &anchor::Options::default(),
     )
     .unwrap();
@@ -509,10 +519,12 @@ fn a_list_item_is_not_split() {
         &w.bible,
         &mut w.store,
         &p,
-        &[c.id],
-        false,
-        None,
-        false,
+        &accept::Pick {
+            ids: &[c.id],
+            all_named: false,
+            expect: None,
+            dry: false,
+        },
         &anchor::Options::default(),
     )
     .unwrap();
@@ -544,10 +556,12 @@ fn accept_refuses_a_page_that_has_changed() {
         &w.bible,
         &mut w.store,
         &id,
-        &[c.id],
-        false,
-        Some(&r.summary.page_hash),
-        false,
+        &accept::Pick {
+            ids: &[c.id],
+            all_named: false,
+            expect: Some(&r.summary.page_hash),
+            dry: false,
+        },
         &anchor::Options::default(),
     )
     .err()
@@ -566,10 +580,12 @@ fn accept_all_named_is_one_operation_and_leaves_the_quotations() {
         &w.bible,
         &mut w.store,
         &id,
-        &[],
-        true,
-        None,
-        false,
+        &accept::Pick {
+            ids: &[],
+            all_named: true,
+            expect: None,
+            dry: false,
+        },
         &anchor::Options::default(),
     )
     .unwrap();
@@ -586,10 +602,12 @@ fn accept_all_named_is_one_operation_and_leaves_the_quotations() {
         &w.bible,
         &mut w.store,
         &id,
-        &[],
-        true,
-        None,
-        false,
+        &accept::Pick {
+            ids: &[],
+            all_named: true,
+            expect: None,
+            dry: false,
+        },
         &anchor::Options::default(),
     )
     .unwrap();
@@ -621,10 +639,12 @@ fn accepting_one_of_several_verses_names_the_others() {
         &w.bible,
         &mut w.store,
         &id,
-        &[c.id.clone()],
-        false,
-        None,
-        false,
+        &accept::Pick {
+            ids: std::slice::from_ref(&c.id),
+            all_named: false,
+            expect: None,
+            dry: false,
+        },
         &anchor::Options::default(),
     )
     .unwrap();
@@ -652,10 +672,12 @@ fn the_verses_in_order_are_the_pages_scripture_blocks() {
         &w.bible,
         &mut w.store,
         &id,
-        &ids,
-        false,
-        None,
-        false,
+        &accept::Pick {
+            ids: &ids,
+            all_named: false,
+            expect: None,
+            dry: false,
+        },
         &anchor::Options::default(),
     )
     .unwrap();
@@ -761,10 +783,12 @@ fn a_page_changed_between_the_read_and_the_write_is_refused() {
         &w.bible,
         &mut w.store,
         stale,
-        &[r.candidates[0].id.clone()],
-        false,
-        None,
-        false,
+        &accept::Pick {
+            ids: &[r.candidates[0].id.clone()],
+            all_named: false,
+            expect: None,
+            dry: false,
+        },
         &anchor::Options::default(),
     )
     .err()

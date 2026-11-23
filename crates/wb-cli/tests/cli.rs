@@ -4397,19 +4397,19 @@ fn a_view_lists_what_its_line_finds_and_writes_nothing() {
     );
     assert_eq!(
         ids(&wb.js(&["view", "run", "notebook @Num 25 questions"])),
-        [q.clone()]
+        std::slice::from_ref(&q)
     );
     assert_eq!(
         ids(&wb.js(&["view", "run", "notebook @Num 25:8-9 open"])),
-        [q.clone()]
+        std::slice::from_ref(&q)
     );
     assert_eq!(
         ids(&wb.js(&["view", "run", "notebook zeal"])),
-        [tent.clone()]
+        std::slice::from_ref(&tent)
     );
     assert_eq!(
         ids(&wb.js(&["view", "run", "notebook @Psalms days 1"])),
-        [ps.clone()]
+        std::slice::from_ref(&ps)
     );
     assert!(wb
         .fails(&["view", "run", "notebook thread nowhere"])
@@ -4443,7 +4443,7 @@ fn a_view_lists_what_its_line_finds_and_writes_nothing() {
         ),
         (Some(1), Some("notebook @Num 25 questions"))
     );
-    assert_eq!(ids(&v["blocks"][0]), [q.clone()]);
+    assert_eq!(ids(&v["blocks"][0]), std::slice::from_ref(&q));
     assert_eq!(file(), before, "a view writes nothing");
     wb.js(&["block", "view", &page, "1", "notebook @Ps 106"]);
     assert!(

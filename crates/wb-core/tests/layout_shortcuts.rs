@@ -1,3 +1,7 @@
+#[expect(
+    dead_code,
+    reason = "shared test helpers: each test binary uses only some of them"
+)]
 mod common;
 use common::Scratch;
 use wb_core::{mycommands as commands, notebook, store::Store};

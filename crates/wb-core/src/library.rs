@@ -705,10 +705,11 @@ pub fn find(bible: &Bible, store: &Store, f: &Find<'_>) -> Result<Value> {
             }
             let taken = std::mem::take(rows);
             before = taken.len();
-            let (props, facts): (
-                Vec<crate::filters::Prop>,
-                Box<dyn Fn(&Value) -> crate::filters::Facts>,
-            ) = match kind.as_str() {
+            type Kind<'a> = (
+                Vec<crate::filters::Prop<'a>>,
+                Box<dyn Fn(&Value) -> crate::filters::Facts + 'a>,
+            );
+            let (props, facts): Kind<'_> = match kind.as_str() {
                 "margin" => (
                     vec![
                         crate::filters::Prop {

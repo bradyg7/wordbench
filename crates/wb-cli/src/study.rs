@@ -187,7 +187,7 @@ pub fn commands() -> Vec<Command> {
         cmd("mark in", "Every mark on a passage (a chapter, verses), old highlights too, in Bible order: each with its Legend name and style, its label and the marked words from the Bible. {\"place\", \"count\", \"marks\"}. wb mark in Num 25  |  wb mark in Num 25:9-13. The Marks in a passage block shows this.",
             vec![Pos("place", N::Many)], |c, a| j(marks::in_passage(c.bible()?, &*c.study()?, &a.s("place")).map_err(e)?)),
         cmd("marks map", "Colors across the Bible: wb marks map [--style ENTRY|kind:color[:lines]] [--folder NAME]. Every book in order with its chapters. With no filter each chapter lists its styles (style, kind, color, count) and the colored folders with saves there; with a style or a folder, each chapter has only its count, and a chapter with 0 is a gap. Also {styles, folders, filter, total, chapters_with}. --filter \"Legend entry is Promise, Warning\" / \"Book is Numbers\" (repeatable; the same words as every list's chips) narrows it: a Legend entry shows only those counts, a Book only that book; `properties` is what it can be narrowed by.",
-            vec![Opt("style", None), Opt("folder", None), Append("filter")], |c, a| colors(c, a)),
+            vec![Opt("style", None), Opt("folder", None), Append("filter")], colors),
         cmd("mark add", "Draw a mark on a place: wb mark add John 3:16 --kind highlight|underline|circle|box|arrow --color yellow (or #rrggbb) [--lines 1|2|3, underline only] [--to PLACE, arrow only, in the same chapter]; or --style <legend entry> (its name, or its style kind:color[:lines]) instead of --kind, --color and --lines. Kept in marks/<BOOK>.json.",
             vec![Pos("place", N::One), Opt("kind", None), Opt("color", None), Opt("lines", None), Opt("to", None), Opt("style", None)], |c, a| {
                 let mut lines = match a.opt("lines") {
@@ -623,7 +623,7 @@ pub fn commands() -> Vec<Command> {
                             "margin note" | "margin" => "margin",
                             "highlight" => "highlight",
                             "mark" => "mark",
-                            _ => return Err(format!("Kind is Pages, Questions, Key points, Notes, Folders, Saves, Margin notes, Highlights or Marks, not “{v}”.").into()),
+                            _ => return Err(format!("Kind is Pages, Questions, Key points, Notes, Folders, Saves, Margin notes, Highlights or Marks, not “{v}”.")),
                         };
                         kind = Some(k.to_string());
                     }
@@ -637,7 +637,7 @@ pub fn commands() -> Vec<Command> {
                             _ => return Err("Edited is today, last 7 days, last 30 days or last year.".into()),
                         });
                     }
-                    other => return Err(format!("wb find has no filter called “{other}”; it has Kind, Folder and Edited.").into()),
+                    other => return Err(format!("wb find has no filter called “{other}”; it has Kind, Folder and Edited.")),
                 }
             }
             let (style, mark_kind, color, book, since, until) = (a.opt("style"), a.opt("mark_kind"), a.opt("color"), a.opt("book"), a.opt("since"), a.opt("until"));

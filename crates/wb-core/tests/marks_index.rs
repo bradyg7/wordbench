@@ -1,5 +1,9 @@
 //! design/features/marks, "The cache" (MK-14): after one page is saved only its entries in the verse index change.
 
+#[expect(
+    dead_code,
+    reason = "shared test helpers: each test binary uses only some of them"
+)]
 mod common;
 
 use common::{bible, Scratch};

@@ -323,13 +323,13 @@ fn horner(bible: &Bible, text: &str) -> Result<Vec<Vec<String>>> {
     for (at, line) in lines_of(text) {
         match head.captures(&line) {
             Some(m) => found.push((at, m[1].to_string())),
-            None => match found.last_mut() {
-                Some(last) => {
+            None => {
+                // with no list yet it is a title above the lists, and is not kept
+                if let Some(last) = found.last_mut() {
                     last.1.push_str(", ");
                     last.1.push_str(&line);
                 }
-                None => {} // a title above the lists
-            },
+            }
         }
     }
     if found.len() < 2 {
@@ -348,8 +348,7 @@ fn horner(bible: &Bible, text: &str) -> Result<Vec<Vec<String>>> {
             .rsplit(':')
             .next()
             .unwrap_or("")
-            .replace('–', "-")
-            .replace('—', "-");
+            .replace(['–', '—'], "-");
         let books = re(r"\s+(?:to|through|thru)\s+")
             .replace_all(&books, "-")
             .into_owned();

@@ -17,3 +17,6 @@ windows-sys = { version = "0.61", features = ["Win32_Security_Cryptography", "Wi
 
 [lib]
 doctest = false
+
+[lints]
+workspace = true

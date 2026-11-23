@@ -1697,7 +1697,6 @@ pub fn scripture_fence(block: &str) -> Option<ScriptureFence> {
     let first = ls.next()?.trim_start();
     let mark = ["```", "~~~"].into_iter().find(|m| first.starts_with(m))?;
     if !first[3..]
-        .trim()
         .split_whitespace()
         .next()
         .is_some_and(|w| w.eq_ignore_ascii_case("scripture"))
@@ -1818,7 +1817,6 @@ pub(crate) fn value_fence(block: &str, lang: &str) -> Option<String> {
     let first = ls.next()?.trim_start();
     let mark = ["```", "~~~"].into_iter().find(|m| first.starts_with(m))?;
     if !first[3..]
-        .trim()
         .split_whitespace()
         .next()
         .is_some_and(|w| w.eq_ignore_ascii_case(lang))
@@ -2186,6 +2184,8 @@ mod tests {
     }
 }
 
+type Layout = (Vec<String>, Vec<(String, Option<String>, usize)>);
+
 /// Ordinary physical Pages scope only; thread associations are never descendants.
 pub(crate) fn deletion_layout(
     bible: &Bible,
@@ -2195,7 +2195,7 @@ pub(crate) fn deletion_layout(
     pinned: bool,
     templates: bool,
     days: bool,
-) -> Result<(Vec<String>, Vec<(String, Option<String>, usize)>)> {
+) -> Result<Layout> {
     let t = Tree::read(bible, store);
     let mut ids: HashSet<String> = selected.clone();
     if all {
@@ -2341,7 +2341,7 @@ pub fn set_look(store: &mut Store, id: &str, ch: LookChange<'_>) -> Result<Value
     }
     if let Some(f) = ch.font {
         if !["default", "serif"].contains(&f.to_lowercase().as_str()) {
-            return Err(bad(&format!("The font is default or serif, not “{f}”.")));
+            return Err(bad(format!("The font is default or serif, not “{f}”.")));
         }
     }
     let now = look(store, id);

@@ -396,7 +396,7 @@ impl Bible {
             .char_indices()
             .filter(|&(i, c)| c.is_ascii_digit() && i > 0 && place[..i].ends_with(' '))
             .map(|(i, _)| i)
-            .last()
+            .next_back()
             .ok_or_else(bad)?;
         let book = self.find_book(&place[..split]).ok_or_else(bad)?.clone();
         let spec = place[split..].replace(' ', "");

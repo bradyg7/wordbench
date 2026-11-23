@@ -452,10 +452,9 @@ pub fn commit(
             store.refresh()?;
             return Err(bad(format!(
                 "Deletion did not complete: {err}. Recovery: {}",
-                if rollback.is_ok() {
-                    "restored original files".into()
-                } else {
-                    format!("{}; use wb page undo {}", rollback.unwrap_err(), j.id)
+                match rollback {
+                    Ok(_) => "restored original files".into(),
+                    Err(e) => format!("{e}; use wb page undo {}", j.id),
                 }
             )));
         }

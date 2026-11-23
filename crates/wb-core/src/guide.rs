@@ -4,7 +4,12 @@
 use serde_json::{json, Value};
 
 /// Each entry: its name (what is typed: `wb guide templates`), its title, and its parts (a heading and a paragraph).
-const ENTRIES: &[(&str, &str, &[(&str, &str)])] = &[
+type Entry = (
+    &'static str,
+    &'static str,
+    &'static [(&'static str, &'static str)],
+);
+const ENTRIES: &[Entry] = &[
     (
         "templates",
         "Templates",

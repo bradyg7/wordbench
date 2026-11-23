@@ -111,8 +111,10 @@ pub fn match_book<'a>(token: &str, books: &'a [Book]) -> Result<&'a Book> {
 
 const HINT: &str = "Give a reference like John 3:16, John 3-5, Num 25:10-26:4 or Jude.";
 
+type Parts = (String, u32, Option<u32>, Option<u32>, Option<u32>);
+
 /// `^(.+?)\s*(\d+)(?::(\d+))?(?:\s*[-–]\s*(\d+)(?::(\d+))?)?$`
-fn split_span(t: &str) -> Option<(String, u32, Option<u32>, Option<u32>, Option<u32>)> {
+fn split_span(t: &str) -> Option<Parts> {
     static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
     let re = RE.get_or_init(|| {
         regex::Regex::new(r"^(.+?)\s*(\d+)(?::(\d+))?(?:\s*[-–]\s*(\d+)(?::(\d+))?)?$").unwrap()

@@ -442,7 +442,7 @@ impl Updates {
                 all.push(r.clone());
             }
         }
-        all.sort_by(|a, b| version_parts(&b.version).cmp(&version_parts(&a.version)));
+        all.sort_by_key(|r| std::cmp::Reverse(version_parts(&r.version)));
         all
     }
 
@@ -578,7 +578,7 @@ impl Updates {
             && self.look() == Look::Open
             && self
                 .last_look()
-                .map_or(true, |t| now - t >= Duration::hours(24))
+                .is_none_or(|t| now - t >= Duration::hours(24))
     }
 
     /// The look the app makes by itself, ten seconds after the reader has drawn. None when it is not due, or when it
@@ -756,15 +756,19 @@ pub fn answer_line(a: &Answer) -> String {
 mod tests {
     use super::*;
     use chrono::TimeZone;
-    #[allow(unused_imports)]
-    use std::cell::Cell;
 
     fn at(h: i64) -> DateTime<Utc> {
         Utc.with_ymd_and_hms(2026, 11, 19, 8, 0, 0).unwrap() + Duration::hours(h)
     }
-    #[allow(dead_code)]
     fn feed(version: &str) -> String {
-        let notes = "## Moved or removed\n- The Trail moved.\n\n## New\n- A thing.\n\n## Your study folder\nNothing in it changes.";
+        let notes = "## Moved or removed
+- The Trail moved.
+
+## New
+- A thing.
+
+## Your study folder
+Nothing in it changes.";
         json!({ "version": version, "pub_date": "2026-11-19T07:00:00Z", "size": 84000000, "notes": notes, "platforms": {} }).to_string()
     }
     fn scratch(name: &str) -> Updates {
@@ -882,7 +886,7 @@ mod tests {
     #[test]
     fn by_itself_it_looks_once_a_day_and_never_when_told_not_to() {
         let u = scratch("daily");
-        let calls = Cell::new(0);
+        let calls = std::cell::Cell::new(0);
         let fetch = || {
             calls.set(calls.get() + 1);
             Ok(feed("99.0.0"))

@@ -337,10 +337,13 @@ pub struct Margin<'a> {
     by_verse: Vec<(VerseKey, Vec<Rec>)>,
     at: HashMap<VerseKey, usize>,
     by_lemma: HashMap<String, Vec<String>>,
-    offsets: HashMap<(i64, i64, i64), Option<Vec<(usize, usize)>>>,
+    offsets: HashMap<(i64, i64, i64), Option<Spans>>,
     marks: HashMap<VerseKey, Vec<(usize, usize)>>,
     seen: HashSet<String>,
 }
+
+/// The (start, end) character spans of a verse.
+type Spans = Vec<(usize, usize)>;
 
 fn int(v: &Value) -> Option<i64> {
     v.as_i64()

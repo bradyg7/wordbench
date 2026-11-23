@@ -305,7 +305,8 @@ pub fn folder_view_filtered(
             .and_then(|a| bible.book(&a.code).ok().map(|b| b.name.clone()));
         (vec![save_kind(i).to_string()], book.into_iter().collect())
     };
-    let tally = |pick: &dyn Fn(&(Vec<String>, Vec<String>)) -> Vec<String>| -> Vec<Value> {
+    type Facts = (Vec<String>, Vec<String>);
+    let tally = |pick: &dyn Fn(&Facts) -> Vec<String>| -> Vec<Value> {
         let mut m: std::collections::BTreeMap<String, usize> = Default::default();
         for i in &items {
             for k in pick(&facts(i)) {

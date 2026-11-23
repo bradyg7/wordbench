@@ -125,33 +125,42 @@ fn apply(
     Ok((text, nums, changes))
 }
 
-/// Add the scripture blocks of these candidates. `ids`: candidates of the run; `expect`: the run's `page_hash`.
+/// What to add: `ids`, candidates of the run; `all_named`, every new named one; `expect`, the run's `page_hash`; `dry`, only
+/// show what would be added.
+#[derive(Clone, Copy)]
+pub struct Pick<'a> {
+    pub ids: &'a [String],
+    pub all_named: bool,
+    pub expect: Option<&'a str>,
+    pub dry: bool,
+}
+
+/// Add the scripture blocks of these candidates.
 pub fn accept(
     bible: &Bible,
     store: &mut Store,
     page: &str,
-    ids: &[String],
-    all_named: bool,
-    expect: Option<&str>,
-    dry: bool,
+    pick: &Pick<'_>,
     opt: &Options,
 ) -> Result<Accepted> {
     let r = anchor::read(store, page)?;
-    accept_read(bible, store, r, ids, all_named, expect, dry, opt)
+    accept_read(bible, store, r, pick, opt)
 }
 
 /// Accept on a page as it was read: the run is made on that read, and the write checks the page is still that text (TG-5).
-#[allow(clippy::too_many_arguments)]
 pub fn accept_read(
     bible: &Bible,
     store: &mut Store,
     r: anchor::Read,
-    ids: &[String],
-    all_named: bool,
-    expect: Option<&str>,
-    dry: bool,
+    pick: &Pick<'_>,
     opt: &Options,
 ) -> Result<Accepted> {
+    let Pick {
+        ids,
+        all_named,
+        expect,
+        dry,
+    } = *pick;
     let page = r.id.clone();
     let page = page.as_str();
     let report = anchor::run(bible, store, page, opt)?;

@@ -11,3 +11,6 @@ serde.workspace = true
 serde_json.workspace = true
 # https for the private remote later (WinHTTP on Windows, no OpenSSL); no ssh.
 git2 = { version = "0.21", default-features = false, features = ["https"] }
+
+[lints]
+workspace = true

@@ -84,36 +84,45 @@ fn make(c: &Ctx<'_>, a: &crate::args::Args, to: &str) -> Res {
     let out = out_dir(c)?;
     let r = if let Some(page) = a.opt("page") {
         let st = c.study()?;
+        let (structure, theme, look) = (a.opt("structure"), a.opt("theme"), a.opt("look"));
+        let (version, on, off) = (a.opt("version"), a.list("on"), a.list("off"));
         docs::make_page(
             c.bible()?,
             &st,
             &out,
             &page,
             to,
-            a.opt("structure").as_deref(),
-            a.opt("theme").as_deref(),
-            a.opt("version").as_deref(),
-            &a.list("on"),
-            &a.list("off"),
-            a.opt("look").as_deref(),
-            &set,
-            a.flag("force"),
+            &docs::Choices {
+                structure: structure.as_deref(),
+                theme: theme.as_deref(),
+                look_name: look.as_deref(),
+                dials: &set,
+                force: a.flag("force"),
+            },
+            &docs::PageParts {
+                version: version.as_deref(),
+                on: &on,
+                off: &off,
+            },
         )
     } else {
         let input = source(c, a)?;
         let st = c.study()?;
+        let (structure, theme, look) = (a.opt("structure"), a.opt("theme"), a.opt("look"));
         docs::make(
             c.bible()?,
             &st,
             &out,
             input,
             to,
-            a.opt("structure").as_deref(),
-            a.opt("theme").as_deref(),
-            a.opt("look").as_deref(),
-            &set,
+            &docs::Choices {
+                structure: structure.as_deref(),
+                theme: theme.as_deref(),
+                look_name: look.as_deref(),
+                dials: &set,
+                force: a.flag("force"),
+            },
             a.flag("new"),
-            a.flag("force"),
         )
     }
     .map_err(e)?;
@@ -166,6 +175,7 @@ fn build_lesson(c: &Ctx<'_>, a: &crate::args::Args) -> Res {
     if formats.is_empty() {
         return Err("--make needs at least one structure.".into());
     }
+    let theme = a.opt("theme");
     let out = out_dir(c)?;
     let st = c.study()?;
     let id = wb_core::studyapi::lesson_find(&st, &a.s("name")).map_err(e)?;
@@ -178,12 +188,12 @@ fn build_lesson(c: &Ctx<'_>, a: &crate::args::Args) -> Res {
             &out,
             docs::Source::Lesson(id.clone()),
             to,
-            Some(structure),
-            a.opt("theme").as_deref(),
-            None,
-            &[],
+            &docs::Choices {
+                structure: Some(structure),
+                theme: theme.as_deref(),
+                ..Default::default()
+            },
             a.flag("new"),
-            false,
         )
         .map_err(e)?;
         if let Some(s) = result["title"].as_str() {
@@ -263,7 +273,7 @@ pub fn commands() -> Vec<Command> {
             if name.is_empty() {
                 return j(docs::update_behind(c.bible()?, &st, &out));
             }
-            let r = docs::update(c.bible()?, &st, &out, &name, a.opt("theme").as_deref(), a.opt("look").as_deref(), &set, a.flag("force")).map_err(e)?;
+            let r = docs::update(c.bible()?, &st, &out, &name, &docs::Choices { theme: a.opt("theme").as_deref(), look_name: a.opt("look").as_deref(), dials: &set, force: a.flag("force"), ..Default::default() }).map_err(e)?;
             if a.flag("open") {
                 docs::open_file(Path::new(r["path"].as_str().unwrap_or(""))).map_err(e)?;
             }
@@ -312,8 +322,10 @@ pub fn commands() -> Vec<Command> {
             let layout = a.flag("pages").then_some(docs::PdfLayout { theme: theme.as_deref(), look: look.as_deref(), dials: &set });
             if let Some(p) = a.opt("page") {
                 let st = c.study()?;
+                let (version, on, off) = (a.opt("version"), a.list("on"), a.list("off"));
+                let parts = docs::PageParts { version: version.as_deref(), on: &on, off: &off };
                 return j(docs::plan_for_page(c.bible()?, &st, &p, &a.opt_or("to", "word"), a.opt("structure").as_deref(),
-                    a.opt("version").as_deref(), &a.list("on"), &a.list("off"), layout).map_err(e)?);
+                    &parts, layout).map_err(e)?);
             }
             let input = source(c, a)?;
             let to = a.opt_or("to", "word");

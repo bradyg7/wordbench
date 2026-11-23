@@ -149,36 +149,6 @@ pub fn parse(text: &str) -> crate::Result<Anchor> {
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn forms_round_trip() {
-        for s in [
-            "NUM.25:11",
-            "NUM.25:11.24",
-            "NUM.25:11.3-25:12.5",
-            "NUM.25:7-25:13",
-            "H7065",
-            "1SA.4:11",
-        ] {
-            assert_eq!(parse(s).unwrap().id(), s);
-        }
-    }
-
-    #[test]
-    fn kinds_and_normalizing() {
-        assert_eq!(parse("NUM.25:12-25:13").unwrap().kind, Kind::Verses);
-        assert_eq!(parse("NUM.25:14.18-25:14.24").unwrap().kind, Kind::Phrase);
-        assert_eq!(parse("NUM.25:11.2-25:11.2").unwrap().id(), "NUM.25:11.2");
-        assert_eq!(parse("NUM.25:11-25:11").unwrap().id(), "NUM.25:11");
-        assert!(parse("NUM.25:11.3-25:12").is_err());
-        assert!(parse("NUM.25:12-25:11").is_err());
-        assert!(parse("Numbers 25").is_err());
-    }
-}
-
 // ---- the Python app's own shapes ---------------------------------------------------------------------------------
 // `anchors.parse` and `anchors.resolve` return dicts with these keys in this order; the study requests pass them on.
 
@@ -373,4 +343,34 @@ pub fn resolve(bible: &Bible, text: &str) -> crate::Result<Map<String, Value>> {
         json!(py_label(&book.name, c1, v1, c2, v2, ranged)),
     );
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn forms_round_trip() {
+        for s in [
+            "NUM.25:11",
+            "NUM.25:11.24",
+            "NUM.25:11.3-25:12.5",
+            "NUM.25:7-25:13",
+            "H7065",
+            "1SA.4:11",
+        ] {
+            assert_eq!(parse(s).unwrap().id(), s);
+        }
+    }
+
+    #[test]
+    fn kinds_and_normalizing() {
+        assert_eq!(parse("NUM.25:12-25:13").unwrap().kind, Kind::Verses);
+        assert_eq!(parse("NUM.25:14.18-25:14.24").unwrap().kind, Kind::Phrase);
+        assert_eq!(parse("NUM.25:11.2-25:11.2").unwrap().id(), "NUM.25:11.2");
+        assert_eq!(parse("NUM.25:11-25:11").unwrap().id(), "NUM.25:11");
+        assert!(parse("NUM.25:11.3-25:12").is_err());
+        assert!(parse("NUM.25:12-25:11").is_err());
+        assert!(parse("Numbers 25").is_err());
+    }
 }

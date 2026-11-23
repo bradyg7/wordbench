@@ -237,7 +237,7 @@ fn place_colors(bible: &Bible, store: &Store, res: &Rec) -> Result<Vec<Option<St
                 .iter()
                 .filter(|(_, hs, _)| hs.0 <= pos && pos <= hs.1)
                 .map(|x| x.2.clone())
-                .last()
+                .next_back()
         })
         .collect())
 }
@@ -404,7 +404,7 @@ pub fn chapter_notes(bible: &Bible, store: &Store, code: &str, chapter: i64) -> 
             "label": res["label"], "quote": quote, "text": nt["text"]}),
         ));
     }
-    out.sort_by(|a, b| a.0.cmp(&b.0));
+    out.sort_by_key(|a| a.0);
     Ok(out.into_iter().map(|x| x.1).collect())
 }
 
@@ -581,7 +581,7 @@ pub fn highlight_list(
         };
         out.push((key, json!({"anchor": h["anchor"], "color": h["color"], "label": res["label"], "quote": quote, "book": if r.is_null() { Value::Null } else { r["b"].clone() }})));
     }
-    out.sort_by(|a, b| a.0.cmp(&b.0));
+    out.sort_by_key(|a| a.0);
     Ok(json!(out.into_iter().map(|x| x.1).collect::<Vec<_>>()))
 }
 
@@ -1055,7 +1055,7 @@ pub fn trail_at(bible: &Bible, store: &Store, anchor: &str, status: &str) -> Res
             continue;
         }
         let places = places_of(t);
-        let here = places.iter().any(|p| *p == a);
+        let here = places.contains(&a);
         let near = !lemma
             && places.iter().any(|p| {
                 !p.is_empty()

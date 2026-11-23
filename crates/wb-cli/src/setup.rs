@@ -47,9 +47,11 @@ fn run(_: &Ctx<'_>, a: &Args) -> Res {
             wb_core::bible::Bible::open(&path).map_err(|e| e.0)?;
             wb_core::setup::set_setting("bible_db", &path.to_string_lossy()).map_err(|e| e.0)?;
         }
-        other => return Err(format!(
+        other => {
+            return Err(format!(
             "wb setup takes nothing, or `study <folder>`, or `database <file>` (not “{other}”)."
-        )),
+        ))
+        }
     }
     Ok(Out::Json(status()))
 }

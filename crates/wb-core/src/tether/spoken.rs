@@ -135,11 +135,10 @@ fn atoms(words: &[&str]) -> Option<Vec<u32>> {
                 val += u;
                 i += 1;
             }
-        } else if let Some(t) = teen(w).or_else(|| unit(w)) {
+        } else {
+            let t = teen(w).or_else(|| unit(w))?;
             val = t;
             i += 1;
-        } else {
-            return None;
         }
         out.push(val);
     }

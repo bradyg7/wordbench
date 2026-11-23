@@ -920,7 +920,7 @@ impl Store {
     /// Every thread, the most recently changed first.
     pub fn threads(&self) -> Vec<&Rec> {
         let mut v: Vec<&Rec> = self.threads.iter().collect();
-        v.sort_by(|a, b| s(b, "updated").cmp(&s(a, "updated")));
+        v.sort_by_key(|r| std::cmp::Reverse(s(r, "updated")));
         v
     }
 
@@ -1827,7 +1827,7 @@ impl Store {
     /// Every trail, newest first.
     pub fn trails(&self) -> Vec<&Rec> {
         let mut v: Vec<&Rec> = self.trails.iter().collect();
-        v.sort_by(|a, b| s(b, "created").cmp(&s(a, "created")));
+        v.sort_by_key(|r| std::cmp::Reverse(s(r, "created")));
         v
     }
 

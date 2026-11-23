@@ -91,7 +91,7 @@ fn read_callout(md: &str, keep_lines: bool) -> Option<Question> {
     }
     let mut shown: Vec<String> = words.clone();
     for l in lines {
-        let Some(l) = l else { return None };
+        let l = l?;
         if !l.trim().is_empty() {
             shown.push(l.trim_end().to_string());
         }
@@ -187,16 +187,23 @@ impl Found {
     }
 }
 
-fn scan(
-    out: &mut Vec<Found>,
-    r: &Rec,
+/// One page to scan: its id, text, whether the text's first line is a title, the title shown, and the kind.
+struct Scanned<'a> {
     id: String,
-    text: &str,
+    text: &'a str,
     titled: bool,
     title: String,
     kind: &'static str,
-    every_kind: bool,
-) {
+}
+
+fn scan(out: &mut Vec<Found>, r: &Rec, page: Scanned<'_>, every_kind: bool) {
+    let Scanned {
+        id,
+        text,
+        titled,
+        title,
+        kind,
+    } = page;
     if r.get("template") == Some(&json!(true)) || !text.contains("[!") {
         return;
     }
@@ -252,11 +259,13 @@ fn found_of(store: &Store, every_kind: bool) -> Vec<Found> {
         scan(
             &mut out,
             r,
-            s(r, "id"),
-            &s(r, "text"),
-            true,
-            nb::title_of(&s(r, "text")),
-            kind,
+            Scanned {
+                id: s(r, "id"),
+                text: &s(r, "text"),
+                titled: true,
+                title: nb::title_of(&s(r, "text")),
+                kind,
+            },
             every_kind,
         );
     }
@@ -264,11 +273,13 @@ fn found_of(store: &Store, every_kind: bool) -> Vec<Found> {
         scan(
             &mut out,
             r,
-            s(r, "id"),
-            &s(r, "text"),
-            false,
-            s(r, "day"),
-            "day",
+            Scanned {
+                id: s(r, "id"),
+                text: &s(r, "text"),
+                titled: false,
+                title: s(r, "day"),
+                kind: "day",
+            },
             every_kind,
         );
     }
@@ -279,11 +290,13 @@ fn found_of(store: &Store, every_kind: bool) -> Vec<Found> {
         scan(
             &mut out,
             &r,
-            crate::threadpage::page_id(&s(t, "id")),
-            &s(t, "note"),
-            false,
-            s(t, "name"),
-            "thread",
+            Scanned {
+                id: crate::threadpage::page_id(&s(t, "id")),
+                text: &s(t, "note"),
+                titled: false,
+                title: s(t, "name"),
+                kind: "thread",
+            },
             every_kind,
         );
     }
@@ -531,7 +544,7 @@ pub fn at(bible: &Bible, store: &Store, anchor: &str, status: &str) -> Result<Va
         if status != "all" && (if f.q.done { "done" } else { "open" }) != status {
             continue;
         }
-        let here = f.places.iter().any(|p| *p == a);
+        let here = f.places.contains(&a);
         let near = !lemma
             && f.places.iter().any(|p| {
                 !p.is_empty()
@@ -555,9 +568,9 @@ pub fn at(bible: &Bible, store: &Store, anchor: &str, status: &str) -> Result<Va
 /// Every question, trails and question blocks, newest first (`status`: open, done or all).
 pub fn list(bible: &Bible, store: &Store, status: &str) -> Result<Value> {
     let mut v = nb::questions(bible, store, status)?;
-    v["questions"]
-        .as_array_mut()
-        .map(|a| a.sort_by(|x, y| y["created"].as_str().cmp(&x["created"].as_str())));
+    if let Some(a) = v["questions"].as_array_mut() {
+        a.sort_by(|x, y| y["created"].as_str().cmp(&x["created"].as_str()))
+    }
     Ok(v)
 }
 
@@ -586,7 +599,7 @@ pub fn fold(
     if rec.get("template") == Some(&json!(true)) {
         return Err(bad("Fold a question into a page, not a template."));
     }
-    let has = places_of(&rec).iter().any(|p| *p == anchor);
+    let has = places_of(&rec).contains(&anchor);
     if !has {
         if !also {
             return Err(bad("The page is not at that question's place; fold it in with --also to give the page the place."));

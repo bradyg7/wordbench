@@ -399,7 +399,7 @@ pub fn marked(bible: &Bible, store: &Store, text: &str, version: &str) -> Result
             v["c"].as_u64().unwrap() as u32,
             v["v"].as_u64().unwrap() as u32,
         );
-        if !chapters.contains_key(&(code.clone(), c)) {
+        if let std::collections::hash_map::Entry::Vacant(e) = chapters.entry((code.clone(), c)) {
             let ch = bible.chapter_in(&code, c, &ver)?;
             let m = marks::chapter_marks(store, &code, c)?;
             let m = if ch.version.is_some() {
@@ -407,7 +407,7 @@ pub fn marked(bible: &Bible, store: &Store, text: &str, version: &str) -> Result
             } else {
                 m
             };
-            chapters.insert((code.clone(), c), (ch, m.highlights));
+            e.insert((ch, m.highlights));
         }
         let (ch, hls) = &chapters[&(code.clone(), c)];
         let words = ch
@@ -434,7 +434,7 @@ pub fn preview(bible: &Bible, q: &str, version: &str, most: usize) -> Result<Val
     if lookup::is_strong(&q.to_uppercase()) {
         let sid = q.to_uppercase();
         let Some(Value::Object(mut row)) =
-            lookup::strongs_brief(bible, &[sid.clone()])?.remove(&sid)
+            lookup::strongs_brief(bible, std::slice::from_ref(&sid))?.remove(&sid)
         else {
             return Err(Error(format!("There is no entry numbered {sid}.")));
         };

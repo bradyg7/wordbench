@@ -1,6 +1,10 @@
 //! Rust-owned contract for the legacy Python-readable study projection.
 //! Uses synthetic metadata in a disposable directory, never a personal study folder.
 
+#[expect(
+    dead_code,
+    reason = "shared test helpers: each test binary uses only some of them"
+)]
 mod common;
 
 use common::Scratch;

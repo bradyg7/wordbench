@@ -1,3 +1,7 @@
+#[expect(
+    dead_code,
+    reason = "shared test helpers: each test binary uses only some of them"
+)]
 mod common;
 use common::{bible, Scratch};
 use serde_json::json;

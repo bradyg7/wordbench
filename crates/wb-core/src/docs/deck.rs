@@ -146,11 +146,11 @@ pub(super) fn slides_data(plan: &[Value], t: &Theme, look: &Look) -> Vec<Value> 
         .filter_map(|s| match s["kind"].as_str()? {
             "title" => {
                 let title = s["title"].as_str().unwrap_or("").to_string();
-                Some(json!({"kind": "title", "title": title, "sub": s["sub"], "size": fit_size(&[title.clone()], 832.0, 130.0, t.width, 36, 64)}))
+                Some(json!({"kind": "title", "title": title, "sub": s["sub"], "size": fit_size(std::slice::from_ref(&title), 832.0, 130.0, t.width, 36, 64)}))
             }
             "section" => {
                 let title = s["title"].as_str().unwrap_or("").to_string();
-                Some(json!({"kind": "section", "title": title, "size": fit_size(&[title.clone()], 832.0, 110.0, t.width, 32, 50)}))
+                Some(json!({"kind": "section", "title": title, "size": fit_size(std::slice::from_ref(&title), 832.0, 110.0, t.width, 32, 50)}))
             }
             "verse" => {
                 let v = &s["verse"];

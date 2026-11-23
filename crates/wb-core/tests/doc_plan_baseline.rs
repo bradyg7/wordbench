@@ -1,6 +1,10 @@
 //! Rust-owned document-plan regression baseline from a synthetic, DB-quoted thread fixture.
 //! Uses the same standalone database resolution as the other Rust tests.
 
+#[expect(
+    dead_code,
+    reason = "shared test helpers: each test binary uses only some of them"
+)]
 mod common;
 
 use common::{bible, Scratch};

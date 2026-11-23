@@ -146,7 +146,7 @@ impl Words {
             && self
                 .keys
                 .get(e + 1)
-                .map_or(true, |n| (n.0, n.1) != (b.0, b.1))
+                .is_none_or(|n| (n.0, n.1) != (b.0, b.1))
     }
 
     /// The anchor for the words s..=e (whole verses as a verse anchor when the highlight was on verses).

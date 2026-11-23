@@ -1,7 +1,5 @@
 //! Shared by the tests carried over from the Python app: a scratch folder of its own for each test, and the database.
 
-#![allow(dead_code)]
-
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use wb_core::bible::Bible;

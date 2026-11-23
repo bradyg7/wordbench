@@ -927,9 +927,12 @@ pub fn chapters_of(bible: &Bible, place: &str) -> Result<Vec<String>> {
     Ok(out)
 }
 
+/// One chapter code with the verses asked for in it (None: the whole chapter).
+pub type ChapterVerses = (String, Option<(u32, u32)>);
+
 /// A place as typed → each chapter it names with the verses asked for: None for a whole chapter (a place without verses),
 /// else the verses of that chapter (`Gen 2:1-9` is GEN.2 verses 1 to 9; `Gen 1:5-2:3` is GEN.1 5 to its end and GEN.2 1 to 3).
-pub fn place_parts(bible: &Bible, place: &str) -> Result<Vec<(String, Option<(u32, u32)>)>> {
+pub fn place_parts(bible: &Bible, place: &str) -> Result<Vec<ChapterVerses>> {
     let mut out = vec![];
     for s in parse_spans(place, bible.books())? {
         for c in s.c1..=s.c2 {

@@ -1,3 +1,7 @@
+#[expect(
+    dead_code,
+    reason = "shared test helpers: each test binary uses only some of them"
+)]
 mod common;
 
 use common::{bible, Scratch};
@@ -24,12 +28,8 @@ fn make(
         folders,
         source,
         to,
-        None,
-        None,
-        None,
-        &[],
+        &docs::Choices::default(),
         new,
-        false,
     )
     .unwrap()
 }
@@ -89,11 +89,7 @@ fn passage_exports_reuse_canonical_source_and_preserve_legacy_reading_sheet() {
         &folders,
         passage(alias, "ylt"),
         "word",
-        None,
-        None,
-        None,
-        &[],
-        false,
+        &docs::Choices::default(),
         false,
     )
     .unwrap_err();
@@ -183,7 +179,7 @@ fn existing_lesson_export_keeps_its_legacy_identity_and_exact_source() {
     )
     .unwrap();
     assert_eq!(
-        docs::update(&bible, &store, &folders, id, None, None, &[], false).unwrap()["id"],
+        docs::update(&bible, &store, &folders, id, &docs::Choices::default()).unwrap()["id"],
         id
     );
     assert_eq!(
@@ -205,7 +201,7 @@ fn existing_lesson_export_keeps_its_legacy_identity_and_exact_source() {
         "gone"
     );
     assert!(
-        docs::update(&bible, &store, &folders, id, None, None, &[], false)
+        docs::update(&bible, &store, &folders, id, &docs::Choices::default())
             .unwrap_err()
             .0
             .contains("existing-file")

@@ -195,8 +195,10 @@ pub fn read(store: &Store, page: &str) -> Result<Read> {
     Ok(Read { id, text, blocks })
 }
 
+type Fenced = (String, (u32, u32), (u32, u32));
+
 /// The scripture blocks already in the page, as verse bounds per book code.
-fn fenced(bible: &Bible, r: &Read) -> Vec<(String, (u32, u32), (u32, u32))> {
+fn fenced(bible: &Bible, r: &Read) -> Vec<Fenced> {
     let mut out = vec![];
     for (_, kind, text) in &r.blocks {
         if kind != "fence" {

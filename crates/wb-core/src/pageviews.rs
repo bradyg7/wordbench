@@ -22,8 +22,10 @@ use chrono::{Duration, Local};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashMap};
 
+type Reach = (u32, (u32, u32), (u32, u32));
+
 /// The verses a place reaches: (book's id, first (chapter, verse), last (chapter, verse)); None for a Strong's number.
-fn reach(bible: &Bible, anchor: &str) -> Option<(u32, (u32, u32), (u32, u32))> {
+fn reach(bible: &Bible, anchor: &str) -> Option<Reach> {
     let a = anchors::parse(anchor).ok()?;
     if a.kind == Kind::Lemma {
         return None;
@@ -197,7 +199,6 @@ fn read_fence(block: &str) -> Option<Fence> {
     let first = ls.next()?.trim_start();
     let mark = ["```", "~~~"].into_iter().find(|m| first.starts_with(m))?;
     if !first[3..]
-        .trim()
         .split_whitespace()
         .next()
         .is_some_and(|w| w.eq_ignore_ascii_case("view"))
@@ -1122,26 +1123,6 @@ pub fn set_view_with(
     )
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_view_fence_holds_a_line() {
-        assert_eq!(
-            view_fence("```view\nnotebook @Num 25 questions\n```").as_deref(),
-            Some("notebook @Num 25 questions")
-        );
-        assert_eq!(view_fence("```view\n\n```").as_deref(), Some(""));
-        assert_eq!(
-            view_fence("~~~ view\n  notebook days 7  \n~~~").as_deref(),
-            Some("notebook days 7")
-        );
-        assert!(view_fence("```scripture\nNum 25\n```").is_none());
-        assert!(view_fence("notebook days 7").is_none());
-    }
-}
-
 /// What `wb question list --filter` and the Questions list can be narrowed by.
 pub const QUESTION_PROPERTIES: [&str; 5] = ["Kind", "Folder", "Book", "Edited", "Written"];
 
@@ -1323,4 +1304,24 @@ pub fn filters_of(
         );
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_view_fence_holds_a_line() {
+        assert_eq!(
+            view_fence("```view\nnotebook @Num 25 questions\n```").as_deref(),
+            Some("notebook @Num 25 questions")
+        );
+        assert_eq!(view_fence("```view\n\n```").as_deref(), Some(""));
+        assert_eq!(
+            view_fence("~~~ view\n  notebook days 7  \n~~~").as_deref(),
+            Some("notebook days 7")
+        );
+        assert!(view_fence("```scripture\nNum 25\n```").is_none());
+        assert!(view_fence("notebook days 7").is_none());
+    }
 }

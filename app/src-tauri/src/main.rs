@@ -472,6 +472,7 @@ fn fail(msg: &str) -> ! {
         };
         let (text, caption) = (wide(msg), wide("Bible Workbench"));
         // MB_OK | MB_ICONWARNING
+        // SAFETY: `text` and `caption` are NUL-terminated UTF-16 buffers that outlive the call; a null owner window is allowed.
         unsafe { MessageBoxW(std::ptr::null_mut(), text.as_ptr(), caption.as_ptr(), 0x30) };
     }
     eprintln!("{msg}");
