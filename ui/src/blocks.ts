@@ -75,33 +75,67 @@ export interface BlockEditorState {
 }
 /** Keys typed after Enter, Backspace or an arrow, before the next block is drawn (the writing is saved and the page drawn again first):
  *  they are held here and put in the block that opens, so writing never waits for a round trip and nothing typed lands in the block just
- *  left (NB15). `alive` says the block is still on its way; the keys are let through again when it is not, or after 4 seconds. */
+ *  left (NB15). `alive` says the block is still on its way; the keys are let through again when it is not. A slow save keeps
+ *  holding them (nothing has the caret to take them meanwhile), until the person puts the caret somewhere after 4 seconds, or 30
+ *  seconds have gone by; what was held is still put in the block when it opens. `keep` keeps what an earlier hold took. */
 const typeAhead: { text: string; off: (() => void) | null } = { text: '', off: null };
-function holdKeys(alive: () => boolean, keep = false) {
+function holdKeys(alive: () => boolean, keep = false, lapse?: () => void) {
   typeAhead.off?.();
   if (!keep) typeAhead.text = '';
+  let late = false;
   const onKey = (ev: KeyboardEvent) => {
     if (!alive()) return off();
+    // after 4 seconds a key typed in a box the person clicked into is theirs again
+    if (late && (ev.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable="true"], [contenteditable=""]')) return lapsed();
     if (ev.ctrlKey || ev.metaKey || ev.altKey || ev.isComposing) return;
     if (ev.key.length === 1) typeAhead.text += ev.key;
     else if (ev.key === 'Backspace') typeAhead.text = [...typeAhead.text].slice(0, -1).join('');
-    else if (ev.key !== 'Enter') return;
+    // B11: an Enter is kept too (Shift+Enter, a line break in the block, as \r), and done in the block that opens
+    else if (ev.key === 'Enter') typeAhead.text += ev.shiftKey ? '\r' : '\n';
+    else return;
     ev.preventDefault();
     ev.stopPropagation();
   };
-  const stop = window.setTimeout(() => off(), 4000);
-  const off = () => { document.removeEventListener('keydown', onKey, true); clearTimeout(stop); if (typeAhead.off === off) typeAhead.off = null; };
+  const soft = window.setTimeout(() => { late = true; }, 4000);
+  const stop = window.setTimeout(() => lapsed(), 30000);
+  const off = () => { document.removeEventListener('keydown', onKey, true); clearTimeout(soft); clearTimeout(stop); if (typeAhead.off === off) typeAhead.off = null; };
+  // the hold ran out before its block opened: the block will not open late with old words in it, and what was held is shown
+  const lapsed = () => {
+    if (typeAhead.off !== off) return off();
+    off();
+    lapse?.();
+    giveBack(takeTypeAhead());
+  };
   typeAhead.off = off;
   document.addEventListener('keydown', onKey, true);
 }
-function setPending(host: Host, p: NonNullable<BlockEditorState['pending']>) {
+/** Held words with no block to go in: shown, never dropped unseen. */
+function giveBack(held: string, why = 'the page was still saving') {
+  if (held.trim()) toast(`Not put in the page (${why}), what you typed: ${held.replace(/[\r\n]+/g, ' / ')}`, 10000);
+}
+/** `keep`: an Enter that opens its block only after a save began holding keys at once; what that hold took is kept. */
+function setPending(host: Host, p: NonNullable<BlockEditorState['pending']>, keep = false) {
   host.state.pending = p;
   if (p.menu || p.pick) { typeAhead.off?.(); return; }
-  holdKeys(() => host.state.pending === p);
+  holdKeys(() => host.state.pending === p, keep, () => { if (host.state.pending === p) host.state.pending = null; });
 }
 function setFocus(host: Host, f: NonNullable<BlockFocus>) {
   host.state.focus = f;
-  holdKeys(() => host.state.focus === f, true);
+  holdKeys(() => host.state.focus === f, true, () => { if (host.state.focus === f) host.state.focus = null; });
+}
+/** A page that was just made from the new-page form goes on being written in the block editor: a new block after block `after`
+ *  opens once the page is drawn, and what is typed until then is held and put in it (B8: the form used to keep the caret, so
+ *  the page was never drawn again and nothing typed after the first line was saved). */
+export function holdForNewPage(state: BlockEditorState) {
+  const p: NonNullable<BlockEditorState['pending']> = { id: '', after: () => 0, text: '', at: 'end' };
+  state.pending = p;
+  holdKeys(() => state.pending === p, false, () => { if (state.pending === p) state.pending = null; });
+  return {
+    /** The page is made: its id, and the block the new one goes after (read once the page is drawn). */
+    ready(id: string, after: () => number) { p.id = id; p.after = after; },
+    /** It was not made: the hold ends, and what was typed meanwhile is given back. */
+    fail(): string { if (state.pending === p) state.pending = null; return takeTypeAhead(); },
+  };
 }
 /** What was typed while the block was on its way, taken once. */
 function takeTypeAhead(): string {
@@ -114,9 +148,24 @@ function takeTypeAhead(): string {
 function putTypedAhead(el: HTMLElement, typed: string) {
   const box = typed ? el.querySelector<Writer>('.nb-block-input') : null;
   if (!box) return;
-  const c = box.selectionStart;
-  box.setRangeText(typed, c, c, 'end');
-  box.dispatchEvent(new Event('input'));
+  // the words up to the first Enter kept on the way go in here; that Enter is then pressed in this block, as if typed, and
+  // what followed it is held for the block it opens (B11: an Enter pressed while a block was saving used to be lost)
+  const at = typed.search(/[\r\n]/);
+  const words = at < 0 ? typed : typed.slice(0, at);
+  if (words) {
+    const c = box.selectionStart;
+    box.setRangeText(words, c, c, 'end');
+    box.dispatchEvent(new Event('input'));
+  }
+  if (at < 0) return;
+  const rest = typed.slice(at + 1);
+  const holding = () => typeAhead.off;
+  const before = holding();
+  box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: typed[at] === '\r', bubbles: true, cancelable: true }));
+  if (!rest) return;
+  // the Enter began a hold of its own (a block on its way): the rest waits for that block; else it goes on here
+  if (holding() && holding() !== before) typeAhead.text += rest;
+  else putTypedAhead(el, rest);
 }
 
 export const createBlockEditorState = (): BlockEditorState => ({
@@ -345,7 +394,7 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
     else if (mod && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'd') { ev.preventDefault(); void duplicateBlock(data, host, el, b); }
   };
   grip.draggable = true;
-  grip.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-block', `${data.id} ${b.n}`); ev.dataTransfer!.effectAllowed = 'move'; el.classList.add('dragging'); };
+  grip.ondragstart = ev => { ev.dataTransfer!.setData('text/wb-block', `${data.id} ${b.n}`); ev.dataTransfer!.setData('text/wb-block-words', JSON.stringify({ text: b.text, page: data.blocks.map(x => x.text) })); ev.dataTransfer!.effectAllowed = 'move'; el.classList.add('dragging'); };
   grip.ondragend = () => { el.classList.remove('dragging'); document.querySelectorAll('.drop-before, .drop-after, .drop-left, .drop-right').forEach(x => x.classList.remove('drop-before', 'drop-after', 'drop-left', 'drop-right')); };
   const body = h('div', 'nb-block-body');
   body.append(drawn(b, host, data.id));
@@ -394,15 +443,34 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
     ev.stopPropagation();
     const [id, n] = got.split(' ');
     if (id !== data.id || Number(n) === b.n) return;
-    try {
-      if (w === 'left' || w === 'right') {
-        await wb(['block', 'move', data.id, n, '--beside', String(b.n), ...(w === 'left' ? ['--left'] : [])]);
-      } else {
-        const to = w === 'before' ? b.n : b.n + 1;
-        await wb(['block', 'move', data.id, n, ...(to > data.blocks.length ? ['--last'] : ['--to', String(to)])]);
-      }
-      host.changed();
-    } catch (x) { toast(String(x)); }
+    let source: { text: string; page: string[] } = { text: '', page: [] };
+    try { source = JSON.parse(ev.dataTransfer?.getData('text/wb-block-words') || '{}'); } catch { /* an older drag: found by nothing, asked again */ }
+    const target = { text: b.text, page: data.blocks.map(x => x.text) };
+    // drops wait for each other: one read and one move at a time, so a drop never reads the page before the one before it lands
+    dropping = dropping.then(async () => {
+      try {
+        // the drawing may be older than the page (a drop just before, its page still being drawn again): a number is taken only
+        // from a drawing of the page as it is now, else the block is found by its words when no other block has them, so an old
+        // number never names another block or a column's marker (B21)
+        const now: Blocks = await wb(['page', 'blocks', data.id]);
+        const texts = now.blocks.map(x => x.text);
+        const find = (k: number, from: { text: string; page: string[] }) => {
+          if (from.page.length === texts.length && from.page.every((t, i) => t === texts[i])) return now.blocks[k - 1]?.text === from.text ? k : 0;
+          const same = now.blocks.filter(x => x.text === from.text);
+          return same.length === 1 ? same[0].n : 0;
+        };
+        const from = find(Number(n), source), by = find(b.n, target);
+        if (!from || !by || from === by) { toast('The page changed while you dragged; drag the block again'); host.changed(); return; }
+        if (w === 'left' || w === 'right') {
+          await wb(['block', 'move', data.id, String(from), '--beside', String(by), ...(w === 'left' ? ['--left'] : [])]);
+        } else {
+          const to = w === 'before' ? by : by + 1;
+          await wb(['block', 'move', data.id, String(from), ...(to > now.blocks.length ? ['--last'] : ['--to', String(to)])]);
+        }
+        host.changed();
+      } catch (x) { toast(String(x)); }
+    });
+    await dropping;
   };
   return el;
 }
@@ -412,6 +480,8 @@ function blockEl(data: Blocks, b: Blk, host: Host): HTMLElement {
 /** The block being written now (one at a time): the handle saves it first and finds its place from it. */
 interface Live { el: HTMLElement; cur: { n: number; count: number; after: number }; save: () => Promise<void>; finish: (then?: BlockFocus) => Promise<void>; text: () => string }
 let liveEdit: Live | null = null;
+/** The block drops in flight, one after another (B21). */
+let dropping: Promise<void> = Promise.resolve();
 
 /** Where block `b` is right now, and the page text to guard the change with (none when the page may have been written since it was
  *  drawn: the block being written was saved). The block being written is saved and let go first. null: nothing there to act on. */
@@ -1475,7 +1545,7 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     saving = saving.then(async () => {
       const text = wrapped().replace(/\n+$/, '');
       // not while the / menu is open or a new page's name is asked for in the box
-      if (!dirty || text === last || blank(text) || text.startsWith('/') || ta.classList.contains('asking')) return;
+      if (!dirty || text === last || blank(text) || text.startsWith('/') || ta.classList.contains('asking') || ta.classList.contains('slashing')) return;
       try {
         await findAgain();
         const r = cur.n
@@ -1521,7 +1591,8 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
     // what is typed while the join is made is held, and goes where the two met; if no join is made it goes back into this block
     let joining: NonNullable<BlockFocus> | null = null, over = false;
     holdKeys(() => !over && (joining === null || host.state.focus === joining));
-    const noJoin = () => { over = true; const t = takeTypeAhead(); if (t && ta.isConnected) { const c = ta.selectionStart; ta.setRangeText(t, c, c, 'end'); ta.dispatchEvent(new Event('input')); } };
+    // put back as typed: a held Enter is pressed in this block, not written into it as a character
+    const noJoin = () => { over = true; const t = takeTypeAhead(); if (t && ta.isConnected) putTypedAhead(el, t); };
     await save();
     await findAgain();
     if (cur.n < 2) return noJoin();
@@ -1691,14 +1762,28 @@ function startEdit(data: Blocks, b: Blk, el: HTMLElement, host: Host, at: 'start
         dirty = true;
         const wasClosed = tgh.closed;
         const wrap = el.closest<HTMLElement>('.nb-blocks');
+        // the block inside opens only after the saves below: keys typed meanwhile are held from now, not written in the head
+        let waiting = true;
+        holdKeys(() => waiting);
         void (async () => {
-          if (cur.n && (data.folds ?? []).includes(last)) await setFold(data, host, wrap, cur.n, last, false);
-          tgh.closed = false;
-          await save();
-          await findAgain();
+          try {
+            if (cur.n && (data.folds ?? []).includes(last)) await setFold(data, host, wrap, cur.n, last, false);
+            tgh.closed = false;
+            await save();
+            await findAgain();
+          } catch (x) {
+            // the block inside cannot open: the line is as it was, and what was typed meanwhile goes back where the caret is
+            waiting = false;
+            toast(String(x));
+            const held = takeTypeAhead();
+            if (!ta.isConnected) { giveBack(held, 'the toggle could not be saved'); return; }
+            if (sp0.rest) ta.value = sp0.first + sp0.rest;
+            putTypedAhead(el, held);
+            return;
+          }
           try { if (wasClosed && cur.n) await wb(['block', 'add', data.id, '--after', String(cur.n + cur.count - 1), '</details>']); } catch (x) { toast(String(x)); }
           host.state.focus = null;
-          setPending(host, { id: data.id, after: () => cur.n + cur.count - 1, text: sp0.rest, at: sp0.rest ? 'start' : 'end' });
+          setPending(host, { id: data.id, after: () => cur.n + cur.count - 1, text: sp0.rest, at: sp0.rest ? 'start' : 'end' }, true);
           await finish();
         })();
         return;
@@ -1754,7 +1839,15 @@ const undoKeysInstalled = new WeakSet<HTMLElement>();
 
 /** After the page is drawn: start writing where Enter, Backspace or an arrow key asked. */
 export function afterDrawn(root: HTMLElement, state: BlockEditorState, host: Host | null, data: Blocks | null) {
-  if (!data || !host) { state.pending = null; state.focus = null; blockHistory.delete(root); return; }
+  if (!data || !host) {
+    // a new page still being made (its hold has no id yet) is drawn without blocks meanwhile: its hold goes on (B8)
+    if (state.pending && !state.pending.id) { state.focus = null; blockHistory.delete(root); return; }
+    // the blocks could not be read: what was typed on the way has no block to go in, so it is shown, never dropped unseen
+    const held = state.pending ? takeTypeAhead() : '';
+    state.pending = null; state.focus = null; blockHistory.delete(root);
+    giveBack(held, 'the page could not be read');
+    return;
+  }
   const wrap = root.querySelector<HTMLElement>('.nb-blocks');
   if (!wrap) return;
   installPicking(root);
@@ -1920,16 +2013,18 @@ function makeChoose(ta: Writer, data: Blocks, host: Host, cur: { n: number; coun
  *  typed is taken out of the line when a command is picked or the list is closed without one. */
 function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count: number; after: number }, finish: (then?: BlockFocus) => Promise<void>, typedSlash = false, fromPlus = false) {
   const v = ta.value;
-  const afterSpace = typedSlash && v.length > 1 && /\s\/$/.test(v) && !v.includes('\n');
+  // a line with only its mark ("- ", "1. ", "> ") is an empty line: the command is written in the line, mark and all (B14)
+  const emptyItem = typedSlash && /\s\/$/.test(v) && !v.includes('\n') && blank(v.slice(0, -1));
+  const afterSpace = typedSlash && !emptyItem && v.length > 1 && /\s\/$/.test(v) && !v.includes('\n');
   const wholeLine = v.startsWith('/') && !v.includes('\n') && v.length <= 30;
-  if (!fromPlus && (typedSlash ? !(v === '/' || afterSpace) : !wholeLine)) return;
+  if (!fromPlus && (typedSlash ? !(v === '/' || afterSpace || emptyItem) : !wholeLine)) return;
   const query = typedSlash ? '' : v.slice(1).trim();
   host.state.menuClose?.();
   const choose = makeChoose(ta, data, host, cur, finish);
   let picked = false;
   const takeSlashOut = () => {
     if (!ta.isConnected || !ta.value.endsWith('/')) return;
-    ta.value = ta.value.slice(0, -1).trimEnd();
+    ta.value = emptyItem ? ta.value.slice(0, -1) : ta.value.slice(0, -1).trimEnd();
     ta.setSelectionRange(ta.value.length, ta.value.length);
     ta.dispatchEvent(new Event('input'));
   };
@@ -1959,6 +2054,7 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
       void choose(m);
     },
     onClose: () => {
+      ta.classList.remove('slashing');
       if (host.state.menuClose === handle.close) { host.state.menuClose = null; host.state.menuKey = null; }
       // closed with nothing picked (Esc, a click outside, Backspace in the empty filter): the slash typed goes out of the line.
       // A pick runs just after the close, so this waits for it.
@@ -1966,6 +2062,9 @@ function slashMenu(ta: Writer, data: Blocks, host: Host, cur: { n: number; count
     },
   });
   host.state.menuClose = handle.close;
+  // on an empty list line the "- /" is never saved while the list is open: a pick or a close settles the line first (B14).
+  // A line with words keeps saving as before, so no words wait on the list.
+  if (emptyItem) ta.classList.add('slashing');
   // Backspace in the empty filter takes the slash back out and closes the list
   handle.el.addEventListener('keydown', ev => {
     if (ev.key !== 'Backspace' || (handle.el.querySelector('.wbm-input') as HTMLInputElement).value) return;

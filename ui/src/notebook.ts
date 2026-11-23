@@ -19,7 +19,7 @@ import { wb } from './api';
 import './notebook.css';
 import { registerPageWriter, flushPageWriters, removedPages } from './pagewriters';
 import { app, book, here, type At } from './app';
-import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, startWritingAtEnd, viewRow, wordsIn, type Blocks, type Host } from './blocks';
+import { BLANKS, afterDrawn, createBlockEditorState, drawBlocks, holdForNewPage, startWritingAtEnd, viewRow, wordsIn, type Blocks, type Host } from './blocks';
 import { applyLook, defaultLook, editedStatus, lockMark, openPageMenu, readLook, type PageLook, type PageMenu } from './pagemenu';
 import { pageToc } from './pagetoc';
 import { createEditor, inlineShortcut, insertBreak, insertPlain, lineStartShortcut, tidy, toggleMark, type Writer } from './blockedit';
@@ -304,7 +304,11 @@ function createNotebookSession(fixed?: PageTab) {
     const listEl = root.querySelector<HTMLElement>('.nb-list')!, edEl = root.querySelector<HTMLElement>('.nb-editor')!;
     const two = root.classList.contains('two');
     if (!two && mainList?.kind === 'chapter') mainList = null;
-    const [list, ed] = await Promise.all([showTrash ? trashList(two) : two ? drawSidebar() : drawList(), drawEditor(edEl)]);
+    // the list and the page are read together, but a list that cannot be read never takes the page with it (0.3.0: the side
+    // list's failure left a wide Notebook that opened nothing)
+    const listed = (showTrash ? trashList(two) : two ? drawSidebar() : drawList())
+      .catch(x => [h('p', 'muted small nb-side-hint nb-list-error', `The list could not be read: ${String(x)}`)]);
+    const [list, ed] = await Promise.all([listed, drawEditor(edEl)]);
     if (gen !== drawing) return;
     const keep = listEl.querySelector<HTMLElement>('.nb-scroll')?.scrollTop ?? 0;
     const typing = listEl.contains(document.activeElement) && document.activeElement?.classList.contains('nb-find');
@@ -1253,7 +1257,8 @@ function createNotebookSession(fixed?: PageTab) {
     line.setAttribute('aria-label', 'The first line');
     wrapEl.append(...(isDay ? [line] : [title, line]));
     let made = false;
-    const make = async (): Promise<boolean> => {
+    /** `onMade` hears the new page's id before the page is drawn again (B8: the held keys need it by then). */
+    const make = async (onMade?: (id: string) => void): Promise<boolean> => {
       if (made) return true;
       const t = title.value.trim(), l = line.value.trim();
       if (isDay ? !l : !t && !l) return false;
@@ -1267,6 +1272,7 @@ ${l}` : ''}`;
         const r: Entry = isDay && d?.day ? await wb(['day', 'text', '-', '--day', d.day], text) : d?.parent ? await wb(['page', 'new', '-', '--parent', d.parent], text)
           : await wb(['note', 'new', '-', ...(d?.at ? ['--at', d.at.anchor] : []), ...(d?.question ? ['--question'] : [])], text);
         openId = r.id; draft = null; e.id = r.id;
+        if (r.id) onMade?.(r.id);
         changed();
         return true;
       } catch (x) { made = false; toast(String(x)); return false; }
@@ -1279,7 +1285,41 @@ ${l}` : ''}`;
       if (mod && !ev.shiftKey && !ev.altKey && (k === 'b' || k === 'i' || k === 'u')) { ev.preventDefault(); toggleMark(line, k); return; }
       if (ev.key === 'Enter' && !mod && !ev.shiftKey) {
         ev.preventDefault();
-        void make().then(ok => { if (ok) { focusEditor = 'end'; void pane?.refresh?.(); } });
+        // B8: the page goes on in the block editor. The caret leaves the form at once (so the page is drawn again, not kept as
+        // "being written"), what is typed meanwhile is held, and it opens in a new block after the page's last block.
+        if (made && !draft) return;
+        // nothing written yet: there is no page to make, and the caret stays where it is
+        if (isDay ? !line.value.trim() : !title.value.trim() && !line.value.trim()) return;
+        const hold = holdForNewPage(blockState);
+        let ready = false;
+        line.blur();
+        void make(id => { ready = true; hold.ready(id, () => blocksData?.blocks.at(-1)?.n ?? 0); }).then(ok => {
+          if (ok && ready) { void pane?.refresh?.(); return; }
+          const typed = hold.fail().replace(/\r/g, '\n');
+          if (ok) {
+            // made, but with no id to open it by: the page is drawn again from the list, and what was typed meanwhile is shown
+            void pane?.refresh?.();
+            if (typed.trim()) toast(`Not saved, what you typed: ${typed.replace(/\n+/g, ' / ')}`, 10000);
+            return;
+          }
+          // not made (the message is shown): the form stays, with what was typed meanwhile back in its line. A redraw meanwhile
+          // built the form again: the words go into the new one (its title and first line), never into the one left behind
+          let into = line;
+          if (!line.isConnected) {
+            const t2 = pane?.el.querySelector<HTMLInputElement>('.nb-new-title');
+            const l2 = pane?.el.querySelector<typeof line>('.nb-new-line');
+            if (!l2) {
+              const all = [title.value, line.value, typed].map(s => s.trim()).filter(Boolean).join(' / ');
+              if (all) toast(`Not saved, what you typed: ${all.replace(/\n+/g, ' / ')}`, 10000);
+              return;
+            }
+            if (t2 && !t2.value && !isDay) t2.value = title.value;
+            if (!l2.value.trim() && line.value) { l2.focus(); insertPlain(l2, line.value); }
+            into = l2;
+          }
+          into.focus();
+          if (typed) insertPlain(into, typed);
+        });
       } else if (ev.key === 'Enter' && ev.shiftKey && !mod) { ev.preventDefault(); insertBreak(line); }
     };
     line.onpaste = ev => { ev.preventDefault(); const t = ev.clipboardData?.getData('text/plain') || ''; if (t) insertPlain(line, t); };

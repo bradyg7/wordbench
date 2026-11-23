@@ -47,6 +47,8 @@ test('new_page_caret_in_title', async ({ page }) => {
     const name = new URL(route.request().url()).pathname.split('/').at(-1)!;
     if (name === 'template-list.json') return route.fulfill({ json: { templates: [] } });
     if (name === 'settings-notebook.json') return route.fulfill({ json: {} });
+    // the narrow Notebook's list (no fixture of its own): an empty one, so the pen is there
+    if (name.startsWith('notebook-group-')) return route.fulfill({ json: { group: 'day', groups: [] } });
     return route.fallback();
   });
   await page.goto('/?at=NUM.25');
@@ -70,6 +72,236 @@ test('new_page_caret_in_title', async ({ page }) => {
   await page.keyboard.type('Big **word** now');
   await expect(line.locator('strong')).toHaveText('word');
   expect(await line.evaluate(e => (e as any).value)).toBe('# Big **word** now');
+});
+
+// B8 (play-test of 0.3.0, 2026-11-23): after the first Enter in a new page, the page goes on in the block editor; nothing typed
+// after it, even straight after Enter, is lost, and every line is saved as its own block.
+/** A new page written from the pen: `slow` makes the page's making and every save slow; `failFirst` refuses the first making. */
+async function newPageRun(page: Page, slow = 0, failFirst = false, redrawMid = false) {
+  let refused = false;
+  const wait = () => new Promise(r => setTimeout(r, slow));
+  let title = '';
+  const bodies: string[] = [];
+  const blocks = () => {
+    let at = title.length + 2;
+    return { id: 'np1', title: { text: title, start: 0, end: title.length },
+      blocks: bodies.map((b, i) => { const start = at; at += b.length + 2; return { n: i + 1, kind: 'paragraph', text: b, start, end: start + b.length }; }) };
+  };
+  const detail = () => ({ id: 'np1', title, kind: 'note', placed: false, text: [title, ...bodies].join('\n\n'), linked_from: [], also: [], threads: [], created: '2026-11-23T00:00:00Z', updated: '2026-11-23T00:00:00Z' });
+  await page.route('**/fixtures/wb/*.json', async route => {
+    const name = new URL(route.request().url()).pathname.split('/').at(-1)!;
+    const input = decodeURIComponent(route.request().headers()['x-wb-input'] ?? '');
+    const send = (json: unknown) => route.fulfill({ json });
+    if (name === 'note-new.json' && failFirst && !refused) {
+      refused = true;
+      if (redrawMid) { await page.evaluate(() => (window as any).__wb.changed()); await new Promise(r => setTimeout(r, 300)); }
+      return route.fulfill({ status: 500, body: 'disk full' });
+    }
+    if (name === 'note-new.json') {
+      // something else redraws the Notebook while the page is being made (a list refresh, another window's change)
+      if (redrawMid) { await page.evaluate(() => (window as any).__wb.changed()); await new Promise(r => setTimeout(r, 300)); }
+      await wait(); const [t, ...rest] = input.split('\n\n'); title = t; bodies.splice(0, bodies.length, ...rest); return send(detail()); }
+    if (name === 'note-show-np1.json') return send(detail());
+    if (name === 'page-blocks-np1.json') return send(blocks());
+    if (name.startsWith('block-add-np1-')) {
+      await wait();
+      // after N (--after N) or first; the block's words ride in the input
+      const after = /after-(\d+)/.exec(name)?.[1];
+      bodies.splice(after ? Number(after) : 0, 0, input);
+      return send({ ...blocks(), n: (after ? Number(after) : 0) + 1, count: 1 });
+    }
+    if (name.startsWith('block-set-np1-')) { await wait(); const n = Number(/block-set-np1-(\d+)/.exec(name)![1]); bodies[n - 1] = input; return send({ ...blocks(), n, count: 1 }); }
+    if (name === 'template-list.json') return send({ templates: [] });
+    if (name === 'settings-notebook.json') return send({});
+    if (name === 'page-sweep.json') return send({ operations: [], errors: [] });
+    if (name.startsWith('docs-list-')) return send([]);
+    if (name.startsWith('page-overview-') || name.startsWith('page-scripture-') || name.startsWith('page-look-')) return send({});
+    if (name.startsWith('history-add')) return send({});
+    if (name.startsWith('notebook-group-')) return send({ group: 'day', groups: [] });
+    return route.fallback();
+  });
+  await page.goto('/?at=NUM.25');
+  await page.waitForFunction(() => (window as any).__wbReady);
+  await page.getByRole('button', { name: 'Notebook', exact: true }).first().click({ force: true });
+  await page.waitForSelector('.pane-notebook');
+  await page.getByRole('button', { name: 'A new page' }).first().click();
+  await expect(page.locator('.nb-new-title')).toBeFocused();
+  await page.keyboard.type('Fresh page');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('First words');
+  if (failFirst) {
+    // the making is refused: the message is shown, the form stays with every word, and what was typed after Enter is back in it
+    await page.keyboard.press('Enter');
+    await page.keyboard.type(' kept');
+    await expect(page.locator('.pane-notebook .nb-new-line')).toBeFocused();
+    await expect.poll(() => page.locator('.pane-notebook .nb-new-line').evaluate(e => (e as any).value)).toBe('First words kept');
+    await expect(page.locator('.pane-notebook .nb-new-title')).toHaveValue('Fresh page');
+    expect(refused).toBe(true);
+  }
+  // straight on, with no wait for the save: Enter, the next line, Enter, the third
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Second words');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Third words');
+  await expect(page.locator('.pane-notebook .nb-block-input')).toHaveText('Third words', { timeout: 15000 });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => bodies, { timeout: 15000 }).toEqual([failFirst ? 'First words kept' : 'First words', 'Second words', 'Third words']);
+  expect(title).toBe('Fresh page');
+  await expect(page.locator('.pane-notebook .nb-newpage')).toHaveCount(0);
+  await expect(page.locator('.pane-notebook .nb-block')).toHaveCount(3);
+}
+
+test('new_page_keeps_every_line_after_enter', ({ page }) => newPageRun(page));
+// B8 review: the page's making and every save slow (the held keys carry the typing), and a making that is refused once
+test('new_page_keeps_every_line_with_slow_saves', ({ page }) => newPageRun(page, 500));
+test('new_page_refused_once_keeps_the_words_and_goes_on', ({ page }) => newPageRun(page, 0, true));
+// B8 re-review: a redraw while the page is being made does not take the held keys
+test('new_page_redrawn_while_made_keeps_every_line', ({ page }) => newPageRun(page, 500, false, true));
+// and when that making is refused, the words are in the form drawn again, not the one left behind
+test('new_page_redrawn_and_refused_keeps_the_words', ({ page }) => newPageRun(page, 0, true, true));
+
+
+// B11 (play-test of 0.3.0): Enter pressed while the block before is still being saved is kept, not lost: three lines typed
+// straight on with Enter between them are three blocks, never two run together.
+test('enter_while_saving_is_kept', async ({ page }) => {
+  const { saved } = await writingPage(page);
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Second');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Third');
+  await expect(page.locator('.pane-notebook .nb-block-input')).toHaveText('Third');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => saved.filter(s => s.startsWith('block-add-w1-')).length).toBe(2);
+});
+
+/** A page that keeps what is saved (`bodies`, one block each), with every save and every read of the blocks made slow (`slow`
+ *  ms), as a large page or a busy disk makes them: keys typed meanwhile are carried by the hold, not by the save's speed. */
+async function slowPage(page: Page, start: string[], open = 1, slow = 400) {
+  const bodies = [...start];
+  const kind = (t: string) => /^<\/?details/.test(t) ? 'html' : t.startsWith('```') ? 'code' : 'paragraph';
+  const blocks = () => {
+    let at = TITLE.length + 2;
+    return { id: 'w1', title: { text: TITLE, start: 0, end: TITLE.length },
+      blocks: bodies.map((b, i) => { const start = at; at += b.length + 2; return { n: i + 1, kind: kind(b), text: b, start, end: start + b.length }; }) };
+  };
+  const detail = () => ({ id: 'w1', title: TITLE, kind: 'note', placed: false, text: [TITLE, ...bodies].join('\n\n'), linked_from: [], also: [], threads: [] });
+  let loaded = false;
+  const wait = () => new Promise(r => setTimeout(r, slow));
+  await page.route('**/fixtures/wb/*.json', async route => {
+    const name = new URL(route.request().url()).pathname.split('/').at(-1)!.replace(/\.json$/, '');
+    const input = decodeURIComponent(route.request().headers()['x-wb-input'] ?? '');
+    const send = (json: unknown) => route.fulfill({ json });
+    if (name === 'note-show-w1') return send(detail());
+    if (name === 'page-blocks-w1') { if (loaded) await wait(); return send(blocks()); }
+    const set = /^block-set-w1-(\d+)(?:-count-(\d+))?/.exec(name);
+    if (set) {
+      await wait();
+      const n = Number(set[1]), count = Number(set[2] ?? 1);
+      bodies.splice(n - 1, count, input.replace(/\n+$/, ''));
+      return send({ ...blocks(), n, count: 1 });
+    }
+    const add = /^block-add-w1-(?:after-(\d+)|first)(-details)?/.exec(name);
+    if (add) {
+      await wait();
+      const after = Number(add[1] ?? 0);
+      bodies.splice(after, 0, add[2] ? '</details>' : input.replace(/\n+$/, ''));
+      return send({ ...blocks(), n: after + 1, count: 1 });
+    }
+    if (name.startsWith('page-fold-')) return send({ id: 'w1' });
+    if (name === 'settings-notebook') return send({});
+    if (name === 'page-sweep') return send({ operations: [], errors: [] });
+    if (name === 'docs-looks') return send({ looks: [] });
+    if (name === 'craft-designs') return send({ themes: {}, theme: '' });
+    if (name.startsWith('docs-list-')) return send([]);
+    if (name === 'template-list') return send({ templates: [] });
+    if (name.startsWith('page-overview-') || name.startsWith('page-scripture-')) return send({});
+    return route.fallback();
+  });
+  await page.goto('/?at=NUM.25');
+  await page.waitForFunction(() => (window as any).__wbReady);
+  await page.getByRole('button', { name: 'Notebook', exact: true }).first().click({ force: true });
+  await page.waitForSelector('.pane-notebook');
+  await page.evaluate(() => (window as any).__wb.note('w1'));
+  await page.locator('.nb-block-body').nth(open - 1).click();
+  await expect(page.locator('.nb-block-input')).toBeFocused();
+  loaded = true;
+  return bodies;
+}
+
+// B11, with slow saves: the words are checked, not only the count. An empty list item ended by a held Enter leaves the list.
+test('held_enters_in_a_list_with_slow_saves', async ({ page }) => {
+  const bodies = await slowPage(page, ['- a']);
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('b');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('After');
+  await expect(page.locator('.pane-notebook .nb-block-input')).toHaveText('After', { timeout: 10000 });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => bodies, { timeout: 10000 }).toEqual(['- a', '- b', 'After']);
+});
+
+// B11 review: the same, plain lines, every one saved with its own words (Shift+Enter held is a line inside the block)
+test('held_enters_keep_every_word_with_slow_saves', async ({ page }) => {
+  const bodies = await slowPage(page, ['First']);
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Second');
+  await page.keyboard.press('Shift+Enter');
+  await page.keyboard.type('more');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Third');
+  await expect(page.locator('.pane-notebook .nb-block-input')).toHaveText('Third', { timeout: 10000 });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => bodies, { timeout: 10000 }).toEqual(['First', 'Second\nmore', 'Third']);
+});
+
+// B11 review, finding 1: Backspace at the start of the first block makes no join; a held Enter after it is pressed, not written in
+test('held_enter_after_a_backspace_with_no_join', async ({ page }) => {
+  const bodies = await slowPage(page, ['One']);
+  await page.keyboard.press('Home');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type('x');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('y');
+  await expect(page.locator('.pane-notebook .nb-new-block .nb-block-input')).toHaveCount(1, { timeout: 10000 });
+  await expect.poll(() => md(page.locator('.pane-notebook .nb-block-input')), { timeout: 10000 }).toBe('yOne');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => bodies, { timeout: 10000 }).toEqual(['x', 'yOne']);
+});
+
+// B11 re-review: a save so slow that the person puts the caret elsewhere (after 4 s) ends the hold; what was held is shown,
+// and the block does not open late with it
+test('a_hold_that_runs_out_shows_what_was_held', async ({ page }) => {
+  test.setTimeout(60000);
+  const bodies = await slowPage(page, ['First'], 1, 9000);
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('held');
+  await page.waitForTimeout(4500);
+  const other = page.locator('input:visible').first();
+  await other.click();
+  await page.keyboard.type('z');
+  await expect(page.locator('.toast')).toContainText('what you typed: held');
+  await expect(other).toHaveValue(/z$/);
+  await expect.poll(() => bodies, { timeout: 20000 }).toEqual(['First']);
+  await page.waitForTimeout(1500);
+  await expect(page.locator('.pane-notebook .nb-new-block')).toHaveCount(0);
+});
+
+// B11 review, finding 2: Enter in a toggle's line opens its first block only after the saves; what is typed meanwhile goes in
+// that block, never in the toggle's line
+test('typing_after_enter_in_a_toggle_goes_inside', async ({ page }) => {
+  const head = '<details><summary>Things to keep</summary>';
+  const bodies = await slowPage(page, [head, 'Inside one', '</details>', 'After it']);
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Inside zero');
+  await expect(page.locator('.pane-notebook .nb-new-block .nb-block-input')).toHaveText('Inside zero', { timeout: 10000 });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => bodies, { timeout: 10000 }).toEqual([head, 'Inside zero', 'Inside one', '</details>', 'After it']);
 });
 
 test('markdown_shortcuts_turn_the_line', async ({ page }) => {

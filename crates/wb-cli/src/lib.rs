@@ -39,6 +39,9 @@ pub enum Fail {
     Error(String),
 }
 
+/// What a command answers when the study folder is already held by the command itself (a borrow inside a borrow).
+pub const BUSY: &str = "the study folder is busy";
+
 /// Where a command gets the Bible and the study folder: opened when first needed (a `wb` run), or lent by the window,
 /// which keeps one of each open.
 pub struct Ctx<'a> {
@@ -46,13 +49,16 @@ pub struct Ctx<'a> {
     lent_bible: Option<&'a Bible>,
     study: RefCell<Option<Store>>,
     lent_study: Option<RefCell<&'a mut Store>>,
+    /// The lent study folder's path, kept apart so `root()` never borrows the store: a command that holds `study()` and
+    /// asks for `root()` (the Notebook's side list, Recents) works in the window as it does in a terminal.
+    lent_root: Option<PathBuf>,
     /// What `-` reads (standard input for `wb`; text sent along with the call in the window).
     pub input: Option<String>,
 }
 
 impl Ctx<'static> {
     pub fn new() -> Ctx<'static> {
-        Ctx { bible: OnceCell::new(), lent_bible: None, study: RefCell::new(None), lent_study: None, input: None }
+        Ctx { bible: OnceCell::new(), lent_bible: None, study: RefCell::new(None), lent_study: None, lent_root: None, input: None }
     }
 }
 
@@ -64,7 +70,8 @@ impl Default for Ctx<'static> {
 
 impl<'a> Ctx<'a> {
     pub fn lent(bible: &'a Bible, study: &'a mut Store) -> Ctx<'a> {
-        Ctx { bible: OnceCell::new(), lent_bible: Some(bible), study: RefCell::new(None), lent_study: Some(RefCell::new(study)), input: None }
+        let root = study.root.clone();
+        Ctx { bible: OnceCell::new(), lent_bible: Some(bible), study: RefCell::new(None), lent_study: Some(RefCell::new(study)), lent_root: Some(root), input: None }
     }
 
     pub fn bible(&self) -> Result<&Bible, String> {
@@ -80,9 +87,9 @@ impl<'a> Ctx<'a> {
 
     pub fn study(&self) -> Result<RefMut<'_, Store>, String> {
         if let Some(s) = &self.lent_study {
-            return Ok(RefMut::map(s.try_borrow_mut().map_err(|_| "the study folder is busy")?, |s| &mut **s));
+            return Ok(RefMut::map(s.try_borrow_mut().map_err(|_| BUSY)?, |s| &mut **s));
         }
-        let mut slot = self.study.try_borrow_mut().map_err(|_| "the study folder is busy")?;
+        let mut slot = self.study.try_borrow_mut().map_err(|_| BUSY)?;
         if slot.is_none() {
             *slot = Some(Store::open(&wb_core::default_study_dir()).map_err(|e| e.to_string())?);
         }
@@ -91,8 +98,8 @@ impl<'a> Ctx<'a> {
 
     /// The study folder itself (for the files the store does not hold: reading plans and the log).
     pub fn root(&self) -> Result<PathBuf, String> {
-        if let Some(s) = &self.lent_study {
-            return Ok(s.try_borrow().map_err(|_| "the study folder is busy")?.root.clone());
+        if let Some(r) = &self.lent_root {
+            return Ok(r.clone());
         }
         let r = wb_core::default_study_dir();
         wb_core::store::guard(&r).map_err(|e| e.to_string())?;
