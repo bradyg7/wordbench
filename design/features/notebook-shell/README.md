@@ -1,5 +1,7 @@
 # The Notebook's shell, like Notion
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** accepted (the person, 2026-11-22, round 1: "i like it") · **Sheets:** `node design/features/notebook-shell/frames.mjs` writes
 `rows/<id>.png` and `rows/index.json` from `frames.html` · Nothing here is built. · **Review page:**
 `node design/review.mjs notebook-shell` writes `review.html`.

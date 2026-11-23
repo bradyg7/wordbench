@@ -1,5 +1,7 @@
 # Filters, everywhere
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** superseded (the person, 2026-11-22) by [filters-v2](../filters-v2/README.md); kept as history · **Round:** 3 · **Date:** 2026-11-19 · **Sheets:** `python -B design/features/filters/filters.py` writes `filters.figcraft` and `filters.pdf`.
 
 Design one way to narrow a list or a search, then use it across the Library. The same action should feel familiar in the Notebook, in the Legend's where used list, and in Colors across the Bible. Each part offers the choices that make sense for what it shows.

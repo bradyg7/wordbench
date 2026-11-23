@@ -1,5 +1,7 @@
 # Questions
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** accepted by the person 2026-11-17 (ready to build); was exploring (round 3 drawn 2026-11-16) · **Sheets:** `python design/features/questions/questions.py` writes `questions.figcraft` and
 `questions.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · The new design is not built; `wb question …`
 and the callout line exist today. What other tools get wrong, and so what this folder avoids:

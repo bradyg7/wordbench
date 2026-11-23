@@ -1,5 +1,7 @@
 # Reading plans
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** accepted to build (the person, 2026-11-17: answers taken as the overseer recommended, build started) · **Sheets:** `python design/features/reading-plans/reading-plans.py` writes
 `reading-plans.figcraft` and `reading-plans.pdf` (the board, one vector page) · Building on `feature/reading-plans`.
 

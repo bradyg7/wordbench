@@ -1,5 +1,7 @@
 # KJV+
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** exploring · **Shots:** `node design/features/kjv-plus/scene.mjs` draws them in the installed app
 (`%LOCALAPPDATA%\bible-workbench-rs\app`, its own instance on a scratch copy of the study folder) into `scenes/` ·
 Nothing here is built yet.

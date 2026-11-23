@@ -1,6 +1,6 @@
 # Working on Bible Workbench (Rust) — for an AI assistant
 
-Read [the Library map](design/LIBRARY.md) first: the app's objects, their words and the priority list. Every design
+Read [the principles](design/features/principles/README.md) first (the goals, the rules, the frame and every standing decision), then [the Library map](design/LIBRARY.md): the app's objects, their words and the priority list. Every design
 uses its objects and words; a design that needs a new one changes the map first, with the person's go-ahead. Then read
 [How work is done](#how-work-is-done) below. [The spec](docs/SPEC.md) is older history and may be stale.
 

@@ -1,5 +1,7 @@
 # Reader
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** exploring · **Sheets:** `python design/features/reader/reader.py` writes `reader.figcraft` and
 `reader.pdf` (the board, one vector page) · Nothing here is built yet.
 

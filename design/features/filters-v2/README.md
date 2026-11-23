@@ -1,5 +1,7 @@
 # Filters, the new design
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** accepted (the person, 2026-11-22, after round 3) · **Sheets:** `python -B design/features/filters-v2/filters2.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
 NB16 (rows 1-25) and NB17 (rows 26-33) are built. · **Review page:** `node design/review.mjs filters-v2` writes `review.html`.
 

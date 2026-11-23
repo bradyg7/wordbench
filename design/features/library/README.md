@@ -1,5 +1,7 @@
 # The library: the Notebook, the Shelf, and keeping
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** accepted by the person 2026-11-17 (ready to build); was exploring (round 4 drawn 2026-11-16) · **Sheets:** `python design/features/library/library.py` writes `library.figcraft` and
 `library.pdf` (the board, one vector page) · Nothing here is built yet. What other tools get wrong, and so what this folder avoids:
 [bible-software-complaints](../../research/bible-software-complaints.md).

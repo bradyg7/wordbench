@@ -1,5 +1,7 @@
 # Updates
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** accepted (the person, 2026-11-18, after reviewing every window in FigCraft; U-1 to U-19 are now the person's) · **Release host (the person, 2026-11-18):** a public releases-only repository beside the private code repository, which also carries the website on GitHub Pages; a workflow on a tag builds and signs the release on GitHub's machines (the build requirement's "allowed later" workflow is now the main path) · **Sheets:** `python design/features/updates/updates.py` writes `updates.figcraft` and
 `updates.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet. What other tools
 get wrong, and so what this folder avoids: [bible-software-complaints](../../research/bible-software-complaints.md).

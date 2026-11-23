@@ -1,5 +1,7 @@
 # The Notebook, with Notion's quality as the template
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** accepted (the person, 2026-11-20, after round 5) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
 Nothing here is built. · **Review page:** `node design/review.mjs notebook` writes `review.html`.
 

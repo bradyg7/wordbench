@@ -1,5 +1,7 @@
 # The app's identity: a clean, professional look of its own
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** exploring, round 2 (2026-11-22) · **Demo:** open `demo/index.html` in a browser (built by `node design/features/identity/demo/data.mjs` then `build.mjs`; round 2's frames by `demo/frames2.mjs`) · **Sheets:** `node design/features/identity/frames.mjs` writes `rows/<id>.png`
 and `rows/index.json` from `frames.html` (scripture is filled in from `data/`, made by `wb text`) · Nothing built. ·
 **Review page:** `node design/review.mjs identity`.

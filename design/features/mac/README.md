@@ -1,5 +1,7 @@
 # Wordbench on a Mac
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** accepted (the person, 2026-11-19), round 1 · No sheets: what a Mac user sees is macOS's own windows and the site's
 guide, drawn in the guide itself.
 

@@ -1,5 +1,7 @@
 # Lessons and documents (Word, PDF, Present)
 
+> **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
+
 **State:** accepted by the person 2026-11-17 (ready to build); was exploring (round 2 drawn 2026-11-16) · **Sheets:** `python design/features/documents/documents.py` writes `documents.figcraft` and
 `documents.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · The new design is not built; `wb craft …`
 and `wb docs …` exist today. What other tools get wrong, and so what this folder avoids:
