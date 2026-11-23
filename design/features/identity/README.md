@@ -37,6 +37,14 @@ is built in its tokens, then the rest of the app is reskinned pane by pane.
 - **Twelve base themes, Sage the default** (the person, 2026-11-22, from the twenty of round 1): Sage, Plum, Clay rose,
   Heather, Harbor, Lapis, Juniper, Terracotta, Slate, Graphite, Cedar, Linen. Vellum, Ink, Olive press, Parchment, Moss,
   Saffron, Glacier and Sandstone are not kept. A palette is now called a **theme** in the window.
+- **Desks, with Snap inside** (the person, 2026-11-22, rows 13 and 15). Several apps share the screen on a desk;
+  dragging an app to the top edge offers Snap's layouts within the desk. Stage (row 14) is not built.
+- **Next, in conversation (the person, 2026-11-22):** (1) windows on a desk that flow like bubbles, draggable and fluid,
+  stacking and sitting side by side neatly, still structured, with a liquid-glass feel, "a mashup of rows 13 and 15 but
+  more so"; (2) several of the same app at once (passages, words, pages, folders) for a pastor's, teacher's or deep
+  student's rabbit holes; (3) the trail becomes the app's history you can turn back in time, for one window and for a
+  whole desk. Each gets an in-depth interaction table, frames for every row, and a working demo to feel it, not only
+  pictures.
 - **Panes are open to replacement.** The one need: several things working together and on screen at once. If a better
   idea than panes wins, panes are scrapped. Opening an app from the dock (full screen and snap, panes, attachments,
   or something else) is sketched together in round 1, not decided now.
