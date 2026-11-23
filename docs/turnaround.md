@@ -227,6 +227,15 @@ About 200 counted CI minutes per feature, plus about 110 per release.
 **Done when:** each item above is a check that fails when broken, and the next release (0.3.2 or later) has gone through
 the gate.
 
+**Progress 2026-11-23:**
+- Ticket 1 done: `fix/study-guard` merged into Main's `main` (bab3d7f), not pushed. The guard refuses all three real
+  locations and folders inside them; 5 tests; checked with the real paths through a read-only `wb study check`. The
+  saved choice is `%APPDATA%\Bible Workbench\settings.json` (`study_dir`); a saved choice under the temp folder is not
+  guarded.
+- Found for ticket 3: the Rust code has never been through rustfmt (no `rustfmt.toml`; about 1,970 differences). Ticket
+  3 starts with one commit that only reformats.
+- Next: ticket 2 (words and standards). `main` is pushed with the person's go-ahead, once CI (ticket 4) can run on it.
+
 ### Step 3: lean steering
 
 - Run `/retro` on the last few build sessions, including Tier 0. It looks for exactly these things: missing checks,
@@ -245,13 +254,20 @@ the gate.
   dated decision of the person's. What stays is a short list of **what must be true**, one item per thing a person does,
   in two halves:
 
-  > **You do:** type a title and press Enter
-  > **You see:** the new page opens and stays open
-  > **You feel:** instant, with no flash of an older view *(something noticeable; otherwise "checked at play")*
-  > — *for the builder:* **on disk** one page file with that title · **proven by** `new-page.spec`
+  > **You see before:** [wide Notebook], a page open, the side list showing
+  > **You do:** drag the pane narrower
+  > **You see after:** [narrow Notebook], the same page still open, no older view shown
+  > **You feel:** smooth, no flash *(something noticeable; otherwise "checked at play")*
+  > — *for the builder:* **on disk** nothing changes · **proven by** `notebook-width.spec`
 
-  The person writes and checks the top three lines; the builder fills the bottom line and the reviewer checks it. The
-  format is a draft, revised when something proves missing.
+  The person writes and checks the top four lines; the builder fills the bottom line and the reviewer checks it. The
+  format is a draft, revised when something proves missing. Before and after (the person, 2026-11-23, Q31) record how
+  one state becomes another, so two features that meet the same state are checked against each other.
+- **Named states** (Q31): every "before" and "after" uses a state name in brackets, like `[narrow Notebook]`, from one
+  list in `GLOSSARY.md`, grouped by area, one line each. A new state is added there first. A reviewer or a check searches
+  for the bracketed name across all features to find every item that meets it, and a combination no item covers is a
+  blind spot found before building. Watch the list's size; merge names that mean the same state.
+- **Open (Q32):** how "You feel" is structured from the design standards.
 - Make `docs/agent-workflow.md` and `.claude/agents/*.md` agree with the checkout model. Archive `docs/SPEC.md`. Prune
   superseded memory.
 - The hard-to-reverse decisions (study-folder formats, the read-only database, the Library map's retired words, the
