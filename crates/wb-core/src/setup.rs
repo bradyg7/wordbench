@@ -47,6 +47,22 @@ fn os_app_dir() -> Option<PathBuf> {
     }
 }
 
+/// Where the installed app saves the person's choices. `WB_APP_DIR` is left out on purpose: it redirects dev builds and
+/// tests, and the guard must still see the file the installed app writes.
+pub fn installed_settings_path() -> Option<PathBuf> {
+    os_app_dir().map(|d| d.join("settings.json"))
+}
+
+/// The `study_dir` a settings file names, read-only; a missing or unreadable file names nothing.
+pub fn study_dir_in_settings_file(path: &Path) -> Option<PathBuf> {
+    let value: Value = serde_json::from_str(&fs::read_to_string(path).ok()?).ok()?;
+    let dir = PathBuf::from(value.get("study_dir")?.as_str()?.trim());
+    if dir.as_os_str().is_empty() {
+        return None;
+    }
+    Some(dir)
+}
+
 pub fn settings_path() -> PathBuf {
     app_dir().join("settings.json")
 }

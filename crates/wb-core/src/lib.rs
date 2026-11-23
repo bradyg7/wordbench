@@ -52,7 +52,7 @@ pub mod threadpage;
 pub mod views;
 pub mod wordpages;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// The Bible database: `WB_BIBLE_DB`, the choice saved by the app or `wb setup`, `datasets/workbench.db` beside the
 /// program (the package), or the application-data folder. `setup::db_candidates` gives every place looked in.
@@ -101,7 +101,21 @@ pub fn default_study_dir() -> PathBuf {
 
 /// The person's real study folder, which wb-core refuses to open unless `WB_ALLOW_REAL_STUDY=1`.
 pub fn real_study_dir() -> PathBuf {
-    home().join("github").join("bible-study-data")
+    real_study_dir_in(&home())
+}
+
+/// Every folder wb-core refuses to open without `WB_ALLOW_REAL_STUDY=1`: the old checkout's, the Documents folder the
+/// installed app suggests, and the folder the installed app's saved settings name.
+pub fn guarded_study_dirs(home: &Path, installed_settings: Option<&Path>) -> Vec<PathBuf> {
+    let mut dirs = vec![real_study_dir_in(home), home.join("Documents").join("wordbench-study-data")];
+    if let Some(chosen) = installed_settings.and_then(setup::study_dir_in_settings_file) {
+        dirs.push(chosen);
+    }
+    dirs
+}
+
+fn real_study_dir_in(home: &Path) -> PathBuf {
+    home.join("github").join("bible-study-data")
 }
 
 pub(crate) fn home() -> PathBuf {
