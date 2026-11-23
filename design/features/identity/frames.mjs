@@ -17,8 +17,8 @@ const index = [];
 for (const f of await page.locator('.frame').all()) {
   const id = await f.getAttribute('data-id'), row = Number(await f.getAttribute('data-row'));
   const caption = (await f.locator('.cap').textContent()).trim();
-  await f.screenshot({ path: join(here, 'rows', `${id}.png`) });
-  index.push({ id, row, file: `rows/${id}.png`, caption });
+  await f.screenshot({ path: join(here, 'rows', `${id}.jpg`), type: 'jpeg', quality: 80 });
+  index.push({ id, row, file: `rows/${id}.jpg`, caption });
 }
 index.sort((a, b) => a.row - b.row);
 writeFileSync(join(here, 'rows', 'index.json'), JSON.stringify(index, null, 2) + '\n');
