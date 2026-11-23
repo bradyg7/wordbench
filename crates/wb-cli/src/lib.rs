@@ -39,6 +39,9 @@ pub enum Fail {
     Error(String),
 }
 
+/// What a command answers when the study folder is already held by the command itself (a borrow inside a borrow).
+pub const BUSY: &str = "the study folder is busy";
+
 /// Where a command gets the Bible and the study folder: opened when first needed (a `wb` run), or lent by the window,
 /// which keeps one of each open.
 pub struct Ctx<'a> {
@@ -84,9 +87,9 @@ impl<'a> Ctx<'a> {
 
     pub fn study(&self) -> Result<RefMut<'_, Store>, String> {
         if let Some(s) = &self.lent_study {
-            return Ok(RefMut::map(s.try_borrow_mut().map_err(|_| "the study folder is busy")?, |s| &mut **s));
+            return Ok(RefMut::map(s.try_borrow_mut().map_err(|_| BUSY)?, |s| &mut **s));
         }
-        let mut slot = self.study.try_borrow_mut().map_err(|_| "the study folder is busy")?;
+        let mut slot = self.study.try_borrow_mut().map_err(|_| BUSY)?;
         if slot.is_none() {
             *slot = Some(Store::open(&wb_core::default_study_dir()).map_err(|e| e.to_string())?);
         }

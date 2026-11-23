@@ -61,27 +61,51 @@ fn the_side_list_and_recents_answer_in_the_window() {
 }
 
 /// The whole class: no command, run in the window as the window runs it, is refused because the store is already held.
-/// Each command is run with no arguments (most stop at their missing argument; those that need none run whole). Commands
-/// that reach outside the scratch folder (documents, updates, setup, the relay, opening files) are left out.
+/// Each command is tried with the argument sets below in turn until one gets past its arguments, so its body runs: none, a
+/// page's id, a reference, an English word, a Strong's number, and pairs of them. A body that is reached and answers BUSY
+/// fails the test; so does a sweep that reaches too few bodies.
+///
+/// Not swept, because they reach outside the scratch folder: `do` (the relay to a running window), `docs`, `pdf`, `pdfs`,
+/// `craft`, `packet`, `lesson` (they write documents), `update` (downloads), `setup` (the app's own settings), `fixture`,
+/// `manual`, `guide`, `copy` (the clipboard) and any command that opens or reveals a file in another program.
 #[test]
 fn no_command_finds_the_study_folder_busy_in_the_window() {
     let Some((bible, mut store, _dir)) = scratch() else { return };
-    let outside = ["do", "docs", "update", "setup", "pdf", "pdfs", "craft", "packet", "lesson", "fixture", "manual", "guide"];
-    let mut busy = vec![];
-    let mut ran = 0;
+    let id = {
+        let ctx = Ctx::lent(&bible, &mut store);
+        let p = run(&ctx, &["page", "new", "Swept page"]).expect("page new");
+        run(&ctx, &["note", "new", "A note on a verse", "--at", "Num 25:11"]).expect("note new");
+        run(&ctx, &["thread", "new", "Swept folder", "--at", "Num 25:12"]).expect("thread new");
+        p["json"]["id"].as_str().unwrap().to_string()
+    };
+    let outside = ["do", "docs", "update", "setup", "pdf", "pdfs", "craft", "packet", "lesson", "fixture", "manual", "guide", "copy"];
+    let sets: Vec<Vec<&str>> = vec![
+        vec![], vec![&id], vec!["Num 25:11"], vec!["zeal"], vec!["H7065"], vec!["swept-folder"],
+        vec![&id, "1"], vec![&id, "Num 25:11"], vec![&id, "words"], vec!["Num 25:11", "words"], vec!["swept-folder", "Num 25:11"],
+    ];
+    let (mut busy, mut tried, mut bodies, mut stuck) = (vec![], 0, 0, vec![]);
     for (name, _) in names() {
         let first = name.split(' ').next().unwrap_or(name);
         if outside.contains(&first) || name.contains("open") || name.contains("reveal") {
             continue;
         }
-        let ctx = Ctx::lent(&bible, &mut store);
-        ran += 1;
-        if let Err(e) = run(&ctx, &name.split(' ').collect::<Vec<_>>()) {
-            if e.contains("busy") {
-                busy.push(format!("wb {name}: {e}"));
+        tried += 1;
+        let mut reached = false;
+        for set in &sets {
+            let mut argv: Vec<String> = name.split(' ').map(String::from).collect();
+            argv.extend(set.iter().map(|s| s.to_string()));
+            let ctx = Ctx::lent(&bible, &mut store);
+            match wb_cli::run(&ctx, &argv) {
+                Err(wb_cli::Fail::Usage(_)) => continue,
+                Err(wb_cli::Fail::Error(e)) if e == wb_cli::BUSY => busy.push(format!("wb {}", argv.join(" "))),
+                _ => {}
             }
+            reached = true;
+            break;
         }
+        if reached { bodies += 1 } else { stuck.push(name) }
     }
-    assert!(ran > 200, "the sweep ran {ran} commands");
-    assert!(busy.is_empty(), "refused in the window only:\n{}", busy.join("\n"));
+    eprintln!("SWEEP reached {bodies} of {tried}; stuck {stuck:?}"); assert!(busy.is_empty(), "refused in the window only:\n{}", busy.join("\n"));
+    // most commands' bodies ran; those whose arguments none of the sets fit are listed when too many are left
+    assert!(tried > 200 && bodies * 10 >= tried * 8, "the sweep reached {bodies} of {tried} commands' bodies; not reached: {stuck:?}");
 }
