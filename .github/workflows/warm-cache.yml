@@ -1,15 +1,16 @@
 # Keeps the release build's Rust cache warm on main. A tag's run can read caches saved on the default branch but not
 # those of other tags, so without this every release compiled everything from nothing (about 27 minutes). This compiles
 # the same release program the tag does, for Windows and for both Mac architectures (no signing, no installer, nothing published) and saves the cache under the
-# shared key the release workflow reads. GitHub drops a cache unused for 7 days, hence the weekly run.
+# shared key the release workflow reads. It runs only when the Rust libraries change (the path filter below) or by
+# hand: no weekly run, to spare the free plan's minutes (ticket 4 of docs/turnaround.md step 2). GitHub drops a cache
+# unused for 7 days, so a release after a quiet week may find it cold and compile everything (about 27 minutes);
+# that is accepted. Run this workflow by hand before a release to be sure it is warm.
 name: warm-cache
 
 on:
   push:
     branches: [main]
     paths: ['Cargo.lock', 'Cargo.toml', '**/Cargo.toml', '.github/workflows/warm-cache.yml']
-  schedule:
-    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 jobs:

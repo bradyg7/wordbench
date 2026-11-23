@@ -1,9 +1,11 @@
 # The tests on GitHub's Mac machine (design/features/mac, row 4): the code runs on macOS as it does on Windows.
+# Only for releases (a tag push) or by hand: a Mac minute counts x10 of the free plan's 2,000 a month, so it no longer
+# runs on every push to main (docs/turnaround.md step 2, ticket 4). The Windows suite in ci.yml covers every pull request.
 name: Mac tests
 
 on:
   push:
-    branches: [main, feature/mac]
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:
