@@ -29,6 +29,29 @@ a review scores it; nothing ships under 90/100.
   `fix/notebook-tier0` with its own test and a review scored 90 or more; then the shell (Tier 1). Questions 1–5 (bubble
   or panes now, undo scope, places and threads, a separate title, the study folder) stay open for Tier 1.
 
+## Tier 0: the spec and where it stands (kept so work survives a compacted conversation)
+
+**How each fix is done** (the person, 2026-11-23): simplest first; each fix gets its own test, then a review agent
+(`reviewer`) scores it 1–100 against the goal, and it is reworked until it scores 90 or more. Nothing ships under 90.
+After all five, the fixes are checked together in the real window (release build, scratch study copy), then offered
+for merge and a 0.3.1 release with the person's go-ahead. No push without it.
+
+**Branch:** `fix/notebook-tier0` from `main` (4180312).
+
+| Bug | What "done" is | State |
+|---|---|---|
+| B1 side list in the window | `notebook sidebar` / `page recents` answer in the window; the page draws even if the list fails | **Done, reviewed 92/100.** Commits 03f22d8, 799d4af, 20e3632: `Ctx` keeps `lent_root`; `pub const BUSY`; `ui/src/notebook.ts` draw() catches a list failure; `crates/wb-cli/tests/lent.rs` (contract, content, a sweep of 241/249 command bodies through `Ctx::lent`; all fail without the fix). Reviewer's leftovers (optional): argument sets for the 8 unreached commands (word, verse, thread move, block thread/word/study/set/color); a hard list instead of the 80% threshold |
+| B8 new page keeps every word | Title, Enter, lines typed straight on with Enter between: every line saved as its own block; the draft form gives way to the block editor | **In progress, uncommitted.** `ui/src/blocks.ts`: `holdForNewPage(state)` (a pending with id filled once made; `ready(id, after)`, `fail()`). `ui/src/notebook.ts` `newPageForm` line Enter: hold keys, `line.blur()`, `make()`, then `hold.ready(openId, () => blocksData?.blocks.at(-1)?.n ?? 0)` and refresh; on failure give the typed text back. Test `new_page_keeps_every_line_after_enter` in `ui/tests/writing.spec.ts` (routes note-new, note-show-np1, page-blocks-np1, block-add/set-np1-*, and `notebook-group-*` → empty list, which the narrow Notebook needs: without it `new_page_caret_in_title` failed on `main` too). It passed the first hand-over and then exposed B11 |
+| B11 Enter during a save is kept | An Enter (and Shift+Enter) pressed while a block is on its way is done in the block that opens; the words after it go to the next block | **In progress, uncommitted.** `holdKeys` records Enter as `\n` (Shift+Enter `\r`) instead of dropping it; `putTypedAhead` puts the words up to the first Enter in the box, dispatches a synthetic Enter keydown on it, and puts the rest in the new hold (or in the same box when no hold began). Being checked with the B8 test (expects blocks `First words`, `Second words`, `Third words`). Needs its own test for a list: `- a`, Enter, `b`, Enter, Enter, `After` → items a, b and a paragraph |
+| B14 no stray "/" | / on an empty list line, pick Callout: no `- /` left in the file | To do: find the in-line "/" path in `blocks.ts` (NB3 rule: the `/` is taken out when a pick inserts below) |
+| B21 bullet drag | Dragging bullets reorders them; never "A column marker is not a block" | To do: reproduce (finding f_20261123122842_2766, in `Documents\wordbench-study-data`); suspects: a vertical drop read as "beside" (`wb block move --beside`), or window block numbers vs file indices once columns exist (`crates/wb-core/src/blockops.rs:134`) |
+
+**Gotchas met:**
+- WB_BIBLE_DB is `C:\Users\brady\github\bible-workbench\datasets\workbench.db`; `WB_REQUIRE_DB=1` makes a missing database fail.
+- Run the writing specs with `npx playwright test ui/tests/writing.spec.ts --project chromium-editor -g <name>`; `npm run fixtures` first in a fresh checkout.
+- `ui/src/blocks.ts` is CRLF: do not write `\r` / `\n` escapes through a shell heredoc into it (they become real control characters); use the Edit tool or a Python file with `'\\'`.
+- The real window for play-testing: build with `npx tauri build --no-bundle` (about 7 minutes cold, longer if the exe is running: copy the exe out before launching), launch with `WB_BIBLE_DB`, `WB_STUDY_DIR` on a copy of `%TEMP%\bible-workbench-rs\study-scratch`, `WB_CDP_PORT=9333`, and drive it with Playwright `chromium.connectOverCDP`.
+
 ## Bugs, by priority
 
 Tier 0: breaks the Notebook; small, separate fixes (a 0.3.1).
