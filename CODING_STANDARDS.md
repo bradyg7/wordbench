@@ -68,8 +68,9 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
   commands gets a type that matches what wb-core returns. There are about 240 today, mostly in `panes.ts`, `actions.ts`,
   `notebook.ts` and `listview.ts`; the count only goes down. Example: `perform(a: any, line: string)` in
   `ui/src/actions.ts`. *Check: the `any` ratchet (ticket 7).*
-- **typescript-eslint `strict-type-checked`** is the TypeScript checker. It is not installed yet; when it is, its
-  warnings are cleared the way clippy's are, and from then it refuses new ones.
+- **typescript-eslint `strict-type-checked`** is the TypeScript checker, with no warnings allowed. Its `any` rules
+  (`no-explicit-any`, `no-unsafe-*`) are counted by the `any` ratchet until the count reaches zero. *Check: `eslint` in
+  the quick checks (installed and cleared in ticket 3).*
 
 ## Checker switches
 
