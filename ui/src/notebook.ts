@@ -304,7 +304,11 @@ function createNotebookSession(fixed?: PageTab) {
     const listEl = root.querySelector<HTMLElement>('.nb-list')!, edEl = root.querySelector<HTMLElement>('.nb-editor')!;
     const two = root.classList.contains('two');
     if (!two && mainList?.kind === 'chapter') mainList = null;
-    const [list, ed] = await Promise.all([showTrash ? trashList(two) : two ? drawSidebar() : drawList(), drawEditor(edEl)]);
+    // the list and the page are read together, but a list that cannot be read never takes the page with it (0.3.0: the side
+    // list's failure left a wide Notebook that opened nothing)
+    const listed = (showTrash ? trashList(two) : two ? drawSidebar() : drawList())
+      .catch(x => [h('p', 'muted small nb-side-hint nb-list-error', `The list could not be read: ${String(x)}`)]);
+    const [list, ed] = await Promise.all([listed, drawEditor(edEl)]);
     if (gen !== drawing) return;
     const keep = listEl.querySelector<HTMLElement>('.nb-scroll')?.scrollTop ?? 0;
     const typing = listEl.contains(document.activeElement) && document.activeElement?.classList.contains('nb-find');
