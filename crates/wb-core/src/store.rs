@@ -330,16 +330,47 @@ pub fn guard(root: &Path) -> Result<()> {
     if !root.is_dir() {
         return Err(bad(format!("No study folder at {} (make a scratch copy with scripts/scratch-study.ps1, or set WB_STUDY_DIR)", root.display())));
     }
-    let same = match (fs::canonicalize(root), fs::canonicalize(crate::real_study_dir())) {
-        (Ok(a), Ok(b)) => a == b,
-        _ => false,
-    };
     // An installed release opens the folder the person chose (the person, 2026-11-18); only builds without the
     // `installed` feature, every test among them, refuse the real one.
-    if same && !cfg!(feature = "installed") && std::env::var("WB_ALLOW_REAL_STUDY").as_deref() != Ok("1") {
-        return Err(bad(format!("{} is the person's real study folder; use a scratch copy", root.display())));
+    let open_allowed = cfg!(feature = "installed") || std::env::var("WB_ALLOW_REAL_STUDY").as_deref() == Ok("1");
+    let installed_settings = crate::setup::installed_settings_path();
+    let mut guarded = crate::guarded_study_dirs(&crate::home(), installed_settings.as_deref());
+    // The saved choice may be a scratch copy in the temp folder, which is never the person's real work; guarding it
+    // would stop a dev machine opening its own scratch copy.
+    let temp = comparable(&std::env::temp_dir());
+    guarded.retain(|g| !comparable(g).starts_with(&temp));
+    guard_against(root, &guarded, open_allowed)
+}
+
+/// The decision itself, with its inputs passed in so a test needs neither the real machine nor the `installed` feature.
+pub(crate) fn guard_against(root: &Path, guarded: &[PathBuf], open_allowed: bool) -> Result<()> {
+    if open_allowed {
+        return Ok(());
     }
-    Ok(())
+    let here = comparable(root);
+    // A folder inside a guarded one is the same real work, so it is refused too.
+    match guarded.iter().find(|g| here.starts_with(comparable(g))) {
+        Some(g) if here == comparable(g) => Err(bad(format!(
+            "{} is the person's real study folder; use a scratch copy (scripts/scratch-study.ps1)",
+            root.display()
+        ))),
+        Some(g) => Err(bad(format!(
+            "{} is inside the person's real study folder {}; use a scratch copy (scripts/scratch-study.ps1)",
+            root.display(),
+            g.display()
+        ))),
+        None => Ok(()),
+    }
+}
+
+/// A path as it is compared: resolved when it exists, lower-cased on Windows where names ignore case.
+fn comparable(p: &Path) -> PathBuf {
+    let resolved = fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    if cfg!(windows) {
+        PathBuf::from(resolved.to_string_lossy().to_lowercase())
+    } else {
+        resolved
+    }
 }
 
 /// Files of a folder in name order (as the Python app's scandir returns them on Windows), optionally in subfolders.
@@ -1873,6 +1904,67 @@ fn parse_set(stem: &str, text: &str) -> Option<Rec> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn guarded_fixture() -> (tempfile::TempDir, Vec<PathBuf>) {
+        let home = tempfile::tempdir().unwrap();
+        let old = home.path().join("github").join("bible-study-data");
+        let docs = home.path().join("Documents").join("wordbench-study-data");
+        let chosen = home.path().join("elsewhere").join("my-study");
+        for d in [&old, &docs, &chosen] {
+            fs::create_dir_all(d).unwrap();
+        }
+        let settings = home.path().join("settings.json");
+        fs::write(&settings, json!({"study_dir": chosen.to_string_lossy()}).to_string()).unwrap();
+        let guarded = crate::guarded_study_dirs(home.path(), Some(&settings));
+        (home, guarded)
+    }
+
+    #[test]
+    fn each_real_study_location_is_refused() {
+        let (home, guarded) = guarded_fixture();
+        assert_eq!(guarded.len(), 3);
+        for rel in ["github/bible-study-data", "Documents/wordbench-study-data", "elsewhere/my-study"] {
+            let err = guard_against(&home.path().join(rel), &guarded, false).unwrap_err();
+            assert!(err.0.contains("scratch-study.ps1"), "{}", err.0);
+        }
+    }
+
+    #[test]
+    fn a_folder_inside_a_real_study_folder_is_refused() {
+        let (home, guarded) = guarded_fixture();
+        let inside = home.path().join("Documents").join("wordbench-study-data").join("notes");
+        fs::create_dir_all(&inside).unwrap();
+        assert!(guard_against(&inside, &guarded, false).is_err());
+        let spelled = PathBuf::from(format!("{}{}", home.path().join("elsewhere").join("my-study").display(), std::path::MAIN_SEPARATOR));
+        assert!(guard_against(&spelled, &guarded, false).is_err());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_ignores_case_when_matching() {
+        let (home, guarded) = guarded_fixture();
+        let shouted = PathBuf::from(home.path().join("Documents").join("wordbench-study-data").to_string_lossy().to_uppercase());
+        assert!(guard_against(&shouted, &guarded, false).is_err());
+    }
+
+    #[test]
+    fn a_scratch_folder_opens_and_the_allowance_opens_a_real_one() {
+        let (home, guarded) = guarded_fixture();
+        let scratch = home.path().join("scratch");
+        fs::create_dir_all(&scratch).unwrap();
+        assert!(guard_against(&scratch, &guarded, false).is_ok());
+        assert!(guard_against(&home.path().join("github/bible-study-data"), &guarded, true).is_ok());
+    }
+
+    #[test]
+    fn a_missing_or_unreadable_settings_file_adds_nothing() {
+        let home = tempfile::tempdir().unwrap();
+        assert_eq!(crate::guarded_study_dirs(home.path(), Some(&home.path().join("none.json"))).len(), 2);
+        let junk = home.path().join("settings.json");
+        fs::write(&junk, "{ not json").unwrap();
+        assert_eq!(crate::guarded_study_dirs(home.path(), Some(&junk)).len(), 2);
+        assert_eq!(crate::guarded_study_dirs(home.path(), None).len(), 2);
+    }
 
     #[test]
     fn markdown_round_trip() {
