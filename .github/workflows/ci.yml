@@ -21,11 +21,11 @@ on:
     branches: [main]
     paths: ['**', '!docs/**', '!design/**', '!**/*.md', '!site/**', 'docs/releases/**']
 
-# One group per branch, so the push run and the PR run of one commit share it. Only a pull request run cancels: a
-# push run that cancelled the PR run (they start together, in either order) would leave the branch without its full suite.
+# One group per event and branch: a newer push cancels the older push run, a newer PR update the older PR run, and
+# neither cancels the other (the push run holds the quick checks, the PR run the full suite).
 concurrency:
-  group: ci-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 env:
   BIBLE_DB_SHA256: fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c
