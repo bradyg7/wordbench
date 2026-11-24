@@ -69,10 +69,26 @@ redesigned, and the old rail, panes and tabs are deleted as each app leaves them
 ## 3. Every standing decision, by area
 
 Each line is a decision that still stands under the new frame, in a few words, with its source. "→" marks where the
-frame changes *where* it lives but not *what* it is. Conflicts are in section 4, not here.
+frame changes *where* it lives but not *what* it is. Conflicts are in section 4, not here. **(one-way)** marks a
+one-way door, listed next.
+
+### One-way doors
+
+Hard to reverse, so each needs the person's review every time, never a sample (turnaround step 3, 2026-11-23). A
+change to any of these is designed first and goes to the person; it is never settled by an agent.
+
+- **The study folder's formats**: how pages, marks, margin notes, the Legend, threads and highlights are written, and
+  any move of the person's files (one designed move, tried on a scratch copy, after a hashed backup; AGENTS).
+- **Where the real study folder is**, and that nothing but an installed release opens it: `github\bible-study-data`,
+  `Documents\wordbench-study-data`, the folder the installed app's settings name; the `installed` feature is the only
+  exception, built by the release workflow alone (AGENTS, 2026-11-18).
+- **The Bible database is read-only**, opened with SQLite's read-only flag (AGENTS).
+- **The Library map's retired words** stay retired ("thread" is "folder with a color", "note" is "page"); a new object
+  or word changes the map first ([LIBRARY](../../LIBRARY.md)).
+- **A release**: what is tagged, signed and offered through the updater; an update is signed or thrown away (updates).
 
 ### The Bible and the reader
-- Scripture is the KJV, verbatim, from the read-only database; YLT is archived ([LIBRARY](../../LIBRARY.md)).
+- **(one-way)** Scripture is the KJV, verbatim, from the read-only database; YLT is archived ([LIBRARY](../../LIBRARY.md)).
 - A click on a verse number or a drag over words shows only the colors, small, beside the verse; a right click is one clean menu (reader A).
 - What the person wrote sits in a margin beside its verse, names only, each a link (reader C); the margin is the verse's page (marks, 2026-11-12).
 - A plain click on a word opens its card; the Concordance instead is a Reading setting (words W-2, settings).
@@ -82,7 +98,7 @@ frame changes *where* it lives but not *what* it is. Conflicts are in section 4,
 ### Marks and the Legend
 - One family of marks on the text: highlight, underline (1–3 lines), circle, box, arrow (same chapter), margin note; a mark's kind and color are separate (marks).
 - Drawn in a fixed order, highlight beneath, so a chapter with years of marks stays readable; Reading mode quiets them (marks T5).
-- Files: `marks/<BOOK>.json`, `margin/<BOOK>/<chapter>.md`, `settings/legend.json`; old `highlights/` read as highlights, moved once only with the person's go-ahead (marks T15).
+- **(one-way)** Files: `marks/<BOOK>.json`, `margin/<BOOK>/<chapter>.md`, `settings/legend.json`; old `highlights/` read as highlights, moved once only with the person's go-ahead (marks T15).
 - The Legend names what each style means; up to 5 quick styles with keys Ctrl+1–9; Unnamed entries; where used; bulk delete (marks T3, T11).
 - Every mark is findable by kind, color, Legend entry, book or date; a filter chip, not marks T12's controls (filters-v2).
 - Arrows stay in one chapter, drawn in the gutter (marks T9).
@@ -115,7 +131,7 @@ frame changes *where* it lives but not *what* it is. Conflicts are in section 4,
 ### Folders, saves and the library
 - Save is K; a save points, never copies; one tree of folders holding pages and saves, nesting; one thing in several folders or none; saves in no folder are in **Unfiled** (library L-1 to L-3; LIBRARY Open 1).
 - A folder may keep a color, shown quietly wherever its things appear; "thread" leaves the window, `wb thread` stays (threads TH-1 to TH-12).
-- Thread files are not moved now; one designed, backed-up move later (TH-2, TH-12).
+- **(one-way)** Thread files are not moved now; one designed, backed-up move later (TH-2, TH-12).
 - A kept verse shows a ribbon at its number (library).
 
 ### Questions
@@ -138,7 +154,7 @@ frame changes *where* it lives but not *what* it is. Conflicts are in section 4,
 - A finding is kept from a small box (Ctrl+Shift+F), tagged with design folder names (findings).
 
 ### Updates, the site, the Mac
-- Nothing installs by itself; a look sends nothing about the person; signed or thrown away; the version before is kept once; a copy built from source does not update; `wb update …` (updates U-1 to U-16).
+- **(one-way)** Nothing installs by itself; a look sends nothing about the person; signed or thrown away; the version before is kept once; a copy built from source does not update; `wb update …` (updates U-1 to U-16).
 - The site: Wordbench, free, Windows today, Mac coming; Releases from `docs/releases/*.md` (site S-1 to S-11).
 - The Mac app ships unsigned first, universal dmg (mac M-1 to M-6).
 
