@@ -17,3 +17,6 @@ node_modules/
 /design/build/
 /.findings-review/
 design/features/*/review.html
+# Tauri rewrites these editor hints on every build, and the updater feature changes them, so a build left them
+# changed. Nothing reads them: capabilities and tauri.conf.json only name them in a "$schema" line, which is a hint.
+/app/src-tauri/gen/schemas/
