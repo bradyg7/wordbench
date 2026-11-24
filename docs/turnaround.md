@@ -273,6 +273,19 @@ the gate.
   `scripts/clean-tree.mjs`. Only GitHub proves the CI step. Committed pictures nothing produces any more are history that
   `npm run shots` does not retake: `ipad-*`, `phone-compact`, `laptop-expanded`, and the `defs-*`, `r3-*` and `tier4-*`
   files in `docs/phase2/`.
+- Ticket 9 built on `fix/rule-checks` (stacked on `fix/clean-tests`), not pushed. Scripture: `scripts/scripture-check.mjs`
+  (`npm run scripture`) reads every tracked text file outside `docs/`, `design/` and `datasets/` for runs of 6 or more words
+  that are a verse (KJV and YLT) and fails, naming file:line, reference and the database's words, when the run is not
+  letter for letter (a word changed or dropped, a comma, a capital); `npm run test:scripture` (5 tests) fetches a verse
+  with `wb text`, shows the copy passes and an altered one fails. CI `full` runs both after `cargo test`; a missing
+  database fails. Inventory: four files hold an exact run (`crates/wb-cli/tests/cli.rs`, `spikes/sync/src/main.rs`,
+  `tests/golden/cases.json`, `tests/golden/phinehas-lesson.md`), none differs. No scripture fixture is committed
+  (`ui/public/fixtures` is ignored by git; the other committed fixtures hold none), so there is no `fixtures.mjs --check`.
+  Commands: `crates/wb-cli/tests/window_commands.rs` (in `full`'s `cargo test`) reads every `wb([...])` in `ui/src`
+  against the `wb` table and every `#[tauri::command]` against a map to a `wb` command or a reason (window-only); a
+  fake call in `ui/src` failed it, named. Not proved: a verse altered at the first or last word of a quotation, or
+  under 6 words, passes (prose shares words by chance); `wb(argv)` with a variable command and a group name with a
+  variable subcommand are only checked as far as their literal words.
 - Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
   (ticket 4) can run on it.
 

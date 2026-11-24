@@ -153,6 +153,12 @@ jobs:
 
       - run: npm run test:unit
 
+      # step 2, ticket 9: no committed file holds a verse that differs from the database (a missing database fails it);
+      # the second line shows the check fails on an altered verse. The wb table against the window's commands is
+      # crates/wb-cli/tests/window_commands.rs, in the cargo test above.
+      - run: npm run scripture
+      - run: npm run test:scripture
+
       # scripture fixtures are generated from the database, never typed
       - run: npm run fixtures
 

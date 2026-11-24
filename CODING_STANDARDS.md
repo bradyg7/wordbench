@@ -31,12 +31,11 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
 ## The AGENTS.md rules in code
 
 - **Scripture is never typed.** A verse in code, a test or a fixture comes from the database or is generated from it.
-  *Check: CI rebuilds every scripture fixture and fails on a difference (ticket 9).*
+  *Check: `node scripts/scripture-check.mjs` (`npm run scripture`, in CI's `full` job with the database; a missing database fails it) finds every run of 6 or more words in a committed file outside `docs/`, `design/` and `datasets/` that is a verse of the database with a word, letter, capital or punctuation off, and names the file:line, the reference and the database's text; `scripts/scripture-check.test.mjs` shows it fails on a verse fetched with `wb text` and altered, and passes on the copy. The generated browser fixtures (`ui/public/fixtures`) are ignored by git, so none is committed to compare (ticket 9).*
 - **The real study folder is never opened by tests or tools.** wb-core refuses it unless `WB_ALLOW_REAL_STUDY=1` or the
   `installed` feature; nothing in the repo sets either. *Check: the guard's tests in `crates/wb-core/src/store.rs`.*
 - **Every core action has a `wb` command**, and every `wb` command is run the window's way in
-  `crates/wb-cli/tests/lent.rs` or excluded there with a reason. *Check: `lent.rs` (ticket 6: a command that is neither run nor listed in its `EXCLUDED` fails, named) and ticket 9 (the window's
-  list against the `wb` table).*
+  `crates/wb-cli/tests/lent.rs` or excluded there with a reason. *Check: `lent.rs` (ticket 6: a command that is neither run nor listed in its `EXCLUDED` fails, named) and `crates/wb-cli/tests/window_commands.rs` (ticket 9: a `wb([...])` word in `ui/src` that is not in the table fails, naming the file:line; a `#[tauri::command]` with no `wb` command and no reason in its `SHELL` list fails, named).*
 
 ## Shape (judgment, after Pocock)
 
