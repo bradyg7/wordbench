@@ -107,6 +107,8 @@ jobs:
         with:
           workspaces: '. -> target'
           shared-key: windows-ci-clippy
+          # a run that fails or hits its time limit still saves what it compiled, so the next run starts warm
+          cache-on-failure: true
 
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
@@ -121,8 +123,11 @@ jobs:
   full:
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     runs-on: windows-latest
-    timeout-minutes: 60
+    # a cold build (no cache yet) of the test programs took over 40 minutes on a 4-core runner (2026-11-23)
+    timeout-minutes: 90
     env:
+      # no debug info in CI test builds: faster to compile and link, and a CI failure is read from its output
+      CARGO_PROFILE_DEV_DEBUG: "0"
       WB_BIBLE_DB: ${{ github.workspace }}/datasets/workbench.db
       WB_REQUIRE_DB: '1'
     steps:
@@ -139,6 +144,7 @@ jobs:
         with:
           workspaces: '. -> target'
           shared-key: windows-ci-full
+          cache-on-failure: true
 
       - name: The Bible database (data-v1 of the public releases repository)
         uses: ./.github/actions/bible-db
