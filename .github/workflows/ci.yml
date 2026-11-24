@@ -165,6 +165,9 @@ jobs:
       - run: npm run scripture
       - run: npm run test:scripture
 
+      # Webster's 1913 for the word cards' fixtures (`wb word-define`): a pinned revision, checked by its SHA-256
+      - run: python scripts/build-dictionary.py
+
       # scripture fixtures are generated from the database, never typed
       - run: npm run fixtures
 
