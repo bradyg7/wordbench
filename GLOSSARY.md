@@ -119,7 +119,8 @@ page, a verse, a Strong's entry), and its name on hover or click. A page may be 
 
 ### Full suite
 Every test: `cargo test`, the UI unit tests, the WebKit and Chromium tests and axe. It runs in CI on pull requests and
-on `main`, and never on this PC.
+on `main`, and never on this PC, with one exception: while Actions minutes are out, through `scripts/ci-local.ps1`
+(the person, 2026-11-24).
 
 ## G
 

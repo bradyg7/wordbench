@@ -13,7 +13,11 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const check = join(root, 'scripts', 'scripture-check.mjs');
 
 // "Numbers 25:11 (KJV)" then "11 Phinehas, ..." : the verse without its number
-const lines = execFileSync('cargo', ['run', '-q', '-p', 'wb-cli', '--', 'text', 'Num 25:11'], { cwd: root }).toString().trim().split(/\r?\n/);
+// WB_BIN names a wb program already built (CI's `cargo test` builds target/debug/wb), so CI compiles wb-cli once
+const text = ['text', 'Num 25:11'];
+const lines = (process.env.WB_BIN
+  ? execFileSync(process.env.WB_BIN, text, { cwd: root })
+  : execFileSync('cargo', ['run', '-q', '-p', 'wb-cli', '--', ...text], { cwd: root })).toString().trim().split(/\r?\n/);
 const verse = lines[1].replace(/^\d+\s+/, '');
 const words = verse.split(' ');
 
