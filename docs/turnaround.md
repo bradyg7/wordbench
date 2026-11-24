@@ -244,6 +244,14 @@ the gate.
 - Ticket 4 built on `fix/ci` (stacked on `fix/zero-warnings`), not pushed, so GitHub has not run it yet: `ci.yml` (quick
   checks on every branch push, the full Windows suite on pull requests to `main` and on `main`), the Mac tests only
   for tags, `warm-cache.yml` without its weekly run, and `ui/tests/axe.spec.ts` (WCAG 2.2 AA, with 3 known violations named in it).
+- Ticket 5 built on `fix/flakes` (stacked on `fix/ci`), not merged. Each of the three specs was run 90 times in Chromium
+  (`chromium-editor`) with 16 workers, which is more than this machine carries: before 20, 44 and 9 failures
+  (`mark_from_a_page_is_the_reader_s_mark`, `own_property_add_and_type`, `writing_at_every_width`); after 0, 0 and
+  (16 workers) still a few setup timeouts, or (8 workers) 0 of 90 against 15 before. Causes: the scripture card was filled
+  only if it was already in the window, but the page is drawn before it is put in, so marks that came back first left it at
+  "Reading the verses…" (an app race, fixed in `blocks.ts`); the test opened the filter menu before the list was drawn
+  again with the new column type; the width test measured while the page was drawn again (after a block was left, and in
+  the floating tab that shows the old drawing first). Fixed-time waits that remain are listed in the ticket report.
 - Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
   (ticket 4) can run on it.
 
