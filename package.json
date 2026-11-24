@@ -8,6 +8,8 @@
     "tauri": "tauri",
     "fixtures": "node scripts/fixtures.mjs",
     "tokens:check": "python scripts/tokens.py --check",
+    "ratchet": "node scripts/ratchet.mjs",
+    "test:ratchet": "node --test scripts/ratchet.test.mjs",
     "test:tokens": "node --test scripts/tokens.test.mjs",
     "test:unit": "node --experimental-strip-types --no-warnings --test ui/unit/*.test.ts",
     "test:commands-cases": "node --test scripts/commands-cases.test.mjs",
