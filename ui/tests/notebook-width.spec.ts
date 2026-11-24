@@ -86,6 +86,8 @@ async function fitsHere(page: Page, paneSel: string, label: string) {
   await page.locator(`${paneSel} .nb-block[data-n="5"] .nb-block-body`).click();
   await page.keyboard.press('End');
   const before = await box(page, `${paneSel} .nb-block[data-n="5"]`);
+  // the typed / is kept when the block is left, and the page is drawn again then: tag this drawing, leave the block, and wait for the new one
+  await page.locator(`${paneSel} .nb-page-wrap`).first().evaluate(e => { e.setAttribute('data-before', ''); });
   await page.keyboard.type(' /');
   const menu = page.locator('.wbm').first();
   await expect(menu).toBeVisible();
@@ -98,6 +100,9 @@ async function fitsHere(page: Page, paneSel: string, label: string) {
   const after = await box(page, `${paneSel} .nb-block[data-n="5"]`);
   expect(Math.abs(after.x - before.x) + Math.abs(after.y - before.y), `${label}: the menu moves nothing`).toBeLessThanOrEqual(1);
   await page.keyboard.press('Escape');
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());        // a drawing that already came has closed the box: nothing to leave
+  await expect(page.locator(`${paneSel} .nb-page-wrap:not([data-before])`)).toBeVisible();
+  await expect(page.locator(`${paneSel} .nb-block[data-n="5"] .nb-block-body`)).toBeVisible();
   await expect(page.locator('.wbm')).toHaveCount(0);
   // the block menu (the grip's click) fits the window too
   await page.locator(`${paneSel} .nb-block[data-n="3"]`).hover();
@@ -133,10 +138,14 @@ test('writing_at_every_width', async ({ page }, info) => {
   expect((await box(page, paneSel)).width).toBeLessThanOrEqual(470);
   await fitsHere(page, paneSel, 'a narrow pane (460 px)');
   // 37a: a floating tab, 560 px over the reader
+  await page.locator(paneSel).locator('.nb-page-wrap').evaluate(e => { e.setAttribute('data-before', ''); });
   await page.evaluate(() => { const d = (window as any).__wb.dock(); d.floatAt = { w: 560, h: 640 }; d.move(d.find('notebook'), 'float'); });
   await expect(page.locator('.dock-float')).toHaveCount(1);
   const fl = `.dock-float ${paneSel}`;
   await expect.poll(async () => Math.round((await box(page, '.dock-float')).width)).toBeGreaterThan(520);
   expect((await box(page, '.dock-float')).width).toBeLessThanOrEqual(570);
+  // moving the tab shows the old drawing at once and reads the page again into the new pane: measure the new drawing (the old one carries the tag)
+  await expect(page.locator(`${fl} .nb-page-wrap:not([data-before])`)).toBeVisible();
+  await expect(page.locator(`${fl} .nb-block[data-n="5"] .nb-block-body`)).toBeVisible();
   await fitsHere(page, fl, 'a floating tab (560 px)');
 });
