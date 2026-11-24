@@ -47,6 +47,29 @@ answers: people explore truth for themselves.
 
 The words for all of it, and what each one means, are in [the glossary](../../../GLOSSARY.md).
 
+### How it is built (the person, 2026-11-24)
+
+The best Bible software, and the best built: strong, clean and understood. These hold for every change:
+
+- **Free.** Nothing costs money beyond the Claude subscription, recurring or one-time, unless it is truly necessary
+  and the person says so. Windows desktop first; the Mac build is kept alive on GitHub's runners at release tags,
+  unsigned, until a Mac version is a goal.
+- **Quality first, then no waiting.** A test's first job is to catch a real failure of what must be true. Times are
+  measured and budgets are alarms, not gates: going over one is a finding, never a reason to weaken a test. Speed comes
+  from removing waste (cold builds, repeated work, fixed sleeps), never from testing less.
+- **Tests prove use.** Every "what must be true" item is proven by a test that drives the real app, or `wb` where
+  there is no window; a unit test may sit beside it, never in its place. The builder breaks the feature once and shows
+  the test fails. A flaky test is a bug: it gets a fix ticket ahead of new features, never a retry until it passes.
+- **Understood by the person.** Every merge to `main` carries a short note in its commit message: how it works, why
+  this way, which practice it follows. Not in code comments. The person's learning track runs with `/teach` in
+  `C:\Users\brady\github\wordbench-learning` (not a clone), reading Main's code by path; each place where our code
+  differs from good practice comes back as a parking-lot finding and becomes a rule only with the person's go-ahead.
+- **Clean.** A check that fails beats a sentence in a document.
+- **Built to pass on.** Process documents (`docs/agents/`) stay general enough to lift into other projects; skills
+  drawn from this work are a future way to support the person (parked, with licensing and selling).
+- **As open as a Bible.** The repository is public; the code has no license yet (all rights reserved) until the person
+  chooses one.
+
 ### The goals and the rules that keep them
 
 The goals G1–G5 and rules R1–R11 are written in full in [identity](../identity/README.md#goals-and-the-rules-that-keep-them-the-person-2026-11-22-round-3),

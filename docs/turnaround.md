@@ -476,3 +476,6 @@ can be sampled instead.
 - 2026-11-23: every step begins with grilling.
 - 2026-11-23: in-flight Tier 0 work finishes and ships as 0.3.1 before step 2 (step 1).
 - 2026-11-23: no revert of the Notebook. 0.3.1 shipped, and whether the Notebook is redesigned is settled in step 4 (after the person played 0.3.1).
+- 2026-11-24 (vision grilling): how the app is built is written in principles §1, "How it is built". The repository
+  goes public now (moved up from step 6), with no license yet; CI uses GitHub's runners, a self-hosted runner is
+  dropped, and the Mac build stays on GitHub at release tags. Licensing, selling and skills wait for step 6.
