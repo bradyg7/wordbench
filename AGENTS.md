@@ -2,7 +2,8 @@
 
 This app (`bible-workbench-rs`) is the Bible Workbench. The Python app in the sibling `bible-workbench` checkout is its
 predecessor and no longer a constraint (the person, 2026-11-12): it is only a source of history and of the Bible
-database. When a change alters expected behavior, document the contract and verify it with Rust-owned tests.
+database; nothing here has to stay readable by it or match it, and old study files are this app's to read and move
+forward. When a change alters expected behavior, document the contract and verify it with Rust-owned tests.
 
 ## Read before you start
 
@@ -24,19 +25,20 @@ database. When a change alters expected behavior, document the contract and veri
 
 - **Scripture is verbatim, with its reference.** Fetch every verse from the database (`wb text "Num 25:11"`) or
   generate it: in code, tests, fixtures, docs, notes and documents alike. Fixtures that hold scripture are generated.
-- **No interpretation.** The app shows source text, the person's own notes and lookups. Doctrinal questions are the
-  person's, not the tool's.
-- **The study folder is the person's real work.** Tests, spikes and experiments use a scratch copy:
+- **No interpretation.** The app shows source text, the person's own notes and lookups: no commentary, no doctrine,
+  nothing suggested. Doctrinal questions are the person's, not the tool's.
+- **The study folder is the person's real work** (notes, highlights, threads, trails, lessons): tests, spikes and
+  experiments never write to it. They use a scratch copy:
   `scripts/scratch-study.ps1` copies it to `%TEMP%\bible-workbench-rs\study-scratch`, and `WB_STUDY_DIR` points the app
   and `wb` there. wb-core refuses the real folders (`github\bible-study-data`, `Documents\wordbench-study-data`, the
   folder the installed app's settings name, and anything inside them) unless `WB_ALLOW_REAL_STUDY=1`, which nothing in
   this repo sets. Only an installed release (the `installed` feature, built by the release workflow alone) opens the
-  folder the person chooses (2026-11-18).
+  folder the person chooses (2026-11-18); tests, spikes and `cargo test` never build with it.
 - **What the person wrote is never lost.** The study folder's formats are this app's to shape; a format change reads the
   old form, and moving the person's files happens once, designed, tried on a scratch copy, after a hashed backup, with
   the person's go-ahead ([details](docs/agents/study-folder.md)).
 - **Everything is a page, in the window** (2026-11-09), and **a thread is a folder with a color** (2026-11-17).
-- **The Bible database is read-only.** It is opened with SQLite's read-only flag.
+- **The Bible database is read-only.** It is opened with SQLite's read-only flag; never modify it.
 - **Never lose the reader's place.** Anything opened from the text returns to the verse it came from.
 - **Designed before it is built** (2026-11-11). Every feature, button and command the person would see has a design
   folder under `design/features/` (dated decisions, frames, the interaction table, "what the build must satisfy")
@@ -49,7 +51,8 @@ database. When a change alters expected behavior, document the contract and veri
   `...\Design` holds designing with the person and never changes existing code: it starts from an up-to-date `main`,
   moves onto the new `main` after every merge, and designs at most the next feature. A prototype there reads the app's
   code and adds only its own files; one that leans on code the current build is changing waits for that merge. No other
-  clone or worktree. Files found changed that are not this branch's stay out of its commits: say what they are and ask.
+  clone or worktree. Stage files by name: files found changed that are not this branch's (local changes to `AGENTS.md`
+  or `CLAUDE.md` among them) stay out of its commits; say what they are and ask.
 - **Shipped means it is in the person's installed app** (2026-11-18): a release installed through the updater, not a
   merge ([how to release](docs/agents/commands.md#a-release)).
 - **Every core action is reachable from a `wb` command**, so the person (or an AI) can do from a terminal anything the

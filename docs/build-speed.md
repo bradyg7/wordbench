@@ -1,5 +1,8 @@
 # Build and test speed
 
+> History, measured for worktrees in 2026-11. Today there is one Main clone, builders run only their own tests, and CI
+> runs the full suites ([CODING_STANDARDS.md](../CODING_STANDARDS.md)); the `-j` and worktree advice below no longer applies.
+
 Set 2026-11-17 (the person asked for a shared cache, a light test profile, a faster linker and nextest, measured).
 Machine: Ryzen 7 8840HS, 16 threads, `-j 2`. Wall times were taken while another builder was sometimes compiling; CPU
 seconds are the whole process tree. Everything was run from this branch; the suite is the same 275 tests, 0 failed,

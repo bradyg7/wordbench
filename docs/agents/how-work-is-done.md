@@ -16,7 +16,8 @@ its review and its merge fit together is [agent-workflow.md](../agent-workflow.m
 - **One reviewer per ticket** (Sonnet) checks the diff and runs its new tests (see `.claude/agents/reviewer.md`).
 - **Mechanical checks** (every row has a test, packaging, counts, installing) go to Haiku. **Release and updater
   verification** goes to Windows Codex.
-- No overseer runs in a loop. One writer per clone, and no two agents on the same files.
+- No overseer runs in a loop. Several tasks may run at once (a design in Design while a ticket builds in Main), each
+  agent with only the context it needs: one writer per clone, and no two agents on the same files.
 
 ## The interaction table
 
