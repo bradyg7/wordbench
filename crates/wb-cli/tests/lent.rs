@@ -98,88 +98,157 @@ fn the_side_list_and_recents_answer_in_the_window() {
     );
 }
 
+/// Commands the sweep does not run, each with its reason. A key is a whole command name ("docs open") or its first word
+/// ("pdf" covers every `pdf ...`). A command that is neither swept nor listed here fails
+/// `every_command_is_run_the_windows_way_or_excluded`, naming it; so does a key that matches no command.
+const EXCLUDED: &[(&str, &str)] = &[
+    ("do", "relays to a running window"),
+    ("docs", "writes documents outside the study folder"),
+    ("update", "downloads from the network"),
+    ("setup", "changes the app's own settings, not the study folder"),
+    ("pdf", "writes a document outside the study folder"),
+    ("pdfs", "writes documents outside the study folder"),
+    ("craft", "writes documents outside the study folder"),
+    ("packet", "writes a document outside the study folder"),
+    ("lesson", "writes documents outside the study folder"),
+    ("fixture", "writes test fixtures"),
+    ("manual", "opens or writes the manual outside the study folder"),
+    ("guide", "opens the guide in another program"),
+    ("copy", "writes the clipboard"),
+    ("finding open", "opens a finding's attached file in another program"),
+];
+
+fn excluded(name: &str) -> bool {
+    let first = name.split(' ').next().unwrap_or(name);
+    EXCLUDED.iter().any(|(k, _)| *k == name || *k == first)
+}
+
+struct Sweep {
+    tried: usize,
+    reached: Vec<&'static str>,
+    stuck: Vec<&'static str>,
+    busy: Vec<String>,
+}
+
+/// Runs every command not excluded, in the window's way (a lent Bible and store), with the argument sets below in turn
+/// until one gets past its arguments, so its body runs: none, a page's id, a reference, an English word, a Strong's
+/// number, and pairs and triples of them (a book, chapter and verse; a page's block number and its new value). Done once; both tests below read it.
+fn sweep() -> &'static Option<Sweep> {
+    static SWEEP: std::sync::OnceLock<Option<Sweep>> = std::sync::OnceLock::new();
+    SWEEP.get_or_init(|| {
+        let (bible, mut store, _dir) = scratch()?;
+        let id = {
+            let ctx = Ctx::lent(&bible, &mut store);
+            let p = run(&ctx, &["page", "new", "Swept page"]).expect("page new");
+            run(
+                &ctx,
+                &["note", "new", "A note on a verse", "--at", "Num 25:11"],
+            )
+            .expect("note new");
+            run(
+                &ctx,
+                &["thread", "new", "Swept folder", "--at", "Num 25:12"],
+            )
+            .expect("thread new");
+            p["json"]["id"].as_str().unwrap().to_string()
+        };
+        let sets: Vec<Vec<&str>> = vec![
+            vec![],
+            vec![&id],
+            vec!["Num 25:11"],
+            vec!["zeal"],
+            vec!["H7065"],
+            vec!["swept-folder"],
+            vec![&id, "1"],
+            vec![&id, "Num 25:11"],
+            vec![&id, "words"],
+            vec!["Num 25:11", "words"],
+            vec!["swept-folder", "Num 25:11"],
+            vec!["NUM", "25", "11"],
+            vec!["NUM", "25", "11", "0"],
+            vec!["swept-folder", "Num 25:12", "up"],
+            vec![&id, "1", "swept-folder"],
+            vec![&id, "1", "H7065"],
+            vec![&id, "1", "Num 25:11"],
+            vec![&id, "1", "yellow"],
+        ];
+        let mut out = Sweep {
+            tried: 0,
+            reached: vec![],
+            stuck: vec![],
+            busy: vec![],
+        };
+        for (name, _) in names() {
+            if excluded(name) {
+                continue;
+            }
+            out.tried += 1;
+            let mut reached = false;
+            for set in &sets {
+                let mut argv: Vec<String> = name.split(' ').map(String::from).collect();
+                argv.extend(set.iter().map(|s| s.to_string()));
+                let ctx = Ctx::lent(&bible, &mut store);
+                match wb_cli::run(&ctx, &argv) {
+                    Err(wb_cli::Fail::Usage(_)) => continue,
+                    Err(wb_cli::Fail::Error(e)) if e == wb_cli::BUSY => {
+                        out.busy.push(format!("wb {}", argv.join(" ")))
+                    }
+                    _ => {}
+                }
+                reached = true;
+                break;
+            }
+            if reached {
+                out.reached.push(name)
+            } else {
+                out.stuck.push(name)
+            }
+        }
+        Some(out)
+    })
+}
+
 /// The whole class: no command, run in the window as the window runs it, is refused because the store is already held.
-/// Each command is tried with the argument sets below in turn until one gets past its arguments, so its body runs: none, a
-/// page's id, a reference, an English word, a Strong's number, and pairs of them. A body that is reached and answers BUSY
-/// fails the test; so does a sweep that reaches too few bodies.
-///
-/// Not swept, because they reach outside the scratch folder: `do` (the relay to a running window), `docs`, `pdf`, `pdfs`,
-/// `craft`, `packet`, `lesson` (they write documents), `update` (downloads), `setup` (the app's own settings), `fixture`,
-/// `manual`, `guide`, `copy` (the clipboard) and any command that opens or reveals a file in another program.
+/// A body that is reached and answers BUSY fails the test.
 #[test]
 fn no_command_finds_the_study_folder_busy_in_the_window() {
-    let Some((bible, mut store, _dir)) = scratch() else {
-        return;
-    };
-    let id = {
-        let ctx = Ctx::lent(&bible, &mut store);
-        let p = run(&ctx, &["page", "new", "Swept page"]).expect("page new");
-        run(
-            &ctx,
-            &["note", "new", "A note on a verse", "--at", "Num 25:11"],
-        )
-        .expect("note new");
-        run(
-            &ctx,
-            &["thread", "new", "Swept folder", "--at", "Num 25:12"],
-        )
-        .expect("thread new");
-        p["json"]["id"].as_str().unwrap().to_string()
-    };
-    let outside = [
-        "do", "docs", "update", "setup", "pdf", "pdfs", "craft", "packet", "lesson", "fixture",
-        "manual", "guide", "copy",
-    ];
-    let sets: Vec<Vec<&str>> = vec![
-        vec![],
-        vec![&id],
-        vec!["Num 25:11"],
-        vec!["zeal"],
-        vec!["H7065"],
-        vec!["swept-folder"],
-        vec![&id, "1"],
-        vec![&id, "Num 25:11"],
-        vec![&id, "words"],
-        vec!["Num 25:11", "words"],
-        vec!["swept-folder", "Num 25:11"],
-    ];
-    let (mut busy, mut tried, mut bodies, mut stuck) = (vec![], 0, 0, vec![]);
-    for (name, _) in names() {
-        let first = name.split(' ').next().unwrap_or(name);
-        if outside.contains(&first) || name.contains("open") || name.contains("reveal") {
-            continue;
-        }
-        tried += 1;
-        let mut reached = false;
-        for set in &sets {
-            let mut argv: Vec<String> = name.split(' ').map(String::from).collect();
-            argv.extend(set.iter().map(|s| s.to_string()));
-            let ctx = Ctx::lent(&bible, &mut store);
-            match wb_cli::run(&ctx, &argv) {
-                Err(wb_cli::Fail::Usage(_)) => continue,
-                Err(wb_cli::Fail::Error(e)) if e == wb_cli::BUSY => {
-                    busy.push(format!("wb {}", argv.join(" ")))
-                }
-                _ => {}
-            }
-            reached = true;
-            break;
-        }
-        if reached {
-            bodies += 1
-        } else {
-            stuck.push(name)
-        }
-    }
-    eprintln!("SWEEP reached {bodies} of {tried}; stuck {stuck:?}");
+    let Some(s) = sweep() else { return };
+    eprintln!(
+        "SWEEP reached {} of {}; stuck {:?}",
+        s.reached.len(),
+        s.tried,
+        s.stuck
+    );
     assert!(
-        busy.is_empty(),
+        s.busy.is_empty(),
         "refused in the window only:\n{}",
-        busy.join("\n")
+        s.busy.join("\n")
     );
-    // most commands' bodies ran; those whose arguments none of the sets fit are listed when too many are left
+}
+
+/// Every command in the `wb` table is run the window's way by the sweep above, or is in EXCLUDED with a reason. A new
+/// command that is neither fails here, named. The table is read from `names()`; "run" is what the sweep reached.
+#[test]
+fn every_command_is_run_the_windows_way_or_excluded() {
+    let Some(s) = sweep() else { return };
+    let table = names();
+    let unaccounted: Vec<&str> = table
+        .iter()
+        .map(|(n, _)| *n)
+        .filter(|n| !excluded(n) && !s.reached.contains(n))
+        .collect();
     assert!(
-        tried > 200 && bodies * 10 >= tried * 8,
-        "the sweep reached {bodies} of {tried} commands' bodies; not reached: {stuck:?}"
+        unaccounted.is_empty(),
+        "these commands are neither run by the sweep (no argument set got past their arguments) nor in EXCLUDED with a reason: {unaccounted:?}"
     );
+    for (key, reason) in EXCLUDED {
+        assert!(!reason.is_empty(), "{key} is excluded without a reason");
+        assert!(
+            table
+                .iter()
+                .any(|(n, _)| n == key || n.split(' ').next() == Some(*key)),
+            "EXCLUDED names {key}, which is no command in the table"
+        );
+    }
+    assert!(s.tried > 200, "the sweep ran only {} commands", s.tried);
 }
