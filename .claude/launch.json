@@ -1,6 +1,25 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "ui", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 1420, "url": "http://127.0.0.1:1420" }
+    {
+      "name": "ui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 1420,
+      "url": "http://127.0.0.1:1420"
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "site:dev"
+      ],
+      "port": 4175,
+      "url": "http://127.0.0.1:4175"
+    }
   ]
 }

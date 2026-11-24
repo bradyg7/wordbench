@@ -56,11 +56,15 @@ a change alters expected behavior, document the contract and verify it with Rust
   folder the person marked *accepted*. [`design/features/coverage.md`](design/features/coverage.md) lists every area of
   the app and the folder that designs it; a new button or command gets a row there, and its folder, first. Bug fixes
   that keep the accepted design need no new round.
-- **One checkout, one feature at a time** (the person, 2026-11-18; replaces the worktrees of 2026-11-16). Work happens in
-  this checkout, never in new worktrees. Building an accepted design folder starts a branch from an up-to-date `main`,
-  named `feature/<folder>`, and nothing else goes on it. A bug fix gets `fix/<what>`. It reaches `main` after the
-  tests, with the person's go-ahead (a pull request is optional). Files found changed in the checkout that are not this
-  feature's are never committed with it: say what they are and ask.
+- **Two clones, one feature at a time** (the person, 2026-11-23; replaces the one checkout of 2026-11-18 and the four
+  clones that drifted after it). `C:\Users\brady\github\wordbench-workspaces\Main` holds all code work, one branch at a
+  time: an accepted design is built on `feature/<folder>` from an up-to-date `main`, and nothing else goes on it; a bug
+  fix gets `fix/<what>`. It reaches `main` after CI passes, with the person's go-ahead. `...\Design` holds designing
+  with the person and never changes existing code: it starts from an up-to-date `main`, moves onto the new `main` after
+  every merge, and designs at most the next feature while the current one builds. A prototype there reads the app's
+  code and adds only its own files; one that leans on code the current build is changing waits for that build to
+  merge. No other clone or worktree. Files found changed that are not this branch's are never committed with it: say
+  what they are and ask.
 - **Shipped means it is in the person's installed app** (the person, 2026-11-18). A feature is done when a release
   carrying it is installed through the updater, not when it merges. A release: bump the version in `Cargo.toml` and
   `app/src-tauri/tauri.conf.json`, write `docs/releases/<version>.md` (headings: Moved or removed, New, Changed, Fixed,
