@@ -1240,7 +1240,8 @@ function scriptureBlock(b: Blk, id: string, host: Host): HTMLElement {
       // KJV words are drawn one by one with the reader's marks on them (rows 39, 40: Mark ▾ and Margin note select from them); another version, as it was
       if (hasWords(verses)) {
         const marks = await chapterMarks(verses);
-        if (text.isConnected) text.replaceWith(drawWords(verses, !!mine.lines, marks, onVerse));
+        // the card is drawn before the page is put in the window, and the marks can come back first: fill it wherever it is (a card a redraw replaced has no parent)
+        if (text.parentNode) text.replaceWith(drawWords(verses, !!mine.lines, marks, onVerse));
       } else text.replaceWith(drawVerses(verses, !!mine.lines, onVerse));
     }).catch(x => { text.textContent = String(x); });
   }
