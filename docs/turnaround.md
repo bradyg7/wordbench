@@ -273,19 +273,27 @@ the gate.
   `scripts/clean-tree.mjs`. Only GitHub proves the CI step. Committed pictures nothing produces any more are history that
   `npm run shots` does not retake: `ipad-*`, `phone-compact`, `laptop-expanded`, and the `defs-*`, `r3-*` and `tier4-*`
   files in `docs/phase2/`.
-- Ticket 9 built on `fix/rule-checks` (stacked on `fix/clean-tests`), not pushed. Scripture: `scripts/scripture-check.mjs`
-  (`npm run scripture`) reads every tracked text file outside `docs/`, `design/` and `datasets/` for runs of 6 or more words
-  that are a verse (KJV and YLT) and fails, naming file:line, reference and the database's words, when the run is not
-  letter for letter (a word changed or dropped, a comma, a capital); `npm run test:scripture` (5 tests) fetches a verse
-  with `wb text`, shows the copy passes and an altered one fails. CI `full` runs both after `cargo test`; a missing
-  database fails. Inventory: four files hold an exact run (`crates/wb-cli/tests/cli.rs`, `spikes/sync/src/main.rs`,
-  `tests/golden/cases.json`, `tests/golden/phinehas-lesson.md`), none differs. No scripture fixture is committed
-  (`ui/public/fixtures` is ignored by git; the other committed fixtures hold none), so there is no `fixtures.mjs --check`.
-  Commands: `crates/wb-cli/tests/window_commands.rs` (in `full`'s `cargo test`) reads every `wb([...])` in `ui/src`
-  against the `wb` table and every `#[tauri::command]` against a map to a `wb` command or a reason (window-only); a
-  fake call in `ui/src` failed it, named. Not proved: a verse altered at the first or last word of a quotation, or
-  under 6 words, passes (prose shares words by chance); `wb(argv)` with a variable command and a group name with a
-  variable subcommand are only checked as far as their literal words.
+- Ticket 9 built on `fix/rule-checks` (stacked on `fix/clean-tests`), not pushed, with a review round. Scripture:
+  `scripts/scripture-check.mjs` (`npm run scripture`) reads every tracked text file outside `datasets/`, `docs/` and
+  `design/` for runs of 6 or more words that are a verse (KJV and YLT) and fails, naming file:line, reference and the
+  database's words, when the run is not letter for letter (a word changed or dropped, a comma, a capital). A quotation
+  mark or a full stop in the file ends a run, so prose beside a quote is not read as the verse. `npm run test:scripture`
+  (7 tests) fetches a verse with `wb text`, shows the copy passes and altered ones fail, and tries `--inventory`. CI
+  `full` runs both after `cargo test`; a missing database fails. Inventory: four files hold an exact run
+  (`crates/wb-cli/tests/cli.rs`, `spikes/sync/src/main.rs`, `tests/golden/cases.json`,
+  `tests/golden/phinehas-lesson.md`), none differs. `docs/` and `design/` are scanned only with `--everywhere`: they
+  hold 9 near misses, left as they are (follow-up: the person decides each; then empty `SKIPPED_FOLDERS`):
+  `design/features/panels/panels.html` 262 and 359 (John 2:17, a `<mark>` inside the verse), `design/features/tether/data/many-2.json`
+  2 and 4 (Jeremiah 7:2), `many-3.json` 2 and 4 (1 Samuel 15:2), `many-4.json` 2 and 4 (Jeremiah 7:4) (lower-cased test data),
+  `docs/archive/redesign-R5.md` 59 (1 Corinthians 13:13). No scripture fixture is committed (`ui/public/fixtures` is
+  ignored by git; the other committed fixtures hold none), so there is no `fixtures.mjs --check`.
+  Commands: `crates/wb-cli/tests/window_commands.rs` (in `full`'s `cargo test`, 8 tests) reads every `wb(...)` in `ui/src`
+  outside comments and strings: a literal array, a ternary of two, or a `const` array of the same file; a first word that
+  has subcommands must be followed by one of them. Calls it cannot read are pinned per file (notebook.ts 5, plans.ts 8,
+  shelf.ts 2) and a new one fails, named. Every `#[tauri::command]` maps to a table command, to a command the `wb`
+  binary answers before the table (`license`, `setup new|open`, read from `main.rs`), or to a reason (window-only). A fake
+  call in `ui/src` failed it, named. Not proved: a verse altered at the first or last word of a quotation, or under 6
+  words, passes (prose shares words by chance); the 15 unreadable calls are not compared with the table.
 - Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
   (ticket 4) can run on it.
 
