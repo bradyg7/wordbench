@@ -418,6 +418,8 @@ test('own_property_add_and_type', async ({ page }) => {
   }).toPass();
   await row(page, 'Date').click();
   await expect.poll(s.filterCalls).toEqual(['--columns Speaker, Status, Due, Done, Mood, Reviewed --type Reviewed date']);
+  // the type is written; the list is drawn again with it (its filter menu is read in the same drawing): the new column's cells are dates
+  await expect(list.getByLabel('Reviewed of Zeal')).toHaveAttribute('type', 'date');
   // the Filter menu offers it under Your own properties
   await list.locator('.nbv-filters').click();
   await expect(page.locator('.wbm-row .wbm-label')).toContainText(['Reviewed']);
