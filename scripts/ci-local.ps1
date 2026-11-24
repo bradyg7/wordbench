@@ -14,6 +14,10 @@ $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
+# a program that cannot be found raises an error but leaves $LASTEXITCODE at 0, which would read as a pass
+$missing = @('git', 'cargo', 'node', 'npm', 'npx', 'python') | Where-Object { -not (Get-Command $_ -ErrorAction SilentlyContinue) }
+if ($missing) { Write-Error "Not found on PATH: $($missing -join ', ')"; exit 1 }
+
 $db = $env:WB_BIBLE_DB
 if (-not $db) { $db = [Environment]::GetEnvironmentVariable('WB_BIBLE_DB', 'User') }
 if (-not $db) { $db = [Environment]::GetEnvironmentVariable('WB_BIBLE_DB', 'Machine') }
@@ -45,7 +49,7 @@ function Test-CleanTree {
   if ($startState.Count -eq 0) { node scripts/clean-tree.mjs; return }
   $now = @(Get-TreeState)
   # only entries new or different at the end count: one that is gone was committed or put back while the run went on
-  $diff = Compare-Object $startState $now | Where-Object SideIndicator -eq '=>'
+  $diff = if ($now.Count -eq 0) { @() } else { Compare-Object $startState $now | Where-Object SideIndicator -eq '=>' }
   if (-not $diff) { Write-Output "The run changed no file (the $($startState.Count) changed before it started are as they were)."; $global:LASTEXITCODE = 0; return }
   Write-Output 'A test or build changed files:'
   $diff | ForEach-Object { Write-Output "  $($_.SideIndicator) $($_.InputObject)" }

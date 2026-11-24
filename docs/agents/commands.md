@@ -2,6 +2,8 @@
 
 Read this before running the app, the UI tests, the real-app scripts, or making a release. Builders run only the tests
 they are writing and the quick checks; CI runs the full suites ([CODING_STANDARDS.md](../../CODING_STANDARDS.md)).
+While Actions minutes are out, `powershell -ExecutionPolicy Bypass -File scripts\ci-local.ps1` runs CI's steps here
+instead (the person, 2026-11-24); it is the only way the full suite runs on this PC.
 
 ```
 cargo build                                  # the workspace
