@@ -20,7 +20,7 @@ DC-1 to DC-10 (below); DC-1 (A and B joined) and DC-2 (no document template) car
 - **5** existing `wb craft`, `wb docs`, `wb lesson` named; `wb docs like` and `wb craft … --folder` named as required.
 - **6** [overlaps](../overlaps.md) "Templates: pages and documents" resolved (DC-2, library L-14); "Documents' Present"
   agrees with minimize.
-- **7** agrees with `AGENTS.md` (every verse checked, DC-8) and `docs/SPEC.md:33` (where files go, DC-4).
+- **7** agrees with `AGENTS.md` (every verse checked, DC-8) and `docs/archive/2026-11-23/SPEC.md:33` (where files go, DC-4).
 - **8** Numbers 25:11-13 from `data/num25-11-13.json` (`documents.py:42`); shortened verses cut by word position.
 - **9** no suggestion or commentary; a Look is styling only (DC-7). **10** no format change; a field added to the
   app's own `documents/` record is read as absent in old records.
@@ -67,8 +67,8 @@ Each is **decided by overseer from existing decisions (inference)**, dated 2026-
 | DC-1 | **A and B are one design**, not alternatives: the builder from a page's parts (D2), the viewer (D3), Looks from pictures (D4), the line saying where the file is (D5). Each answers a different finding. | 868e, a148, 2089 |
 | DC-2 | **A document keeps its own choices; there is no separate document template.** Which parts are in, what each becomes and the Look stay with the document (`documents/` record), as `wb craft` already does ("the switches it was last made with stay"). The "template builder" 868e asks for is **Make another like this…** in a document's menu: the builder opens on another page with the same choices and Look (D6). A page template (`wb template`) makes a page; it is a different thing and stays the library's. | 868e; `wb craft word` help; overlaps "Templates" |
 | DC-3 | **A source is a page, a folder (what a thread was: its saves in order and its pages), a passage or a lesson.** `wb craft --thread NAME` keeps working on a folder with a color. | [threads](../threads/README.md) TH-1, TH-3 |
-| DC-4 | **Where the file is, is said, not guessed (2089).** The line after Make names the folder the file is really in, and Show in folder opens that folder with the file picked out; a file that is gone says so instead of opening another folder. Where new files go is the spec's rule (`docs/SPEC.md:33`: `<study>/exports/`, `WB_DOCS_DIR` over it, old locations still found), not a choice of this folder. | 2089; `docs/SPEC.md:33`; `wb docs reveal` |
-| DC-5 | **Formats are a Word document and PDF slides**, as built. PowerPoint is not in this design (the spec leaves it to the person). | `docs/SPEC.md` (Retiring the Python app) |
+| DC-4 | **Where the file is, is said, not guessed (2089).** The line after Make names the folder the file is really in, and Show in folder opens that folder with the file picked out; a file that is gone says so instead of opening another folder. Where new files go is the spec's rule (`docs/archive/2026-11-23/SPEC.md:33`: `<study>/exports/`, `WB_DOCS_DIR` over it, old locations still found), not a choice of this folder. | 2089; `docs/archive/2026-11-23/SPEC.md:33`; `wb docs reveal` |
+| DC-5 | **Formats are a Word document and PDF slides**, as built. PowerPoint is not in this design (the spec leaves it to the person). | `docs/archive/2026-11-23/SPEC.md` (Retiring the Python app) |
 | DC-6 | **The viewer** pages with ← and →, shows "2 of 4", a strip of the slides, and Present for the whole screen; a Word document is paged the same way (D3). | a148; minimize (Present) |
 | DC-7 | **Looks are chosen from pictures of the same slide**, whole, with the one new documents use marked "In use" (D4). A Look is styling only. | 868e; `wb docs looks` |
 | DC-8 | **The verse check is shown**: after Make, a quiet second line says how many verses were checked (D5); a failure says which verse and keeps no file. | `AGENTS.md` |

@@ -1,6 +1,6 @@
 # Bible Workbench current specification
 
-Reviewed 2026-11-10 against the local Git refs and Phase 2 plans. Bible Workbench is a personal study tool for reading Scripture, looking up source material, and organizing the reader's own work. The Rust core serves the `wb` CLI and Tauri app. Rust is the target for all continuing development. Preserve access to existing study files and exports during the transition, then archive the Python app once Rust can stand alone. Improve legacy workflows where Rust offers a better implementation. [Repository rules and commands](../AGENTS.md)
+Reviewed 2026-11-10 against the local Git refs and Phase 2 plans. Bible Workbench is a personal study tool for reading Scripture, looking up source material, and organizing the reader's own work. The Rust core serves the `wb` CLI and Tauri app. Rust is the target for all continuing development. Preserve access to existing study files and exports during the transition, then archive the Python app once Rust can stand alone. Improve legacy workflows where Rust offers a better implementation. [Repository rules and commands](../../../AGENTS.md)
 
 ## Revisions reviewed
 
@@ -16,24 +16,24 @@ Use the exact base revision when starting a task. A combined build of the three 
 
 | Phase | Current state | Remaining work and acceptance |
 | --- | --- | --- |
-| 0 · Prototypes | Complete. Reader, scratch Git sync and Typst experiments exist. | The sync spike is evidence for Phase 3. [Phase 0 results](archive/2026-11-10/docs/phase0-results.md) |
-| 1 · Core and CLI | Complete as a phase. Rust/Python parity has a golden harness and documented exceptions. | Run the relevant parity checks on future changes. [Phase 1 results](archive/2026-11-10/docs/phase1-results.md) |
-| 2 and 2b · Desktop | Desktop implementation and the follow-up debugging are on `main`. Includes reader and word cards, dock, Notebook, Shelf, reading plans, settings, layouts, Help and early exports. | Close the user study week, verify real Word/PDF outputs, and collect one current-revision desktop baseline. See the closeout below. [Phase 2b plan](archive/2026-11-10/docs/PLAN-phase2b.md) · [Build sequence](archive/2026-11-10/docs/PLAN-phase2b-build.md) · [Phase 2 results from main](archive/2026-11-10/main-d7384be/docs/phase2-results.md) |
+| 0 · Prototypes | Complete. Reader, scratch Git sync and Typst experiments exist. | The sync spike is evidence for Phase 3. [Phase 0 results](../2026-11-10/docs/phase0-results.md) |
+| 1 · Core and CLI | Complete as a phase. Rust/Python parity has a golden harness and documented exceptions. | Run the relevant parity checks on future changes. [Phase 1 results](../2026-11-10/docs/phase1-results.md) |
+| 2 and 2b · Desktop | Desktop implementation and the follow-up debugging are on `main`. Includes reader and word cards, dock, Notebook, Shelf, reading plans, settings, layouts, Help and early exports. | Close the user study week, verify real Word/PDF outputs, and collect one current-revision desktop baseline. See the closeout below. [Phase 2b plan](../2026-11-10/docs/PLAN-phase2b.md) · [Build sequence](../2026-11-10/docs/PLAN-phase2b-build.md) · [Phase 2 results from main](../2026-11-10/main-d7384be/docs/phase2-results.md) |
 | 3 · Phone and sync | Partial. Compact reader, selection and sheets have browser coverage. | Finish and validate the complete Compact study flow, including Notebook, Shelf, navigation and return to the originating verse. Choose the private sync remote and credential model. Integrate sync with offline use, conflict recovery and a two-copy scratch test. Complete a week of touch reading and note taking with notes reaching the desktop. |
 | 4 · Tablet and native mobile | Pending. | Design and verify Medium layout, external keyboard and touch. Build for Android and iOS, arrange a Mac or cloud build for iOS, and repeat the same study flow on each size and native target. |
 | 5 · Documents | Partial. Word and Typst PDF generation, templates, Looks, parts controls and PDF page counting are already in the product or on `main`. | Replace the remaining Python-only export workflows in Rust. Compare approved existing source fixtures in real Word and PDF, and in PowerPoint if that format ships. Preserve database-backed verse checks. |
 | 6 · Remaining tools | Partial. Help, layouts, sets and the reading log already have implementations. | Reconcile the old checklist against the current UI. Read aloud, recordings, the select box and R6 Mark Read after Listen are still roadmap items. Determine which workflows already exist in Python and belong in the retirement checklist. |
 
-[Original phase exits and device matrix](archive/2026-11-10/docs/PLAN.md#8-phases) · [Community proposal, awaiting a product decision](archive/2026-11-10/docs/PLAN-community.md)
+[Original phase exits and device matrix](../2026-11-10/docs/PLAN.md#8-phases) · [Community proposal, awaiting a product decision](../2026-11-10/docs/PLAN-community.md)
 
 ### Desktop closeout
 
 - `main` has the H02 fixes, transactional page Undo, page and question actions, independent Notebook tabs, dock focus and layout restoration, shortcut assignment, Notebook filters and visual editing, export resolver and page previews, study-tool controls and Help improvements. Keep the older handoffs as provenance. Confirm behavior against `main` when evaluating old findings on another installed build.
-- D1 on `main` uses a 10-second single-page window and 30 seconds for batch or child promotion. The original deadline survives restart. Legacy Trash remains available for legacy note and question operations. See `crates/wb-core/src/deletion.rs` at `2137c3b` and the legacy deletion rules in [AGENTS.md](../AGENTS.md).
+- D1 on `main` uses a 10-second single-page window and 30 seconds for batch or child promotion. The original deadline survives restart. Legacy Trash remains available for legacy note and question operations. See `crates/wb-core/src/deletion.rs` at `2137c3b` and the legacy deletion rules in [AGENTS.md](../../../AGENTS.md).
 - On `main`, new exports default to `<study>/exports/` with `WB_DOCS_DIR` as an override. Records stay in `<study>/documents/` and the resolver also checks legacy locations. Verify that Rust can find existing exports, companions and kept versions after the Python checkout is gone.
 - Track the tablet keyboard retest (W-1), chronological reading-plan source (W-2), local Webster's dictionary prerequisite (W-3), owner disposition of findings (W-4), real generated Word/PDF inspection including Word without the bundled fonts (W-5), the provisional secondary-reader size (M5), and the study week closeout. The owner marks findings handled.
 - Full D4 builder scope beyond current page selection/preview and D11 ink measurement or Word pagination still need product decisions. A PDF page count already exists. Wider thread nesting needs an explicit storage decision. Retest Shelf and Notebook pointer and touch flows on the intended build before reopening implementation.
-- Record one integrated Windows run with Rust tests, UI build, WebKit, native WebView2 desk and real drag, document-plan parity, Python-open compatibility and golden output. Use disposable study and export directories and a read-only Bible database. The historical desk run was **420/420** at `3078ede`. H02 subsequently recorded **103/103** golden parity using disposable copies with Rust-only set items omitted. These are historical results. [Baseline](archive/2026-11-10/main-d7384be/docs/current/verification-3078ede.md) · [H08 evidence](archive/2026-11-10/main-d7384be/docs/current/handoffs/08-study-tools-review.md) · [Findings workflow](archive/2026-11-10/docs/current/findings-workflow.md)
+- Record one integrated Windows run with Rust tests, UI build, WebKit, native WebView2 desk and real drag, document-plan parity, Python-open compatibility and golden output. Use disposable study and export directories and a read-only Bible database. The historical desk run was **420/420** at `3078ede`. H02 subsequently recorded **103/103** golden parity using disposable copies with Rust-only set items omitted. These are historical results. [Baseline](../2026-11-10/main-d7384be/docs/current/verification-3078ede.md) · [H08 evidence](../2026-11-10/main-d7384be/docs/current/handoffs/08-study-tools-review.md) · [Findings workflow](../2026-11-10/docs/current/findings-workflow.md)
 
 ## Retiring the Python app
 
@@ -72,7 +72,7 @@ After the first pass, assign implementation by file ownership. Keep desktop clos
 2. Finish redistribution evidence and notices for the exact bundled database and dictionary. Supply reviewed inputs, securely provision the production issuer and sign the intended Windows installer and update artifacts. Keep operator credentials and issuer files outside the bundle.
 3. Verify fresh install and CLI launch from another directory, GUI and CLI activation, offline access, file recovery, missing or corrupt resources, upgrade, interrupted or rejected update, and uninstall on a clean machine using scratch study data. Confirm that the release page and any updater offer the same approved artifact.
 
-[Pilot staging and operations](archive/2026-11-10/distribution/README.md) · [Licensing procedure](archive/2026-11-10/distribution/LICENSING.md) · [Data inventory](archive/2026-11-10/distribution/DATA-INVENTORY.md) · [Original distribution spec](archive/2026-11-10/docs/SPEC-landing-distribution-licensing.md)
+[Pilot staging and operations](../2026-11-10/distribution/README.md) · [Licensing procedure](../2026-11-10/distribution/LICENSING.md) · [Data inventory](../2026-11-10/distribution/DATA-INVENTORY.md) · [Original distribution spec](../2026-11-10/docs/SPEC-landing-distribution-licensing.md)
 
 ## Repository structure for agent work
 
@@ -104,5 +104,7 @@ For desktop and phone development, use `main` as the proposed baseline because i
 ## Evidence tiers
 
 - **Identified Primary.** Local Git revisions, source, package manifests, original plans and decision records, and recorded test outputs. Historical reports establish results for their stated builds.
-- **Identified Secondary.** Earlier queues and handoffs summarize findings and are retained for context in the [archive](archive/2026-11-10/).
+- **Identified Secondary.** Earlier queues and handoffs summarize findings and are retained for context in the [archive](../2026-11-10).
 - **Unverified/Flagged.** Current integrated runtime results, user closeout, native mobile targets, signed release readiness and production data redistribution evidence remain open.
+
+> Archived 2026-11-23: stale. Current rules are in [AGENTS.md](../../../AGENTS.md) and the [principles](../../../design/features/principles/README.md). Design folders cite this file by line number, so nothing above this note moves.

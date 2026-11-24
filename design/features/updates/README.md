@@ -26,7 +26,7 @@ what changed, and takes it, in the app, instead of a rebuild and `scripts/instal
 person on 2026-11-13 ("documentation that lays out what an update popup looks like on the app") and again on
 2026-11-16 (the installed app should update itself in the app). Today nothing in the window speaks of updates:
 `codex/installer-port` (`248c45a`) has an optional Tauri updater in the shell only, which shows a system dialog ten
-seconds after the reader opens, and its signed update path is unverified ([spec](../../../docs/SPEC.md), line 11).
+seconds after the reader opens, and its signed update path is unverified ([spec](../../../docs/archive/2026-11-23/SPEC.md), line 11).
 
 ## Leading design (2026-11-16)
 
@@ -46,7 +46,7 @@ was never drawn here and is replaced by U-1.
 
 - The installed app updates itself in the app; no reinstall by hand (the person, 2026-11-16).
 - Checking is optional and never needed to keep studying: the pilot is permanent offline use after activation
-  ([spec](../../../docs/SPEC.md), line 69).
+  ([spec](../../../docs/archive/2026-11-23/SPEC.md), line 69).
 - The notice never covers the reader or takes its place. The old app keeps working if an update fails or is refused.
   Unsaved writing is never lost on a restart. Nothing in the study folder changes. Every window action has a `wb`
   command.
@@ -70,13 +70,13 @@ the person sees them on the sheets when the folder is offered for acceptance.
 | U-9 | **After an update nothing opens over the reader.** The dot is gone. The Updates section reads "You have 0.3.0, updated today from 0.2.4", with what changed in it, readable offline (the installed version's notes come with the app). | U-1 |
 | U-10 | **"Not this version" puts the dot away until a newer release.** The version stays listed in the section with Install. | the constraint (refused); U-5 |
 | U-11 | **Every failure is said in the Updates section, in plain words, with what still works.** A look by hand with no network: "Could not reach the update site. Bible Workbench works as it is." It is looked for again with Check now. A download that stopped: "The download of 0.3.0 stopped at 31 of 84 MB. Bible Workbench 0.2.4 works as it is.", with Try again. An install that did not finish: the old version opens, and the section says it was not changed. The setting, Check now and U-4's line stay in the section through every failure. The gear's dot shows for a failure only when the person had asked for the install, and goes once the section has been opened (a version still ready keeps its dot); a look made by itself never reports a failure. | the constraint; U-3 |
-| U-12 | **An update whose signature does not match is thrown away, and there is no "install anyway".** The section says: "This update was not installed: it was not signed by Bible Workbench. Nothing was changed." The app also refuses a file that is not newer than what is installed, and an address that is not HTTPS. | the spec's "interrupted or rejected update" ([spec](../../../docs/SPEC.md), line 73) |
+| U-12 | **An update whose signature does not match is thrown away, and there is no "install anyway".** The section says: "This update was not installed: it was not signed by Bible Workbench. Nothing was changed." The app also refuses a file that is not newer than what is installed, and an address that is not HTTPS. | the spec's "interrupted or rejected update" ([spec](../../../docs/archive/2026-11-23/SPEC.md), line 73) |
 | U-13 | **The version before is kept, once, and the person can go back to it.** After an update the section offers "Go back to 0.2.4" (the program files kept beside the app, not downloaded again). It is not offered when the newer version's notes say the study folder's form was moved forward. | research: a removed function has no remedy but the old version ([research](../../research/bible-software-complaints.md), line 72); the old app keeps working |
 | U-14 | **A copy built from source does not update itself.** A build made by `scripts/install-app.ps1` has no update code switched on; its section reads "This copy was built from source (40a91dc). It does not update itself." and offers nothing else. | `248c45a`: the updater is a Cargo feature, off by default, started only when the build has the key and the address |
 | U-15 | **What the app remembers about updates is kept beside the app, not in the study folder**: the setting, when it last looked, a version set aside, a downloaded file, the version before (`%LOCALAPPDATA%\bible-workbench-rs\updates\`). An update writes program files only. If a release ever needs the study folder's form moved, that is its own design with its own go-ahead (`AGENTS.md`); the updater never does it, and the notes' *Your study folder* line says it before Install. | "nothing in the study folder changes"; `AGENTS.md` (the study folder's formats) |
 | U-16 | **The commands** are `wb update status`, `check`, `notes`, `install`, `stop`, `skip`, `back`, and `wb settings updates` (below). They work with the window closed. | `AGENTS.md`: every core action is reachable from `wb` |
-| U-17 | **Where updates come from, as a requirement:** one public HTTPS address holding the release file and the installer, GitHub Releases of a public repository that holds releases only; each update signed with one key pair made for updates, whose private half the person holds and which is never in the repository; the public half is compiled into the app and cannot be changed while it runs. The updater offers the same installer the release page offers. | `248c45a`'s notes (a private repository's files need a token); [spec](../../../docs/SPEC.md), lines 72-73 (sign the update artifacts; the release page and the updater offer the same approved artifact) |
-| U-18 | **An update never asks for activation again**, and an activated copy may take every update. | permanent offline use after activation; no renewal or expiry policy was added ([spec](../../../docs/SPEC.md), line 69). Update entitlement is still listed for the person to confirm in the pilot (spec, line 71) |
+| U-17 | **Where updates come from, as a requirement:** one public HTTPS address holding the release file and the installer, GitHub Releases of a public repository that holds releases only; each update signed with one key pair made for updates, whose private half the person holds and which is never in the repository; the public half is compiled into the app and cannot be changed while it runs. The updater offers the same installer the release page offers. | `248c45a`'s notes (a private repository's files need a token); [spec](../../../docs/archive/2026-11-23/SPEC.md), lines 72-73 (sign the update artifacts; the release page and the updater offer the same approved artifact) |
+| U-18 | **An update never asks for activation again**, and an activated copy may take every update. | permanent offline use after activation; no renewal or expiry policy was added ([spec](../../../docs/archive/2026-11-23/SPEC.md), line 69). Update entitlement is still listed for the person to confirm in the pilot (spec, line 71) |
 | U-19 | **The phone is out of this folder.** A phone's updates come from its store. Narrow here means a narrow window on the desktop and the Settings menu at phone width. | [coverage](../coverage.md) (the phone is deferred) |
 
 One recommendation, where there was a real choice (U-3, the default): **look when the app opens**. Reasons: the person
@@ -295,7 +295,7 @@ scratch app folder; never the real release address, the person's study folder or
   agent move with it in the same change. The window's storage (the kept place, the dock) is not cleared by the
   installer.
 - The spec's clean-machine checks (fresh install, upgrade, interrupted or rejected update, uninstall:
-  [spec](../../../docs/SPEC.md), line 73) are run with the real signed path before the feature is switched on for a
+  [spec](../../../docs/archive/2026-11-23/SPEC.md), line 73) are run with the real signed path before the feature is switched on for a
   release; until then the signed path stays "unverified" in the spec.
 
 ### Needs the person
