@@ -1,4 +1,6 @@
-# A release: push a tag v<version> (the version in Cargo.toml and tauri.conf.json). Three jobs. `windows` (GitHub's
+# A release: push a tag v<version> (the version in Cargo.toml and tauri.conf.json). Five jobs. `gate` refuses the tag unless
+# the full Windows suite (ci.yml, job `full`) passed on the tagged commit, and `smoke` starts the built Windows app on a
+# scratch study folder (measure/smoke.mjs) before anything is published (docs/turnaround.md step 2, ticket 6). `windows` (GitHub's
 # Windows machine) builds the installer and `mac` (a macOS machine) builds one universal app (Apple silicon and Intel)
 # as a .dmg and an updater .app.tar.gz, both with the updater switched on and signed with the update key (secrets
 # TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD); each uploads its files as a workflow artifact.
@@ -12,7 +14,30 @@ on:
     tags: ['v*']
 
 jobs:
+  # The full suite runs on pull requests to main and on main (ci.yml), so a commit that was merged has a successful run
+  # of the job `full` for its sha. The job is checked, not just the run: a plain branch push also makes a run of ci.yml,
+  # and there `full` is skipped.
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: The full test suite passed on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&status=success&per_page=100" --jq '.workflow_runs[].id')
+          for run in $runs; do
+            ok=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs?per_page=100" --jq '[.jobs[] | select(.name == "full" and .conclusion == "success")] | length')
+            if [ "$ok" -gt 0 ]; then echo "The full suite passed on $GITHUB_SHA (CI run $run)."; exit 0; fi
+          done
+          echo "::error::The full test suite has not passed on this commit. Merge to main and wait for CI before tagging."
+          exit 1
+
   windows:
+    needs: gate
     runs-on: windows-latest
     timeout-minutes: 90
     permissions:
@@ -72,7 +97,52 @@ jobs:
           path: stage/*
           if-no-files-found: error
 
+      # the program itself, for the smoke run (publish reads only the `windows` and `mac` artifacts)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smoke-exe
+          path: target/release/bible-workbench.exe
+          if-no-files-found: error
+
+  # The built app, not installed, on a fresh scratch study folder: write a page, press Enter, close, open again, and the
+  # page's file is on disk. Nothing is published if it fails (measure/smoke.mjs).
+  smoke:
+    needs: windows
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      WB_BIBLE_DB: ${{ github.workspace }}/datasets/workbench.db
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: The Bible database (data-v1 of the public releases repository)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          mkdir -p datasets
+          gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
+          echo "fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c  datasets/workbench.db" | sha256sum -c
+
+      - run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: smoke-exe
+          path: target/release
+
+      - name: Smoke run
+        run: node measure/smoke.mjs
+
   mac:
+    needs: gate
     runs-on: macos-latest
     timeout-minutes: 90
     permissions:
@@ -135,7 +205,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [windows, mac]
+    needs: [windows, mac, smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
