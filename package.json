@@ -10,6 +10,7 @@
     "tokens:check": "python scripts/tokens.py --check",
     "ratchet": "node scripts/ratchet.mjs",
     "test:ratchet": "node --test scripts/ratchet.test.mjs",
+    "test:hooks": "node --test scripts/hooks/*.test.mjs",
     "scripture": "node --no-warnings scripts/scripture-check.mjs",
     "test:scripture": "node --no-warnings --test scripts/scripture-check.test.mjs",
     "test:tokens": "node --test scripts/tokens.test.mjs",

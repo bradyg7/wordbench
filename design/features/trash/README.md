@@ -19,7 +19,7 @@ decision or the spec.
 - **5** existing commands named; `wb page rm <id> <id> …` and `wb trash restore <name> <name> …` named as required.
 - **6** [overlaps](../overlaps.md) "Deleting: 7 days or destroyed" and "Choosing and deleting several pages" resolved
   (TR-2 with library L-13); [coverage](../coverage.md) gives `trash` to this folder alone.
-- **7** agrees with `AGENTS.md` (7 days, Erase now, nothing else erased: TR-1) and `docs/SPEC.md:32` (TR-3).
+- **7** agrees with `AGENTS.md` (7 days, Erase now, nothing else erased: TR-1) and `docs/archive/2026-11-23/SPEC.md:32` (TR-3).
 - **8** the board holds only the Leading table's windows; Numbers 25:10-13 in T11, T12 comes from
   `data/num25-10-13.json` (`wb text`), equal byte for byte to marks' copy; nothing typed (`trash.py:24`).
 - **9** no suggestion or commentary on the board. **10** no format change.
@@ -68,7 +68,7 @@ accepted.
 |---|---|---|
 | TR-1 | **Empty trash erases what the Trash lists and nothing else:** deleted pages and questions. Deleted findings, documents' records, layouts and plans also wait in `.trash/` but are not listed and are not erased. | `AGENTS.md` ("Nothing else is erased"); `wb trash empty` ("Other files in .trash stay") |
 | TR-2 | **Choosing several pages is the library's** (S32: the selection and its bar). **What follows is the trash's:** every chosen page goes to the Trash, one toast for all with one Undo that puts all of them back, then each waits its 7 days (T10). T3, drawn under the declined direction A, is superseded. | The person's T1 decision; 0ade; overlaps "Choosing and deleting several pages" |
-| TR-3 | **The Undo for several pages lasts 30 seconds; for one page, 10.** This is what `main` already does. | `docs/SPEC.md:32` (D1: "a 10-second single-page window and 30 seconds for batch") |
+| TR-3 | **The Undo for several pages lasts 30 seconds; for one page, 10.** This is what `main` already does. | `docs/archive/2026-11-23/SPEC.md:32` (D1: "a 10-second single-page window and 30 seconds for batch") |
 | TR-4 | **A large Trash** is grouped by the day of deletion with a count each, every group folded to its first rows with "Show all N", under a plain search field (T14). Nothing about the rows or the buttons changes. | index, "Every design is drawn in the real conditions" |
 | TR-5 | **Deleting a block (T9) stays out of the Trash** (accepted). The questions that were open here are closed: the way to the Trash is T6 and T8; 9ed7 is T9; T3 is TR-2. | The person, 2026-11-13 |
 

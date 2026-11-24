@@ -10,7 +10,7 @@ their words. Root `GLOSSARY.md` points to it for the app's words and holds the d
 ratchet…) itself; step 3 of the turnaround moves the Library map's words into it.
 
 - Use its words in code, tests, issue titles, refactor proposals and test names.
-- A new object or word changes `design/LIBRARY.md` first, **with the person's go-ahead** (AGENTS.md, Cohesion).
+- A new object or word changes `design/LIBRARY.md` first, **with the person's go-ahead** ([how work is done](how-work-is-done.md), Cohesion).
   Never add app words to `GLOSSARY.md` before that move, and never mint a term silently.
 - Retired words stay retired: "thread" is now "folder with a color"; "note" is now "page".
 

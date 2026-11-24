@@ -54,7 +54,7 @@ async function main() {
   // after every release; the copy in the repository is only a local placeholder, so it is not compared here.
   console.log(`Version ${version}: Cargo and Tauri agree.`);
   const args = process.argv.slice(2);
-  if (args.length !== 2 || args[0] !== '--staging') throw new Error('Packaging is not ready: supply --staging <directory> containing manifest.json and approved artifacts. See docs/SPEC.md.');
+  if (args.length !== 2 || args[0] !== '--staging') throw new Error('Packaging is not ready: supply --staging <directory> containing manifest.json and approved artifacts. See docs/archive/2026-11-23/SPEC.md.');
   await checkStaging(resolve(args[1]), version);
   console.log('Staged components and recorded provenance passed integrity checks. This does not verify legal rights, code signing, activation, or clean-machine behavior.');
 }

@@ -2,5 +2,13 @@
   "enabledMcpjsonServers": ["codegraph"],
   "enabledPlugins": {
     "mattpocock-skills@mattpocock": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/no-wait.mjs\"" }]
+      }
+    ]
   }
 }

@@ -1,40 +1,29 @@
 # How builds, reviews and merges work
 
-Set 2026-11-17 (the person asked that builders work to completion). One page.
+Set 2026-11-17 (the person asked that builders work to completion); the clones and CI as of 2026-11-23. One page.
 
 ## A build
 
-1. The overseer starts a `builder` with a short brief: worktree, branch, design folder. The common rules live in [`builder.md`](../.claude/agents/builder.md), not in the brief.
+1. The main session starts a `builder` with a short brief: the branch and the design folder or ticket. The builder works in the Main clone (see AGENTS.md, "Two clones"). The common rules live in [`builder.md`](../.claude/agents/builder.md), not in the brief.
 2. The builder works until every line of the folder's "What the build must satisfy" is built and ticked with evidence, or stops on a named blocker (a decision missing from the README, a missing tool, a design contradiction).
 3. Its report begins "N of M lines done".
 
 ## Desk lines
 
-A checklist line that needs the real app (desk.mjs, `npm run measure`, "the reader's place is kept" in the running window) is marked `(desk)` in the README. Builders tick the other lines. The builder runs them itself at the end, alone on the machine, on a scratch copy, and ticks the `(desk)` lines; if it cannot, the `installer` or another named agent runs them alone afterwards. If desk.mjs lacks the case, the builder adds it as part of the build.
+A checklist line that needs the real app (desk.mjs, `npm run measure`, "the reader's place is kept" in the running window) is marked `(desk)` in the README. Builders tick the other lines. The builder runs the desk cases itself at the end, on a scratch copy, and ticks the `(desk)` lines; if it cannot, the `installer` or another named agent runs them afterwards. If desk.mjs lacks the case, the builder adds it as part of the build.
 
 ## Review before merge
 
-After each builder reports, the overseer starts a `reviewer` on the diff against the folder's list. The reviewer returns a numbered list: lines unbuilt or stand-ins, ticks without evidence, conflict markers, commands without a test, a rule from `AGENTS.md` broken. The overseer sends that list to the same builder (SendMessage, so it keeps its context), and repeats until the list is empty. Only then is the branch offered for a pull request.
+After each builder reports, the main session starts one `reviewer` on the diff against the folder's list. The reviewer runs the new tests and the quick checks, shows each new test failing with the change undone, and returns a numbered list: lines unbuilt or stand-ins, ticks without evidence, tests that never failed, commands without a test, a rule from `AGENTS.md` or `CODING_STANDARDS.md` broken. The list goes back to the same builder (SendMessage, so it keeps its context), until it is empty.
 
-## Machine load
+## Merge
 
-One builder at a time (the person, 2026-11-17: feature by feature, never many at once). A builder has the machine to itself, so it may build the Tauri app and run the desk and measure checks itself; start the next builder only when the last one has finished and passed review. Each uses `-j 2` and builds into the shared target folder (`$env:CARGO_TARGET_DIR = 'C:\Users\brady\cargo-target\wb'`; see [build-speed.md](build-speed.md)), so a new worktree's first build takes about 85 s instead of 15 minutes. Never merge a partial build as a plan: a feature merges when every line is ticked, or when the one remaining blocker is named and is the person's.
+The branch is pushed, and CI (`.github/workflows/ci.yml`) runs the full suites. It reaches `main` when CI passes and the person says go. One builder at a time (the person, 2026-11-17: feature by feature). Never merge a partial build as a plan: a feature merges when every line is ticked, or when the one remaining blocker is named and is the person's.
 
 ## Open after merge
 
 If the person merges a partial build, the unticked lines are copied under an "Open after merge" heading in the folder's README (line text, the reason). A completion builder's brief is then the folder name: close the open lines. Remove the heading when empty.
 
-## After a pull request merges
-
-Each build lives in its own worktree and branch (`feature/<folder>`), and the worktree is removed once the work is on `main`. From the main checkout, in the person's terminal:
-
-```
-powershell -ExecutionPolicy Bypass -File scripts\finish-worktree.ps1           # dry run: says what it would remove
-powershell -ExecutionPolicy Bypass -File scripts\finish-worktree.ps1 -Apply    # removes them
-```
-
-A worktree and its local branch are removed only when its work is on `origin/main` (the branch is an ancestor, or its pull request is merged with the same last commit; a squash merge counts), nothing is uncommitted or untracked in it, it is not locked, and no process has it open. Otherwise it is kept, with the reason. A branch with no pull request that only sits on `main` (perhaps just made) is kept unless `-IncludeEmpty`; worktrees made by other tools (Codex, Gemini) are kept unless `-IncludeOtherTools`. Remote branches and the main checkout are never touched. The checklist ("What the build must satisfy") is checked before the pull request, by the builder and reviewer; the merge is the signal that it was accepted.
-
 ## Waiting on a build
 
-Builders never wait by polling (no `timeout`/`until`/`sleep` loops, no repeated sleep-and-tail calls). A long command is started with `run_in_background`; the builder does other work, and when nothing is left it ends its turn with a one-line note. The harness resumes it when the command finishes. (2026-11-17: one builder made 347 wait loops and three runs were stopped by the 600 s stall watchdog; the marks builder then waited this way for about 30 minutes, resumed each time, and finished.)
+A long command is started with `run_in_background`; the agent does other work, and when nothing is left it ends its turn with a one-line note. The harness resumes it when the command finishes. A hook refuses `sleep` and wait loops (2026-11-17: one builder made 347 of them and three runs were stopped by the 600 s stall watchdog; 2026-11-22: a builder ran one spec 44 times in 139 minutes).
