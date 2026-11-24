@@ -1,7 +1,12 @@
 # Feature designs
 
-Each feature of the app is designed in its own folder here, in rounds of FigCraft sheets the person reviews. A folder
-is written so that a person or an AI can build the feature from it without the conversation that made it.
+Each feature of the app is designed in its own folder here: grilled with the person, prototyped, played, then written
+down as *what must be true* ([how work is done](../../docs/agents/how-work-is-done.md#designing-a-feature)). A folder is
+written so that a person or an AI can build the feature from it without the conversation that made it.
+
+**No folder is accepted today** (the person, 2026-11-24). Every folder is up for redesign through that process, in the
+order set by mapping the whole app ([the turnaround](../../docs/turnaround.md), step 4); the State column below is what each was before. Drawn boards, sheets, review decks
+and interaction tables are retired and stay only as history.
 
 | Folder | Feature | State | Last round | Readiness |
 |---|---|---|---|---|
@@ -30,34 +35,21 @@ is written so that a person or an AI can build the feature from it without the c
 | [tether](tether/README.md) | Tether: Find scripture… in a long note: references the person said or quoted, shown with their evidence, added to the page only on Accept; the verses in order for a deck or script | Accepted (2026-11-17): Named and Quoted only; building | 2026-11-17 | likely finished (2026-11-17, first pass): all ten checks pass; TG-1 to TG-14 are inferences; the one question is whether an AI tier may ever break "nothing suggested"; the person looks at TG1, TG2, TG3, TG4, TG5, TG7, then TG6, TG12, TG13, TG9-TG11 |
 Every general feature, button and command is designed here before it is built; [coverage.md](coverage.md) lists
 every area of the app and the folder that designs it; [overlaps.md](overlaps.md) lists the parts several folders draw, and
-which directions conflict. The round-1 folders of 2026-11-12 share [kit.py](kit.py) for their sheets.
+which directions conflict. The Readiness column, [ready-criteria.md](ready-criteria.md), `kit.py`, `lead.py` and the
+sheet scripts are retired (2026-11-24) and kept only as history until ticket D removes them.
 
-Readiness is the overseer's mark from [ready-criteria.md](ready-criteria.md): *unfinished* (with the failing checks) or *likely finished*; it is never *accepted*, which only the person says.
+State is one of: *grilling*, *prototype* (being played), *accepted* (the person's word, dated; ready to build),
+*building*, *built* (link the commit), *dropped*. Older folders also say *exploring* or *superseded*.
 
-State is one of: *exploring* (rounds being drawn), *accepted* (the person accepted the design; ready to build),
-*building*, *built* (link the commit or spec section), *dropped*.
+## Every design meets the real conditions (the person, 2026-11-13)
 
-## Keeping folders small: the leading design (the person, 2026-11-12)
+Something tried alone on an empty desk hides what goes wrong. A prototype, and the *what must be true* items, cover the
+feature in each of these:
 
-A folder's board, and the PDF made from it, hold only its **leading** windows: the ones that still stand for a part of the
-feature. When a later window replaces an earlier one, the earlier one leaves the board (cut from the script, or listed in the script's `DROP`
-list for the older scripts whose rounds share helpers: [lead.py](lead.py)), and
-gets one line in the README's **Leading design** table (what replaced it). Before a trim, the folder is committed, so
-every earlier window stays in git history and can be drawn again from there. The board is grouped by part, not by
-round, so it never needs deep zoom. The script exports the board as one vector PDF, `<feature>.pdf`, in the board's order: its text stays sharp at any zoom and can be searched, and there are no PNGs. Window numbers
-never change or get reused, so a window named in a decision is always the same one.
-
-## Every design is drawn in the real conditions (the person, 2026-11-13)
-
-A window drawn alone on an empty desk hides what goes wrong. Before a folder can be accepted, its board shows the
-part in each of these, and its "What the build must satisfy" checks each in the app:
-
-1. **Among other tabs:** opened while the reader and other panes are open (a tab beside others in a pane).
-2. **As a floating tab:** popped out over the reader, at a small size.
-3. **Narrow:** in a side pane or at phone width.
-4. **Years of study:** with a study the size of years of daily use (hundreds of pages, many threads, highlights,
-   layouts and kept commands), not a handful of samples. Tests use a generated scratch study of that size, never the
-   person's real folder.
+1. **Among other things open:** beside the reader and the other parts of the app.
+2. **Small:** at a small size, in a side part or at phone width.
+3. **Years of study:** with a study the size of years of daily use (hundreds of pages, many folders, highlights and
+   marks), not a handful of samples. Tests use a generated scratch study of that size, never the person's real folder.
 
 ## A design choice is not a setting (the person, 2026-11-13)
 
@@ -69,17 +61,8 @@ not made a toggle.
 
 ```
 design/features/<feature>/
-  README.md          decisions (dated), open questions, rounds, what the build must satisfy
-  <feature>.py       the FigCraft source script (imports figlib, parts, build, phase2b from design/)
-  <feature>.figcraft written by the script; open it in FigCraft
-  <feature>.pdf      written by the script: the board as one vector PDF, in part order
-  data/*.json        lookups the sheets show (scripture, concordance, lexicon), fetched from the database with wb,
-                     never typed; say in the README which command made each one
+  README.md     decisions (dated), what the person said at play, what must be true, tickets
+  prototype/    the throwaway prototype the person plays
 ```
 
-Run a feature's script from the repo root: `python design/features/<feature>/<feature>.py`. Its intermediate
-step files go to `design/build/` (ignored by git), as for the older boards.
-
-Start a new feature by copying [`_template/`](_template/README.md). The shared helpers (`figlib.py`, `parts.py`,
-`build.py`, `phase2b.py`, `fonts/`) stay in `design/`; the boards made before this folder existed (`build.py`,
-`phase2b.py`, `r1.py`-`r4.py`, `workspace.py`, `filter.py`) stay where they are.
+Start a new feature by copying [`_template/`](_template/README.md).

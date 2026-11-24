@@ -1,7 +1,8 @@
 # How work is done
 
 Decided by the person on 2026-11-18, after builds that missed parts of their designs, a build that never landed, and
-credits spent too fast; revised 2026-11-20, 2026-11-21 and 2026-11-23 (two clones, CI runs the full suites). Read this
+credits spent too fast; revised 2026-11-20, 2026-11-21, 2026-11-23 (two clones, CI runs the full suites) and 2026-11-24 (designing with a
+prototype). Read this
 before designing, cutting tickets, building or reviewing. The agents' own rules are in `.claude/agents/`; how a build,
 its review and its merge fit together is [agent-workflow.md](../agent-workflow.md).
 
@@ -12,41 +13,62 @@ its review and its merge fit together is [agent-workflow.md](../agent-workflow.m
 - **The lead** (Claude Opus, low effort) designs with the person, cuts an accepted design into tickets, delegates them
   one at a time, has each one reviewed, and writes the handoffs. The lead does not build a ticket itself.
 - **The builder** (a Claude Sonnet subagent) builds one ticket in the Main clone and reports. It never invents behavior
-  a row leaves open: it stops, and the lead brings the question to the person.
+  an item leaves open: it stops, and the lead brings the question to the person.
 - **One reviewer per ticket** (Sonnet) checks the diff and runs its new tests (see `.claude/agents/reviewer.md`).
-- **Mechanical checks** (every row has a test, packaging, counts, installing) go to Haiku. **Release and updater
+- **Mechanical checks** (every item has a test, packaging, counts, installing) go to Haiku. **Release and updater
   verification** goes to Windows Codex.
 - No overseer runs in a loop. Several tasks may run at once (a design in Design while a ticket builds in Main), each
   agent with only the context it needs: one writer per clone, and no two agents on the same files.
 
-## The interaction table
+## Designing a feature
 
-Every design folder has a table with one row per thing a person can do: where, the action (every button, key and
-command), what they see, what changes on disk, the `wb` command, and the test that proves it. Nothing a builder must
-guess is left out: if a row is missing, the builder stops and asks; it does not invent. Builders build from the table.
+Decided by the person, 2026-11-23 and 2026-11-24. It replaces the drawn boards (FigCraft), sheets, `review.html` decks
+and full interaction tables, which are retired.
 
-**One drawn frame per row, and the review deck** (the person, 2026-11-19 and 2026-11-20). Each row has one polished,
-screenshot-quality frame (`design/features/<folder>/rows/<id>.png`, listed in `rows/index.json`; a row with
-alternatives gets `12a`, `12b`). A row without its frame is not designed. Every round ends with
-`node design/review.mjs <folder>`, written and committed with the README before the round goes to the person: a deck
-showing each frame beside its row, with a comment box, a rating (Perfect, Satisfactory, Not great, Horrible) and reason
-chips per row, exported as `review-<folder>-round<N>.json`. The lead answers each JSON worst first in a Directions
-table under `## Directions`. A row rated Perfect with no change asked is approved (its Built cell says `approved`) and
-hidden from later rounds; every question the person asks about an action becomes its own row with its own frame. The
-round number comes from the README's State line. This holds for every agent (Claude, Codex or any other) that drafts
-or changes a design folder.
+1. **Grilling with the docs.** The lead asks the person every open decision in rounds (`/grilling`), against
+   [the principles](../../design/features/principles/README.md) and [the glossary](../../GLOSSARY.md). Answers are
+   written in the folder's `## Decisions`, dated, as they are given.
+2. **A throwaway prototype** (`/prototype`) in the Design clone. It reads the app's code but only adds its own files,
+   kept in the design folder; the build later replaces them or folds them into the real ones.
+3. **The person plays it**, and says what works and what does not. Another round of grilling and prototype follows
+   until the person marks the folder **accepted**.
+4. **What must be true**: the folder's short list, one item per thing a person does (below). The person writes and
+   checks the first four lines.
+5. **Tickets** are cut from those items (below).
 
-**Cohesion.** No feature invents an object or a word that is not in [the Library map](../../design/LIBRARY.md).
-Features are designed one at a time, in the map's priority order, so designs do not drift apart.
+**What must be true.** Each item in this form:
+
+> **You see before:** [wide Notebook], a page open, the side list showing
+> **You do:** drag the pane narrower
+> **You see after:** [narrow Notebook], the same page still open, no older view shown
+> **You feel:** Steady, no flash *(the one or two feel qualities most at risk; otherwise "checked at play")*
+> — *for the builder:* **on disk** nothing changes · **`wb`** none: view only · **proven by** `notebook-width.spec`
+
+- *Before* and *after* use [named states](../../GLOSSARY.md#named-states) in brackets. A new state is added to the
+  glossary first. A reviewer searches for the bracketed name across all folders to find every item that meets it, and
+  a combination no item covers is a blind spot found before building.
+- *You feel* names only the [feel qualities](../../DESIGN_STANDARDS.md#the-feel-qualities) most at risk, plus what
+  the person's play revealed; every item gets all of them by default.
+- The builder fills the last line: what changes **on disk**, the **`wb`** command that reaches the same action (every
+  core action has one), and the test it is **proven by**. The reviewer checks it. A builder never invents what an item
+  leaves open: it stops, and the lead brings the question to the person.
+- The format is a draft (2026-11-23), revised when something proves missing.
+
+**Cohesion.** No feature invents a word that is not in [the glossary](../../GLOSSARY.md): a new one is added there
+first, with the person's go-ahead. Features are designed one at a time, in the order set by mapping the whole app (the
+person, in [the turnaround](../turnaround.md), step 4), so designs do not drift apart.
+
+**No folder is accepted today** (the person, 2026-11-24). Every folder under `design/features/` is up for redesign
+through this process; its drawn frames and interaction table are history, not a design to build from.
 
 ## Tickets
 
-- The lead cuts a design into tickets of a few rows (the folder's `## Tickets` table), each buildable and testable on
-  its own. Before delegating, the lead checks that the design is accepted and that the branch and its base commit are
+- The lead cuts an accepted design into tickets of a few *what must be true* items (the folder's `## Tickets`
+  table), each buildable and testable on its own. Before delegating, the lead checks that the design is accepted and that the branch and its base commit are
   what the record says.
-- A ticket is done only when every one of its rows has a passing test on synthetic scratch data, at desktop and phone
-  widths; a feature is done only when every row of its table is. The table records which ticket built each row; a row
-  built only in part is marked `[ ] partly (…)`, and what is missing goes first in the next ticket's brief as its Part A.
+- A ticket is done only when every one of its items has a passing test on synthetic scratch data, at desktop and phone
+  widths; a feature is done only when every item is. Each item records which ticket built it; an item built only in
+  part is marked `[ ] partly (…)`, and what is missing goes first in the next ticket's brief as its Part A.
 - **File forms** (the person, 2026-11-21): how something is kept in Markdown or settings is the lead's call, in the most
   compatible form (Obsidian's where one exists), recorded dated under `## Decisions`. Other open questions go to the
   person.
@@ -59,13 +81,13 @@ Features are designed one at a time, in the map's priority order, so designs do 
 
 ## The handoff after each ticket
 
-From the lead to the person: the tested commit and its base; each row with its test name and result; the CI run and
+From the lead to the person: the tested commit and its base; each item with its test name and result; the CI run and
 its suite counts; a running scratch preview, with the window and control to use, the synthetic data to expect and the
-counts before and after each row; any question held for the person.
+counts before and after each item; any question held for the person.
 
 ## Where the person approves the next step
 
-1. A design round is marked accepted.
+1. A design folder is marked accepted, after the person has played its prototype.
 2. Each held question is answered (recorded under `## Decisions`, dated).
 3. After each ticket's handoff: go on to the next ticket. The person may instead tell the lead to run the tickets
    through to the end (2026-11-21); then the lead starts each next ticket as soon as the last one is reviewed.

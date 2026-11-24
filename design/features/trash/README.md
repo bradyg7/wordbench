@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted by the person 2026-11-17 (ready to build): round 3 (T10-T14) accepted 2026-11-17; rounds 1-2
+**State:** up for redesign (the person, 2026-11-24); was: accepted by the person 2026-11-17 (ready to build): round 3 (T10-T14) accepted 2026-11-17; rounds 1-2
 accepted 2026-11-13 (T5, T6, T8, T9) and built (commit `4f4f4d0`, 2026-11-13) · **Sheets:** `python design/features/trash/trash.py` writes `trash.figcraft` and
 `trash.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)). What other tools get wrong, and so what this
 folder avoids: [bible-software-complaints](../../research/bible-software-complaints.md) (theme 3: notes lost for good).

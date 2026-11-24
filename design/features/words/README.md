@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted by the person 2026-11-16 (build starts on feature/words-build); was exploring · **Sheets:** `python design/features/words/words.py` writes `words.figcraft` and
+**State:** up for redesign (the person, 2026-11-24); was: accepted by the person 2026-11-16 (build starts on feature/words-build); was exploring · **Sheets:** `python design/features/words/words.py` writes `words.figcraft` and
 `words.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet. What other tools get wrong, and so what this folder avoids:
 [bible-software-complaints](../../research/bible-software-complaints.md).
 

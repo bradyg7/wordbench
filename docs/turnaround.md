@@ -391,9 +391,37 @@ the gate.
 9. **AGENTS.md is 16 KB, loaded into every agent on every turn** (B).
 10. **Line-ending warnings, 21 a session** (D): a `.gitattributes`.
 
+**Ticket C grilling, 2026-11-24 (the person; supersedes "moved over as it is" above):**
+- **The glossary is rebuilt, not moved** (Q1, Q8): one A–Z list in `GLOSSARY.md`, a heading per word, app,
+  development and process words together, each with *Avoid* (Matt Pocock's form) for words not to use, and a few words
+  on how they differ when the avoided word is itself an entry. The Library map was a first try; its stale parts go, and
+  `design/LIBRARY.md` is deleted.
+- **Every word is grilled, as it comes up** (Q9, Q10, Q18): each word moved from the map is marked *not yet grilled*
+  until a grilling settles its meaning and its worth to the app. "Library" itself may be retired.
+- **Retired words** (Q11, Q17) get no entry of their own, only a place in an *Avoid* line, so a compound that keeps
+  them (**margin note**) is not confused. A new meaning for an existing word is the person's dated decision; the entry
+  keeps "Until <date>: meant …" and the code and docs are searched for the old use.
+- **Named states** (Q2): the section starts empty; it may become its own file if it grows.
+- **The vision** (Q12): the map's "What the Library is" moves to principles §1, "What the app is". The principles may
+  grow, as long as they stay readable and are kept to.
+- **The rest of the map** (Q13): answered questions and fixed drift are dropped; what is still open or drifting, and the
+  "Later" ideas, go to the parking lot; the priority list is dropped.
+- **The process** (Q3, Q5, Q6): written in `docs/agents/how-work-is-done.md`, "Designing a feature", and the template;
+  the builder's line is **on disk** · **`wb`** · **proven by**. AGENTS.md's rule is rewritten (the person, 2026-11-23).
+- **No folder is accepted** (Q4, Q14): with no prototype behind any of them, and the identity work possibly a new
+  foundation and shell, every folder is up for redesign. Their design order is mapped in the context of the whole app
+  (likely with `/mattpocock-skills:wayfinder`, which the person starts). Retired tools and material are ticket D's to
+  delete.
+- **CI next** (Q15): right after ticket C, its own branch: a local stand-in for CI while minutes are out, `warm-cache`
+  off macOS and Windows, and why runs take 40–80 minutes. Reported to the person.
+
 **Done when:** AGENTS.md is short and no steering file contradicts another; every one-way door is in principles §3.
 
 ### Step 4: build what is accepted before designing more
+
+**Changed by ticket C's grilling (the person, 2026-11-24):** no folder is accepted, so there is nothing accepted to build.
+Every folder goes back through step 3's process, in an order set by mapping the whole app first. This step's own
+grilling rewrites the lines below.
 
 - **A work-in-progress limit** (the person's number): no new design round while more than that many accepted folders
   are unbuilt.
@@ -429,7 +457,7 @@ step 2 measured.
 
 ## The loop from then on
 
-`/grilling` (with the docs; the Library map grows only with the person's go-ahead), then:
+`/grilling` (with the docs; the glossary grows only with the person's go-ahead), then:
 
 - a small change: `/implement`;
 - a large one: a prototype the person plays, its "what must be true" list, then `/to-tickets`, then one ticket per

@@ -1,85 +1,42 @@
 # <Feature name>
 
-**State:** exploring · **Sheets:** `python design/features/<feature>/<feature>.py` writes `<feature>.figcraft` and
-`<feature>.pdf` (the board, one vector page) · Nothing here is built yet. · **Review page:** `node design/review.mjs <feature>` writes `review.html`; every round ends with it (AGENTS.md, How work is done).
+**State:** grilling · **Prototype:** `prototype/` (how to open it) · Nothing here is built yet.
 
-One paragraph: what the feature is for, in the person's words, and which part of the app it touches.
+One paragraph: what the feature is for, in the person's words, and which part of the app it touches. Words come from
+[the glossary](../../../GLOSSARY.md); a new word is added there first, with the person's go-ahead.
 
-## Leading design
-
-The windows the board (and its PDF) holds, by part; superseded ones get a line saying what replaced them (see the
-[index](../README.md), Keeping folders small).
-
-| Part | Leading | Superseded (and by what) |
-|---|---|---|
-| Part | A1 | |
+How a feature is designed: [how work is done](../../../docs/agents/how-work-is-done.md#designing-a-feature). The State
+is one of *grilling*, *prototype* (being played), *accepted* (the person's word, dated), *building*, *built*.
 
 ## Decisions (the person, YYYY-MM-DD)
 
-Dated, newest round last. Each says what was chosen and what was rejected, so the build does not reopen it.
+Written as the grilling answers them, dated, newest last. Each says what was chosen and what was rejected, so the
+build does not reopen it.
 
 - **Short name.** What was decided. What was rejected, and why if the person said.
 
-## The person's findings that touch it (read only, `bible-study-data/findings`)
+## What the person said at play
 
-| Finding | In short |
-|---|---|
-|  |  |
+What worked and what did not, each time the person plays the prototype, dated.
 
-## Directions
+## What must be true
 
-While no direction is accepted: each direction as a `###` heading (how it looks, how it is reached, its costs), then `### Recommendation`. The review page shows this section.
+One item per thing a person does. The person writes and checks the first four lines; the builder fills the last, and
+the reviewer checks it. *Before* and *after* use [named states](../../../GLOSSARY.md#named-states).
 
-## Open questions
+**1.**
+> **You see before:** [state], …
+> **You do:** …
+> **You see after:** [state], …
+> **You feel:** the one or two feel qualities most at risk, or "checked at play"
+> — *for the builder:* **on disk** … · **`wb`** `wb …` (or "none: view only") · **proven by** `…` · built in ticket … [ ]
 
-- Question, and which round will answer it.
+## Tickets
 
-## Rounds
-
-| Round | Date | Windows | What it tried | Review |
-|---|---|---|---|---|
-| 1 | YYYY-MM-DD | A1, A2 | ... | Decisions above, YYYY-MM-DD |
-
-## Data the sheets show
-
-| File | Made by |
-|---|---|
-| `data/<name>.json` | `wb ...` (the exact command) |
-
-Scripture and lookups are fetched from the database, never typed.
-
-## The real conditions
-
-The board shows the part among other tabs, as a floating tab, narrow, and with years of study (see the
-[index](../README.md)). Name the windows that show each:
-
-| Condition | Window |
-|---|---|
-| Among other tabs | |
-| Floating | |
-| Narrow | |
-| Years of study | |
-
-## Interaction table
-
-One row per thing a person can do: every button, key, menu item, drag and command, in every state the sheets draw.
-Builders build from this table and guess nothing; a missing row stops the build. Objects and words come from
-[the Library map](../../LIBRARY.md). `Built` is ticked only when the row's test passes.
-
-| # | Where (window tag) | Action | What the person sees | What changes on disk | `wb` command | Test | Built |
-|---|---|---|---|---|---|---|---|
-| 1 | A1 | | | | | | [ ] |
-
-## What the build must satisfy
-
-Written once the person accepts a direction; each line is checkable, so the build's tests and the desk check can
-follow it. Name the window (its tag, e.g. A1, on the board) that shows it.
-
-- [ ] Behaviour, in the app's words. (A1)
-- [ ] The `wb` command that reaches the same action (every core action has one).
-- [ ] What happens to the study files, if anything (the study formats are this app's to shape; an old form is still read, and moving files to a new form is designed first).
-- [ ] The reader's place is kept.
+| Ticket | Items | Branch | State |
+|---|---|---|---|
+| 1 | 1, 2 | `feature/<folder>` | |
 
 ## Out of scope / later
 
-- Things raised during the rounds that belong to another feature (link its folder).
+- Things raised that belong to another feature (link its folder), or to [the parking lot](../../../docs/turnaround-parked.md).

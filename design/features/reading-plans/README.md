@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted to build (the person, 2026-11-17: answers taken as the overseer recommended, build started) · **Sheets:** `python design/features/reading-plans/reading-plans.py` writes
+**State:** up for redesign (the person, 2026-11-24); was: accepted to build (the person, 2026-11-17: answers taken as the overseer recommended, build started) · **Sheets:** `python design/features/reading-plans/reading-plans.py` writes
 `reading-plans.figcraft` and `reading-plans.pdf` (the board, one vector page) · Building on `feature/reading-plans`.
 
 Reading plans and the reading log were built before `design/features/` existed. This folder designs them for the first

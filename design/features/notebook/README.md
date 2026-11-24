@@ -2,12 +2,12 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted (the person, 2026-11-20, after round 5) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
+**State:** up for redesign (the person, 2026-11-24); was: accepted (the person, 2026-11-20, after round 5) · **Sheets:** `python -B design/features/notebook/notebook.py` writes `rows/<id>.png` and `rows/index.json`, one frame per row ·
 Nothing here is built. · **Review page:** `node design/review.mjs notebook` writes `review.html`.
 
 The person, 2026-11-20: Notion's quality is the template; Wordbench comes in and changes it for studying the Bible.
 Not every Notion command is kept, and Wordbench adds its own Bible-specific versions. This folder is the
-[Library map](../../LIBRARY.md)'s Open item 5, "the Notebook's feature inventory": every line is marked **adopt**,
+Library map's Open item 5 (now in [the parking lot](../../../docs/turnaround-parked.md)), "the Notebook's feature inventory": every line is marked **adopt**,
 **adapt** or **skip**, with the reason. The redesign's interaction table is built from the adopted and adapted lines.
 
 Sources: the person's 23 screenshots of Notion (2026-11-20, kept outside the repo; named below as N02…N24) and their

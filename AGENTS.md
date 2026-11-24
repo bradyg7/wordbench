@@ -8,16 +8,16 @@ forward. When a change alters expected behavior, document the contract and verif
 ## Read before you start
 
 - **Designing or deciding:** [the principles](design/features/principles/README.md) (goals, the frame, every standing
-  decision), then [the Library map](design/LIBRARY.md): the app's objects, their words and the priority list. A design
-  that needs a new object or word changes the map first, with the person's go-ahead.
+  decision), then [the glossary](GLOSSARY.md): every word the app and this project use. A design that needs a new
+  word, or a new meaning for one, changes the glossary first, with the person's go-ahead.
 - **Designing, cutting tickets, building or reviewing:** [how work is done](docs/agents/how-work-is-done.md) (who does
-  what, the interaction table and review deck, tickets, handoffs, approvals).
+  what, designing a feature, tickets, handoffs, approvals).
 - **Writing or reviewing code:** [CODING_STANDARDS.md](CODING_STANDARDS.md), and for anything the person sees
   [DESIGN_STANDARDS.md](DESIGN_STANDARDS.md).
 - **Touching study files, documents or the database:** [the study folder](docs/agents/study-folder.md).
 - **Running the app, tests or a release:** [commands, ports and releases](docs/agents/commands.md).
-- **Words:** `design/LIBRARY.md` (app words) and `GLOSSARY.md` (development words); see `docs/agents/domain.md`.
-  Work is tracked in design folders and their tables, not GitHub Issues (`docs/agents/issue-tracker.md`).
+- **Words:** [GLOSSARY.md](GLOSSARY.md), app and development words together; see `docs/agents/domain.md`. Work is
+  tracked in design folders, not GitHub Issues (`docs/agents/issue-tracker.md`).
 - **The turnaround** (2026-11-23): [docs/turnaround.md](docs/turnaround.md) is followed in order; new ideas go to
   [its parking lot](docs/turnaround-parked.md).
 
@@ -40,11 +40,11 @@ forward. When a change alters expected behavior, document the contract and verif
 - **Everything is a page, in the window** (2026-11-09), and **a thread is a folder with a color** (2026-11-17).
 - **The Bible database is read-only.** It is opened with SQLite's read-only flag; never modify it.
 - **Never lose the reader's place.** Anything opened from the text returns to the verse it came from.
-- **Designed before it is built** (2026-11-11). Every feature, button and command the person would see has a design
-  folder under `design/features/` (dated decisions, frames, the interaction table, "what the build must satisfy")
-  before it is built or changed. Building starts only from a folder the person marked *accepted*.
-  [`coverage.md`](design/features/coverage.md) lists every area and its folder; a new button or command gets a row
-  there first. Bug fixes that keep the accepted design need no new round.
+- **Designed before it is built** (the person, 2026-11-23). Every feature, button and command the person would see is
+  grilled, prototyped and played by the person before it is built or changed. Its folder under `design/features/`
+  holds the "what must be true" items. Building starts only from a folder the person marked *accepted*.
+  [`coverage.md`](design/features/coverage.md) lists every area; a new button or command gets a row there first. Bug
+  fixes that keep how the app behaves now need no new round.
 - **Two clones, one feature at a time** (the person, 2026-11-23). `C:\Users\brady\github\wordbench-workspaces\Main`
   holds all code work, one branch at a time: `feature/<folder>` from an up-to-date `main` for an accepted design, and
   nothing else on it; `fix/<what>` for a fix. It reaches `main` after CI passes, with the person's go-ahead.

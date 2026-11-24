@@ -7,7 +7,7 @@ The person, 2026-11-22: "what does it look like to design this app in lieu of al
 designs? can we pull those into a combined principal document? and then go through and redesign/reapply those
 conceptual and code decisions in this new framework?"
 
-This is that document. It is read **first**, before any design folder and before [the Library map](../../LIBRARY.md)'s
+This is that document. It is read **first**, before any design folder and before [the glossary](../../../GLOSSARY.md)'s
 details. It holds four things, in this order:
 
 1. **Goals and rules**: what every feature is for, and the rules that keep it premium and orderly.
@@ -28,6 +28,26 @@ details. It holds four things, in this order:
 - **Decisions are written down as they are made** and committed each time (identity, 2026-11-22).
 
 ## 1. Goals and rules
+
+### What the app is (the person, 2026-11-18; moved here from the Library map 2026-11-24)
+
+One person's whole workbench: what used to fill an office (the Bible written in, the notebooks, the dictionaries and
+concordances) in one app with unlimited room, where everything is connected, searchable and traceable, so nobody has to
+remember which page, which book or what a color meant. It holds sources and the person's own work, never commentary or
+answers: people explore truth for themselves.
+
+- **One person, one computer** today. **Sync between a person's devices is required later**, and a teacher sharing a
+  folder may come later: nothing in the foundation may make either impossible.
+- **One Bible: the KJV.** YLT is archived.
+- **One Notebook**, organized by folders.
+- **Reference works are curated by the person** (public domain or freely licensed, long-lasting). People do not add
+  their own yet. No commentaries, ever.
+- **Each person keeps their own legend** for what their marks mean, and it must be easy for anyone, including the
+  least technical, to make, change and read.
+
+The words for all of it, and what each one means, are in [the glossary](../../../GLOSSARY.md).
+
+### The goals and the rules that keep them
 
 The goals G1–G5 and rules R1–R11 are written in full in [identity](../identity/README.md#goals-and-the-rules-that-keep-them-the-person-2026-11-22-round-3),
 where they were decided; they hold for every feature. In short:
@@ -83,12 +103,12 @@ change to any of these is designed first and goes to the person; it is never set
   `Documents\wordbench-study-data`, the folder the installed app's settings name; the `installed` feature is the only
   exception, built by the release workflow alone (AGENTS, 2026-11-18).
 - **The Bible database is read-only**, opened with SQLite's read-only flag (AGENTS).
-- **The Library map's retired words** stay retired ("thread" is "folder with a color", "note" is "page"); a new object
-  or word changes the map first ([LIBRARY](../../LIBRARY.md)).
+- **Retired words** stay retired ("thread" is "folder with a color", "note" is "page"); a new word, or a new meaning
+  for one, changes [the glossary](../../../GLOSSARY.md) first.
 - **A release**: what is tagged, signed and offered through the updater; an update is signed or thrown away (updates).
 
 ### The Bible and the reader
-- **(one-way)** Scripture is the KJV, verbatim, from the read-only database; YLT is archived ([LIBRARY](../../LIBRARY.md)).
+- **(one-way)** Scripture is the KJV, verbatim, from the read-only database; YLT is archived (§1, What the app is).
 - A click on a verse number or a drag over words shows only the colors, small, beside the verse; a right click is one clean menu (reader A).
 - What the person wrote sits in a margin beside its verse, names only, each a link (reader C); the margin is the verse's page (marks, 2026-11-12).
 - A plain click on a word opens its card; the Concordance instead is a Reading setting (words W-2, settings).

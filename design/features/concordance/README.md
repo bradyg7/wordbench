@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted by the person 2026-11-16 (build starts on feature/concordance-build); was exploring (rounds 1-4 reviewed; the real conditions drawn 2026-11-16, C15-C20; round 4's decisions drawn, C21-C25) · **Sheets:** `python -I design/features/concordance/concordance.py` writes `concordance.figcraft`
+**State:** up for redesign (the person, 2026-11-24); was: accepted by the person 2026-11-16 (build starts on feature/concordance-build); was exploring (rounds 1-4 reviewed; the real conditions drawn 2026-11-16, C15-C20; round 4's decisions drawn, C21-C25) · **Sheets:** `python -I design/features/concordance/concordance.py` writes `concordance.figcraft`
 and `concordance.pdf` (the board, one vector page; it imports words' `verse_card` and `verse_phone_sheet`) · Nothing here is built yet. What other tools get wrong, and so what this folder avoids:
 [bible-software-complaints](../../research/bible-software-complaints.md).
 

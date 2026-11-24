@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** exploring · **Sheets:** `python design/features/reader/reader.py` writes `reader.figcraft` and
+**State:** up for redesign (the person, 2026-11-24); was: exploring · **Sheets:** `python design/features/reader/reader.py` writes `reader.figcraft` and
 `reader.pdf` (the board, one vector page) · Nothing here is built yet.
 
 The reader is the app's centre: a chapter in Literata, verse numbers, the person's highlights, thread underlines and
