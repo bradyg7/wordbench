@@ -12,7 +12,10 @@ mkdirSync(target, { recursive: true });
 const fixtureRoot = realpathSync(target);
 const study = mkdtempSync(join(fixtureRoot, 'browser-fixtures-'));
 const env = { ...process.env, WB_STUDY_DIR: study };
-const wb = (...args) => execFileSync('cargo', ['run', '-q', '--release', '-p', 'wb-cli', '--', ...args], { env, maxBuffer: 1 << 28 }).toString();
+// WB_BIN names a wb program already built (CI's `cargo test` builds target/debug/wb), so CI compiles wb-cli once
+const wb = (...args) => (process.env.WB_BIN
+  ? execFileSync(process.env.WB_BIN, args, { env, maxBuffer: 1 << 28 })
+  : execFileSync('cargo', ['run', '-q', '--release', '-p', 'wb-cli', '--', ...args], { env, maxBuffer: 1 << 28 })).toString();
 try {
   wb('hl', 'set', 'Numbers 25:11', 'green');
   wb('note', 'add', 'NUM.25:11.24', 'Synthetic reader fixture note.');

@@ -25,7 +25,8 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
 - **Tests never change committed files.** Pictures go to ignored scratch folders; committed screenshots change only
   through `npm run shots`. *Check: the last step of every CI job that builds or tests runs `scripts/clean-tree.mjs`, which fails and names every tracked file changed or deleted, and every untracked file that is not ignored.*
 - **Builders never run a full suite on this PC.** Run the test being written or fixed and the quick checks for the area
-  touched; CI runs the rest.
+  touched; CI runs the rest. *Exception (the person, 2026-11-24): while Actions minutes are out, the full suite may run
+  here through `scripts/ci-local.ps1` only, which runs CI's quick and full steps on a scratch study folder.*
 - **Never `git commit -a` in these clones.** Tests leave tracked files changed; add files by name.
 
 ## The AGENTS.md rules in code

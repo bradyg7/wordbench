@@ -1,10 +1,12 @@
 # The checks that fail (docs/turnaround.md step 2, ticket 4). Quick checks run on every branch push, about 3 minutes;
 # the full Windows suite runs on pull requests to main and on main, and a merge waits for it, so nobody watches it.
-# Builders never run the full suite on their own PC: this is where it runs.
+# Builders never run the full suite on their own PC: this is where it runs (while Actions minutes are out,
+# scripts/ci-local.ps1 runs these same steps on the person's PC; keep the two in step).
 #
 # Minutes (the repository is private: 2,000 a month on the free plan, Windows counts x2, Mac x10): the light checks
 # run on Linux (x1), only clippy needs Windows (it must see the cfg(windows) code), a newer run on the same branch
-# cancels the older one, and a change that touches only docs, design, Markdown or the site runs nothing.
+# cancels the older one (not on main), wb-cli is compiled once in `full`, and a change that touches only docs, design,
+# Markdown or the site runs nothing.
 #
 # Study folder: nothing here sets WB_ALLOW_REAL_STUDY or builds a test with the `installed` feature (the folder guard,
 # ticket 1). Clippy's --all-features only compiles (it turns `installed` on to check that code); cargo test never
@@ -22,10 +24,14 @@ on:
     paths: ['**', '!docs/**', '!design/**', '!**/*.md', '!site/**', 'docs/releases/**']
 
 # One group per event and branch: a newer push cancels the older push run, a newer PR update the older PR run, and
-# neither cancels the other (the push run holds the quick checks, the PR run the full suite).
+# neither cancels the other (the push run holds the quick checks, the PR run the full suite). On main a run is never
+# cancelled once it has started: `full` must finish on a merged commit before that commit can be tagged
+# (release.yml's gate), and on 2026-11-24 two pushes cancelled main's runs after 43 and 59 minutes, which checked
+# nothing. A third push while one runs still replaces the one waiting, so main tests its newest commit next. `full` is
+# not limited to pull requests instead, because the gate looks for it on main's own commit.
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -62,10 +68,10 @@ jobs:
 
       # CODING_STANDARDS.md: no TODO, FIXME or XXX in merged code (open thoughts go to docs/turnaround-parked.md).
       # Upper case whole words, so "todo" in a UI string is not a hit. Docs, design and *.md state the rule in those
-      # words; datasets is data.
+      # words, as do this file and scripts/ci-local.ps1 (which runs this check); datasets is data.
       - name: No TODO, FIXME or XXX in merged code
         run: |
-          if git grep -nIE '\b(TODO|FIXME|XXX)\b' -- . ':!docs' ':!design' ':!datasets' ':!*.md' ':!.github/workflows/ci.yml'; then
+          if git grep -nIE '\b(TODO|FIXME|XXX)\b' -- . ':!docs' ':!design' ':!datasets' ':!*.md' ':!.github/workflows/ci.yml' ':!scripts/ci-local.ps1'; then
             echo "A TODO, FIXME or XXX is in merged code: move the thought to docs/turnaround-parked.md"; exit 1
           fi
 
@@ -131,6 +137,9 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: "0"
       WB_BIBLE_DB: ${{ github.workspace }}/datasets/workbench.db
       WB_REQUIRE_DB: '1'
+      # wb-cli is compiled once, by `cargo test` (its tests need the wb program); test:scripture and fixtures call that
+      # program instead of `cargo run`, which compiled it twice more in other profiles (37 + 17 + 22 minutes cold)
+      WB_BIN: ${{ github.workspace }}/target/debug/wb.exe
     steps:
       - uses: actions/checkout@v4
 
