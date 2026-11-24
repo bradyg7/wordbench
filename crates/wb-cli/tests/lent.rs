@@ -103,15 +103,33 @@ fn the_side_list_and_recents_answer_in_the_window() {
 /// here fails `every_command_is_run_the_windows_way_or_excluded`, naming it; so does a key that matches no command.
 /// The document commands are swept (with `WB_DOCS_DIR` and the study folder in a temp folder, `WB_NO_OPEN=1`).
 const EXCLUDED: &[(&str, &str)] = &[
-    ("do", "sends its line to a running window and waits for it to answer"),
-    ("copy", "puts text on the system clipboard (no --no_clip in the sweep's arguments)"),
-    ("update status", "reads the installed app's update state in the app-data folder, not the scratch study"),
+    (
+        "do",
+        "sends its line to a running window and waits for it to answer",
+    ),
+    (
+        "copy",
+        "puts text on the system clipboard (no --no_clip in the sweep's arguments)",
+    ),
+    (
+        "update status",
+        "reads the installed app's update state in the app-data folder, not the scratch study",
+    ),
     ("update check", "asks the network for a newer version"),
     ("update install", "downloads and installs a new version"),
-    ("update back", "swaps the installed app for the version before"),
+    (
+        "update back",
+        "swaps the installed app for the version before",
+    ),
     ("update stop", "stops the installed app's download"),
-    ("update notes", "reads the update state in the app-data folder and the network's release notes"),
-    ("update skip", "writes the installed app's update setting in the app-data folder"),
+    (
+        "update notes",
+        "reads the update state in the app-data folder and the network's release notes",
+    ),
+    (
+        "update skip",
+        "writes the installed app's update setting in the app-data folder",
+    ),
 ];
 
 fn excluded(name: &str) -> bool {

@@ -35,7 +35,7 @@ pub struct Entry {
 pub fn default_path() -> std::path::PathBuf {
     #[cfg(feature = "distribution")]
     {
-        return crate::runtime::resource_path("dictionary.db");
+        crate::runtime::resource_path("dictionary.db")
     }
     #[cfg(not(feature = "distribution"))]
     {

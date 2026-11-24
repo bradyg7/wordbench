@@ -59,7 +59,7 @@ use std::path::{Path, PathBuf};
 pub fn default_db_path() -> PathBuf {
     #[cfg(feature = "distribution")]
     {
-        return runtime::resource_path("workbench.db");
+        runtime::resource_path("workbench.db")
     }
     #[cfg(not(feature = "distribution"))]
     {
@@ -95,7 +95,7 @@ pub fn bible_database_missing_in_test() {
 pub fn default_study_dir() -> PathBuf {
     #[cfg(feature = "distribution")]
     {
-        return runtime::study_path();
+        runtime::study_path()
     }
     #[cfg(not(feature = "distribution"))]
     {
