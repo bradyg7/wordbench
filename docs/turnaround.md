@@ -263,7 +263,7 @@ the gate.
   compares with `scripts/ratchet.json` (per-file counts; `--detail`, `--write`); CI `quick-light` runs it and
   `npm run test:ratchet` (8 tests). Baselines: `any` 278 (not the 240 the plan guessed), `unwrap()` 439 and `expect(` 4
   in non-test Rust, `#[expect(` 9, `#[allow(` 0, `@ts-expect-error`, `@ts-ignore`, `@ts-nocheck`, `eslint-disable` 0.
-  `any` is found by a small scanner, not the compiler: typescript 7 has no JS API.
+  `any` is found by a small scanner, not the compiler: typescript 7 has no JS API. Review fix: switches are counted in every tracked script and Rust file, and a fall fails too until the baseline is lowered.
 - Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
   (ticket 4) can run on it.
 

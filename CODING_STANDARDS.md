@@ -74,7 +74,7 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
 
 ## Checker switches
 
-Every checker switch in the code, with its reason. A new one adds a row; a removed one deletes its row. Last updated 2026-11-23 (step 2, ticket 3): nine, all of one kind. The other eight found on 2026-11-23 were removed in ticket 3.
+Every checker switch in the code, with its reason. A new one adds a row; a removed one deletes its row. The ratchet (`node scripts/ratchet.mjs`) holds this table's count: it counts `#[allow(`, `#[expect(` (also inside `cfg_attr`) in all Rust, and `@ts-*` and `eslint-disable` in every tracked script, and fails on any difference from `scripts/ratchet.json`, up or down. Last updated 2026-11-23 (step 2, ticket 7): nine, all of one kind (`#[expect(dead_code)]` on `mod common;`); the other eight found on 2026-11-23 were removed in ticket 3.
 
 | Where | Switch | Reason |
 |---|---|---|

@@ -70,25 +70,54 @@ test('rust: checker switches count everywhere, including tests', () => {
   assert.equal(c.expectAttr, 1);
 });
 
-const base = { any: { 'a.ts': 3, 'b.ts': 1 }, unwrap: { 'x.rs': 2 } };
+const base = { any: { 'a.ts': 3, 'b.ts': 1 }, unwrap: { 'x.rs': 2 }, tsIgnore: {} };
 
-test('a rise fails and names the count, the amount and the file', () => {
-  const now = { any: { 'a.ts': 3, 'b.ts': 4 }, unwrap: { 'x.rs': 2 } };
+test('a rise fails, in plain words, naming the files', () => {
+  const now = { ...base, any: { 'a.ts': 3, 'b.ts': 4 } };
   const r = compare(base, now);
   assert.equal(r.ok, false);
-  assert.match(r.message, /any rose by 3/);
-  assert.match(r.message, /b\.ts/);
+  assert.match(r.message, /3 more `any` in ui\/src than the baseline \(b\.ts \+3\)/);
+  assert.doesNotMatch(r.message, /tsNocheck|expectAttr|tsIgnore/);
 });
 
-test('a fall passes and says to lower the baseline', () => {
-  const now = { any: { 'a.ts': 1, 'b.ts': 1 }, unwrap: { 'x.rs': 2 } };
+test('a new @ts-ignore is never allowed, and the message says so', () => {
+  const r = compare(base, { ...base, tsIgnore: { 'ui/tests/a.spec.ts': 1 } });
+  assert.equal(r.ok, false);
+  assert.match(r.message, /1 new `@ts-ignore` \(ui\/tests\/a\.spec\.ts\): never allowed/);
+});
+
+test('a fall fails too: the baseline must be lowered', () => {
+  const now = { ...base, unwrap: { 'x.rs': 1 } };
   const r = compare(base, now);
-  assert.equal(r.ok, true);
-  assert.match(r.message, /lower the baseline: node scripts\/ratchet\.mjs --write/);
+  assert.equal(r.ok, false);
+  assert.match(r.message, /1 fewer `unwrap\(\)` than the baseline: lower it with `node scripts\/ratchet\.mjs --write` and commit scripts\/ratchet\.json/);
 });
 
-test('equal passes quietly; a new file with hits counts as a rise', () => {
+test('equal passes; a new file with hits is a rise', () => {
   assert.equal(compare(base, base).ok, true);
   const now = { ...base, unwrap: { 'x.rs': 2, 'new.rs': 1 } };
-  assert.equal(compare(base, now).ok, false);
+  const r = compare(base, now);
+  assert.equal(r.ok, false);
+  assert.match(r.message, /1 more `unwrap\(\)` in non-test Rust than the baseline \(new\.rs \+1\): return an error with a message instead/);
+});
+
+test('scanner: after ++, ), ] , an identifier or a non-null !, a slash is division', () => {
+  assert.equal(countTs('i++ / 2; let q: any;').any, 1);
+  assert.equal(countTs('let a = (b) / 2; let q: any; let c = d / 2;').any, 1);
+  assert.equal(countTs('let a = x[0] / 2 / 3; let q: any;').any, 1);
+  assert.equal(countTs('let a = x! / 2 / 3; let q: any;').any, 1);
+  assert.equal(countTs('let a = f()! / 2 / 3; let q: any;').any, 1);
+  assert.equal(countTs('let a = !/any/.test(s); let q: any;').any, 1);
+});
+
+test('eslint-disable block and -line forms are counted', () => {
+  const src = '/* eslint-disable */\nx(); // eslint-disable-line no-x\n// eslint-disable-next-line no-y\n';
+  assert.equal(countTs(src).eslintDisable, 3);
+});
+
+test('rust: cfg_attr switches count', () => {
+  const src = '#[cfg_attr(test, allow(dead_code))]\n#![cfg_attr(not(test), expect(unused, reason = "r"))]\n';
+  const c = countRust(src);
+  assert.equal(c.allow, 1);
+  assert.equal(c.expectAttr, 1);
 });

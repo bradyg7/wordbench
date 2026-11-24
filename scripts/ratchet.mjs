@@ -10,8 +10,9 @@
 // template text and (TS) regex literals, keeping code (including `${...}` inside templates) in place. `any` is then
 // the whole word in code that is not a property (`.any`) or a key/call (`any:`, `any(`). Directive comments
 // (`@ts-ignore` and friends) are searched in the comment text the scanner collected.
-import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join, relative, dirname } from 'node:path';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -95,8 +96,11 @@ export function scan(text, lang) {
     }
     if (ts && ch === '/') {
       const prev = lastSig;
-      const regex = prev === '' || /^[(,=:[!&|?{};+\-*%<>~^]$/.test(prev)
-        || /^(return|typeof|case|in|of|void|delete|throw|new)$/.test(prev);
+      // after postfix ++/--, or a non-null `!` that follows an identifier, `)` or `]`, a slash divides
+      const before = code.trimEnd();
+      const postfix = /(\+\+|--)$/.test(before) || /[\w$)\]]!$/.test(before);
+      const regex = !postfix && (prev === '' || /^[(,=:[!&|?{};+\-*%<>~^]$/.test(prev)
+        || /^(return|typeof|case|in|of|void|delete|throw|new)$/.test(prev));
       if (regex) {
         let j = i + 1;
         let cls = false;
@@ -198,13 +202,29 @@ export function countRust(text) {
   return {
     unwrap: countMatches(live, /\.\s*unwrap\s*\(\s*\)/g),
     expect: countMatches(live, /\.\s*expect\s*\(/g),
-    allow: countMatches(code, /#\s*!?\s*\[\s*allow\s*\(/g),
-    expectAttr: countMatches(code, /#\s*!?\s*\[\s*expect\s*\(/g),
+    // plain `#[allow(` and the `#[cfg_attr(cond, allow(` form
+    allow: countMatches(code, /#\s*!?\s*\[\s*(?:allow\s*\(|cfg_attr\s*\([^\]]*?,\s*allow\s*\()/g),
+    expectAttr: countMatches(code, /#\s*!?\s*\[\s*(?:expect\s*\(|cfg_attr\s*\([^\]]*?,\s*expect\s*\()/g),
   };
 }
 
-// Counts are { category: { file: n } }. A rise is any category total above the baseline's.
+// Counts are { category: { file: n } }. Any difference from the baseline fails: a rise is a new one, a fall means the
+// baseline must be lowered (slack would let the count climb back unnoticed).
 const total = (m = {}) => Object.values(m).reduce((a, b) => a + b, 0);
+
+// What each count is called in a message for the person, and what to do about a rise.
+const WORDS = {
+  any: ['`any` in ui/src', 'give it a real type, or `unknown` and check it'],
+  unwrap: ['`unwrap()` in non-test Rust', 'return an error with a message instead'],
+  expect: ['`expect(` in non-test Rust', 'return an error with a message instead'],
+  allow: ['`#[allow(` in Rust', 'use `#[expect(lint, reason = "...")]` or fix the lint'],
+  expectAttr: ['`#[expect(` in Rust', 'only the switches listed in CODING_STANDARDS.md are allowed'],
+  tsExpectError: ['`@ts-expect-error`', 'fix the type, or give the reason after it and list it in CODING_STANDARDS.md'],
+  tsIgnore: ['`@ts-ignore`', 'never allowed; fix the type or use `@ts-expect-error <reason>`'],
+  tsNocheck: ['`@ts-nocheck`', 'never allowed; fix the types in the file'],
+  eslintDisable: ['`eslint-disable`', 'fix what it hides, or use `eslint-disable-next-line <rule> -- <reason>`'],
+};
+const NEVER = new Set(['tsIgnore', 'tsNocheck']);
 
 export function compare(base, now) {
   const rose = [];
@@ -213,62 +233,67 @@ export function compare(base, now) {
     const b = base[cat] ?? {};
     const c = now[cat] ?? {};
     const d = total(c) - total(b);
+    const [name, fix] = WORDS[cat] ?? [cat, 'remove it'];
+    const files = Object.keys(c)
+      .map((f) => [f, c[f] - (b[f] ?? 0)])
+      .filter(([, x]) => x > 0)
+      .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
+      .slice(0, 5);
     if (d > 0) {
-      const files = Object.keys(c)
-        .map((f) => [f, c[f] - (b[f] ?? 0)])
-        .filter(([, x]) => x > 0)
-        .sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0]))
-        .slice(0, 5)
-        .map(([f, x]) => `${f} (+${x})`);
-      rose.push(`${cat} rose by ${d} (${total(b)} to ${total(c)}); most in ${files.join(', ')}`);
-    } else if (d < 0) fell.push(`${cat} fell by ${-d} (${total(b)} to ${total(c)})`);
+      if (NEVER.has(cat)) {
+        rose.push(`${d} new ${name} (${files.map(([f]) => f).join(', ')}): ${fix}.`);
+      } else {
+        rose.push(`${d} more ${name} than the baseline (${files.map(([f, x]) => `${f} +${x}`).join(', ')}): ${fix}.`);
+      }
+    } else if (d < 0) {
+      fell.push(`${-d} fewer ${name.split(" in ")[0]} than the baseline: lower it with \`node scripts/ratchet.mjs --write\` and commit scripts/ratchet.json.`);
+    } else if (files.length) {
+      // same total, but a count moved between files: the per-file baseline is stale
+      fell.push(`${name} moved between files: update the baseline with \`node scripts/ratchet.mjs --write\` and commit scripts/ratchet.json.`);
+    }
   }
-  if (rose.length) {
-    return {
-      ok: false,
-      message: rose.join('\n') + '\nRemove the new ones (a real type, or a handled error); the counts only go down.',
-    };
-  }
-  if (fell.length) {
-    return { ok: true, message: fell.join('\n') + '\nlower the baseline: node scripts/ratchet.mjs --write' };
-  }
-  return { ok: true, message: 'ratchets hold: no count rose.' };
+  const all = [...rose, ...fell];
+  if (all.length) return { ok: false, message: all.join('\n') };
+  return { ok: true, message: 'ratchets hold: no count moved.' };
 }
 
-function walk(dir, ok, out = []) {
-  if (!existsSync(dir)) return out;
-  for (const name of readdirSync(dir).sort()) {
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) {
-      if (name === 'node_modules' || name === 'target') continue;
-      walk(p, ok, out);
-    } else if (ok(p)) out.push(p);
-  }
-  return out;
+function gitFiles(rootDir) {
+  const out = execFileSync('git', ['ls-files', '-z'], { cwd: rootDir, maxBuffer: 1 << 28 }).toString('utf8');
+  return out.split('\0').filter(Boolean).filter((f) => existsSync(join(rootDir, f)));
 }
+
+// Tracked files that are not ours to clean: vendored code, generated files, and this script (its comments name the
+// directives it counts).
+const NOT_OURS = [
+  /(^|\/)vendor\//, // vendored third-party code
+  /(^|\/)dist\//, // built output
+  /^app\/src-tauri\/gen\//, // generated by Tauri
+  /(^|\/)node_modules\//, // never ours
+  /\.min\.[cm]?js$/, // minified bundles
+  /^scripts\/ratchet\.mjs$/, // its comments name the directives
+];
 
 export function collect(rootDir = root) {
-  const rel = (p) => relative(rootDir, p).replaceAll('\\', '/');
   const now = {};
   const add = (cat, file, n) => {
     if (n > 0) (now[cat] ??= {})[file] = n;
   };
-  for (const p of walk(join(rootDir, 'ui', 'src'), (f) => f.endsWith('.ts') && !f.endsWith('.d.ts'))) {
-    for (const [k, v] of Object.entries(countTs(readFileSync(p, 'utf8')))) add(k, rel(p), v);
-  }
-  // Checker switches count in all Rust code (tests too); unwrap and expect only in non-test files.
-  const rsDirs = [join(rootDir, 'app', 'src-tauri', 'src')];
-  const crates = join(rootDir, 'crates');
-  for (const c of existsSync(crates) ? readdirSync(crates) : []) rsDirs.push(join(crates, c));
-  // a file named tests.rs, or inside a tests/ folder, is test code
-  const isTestFile = (f) => /(^|\/)tests?(\.rs|\/)/.test(rel(f));
-  for (const d of rsDirs) {
-    for (const p of walk(d, (f) => f.endsWith('.rs'))) {
-      const c = countRust(readFileSync(p, 'utf8'));
-      const inSrc = /(^|\/)src\//.test(rel(p));
-      for (const [k, v] of Object.entries(c)) {
-        if ((k === 'unwrap' || k === 'expect') && (isTestFile(p) || !inSrc)) continue;
-        add(k, rel(p), v);
+  for (const f of gitFiles(rootDir).filter((p) => !NOT_OURS.some((re) => re.test(p)))) {
+    const text = () => readFileSync(join(rootDir, f), 'utf8');
+    if (/\.(m?ts|tsx|[cm]?js)$/.test(f) && !f.endsWith('.d.ts')) {
+      const c = countTs(text());
+      // `any` only in the UI's own source, as the ticket says; the switches everywhere
+      if (/^ui\/src\/.*\.ts$/.test(f)) add('any', f, c.any);
+      for (const k of ['tsExpectError', 'tsIgnore', 'tsNocheck', 'eslintDisable']) add(k, f, c[k]);
+    } else if (f.endsWith('.rs')) {
+      const c = countRust(text());
+      add('allow', f, c.allow);
+      add('expectAttr', f, c.expectAttr);
+      // unwrap and expect: non-test code in the crates, the app's src and its build.rs
+      const live = /^(crates\/[^/]+\/src\/|app\/src-tauri\/src\/)/.test(f) || f === 'app/src-tauri/build.rs';
+      if (live && !/(^|\/)tests?(\.rs|\/)/.test(f)) {
+        add('unwrap', f, c.unwrap);
+        add('expect', f, c.expect);
       }
     }
   }
