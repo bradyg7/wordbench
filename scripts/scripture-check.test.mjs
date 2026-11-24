@@ -7,6 +7,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { endsQuotation, opensQuotation } from './scripture-check.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const check = join(root, 'scripts', 'scripture-check.mjs');
@@ -16,12 +17,12 @@ const lines = execFileSync('cargo', ['run', '-q', '-p', 'wb-cli', '--', 'text', 
 const verse = lines[1].replace(/^\d+\s+/, '');
 const words = verse.split(' ');
 
-function run(body) {
+function run(body, flags = []) {
   const dir = mkdtempSync(join(tmpdir(), 'scripture-check-'));
   try {
     const file = join(dir, 'a-test.txt');
     writeFileSync(file, body);
-    const r = spawnSync(process.execPath, ['--no-warnings', check, '--file', file], { encoding: 'utf8' });
+    const r = spawnSync(process.execPath, ['--no-warnings', check, '--file', file, ...flags], { encoding: 'utf8' });
     return { code: r.status, out: r.stdout + r.stderr, file };
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -58,4 +59,22 @@ test('a quoted part of a verse, ends cut and a closing full stop, passes', () =>
   const part = words.slice(6, 16).join(' ').replace(/[,;:.]$/, '');
   const r = run(`it says "${part}". Then more of its own words follow.\n`);
   assert.equal(r.code, 0, r.out);
+});
+
+test('an apostrophe inside a word does not end a quotation; a quote mark after the last word does', () => {
+  assert.equal(endsQuotation("Lord's"), false);
+  assert.equal(endsQuotation("Israel's,"), false);
+  assert.equal(endsQuotation('congregation".'), true);
+  assert.equal(endsQuotation("congregation'"), true);
+  assert.equal(opensQuotation('"at'), true);
+  assert.equal(opensQuotation("father's"), false);
+});
+
+test('--inventory lists a file that holds an exact copy, and not one that holds none', () => {
+  const copy = run(`before\n${verse}\n`, ['--inventory']);
+  assert.equal(copy.code, 0, copy.out);
+  assert.match(copy.out, /a-test\.txt: 1 exact run\(s\), e\.g\. line 2 Numbers 25:11 \(KJV\)/);
+  const none = run('words that are nobody\'s verse at all, in a file of its own\n', ['--inventory']);
+  assert.equal(none.code, 0, none.out);
+  assert.doesNotMatch(none.out, /exact run/);
 });
