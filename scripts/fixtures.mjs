@@ -16,6 +16,11 @@ const env = { ...process.env, WB_STUDY_DIR: study };
 const wb = (...args) => (process.env.WB_BIN
   ? execFileSync(process.env.WB_BIN, args, { env, maxBuffer: 1 << 28 })
   : execFileSync('cargo', ['run', '-q', '--release', '-p', 'wb-cli', '--', ...args], { env, maxBuffer: 1 << 28 })).toString();
+// A page's times are whole seconds and lists show the newest first, so each page is made in a second of its own:
+// with pages made in the same second the order fell to a tie, and the Add to… page list (marks-select row 11) lost
+// "Marks page". `cargo run` used to space the calls about a second apart by accident.
+const nextSecond = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000 - (Date.now() % 1000) + 5);
+const newPage = (...args) => { nextSecond(); return wb('page', 'new', ...args); };
 try {
   wb('hl', 'set', 'Numbers 25:11', 'green');
   wb('note', 'add', 'NUM.25:11.24', 'Synthetic reader fixture note.');
@@ -64,12 +69,12 @@ try {
 
   // The Concordance (design/features/concordance): every `wb` answer its page asks for, named as ui/src/api.ts names them.
   // three pages that name Numbers 25:11, made after the cards' fixtures above (those say that no page names it yet)
-  for (const k of [1, 2, 3]) wb('page', 'new', `Fixture page ${k}
+  for (const k of [1, 2, 3]) newPage(`Fixture page ${k}
 
 Names Numbers 25:11 here.`);
   // one page that shows what marks adds to a page: scripture named in a paragraph and in a block, and the numbers the Notebook
   // asks for when it draws it (design/features/marks)
-  const marksPage = JSON.parse(wb('page', 'new', ['Marks page', '', 'See Numbers 25:11 and Psalm 119:105.', '', '```scripture', 'Numbers 25:10-12', 'marks', '```', '', 'Also Romans 10:2 and Exodus 20:3.'].join('\n'), '--json')).id;
+  const marksPage = JSON.parse(newPage(['Marks page', '', 'See Numbers 25:11 and Psalm 119:105.', '', '```scripture', 'Numbers 25:10-12', 'marks', '```', '', 'Also Romans 10:2 and Exodus 20:3.'].join('\n'), '--json')).id;
   mkdirSync(new URL('wb/', out), { recursive: true });
   writeFileSync(new URL('wb/marks-page.json', out), JSON.stringify({ id: marksPage }));
   const named = argv => argv.join(' ').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
@@ -98,7 +103,7 @@ Names Numbers 25:11 here.`);
     ['scripture', '2SA 21:2'], ['scripture', 'NUM 5:14'], ['text', 'Numbers 25:11', '--json'], ['text', '2SA 21:2', '--json'],
   ]) writeFileSync(new URL(`${named(argv)}.json`, help), wb(...argv, '--json'));
   // the Study blocks (notebook rows 50 to 55, NB12): a page holding one of each, and what `wb page study` reads for it
-  const studyPage = JSON.parse(wb('page', 'new', ['Study blocks page', '', '```word', 'H7065', '```', '', '```interlinear', 'Numbers 25:11', '```', '', '```xrefs', 'Numbers 25:11', '```', '',
+  const studyPage = JSON.parse(newPage(['Study blocks page', '', '```word', 'H7065', '```', '', '```interlinear', 'Numbers 25:11', '```', '', '```xrefs', 'Numbers 25:11', '```', '',
     '```concordance', 'zealous', '```', '', '```margin', 'Numbers 25', '```', '', '```marks', 'Numbers 25', '```'].join('\n'), '--json')).id;
   writeFileSync(new URL('study-blocks.json', help), wb('page', 'study', studyPage, '--json'));
   writeFileSync(new URL('forms-zealous.json', help), wb('forms', 'zealous', '--json'));
