@@ -344,6 +344,53 @@ the gate.
   Mark each one-way door there.
 
 **Decisions for the person:** the checkout model.
+
+**Grilling, 2026-11-23 (the person):**
+- **Two clones** (Q1): **Main** for all code, one branch at a time; **Design** for designing, which never changes
+  existing code. The four-clone setup drifted: designs and documents got lost, work landed in the wrong clone. Build,
+  Fix, `wb-install`, `wb-b-reading-plans` and the old `bible-workbench-rs` checkout are retired once their unique files
+  are saved (Q2). The only unpushed commits anywhere, the paused Filters F1/F2, are on GitHub as
+  `archive/filters-f1-f2`.
+- **Design stays one feature ahead, on current code** (Q5): Design starts from an up-to-date `main` and designs at most
+  the next feature while the current one builds (step 4's limit, set to 1). A prototype reads the app's real code but
+  never changes it: it adds its own files, which the build later replaces or folds into the real ones. Design moves
+  onto the new `main` after every merge. A next design whose prototype leans on code the current build is changing
+  waits on that prototype until the build merges. How prototype files sit beside app code is settled at the first
+  prototype.
+- **`/retro`** (Q3, Q6) is the person's to run, after this grilling round and before tickets B and D. Its findings go
+  into this section, not a new file.
+- **Tickets** (Q4): A checkout model and retiring folders; B short AGENTS.md (process to `docs/agents/`,
+  `agent-workflow.md` and `.claude/agents` agree, SPEC.md archived, one-way doors in principles §3, memory pruned);
+  C GLOSSARY.md and the new design process (named states, feel qualities); D **repo structure** (Q7, Q8). One
+  combined reviewer each, since they change no code.
+- **Structure rule** (Q7): `docs/` holds current documents; `design/features/<folder>/` holds its README with the
+  "what must be true" items, and its prototype. Retired material (FigCraft boards, sheets, review pages, old PDFs and
+  Markdown nothing current links to) is deleted, not archived: git history keeps it. `docs/archive/` keeps only
+  evidence a current document links to.
+- **README "Where things are"** (Q8): a Mermaid diagram of the top-level folders, a one-line-per-folder table of what
+  goes there and what never does, and the rule that a new folder adds its line first. Ticket D runs last.
+
+**Retro, 2026-11-23** (`/retro` on steps 1-2 and the Tier 0 build; ranked by cost; the ticket that acts on each):
+1. **Reviewers pass real bugs** (B): lost regex backslashes, a `.gitignore` that untracked nothing, `as any` in a
+   test, new tests never seen failing. Reviewers are told to read only, and spent about a minute each. A reviewer runs
+   the ticket's new tests and the quick checks, and shows each new test failing with the change reverted.
+2. **Polling and flake loops** (B, follow-up): a 139-minute builder ran one flaky spec 44 times and stalled at the
+   600 s watchdog; 15 `sleep` calls despite builder.md forbidding them. The rule is prose; a hook that refuses
+   `sleep` and wait loops makes it a check. The `writing_at_every_width` flake is fixed at its cause.
+3. **Steering files contradict each other** (A, B): builder.md runs full suites, CODING_STANDARDS forbids them;
+   builder.md and agent-workflow.md describe worktrees and `-j 2`/`-j 8`, AGENTS.md retired worktrees; a launch prompt
+   named four clones.
+4. **Work in the wrong checkout** (A): this session's folder was `bible-workbench-rs` while the work was in Main and
+   Fix (1,262 Bash calls began with `cd`; a branch was wrong by mistake). Sessions open in Main from now on.
+5. **`WB_BIBLE_DB` set by hand 121 times**, once at a guessed path (A): set once for this PC.
+6. **Full-size screenshots were 94% of Tier 0's tool bytes** (D): pictures read by agents get a small copy.
+7. **Heredoc and quoting failures** (B): 9 unclosed heredocs, backslashes stripped from paths and regexes. Files are
+   written with the Write tool, not heredocs.
+8. **The window before the code** (B): for a bug the person sees, the agent looks at the window first (the person
+   had to say so) and says "fixed" only after seeing it there.
+9. **AGENTS.md is 16 KB, loaded into every agent on every turn** (B).
+10. **Line-ending warnings, 21 a session** (D): a `.gitattributes`.
+
 **Done when:** AGENTS.md is short and no steering file contradicts another; every one-way door is in principles §3.
 
 ### Step 4: build what is accepted before designing more
