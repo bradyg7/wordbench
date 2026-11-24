@@ -252,6 +252,13 @@ the gate.
   "Reading the verses…" (an app race, fixed in `blocks.ts`); the test opened the filter menu before the list was drawn
   again with the new column type; the width test measured while the page was drawn again (after a block was left, and in
   the floating tab that shows the old drawing first). Fixed-time waits that remain are listed in the ticket report.
+- Ticket 6 built on `fix/release-gate` (stacked on `fix/flakes`), not pushed: `release.yml` has a `gate` job (a
+  successful run of `ci.yml` on the tagged commit whose job `full` succeeded, else "The full test suite has not passed on
+  this commit. Merge to main and wait for CI before tagging."), `windows` and `mac` wait for it; a `smoke` job runs
+  `measure/smoke.mjs` on the built exe and `publish` waits for it. `lent.rs` now fails on a command that is neither swept
+  in the window's way nor in its `EXCLUDED` list (14 entries, each with a reason). Only a tag on GitHub proves the gate and
+  the smoke job; `smoke.mjs` was not run locally (no release build here). `mac-tests.yml` still runs beside the release,
+  not before it.
 - Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
   (ticket 4) can run on it.
 

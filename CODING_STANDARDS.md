@@ -35,7 +35,7 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
 - **The real study folder is never opened by tests or tools.** wb-core refuses it unless `WB_ALLOW_REAL_STUDY=1` or the
   `installed` feature; nothing in the repo sets either. *Check: the guard's tests in `crates/wb-core/src/store.rs`.*
 - **Every core action has a `wb` command**, and every `wb` command is run the window's way in
-  `crates/wb-cli/tests/lent.rs` or excluded there with a reason. *Check: ticket 6 (lent.rs) and ticket 9 (the window's
+  `crates/wb-cli/tests/lent.rs` or excluded there with a reason. *Check: `lent.rs` (ticket 6: a command that is neither run nor listed in its `EXCLUDED` fails, named) and ticket 9 (the window's
   list against the `wb` table).*
 
 ## Shape (judgment, after Pocock)
