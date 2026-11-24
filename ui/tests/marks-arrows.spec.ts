@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { readFileSync, mkdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { shotPath } from '../../scripts/shots.mjs';
 
 // Arrows within a chapter (design/features/marks T9: rows 13 to 16 and 48; MK7-25). The UI runs without Rust here, so each
@@ -221,7 +221,6 @@ test('row 48: a click on an arrow\'s end opens its card: its two verses, style, 
   await expect(one.getByRole('button', { name: 'Delete' })).toBeVisible();
   await expect(page.locator('.word-card')).toHaveCount(0);
   if (info.project.name === 'webkit-desktop') {
-    mkdirSync(new URL('../../design/features/marks/build/', import.meta.url), { recursive: true });
     await page.screenshot({ path: shotPath('design/features/marks/build/t9.png') });
   }
   // Change: a color only; the arrow keeps its two verses

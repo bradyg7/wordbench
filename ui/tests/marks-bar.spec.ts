@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { shotPath } from '../../scripts/shots.mjs';
 import { readFileSync } from 'node:fs';
 
 // The mark bar and its drop-down (design/features/marks T6: rows 1, 4 to 10, 20 to 22 and 24). The UI runs without Rust here,
@@ -131,7 +132,7 @@ test('row 5: a kind opens its drop-down away from the selection: quick styles pi
   await expect(menu(page).locator('.mb-any')).toContainText('Any color…');
   await expect(menu(page).locator('.swatch')).toHaveCount(0);
   await expect(menu(page).locator('.mb-any input[type=color]')).toHaveCount(1);
-  if (info.project.name === 'webkit-desktop' && process.env.WB_T6_SHOT) await page.screenshot({ path: process.env.WB_T6_SHOT });
+  if (info.project.name === 'webkit-desktop' && process.env.WB_SHOTS === '1') await page.screenshot({ path: shotPath('design/features/marks/build/t6.png') });
   // Underline adds 1 / 2 / 3 lines at its top
   await bar(page).locator('.mb-underline').click();
   await expect(menu(page).locator('.mb-line')).toHaveText(['1 line', '2', '3']);

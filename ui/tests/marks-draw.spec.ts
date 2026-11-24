@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { shotPath } from '../../scripts/shots.mjs';
 import { readFileSync } from 'node:fs';
 
 // The reader draws the marks (design/features/marks T5, rows 42 and 44 to 47, and the WebKit side of 49). The fixture
@@ -69,9 +70,9 @@ test('the fixture has a mark of every kind, and the reader draws each in its own
   // drawn once each: the fixture's old highlight (made with hl set) is one mark, not two
   const marks = await page.evaluate(() => (window as any).__wb.drawn.marks.marks.length);
   expect(marks).toBe(8);
-  if (info.project.name === 'webkit-desktop' && process.env.WB_T5_SHOT) {
+  if (info.project.name === 'webkit-desktop' && process.env.WB_SHOTS === '1') {
     await page.locator('.vn[data-v="6"]').scrollIntoViewIfNeeded();
-    await page.screenshot({ path: process.env.WB_T5_SHOT });
+    await page.screenshot({ path: shotPath('design/features/marks/build/t5.png') });
   }
 });
 

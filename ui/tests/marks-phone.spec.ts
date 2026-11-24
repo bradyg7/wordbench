@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { readFileSync, mkdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { shotPath } from '../../scripts/shots.mjs';
 
 // The phone (design/features/marks T13: rows 59 to 63 and 69; MK7-31, MK7-32; sheet G). What a desktop drops down or pops
@@ -100,7 +100,6 @@ test('row 59: long-press a word and drag to extend: the words are selected with 
   expect(bb.x + bb.width).toBeLessThanOrEqual(390);
   const first = (await page.locator('#reader .w.sel').first().boundingBox())!;
   expect(bb.y + bb.height).toBeLessThanOrEqual(first.y + 1);   // above the selection
-  mkdirSync('design/features/marks/build', { recursive: true });
   await page.screenshot({ path: shotPath('design/features/marks/build/t13.png') });
 });
 

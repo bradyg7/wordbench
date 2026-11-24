@@ -43,7 +43,7 @@ export async function shelfChecks({ page, check, env, wbExe, study, shots, sleep
   let tree = wbj('shelf');
   const want = flat(tree).reduce((n, f) => n + 1 + f.items.length, 0);
   check('the Shelf draws every folder and item wb shelf has, as a tree', await rows().count() === want, `${await rows().count()} rows, wb shelf ${want}`);
-  await page.screenshot({ path: shots + '1440-shelf-tree.png' });
+  await page.screenshot({ path: path.join(shots, '1440-shelf-tree.png') });
 
   // Open all (a484): each item where its kind goes, the reader not moved, the tabs marked
   const placeBefore = await page.locator('#place .place-label').textContent();
@@ -55,7 +55,7 @@ export async function shelfChecks({ page, check, env, wbExe, study, shots, sleep
   check('Open all opens every item of the folder as a tab, each carrying the folder’s mark', await marked() === openable.size, `${await marked()} marked, ${openable.size} to open: ${[...openable].join(', ')}`);
   check('Open all does not move the reader (a place opens as a second reader)', (await page.locator('#place .place-label').textContent()) === placeBefore);
   check('a kept interlinear pane (the Python app’s shape) opens as the interlinear', await page.locator('.tab.tab-marked', { hasText: 'Interlinear' }).count() === 1);
-  await page.screenshot({ path: shots + '1440-shelf-open-all.png' });
+  await page.screenshot({ path: path.join(shots, '1440-shelf-open-all.png') });
   await page.locator('#tb-shelf').click(); // the tabs it opened are in front of the Shelf now
   await page.locator('.pane-shelf .shelf-close-all').click();
   await sleep(300);

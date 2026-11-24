@@ -62,7 +62,7 @@ try {
   const firstVerse = plan.plan.find(op => op[1] === 'Scripture End' || op[1] === 'Scripture')[2].filter(r => r[1] !== 'num').map(r => r[0]).join('').trim().slice(0, 40);
   const livePage = page.locator('.lk-modal .lk-page');
   check('Adjust shows the thread’s own first page, its scripture verbatim from the plan', await livePage.count() === 1 && (await livePage.innerText()).replace(/\s+/g, ' ').includes(firstVerse.replace(/\s+/g, ' ')), firstVerse);
-  await page.screenshot({ path: shots + '1440-adjust-preview.png' });
+  await page.screenshot({ path: path.join(shots, '1440-adjust-preview.png') });
   await page.locator('.lk-modal .lk-opt', { hasText: 'Classic' }).click();
   await page.locator('.lk-modal .lk-opt[data-dial="ink"][data-value="saver"]').click();
   const look = await livePage.evaluate(el => ({ center: el.classList.contains('center'), font: getComputedStyle(el.querySelector('.dp-Title')).fontFamily, ref: getComputedStyle(el.querySelector('.dp-ScriptureReference')).color }));
@@ -70,7 +70,7 @@ try {
   await page.locator('.lk-modal .lk-opt[data-dial="size"][data-value="large"]').click();
   await page.locator('.lk-modal .lk-grey-toggle input').check();
   check('See it in grey greys the page', await page.locator('.lk-modal .lk-page.lk-grey').count() === 1);
-  await page.screenshot({ path: shots + '1440-adjust.png' });
+  await page.screenshot({ path: path.join(shots, '1440-adjust.png') });
   await page.locator('.lk-modal .lk-use').click();
   await page.waitForSelector('.lk-modal', { state: 'detached', timeout: 5000 }).catch(() => {});
   const row = { look: await page.locator('.pane-documents .doc-make select.doc-look').inputValue(), ink: await page.locator('.pane-documents .doc-make select.doc-ink').inputValue(), adj: await page.locator('.pane-documents .doc-make .doc-adjust').innerText() };
@@ -94,7 +94,7 @@ try {
   await page.locator('.pane-documents .doc-make button', { hasText: /^Make$/ }).click();
   await page.locator('.pane-documents .doc-row', { hasText: 'Reader - Phinehas.pdf' }).waitFor({ timeout: 30000 }).catch(() => {});
   check('Reader is made as PDF pages and listed Up to date', existsSync(path.join(docsDir, 'Reader - Phinehas.pdf')) && /Up to date/.test(await page.locator('.pane-documents .doc-row', { hasText: 'Reader - Phinehas.pdf' }).innerText().catch(() => '')));
-  await page.screenshot({ path: shots + '1440-documents-r3.png' });
+  await page.screenshot({ path: path.join(shots, '1440-documents-r3.png') });
 } catch (e) {
   check('the run finished', false, String(e?.stack || e));
 } finally {

@@ -18,7 +18,6 @@ const release = process.argv.includes('--release');
 const exe = file(`target/${release ? 'release' : 'debug'}/bible-workbench.exe`);
 const wbExe = file(`target/${release ? 'release' : 'debug'}/wb.exe`);
 const shots = shotsDir('docs/phase2/');
-mkdirSync(shots, { recursive: true });
 await acquire('rail');
 const work = process.env.WB_DESK_WORK || path.join(os.tmpdir(), 'bible-workbench-rs', 'rail-check');
 const cdpPort = process.env.WB_DESK_PORT || String(await freePort());
@@ -71,7 +70,7 @@ try {
   await page.locator('#reader .vn[data-v="1"]').click();
   await sleep(300);
   check('with the reader in front the box shows its place and the reader\'s tools', await box() === 'Numbers 25' && await page.locator('#hl-menu').isVisible() && await page.locator('#tb-version').isVisible(), await box());
-  await page.screenshot({ path: shots + '1440-rail-top-bar.png' });
+  await page.screenshot({ path: path.join(shots, '1440-rail-top-bar.png') });
 
   // C14: a line run in the box opens its pane, joins the trail and stays in the box
   await type('lex strongs H7065');
@@ -103,7 +102,7 @@ try {
   // the drawer: a step brings its tab to the front; a closed tab opens again
   await page.locator('#rail [data-rail="trail"]').click();
   await page.waitForSelector('.trail-drawer .trail-step', { timeout: 5000 });
-  await page.screenshot({ path: shots + '1440-trail-drawer.png' });
+  await page.screenshot({ path: path.join(shots, '1440-trail-drawer.png') });
   await page.evaluate(() => { const d = window.__wb.dock(); const p = d.find('strong|H7068'); if (p) d.close(p); });
   await sleep(500);
   await page.locator('.trail-drawer .trail-step', { hasText: 'H7068' }).first().click();
@@ -127,7 +126,7 @@ try {
   await page.waitForFunction(() => window.__wbReady, null, { timeout: 30000 });
   await sleep(500);
   check('the box popped off stays where it was put after the window opens again', /popped/.test(await page.locator('#cmdbox').getAttribute('class')) && (await page.locator('#cmdbox').boundingBox()).y > 500);
-  await page.screenshot({ path: shots + '1440-box-popped.png' });
+  await page.screenshot({ path: path.join(shots, '1440-box-popped.png') });
   await page.locator('#cmdbox .cmd-handle').dblclick();
   check('a double-click on the search icon puts it back', !/popped/.test(await page.locator('#cmdbox').getAttribute('class')));
 
@@ -147,7 +146,7 @@ try {
   await page.locator('#rail [data-rail="names"]').click();
   await sleep(400);
   check('Show names opens the rail out, and the reader moves over', (await page.locator('#rail').boundingBox()).width > 150 && (await page.locator('#scroller').boundingBox()).x > 150);
-  await page.screenshot({ path: shots + '1440-rail-names.png' });
+  await page.screenshot({ path: path.join(shots, '1440-rail-names.png') });
   await page.locator('#rail [data-rail="names"]').click();
 
   // half a screen (C17)
@@ -160,7 +159,7 @@ try {
     check('half width: More holds the reader\'s tools', /Highlights/.test(await page.locator('.more-menu').innerText()));
     await page.keyboard.press('Escape');
   } else check('half width', true, `the ipad window is ${w}px wide, not under 900; not checked`);
-  await page.screenshot({ path: shots + 'ipad-rail.png' });
+  await page.screenshot({ path: path.join(shots, 'ipad-rail.png') });
   await page.evaluate(() => window.__wb.run('window laptop-large'));
 } catch (e) {
   check('the check ran to the end', false, String(e?.stack || e));

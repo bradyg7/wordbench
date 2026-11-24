@@ -128,7 +128,7 @@ cargo test                                   # the Rust regression suite
 npm install && npm run tauri dev             # the app (from the repo root)
 npm run package                              # the buyer's ZIP (BUYER-README.md ships as README.md); npm run check:package checks it
 npm run test:webkit                          # the UI in Playwright's WebKit at phone size (this checkout's own vite, on its own port)
-npm run shots                                # on purpose only: re-takes the committed screenshots (docs/phase2, design/features/marks/build); tests save pictures to test-results/shots
+npm run shots                                # on purpose only: re-takes the committed screenshots; `-- --desk` adds the real-app desk scripts (release build, instance lock); tests save pictures to test-results/shots
 node measure/desk.mjs                        # the desktop checked in the real app (its own instance and scratch copy)
 npm run measure                              # the speed budgets (after npx tauri build --no-bundle)
 python scripts/build-dictionary.py           # Webster's 1913 into dictionary.db (wb word-define, the card's Definitions); once per computer

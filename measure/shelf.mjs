@@ -17,7 +17,6 @@ const release = process.argv.includes('--release');
 const exe = file(`target/${release ? 'release' : 'debug'}/bible-workbench.exe`);
 const wbExe = file(`target/${release ? 'release' : 'debug'}/wb.exe`);
 const shots = shotsDir('docs/phase2/');
-mkdirSync(shots, { recursive: true });
 await acquire('shelf');
 const cdpPort = String(await freePort());
 const work = path.join(os.tmpdir(), 'bible-workbench-rs', 'shelf-check');

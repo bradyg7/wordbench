@@ -42,3 +42,8 @@ jobs:
 
       - name: The app builds
         run: cargo build -p bible-workbench
+
+      # step 2, ticket 8: a run must leave every committed file as it found it (scripts/clean-tree.mjs)
+      - name: The run changed no committed file
+        if: ${{ !cancelled() }}
+        run: node scripts/clean-tree.mjs

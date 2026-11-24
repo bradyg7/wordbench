@@ -79,7 +79,7 @@ jobs:
 
       # step 2, ticket 8: a run must leave every committed file as it found it (scripts/clean-tree.mjs)
       - name: The run changed no committed file
-        if: always()
+        if: ${{ !cancelled() }}
         run: node scripts/clean-tree.mjs
 
   # Windows because the code behind cfg(windows) is only seen there
@@ -115,7 +115,7 @@ jobs:
 
       # step 2, ticket 8: a run must leave every committed file as it found it (scripts/clean-tree.mjs)
       - name: The run changed no committed file
-        if: always()
+        if: ${{ !cancelled() }}
         run: node scripts/clean-tree.mjs
 
   full:
@@ -173,5 +173,5 @@ jobs:
 
       # step 2, ticket 8: a run must leave every committed file as it found it (scripts/clean-tree.mjs)
       - name: The run changed no committed file
-        if: always()
+        if: ${{ !cancelled() }}
         run: node scripts/clean-tree.mjs

@@ -1,5 +1,4 @@
 import { test, expect, type Page } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
 import { shotPath } from '../../scripts/shots.mjs';
 
 // The margin in the reader (design/features/marks T10: rows 17 to 19, 29, 30, 43 and 50; MK7-18, MK7-27, MK7-28, MK7-31).
@@ -98,7 +97,6 @@ test('row 43: open, the margin is a column beside the text behind a thin line: e
   await expect(page.locator('.mg-card[data-note="n_q"] .mg-q')).toContainText('Why here');
   expect(run.calls.filter(x => !x.startsWith('mark-notes-'))).toEqual([]);   // opening reads the chapter's notes and nothing else
   if (info.project.name === 'webkit-desktop') {
-    mkdirSync(new URL('../../design/features/marks/build/', import.meta.url), { recursive: true });
     await page.evaluate(() => (document.getElementById('scroller') as HTMLElement).scrollTo(0, 0));
     await page.screenshot({ path: shotPath('design/features/marks/build/t10.png') });
   }

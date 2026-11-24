@@ -265,10 +265,14 @@ the gate.
   in non-test Rust, `#[expect(` 9, `#[allow(` 0, `@ts-expect-error`, `@ts-ignore`, `@ts-nocheck`, `eslint-disable` 0.
   `any` is found by a small scanner, not the compiler: typescript 7 has no JS API. Review fix: switches are counted in every tracked script and Rust file, and a fall fails too until the baseline is lowered.
 - Ticket 8 built on `fix/clean-tests` (stacked on `fix/ratchets`), not pushed: specs and desk scripts save pictures through
-  `scripts/shots.mjs` to `test-results/shots/` (ignored); only `WB_SHOTS=1` (`npm run shots`, on purpose) writes the committed
-  paths. `app/src-tauri/gen/schemas/` is untracked and ignored (nothing reads it; capabilities only name it in `$schema`),
-  the lockfile carries the two `version` lines `npm install` writes, and the last step of every CI job runs
-  `scripts/clean-tree.mjs`. Only GitHub proves the CI step.
+  `scripts/shots.mjs` to `test-results/shots/` (ignored); only `WB_SHOTS=1` (`npm run shots`, on purpose; `-- --desk` adds
+  the desk scripts, which need the release build) writes the committed paths, and it retakes every spec that imports the
+  helper, including the marks t5, t6 and t7 pictures. `app/src-tauri/gen/schemas/` is untracked and ignored (the files stay
+  on disk; Tauri writes them on every build, and only capabilities' `$schema` hint names them), the lockfile carries the
+  two `version` lines `npm install` writes, and the last step of every job in `ci.yml` and `mac-tests.yml` runs
+  `scripts/clean-tree.mjs`. Only GitHub proves the CI step. Committed pictures nothing produces any more are history that
+  `npm run shots` does not retake: `ipad-*`, `phone-compact`, `laptop-expanded`, and the `defs-*`, `r3-*` and `tier4-*`
+  files in `docs/phase2/`.
 - Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
   (ticket 4) can run on it.
 

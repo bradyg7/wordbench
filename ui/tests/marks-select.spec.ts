@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { shotPath } from '../../scripts/shots.mjs';
 import { readFileSync } from 'node:fs';
 
 // Selecting a verse or a span, Add to…, Open as a tab, Ctrl+1 to Ctrl+9, Copy, the right-click menu and the phone's ⋯
@@ -259,7 +260,7 @@ test('row 67: hovering or arrowing to a kind opens its styles as a submenu, the 
   await expect(ctx(page).locator('.mb-sub')).toHaveCount(0);
   await ctx(page).locator('[data-act="highlight"]').hover();
   await expect(sub).toBeVisible();
-  if (process.env.WB_T7_SHOT) await page.screenshot({ path: process.env.WB_T7_SHOT });
+  if (process.env.WB_SHOTS === '1') await page.screenshot({ path: shotPath('design/features/marks/build/t7.png') });
 });
 
 test('row 68: a row does the bar\'s action; Esc closes the menu and makes nothing; Margin note opens an empty note', async ({ page }, info) => {
