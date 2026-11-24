@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { shotPath } from '../../scripts/shots.mjs';
 
 // The fixture holds what the database says (made by `wb fixture`); the test compares the screen with it, never with
 // text typed here.
@@ -49,7 +50,7 @@ test('draws Numbers 25 with the marks, in Literata', async ({ page }, info) => {
     return t.slice(1).map((y, n) => y - t[n]);
   });
   expect(Math.max(...pitches) - Math.min(...pitches)).toBeLessThanOrEqual(1);
-  await page.screenshot({ path: `${shots}/${info.project.name}-reader.png` });
+  await page.screenshot({ path: shotPath(`${shots}/${info.project.name}-reader.png`) });
 });
 
 test('tap a word: the word sheet', async ({ page }, info) => {
@@ -66,7 +67,7 @@ test('tap a word: the word sheet', async ({ page }, info) => {
   await expect(sheet.locator('.def')).toHaveText(zeal.lexicon.definition);
   await expect(sheet.locator('.wc-door')).toHaveText('In the Concordance');
   await expect(sheet.locator('.wc-webster')).toBeVisible();
-  await page.screenshot({ path: `${shots}/${info.project.name}-word-sheet.png` });
+  await page.screenshot({ path: shotPath(`${shots}/${info.project.name}-word-sheet.png`) });
   // Closing returns exactly where the reader was.
   const before = await page.evaluate(() => document.getElementById('scroller')!.scrollTop);
   await page.touchscreen.tap(195, 120);   // above the sheet
@@ -84,7 +85,7 @@ test('tap a verse number: the verse sheet, verbatim', async ({ page }, info) => 
   const sheet = page.locator('.sheet');
   await expect(sheet.locator('.sheet-title')).toHaveText('Numbers 25:11');
   await expect(sheet.locator('.scripture')).toHaveText(fx.verses['11'].text);
-  await page.screenshot({ path: `${shots}/${info.project.name}-verse-sheet.png` });
+  await page.screenshot({ path: shotPath(`${shots}/${info.project.name}-verse-sheet.png`) });
 });
 
 test('press and hold, drag across verses, then a handle', async ({ page }, info) => {
@@ -101,7 +102,7 @@ test('press and hold, drag across verses, then a handle', async ({ page }, info)
   expect(sel).toEqual({ a: [7, 2], b: [8, 3] });
   await expect(page.locator('.markbar')).toBeVisible();
   await expect(page.locator('.handle-a')).toBeVisible();
-  await page.screenshot({ path: `${shots}/${info.project.name}-selection.png` });
+  await page.screenshot({ path: shotPath(`${shots}/${info.project.name}-selection.png`) });
   // Drag the end handle on to verse 9.
   const hb = (await page.locator('.handle-b i').boundingBox())!;
   const line = (await page.locator('.handle-b').boundingBox())!;
@@ -125,14 +126,14 @@ test('mouse: hover card and the color bar', async ({ page }, info) => {
   await page.mouse.move(z.x + 5, z.y + z.height / 2);
   await expect(page.locator('.hovercard')).toBeVisible();
   await expect(page.locator('.hovercard')).toContainText(fx.words['11.24'].lexicon.strong);
-  await page.screenshot({ path: `${shots}/${info.project.name}-hover-card.png` });
+  await page.screenshot({ path: shotPath(`${shots}/${info.project.name}-hover-card.png`) });
   const a = await wordBox(page, 7, 2), b = await wordBox(page, 7, 9);
   await page.mouse.move(a.x + 3, a.y + a.height / 2);
   await page.mouse.down();
   await page.mouse.move(b.x + b.width - 3, b.y + b.height / 2, { steps: 6 });
   await page.mouse.up();
   await expect(page.locator('.markbar')).toBeVisible();
-  await page.screenshot({ path: `${shots}/${info.project.name}-color-bar.png` });
+  await page.screenshot({ path: shotPath(`${shots}/${info.project.name}-color-bar.png`) });
 });
 
 test('timings in this engine', async ({ page }, info) => {
@@ -210,7 +211,7 @@ test('desktop: a band across the reader and floats each on their own, the verse 
   // minimize round 7: no chip is left over the reader (a test pane cannot be opened again, so it closes)
   await expect(page.locator('.dock-chip')).toHaveCount(0);
   await expect(page.locator('.dock-float')).toHaveCount(1);
-  await page.screenshot({ path: `${shots}/${info.project.name}-dock-floats.png` });
+  await page.screenshot({ path: shotPath(`${shots}/${info.project.name}-dock-floats.png`) });
 });
 
 test('phone: a pane is the whole screen with the way back', async ({ page }, info) => {
@@ -268,7 +269,7 @@ test('the findings box takes a pasted picture and says no to a file over 10 MB; 
   await expect(box.locator('.file-chip')).toHaveCount(1);
   const fits = await box.evaluate(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && [...b.querySelectorAll('.file-chip, .finding-attach')].every(e => e.getBoundingClientRect().right <= r.right + 0.5); });
   expect(fits).toBe(true);
-  await page.screenshot({ path: `${shots}/${info.project.name}-finding-files.png` });
+  await page.screenshot({ path: shotPath(`${shots}/${info.project.name}-finding-files.png`) });
   await box.locator('.file-chip-x').click();
   await expect(box.locator('.file-chip')).toHaveCount(0);
 });

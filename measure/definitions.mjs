@@ -7,11 +7,12 @@ import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
 import { acquire, freePort } from './instance.mjs';
+import { shotsDir } from '../scripts/shots.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
 const exe = file('target/release/bible-workbench.exe'), wbExe = file('target/release/wb.exe');
-const shots = file('docs/phase2/');
+const shots = shotsDir('docs/phase2/');
 mkdirSync(shots, { recursive: true });
 await acquire('definitions');
 const cdpPort = String(await freePort());

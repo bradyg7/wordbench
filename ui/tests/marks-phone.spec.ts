@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync, mkdirSync } from 'node:fs';
+import { shotPath } from '../../scripts/shots.mjs';
 
 // The phone (design/features/marks T13: rows 59 to 63 and 69; MK7-31, MK7-32; sheet G). What a desktop drops down or pops
 // up opens here as a bottom sheet. The UI runs without Rust, so every `wb` call is answered by this test's route, which
@@ -100,7 +101,7 @@ test('row 59: long-press a word and drag to extend: the words are selected with 
   const first = (await page.locator('#reader .w.sel').first().boundingBox())!;
   expect(bb.y + bb.height).toBeLessThanOrEqual(first.y + 1);   // above the selection
   mkdirSync('design/features/marks/build', { recursive: true });
-  await page.screenshot({ path: 'design/features/marks/build/t13.png' });
+  await page.screenshot({ path: shotPath('design/features/marks/build/t13.png') });
 });
 
 test('row 60: a tap on a kind opens a bottom sheet, not a drop-down: its styles by name, then Any color…; an underline also has its 1, 2, 3 lines', async ({ page }, info) => {
@@ -121,7 +122,7 @@ test('row 60: a tap on a kind opens a bottom sheet, not a drop-down: its styles 
   const sb = (await sheet(page).boundingBox())!;
   expect(sb.y).toBeGreaterThan(844 / 2 - 100);   // at the foot of the screen
   expect(sb.y + sb.height).toBeGreaterThanOrEqual(840);
-  await page.screenshot({ path: 'design/features/marks/build/t13-sheet.png' });
+  await page.screenshot({ path: shotPath('design/features/marks/build/t13-sheet.png') });
   // another kind replaces it; an underline has its lines
   await sheet(page).locator('.close').tap();
   await expect(sheet(page)).toHaveCount(0);

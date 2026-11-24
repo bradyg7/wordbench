@@ -14,6 +14,7 @@
     "test:unit": "node --experimental-strip-types --no-warnings --test ui/unit/*.test.ts",
     "test:commands-cases": "node --test scripts/commands-cases.test.mjs",
     "test:webkit": "playwright test",
+    "shots": "node scripts/shots-run.mjs",
     "measure": "node measure/measure.mjs",
     "site:dev": "vite --config site/vite.config.ts",
     "site:build": "tsc -p site && vite build --config site/vite.config.ts",

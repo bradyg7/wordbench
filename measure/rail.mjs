@@ -10,13 +10,14 @@ import { chromium } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
 import { acquire, freePort } from './instance.mjs';
+import { shotsDir } from '../scripts/shots.mjs';
 
 const root = new URL('..', import.meta.url);
 const file = u => new URL(u, root).pathname.slice(1);
 const release = process.argv.includes('--release');
 const exe = file(`target/${release ? 'release' : 'debug'}/bible-workbench.exe`);
 const wbExe = file(`target/${release ? 'release' : 'debug'}/wb.exe`);
-const shots = file('docs/phase2/');
+const shots = shotsDir('docs/phase2/');
 mkdirSync(shots, { recursive: true });
 await acquire('rail');
 const work = process.env.WB_DESK_WORK || path.join(os.tmpdir(), 'bible-workbench-rs', 'rail-check');

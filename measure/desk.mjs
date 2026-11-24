@@ -11,6 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { shelfChecks, shelfFixtures } from './shelf-checks.mjs';
 import { acquire, freePort } from './instance.mjs';
+import { shotsDir } from '../scripts/shots.mjs';
 import { threadChecks } from './threads-checks.mjs';
 import { readingPlansChecks } from './reading-plans-checks.mjs';
 
@@ -19,7 +20,7 @@ const file = u => new URL(u, root).pathname.slice(1);
 const release = process.argv.includes('--release');
 const exe = file(`target/${release ? 'release' : 'debug'}/bible-workbench.exe`);
 const wbExe = file(`target/${release ? 'release' : 'debug'}/wb.exe`);
-const shots = file('docs/phase2/');
+const shots = shotsDir('docs/phase2/');
 mkdirSync(shots, { recursive: true });
 // (two sessions checking at once need a folder and a port each: WB_DESK_WORK and WB_DESK_PORT)
 await acquire('desk');

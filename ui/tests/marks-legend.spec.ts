@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { shotPath } from '../../scripts/shots.mjs';
 
 // The Legend on the rail (design/features/marks T11: rows 32 to 41). The UI runs without Rust here, so every `wb` call it
 // makes is answered by the test's route, which records the command as the fixture name (the argv, lower-cased: `legend-set-
@@ -328,12 +329,12 @@ test('screenshots: the Legend and where a style is used', async ({ page }, info)
   set(state, 'Fixture box', { key: 'Ctrl+7' });
   await ready(page, { state, uses: withUses() });
   await openLegend(page);
-  await page.screenshot({ path: new URL('../../design/features/marks/build/t11.png', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1') });
+  await page.screenshot({ path: shotPath('design/features/marks/build/t11.png') });
   await entry(page, 'Fixture double').locator('.lg-count').click();
   const rows = pane(page).locator('.lg-use');
   await rows.nth(0).locator('.lg-pick').check();
   await rows.nth(1).locator('.lg-pick').check();
-  await page.screenshot({ path: new URL('../../design/features/marks/build/t11-uses.png', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1') });
+  await page.screenshot({ path: shotPath('design/features/marks/build/t11-uses.png') });
   void info;
 });
 

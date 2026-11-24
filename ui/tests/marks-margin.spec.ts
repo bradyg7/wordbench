@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+import { shotPath } from '../../scripts/shots.mjs';
 
 // The margin in the reader (design/features/marks T10: rows 17 to 19, 29, 30, 43 and 50; MK7-18, MK7-27, MK7-28, MK7-31).
 // The UI runs without Rust here, so each `wb` call it makes is answered by the test's route and recorded by name (the argv as
@@ -99,7 +100,7 @@ test('row 43: open, the margin is a column beside the text behind a thin line: e
   if (info.project.name === 'webkit-desktop') {
     mkdirSync(new URL('../../design/features/marks/build/', import.meta.url), { recursive: true });
     await page.evaluate(() => (document.getElementById('scroller') as HTMLElement).scrollTo(0, 0));
-    await page.screenshot({ path: new URL('../../design/features/marks/build/t10.png', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1') });
+    await page.screenshot({ path: shotPath('design/features/marks/build/t10.png') });
   }
 });
 
@@ -118,7 +119,7 @@ test('row 43: Minimize shows only signs, one beside each verse with a note and o
   expect((await col(page).boundingBox())!.width).toBeLessThan(60);
   if (info.project.name === 'webkit-desktop') {
     await page.evaluate(() => (document.getElementById('scroller') as HTMLElement).scrollTo(0, 0));
-    await page.screenshot({ path: new URL('../../design/features/marks/build/t10-signs.png', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1') });
+    await page.screenshot({ path: shotPath('design/features/marks/build/t10-signs.png') });
   }
   // another chapter opens as signs, as last left
   await page.evaluate(() => (window as any).__wb.open('NUM', 26));

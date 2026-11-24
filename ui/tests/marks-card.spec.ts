@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+import { shotPath } from '../../scripts/shots.mjs';
 
 // The mark card (design/features/marks T8: rows 25 to 28 and 31). The UI runs without Rust here, so each `wb` call it makes
 // is answered by the test's route and recorded by name (the argv as the fixture name). Marks are put on the chapter from
@@ -132,7 +133,7 @@ test('row 26: words with several marks: the card lists each, topmost first, each
   await expect(all.getByRole('button', { name: 'Delete' })).toHaveCount(3);
   expect(run.calls).toEqual(['mark-at-num-25-11-3']);
   mkdirSync('design/features/marks/build', { recursive: true });
-  await page.screenshot({ path: `design/features/marks/build/t8${info.project.name === 'webkit-desktop' ? '' : '-phone'}.png` });
+  await page.screenshot({ path: shotPath(`design/features/marks/build/t8${info.project.name === 'webkit-desktop' ? '' : '-phone'}.png`) });
 });
 
 test("row 27: Change opens that kind's drop-down; a pick runs wb mark style and only that mark changes", async ({ page }) => {

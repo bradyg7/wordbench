@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { notebookRoutes, openMarksPage } from './notebook-fixtures';
+import { shotPath } from '../../scripts/shots.mjs';
 
 // Finding marks (design/features/marks T12: rows 51, 52, 53). The UI runs without Rust here: every `wb` answer is the one `wb`
 // gave on the generated study (npm run fixtures), named as the command is (`find --kind mark --book Numbers` is
@@ -47,7 +47,7 @@ test('row 51: the kinds menu has Marks (and Margin notes); Marks shows the chip 
   // the T12 controls are retired into the one chip row (filters-v2 rows 26 and 27, NB17: `highlights_chips` in lists-chips.spec.ts)
   await expect(page.locator('.nb-kind-chips').getByRole('button', { name: 'Add filter' })).toBeVisible();
   await expect(page.locator('.nb-mfilters')).toHaveCount(0);
-  await page.locator('.pane-notebook').screenshot({ path: fileURLToPath(new URL('../../design/features/marks/build/t12.png', import.meta.url)) });
+  await page.locator('.pane-notebook').screenshot({ path: shotPath('design/features/marks/build/t12.png') });
 });
 
 test('row 51: a click on a mark opens the reader there, and Back returns it', async ({ page }) => {

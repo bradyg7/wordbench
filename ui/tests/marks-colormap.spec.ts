@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { notebookRoutes } from './notebook-fixtures';
+import { shotPath } from '../../scripts/shots.mjs';
 
 // Colors across the Bible (design/features/marks T14: rows 57 and 58). The UI runs without Rust here: every `wb marks map`
 // answer is the one `wb` gave on the generated study (npm run fixtures): the whole map, one style, one folder. No scripture
@@ -99,7 +99,7 @@ test('row 57: a style chip fills its chapters and the empty cells are its gaps; 
   const first = one.books.flatMap((b: any) => b.cells.filter((c: any) => c.count).map((c: any) => [b.code, c.chapter]))[0];
   await expect(cellOf(first[0], first[1])).toHaveClass(/has/);
   await expect(cellOf('GEN', 1)).not.toHaveClass(/has/);
-  await pane(page).screenshot({ path: fileURLToPath(new URL('../../design/features/marks/build/t14.png', import.meta.url)) });
+  await pane(page).screenshot({ path: shotPath('design/features/marks/build/t14.png') });
   // another style takes its place: one at a time
   await pane(page).locator(`.cm-chip[data-style="${YELLOW}"]`).click();
   await expect(pane(page).locator('.cm-chip[aria-pressed="true"]')).toHaveCount(1);
