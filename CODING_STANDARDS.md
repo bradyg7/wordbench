@@ -5,7 +5,7 @@ the ticket of the turnaround's step 2 that switches the check on if it is not on
 judgment call, given one short example from this code. Words: [GLOSSARY.md](GLOSSARY.md#development-words).
 
 **Sources:** clippy's default lints plus the stricter ones listed below; TypeScript's `strict` mode and
-typescript-eslint's `strict-type-checked` set; Matt Pocock's guidance (deep modules, small interfaces, tests through the
+typescript-eslint's `strict-type-checked` set (once it supports TypeScript 7); Matt Pocock's guidance (deep modules, small interfaces, tests through the
 public surface, no `any`). A rule is added or changed with the person's go-ahead, usually after a retro.
 
 ## Every change
@@ -67,9 +67,10 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
   commands gets a type that matches what wb-core returns. There are 278 today, mostly in `panes.ts`, `actions.ts`,
   `notebook.ts` and `listview.ts`; the count only goes down. Example: `perform(a: any, line: string)` in
   `ui/src/actions.ts`. *Check: the `any` ratchet, `node scripts/ratchet.mjs`.*
-- **typescript-eslint `strict-type-checked`** is the TypeScript checker, with no warnings allowed. Its `any` rules
-  (`no-explicit-any`, `no-unsafe-*`) are counted by the `any` ratchet until the count reaches zero. *Check: `eslint` in
-  the quick checks (installed and cleared in ticket 3).*
+- **typescript-eslint `strict-type-checked` is not installed yet.** It does not support the TypeScript 7 this repo
+  uses, so it waits until it does (the person, 2026-11-23, in [the parking lot](docs/turnaround-parked.md)). Until then
+  `strict` `tsc` and the `any` ratchet are the TypeScript checks. When it arrives, it runs with no warnings allowed,
+  and its `any` rules (`no-explicit-any`, `no-unsafe-*`) are counted by the `any` ratchet until the count reaches zero.
 
 ## Checker switches
 
