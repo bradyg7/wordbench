@@ -30,12 +30,9 @@ jobs:
           shared-key: macos-tests
 
       - name: The Bible database (data-v1 of the public releases repository)
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: |
-          mkdir -p datasets
-          gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
-          echo "fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c  datasets/workbench.db" | shasum -a 256 -c
+        uses: ./.github/actions/bible-db
+        with:
+          token: ${{ secrets.RELEASES_TOKEN }}
 
       - run: npm ci
       - run: npm run build

@@ -65,7 +65,9 @@ a change alters expected behavior, document the contract and verify it with Rust
   carrying it is installed through the updater, not when it merges. A release: bump the version in `Cargo.toml` and
   `app/src-tauri/tauri.conf.json`, write `docs/releases/<version>.md` (headings: Moved or removed, New, Changed, Fixed,
   Your study folder), merge to `main`, and push a tag `v<version>` with the person's go-ahead;
-  `.github/workflows/release.yml` builds, signs and publishes it to `bradyg7/wordbench-releases`.
+  `.github/workflows/release.yml` builds, signs and publishes it to `bradyg7/wordbench-releases`. A tag is refused
+  unless the full suite passed on that commit, and a smoke run of the built app must pass before anything is
+  published (the person, 2026-11-23): tag only once CI on `main` is green.
 - **Every core action is reachable from a `wb` command.** When wb-core gains an action, `wb` gains a command for it, so the
   person (or an AI) can do from a terminal anything the window does.
 

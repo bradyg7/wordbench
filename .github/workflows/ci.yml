@@ -27,9 +27,6 @@ concurrency:
   group: ci-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
-env:
-  BIBLE_DB_SHA256: fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c
-
 permissions:
   contents: read
 
@@ -129,27 +126,10 @@ jobs:
           workspaces: '. -> target'
           shared-key: windows-ci-full
 
-      # keyed on the fingerprint: a new database is a new key, so a stale one is never reused
-      - name: The Bible database, cached
-        id: db-cache
-        uses: actions/cache@v4
-        with:
-          path: datasets/workbench.db
-          key: bible-db-${{ env.BIBLE_DB_SHA256 }}
-
       - name: The Bible database (data-v1 of the public releases repository)
-        if: steps.db-cache.outputs.cache-hit != 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: |
-          mkdir -p datasets
-          gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
-
-      # a cache hit is not trusted either
-      - name: The database matches its fingerprint
-        shell: bash
-        run: echo "$BIBLE_DB_SHA256  datasets/workbench.db" | sha256sum -c
+        uses: ./.github/actions/bible-db
+        with:
+          token: ${{ secrets.RELEASES_TOKEN }}
 
       - run: npm ci
       - run: npm run build

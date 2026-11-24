@@ -24,10 +24,27 @@ jobs:
       contents: read
       actions: read
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: The tagged commit is on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::This tag points at a commit that is not on main. Merge first, then tag the merged commit."
+            exit 1
+          fi
+
       - name: The full test suite passed on this commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          any=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&per_page=1" --jq '.total_count')
+          if [ "$any" = "0" ]; then
+            echo "::error::No CI run exists for this commit (a change to docs or design only starts none). Tag the last commit CI tested on main, or push a change that starts CI."
+            exit 1
+          fi
           runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&status=success&per_page=100" --jq '.workflow_runs[].id')
           for run in $runs; do
             ok=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs?per_page=100" --jq '[.jobs[] | select(.name == "full" and .conclusion == "success")] | length')
@@ -69,13 +86,9 @@ jobs:
           echo "VERSION=$v" >> "$GITHUB_ENV"
 
       - name: The Bible database (data-v1 of the public releases repository)
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: |
-          mkdir -p datasets
-          gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
-          echo "fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c  datasets/workbench.db" | sha256sum -c
+        uses: ./.github/actions/bible-db
+        with:
+          token: ${{ secrets.RELEASES_TOKEN }}
 
       - run: npm ci
 
@@ -123,13 +136,9 @@ jobs:
           cache: npm
 
       - name: The Bible database (data-v1 of the public releases repository)
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: |
-          mkdir -p datasets
-          gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
-          echo "fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c  datasets/workbench.db" | sha256sum -c
+        uses: ./.github/actions/bible-db
+        with:
+          token: ${{ secrets.RELEASES_TOKEN }}
 
       - run: npm ci
 
@@ -175,13 +184,9 @@ jobs:
           echo "VERSION=$v" >> "$GITHUB_ENV"
 
       - name: The Bible database (data-v1 of the public releases repository)
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: |
-          mkdir -p datasets
-          gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
-          echo "fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c  datasets/workbench.db" | shasum -a 256 -c
+        uses: ./.github/actions/bible-db
+        with:
+          token: ${{ secrets.RELEASES_TOKEN }}
 
       - run: npm ci
 

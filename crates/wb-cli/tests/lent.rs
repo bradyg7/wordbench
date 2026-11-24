@@ -98,29 +98,24 @@ fn the_side_list_and_recents_answer_in_the_window() {
     );
 }
 
-/// Commands the sweep does not run, each with its reason. A key is a whole command name ("docs open") or its first word
-/// ("pdf" covers every `pdf ...`). A command that is neither swept nor listed here fails
-/// `every_command_is_run_the_windows_way_or_excluded`, naming it; so does a key that matches no command.
+/// Commands the sweep does not run, each with its reason. A key is one whole command name, never a first word: a new
+/// `docs <something>` is not excluded until someone adds it here on purpose. A command that is neither swept nor listed
+/// here fails `every_command_is_run_the_windows_way_or_excluded`, naming it; so does a key that matches no command.
+/// The document commands are swept (with `WB_DOCS_DIR` and the study folder in a temp folder, `WB_NO_OPEN=1`).
 const EXCLUDED: &[(&str, &str)] = &[
-    ("do", "relays to a running window"),
-    ("docs", "writes documents outside the study folder"),
-    ("update", "downloads from the network"),
-    ("setup", "changes the app's own settings, not the study folder"),
-    ("pdf", "writes a document outside the study folder"),
-    ("pdfs", "writes documents outside the study folder"),
-    ("craft", "writes documents outside the study folder"),
-    ("packet", "writes a document outside the study folder"),
-    ("lesson", "writes documents outside the study folder"),
-    ("fixture", "writes test fixtures"),
-    ("manual", "opens or writes the manual outside the study folder"),
-    ("guide", "opens the guide in another program"),
-    ("copy", "writes the clipboard"),
-    ("finding open", "opens a finding's attached file in another program"),
+    ("do", "sends its line to a running window and waits for it to answer"),
+    ("copy", "puts text on the system clipboard (no --no_clip in the sweep's arguments)"),
+    ("update status", "reads the installed app's update state in the app-data folder, not the scratch study"),
+    ("update check", "asks the network for a newer version"),
+    ("update install", "downloads and installs a new version"),
+    ("update back", "swaps the installed app for the version before"),
+    ("update stop", "stops the installed app's download"),
+    ("update notes", "reads the update state in the app-data folder and the network's release notes"),
+    ("update skip", "writes the installed app's update setting in the app-data folder"),
 ];
 
 fn excluded(name: &str) -> bool {
-    let first = name.split(' ').next().unwrap_or(name);
-    EXCLUDED.iter().any(|(k, _)| *k == name || *k == first)
+    EXCLUDED.iter().any(|(k, _)| *k == name)
 }
 
 struct Sweep {
@@ -136,7 +131,12 @@ struct Sweep {
 fn sweep() -> &'static Option<Sweep> {
     static SWEEP: std::sync::OnceLock<Option<Sweep>> = std::sync::OnceLock::new();
     SWEEP.get_or_init(|| {
-        let (bible, mut store, _dir) = scratch()?;
+        let (bible, mut store, dir) = scratch()?;
+        // documents go to a temp folder beside the scratch study, and nothing is opened on the screen
+        let docs = dir.0.join("documents-out");
+        std::fs::create_dir_all(&docs).unwrap();
+        std::env::set_var("WB_DOCS_DIR", &docs);
+        std::env::set_var("WB_NO_OPEN", "1");
         let id = {
             let ctx = Ctx::lent(&bible, &mut store);
             let p = run(&ctx, &["page", "new", "Swept page"]).expect("page new");
@@ -244,9 +244,7 @@ fn every_command_is_run_the_windows_way_or_excluded() {
     for (key, reason) in EXCLUDED {
         assert!(!reason.is_empty(), "{key} is excluded without a reason");
         assert!(
-            table
-                .iter()
-                .any(|(n, _)| n == key || n.split(' ').next() == Some(*key)),
+            table.iter().any(|(n, _)| n == key),
             "EXCLUDED names {key}, which is no command in the table"
         );
     }

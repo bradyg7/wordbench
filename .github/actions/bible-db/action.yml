@@ -1,0 +1,35 @@
+name: The Bible database
+description: Downloads data-v1 of the public releases repository to datasets/workbench.db, caches it by its fingerprint, and checks the fingerprint (a cache hit is not trusted either). The one place the fingerprint is held.
+inputs:
+  token:
+    description: A token that can read bradyg7/wordbench-releases (secrets.RELEASES_TOKEN)
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Fingerprint
+      shell: bash
+      run: echo "BIBLE_DB_SHA256=fe8778fd97bc8491eec476f5bd209d168bdac09760abe6dace1d3debbf7a750c" >> "$GITHUB_ENV"
+
+    # keyed on the fingerprint: a new database is a new key, so a stale one is never reused
+    - name: The Bible database, cached
+      id: db-cache
+      uses: actions/cache@v4
+      with:
+        path: datasets/workbench.db
+        key: bible-db-${{ env.BIBLE_DB_SHA256 }}
+
+    - name: Download data-v1
+      if: steps.db-cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        mkdir -p datasets
+        gh release download data-v1 -R bradyg7/wordbench-releases -p workbench.db -D datasets
+
+    - name: The database matches its fingerprint
+      shell: bash
+      run: |
+        if command -v sha256sum >/dev/null; then echo "$BIBLE_DB_SHA256  datasets/workbench.db" | sha256sum -c
+        else echo "$BIBLE_DB_SHA256  datasets/workbench.db" | shasum -a 256 -c; fi
