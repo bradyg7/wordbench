@@ -21,7 +21,7 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
   "...")]`, which also fails once the switch is no longer needed; in TypeScript, `// @ts-expect-error <reason>` or
   `// eslint-disable-next-line <rule> -- <reason>`. Never `@ts-ignore`, `@ts-nocheck` or a whole-file switch. Each one is
   also listed in [Checker switches](#checker-switches) below. *Check: clippy's `allow_attributes` and
-  `allow_attributes_without_reason` (ticket 3); the ratchet on switches (ticket 7).*
+  `allow_attributes_without_reason` (ticket 3); the ratchet on switches, `node scripts/ratchet.mjs`.*
 - **Tests never change committed files.** Pictures go to ignored scratch folders; committed screenshots change only
   through `npm run shots`. *Check: CI fails if a test run leaves a committed file changed (ticket 8).*
 - **Builders never run a full suite on this PC.** Run the test being written or fixed and the quick checks for the area
@@ -58,16 +58,16 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
   `undocumented_unsafe_blocks`. Adding another is a normal edit to this list and to `Cargo.toml` together.
 - **No `unwrap()` or `expect()` on anything that comes from the person, the disk or the network** outside tests; return
   an error with a message instead. `unwrap()` is fine where failure is impossible by construction, with a comment saying
-  why. *Check: the `unwrap()` ratchet on non-test code (ticket 7).*
+  why. *Check: the `unwrap()` ratchet on non-test code, `node scripts/ratchet.mjs`: 439 `unwrap()` and 4 `expect(` today, and the counts only go down.*
 - **The Bible database is opened read-only**, through `bible` in wb-core, never another way.
 
 ## TypeScript
 
 - **`strict` is on** in `ui/tsconfig.json` and stays on. *Check: `tsc -p ui` in the quick checks.*
 - **No `any`.** A value whose shape is not known yet is `unknown` and is checked before use; a value from the app's
-  commands gets a type that matches what wb-core returns. There are about 240 today, mostly in `panes.ts`, `actions.ts`,
+  commands gets a type that matches what wb-core returns. There are 278 today, mostly in `panes.ts`, `actions.ts`,
   `notebook.ts` and `listview.ts`; the count only goes down. Example: `perform(a: any, line: string)` in
-  `ui/src/actions.ts`. *Check: the `any` ratchet (ticket 7).*
+  `ui/src/actions.ts`. *Check: the `any` ratchet, `node scripts/ratchet.mjs`.*
 - **typescript-eslint `strict-type-checked`** is the TypeScript checker, with no warnings allowed. Its `any` rules
   (`no-explicit-any`, `no-unsafe-*`) are counted by the `any` ratchet until the count reaches zero. *Check: `eslint` in
   the quick checks (installed and cleared in ticket 3).*

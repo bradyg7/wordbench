@@ -55,6 +55,10 @@ jobs:
       # the type check `npm run build` does, without paying for the bundle
       - run: npx tsc -p ui
 
+      # step 2, ticket 7: `any`, `unwrap()` and checker switches may go down, never up (scripts/ratchet.json)
+      - run: node scripts/ratchet.mjs
+      - run: npm run test:ratchet
+
       # CODING_STANDARDS.md: no TODO, FIXME or XXX in merged code (open thoughts go to docs/turnaround-parked.md).
       # Upper case whole words, so "todo" in a UI string is not a hit. Docs, design and *.md state the rule in those
       # words; datasets is data.

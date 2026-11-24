@@ -259,6 +259,11 @@ the gate.
   in the window's way nor in its `EXCLUDED` list (14 entries, each with a reason). Only a tag on GitHub proves the gate and
   the smoke job; `smoke.mjs` was not run locally (no release build here). `mac-tests.yml` still runs beside the release,
   not before it.
+- Ticket 7 built on `fix/ratchets` (stacked on `fix/release-gate`), not pushed: `scripts/ratchet.mjs` counts and
+  compares with `scripts/ratchet.json` (per-file counts; `--detail`, `--write`); CI `quick-light` runs it and
+  `npm run test:ratchet` (8 tests). Baselines: `any` 278 (not the 240 the plan guessed), `unwrap()` 439 and `expect(` 4
+  in non-test Rust, `#[expect(` 9, `#[allow(` 0, `@ts-expect-error`, `@ts-ignore`, `@ts-nocheck`, `eslint-disable` 0.
+  `any` is found by a small scanner, not the compiler: typescript 7 has no JS API.
 - Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
   (ticket 4) can run on it.
 
