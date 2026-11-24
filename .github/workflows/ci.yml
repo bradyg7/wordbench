@@ -77,6 +77,11 @@ jobs:
       - run: npm run test:tokens
       - run: npm run test:distribution
 
+      # step 2, ticket 8: a run must leave every committed file as it found it (scripts/clean-tree.mjs)
+      - name: The run changed no committed file
+        if: always()
+        run: node scripts/clean-tree.mjs
+
   # Windows because the code behind cfg(windows) is only seen there
   quick-clippy:
     if: github.event_name == 'push'
@@ -107,6 +112,11 @@ jobs:
 
       # features switch on code the default build skips; compile only, so `installed` never runs
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      # step 2, ticket 8: a run must leave every committed file as it found it (scripts/clean-tree.mjs)
+      - name: The run changed no committed file
+        if: always()
+        run: node scripts/clean-tree.mjs
 
   full:
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
@@ -160,3 +170,8 @@ jobs:
 
       - name: axe (WCAG 2.2 AA)
         run: npx playwright test --project webkit-phone --project webkit-desktop --grep the_reader_has_no_wcag
+
+      # step 2, ticket 8: a run must leave every committed file as it found it (scripts/clean-tree.mjs)
+      - name: The run changed no committed file
+        if: always()
+        run: node scripts/clean-tree.mjs

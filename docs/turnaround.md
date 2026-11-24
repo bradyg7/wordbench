@@ -264,6 +264,11 @@ the gate.
   `npm run test:ratchet` (8 tests). Baselines: `any` 278 (not the 240 the plan guessed), `unwrap()` 439 and `expect(` 4
   in non-test Rust, `#[expect(` 9, `#[allow(` 0, `@ts-expect-error`, `@ts-ignore`, `@ts-nocheck`, `eslint-disable` 0.
   `any` is found by a small scanner, not the compiler: typescript 7 has no JS API. Review fix: switches are counted in every tracked script and Rust file, and a fall fails too until the baseline is lowered.
+- Ticket 8 built on `fix/clean-tests` (stacked on `fix/ratchets`), not pushed: specs and desk scripts save pictures through
+  `scripts/shots.mjs` to `test-results/shots/` (ignored); only `WB_SHOTS=1` (`npm run shots`, on purpose) writes the committed
+  paths. `app/src-tauri/gen/schemas/` is untracked and ignored (nothing reads it; capabilities only name it in `$schema`),
+  the lockfile carries the two `version` lines `npm install` writes, and the last step of every CI job runs
+  `scripts/clean-tree.mjs`. Only GitHub proves the CI step.
 - Next: the person reads the two standards, then ticket 3. `main` is pushed with the person's go-ahead, once CI
   (ticket 4) can run on it.
 
