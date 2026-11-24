@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted (2026-11-13) · **Sheets:** `python design/features/findings/findings.py` writes `findings.figcraft` and
+**State:** up for redesign (the person, 2026-11-24); was: accepted (2026-11-13) · **Sheets:** `python design/features/findings/findings.py` writes `findings.figcraft` and
 `findings.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The person's notes about the app (`findings/`, apart from the study): the box that writes one and the pane that lists them.

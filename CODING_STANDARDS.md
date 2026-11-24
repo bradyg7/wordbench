@@ -2,7 +2,7 @@
 
 Builders read this before writing code, and reviewers check against it. A rule a machine checks names its check, with
 the ticket of the turnaround's step 2 that switches the check on if it is not on yet. A rule nothing checks is a
-judgment call, given one short example from this code. Words: [GLOSSARY.md](GLOSSARY.md#development-words).
+judgment call, given one short example from this code. Words: [GLOSSARY.md](GLOSSARY.md).
 
 **Sources:** clippy's default lints plus the stricter ones listed below; TypeScript's `strict` mode and
 typescript-eslint's `strict-type-checked` set (once it supports TypeScript 7); Matt Pocock's guidance (deep modules, small interfaces, tests through the
@@ -45,8 +45,8 @@ public surface, no `any`). A rule is added or changed with the person's go-ahead
 - **Tests go through the public surface**: the `wb` command, a wb-core function the app calls, or what the person sees
   in the window; not private helpers. A test that breaks when the inside is rearranged, with the behavior unchanged, is
   testing the wrong thing.
-- **One word, one thing.** Names in code use the words of [the Library map](design/LIBRARY.md) and this glossary; a new
-  word is added there first.
+- **One word, one thing.** Names in code use the words of [the glossary](GLOSSARY.md); a new word is added there
+  first.
 - **Messages are for the person.** An error the window shows says what happened and what to do, in plain words, never a
   Rust or JavaScript trace.
 

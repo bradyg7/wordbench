@@ -4,6 +4,10 @@ Every general feature, button and command of the app has a planned design before
 2026-11-11; the rule is in `AGENTS.md`). This list is every area of the app and the folder that designs it.
 A new button or command gets a row here, and its folder, before it is built.
 
+**No folder is accepted today** (the person, 2026-11-24): every folder is up for redesign through grilling and a
+prototype ([how work is done](../../docs/agents/how-work-is-done.md#designing-a-feature)). The State column is what
+each was before.
+
 **Design** is the folder under `design/features/`, or — when none exists yet. **State** is the folder's state
 (see [the index](README.md)). Where folders draw the same part, [overlaps.md](overlaps.md) says whether they agree or conflict. Things built before 2026-11-11 were designed in the older boards (`design/*.py`,
 `docs/archive/`); they get a folder when they are next changed, not before.

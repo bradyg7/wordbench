@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted (the person, 2026-11-22, round 1: "i like it") · **Sheets:** `node design/features/notebook-shell/frames.mjs` writes
+**State:** up for redesign (the person, 2026-11-24); was: accepted (the person, 2026-11-22, round 1: "i like it") · **Sheets:** `node design/features/notebook-shell/frames.mjs` writes
 `rows/<id>.png` and `rows/index.json` from `frames.html` · Nothing here is built. · **Review page:**
 `node design/review.mjs notebook-shell` writes `review.html`.
 
@@ -137,7 +137,7 @@ New-page bug; C answers the person's findings on tabs for the whole window. B is
 
 ## Interaction table
 
-Objects and words from [the Library map](../../LIBRARY.md): page, folder, save, Unfiled, Trash, trail, filter, page
+Objects and words from [the glossary](../../../GLOSSARY.md): page, folder, save, Unfiled, Trash, trail, filter, page
 property. No word "note", "thread", "place", "Inbox", "Days" or "Questions tab" appears in the shell.
 
 ### The side list (frames 1–9)

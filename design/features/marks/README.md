@@ -2,9 +2,9 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted (the person, 2026-11-18: "it looks really good… ready to get down to implementation"), round 7 (a fresh start, 2026-11-18). Table first, then sheets. Rounds 1 to 6 (accepted
+**State:** up for redesign (the person, 2026-11-24); was: accepted (the person, 2026-11-18: "it looks really good… ready to get down to implementation"), round 7 (a fresh start, 2026-11-18). Table first, then sheets. Rounds 1 to 6 (accepted
 2026-11-17, built badly) are kept for history in [archive/](archive/rounds-1-6-README.md); what still holds is carried
-into the decisions below by name. Objects and words: [the Library map](../../LIBRARY.md).
+into the decisions below by name. Objects and words: [the glossary](../../../GLOSSARY.md).
 
 A mark is anything the person puts **on the Bible text**: the paper habits of a study Bible (highlighting, underlining,
 circling, boxing, drawing an arrow, writing in the margin), with unlimited room, every mark findable, and a legend that

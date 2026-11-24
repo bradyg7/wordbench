@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** exploring · **Sheets:** `python design/features/books/books.py` writes `books.figcraft` and
+**State:** up for redesign (the person, 2026-11-24); was: exploring · **Sheets:** `python design/features/books/books.py` writes `books.figcraft` and
 `books.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The two lexicons the rail already names (minimize round 5), opened as books you page through instead of a lookup in a tab. Touches the rail, the word card ([words](../words/README.md)) and the Concordance ([concordance](../concordance/README.md)).

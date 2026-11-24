@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted (the person, 2026-11-19), round 1 · **Sheets:** none yet; the page text below is the draft to review, and once
+**State:** up for redesign (the person, 2026-11-24); was: accepted (the person, 2026-11-19), round 1 · **Sheets:** none yet; the page text below is the draft to review, and once
 it is accepted the built site is shown in the browser before anything goes live.
 
 The public website, built from `site/`: what Bible Workbench is, the download, the release notes and help. It is the

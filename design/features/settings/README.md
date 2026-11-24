@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted (2026-11-13: round 2 tabs as planned, round 3 L3, TH1-TH2, F1-F3, C1′, C2, C3) · **Sheets:** `python design/features/settings/settings.py` writes `settings.figcraft` and
+**State:** up for redesign (the person, 2026-11-24); was: accepted (2026-11-13: round 2 tabs as planned, round 3 L3, TH1-TH2, F1-F3, C1′, C2, C3) · **Sheets:** `python design/features/settings/settings.py` writes `settings.figcraft` and
 `settings.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · Nothing here is built yet.
 
 The Settings pane (Reading, Notebook, Hover and cards, Theme, Layouts, Commands, Keys, Advanced), saved layouts, and views.

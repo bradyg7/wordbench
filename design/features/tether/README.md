@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** accepted by the person 2026-11-17: Named and Quoted tiers only; no suggestion by meaning (tier 3 dropped, the "Needs the person" question closed) · **Sheets:** `python design/features/tether/tether.py` writes `tether.figcraft` and
+**State:** up for redesign (the person, 2026-11-24); was: accepted by the person 2026-11-17: Named and Quoted tiers only; no suggestion by meaning (tier 3 dropped, the "Needs the person" question closed) · **Sheets:** `python design/features/tether/tether.py` writes `tether.figcraft` and
 `tether.pdf` (the board, one vector page) (it uses [kit.py](../kit.py)) · **Built 2026-11-17 on `feature/tether-build`: the backend (spoken-form reader, quote matcher, anchoring, Accept, the `wb tether` commands, the corpus and tests); the window is not built** (see "Open after merge"). What other tools
 get wrong, and so what this folder avoids: [bible-software-complaints](../../research/bible-software-complaints.md)
 (theme 4, exports that drop the verse reference; theme 5, AI features users did not ask for).

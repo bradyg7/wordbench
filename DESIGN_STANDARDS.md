@@ -2,7 +2,7 @@
 
 Builders read this before building anything the person sees, and reviewers check against it. It is also the list the
 "**You feel:**" line of a feature's *what must be true* draws on. A rule a machine checks names its check; the rest is
-judged when the person plays the prototype. Words: [GLOSSARY.md](GLOSSARY.md#development-words).
+judged when the person plays the prototype. Words: [GLOSSARY.md](GLOSSARY.md).
 
 **Sources:** WCAG 2.2 at level AA; Jakob Nielsen's 10 usability heuristics and his response-time limits; Microsoft's
 Windows app design guidelines; Apple's Human Interface Guidelines. Checked by machine where possible (axe, in the full suite as
@@ -45,7 +45,7 @@ cold start to the last place under 1.5 s; a chapter drawn under 100 ms; a tap ca
 
 The four above are in the feel qualities. The rest are checked in review and at play:
 
-- **#2 Match the real world:** the person's words (from [the Library map](design/LIBRARY.md)), never the code's.
+- **#2 Match the real world:** the person's words (from [the glossary](GLOSSARY.md)), never the code's.
 - **#6 Recognition over recall:** what can be done is shown, not remembered.
 - **#7 Flexibility:** keys and `wb` commands for the practised; the visible way for everyone.
 - **#8 Minimal design:** nothing on screen that the task does not need.

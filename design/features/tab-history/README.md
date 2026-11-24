@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** exploring · **Shots:** `node design/features/tab-history/scene.mjs` draws them in the app as built, mid-study,
+**State:** up for redesign (the person, 2026-11-24); was: exploring · **Shots:** `node design/features/tab-history/scene.mjs` draws them in the app as built, mid-study,
 into `scenes/t*.png` · Nothing here is built yet.
 
 Every tab keeps its own history and has a back button that goes back through it: the reader, the Concordance, the

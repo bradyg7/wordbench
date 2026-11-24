@@ -2,7 +2,7 @@
 
 > **Read [the principles](../principles/README.md) first** (2026-11-22): it says which of this folder's decisions stand under the new frame (desks, bubbles, the dock) and lists any that conflict, for the person to settle.
 
-**State:** exploring · **Sheets:** `python design/features/search/search.py` writes `search.figcraft` and
+**State:** up for redesign (the person, 2026-11-24); was: exploring · **Sheets:** `python design/features/search/search.py` writes `search.figcraft` and
 `search.pdf` (the board, one vector page) · Nothing here is built yet.
 
 Search covers the KJV search, Every use, count, forms and near. All of them were built before `design/features/`
