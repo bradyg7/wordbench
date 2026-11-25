@@ -6,8 +6,8 @@ works the way it does is in [the principles](design/features/principles/README.m
 
 **How an entry reads.** A short meaning in plain English. *Avoid:* words not to use for this thing; when an avoided word
 has its own entry, a few words say how they differ. *In code:* the name in files, code or `wb`, where it differs.
-*Not yet grilled* marks a word moved here from the old Library map (2026-11-24) whose meaning and worth to the app
-have not been tested in a grilling since; the mark comes off when one settles it.
+*Kept* or *on trial* marks a word whose meaning and worth were tested in the ideas grilling (2026-11-25, map issue
+#46); a word's form (how it looks and works) is settled in its own feature's grilling.
 
 **Rules** (the person, 2026-11-24):
 - A new word, or a new meaning for an existing word, is the person's decision, dated, and is written here first.
@@ -61,17 +61,13 @@ link, shown as a badge. Being blocked never takes an issue off the map; it only 
 
 ### Box
 An **annotation**: a box drawn around words; its form is settled in the annotations grilling. Decided in marks (MK7-1,
-the person, 2026-11-18). *Avoid* it for a **callout**, which is in a page, not on the Bible text.
+the person, 2026-11-18). *Avoid* it for a **key point** or **question** in a page, which are not on the Bible text.
 
 ### Builder
 The agent that builds one ticket in the Main clone and reports. It never invents behavior the design leaves open: it
 stops, and the lead brings the question to the person.
 
 ## C
-
-### Callout
-A highlighted block in a page, of one kind: Question, Answered, Key point or Note. *Not yet grilled.*
-*Avoid:* box (a **box** is a mark on the Bible text), note box. Decided by the person, 2026-11-20.
 
 ### Checker switch
 A line in the code that turns a checker off for one spot: `#[allow(...)]` in Rust, `@ts-ignore` or `eslint-disable` in
@@ -93,10 +89,21 @@ one. An open issue with no one assigned is unclaimed.
 Rust's own code checker. It reads the code without running it and warns about mistakes and clumsy ways of writing
 things.
 
-## D
-
 ### Concordance
 The list of every place a word appears in the Bible: one part of a **word study**. Strong's is its model.
+
+
+### Command
+An action typed rather than clicked, in one of three places: a **slash command** in a page, the **command bar** in the
+app, or a **`wb` command** in a terminal. Each action has one design across all three. The commands are overhauled so
+they are so easy that it would be silly not to use them (the person, 2026-11-25).
+
+### Command bar
+The one bar in the app where the person types either a **command** ("go Prov 7"), which acts, or search words
+("zeal"), which **search**. Its overhaul is designed as its own area. *Avoid:* search box, command palette. Decided by
+the person, 2026-11-25.
+
+## D
 
 ### Design clone
 `C:\Users\brady\github\wordbench-workspaces\Design`: where designing with the person happens. It never changes existing
@@ -115,6 +122,12 @@ and fixes what is in scope.
 A finished, well-made file (Word, PDF or the like) put together from what the person studied, to share and use: a
 lesson, a handout, a sermon. A mainstay of the app: how a study leaves it. Its menu is clunky today and is redesigned,
 not cut (the person, 2026-11-25). *In code:* `documents/`.
+
+## E
+
+### Entry
+One item in a **reference work**: a Strong's number, a dictionary headword. It can be saved, annotated and linked
+from a page (the person, 2026-11-25). *Avoid:* reference piece.
 
 ## F
 
@@ -190,6 +203,14 @@ In this project an issue holds a **map** or one decision on it; the result of a 
 files when the issue closes, so nothing decided lives only on GitHub (the person, 2026-11-25). Outside this project
 "issue" is the general word on GitHub and GitLab for any tracked item: a bug, a request or a task. *Avoid* calling a
 map's decision a **ticket**. *In code:* `gh issue`, labels `wayfinder:*`.
+
+## K
+
+### Key point
+A line or passage in a **page** set apart, coloured, as one to remember; one of the two kinds of set-apart text, with
+**question**. Chosen by name from the `/` menu. *Avoid:* callout (retired, in the code too: its builders' word is
+chosen in the Notebook issue), block (every paragraph is a block), star (reads as a favourite), note box. Decided by
+the person, 2026-11-20 and 2026-11-25.
 
 ## L
 
@@ -287,9 +308,10 @@ the real one is built. It reads the app's code but adds only its own files.
 
 ### Question
 A question the person wrote anywhere (a page or a margin note), open or done. It is found by itself in what is
-written, as scripture references are; the Question callout is a way to mark one explicitly. *On trial*: it stays only
+written, as scripture references are; set apart in a page, coloured, it is marked explicitly, open until marked
+answered (one kind with two states, not two kinds). *On trial*: it stays only
 if its feature's grilling shows it earns its place (the person, 2026-11-25).
-*In code:* `questions.rs`. The old `trails/` files (questions to follow up) fold into Questions by a designed,
+*Avoid:* Answered (as a kind of its own). *In code:* `questions.rs`. The old `trails/` files (questions to follow up) fold into Questions by a designed,
 backed-up move (the person, 2026-11-18).
 
 ### Quick checks
@@ -342,6 +364,9 @@ Finding anything written or saved, the person's or a source's, by a word, a topi
 over everything; today it is two, the Bible (`wb search`) and the person's own work (`wb find`: pages, folders,
 saves, questions, margin notes, highlights). Not searched yet: underlines, documents, findings, lessons and
 reference-work text. Kept; the many commands that reach it today are overhauled (the person, 2026-11-25).
+
+### Slash command
+A **command** typed in a **page**: `/` then its name, as in Notion (the person, 2026-11-25).
 
 ### Smoke run
 A short run of the real release build: open it on a scratch study folder, write a page, press Enter, reopen, check the
@@ -396,6 +421,10 @@ Rust for "this cannot fail". If it does fail, the program stops (it "panics") in
 Finding the way to a **destination** too large and unclear for one session: chart a **map** of decision issues, then
 resolve them one per session until nothing is left to decide. It plans; it builds nothing. The words it uses are
 **map**, **issue**, **blocked**, **claim**, **frontier**, **fog** and **resolve**.
+
+### `wb` command
+A **command** typed in a terminal, so the person or an AI can do there anything the window does (the person,
+2026-11-25). *In code:* `crates/wb-cli`.
 
 ### What must be true
 The short list in a design folder that replaces the interaction table: one item per thing a person does, in the form
