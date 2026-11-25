@@ -28,9 +28,12 @@ A TypeScript type that means "anything". The compiler stops checking a value typ
 everything it touches (it "leaks").
 
 ### Annotation
-Anything the person puts *on* the Bible text: a **highlight**, **underline**, **circle**, **box**, **arrow** or
-**margin note**. All annotations are one family, named in one **Legend**. To *mark up* is the act of adding any of
-them. This is how the person makes their Bible their own and stays organized in it. Until 2026-11-25: called a mark.
+Anything the person puts *on* a source text, the Bible first and any **reference works** entry too, as one marks up
+a textbook: a **highlight**, **underline**, **circle**, **box**, **arrow** or **margin note**. It never changes the
+text. All annotations are one family, named in one **Legend**, and stay easy to reach and to search. To *mark up* is
+the act of adding any of them. This is how the person makes their Bible their own and stays organized in it. Whether
+a margin note can sit on a reference-work entry is open (the person, 2026-11-25). Until 2026-11-25: called a mark, and
+only on the Bible.
 *Avoid:* mark, markup. *In code:* `marks/<BOOK>.json`, `wb mark` (renamed by a designed ticket; the files on disk only
 by a designed, backed-up move). Decided by the person, 2026-11-18 (marks MK7-1) and 2026-11-25 (the word).
 
@@ -91,6 +94,9 @@ Rust's own code checker. It reads the code without running it and warns about mi
 things.
 
 ## D
+
+### Concordance
+The list of every place a word appears in the Bible: one part of a **word study**. Strong's is its model.
 
 ### Design clone
 `C:\Users\brady\github\wordbench-workspaces\Design`: where designing with the person happens. It never changes existing
@@ -196,11 +202,6 @@ The person's own list of what each of their **annotations** means: a name for ea
 the least technical included, to make, change and read. Kept (the person, 2026-11-25). *In code:* `settings/legend.json`,
 `wb legend`.
 
-### Library
-The whole workbench: the study folder and the read-only database together, and the name of a page in the app. *Not
-yet grilled*: the person expects the word to be retired or changed (2026-11-24). *In code:* `library.rs` (in wb-core
-and wb-cli).
-
 ### Link
 A reference from a **page** to anything in the app, found by itself as it is written and shown from both ends, so
 pages stay connected and build on each other. Kept; how it works and how easy it is to reach is redesigned (the person,
@@ -221,8 +222,15 @@ line each, linking the issue that holds it), the **fog** and what is out of scop
 It is an index: a decision lives only in its own issue. Made and worked with `/mattpocock-skills:wayfinder`.
 
 ### Margin note
-A mark: writing beside a verse or a span of verses. It can grow into a page. *Not yet grilled.* *In code:* `margin/`,
-`margin.rs`.
+An **annotation**: writing in the margin, where thoughts have always been written. It always sits beside some place,
+from one verse to a whole book, so it can be found again from the text; a thought that belongs to no place is a
+**page**. It can grow into a page. Kept (the person, 2026-11-25). *In code:* `margin/`, `margin.rs`.
+
+### Live list
+A list kept inside a **page** that shows what matches its **filters** each time the page is opened, like a database
+view in Notion; built from filters, not typed words. Until 2026-11-25: called a saved list. *Avoid:* saved list, view.
+*In code:* `pageviews.rs` (a ```` ```view ```` block). Decided by the person, 2026-11-25; whether a folder's index is
+one is open in the Notebook issue.
 
 ## N
 
@@ -239,6 +247,10 @@ never annoying; Notion is the model to learn from, through a written list of its
 
 ## O
 
+### Original word
+The one Hebrew or Greek word behind one or more English words of the Bible. Pointing at any of those English words
+shows all of them with a **passing outline**, with its definition (the person, 2026-11-25).
+
 ### One-way door
 A decision that is hard to reverse (a study-folder format, the read-only database, a retired word). Each is listed in
 [principles §3](design/features/principles/README.md#one-way-doors).
@@ -252,11 +264,17 @@ manual linking. Its text is searchable. Kept, as Notion uses it (the person, 202
 *Avoid:* note (a **margin note** is its own thing), entry. *In code:* `notes/**.md`, `pages.rs`. Decided 2026-11-09.
 
 ### Page property
-A named value kept in a page's front matter (`props:`), shown as a column in a list. *Not yet grilled.*
-*Avoid:* field, attribute. Decided by the person, 2026-11-22 (filters-v2, NB14).
+A named value kept in a page's front matter (`props:`), shown as a column in a list. Kept, under the word Notion and
+Obsidian use; making properties the person's own and easy to learn is designed after research (the person,
+2026-11-25). *Avoid:* field, attribute, detail. Decided by the person, 2026-11-22 (filters-v2, NB14).
 
 ### Parking lot
 [docs/turnaround-parked.md](docs/turnaround-parked.md): where new ideas wait while the turnaround is followed in order.
+
+### Passing outline
+How the app shows, for a moment, which words belong together (the English words of one **original word**). It is not
+an annotation, is never kept, and goes at the next click. *Avoid:* highlight (that is an annotation). Decided by the
+person, 2026-11-25.
 
 ### Play
 What the person does with a prototype: use it as if it were the app, to judge how it works and feels before it is built.
@@ -293,9 +311,12 @@ The person's own study files (`github\bible-study-data`, `Documents\wordbench-st
 app names). Tests use a scratch copy.
 
 ### Reference works
-The books the person curates beside the Bible: Strong's concordance, BDB, Webster's 1913 and the interlinear. Public
-domain or freely licensed and long-lasting; no commentaries, ever; people do not add their own yet. Any entry can be
-saved, and so referenced in a page. *Not yet grilled*: whether they are one book or a shelf of books is open in books.
+The books the person curates beside the Bible: Strong's (with its interlinear, part of it, not a book of its own),
+BDB and Webster's 1913 (not yet in the app without a script). Only works that define and do not steer doctrine,
+public domain or freely licensed and long-lasting, as Strong's has stayed true to the KJV for centuries; no
+commentaries or devotional material, ever, nothing that crowds out reading the Word; people do not add their own yet.
+Any entry can be saved, annotated, and so referenced in a page. Kept (the person, 2026-11-25); whether they are one
+book or a shelf is open in books.
 *In code:* the Bible database and `dictionary.db`.
 
 ### Resolve (an issue)
@@ -312,12 +333,9 @@ failing with the change reverted. It reports; it does not edit.
 
 ### Save
 A pointer to a verse, phrase, word, page, search or document; never a copy. A save that no longer points anywhere is
-shown, not hidden. *Not yet grilled.* *Avoid:* place (as a set item). *In code:* set items, `places.rs`; `wb save`,
+shown, not hidden. Kept, and revisited when saves are designed (the person, 2026-11-25). *Avoid:* place (as a set
+item), bookmark (it reads as one's place in a book). *In code:* set items, `places.rs`; `wb save`,
 `wb save rm`, `wb save where`. Decided 2026-11-17.
-
-### Saved list
-A list of things kept with its filters, to open again. *Not yet grilled.* *Avoid:* view. *In code:* `views.rs`,
-`pageviews.rs`. Decided in settings (S5).
 
 ### Search
 Finding anything written or saved, the person's or a source's, by a word, a topic or a verse. The goal is one search
@@ -333,8 +351,12 @@ file on disk. If it fails, nothing is published.
 One test file of the UI tests (`ui/tests/*.spec.ts`), usually one feature or behavior.
 
 ### Study folder
-The folder of the person's own work: pages, marks, folders, saves and settings, in this app's formats. See
-**Real study folder** for the one that must never be touched by tests.
+The one folder on the computer that holds everything the person has made: pages, annotations, folders, saves, reading
+plans, feedback and settings, in this app's formats. Back it up and the whole study is backed up. The Bible and
+reference works are not in it; they come with the app. The app makes it by itself, and settings can point to another.
+See **Real study folder** for the one that must never be touched by tests. *Avoid:* Library (until 2026-11-25 the
+study folder and the Bible database together, and a page's name; *in code:* `library.rs`). Decided by the person,
+2026-11-25.
 
 ## T
 
@@ -380,6 +402,12 @@ The short list in a design folder that replaces the interaction table: one item 
 set out in [how work is done](docs/agents/how-work-is-done.md#designing-a-feature). The person writes and checks the
 first four lines (before, do, after, feel); the builder fills the last (on disk, `wb`, proven by) and the reviewer
 checks it.
+
+### Word study
+Everything about one word, reached from any word in the text: its **original word**, its definitions and its
+**concordance**. The plain way in for someone who does not know what a concordance, an interlinear or a lexicon is.
+Whether it is one place or several stays open, so it is never clunky to find one thing (the person, 2026-11-25).
+*Avoid:* concordance for the whole.
 
 ## Named states
 
