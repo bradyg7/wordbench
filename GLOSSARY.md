@@ -40,6 +40,12 @@ The committed number a ratchet compares against. Lowering it after a clean-up is
 The KJV text, the only Bible in the app; YLT is archived. Read-only: the app never changes it. *Not yet grilled.*
 *In code:* the Bible database (`bible`, `lookup`), opened with SQLite's read-only flag.
 
+### Blocked, blocked by
+An issue is blocked while another issue it waits on is still open: its question cannot be answered well until that
+answer exists. It is unblocked when every issue blocking it is closed. On GitHub this is the issue's own "blocked by"
+link, shown as a badge. Being blocked never takes an issue off the map; it only sets when it is taken (the person,
+2026-11-25).
+
 ### Box
 A mark: a box drawn around words. *Not yet grilled.* Decided in marks (MK7-1, the person, 2026-11-18).
 *Avoid* it for a **callout**, which is a block in a page, not something on the Bible text.
@@ -65,6 +71,10 @@ PC. A change reaches `main` only when they pass ("green").
 ### Circle
 A mark: a ring drawn around words. *Not yet grilled.* Decided in marks (MK7-1, the person, 2026-11-18).
 
+### Claim
+Assigning an issue on GitHub to the person, first, before any work on it, so another session does not take the same
+one. An open issue with no one assigned is unclaimed.
+
 ### clippy
 Rust's own code checker. It reads the code without running it and warns about mistakes and clumsy ways of writing
 things.
@@ -79,6 +89,10 @@ code, starts from an up-to-date `main`, and designs at most the next feature (th
 `design/features/<folder>/`: one feature's README (its decisions and its *what must be true* items) and its
 `prototype/`.
 [`coverage.md`](design/features/coverage.md) lists every area and its folder.
+
+### Destination
+What reaching the end of a **map** looks like: the decision, spec or change it is finding its way to. It is named first
+and fixes what is in scope.
 
 ### Document
 A Word or PDF file made from a folder or a page. *Not yet grilled*: its menu is clunky and its worth unclear (the
@@ -110,12 +124,20 @@ Test data kept in the repo. A fixture that holds scripture is generated from the
 A test that passes and fails on the same code. Usually it waits a fixed time instead of waiting for the thing itself.
 Fixed at the cause, never hidden.
 
+### Fog
+Decisions a **map** can tell are coming but cannot yet ask precisely, because they hang on answers still open. Written
+loosely in the map's *Not yet specified* section; a patch becomes one or more issues once the answers before it exist.
+*Avoid:* backlog (a backlog holds work already sharp enough to do).
+
 ### Folder
 A group of pages and saves, which may keep a color. The color shows quietly wherever the folder's things appear (a
 page, a verse, a Strong's entry), and its name on hover or click. A page may be in several folders. *Not yet grilled.*
 *Avoid:* thread, which is retired; its files are moved into colored folders by a designed, backed-up move.
 *In code:* `sets/`, legacy `threads/`, `folders.rs`; `wb folder list`; `wb thread` keeps its name. Decided 2026-11-17 and by the person,
 2026-11-18.
+
+### Frontier
+The issues on a **map** that can be taken now: open, unblocked and unclaimed.
 
 ### Full suite
 Every test: `cargo test`, the UI unit tests, the WebKit and Chromium tests and axe. It runs in CI on pull requests and
@@ -133,6 +155,15 @@ is left assumed. Every design, and every turnaround step, starts with one (`/gri
 ### Highlight
 A mark: a color laid over words, put on near-instantly. *Not yet grilled.* *In code:* `highlights/` (old highlights),
 `wb mark add … --kind highlight`.
+
+## I
+
+### Issue
+One item on the repository's GitHub issue tracker (`bradyg7/wordbench`), with a number, a title, labels and comments.
+In this project an issue holds a **map** or one decision on it; the result of a decision is written into the repo's
+files when the issue closes, so nothing decided lives only on GitHub (the person, 2026-11-25). Outside this project
+"issue" is the general word on GitHub and GitLab for any tracked item: a bug, a request or a task. *Avoid* calling a
+map's decision a **ticket**. *In code:* `gh issue`, labels `wayfinder:*`.
 
 ## L
 
@@ -158,6 +189,11 @@ A rule a code checker applies, and the checker itself (clippy for Rust, typescri
 ### Main clone
 `C:\Users\brady\github\wordbench-workspaces\Main`: where all code work happens, one branch at a time (the person,
 2026-11-23).
+
+### Map
+The one **issue** labelled `wayfinder:map` that lists the way toward a **destination**: the decisions made so far (one
+line each, linking the issue that holds it), the **fog** and what is out of scope. Its decisions are its sub-issues.
+It is an index: a decision lives only in its own issue. Made and worked with `/mattpocock-skills:wayfinder`.
 
 ### Margin note
 A mark: writing beside a verse or a span of verses. It can grow into a page. *Not yet grilled.* *In code:* `margin/`,
@@ -240,6 +276,12 @@ domain or freely licensed and long-lasting; no commentaries, ever; people do not
 saved, and so referenced in a page. *Not yet grilled*: whether they are one book or a shelf of books is open in books.
 *In code:* the Bible database and `dictionary.db`.
 
+### Resolve (an issue)
+Answer a map's issue in the way its type asks (a grilling, a prototype the person plays, research, or a task done),
+then post the answer as a comment, close the issue, write the result into the repo's files and add one line to the
+map's *Decisions so far*. One issue per session, except research. *Avoid:* fix (an issue here is a decision, not a
+bug).
+
 ### Reviewer
 The agent that checks one ticket's diff against its design and the rules, runs its new tests, and shows each new test
 failing with the change reverted. It reports; it does not edit.
@@ -276,7 +318,10 @@ The folder of the person's own work: pages, marks, folders, saves and settings, 
 
 ### Ticket
 A few *what must be true* items cut from a design, each buildable and testable on its own, built by one builder in one
-session and checked by one reviewer.
+session and checked by one reviewer. Outside this project (Jira, help desks) "ticket" means any tracked item and is
+often the same thing as an **issue**; here it is narrower: a unit of building, never a decision. Matt Pocock's skills
+call a map's decisions "tickets"; in this project they are **issues** (the person, 2026-11-25). Where tickets are kept
+is decided on the map.
 
 ### Trail
 Back and forward through where the person has been, and only that. *Not yet grilled*: its menu is clunky (the person,
@@ -297,6 +342,11 @@ from there. *Not yet grilled.* *Avoid:* Shelf, Unsorted. *In code:* `shelf.rs`, 
 Rust for "this cannot fail". If it does fail, the program stops (it "panics") instead of showing a message.
 
 ## W
+
+### Wayfinding
+Finding the way to a **destination** too large and unclear for one session: chart a **map** of decision issues, then
+resolve them one per session until nothing is left to decide. It plans; it builds nothing. The words it uses are
+**map**, **issue**, **blocked**, **claim**, **frontier**, **fog** and **resolve**.
 
 ### What must be true
 The short list in a design folder that replaces the interaction table: one item per thing a person does, in the form
