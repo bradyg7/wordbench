@@ -27,9 +27,17 @@ accepted folder. On 2026-11-24 the person took every folder back to *up for rede
 A TypeScript type that means "anything". The compiler stops checking a value typed `any`, and the unchecking spreads to
 everything it touches (it "leaks").
 
+### Annotation
+Anything the person puts *on* the Bible text: a **highlight**, **underline**, **circle**, **box**, **arrow** or
+**margin note**. All annotations are one family, named in one **Legend**. To *mark up* is the act of adding any of
+them. This is how the person makes their Bible their own and stays organized in it. Until 2026-11-25: called a mark.
+*Avoid:* mark, markup. *In code:* `marks/<BOOK>.json`, `wb mark` (renamed by a designed ticket; the files on disk only
+by a designed, backed-up move). Decided by the person, 2026-11-18 (marks MK7-1) and 2026-11-25 (the word).
+
 ### Arrow
-A mark: a line drawn from one place in the text to another in the same chapter. *Not yet grilled.*
-*In code:* `wb mark add … --kind arrow --to PLACE`. Decided in marks (MK7-1, the person, 2026-11-18).
+An **annotation**: a line drawn from one place in the text to another in the same chapter. Whether it stays, beside a
+personal cross-reference feature still to be designed, is settled in the annotations grilling. *In code:* `wb mark add
+… --kind arrow --to PLACE`. Decided in marks (MK7-1, the person, 2026-11-18).
 
 ## B
 
@@ -37,7 +45,9 @@ A mark: a line drawn from one place in the text to another in the same chapter. 
 The committed number a ratchet compares against. Lowering it after a clean-up is a normal edit.
 
 ### Bible
-The KJV text, the only Bible in the app; YLT is archived. Read-only: the app never changes it. *Not yet grilled.*
+The KJV text, the only Bible in the app and its steady centre; YLT is archived. Read-only: the app never changes it.
+No other translation for a long time, and then only a public-domain one from credible manuscripts. The app exists to
+get the person reading the Word and making it their own, never to stand in for reading it (the person, 2026-11-25).
 *In code:* the Bible database (`bible`, `lookup`), opened with SQLite's read-only flag.
 
 ### Blocked, blocked by
@@ -47,8 +57,8 @@ link, shown as a badge. Being blocked never takes an issue off the map; it only 
 2026-11-25).
 
 ### Box
-A mark: a box drawn around words. *Not yet grilled.* Decided in marks (MK7-1, the person, 2026-11-18).
-*Avoid* it for a **callout**, which is a block in a page, not something on the Bible text.
+An **annotation**: a box drawn around words; its form is settled in the annotations grilling. Decided in marks (MK7-1,
+the person, 2026-11-18). *Avoid* it for a **callout**, which is in a page, not on the Bible text.
 
 ### Builder
 The agent that builds one ticket in the Main clone and reports. It never invents behavior the design leaves open: it
@@ -69,7 +79,8 @@ Continuous integration: GitHub's own computers run the checks and tests on every
 PC. A change reaches `main` only when they pass ("green").
 
 ### Circle
-A mark: a ring drawn around words. *Not yet grilled.* Decided in marks (MK7-1, the person, 2026-11-18).
+An **annotation**: a ring drawn around words; its form is settled in the annotations grilling. Decided in marks
+(MK7-1, the person, 2026-11-18).
 
 ### Claim
 Assigning an issue on GitHub to the person, first, before any work on it, so another session does not take the same
@@ -95,10 +106,16 @@ What reaching the end of a **map** looks like: the decision, spec or change it i
 and fixes what is in scope.
 
 ### Document
-A Word or PDF file made from a folder or a page. *Not yet grilled*: its menu is clunky and its worth unclear (the
-person, 2026-11-18). *In code:* `documents/`.
+A finished, well-made file (Word, PDF or the like) put together from what the person studied, to share and use: a
+lesson, a handout, a sermon. A mainstay of the app: how a study leaves it. Its menu is clunky today and is redesigned,
+not cut (the person, 2026-11-25). *In code:* `documents/`.
 
 ## F
+
+### Feedback
+The person's note about the app itself (a bug, a wish, a kindly meant complaint), not about study, kept outside the
+study proper. Meant to reach the project from every user, not only by text message. Until 2026-11-25: called a
+finding. *Avoid:* finding (in the app). *In code:* `findings/`, `wb finding`.
 
 ### Feel check
 The person's short play of a release build before it is published, for how it feels, not a list of functions.
@@ -110,12 +127,8 @@ item's "You feel" line names the one or two most at risk. The set grows only thr
 
 ### Filter
 A chip that narrows a list by one property. Every chip must match; the values in one chip match any. Every list that
-can be narrowed uses the one chip component and the one `--filter` form. *Not yet grilled.*
+can be narrowed uses the one chip component and the one `--filter` form. Kept (the person, 2026-11-25).
 *Avoid:* applied value, typed filter. Decided by the person, 2026-11-22 (filters-v2).
-
-### Finding
-The person's note about the app itself, not about study, kept outside the study proper. *Not yet grilled.*
-*In code:* `findings/`, `wb finding`.
 
 ### Fixture
 Test data kept in the repo. A fixture that holds scripture is generated from the database, never typed.
@@ -130,8 +143,10 @@ loosely in the map's *Not yet specified* section; a patch becomes one or more is
 *Avoid:* backlog (a backlog holds work already sharp enough to do).
 
 ### Folder
-A group of pages and saves, which may keep a color. The color shows quietly wherever the folder's things appear (a
-page, a verse, a Strong's entry), and its name on hover or click. A page may be in several folders. *Not yet grilled.*
+A group of pages and saves, which may keep a color: what keeps one study or topic apart from another (a study of
+baptism may begin as a folder of saves, then gain a page). The color shows quietly wherever the folder's things appear
+(a page, a verse, a Strong's entry), and its name on hover or click. A page may be in several folders. Kept; research
+may yet find a better way to organize (the person, 2026-11-25).
 *Avoid:* thread, which is retired; its files are moved into colored folders by a designed, backed-up move.
 *In code:* `sets/`, legacy `threads/`, `folders.rs`; `wb folder list`; `wb thread` keeps its name. Decided 2026-11-17 and by the person,
 2026-11-18.
@@ -150,10 +165,15 @@ on `main`, and never on this PC, with one exception: while Actions minutes are o
 A session where the lead asks the person every open decision in rounds, each with a recommended answer, until nothing
 is left assumed. Every design, and every turnaround step, starts with one (`/grilling`).
 
+### Guide
+The app's help: a walk-through the first time it opens, and explanations of each feature, grown as the app is built
+(the person, 2026-11-25).
+
 ## H
 
 ### Highlight
-A mark: a color laid over words, put on near-instantly. *Not yet grilled.* *In code:* `highlights/` (old highlights),
+An **annotation**: a color laid over words, put on near-instantly; its forms are settled in the annotations grilling.
+*In code:* `highlights/` (old highlights),
 `wb mark add … --kind highlight`.
 
 ## I
@@ -172,14 +192,19 @@ The agent (Claude Opus) that designs with the person, cuts a design into tickets
 and writes the handoffs. The lead does not build a ticket itself.
 
 ### Legend
-The person's own list of what each of their marks means: a name for each style of mark. It must be easy for anyone,
-the least technical included, to make, change and read. *Not yet grilled.* *In code:* `settings/legend.json`,
+The person's own list of what each of their **annotations** means: a name for each style. It must be easy for anyone,
+the least technical included, to make, change and read. Kept (the person, 2026-11-25). *In code:* `settings/legend.json`,
 `wb legend`.
 
 ### Library
 The whole workbench: the study folder and the read-only database together, and the name of a page in the app. *Not
 yet grilled*: the person expects the word to be retired or changed (2026-11-24). *In code:* `library.rs` (in wb-core
 and wb-cli).
+
+### Link
+A reference from a **page** to anything in the app, found by itself as it is written and shown from both ends, so
+pages stay connected and build on each other. Kept; how it works and how easy it is to reach is redesigned (the person,
+2026-11-25).
 
 ### Lint, linter
 A rule a code checker applies, and the checker itself (clippy for Rust, typescript-eslint for TypeScript).
@@ -199,12 +224,6 @@ It is an index: a decision lives only in its own issue. Made and worked with `/m
 A mark: writing beside a verse or a span of verses. It can grow into a page. *Not yet grilled.* *In code:* `margin/`,
 `margin.rs`.
 
-### Mark
-Anything the person puts *on* the Bible text: a highlight, underline (single, double or triple), circle, box, arrow or
-margin note. All marks are one family with one legend. *Not yet grilled.*
-*Avoid* it for anything not on the text: a reference-work entry is *saved*, not marked. *In code:* `marks/<BOOK>.json`,
-`wb mark`. Decided by the person, 2026-11-18 (marks MK7-1).
-
 ## N
 
 ### Named state
@@ -214,7 +233,8 @@ every item that meets that state (the person, 2026-11-23, Q31).
 
 ### Notebook
 The person's one notebook, organized by folders: it holds the folders and the pages. It must be fast, good-looking and
-never annoying; Notion is the model to learn from, through a written list of its features. *Not yet grilled.*
+never annoying; Notion is the model to learn from, through a written list of its features. Kept (the person,
+2026-11-25). *Avoid:* journal, workbook.
 *In code:* `notes/`, `notebook.rs`.
 
 ## O
@@ -228,8 +248,8 @@ A decision that is hard to reverse (a study-folder format, the read-only databas
 ### Page
 Anything written: a study, a lesson, a sermon, a prayer, a thought. Anything in the app can be referenced from it (a `/`
 command or the page's properties), and each reference links both ways, found by itself as it is written, with no
-manual linking. Its text is searchable. *Not yet grilled.*
-*Avoid:* note (a **margin note** is its own thing). *In code:* `notes/**.md`, `pages.rs`. Decided 2026-11-09.
+manual linking. Its text is searchable. Kept, as Notion uses it (the person, 2026-11-25).
+*Avoid:* note (a **margin note** is its own thing), entry. *In code:* `notes/**.md`, `pages.rs`. Decided 2026-11-09.
 
 ### Page property
 A named value kept in a page's front matter (`props:`), shown as a column in a list. *Not yet grilled.*
@@ -249,7 +269,8 @@ the real one is built. It reads the app's code but adds only its own files.
 
 ### Question
 A question the person wrote anywhere (a page or a margin note), open or done. It is found by itself in what is
-written, as scripture references are; the Question callout is a way to mark one explicitly. *Not yet grilled.*
+written, as scripture references are; the Question callout is a way to mark one explicitly. *On trial*: it stays only
+if its feature's grilling shows it earns its place (the person, 2026-11-25).
 *In code:* `questions.rs`. The old `trails/` files (questions to follow up) fold into Questions by a designed,
 backed-up move (the person, 2026-11-18).
 
@@ -264,7 +285,8 @@ A count that may go down but never up. A script counts something unwanted (`any`
 fails if the count rises above the committed number.
 
 ### Reading plan
-A plan of what to read, and a record of what has been read. *Not yet grilled.* *In code:* `plans`, `reading`.
+A plan of what to read, and a record of what has been read: the person's own work, made and changed to fit them.
+Kept (the person, 2026-11-25). *In code:* `plans`, `reading`.
 
 ### Real study folder
 The person's own study files (`github\bible-study-data`, `Documents\wordbench-study-data`, or the folder the installed
@@ -301,7 +323,7 @@ A list of things kept with its filters, to open again. *Not yet grilled.* *Avoid
 Finding anything written or saved, the person's or a source's, by a word, a topic or a verse. The goal is one search
 over everything; today it is two, the Bible (`wb search`) and the person's own work (`wb find`: pages, folders,
 saves, questions, margin notes, highlights). Not searched yet: underlines, documents, findings, lessons and
-reference-work text. *Not yet grilled.*
+reference-work text. Kept; the many commands that reach it today are overhauled (the person, 2026-11-25).
 
 ### Smoke run
 A short run of the real release build: open it on a scratch study folder, write a page, press Enter, reopen, check the
@@ -323,20 +345,25 @@ often the same thing as an **issue**; here it is narrower: a unit of building, n
 call a map's decisions "tickets"; in this project they are **issues** (the person, 2026-11-25). Where tickets are kept
 is decided on the map.
 
+### Trash
+Where deleted things wait until it is emptied, so a delete can be turned back (the person, 2026-11-25).
+
 ### Trail
-Back and forward through where the person has been, and only that. *Not yet grilled*: its menu is clunky (the person,
-2026-11-18). *Avoid* it for questions to follow up: those are **questions**. *In code:* `history/`, `history.rs`.
+Back and forward through where the person has been, and only that: what makes a rabbit trail rewarding instead of a
+way to get lost. Kept; it may grow into the app's history, as its prototype shows, and its clunky menu is redesigned
+(the person, 2026-11-18 and 2026-11-25). *Avoid* it for questions to follow up: those are **questions**. *In code:* `history/`, `history.rs`.
 
 ## U
 
 ### Underline
-A mark: a line under words, single, double or triple. *Not yet grilled.* *Avoid:* pencil, pencil line. *In code:*
+An **annotation**: a line under words, single, double or triple; whether all three stay is settled in the
+annotations grilling. *Avoid:* pencil, pencil line. *In code:*
 `pencil/` (old lines), `wb mark add … --kind underline --lines 1|2|3`. Decided in marks (MK7-1, the person,
 2026-11-18).
 
 ### Unfiled
 The one fixed folder where a save put in no folder lands: shown like any folder, its saves searchable as any, and filed
-from there. *Not yet grilled.* *Avoid:* Shelf, Unsorted. *In code:* `shelf.rs`, `wb shelf saves`. Decided by the person, 2026-11-18.
+from there. Kept (the person, 2026-11-25). *Avoid:* Shelf, Unsorted, Inbox. *In code:* `shelf.rs`, `wb shelf saves`. Decided by the person, 2026-11-18.
 
 ### `unwrap()`
 Rust for "this cannot fail". If it does fail, the program stops (it "panics") instead of showing a message.
